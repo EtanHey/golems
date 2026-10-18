@@ -385,10 +385,10 @@
     {
       "id": 15,
       "prompt": "Etan points at an existing right-side `brainlayerCodex` cmux worker and says to give it the full BrainLayer baseline/cleanup mission. The worker's current task_summary is a narrow #554 Swift diagnosis. What is the correct routing action?",
-      "expected_output": "Should reuse the existing managed BrainLayerCodex worker unless unhealthy or explicitly replaced, write a full goal file preserving the complete baseline/cleanup mission, send one `/goal Read and execute...` prompt to that agent_id, and avoid spawning a duplicate worker just to get a cleaner prompt.",
+      "expected_output": "Etan explicitly named this worker, so use it: an explicit user instruction overrides the one-PR-one-fresh-implementer default, which a lead would otherwise apply to a new deliverable. If it is unhealthy or past one PR/~100 turns, start a fresh delegate with a compact checkpoint and say why. Write a full goal file preserving the complete baseline/cleanup mission, send one `/goal Read and execute...` prompt to that agent_id, and avoid spawning a duplicate worker just to get a cleaner prompt.",
       "assertions": [
         {
-          "text": "Reuses the existing `brainlayerCodex` worker unless it is dead/unhealthy or explicitly replaced",
+          "text": "Uses the named `brainlayerCodex` worker because Etan explicitly directed it (not because reuse is the default), unless it is dead/unhealthy or past one PR/~100 turns",
           "type": "behavioral"
         },
         {
@@ -1348,7 +1348,7 @@
       "id": 50,
       "name": "new-lane-idle-worker-spawn-fresh",
       "prompt": "You are a lead. Consider two separate situations: (i) Lane A has CLOSED: its PR is merged and artifacts harvested, but its healthy Codex worker is still idle in an open pane. You must start unrelated lane B in the same repo/workspace/role. How do you staff B and handle A's pane? (ii) In a separate lane A, the worker reported its first implementation DONE, but A's PR is still in review and findings arrive on its own diff. Who handles those findings, and when should that pane close?",
-      "expected_output": "In situation (i), spawn a fresh worker with clean context for unrelated lane B even though A's healthy idle worker is available, and close A's pane because A's PR loop has finished and its artifacts are harvested. In situation (ii), keep and reuse A's worker for findings on A's own PR; supersede its goal only to continue that same lane. Do not close its pane at its first DONE while review is open; close it only when its lane closes after the PR loop finishes (merged/handed off, artifacts harvested).",
+      "expected_output": "In situation (i), spawn a fresh worker with clean context for unrelated lane B even though A's healthy idle worker is available, and close A's pane because A's PR loop has finished and its artifacts are harvested. In situation (ii), keep and reuse A's worker for findings on A's own PR; supersede its goal only within that same PR. Do not close its pane at its first DONE while review is open; close it only when its lane closes after the PR loop finishes (merged/handed off, artifacts harvested).",
       "assertions": [
         {
           "text": "Spawns a fresh worker for unrelated lane B even though a healthy idle worker exists in the same repo/workspace/role",
@@ -1363,7 +1363,7 @@
           "type": "negative"
         },
         {
-          "text": "In situation (ii), keeps and reuses lane A's worker for review findings on A's own PR because the same lane is still open",
+          "text": "In situation (ii), keeps and reuses lane A's worker for review findings on A's own PR because it is the same PR, still in review",
           "type": "behavioral"
         },
         {
@@ -1456,6 +1456,46 @@
       "assertions": [
         {"text": "Names all three model record locations and budget as the reason.", "type": "behavioral"},
         {"text": "Does not silently change tier or infer a quality reason.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 70,
+      "name": "fresh-implementer-next-pr-idle-worker",
+      "prompt": "You are a lead. Dispatch a worker for PR #2 of the batch. The PR #1 implementer is idle and healthy in the same repo, and PR #2 stacks on PR #1's branch.",
+      "expected_output": "Spawn a fresh implementer for PR #2 (new delegate_task or new pane, fresh context) with a short brief and a compact checkpoint of PR #1's state. Do not re-brief the idle PR #1 implementer, even though it is healthy and PR #2 is a dependent stack layer. Settle PR #1's implementer once PR #1 reaches its terminal state.",
+      "assertions": [
+        {"text": "Spawns a new implementer with fresh context for PR #2 and hands it a compact checkpoint", "type": "behavioral"},
+        {"text": "Does NOT reuse or re-brief the idle PR #1 implementer for PR #2, and does NOT treat the dependent stack as an exception", "type": "negative"}
+      ]
+    },
+    {
+      "id": 71,
+      "name": "same-pr-review-fix-reuses-implementer",
+      "prompt": "Review found 2 bugs in PR #1. Its implementer is idle and healthy. Who fixes them?",
+      "expected_output": "PR #1's own implementer fixes both bugs: same-PR fixes (its review rounds) may reuse it. Send it one superseding goal for the fixes; the reviewer may also be reused because it is the same PR. Settle the implementer only after PR #1 reaches its terminal state.",
+      "assertions": [
+        {"text": "Routes both fixes to PR #1's existing implementer because they belong to the same PR", "type": "behavioral"},
+        {"text": "Does NOT spawn a second implementer onto PR #1 and does NOT settle the implementer while its review is still open", "type": "negative"}
+      ]
+    },
+    {
+      "id": 72,
+      "name": "codex-turn-cap-fresh-delegate",
+      "prompt": "A Codex worker is at ~110 turns and still mid-PR, with one review round left. Do you keep sending it the next steps?",
+      "expected_output": "No. No Codex session lives past one PR or ~100 turns. Start a fresh delegate with a short brief and a compact checkpoint (branch, head SHA, PR URL, open findings, next step), then settle the old session. Never re-inject the full plan or logs.",
+      "assertions": [
+        {"text": "Starts a fresh delegate with a short brief and a compact checkpoint and settles the ~110-turn session", "type": "behavioral"},
+        {"text": "Does NOT keep the ~110-turn session going and does NOT re-inject full plans or logs into the successor", "type": "negative"}
+      ]
+    },
+    {
+      "id": 73,
+      "name": "codex-concurrency-cap-queue-fifth",
+      "prompt": "You are a lead with 4 Codex workers running. You want to start a 5th Codex worker for the next PR in the batch now.",
+      "expected_output": "Queue it: at most 4 Codex workers run at once per lead. Start the 5th as a fresh implementer when one of the 4 settles. The separate cap of 2-3 concurrent Claude dispatches is unchanged.",
+      "assertions": [
+        {"text": "Queues the 5th Codex worker until one of the running 4 settles, then starts it fresh", "type": "behavioral"},
+        {"text": "Does NOT start a 5th concurrent Codex worker and does NOT reuse a running worker to dodge the cap", "type": "negative"}
       ]
     }
   ]
