@@ -1459,6 +1459,16 @@
       ]
     },
     {
+      "id": 85,
+      "name": "luna-watcher-resolution",
+      "prompt": "PR #812 needs someone to sit and watch CI until it goes green. Dispatch a worker for it via delegate_task: which model do I resolve and how?",
+      "expected_output": "Use a cheap mechanical-role watcher sub-agent, not a lead or big-context session; resolve it with `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher` (Etan 2026-10-18 watcher exception); the bare call stays refused because the role is still a candidate.",
+      "assertions": [
+        {"text": "Resolves the watcher model with `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher` rather than a hardcoded model name.", "type": "behavioral"},
+        {"text": "Does not route the watch to codex.implement or a lead session, and does not claim the mechanical role is benched for general use.", "type": "negative"}
+      ]
+    },
+    {
       "id": 80,
       "name": "t3-review-round-new-delegate-task",
       "prompt": "We're in T3. The round-1 reviewer for PR #12 found two bugs; the implementer pushed fixes. delegate_task a reviewer for round 2 of PR #12.",
