@@ -321,20 +321,45 @@ test('agent-routing has a first-class T3-native child lifecycle and keeps cmux a
 });
 
 function guardCodexModels(suite) {
-  // Codex = gpt-6.1-sol and gpt-6-luna only; Astra only on Etan's own ask. Any other Codex model
-  // named in an eval's expected output or assertions must sit in a rejection sentence.
+  // Codex = gpt-6.1-sol and gpt-6-luna only; Astra only on Etan's own explicit request. Any other
+  // Codex model named in expected_model, expected_output, description, or any assertion field must
+  // be the object of a rejection in its own clause (#802 review r1 MAJORs).
   const allowed = new Set(['gpt-6.1-sol', 'gpt-6-luna']);
   const rejects = /\b(reject\w*|refus\w*|ban\w*|remov\w*|never|not|no)\b/i;
+  // Etan must be the speaker of a direct quote that asks for Astra; an "Etan" prefix alone is not a request.
+  const etanAsksForAstra = prompt => {
+    const ask = /^Etan(?:, directly)?:\s*"([^"]*)"/.exec(prompt ?? '');
+    return Boolean(ask && /\b(?:gpt-6-astra|astra)\b/i.test(ask[1]) && !rejects.test(ask[1]));
+  };
+  // A cue binds only inside its clause: commas, colons, semicolons and conjunctions start a new one.
+  const clauseBreak = /,\s*|:\s+|\s+\b(?:and|but|then|instead|whereas|while|so)\b\s+/i;
+  const passiveReject = /^\S*\s+(?:is|are|must be|should be)\s+(?:\w+\s+)?(?:reject|refus|ban|remov)\w*/i;
+  const isRejected = (clauses, i, index, model) => {
+    const clause = clauses[i];
+    if (rejects.test(clause.slice(0, index))) return true; // "Rejects X", "never X", "Does NOT route to X"
+    if (passiveReject.test(clause.slice(index))) return true; // "X is rejected outright"
+    if (model === 'gpt-6-astra' && /^\S*\s+runs only on Etan's own explicit request\b/.test(clause.slice(index))) return true;
+    if (/^even\b/i.test(clause) && i > 0 && rejects.test(clauses[i - 1])) return true; // "..., even as `-m X`"
+    return /^(?:reject|refus)\w*\s+it\b/i.test(clauses[i + 1] ?? ''); // "If X comes up, rejects it"
+  };
   for (const e of suite.evals) {
-    const texts = [e.expected_output, ...e.assertions.map(a => a.text ?? a.description ?? '')];
-    for (const text of texts) {
+    const astraAuthorized = etanAsksForAstra(e.prompt);
+    if (e.expected_model !== undefined) {
+      const model = String(e.expected_model).toLowerCase();
+      assert.ok(allowed.has(model) || (model === 'gpt-6-astra' && astraAuthorized), `eval ${e.id} expected_model ${e.expected_model} is not on the Codex model list`);
+    }
+    const texts = [e.expected_output, e.description, ...e.assertions.flatMap(a => [a.text, a.description])];
+    for (const text of texts.filter(t => typeof t === 'string')) {
       for (const sentence of text.split(/(?<=[.;])\s+/)) {
-        for (const m of sentence.matchAll(/\bgpt-[0-9][\w.]*(?:-[a-z]+)*|\bspark\b/gi)) {
-          const model = m[0].toLowerCase().replace(/[.*]+$/, '');
-          if (allowed.has(model)) continue;
-          if (model === 'gpt-6-astra' && /^Etan\b/.test(e.prompt)) continue;
-          assert.match(sentence, rejects, `eval ${e.id} names non-allowed Codex model ${m[0]} outside a rejection: ${sentence}`);
-        }
+        const clauses = sentence.split(clauseBreak);
+        clauses.forEach((clause, i) => {
+          for (const m of clause.matchAll(/\bgpt-[0-9][\w.]*(?:-[a-z]+)*|\bspark\b/gi)) {
+            const model = m[0].toLowerCase().replace(/[.*]+$/, '');
+            if (allowed.has(model)) continue;
+            if (model === 'gpt-6-astra' && astraAuthorized) continue;
+            assert.ok(isRejected(clauses, i, m.index, model), `eval ${e.id} names non-allowed Codex model ${m[0]} outside a rejection of it: ${sentence}`);
+          }
+        });
       }
     }
   }
@@ -352,6 +377,10 @@ test('Codex model guard rejects mutated evals (#802 review r1 MAJORs)', () => {
     'Etan prefix without an explicit request': mutate(97, e => { e.prompt = 'Etan has not asked for Astra; a lead requests it anyway. Dispatch the reviewer via delegate_task.'; }),
     'forbidden expected_model': mutate(25, e => { e.expected_model = 'gpt-5.6-sol'; }),
     'forbidden model in assertion description beside text': mutate(25, e => { e.assertions[0].description = 'Selects gpt-5.6-sol at high for read-heavy review fan-out.'; }),
+    'negation in an earlier conjunct': mutate(25, e => { e.assertions[0].text = 'Does not stall and routes recon to gpt-5.6-sol'; }),
+    'negation of another model before but': mutate(25, e => { e.expected_output = 'Not Luna but gpt-5.6-sol at high.'; }),
+    'negation before a colon': mutate(25, e => { e.description = 'No problem: gpt-5.6-sol runs the recon.'; }),
+    'Etan quote that refuses Astra': mutate(97, e => { e.prompt = 'Etan, directly: "Do not use gpt-6-astra here." Dispatch the reviewer via delegate_task.'; }),
   };
   const accepted = Object.entries(mutations).filter(([, mutated]) => {
     try { guardCodexModels(mutated); return true; } catch (err) { if (err instanceof assert.AssertionError) return false; throw err; }
