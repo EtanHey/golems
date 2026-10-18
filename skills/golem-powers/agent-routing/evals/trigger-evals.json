@@ -1,0 +1,52 @@
+[
+  {
+    "query": "dispatch a worker to implement the parser fix",
+    "should_trigger": true,
+    "note": "ordinary 'dispatch a worker'"
+  },
+  {
+    "query": "delegate_task a reviewer for PR #790",
+    "should_trigger": true,
+    "note": "literal delegate_task + reviewer"
+  },
+  {
+    "query": "hand this to Codex",
+    "should_trigger": true,
+    "note": "hand-off to a provider"
+  },
+  {
+    "query": "who should gather the docs inventory, Cursor or Gemini?",
+    "should_trigger": true,
+    "note": "literal 'who gathers' trigger"
+  },
+  {
+    "query": "fan these 12 file audits out in parallel",
+    "should_trigger": true,
+    "note": "fan-out engine choice"
+  },
+  {
+    "query": "merge it",
+    "should_trigger": false,
+    "note": "cross-skill: merge belongs to pr-loop"
+  },
+  {
+    "query": "make a plan for the ingest cleanup",
+    "should_trigger": false,
+    "note": "cross-skill: planning belongs to large-plan"
+  },
+  {
+    "query": "explain what a subagent is in Claude Code",
+    "should_trigger": false,
+    "note": "concept question, no dispatch"
+  },
+  {
+    "query": "rename this variable in the file I have open",
+    "should_trigger": false,
+    "note": "one coherent edit, no worker"
+  },
+  {
+    "query": "what's 2+2",
+    "should_trigger": false,
+    "note": "unrelated"
+  }
+]

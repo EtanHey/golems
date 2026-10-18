@@ -34,6 +34,8 @@ Scan the skill index for skills that fit the task. Common combos:
 
 Add a "Skill Combos" table to the prompt listing which skills agents should invoke and when.
 
+**Lead kickoff (any harness):** a kickoff brief to a lead, and a lead's brief to a worker, names the skills to invoke before the first plan, dispatch or PR action: `/large-plan`, `/agent-routing`, `/pr-loop` (Claude: Skill tool; Codex: read each SKILL.md body).
+
 ### 3. Mandatory Sections
 
 Every agent prompt MUST include:
