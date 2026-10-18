@@ -296,18 +296,17 @@
     grep -Fq 'codex-workflows/scripts/codex-workflows.sh watch --run-id <run-id>' "$LARGE_PLAN" &&
     ! grep -Eiq 'collab monitor (is|may be|can be|as) (the )?only worker-liveness guard' "$LARGE_PLAN" &&
     ! grep -Eq 'grep -E.*done|/tmp/collab-monitor[.]pid' "$LARGE_PLAN_CODEX_ADAPTER" &&
-    grep -Fq 'collab-monitor/scripts/collab-monitor.sh' "$LARGE_PLAN_CODEX_ADAPTER" &&
-    grep -Fq 'follow @<listen-name>' "$LARGE_PLAN_CODEX_ADAPTER" &&
-    grep -Fq 'stop @<listen-name>' "$LARGE_PLAN_CODEX_ADAPTER" &&
+    ! grep -Fq 'collab-monitor/scripts/collab-monitor.sh' "$LARGE_PLAN_CODEX_ADAPTER" &&
+    grep -Fq 'Codex seats must not poll collabs; T3 delegate completions already wake you.' "$LARGE_PLAN_CODEX_ADAPTER" &&
+    grep -Fq 'codex-workflows/scripts/codex-workflows.sh watch --run-id <run-id>' "$LARGE_PLAN_CODEX_ADAPTER" &&
     grep -Fq '→ @<listen-name> — [ISO-timestamp] Phase N done' "$LARGE_PLAN_CODEX_ADAPTER" &&
     grep -Fq '→ @<listen-name> — [ISO-timestamp] Phase N blocked' "$LARGE_PLAN_CODEX_ADAPTER" &&
     ! grep -Fq '→ @<listen-name> — Phase N done' "$LARGE_PLAN_CODEX_ADAPTER" &&
     ! grep -Fq '→ @<listen-name> — Phase N blocked' "$LARGE_PLAN_CODEX_ADAPTER" &&
-    grep -Fq 'MUST NOT be the only worker-liveness guard' "$LARGE_PLAN_CODEX_ADAPTER" &&
     ! grep -Eq 'grep -E.*done|kill <bg-monitor-pid>' "$LARGE_PLAN_CAPABILITIES" &&
-    grep -Fq 'collab-monitor/scripts/collab-monitor.sh start @<listen-name>' "$LARGE_PLAN_CAPABILITIES" &&
-    grep -Fq 'collab-monitor/scripts/collab-monitor.sh follow @<listen-name>' "$LARGE_PLAN_CAPABILITIES" &&
-    grep -Fq 'collab-monitor/scripts/collab-monitor.sh stop @<listen-name>' "$LARGE_PLAN_CAPABILITIES" &&
+    ! grep -Fq 'collab-monitor/scripts/collab-monitor.sh' "$LARGE_PLAN_CAPABILITIES" &&
+    grep -Fq 'none for Codex seats (Codex seats must not poll collabs)' "$LARGE_PLAN_CAPABILITIES" &&
+    grep -Fq 'the delegate_task completion notification is the liveness guard' "$LARGE_PLAN_CAPABILITIES" &&
     ! grep -Eq 'grep -E.*done|grep -E.*blocked' "$LARGE_PLAN_CLAUDE_ADAPTER" &&
     ! grep -Eq 'grep -E.*done|grep -E.*blocked' "$LARGE_PLAN_COLLAB_WORKFLOW" &&
     grep -Fq '### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done' "$LARGE_PLAN_COLLAB_WORKFLOW" &&
@@ -321,7 +320,7 @@
     grep -Fq 'MUST NOT be the only worker-liveness guard' "$LARGE_PLAN_COLLAB_WORKFLOW"; then
     pass "7 large-plan-teaching GREEN"
   else
-    fail "7 large-plan-teaching" "expected 1 then 0 alerts plus pre-spawn arming, routed done/blocked headings, native-first routing, an attached Codex fallback, and bounded lifecycle negative controls"
+    fail "7 large-plan-teaching" "expected 1 then 0 alerts plus pre-spawn arming, routed done/blocked headings, native-first routing, no Codex collab monitor, a T3 completion-notification branch, and bounded lifecycle negative controls"
   fi
 
   case_dir="$TMP_ROOT/shrink"

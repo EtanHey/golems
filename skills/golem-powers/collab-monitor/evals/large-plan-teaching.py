@@ -29,23 +29,24 @@ def sections(repo):
 # grade an agent's English response. Case 7 retains the routing/runtime checks.
 REQUIRED = {
     'round': {
-        'routing': ('Claude uses native Monitor', 'Codex uses packaged `start`/`status`/`follow`'),
-        'attachment': ('consumer attached', 'before dispatching any worker'),
-        'readiness': ('native Monitor returns its task ID', 'Codex fallback: `STARTED`/`FOLLOWING`'),
+        'routing': ('Claude uses native Monitor', 'Codex seats arm no collab monitor'),
+        'attachment': ('before dispatching any worker',),
+        'readiness': ('native Monitor returns its task ID', 'Codex seats: once the process-exit watch is attached'),
         'liveness': ('MUST NOT be the only worker-liveness guard', 'separate liveness watchers are armed'),
+        't3': ('T3-native execution', 'completion notification is the liveness guard', 'Arm no collab monitor'),
     },
     'parallel': {
-        'routing': ('Claude uses native Monitor', 'Codex uses packaged `start`/`status`/`follow`'),
-        'attachment': ('consumer attached', 'before dispatching any worker'),
-        'readiness': ('native Monitor returns its task ID', 'Codex fallback: `STARTED`/`FOLLOWING`'),
+        'routing': ('Claude uses native Monitor', 'Codex seats arm no collab monitor'),
+        'attachment': ('before dispatching any worker',),
+        'readiness': ('native Monitor returns its task ID', 'Codex seats: once the process-exit watch is attached'),
         'liveness': ('MUST NOT be the only worker-liveness guard', 'separate liveness watchers are armed'),
         'expiry': ('30-minute expiry', 'after every compaction', 're-arm'),
         'cleanup': ('returned watch identifier', 'TaskStop before replacing', 'closing its lane'),
-        'state': ('same routing state', 'do not attach duplicate streams', 'Stop the Codex fallback by listen name'),
+        'state': ('same routing state', 'do not attach duplicate streams', 'Codex seats have no collab watch to stop'),
         'evidence': ('unique ISO timestamp', 'verify the report and requested artifact'),
     },
     'claude': {
-        'routing': ('/collab-monitor', 'native Monitor', 'Codex seats', 'packaged fallback', 'attached consumer'),
+        'routing': ('/collab-monitor', 'native Monitor', 'Codex seats arm no collab monitor'),
         'attachment': ('before dispatch',),
         'expiry': ('30-minute expiry', 'after every compaction', 're-arm'),
         'cleanup': ('returned task ID', 'TaskStop before replacing', 'plan closes'),
@@ -54,26 +55,29 @@ REQUIRED = {
         'evidence': ('artifact or real-client verification',),
     },
     'arm': {
-        'routing': ('/collab-monitor', 'native Monitor', 'Codex seats', 'packaged `start`/`status`/`follow`'),
-        'attachment': ('attached consumer before dispatch',),
+        'routing': ('/collab-monitor', 'native Monitor', 'Codex seats arm no collab monitor', 'T3 delegate completions already wake you'),
+        'attachment': ('follow `/collab-monitor` before dispatch',),
         'expiry': ('30-minute expiry', 'after every compaction', 're-arm'),
-        'cleanup': ('returned task ID', 'TaskStop', 'before replacing', 'closing its lane', '`stop` by listen name'),
+        'cleanup': ('returned task ID', 'TaskStop', 'before replacing', 'closing its lane'),
         'state': ('routing state', 'avoid duplicate streams'),
         'liveness': ('separate process-exit', 'liveness watcher before dispatch'),
         'evidence': ('unique ISO timestamp', 'requested artifact before advancing'),
+        't3': ('**T3 (default in T3):** arm nothing', 'completion notification is the guard'),
     },
     'guard': {
-        'routing': ('/collab-monitor', 'native Monitor (Claude)', 'packaged fallback', 'attached consumer (Codex)'),
+        'routing': ('/collab-monitor', 'native Monitor (Claude)', 'Codex seats arm none'),
         'liveness': ('Before sending a task, arm a process-exit', 'MUST NOT be the only worker-liveness guard'),
         'lifecycle': ('lifecycle in step 4', 'expiry, compaction re-arm and cleanup'),
+        't3': ('completion notification is the guard; arm no monitor',),
     },
     'participation': {
-        'routing': ('/collab-monitor', 'Claude: native Monitor', 'Codex: packaged `start`/`status`/`follow`'),
-        'attachment': ('attached consumer', 'engine-issued mailbox contract'),
+        'routing': ('/collab-monitor', 'Claude: native Monitor', 'Codex: no collab watcher'),
+        'attachment': ('engine-issued mailbox contract',),
         'lifecycle': ('Re-arm on expiry and after every compaction', 'Stop the watcher'),
+        't3': ('no watcher', 'completion notification wakes the lead'),
     },
 }
-FORBIDDEN = ('run --once @<listen-name>', '/loop ', 'tail -n0 -F', 'grep done collab.md')
+FORBIDDEN = ('run --once @<listen-name>', '/loop ', 'tail -n0 -F', 'grep done collab.md', 'Codex uses packaged', 'collab-monitor.sh follow')
 
 
 def failures(texts):
@@ -91,8 +95,9 @@ def failures(texts):
 # two string assertions. All mutations are in memory; no live watches are armed.
 NEGATIVE_CONTROLS = (
     ('round', 'Claude uses native Monitor', 'routing'),
-    ('parallel', 'Codex uses packaged `start`/`status`/`follow`', 'routing'),
-    ('round', 'consumer attached', 'attachment'),
+    ('parallel', 'Codex seats arm no collab monitor', 'routing'),
+    ('round', 'before dispatching any worker', 'attachment'),
+    ('round', 'completion notification is the liveness guard', 't3'),
     ('parallel', 'before dispatching any worker', 'attachment'),
     ('round', 'native Monitor returns its task ID', 'readiness'),
     ('parallel', 'MUST NOT be the only worker-liveness guard', 'liveness'),
@@ -103,7 +108,7 @@ NEGATIVE_CONTROLS = (
     ('parallel', 'unique ISO timestamp', 'evidence'),
     ('claude', '/collab-monitor', 'routing'),
     ('claude', 'native Monitor', 'routing'),
-    ('claude', 'attached consumer', 'routing'),
+    ('claude', 'Codex seats arm no collab monitor', 'routing'),
     ('claude', 'before dispatch', 'attachment'),
     ('claude', '30-minute expiry', 'expiry'),
     ('claude', 'after every compaction', 'expiry'),
@@ -111,17 +116,19 @@ NEGATIVE_CONTROLS = (
     ('claude', 'routing state', 'state'),
     ('claude', 'MUST NOT be the only worker-liveness guard', 'liveness'),
     ('arm', 'native Monitor', 'routing'),
-    ('arm', 'packaged `start`/`status`/`follow`', 'routing'),
-    ('arm', 'attached consumer before dispatch', 'attachment'),
+    ('arm', 'T3 delegate completions already wake you', 'routing'),
+    ('arm', 'follow `/collab-monitor` before dispatch', 'attachment'),
+    ('arm', 'completion notification is the guard', 't3'),
     ('arm', '30-minute expiry', 'expiry'),
     ('arm', 'after every compaction', 'expiry'),
     ('arm', 'TaskStop', 'cleanup'),
     ('arm', 'routing state', 'state'),
     ('arm', 'liveness watcher before dispatch', 'liveness'),
     ('arm', 'unique ISO timestamp', 'evidence'),
-    ('guard', 'attached consumer (Codex)', 'routing'),
+    ('guard', 'Codex seats arm none', 'routing'),
     ('guard', 'MUST NOT be the only worker-liveness guard', 'liveness'),
-    ('participation', 'attached consumer', 'attachment'),
+    ('participation', 'engine-issued mailbox contract', 'attachment'),
+    ('participation', 'completion notification wakes the lead', 't3'),
     ('participation', 'Re-arm on expiry and after every compaction', 'lifecycle'),
 )
 

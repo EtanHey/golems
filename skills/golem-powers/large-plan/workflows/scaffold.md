@@ -163,7 +163,7 @@ Every Codex dispatch passes `-E` / `effort:` explicitly with the phase's reason.
 If step 2 identified any round with 2+ phases, create `collab.md` at the plan root using the **full template** from the [collab protocol](collab.md).
 
 **Mandatory sections to fill at scaffold time (all tiers):**
-1. **Header** — one-line purpose + polling cadence ("read this file every N min")
+1. **Header** — one-line purpose + wake rule, never a polling cadence (T3: `delegate_task` completion notification and the parent's `watch_pull_request`; cmux adapter: addressed watch per `/collab-monitor`)
 2. **Goal** — copy from plan description
 3. **Agents** — one row per parallel agent, status = `idle`
 4. **Task Board** — one row per phase, owner = assigned agent, status = `pending`
@@ -282,10 +282,10 @@ Rules:
 4. Update Messages BEFORE every git commit.
 5. Before creating PR, read other agents' Messages for cross-references.
 6. Update Task Board with PR link when creating PRs.
-7. Full PR loop: push → create PR → poll reviews → fix issues → merge → clean branch → CLEANUP RECEIPT in your done message.
+7. Full PR loop: push → create PR → wait for reviews on a notification, never a polling loop (T3: the parent's `watch_pull_request`; cmux adapter: addressed watch per `/collab-monitor`) → fix issues → merge → clean branch → CLEANUP RECEIPT in your done message.
 8. If blocked, set status → `blocked:reason` with exactly what's needed and from whom.
 9. When done with all your phases, status → `done`, then `signed-off`.
-10. Read this collab file every [N] minutes for updates from other agents.
+10. Do not poll this collab file. Read it at kickoff and at every Update Gate. T3: your final message is the report; its completion notification wakes the lead. cmux adapter: arm the addressed watch per `/collab-monitor` (Claude seats; Codex seats arm none).
 
 Start now.
 ```

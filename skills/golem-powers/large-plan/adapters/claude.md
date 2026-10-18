@@ -2,7 +2,11 @@
 
 > Platform-specific syntax for scaffolding and executing large plans in Claude Code.
 
-## Spawning Parallel Phase Agents
+## T3-native (default in a T3 thread)
+
+Dispatch each phase with `delegate_task` per SKILL.md § T3-native execution; its completion notification is the guard, so no Monitor is armed. The `Agent()` spawns and Collab Monitoring below are the **cmux adapter**.
+
+## Spawning Parallel Phase Agents (cmux adapter)
 
 For parallel rounds, spawn one Agent per phase in a single message:
 
@@ -24,14 +28,14 @@ Agent(
 
 `isolation: "worktree"` is unique to Claude Code. Other CLIs require manual `git worktree add`.
 
-## Collab Monitoring
+## Collab Monitoring (cmux adapter)
 
 Watches: follow `/collab-monitor` before dispatch and after every compaction;
 a DONE marker or version match still needs artifact or real-client verification.
-Use its native Monitor how-to, 30-minute expiry and re-arm rules; record the returned
+Use its native Monitor how-to (cmux adapter), 30-minute expiry and re-arm rules; record the returned
 task ID and use TaskStop before replacing a watch or when the plan closes. Preserve
-routing state and avoid duplicate streams. Codex seats use its packaged fallback
-with an attached consumer. Also arm a separate process-exit or process/registry
+routing state and avoid duplicate streams. Codex seats arm no collab monitor
+(see [codex.md](codex.md)). Also arm a separate process-exit or process/registry
 watcher; the collab monitor MUST NOT be the only worker-liveness guard.
 
 ## Plan Mode
@@ -74,13 +78,14 @@ Resolve role model/alias with `node scripts/model-roles.mjs <role> --field model
 (one field) from the golems checkout. Every phase records `role · effort · why`; choose
 effort per `/large-plan` phase and pass it explicitly at dispatch. Managed Claude peers use the bare launcher pin, verified
 against the role; Agent children receive the resolved alias. `codex.subagent.mechanical`
-is a candidate: bench before use.
+is a candidate: bench before use, except a sit-and-watch child, which resolves via
+`node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`.
 
 ## Unique Capabilities (not available in other CLIs)
 
 - `Agent(isolation="worktree")` — native phase isolation
 - `Agent(run_in_background=true)` — async parallel phases
-- `Monitor` — collab watches per `/collab-monitor`
+- `Monitor` — collab watches per `/collab-monitor` (cmux adapter; T3 uses completion notifications)
 - `EnterPlanMode` — structured spec before execution
 - `claude --resume` — session continuity across days
 - MCP access (BrainLayer for plan decisions, Supabase, etc.)

@@ -13,7 +13,7 @@ adapters:
     background_tasks: true      # Agent(run_in_background=true) for async phases
     plan_mode: true             # EnterPlanMode — spec before execution
     native_monitoring: true       # Monitor — addressed collab watches; see /collab-monitor
-    loop_monitoring: true       # /loop Nm — foreground collab polling
+    loop_monitoring: true       # /loop Nm — cmux adapter only (Claude seats); never in T3 or on Codex seats
     prompting:
       style: natural_language
       structure: xml_tags       # <context>, <task>, <constraints>
@@ -64,15 +64,21 @@ routing_policy: "/agent-routing § Routing rules (SSOT)"
 # Platform features — what's CLI-specific vs universally available
 # Key to AI-agnostic large-plan: never assume a platform feature exists.
 platform_features:
+  # t3 = default when the lead runs in a T3 thread; claude_code/universal = cmux adapter.
   subagent_spawning:
+    t3: "delegate_task per phase, isolation: worktree, mode: async; retain each taskId"
     claude_code: "Agent(subagent_type=..., isolation='worktree', run_in_background=true)"
     universal: "spawn CLI agent per phase: cd <wt> && codex --full-auto 'phase prompt'"
   collab_monitoring:
+    t3: "none armed — the delegate_task completion notification is the liveness guard"
     claude_code: "Monitor per /collab-monitor; 30-minute expiry and compaction re-arm"
-    universal: "bash ~/.claude/skills/collab-monitor/scripts/collab-monitor.sh start @<listen-name> collab.md && bash ~/.claude/skills/collab-monitor/scripts/collab-monitor.sh follow @<listen-name>"
+    universal: "none for Codex seats (Codex seats must not poll collabs); codex-workflows.sh watch --run-id <run-id>, then read collab.md once"
+  pr_waiting:
+    t3: "parent watch_pull_request; a sit-and-watch need gets one bounded codex.subagent.mechanical child"
   monitor_cleanup:
+    t3: "unwatch_pull_request; task_cancel any child still running"
     claude_code: "TaskStop returned Monitor task ID when plan closes"
-    universal: "bash ~/.claude/skills/collab-monitor/scripts/collab-monitor.sh stop @<listen-name>"
+    universal: "end the process-exit watch; no collab watch to stop"
   plan_mode:
     claude_code: "EnterPlanMode → spec phases + dependencies → ExitPlanMode"
     universal: "write plan to docs.local/plan/<name>/README.md first"
@@ -86,8 +92,9 @@ platform_features:
     claude_code: "Agent(run_in_background=true)"
     universal: "nohup codex --full-auto 'phase prompt' > phase-N.log 2>&1 &"
   loop_stop:
+    t3: "never start a /loop"
     claude_code: "stop /loop when all phases signed-off"
-    universal: "bash ~/.claude/skills/collab-monitor/scripts/collab-monitor.sh stop @<listen-name>"
+    universal: "never start a /loop on a Codex seat"
 
 # Worktree fallback — manual setup for non-Claude CLIs
 worktree_fallback:
