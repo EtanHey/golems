@@ -51,10 +51,10 @@ for i in $(seq 1 "$PHASE_COUNT"); do
 ## Tools
 
 - **Gatherer:** \`gemini.gather.text\` (or \`gemini.gather.visual\`) → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
-- **Implementer:** <role selected via \`/agent-routing\` § Routing rules (SSOT)> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
-- **Reviewer / decisions:** <role selected via the routing pointer above> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Implementer:** <role selected via \`/agent-routing\` § Routing rules (SSOT), including any dated trial> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Reviewer / decisions:** <role selected via the routing pointer above, including any dated trial and review sizing> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
 - **Lookup / pane mechanics / verifier:** <role selected via the routing pointer above> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
-- **Config:** golems \`standards/model-roles.json\`; resolve each required field with \`node scripts/model-roles.mjs <role> --field <field>\`. Candidate roles require their bench gate before use.
+- **Config:** golems \`standards/model-roles.json\`; resolve each required field with \`node scripts/model-roles.mjs <role> --field <field>\`. Candidate roles require their bench gate before use. Codex dispatches use only the allowed Codex models in \`/agent-routing\` § Model pins and dispatch.
 
 ## Choosing effort per phase
 

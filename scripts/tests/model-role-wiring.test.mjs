@@ -120,9 +120,76 @@ test('packaged helper role matches config and caller-selected brain-worker stays
 });
 
 
-test('M1 dispatch keeps the proof scope, live memory gate and cmux fallback', () => {
+test('M1 is a test rig only; the proof gate is a dormant adapter until Etan authorizes the rig', () => {
   const text = read('skills/golem-powers/agent-routing/SKILL.md').split('## Dispatch Boundaries')[1].split('## Lead Topology')[0];
-  for (const rule of ['M1 (T3)', 'only when the deliverable must be proven on the M1', 'Codex workers only', 'recorded Claude-in-T3 proof passes', 'one real `brain_search` result, one skill invoked, no hook errors', 'same-turn BrainBar probe: the socket accepts and `brain_search` answers', 'failed probe is reported to the lead and the work stays in cmux', 'Leads never move']) assert.ok(text.includes(rule), rule);
+  for (const rule of [
+    '"**The M1 Pro becomes a TEST RIG only.** Development stays on the MBP. … Nothing changes on the M1 for this yet." (Etan 2026-10-18, via orc collab)',
+    'until Etan authorizes the rig setup', 'docs.local/reports/2026-10-18/m1-rig/', 'stays on the MBP',
+  ]) assert.ok(text.includes(rule), rule);
+  assert.doesNotMatch(text, /^- M1 \(T3\): a lead routes a worker to the M1/m);
+  const rig = text.split('### M1 test-rig adapter')[1];
+  assert.ok(rig, 'M1 test-rig adapter sub-heading is required');
+  for (const rule of ['only when the deliverable must be proven on the M1', 'Codex workers only', 'recorded Claude-in-T3 proof passes', 'one real `brain_search` result, one skill invoked, no hook errors', 'same-turn BrainBar probe: the socket accepts and `brain_search` answers', 'failed probe is reported to the lead and the work stays on the MBP', 'Leads never move']) assert.ok(rig.includes(rule), rule);
+});
+
+test('routing SSOT carries the dated flip trial, risk-sized review and the Codex model list', () => {
+  const skill = read('skills/golem-powers/agent-routing/SKILL.md');
+  const ssot = skill.split('## Routing rules (SSOT)')[1].split('## Model roles')[0];
+  const impl = ssot.split('### Implementation and review')[1].split('\n### ')[0];
+  const trial = impl.split('#### Trial: flipped implement/review (2026-10-18 → review 2026-10-22)')[1];
+  assert.ok(trial, 'dated trial block is required');
+  assert.ok(trial.indexOf('| Work | Implements | Reviews | Plus |') > 0, 'trial block sits directly above the permanent table');
+  const block = trial.split('| Work | Implements | Reviews | Plus |')[0];
+  for (const rule of [
+    '"**EXPERIMENT, starting now for a few days: FLIP the roles.** Claude Opus 5.5 IMPLEMENTS and Codex gpt-6.1-sol REVIEWS." (Etan 2026-10-18, via orc collab)',
+    '"Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)',
+    '`claude.judgment` implements', '`codex.implement` reviews at effort `high`', 'UX/UI and Security rows are unchanged',
+    'merged/day', 'open→merge hours', 'post-merge defects', 'expires', 'permanent table',
+  ]) assert.ok(block.includes(rule), rule);
+  const sizing = ssot.split('### Review sizing')[1]?.split('\n### ')[0];
+  assert.ok(sizing, 'review sizing section is required');
+  for (const rule of [
+    '"XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab)',
+    '"Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab)',
+    'M: up to 2 rounds',
+    '"a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer."',
+    '"That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI."',
+  ]) assert.ok(sizing.includes(rule), rule);
+  const pins = ssot.split('### Model pins and dispatch')[1];
+  for (const rule of [
+    '"**Models:** Codex = gpt-6.1-sol and gpt-6-luna ONLY."', '"**Never gpt-5.6-\\*** (luna, sol, terra)"', '"gpt-6-astra only when Etan asks for it."',
+    '`codex.implement`', '`codex.subagent.mechanical`', 'refused',
+  ]) assert.ok(pins.includes(rule), rule);
+  // Review r1 BLOCKING: explicit interim UI precedence (lead decision) next to the UI bullet.
+  const uiLine = sizing.split('\n').find(l => l.startsWith('- UI precedence (interim'));
+  assert.ok(uiLine, 'dated interim UI precedence line is required');
+  for (const rule of ['skill-lead interim', 'pending Etan', 'takes precedence over the table', 'evidence', 'functional defect', 'not "the reviewer"', 'ONE reviewer', 'fresh Opus', 'never the implementer', 'XS/S', 'M UI PRs: up to 2 rounds', 'full panel']) assert.ok(uiLine.includes(rule), rule);
+  const matrix = skill.split('## Role Matrix')[1].split('### Evidence')[0];
+  assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*dated trial/);
+  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
+  assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
+  for (const [id, name] of [[90, 'trial-refactor-opus-implements-sol-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only'], [96, 'xs-ui-pr-one-opus-reviewer-codex-records'], [97, 'astra-on-etan-explicit-ask']]) {
+    const e = suite.evals.find(e => e.id === id);
+    assert.equal(e?.name, name);
+    assert.ok(e.prompt && e.expected_output, name);
+    assert.ok(e.assertions.some(a => a.type === 'negative'), name);
+  }
+  // Review r1 MAJOR: eval 92 is a lead's suggestion, not Etan's ask; eval 54 asserts MBP, not cmux.
+  const e92 = suite.evals.find(e => e.id === 92);
+  assert.match(e92.prompt, /lead/i);
+  assert.match(e92.prompt, /Etan has not/);
+  const e54 = suite.evals.find(e => e.id === 54);
+  assert.ok(e54.assertions.some(a => /MBP/.test(a.text) && /M1 proof/.test(a.text)), 'eval 54 asserts MBP with the M1-proof restriction');
+  assert.ok(!e54.assertions.some(a => /cmux/.test(a.text)), 'eval 54 no longer requires cmux');
+});
+
+test('large-plan staffing lines resolve through the SSOT including any dated trial and the Codex model list', () => {
+  for (const path of ['skills/golem-powers/large-plan/SKILL.md', 'skills/golem-powers/large-plan/workflows/scaffold.md', 'skills/golem-powers/large-plan/scripts/scaffold-plan.sh']) {
+    const lines = read(path).replaceAll('\\`', '`').split('\n');
+    assert.match(lines.find(l => l.startsWith('- **Implementer:**')), /Routing rules \(SSOT\), including any dated trial>/, path);
+    assert.match(lines.find(l => l.startsWith('- **Reviewer / decisions:**')), /including any dated trial and review sizing>/, path);
+    assert.match(lines.find(l => l.startsWith('- **Config:**')), /Codex dispatches use only the allowed Codex models in `\/agent-routing` § Model pins and dispatch\./, path);
+  }
 });
 
 test('lead topology records model and tier-change reason', () => {
@@ -323,4 +390,42 @@ test('agent-routing has a first-class T3-native child lifecycle and keeps cmux a
     assert.ok(e.prompt && e.expected_output, name);
     assert.ok(e.assertions.some(a => a.type === 'negative'), name);
   }
+});
+
+test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk-sized UI review, dated trial cases', () => {
+  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
+  const byId = id => suite.evals.find(e => e.id === id);
+  // Codex = gpt-6.1-sol and gpt-6-luna only; Astra only on Etan's own ask. Any other Codex model
+  // named in an eval's expected output or assertions must sit in a rejection sentence.
+  const allowed = new Set(['gpt-6.1-sol', 'gpt-6-luna']);
+  const rejects = /\b(reject\w*|refus\w*|ban\w*|remov\w*|never|not|no)\b/i;
+  for (const e of suite.evals) {
+    const texts = [e.expected_output, ...e.assertions.map(a => a.text ?? a.description ?? '')];
+    for (const text of texts) {
+      for (const sentence of text.split(/(?<=[.;])\s+/)) {
+        for (const m of sentence.matchAll(/\bgpt-[0-9][\w.]*(?:-[a-z]+)*|\bspark\b/gi)) {
+          const model = m[0].toLowerCase().replace(/[.*]+$/, '');
+          if (allowed.has(model)) continue;
+          if (model === 'gpt-6-astra' && /^Etan\b/.test(e.prompt)) continue;
+          assert.match(sentence, rejects, `eval ${e.id} names non-allowed Codex model ${m[0]} outside a rejection: ${sentence}`);
+        }
+      }
+    }
+  }
+  // Eval 46: UI review is sized; a Codex reviewer only in the L/data/security full panel.
+  const e46 = JSON.stringify(byId(46));
+  assert.match(e46, /size:\*/);
+  assert.match(e46, /frontend-design:frontend-design/);
+  assert.match(e46, /full panel/);
+  assert.doesNotMatch(e46, /Codex with the codex\.implement model to review/);
+  // Eval 14: Spark is no longer allowed for internal children.
+  assert.doesNotMatch(JSON.stringify(byId(14)), /Allows Spark/);
+  // Codex-implements answers for "everything else" are explicitly dated after the trial.
+  for (const id of [9, 34, 49]) assert.match(byId(id).prompt, /2026-10-26.*trial.*expired/s, `eval ${id} is dated post-trial`);
+  // Trial-agnostic implementer wording where the point is "not the lead, not Cursor".
+  for (const id of [2, 3, 5, 8, 22]) assert.match(JSON.stringify(byId(id)), /dated trial/, `eval ${id} names the trial implementer`);
+  // M1: failed probe stays on the MBP; nothing moves before Etan authorizes the rig.
+  assert.match(JSON.stringify(byId(55)), /MBP/);
+  assert.doesNotMatch(JSON.stringify(byId(55)), /cmux/);
+  assert.match(JSON.stringify(byId(56)), /authorizes the rig/);
 });

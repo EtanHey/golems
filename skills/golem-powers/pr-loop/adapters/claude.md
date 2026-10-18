@@ -15,7 +15,7 @@ Claude Code has everything needed for the complete loop:
 | Push | `git push -u origin feat/name` | |
 | PR | `gh pr create` via Bash | `gh` CLI available |
 | Review | `Agent(subagent_type="coderabbit:code-reviewer")` | Subagent spawning |
-| Poll | Native `Monitor` watching CI or addressed review handoffs | `/collab-monitor`; 30-minute expiry |
+| Wait | T3: `link_pull_request` + `watch_pull_request`, end the turn. Else one native `Monitor` on `pr-watch` | [Waiting policy](../references/review-loop.md#waiting-policy-no-polling-turns); never a polling turn |
 | Fix + merge | `gh pr merge <N> --merge --delete-branch` | |
 | Post-merge | `brain_store(...)` via BrainLayer MCP | MCP access |
 
@@ -31,19 +31,29 @@ Agent(subagent_type="coderabbit:code-reviewer", prompt="Review PR #N in EtanHey/
 pr-watch <owner/repo> <N> --head <sha> --deadline 2h
 ```
 
+Wait per the [waiting policy](../references/review-loop.md#waiting-policy-no-polling-turns), in order:
+
+1. **T3 seat:** call `link_pull_request`, then `watch_pull_request`, and end the turn. T3 wakes you on
+   checks finished, a new comment, or a conflict. Call `unwatch_pull_request` at a terminal state.
+2. **State needed now:** one bounded `gh pr checks <N>` read.
+3. **Must sit and watch outside T3:** one watcher process, below.
+
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
 
 Arm exactly one `Monitor(command="pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`
-for GitHub CI. pr-watch never merges; an empty rollup is never READY. Use the
+for GitHub CI. Monitor runs a command; it spends no model turns while it waits. pr-watch never merges;
+an empty rollup is never READY. Use the
 [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits)
-and [shared arming rules](../references/review-loop.md#for-public-repos-bot-reviewers-configured)
+and [shared arming rules](../references/review-loop.md#watcher-process-pr-watch)
 for head movement and deadline handling. The 30-minute Monitor expiry precedes the 2h --deadline;
 re-arm on expiry after TaskStop cancellation, since re-arming restarts the deadline and the settle window.
-Use native Monitor separately for
-addressed review handoffs; follow `/collab-monitor` for filtering, TaskStop
-cancellation and re-arming at expiry/after compaction. Fetch review bodies once
-a handoff or slim activity count changes. Timed one-shot wakes remain
-ScheduleWakeup/CronCreate per `collab-monitor/references/cron-payloads.md`.
+Each re-arm is a model turn, so a long wait belongs on the T3 watch instead.
+
+No `ScheduleWakeup`, `CronCreate` or `/loop` polling turns for CI or reviews, and no second watcher on
+the same PR. In a cmux fleet without T3, addressed review handoffs follow the
+[cmux adapter](../references/review-loop.md#cmux-adapter-fallback-cmux-fleets-without-t3): native
+Monitor, `/collab-monitor` for filtering, TaskStop cancellation and re-arming at expiry/after
+compaction. Fetch review bodies once a handoff or slim activity count changes.
 
 ## Post-merge BrainLayer Store (Claude-only)
 
@@ -112,6 +122,6 @@ For worker endpoints, draft handling, head verification, and artifact rules, rea
 ## Unique Capabilities
 
 - `Agent(subagent_type="coderabbit:code-reviewer")` — spawns real code review subagent
-- Native `Monitor` — CI/review handoff watches per `/collab-monitor`
+- Native `Monitor` — runs one `pr-watch` process with no model turns while waiting; the T3 PR watch comes first
 - BrainLayer MCP — post-merge brain_store (mandatory per pr-loop spec)
 - `--worktree` isolation — `claude --worktree feat/name` for parallel PRs

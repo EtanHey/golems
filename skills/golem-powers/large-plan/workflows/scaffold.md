@@ -120,10 +120,10 @@ Round M (parallel with Phase X, Phase Y) OR Round M (sequential)
 
 ## Tools
 - **Gatherer:** `gemini.gather.text` (or `gemini.gather.visual`) → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
-- **Implementer:** <role selected via `/agent-routing` § Routing rules (SSOT)> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
-- **Reviewer / decisions:** <role selected via the routing pointer above> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Implementer:** <role selected via `/agent-routing` § Routing rules (SSOT), including any dated trial> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
+- **Reviewer / decisions:** <role selected via the routing pointer above, including any dated trial and review sizing> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
 - **Lookup / pane mechanics / verifier:** <role selected via the routing pointer above> → model: <resolved model> · effort: <low|medium|high|xhigh|default> · why: <one line>
-- **Config:** golems `standards/model-roles.json`; resolve each required field with `node scripts/model-roles.mjs <role> --field <field>`. Candidate roles require their bench gate before use.
+- **Config:** golems `standards/model-roles.json`; resolve each required field with `node scripts/model-roles.mjs <role> --field <field>`. Candidate roles require their bench gate before use. Codex dispatches use only the allowed Codex models in `/agent-routing` § Model pins and dispatch.
 - **MCPs:** [list relevant MCP servers]
 
 ## Choosing effort per phase

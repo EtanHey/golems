@@ -1,7 +1,7 @@
 ---
 name: collab-monitor
-description: "Use native Monitor for addressed collab mail, report DONE markers and installed-version watches; use the packaged detached fallback on Codex seats. NOT for file-integrity auditing."
-version: 1.3.3
+description: "Native Monitor for addressed collab mail on Claude/cmux seats, report DONE markers and installed-version watches. Codex/T3 seats: never arm it; completion notifications wake you. NOT for file-integrity auditing."
+version: 1.4.0
 type: encoded-preference
 last-eval-date: 2026-10-12
 compliance-score: "20/20 owner lifecycle and state hygiene regressions; 6/6 episode regressions; 19/19 routing checks; no agent-behavior or native Monitor runtime proof"
@@ -11,8 +11,30 @@ compliance-score: "20/20 owner lifecycle and state hygiene regressions; 6/6 epis
 
 Use the native **Monitor** tool when the harness exposes it. Arm before dispatch,
 keep the returned watch identifier in the lane record, and stop it when its lane
-closes. Codex seats use the fallback below. A detached producer alone does not
-wake an agent.
+closes. Codex and T3 seats do not monitor collabs at all (next section). A
+detached producer alone does not wake an agent.
+
+## Codex and T3 seats
+
+> "Codex seats must not poll collabs; T3 delegate completions already wake you."
+> "No polling turns. No collab-monitor wakes in Codex"
+> (Etan 2026-10-18, via orc collab)
+
+Why: the weekly Codex quota drained in under 24 h, with the Codex "Collab
+Monitor" skill at 196 uses on Oct 18, and "Collab-monitor polling wakes cost
+another 201M across 729 turns." (Etan 2026-10-18, via orc collab)
+
+- A Codex seat never arms collab-monitor, never runs `start`/`follow`/`run`,
+  and never polls a collab file in a loop or on a schedule.
+- A T3 seat (any vendor) relies on its parent-owned wake signals: `delegate_task`
+  completion notifications for child work and `watch_pull_request` for PRs. Do
+  not add a second watcher on top of them.
+- If something genuinely must sit and watch, dispatch one bounded
+  `codex.subagent.mechanical` child per `/agent-routing` § Routing rules (SSOT);
+  resolve its model with
+  `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`.
+  It reports once and exits; it never owns the parent's PR watch.
+- Native Monitor below is for Claude seats in a cmux fleet.
 
 ## Native Monitor first
 
@@ -135,9 +157,11 @@ When its task finishes, stop it. Workers do not monitor their lead's reviewer.
 Review routing: `/agent-routing` § Routing rules (SSOT). Follow an engine-issued
 mailbox contract when one exists.
 
-## Codex fallback
+## Legacy cmux-only adapter
 
-Codex seats without native Monitor use the packaged detached producer. Record
+Only for a Codex seat running inside a cmux fleet with no T3 parent and no
+native Monitor. Any T3 seat, or any Codex seat that can rely on completion
+notifications, stops at [Codex and T3 seats](#codex-and-t3-seats). Record
 its listen name and PID, verify readiness, and attach its consumer to the
 orchestrator's monitored command session:
 
@@ -211,7 +235,8 @@ actually routed. Keep handoff ownership explicit in the lane's `closure` record.
 Use live queries on every tick; never copy a stale PR state into the payload.
 Frame the tick with a timestamp, cycle and last verified action. Counters reset
 only on a verified side effect. Finish with dispatch, verify-and-decrement or
-escalate-park. Scheduler-specific fallback guidance is in
+escalate-park. Codex and T3 seats write no recurring collab-reading ticks
+([Codex and T3 seats](#codex-and-t3-seats)). Scheduler-specific fallback guidance is in
 [references/cron-payloads.md](references/cron-payloads.md); it is not a prerequisite
 for native Monitor.
 
