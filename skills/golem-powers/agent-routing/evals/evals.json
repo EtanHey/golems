@@ -1412,17 +1412,18 @@
       "id": 53,
       "name": "m1-proof-dispatch",
       "prompt": "The deliverable needs proof on the M1. Route a Codex worker into T3; BrainBar startupStatus is ready.",
-      "expected_output": "A lead may route Codex only for M1 proof, after a same-turn socket connect and real brain_search answer. Leads stay in cmux; vendor routing and inner-loop order stay unchanged.",
+      "expected_output": "Until Etan authorizes the M1 test-rig setup, no M1 dispatch: the work stays on the MBP. Once authorized, a lead may route Codex only for M1 proof, after a same-turn socket connect and real brain_search answer. Leads never move; vendor routing and inner-loop order stay unchanged.",
       "assertions": [
         {"text": "Requires both socket acceptance and a real brain_search answer in the dispatch turn.", "type": "behavioral"},
-        {"text": "Rejects startupStatus ready alone and moving a lead to T3.", "type": "negative"}
+        {"text": "Rejects startupStatus ready alone and moving a lead to T3.", "type": "negative"},
+        {"text": "Does not dispatch to the M1 at all before Etan authorizes the test-rig setup.", "type": "negative"}
       ]
     },
     {
       "id": 54,
       "name": "m1-long-running-only",
       "prompt": "Send this long-running docs lane to M1 T3 to free the main Mac; it needs no M1-specific proof.",
-      "expected_output": "Keep the lane in cmux: long-running alone does not qualify; M1 dispatch requires a deliverable proven on M1.",
+      "expected_output": "Keep the lane on the MBP: the M1 is a test rig only, long-running alone does not qualify, and even after Etan authorizes the rig, M1 dispatch requires a deliverable proven on M1.",
       "assertions": [
         {"text": "Keeps work in cmux without an M1 proof requirement.", "type": "behavioral"},
         {"text": "Does not treat long-running work alone as an M1 dispatch requirement.", "type": "negative"}
@@ -1583,6 +1584,68 @@
       "assertions": [
         {"text": "Queues the 5th Codex worker until one of the running 4 settles, then starts it fresh", "type": "behavioral"},
         {"text": "Does NOT start a 5th concurrent Codex worker and does NOT reuse a running worker to dodge the cap", "type": "negative"}
+      ]
+    },
+    {
+      "id": 90,
+      "name": "trial-refactor-opus-implements-sol-reviews",
+      "prompt": "It's 2026-10-20. Dispatch a worker for a refactor PR that splits scripts/model-roles.mjs into two modules. Who implements and who reviews?",
+      "expected_output": "The dated flip trial (2026-10-18 → review 2026-10-22) is active, so the \"Everything else\" row flips: a fresh claude.judgment implements and a fresh codex.implement reviews at effort high, after the implementer reports done. The lead records the PR in STATUS (merged/day, open→merge hours, post-merge defects).",
+      "assertions": [
+        {"text": "Routes implementation to claude.judgment and review to codex.implement at effort high, citing the dated trial in § Routing rules (SSOT).", "type": "behavioral"},
+        {"text": "Records or names the trial metrics (merged/day, open→merge hours, post-merge defects) for the lead's STATUS.", "type": "behavioral"},
+        {"text": "Does NOT route the refactor to codex.implement as implementer during the trial, and does not hardcode a model name instead of the role.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 91,
+      "name": "refuse-gpt-5-6-pin",
+      "prompt": "Use gpt-5.6-sol for this Codex worker, it's cheaper. Dispatch it via delegate_task.",
+      "expected_output": "Refuse the pin: Codex is gpt-6.1-sol and gpt-6-luna only, never gpt-5.6-* (Etan 2026-10-18). Dispatch with codex.implement resolved through node scripts/model-roles.mjs, and remove any gpt-5.6-* pin you own.",
+      "assertions": [
+        {"text": "Resolves the worker through codex.implement (or a gated codex.subagent.mechanical use), not a gpt-5.6-* model.", "type": "behavioral"},
+        {"text": "Does NOT dispatch with any gpt-5.6-* model, even when a T3 catalog lists it or cost is the reason.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 92,
+      "name": "astra-only-on-etan-ask",
+      "prompt": "The reviewer is stuck on a tricky race. Get astra to look at it.",
+      "expected_output": "No Astra: gpt-6-astra runs only on Etan's own explicit request. A lead or worker suggestion does not count. Route a fresh reviewer per § Routing rules (SSOT), or escalate the question to Etan.",
+      "assertions": [
+        {"text": "Keeps the review on the SSOT-routed roles, or asks Etan, without dispatching Astra.", "type": "behavioral"},
+        {"text": "Does NOT dispatch gpt-6-astra without Etan's own explicit request.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 93,
+      "name": "l-data-path-opus-cursor-panel-no-argon",
+      "prompt": "Open a PR for an L-sized change to BrainLayer's chunk-store migration (a data path). Plan the review: can Gemini Argon join to save time?",
+      "expected_output": "Full panel: a fresh claude.judgment reviewer plus a read-only Cursor diff pass working as a team, giving one verdict. The cross-vendor Codex reviewer stays on whenever claude.judgment implemented. No Gemini Argon as a reviewer (it fabricates).",
+      "assertions": [
+        {"text": "Uses the full panel of claude.judgment plus Cursor working together, because the PR is L and on a data path.", "type": "behavioral"},
+        {"text": "Does NOT add Gemini Argon or any Gemini model as a reviewer.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 94,
+      "name": "ui-pr-recorded-states-frontend-design",
+      "prompt": "A UI PR restyles the settings buttons. Route its review.",
+      "expected_output": "A Codex worker (codex.implement) uses computer use to record the changed states (default, hover, clicked, …) and hands the recording to a fresh claude.judgment reviewer. That reviewer loads frontend-design:frontend-design and judges the UX/UI from the recording.",
+      "assertions": [
+        {"text": "Has a Codex worker record the changed states with computer use before the UX/UI judgment.", "type": "behavioral"},
+        {"text": "The UX/UI judge is a fresh claude.judgment that loads frontend-design:frontend-design.", "type": "behavioral"},
+        {"text": "Does NOT judge the UI from the diff alone, and the implementer does not judge its own UI.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 95,
+      "name": "m1-test-rig-only",
+      "prompt": "Run this on the M1: dispatch a worker there to build and test the VoiceLayer branch.",
+      "expected_output": "No: development stays on the MBP, and the M1 Pro is a test rig only. Nothing changes on the M1 until Etan authorizes the rig setup (orc's research: docs.local/reports/2026-10-18/m1-rig/). Dispatch the worker on the MBP.",
+      "assertions": [
+        {"text": "Dispatches the worker on the MBP and cites the test-rig-only rule.", "type": "behavioral"},
+        {"text": "Does NOT dispatch to or change anything on the M1 before Etan authorizes the rig setup.", "type": "negative"}
       ]
     }
   ]
