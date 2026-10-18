@@ -27,9 +27,20 @@ def run_watch(command, update, expected):
             proc.terminate()
             proc.communicate(timeout=5)
 
+FRONT = TEXT.split('---', 2)[1]
+assert 'packaged detached fallback on Codex seats' not in FRONT
+assert 'Codex/T3 seats' in FRONT and 'completion' in FRONT
+seats = TEXT.index('## Codex and T3 seats')
 native = TEXT.index('## Native Monitor first')
-fallback = TEXT.index('## Codex fallback')
-assert native < fallback
+fallback = TEXT.index('## Legacy cmux-only adapter')
+assert '## Codex fallback' not in TEXT
+assert seats < native < fallback
+RULE = TEXT[seats:native]
+assert 'Codex seats must not poll collabs; T3 delegate completions already wake you.' in RULE
+assert 'No collab-monitor wakes in Codex' in RULE
+assert 'watch_pull_request' in RULE and 'codex.subagent.mechanical' in RULE
+assert '/agent-routing' in RULE
+assert 'no T3 parent' in TEXT[fallback:]
 assert 'timeout_ms: 1800000' in TEXT[native:fallback]
 assert 'persistent' not in TEXT[native:fallback]
 assert 'TaskStop' in TEXT[native:fallback]
@@ -42,7 +53,25 @@ assert '30 minutes' in TEXT and 'after every compaction' in TEXT
 assert 'exact final line' in TEXT and 'real-client smoke' in TEXT
 assert 'CronCreate' not in TEXT and 'CronDelete' not in TEXT
 assert ' start ' in TEXT[fallback:] and ' follow ' in TEXT[fallback:]
-print('PASS native-first, bounded filter, Codex fallback, re-arm and evidence teaching')
+assert 'node scripts/model-roles.mjs codex.subagent.mechanical --use watcher' in RULE
+
+# References carry the same seat rule: any section that arms or follows the
+# packaged monitor, or keeps it alive, must exclude Codex/T3 seats and stay cmux-scoped.
+ARMING = re.compile(r'collab-monitor\.sh (start|follow|run)|arming `/collab-monitor`|keeps the monitor running')
+for ref in sorted((ROOT / 'references').glob('*.md')):
+    body = ref.read_text()
+    head = body[:body.index('\n## ')]
+    assert 'No polling turns' in head and 'SKILL.md#codex-and-t3-seats' in head, ref.name
+    for section in re.split(r'\n(?=#{2,3} )', body):
+        if ARMING.search(section):
+            title = section.splitlines()[0]
+            assert 'Codex and T3 seats' in section and 'never arm' in section, (ref.name, title)
+            assert 'cmux' in section and 'no T3 parent' in section, (ref.name, title)
+            assert 'SKILL.md#codex-and-t3-seats' in section, (ref.name, title)
+CRON = (ROOT / 'references/cron-payloads.md').read_text()
+GATE = CRON[CRON.index('### 9. '):CRON.index('## Rewrite Protocol')]
+assert 'collab-monitor.sh start' in GATE and '`follow`' in GATE, 'cmux path must be preserved'
+print('PASS no Codex/T3 polling, native-first, bounded filter, legacy cmux-only adapter, Codex/T3-excluded references, re-arm and evidence teaching')
 
 # Watch commands run only against synthetic private fixtures.
 parent = ROOT.parents[2] / 'docs.local/structure-proof/monitor-howto'
