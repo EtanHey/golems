@@ -211,7 +211,7 @@ For each skill, show:
 | Skill | Description | Source | Workflows |
 |-------|-------------|--------|-----------|
 | **1password** | Manage 1Password op secrets/env. Triggers: API keys, .env, op auth. | golem-powers | 6 |
-| **pr-loop** | Full PR loop plus the agent-identity signature on GitHub writes. Triggers: … | golem-powers | - |
+| **pr-loop** | Open a PR, merge, ship, handle CI/reviews; signs GitHub writes. Invoke before first PR action. Triggers: … | golem-powers | - |
 
 ---
 *Filter with: --search <keyword>*

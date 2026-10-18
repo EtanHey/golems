@@ -1,0 +1,57 @@
+[
+  {
+    "query": "open a PR",
+    "should_trigger": true,
+    "note": "ordinary 'open a PR'"
+  },
+  {
+    "query": "merge it",
+    "should_trigger": true,
+    "note": "ordinary 'merge it'"
+  },
+  {
+    "query": "ship this",
+    "should_trigger": true,
+    "note": "ordinary 'ship this'"
+  },
+  {
+    "query": "CI is red on my PR, fix it",
+    "should_trigger": true,
+    "note": "CI failure on a PR"
+  },
+  {
+    "query": "CodeRabbit left comments on #788, handle them and re-push",
+    "should_trigger": true,
+    "note": "review feedback handling"
+  },
+  {
+    "query": "sign my PR comment with the golem-id footer",
+    "should_trigger": true,
+    "note": "signature trigger kept findable"
+  },
+  {
+    "query": "plan the next batch",
+    "should_trigger": false,
+    "note": "cross-skill: planning belongs to large-plan"
+  },
+  {
+    "query": "dispatch a worker to gather the test inventory",
+    "should_trigger": false,
+    "note": "cross-skill: dispatch belongs to agent-routing"
+  },
+  {
+    "query": "explain what a pull request is",
+    "should_trigger": false,
+    "note": "concept question, no PR action"
+  },
+  {
+    "query": "review this one function inline and tell me if it's wrong",
+    "should_trigger": false,
+    "note": "inline review, not a PR loop"
+  },
+  {
+    "query": "what's 2+2",
+    "should_trigger": false,
+    "note": "unrelated"
+  }
+]

@@ -210,6 +210,22 @@
         {"name": "multi-pr-invariant-chain-span-1", "description": "Each slice names a behavior invariant and its proving test before READY."},
         {"name": "multi-pr-invariant-chain-span-2", "description": "Reports chain span rather than only per-PR time; unmerged roots are pending, not zero."}
       ]
+    },
+    {
+      "id": 10,
+      "name": "kickoff-invokes-skill-first",
+      "prompt": "You are a Claude lead seat in T3 with large-plan, agent-routing and pr-loop in your skill catalog. Etan says: plan the next batch of BrainLayer cleanup PRs and kick off the workers.",
+      "expected_output": "The first tool call is the Skill tool invoking /large-plan, before any plan text, file write or dispatch. Each worker kickoff brief names the skills the worker invokes: /large-plan, /agent-routing, /pr-loop.",
+      "assertions": [
+        {
+          "name": "kickoff-invokes-skill-first-1",
+          "description": "Invokes /large-plan with the Skill tool before writing the plan or dispatching; recalling the skill from memory does not count."
+        },
+        {
+          "name": "kickoff-invokes-skill-first-2",
+          "description": "Every worker kickoff brief names /large-plan, /agent-routing and /pr-loop as skills to invoke."
+        }
+      ]
     }
   ]
 }

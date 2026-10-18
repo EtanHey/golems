@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 const CAP = 120;
 
 const EXCEPTIONS = {
-  "agent-routing": 285 /* absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259; +26 for the #208 Gemini-gatherer ruling ("who gathers", "gemini gatherer"; bare "multitask" dropped as a substring of "/multitask") */,
+  "agent-routing": 279 /* 285 -> 279 (skill-edits PR1: ordinary dispatch phrases front-loaded, "Route work…" lead and "routing"/"worker assignment"/"delegate"/"parallel agents" dropped as covered by the skill name, "Dispatch a worker", "delegate_task" and "in parallel"/"fan out"); earlier: absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259; +26 for the #208 Gemini-gatherer ruling ("who gathers", "gemini gatherer"; bare "multitask" dropped as a substring of "/multitask") */,
   "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
   "drive-filing": 282 /* absorbed drive-usage (250), google-drive-archive (105), archive (107): 462 -> 282 */,
   "ecosystem-health": 199 /* absorbed context-check (109) and its triggers: 105 + 109 -> 199 */,
@@ -32,7 +32,7 @@ const EXCEPTIONS = {
   "install-runbook-linter": 178,
   "never-fabricate": 337 /* absorbed surface-sweep (pinned 375) and its triggers: 109 + 375 -> 337 */,
   "plan-council": 455 /* absorbed adversarial-council (234), judge-fleet (202), plan-validate (106): 844 -> 455 */,
-  "pr-loop": 165,
+  "pr-loop": 163 /* 165 -> 163 (skill-edits PR1: "Open a PR, merge, ship" front-loaded) */,
   "tmp-block": 223,
   unslop: 251,
 };

@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Route work to Cursor/Gemini/Codex/Claude; pick the fan-out engine. Triggers: delegate, who gathers, gemini gatherer, worker assignment, routing, Codex model/effort, subagents, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
+description: "Dispatch a worker/reviewer, delegate_task, hand off, pick provider/model. Invoke before first dispatch. Triggers: who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, fan out, in parallel, batch classify/audit. NOT for fanning out one edit or dependent steps."
 ---
 
 # Agent Routing
@@ -10,6 +10,14 @@ description: "Route work to Cursor/Gemini/Codex/Claude; pick the fan-out engine.
 > **Auto-dispatch triggers** (canonical in `/orc` C4): batch reads >=3, transcription >=2,
 > web research >=1, or any "in parallel" / "all of these" phrasing -> fan out sub-agents
 > in the SAME message before asking permission.
+
+## Kickoff contract
+
+- **Claude seats:** invoke `/agent-routing` with the Skill tool before the first dispatch of a lane: a worker or helper, a `delegate_task`, a hand-off, or a provider/model choice.
+- **Codex seats:** read this SKILL.md body (a file read) before that action; Codex has no Skill tool.
+- **A lead's kickoff brief** to a worker names the skills the worker invokes (`/large-plan`, `/agent-routing`, `/pr-loop`).
+- Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)
+- Why: Claude T3 leads made 0 Skill calls on Oct 16–18 while all three lead skills sat in their catalog (skill-edits audit, 2026-10-18).
 
 ## Routing rules (SSOT)
 
