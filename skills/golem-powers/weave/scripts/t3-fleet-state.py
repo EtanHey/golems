@@ -43,6 +43,11 @@ ACTIVE_STATUSES = {"preparing", "queued", "starting", "running"}
 WAITING_STATUSES = {"waiting"}
 FINISHED_STATUSES = {"idle", "completed", "interrupted", "failed", "cancelled", "rolled_back"}
 KNOWN_STATUSES = ACTIVE_STATUSES | WAITING_STATUSES | FINISHED_STATUSES
+# task_status status enum (T3 contract OrchestratorMcpDelegatedTaskStatus,
+# packages/contracts/src/orchestratorMcp.ts). Separate from the thread enum:
+# "idle" and "rolled_back" are thread states, never task states.
+TASK_TERMINAL_STATUSES = {"completed", "failed", "cancelled", "interrupted"}
+TASK_STATUSES = {"queued", "running", "waiting"} | TASK_TERMINAL_STATUSES
 # task_status workState enum.
 TASK_IN_FLIGHT = {"working", "waiting_for_children"}
 TASK_DONE = "result_available"
@@ -191,6 +196,9 @@ def judge(
     for tid, t in threads.items():
         label = f"thread {tid} ({t.get('title', '?')})"
         status = t["status"]
+        # Coverage applies to every thread, the gate runner included.
+        if not t["settled"] and t["projectId"] not in swept:
+            fails.append(f"{label} is unsettled in project {t['projectId']!r}, which was not swept")
         if t.get("pendingRequestCount", 0) > 0:
             fails.append(f"{label} has {t['pendingRequestCount']} pending request(s) — answer it first")
         if status not in KNOWN_STATUSES:
@@ -203,15 +211,13 @@ def judge(
             fails.append(f"{label} is {status} — work in flight")
         elif not t["settled"]:
             fails.append(f"{label} is {status} but not settled — settle it")
-        if not t["settled"] and t["projectId"] not in swept:
-            fails.append(f"{label} is unsettled in project {t['projectId']!r}, which was not swept")
 
     for task in doc["tasks"]:
         tid, state, child, status = (
             task["taskId"], task["workState"], task["childThreadId"], task["status"]
         )
         label = f"task {tid}"
-        if status not in KNOWN_STATUSES:
+        if status not in TASK_STATUSES:
             fails.append(f"{label} has unknown status {status!r} — fail closed")
         if task["hasPendingQuestion"]:
             fails.append(f"{label} has a pending question — answer it first")
@@ -221,7 +227,7 @@ def judge(
         if state != TASK_DONE:
             fails.append(f"{label} has unknown workState {state!r} — fail closed")
             continue
-        if status in KNOWN_STATUSES and status not in FINISHED_STATUSES:
+        if status in TASK_STATUSES and status not in TASK_TERMINAL_STATUSES:
             fails.append(f"{label} is {TASK_DONE} but its status is {status} — inconsistent, fail closed")
         if task["hasPendingChildRuns"]:
             fails.append(f"{label} is {TASK_DONE} but has pending child runs — wait or task_cancel")

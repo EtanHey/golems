@@ -198,6 +198,11 @@ FAIL_OPEN_PROBES = {
     "no project coverage": lambda d: d.pop("projects"),
     "pending requestIds on self": lambda d: d.update(
         pending_requests=[{"threadId": "thread:orc", "requestIds": ["request:1"]}]),
+    # Review round 2 (Sol on 65bc3123): these printed PASSED end to end.
+    "self thread in unswept project": lambda d: (
+        _self(d).update(projectId="project:unswept"), d["projects"][0].update(total=0)),
+    "task status idle": lambda d: _task(d).update(status="idle"),
+    "task status rolled_back": lambda d: _task(d).update(status="rolled_back"),
 }
 
 

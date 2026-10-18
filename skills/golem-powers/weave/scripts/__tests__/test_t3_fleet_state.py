@@ -325,6 +325,38 @@ class FailOpenProbes(unittest.TestCase):
         thread(doc, "thread:old-worker")["pendingRequestCount"] = 1
         self.assert_blocks(run_doc(doc), r"thread:old-worker.*pending request")
 
+    # Review round 2 (Sol on 65bc3123): both mutations printed PASSED.
+    def test_self_thread_in_unswept_project_blocks(self) -> None:
+        doc = converged()
+        thread(doc, "thread:orc")["projectId"] = "project:unswept"
+        doc["projects"][0]["total"] = 0
+        self.assert_blocks(run_doc(doc), r"thread:orc.*project:unswept.*not swept")
+
+    def test_thread_status_idle_is_not_a_task_status(self) -> None:
+        doc = converged()
+        task(doc, "task:pr1-impl")["status"] = "idle"
+        self.assert_blocks(run_doc(doc), r"task:pr1-impl.*unknown status 'idle'")
+
+    def test_thread_status_rolled_back_is_not_a_task_status(self) -> None:
+        doc = converged()
+        task(doc, "task:pr1-impl")["status"] = "rolled_back"
+        self.assert_blocks(run_doc(doc), r"task:pr1-impl.*unknown status 'rolled_back'")
+
+    def test_every_terminal_task_status_passes(self) -> None:
+        for status in ("completed", "failed", "cancelled", "interrupted"):
+            with self.subTest(status=status):
+                doc = converged()
+                task(doc, "task:pr1-impl")["status"] = status
+                r = run_doc(doc)
+                self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+
+    def test_result_available_with_live_task_status_is_inconsistent(self) -> None:
+        for status in ("queued", "running", "waiting"):
+            with self.subTest(status=status):
+                doc = converged()
+                task(doc, "task:pr1-impl")["status"] = status
+                self.assert_blocks(run_doc(doc), rf"task:pr1-impl.*result_available.*{status}")
+
 
 if __name__ == "__main__":
     unittest.main()
