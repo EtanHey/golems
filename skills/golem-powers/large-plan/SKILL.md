@@ -1,6 +1,6 @@
 ---
 name: large-plan
-description: "Plan any work, from short plans to multi-phase scaffolds. Triggers: planning, multi-PR refactor, parallel cmux."
+description: "Plan work, a feature batch or lead kickoff; make a plan, plan next steps, multi-PR. Invoke before the first plan step."
 ---
 
 # /large-plan
@@ -11,6 +11,14 @@ description: "Plan any work, from short plans to multi-phase scaffolds. Triggers
 > Fleet law: canon #2 owns PR-loop validity and canon #7/#8 own collab/lead-routing law. This skill keeps plan scaffolding, phase routing, collab file mechanics, adapters, and evaluator gates.
 
 > Scaffold folder-based plans with phase folders, execute them through the branch-PR-review cycle, and coordinate async agent collaboration.
+
+## Kickoff contract
+
+- **Claude seats:** invoke `/large-plan` with the Skill tool before the first plan action of a lane: making a plan, planning a feature batch or next steps, or kicking off a lead.
+- **Codex seats:** read this SKILL.md body (a file read) before that action; Codex has no Skill tool.
+- **A lead's kickoff brief** to a worker names the skills the worker invokes (`/large-plan`, `/agent-routing`, `/pr-loop`).
+- Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)
+- Why: Claude T3 leads made 0 Skill calls on Oct 16–18 while all three lead skills sat in their catalog (skill-edits audit, 2026-10-18).
 
 ## Quick Actions
 
