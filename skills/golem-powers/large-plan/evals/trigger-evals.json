@@ -1,0 +1,52 @@
+[
+  {
+    "query": "make a plan for the BrainLayer ingest cleanup",
+    "should_trigger": true,
+    "note": "ordinary 'make a plan for X'"
+  },
+  {
+    "query": "plan the next batch of skill PRs",
+    "should_trigger": true,
+    "note": "feature batch / next batch phrasing"
+  },
+  {
+    "query": "kick off the lead for the VoiceLayer post-convergence lane",
+    "should_trigger": true,
+    "note": "lead kickoff; plan comes before the first dispatch"
+  },
+  {
+    "query": "what are the next steps here? lay them out before anyone touches code",
+    "should_trigger": true,
+    "note": "plan next steps without the word 'plan'"
+  },
+  {
+    "query": "we have four related PRs for this feature, sequence them into rounds",
+    "should_trigger": true,
+    "note": "feature batch, multi-PR rounds"
+  },
+  {
+    "query": "open a PR for this branch",
+    "should_trigger": false,
+    "note": "cross-skill: PR action belongs to pr-loop"
+  },
+  {
+    "query": "dispatch a worker to fix the flaky test",
+    "should_trigger": false,
+    "note": "cross-skill: dispatch belongs to agent-routing"
+  },
+  {
+    "query": "explain what a pull request is",
+    "should_trigger": false,
+    "note": "concept question, no planning"
+  },
+  {
+    "query": "review this one function inline and tell me if it's wrong",
+    "should_trigger": false,
+    "note": "single inline review, no plan"
+  },
+  {
+    "query": "what's 2+2",
+    "should_trigger": false,
+    "note": "unrelated"
+  }
+]

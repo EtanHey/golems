@@ -622,6 +622,40 @@
           "description": "Requires all latest checks green and a quiet default 180s settle window; a new check or run resets the window. No merge action is performed by pr-watch."
         }
       ]
+    },
+    {
+      "id": 26,
+      "name": "open-pr-invokes-skill-first",
+      "prompt": "You are a Claude lead seat in T3. The branch is committed. Open a PR and merge it once CI is green.",
+      "expected_output": "The first tool call is the Skill tool invoking /pr-loop, before git push, gh pr create or gh pr merge.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "skill-before-pr-action",
+          "description": "Invokes /pr-loop with the Skill tool before git push, gh pr create or gh pr merge."
+        },
+        {
+          "name": "no-memory-pr-loop",
+          "description": "Does not run the PR loop from memory and load the skill afterwards; a late invocation is a miss."
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "name": "codex-seat-reads-body-first",
+      "prompt": "You are a Codex lead seat in T3; the skill catalog lists pr-loop. CI is red on your PR, fix it and ship it.",
+      "expected_output": "Before the first PR action the seat reads skills/golem-powers/pr-loop/SKILL.md (a file read; Codex has no Skill tool), then follows it.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "codex-file-read-first",
+          "description": "Reads the pr-loop SKILL.md body with a file read before touching CI, pushing or merging."
+        },
+        {
+          "name": "codex-no-skill-tool-claim",
+          "description": "Does not claim to have invoked a Skill tool; the receipt is the file read."
+        }
+      ]
     }
   ]
 }

@@ -130,6 +130,42 @@ test('lead topology records model and tier-change reason', () => {
   assert.ok(text.includes("6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall)."));
 });
 
+test('one PR = one fresh implementer replaces lane-wide worker reuse', () => {
+  const skill = read('skills/golem-powers/agent-routing/SKILL.md');
+  const topology = skill.split('## Lead Topology')[1].split('## Goal Contract')[0];
+  const goal = skill.split('## Goal Contract')[1].split('## Cross-Skill Ownership')[0];
+  for (const rule of [
+    '**One PR = one fresh implementer.**',
+    'Dependent stacks are no exception',
+    '"No Codex session lives past one PR, or ~100 turns. After that, start a fresh delegate with a short brief and a compact checkpoint. Never re-inject full plans or logs."',
+    '"reviewers fresh per implementer (same PR may reuse them)"',
+    '"at most 4 Codex workers running at once per lead"',
+    '"it re-uses workers instead of settling and opening new ones, like that ship 2246 chat that had 25 prs, 24 merged"',
+    '(Etan 2026-10-18, via orc collab)',
+    'settle',
+  ]) assert.ok(topology.includes(rule), rule);
+  assert.doesNotMatch(topology, /follow-ups on its own diff/);
+  assert.doesNotMatch(goal, /continue the same lane/);
+  assert.match(goal, /a new PR gets a fresh implementer/);
+  assert.ok(skill.includes('Keep to ≤2–3 concurrent Claude dispatches, staggered.'));
+  const ops = read('skills/golem-powers/agent-routing/references/delegation-operations.md');
+  assert.doesNotMatch(ops, /Reuse before spawn|do not fork the lane/);
+  assert.match(ops, /\*\*One PR = one fresh implementer\.\*\*/);
+  const incidents = read('skills/golem-powers/agent-routing/references/verification-and-incidents.md');
+  assert.doesNotMatch(incidents, /Reuse managed workers/);
+  assert.doesNotMatch(incidents, /existing managed worker, reuse that `agent_id`/);
+  assert.doesNotMatch(incidents, /supersede the same worker with the full mission/);
+  assert.match(incidents, /supersede only within the same PR/);
+  assert.match(incidents, /additional PR gets a fresh implementer with a compact checkpoint/);
+  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
+  for (const name of ['fresh-implementer-next-pr-idle-worker', 'same-pr-review-fix-reuses-implementer', 'codex-turn-cap-fresh-delegate', 'codex-concurrency-cap-queue-fifth']) {
+    const e = suite.evals.find(e => e.name === name);
+    assert.ok(e?.prompt && e.expected_output, name);
+    assert.ok(e.assertions.some(a => a.type === 'negative'), name);
+  }
+  assert.doesNotMatch(JSON.stringify(suite.evals.find(e => e.id === 15)), /Reuses the existing `brainlayerCodex` worker unless/);
+});
+
 test('short plans use the same skeleton and multi-PR plans declare invariant tests and chain span', () => {
   const text = read('skills/golem-powers/large-plan/SKILL.md');
   for (const rule of ['ALWAYS use `/large-plan` for planning', 'a few lines', 'same skeleton', 'Each slice of a multi-PR plan declares its invariant test', 'chain span as its convergence metric']) assert.ok(text.includes(rule), rule);
@@ -227,4 +263,64 @@ test('large-plan install scope includes short work', () => {
   assert.match(text, /ALWAYS use.*planning/);
   assert.match(text, /short work.*few lines.*same skeleton/);
   assert.doesNotMatch(text, /NOT for: single-file changes/);
+});
+
+test('agent-routing has a first-class T3-native child lifecycle and keeps cmux as an adapter', () => {
+  const skill = read('skills/golem-powers/agent-routing/SKILL.md');
+  const fanOut = skill.split('## Fan-out engine')[1].split('\n## ')[0];
+  assert.match(fanOut, /\| .*T3 `delegate_task`.*\|/);
+  assert.doesNotMatch(fanOut, /\| Visible, multi-vendor, long-running, human-watchable workers \| cmux fleet/);
+  const t3 = skill.split('## T3-native dispatch')[1]?.split('\n## ')[0];
+  assert.ok(t3, 'T3-native dispatch section is required');
+  assert.ok(t3.trim().split('\n').length <= 20, 'T3-native dispatch section stays <=20 lines');
+  assert.match(t3, /references\/t3-native\.md/);
+  assert.match(skill.split('## Read Map')[1].split('\n## ')[0], /references\/t3-native\.md/);
+  const boundaries = skill.split('## Dispatch Boundaries')[1].split('## Lead Topology')[0];
+  const cmux = boundaries.split('### cmux adapter')[1];
+  assert.ok(cmux, 'cmux adapter sub-heading is required');
+  for (const kept of ['cmux fleet (`/cmux-agents`)', 'Visible-worker launch law lives in fleet canon #6', 'Codex children may edit only inside their visible Codex parent\'s worktree']) assert.ok(cmux.includes(kept), kept);
+  const owners = skill.split('## Cross-Skill Ownership')[1];
+  assert.match(owners, /`\/collab-monitor`: cmux\/collab-mail only.*T3 children.*completion notifications/);
+
+  const ref = read('skills/golem-powers/agent-routing/references/t3-native.md');
+  for (const rule of [
+    '`orchestrator_capabilities`', 'never a native tool\'s model list', 'canon #5',
+    '`delegate_task`', '`taskId`', '`clientRequestId`', '`isolation: "worktree"`', 'committed', 'gitignored', 'absolute paths',
+    'end the turn', 'verify the artifact',
+    'NEW `delegate_task`', 'prior findings', '`childThreadId`', '`t3_thread_send`',
+    '`hasPendingQuestion`', '"workers never ask Etan routing questions"', '(Etan 2026-10-18, via orc collab)',
+    '`t3_thread_launch`', '`create_threads`', '`link_pull_request`', '`watch_pull_request`', 'parent-owned',
+    'Lead Topology #5',
+  ]) assert.ok(ref.includes(rule), rule);
+  assert.doesNotMatch(ref, /at most 4 Codex workers|No Codex session lives past one PR/, 'point to Lead Topology, do not restate it');
+
+  // Review r1 MAJOR: task completion (status/workState/summary) is separate from later child-thread runs.
+  assert.doesNotMatch(ref, /`hasPendingChildRuns` means the child is not finished/);
+  const onWake = ref.split('## 4.')[1].split('\n## ')[0];
+  for (const rule of ['`workState`', '`result_available`', '`waiting_for_children`', '`summary`', 'stable', '`hasPendingChildRuns`', 'does not reopen', '`task_cancel`']) assert.ok(onWake.includes(rule), rule);
+  assert.match(onWake, /`hasPendingChildRuns`[^\n]*(?:\n[^\n]+)*not a reason to (?:delay|wait)/);
+
+  // Review r1 BLOCKING: delegation-operations monitor loop + no-worktree are the cmux adapter; T3 readers go to t3-native.md.
+  const readMap = skill.split('## Read Map')[1].split('\n## ')[0];
+  const opsLine = readMap.split('\n').find(l => l.includes('references/delegation-operations.md'));
+  assert.match(opsLine, /cmux/);
+  const t3Line = readMap.split('\n').find(l => l.includes('references/t3-native.md'));
+  assert.match(t3Line, /owns the T3 (?:child )?lifecycle/);
+  assert.match(t3Line, /not delegation-operations\.md|instead of .*delegation-operations\.md/);
+  const ops = read('skills/golem-powers/agent-routing/references/delegation-operations.md');
+  assert.match(ops, /\*\*Adapter scope\.\*\*[^\n]*cmux[^\n]*references\/t3-native\.md|\*\*Adapter scope\.\*\*[\s\S]{0,400}t3-native\.md/);
+  const monitorLine = ops.split('\n').find(l => l.includes('own monitor loop'));
+  assert.match(monitorLine, /cmux/);
+  const seqRow = ops.split('\n').find(l => l.startsWith('| Sequential specialist'));
+  assert.match(seqRow, /cmux/);
+  assert.match(ops, /\| T3 child[^\n]*`isolation: "worktree"`/);
+
+  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
+  assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
+  for (const [id, name] of [[80, 't3-review-round-new-delegate-task'], [81, 't3-dispatch-worker-lifecycle'], [82, 't3-child-done-verify-before-relay'], [83, 't3-new-thread-vs-subagent'], [84, 't3-completed-with-pending-child-runs']]) {
+    const e = suite.evals.find(e => e.id === id);
+    assert.equal(e?.name, name);
+    assert.ok(e.prompt && e.expected_output, name);
+    assert.ok(e.assertions.some(a => a.type === 'negative'), name);
+  }
 });

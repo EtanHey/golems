@@ -66,6 +66,24 @@ test('resolver known, unknown, candidate and optional fields', () => {
   assert.equal(run('gemini.gather.visual', '--field', 'launcher_tier').stdout, 'flash-high\n');
   assert.equal(run('claude.judgment', '--field', 'missing').status, 2);
 });
+test('mechanical candidate resolves only for an authorised --use purpose', () => {
+  const run = (...args) => spawnSync(process.execPath, [join(root, 'scripts/model-roles.mjs'), ...args], { encoding: 'utf8' });
+  const model = config().roles['codex.subagent.mechanical'].model;
+  assert.equal(model, 'gpt-6-luna');
+  for (const use of ['watcher', 'codex-internal-subagent']) {
+    const ok = run('codex.subagent.mechanical', '--use', use); assert.equal(ok.status, 0, ok.stderr); assert.equal(ok.stdout, `${model}\n`);
+  }
+  for (const args of [['--use', 'watcher', '--field', 'model'], ['--field', 'model', '--use', 'watcher']]) {
+    const ok = run('codex.subagent.mechanical', ...args); assert.equal(ok.status, 0, ok.stderr); assert.equal(ok.stdout, `${model}\n`);
+  }
+  const other = run('codex.subagent.mechanical', '--use', 'other'); assert.equal(other.status, 2); assert.equal(other.stdout, ''); assert.match(other.stderr, /unbenched model role/);
+  for (const args of [['--use'], ['--use', 'watcher', '--use', 'watcher'], ['--use', 'watcher', '--bogus'], ['--field']]) {
+    const bad = run('codex.subagent.mechanical', ...args); assert.equal(bad.status, 2, args.join(' ')); assert.equal(bad.stdout, ''); assert.match(bad.stderr, /usage:/);
+  }
+  assert.equal(run('claude.judgment', '--use', 'watcher').status, 0);
+  assert.match(config().roles['codex.subagent.mechanical'].gate, /Etan 2026-10-18 23:25.*watcher/s);
+  assert.equal(config().roles['codex.subagent.mechanical'].status, 'candidate');
+});
 test('security implementation resolves its configured model and preserves the key gate', () => {
   const role = loadConfig().roles['codex.security'];
   assert.ok(role, 'codex.security must be a configured role');

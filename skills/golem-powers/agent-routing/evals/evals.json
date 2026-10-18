@@ -385,10 +385,10 @@
     {
       "id": 15,
       "prompt": "Etan points at an existing right-side `brainlayerCodex` cmux worker and says to give it the full BrainLayer baseline/cleanup mission. The worker's current task_summary is a narrow #554 Swift diagnosis. What is the correct routing action?",
-      "expected_output": "Should reuse the existing managed BrainLayerCodex worker unless unhealthy or explicitly replaced, write a full goal file preserving the complete baseline/cleanup mission, send one `/goal Read and execute...` prompt to that agent_id, and avoid spawning a duplicate worker just to get a cleaner prompt.",
+      "expected_output": "Etan explicitly named this worker, so use it: an explicit user instruction overrides the one-PR-one-fresh-implementer default, which a lead would otherwise apply to a new deliverable. If it is unhealthy or past one PR/~100 turns, start a fresh delegate with a compact checkpoint and say why. Write a full goal file preserving the complete baseline/cleanup mission, send one `/goal Read and execute...` prompt to that agent_id, and avoid spawning a duplicate worker just to get a cleaner prompt.",
       "assertions": [
         {
-          "text": "Reuses the existing `brainlayerCodex` worker unless it is dead/unhealthy or explicitly replaced",
+          "text": "Uses the named `brainlayerCodex` worker because Etan explicitly directed it (not because reuse is the default), unless it is dead/unhealthy or past one PR/~100 turns",
           "type": "behavioral"
         },
         {
@@ -1348,7 +1348,7 @@
       "id": 50,
       "name": "new-lane-idle-worker-spawn-fresh",
       "prompt": "You are a lead. Consider two separate situations: (i) Lane A has CLOSED: its PR is merged and artifacts harvested, but its healthy Codex worker is still idle in an open pane. You must start unrelated lane B in the same repo/workspace/role. How do you staff B and handle A's pane? (ii) In a separate lane A, the worker reported its first implementation DONE, but A's PR is still in review and findings arrive on its own diff. Who handles those findings, and when should that pane close?",
-      "expected_output": "In situation (i), spawn a fresh worker with clean context for unrelated lane B even though A's healthy idle worker is available, and close A's pane because A's PR loop has finished and its artifacts are harvested. In situation (ii), keep and reuse A's worker for findings on A's own PR; supersede its goal only to continue that same lane. Do not close its pane at its first DONE while review is open; close it only when its lane closes after the PR loop finishes (merged/handed off, artifacts harvested).",
+      "expected_output": "In situation (i), spawn a fresh worker with clean context for unrelated lane B even though A's healthy idle worker is available, and close A's pane because A's PR loop has finished and its artifacts are harvested. In situation (ii), keep and reuse A's worker for findings on A's own PR; supersede its goal only within that same PR. Do not close its pane at its first DONE while review is open; close it only when its lane closes after the PR loop finishes (merged/handed off, artifacts harvested).",
       "assertions": [
         {
           "text": "Spawns a fresh worker for unrelated lane B even though a healthy idle worker exists in the same repo/workspace/role",
@@ -1363,7 +1363,7 @@
           "type": "negative"
         },
         {
-          "text": "In situation (ii), keeps and reuses lane A's worker for review findings on A's own PR because the same lane is still open",
+          "text": "In situation (ii), keeps and reuses lane A's worker for review findings on A's own PR because it is the same PR, still in review",
           "type": "behavioral"
         },
         {
@@ -1456,6 +1456,133 @@
       "assertions": [
         {"text": "Names all three model record locations and budget as the reason.", "type": "behavioral"},
         {"text": "Does not silently change tier or infer a quality reason.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 85,
+      "name": "luna-watcher-resolution",
+      "prompt": "PR #812 needs someone to sit and watch CI until it goes green. Dispatch a worker for it via delegate_task: which model do I resolve and how?",
+      "expected_output": "Use a cheap mechanical-role watcher sub-agent, not a lead or big-context session; resolve it with `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher` (Etan 2026-10-18 watcher exception); the bare call stays refused because the role is still a candidate.",
+      "assertions": [
+        {"text": "Resolves the watcher model with `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher` rather than a hardcoded model name.", "type": "behavioral"},
+        {"text": "Does not route the watch to codex.implement or a lead session, and does not claim the mechanical role is benched for general use.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 80,
+      "name": "t3-review-round-new-delegate-task",
+      "prompt": "We're in T3. The round-1 reviewer for PR #12 found two bugs; the implementer pushed fixes. delegate_task a reviewer for round 2 of PR #12.",
+      "expected_output": "Starts round 2 as a NEW delegate_task (new taskId, new clientRequestId) whose task carries the original brief, PR #12 URL and current head SHA, the round-1 findings, the implementer's responses and open objections; pins model and effort in target. Does not send to the round-1 reviewer's childThreadId.",
+      "assertions": [
+        {"text": "Uses a new delegate_task for round 2 with prior findings, implementer responses and open objections in the task text.", "type": "behavioral"},
+        {"text": "Uses a distinct clientRequestId for round 2 and keeps the new taskId.", "type": "behavioral"},
+        {"text": "Does not call t3_thread_send on the round-1 childThreadId to continue the review.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 81,
+      "name": "t3-dispatch-worker-lifecycle",
+      "prompt": "You're a lead in a T3 thread. Dispatch a worker to fix the flaky retry test in packages/shared. The brief is in docs.local/briefs/retry.md.",
+      "expected_output": "Calls orchestrator_capabilities first, picks provider/model from its live catalog per the routing SSOT, then delegate_task mode async with explicit model and effort in target, isolation worktree, the brief passed by absolute path (docs.local is gitignored and not copied to the worktree), a stable clientRequestId; retains the taskId and ends the turn to wait for the completion notification.",
+      "assertions": [
+        {"text": "Calls orchestrator_capabilities before delegate_task and takes the model from its catalog, not a native tool's model list.", "type": "behavioral"},
+        {"text": "delegate_task pins model and effort explicitly in target and sets isolation: worktree.", "type": "behavioral"},
+        {"text": "Passes the gitignored brief by absolute path (or commits what the child needs) because the worktree only has committed files.", "type": "behavioral"},
+        {"text": "Ends the turn after dispatch; does not poll task_status, schedule wakeups or spawn a watcher/collab monitor.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 82,
+      "name": "t3-child-done-verify-before-relay",
+      "prompt": "T3 notification: your delegated implementer finished and its summary says 'PR_DONE PR: https://github.com/EtanHey/golems/pull/900 head: abc1234'. Tell orc it's ready.",
+      "expected_output": "Before relaying, verifies the artifact: the PR exists and is non-draft, headRefOid matches abc1234, and the changed files match the brief's scope (gh pr view --json headRefOid,files,isDraft); links the PR; relays only verified values, then concludes the child.",
+      "assertions": [
+        {"text": "Checks the PR head SHA and file list against the report before relaying.", "type": "behavioral"},
+        {"text": "Calls link_pull_request for the PR (the parent owns any watch_pull_request).", "type": "behavioral"},
+        {"text": "Does not forward the child's PR_DONE claim to orc unverified.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 83,
+      "name": "t3-new-thread-vs-subagent",
+      "prompt": "Two asks from Etan in T3: (1) 'open a new thread for the docs subtask', (2) 'dispatch a subagent to audit the CI config'. Do both.",
+      "expected_output": "Ask (1) explicitly asks for a separate top-level conversation, so it uses t3_thread_launch (with an explicit workspaceStrategy). Ask (2) is child work, so it uses delegate_task after orchestrator_capabilities. Only the first uses t3_thread_launch.",
+      "assertions": [
+        {"text": "Uses t3_thread_launch for the explicit 'new thread' ask.", "type": "behavioral"},
+        {"text": "Uses delegate_task for the 'dispatch a subagent' ask.", "type": "behavioral"},
+        {"text": "Does not use t3_thread_launch or create_threads for the subagent ask.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 84,
+      "name": "t3-completed-with-pending-child-runs",
+      "prompt": "You delegate_task'd a worker to open a PR. It woke you; task_status shows status completed, workState result_available, a summary 'PR_DONE PR: #812 head: abc1234', and hasPendingChildRuns: true. What now?",
+      "expected_output": "The task is complete: status/workState/summary define completion and the summary is stable. Harvest it now: verify PR #812 head/files, then relay the verified values. hasPendingChildRuns is later child-thread activity that does not reopen the task; clean it up with task_cancel on the taskId after harvesting instead of waiting.",
+      "assertions": [
+        {"text": "Treats the task as complete from status/workState/summary and harvests the summary now.", "type": "behavioral"},
+        {"text": "Verifies the PR head/files before relaying.", "type": "behavioral"},
+        {"text": "Handles hasPendingChildRuns as cleanup via task_cancel on the taskId.", "type": "behavioral"},
+        {"text": "Does not wait, poll, or delay harvesting because hasPendingChildRuns is true.", "type": "negative"}
+      ]
+    },
+    {
+      "id": 58,
+      "name": "dispatch-invokes-skill-first",
+      "prompt": "You are a Claude lead seat in T3. Dispatch a worker with delegate_task to fix the flaky stalker digest test, then delegate_task a reviewer when it reports done.",
+      "expected_output": "The first tool call is the Skill tool invoking /agent-routing, before delegate_task or any provider/model choice. The worker brief names /large-plan, /agent-routing and /pr-loop as skills to invoke.",
+      "assertions": [
+        {
+          "text": "Invokes /agent-routing with the Skill tool before the first delegate_task call and before choosing provider or model.",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does not call delegate_task first and consult routing afterwards, and does not route from memory of an older copy.",
+          "type": "negative"
+        },
+        {
+          "text": "The worker brief names /large-plan, /agent-routing and /pr-loop as skills to invoke.",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "name": "fresh-implementer-next-pr-idle-worker",
+      "prompt": "You are a lead. Dispatch a worker for PR #2 of the batch. The PR #1 implementer is idle and healthy in the same repo, and PR #2 stacks on PR #1's branch.",
+      "expected_output": "Spawn a fresh implementer for PR #2 (new delegate_task or new pane, fresh context) with a short brief and a compact checkpoint of PR #1's state. Do not re-brief the idle PR #1 implementer, even though it is healthy and PR #2 is a dependent stack layer. Settle PR #1's implementer once PR #1 reaches its terminal state.",
+      "assertions": [
+        {"text": "Spawns a new implementer with fresh context for PR #2 and hands it a compact checkpoint", "type": "behavioral"},
+        {"text": "Does NOT reuse or re-brief the idle PR #1 implementer for PR #2, and does NOT treat the dependent stack as an exception", "type": "negative"}
+      ]
+    },
+    {
+      "id": 71,
+      "name": "same-pr-review-fix-reuses-implementer",
+      "prompt": "Review found 2 bugs in PR #1. Its implementer is idle and healthy. Who fixes them?",
+      "expected_output": "PR #1's own implementer fixes both bugs: same-PR fixes (its review rounds) may reuse it. Send it one superseding goal for the fixes; the reviewer may also be reused because it is the same PR. Settle the implementer only after PR #1 reaches its terminal state.",
+      "assertions": [
+        {"text": "Routes both fixes to PR #1's existing implementer because they belong to the same PR", "type": "behavioral"},
+        {"text": "Does NOT spawn a second implementer onto PR #1 and does NOT settle the implementer while its review is still open", "type": "negative"}
+      ]
+    },
+    {
+      "id": 72,
+      "name": "codex-turn-cap-fresh-delegate",
+      "prompt": "A Codex worker is at ~110 turns and still mid-PR, with one review round left. Do you keep sending it the next steps?",
+      "expected_output": "No. No Codex session lives past one PR or ~100 turns. Start a fresh delegate with a short brief and a compact checkpoint (branch, head SHA, PR URL, open findings, next step), then settle the old session. Never re-inject the full plan or logs.",
+      "assertions": [
+        {"text": "Starts a fresh delegate with a short brief and a compact checkpoint and settles the ~110-turn session", "type": "behavioral"},
+        {"text": "Does NOT keep the ~110-turn session going and does NOT re-inject full plans or logs into the successor", "type": "negative"}
+      ]
+    },
+    {
+      "id": 73,
+      "name": "codex-concurrency-cap-queue-fifth",
+      "prompt": "You are a lead with 4 Codex workers running. You want to start a 5th Codex worker for the next PR in the batch now.",
+      "expected_output": "Queue it: at most 4 Codex workers run at once per lead. Start the 5th as a fresh implementer when one of the 4 settles. The separate cap of 2-3 concurrent Claude dispatches is unchanged.",
+      "assertions": [
+        {"text": "Queues the 5th Codex worker until one of the running 4 settles, then starts it fresh", "type": "behavioral"},
+        {"text": "Does NOT start a 5th concurrent Codex worker and does NOT reuse a running worker to dodge the cap", "type": "negative"}
       ]
     }
   ]

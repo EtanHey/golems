@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Route work to Cursor/Gemini/Codex/Claude; pick the fan-out engine. Triggers: delegate, who gathers, gemini gatherer, worker assignment, routing, Codex model/effort, subagents, /multitask, parallel agents, fan out, in parallel, batch classify/audit. NOT for one edit or dependent steps."
+description: "Dispatch a worker/reviewer, delegate_task, hand off, pick provider/model. Invoke before first dispatch. Triggers: who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, fan out, in parallel, batch classify/audit. NOT for fanning out one edit or dependent steps."
 ---
 
 # Agent Routing
@@ -10,6 +10,14 @@ description: "Route work to Cursor/Gemini/Codex/Claude; pick the fan-out engine.
 > **Auto-dispatch triggers** (canonical in `/orc` C4): batch reads >=3, transcription >=2,
 > web research >=1, or any "in parallel" / "all of these" phrasing -> fan out sub-agents
 > in the SAME message before asking permission.
+
+## Kickoff contract
+
+- **Claude seats:** invoke `/agent-routing` with the Skill tool before the first dispatch of a lane: a worker or helper, a `delegate_task`, a hand-off, or a provider/model choice.
+- **Codex seats:** read this SKILL.md body (a file read) before that action; Codex has no Skill tool.
+- **A lead's kickoff brief** to a worker names the skills the worker invokes (`/large-plan`, `/agent-routing`, `/pr-loop`).
+- Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)
+- Why: Claude T3 leads made 0 Skill calls on Oct 16–18 while all three lead skills sat in their catalog (skill-edits audit, 2026-10-18).
 
 ## Routing rules (SSOT)
 
@@ -69,7 +77,9 @@ Roles live in `standards/model-roles.json`. From the golems checkout, resolve wi
 (select one field). Never hardcode a role-owned model name. Generated launcher
 commands must keep the resolver substitution, not today's resolved literal. Read the role's status
 and gate before dispatch: `codex.subagent.mechanical` remains a candidate, with Etan’s
-2026-10-04 exception for Codex-internal mechanical children and named `packet` only. Workers
+2026-10-04 exception for Codex-internal mechanical children and named `packet` only. Watchers are
+the second exception — "anything that must sit and watch (a PR, CI, a file)" (Etan 2026-10-18, via orc collab) —
+resolved with `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`. Workers
 remain on `codex.implement`; see the model-and-effort reference for the scoped exception.
 The Routing rules (SSOT) section owns dispatch policy and the role config owns current model defaults; older model-selection recipes in the
 references are pending PR 2b migration and cannot override the config.
@@ -79,9 +89,10 @@ The launcher refuses a worker spawn without an explicit effort. Codex prompted/w
 ## Read Map
 
 - Choosing a Codex model or effort, comparing model cost/context, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md). Use the role config for current defaults and candidate gates; that reference supplies runtime verification and detailed procedures pending PR 2b.
-- Launching, reusing, monitoring, recovering, or closing a worker lane? Read [references/delegation-operations.md](references/delegation-operations.md).
+- Launching, reusing, monitoring, recovering, or closing a cmux worker lane? Read [references/delegation-operations.md](references/delegation-operations.md). Its monitor-loop and isolation mechanics are the cmux adapter.
 - Creating or auditing a collab, diagnosing a routing failure, or copying a routing template? Read [references/verification-and-incidents.md](references/verification-and-incidents.md).
 - Fanning out independent units, or asked about Cursor `/multitask`? Read [references/fan-out-engines.md](references/fan-out-engines.md) (recipes, gotchas, GUI prompt contract, dispatch hygiene).
+- Dispatching child work from a T3 thread (`delegate_task`, review rounds, pending questions, PR watch)? Read [references/t3-native.md](references/t3-native.md). It owns the T3 child lifecycle (dispatch, wait, isolation, verify, settle), not delegation-operations.md: for a T3 child skip that file's monitor loop and no-worktree route.
 
 Read every reference triggered by the mission before dispatch. The live reference owns its detailed procedure; Routing rules (SSOT) and the role config take precedence over conflicting routing or model-selection recipes.
 
@@ -149,21 +160,47 @@ parallel. A terminal/cmux orchestrator never uses it.
 | Human in the Cursor editor, independent read-heavy prompts | Cursor `/multitask` (GUI; `\|\|\|`-separated; no write locking) |
 | Headless / scripted / CI / terminal orchestrator; want determinism + per-agent tokens | `cursor-agent -p --force --output-format json … &` + `wait` (Auto model, never `-m`) |
 | Inside a Claude session; let the parent decide the split | Claude Workflow / Agent tools |
-| Visible, multi-vendor, long-running, human-watchable workers | cmux fleet (`/cmux-agents`) |
+| Lead in a T3 thread; child work (implement, review, recon) owned by that thread | T3 `delegate_task` (§ T3-native dispatch) |
 | One coherent edit, or step B needs step A's output | None: run serially in one agent |
 
 Fan out the read-heavy discovery; make the changes in one agent that holds the whole picture.
+Visible cmux fleets: § Dispatch Boundaries › cmux adapter.
+
+## T3-native dispatch
+
+A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The lifecycle, as rules: [references/t3-native.md](references/t3-native.md).
+
+1. **Discover:** call `orchestrator_capabilities` first; pin provider, model and effort in `target` from its live catalog (canon #5).
+2. **Dispatch:** `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
+3. **Wait:** completion wakes the parent. End the turn; never poll or spawn a watcher for it.
+4. **Settle:** read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child.
+5. **Review rounds:** every round is a new `delegate_task` carrying prior findings; never `t3_thread_send` to the `childThreadId`.
+6. **Questions:** a child's pending question is answered by the lead, never forwarded to Etan as a routing question.
+7. **Top-level threads:** `t3_thread_launch` / `create_threads` only when a separate conversation is explicitly asked for.
+8. **PRs:** `link_pull_request` every PR; the parent owns `watch_pull_request`.
+9. **Who and how many:** Routing rules (SSOT) picks the vendors; fresh implementer per PR and the Codex cap live in § Lead Topology #5.
 
 ## Dispatch Boundaries
 
-- Visible-worker launch law lives in fleet canon #6; `/repogolem` owns invocation mechanics and [delegation operations](references/delegation-operations.md#launcher-boundary) owns the `--fast` prohibition.
 - Cursor model selection lives in Routing rules (SSOT).
 - Claude Workflow/Agent-tool fan-out is read-only recon, verification, or synthesis except audio-dashboard builds.
-- Codex children may edit only inside their visible Codex parent's worktree; that parent owns acceptance.
+- T3 child work follows § T3-native dispatch.
 - A standalone read-only lane remains Cursor even though a named Codex `recon` child exists for bounded fan-out inside a Codex lane.
 - Skills, hooks, agent definitions, and global agent settings are skillCreator-domain work. If skillCreator is not already in the loop, stop and request its audit before patching.
 
 - M1 (T3): a lead routes a worker to the M1 only when the deliverable must be proven on the M1 (canon #4). Codex workers only, until a recorded Claude-in-T3 proof passes (one real `brain_search` result, one skill invoked, no hook errors). Each dispatch requires a same-turn BrainBar probe: the socket accepts and `brain_search` answers. A failed probe is reported to the lead and the work stays in cmux. Leads never move. Vendor routing, inner-loop order and PR-body records are unchanged.
+
+### cmux adapter
+
+Applies to visible cmux fleets only; T3 children follow § T3-native dispatch.
+
+| Task shape | Engine |
+|---|---|
+| Visible, multi-vendor, long-running, human-watchable workers | cmux fleet (`/cmux-agents`) |
+
+- Visible-worker launch law lives in fleet canon #6; `/repogolem` owns invocation mechanics and [delegation operations](references/delegation-operations.md#launcher-boundary) owns the `--fast` prohibition.
+- Codex children may edit only inside their visible Codex parent's worktree; that parent owns acceptance.
+- Pane monitoring and reviewer handoff: `/collab-monitor`.
 
 ## Lead Topology
 
@@ -173,7 +210,12 @@ Domain leads are orchestrators one tier below orc:
 2. Lead goals preserve orchestration duties: delegate, maintain health gates, synthesize, and verify.
 3. A lead is a managed `agent_id` with `role:"orchestrator"` and left-column placement.
 4. Tiny lead self-edits are capped at <=20 changed lines, one single-purpose change, and zero new files. They require an isolated worktree plus same-post collab disclosure of what changed, why urgent, and line count. Urgency alone never qualifies; everything else follows Routing rules (SSOT).
-5. A new lane or task gets a fresh worker, even if a healthy idle worker exists in the same repo/workspace/role; reuse or supersede a worker's goal only to continue the same lane (its review rounds, follow-ups on its own diff, or re-scopes of the same deliverable), never for two unrelated lanes. Keep the worker through its own review rounds and close its pane only when its lane closes (PR loop finished: merged/handed off, artifacts harvested), not at its first DONE; this closure provides fd hygiene, not recycling workers across tasks.
+5. **One PR = one fresh implementer.** A new PR gets a new implementer (a new `delegate_task` or a new pane, fresh context), even when a healthy idle worker exists in the same repo/workspace/role. Only that PR's own fixes (its review rounds) may reuse it. Dependent stacks are no exception: each stack layer is its own PR, so it gets its own implementer, handed a compact checkpoint; the 2026-10-18 rules supersede R6's dependent-stack exception. Why: "it re-uses workers instead of settling and opening new ones, like that ship 2246 chat that had 25 prs, 24 merged" (Etan 2026-10-18, via orc collab).
+   - **Lifetime cap:** "No Codex session lives past one PR, or ~100 turns. After that, start a fresh delegate with a short brief and a compact checkpoint. Never re-inject full plans or logs." (Etan 2026-10-18, via orc collab)
+   - **Reviewers:** "reviewers fresh per implementer (same PR may reuse them)" (Etan 2026-10-18, via orc collab).
+   - **Concurrency:** "at most 4 Codex workers running at once per lead" (Etan 2026-10-18, via orc collab). A fifth queues until one settles; the Claude dispatch cap in § Model pins and dispatch is separate.
+   - **Settle, then open new:** keep the implementer through its own PR's review rounds, not past them. At the PR's terminal state (merged or handed off, artifacts harvested) settle it, never at its first DONE; the next PR opens a new one.
+   - **cmux adapter:** canon #7's "minimize pane churn" is cmux fd-leak hygiene. It means no needless pane open/close, never keeping one worker across PRs.
 
 6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall).
 
@@ -182,7 +224,7 @@ Domain leads are orchestrators one tier below orc:
 Every complex or multi-hour dispatch uses one absolute file-backed goal containing the full user
 mission, constraints, green/no-green criteria, report path, and exact DONE marker. Name the CLI,
 execution profile and required tool access, matched to the task under § Execution capability. Supersede an
-existing worker's goal only to continue the same lane; a new lane gets a fresh worker. A lane may
+implementer's goal only within its own PR (its review rounds); a new PR gets a fresh implementer (§ Lead Topology #5). A lane may
 close only as verified `DONE`, file-backed `BLOCKED`/`NOT_GREEN`, or `TRANSFERRED` with successor
 evidence. A DONE marker is only a prompt to verify the contracted artifact.
 
@@ -197,6 +239,6 @@ explain the evidence-backed state, and store the correction separately.
 
 - `/repogolem`: launcher flags, defaults, resume behavior, and raw escape hatches.
 - `/pr-loop`: branch through ready-for-review PR; Routing rules (SSOT) above owns the pre-PR pair.
-- `/collab-monitor`: worker monitoring and reviewer handoff mechanics.
+- `/collab-monitor`: cmux/collab-mail only: pane worker monitoring and reviewer handoff mechanics. T3 children use completion notifications instead (§ T3-native dispatch).
 - `/qa-video`: Gemini visual workflow.
 - `/whats-new`: tool-surface changes; they do not revise Routing rules (SSOT) by implication.
