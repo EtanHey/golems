@@ -302,7 +302,8 @@ class RiskSizedGates(unittest.TestCase):
         r"(?i)wait for re-review",
         r"(?i)coderabbit (plus|\+) one",
         r"(?i)comment count is less than \d",
-        r"(?i)(before|until)[^.]{0,40}(creating the pr|pr creation|gh pr create)",
+        # Verification-before-PR wording only; "invoke /pr-loop before gh pr create" (eval 26) is the kickoff contract, not a gate.
+        r"(?i)(test|suite|verif|e2e|runtime|qa|check)[^.]{0,60}(before|until)[^.]{0,40}(creating the pr|pr creation|gh pr create)",
         r"(?i)functional self-qa happens before handoff",
     ]
 
