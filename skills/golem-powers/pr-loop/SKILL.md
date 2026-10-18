@@ -13,11 +13,11 @@ Who implements and who opens the inner-loop reviewer pane is owned by `/agent-ro
 
 This skill begins at branch preparation and ends at the authority-appropriate endpoint:
 
-- Lead: reviewed, latest-head-green PR merged, released/installed where applicable, verified, and cleaned up.
+- Lead: reviewed, latest-head-green PR merged, verified, and cleaned up; released/installed where applicable at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate).
 - Worker whose brief says the lead owns merge: ready-for-review PR, review responses addressed, URL handed to the lead, unmerged.
 - A worker must hand the reviewed PR to its lead unmerged.
 
-Before closing either endpoint, run `scripts/ci/release-gate.mjs <repo>`. `MERGED_UNRELEASED`, `RELEASED_UNINSTALLED`, or `UNKNOWN` is a stop; release/install and rerun until `CLEAN`.
+Run `scripts/ci/release-gate.mjs <repo>` at the feature-batch gate, not after every PR. At the batch endpoint, `MERGED_UNRELEASED`, `RELEASED_UNINSTALLED`, or `UNKNOWN` is a stop; release/install and rerun until `CLEAN`. A `MERGED_UNRELEASED` mid-batch is expected, not a stop: keep merging the batch.
 
 ## Required Sequence
 
@@ -34,13 +34,39 @@ Run the loop in this order:
 
 1. Confirm expected branch/worktree and sanitize repository state.
 2. Implement under repository law and run the relevant tests.
-3. Invoke `/never-fabricate`; add real-client or visual proof when triggered.
+3. Invoke `/never-fabricate`. Real-client or visual proof, when triggered, runs at the feature-batch gate (now, for a single-PR batch).
 4. Run the bounded local CodeRabbit pre-commit pass when available, then commit with the ratified identity trailer.
 5. Push, create a non-draft PR with a signed body, and apply exactly one `size:*` label.
 6. Apply the target repo's bot policy, invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 watch wake, one bounded check, or one cheap watcher, never a polling turn.
 7. Classify every finding; fix real bugs, reply to every CRITICAL/MAJOR/HIGH finding, push, and request re-review.
 8. Confirm required checks and reviews are green on `headRefOid`, then either hand off unmerged or merge.
-9. After an authorized merge, verify the remote merge/content, release/install/live-probe as required, update tracking, and clean up. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
+9. After an authorized merge, verify the remote merge/content, update tracking, and clean up; release/install/live-probe at the feature-batch gate. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
+
+## Merge Cadence (risk-sized)
+
+The rules this section lands, verbatim (Etan 2026-10-18, via orc collab):
+
+> **Merging:** small PRs merge right away on fast CI + 1 review. Heavy or e2e tests run per FEATURE BATCH (a full plan or feature change tested together), not per PR and not as a pre-merge gate.
+
+> XS/S: 1 reviewer, 1 round.
+
+> Full panel only for L, data or security paths, and that panel = [composition: `/agent-routing` § Routing rules (SSOT)].
+
+> **Review bots** (CodeRabbit/Bugbot) run only AFTER the inner loop, and they're advisory. Only wait on a bot when it flags something important. Never wait on rate limits.
+
+> Give each test/build its own ports and temp folders so they run in parallel.
+
+| PR | Merge when (everything at `headRefOid`) |
+|---|---|
+| XS/S | Fast CI green + one clean review round from the routed reviewer → merge promptly |
+| M | Same, up to 2 rounds; round 2 only for BLOCKING findings |
+| L, data or security paths | Full panel, same round cap |
+
+Who reviews, how many, and the panel: `/agent-routing` § Routing rules (SSOT), which wins on conflict. Every size keeps the Hard Gates below: never zero reviews, exact-head green, no unreplied CRITICAL/MAJOR/HIGH finding, never a draft.
+
+- **Fast CI** is the repo's required PR checks. Heavy/e2e suites, daemon real-client runs, visual self-QA and the release gate run at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate): before the batch is released, installed or declared done. A PR that alone ships to users is a single-PR batch and runs that gate itself.
+- **Bots** run after the inner loop and are advisory. A silent or rate-limited bot is recorded as unavailable in the PR body, never awaited. When a bot flags something important, answer it like any finding before merge. A real bot finding still gets fixed, in a NEW PR (canon #9) if it lands after merge.
+- **Parallel-safe:** tests and builds take their own ports and temp dirs per run; no global one-at-a-time locks.
 
 ## Hard Gates
 
@@ -58,8 +84,9 @@ Run the loop in this order:
 - "git log is where you look when you already know something is wrong; the PR page is where you look to find out." Put actionable receipts in the PR body before merge.
 - PR-referenced artifacts must be committed or quoted inline; gitignored `docs.local/` paths alone are not reviewable.
 - R-010 keeps merge commits as the default until the commit-traceability condition is discharged in the canonical registry.
-- Daemon/socket/MCP/protocol changes require a real client session; unit tests, `socat`, and `curl` are insufficient.
-- Human-visible changes require builder-driven visual QA in a real running state, or an explicit not-performed caveat.
+- Daemon/socket/MCP/protocol changes require a real client session at the feature-batch gate; unit tests, `socat`, and `curl` are insufficient. A live repo hook that enforces it per merge is never bypassed.
+- Human-visible changes require builder-driven visual QA in a real running state at the feature-batch gate, or an explicit not-performed caveat.
+- Heavy/e2e tests, real-client runs, visual QA and the release gate are never a per-PR pre-merge stop, except for a single-PR batch.
 - Before a done/deployed/green claim, run the applicable false-green/deploy/QA gates and make the required live probe.
 - Never place real client data in public PR text, fixtures, comments, or commit messages.
 - Never delete a stacked PR's base branch before its children are retargeted and mergeable.
@@ -73,8 +100,12 @@ Run the loop in this order:
 | Brief grants this seat merge authority | Complete review loop, merge with the required method, then verify and clean up |
 | PR is draft | Run `gh pr ready <N>` before bot invocation |
 | Review conflicts with design | Read the cited design and investigate; dismiss only with explicit evidence |
-| PR touches daemon/socket/MCP/protocol | Complete the real-client gate before merge |
-| PR changes a visible surface | Complete visual self-QA before merge |
+| XS/S PR, fast CI green at head, one clean routed review | Merge now (seat with merge authority); no wait for bots or heavy gates |
+| PR touches daemon/socket/MCP/protocol | Merge on the size cadence; queue the real-client run for the feature-batch gate (run it now for a single-PR batch) |
+| PR changes a visible surface | Merge on the size cadence; queue visual self-QA for the feature-batch gate (run it now for a single-PR batch) |
+| Bot silent or rate-limited | Don't wait; record it unavailable in the PR body and proceed on the routed review |
+| Release gate says `MERGED_UNRELEASED` mid-batch | Expected; keep merging the batch |
+| Last PR of the batch merged | Run the feature-batch gate (heavy/e2e, real-client, visual QA, release gate to `CLEAN`) before any done claim |
 | Linked-worktree merge cleanup fails | Verify whether the remote merge already succeeded before any retry |
 | PR is stacked | Preserve the base branch until children are retargeted |
 | Work stops before endpoint | Report stop-state and next turn; do not say done |

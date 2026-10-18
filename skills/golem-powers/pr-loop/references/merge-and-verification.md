@@ -1,6 +1,7 @@
 # Merge, release, verification, and cleanup
 
-Read this before an authorized merge and through remote verification, release/install, tracking, and cleanup.
+Read this before an authorized merge and through remote verification, tracking, and cleanup, and at the
+[feature-batch gate](#feature-batch-gate) for heavy/e2e, runtime, visual QA, and release/install.
 
 For merge authority, the `--admin` default, and R-010, first read
 [Merge Authority](pr-creation.md#merge-authority).
@@ -45,8 +46,8 @@ On EtanHey repos (single GitHub account), agent PR verdicts go as **PR comments*
 REQUEST_CHANGES (GitHub blocks self-approve/self-request-changes).
 
 **Single-GitHub-account reality:** `reviewDecision` can never reach APPROVED on
-EtanHey repos (self-approve is structurally blocked). A clean loop with bot
-reviews replied-to is the approval.
+EtanHey repos (self-approve is structurally blocked). A clean routed review at
+`headRefOid`, with any bot findings replied to, is the approval.
 
 ```
 WRONG: gh pr review --request-changes on your own PR
@@ -119,25 +120,68 @@ If you are an autonomous agent, this step is NON-NEGOTIABLE. The orchestrator sh
 
 ---
 
+## Feature-Batch Gate
+
+> **Merging:** small PRs merge right away on fast CI + 1 review. Heavy or e2e tests run per FEATURE BATCH (a full plan or feature change tested together), not per PR and not as a pre-merge gate.
+
+(Etan 2026-10-18, via orc collab.) The batch is the lead's plan or feature change (`/large-plan`). Its
+gate runs once, on the batch head, before the batch is released, installed or declared done. It is not
+a per-PR pre-merge stop. Mid-batch PRs merge on the [risk-sized cadence](../SKILL.md#merge-cadence-risk-sized).
+
+At the batch gate, in order:
+
+1. Heavy/e2e suites on the batch head (the default branch after the batch's last merge).
+2. The [Daemon Verification Gate](#daemon-verification-gate), if any batch PR touched daemon, socket, MCP or protocol code.
+3. The [Visual Self-QA Gate](#visual-self-qa-gate), if any batch PR changed a visible surface.
+4. Release/install, then `scripts/ci/release-gate.mjs <repo>` until `CLEAN`. Mid-batch,
+   `MERGED_UNRELEASED` is expected. At the batch endpoint, `MERGED_UNRELEASED`, `RELEASED_UNINSTALLED`
+   or `UNKNOWN` is a stop.
+5. The [Deploy Truth Gate](#deploy-truth-gate) live probe, then the done claim.
+
+Canon #4 (done = installed) still holds, at the batch: the batch is not done until the installed
+artifact carries the batch head, verified on the machine. A defect the batch gate finds opens a NEW PR
+(canon #9), and the gate reruns on the new head. Record the gate results, and any `Verified-Runtime:`
+line, in the batch's closing PR body.
+
+**Single-PR batch:** a PR that alone ships to users runs this gate itself, before its release/install,
+and before its merge when merging is what deploys it.
+
+Heavy suites stay parallel-safe: each run takes its own ports and temp dirs, with no global
+one-at-a-time lock.
+
+---
+
 ## Daemon Verification Gate
 
 > [!CAUTION]
-> NON-NEGOTIABLE HARD STOP: IF A PR TOUCHES DAEMON, SOCKET, MCP, OR PROTOCOL CODE, YOU MUST COMPLETE REAL CLIENT RUNTIME VERIFICATION BEFORE MERGE. MARKDOWN INTENT IS NOT ENOUGH.
+> HARD STOP AT THE FEATURE-BATCH GATE: IF ANY PR IN THE BATCH TOUCHES DAEMON, SOCKET, MCP, OR PROTOCOL CODE, COMPLETE REAL CLIENT RUNTIME VERIFICATION ON THE BATCH HEAD BEFORE THE BATCH IS RELEASED, INSTALLED, OR DECLARED DONE. MARKDOWN INTENT IS NOT ENOUGH.
+
+**When:** at the [feature-batch gate](#feature-batch-gate), not before every merge. A mid-batch daemon PR
+merges on the size cadence and its real-client run is queued for the batch. A single-PR batch runs it
+before that PR ships.
 
 **Triggers when:** PR touches daemon, socket, MCP, protocol, VoiceBar runtime, or any socket-based daemon code (BrainBar, VoiceBar, cmux MCP, VoiceLayer MCP daemon, `flow-bar/**`, `launchd/**`, `src/mcp-server*.ts`, `src/mcp-socket-owner.ts`, `src/socket-*.ts`, `src/daemon*.ts`, `src/paths.ts`, `src/process-lock.ts`, `src/resolve-binary.ts`, `src/whisper-server.ts`).
 
 **socat/curl/unit tests are NOT sufficient.** Real client test required.
 
+**Live hook (VoiceLayer).** `hooks/daemon-gate-precheck.py` is still installed as a PreToolUse hook. It
+blocks `gh pr merge --admin` in VoiceLayer on a daemon diff that has no matching `.verified/` artifact.
+Until that hook is rescoped to the batch gate, a VoiceLayer daemon PR runs the steps below before its
+admin merge. Never bypass the hook: no merge without `--admin`, no API merge, and no disabling it to
+dodge the block. Tell your lead the hook and the batch rule conflict.
+
 For VoiceLayer:
 
-1. Run `./scripts/voicelayer-verify.sh` BEFORE `gh pr merge`.
+1. Run `./scripts/voicelayer-verify.sh` on the batch head before release/install (and before
+   `gh pr merge --admin` while the live hook above enforces it).
 2. If the script says runtime verification is required, rebuild/relaunch VoiceBar when prompted.
 3. Press F5 in the real VoiceBar client, speak `verification test`, release, and confirm paste fired.
 4. Confirm `.verified/verified-runtime-<branch>-<short-sha>.txt` exists and contains `Verified-Runtime: <sha>`.
-5. Add the exact `Verified-Runtime: <sha>` line to the PR body.
-6. Only then merge.
+5. Add the exact `Verified-Runtime: <sha>` line to the batch's closing PR body (the daemon PR's own
+   body for a single-PR batch).
+6. Only then release, install, or claim done.
 
-If you run `gh pr merge --admin` without the matching verify artifact, you violated the gate. `brain_store` the violation immediately as an `orc-correction` with what happened, why the hook/skill failed, and how to prevent recurrence.
+If you release, install, or claim done on a batch without the matching verify artifact, you violated the gate. `brain_store` the violation immediately as an `orc-correction` with what happened, why the hook/skill failed, and how to prevent recurrence.
 
 For non-VoiceLayer daemon PRs:
 
@@ -150,13 +194,16 @@ For non-VoiceLayer daemon PRs:
 
 ---
 
-## Visual Self-QA Gate — builders click IN before merge
+## Visual Self-QA Gate
 
 **Triggers when:** the PR touches anything a human SEES — UI views, dashboards,
 HTML pages, menu-bar apps (BrainBar/VoiceBar), TUI surfaces.
 
-**The rule:** the BUILDER clicks INTO a real running session and screenshots it
-BEFORE merge. Mechanical checks (PID running, commit-matches, server responds)
+**When:** at the [feature-batch gate](#feature-batch-gate), before the batch is released, installed or
+declared done; a single-PR batch runs it before that PR ships. Mid-batch, the PR merges on the size
+cadence and the visual pass is queued for the batch.
+
+**The rule:** the BUILDER clicks INTO a real running session and screenshots it. Mechanical checks (PID running, commit-matches, server responds)
 are NOT a functional pass — "generated" ≠ "verified."
 
 1. Run the real thing (deployed URL or live app — not the build directory).
@@ -168,7 +215,7 @@ are NOT a functional pass — "generated" ≠ "verified."
    grant dialog is a focus state, not a hard block (fallback: `screencapture`
    CLI + coordinate clicks).
 5. Cannot screenshot? Then say so: "VISUAL VERIFICATION NOT PERFORMED — needs
-   manual check before merge." Never claim a visual pass from text tools (R7).
+   manual check before release." Never claim a visual pass from text tools (R7).
 
 ---
 

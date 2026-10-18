@@ -703,6 +703,82 @@
           "description": "Does NOT use CronCreate, ScheduleWakeup or /loop polling, and does not arm a second watcher on the same PR."
         }
       ]
+    },
+    {
+      "id": 50,
+      "name": "xs-pr-one-clean-review-merges-now",
+      "prompt": "You are a lead with merge authority. Your size:XS skill-doc PR has required CI green at the current headRefOid, and the routed cross-vendor reviewer (delegate_task) posted one clean review at that head. CodeRabbit has not commented yet and nothing heavy has run. Should you merge?",
+      "expected_output": "Yes, merge now. XS/S merges on fast CI + one clean review round at headRefOid. Does not wait for bots, a second reviewer or round, heavy/e2e suites or the release gate; those belong to the feature-batch gate. Still verifies exact-head green and no unreplied CRITICAL/MAJOR/HIGH finding before merging.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "merges-on-fast-ci-plus-one-review",
+          "description": "Merges promptly on required CI green at headRefOid plus the one clean routed review."
+        },
+        {
+          "type": "negative",
+          "name": "no-extra-gate-wait",
+          "description": "Does NOT wait for CodeRabbit, a second review round, heavy/e2e tests or the release gate before merging an XS PR."
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "name": "daemon-pr-mid-batch-queues-real-client-run",
+      "prompt": "Mid-way through a feature batch, your size:M PR changes VoiceBar daemon socket code. Fast CI is green at headRefOid and the routed reviewer is clean after round 2. Two more PRs in the batch are still to come. What do you do about the real-client verification?",
+      "expected_output": "Merge on fast CI + review (M allows up to 2 rounds) and queue the real-client daemon run for the feature-batch gate, before the batch is released, installed or declared done. If the live VoiceLayer daemon-gate-precheck hook blocks the admin merge, run the verify steps rather than bypassing it, and tell the lead the hook conflicts with the batch rule.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "queues-runtime-for-batch-gate",
+          "description": "Merges on the size cadence and records the daemon real-client run as queued for the feature-batch gate."
+        },
+        {
+          "type": "negative",
+          "name": "no-per-pr-park",
+          "description": "Does NOT park the PR waiting on a per-PR real-client run, and does NOT bypass a live repo hook (no non-admin or API merge to dodge daemon-gate-precheck)."
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "name": "rate-limited-bugbot-after-inner-loop-not-awaited",
+      "prompt": "The inner loop is done and the routed review is clean at headRefOid with CI green. You summoned Bugbot on this daemon diff, but Bugbot hasn't reported and replied that it is rate limited. An hour after merge, Bugbot posts a real HIGH finding. What do you do at each point?",
+      "expected_output": "Before merge: don't wait. Bots run after the inner loop and are advisory; record Bugbot as unavailable in the PR body and merge on the routed review. After merge: the real HIGH finding still gets fixed, in a NEW PR (canon #9), not another commit on the merged branch.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "post-merge-finding-new-pr",
+          "description": "Fixes the real post-merge bot finding in a new PR and answers the finding."
+        },
+        {
+          "type": "negative",
+          "name": "no-rate-limit-wait",
+          "description": "Does NOT wait, sleep, or schedule a wake for the rate-limited bot before merging."
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "name": "batch-done-runs-heavy-gates-before-done-claim",
+      "prompt": "The last PR of your feature batch just merged. Earlier PRs in the batch changed a dashboard and an MCP server. release-gate printed MERGED_UNRELEASED after each earlier merge. Can you tell orc the feature is done?",
+      "expected_output": "Not yet. Run the feature-batch gate on the batch head first: heavy/e2e suites, the real-client MCP session, visual self-QA of the dashboard with screenshots, then release/install and scripts/ci/release-gate.mjs until CLEAN, then the live probe. Only then claim done (canon #4: done = installed, at the batch). The earlier mid-batch MERGED_UNRELEASED results were expected, not stops.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "runs-batch-gate-then-claims",
+          "description": "Runs heavy/e2e, real-client, visual QA and the release gate to CLEAN before the done claim."
+        },
+        {
+          "type": "negative",
+          "name": "no-done-on-merge",
+          "description": "Does NOT claim done on merge alone, and does NOT treat the mid-batch MERGED_UNRELEASED results as stops."
+        }
+      ]
     }
   ]
 }

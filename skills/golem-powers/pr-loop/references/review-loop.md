@@ -9,7 +9,7 @@ Read this when selecting PR-stage reviewers, waiting for them, classifying feedb
 ### NEVER Merge With 0 Reviews
 
 ```bash
-# Check BEFORE merging — empty reviewDecision + <2 comments = nobody looked
+# Check BEFORE merging — empty reviewDecision + no routed review verdict = nobody looked
 gh pr view <N> --json reviewDecision,comments
 ```
 
@@ -28,7 +28,7 @@ CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
 | Greptile | Needs OSS approval | Manual activation |
 | Macroscope | Needs activation | Auto-reviews once installed |
 
-**If `reviewDecision` is empty and `comments < 2` → DO NOT MERGE.**
+**If `reviewDecision` is empty and no routed review verdict is on the PR for `headRefOid` → DO NOT MERGE.**
 
 ### Step 8a: Invoke Reviewers
 
