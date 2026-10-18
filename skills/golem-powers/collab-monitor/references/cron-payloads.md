@@ -6,6 +6,11 @@
 
 > Cron payloads must query reality first. If the prompt already claims the state, the loop is rotten before it runs.
 
+> **Codex and T3 seats:** "No polling turns. No collab-monitor wakes in Codex" (Etan 2026-10-18, via orc
+> collab). A Codex seat or any T3 seat never writes a recurring tick that reads a collab and never arms
+> `/collab-monitor`; completion notifications wake it. See
+> [`../SKILL.md#codex-and-t3-seats`](../SKILL.md#codex-and-t3-seats).
+
 ## When to Use
 
 - Writing a new `/loop`, cron tick, or recurring monitor payload
@@ -182,9 +187,11 @@ If a cron payload exceeds 30 lines and does not run a live query in step 1, trea
 
 > A lead finished its lane, posted "Back to silent 👋" with **no monitor armed**; work routed to it via collab was a **silent no-op**. A "standing by" seat with no live inbound monitor is the same failure as a passive `SILENT` tick (Rule 5) — it just hides behind "done."
 
-If the payload belongs to a lead/orchestrator/weaver (a seat that receives collab-routed work):
+**Codex and T3 seats are excluded from this gate.** They never arm `/collab-monitor`, never run recurring channel reads and keep no monitor alive after DONE: "Codex seats must not poll collabs; T3 delegate completions already wake you." (Etan 2026-10-18, via orc collab). They rely on `delegate_task` completion notifications and `watch_pull_request`; see [`../SKILL.md#codex-and-t3-seats`](../SKILL.md#codex-and-t3-seats).
 
-- **An armed persistent inbound monitor is a precondition, not an option.** The seat's FIRST action is arming `/collab-monitor` on its channel (`collab-monitor.sh start @<own-claim> <channel.md>`, attached via `follow`) — it fires only on mail addressed to the seat, never its own posts; a raw `^### ` grep fires on every post. A recurring tick whose seat has no armed monitor is invalid — fix the seat before the tick.
+The gate applies only to a cmux-fleet lead/orchestrator/weaver that receives collab-routed work: a Claude seat (native Monitor, `../SKILL.md` § Native Monitor first), or a Codex seat running inside a cmux fleet with no T3 parent (the legacy cmux-only adapter, `../SKILL.md` § Legacy cmux-only adapter). For such a cmux seat:
+
+- **An armed persistent inbound monitor is a precondition, not an option.** The seat's FIRST action is arming `/collab-monitor` on its channel (Claude: native Monitor with `collab-monitor.sh run`; legacy cmux-only Codex: `collab-monitor.sh start @<own-claim> <channel.md>`, attached via `follow`) — it fires only on mail addressed to the seat, never its own posts; a raw `^### ` grep fires on every post. A recurring tick whose seat has no armed monitor is invalid — fix the seat before the tick.
 - **"Stand by" / "keep monitoring" ticks are only valid with a live inbound monitor AND a consumed live query.** Restate the channel tail (new lines addressed to you per the rule above — the `/collab-monitor` log, not a raw `###` grep) in step 1 and branch on it. A tick that says "still standing by" without reading the channel is the passive-output violation of Rule 5.
 - **Going idle-and-blind is never a valid terminal outcome.** Lane done → `dispatch` (pick up monitor-surfaced work) or an explicit `✅ DONE … monitor ARMED, standing by` that keeps the monitor running — never a stopped monitor.
 

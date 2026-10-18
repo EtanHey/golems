@@ -30,7 +30,9 @@ another 201M across 729 turns." (Etan 2026-10-18, via orc collab)
   completion notifications for child work and `watch_pull_request` for PRs. Do
   not add a second watcher on top of them.
 - If something genuinely must sit and watch, dispatch one bounded
-  `codex.subagent.mechanical` child per `/agent-routing` § Routing rules (SSOT).
+  `codex.subagent.mechanical` child per `/agent-routing` § Routing rules (SSOT);
+  resolve its model with
+  `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`.
   It reports once and exits; it never owns the parent's PR watch.
 - Native Monitor below is for Claude seats in a cmux fleet.
 
@@ -233,7 +235,8 @@ actually routed. Keep handoff ownership explicit in the lane's `closure` record.
 Use live queries on every tick; never copy a stale PR state into the payload.
 Frame the tick with a timestamp, cycle and last verified action. Counters reset
 only on a verified side effect. Finish with dispatch, verify-and-decrement or
-escalate-park. Scheduler-specific fallback guidance is in
+escalate-park. Codex and T3 seats write no recurring collab-reading ticks
+([Codex and T3 seats](#codex-and-t3-seats)). Scheduler-specific fallback guidance is in
 [references/cron-payloads.md](references/cron-payloads.md); it is not a prerequisite
 for native Monitor.
 
