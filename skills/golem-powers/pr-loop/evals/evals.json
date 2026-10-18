@@ -101,7 +101,7 @@
         },
         {
           "name": "waits-or-invokes-reviewers",
-          "description": "Response either waits for reviewers (minimum 10-15 min) or explicitly invokes @coderabbitai/@greptileai review before proceeding"
+          "description": "Response either waits for reviewers per the waiting policy (T3 watch wake, one bounded check or one cheap watcher, never a polling turn) or explicitly invokes @coderabbitai/@greptileai review before proceeding"
         }
       ]
     },

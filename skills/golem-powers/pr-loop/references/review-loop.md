@@ -165,7 +165,7 @@ Wait in this order. Take the first option that fits:
    - a watcher process, `pr-watch <owner/repo> <N> --head <sha> --deadline 2h`, whose exit wakes you.
      Claude's native `Monitor` runs a command and spends no model turns while it waits. Details below.
    - one bounded `codex.subagent.mechanical` child (resolve it with
-     `node scripts/model-roles.mjs codex.subagent.mechanical --field model`). Give it a deadline and
+     `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`). Give it a deadline and
      the pinned head. It reports once, at a terminal state, and is settled after. It never merges.
 
    One watcher per PR head, whichever you pick.

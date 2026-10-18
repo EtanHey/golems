@@ -164,6 +164,34 @@ class WaitingPolicy(unittest.TestCase):
         self.assertIn("references/review-loop.md#waiting-policy-no-polling-turns", content)
         self.assertIn("never a polling turn", content)
 
+    def test_dispatch_handoffs_links_the_policy_instead_of_a_review_timer(self):
+        # Review round 1 (#796): Autonomous Agent Mode kept a 120s / 5 min timer beside the policy.
+        content = flat("references/dispatch-and-handoffs.md")
+        autonomous = content.split("## Autonomous Agent Mode", 1)[1].split("## ", 1)[0]
+        self.assertIn("(review-loop.md#waiting-policy-no-polling-turns)", autonomous)
+        for stale in ["120s", "5 min", "wait minimum", "If no reviews after"]:
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, autonomous)
+
+    def test_no_surface_keeps_a_timed_review_recheck(self):
+        for path in sorted(SKILL.rglob("*.md")):
+            relative = path.relative_to(SKILL).as_posix()
+            if relative.startswith("evals/results"):
+                continue
+            with self.subTest(surface=relative):
+                self.assertNotRegex(flat(relative), r"(?i)wait minimum \d+|if no reviews after \d+")
+
+    def test_watcher_child_uses_the_supported_resolution_path(self):
+        # Bare `codex.subagent.mechanical` resolution refuses (candidate role); watchers use --use watcher.
+        self.assertIn("node scripts/model-roles.mjs codex.subagent.mechanical --use watcher",
+                      flat("references/review-loop.md"))
+        for path in sorted(SKILL.rglob("*.md")):
+            relative = path.relative_to(SKILL).as_posix()
+            for line in text(relative).splitlines():
+                if "model-roles.mjs codex.subagent.mechanical" in line:
+                    with self.subTest(surface=relative, line=line.strip()[:60]):
+                        self.assertIn("--use watcher", line)
+
     def test_behavioral_cases_cover_the_waiting_policy(self):
         cases = {case["id"]: case for case in json.loads(text("evals/evals.json"))["evals"]}
         for case_id, name in [(40, "t3-seat-links-and-watches-pr"), (41, "rate-limited-bot-not-awaited"),
