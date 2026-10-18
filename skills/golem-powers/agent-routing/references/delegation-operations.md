@@ -2,6 +2,12 @@
 
 This is the worker-lifecycle contract; read it before launching, superseding, monitoring, recovering, transferring, settling, or closing a lane.
 
+> **Adapter scope.** The monitor-loop, pane-recovery and isolation mechanics below are the cmux
+> adapter (visible pane lanes). A lead dispatching from a T3 thread follows
+> [t3-native.md](t3-native.md) for dispatch, wait, isolation and settle instead: the child's
+> completion wakes the parent (no monitor loop), and an editing child gets `isolation: "worktree"`.
+> The mission, artifact-verification and real-green rules still apply to both.
+
 ## Launcher Boundary
 
 Fleet canon #6 owns launch law; `/repogolem` owns model flags, resume, worktrees, invocation examples,
@@ -32,12 +38,12 @@ Cursor: use its verified goal command or a plain file-contract message; verify a
 
 Fleet law for approved queues, permission parking, and route-through-leads lives in canon #8.
 
-Every monitoring cycle checks:
+Every cmux monitoring cycle checks:
 
 - Is the lead burning context on Cursor/Codex work while workers sit idle?
 - Are worker surfaces alive? Recover a failed managed lane on a new surface within 60 seconds,
   redeliver its original goal, and notify the lead; do not wait for the lead to notice.
-- Does every dispatching lead have its own monitor loop?
+- cmux adapter: does every dispatching lead have its own monitor loop? (T3 children need none: completion wakes the parent.)
 - Is the lead waiting on file-backed completion instead of polling large scrollback?
 - Does the goal still preserve the user's full mission?
 
@@ -53,7 +59,8 @@ rewrite, unowned cleanup, credential/account changes, paid external actions, or 
 
 | Scenario | Route |
 |---|---|
-| Sequential specialist | One branch in the main repo; no worktree/sandbox. |
+| Sequential specialist (cmux adapter) | One branch in the main repo; no worktree/sandbox. |
+| T3 child that edits files | `delegate_task` with `isolation: "worktree"` ([t3-native.md](t3-native.md) § 2). |
 | Truly parallel, no file overlap | Native worktrees; verify MCP/config paths; no restrictive sandbox. |
 | Parallel with file overlap | Serialize. |
 
