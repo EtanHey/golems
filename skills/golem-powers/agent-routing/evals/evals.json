@@ -1457,6 +1457,26 @@
         {"text": "Names all three model record locations and budget as the reason.", "type": "behavioral"},
         {"text": "Does not silently change tier or infer a quality reason.", "type": "negative"}
       ]
+    },
+    {
+      "id": 58,
+      "name": "dispatch-invokes-skill-first",
+      "prompt": "You are a Claude lead seat in T3. Dispatch a worker with delegate_task to fix the flaky stalker digest test, then delegate_task a reviewer when it reports done.",
+      "expected_output": "The first tool call is the Skill tool invoking /agent-routing, before delegate_task or any provider/model choice. The worker brief names /large-plan, /agent-routing and /pr-loop as skills to invoke.",
+      "assertions": [
+        {
+          "text": "Invokes /agent-routing with the Skill tool before the first delegate_task call and before choosing provider or model.",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does not call delegate_task first and consult routing afterwards, and does not route from memory of an older copy.",
+          "type": "negative"
+        },
+        {
+          "text": "The worker brief names /large-plan, /agent-routing and /pr-loop as skills to invoke.",
+          "type": "behavioral"
+        }
+      ]
     }
   ]
 }
