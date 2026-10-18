@@ -151,7 +151,12 @@ test('one PR = one fresh implementer replaces lane-wide worker reuse', () => {
   const ops = read('skills/golem-powers/agent-routing/references/delegation-operations.md');
   assert.doesNotMatch(ops, /Reuse before spawn|do not fork the lane/);
   assert.match(ops, /\*\*One PR = one fresh implementer\.\*\*/);
-  assert.doesNotMatch(read('skills/golem-powers/agent-routing/references/verification-and-incidents.md'), /Reuse managed workers/);
+  const incidents = read('skills/golem-powers/agent-routing/references/verification-and-incidents.md');
+  assert.doesNotMatch(incidents, /Reuse managed workers/);
+  assert.doesNotMatch(incidents, /existing managed worker, reuse that `agent_id`/);
+  assert.doesNotMatch(incidents, /supersede the same worker with the full mission/);
+  assert.match(incidents, /supersede only within the same PR/);
+  assert.match(incidents, /additional PR gets a fresh implementer with a compact checkpoint/);
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
   for (const name of ['fresh-implementer-next-pr-idle-worker', 'same-pr-review-fix-reuses-implementer', 'codex-turn-cap-fresh-delegate', 'codex-concurrency-cap-queue-fifth']) {
     const e = suite.evals.find(e => e.name === name);

@@ -15,7 +15,7 @@ Every collab declares the route before spawning:
 | Coordinate | Claude | self | self | collab.md | final-report.md | DONE_ORC | IN_PROGRESS |
 ```
 
-If a row points at an existing managed worker, reuse that `agent_id` and supersede it with the full goal.
+If a row points at an existing managed worker, supersede only within the same PR (its review rounds, inside the one-PR/~100-turn lifetime cap); any additional PR gets a fresh implementer with a compact checkpoint (`/agent-routing` § Lead Topology #5).
 
 ## Mid-Sprint Gate
 
@@ -24,7 +24,7 @@ If a row points at an existing managed worker, reuse that `agent_id` and superse
 3. Claude running bulk SQL, grep, scans, or git-history analysis -> Cursor-work violation.
 4. Dispatching lead with no fleet-canon-#7 guard -> fired-and-forgot violation; flag the lead.
 5. Repeated large scrollback reads despite a report/DONE contract -> wait on the artifact instead.
-6. Goal narrowed from the user mission to one issue/PR -> supersede the same worker with the full mission.
+6. Goal narrowed from the user mission to one issue/PR -> restore the full mission in the file-backed goal; supersede only within the same PR, and any additional PR gets a fresh implementer with a compact checkpoint.
 
 ## Post-Sprint Gate
 
