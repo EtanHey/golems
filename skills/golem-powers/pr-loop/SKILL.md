@@ -1,11 +1,19 @@
 ---
 name: pr-loop
-description: "Full PR loop plus the agent-identity signature on GitHub writes. Triggers: create PR, finish work, post PR comment, sign a comment, golem-id, Co-Authored-By trailer."
+description: "Open a PR, merge, ship, handle CI/reviews; signs GitHub writes. Invoke before first PR action. Triggers: finish work, PR comment, golem-id, Co-Authored-By trailer."
 ---
 
 # PR Loop
 
 > Fleet law: canon #2 owns branch→commit→push→PR→review→merge and PR URL validity. This skill owns the procedural loop, review handling, edge cases, and worker-vs-lead endpoint mechanics.
+
+## Kickoff contract
+
+- **Claude seats:** invoke `/pr-loop` with the Skill tool before the first PR action of a lane: opening, updating, merging or shipping a PR, or fixing red CI.
+- **Codex seats:** read this SKILL.md body (a file read) before that action; Codex has no Skill tool.
+- **A lead's kickoff brief** to a worker names the skills the worker invokes (`/large-plan`, `/agent-routing`, `/pr-loop`).
+- Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)
+- Why: Claude T3 leads made 0 Skill calls on Oct 16–18 while all three lead skills sat in their catalog (skill-edits audit, 2026-10-18).
 
 ## Ownership
 
