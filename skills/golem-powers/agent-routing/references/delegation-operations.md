@@ -1,6 +1,6 @@
 # Delegation Operations
 
-This is the worker-lifecycle contract; read it before launching, reusing, monitoring, recovering, transferring, or closing a lane.
+This is the worker-lifecycle contract; read it before launching, superseding, monitoring, recovering, transferring, settling, or closing a lane.
 
 > **Adapter scope.** The monitor-loop, pane-recovery and isolation mechanics below are the cmux
 > adapter (visible pane lanes). A lead dispatching from a T3 thread follows
@@ -15,8 +15,8 @@ and raw escape hatches. `--fast` is forbidden in every harness, including intern
 
 ## Goal Delegation Contract
 
-1. **Reuse before spawn.** Reuse a healthy referenced/existing worker in the same repo/workspace/role lane unless the user explicitly asks for replacement.
-2. **Supersede narrow goals.** Send one explicit superseding goal to the same `agent_id`; do not fork the lane for a cleaner prompt.
+1. **One PR = one fresh implementer.** Every new PR, including each dependent-stack layer, gets a new implementer (new `delegate_task` or new pane, fresh context), even when a healthy idle worker exists in the same repo/workspace/role. Only that PR's own review-round fixes may reuse it. A successor gets a short brief and a compact checkpoint, never full plans or logs. Lifetime cap, fresh reviewers, the 4-Codex concurrency cap and settling: `SKILL.md` § Lead Topology #5. An explicit user instruction naming a worker overrides this default; lead convenience never does.
+2. **Supersede within the PR.** A corrected or widened goal for the same PR goes to that PR's implementer as one explicit superseding goal; do not put a second implementer on the same PR for a cleaner prompt. A new PR is never a supersede (item 1), and a session past ~100 turns hands off to a fresh delegate with a compact checkpoint.
 3. **Preserve the full delegation.** Copy the whole mission, not just the next blocker. Include every requested service, data-safety, coverage, state, and green/no-green condition.
 4. **Use a file-backed goal.** Complex or multi-hour work gets an absolute goal file with constraints, success criteria, report path, exact DONE marker, and green/no-green criteria.
 5. **Monitor artifacts, not vibes.** Wait on the report/DONE marker with low-frequency health checks. Read pane scrollback only for delivery failure, wedged prompts, or state disagreement.
