@@ -205,5 +205,132 @@ class WaitingPolicy(unittest.TestCase):
                 self.assertTrue(any(row.get("type") == "negative" for row in case["assertions"]))
 
 
+
+RULE_MERGING = ("Merging: small PRs merge right away on fast CI + 1 review. Heavy or e2e tests run per "
+                "FEATURE BATCH (a full plan or feature change tested together), not per PR and not as a "
+                "pre-merge gate.")
+RULE_XS_S = "XS/S: 1 reviewer, 1 round."
+RULE_BOTS = ("Review bots (CodeRabbit/Bugbot) run only AFTER the inner loop, and they're advisory. "
+             "Only wait on a bot when it flags something important. Never wait on rate limits.")
+RULE_PARALLEL = "Give each test/build its own ports and temp folders so they run in parallel."
+SSOT = "`/agent-routing` § Routing rules (SSOT)"
+BATCH_LINK = "references/merge-and-verification.md#feature-batch-gate"
+
+
+class RiskSizedGates(unittest.TestCase):
+    """Etan 2026-10-18 22:00 + 23:25 rulings: risk-sized merges, feature-batch heavy gates."""
+
+    def test_skill_md_quotes_the_rules_verbatim_with_attribution(self):
+        content = flat("SKILL.md").replace("**", "")
+        for rule in [RULE_MERGING, RULE_XS_S, RULE_BOTS, RULE_PARALLEL]:
+            with self.subTest(rule=rule[:40]):
+                self.assertIn(rule, content)
+        self.assertIn(ATTRIBUTION, content)
+
+    def test_cadence_points_at_the_routing_ssot_for_reviewer_counts(self):
+        cadence = flat("SKILL.md").split("## Merge Cadence", 1)[1].split("## Hard Gates", 1)[0]
+        self.assertIn(SSOT, cadence)
+        for size in ["XS/S", "| M |", "L, data or security"]:
+            with self.subTest(size=size):
+                self.assertIn(size, cadence)
+        self.assertIn("`headRefOid`", cadence)
+
+    def test_per_pr_runtime_gates_moved_to_the_feature_batch_gate(self):
+        skill = flat("SKILL.md")
+        for stale in ["Complete the real-client gate before merge", "Complete visual self-QA before merge",
+                      "Before closing either endpoint, run `scripts/ci/release-gate.mjs"]:
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, skill)
+        self.assertIn(BATCH_LINK, skill)
+        merge = flat("references/merge-and-verification.md")
+        for stale in ["COMPLETE REAL CLIENT RUNTIME VERIFICATION BEFORE MERGE",
+                      "Run `./scripts/voicelayer-verify.sh` BEFORE `gh pr merge`",
+                      "builders click IN before merge", "screenshots it BEFORE merge", "6. Only then merge."]:
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, merge)
+        self.assertNotIn("you MUST test with a real client session before proceeding", flat("references/pr-creation.md"))
+
+    def test_batch_gate_keeps_the_how_and_the_single_pr_exception(self):
+        merge = flat("references/merge-and-verification.md")
+        self.assertIn("## Feature-Batch Gate", merge)
+        for how in ["./scripts/voicelayer-verify.sh", "Verified-Runtime: <sha>", "Press F5 in the real VoiceBar client",
+                    "Verify MCP tools are available AND return real results", "Screenshot",
+                    "VISUAL VERIFICATION NOT PERFORMED", "single-PR batch", "canon #4"]:
+            with self.subTest(how=how):
+                self.assertIn(how, merge)
+
+    def test_release_gate_runs_at_the_batch_endpoint_not_every_pr(self):
+        skill = flat("SKILL.md")
+        self.assertIn("`MERGED_UNRELEASED` mid-batch is expected, not a stop", skill)
+        self.assertIn("scripts/ci/release-gate.mjs <repo>", flat("references/merge-and-verification.md"))
+
+    def test_live_daemon_hook_is_named_not_bypassed(self):
+        merge = flat("references/merge-and-verification.md")
+        self.assertIn("daemon-gate-precheck", merge)
+        self.assertIn("never bypass", merge.lower())
+
+    def test_bots_are_advisory_and_post_merge_findings_open_a_new_pr(self):
+        skill = flat("SKILL.md")
+        self.assertIn("in a NEW PR (canon #9)", skill)
+        self.assertNotIn("require PR-level bot status/comments before merge", flat("references/pr-creation.md"))
+        self.assertNotIn("comments < 2", flat("references/review-loop.md"))
+
+    def test_tests_and_builds_are_parallel_safe(self):
+        skill = flat("SKILL.md")
+        self.assertIn("own ports and temp dirs per run", skill)
+        self.assertIn("no global one-at-a-time locks", skill)
+
+    def test_behavioral_cases_cover_risk_sized_gates(self):
+        cases = {case["id"]: case for case in json.loads(text("evals/evals.json"))["evals"]}
+        for case_id, name in [(50, "xs-pr-one-clean-review-merges-now"),
+                              (51, "daemon-pr-mid-batch-queues-real-client-run"),
+                              (52, "rate-limited-bugbot-after-inner-loop-not-awaited"),
+                              (53, "batch-done-runs-heavy-gates-before-done-claim")]:
+            with self.subTest(case=name):
+                case = cases.get(case_id)
+                self.assertIsNotNone(case)
+                self.assertEqual(case["name"], name)
+                self.assertTrue(case["prompt"] and case["expected_output"])
+                self.assertGreaterEqual(len(case["assertions"]), 2)
+                self.assertTrue(any(row.get("type") == "negative" for row in case["assertions"]))
+
+    # Review round 1 (#800): stale per-PR gates survived outside the files the first pass touched.
+    STALE_GATES = [
+        r"(?i)full test suite\s*\W+\s*all must pass",
+        r"(?i)review bots and required checks green",
+        r"(?i)bot reviewers post on the pr\. wait for them",
+        r"(?i)wait for re-review",
+        r"(?i)coderabbit (plus|\+) one",
+        r"(?i)comment count is less than \d",
+        # Verification-before-PR wording only; "invoke /pr-loop before gh pr create" (eval 26) is the kickoff contract, not a gate.
+        r"(?i)(test|suite|verif|e2e|runtime|qa|check)[^.]{0,60}(before|until)[^.]{0,40}(creating the pr|pr creation|gh pr create)",
+        r"(?i)functional self-qa happens before handoff",
+    ]
+
+    # Verbatim historical rulings stay quoted as provenance; the scan skips only these exact quotes.
+    PROVENANCE_QUOTES = [
+        "*\"bot tiering — full 4-bot panel only on daemon/engine/transport diffs, else CodeRabbit + one, "
+        "one pass per bot, duplicate findings answered once + dup-links.\"*",
+    ]
+
+    def test_no_surface_keeps_a_per_pr_heavy_gate_or_bot_wait(self):
+        for path in sorted(SKILL.rglob("*")):
+            relative = path.relative_to(SKILL).as_posix()
+            if not path.is_file() or relative.startswith("evals/results") or relative == "evals/run_suite.py":
+                continue
+            content = flat(relative)
+            for quote in self.PROVENANCE_QUOTES:
+                content = content.replace(quote, "")
+            for pattern in self.STALE_GATES:
+                with self.subTest(surface=relative, pattern=pattern):
+                    self.assertNotRegex(content, pattern)
+
+    def test_bot_tiering_points_at_the_routing_ssot_for_reviewer_counts(self):
+        panel = flat("references/review-loop.md").split("#### 8a.1", 1)[1].split("#### 8a.2", 1)[0]
+        self.assertIn(SSOT, panel)
+        case = next(case for case in json.loads(text("evals/evals.json"))["evals"] if case["id"] == 20)
+        self.assertIn("agent-routing", case["expected_output"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -4,13 +4,15 @@ Read this when a PR loop starts, stops early, runs autonomously, or has separate
 
 ## Stop-State and End-State
 
-**End state, precisely:** done = review bots and required checks GREEN on the **LATEST** commit. Not
-"a green run exists" — green on the commit that is actually at the head of the PR.
+**End state, precisely:** done = required checks GREEN and the routed review clean on the **LATEST**
+commit. Not "a green run exists" — green on the commit that is actually at the head of the PR. Review
+bots are advisory: answer a bot that flags something important, but a silent or rate-limited bot is
+recorded as unavailable in the PR body, never awaited ([Merge Cadence](../SKILL.md#merge-cadence-risk-sized)).
 
 **The four explicit turns**, in order, none skipped and none merged into a neighbour:
 1. fix
 2. commit + push + open/update the PR
-3. babysit to green on the latest commit (invoke bots, answer findings, re-push)
+3. babysit to green on the latest commit (invoke bots after the inner loop, answer findings, re-push)
 4. merge **only on instruction** (lead authority or the brief's merge policy)
 
 **Stop-state clause — when you stop before the end state (no PR, or PR not merged):** state exactly

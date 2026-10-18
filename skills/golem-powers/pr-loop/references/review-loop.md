@@ -9,7 +9,7 @@ Read this when selecting PR-stage reviewers, waiting for them, classifying feedb
 ### NEVER Merge With 0 Reviews
 
 ```bash
-# Check BEFORE merging — empty reviewDecision + <2 comments = nobody looked
+# Check BEFORE merging — empty reviewDecision + no routed review verdict = nobody looked
 gh pr view <N> --json reviewDecision,comments
 ```
 
@@ -28,7 +28,7 @@ CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
 | Greptile | Needs OSS approval | Manual activation |
 | Macroscope | Needs activation | Auto-reviews once installed |
 
-**If `reviewDecision` is empty and `comments < 2` → DO NOT MERGE.**
+**If `reviewDecision` is empty and no routed review verdict is on the PR for `headRefOid` → DO NOT MERGE.**
 
 ### Step 8a: Invoke Reviewers
 
@@ -64,7 +64,8 @@ worker followed this skill verbatim and summoned Bugbot into the repo that bans 
 #### 8a.1 — The panel
 
 ```bash
-# Core diffs only; non-core = @coderabbitai + one.
+# Bot tiering (canon #9): full panel on core diffs only. Reviewer selection and counts:
+# /agent-routing § Routing rules (SSOT).
 # Full core panel (right after PR creation, filtered by 8a.0)
 gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@greptileai review"
@@ -75,6 +76,8 @@ gh pr comment <N> --body "@codex review"
 Canon #9 tiers the roster. Clause 4 of the origin ruling, verbatim: *"bot tiering — full 4-bot panel
 only on daemon/engine/transport diffs, else CodeRabbit + one, one pass per bot, duplicate findings
 answered once + dup-links."*
+That quote is provenance. Today the bots are advisory and run after the inner loop, and who reviews
+and how many come from `/agent-routing` § Routing rules (SSOT), which wins on conflict.
 
 **Core = a daemon, engine, or transport diff.** No canonical path glob exists for this — the prose
 phrase is the whole definition, so judge the diff rather than pattern-match a list. On a core-path
@@ -133,7 +136,9 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 
 ### For public repos (bot reviewers configured):
 
-Bot reviewers post on the PR. Wait for them, and for CI, with the waiting policy below.
+Bot reviewers post on the PR. They are advisory: wait on CI and the routed review with the waiting
+policy below, and on a bot only when it flags something important. A silent or rate-limited bot is
+recorded as unavailable, never awaited.
 
 ### Waiting policy (no polling turns)
 
@@ -394,7 +399,8 @@ Sanitize in PR description, code comments, test fixtures, and commit messages.
 ```bash
 git add <files> && git commit -m "fix: address review feedback"
 git push
-# Wait for re-review — CodeRabbit auto-triggers, others need manual @mention
+# Wait on the routed re-review (waiting policy); bots re-run as advisory — CodeRabbit
+# auto-triggers, others need a manual @mention
 ```
 
 ### Only THEN merge (clean review and required checks green at headRefOid):

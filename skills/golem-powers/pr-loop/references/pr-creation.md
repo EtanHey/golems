@@ -7,17 +7,21 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 1. BRANCH    git checkout main && git pull && git checkout -b feat/name
 2. IMPLEMENT Write code — write the failing test FIRST (AGENTS.md law);
              the /tdd-guard hook enforces the edit limit
-3. TEST      Run full test suite — ALL must pass
+3. TEST      Run the relevant fast checks (the repo's required PR suites
+             plus tests touching the diff) — ALL must pass. Heavy/e2e
+             suites run at the [feature-batch gate](merge-and-verification.md#feature-batch-gate),
+             not per PR (now, for a single-PR batch).
 4. VERIFY    Invoke /never-fabricate
-             ↳ DAEMON GATE: If this PR touches daemon/socket/MCP code,
-               you MUST test with a real client session before proceeding.
+             ↳ DAEMON GATE: If this PR touches daemon/socket/MCP code, queue
+               a real client session for the feature-batch gate (run it now
+               for a single-PR batch, or where a live repo hook enforces it).
                See [Daemon Verification Gate](merge-and-verification.md#daemon-verification-gate).
 5. COMMIT    git add `<specific files>` → CodeRabbit pre-commit review → commit
              ↳ Codex env: run `coderabbit review --agent` with a ~3 minute
                hard timeout BEFORE committing. If the local CLI hangs or hits
                rate/review limits, stop it, record the limitation, and commit
-               on fresh test evidence. After the PR exists, require PR-level
-               bot status/comments before merge.
+               on fresh test evidence. After the PR exists, PR-level bots
+               are advisory: wait on one only when it flags something important.
                If CRITICAL issues found → fix first. If minor → proceed.
                Ralph mode: `--story=ID --message=MSG` for atomic commit + criterion.
              ↳ Commit trailer = `Co-Authored-By: <seat> running <model>

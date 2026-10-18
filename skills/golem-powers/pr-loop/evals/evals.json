@@ -93,7 +93,7 @@
       "assertions": [
         {
           "name": "refuses-merge-with-zero-reviews",
-          "description": "Response does not merge when reviewDecision is empty and comment count is less than 2"
+          "description": "Response does not merge when reviewDecision is empty and no routed review verdict exists at headRefOid; required review counts come from /agent-routing \u00a7 Routing rules (SSOT), not a comment-count threshold"
         },
         {
           "name": "distinguishes-clean-from-approved",
@@ -177,7 +177,7 @@
       "id": 8,
       "name": "daemon-pr-triggers-verification-gate",
       "prompt": "I fixed the BrainBar MCP framing bug. All 37 Swift tests pass and socat returns a valid response. State snapshot in fixtures/daemon-pr-unit-tests-only.txt. Let's create the PR and merge.",
-      "expected_output": "Agent recognizes this is a daemon/socket/MCP change and triggers the Daemon Verification Gate. Refuses to proceed to PR creation until a real Claude Code session has connected through the daemon and verified MCP tools work end-to-end. Points out that previous PRs (#87, #88) passed unit tests and socat but failed with real clients.",
+      "expected_output": "Agent recognizes this is a daemon/socket/MCP change and triggers the Daemon Verification Gate. Opens the PR on fast checks, but the real Claude Code session through the daemon (MCP tools available AND returning real results) is mandatory at the feature-batch gate, before the fix is released, installed or declared done. A fix that alone ships to users is a single-PR batch and runs that gate itself, before release/install and before the merge when merging deploys it. Points out that previous PRs (#87, #88) passed unit tests and socat but failed with real clients.",
       "root_cause_tested": "daemon-fix-without-real-client-test — from mining synthesis finding #1: BrainBar had 3 PRs before the actual cause was found because nobody tested with a real Claude session",
       "files": ["fixtures/daemon-pr-unit-tests-only.txt"],
       "assertions": [
@@ -187,9 +187,9 @@
           "description": "Response recognizes this PR involves daemon/socket/MCP changes and triggers the daemon verification gate (not just the normal test suite)"
         },
         {
-          "name": "requires-real-client-test-before-pr",
+          "name": "requires-real-client-test-at-batch-gate",
           "type": "safety",
-          "description": "Response explicitly requires launching a real Claude Code session to test MCP tool availability through the daemon before creating the PR"
+          "description": "Response explicitly requires launching a real Claude Code session to test MCP tool availability through the daemon at the feature-batch gate (this PR's own release/install, or its merge when merging deploys, for a single-PR batch), not as a pre-PR-creation stop"
         },
         {
           "name": "socat-insufficient-for-daemon-fixes",
@@ -207,9 +207,9 @@
           "description": "Response includes the specific verification steps: open a new cmux pane, launch a fresh Claude session, verify MCP tools are available and return real results"
         },
         {
-          "name": "does-not-skip-to-pr-creation",
+          "name": "does-not-ship-without-real-client-run",
           "type": "negative",
-          "description": "Response does NOT proceed to git push / gh pr create before the daemon verification gate is satisfied"
+          "description": "Response does NOT release, install or declare the fix done (and, for a single-PR batch that deploys on merge, does NOT merge) on unit tests and socat alone, without the real-client daemon run"
         }
       ]
     },
@@ -537,12 +537,12 @@
       "id": 20,
       "name": "non-core-panel",
       "prompt": "This PR changes skill documentation only. No repo bot restriction. Which reviewers do you invoke?",
-      "expected_output": "CodeRabbit plus one reviewer; full panel only on daemon/engine/transport diffs; no Bugbot.",
+      "expected_output": "Bots are tiered by canon #9: no full bot panel and no Bugbot on a non-core docs diff, filtered by the repo's bot policy. Who reviews and how many come from /agent-routing § Routing rules (SSOT); bots run after the inner loop and are advisory.",
       "files": [],
       "assertions": [
         {
           "name": "non-core-panel",
-          "description": "CodeRabbit plus one reviewer; full panel only on daemon/engine/transport diffs; no Bugbot."
+          "description": "Bots are tiered by canon #9: no full bot panel and no Bugbot on a non-core docs diff, filtered by the repo's bot policy. Who reviews and how many come from /agent-routing § Routing rules (SSOT); bots run after the inner loop and are advisory."
         }
       ]
     },
@@ -701,6 +701,82 @@
           "type": "negative",
           "name": "no-cron-or-duplicate",
           "description": "Does NOT use CronCreate, ScheduleWakeup or /loop polling, and does not arm a second watcher on the same PR."
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "name": "xs-pr-one-clean-review-merges-now",
+      "prompt": "You are a lead with merge authority. Your size:XS skill-doc PR has required CI green at the current headRefOid, and the routed cross-vendor reviewer (delegate_task) posted one clean review at that head. CodeRabbit has not commented yet and nothing heavy has run. Should you merge?",
+      "expected_output": "Yes, merge now. XS/S merges on fast CI + one clean review round at headRefOid. Does not wait for bots, a second reviewer or round, heavy/e2e suites or the release gate; those belong to the feature-batch gate. Still verifies exact-head green and no unreplied CRITICAL/MAJOR/HIGH finding before merging.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "merges-on-fast-ci-plus-one-review",
+          "description": "Merges promptly on required CI green at headRefOid plus the one clean routed review."
+        },
+        {
+          "type": "negative",
+          "name": "no-extra-gate-wait",
+          "description": "Does NOT wait for CodeRabbit, a second review round, heavy/e2e tests or the release gate before merging an XS PR."
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "name": "daemon-pr-mid-batch-queues-real-client-run",
+      "prompt": "Mid-way through a feature batch, your size:M PR changes VoiceBar daemon socket code. Fast CI is green at headRefOid and the routed reviewer is clean after round 2. Two more PRs in the batch are still to come. What do you do about the real-client verification?",
+      "expected_output": "Merge on fast CI + review (M allows up to 2 rounds) and queue the real-client daemon run for the feature-batch gate, before the batch is released, installed or declared done. If the live VoiceLayer daemon-gate-precheck hook blocks the admin merge, run the verify steps rather than bypassing it, and tell the lead the hook conflicts with the batch rule.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "queues-runtime-for-batch-gate",
+          "description": "Merges on the size cadence and records the daemon real-client run as queued for the feature-batch gate."
+        },
+        {
+          "type": "negative",
+          "name": "no-per-pr-park",
+          "description": "Does NOT park the PR waiting on a per-PR real-client run, and does NOT bypass a live repo hook (no non-admin or API merge to dodge daemon-gate-precheck)."
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "name": "rate-limited-bugbot-after-inner-loop-not-awaited",
+      "prompt": "The inner loop is done and the routed review is clean at headRefOid with CI green. You summoned Bugbot on this daemon diff, but Bugbot hasn't reported and replied that it is rate limited. An hour after merge, Bugbot posts a real HIGH finding. What do you do at each point?",
+      "expected_output": "Before merge: don't wait. Bots run after the inner loop and are advisory; record Bugbot as unavailable in the PR body and merge on the routed review. After merge: the real HIGH finding still gets fixed, in a NEW PR (canon #9), not another commit on the merged branch.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "post-merge-finding-new-pr",
+          "description": "Fixes the real post-merge bot finding in a new PR and answers the finding."
+        },
+        {
+          "type": "negative",
+          "name": "no-rate-limit-wait",
+          "description": "Does NOT wait, sleep, or schedule a wake for the rate-limited bot before merging."
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "name": "batch-done-runs-heavy-gates-before-done-claim",
+      "prompt": "The last PR of your feature batch just merged. Earlier PRs in the batch changed a dashboard and an MCP server. release-gate printed MERGED_UNRELEASED after each earlier merge. Can you tell orc the feature is done?",
+      "expected_output": "Not yet. Run the feature-batch gate on the batch head first: heavy/e2e suites, the real-client MCP session, visual self-QA of the dashboard with screenshots, then release/install and scripts/ci/release-gate.mjs until CLEAN, then the live probe. Only then claim done (canon #4: done = installed, at the batch). The earlier mid-batch MERGED_UNRELEASED results were expected, not stops.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "runs-batch-gate-then-claims",
+          "description": "Runs heavy/e2e, real-client, visual QA and the release gate to CLEAN before the done claim."
+        },
+        {
+          "type": "negative",
+          "name": "no-done-on-merge",
+          "description": "Does NOT claim done on merge alone, and does NOT treat the mid-batch MERGED_UNRELEASED results as stops."
         }
       ]
     },
