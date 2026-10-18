@@ -312,7 +312,7 @@
       "id": 42,
       "name": "t3-lane-terminal-settle-now",
       "prompt": "You are a lead in a T3 thread. A delegate_task child is result_available; you verified its PR and it merged. The plan has two more phases still running. What do you do with this child?",
-      "expected_output": "Settles it now rather than at plan close: concludes the child with no new sends, task_cancel its taskId so queued runs stop, unwatch_pull_request its PR, overwrites STATUS.md and appends one collab line. The next PR gets a fresh implementer.",
+      "expected_output": "Settles it now rather than at plan close: concludes the child with no new sends, task_cancel its taskId so queued runs stop, unwatch_pull_request its PR, overwrites STATUS.md and appends no second collab line when the worker's line already landed. The next PR gets a fresh implementer.",
       "assertions": [
         {"name": "t3-lane-terminal-settle-now-1", "description": "Calls task_cancel on the child's taskId and unwatch_pull_request on its PR at the lane's terminal state."},
         {"name": "t3-lane-terminal-settle-now-negative", "description": "Does not leave the child idle until the plan closes and does not send it the next phase."}

@@ -162,6 +162,8 @@ Every Codex dispatch passes `-E` / `effort:` explicitly with the phase's reason.
 
 If step 2 identified any round with 2+ phases, create `collab.md` at the plan root using the **full template** from the [collab protocol](collab.md).
 
+Create `STATUS.md` next to it with the Write tool from the [STATUS.md template](collab.md#statusmd-template): one Task Board row per phase (owner = assigned agent, status = `pending`) and one Agent state row per agent (status = `idle`). The collab's `## Task Board` stays a one-line pointer to this file; never copy the tables into `collab.md`.
+
 **Mandatory sections to fill at scaffold time (all tiers):**
 1. **Header** — one-line purpose + wake rule, never a polling cadence (T3: `delegate_task` completion notification and the parent's `watch_pull_request`; cmux adapter: addressed watch per `/collab-monitor`)
 2. **Goal** — copy from plan description
@@ -191,7 +193,7 @@ If step 2 identified any round with 2+ phases, create `collab.md` at the plan ro
 **Validation checklist (after creating collab.md):**
 - [ ] All always-required sections present: Goal, Agents, Task Board, Update Gates, Decisions, Messages
 - [ ] Agents table has one row per parallel agent (no Status column)
-- [ ] STATUS.md Agent state has one row per agent with status = `idle`
+- [ ] `STATUS.md` exists next to collab.md (from the template); its Agent state has one row per agent with status = `idle`
 - [ ] STATUS.md Task Board has one row per phase with owner assigned
 - [ ] Update Gates has the full checkpoint table (not just a section header)
 - [ ] **Standard+:** Orchestrator, References, Key Constraints, Shared Context present
@@ -274,11 +276,12 @@ cd $HOME/Gits/brainlayer && claude -w -c --dangerously-skip-permissions --mcp-co
 You are [agentName] working on [plan name].
 
 Coordination file: <plan-dir>/collab.md — read it now, update it at every checkpoint.
+Board state: <plan-dir>/STATUS.md — read it for phases, owners and status; only the lead writes it.
 Your phases: Phase N ([name]), Phase M ([name]).
 Your phase docs: <plan-dir>/phase-N-name/README.md
 
 Rules:
-1. Read collab.md FIRST. You post as <lead>-w<N>.
+1. Read collab.md FIRST, then STATUS.md for board state. You post as <lead>-w<N>.
 2. Run pre-flight checks (tests, build), then append one status line: `learning`, with the pre-flight count in it.
 3. Append one status line when you start each phase (`working`).
 4. One line per status change, appended with cat >> … <<'EOF'. Commits get no line; never edit STATUS.md (the lead owns it).

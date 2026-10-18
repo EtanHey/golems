@@ -35,7 +35,7 @@ HERE is orc's fleet collab for a lead's progress; a plan's `collab.md` follows t
    EOF
    ```
    A status change is a move between the status values below, a PR opened or merged, or a blocker. A commit, a test run or a step inside a phase is not one and gets no line. Canon #7's "checkpoint before commits" is a check that your status is current; append only when it changed.
-3. **Progress never goes into orc's T3 thread** or the lead's thread as a message. A T3 child's final message is its report; the `delegate_task` completion wakes the lead, which overwrites STATUS.md and appends one line.
+3. **Progress never goes into orc's T3 thread** or the lead's thread as a message. A T3 child's final message is its report; the `delegate_task` completion wakes the lead, which overwrites STATUS.md only: the worker's own line already recorded the change, so the lead appends no second line. It appends one only when no line for that change landed (the child ended without writing it).
 4. **Wake words only for a wake:** `@orc`, `### <lead> → orc`, or a BLOCKED/DONE line, and only for blocked, a lane done, or an Etan decision. Inside a plan, the `### @<agent> → @<listen-name> — … done|blocked` headings below are the same wake for the lead. A progress line carries no `@` tag.
 5. **`@etan`** is for a decision only Etan can make. Routing, scope and model questions go to the lead, never Etan (`/agent-routing` § Goal Contract).
 6. **Names:** a lead's workers post as `<lead>-w<N>` (`skill-lead-w2`), numbered in dispatch order.
@@ -83,21 +83,7 @@ Status values: `idle` | `ready` | `learning` | `working` | `blocked:reason` | `d
 
 ## Task Board
 
-Lives in `STATUS.md` next to this file, overwritten in place by the lead (§ Status and wakes):
-
-| Phase/Task | Owner | Status | PR |
-|------------|-------|--------|----|
-| Phase 1: Description | lead-w1 | pending | — |
-| Phase 2: Description | lead-w2 | pending | — |
-
-STATUS.md also holds agent state, one row per agent (the Agents table above has no Status column):
-
-| Agent | Status |
-|-------|--------|
-| lead-w1 | idle |
-| lead-w2 | idle |
-
-STATUS.md is the SINGLE source of truth for progress. Messages hold one line per status change.
+Board state (phases, owners, agent status) lives in `STATUS.md` next to this file; read it there. The lead overwrites it in place (template: [STATUS.md template](#statusmd-template)).
 
 ## Key Constraints
 
@@ -153,6 +139,34 @@ Orchestrator announces: `**ADVANCING TO ROUND N.** [per-agent directives]`
 
 - [lead-w1 2026-02-25T14:00] Pre-flight: 42 tests green. **learning → working** on Phase 1.
 ```
+
+## STATUS.md template
+
+Create `STATUS.md` next to `collab.md` at scaffold time from this template. One writer, the lead, overwrites the whole file in place on every status change; it is current state, never a history.
+
+```markdown
+# [Project Name] Status
+
+> Overwritten in place by the lead. History lives in collab.md Messages (one line per status change).
+
+## Task Board
+
+| Phase/Task | Owner | Status | PR |
+|------------|-------|--------|----|
+| Phase 1: Description | lead-w1 | pending | — |
+| Phase 2: Description | lead-w2 | pending | — |
+
+## Agent state
+
+One row per agent (the collab Agents table has no Status column):
+
+| Agent | Status |
+|-------|--------|
+| lead-w1 | idle |
+| lead-w2 | idle |
+```
+
+STATUS.md is the SINGLE source of truth for progress. Messages hold one line per status change.
 
 ---
 
@@ -210,6 +224,7 @@ requested artifact before advancing.
 Every agent's kickoff prompt MUST include:
 ```
 Coordination file: <path>/collab.md — read it now, update it at every checkpoint.
+Board state: <path>/STATUS.md — read it for phases, owners and status; only the lead writes it.
 ```
 
 ### 6. Claim names on entry

@@ -140,7 +140,7 @@ def test_cleanup_receipt_documents_an_executable_retirement_path_for_both_harnes
         "git status --porcelain",
         "git ls-remote origin <branch>",
         "git rev-parse HEAD",
-        "git -C <main-checkout> worktree remove <own-worktree-path>",
+        'git -C "$MAIN" worktree remove "$WT"',
         "never `--force`",
         "T3 child",
         "LAST tool call",
@@ -211,3 +211,122 @@ def test_evals_cover_status_questions_settle_and_worktree_cleanup():
     for group in (evals(LARGE_PLAN), evals(AGENT_ROUTING)):
         ids = [e["id"] for e in group]
         assert len(ids) == len(set(ids)), ids
+
+
+# Review round 2 (L panel) on #801: the retirement recipe is executed, not just grepped.
+
+import os
+import re
+import subprocess
+
+RECIPE_HEADING = "**How (retirement path, implementer-owned, both harnesses):**"
+
+
+def retirement_recipe():
+    text = section(read(PR_LOOP / "references/merge-and-verification.md"), "### Cleanup Receipt")
+    how = text[text.index(RECIPE_HEADING):]
+    match = re.search(r"```bash\n(.*?)\n\s*```", how, re.S)
+    assert match, "the Cleanup Receipt How path carries one copy-pasteable bash block"
+    return "\n".join(line.strip() for line in match.group(1).splitlines())
+
+
+GIT_ENV = {
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
+    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com",
+}
+
+
+def git(cwd, *args):
+    env = {**os.environ, **GIT_ENV}
+    return subprocess.run(["git", "-C", str(cwd), *args], check=True, env=env,
+                          capture_output=True, text=True).stdout
+
+
+def lane(tmp_path):
+    """A main checkout with a bare origin and a pushed, clean linked worktree."""
+    remote, main, wt = tmp_path / "origin.git", tmp_path / "main", tmp_path / "wt" / "lane"
+    git(tmp_path, "init", "-q", "--bare", str(remote))
+    git(tmp_path, "init", "-q", "-b", "master", str(main))
+    (main / ".gitignore").write_text("docs.local/\nnode_modules/\n")
+    git(main, "add", ".gitignore")
+    git(main, "commit", "-q", "-m", "init")
+    git(main, "remote", "add", "origin", str(remote))
+    git(main, "push", "-q", "origin", "master")
+    git(main, "worktree", "add", "-q", "-b", "lane", str(wt))
+    (wt / "f.txt").write_text("work\n")
+    git(wt, "add", "f.txt")
+    git(wt, "commit", "-q", "-m", "work")
+    git(wt, "push", "-q", "origin", "lane")
+    return main, wt
+
+
+def retire(wt):
+    env = {**os.environ, **GIT_ENV}
+    return subprocess.run(["bash", "-c", retirement_recipe()], cwd=wt, env=env,
+                          capture_output=True, text=True)
+
+
+def test_recipe_removes_a_pushed_clean_worktree(tmp_path):
+    main, wt = lane(tmp_path)
+    out = retire(wt)
+    assert out.returncode == 0, out.stderr
+    assert not wt.exists()
+    assert f"removed: {wt}" in out.stdout
+    assert str(wt) not in git(main, "worktree", "list")
+
+
+def test_recipe_keeps_an_unpushed_commit(tmp_path):
+    _, wt = lane(tmp_path)
+    (wt / "g.txt").write_text("local only\n")
+    git(wt, "add", "g.txt")
+    git(wt, "commit", "-q", "-m", "unpushed")
+    out = retire(wt)
+    assert wt.exists() and "kept because" in out.stdout and "removed" not in out.stdout
+
+
+def test_recipe_keeps_ignored_docs_local(tmp_path):
+    _, wt = lane(tmp_path)
+    (wt / "docs.local").mkdir()
+    (wt / "docs.local" / "report.md").write_text("unarchived\n")
+    out = retire(wt)
+    assert (wt / "docs.local" / "report.md").exists()
+    assert "kept because docs.local unarchived" in out.stdout
+
+
+def test_recipe_removes_when_only_regenerable_caches_are_ignored(tmp_path):
+    _, wt = lane(tmp_path)
+    (wt / "node_modules" / "pkg").mkdir(parents=True)
+    (wt / "node_modules" / "pkg" / "index.js").write_text("cache\n")
+    out = retire(wt)
+    assert out.returncode == 0, out.stderr
+    assert not wt.exists() and f"removed: {wt}" in out.stdout
+
+
+def test_recipe_pins_main_discovery_and_ls_remote_sha():
+    recipe = retirement_recipe()
+    assert 'MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")' in recipe
+    assert "| cut -f1" in recipe and "git rev-parse HEAD" in recipe
+    assert "--porcelain --ignored" in recipe
+    assert "--force" not in recipe
+
+
+def test_t3_completion_lead_overwrites_status_without_a_second_line():
+    text = read(LARGE_PLAN / "workflows/collab.md")
+    assert "wakes the lead, which overwrites STATUS.md and appends one line" not in text
+    status = section(text, "## Status and wakes")
+    assert "appends no second line" in status
+
+
+def test_collab_template_task_board_is_a_pointer_and_status_md_has_its_own_template():
+    collab = read(LARGE_PLAN / "workflows/collab.md")
+    template = collab[collab.index("## Collab File Structure (MANDATORY)"):collab.index("## Scaffolding a Collab")]
+    board = template[template.index("## Task Board"):template.index("## Key Constraints")]
+    assert "|" not in board, "the collab template's Task Board is a one-line pointer, not a table"
+    status_tpl = collab[collab.index("## STATUS.md template"):collab.index("## Scaffolding a Collab")]
+    assert "| Phase/Task | Owner | Status | PR |" in status_tpl and "| Agent | Status |" in status_tpl
+    scaffold = read(LARGE_PLAN / "workflows/scaffold.md")
+    assert "Create `STATUS.md`" in scaffold and "collab.md#statusmd-template" in scaffold
+    kickoff = _rules_block(scaffold, "Rules:\n1.", "Start now.")
+    assert "STATUS.md" in kickoff and "board state" in kickoff

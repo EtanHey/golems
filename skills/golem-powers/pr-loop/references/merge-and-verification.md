@@ -243,17 +243,40 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
   unarchived `docs.local/` still does. A worker handing off an unmerged PR has
   a pushed branch, so it removes the tree too:
   `worktree: <path> removed (branch <name> pushed at <sha>)`.
-- **How (retirement path, implementer-owned, both harnesses):**
-  1. **Preserve first:** `git status --porcelain` is empty AND
-     `git ls-remote origin <branch>` equals `git rev-parse HEAD` (artifact pushed).
-     If either fails, do not remove: the receipt says `kept because <reason>`.
-  2. **T3 child:** as its LAST tool call, run
-     `git -C <main-checkout> worktree remove <own-worktree-path>` (never `--force`;
-     `-C` runs it from the main checkout, not from inside the tree). Report
-     `removed: <path>` only if the command exited 0. Review-fix rounds get a fresh
-     `delegate_task` worktree from the pushed branch, so nothing needs the old tree.
-  3. **cmux worker:** the same preserve check, then
-     `git -C <main-checkout> worktree remove <own-worktree-path>` BEFORE writing DONE;
+- **How (retirement path, implementer-owned, both harnesses):** run this from
+  inside your own worktree, unchanged; it prints the receipt's worktree line.
+  ```bash
+  WT=$(git rev-parse --show-toplevel)
+  BRANCH=$(git branch --show-current)
+  MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "kept because uncommitted or untracked changes"
+  elif [ -z "$BRANCH" ] || [ "$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)" != "$(git rev-parse HEAD)" ]; then
+    echo "kept because HEAD is not pushed to origin/$BRANCH"
+  elif git status --porcelain --ignored | grep -Eq '^!! (.*/)?docs\.local/'; then
+    echo "kept because docs.local unarchived"
+  elif git -C "$MAIN" worktree remove "$WT"; then
+    echo "removed: $WT"
+  else
+    echo "kept because git worktree remove exited non-zero"
+  fi
+  ```
+  1. **Preserve first:** `git status --porcelain` is empty, the remote branch SHA
+     (`git ls-remote origin refs/heads/<branch> | cut -f1`) equals `git rev-parse HEAD`
+     (artifact pushed), and `git status --porcelain --ignored` lists nothing under
+     `docs.local/`. `git worktree remove` deletes ignored files too, so an unarchived
+     `docs.local/` keeps the tree until it is archived or the lead decides. Any other
+     ignored path is a regenerable cache (`node_modules/`, `__pycache__/`, build dirs)
+     and goes with the tree without asking. If a check fails, the receipt says
+     `kept because <reason>`.
+  2. **Main discovery:** `MAIN` is the main checkout, from the shared git dir
+     (`git rev-parse --path-format=absolute --git-common-dir` is `<main>/.git` for T3
+     `.t3/worktrees/...` and cmux `<main>/.worktrees/...` alike). `git -C "$MAIN"` runs
+     the removal from there, not from inside the tree; never `--force`.
+  3. **T3 child:** run the block as its LAST tool call. Report `removed: <path>` only
+     if the command exited 0. Review-fix rounds get a fresh `delegate_task` worktree
+     from the pushed branch, so nothing needs the old tree.
+  4. **cmux worker:** the same block BEFORE writing DONE;
      the lead closes the pane afterwards (pane close no longer precedes removal).
   `worktree-gc.sh` is not the implementer's path: it answers `KEEP-out-of-scope` for
   `.t3/worktrees/...` and `KEEP-live` while the worker's pane runs. It stays the lead's
