@@ -14,10 +14,10 @@ gh pr view <N> --json reviewDecision,comments
 ```
 
 **Review Wait Timer (ENFORCED):**
-1. After invoking reviewers → wait minimum **120 seconds** before first check
-2. If no reviews after 120s → check again at **5 minutes**
-3. If still no reviews at 5 min → re-invoke reviewers explicitly
-4. Fifteen minutes with no response does not waive the review gate: a lead may merge only after at
+1. After invoking reviewers → wait per the [waiting policy](#waiting-policy-no-polling-turns): a T3
+   watch wake, or one bounded check no sooner than **120 seconds** after invoking. Never a timed polling turn.
+2. If that check shows no review → re-invoke reviewers explicitly once, then end the turn on the watch
+3. Fifteen minutes with no response does not waive the review gate: a lead may merge only after at
    least one review and all required comment/review conditions pass; a worker hands off unmerged.
 
 CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
@@ -133,6 +133,53 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 
 ### For public repos (bot reviewers configured):
 
+Bot reviewers post on the PR. Wait for them, and for CI, with the waiting policy below.
+
+### Waiting policy (no polling turns)
+
+The rules this section lands, verbatim (Etan 2026-10-18, via orc collab):
+
+> **No polling turns.** No collab-monitor wakes in Codex, and no "watch #410" loops. Use T3 completion notifications or a single bounded check. Mechanical polling or rebases go to gpt-6-luna.
+
+> **Watching:** anything that must sit and watch (a PR, CI, a file) uses a cheap **gpt-6-luna sub-agent**, never a big-context Sol or lead session.
+
+> Never wait on rate limits.
+
+Why: the weekly Codex quota drained in under 24 h. Long-lived sessions re-sent ~1.5M tokens per turn,
+and collab-monitor polling wakes alone cost 201M tokens across 729 turns (orc forensics, 2026-10-18 22:20).
+Every wake is a full-context model turn. A watcher process waiting on GitHub is not.
+
+Wait in this order. Take the first option that fits:
+
+1. **T3 seat: parent-owned PR watch.** Once the PR exists, call `link_pull_request` with its URL, then
+   `watch_pull_request`, and end the turn. T3 wakes you when checks finish, someone else comments, or
+   the branch conflicts. The watch belongs to the seat that owns this PR loop. A delegated child never
+   owns its parent's PR watch. Call `unwatch_pull_request` at a terminal state (merged, handed off,
+   closed) before handing the thread back.
+2. **Single bounded check.** When you need the state now (after a wake, or right before a merge
+   decision), make one read: `gh pr checks <N>` or
+   `gh pr view <N> --json state,mergeStateStatus,reviewDecision,headRefOid`. Act on it or end the turn.
+   Never a second read inside a sleep loop.
+3. **Something must sit and watch outside T3.** Use one cheap watcher, never a big-context lead
+   session looping. Either:
+   - a watcher process, `pr-watch <owner/repo> <N> --head <sha> --deadline 2h`, whose exit wakes you.
+     Claude's native `Monitor` runs a command and spends no model turns while it waits. Details below.
+   - one bounded `codex.subagent.mechanical` child (resolve it with
+     `node scripts/model-roles.mjs codex.subagent.mechanical --field model`). Give it a deadline and
+     the pinned head. It reports once, at a terminal state, and is settled after. It never merges.
+
+   One watcher per PR head, whichever you pick.
+4. **Banned:**
+   - `ScheduleWakeup`, `CronCreate` or `/loop` polling turns for CI or reviews.
+   - Codex collab-monitor wakes: a Codex seat never arms `/collab-monitor` or its packaged fallback.
+   - `sleep N; gh pr view` loops and "watch #N" loops in a big-context lead session.
+   - A duplicate watcher on the same PR: a T3 watch plus a `pr-watch`, or two `pr-watch` processes.
+   - Waiting on bot rate limits. Review bots run after the inner loop and are advisory. Wait on a bot
+     only when it flags something important. A rate-limited or silent bot is recorded as unavailable
+     in the PR body, and the loop proceeds on the routed review.
+
+#### Watcher process: pr-watch
+
 Arm exactly one GitHub watch:
 `Monitor(command="pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`.
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
@@ -146,14 +193,19 @@ Handle every terminal exit: 0 READY: proceed to the exact-head review and author
 30 GH_ERROR: back off and report stderr.
 The 30-minute Monitor expiry precedes the 2h --deadline; re-arm on expiry, since
 re-arming restarts the deadline and the settle window. Cancel the old Monitor with TaskStop
-before re-arming at expiry or after compaction. READY remains a CI fact; read the exact-head review
-before an authorized merge. Never route Codex's output through a cmuxlayer file watch.
+before re-arming at expiry or after compaction. Each re-arm costs one model turn. If the wait will
+need more than one, move it to the T3 watch or a bounded mechanical child instead. READY remains a CI
+fact; read the exact-head review before an authorized merge. Never route Codex's output through a
+cmuxlayer file watch.
 
-For addressed review handoffs, use native `Monitor` when exposed; otherwise use
-`/collab-monitor`'s packaged fallback with an attached consumer. Query slim
-state/activity counts, then fetch full review bodies once when they change.
-Timed one-shot wakes remain ScheduleWakeup/CronCreate per
-`collab-monitor/references/cron-payloads.md`.
+#### cmux adapter (fallback: cmux fleets without T3)
+
+Still the right tool where a cmux fleet has no T3 thread to wake. For addressed review handoffs, a
+seat with native `Monitor` uses it; otherwise it uses `/collab-monitor`'s packaged fallback with an
+attached consumer. Codex seats never arm it ("No collab-monitor wakes in Codex"):
+their lead delivers the handoff into the pane. Query slim state/activity counts, then fetch full
+review bodies once when they change. The bans above still apply: no ScheduleWakeup or CronCreate
+polling turns for CI or reviews.
 
 ```bash
 # Fetch after a review handoff or activity-count change

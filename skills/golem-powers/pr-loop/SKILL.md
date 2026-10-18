@@ -37,7 +37,7 @@ Run the loop in this order:
 3. Invoke `/never-fabricate`; add real-client or visual proof when triggered.
 4. Run the bounded local CodeRabbit pre-commit pass when available, then commit with the ratified identity trailer.
 5. Push, create a non-draft PR with a signed body, and apply exactly one `size:*` label.
-6. Apply the target repo's bot policy, invoke allowed PR reviewers, and wait for evidence.
+6. Apply the target repo's bot policy, invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 watch wake, one bounded check, or one cheap watcher, never a polling turn.
 7. Classify every finding; fix real bugs, reply to every CRITICAL/MAJOR/HIGH finding, push, and request re-review.
 8. Confirm required checks and reviews are green on `headRefOid`, then either hand off unmerged or merge.
 9. After an authorized merge, verify the remote merge/content, release/install/live-probe as required, update tracking, and clean up. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).

@@ -12,7 +12,7 @@
 | Commit | `git add <files> && git commit` | No cr review pre-check |
 | Push | `git push -u origin feat/name` | |
 | PR | `gh pr create ...` | If `gh` is installed + authenticated |
-| Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | Manual poll only |
+| Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | One bounded read per wake, never a poll loop |
 | Merge | `gh pr merge <N> --merge --delete-branch` | |
 
 ## Critical Gaps
@@ -21,22 +21,30 @@
 |-----|--------|-----------|
 | No `cr review` pre-commit check | Commits without CodeRabbit pre-screening | Run `cr review --plain` manually if cr installed |
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Use routed review handoffs |
-| No native `Monitor` | Needs an attached watch consumer | `/collab-monitor` packaged fallback for handoffs; `pr-watch` with a pinned head and exit code for CI |
+| No native `Monitor` | Needs an attached watch consumer | T3 `watch_pull_request` first; else `pr-watch` with a pinned head and exit code for CI; `/collab-monitor` only under the cmux adapter |
 | No BrainLayer MCP | Can't brain_store post-merge | Orchestrate from Claude session |
 | No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (§ 8a.0). Where it genuinely applies, comment `@cursor @bugbot review` on GitHub by hand |
 
 ## CI and Review Waiting
+
+Wait per the [waiting policy](../references/review-loop.md#waiting-policy-no-polling-turns), in order:
+on a T3 seat, `link_pull_request` then `watch_pull_request` and end the turn (`unwatch_pull_request`
+at a terminal state); when state is needed now, one bounded `gh pr checks <N>` read; only when
+something must sit and watch outside T3, the single watcher process below.
 
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
 
 Run exactly one `pr-watch <owner/repo> <N> --head <sha> --deadline 2h`
 for GitHub CI and read its exit code. pr-watch never merges; an empty rollup is
 never READY. Use the [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits)
-and [shared arming rules](../references/review-loop.md#for-public-repos-bot-reviewers-configured).
-For addressed review handoffs, use the `/collab-monitor` packaged fallback with an attached consumer;
-re-arm at its 30-minute expiry and after compaction. Query slim state/activity
-counts and fetch full review bodies only when those change. Timed one-shot
-wakes follow `collab-monitor/references/cron-payloads.md` and the current schema.
+and [shared arming rules](../references/review-loop.md#watcher-process-pr-watch).
+No `ScheduleWakeup`, `CronCreate` or `/loop` polling turns for CI or reviews, and never wait on a
+rate-limited bot.
+
+In a cmux fleet without T3, addressed review handoffs follow the
+[cmux adapter](../references/review-loop.md#cmux-adapter-fallback-cmux-fleets-without-t3): the
+`/collab-monitor` packaged fallback with an attached consumer, re-armed at its 30-minute expiry and
+after compaction. Query slim state/activity counts and fetch full review bodies only when those change.
 
 ## Cursor's Unique Advantage in the Loop
 

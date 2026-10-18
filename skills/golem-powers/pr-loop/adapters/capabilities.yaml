@@ -8,7 +8,7 @@ adapters:
     git_ops: true
     cr_review_precommit: true        # cr review --plain before commit
     coderabbit_subagent: true        # Agent(subagent_type="coderabbit:code-reviewer")
-    review_polling: native_monitor   # /collab-monitor; timeout_ms 1800000, TaskStop/re-arm
+    review_polling: native_monitor   # T3 watch_pull_request first; else one Monitor on pr-watch, timeout_ms 1800000, TaskStop/re-arm
     brainlayer_postmerge: true       # brain_store after merge (mandatory)
     worktree_isolation: native       # claude --worktree feat/name
     cursor_bugbot_trigger: true      # gh pr comment "@cursor @bugbot review"
@@ -21,7 +21,7 @@ adapters:
     git_ops: true
     cr_review_precommit: conditional # Only if cr CLI installed
     coderabbit_subagent: false       # No Agent() tool
-    review_polling: attached_fallback # /collab-monitor for handoffs; arm one pinned-head CI watch:
+    review_polling: t3_watch         # T3 watch/completion wakes; no collab-monitor wakes; else one pinned-head CI watch:
     # Use pr-watch on PATH (installed in ~/.golems/bin), or `scripts/pr-watch` from a golems checkout.
     # pr-watch <owner/repo> <N> --head <sha> --deadline 2h
     # pr-watch never merges; an empty rollup is never READY.
@@ -47,7 +47,7 @@ routing_policy: "/agent-routing § Routing rules (SSOT)"
 gaps:
   codex_missing:
     - brainlayer_postmerge           # Must be done by Claude session after Codex merges
-    - coderabbit_subagent            # Use routed handoffs and /collab-monitor fallback
+    - coderabbit_subagent            # Use routed handoffs; they arrive as T3 completion wakes
     - native_review_tooling          # Trigger bots via gh pr comment; no native reviewer tool
   cursor_missing:
     - live_model_provenance          # No verified per-turn model source; sign with model "unknown"
