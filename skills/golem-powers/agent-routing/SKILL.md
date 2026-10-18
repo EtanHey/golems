@@ -79,10 +79,10 @@ The launcher refuses a worker spawn without an explicit effort. Codex prompted/w
 ## Read Map
 
 - Choosing a Codex model or effort, comparing model cost/context, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md). Use the role config for current defaults and candidate gates; that reference supplies runtime verification and detailed procedures pending PR 2b.
-- Launching, reusing, monitoring, recovering, or closing a worker lane? Read [references/delegation-operations.md](references/delegation-operations.md).
+- Launching, reusing, monitoring, recovering, or closing a cmux worker lane? Read [references/delegation-operations.md](references/delegation-operations.md). Its monitor-loop and isolation mechanics are the cmux adapter.
 - Creating or auditing a collab, diagnosing a routing failure, or copying a routing template? Read [references/verification-and-incidents.md](references/verification-and-incidents.md).
 - Fanning out independent units, or asked about Cursor `/multitask`? Read [references/fan-out-engines.md](references/fan-out-engines.md) (recipes, gotchas, GUI prompt contract, dispatch hygiene).
-- Dispatching child work from a T3 thread (`delegate_task`, review rounds, pending questions, PR watch)? Read [references/t3-native.md](references/t3-native.md).
+- Dispatching child work from a T3 thread (`delegate_task`, review rounds, pending questions, PR watch)? Read [references/t3-native.md](references/t3-native.md). It owns the T3 child lifecycle (dispatch, wait, isolation, verify, settle), not delegation-operations.md: for a T3 child skip that file's monitor loop and no-worktree route.
 
 Read every reference triggered by the mission before dispatch. The live reference owns its detailed procedure; Routing rules (SSOT) and the role config take precedence over conflicting routing or model-selection recipes.
 

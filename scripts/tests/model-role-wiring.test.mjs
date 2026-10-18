@@ -186,9 +186,30 @@ test('agent-routing has a first-class T3-native child lifecycle and keeps cmux a
   ]) assert.ok(ref.includes(rule), rule);
   assert.doesNotMatch(ref, /at most 4 Codex workers|No Codex session lives past one PR/, 'point to Lead Topology, do not restate it');
 
+  // Review r1 MAJOR: task completion (status/workState/summary) is separate from later child-thread runs.
+  assert.doesNotMatch(ref, /`hasPendingChildRuns` means the child is not finished/);
+  const onWake = ref.split('## 4.')[1].split('\n## ')[0];
+  for (const rule of ['`workState`', '`result_available`', '`waiting_for_children`', '`summary`', 'stable', '`hasPendingChildRuns`', 'does not reopen', '`task_cancel`']) assert.ok(onWake.includes(rule), rule);
+  assert.match(onWake, /`hasPendingChildRuns`[^\n]*(?:\n[^\n]+)*not a reason to (?:delay|wait)/);
+
+  // Review r1 BLOCKING: delegation-operations monitor loop + no-worktree are the cmux adapter; T3 readers go to t3-native.md.
+  const readMap = skill.split('## Read Map')[1].split('\n## ')[0];
+  const opsLine = readMap.split('\n').find(l => l.includes('references/delegation-operations.md'));
+  assert.match(opsLine, /cmux/);
+  const t3Line = readMap.split('\n').find(l => l.includes('references/t3-native.md'));
+  assert.match(t3Line, /owns the T3 (?:child )?lifecycle/);
+  assert.match(t3Line, /not delegation-operations\.md|instead of .*delegation-operations\.md/);
+  const ops = read('skills/golem-powers/agent-routing/references/delegation-operations.md');
+  assert.match(ops, /\*\*Adapter scope\.\*\*[^\n]*cmux[^\n]*references\/t3-native\.md|\*\*Adapter scope\.\*\*[\s\S]{0,400}t3-native\.md/);
+  const monitorLine = ops.split('\n').find(l => l.includes('own monitor loop'));
+  assert.match(monitorLine, /cmux/);
+  const seqRow = ops.split('\n').find(l => l.startsWith('| Sequential specialist'));
+  assert.match(seqRow, /cmux/);
+  assert.match(ops, /\| T3 child[^\n]*`isolation: "worktree"`/);
+
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
   assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
-  for (const [id, name] of [[80, 't3-review-round-new-delegate-task'], [81, 't3-dispatch-worker-lifecycle'], [82, 't3-child-done-verify-before-relay'], [83, 't3-new-thread-vs-subagent']]) {
+  for (const [id, name] of [[80, 't3-review-round-new-delegate-task'], [81, 't3-dispatch-worker-lifecycle'], [82, 't3-child-done-verify-before-relay'], [83, 't3-new-thread-vs-subagent'], [84, 't3-completed-with-pending-child-runs']]) {
     const e = suite.evals.find(e => e.id === id);
     assert.equal(e?.name, name);
     assert.ok(e.prompt && e.expected_output, name);

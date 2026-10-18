@@ -1502,6 +1502,18 @@
         {"text": "Uses delegate_task for the 'dispatch a subagent' ask.", "type": "behavioral"},
         {"text": "Does not use t3_thread_launch or create_threads for the subagent ask.", "type": "negative"}
       ]
+    },
+    {
+      "id": 84,
+      "name": "t3-completed-with-pending-child-runs",
+      "prompt": "You delegate_task'd a worker to open a PR. It woke you; task_status shows status completed, workState result_available, a summary 'PR_DONE PR: #812 head: abc1234', and hasPendingChildRuns: true. What now?",
+      "expected_output": "The task is complete: status/workState/summary define completion and the summary is stable. Harvest it now: verify PR #812 head/files, then relay the verified values. hasPendingChildRuns is later child-thread activity that does not reopen the task; clean it up with task_cancel on the taskId after harvesting instead of waiting.",
+      "assertions": [
+        {"text": "Treats the task as complete from status/workState/summary and harvests the summary now.", "type": "behavioral"},
+        {"text": "Verifies the PR head/files before relaying.", "type": "behavioral"},
+        {"text": "Handles hasPendingChildRuns as cleanup via task_cancel on the taskId.", "type": "behavioral"},
+        {"text": "Does not wait, poll, or delay harvesting because hasPendingChildRuns is true.", "type": "negative"}
+      ]
     }
   ]
 }

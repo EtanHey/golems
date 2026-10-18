@@ -47,7 +47,14 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
 ## 4. On wake: verify, relay, settle
 
 - Read the report (`task_status` summary). A DONE line is a prompt to verify, not a receipt.
-  `workState: waiting_for_children` or `hasPendingChildRuns` means the child is not finished.
+- Task completion comes from `status`, `workState` and `summary` only. `workState` of `working` or
+  `waiting_for_children` means the task is not finished ("a completed turn with live nested work is
+  not a completed task"). A terminal status with `workState` `result_available` means it is: the
+  `summary` is the final result and "remains stable after publication". Harvest it now.
+- `hasPendingChildRuns` is later activity in the backing child thread, not task state:
+  it "does not reopen the task", even when true after completion. It is not a reason to delay
+  harvesting. Treat it as cleanup: once the summary is verified and relayed, `task_cancel` the
+  `taskId` ("task_cancel stops those turns too"). (Live `task_status` contract, quoted.)
 - Before relaying, verify the artifact: the PR exists and is not a draft, its head SHA matches the
   reported head, and its file list matches the scope (`gh pr view <url> --json
   headRefOid,files,isDraft,labels`). Re-run a cheap claimed check or hand it to a cheap verifier.
