@@ -320,52 +320,69 @@ test('agent-routing has a first-class T3-native child lifecycle and keeps cmux a
   }
 });
 
-function guardCodexModels(suite) {
-  // Codex = gpt-6.1-sol and gpt-6-luna only; Astra only on Etan's own explicit request. Any other
-  // Codex model named in expected_model, expected_output, description, or any assertion field must
-  // be the object of a rejection in its own clause (#802 review r1 MAJORs).
-  const allowed = new Set(['gpt-6.1-sol', 'gpt-6-luna']);
-  const rejects = /\b(reject\w*|refus\w*|ban\w*|remov\w*|never|not|no)\b/i;
-  // Etan must be the speaker of a direct quote that asks for Astra; an "Etan" prefix alone is not a request.
-  const etanAsksForAstra = prompt => {
-    const ask = /^Etan(?:, directly)?:\s*"([^"]*)"/.exec(prompt ?? '');
-    return Boolean(ask && /\b(?:gpt-6-astra|astra)\b/i.test(ask[1]) && !rejects.test(ask[1]));
+// Codex = gpt-6.1-sol and gpt-6-luna only; Astra only on Etan's own explicit request. Every other
+// Codex model mention (gpt-*, Spark, Astra) anywhere in an agent-routing eval must match an exact
+// (eval id, field, sentence) row below, each reviewed with its reason. No natural-language exemptions:
+// a new mention needs a deliberate, reviewable edit to this table (#803 review r1, lead decision).
+const PINNED_CODEX_MODEL_MENTIONS = [
+  [9, 'prompt', 'Also tell me whether GPT-5.4-mini should be the default fast path.', 'user asks about an off-list model; eval checks it is refused'],
+  [9, 'expected_output', 'Spark is rejected outright, even as an explicit `-m gpt-5.3-codex-spark` override: it is not on the Codex model list (gpt-6.1-sol and gpt-6-luna only, Etan 2026-10-18).', 'rejects Spark'],
+  [9, 'expected_output', 'GPT-5.4-mini must be rejected as the routine default for Codex work.', 'rejects GPT-5.4-mini'],
+  [9, 'assertions[2].text', 'If Spark comes up, rejects it even as an explicit `-m gpt-5.3-codex-spark` override, because it is not on the Codex model list', 'rejects Spark'],
+  [9, 'assertions[3].text', 'Rejects GPT-5.4-mini as the routine default path for Codex work', 'rejects GPT-5.4-mini'],
+  [9, 'assertions[5].text', 'Does NOT route either job to Spark or any model off the Codex model list', 'negative assertion against Spark'],
+  [14, 'prompt', 'Internal ephemeral subagent spawned from inside an agent session: `spawn_agent({"agent_type":"worker", "model":"gpt-5.3-codex-spark", "message":"small implementation"})`\n\nWhich one is allowed, and what should each be rewritten to?', 'user shows a Spark spawn; eval checks it is rejected'],
+  [14, 'expected_output', 'Should also reject B: being an internal ephemeral subagent does not unlock Spark, which is not on the Codex model list (gpt-6.1-sol and gpt-6-luna only, Etan 2026-10-18).', 'rejects Spark'],
+  [14, 'assertions[4].text', "Rejects B's `gpt-5.3-codex-spark` model too, and rewrites B to a role resolved through `node scripts/model-roles.mjs` (codex.implement, or codex.subagent.mechanical under its gated exceptions)", 'rejects Spark'],
+  [14, 'assertions[5].text', 'Does NOT allow Spark (or any model off the Codex model list) for the internal subagent, even by explicit model selection', 'negative assertion against Spark'],
+  [91, 'name', 'refuse-gpt-5-6-pin', 'eval name for the gpt-5.6 refusal'],
+  [91, 'prompt', "Use gpt-5.6-sol for this Codex worker, it's cheaper.", 'user asks for a forbidden pin; eval checks it is refused'],
+  [91, 'expected_output', 'Refuse the pin: Codex is gpt-6.1-sol and gpt-6-luna only, never gpt-5.6-* (Etan 2026-10-18).', 'refuses gpt-5.6-*'],
+  [91, 'expected_output', 'Dispatch with codex.implement resolved through node scripts/model-roles.mjs, and remove any gpt-5.6-* pin you own.', 'removes gpt-5.6-* pins'],
+  [91, 'assertions[0].text', 'Resolves the worker through codex.implement (or a gated codex.subagent.mechanical use), not a gpt-5.6-* model.', 'rejects gpt-5.6-*'],
+  [91, 'assertions[1].text', 'Does NOT dispatch with any gpt-5.6-* model, even when a T3 catalog lists it or cost is the reason.', 'negative assertion against gpt-5.6-*'],
+  [92, 'name', 'astra-only-on-etan-ask', 'eval name for the Astra gate'],
+  [92, 'prompt', 'Let\'s get astra to look at it." Etan has not asked for Astra.', 'a lead suggests Astra; eval checks it is refused'],
+  [92, 'expected_output', "No Astra: gpt-6-astra runs only on Etan's own explicit request, and here only a lead suggested it.", 'refuses Astra without Etan\'s ask'],
+  [92, 'assertions[0].text', 'Keeps the review on the SSOT-routed roles, or asks Etan, without dispatching Astra.', 'refuses Astra'],
+  [92, 'assertions[1].text', "Does NOT dispatch gpt-6-astra without Etan's own explicit request.", 'negative assertion against Astra'],
+  [97, 'name', 'astra-on-etan-explicit-ask', 'eval name for the Astra exception'],
+  [97, 'prompt', 'Etan, directly: "Use gpt-6-astra for this review of the race in the scheduler.', 'Etan\'s own explicit request for Astra (reviewed wording)'],
+  [97, 'expected_output', 'Allowed: Etan himself explicitly asked for Astra, the one exception in the Codex model list.', 'Astra allowed only because of the pinned prompt'],
+  [97, 'expected_output', 'Dispatch the reviewer on gpt-6-astra via delegate_task (model checked against orchestrator_capabilities) and record that Etan requested it.', 'Astra allowed only because of the pinned prompt'],
+  [97, 'assertions[0].text', 'Dispatches the reviewer on gpt-6-astra because Etan explicitly asked for it, and records that request.', 'Astra allowed only because of the pinned prompt'],
+  [97, 'assertions[1].text', 'Does NOT refuse or substitute another model when Etan himself explicitly requests Astra.', 'Astra allowed only because of the pinned prompt'],
+];
+
+function codexModelMentions(suite) {
+  const strings = (value, path, out) => {
+    if (typeof value === 'string') out.push([path, value]);
+    else if (Array.isArray(value)) value.forEach((v, i) => strings(v, `${path}[${i}]`, out));
+    else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) strings(v, path ? `${path}.${k}` : k, out);
+    return out;
   };
-  // A cue binds only inside its clause: commas, colons, semicolons and conjunctions start a new one.
-  const clauseBreak = /,\s*|:\s+|\s+\b(?:and|but|then|instead|whereas|while|so)\b\s+/i;
-  const passiveReject = /^\S*\s+(?:is|are|must be|should be)\s+(?:\w+\s+)?(?:reject|refus|ban|remov)\w*/i;
-  const isRejected = (clauses, i, index, model) => {
-    const clause = clauses[i];
-    if (rejects.test(clause.slice(0, index))) return true; // "Rejects X", "never X", "Does NOT route to X"
-    if (passiveReject.test(clause.slice(index))) return true; // "X is rejected outright"
-    if (model === 'gpt-6-astra' && /^\S*\s+runs only on Etan's own explicit request\b/.test(clause.slice(index))) return true;
-    if (/^even\b/i.test(clause) && i > 0 && rejects.test(clauses[i - 1])) return true; // "..., even as `-m X`"
-    return /^(?:reject|refus)\w*\s+it\b/i.test(clauses[i + 1] ?? ''); // "If X comes up, rejects it"
-  };
+  const mentions = [];
   for (const e of suite.evals) {
-    const astraAuthorized = etanAsksForAstra(e.prompt);
-    if (e.expected_model !== undefined) {
-      const model = String(e.expected_model).toLowerCase();
-      assert.ok(allowed.has(model) || (model === 'gpt-6-astra' && astraAuthorized), `eval ${e.id} expected_model ${e.expected_model} is not on the Codex model list`);
-    }
-    const texts = [e.expected_output, e.description, ...e.assertions.flatMap(a => [a.text, a.description])];
-    for (const text of texts.filter(t => typeof t === 'string')) {
-      for (const sentence of text.split(/(?<=[.;])\s+/)) {
-        const clauses = sentence.split(clauseBreak);
-        clauses.forEach((clause, i) => {
-          for (const m of clause.matchAll(/\bgpt-[0-9][\w.]*(?:-[a-z]+)*|\bspark\b/gi)) {
-            const model = m[0].toLowerCase().replace(/[.*]+$/, '');
-            if (allowed.has(model)) continue;
-            if (model === 'gpt-6-astra' && astraAuthorized) continue;
-            assert.ok(isRejected(clauses, i, m.index, model), `eval ${e.id} names non-allowed Codex model ${m[0]} outside a rejection of it: ${sentence}`);
-          }
-        });
+    for (const [field, text] of strings(e, '', [])) {
+      for (const sentence of text.split(/(?<=[.;!?])\s+/)) {
+        // Strip exact allowed names, then squash backticks, emphasis and whitespace so split tokens
+        // like `gpt-5.6`-sol or "gpt - 5.6 - sol" still read as a mention.
+        const rest = sentence.replace(/`/g, '').replace(/\bgpt-6\.1-sol(?![\w-]|\.\w)|\bgpt-6-luna(?![\w-]|\.\w)/gi, ' ');
+        if (/gpt|astra|spark/.test(rest.toLowerCase().replace(/[\s*_\\]/g, ''))) mentions.push([e.id, field, sentence]);
       }
     }
   }
+  return mentions;
 }
 
-test('Codex model guard rejects mutated evals (#802 review r1 MAJORs)', () => {
+function guardCodexModels(suite) {
+  const pinned = new Set(PINNED_CODEX_MODEL_MENTIONS.map(([id, field, sentence]) => JSON.stringify([id, field, sentence])));
+  for (const [id, field, sentence] of codexModelMentions(suite)) {
+    assert.ok(pinned.has(JSON.stringify([id, field, sentence])), `eval ${id} ${field} names a non-allowed Codex model in an unpinned sentence: ${sentence}`);
+  }
+}
+
+test('Codex model guard rejects mutated evals (#802 and #803 review r1 MAJORs)', () => {
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
   const mutate = (id, fn) => {
     const copy = structuredClone(suite);
@@ -387,6 +404,9 @@ test('Codex model guard rejects mutated evals (#802 review r1 MAJORs)', () => {
     'negation of waiting before a forbidden route': mutate(25, e => { e.expected_output = 'No need to wait before routing recon to gpt-5.6-sol.'; }),
     'negated rejection of the forbidden model': mutate(25, e => { e.assertions[0].text = 'Does not reject gpt-5.6-sol and routes recon to it.'; }),
     'even-clause after rejecting another model': mutate(25, e => { e.expected_output = 'Rejects Luna, even though recon runs on gpt-5.6-sol.'; }),
+    'model token split by backticks': mutate(25, e => { e.expected_output = 'Routes recon to `gpt-5.6`-`sol` at high.'; }),
+    'model token split by whitespace': mutate(25, e => { e.assertions[0].text = 'Selects gpt - 5.6 - sol at high'; }),
+    'pinned sentence moved to another field': mutate(97, e => { e.description = 'Dispatches the reviewer on gpt-6-astra because Etan explicitly asked for it, and records that request.'; }),
   };
   const accepted = Object.entries(mutations).filter(([, mutated]) => {
     try { guardCodexModels(mutated); return true; } catch (err) { if (err instanceof assert.AssertionError) return false; throw err; }
@@ -398,6 +418,9 @@ test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
   const byId = id => suite.evals.find(e => e.id === id);
   guardCodexModels(suite);
+  // Every pinned row still matches a real mention, so the table cannot keep stale exemptions.
+  const live = new Set(codexModelMentions(suite).map(m => JSON.stringify(m)));
+  for (const [id, field, sentence] of PINNED_CODEX_MODEL_MENTIONS) assert.ok(live.has(JSON.stringify([id, field, sentence])), `stale pin: eval ${id} ${field}: ${sentence}`);
   // Eval 46: UI review is sized; a Codex reviewer only in the L/data/security full panel.
   const e46 = JSON.stringify(byId(46));
   assert.match(e46, /size:\*/);
