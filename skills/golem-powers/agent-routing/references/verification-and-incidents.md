@@ -86,6 +86,6 @@ Rules:
 - Cursor model selection: fleet canon #1.
 - Codex consumes Cursor's distilled findings, not raw data.
 - Visible launch: fleet canon #6; invocation details: `/repogolem`.
-- Reuse managed workers; supersede changed missions with one full file-backed goal.
+- One PR = one fresh implementer; supersede a changed mission within the same PR with one full file-backed goal (`/agent-routing` § Lead Topology #5).
 - Monitor/close lifecycle: fleet canon #7; worker-state detail: [delegation operations](delegation-operations.md#goal-delegation-contract).
 ```

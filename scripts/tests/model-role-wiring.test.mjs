@@ -130,6 +130,37 @@ test('lead topology records model and tier-change reason', () => {
   assert.ok(text.includes("6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall)."));
 });
 
+test('one PR = one fresh implementer replaces lane-wide worker reuse', () => {
+  const skill = read('skills/golem-powers/agent-routing/SKILL.md');
+  const topology = skill.split('## Lead Topology')[1].split('## Goal Contract')[0];
+  const goal = skill.split('## Goal Contract')[1].split('## Cross-Skill Ownership')[0];
+  for (const rule of [
+    '**One PR = one fresh implementer.**',
+    'Dependent stacks are no exception',
+    '"No Codex session lives past one PR, or ~100 turns. After that, start a fresh delegate with a short brief and a compact checkpoint. Never re-inject full plans or logs."',
+    '"reviewers fresh per implementer (same PR may reuse them)"',
+    '"at most 4 Codex workers running at once per lead"',
+    '"it re-uses workers instead of settling and opening new ones, like that ship 2246 chat that had 25 prs, 24 merged"',
+    '(Etan 2026-10-18, via orc collab)',
+    'settle',
+  ]) assert.ok(topology.includes(rule), rule);
+  assert.doesNotMatch(topology, /follow-ups on its own diff/);
+  assert.doesNotMatch(goal, /continue the same lane/);
+  assert.match(goal, /a new PR gets a fresh implementer/);
+  assert.ok(skill.includes('Keep to ≤2–3 concurrent Claude dispatches, staggered.'));
+  const ops = read('skills/golem-powers/agent-routing/references/delegation-operations.md');
+  assert.doesNotMatch(ops, /Reuse before spawn|do not fork the lane/);
+  assert.match(ops, /\*\*One PR = one fresh implementer\.\*\*/);
+  assert.doesNotMatch(read('skills/golem-powers/agent-routing/references/verification-and-incidents.md'), /Reuse managed workers/);
+  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
+  for (const name of ['fresh-implementer-next-pr-idle-worker', 'same-pr-review-fix-reuses-implementer', 'codex-turn-cap-fresh-delegate', 'codex-concurrency-cap-queue-fifth']) {
+    const e = suite.evals.find(e => e.name === name);
+    assert.ok(e?.prompt && e.expected_output, name);
+    assert.ok(e.assertions.some(a => a.type === 'negative'), name);
+  }
+  assert.doesNotMatch(JSON.stringify(suite.evals.find(e => e.id === 15)), /Reuses the existing `brainlayerCodex` worker unless/);
+});
+
 test('short plans use the same skeleton and multi-PR plans declare invariant tests and chain span', () => {
   const text = read('skills/golem-powers/large-plan/SKILL.md');
   for (const rule of ['ALWAYS use `/large-plan` for planning', 'a few lines', 'same skeleton', 'Each slice of a multi-PR plan declares its invariant test', 'chain span as its convergence metric']) assert.ok(text.includes(rule), rule);

@@ -173,7 +173,12 @@ Domain leads are orchestrators one tier below orc:
 2. Lead goals preserve orchestration duties: delegate, maintain health gates, synthesize, and verify.
 3. A lead is a managed `agent_id` with `role:"orchestrator"` and left-column placement.
 4. Tiny lead self-edits are capped at <=20 changed lines, one single-purpose change, and zero new files. They require an isolated worktree plus same-post collab disclosure of what changed, why urgent, and line count. Urgency alone never qualifies; everything else follows Routing rules (SSOT).
-5. A new lane or task gets a fresh worker, even if a healthy idle worker exists in the same repo/workspace/role; reuse or supersede a worker's goal only to continue the same lane (its review rounds, follow-ups on its own diff, or re-scopes of the same deliverable), never for two unrelated lanes. Keep the worker through its own review rounds and close its pane only when its lane closes (PR loop finished: merged/handed off, artifacts harvested), not at its first DONE; this closure provides fd hygiene, not recycling workers across tasks.
+5. **One PR = one fresh implementer.** A new PR gets a new implementer (a new `delegate_task` or a new pane, fresh context), even when a healthy idle worker exists in the same repo/workspace/role. Only that PR's own fixes (its review rounds) may reuse it. Dependent stacks are no exception: each stack layer is its own PR, so it gets its own implementer, handed a compact checkpoint; the 2026-10-18 rules supersede R6's dependent-stack exception. Why: "it re-uses workers instead of settling and opening new ones, like that ship 2246 chat that had 25 prs, 24 merged" (Etan 2026-10-18, via orc collab).
+   - **Lifetime cap:** "No Codex session lives past one PR, or ~100 turns. After that, start a fresh delegate with a short brief and a compact checkpoint. Never re-inject full plans or logs." (Etan 2026-10-18, via orc collab)
+   - **Reviewers:** "reviewers fresh per implementer (same PR may reuse them)" (Etan 2026-10-18, via orc collab).
+   - **Concurrency:** "at most 4 Codex workers running at once per lead" (Etan 2026-10-18, via orc collab). A fifth queues until one settles; the Claude dispatch cap in § Model pins and dispatch is separate.
+   - **Settle, then open new:** keep the implementer through its own PR's review rounds, not past them. At the PR's terminal state (merged or handed off, artifacts harvested) settle it, never at its first DONE; the next PR opens a new one.
+   - **cmux adapter:** canon #7's "minimize pane churn" is cmux fd-leak hygiene. It means no needless pane open/close, never keeping one worker across PRs.
 
 6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall).
 
@@ -182,7 +187,7 @@ Domain leads are orchestrators one tier below orc:
 Every complex or multi-hour dispatch uses one absolute file-backed goal containing the full user
 mission, constraints, green/no-green criteria, report path, and exact DONE marker. Name the CLI,
 execution profile and required tool access, matched to the task under § Execution capability. Supersede an
-existing worker's goal only to continue the same lane; a new lane gets a fresh worker. A lane may
+implementer's goal only within its own PR (its review rounds); a new PR gets a fresh implementer (§ Lead Topology #5). A lane may
 close only as verified `DONE`, file-backed `BLOCKED`/`NOT_GREEN`, or `TRANSFERRED` with successor
 evidence. A DONE marker is only a prompt to verify the contracted artifact.
 
