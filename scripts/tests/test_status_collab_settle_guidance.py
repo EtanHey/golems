@@ -330,3 +330,18 @@ def test_collab_template_task_board_is_a_pointer_and_status_md_has_its_own_templ
     assert "Create `STATUS.md`" in scaffold and "collab.md#statusmd-template" in scaffold
     kickoff = _rules_block(scaffold, "Rules:\n1.", "Start now.")
     assert "STATUS.md" in kickoff and "board state" in kickoff
+
+
+def test_recipe_uses_the_upstream_branch_when_the_local_name_differs(tmp_path):
+    # Review-fix rounds check out `-B <local> origin/<pr-branch>` and push HEAD:<pr-branch>.
+    main, _ = lane(tmp_path)
+    wt = tmp_path / "wt" / "fix"
+    git(main, "fetch", "-q", "origin")
+    git(main, "worktree", "add", "-q", "-b", "fix-local", str(wt), "origin/lane")
+    (wt / "h.txt").write_text("fix\n")
+    git(wt, "add", "h.txt")
+    git(wt, "commit", "-q", "-m", "fix")
+    git(wt, "push", "-q", "origin", "HEAD:lane")
+    out = retire(wt)
+    assert out.returncode == 0, out.stderr
+    assert not wt.exists() and f"removed: {wt}" in out.stdout

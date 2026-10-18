@@ -247,7 +247,8 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
   inside your own worktree, unchanged; it prints the receipt's worktree line.
   ```bash
   WT=$(git rev-parse --show-toplevel)
-  BRANCH=$(git branch --show-current)
+  UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)
+  BRANCH=${UPSTREAM#origin/}; [ -n "$UPSTREAM" ] || BRANCH=$(git branch --show-current)
   MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
   if [ -n "$(git status --porcelain)" ]; then
     echo "kept because uncommitted or untracked changes"
@@ -263,7 +264,9 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
   ```
   1. **Preserve first:** `git status --porcelain` is empty, the remote branch SHA
      (`git ls-remote origin refs/heads/<branch> | cut -f1`) equals `git rev-parse HEAD`
-     (artifact pushed), and `git status --porcelain --ignored` lists nothing under
+     (artifact pushed; `<branch>` is the upstream when one is set, so a review-fix
+     checkout `-B <local> origin/<pr-branch>` pushed with `HEAD:<pr-branch>` still
+     matches, else the current branch), and `git status --porcelain --ignored` lists nothing under
      `docs.local/`. `git worktree remove` deletes ignored files too, so an unarchived
      `docs.local/` keeps the tree until it is archived or the lead decides. Any other
      ignored path is a regenerable cache (`node_modules/`, `__pycache__/`, build dirs)
