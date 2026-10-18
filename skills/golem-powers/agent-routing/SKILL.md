@@ -35,6 +35,14 @@ Gemini spawns select the agy profile by task: command execution uses the shell-c
 
 ### Implementation and review
 
+#### Trial: flipped implement/review (2026-10-18 → review 2026-10-22)
+
+> "**EXPERIMENT, starting now for a few days: FLIP the roles.** Claude Opus 5.5 IMPLEMENTS and Codex gpt-6.1-sol REVIEWS." (Etan 2026-10-18, via orc collab)
+
+- **Route during the trial:** the "Everything else" row flips: `claude.judgment` implements, and a fresh `codex.implement` reviews at effort `high`. UX/UI and Security rows are unchanged. Decision rule 2 is unchanged: the `claude.judgment` implementer makes the deletion/test-edit decision first, and the Codex reviewer checks it.
+- **Metrics:** "Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab) Each lead's STATUS file records, per PR: merged/day, open→merge hours, post-merge defects.
+- **End:** on the review date the leads' STATUS numbers go to Etan. Unless Etan rules otherwise, the trial expires and the permanent table below is the default again.
+
 | Work | Implements | Reviews | Plus |
 |---|---|---|---|
 | UX/UI | `claude.judgment` | Codex (`codex.implement`) | — |
@@ -57,6 +65,16 @@ When Daybreak Blue returns, evaluate its first security PRs: if they show more r
 
 This inner-loop pair review happens before the PR. `/pr-loop` bot and PR reviewers are separate. Pane mechanics live in `/collab-monitor` section "Completion -> Reviewer Handoff".
 
+### Review sizing
+
+Review is sized to risk; the PR's `size:*` label sets the tier.
+
+- "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs count by the UI precedence line below.
+- M: up to 2 rounds, and round 2 only for BLOCKING findings (canon #9).
+- "Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab) The panel is a fresh `claude.judgment` reviewer plus a read-only Cursor diff pass, giving one shared verdict. When the implementer is `claude.judgment` (UX/UI, or the dated trial above), the table's Codex reviewer stays on, so cross-vendor review still holds. No Gemini model ever reviews, at any size.
+- UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement`. The UX/UI judge is a fresh `claude.judgment`, never the implementer, and judges from the recording.
+- UI precedence (interim, 2026-10-19; skill-lead interim pending Etan): for UI/style PRs the UI flow above takes precedence over the table's UX/UI reviewer. The Codex recording is evidence: the recorder also reports any functional defect it observes, so the other vendor has eyes on the change, but it is not "the reviewer". The ONE reviewer for an XS/S UI PR is a fresh Opus (`claude.judgment`, never the implementer instance) that loads `frontend-design:frontend-design` and judges the recording, 1 round. M UI PRs: up to 2 rounds of that reviewer. L, data or security UI PRs get the full panel above, which keeps a Codex reviewer.
+
 ### Records
 
 Each PR body records its implementer, review rounds, and bot/reviewer defects. Claude leads orchestrate and route work through visible panes.
@@ -66,6 +84,11 @@ Each PR body records its implementer, review rounds, and bot/reviewer defects. C
 - Fresh boots run `claude.judgment` at 1M via the bare launcher pin. The pin follows the role's current model and the pin is never removed; it prevents a prior session's model persisting.
 - Fable only via explicit per-invocation selection; a prior session's model never persists into the next.
 - Every non-Cursor Agent/Workflow/Task spawn pins its model explicitly, resolved from roles. Cursor is the Auto-only exception.
+- Codex model list (Etan 2026-10-18, via orc collab): "**Models:** Codex = gpt-6.1-sol and gpt-6-luna ONLY." "**Never gpt-5.6-\*** (luna, sol, terra)" "gpt-6-astra only when Etan asks for it."
+  - In role terms (2026-10-18 rulings): a Codex seat or child resolves `codex.implement` or `codex.security`, or `codex.subagent.mechanical` under its gated exceptions in § Model roles. Nothing else, even when a T3 catalog lists more.
+  - A request to use a `gpt-5.6-*` model ("it's cheaper") is refused, and any such pin you own is removed (2026-10-18 ruling).
+  - Astra needs Etan's own explicit ask; a lead's or worker's suggestion does not count (2026-10-18 ruling).
+  - Daybreak Blue's return to `codex.security` is not on this list. It needs Etan's ruling against the list before the swap (open question, 2026-10-18).
 - Effort is per `/large-plan` phase; declare effort + why and pass it explicitly at dispatch.
 - Keep to ≤2–3 concurrent Claude dispatches, staggered.
 - Usage is managed by default-pinning and dispatch-counting, not by usage-blocking buckets.
@@ -77,7 +100,9 @@ Roles live in `standards/model-roles.json`. From the golems checkout, resolve wi
 (select one field). Never hardcode a role-owned model name. Generated launcher
 commands must keep the resolver substitution, not today's resolved literal. Read the role's status
 and gate before dispatch: `codex.subagent.mechanical` remains a candidate, with Etan’s
-2026-10-04 exception for Codex-internal mechanical children and named `packet` only. Workers
+2026-10-04 exception for Codex-internal mechanical children and named `packet` only. Watchers are
+the second exception — "anything that must sit and watch (a PR, CI, a file)" (Etan 2026-10-18, via orc collab) —
+resolved with `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`. Workers
 remain on `codex.implement`; see the model-and-effort reference for the scoped exception.
 The Routing rules (SSOT) section owns dispatch policy and the role config owns current model defaults; older model-selection recipes in the
 references are pending PR 2b migration and cannot override the config.
@@ -87,9 +112,10 @@ The launcher refuses a worker spawn without an explicit effort. Codex prompted/w
 ## Read Map
 
 - Choosing a Codex model or effort, comparing model cost/context, dispatching a Codex child, or verifying its runtime? Read [references/model-and-effort.md](references/model-and-effort.md). Use the role config for current defaults and candidate gates; that reference supplies runtime verification and detailed procedures pending PR 2b.
-- Launching, reusing, monitoring, recovering, or closing a worker lane? Read [references/delegation-operations.md](references/delegation-operations.md).
+- Launching, reusing, monitoring, recovering, or closing a cmux worker lane? Read [references/delegation-operations.md](references/delegation-operations.md). Its monitor-loop and isolation mechanics are the cmux adapter.
 - Creating or auditing a collab, diagnosing a routing failure, or copying a routing template? Read [references/verification-and-incidents.md](references/verification-and-incidents.md).
 - Fanning out independent units, or asked about Cursor `/multitask`? Read [references/fan-out-engines.md](references/fan-out-engines.md) (recipes, gotchas, GUI prompt contract, dispatch hygiene).
+- Dispatching child work from a T3 thread (`delegate_task`, review rounds, pending questions, PR watch)? Read [references/t3-native.md](references/t3-native.md). It owns the T3 child lifecycle (dispatch, wait, isolation, verify, settle), not delegation-operations.md: for a T3 child skip that file's monitor loop and no-worktree route.
 
 Read every reference triggered by the mission before dispatch. The live reference owns its detailed procedure; Routing rules (SSOT) and the role config take precedence over conflicting routing or model-selection recipes.
 
@@ -98,17 +124,17 @@ Read every reference triggered by the mission before dispatch. The live referenc
 | Tool | Role | Does | Never does |
 |---|---|---|---|
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
-| **`codex.implement`** | Implement / review | Non-UX/UI, non-security code/docs changes, fixes, refactors, tests, PRs; UX/UI pair review per SSOT | Research, data gathering, orchestration |
+| **`codex.implement`** | Implement / review | Non-UX/UI, non-security code/docs changes, fixes, refactors, tests, PRs; UX/UI pair review per SSOT; during the dated trial, reviews instead of implementing | Research, data gathering, orchestration |
 | **`codex.security`** | Implement (security) | Security implementation per SSOT | Gathering, orchestration, reviewing its own work |
 | **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Running commands, implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
 | **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Running commands, implementing, reviewing, deciding, UX/UI judgment |
-| **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; non-UX/UI implementation |
+| **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; non-UX/UI implementation outside the dated trial in SSOT |
 
 Decision rules:
 
 1. Read-only query, scan, search, audit, or lookup -> Cursor; for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
 2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
-3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; everything else -> `codex.implement`.
+3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; everything else -> `codex.implement` (while the dated trial runs, `claude.judgment`).
 4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
 5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
 6. Independent parallel units -> § Fan-out engine chooses the engine; Routing rules (SSOT) owns Cursor model selection.
@@ -157,21 +183,55 @@ parallel. A terminal/cmux orchestrator never uses it.
 | Human in the Cursor editor, independent read-heavy prompts | Cursor `/multitask` (GUI; `\|\|\|`-separated; no write locking) |
 | Headless / scripted / CI / terminal orchestrator; want determinism + per-agent tokens | `cursor-agent -p --force --output-format json … &` + `wait` (Auto model, never `-m`) |
 | Inside a Claude session; let the parent decide the split | Claude Workflow / Agent tools |
-| Visible, multi-vendor, long-running, human-watchable workers | cmux fleet (`/cmux-agents`) |
+| Lead in a T3 thread; child work (implement, review, recon) owned by that thread | T3 `delegate_task` (§ T3-native dispatch) |
 | One coherent edit, or step B needs step A's output | None: run serially in one agent |
 
 Fan out the read-heavy discovery; make the changes in one agent that holds the whole picture.
+Visible cmux fleets: § Dispatch Boundaries › cmux adapter.
+
+## T3-native dispatch
+
+A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The lifecycle, as rules: [references/t3-native.md](references/t3-native.md).
+
+1. **Discover:** call `orchestrator_capabilities` first; pin provider, model and effort in `target` from its live catalog (canon #5).
+2. **Dispatch:** `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
+3. **Wait:** completion wakes the parent. End the turn; never poll or spawn a watcher for it.
+4. **Settle:** read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child.
+5. **Review rounds:** every round is a new `delegate_task` carrying prior findings; never `t3_thread_send` to the `childThreadId`.
+6. **Questions:** a child's pending question is answered by the lead, never forwarded to Etan as a routing question.
+7. **Top-level threads:** `t3_thread_launch` / `create_threads` only when a separate conversation is explicitly asked for.
+8. **PRs:** `link_pull_request` every PR; the parent owns `watch_pull_request`.
+9. **Who and how many:** Routing rules (SSOT) picks the vendors; fresh implementer per PR and the Codex cap live in § Lead Topology #5.
 
 ## Dispatch Boundaries
 
-- Visible-worker launch law lives in fleet canon #6; `/repogolem` owns invocation mechanics and [delegation operations](references/delegation-operations.md#launcher-boundary) owns the `--fast` prohibition.
 - Cursor model selection lives in Routing rules (SSOT).
 - Claude Workflow/Agent-tool fan-out is read-only recon, verification, or synthesis except audio-dashboard builds.
-- Codex children may edit only inside their visible Codex parent's worktree; that parent owns acceptance.
+- T3 child work follows § T3-native dispatch.
 - A standalone read-only lane remains Cursor even though a named Codex `recon` child exists for bounded fan-out inside a Codex lane.
 - Skills, hooks, agent definitions, and global agent settings are skillCreator-domain work. If skillCreator is not already in the loop, stop and request its audit before patching.
 
-- M1 (T3): a lead routes a worker to the M1 only when the deliverable must be proven on the M1 (canon #4). Codex workers only, until a recorded Claude-in-T3 proof passes (one real `brain_search` result, one skill invoked, no hook errors). Each dispatch requires a same-turn BrainBar probe: the socket accepts and `brain_search` answers. A failed probe is reported to the lead and the work stays in cmux. Leads never move. Vendor routing, inner-loop order and PR-body records are unchanged.
+- M1: "**The M1 Pro becomes a TEST RIG only.** Development stays on the MBP. … Nothing changes on the M1 for this yet." (Etan 2026-10-18, via orc collab) No lead or worker is routed to the M1, and nothing on it changes, until Etan authorizes the rig setup (orc's research: `docs.local/reports/2026-10-18/m1-rig/`). "Run this on the M1" before then stays on the MBP.
+
+### cmux adapter
+
+Applies to visible cmux fleets only; T3 children follow § T3-native dispatch.
+
+| Task shape | Engine |
+|---|---|
+| Visible, multi-vendor, long-running, human-watchable workers | cmux fleet (`/cmux-agents`) |
+
+- Visible-worker launch law lives in fleet canon #6; `/repogolem` owns invocation mechanics and [delegation operations](references/delegation-operations.md#launcher-boundary) owns the `--fast` prohibition.
+- Codex children may edit only inside their visible Codex parent's worktree; that parent owns acceptance.
+- Pane monitoring and reviewer handoff: `/collab-monitor`.
+
+### M1 test-rig adapter
+
+Dormant: it routes nothing until Etan authorizes the rig setup, then governs test-rig runs.
+
+- A test-rig run goes to the M1 only when the deliverable must be proven on the M1 (canon #4). Codex workers only, until a recorded Claude-in-T3 proof passes (one real `brain_search` result, one skill invoked, no hook errors).
+- Each dispatch requires a same-turn BrainBar probe: the socket accepts and `brain_search` answers. A failed probe is reported to the lead and the work stays on the MBP.
+- Leads never move. Vendor routing, inner-loop order and PR-body records are unchanged.
 
 ## Lead Topology
 
@@ -210,6 +270,6 @@ explain the evidence-backed state, and store the correction separately.
 
 - `/repogolem`: launcher flags, defaults, resume behavior, and raw escape hatches.
 - `/pr-loop`: branch through ready-for-review PR; Routing rules (SSOT) above owns the pre-PR pair.
-- `/collab-monitor`: worker monitoring and reviewer handoff mechanics.
+- `/collab-monitor`: cmux/collab-mail only: pane worker monitoring and reviewer handoff mechanics. T3 children use completion notifications instead (§ T3-native dispatch).
 - `/qa-video`: Gemini visual workflow.
 - `/whats-new`: tool-surface changes; they do not revise Routing rules (SSOT) by implication.
