@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 const CAP = 120;
 
 const EXCEPTIONS = {
-  "agent-routing": 279 /* 285 -> 279 (skill-edits PR1: ordinary dispatch phrases front-loaded, "Route work…" lead and "worker assignment"/"routing" dropped as covered by the name and "Dispatch a worker"); earlier: absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259; +26 for the #208 Gemini-gatherer ruling ("who gathers", "gemini gatherer"; bare "multitask" dropped as a substring of "/multitask") */,
+  "agent-routing": 279 /* 285 -> 279 (skill-edits PR1: ordinary dispatch phrases front-loaded, "Route work…" lead and "routing"/"worker assignment"/"delegate"/"parallel agents" dropped as covered by the skill name, "Dispatch a worker", "delegate_task" and "in parallel"/"fan out"); earlier: absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259; +26 for the #208 Gemini-gatherer ruling ("who gathers", "gemini gatherer"; bare "multitask" dropped as a substring of "/multitask") */,
   "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
   "drive-filing": 282 /* absorbed drive-usage (250), google-drive-archive (105), archive (107): 462 -> 282 */,
   "ecosystem-health": 199 /* absorbed context-check (109) and its triggers: 105 + 109 -> 199 */,
