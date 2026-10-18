@@ -8,25 +8,141 @@ A multi-way deep-mining fan-out next to the live Opus fleet = OOM + token
 contention. The weave fires ONLY at convergence. **All four must be true:**
 
 1. **0 open PRs** across golems + brainlayer + voicelayer.
-2. **All worker panes idle.**
-3. **No in-flight Codex.**
+2. **All workers idle and settled** — cmux panes idle, and/or every T3 worker
+   thread settled.
+3. **No in-flight Codex** — no busy cmux Codex pane, and/or no T3 delegate
+   still working (Codex delegates are T3 threads too).
 4. **Etan has SEEN + APPROVED the demo.**
 
 Plus a **RAM gate** (same lesson as content-demo's `ram-gate.sh` — quiesce first).
 
+Conditions 2–3 depend on how the fleet runs. `--fleet` (or `WEAVE_FLEET`) picks
+the check:
+
+| `--fleet` | Section [2/3] checks |
+|---|---|
+| `t3` | The T3 snapshot only (§1.1). No cmux check, no cmux failure. |
+| `cmux` | `cmux list-status` + the `pgrep codex` warning only (§1.2). |
+| `both` | Both; each must pass. |
+| `auto` (default) | `t3` when `--t3-state` is given or the gate runs inside T3 (`T3CODE_CLI_PATH` set); `cmux` when the cmux CLI is on PATH; both when both (inside T3 with `cmux` on PATH that means both, so pass `--fleet t3` for a T3-only fleet). **Nothing detectable = BLOCKED, never a pass.** |
+
 ```bash
-bash scripts/convergence-gate.sh            # checks 1–3 + RAM; #4 needs operator ack
-bash scripts/convergence-gate.sh --ack-demo # operator asserts demo approval → can PASS
+P="$FLEET_PROJECT_IDS"   # space-separated T3 projectIds the fleet runs in
+bash scripts/convergence-gate.sh --fleet t3 --t3-state "$SNAP" --t3-projects "$P"            # #4 still needs the ack
+bash scripts/convergence-gate.sh --fleet t3 --t3-state "$SNAP" --t3-projects "$P" --ack-demo # operator asserts demo approval → can PASS
+bash scripts/convergence-gate.sh --fleet cmux --ack-demo                                     # cmux fleet
 ```
 
 Condition #4 is **not script-checkable** — the gate stays BLOCKED until the
 operator passes `--ack-demo` (or `WEAVE_DEMO_ACK=1`). Human/orchestrator in the
-loop; never auto-fire. `"weave now"` is the only path that skips the gate.
+loop; never auto-fire. `"weave now"` is the only path that skips the gate. The
+open-PR gate, the RAM gate and the demo gate run the same way in every fleet mode.
 
 > **Convergence signal (2026-07-10):** the gate may key on the orchestrator's
 > **SENTINEL** (an explicit quiescence marker orc emits) rather than a raw
 > PR-count poll — PR-count alone false-fires while a lead is mid-close. Prefer
 > the SENTINEL when orc emits one. [g1:52 → 2026-06-21.md:2]
+
+### 1.1 T3 fleet — threads + delegated tasks snapshot
+
+Leads and workers now run as T3 threads and `delegate_task` children, and a
+shell script cannot call MCP. So the lead running the gate captures what T3
+reports into one JSON file, and `scripts/t3-fleet-state.py` judges it.
+
+The gate passes only when convergence is **proven**. Every absence, duplicate,
+unknown value or missing liveness field blocks.
+
+**Capture (in the lead's own thread, right before the gate):**
+
+1. **Sweep every fleet project.** For each fleet `projectId`:
+   `t3_thread_list(projectId, settled: false, includeSubagents: true, limit: 100)`,
+   following `nextCursor` until it is `null`. Copy every row verbatim into
+   `threads` and add `"projectId"` (the response's top-level `projectId`) to
+   each row. Record `{"projectId": …, "total": …}` (the response's `total`)
+   in `projects`. The judge counts the unsettled rows per project against
+   `total`, so a skipped page blocks.
+2. **Every delegated task.** `task_status(taskId)` for every task you hold;
+   copy each result verbatim into `tasks`. The judge requires `taskId`,
+   `childThreadId`, `status`, `workState`, `hasPendingChildRuns` and
+   `hasPendingQuestion` on every row. A missing field blocks; it is not
+   read as `false`.
+3. **Prove each child settled.** For every task whose `childThreadId` is not
+   already in `threads` (a settled child drops out of the `settled: false`
+   listing), `t3_thread_read(childThreadId)` and append its `thread` object
+   (it carries `projectId`, `status`, `settled`, `pendingRequestCount`) to
+   `threads`. Never append a thread twice: duplicate `threadId`s are rejected.
+4. **Your own pending questions.** `t3_pending_request_list()` (no `threadId`
+   means your own thread) returns `{"requestIds": [...]}`. Record it as
+   `{"threadId": <self_thread_id>, "requestIds": [...]}` in `pending_requests`.
+   Add one row per extra thread you checked the same way.
+5. `self_thread_id` = `currentThreadId` from the list response.
+   `captured_at` = `date -u +%Y-%m-%dT%H:%M:%SZ`.
+
+```json
+{
+  "schema": "weave-t3-fleet/v1",
+  "captured_at": "2026-10-18T21:00:00Z",
+  "self_thread_id": "thread:orc",
+  "projects": [{"projectId": "project:fleet", "total": 1}],
+  "threads": [
+    {"threadId": "thread:orc", "projectId": "project:fleet", "title": "orc",
+     "status": "running", "settled": false},
+    {"threadId": "thread:pr1-worker", "projectId": "project:fleet", "title": "PR1 impl",
+     "status": "completed", "settled": true, "pendingRequestCount": 0}
+  ],
+  "tasks": [{"taskId": "task:pr1-impl", "childThreadId": "thread:pr1-worker",
+             "status": "completed", "workState": "result_available",
+             "hasPendingChildRuns": false, "hasPendingQuestion": false}],
+  "pending_requests": [{"threadId": "thread:orc", "requestIds": []}]
+}
+```
+
+Write it under the run's `docs.local/` scratch dir (never `/tmp`), then
+`bash scripts/convergence-gate.sh --fleet t3 --t3-state <file> --t3-projects "<ids>"`
+(or `WEAVE_T3_STATE` + `WEAVE_T3_PROJECTS`). `--t3-projects` is the fleet
+project set, given to the gate separately from the snapshot. Without it the gate
+blocks. Max age defaults to 15 min (`--t3-max-age-min N`,
+`WEAVE_T3_MAX_AGE_MIN`).
+
+**Verdicts. The gate blocks on:**
+
+- a missing, unreadable, malformed or wrong-`schema` snapshot, or a stale /
+  future `captured_at`;
+- a missing or duplicate field or id: no `projects`, a row without
+  `projectId`, a task without `status` / `hasPendingChildRuns` /
+  `hasPendingQuestion`, a duplicate `threadId` / `taskId` / `pending_requests`
+  thread, or a `pending_requests` row without a `requestIds` list;
+- coverage gaps: no `--t3-projects`, a fleet project absent from `projects`, a
+  project whose unsettled rows do not add up to its `total`, or an unsettled
+  thread from a project that was not swept;
+- `self_thread_id` absent from `threads`, or the runner itself `waiting` or in
+  an unknown status (it is exempt only from the running/unsettled checks);
+- any other thread `preparing`/`queued`/`starting`/`running`, or `waiting`
+  (a pending question), or with a status outside the `t3_thread_list` enum,
+  or with `pendingRequestCount` > 0;
+- any task `working` or `waiting_for_children`, with an unknown `workState`
+  or `status`, with `hasPendingQuestion: true`, or `result_available` with a
+  live `status` (inconsistent);
+- a `result_available` task with `hasPendingChildRuns: true`;
+- no `pending_requests` row for `self_thread_id`, or any non-empty `requestIds`.
+
+**Parent/child completion is not a settled worker.** A task at
+`result_available` means the child finished its work for the parent. The worker
+is converged only once its thread is settled too, and the snapshot has to prove
+it. A `result_available` task whose child thread is unsettled, or any finished
+thread (`idle`, `completed`, `failed`, …) left unsettled, fails with
+**"… not settled — settle it"**. A child thread missing from `threads` fails
+with **"… missing from the snapshot — add t3_thread_read(…).thread"**. It is
+never assumed settled. Standing rule: "settle idle workers"
+(Etan 2026-10-18, via orc collab).
+
+### 1.2 cmux fleet — pane idleness
+
+With `--fleet cmux` (or `auto` with the cmux CLI on PATH), section [2/3] reads
+`cmux list-status`: any surface `working`/`busy`/`running`/`active` blocks, and a
+failed or empty `list-status` blocks (fail-safe). Without the cmux CLI the cmux
+check blocks. A `pgrep codex` match is a warning only: confirm by hand that no
+in-flight worker is behind it.
 
 ### 1.4 verify-before-alarming — read the bytes before you publish a finding
 
