@@ -27,9 +27,20 @@ def run_watch(command, update, expected):
             proc.terminate()
             proc.communicate(timeout=5)
 
+FRONT = TEXT.split('---', 2)[1]
+assert 'packaged detached fallback on Codex seats' not in FRONT
+assert 'Codex/T3 seats' in FRONT and 'completion' in FRONT
+seats = TEXT.index('## Codex and T3 seats')
 native = TEXT.index('## Native Monitor first')
-fallback = TEXT.index('## Codex fallback')
-assert native < fallback
+fallback = TEXT.index('## Legacy cmux-only adapter')
+assert '## Codex fallback' not in TEXT
+assert seats < native < fallback
+RULE = TEXT[seats:native]
+assert 'Codex seats must not poll collabs; T3 delegate completions already wake you.' in RULE
+assert 'No collab-monitor wakes in Codex' in RULE
+assert 'watch_pull_request' in RULE and 'codex.subagent.mechanical' in RULE
+assert '/agent-routing' in RULE
+assert 'no T3 parent' in TEXT[fallback:]
 assert 'timeout_ms: 1800000' in TEXT[native:fallback]
 assert 'persistent' not in TEXT[native:fallback]
 assert 'TaskStop' in TEXT[native:fallback]
@@ -42,7 +53,7 @@ assert '30 minutes' in TEXT and 'after every compaction' in TEXT
 assert 'exact final line' in TEXT and 'real-client smoke' in TEXT
 assert 'CronCreate' not in TEXT and 'CronDelete' not in TEXT
 assert ' start ' in TEXT[fallback:] and ' follow ' in TEXT[fallback:]
-print('PASS native-first, bounded filter, Codex fallback, re-arm and evidence teaching')
+print('PASS no Codex/T3 polling, native-first, bounded filter, legacy cmux-only adapter, re-arm and evidence teaching')
 
 # Watch commands run only against synthetic private fixtures.
 parent = ROOT.parents[2] / 'docs.local/structure-proof/monitor-howto'
