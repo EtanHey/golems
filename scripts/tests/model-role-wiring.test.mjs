@@ -320,9 +320,7 @@ test('agent-routing has a first-class T3-native child lifecycle and keeps cmux a
   }
 });
 
-test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk-sized UI review, dated trial cases', () => {
-  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
-  const byId = id => suite.evals.find(e => e.id === id);
+function guardCodexModels(suite) {
   // Codex = gpt-6.1-sol and gpt-6-luna only; Astra only on Etan's own ask. Any other Codex model
   // named in an eval's expected output or assertions must sit in a rejection sentence.
   const allowed = new Set(['gpt-6.1-sol', 'gpt-6-luna']);
@@ -340,6 +338,31 @@ test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk
       }
     }
   }
+}
+
+test('Codex model guard rejects mutated evals (#802 review r1 MAJORs)', () => {
+  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
+  const mutate = (id, fn) => {
+    const copy = structuredClone(suite);
+    fn(copy.evals.find(e => e.id === id));
+    return copy;
+  };
+  const mutations = {
+    'unrelated negation after a positive route': mutate(25, e => { e.expected_output = 'Routes recon to gpt-5.6-sol, not to Luna.'; }),
+    'Etan prefix without an explicit request': mutate(97, e => { e.prompt = 'Etan has not asked for Astra; a lead requests it anyway. Dispatch the reviewer via delegate_task.'; }),
+    'forbidden expected_model': mutate(25, e => { e.expected_model = 'gpt-5.6-sol'; }),
+    'forbidden model in assertion description beside text': mutate(25, e => { e.assertions[0].description = 'Selects gpt-5.6-sol at high for read-heavy review fan-out.'; }),
+  };
+  const accepted = Object.entries(mutations).filter(([, mutated]) => {
+    try { guardCodexModels(mutated); return true; } catch (err) { if (err instanceof assert.AssertionError) return false; throw err; }
+  }).map(([name]) => name);
+  assert.deepEqual(accepted, [], 'guard must throw on every mutation');
+});
+
+test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk-sized UI review, dated trial cases', () => {
+  const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
+  const byId = id => suite.evals.find(e => e.id === id);
+  guardCodexModels(suite);
   // Eval 46: UI review is sized; a Codex reviewer only in the L/data/security full panel.
   const e46 = JSON.stringify(byId(46));
   assert.match(e46, /size:\*/);
