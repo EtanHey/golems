@@ -90,6 +90,13 @@ Lives in `STATUS.md` next to this file, overwritten in place by the lead (§ Sta
 | Phase 1: Description | lead-w1 | pending | — |
 | Phase 2: Description | lead-w2 | pending | — |
 
+STATUS.md also holds agent state, one row per agent (the Agents table above has no Status column):
+
+| Agent | Status |
+|-------|--------|
+| lead-w1 | idle |
+| lead-w2 | idle |
+
 STATUS.md is the SINGLE source of truth for progress. Messages hold one line per status change.
 
 ## Key Constraints
@@ -389,7 +396,7 @@ Example: `sprint-3-collab.md`
 
 ### Complex (3+ agents, multi-repo, round-based, ~150-200 lines)
 Required: All sections including Round Advancement.
-Plus: Per-agent findings in separate files. Archive old messages when >50 lines.
+Plus: Per-agent findings in separate files. Messages are never moved out or trimmed (append-only traceability); if a long collab needs a summary, copy lines into a separate digest file and leave the original collab intact.
 Example: `brainlayer-v2-launch/collab.md` + `v2-fix-sprint/collab.md`
 
 ## Participation law (binding on every agent in this collab)

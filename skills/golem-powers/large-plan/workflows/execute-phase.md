@@ -29,8 +29,7 @@ Read that phase's README.md for steps
 | Parallel rounds exist + NO collab.md | **STOP.** Run scaffold workflow step 6 to create collab.md before proceeding. |
 
 **If running as part of a collab:**
-- Append one status line (`learning`) to collab.md per [Status and wakes](collab.md#status-and-wakes)
-- Run pre-flight checks and report: "Pre-flight: N tests green" in that line
+- Run pre-flight checks first, then append one status line (`learning`, "Pre-flight: N tests green.") to collab.md per [Status and wakes](collab.md#status-and-wakes)
 - Append one line when your status moves to `working`
 
 ### 2. Create Branch

@@ -195,8 +195,10 @@ Not every branch goes through the full PR flow. When implementation is done:
 | **Keep as-is** | Need to park work | Just stop. Worktree preserved. |
 | **Discard** | Wrong approach, start over | Requires typed "discard" confirmation. `git branch -D <branch>` |
 
-**Worktree cleanup (lane close):** For options 1 (after merge), 3 (never), and 4 (after discard),
-remove the lane's worktree from the original checkout, after the worker's pane is closed:
+**Worktree cleanup (lane close):** the implementer retires its own worktree at DONE
+([Cleanup Receipt](#cleanup-receipt)). This GC is the lead's sweep for leftovers of settled or
+merged lanes under `<main>/.worktrees/` only. For options 1 (after merge), 3 (never), and 4
+(after discard), sweep a leftover from the original checkout once its pane is closed:
 ```bash
 # Check if in worktree
 git worktree list | grep $(git branch --show-current)
@@ -240,18 +242,30 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
   above asks for, so it needs no lead decision; local-only history or an
   unarchived `docs.local/` still does. A worker handing off an unmerged PR has
   a pushed branch, so it removes the tree too:
-  `worktree: <path> removed (branch <name> pushed at <sha>)`. A later fix round
-  checks the pushed branch out again.
-- **How:** merged lane: the guarded GC above. It keeps an open-PR tree
-  (`KEEP-open-pr`), so an unmerged handoff runs
-  `git -C <main-checkout> worktree remove <path>` after `git status --porcelain`
-  is empty. Run it from outside the tree, as the last tool call before the
-  final report.
+  `worktree: <path> removed (branch <name> pushed at <sha>)`.
+- **How (retirement path, implementer-owned, both harnesses):**
+  1. **Preserve first:** `git status --porcelain` is empty AND
+     `git ls-remote origin <branch>` equals `git rev-parse HEAD` (artifact pushed).
+     If either fails, do not remove: the receipt says `kept because <reason>`.
+  2. **T3 child:** as its LAST tool call, run
+     `git -C <main-checkout> worktree remove <own-worktree-path>` (never `--force`;
+     `-C` runs it from the main checkout, not from inside the tree). Report
+     `removed: <path>` only if the command exited 0. Review-fix rounds get a fresh
+     `delegate_task` worktree from the pushed branch, so nothing needs the old tree.
+  3. **cmux worker:** the same preserve check, then
+     `git -C <main-checkout> worktree remove <own-worktree-path>` BEFORE writing DONE;
+     the lead closes the pane afterwards (pane close no longer precedes removal).
+  `worktree-gc.sh` is not the implementer's path: it answers `KEEP-out-of-scope` for
+  `.t3/worktrees/...` and `KEEP-live` while the worker's pane runs. It stays the lead's
+  sweep for leftovers under `<main>/.worktrees/` only.
+- **Receipt:** the worktree line says `removed` only after the removal exited 0;
+  otherwise `kept because <reason>`.
 - **Regenerable caches:** delete `node_modules`, build output (`dist/`,
   `build/`, `.next/`, `target/`), `__pycache__` and `.pytest_cache` without
   asking.
 - **The lead verifies the receipt** (`git worktree list`,
-  `git ls-remote origin <branch>`) and never removes a worker's worktree itself.
+  `git ls-remote origin <branch>`) and never removes a worker's worktree itself,
+  except leftovers of settled or merged lanes.
 
 ```
 CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):

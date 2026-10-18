@@ -112,10 +112,93 @@ def test_cleanup_receipt_has_the_implementer_remove_its_worktree_at_done():
     assert ATTRIBUTION in text
 
 
+TOUCHED_SKILL_FILES = (
+    LARGE_PLAN / "SKILL.md",
+    LARGE_PLAN / "workflows/collab.md",
+    LARGE_PLAN / "workflows/scaffold.md",
+    LARGE_PLAN / "workflows/execute-phase.md",
+    LARGE_PLAN / "adapters/codex.md",
+    LARGE_PLAN / "evals/evals.json",
+    AGENT_ROUTING / "SKILL.md",
+    AGENT_ROUTING / "evals/evals.json",
+    PR_LOOP / "references/merge-and-verification.md",
+)
+
+
 def test_no_private_tailnet_url_in_public_skills():
-    for path in (LARGE_PLAN / "workflows/collab.md", LARGE_PLAN / "SKILL.md",
-                 AGENT_ROUTING / "SKILL.md", PR_LOOP / "references/merge-and-verification.md"):
+    # Review round 1 on #801: the guard covers all nine skill files this lane touched.
+    assert len(TOUCHED_SKILL_FILES) == 9
+    for path in TOUCHED_SKILL_FILES:
         assert ".ts.net" not in read(path), path
+
+
+def test_cleanup_receipt_documents_an_executable_retirement_path_for_both_harnesses():
+    # Review round 1 BLOCKING on #801: worktree-gc.sh refuses .t3/worktrees (KEEP-out-of-scope)
+    # and a live cmux pane (KEEP-live), so the implementer retires its own tree directly.
+    text = section(read(PR_LOOP / "references/merge-and-verification.md"), "### Cleanup Receipt")
+    for token in (
+        "git status --porcelain",
+        "git ls-remote origin <branch>",
+        "git rev-parse HEAD",
+        "git -C <main-checkout> worktree remove <own-worktree-path>",
+        "never `--force`",
+        "T3 child",
+        "LAST tool call",
+        "cmux worker",
+        "BEFORE writing DONE",
+        "the lead closes the pane afterwards",
+        "exited 0",
+        "KEEP-out-of-scope",
+        "<main>/.worktrees",
+    ):
+        assert token in text, token
+    assert "removed` only after" in text
+    # The old routes are gone: GC for the implementer's own tree, pane close before removal.
+    assert "merged lane: the guarded GC above" not in text
+
+
+def test_lane_close_gc_is_the_leads_leftover_sweep():
+    text = read(PR_LOOP / "references/merge-and-verification.md")
+    lane_close = text[text.index("**Worktree cleanup (lane close):**"):text.index("### Cleanup Receipt")]
+    assert "leftovers" in lane_close
+    assert "after the worker's pane is closed:" not in lane_close
+
+
+def _rules_block(text, start_marker, end_marker):
+    start = text.index(start_marker)
+    return text[start:text.index(end_marker, start)]
+
+
+def test_preflight_runs_before_the_learning_line_is_appended():
+    # Review round 1 MAJOR on #801: appending `learning` first, then reporting the
+    # pre-flight count "in that line", forces an edit in place or an extra line.
+    scaffold = _rules_block(read(LARGE_PLAN / "workflows/scaffold.md"), "Rules:\n1.", "Start now.")
+    assert scaffold.index("pre-flight") < scaffold.index("`learning`")
+    assert "Report the count in your `learning` line" not in scaffold
+    execute = _rules_block(read(LARGE_PLAN / "workflows/execute-phase.md"),
+                           "**If running as part of a collab:**", "### 2.")
+    assert execute.lower().index("pre-flight") < execute.index("`learning`")
+    assert "in that line" not in execute
+
+
+def test_collab_archival_never_moves_messages_out():
+    # Review round 1 MAJOR on #801: moving messages out rewrites the traceability log.
+    text = read(LARGE_PLAN / "workflows/collab.md")
+    assert "Archive old messages" not in text
+    complex_tier = section(text, "### Complex")
+    assert "never moved" in complex_tier and "copy" in complex_tier
+
+
+def test_scaffold_agent_rows_match_status_md():
+    # Review round 1 MINOR on #801: the Agents table has no Status column; agent state
+    # lives in STATUS.md, so scaffold must not demand agent rows with status = idle.
+    collab = read(LARGE_PLAN / "workflows/collab.md")
+    assert "| Agent | Status |" in collab
+    scaffold = read(LARGE_PLAN / "workflows/scaffold.md")
+    for line in scaffold.splitlines():
+        if "**Agents**" in line or "Agents table" in line:
+            assert "status = `idle`" not in line, line
+    assert sum("STATUS.md" in line and "`idle`" in line for line in scaffold.splitlines()) >= 2
 
 
 def test_evals_cover_status_questions_settle_and_worktree_cleanup():

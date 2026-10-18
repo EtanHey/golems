@@ -165,7 +165,8 @@ If step 2 identified any round with 2+ phases, create `collab.md` at the plan ro
 **Mandatory sections to fill at scaffold time (all tiers):**
 1. **Header** — one-line purpose + wake rule, never a polling cadence (T3: `delegate_task` completion notification and the parent's `watch_pull_request`; cmux adapter: addressed watch per `/collab-monitor`)
 2. **Goal** — copy from plan description
-3. **Agents** — one row per parallel agent, status = `idle`
+3. **Agents** — one row per parallel agent (Agent, Role, Phases, Repo/CWD; no Status column)
+   - Agent state goes in `STATUS.md`: one Agent state row per agent, status = `idle`
 4. **Task Board** — in `STATUS.md` next to `collab.md`, one row per phase, owner = assigned agent, status = `pending`; the lead overwrites it in place ([Status and wakes](collab.md#status-and-wakes))
 5. **Update Gates** — copy the full table from the collab protocol template (all checkpoint rows, not just section headers)
 6. **Decisions** — empty section with comment placeholder
@@ -189,7 +190,8 @@ If step 2 identified any round with 2+ phases, create `collab.md` at the plan ro
 
 **Validation checklist (after creating collab.md):**
 - [ ] All always-required sections present: Goal, Agents, Task Board, Update Gates, Decisions, Messages
-- [ ] Agents table has one row per parallel agent with status = `idle`
+- [ ] Agents table has one row per parallel agent (no Status column)
+- [ ] STATUS.md Agent state has one row per agent with status = `idle`
 - [ ] STATUS.md Task Board has one row per phase with owner assigned
 - [ ] Update Gates has the full checkpoint table (not just a section header)
 - [ ] **Standard+:** Orchestrator, References, Key Constraints, Shared Context present
@@ -276,8 +278,8 @@ Your phases: Phase N ([name]), Phase M ([name]).
 Your phase docs: <plan-dir>/phase-N-name/README.md
 
 Rules:
-1. Read collab.md FIRST. Append one status line: `learning`. You post as <lead>-w<N>.
-2. Run pre-flight checks (tests, build). Report the count in your `learning` line.
+1. Read collab.md FIRST. You post as <lead>-w<N>.
+2. Run pre-flight checks (tests, build), then append one status line: `learning`, with the pre-flight count in it.
 3. Append one status line when you start each phase (`working`).
 4. One line per status change, appended with cat >> … <<'EOF'. Commits get no line; never edit STATUS.md (the lead owns it).
 5. Before creating PR, read other agents' Messages for cross-references.
