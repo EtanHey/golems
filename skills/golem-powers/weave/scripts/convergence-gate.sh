@@ -14,6 +14,8 @@
 # Plus a RAM gate (same lesson as content-demo's ram-gate.sh).
 #
 # Exit 0 = gate PASSES (clear to weave). Exit 1 = blocked (reasons printed).
+# Exit 3 = blocked AND the T3 snapshot is invalid (judge exit 2): no T3 verdict
+# exists, so recapture it before reading any other reason. Exit 64 = usage error.
 # Condition #4 cannot be auto-verified: pass --ack-demo (or WEAVE_DEMO_ACK=1) to
 # assert the operator confirmed it. Without the ack the gate is BLOCKED by design —
 # never auto-fire.
@@ -28,6 +30,10 @@
 #           stale snapshot, an unswept project, any working, waiting or unknown
 #           state, a missing liveness field, a duplicate row, a missing child
 #           thread, a pending question, or a finished-but-unsettled worker blocks.
+#           In-flight/waiting blockers print first; finished-but-unsettled
+#           workers print as ONE summary line, their ids in
+#           <snapshot>.unsettled.tsv. A finished createdBy:user thread (Etan's
+#           own conversation) is a note, not a blocker.
 #   both  — both checks; each must pass.
 #   auto  — (default) t3 if a snapshot is given or the gate runs inside T3
 #           (T3CODE_CLI_PATH set), cmux if the cmux CLI is on PATH, both if both.
@@ -64,7 +70,7 @@ while [[ $# -gt 0 ]]; do
     --t3-state) need_value "$@"; T3_STATE="$2"; shift 2 ;;
     --t3-projects) need_value "$@"; T3_PROJECTS="$2"; shift 2 ;;
     --t3-max-age-min) need_value "$@"; T3_MAX_AGE_MIN="$2"; shift 2 ;;
-    -h|--help) sed -n '2,39p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 64 ;;
   esac
 done
@@ -84,7 +90,9 @@ if [[ ${#REPOS[@]} -eq 0 ]]; then
 fi
 
 blocked=0
+t3_invalid=0
 note() { printf '  %s\n' "$1"; }
+info() { printf '  ℹ️  %s\n' "$1"; }
 fail() { printf '  ❌ %s\n' "$1"; blocked=1; }
 pass() { printf '  ✅ %s\n' "$1"; }
 warn() { printf '  ⚠️  %s\n' "$1"; }
@@ -181,10 +189,18 @@ if [[ "$check_t3" -eq 1 ]]; then
       case "$line" in
         "PASS "*) pass "T3: ${line#PASS }"; t3_pass=$((t3_pass + 1)) ;;
         "FAIL "*) fail "T3: ${line#FAIL }"; t3_fail=$((t3_fail + 1)) ;;
+        "NOTE "*) info "T3: ${line#NOTE }" ;;
         "") ;;
         *) note "T3: $line" ;;
       esac
     done <<< "$t3_out"
+    case "$t3_rc" in
+      0) t3_meaning="converged" ;;
+      1) t3_meaning="not converged" ;;
+      2) t3_meaning="invalid snapshot"; t3_invalid=1 ;;
+      *) t3_meaning="no verdict" ;;
+    esac
+    note "→ T3 judge rc=$t3_rc ($t3_meaning)"
     # a pass needs exit 0 AND a PASS line; anything else without a FAIL line is a crash
     if [[ "$t3_fail" -eq 0 && ( "$t3_rc" -ne 0 || "$t3_pass" -eq 0 ) ]]; then
       fail "T3: snapshot judge exited $t3_rc without a verdict (fail-safe: BLOCKED)"
@@ -233,5 +249,9 @@ if [[ "$blocked" -eq 0 ]]; then
 else
   echo "❌ CONVERGENCE GATE BLOCKED — do NOT weave yet (reasons above)."
   echo "   Operator override: run the weave anyway only on an explicit 'weave now'."
+  if [[ "$t3_invalid" -eq 1 ]]; then
+    echo "   T3 snapshot INVALID (judge rc=2): recapture it (references/run-lifecycle.md §1.1) — exit 3."
+    exit 3
+  fi
   exit 1
 fi

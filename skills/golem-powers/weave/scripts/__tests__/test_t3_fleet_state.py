@@ -7,13 +7,16 @@ passes; a working child, a completed-but-unsettled worker, a malformed or
 stale snapshot, and any unknown state all fail closed.
 
 Fixtures are DURABLE, committed under evals/fixtures/t3-fleet-state/. Variants
-are fed on stdin ("-") so no scratch files are written.
+are fed on stdin ("-"); the unsettled-id files the judge writes go to
+per-test scratch dirs, never beside a committed fixture.
 """
 from __future__ import annotations
 
 import json
 import subprocess
+import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -21,11 +24,15 @@ SCRIPT = Path(__file__).resolve().parents[1] / "t3-fleet-state.py"
 FIXTURES = Path(__file__).resolve().parents[2] / "evals" / "fixtures" / "t3-fleet-state"
 NOW = "2026-10-18T21:05:00Z"  # 5 min after every fixture's captured_at
 PROJECT = "project:fleet"  # the fleet project set every fixture covers
+SCRATCH = tempfile.TemporaryDirectory(prefix="t3-fleet-state-ids-")  # removed at exit
 
 
 def run_state(path: str, stdin: str | None = None, *extra: str,
               projects: str | None = PROJECT) -> subprocess.CompletedProcess:
     expect = [] if projects is None else ["--expect-projects", projects]
+    if path.startswith(str(FIXTURES)) and "--unsettled-out" not in extra:
+        # never write <fixture>.unsettled.tsv into the committed fixture dir
+        extra = (*extra, "--unsettled-out", str(Path(SCRATCH.name) / "ids.tsv"))
     return subprocess.run(
         [sys.executable, str(SCRIPT), path, "--now", NOW, *expect, *extra],
         input=stdin,
@@ -131,7 +138,8 @@ class NotConverged(unittest.TestCase):
         add_listed(doc, {"threadId": "thread:idle", "title": "idle", "status": "idle", "settled": False})
         r = run_doc(doc)
         self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
-        self.assertRegex(r.stdout, r"FAIL .*thread:idle.*settle it")
+        self.assertRegex(r.stdout, r"FAIL 1 finished thread\(s\) not settled — settle them \(1 idle\)")
+        self.assertRegex(r.stdout, r"NOTE unsettled thread:idle \(idle\)")
 
     def test_pending_request_fails(self) -> None:
         doc = converged()
@@ -323,7 +331,9 @@ class FailOpenProbes(unittest.TestCase):
     def test_thread_pending_request_count_blocks(self) -> None:
         doc = converged()
         thread(doc, "thread:old-worker")["pendingRequestCount"] = 1
-        self.assert_blocks(run_doc(doc), r"thread:old-worker.*pending request")
+        r = run_doc(doc)
+        self.assert_blocks(r, r"thread:old-worker.*pending request")
+        self.assertIn("decline its pending approval in the T3 app (MCP cannot), then settle", r.stdout)
 
     # Review round 2 (Sol on 65bc3123): both mutations printed PASSED.
     def test_self_thread_in_unswept_project_blocks(self) -> None:
@@ -356,6 +366,217 @@ class FailOpenProbes(unittest.TestCase):
                 doc = converged()
                 task(doc, "task:pr1-impl")["status"] = status
                 self.assert_blocks(run_doc(doc), rf"task:pr1-impl.*result_available.*{status}")
+
+
+
+LIVE = FIXTURES / "live-2026-10-19-slim.json"
+LIVE_NOW = "2026-10-19T01:36:54Z"  # 1 min after the live capture
+LIVE_PROJECTS = " ".join(p["projectId"] for p in json.loads(LIVE.read_text())["projects"])
+LIVE_RUNNING = (
+    "PR15 #805 harness fix r2 (impl)",
+    "Skill edits: T3-native routing/plan/pr-loop",
+    "SCRUB1: scrubber works in idle readback (reuse SEEK2 seek)",
+    "Smart chunks/boundaries eval on recent long recordings (Cursor)",
+    "skillCreator lead — skill improvement run",
+)
+ETAN_THREAD = "e38c37b7-ddf9-4c0a-b005-45434544ba82"
+
+
+def run_live(doc: dict | None, out: Path, *extra: str) -> subprocess.CompletedProcess:
+    """Judge the live 2026-10-19 snapshot (slim projection) or a mutation of it."""
+    stdin = None if doc is None else json.dumps(doc)
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), str(LIVE) if doc is None else "-", "--now", LIVE_NOW,
+         "--expect-projects", LIVE_PROJECTS, "--unsettled-out", str(out), *extra],
+        input=stdin, capture_output=True, text=True,
+    )
+
+
+def fails(r: subprocess.CompletedProcess) -> list[str]:
+    return [line for line in r.stdout.splitlines() if line.startswith("FAIL ")]
+
+
+class Scratch(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory(prefix="t3-fleet-state-test-")
+        self.out = Path(self._tmp.name) / "unsettled.tsv"
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+
+class LiveDryRun(Scratch):
+    """D1/D2 on the real 2026-10-19 fleet: 238 settle-hygiene FAILs hid 5 running threads."""
+
+    def test_in_flight_first_then_one_summary_line(self) -> None:
+        r = run_live(None, self.out)
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        lines = fails(r)
+        self.assertEqual(len(lines), 6, msg=r.stdout)
+        for line in lines[:5]:
+            self.assertRegex(line, r"is running — work in flight$")
+        self.assertEqual(sorted(t for t in LIVE_RUNNING if any(t in l for l in lines[:5])),
+                         sorted(LIVE_RUNNING))
+        self.assertRegex(
+            lines[5],
+            r"^FAIL 237 finished thread\(s\) not settled — settle them "
+            r"\(209 completed, 14 interrupted, 10 idle, 4 failed\); ids: " + re.escape(str(self.out)),
+        )
+        self.assertNotIn("PASS", r.stdout)
+
+    def test_id_file_lists_every_unsettled_worker(self) -> None:
+        run_live(None, self.out)
+        rows = [line.split("\t") for line in self.out.read_text().splitlines()]
+        self.assertEqual(len(rows), 237)
+        self.assertEqual(len({row[0] for row in rows}), 237)
+        self.assertNotIn(ETAN_THREAD, {row[0] for row in rows})
+        self.assertIn(("orc — original Opus lead", "completed"),
+                      {(row[-1], row[1]) for row in rows})  # createdBy:system is a worker
+
+    def test_etan_conversation_is_a_note(self) -> None:
+        r = run_live(None, self.out)
+        self.assertRegex(r.stdout, rf"NOTE thread {ETAN_THREAD} .*createdBy:user.*not a worker")
+        self.assertNotIn(ETAN_THREAD, "\n".join(fails(r)))
+
+    def test_slim_projection_needs_no_dropped_field(self) -> None:
+        doc = json.loads(LIVE.read_text())
+        for row in doc["threads"]:
+            for key in ("title", "createdBy", "parentThreadId", "updatedAt"):
+                row.pop(key)
+        r = run_live(doc, self.out)
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertNotIn("invalid", r.stdout)
+        # createdBy dropped: the user conversation is a worker again (fail closed)
+        self.assertRegex(fails(r)[-1], r"^FAIL 238 finished thread\(s\) not settled")
+
+    def test_settled_row_inside_unsettled_sweep_is_named(self) -> None:
+        # perturbation p1: SCRUB1 flipped to completed + settled, row kept, total unchanged
+        doc = json.loads(LIVE.read_text())
+        scrub = next(t for t in doc["threads"] if t["title"].startswith("SCRUB1"))
+        scrub.update(status="completed", settled=True)
+        r = run_live(doc, self.out)
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertNotIn("read every page", r.stdout)
+        self.assertRegex(r.stdout, rf"FAIL .*{re.escape(scrub['threadId'])} .*settled:true.*"
+                                   r"settled:false sweep")
+
+    def test_all_settled_but_runner_passes_with_proven_counts(self) -> None:
+        # perturbation p4 (positive control): only the gate runner is unsettled
+        doc = json.loads(LIVE.read_text())
+        doc["threads"] = [t for t in doc["threads"] if t["threadId"] == doc["self_thread_id"]]
+        for p in doc["projects"]:
+            p["total"] = sum(1 for t in doc["threads"] if t["projectId"] == p["projectId"])
+        r = run_live(doc, self.out)
+        self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+        self.assertNotIn("other thread(s) settled", r.stdout)
+        self.assertRegex(r.stdout, r"PASS 5 project\(s\) swept: 1 unsettled thread\(s\) "
+                                   r"listed = the totals, the gate runner only")
+
+
+class SummaryAndOrder(Scratch):
+    def test_in_flight_prints_before_hygiene_whatever_the_row_order(self) -> None:
+        doc = converged()
+        add_listed(doc, {"threadId": "thread:done", "title": "d", "status": "completed", "settled": False})
+        add_listed(doc, {"threadId": "thread:busy", "title": "b", "status": "running", "settled": False})
+        r = run_doc(doc, "--unsettled-out", str(self.out))
+        lines = fails(r)
+        self.assertRegex(lines[0], r"thread:busy.*running")
+        self.assertRegex(lines[-1], r"^FAIL 1 finished thread\(s\) not settled")
+
+    def test_summary_writes_ids_and_still_blocks(self) -> None:
+        doc = converged()
+        for i, status in enumerate(("completed", "completed", "failed")):
+            add_listed(doc, {"threadId": f"thread:w{i}", "title": f"w{i}", "status": status,
+                             "settled": False})
+        r = run_doc(doc, "--unsettled-out", str(self.out))
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertEqual(len(fails(r)), 1, msg=r.stdout)
+        self.assertIn("(2 completed, 1 failed)", r.stdout)
+        self.assertEqual([line.split("\t")[0] for line in self.out.read_text().splitlines()],
+                         ["thread:w0", "thread:w1", "thread:w2"])
+
+    def test_snapshot_path_defaults_the_id_file_beside_it(self) -> None:
+        doc = converged()
+        add_listed(doc, {"threadId": "thread:w", "title": "w", "status": "idle", "settled": False})
+        snap = Path(self._tmp.name) / "snap.json"
+        snap.write_text(json.dumps(doc))
+        r = run_state(str(snap))
+        beside = Path(self._tmp.name) / "snap.unsettled.tsv"
+        self.assertIn(f"ids: {beside}", r.stdout)
+        self.assertTrue(beside.read_text().startswith("thread:w\tidle"))
+
+
+class UserConversation(Scratch):
+    """D2 lead ruling 2026-10-19: createdBy:"user" is Etan's own conversation, not a worker."""
+
+    def judge(self, **row) -> subprocess.CompletedProcess:
+        doc = converged()
+        add_listed(doc, {"threadId": "thread:etan", "title": "etan", "settled": False,
+                         "createdBy": "user", **row})
+        return run_doc(doc, "--unsettled-out", str(self.out))
+
+    def test_finished_unsettled_user_thread_is_a_note(self) -> None:
+        for status in ("completed", "idle", "failed"):
+            with self.subTest(status=status):
+                r = self.judge(status=status)
+                self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+                self.assertRegex(r.stdout, r"NOTE thread thread:etan .*createdBy:user")
+                self.assertRegex(r.stdout, r"PASS .*1 user conversation\(s\) noted")
+
+    def test_active_user_thread_blocks(self) -> None:
+        r = self.judge(status="running")
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertRegex(r.stdout, r"FAIL thread thread:etan .*running — work in flight")
+
+    def test_waiting_user_thread_blocks(self) -> None:
+        r = self.judge(status="waiting")
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertRegex(r.stdout, r"FAIL thread thread:etan .*waiting")
+
+    def test_interrupted_user_thread_needs_its_pending_count(self) -> None:
+        r = self.judge(status="interrupted")
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertRegex(r.stdout, r"FAIL thread thread:etan .*no pendingRequestCount — t3_thread_read")
+        r = self.judge(status="interrupted", pendingRequestCount=0)
+        self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+
+    def test_user_thread_with_pending_approval_blocks(self) -> None:
+        r = self.judge(status="interrupted", pendingRequestCount=1)
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertIn("decline its pending approval in the T3 app (MCP cannot), then settle", r.stdout)
+
+    def test_system_thread_is_still_a_worker(self) -> None:
+        r = self.judge(status="completed", createdBy="system")
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertRegex(r.stdout, r"FAIL 1 finished thread\(s\) not settled")
+
+
+class PendingApprovals(Scratch):
+    """D3: t3_thread_list rows carry no pendingRequestCount; a missing count never PASSes."""
+
+    def test_interrupted_worker_without_count_blocks_without_crash(self) -> None:
+        doc = converged()
+        add_listed(doc, {"threadId": "thread:cancelled", "title": "c", "status": "interrupted",
+                         "settled": False})
+        r = run_doc(doc, "--unsettled-out", str(self.out))
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertNotIn("PASS", r.stdout)
+        self.assertEqual(r.stderr, "")
+
+    def test_worker_pending_approval_names_the_app_step(self) -> None:
+        doc = converged()
+        add_listed(doc, {"threadId": "thread:cancelled", "title": "c", "status": "interrupted",
+                         "settled": False, "pendingRequestCount": 1})
+        r = run_doc(doc, "--unsettled-out", str(self.out))
+        self.assertRegex(r.stdout, r"FAIL thread thread:cancelled .*1 pending request\(s\) — "
+                                   r"decline its pending approval in the T3 app \(MCP cannot\), then settle")
+        self.assertRegex(fails(r)[0], "thread:cancelled")  # a live blocker, printed first
+
+
+class CaptureClock(unittest.TestCase):
+    def test_stale_message_measures_from_capture_start(self) -> None:
+        r = run_state(str(FIXTURES / "converged.json"), None, "--max-age-min", "2")
+        self.assertRegex(r.stdout, r"FAIL snapshot is stale \(capture started 5 min ago > 2 min\)")
 
 
 if __name__ == "__main__":

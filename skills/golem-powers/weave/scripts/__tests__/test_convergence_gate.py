@@ -9,6 +9,7 @@ the durable snapshot fixtures are under evals/fixtures/t3-fleet-state/.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -101,15 +102,30 @@ class T3Fleet(GateHarness):
         self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
         self.assertRegex(r.stdout, r"❌ T3: .*settle it")
 
-    def test_malformed_snapshot_blocks(self) -> None:
+    def test_malformed_snapshot_blocks_with_invalid_rc(self) -> None:
         r = self.gate("--fleet", "t3", "--t3-state", str(FIXTURES / "malformed.json"))
-        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertEqual(r.returncode, 3, msg=r.stdout + r.stderr)
         self.assertRegex(r.stdout, r"❌ T3: .*not valid JSON")
+        self.assertIn("T3 judge rc=2 (invalid snapshot)", r.stdout)
+        self.assertIn("T3 snapshot INVALID", r.stdout)
 
-    def test_missing_snapshot_file_blocks(self) -> None:
+    def test_missing_snapshot_file_blocks_with_invalid_rc(self) -> None:
         r = self.gate("--fleet", "t3", "--t3-state", str(self.root / "nope.json"))
-        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertEqual(r.returncode, 3, msg=r.stdout + r.stderr)
         self.assertRegex(r.stdout, r"❌ T3: .*cannot read")
+
+    def test_invalid_snapshot_rc_wins_over_other_blockers(self) -> None:
+        self._stub("gh", "#!/bin/sh\necho 2\n")
+        r = self.gate("--fleet", "t3", "--t3-state", str(FIXTURES / "malformed.json"))
+        self.assertEqual(r.returncode, 3, msg=r.stdout + r.stderr)
+
+    def test_judge_rc_is_surfaced(self) -> None:
+        r = self.gate("--fleet", "t3", "--t3-state", str(self.snapshot("working-child.json")))
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertIn("T3 judge rc=1 (not converged)", r.stdout)
+        r = self.gate("--fleet", "t3", "--t3-state", str(self.snapshot("converged.json")))
+        self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+        self.assertIn("T3 judge rc=0 (converged)", r.stdout)
 
     def test_fleet_t3_without_snapshot_blocks(self) -> None:
         r = self.gate("--fleet", "t3")
@@ -206,13 +222,19 @@ FAIL_OPEN_PROBES = {
 }
 
 
+# Probes the judge rejects as an invalid snapshot (judge rc 2 -> gate rc 3).
+INVALID_PROBES = {"missing hasPendingChildRuns", "duplicate running then settled",
+                  "duplicate settled then running", "no project coverage"}
+
+
 class FailOpenProbesEndToEnd(GateHarness):
     def test_every_fail_open_probe_blocks_the_gate(self) -> None:
         for name, mutate in FAIL_OPEN_PROBES.items():
             with self.subTest(probe=name):
                 snap = str(self.snapshot(f"probe-{len(name)}.json", doc=_probe(mutate)))
                 r = self.gate("--fleet", "t3", "--t3-state", snap)
-                self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+                self.assertEqual(r.returncode, 3 if name in INVALID_PROBES else 1,
+                                 msg=r.stdout + r.stderr)
                 self.assertRegex(r.stdout, r"❌ T3: ")
                 self.assertNotIn("PASSED", r.stdout)
 
@@ -271,6 +293,31 @@ class FleetSelection(GateHarness):
                 r = self.gate(flag)
                 self.assertEqual(r.returncode, 64, msg=r.stdout + r.stderr)
                 self.assertIn(f"{flag} needs a value", r.stderr)
+
+
+
+LIVE = "live-2026-10-19-slim.json"
+
+
+class LiveDryRunEndToEnd(GateHarness):
+    """D1 on the real 2026-10-19 fleet: the 5 running threads lead, hygiene is one line."""
+
+    def test_running_threads_lead_and_hygiene_is_one_line(self) -> None:
+        doc = json.loads((FIXTURES / LIVE).read_text())
+        projects = " ".join(p["projectId"] for p in doc["projects"])
+        snap = self.snapshot(LIVE)
+        r = self.gate("--fleet", "t3", "--t3-state", str(snap), env={"WEAVE_T3_PROJECTS": projects})
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        t3 = [line for line in r.stdout.splitlines() if line.startswith("  ❌ T3: ")]
+        self.assertEqual(len(t3), 6, msg=r.stdout)
+        for line in t3[:5]:
+            self.assertRegex(line, r"is running — work in flight$")
+        ids = snap.with_suffix(".unsettled.tsv")
+        self.assertRegex(t3[5], r"237 finished thread\(s\) not settled — settle them .*ids: "
+                         + re.escape(str(ids)))
+        self.assertEqual(len(ids.read_text().splitlines()), 237)
+        self.assertRegex(r.stdout, r"\n  ℹ️  T3: thread e38c37b7-\S+ .*createdBy:user")
+        self.assertIn("T3 judge rc=1 (not converged)", r.stdout)
 
 
 if __name__ == "__main__":
