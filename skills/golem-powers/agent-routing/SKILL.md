@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Dispatch a worker/reviewer, delegate_task, hand off, pick provider/model. Invoke before first dispatch. Triggers: who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, fan out, in parallel, batch classify/audit. NOT for fanning out one edit or dependent steps."
+description: "Invoke before any git/gh/grep, even for context, to dispatch a worker/reviewer, hand off to Codex, delegate_task, fan out in parallel; who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, batch classify/audit. NOT for fanning out one edit or dependent steps."
 ---
 
 # Agent Routing
@@ -13,7 +13,7 @@ description: "Dispatch a worker/reviewer, delegate_task, hand off, pick provider
 
 ## Kickoff contract
 
-- **Claude seats:** invoke `/agent-routing` with the Skill tool before the first dispatch of a lane: a worker or helper, a `delegate_task`, a hand-off, or a provider/model choice.
+- **Claude seats:** invoke `/agent-routing` with the Skill tool before the first dispatch of a lane: a worker or helper, a `delegate_task`, a hand-off, or a provider/model choice. Make it the first tool call, before any git/gh/grep orientation: live misses open with `git status`/`gh pr` and never load the skill (PR15 trigger eval, 2026-10-19).
 - **Codex seats:** read this SKILL.md body (a file read) before that action; Codex has no Skill tool.
 - **A lead's kickoff brief** to a worker names the skills the worker invokes (`/large-plan`, `/agent-routing`, `/pr-loop`).
 - Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)

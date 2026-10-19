@@ -317,6 +317,22 @@
         {"name": "t3-lane-terminal-settle-now-1", "description": "Calls task_cancel on the child's taskId and unwatch_pull_request on its PR at the lane's terminal state."},
         {"name": "t3-lane-terminal-settle-now-negative", "description": "Does not leave the child idle until the plan closes and does not send it the next phase."}
       ]
+    },
+    {
+      "id": 43,
+      "name": "bare-next-steps-skill-before-git",
+      "prompt": "what are the next steps here? lay them out before anyone touches code",
+      "expected_output": "A Claude seat loads /large-plan with the Skill tool as its first tool call, before any git/gh orientation command (git status, git log, gh pr list), then lays out the plan. Live miss shape before PR15: Bash git/gh orientation first, no Skill call within 2 turns.",
+      "assertions": [
+        {
+          "name": "bare-next-steps-skill-first",
+          "description": "The first tool call is the Skill tool loading large-plan, before any Bash/git/gh call."
+        },
+        {
+          "name": "bare-next-steps-skill-first-negative",
+          "description": "Does not run git status / git log / gh pr list before large-plan is loaded."
+        }
+      ]
     }
   ]
 }
