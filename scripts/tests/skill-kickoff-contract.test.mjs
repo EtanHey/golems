@@ -84,3 +84,13 @@ test("kickoff-prompt checklist names the three Skill invocations", () => {
     expect(text.split("Lead kickoff (any harness)")[1].split("\n")[0]).toContain(s);
   }
 });
+
+// PR15 (orc 2026-10-19): live headless Claude sessions loaded agent-routing and
+// pr-loop on 1/4 ordinary dispatch+PR phrases (large-plan 2/5 positives); every miss opened with a Bash
+// git/gh orientation call. Descriptions name that competing first action.
+const FIRST_ACTION = "invoke before any git/gh";
+for (const name of ["large-plan", "agent-routing", "pr-loop"]) {
+  test(`${name} description names the competing first action`, () => {
+    expect(description(name).toLowerCase()).toContain(FIRST_ACTION);
+  });
+}

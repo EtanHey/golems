@@ -1,6 +1,6 @@
 ---
 name: pr-loop
-description: "Open a PR, merge, ship, handle CI/reviews; signs GitHub writes. Invoke before first PR action. Triggers: finish work, PR comment, golem-id, Co-Authored-By trailer."
+description: "Invoke before any git/gh call to open a PR, merge, ship, fix red CI, handle reviews/PR comments, finish work. Signs GitHub writes: golem-id, Co-Authored-By."
 ---
 
 # PR Loop
@@ -9,7 +9,7 @@ description: "Open a PR, merge, ship, handle CI/reviews; signs GitHub writes. In
 
 ## Kickoff contract
 
-- **Claude seats:** invoke `/pr-loop` with the Skill tool before the first PR action of a lane: opening, updating, merging or shipping a PR, or fixing red CI.
+- **Claude seats:** invoke `/pr-loop` with the Skill tool before the first PR action of a lane: opening, updating, merging or shipping a PR, or fixing red CI. Make it the first tool call, before any git/gh/grep orientation: live misses open with `git status`/`gh pr` and never load the skill (PR15 trigger eval, 2026-10-19).
 - **Codex seats:** read this SKILL.md body (a file read) before that action; Codex has no Skill tool.
 - **A lead's kickoff brief** to a worker names the skills the worker invokes (`/large-plan`, `/agent-routing`, `/pr-loop`).
 - Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)

@@ -1,6 +1,6 @@
 ---
 name: large-plan
-description: "Plan work, a feature batch or lead kickoff; make a plan, plan next steps, multi-PR. Invoke before the first plan step."
+description: "Invoke before any git/gh/grep, even for context: make a plan, plan next steps, lead kickoff, feature batch, multi-PR."
 ---
 
 # /large-plan
@@ -14,7 +14,7 @@ description: "Plan work, a feature batch or lead kickoff; make a plan, plan next
 
 ## Kickoff contract
 
-- **Claude seats:** invoke `/large-plan` with the Skill tool before the first plan action of a lane: making a plan, planning a feature batch or next steps, or kicking off a lead.
+- **Claude seats:** invoke `/large-plan` with the Skill tool before the first plan action of a lane: making a plan, planning a feature batch or next steps, or kicking off a lead. Make it the first tool call, before any git/gh/grep orientation: live misses open with `git status`/`gh pr` and never load the skill (PR15 trigger eval, 2026-10-19).
 - **Codex seats:** read this SKILL.md body (a file read) before that action; Codex has no Skill tool.
 - **A lead's kickoff brief** to a worker names the skills the worker invokes (`/large-plan`, `/agent-routing`, `/pr-loop`).
 - Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)

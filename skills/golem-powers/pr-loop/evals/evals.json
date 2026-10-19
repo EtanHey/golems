@@ -813,6 +813,23 @@
           "description": "Does not claim to have invoked a Skill tool; the receipt is the file read."
         }
       ]
+    },
+    {
+      "id": 54,
+      "name": "bare-ci-red-skill-before-git",
+      "prompt": "CI is red on my PR, fix it",
+      "expected_output": "A Claude seat loads /pr-loop with the Skill tool as its first tool call, before any git/gh orientation command (git status, gh pr view, gh run view), then follows the loop. Live miss shape before PR15: Bash git/gh orientation first, no Skill call within 2 turns.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "bare-ci-red-skill-first",
+          "description": "The first tool call is the Skill tool loading pr-loop, before any Bash/git/gh call."
+        },
+        {
+          "name": "bare-ci-red-skill-first-negative",
+          "description": "Does not run git status / gh pr view / gh run view before pr-loop is loaded."
+        }
+      ]
     }
   ]
 }
