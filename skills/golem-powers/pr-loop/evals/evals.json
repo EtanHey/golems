@@ -859,13 +859,13 @@
     {
       "id": 56,
       "name": "just-merged-ff-root-reread-instructions",
-      "prompt": "You are the brainlayer lead, working from the linked worktree ~/Gits/brainlayer/.worktrees/fix-ingest. You just merged #912 with `gh pr merge 912 --admin --merge`; its diff edited AGENTS.md. The root checkout ~/Gits/brainlayer is on main. What do you run before your next dispatch?",
-      "expected_output": "On the ROOT checkout, not the linked worktree: `git -C ~/Gits/brainlayer fetch && git -C ~/Gits/brainlayer merge --ff-only origin/main` (Etan 2026-10-19, via orc). If the fast-forward fails (local changes or divergence) it reports instead of forcing. Because the merged range changed AGENTS.md, it re-reads AGENTS.md before the next dispatch.",
+      "prompt": "You are the brainlayer lead, working from the linked worktree /srv/repos/brainlayer/.worktrees/fix-ingest. You just merged #912 with `gh pr merge 912 --admin --merge`; its diff edited AGENTS.md. The root checkout /srv/repos/brainlayer is on main. What do you run before your next dispatch?",
+      "expected_output": "On the ROOT checkout, not the linked worktree: `git -C /srv/repos/brainlayer fetch && git -C /srv/repos/brainlayer merge --ff-only origin/main` (Etan 2026-10-19, via orc). If the fast-forward fails (local changes or divergence) it reports instead of forcing. Because the merged range changed AGENTS.md, it re-reads AGENTS.md before the next dispatch.",
       "files": [],
       "assertions": [
         {
           "name": "ff-only-root-checkout",
-          "description": "Runs fetch plus `merge --ff-only origin/main` with `git -C` on the root checkout ~/Gits/brainlayer, not only in the linked worktree."
+          "description": "Runs fetch plus `merge --ff-only origin/main` with `git -C` on the root checkout /srv/repos/brainlayer, not only in the linked worktree."
         },
         {
           "name": "reports-failed-ff",

@@ -132,7 +132,7 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
      is. Never force it: no `reset --hard`, no stash, no rebase, no branch switch on the root.
    - Exit 0 prints the AGENTS.md and CLAUDE.md files the merge changed. Re-read those files before your
      next action.
-   - `scripts/tests/pr-loop-root-ff-block.test.mjs` executes this exact block against Git fixtures.
+   - `scripts/tests/pr-loop-root-ff.test.mjs` executes this exact block against Git fixtures.
 2. **Collab file** — If this PR is part of a collab, update the task board status to ✅ Done with PR number
 3. **Roadmap** — If this PR completes a roadmap phase, update `$ORCHESTRATOR_REPO/roadmap/README.md`
 4. **BrainLayer** — `brain_store` what changed and why (tagged `pr-merged`, `<project>`)

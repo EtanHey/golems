@@ -11,7 +11,7 @@ import { resolveModelRole } from "../model-roles.mjs";
 // assertions. Live behavior evals (with/without skill) are run by the lead
 // after merge. The mutant tests at the bottom prove each check fails when the
 // text is reversed, so a check that passes on any text cannot hide here.
-// The executable root fast-forward proof is pr-loop-root-ff-block.test.mjs.
+// The executable root fast-forward proof is pr-loop-root-ff.test.mjs.
 //
 // LIMIT (lead ruling, #811 r2; same as #803/#804): this is a presence/absence
 // lint. Sentence-level negation can fool it (a reversed rule phrased with an

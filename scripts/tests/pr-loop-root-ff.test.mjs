@@ -27,9 +27,9 @@ const env = {
   GIT_CONFIG_GLOBAL: "/dev/null",
   GIT_CONFIG_NOSYSTEM: "1",
   GIT_AUTHOR_NAME: "fixture",
-  GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+  GIT_AUTHOR_EMAIL: "fixture@example.com",
   GIT_COMMITTER_NAME: "fixture",
-  GIT_COMMITTER_EMAIL: "fixture@example.invalid",
+  GIT_COMMITTER_EMAIL: "fixture@example.com",
 };
 const dirs = [];
 afterEach(() => dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
