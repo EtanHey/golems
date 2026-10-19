@@ -179,7 +179,7 @@ Sessions get "merge it" / "dispatch a worker" and will act, so the harness makes
 `--isolation-only` writes those proofs to `isolation.json` (Claude: one short session proving Skill works, init lists only the read-only tools, and an asked-for write leaves no file); a failed proof aborts any run.
 `--candidates` swaps unmerged descriptions into the mirror without touching `~/.claude` or `~/.codex`; a no-tools probe must quote each one on its own skill's line first.
 Cases record status (ok/timeout/auth_error/nonzero/incomplete/exception); only ok cases are scored, the rest are reported as infra-excluded. Claude rows also record `first_tool` and `denied_attempts`; a Codex read counts only when the command output shows the real SKILL.md's description line and first body line.
-`--reprocess <dir>` re-scores recorded logs with the current detection (spends nothing). Offline tests: `tests/test_live_trigger_eval.py`.
+`--reprocess <dir>` re-scores recorded logs with the current detection (spends nothing); it registers the same credential sources as a live run and refuses dirs whose `secrets.sha256.json` it cannot match (legacy or rotated). Offline tests: `tests/test_live_trigger_eval.py`.
 Results go to `docs.local/live-trigger/<harness>-<stamp>/`. Provenance: requested vs effective model/effort, NOT DETERMINED where unobserved → NON_COMPARABLE, counts only.
 
 ## Gate

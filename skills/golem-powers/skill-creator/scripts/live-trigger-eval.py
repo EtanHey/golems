@@ -48,7 +48,10 @@ act, so side effects must be impossible, not unlikely):
             reported (must be 0).
   secrets   the Claude token and every string value of the copied auth.json
             are redacted from every persisted file (streams, stderr, probe,
-            isolation, results, summary) before it is written.
+            isolation, results, summary) before it is written; their sha256
+            go to secrets.sha256.json. --reprocess registers the same sources
+            (env token or keychain; ~/.codex/auth.json) and refuses unless
+            every recorded fingerprint is registered again (legacy dirs too).
 
 Descriptions in effect: the installed skills (~/.claude/skills, ~/.codex/skills),
 or with --candidates DIR the skill dirs under DIR swapped into the mirror. A probe
@@ -68,7 +71,7 @@ usage:
 Results: <out>/results.jsonl, summary.md, runNN.jsonl (stream logs), probe.json,
 isolation.json. Default out: <repo>/docs.local/live-trigger/<harness>-<stamp>/.
 """
-import argparse, glob, json, os, re, secrets, shutil, subprocess, sys, tempfile, time
+import argparse, glob, hashlib, json, os, re, secrets, shutil, subprocess, sys, tempfile, time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -148,6 +151,44 @@ def redact(text):
     for sec in sorted(SECRETS, key=len, reverse=True):
         text = text.replace(sec, REDACTED)
     return text
+
+
+SECRETS_FILE = 'secrets.sha256.json'  # sha256 of each registered secret; lets --reprocess prove it can redact them
+
+
+def secret_fingerprints():
+    return sorted(hashlib.sha256(s.encode()).hexdigest() for s in SECRETS)
+
+
+def register_reprocess_secrets(d, harness):
+    """Register the same sources prepare() does, without building a home or starting a session.
+
+    Refuses unless every secret the recorded run registered (SECRETS_FILE) is registered again,
+    so a legacy recording or one made with a since-rotated credential is never rewritten unredacted."""
+    if harness == 'claude':
+        if os.environ.get('CLAUDE_CODE_OAUTH_TOKEN'):
+            add_secrets(os.environ['CLAUDE_CODE_OAUTH_TOKEN'])
+        else:
+            p = subprocess.run(['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+                               capture_output=True, text=True, timeout=30)
+            if p.returncode:
+                raise Refuse('cannot register the Claude credential for redaction: set CLAUDE_CODE_OAUTH_TOKEN '
+                             'or log in so the keychain holds it')
+            add_secrets(json.loads(p.stdout).get('claudeAiOauth') or {})
+    else:
+        auth = REAL_HOME / '.codex' / 'auth.json'
+        if not auth.is_file():
+            raise Refuse(f'cannot register Codex credentials for redaction: no {auth}')
+        add_secrets(json.loads(auth.read_text()))
+    if not SECRETS:
+        raise Refuse('no credential registered for redaction; refusing to rewrite recorded logs')
+    rec = d / SECRETS_FILE
+    if not rec.is_file():
+        raise Refuse(f'{d} has no {SECRETS_FILE} (legacy recording): cannot prove its credentials are redactable')
+    missing = set(json.loads(rec.read_text())) - set(secret_fingerprints())
+    if missing:
+        raise Refuse(f'{len(missing)} credential(s) recorded in {d} are not registered now (rotated?); '
+                     'refusing to rewrite logs that may hold them')
 
 
 def persist(path, text, mode='w'):
@@ -734,6 +775,7 @@ def summarize(results, harness, skills, prov, label):
 def reprocess(d, harness, skills, candidates=None):
     """Codex detection reads each skill's real SKILL.md: --candidates DIR if the run used it, else ~/.codex/skills."""
     d = Path(d)
+    register_reprocess_secrets(d, harness)
     rows = [json.loads(l) for l in (d / 'results.jsonl').read_text().splitlines() if l.strip()]
     skills = list(dict.fromkeys([*skills, *(r['skill'] for r in rows)]))
     ev = {} if harness == 'claude' else evidence_for(skills, candidates or REAL_HOME / '.codex' / 'skills')
@@ -768,6 +810,7 @@ def run(args, skills, cases):
     s = make_scratch(root, args.harness)
     try:
         argv, env, prov = prepare(s, args.harness, skills, args.candidates, model)
+        persist(args.out / SECRETS_FILE, json.dumps(secret_fingerprints()))
         iso = isolation_checks(s, env, args.harness)
         if args.harness == 'claude' and iso['ok']:
             iso['skill_probe'] = skill_probe_claude(args.out, skills[0], argv, env, s['work'])

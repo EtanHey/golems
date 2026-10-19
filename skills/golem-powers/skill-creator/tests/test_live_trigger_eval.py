@@ -277,9 +277,11 @@ def test_codex_counts_mcp_calls_as_side_effect_attempts():
     assert r["mcp_calls"] == ["locals_t3code.delegate_task"]
 
 
-def test_reprocess_recomputes_codex_logs(tmp_path):
+def test_reprocess_recomputes_codex_logs(tmp_path, fake_home):
+    (fake_home / ".codex/auth.json").write_text(json.dumps(dict(auth_mode="chatgpt", tokens=CODEX_SECRETS)))
     d = tmp_path / "rec"
     d.mkdir()
+    (d / lte.SECRETS_FILE).write_text("[]")
     rows = [dict(set="trigger-evals", query="handle CodeRabbit", skill="pr-loop", should_trigger=True, run=1, loaded=[], correct=False),
             dict(set="trigger-evals", query="what changed", skill="pr-loop", should_trigger=False, run=2, loaded=[], correct=True)]
     (d / "results.jsonl").write_text(jl(*rows))
@@ -557,3 +559,93 @@ def test_codex_fabricated_frontmatter_is_not_a_read(tmp_path):
     numbered = "".join(f"{i:6}\t{l}\n" for i, l in enumerate((tmp_path / "pr-loop" / "SKILL.md").read_text().splitlines(), 1))
     nl = jl(codex_cmd("nl -ba skills/pr-loop/SKILL.md", numbered, 0), {"type": "turn.completed"})
     assert lte.parse_codex(nl, "", 0, False, ev)["loaded"] == ["pr-loop"]
+
+
+# --- review round 3: --reprocess in a fresh process registers secrets -------------
+
+SCRIPT = Path(__file__).parents[1] / "scripts/live-trigger-eval.py"
+
+
+def fingerprints(*secrets):
+    import hashlib
+    return json.dumps(sorted(hashlib.sha256(f.encode()).hexdigest() for s in secrets for f in (s, json.dumps(s)[1:-1])))
+
+
+def recorded_denied_bash(d, secret, harness):
+    """A recorded run whose denied Bash input (and legacy results row) carries the credential verbatim."""
+    d.mkdir()
+    (d / "results.jsonl").write_text(jl(dict(set="baseline", query="ship it", skill="pr-loop", should_trigger=True,
+                                             run=1, loaded=[], correct=False, error=f"legacy row {secret}")))
+    if harness == "claude":
+        log = jl({"type": "system", "subtype": "init", "model": "claude-test", "tools": sorted(READ_ONLY)},
+                 {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "b1", "name": "Bash",
+                                                                "input": {"command": f"curl -H 'Authorization: Bearer {secret}'"}}]}},
+                 {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "b1", "is_error": True,
+                                                           "content": "Permission to use Bash has been denied."}]}},
+                 {"type": "result", "subtype": "success", "is_error": False, "result": "done"})
+    else:
+        log = jl(codex_cmd(f"echo {secret}", secret, 1), {"type": "turn.completed"})
+    (d / "run01.jsonl").write_text(log)
+
+
+def fresh_reprocess(tmp_path, d, harness, env_extra=None):
+    """Run --reprocess as a new interpreter: nothing registered in-process can help it."""
+    home = tmp_path / "freshhome"
+    (home / ".codex/skills").mkdir(parents=True, exist_ok=True)
+    if not (home / ".codex/skills/pr-loop").exists():
+        write_skill(home / ".codex/skills", "pr-loop", SKILL_DESC["pr-loop"])
+    b = tmp_path / "freshbin"
+    install_mock(b, "security", [], dict(rc=44, stderr="The specified item could not be found in the keychain."))
+    env = {k: v for k, v in os.environ.items() if k != "CLAUDE_CODE_OAUTH_TOKEN"}
+    env.update(HOME=str(home), PATH=f"{b}{os.pathsep}{os.environ['PATH']}", **(env_extra or {}))
+    return home, subprocess.run([sys.executable, str(SCRIPT), "--harness", harness, "--skills", "pr-loop", "--reprocess", str(d)],
+                                capture_output=True, text=True, env=env, timeout=60)
+
+
+def test_fresh_claude_reprocess_redacts_env_token(tmp_path):
+    d = tmp_path / "rec"
+    recorded_denied_bash(d, CLAUDE_SECRET, "claude")
+    (d / "secrets.sha256.json").write_text(fingerprints(CLAUDE_SECRET))
+    _, p = fresh_reprocess(tmp_path, d, "claude", dict(CLAUDE_CODE_OAUTH_TOKEN=CLAUDE_SECRET))
+    assert p.returncode == 0, p.stderr
+    out = (d / "reprocessed-results.jsonl").read_text()
+    assert "[REDACTED]" in out and json.loads(out)["denied_attempts"][0]["name"] == "Bash"
+    for f in ("reprocessed-results.jsonl", "reprocessed-summary.md"):
+        assert CLAUDE_SECRET not in (d / f).read_text()
+
+
+def test_fresh_codex_reprocess_redacts_auth_json_values(tmp_path):
+    d = tmp_path / "rec"
+    secret = CODEX_SECRETS["refresh_token"]
+    recorded_denied_bash(d, secret, "codex")
+    (d / "secrets.sha256.json").write_text(fingerprints(*CODEX_SECRETS.values()))
+    home = tmp_path / "freshhome"
+    (home / ".codex").mkdir(parents=True)
+    (home / ".codex/auth.json").write_text(json.dumps(dict(auth_mode="chatgpt", tokens=CODEX_SECRETS)))
+    _, p = fresh_reprocess(tmp_path, d, "codex")
+    assert p.returncode == 0, p.stderr
+    for f in ("reprocessed-results.jsonl", "reprocessed-summary.md"):
+        assert secret not in (d / f).read_text()
+
+
+@pytest.mark.parametrize("case", ["no_source", "legacy", "rotated"])
+def test_fresh_reprocess_refuses_when_secrets_cannot_be_registered(tmp_path, case):
+    d = tmp_path / "rec"
+    recorded_denied_bash(d, CLAUDE_SECRET, "claude")
+    if case != "legacy":
+        (d / "secrets.sha256.json").write_text(fingerprints(CLAUDE_SECRET))
+    env = {} if case == "no_source" else dict(CLAUDE_CODE_OAUTH_TOKEN=CLAUDE_SECRET if case == "legacy" else "sk-ant-oat01-ROTATED-0000000")
+    _, p = fresh_reprocess(tmp_path, d, "claude", env)
+    assert p.returncode != 0 and "REFUSED" in p.stderr
+    assert not (d / "reprocessed-results.jsonl").exists() and not (d / "reprocessed-summary.md").exists()
+
+
+def test_run_records_secret_fingerprints_for_reprocess(tmp_path, fake_home, mockbin, monkeypatch):
+    monkeypatch.setattr(lte, "claude_oauth_token", lambda: CLAUDE_SECRET)
+    install_mock(mockbin, "claude", [["quote its description", dict(stdout=claude_text(good_probe_text()))],
+                                     ["harness isolation check", dict(stdout=claude_probe_stream(sorted(READ_ONLY)))]],
+                 dict(stdout=jl({"type": "result", "subtype": "success", "is_error": False, "result": "x"})))
+    out = tmp_path / "out"
+    lte.main(["--harness", "claude", "--skills", "pr-loop", "--sets", "baseline", "--candidates", str(candidates(tmp_path)),
+              "--out", str(out), "--scratch-root", str(tmp_path / "root"), "--model", "claude-test", "--isolation-only"])
+    assert set(json.loads(fingerprints(CLAUDE_SECRET))) <= set(json.loads((out / "secrets.sha256.json").read_text()))
