@@ -188,7 +188,8 @@ Wait in this order. Take the first option that fits:
 Arm exactly one GitHub watch:
 `Monitor(command="pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`.
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
-Codex runs the same command and reads its exit code. pr-watch never merges.
+Codex runs the same command and reads its exit code, with `--deadline 25m` so the blocked turn stays
+inside Codex's ~30-min cache window. pr-watch never merges.
 An empty rollup is never READY. Required contexts must be present and green,
 and the default 180s settle window must stay quiet. See the
 [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits).
@@ -198,7 +199,9 @@ Handle every terminal exit: 0 READY: proceed to the exact-head review and author
 30 GH_ERROR: back off and report stderr.
 The 30-minute Monitor expiry precedes the 2h --deadline; re-arm on expiry, since
 re-arming restarts the deadline and the settle window. Cancel the old Monitor with TaskStop
-before re-arming at expiry or after compaction. Each re-arm costs one model turn. If the wait will
+before re-arming at expiry or after compaction. Never raise `timeout_ms` past 50 min (3000000) on a
+Claude seat: a wake past the ~60-min cache window re-reads the whole context uncached (cache audit
+2026-10-19). Each re-arm costs one model turn. If the wait will
 need more than one, move it to the T3 watch or a bounded mechanical child instead. READY remains a CI
 fact; read the exact-head review before an authorized merge. Never route Codex's output through a
 cmuxlayer file watch.

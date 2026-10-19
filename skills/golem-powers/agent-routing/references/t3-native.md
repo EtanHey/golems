@@ -36,6 +36,12 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
 - The task prompt is the child's whole context; it gets no parent history. A payload over a few
   lines goes to a file, sent as `Read and follow <absolute path>`, and names the skills the child
   invokes.
+- **Cold child = fresh child.** Prompt-cache windows are Claude ~60 min and Codex ~30 min (Dara A.,
+  2026-10-19). If the lead has been idle longer than the child's window, dispatch a FRESH child with a
+  compact checkpoint (brief path, PR URL and head SHA, open findings) instead of a `t3_thread_send` or
+  "Read and follow" into the old child: waking a cold child re-reads its whole context uncached
+  (Claude 7.4M + Codex 0.4M tokens a week, cache audit 2026-10-19). A same-PR fix round inside the
+  window may still reuse the child (SKILL.md § Lead Topology #5).
 
 ## 3. Wait
 
@@ -43,6 +49,10 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
   `task_status`, schedule a wakeup, or spawn a watcher or collab monitor for it.
 - "No polling turns. No collab-monitor wakes in Codex, and no "watch #410" loops. Use T3 completion
   notifications or a single bounded check." (Etan 2026-10-18, via orc collab)
+- If a timer wake is unavoidable (a Monitor `timeout_ms`, `ScheduleWakeup` `delaySeconds`, a cron or
+  background-watcher interval), keep the delay inside the seat's cache window: ≤50 min on a Claude
+  seat, ≤25 min on a Codex seat. Never 3600 s: wakes past the window cost Claude 7.4M tokens a week
+  (20 busts; 35 Monitor arms at 3600 s, cache audit 2026-10-19). Prefer the completion notification.
 
 ## 4. On wake: verify, relay, settle
 

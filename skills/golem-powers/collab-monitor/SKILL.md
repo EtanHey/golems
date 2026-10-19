@@ -44,6 +44,13 @@ caps the tool at 1800000 ms; other harness versions may differ, so check their
 schema. Give it events that each require action; use one completion watch for
 a batch of tests or CI jobs.
 
+Keep every timer wake inside the prompt-cache window (Claude ~60 min, Codex
+~30 min): a Monitor `timeout_ms`, `ScheduleWakeup` delay or re-arm interval is
+≤50 min (3000000 ms) on a Claude seat and ≤25 min on a Codex seat. Never arm
+3600 s: wakes past the window busted the cache 20 times in a week, costing
+Claude 7.4M tokens (35 Monitor arms at 3600 s, cache audit 2026-10-19). Prefer
+an event wake (a completion notification or `watch_pull_request`) over a timer.
+
 ### Collab tail with a lead filter
 
 Use the foreground routing filter as the native tool's command. Monitor owns the
