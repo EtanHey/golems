@@ -12,6 +12,8 @@ export const ADVISORY_RENDER_ENV = "GOLEMS_STOP_ADVISORY_RENDER";
 // O_NONBLOCK: a FIFO with no reader would block a plain append open and hang
 // Stop (r1 review); nonblocking, it fails with ENXIO instead.
 const LOG_OPEN_FLAGS = constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND | constants.O_NONBLOCK;
+// A short write retries the remainder (r2 review), bounded so Stop cannot spin.
+const MAX_WRITE_ATTEMPTS = 8;
 
 export function advisoryLogPath() {
   return process.env.STOP_ADVISORY_LOG_PATH ??
@@ -28,7 +30,13 @@ function appendToRegularFile(logPath, line) {
   const fd = openSync(logPath, LOG_OPEN_FLAGS, 0o600);
   try {
     if (!fstatSync(fd).isFile()) return;
-    writeSync(fd, line);
+    const bytes = Buffer.from(line, "utf8");
+    let offset = 0;
+    for (let attempt = 0; offset < bytes.length && attempt < MAX_WRITE_ATTEMPTS; attempt += 1) {
+      const written = writeSync(fd, bytes, offset, bytes.length - offset);
+      if (written <= 0) break;
+      offset += written;
+    }
   } finally {
     closeSync(fd);
   }

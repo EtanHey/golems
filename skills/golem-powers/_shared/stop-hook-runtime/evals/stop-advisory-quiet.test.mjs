@@ -2,7 +2,7 @@ import { afterEach, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import { readFixture } from "./helpers.mjs";
@@ -153,6 +153,50 @@ for (const { gate, red, green } of GATES) {
       expect(proc.stdout).toBe("{}");
     });
   }
+
+  // r2 review: a single writeSync ignored bytesWritten, so a short write left a
+  // truncated row with no newline. Sol's fault injection halves the first write;
+  // the hook runs under node because --import is a node flag.
+  test(`${gate} recovers a short write: one complete parseable row ending in a newline`, () => {
+    const dir = scratchDir();
+    const logPath = path.join(dir, "stop-advisories.jsonl");
+    const partial = path.join(dir, "partial.mjs");
+    writeFileSync(partial, [
+      'import fs from "node:fs";',
+      'import { syncBuiltinESMExports } from "node:module";',
+      "const write = fs.writeSync; let first = true;",
+      "fs.writeSync = (fd, line, ...args) => {",
+      "  if (first) {",
+      "    first = false;",
+      '    process.stderr.write("short-write-injected\\n");',
+      "    const b = Buffer.from(line);",
+      "    return write(fd, b, 0, Math.floor(b.length / 2));",
+      "  }",
+      "  return write(fd, line, ...args);",
+      "};",
+      "syncBuiltinESMExports();",
+      "",
+    ].join("\n"));
+    const env = { ...process.env, HOME: dir, FLEET_WRAP_GATE_TASKS_DIR: dir, STOP_ADVISORY_LOG_PATH: logPath };
+    delete env.GOLEMS_STOP_ADVISORY_RENDER;
+    const proc = spawnSync("node", ["--import", pathToFileURL(partial).href, hookPath(gate)], {
+      input: JSON.stringify(payloadFor(red)),
+      encoding: "utf8",
+      env,
+      timeout: 5_000,
+    });
+    expect(proc.error).toBeUndefined();
+    expect(proc.status, proc.stderr).toBe(0);
+    expect(proc.stdout).toBe("{}");
+    expect(proc.stderr).toContain("short-write-injected");
+    const raw = readFileSync(logPath, "utf8");
+    expect(raw.endsWith("\n")).toBe(true);
+    const lines = raw.split("\n").filter(Boolean);
+    expect(lines).toHaveLength(1);
+    const row = JSON.parse(lines[0]);
+    expect(row.gate).toBe(gate);
+    expect(row.codes).toContain(readFixture(red).violation);
+  });
 
   test(`${gate} quiet advisory is still counted as an advisory in decision telemetry`, () => {
     const dir = scratchDir();
