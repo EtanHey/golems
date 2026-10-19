@@ -34,7 +34,7 @@ function runTelemetry(logPath, payload) {
     {
       input: JSON.stringify({ hook_event_name: "Stop", ...payload }),
       encoding: "utf8",
-      env: { ...process.env, STOP_TELEMETRY_LOG_PATH: logPath },
+      env: { ...process.env, STOP_TELEMETRY_LOG_PATH: logPath, GOLEMS_STOP_ADVISORY_RENDER: "1" },
     },
   );
 }

@@ -28,11 +28,29 @@ function parsedJson(chunks) {
   }
 }
 
-function classifyDecision(output, { exitCode, timedOut, spawnError, emptyStdout }) {
+// The reader publishes its read receipt first; a quiet advisory adds a second
+// line. Lines merge in order; an unparseable line is ignored.
+function parsedReceipt(chunks) {
+  const lines = Buffer.concat(chunks).toString("utf8").split(/\r?\n/).filter((line) => line.trim());
+  let receipt = null;
+  for (const line of lines) {
+    try {
+      const value = JSON.parse(line);
+      if (value && typeof value === "object" && !Array.isArray(value)) receipt = { ...receipt, ...value };
+    } catch {
+      // A torn receipt line cannot alter the decision row.
+    }
+  }
+  return receipt;
+}
+
+function classifyDecision(output, { exitCode, timedOut, spawnError, emptyStdout, receipt }) {
   if (spawnError || timedOut || exitCode !== 0) return "error";
   if (emptyStdout) return "allow";
   if (!output || typeof output !== "object" || Array.isArray(output)) return "error";
   if (output.decision === "block") return "block";
+  // A gate that logged its advisory instead of rendering it prints {}.
+  if (receipt?.advisoryRendered === false && Object.keys(output).length === 0) return "advisory";
   if (typeof output.systemMessage === "string") {
     // A gate advisory (GO-5 E2) quotes transcript evidence; its words are not a status.
     if (/^[A-Z][A-Z-]* advisory\b/.test(output.systemMessage)) return "advisory";
@@ -107,8 +125,8 @@ function writeTelemetry(exitCode, signal) {
   const endedAtMs = Date.now();
   const output = parsedJson(stdoutChunks);
   const emptyStdout = Buffer.concat(stdoutChunks).toString("utf8").trim().length === 0;
-  const receipt = parsedJson(receiptChunks);
-  const decision = classifyDecision(output, { exitCode, timedOut, spawnError, emptyStdout });
+  const receipt = parsedReceipt(receiptChunks);
+  const decision = classifyDecision(output, { exitCode, timedOut, spawnError, emptyStdout, receipt });
   const row = {
     schema: "golems.stop-decision.v1",
     hook: hookName,
@@ -127,6 +145,7 @@ function writeTelemetry(exitCode, signal) {
     stateFilesAttempted: Number(receipt?.stateFilesAttempted ?? 0),
     bytesRead: Number(receipt?.bytesRead ?? stdinBytes),
   };
+  if (typeof receipt?.advisoryRendered === "boolean") row.advisoryRendered = receipt.advisoryRendered;
   try {
     appendFileSync(logPath, `${JSON.stringify(row)}\n`, "utf8");
   } catch {

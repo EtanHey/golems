@@ -23,6 +23,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 HOOK = ROOT / "scripts" / "fleet-wrap-gate-hook.mjs"
+# Assertions read the rendered advisory; render mode also keeps the real advisory log clean.
+HOOK_ENV = {**os.environ, "GOLEMS_STOP_ADVISORY_RENDER": "1"}
 NODE = os.environ.get("FLEET_WRAP_GATE_NODE") or shutil.which("node") or "node"
 TIMEOUT_SECONDS = float(os.environ.get("FLEET_WRAP_GATE_TIMEOUT_SECONDS", "0.5"))
 
@@ -50,6 +52,7 @@ def run_hook(fixture: dict) -> tuple[bool, str]:
             stderr=subprocess.PIPE,
             timeout=TIMEOUT_SECONDS,
             check=False,
+            env=HOOK_ENV,
         )
     except subprocess.TimeoutExpired:
         return False, f"hook timed out after {TIMEOUT_SECONDS}s"
@@ -96,6 +99,7 @@ def verify_fail_open() -> tuple[bool, str]:
             stderr=subprocess.PIPE,
             timeout=TIMEOUT_SECONDS,
             check=False,
+            env=HOOK_ENV,
         )
     except subprocess.TimeoutExpired:
         return False, f"malformed stdin hook timed out after {TIMEOUT_SECONDS}s"
@@ -162,6 +166,7 @@ def verify_transcript_path_jsonl_and_state_path() -> tuple[bool, str]:
             stderr=subprocess.PIPE,
             timeout=TIMEOUT_SECONDS,
             check=False,
+            env=HOOK_ENV,
         )
     except subprocess.TimeoutExpired:
         return False, f"transcript_path/state_path hook timed out after {TIMEOUT_SECONDS}s"

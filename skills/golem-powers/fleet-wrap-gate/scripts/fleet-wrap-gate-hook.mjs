@@ -3,7 +3,9 @@
 //
 // Stdout schema:
 //   allow: {}
-//   advisory: {"systemMessage":"..."}  (never a block: GO-5 E2)
+//   advisory: {}  logged to ~/.claude/hooks/stop-advisories.jsonl (2026-10-19 eval)
+//   advisory with GOLEMS_STOP_ADVISORY_RENDER=1: {"systemMessage":"..."}
+//   never a block: GO-5 E2
 //
 // Hang-safety contract: no network, no BrainLayer, bounded tail/state reads
 // (plus at most 4 cited report files, 256 KiB each), no subprocesses, and
@@ -14,6 +16,7 @@ import {
   readerFailurePayload,
   readStopHookContext,
 } from "../../_shared/stop-hook-runtime/stop-hook-reader.mjs";
+import { emitAdvisory } from "../../_shared/stop-hook-runtime/stop-advisory.mjs";
 import { readReport } from "../lib/report-reader.mjs";
 import { CLEANUP_RECEIPT_CODE as RECEIPT_CODE, detectFleetWrap } from "../src/fleet-wrap-gate.mjs";
 
@@ -21,9 +24,9 @@ function allow() {
   process.stdout.write("{}");
 }
 
-// GO-5 E2: a Stop block makes the model continue its turn, so a flag reaches
-// it as an advisory systemMessage instead.
-function advise(result) {
+// GO-5 E2: a Stop block makes the model continue its turn, so a flag is an
+// advisory: logged by default, rendered as a systemMessage only on opt-in.
+function advise(result, payload) {
   const codes = result.violations.map((violation) => violation.code);
   const periodic = codes.filter((code) => code !== RECEIPT_CODE);
   const leads = [];
@@ -32,8 +35,11 @@ function advise(result) {
   const details = result.violations
     .map((violation) => `${violation.code}: ${violation.evidence} Cleanup: ${violation.action}.`)
     .join(" ");
-  process.stdout.write(JSON.stringify({
-    systemMessage: `FLEET-WRAP-GATE advisory: ${leads.join("; ")}. ${details}`,
+  writePayload(emitAdvisory({
+    gate: "fleet-wrap-gate",
+    codes,
+    message: `FLEET-WRAP-GATE advisory: ${leads.join("; ")}. ${details}`,
+    payload,
   }));
 }
 
@@ -52,7 +58,7 @@ function main() {
       sessionId: context.sessionId,
       readReport,
     });
-    if (result.verdict === "FLAG") return advise(result);
+    if (result.verdict === "FLAG") return advise(result, context.payload);
     return allow();
   } catch (error) {
     publishStopHookReceipt(error?.receipt);

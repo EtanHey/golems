@@ -36,6 +36,7 @@ test("real Stop hook emits JSON for a 400 KB here-doc command within three secon
     input: payload,
     encoding: "utf8",
     timeout: 3_000,
+    env: { ...process.env, GOLEMS_STOP_ADVISORY_RENDER: "1" },
   });
   const elapsed = performance.now() - start;
   expect(run.error).toBeUndefined();

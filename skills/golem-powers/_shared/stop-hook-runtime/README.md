@@ -18,10 +18,20 @@ this stop already follows a Stop-hook block), the reader returns a null
 transcript without reading the transcript or state, so every gate allows.
 Blocking again would only make the model retry the same stop.
 
+`stop-advisory.mjs` is how `false-green-gate` and `fleet-wrap-gate` emit a flag.
+By default it prints `{}` and appends one `golems.stop-advisory.v1` line (ts,
+gate, session_id, transcript_path, codes, message, cwd) to
+`~/.claude/hooks/stop-advisories.jsonl` (`STOP_ADVISORY_LOG_PATH` overrides).
+`GOLEMS_STOP_ADVISORY_RENDER=1` restores the rendered `systemMessage`. Either
+way, it publishes an `advisoryRendered` receipt line. `qa-verdict-gate` still
+renders.
+
 `stop-telemetry.mjs` captures that stdout decision without changing it and
 appends one `golems.stop-decision.v1` JSONL row. Rows classify the outcome as
 `allow`, `block`, `advisory`, `skipped`, or `error` and include actual stdin,
-transcript, state, and total bytes read.
+transcript, state, and total bytes read. Receipt lines merge in order; a `{}`
+whose receipt says `advisoryRendered: false` is still an `advisory`, and the row
+carries `advisoryRendered` when a gate reported it.
 
 The installed layout must preserve the relative imports:
 

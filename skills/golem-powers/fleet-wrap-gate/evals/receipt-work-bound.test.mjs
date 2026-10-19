@@ -22,6 +22,8 @@ function runHook(text, state = {}) {
       input: JSON.stringify({ hook_event_name: "Stop", transcript_path: transcriptPath, state }),
       encoding: "utf8",
       timeout: 1_000,
+      // Assertions read the rendered advisory; render mode also keeps the real log clean.
+      env: { ...process.env, GOLEMS_STOP_ADVISORY_RENDER: "1" },
     });
     return { run, elapsed: performance.now() - start };
   } finally {

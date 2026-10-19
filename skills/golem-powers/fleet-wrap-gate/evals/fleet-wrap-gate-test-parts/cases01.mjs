@@ -385,6 +385,7 @@ test("Stop hook scopes the shared task registry to the current session", () => {
       input: JSON.stringify(payload),
       encoding: "utf8",
       timeout: 5_000,
+      env: { ...process.env, GOLEMS_STOP_ADVISORY_RENDER: "1" },
     });
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({});
@@ -511,6 +512,7 @@ test("Stop hook reads a cited report file on disk (bounded) and emits a typed ad
     input: JSON.stringify(payload),
     encoding: "utf8",
     timeout: 5_000,
+    env: { ...process.env, GOLEMS_STOP_ADVISORY_RENDER: "1" },
   });
   try {
     writeFileSync(report, `${RECEIPT}\nDONE_W7\n`);
