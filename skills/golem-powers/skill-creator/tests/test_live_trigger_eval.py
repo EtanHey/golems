@@ -281,7 +281,7 @@ def test_reprocess_recomputes_codex_logs(tmp_path, fake_home):
     (fake_home / ".codex/auth.json").write_text(json.dumps(dict(auth_mode="chatgpt", tokens=CODEX_SECRETS)))
     d = tmp_path / "rec"
     d.mkdir()
-    (d / lte.SECRETS_FILE).write_text("[]")
+    write_marker(d)
     rows = [dict(set="trigger-evals", query="handle CodeRabbit", skill="pr-loop", should_trigger=True, run=1, loaded=[], correct=False),
             dict(set="trigger-evals", query="what changed", skill="pr-loop", should_trigger=False, run=2, loaded=[], correct=True)]
     (d / "results.jsonl").write_text(jl(*rows))
@@ -470,6 +470,20 @@ def assert_no_secret(out, secrets):
         text = p.read_text(errors="replace")
         for sec in secrets:
             assert sec not in text, f"{sec!r} leaked into {p}"
+    assert_no_secret_digest(out, secrets)
+
+
+def assert_no_secret_digest(out, secrets):
+    """No file may carry a guessable digest of a credential (review round 4: offline guessing)."""
+    import hashlib
+    assert not (out / "secrets.sha256.json").exists()
+    forms = {f for s in secrets for f in (s, json.dumps(s)[1:-1])}
+    digests = {getattr(hashlib, a)(f.encode()).hexdigest() for f in forms for a in ("sha1", "sha256", "md5")}
+    for p in out.rglob("*"):
+        if p.is_file():
+            text = p.read_text(errors="replace")
+            for dg in digests:
+                assert dg not in text, f"digest {dg} of a credential leaked into {p}"
 
 
 def test_claude_credential_is_redacted_from_every_persisted_file(tmp_path, fake_home, mockbin, monkeypatch):
@@ -566,9 +580,8 @@ def test_codex_fabricated_frontmatter_is_not_a_read(tmp_path):
 SCRIPT = Path(__file__).parents[1] / "scripts/live-trigger-eval.py"
 
 
-def fingerprints(*secrets):
-    import hashlib
-    return json.dumps(sorted(hashlib.sha256(f.encode()).hexdigest() for s in secrets for f in (s, json.dumps(s)[1:-1])))
+def write_marker(d, **marker):
+    (d / "redaction.json").write_text(json.dumps(marker or dict(redaction="v1", harness_sha="0" * 40)))
 
 
 def recorded_denied_bash(d, secret, harness):
@@ -605,7 +618,7 @@ def fresh_reprocess(tmp_path, d, harness, env_extra=None):
 def test_fresh_claude_reprocess_redacts_env_token(tmp_path):
     d = tmp_path / "rec"
     recorded_denied_bash(d, CLAUDE_SECRET, "claude")
-    (d / "secrets.sha256.json").write_text(fingerprints(CLAUDE_SECRET))
+    write_marker(d)
     _, p = fresh_reprocess(tmp_path, d, "claude", dict(CLAUDE_CODE_OAUTH_TOKEN=CLAUDE_SECRET))
     assert p.returncode == 0, p.stderr
     out = (d / "reprocessed-results.jsonl").read_text()
@@ -618,7 +631,7 @@ def test_fresh_codex_reprocess_redacts_auth_json_values(tmp_path):
     d = tmp_path / "rec"
     secret = CODEX_SECRETS["refresh_token"]
     recorded_denied_bash(d, secret, "codex")
-    (d / "secrets.sha256.json").write_text(fingerprints(*CODEX_SECRETS.values()))
+    write_marker(d)
     home = tmp_path / "freshhome"
     (home / ".codex").mkdir(parents=True)
     (home / ".codex/auth.json").write_text(json.dumps(dict(auth_mode="chatgpt", tokens=CODEX_SECRETS)))
@@ -628,19 +641,22 @@ def test_fresh_codex_reprocess_redacts_auth_json_values(tmp_path):
         assert secret not in (d / f).read_text()
 
 
-@pytest.mark.parametrize("case", ["no_source", "legacy", "rotated"])
-def test_fresh_reprocess_refuses_when_secrets_cannot_be_registered(tmp_path, case):
+@pytest.mark.parametrize("case", ["no_source", "legacy", "legacy_fingerprints", "unknown_version"])
+def test_fresh_reprocess_refuses_without_marker_or_secret_source(tmp_path, case):
     d = tmp_path / "rec"
     recorded_denied_bash(d, CLAUDE_SECRET, "claude")
-    if case != "legacy":
-        (d / "secrets.sha256.json").write_text(fingerprints(CLAUDE_SECRET))
-    env = {} if case == "no_source" else dict(CLAUDE_CODE_OAUTH_TOKEN=CLAUDE_SECRET if case == "legacy" else "sk-ant-oat01-ROTATED-0000000")
+    if case in ("no_source", "unknown_version"):
+        write_marker(d, **({} if case == "no_source" else dict(redaction="v0", harness_sha="x")))
+    if case == "legacy_fingerprints":  # a round-3 recording: digests only, no v1 marker
+        (d / "secrets.sha256.json").write_text("[]")
+    before = sorted(p.name for p in d.iterdir())
+    env = {} if case == "no_source" else dict(CLAUDE_CODE_OAUTH_TOKEN=CLAUDE_SECRET)
     _, p = fresh_reprocess(tmp_path, d, "claude", env)
     assert p.returncode != 0 and "REFUSED" in p.stderr
-    assert not (d / "reprocessed-results.jsonl").exists() and not (d / "reprocessed-summary.md").exists()
+    assert sorted(p.name for p in d.iterdir()) == before  # nothing written
 
 
-def test_run_records_secret_fingerprints_for_reprocess(tmp_path, fake_home, mockbin, monkeypatch):
+def test_run_records_redaction_marker_without_secret_digests(tmp_path, fake_home, mockbin, monkeypatch):
     monkeypatch.setattr(lte, "claude_oauth_token", lambda: CLAUDE_SECRET)
     install_mock(mockbin, "claude", [["quote its description", dict(stdout=claude_text(good_probe_text()))],
                                      ["harness isolation check", dict(stdout=claude_probe_stream(sorted(READ_ONLY)))]],
@@ -648,4 +664,7 @@ def test_run_records_secret_fingerprints_for_reprocess(tmp_path, fake_home, mock
     out = tmp_path / "out"
     lte.main(["--harness", "claude", "--skills", "pr-loop", "--sets", "baseline", "--candidates", str(candidates(tmp_path)),
               "--out", str(out), "--scratch-root", str(tmp_path / "root"), "--model", "claude-test", "--isolation-only"])
-    assert set(json.loads(fingerprints(CLAUDE_SECRET))) <= set(json.loads((out / "secrets.sha256.json").read_text()))
+    marker = json.loads((out / "redaction.json").read_text())
+    assert set(marker) == {"redaction", "harness_sha"} and marker["redaction"] == "v1"
+    assert len(marker["harness_sha"]) == 40 and int(marker["harness_sha"], 16) >= 0
+    assert_no_secret_digest(out, [CLAUDE_SECRET])

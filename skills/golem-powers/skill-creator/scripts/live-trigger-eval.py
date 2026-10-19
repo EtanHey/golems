@@ -48,10 +48,12 @@ act, so side effects must be impossible, not unlikely):
             reported (must be 0).
   secrets   the Claude token and every string value of the copied auth.json
             are redacted from every persisted file (streams, stderr, probe,
-            isolation, results, summary) before it is written; their sha256
-            go to secrets.sha256.json. --reprocess registers the same sources
-            (env token or keychain; ~/.codex/auth.json) and refuses unless
-            every recorded fingerprint is registered again (legacy dirs too).
+            isolation, results, summary) before it is written. No secret-derived
+            bytes are persisted: redaction.json only marks the redaction version
+            and the script's git blob sha. --reprocess refuses a dir without a
+            v1 marker (legacy) or when it cannot register any current source
+            (env token or keychain; ~/.codex/auth.json), and still redacts with
+            the current secrets before every write.
 
 Descriptions in effect: the installed skills (~/.claude/skills, ~/.codex/skills),
 or with --candidates DIR the skill dirs under DIR swapped into the mirror. A probe
@@ -153,18 +155,26 @@ def redact(text):
     return text
 
 
-SECRETS_FILE = 'secrets.sha256.json'  # sha256 of each registered secret; lets --reprocess prove it can redact them
+REDACTION_FILE = 'redaction.json'  # provenance marker only: no secret-derived bytes (review round 4)
 
 
-def secret_fingerprints():
-    return sorted(hashlib.sha256(s.encode()).hexdigest() for s in SECRETS)
+def redaction_marker():
+    blob = Path(__file__).read_bytes()
+    return {'redaction': 'v1', 'harness_sha': hashlib.sha1(b'blob %d\0' % len(blob) + blob).hexdigest()}  # git hash-object
 
 
 def register_reprocess_secrets(d, harness):
     """Register the same sources prepare() does, without building a home or starting a session.
 
-    Refuses unless every secret the recorded run registered (SECRETS_FILE) is registered again,
-    so a legacy recording or one made with a since-rotated credential is never rewritten unredacted."""
+    Refuses a legacy recording (no v1 REDACTION_FILE) and refuses when no current source registers;
+    the caller still redacts with the current secrets before every write."""
+    rec = d / REDACTION_FILE
+    try:
+        marker = json.loads(rec.read_text()) if rec.is_file() else {}
+    except ValueError:
+        marker = {}
+    if not isinstance(marker, dict) or marker.get('redaction') != 'v1':
+        raise Refuse(f'{d} has no v1 {REDACTION_FILE} (legacy recording, written before redaction): refusing to rewrite it')
     if harness == 'claude':
         if os.environ.get('CLAUDE_CODE_OAUTH_TOKEN'):
             add_secrets(os.environ['CLAUDE_CODE_OAUTH_TOKEN'])
@@ -182,13 +192,6 @@ def register_reprocess_secrets(d, harness):
         add_secrets(json.loads(auth.read_text()))
     if not SECRETS:
         raise Refuse('no credential registered for redaction; refusing to rewrite recorded logs')
-    rec = d / SECRETS_FILE
-    if not rec.is_file():
-        raise Refuse(f'{d} has no {SECRETS_FILE} (legacy recording): cannot prove its credentials are redactable')
-    missing = set(json.loads(rec.read_text())) - set(secret_fingerprints())
-    if missing:
-        raise Refuse(f'{len(missing)} credential(s) recorded in {d} are not registered now (rotated?); '
-                     'refusing to rewrite logs that may hold them')
 
 
 def persist(path, text, mode='w'):
@@ -810,7 +813,7 @@ def run(args, skills, cases):
     s = make_scratch(root, args.harness)
     try:
         argv, env, prov = prepare(s, args.harness, skills, args.candidates, model)
-        persist(args.out / SECRETS_FILE, json.dumps(secret_fingerprints()))
+        persist(args.out / REDACTION_FILE, json.dumps(redaction_marker()))
         iso = isolation_checks(s, env, args.harness)
         if args.harness == 'claude' and iso['ok']:
             iso['skill_probe'] = skill_probe_claude(args.out, skills[0], argv, env, s['work'])
