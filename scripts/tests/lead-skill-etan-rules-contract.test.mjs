@@ -12,6 +12,12 @@ import { resolveModelRole } from "../model-roles.mjs";
 // after merge. The mutant tests at the bottom prove each check fails when the
 // text is reversed, so a check that passes on any text cannot hide here.
 // The executable root fast-forward proof is pr-loop-root-ff-block.test.mjs.
+//
+// LIMIT (lead ruling, #811 r2; same as #803/#804): this is a presence/absence
+// lint. Sentence-level negation can fool it (a reversed rule phrased with an
+// unrelated "not" or "never" passes), and an eval assertion is checked for
+// presence, not correctness. Do not harden the negation heuristics further:
+// semantic correctness is gated by the lead's live behavior evals after merge.
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "..", "..");
 const skillsDir = path.join(root, "skills", "golem-powers");
