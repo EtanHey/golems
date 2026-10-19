@@ -52,6 +52,7 @@ function runHook(root, gate, payload) {
   const proc = spawnSync(process.execPath, [hook], {
     input: JSON.stringify({ hook_event_name: "Stop", ...payload }),
     encoding: "utf8",
+    env: { ...process.env, GOLEMS_STOP_ADVISORY_RENDER: "1" },
   });
   expect(proc.status, proc.stderr).toBe(0);
   return JSON.parse(proc.stdout);

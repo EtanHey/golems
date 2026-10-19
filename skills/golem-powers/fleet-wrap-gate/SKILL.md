@@ -19,7 +19,7 @@ A deterministic detector over an agent transcript plus durable cron/loop state: 
 turn reaches a **terminal / stand-down state** (fleet wrap, sprint close, "back to
 silent", "only an Etan decision pending", "all work merged", `DONE`), **cron-count
 MUST == 0**. If a durable registry/state file still contains a live cron or `/loop`,
-the hook adds an advisory (a `systemMessage`, never a Stop block since GO-5 E2) with a typed cleanup reason: **`FLEETWRAP_CRON_ALIVE`** or
+the hook records an advisory (logged by default, never a Stop block since GO-5 E2) with a typed cleanup reason: **`FLEETWRAP_CRON_ALIVE`** or
 **`FLEETWRAP_LOOP_ALIVE`**. This is the MECHANICAL gate that `/fleet-wrap` describes
 in prose — "manual gates drift, automated gates don't." The pinned RED/GREEN transcript
 and state fixtures ARE the replayable gate (R-003/R-014 pattern).
@@ -91,7 +91,15 @@ reads, and fail-open on malformed input or internal errors. It emits the Claude 
 stdout schema:
 
 - allow: `{}`
-- advisory: `{"systemMessage":"FLEET-WRAP-GATE advisory: ..."}` (a flag; never a block)
+- advisory: `{}` plus a log line; with `GOLEMS_STOP_ADVISORY_RENDER=1`,
+  `{"systemMessage":"FLEET-WRAP-GATE advisory: ..."}` (a flag; never a block)
+
+Advisories are logged, not rendered (2026-10-19 Stop-advisory eval: false-green
+3/25 useful, fleet-wrap 0/25, 0/47 follow-ups responded). A flag prints `{}` and
+appends one `golems.stop-advisory.v1` line (ts, gate, session_id, transcript_path,
+codes, message, cwd) to `~/.claude/hooks/stop-advisories.jsonl`
+(`STOP_ADVISORY_LOG_PATH` overrides). Set `GOLEMS_STOP_ADVISORY_RENDER=1` to render
+the `systemMessage` instead. A log-write failure still prints `{}`.
 
 `install-snippet.json` pins the absolute Node path:
 `$HOME/.nvm/versions/node/v22.22.0/bin/node`.

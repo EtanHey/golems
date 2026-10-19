@@ -28,6 +28,7 @@ function runHook(gate, payload) {
     input: JSON.stringify(payload),
     encoding: "utf8",
     timeout: 5_000,
+    env: { ...process.env, GOLEMS_STOP_ADVISORY_RENDER: "1" },
   });
 }
 

@@ -105,6 +105,7 @@ test("R2-5: the report reader rejects symlinks to non-report targets, `..` paths
       }),
       encoding: "utf8",
       timeout: 5_000,
+      env: { ...process.env, GOLEMS_STOP_ADVISORY_RENDER: "1" },
     });
     expect(run.status).toBe(0);
     expect(JSON.parse(run.stdout).systemMessage).toContain("FLEETWRAP_CLEANUP_RECEIPT_MISSING");

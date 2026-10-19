@@ -10,7 +10,8 @@ setDefaultTimeout(15_000);
 
 // GO-5 E2: a Stop block makes the model continue its turn ("a hook just makes
 // them try again"). These three gates keep their signal as an advisory
-// systemMessage and never emit `decision: block`.
+// systemMessage and never emit `decision: block`. false-green and fleet-wrap
+// render it only with GOLEMS_STOP_ADVISORY_RENDER=1 (stop-advisory-quiet.test.mjs).
 const here = path.dirname(fileURLToPath(import.meta.url));
 const powersRoot = path.resolve(here, "../../..");
 
@@ -22,7 +23,11 @@ const GATES = [
 
 function runHook(gate, payload) {
   const hook = path.join(powersRoot, gate, "scripts", `${gate}-hook.mjs`);
-  const result = spawnSync(process.execPath, [hook], { input: JSON.stringify(payload), encoding: "utf8" });
+  const result = spawnSync(process.execPath, [hook], {
+    input: JSON.stringify(payload),
+    encoding: "utf8",
+    env: { ...process.env, GOLEMS_STOP_ADVISORY_RENDER: "1" },
+  });
   expect(result.status, result.stderr).toBe(0);
   return JSON.parse(result.stdout);
 }

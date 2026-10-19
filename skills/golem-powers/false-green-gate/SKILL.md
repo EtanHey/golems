@@ -67,6 +67,21 @@ bun skills/golem-powers/false-green-gate/scripts/false-green-gate-cli.mjs <trans
 
 Programmatic: `import { detectFalseGreen } from "./src/false-green-gate.mjs"` → `{ verdict, claim, domains, violations }`.
 
+## Stop Hook Output
+
+`scripts/false-green-gate-hook.mjs` never blocks (GO-5 E2):
+
+- allow: `{}`
+- advisory: `{}` plus a log line; with `GOLEMS_STOP_ADVISORY_RENDER=1`,
+  `{"systemMessage":"FALSE-GREEN-GATE advisory: ..."}`
+
+Advisories are logged, not rendered (2026-10-19 Stop-advisory eval: false-green
+3/25 useful, fleet-wrap 0/25, 0/47 follow-ups responded). A flag prints `{}` and
+appends one `golems.stop-advisory.v1` line (ts, gate, session_id, transcript_path,
+codes, message, cwd) to `~/.claude/hooks/stop-advisories.jsonl`
+(`STOP_ADVISORY_LOG_PATH` overrides). Set `GOLEMS_STOP_ADVISORY_RENDER=1` to render
+the `systemMessage` instead. A log-write failure still prints `{}`.
+
 ## Stated Limits (honesty rule)
 
 - Evidence is marker-anchored over the same-turn blob; a probe described but not actually run can read as
