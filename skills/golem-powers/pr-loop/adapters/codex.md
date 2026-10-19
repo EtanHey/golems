@@ -90,8 +90,9 @@ entire comment/review payload into context.
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
 
 ```bash
-# CI: ONE blocking call — read its exit code
-pr-watch <owner/repo> <N> --head <sha> --deadline 2h
+# CI: ONE blocking call — read its exit code. 25m, not Claude's 2h: Codex has no shorter Monitor
+# expiry, so the deadline itself keeps the wake inside Codex's ~30-min cache window
+pr-watch <owner/repo> <N> --head <sha> --deadline 25m
 
 # Review state: one bounded slim read per wake — state fields + activity COUNTS, never full bodies
 gh pr view <N> --json state,mergeStateStatus,reviewDecision
@@ -107,7 +108,10 @@ Rules:
   [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits):
   0 READY is a CI fact, 12 MERGED is an observed merge, 10 FAILED needs action,
   11 HEAD_MOVED needs a new head pin, 20 DEADLINE needs re-arming if waiting
-  continues, and 30 GH_ERROR needs the stderr diagnosis. pr-watch never merges;
+  continues, and 30 GH_ERROR needs the stderr diagnosis. The 25-minute deadline
+  is the Codex cache limit (≤25 min per wake): if CI needs longer, prefer the
+  event wake (T3 `watch_pull_request`, a delegate completion) over repeated
+  re-arms. pr-watch never merges;
   an empty rollup is never READY. Keep required contexts and the 180s default
   settle window. Do not route its output through a cmuxlayer file watch.
 - On each wake (T3 watch, delegate completion, pr-watch exit), read only the slim state fields plus the

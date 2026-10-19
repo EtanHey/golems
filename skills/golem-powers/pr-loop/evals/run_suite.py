@@ -7,6 +7,8 @@ import unittest
 SKILL = Path(__file__).resolve().parents[1]
 REPO = SKILL.parents[2]
 COMMAND = "pr-watch <owner/repo> <N> --head <sha> --deadline 2h"
+# Codex blocks its turn on pr-watch with no shorter Monitor expiry, so its deadline is its cache limit.
+CODEX_COMMAND = "pr-watch <owner/repo> <N> --head <sha> --deadline 25m"
 TABLE = "../../../../scripts/pr-watch-lib/README.md#usage-and-exits"
 SURFACES = ["references/review-loop.md", "adapters/claude.md", "adapters/codex.md",
             "adapters/cursor.md", "adapters/capabilities.yaml"]
@@ -28,7 +30,11 @@ class ArmingContract(unittest.TestCase):
         for relative in SURFACES:
             with self.subTest(surface=relative):
                 content = " ".join(text(relative).split())
-                self.assertIn(COMMAND, content)
+                if relative == "adapters/codex.md":
+                    self.assertIn(CODEX_COMMAND, content)
+                    self.assertNotIn("--deadline 2h", content)
+                else:
+                    self.assertIn(COMMAND, content)
                 self.assertIn("pr-watch never merges", content)
                 self.assertIn("empty rollup is never READY", content)
                 self.assertNotRegex(content, r"gh pr checks.*?--watch")
@@ -46,6 +52,14 @@ class ArmingContract(unittest.TestCase):
         self.assertIn("re-arming if waiting continues", content)
         self.assertIn("stderr diagnosis", content)
         self.assertIn("Do not route its output through a cmuxlayer file watch", content)
+
+    def test_codex_deadline_stays_inside_its_cache_window(self):
+        codex = " ".join(text("adapters/codex.md").split())
+        self.assertIn("~30-min cache window", codex)
+        self.assertIn("25-minute", codex)
+        shared = " ".join(text("references/review-loop.md").split())
+        self.assertIn("`--deadline 25m`", shared)
+        self.assertIn("The 30-minute Monitor expiry precedes the 2h --deadline", shared)
 
     def test_rearming_preserves_settle_review_and_current_release_paths(self):
         content = " ".join(text("references/review-loop.md").split())

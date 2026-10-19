@@ -1895,6 +1895,26 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 103,
+      "name": "cold-codex-child-gets-fresh-dispatch",
+      "prompt": "You are a Claude lead in a T3 thread. 90 minutes ago a Codex implementer child finished round 1 of PR #812 and you went idle. The routed reviewer just posted a MAJOR finding. Send the fix round to the implementer.",
+      "expected_output": "The lead notes the 90-min idle gap exceeds Codex's ~30-min cache window, so it dispatches a FRESH Codex child via delegate_task (new taskId and clientRequestId) with a compact checkpoint: brief path, PR URL and head SHA, the MAJOR finding. It does not t3_thread_send or 'Read and follow' into the old childThreadId.",
+      "assertions": [
+        {
+          "text": "Dispatches a new delegate_task child with a compact checkpoint (PR URL, head SHA, the finding) rather than reusing the old child.",
+          "type": "tool_usage"
+        },
+        {
+          "text": "Cites the idle gap exceeding the Codex ~30-min cache window as the reason.",
+          "type": "content"
+        },
+        {
+          "text": "Does NOT t3_thread_send or send 'Read and follow' into the old childThreadId.",
+          "type": "negative"
+        }
+      ]
     }
   ]
 }
