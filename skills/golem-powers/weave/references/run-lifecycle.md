@@ -54,13 +54,24 @@ unknown value or missing liveness field blocks.
 
 **Capture (in the lead's own thread, right before the gate):**
 
+0. **Stamp the clock first.** `captured_at` = `date -u +%Y-%m-%dT%H:%M:%SZ`,
+   taken BEFORE the first T3 call. The age check measures from it, so a stamp
+   taken at the end would hide how old the first page is.
 1. **Sweep every fleet project.** For each fleet `projectId`:
    `t3_thread_list(projectId, settled: false, includeSubagents: true, limit: 100)`,
-   following `nextCursor` until it is `null`. Copy every row verbatim into
-   `threads` and add `"projectId"` (the response's top-level `projectId`) to
-   each row. Record `{"projectId": …, "total": …}` (the response's `total`)
-   in `projects`. The judge counts the unsettled rows per project against
-   `total`, so a skipped page blocks.
+   following `nextCursor` until it is `null`. Copy every row into `threads` and
+   add `"projectId"` (the response's top-level `projectId`) to each row. Record
+   `{"projectId": …, "total": …}` (the response's `total`) in `projects`. The
+   judge counts the unsettled rows per project against `total`, so a skipped
+   page blocks.
+   **Slim projection (allowed).** Rows may be copied verbatim or cut to
+   `threadId, projectId, title, status, settled, createdBy, parentThreadId,
+   updatedAt` (plus `pendingRequestCount` once step 3b reads it). The judge
+   requires only `threadId`, `projectId`, `status` and `settled`. Keep
+   `createdBy`: without it a user conversation is judged as a worker. The
+   2026-10-19 live capture was 300 KB for 244 rows, mostly `pullRequests`
+   arrays (one row had 115). Projected, the same rows are about 100 KB, a
+   third of that.
 2. **Every delegated task.** `task_status(taskId)` for every task you hold;
    copy each result verbatim into `tasks`. The judge requires `taskId`,
    `childThreadId`, `status`, `workState`, `hasPendingChildRuns` and
@@ -71,12 +82,15 @@ unknown value or missing liveness field blocks.
    listing), `t3_thread_read(childThreadId)` and append its `thread` object
    (it carries `projectId`, `status`, `settled`, `pendingRequestCount`) to
    `threads`. Never append a thread twice: duplicate `threadId`s are rejected.
+   **3b. Pending approvals.** `t3_thread_list` rows carry no
+   `pendingRequestCount`. For every unsettled `interrupted` or `waiting` row,
+   `t3_thread_read(threadId)` and copy its `thread.pendingRequestCount` onto
+   that row (only that field; keep the listing row). See the invariant below.
 4. **Your own pending questions.** `t3_pending_request_list()` (no `threadId`
    means your own thread) returns `{"requestIds": [...]}`. Record it as
    `{"threadId": <self_thread_id>, "requestIds": [...]}` in `pending_requests`.
    Add one row per extra thread you checked the same way.
 5. `self_thread_id` = `currentThreadId` from the list response.
-   `captured_at` = `date -u +%Y-%m-%dT%H:%M:%SZ`.
 
 ```json
 {
@@ -86,7 +100,8 @@ unknown value or missing liveness field blocks.
   "projects": [{"projectId": "project:fleet", "total": 1}],
   "threads": [
     {"threadId": "thread:orc", "projectId": "project:fleet", "title": "orc",
-     "status": "running", "settled": false},
+     "status": "running", "settled": false, "createdBy": "agent",
+     "parentThreadId": null, "updatedAt": "2026-10-18T20:59:41Z"},
     {"threadId": "thread:pr1-worker", "projectId": "project:fleet", "title": "PR1 impl",
      "status": "completed", "settled": true, "pendingRequestCount": 0}
   ],
@@ -104,6 +119,21 @@ project set, given to the gate separately from the snapshot. Without it the gate
 blocks. Max age defaults to 15 min (`--t3-max-age-min N`,
 `WEAVE_T3_MAX_AGE_MIN`).
 
+**Output and exit codes.** In-flight and waiting blockers print first (running
+threads, waiting threads, pending requests, tasks still working). Then come the
+other blockers. Finished-but-unsettled workers print as ONE line, for example
+`237 finished thread(s) not settled — settle them (209 completed, 14
+interrupted, 10 idle, 4 failed); ids: <snapshot>.unsettled.tsv`. Each one still
+blocks; the file lists `threadId, status, createdBy, updatedAt, title` per
+line. On the 2026-10-19 live fleet this turned 238 per-thread lines into one,
+under the 5 running threads they used to hide. The judge exits 0 converged,
+1 not converged, 2 invalid snapshot, and the gate prints
+`→ T3 judge rc=N (…)`. The gate exits **3** when the judge says the snapshot is
+invalid (no T3 verdict exists: recapture it), 1 for any other block, 0 to pass.
+A PASS line states what was proven: projects swept, unsettled rows listed
+against the totals (the gate runner plus any noted user conversation), tasks
+with a settled child, and empty pending-request lists.
+
 **Verdicts. The gate blocks on:**
 
 - a missing, unreadable, malformed or wrong-`schema` snapshot, or a stale /
@@ -114,12 +144,16 @@ blocks. Max age defaults to 15 min (`--t3-max-age-min N`,
   thread, or a `pending_requests` row without a `requestIds` list;
 - coverage gaps: no `--t3-projects`, a fleet project absent from `projects`, a
   project whose unsettled rows do not add up to its `total`, or an unsettled
-  thread from a project that was not swept;
+  thread from a project that was not swept. When the shortfall is exactly a
+  `settled: true` row that is not a task child, the FAIL names that row (a
+  `settled: false` sweep cannot return it, so it was edited or changed after
+  the sweep) instead of saying "read every page";
 - `self_thread_id` absent from `threads`, or the runner itself `waiting` or in
   an unknown status (it is exempt only from the running/unsettled checks);
 - any other thread `preparing`/`queued`/`starting`/`running`, or `waiting`
   (a pending question), or with a status outside the `t3_thread_list` enum,
-  or with `pendingRequestCount` > 0;
+  or with `pendingRequestCount` > 0 ("decline its pending approval in the T3
+  app (MCP cannot), then settle");
 - any task `working` or `waiting_for_children`, with an unknown `workState`
   or `status`, with `hasPendingQuestion: true`, or `result_available` with a
   live `status` (inconsistent);
@@ -135,6 +169,23 @@ thread (`idle`, `completed`, `failed`, …) left unsettled, fails with
 with **"… missing from the snapshot — add t3_thread_read(…).thread"**. It is
 never assumed settled. Standing rule: "settle idle workers"
 (Etan 2026-10-18, via orc collab).
+
+**Etan's own conversations are not workers** (lead ruling, skillcreator-lead,
+2026-10-19). A `createdBy: "user"` thread still blocks while it is active,
+waiting or holding a pending request. Finished but unsettled, it is a NOTE, not
+a FAIL: "settle idle workers" means workers. An `interrupted` user thread
+becomes a NOTE only with a `pendingRequestCount` of 0 from step 3b; without it,
+it blocks. Any other `createdBy` (`agent`, `system`, missing) is a worker.
+
+**Invariant: no settled thread hides an approval** (lead finding, observed
+2026-10-19). T3 refuses to settle a thread with a pending approval ("is waiting
+on an approval or question. Answer it before settling"). A cancelled
+approval-required child stays `interrupted` with `pendingRequestCount: 1`, and
+the MCP cannot decline approvals. So a missing `pendingRequestCount` on a
+settled row is safe, and every unsettled worker already blocks. A missing count
+never produces a PASS: the judge never assumes 0 for a thread it would let
+through (the `interrupted` user conversation above). When a row does carry a
+count above 0, decline the approval in the T3 app, then settle.
 
 ### 1.2 cmux fleet — pane idleness
 
