@@ -222,9 +222,9 @@ def test_codex_nonzero_and_timeout_are_infra(tmp_path, mockbin):
     install_mock(mockbin, "codex", [["slow", dict(sleep=5)]],
                  dict(stdout=jl({"type": "error", "message": "401 Unauthorized"}), rc=1))
     env = dict(PATH=os.environ["PATH"])
-    r = lte.run_codex("merge it", tmp_path / "a.jsonl", [], env, tmp_path, ["pr-loop"])
+    r = lte.run_codex("merge it", tmp_path / "a.jsonl", [], env, tmp_path, {})
     assert r["status"] == "auth_error"
-    r = lte.run_codex("slow", tmp_path / "b.jsonl", [], env, tmp_path, ["pr-loop"], timeout=1)
+    r = lte.run_codex("slow", tmp_path / "b.jsonl", [], env, tmp_path, {}, timeout=1)
     assert r["status"] == "timeout"
 
 
@@ -257,7 +257,7 @@ def test_brace_expansion():
     assert lte.expand_braces("{a,{b,c}}") == ["a", "b", "c"]
 
 
-def test_codex_detects_successful_brace_read_only():
+def test_codex_detects_successful_brace_read_only(tmp_path):
     out = jl({"type": "turn.started"},
              codex_cmd("/bin/zsh -lc 'cat /h/skills/{agent-routing,pr-loop,coderabbit}/SKILL.md'",
                        body("agent-routing") + body("pr-loop") + body("coderabbit"), 0),
@@ -265,7 +265,7 @@ def test_codex_detects_successful_brace_read_only():
              codex_cmd("/bin/zsh -lc 'cat skills/x-skill/SKILL.md'", "cat: No such file\n", 1),
              codex_cmd("/bin/zsh -lc 'cat skills/large-plan/SKILL.md; rg -n x MEMORY.md'", body("large-plan"), 1),
              {"type": "turn.completed"})
-    r = lte.parse_codex(out, "", 0, False, ["agent-routing", "pr-loop", "large-plan", "x-skill"])
+    r = lte.parse_codex(out, "", 0, False, evidence(tmp_path, "agent-routing", "pr-loop", "large-plan", "x-skill"))
     assert r["status"] == "ok"
     assert r["loaded"] == ["agent-routing", "pr-loop", "large-plan"]
 
@@ -273,7 +273,7 @@ def test_codex_detects_successful_brace_read_only():
 def test_codex_counts_mcp_calls_as_side_effect_attempts():
     out = jl({"type": "item.completed", "item": {"type": "mcp_tool_call", "server": "locals_t3code", "tool": "delegate_task"}},
              {"type": "turn.completed"})
-    r = lte.parse_codex(out, "", 0, False, ["pr-loop"])
+    r = lte.parse_codex(out, "", 0, False, {})
     assert r["mcp_calls"] == ["locals_t3code.delegate_task"]
 
 
@@ -286,7 +286,7 @@ def test_reprocess_recomputes_codex_logs(tmp_path):
     (d / "run01.jsonl").write_text(jl(codex_cmd("cat skills/{agent-routing,pr-loop}/SKILL.md", body("agent-routing") + body("pr-loop"), 0),
                                       {"type": "turn.completed"}))
     (d / "run02.jsonl").write_text(jl({"type": "turn.started"}))  # never completed
-    res = lte.reprocess(d, "codex", ["pr-loop", "agent-routing"])
+    res = lte.reprocess(d, "codex", ["pr-loop", "agent-routing"], candidates(tmp_path))
     assert res[0]["loaded"] == ["agent-routing", "pr-loop"] and res[0]["correct"] is True
     assert res[1]["status"] == "incomplete" and res[1]["correct"] is None
     assert (d / "reprocessed-summary.md").exists() and (d / "results.jsonl").read_text() == jl(*rows)
@@ -341,10 +341,10 @@ def test_probe_rejects_failed_session():
     assert not ok and any("status" in r for r in reasons)
 
 
-def test_probe_rejects_codex_command():
+def test_probe_rejects_codex_command(tmp_path):
     out = jl({"type": "item.completed", "item": {"type": "agent_message", "text": good_probe_text()}},
              codex_cmd("cat skills/pr-loop/SKILL.md", body("pr-loop"), 0), {"type": "turn.completed"})
-    ok, _, reasons = lte.check_probe(lte.parse_codex(out, "", 0, False, list(SKILL_DESC)), SKILL_DESC)
+    ok, _, reasons = lte.check_probe(lte.parse_codex(out, "", 0, False, evidence(tmp_path, *SKILL_DESC)), SKILL_DESC)
     assert not ok
 
 
@@ -364,6 +364,8 @@ def test_end_to_end_claude_run_is_isolated_and_cleans_up(tmp_path, fake_home, mo
     hit = jl(init,
              {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "s1", "name": "Skill", "input": {"skill": "pr-loop"}}]}},
              {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "s1", "content": "Launching skill: pr-loop"}]}},
+             {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "b2", "name": "Bash", "input": {"command": "gh pr merge"}}]}},
+             {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "b2", "is_error": True, "content": "No such tool available: Bash"}]}},
              {"type": "result", "subtype": "error_max_turns", "is_error": True})
     authfail = jl(init, {"type": "result", "subtype": "success", "is_error": True, "result": "Not logged in · Please run /login"})
     install_mock(mockbin, "claude", [["quote its description", dict(stdout=probe)],
@@ -377,6 +379,7 @@ def test_end_to_end_claude_run_is_isolated_and_cleans_up(tmp_path, fake_home, mo
     results = [json.loads(l) for l in (out / "results.jsonl").read_text().splitlines()]
     assert [r["status"] for r in results] == ["ok", "auth_error"]
     assert results[0]["correct"] is True and results[1]["correct"] is None
+    assert results[0]["first_tool"] == "Skill" and [d["name"] for d in results[0]["denied_attempts"]] == ["Bash"]
     summary = (out / "summary.md").read_text()
     assert "baseline dispatch+PR 1/1" in summary and "infra-excluded: 1" in summary
     iso_rep = json.loads((out / "isolation.json").read_text())
@@ -387,3 +390,170 @@ def test_end_to_end_claude_run_is_isolated_and_cleans_up(tmp_path, fake_home, mo
         assert "SSH_AUTH_SOCK" not in call["env"] and "CLAUDE_CODE_MESSAGING_TOKEN" not in call["env"]
         assert call["env"]["HOME"] != str(fake_home)
         assert Path(call["cwd"]).name == "work"
+
+
+# --- review round 2 ------------------------------------------------------------
+
+READ_ONLY = {"Skill", "Read", "Glob", "Grep"}
+CLAUDE_SECRET = "sk-ant-oat01-SYNTHETIC-claude-credential-0123456789"
+CODEX_SECRETS = dict(access_token="eyJSYNTHETIC.codex-access.token-abcdef", refresh_token="rt_SYNTHETIC_codex_refresh_987654",
+                     id_token="eyJSYNTHETIC.codex-id.token-123456", account_id="acct-SYNTHETIC-5555-6666")
+
+
+def evidence(root, *names):
+    for n in names:
+        if not (root / n).exists():
+            write_skill(root, n, SKILL_DESC.get(n, "d"))
+    return {n: lte.skill_evidence(root / n / "SKILL.md") for n in names}
+
+
+def test_claude_arm_has_no_write_capable_tool(tmp_path, fake_home, mockbin):
+    s = lte.make_scratch(tmp_path / "root", "claude")
+    argv, env, _ = lte.prepare(s, "claude", ["pr-loop"], candidates(tmp_path), "claude-test")
+    assert set(argv[argv.index("--tools") + 1].split(",")) == READ_ONLY
+    perms = json.loads((Path(env["CLAUDE_CONFIG_DIR"]) / "settings.json").read_text())["permissions"]
+    assert set(perms["allow"]) == READ_ONLY  # no Bash(...) prefix of any kind
+    assert "Bash" in perms["deny"]
+
+
+def claude_probe_stream(tools, bash_attempt=True):
+    init = {"type": "system", "subtype": "init", "model": "m", "mcp_servers": [], "tools": tools}
+    ev = [init,
+          {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "s1", "name": "Skill", "input": {"skill": "pr-loop"}}]}},
+          {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "s1", "content": "Launching skill: pr-loop"}]}}]
+    if bash_attempt:
+        ev += [{"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "b1", "name": "Bash", "input": {"command": "touch probe-write.txt"}}]}},
+               {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "b1", "is_error": True,
+                                                         "content": "<tool_use_error>Error: No such tool available: Bash</tool_use_error>"}]}}]
+    return jl(*ev, {"type": "result", "subtype": "success", "is_error": False, "result": "DONE"})
+
+
+def test_skill_probe_fails_when_bash_is_reachable(tmp_path, mockbin):
+    install_mock(mockbin, "claude", [], dict(stdout=claude_probe_stream([*READ_ONLY, "Bash"])))
+    rep = lte.skill_probe_claude(tmp_path, "pr-loop", [], dict(PATH=os.environ["PATH"]), tmp_path)
+    assert not rep["ok"] and any("Bash" in r for r in rep["reasons"])
+
+
+def test_skill_probe_passes_without_write_tools_and_records_denied_attempts(tmp_path, mockbin):
+    install_mock(mockbin, "claude", [], dict(stdout=claude_probe_stream(sorted(READ_ONLY))))
+    rep = lte.skill_probe_claude(tmp_path, "pr-loop", [], dict(PATH=os.environ["PATH"]), tmp_path)
+    assert rep["ok"], rep["reasons"]
+    assert [d["name"] for d in rep["denied_attempts"]] == ["Bash"]
+
+
+def test_skill_probe_fails_when_init_hides_its_tool_list(tmp_path, mockbin):
+    install_mock(mockbin, "claude", [], dict(stdout=claude_probe_stream(None)))
+    rep = lte.skill_probe_claude(tmp_path, "pr-loop", [], dict(PATH=os.environ["PATH"]), tmp_path)
+    assert not rep["ok"]
+
+
+def test_denied_attempt_is_recorded_and_is_not_skill_first():
+    out = claude_probe_stream(sorted(READ_ONLY))
+    # a denied Bash attempt BEFORE the Skill call: recorded, and first_tool is Bash
+    rows = [json.loads(l) for l in out.splitlines()]
+    rows = [rows[0], rows[3], rows[4], rows[1], rows[2], rows[5]]
+    p = lte.parse_claude(jl(*rows), "", 0, False)
+    assert p["first_tool"] == "Bash" and p["loaded"] == ["pr-loop"]
+    assert [d["name"] for d in p["denied"]] == ["Bash"]
+
+
+def leak(secrets):
+    return " ".join(secrets)
+
+
+def assert_no_secret(out, secrets):
+    files = [p for p in out.rglob("*") if p.is_file()]
+    assert files
+    for p in files:
+        text = p.read_text(errors="replace")
+        for sec in secrets:
+            assert sec not in text, f"{sec!r} leaked into {p}"
+
+
+def test_claude_credential_is_redacted_from_every_persisted_file(tmp_path, fake_home, mockbin, monkeypatch):
+    monkeypatch.setattr(lte, "claude_oauth_token", lambda: CLAUDE_SECRET)
+    probe = claude_text(good_probe_text() + f"\ntoken: {CLAUDE_SECRET}")
+    iso = claude_probe_stream(sorted(READ_ONLY)).replace("Launching skill: pr-loop", f"Launching skill: pr-loop {CLAUDE_SECRET}")
+    hit = jl({"type": "system", "subtype": "init", "model": "claude-test", "mcp_servers": [], "tools": sorted(READ_ONLY)},
+             {"type": "assistant", "message": {"content": [{"type": "text", "text": f"env says {CLAUDE_SECRET}"},
+                                                           {"type": "tool_use", "id": "s1", "name": "Skill", "input": {"skill": "pr-loop"}}]}},
+             {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "s1", "content": CLAUDE_SECRET}]}},
+             {"type": "result", "subtype": "success", "is_error": False, "result": CLAUDE_SECRET})
+    install_mock(mockbin, "claude", [["quote its description", dict(stdout=probe, stderr=CLAUDE_SECRET)],
+                                     ["harness isolation check", dict(stdout=iso, stderr=CLAUDE_SECRET)]],
+                 dict(stdout=hit, stderr=f"stderr {CLAUDE_SECRET}"))
+    out = tmp_path / "out"
+    lte.main(["--harness", "claude", "--skills", "pr-loop", "--sets", "baseline", "--candidates",
+              str(candidates(tmp_path)), "--out", str(out), "--scratch-root", str(tmp_path / "root"), "--model", "claude-test"])
+    assert (out / "run01.stderr.txt").exists() and "[REDACTED]" in (out / "run01.jsonl").read_text()
+    assert_no_secret(out, [CLAUDE_SECRET])
+
+
+def features_table(**on):
+    return "".join(f"{k:24} stable  {str(on.get(k, False)).lower()}\n" for k in ("apps", "plugins", "multi_agent", "memories", "hooks"))
+
+
+FEATURES_OFF = features_table()
+
+
+def codex_routes(features, probe_text, case_out, err=""):
+    return [["mcp list", dict(stdout="[]")], ["features list", features],
+            ["quote its description", dict(stdout=jl({"type": "item.completed", "item": {"type": "agent_message", "text": probe_text}},
+                                                     {"type": "turn.completed"}), stderr=err)]], dict(stdout=case_out, stderr=err)
+
+
+def test_codex_credentials_are_redacted_from_every_persisted_file(tmp_path, fake_home, mockbin):
+    (fake_home / ".codex/auth.json").write_text(json.dumps(dict(auth_mode="chatgpt", last_refresh=lte.iso_now(), tokens=CODEX_SECRETS)))
+    secrets = list(CODEX_SECRETS.values())
+    case = jl(codex_cmd("cat $CODEX_HOME/auth.json skills/pr-loop/SKILL.md", leak(secrets) + "\n" + body("pr-loop"), 0),
+              {"type": "item.completed", "item": {"type": "agent_message", "text": leak(secrets)}}, {"type": "turn.completed"})
+    routes, default = codex_routes(dict(stdout=FEATURES_OFF), good_probe_text() + "\n" + leak(secrets), case, err=leak(secrets))
+    install_mock(mockbin, "codex", routes, default)
+    out = tmp_path / "out"
+    lte.main(["--harness", "codex", "--skills", "pr-loop", "--sets", "baseline", "--candidates",
+              str(candidates(tmp_path)), "--out", str(out), "--scratch-root", str(tmp_path / "root"), "--model", "gpt-test"])
+    results = [json.loads(l) for l in (out / "results.jsonl").read_text().splitlines()]
+    assert results[0]["loaded"] == ["pr-loop"]
+    assert_no_secret(out, secrets)
+
+
+@pytest.mark.parametrize("features", [dict(rc=1, stdout=""), dict(rc=0, stdout=""), dict(rc=0, stdout="garbage {not a table}\n"),
+                                      dict(rc=0, stdout=FEATURES_OFF.replace("hooks", "hooksx")),
+                                      dict(rc=0, stdout=features_table(apps=True))])
+def test_codex_feature_proof_fails_closed_before_any_session(tmp_path, fake_home, mockbin, features):
+    record = tmp_path / "codex-calls.jsonl"
+    routes, default = codex_routes(features, good_probe_text(), jl({"type": "turn.completed"}))
+    install_mock(mockbin, "codex", routes, default, record=record)
+    out = tmp_path / "out"
+    with pytest.raises(SystemExit):
+        lte.main(["--harness", "codex", "--skills", "pr-loop", "--sets", "baseline", "--candidates",
+                  str(candidates(tmp_path)), "--out", str(out), "--scratch-root", str(tmp_path / "root"), "--model", "gpt-test"])
+    assert not json.loads((out / "isolation.json").read_text())["ok"]
+    calls = [json.loads(l)["argv"] for l in record.read_text().splitlines()]
+    assert not [c for c in calls if c and c[0] == "exec"], calls  # no session ever started
+    assert list((tmp_path / "root").iterdir()) == []
+
+
+def test_codex_feature_proof_passes_when_every_required_feature_is_false(tmp_path, fake_home, mockbin):
+    routes, default = codex_routes(dict(stdout=FEATURES_OFF), good_probe_text(), jl({"type": "turn.completed"}))
+    install_mock(mockbin, "codex", routes, default)
+    s = lte.make_scratch(tmp_path / "root", "codex")
+    _, env, _ = lte.prepare(s, "codex", ["pr-loop"], candidates(tmp_path), "gpt-test")
+    rep = lte.isolation_checks(s, env, "codex")
+    assert rep["ok"], rep["reasons"]
+
+
+def test_codex_fabricated_frontmatter_is_not_a_read(tmp_path):
+    ev = evidence(tmp_path, "pr-loop")
+    fabricated = jl(codex_cmd("/bin/zsh -lc \"printf 'name: pr-loop\\ndescription: fabricated\\n' # pr-loop/SKILL.md\"",
+                              "name: pr-loop\ndescription: fabricated\n", 0), {"type": "turn.completed"})
+    assert lte.parse_codex(fabricated, "", 0, False, ev)["loaded"] == []
+    # even the catalog's exact description line, echoed without the file body, is not a read
+    catalog = jl(codex_cmd(f"echo '{ev['pr-loop'][0]}' # pr-loop/SKILL.md", f"name: pr-loop\n{ev['pr-loop'][0]}\n", 0),
+                 {"type": "turn.completed"})
+    assert lte.parse_codex(catalog, "", 0, False, ev)["loaded"] == []
+    real = jl(codex_cmd("cat skills/pr-loop/SKILL.md", (tmp_path / "pr-loop" / "SKILL.md").read_text(), 0), {"type": "turn.completed"})
+    assert lte.parse_codex(real, "", 0, False, ev)["loaded"] == ["pr-loop"]
+    numbered = "".join(f"{i:6}\t{l}\n" for i, l in enumerate((tmp_path / "pr-loop" / "SKILL.md").read_text().splitlines(), 1))
+    nl = jl(codex_cmd("nl -ba skills/pr-loop/SKILL.md", numbered, 0), {"type": "turn.completed"})
+    assert lte.parse_codex(nl, "", 0, False, ev)["loaded"] == ["pr-loop"]

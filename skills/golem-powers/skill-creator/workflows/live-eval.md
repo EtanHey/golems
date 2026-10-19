@@ -175,10 +175,10 @@ git branch -D "${SANDBOX}"
 `python3 scripts/live-trigger-eval.py --harness claude|codex [--skills a,b] [--sets baseline,positives,negatives] [--candidates <skills-dir>] [--out <dir>]`
 runs each phrase (6 lead baselines + `evals/trigger-evals.json`) in a fresh headless session and counts skill loads.
 Opt-in and manual: every case spends real quota (Codex ~117k input tokens). Never wire it into CI.
-Sessions get "merge it" / "dispatch a worker" and will act, so the harness makes side effects impossible: a harness-owned scratch `git init` repo with no remote, isolated HOME/config/CODEX_HOME (no MCP, no hooks, gh logged out), Claude limited to Skill/Read/Glob/Grep + read-only git Bash, Codex `-s read-only`.
-`--isolation-only` writes those proofs to `isolation.json` (Claude: one short session proving Skill works and a write is denied); a failed proof aborts any run.
+Sessions get "merge it" / "dispatch a worker" and will act, so the harness makes side effects impossible: a harness-owned scratch `git init` repo with no remote, isolated HOME/config/CODEX_HOME (no MCP, no hooks, gh logged out), Claude limited to Skill/Read/Glob/Grep (no Bash at all: a Bash prefix allowlist cannot make git read-only), Codex `-s read-only` with `codex features list` required to show apps/plugins/multi_agent/memories/hooks false. Credentials (Claude token, copied `auth.json` values) are redacted from every persisted file.
+`--isolation-only` writes those proofs to `isolation.json` (Claude: one short session proving Skill works, init lists only the read-only tools, and an asked-for write leaves no file); a failed proof aborts any run.
 `--candidates` swaps unmerged descriptions into the mirror without touching `~/.claude` or `~/.codex`; a no-tools probe must quote each one on its own skill's line first.
-Cases record status (ok/timeout/auth_error/nonzero/incomplete/exception); only ok cases are scored, the rest are reported as infra-excluded.
+Cases record status (ok/timeout/auth_error/nonzero/incomplete/exception); only ok cases are scored, the rest are reported as infra-excluded. Claude rows also record `first_tool` and `denied_attempts`; a Codex read counts only when the command output shows the real SKILL.md's description line and first body line.
 `--reprocess <dir>` re-scores recorded logs with the current detection (spends nothing). Offline tests: `tests/test_live_trigger_eval.py`.
 Results go to `docs.local/live-trigger/<harness>-<stamp>/`. Provenance: requested vs effective model/effort, NOT DETERMINED where unobserved → NON_COMPARABLE, counts only.
 
