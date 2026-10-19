@@ -76,8 +76,8 @@ checks out the default branch, and git refuses when another worktree holds it
    can survive auto-cleanup — check `gh api repos/{owner}/{repo}/branches/<branch>`
    and `git push origin --delete <branch>` if it is still there.
 4. **Fast-forward main where main lives.** Update the worktree that actually holds the
-   default branch (`git -C <main-worktree> fetch && git -C <main-worktree> merge --ff-only origin/<default>`),
-   not the linked worktree you worked in. See [Update Tracking](#after-merge-update-tracking-mandatory) step 1.
+   default branch, not the linked worktree you worked in: run the guarded block in
+   [Update Tracking](#after-merge-update-tracking-mandatory) step 1 with `<root>` set to that worktree.
 
 Known topology: brainlayer — `main` is held by `$HOME/Gits/brainlayer-prod`; briefs
 into multi-worktree repos must pin the exact worktree path (see /repogolem's
