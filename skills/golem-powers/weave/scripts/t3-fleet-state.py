@@ -39,7 +39,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import tempfile
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -149,8 +151,8 @@ def validate(doc: dict) -> None:
         need_str(t, "status", f"threads[{i}]")
         need_bool(t, "settled", f"threads[{i}]")
         count = t.get("pendingRequestCount", 0)
-        if not isinstance(count, int) or isinstance(count, bool):
-            raise Invalid(f"threads[{i}].pendingRequestCount must be an integer when present")
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+            raise Invalid(f"threads[{i}].pendingRequestCount must be a non-negative integer when present")
     tasks = objects(doc, "tasks")
     unique(tasks, "taskId", "tasks")
     for i, t in enumerate(tasks):
@@ -170,14 +172,32 @@ def tsv(value: object) -> str:
     return " ".join(str(value if value is not None else "").split())
 
 
+class SymlinkTarget(Exception):
+    pass
+
+
 def write_ids(rows: list[dict], path: Path) -> None:
-    lines = [
+    """Atomically write the ids beside the snapshot without following a symlink:
+    an exclusive mkstemp file in the target dir, then os.replace. A symlinked
+    target is refused, never followed."""
+    if path.is_symlink():
+        raise SymlinkTarget(f"{path} is a symlink")
+    text = "".join(
         "\t".join(tsv(t.get(k)) for k in ("threadId", "status", "createdBy", "updatedAt", "title"))
+        + "\n"
         for t in rows
-    ]
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
-    tmp.replace(path)
+    )
+    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        raise
 
 
 def judge(
@@ -269,9 +289,9 @@ def judge(
             continue
         elif t.get("createdBy") != USER:
             unsettled.append(t)
-        elif status in APPROVAL_STATUSES and "pendingRequestCount" not in t:
+        elif status in APPROVAL_STATUSES and t.get("pendingRequestCount") != 0:
             # An approval outlives a cancel as `interrupted` + pendingRequestCount, and
-            # t3_thread_list rows do not carry the count: a NOTE needs the read.
+            # t3_thread_list rows do not carry the count: a NOTE needs a recorded 0.
             live.append(
                 f"{label(t)} is createdBy:user and {status} with no pendingRequestCount — "
                 f"t3_thread_read({tid}) and record it before this can be a NOTE"
@@ -330,6 +350,8 @@ def judge(
             try:
                 write_ids(unsettled, unsettled_out)
                 where = str(unsettled_out)
+            except SymlinkTarget as exc:
+                fails.append(f"refusing to write the unsettled ids: {exc} — remove it, never follow it")
             except OSError as exc:
                 notes.append(f"could not write the unsettled ids to {unsettled_out} ({exc.strerror})")
         if where is None:

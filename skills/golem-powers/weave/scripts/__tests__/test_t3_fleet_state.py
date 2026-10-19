@@ -372,13 +372,18 @@ class FailOpenProbes(unittest.TestCase):
 LIVE = FIXTURES / "live-2026-10-19-slim.json"
 LIVE_NOW = "2026-10-19T01:36:54Z"  # 1 min after the live capture
 LIVE_PROJECTS = " ".join(p["projectId"] for p in json.loads(LIVE.read_text())["projects"])
+# Titles in the public fixture are neutral placeholders (thread-<n>); match by id.
 LIVE_RUNNING = (
-    "PR15 #805 harness fix r2 (impl)",
-    "Skill edits: T3-native routing/plan/pr-loop",
-    "SCRUB1: scrubber works in idle readback (reuse SEEK2 seek)",
-    "Smart chunks/boundaries eval on recent long recordings (Cursor)",
-    "skillCreator lead — skill improvement run",
+    "thread:delegated-task:command%3Amcp%3Ad9decfdc-341a-4e44-a99a-45986c4e049b"
+    "%3Adelegate-task%3Askill-lead-pr805-fix-r2",
+    "mcp:6bb2062f-209b-4dd2-91e7-04ff8e6793a0",
+    "mcp:6e21f367-9d2b-4d23-baef-a916aa140d03",
+    "thread:delegated-task:command%3Amcp%3Aab5dc856-fa6b-4b79-9867-305653494527"
+    "%3Adelegate-task%3Asmart-eval-decode-20261019",
+    "mcp:8ac2385e-04e7-4ea5-97a9-d9ea173bec52",
 )
+SCRUB_THREAD = "mcp:6e21f367-9d2b-4d23-baef-a916aa140d03"
+SYSTEM_THREAD = "import:claudeAgent:697CED41-A173-4DF4-B9C7-C8EFFFD9D581"
 ETAN_THREAD = "e38c37b7-ddf9-4c0a-b005-45434544ba82"
 
 
@@ -415,7 +420,7 @@ class LiveDryRun(Scratch):
         self.assertEqual(len(lines), 6, msg=r.stdout)
         for line in lines[:5]:
             self.assertRegex(line, r"is running — work in flight$")
-        self.assertEqual(sorted(t for t in LIVE_RUNNING if any(t in l for l in lines[:5])),
+        self.assertEqual(sorted(t for t in LIVE_RUNNING if any(f"thread {t} " in l for l in lines[:5])),
                          sorted(LIVE_RUNNING))
         self.assertRegex(
             lines[5],
@@ -430,13 +435,19 @@ class LiveDryRun(Scratch):
         self.assertEqual(len(rows), 237)
         self.assertEqual(len({row[0] for row in rows}), 237)
         self.assertNotIn(ETAN_THREAD, {row[0] for row in rows})
-        self.assertIn(("orc — original Opus lead", "completed"),
-                      {(row[-1], row[1]) for row in rows})  # createdBy:system is a worker
+        self.assertIn((SYSTEM_THREAD, "completed", "system"),
+                      {tuple(row[:3]) for row in rows})  # createdBy:system is a worker
 
     def test_etan_conversation_is_a_note(self) -> None:
         r = run_live(None, self.out)
         self.assertRegex(r.stdout, rf"NOTE thread {ETAN_THREAD} .*createdBy:user.*not a worker")
         self.assertNotIn(ETAN_THREAD, "\n".join(fails(r)))
+
+    def test_public_fixture_carries_no_real_titles(self) -> None:
+        # Review r1 BLOCKING (#807): the public fixture shipped every live thread title.
+        threads = json.loads(LIVE.read_text())["threads"]
+        self.assertEqual([t["title"] for t in threads],
+                         [f"thread-{n}" for n in range(1, len(threads) + 1)])
 
     def test_slim_projection_needs_no_dropped_field(self) -> None:
         doc = json.loads(LIVE.read_text())
@@ -450,9 +461,9 @@ class LiveDryRun(Scratch):
         self.assertRegex(fails(r)[-1], r"^FAIL 238 finished thread\(s\) not settled")
 
     def test_settled_row_inside_unsettled_sweep_is_named(self) -> None:
-        # perturbation p1: SCRUB1 flipped to completed + settled, row kept, total unchanged
+        # perturbation p1: a running thread flipped to completed + settled, row kept, total unchanged
         doc = json.loads(LIVE.read_text())
-        scrub = next(t for t in doc["threads"] if t["title"].startswith("SCRUB1"))
+        scrub = next(t for t in doc["threads"] if t["threadId"] == SCRUB_THREAD)
         scrub.update(status="completed", settled=True)
         r = run_live(doc, self.out)
         self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
@@ -577,6 +588,96 @@ class CaptureClock(unittest.TestCase):
     def test_stale_message_measures_from_capture_start(self) -> None:
         r = run_state(str(FIXTURES / "converged.json"), None, "--max-age-min", "2")
         self.assertRegex(r.stdout, r"FAIL snapshot is stale \(capture started 5 min ago > 2 min\)")
+
+
+
+# Review r1 (#807, Sol + Cursor) literal repro: an interrupted user thread with
+# pendingRequestCount -1 printed a NOTE and PASSed (judge rc 0, gate PASSED).
+NEGATIVE_COUNT_REPRO = {
+    "schema": "weave-t3-fleet/v1", "captured_at": "2026-10-18T21:00:00Z", "self_thread_id": "self",
+    "projects": [{"projectId": "project:fleet", "total": 2}],
+    "threads": [
+        {"threadId": "self", "projectId": "project:fleet", "status": "running", "settled": False},
+        {"threadId": "u", "projectId": "project:fleet", "status": "interrupted", "settled": False,
+         "createdBy": "user", "pendingRequestCount": -1},
+    ],
+    "tasks": [], "pending_requests": [{"threadId": "self", "requestIds": []}],
+}
+
+
+class PendingCountValidation(Scratch):
+    def test_negative_count_repro_is_invalid(self) -> None:
+        r = run_doc(json.loads(json.dumps(NEGATIVE_COUNT_REPRO)), "--unsettled-out", str(self.out))
+        self.assertEqual(r.returncode, 2, msg=r.stdout + r.stderr)
+        self.assertNotIn("PASS", r.stdout)
+        self.assertRegex(r.stdout, r"FAIL invalid T3 snapshot: threads\[1\]\.pendingRequestCount "
+                                   r"must be a non-negative integer")
+
+    def test_negative_count_on_a_worker_is_invalid(self) -> None:
+        doc = converged()
+        thread(doc, "thread:old-worker")["pendingRequestCount"] = -3
+        self.assertEqual(run_doc(doc).returncode, 2)
+
+    def test_non_integer_counts_are_invalid(self) -> None:
+        for bad in ("0", True, 0.0, None):
+            with self.subTest(count=bad):
+                doc = json.loads(json.dumps(NEGATIVE_COUNT_REPRO))
+                doc["threads"][1]["pendingRequestCount"] = bad
+                r = run_doc(doc, "--unsettled-out", str(self.out))
+                self.assertEqual(r.returncode, 2, msg=r.stdout + r.stderr)
+
+    def test_interrupted_user_note_needs_exactly_zero(self) -> None:
+        doc = json.loads(json.dumps(NEGATIVE_COUNT_REPRO))
+        doc["threads"][1]["pendingRequestCount"] = 0
+        r = run_doc(doc, "--unsettled-out", str(self.out))
+        self.assertEqual(r.returncode, 0, msg=r.stdout + r.stderr)
+        self.assertRegex(r.stdout, r"NOTE thread u .*createdBy:user")
+
+
+def system_worker_snapshot(capture: Path) -> Path:
+    """Review r1 symlink repro: one finished createdBy:system worker, default id path."""
+    doc = json.loads(json.dumps(NEGATIVE_COUNT_REPRO))
+    doc["threads"][1] = {"threadId": "u", "projectId": "project:fleet", "status": "completed",
+                         "settled": False, "createdBy": "system"}
+    capture.mkdir(parents=True)
+    snap = capture / "snap.json"
+    snap.write_text(json.dumps(doc))
+    return snap
+
+
+class IdFileSymlinks(Scratch):
+    """Review r1 MAJOR (#807): the predictable <ids>.tmp path followed a planted symlink."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        root = Path(self._tmp.name)
+        self.snap = system_worker_snapshot(root / "capture")
+        self.keep = root / "outside" / "keep.txt"
+        self.keep.parent.mkdir()
+        self.keep.write_text("KEEP\n")
+        self.ids = root / "capture" / "snap.unsettled.tsv"
+
+    def test_planted_tmp_symlink_is_not_followed(self) -> None:
+        (self.snap.parent / "snap.unsettled.tsv.tmp").symlink_to(self.keep)
+        r = run_state(str(self.snap))
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertEqual(self.keep.read_text(), "KEEP\n")
+        self.assertFalse(self.ids.is_symlink())
+        self.assertEqual(self.ids.read_text(), "u\tcompleted\tsystem\t\t\n")
+        self.assertEqual(sorted(p.name for p in self.snap.parent.iterdir()),
+                         ["snap.json", "snap.unsettled.tsv", "snap.unsettled.tsv.tmp"])
+
+    def test_symlinked_target_is_refused(self) -> None:
+        self.ids.symlink_to(self.keep)
+        r = run_state(str(self.snap))
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertEqual(self.keep.read_text(), "KEEP\n")
+        self.assertTrue(self.ids.is_symlink())
+        self.assertRegex(r.stdout, r"FAIL refusing to write the unsettled ids: .*snap\.unsettled\.tsv "
+                                   r"is a symlink")
+        self.assertRegex(r.stdout, r"NOTE unsettled u \(completed\)")
+        self.assertEqual(sorted(p.name for p in self.snap.parent.iterdir()),
+                         ["snap.json", "snap.unsettled.tsv"])  # no temp file left behind
 
 
 if __name__ == "__main__":

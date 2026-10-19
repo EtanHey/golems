@@ -320,5 +320,45 @@ class LiveDryRunEndToEnd(GateHarness):
         self.assertIn("T3 judge rc=1 (not converged)", r.stdout)
 
 
+
+class ReviewRound1EndToEnd(GateHarness):
+    """#807 review r1 (Sol + Cursor) repros, through the real gate."""
+
+    def repro(self, **user) -> dict:
+        return {
+            "schema": "weave-t3-fleet/v1", "captured_at": "2026-10-19T00:00:00Z",
+            "self_thread_id": "self", "projects": [{"projectId": "project:fleet", "total": 2}],
+            "threads": [
+                {"threadId": "self", "projectId": "project:fleet", "status": "running",
+                 "settled": False},
+                {"threadId": "u", "projectId": "project:fleet", "settled": False, **user},
+            ],
+            "tasks": [], "pending_requests": [{"threadId": "self", "requestIds": []}],
+        }
+
+    def test_negative_pending_count_is_an_invalid_snapshot(self) -> None:
+        doc = self.repro(status="interrupted", createdBy="user", pendingRequestCount=-1)
+        r = self.gate("--fleet", "t3", "--t3-state", str(self.snapshot("neg.json", doc=doc)))
+        self.assertEqual(r.returncode, 3, msg=r.stdout + r.stderr)
+        self.assertIn("T3 judge rc=2 (invalid snapshot)", r.stdout)
+        self.assertNotIn("PASSED", r.stdout)
+
+    def test_planted_tmp_symlink_leaves_the_outside_file_alone(self) -> None:
+        capture, outside = self.root / "capture", self.root / "outside"
+        capture.mkdir()
+        outside.mkdir()
+        keep = outside / "keep.txt"
+        keep.write_text("KEEP\n")
+        doc = self.repro(status="completed", createdBy="system")
+        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        snap = capture / "snap.json"
+        snap.write_text(json.dumps(dict(doc, captured_at=stamp)))
+        (capture / "snap.unsettled.tsv.tmp").symlink_to(keep)
+        r = self.gate("--fleet", "t3", "--t3-state", str(snap))
+        self.assertEqual(r.returncode, 1, msg=r.stdout + r.stderr)
+        self.assertEqual(keep.read_text(), "KEEP\n")
+        self.assertFalse((capture / "snap.unsettled.tsv").is_symlink())
+
+
 if __name__ == "__main__":
     unittest.main()
