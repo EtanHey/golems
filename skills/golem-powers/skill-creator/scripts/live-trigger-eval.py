@@ -23,7 +23,8 @@ Descriptions in effect:
             candidates swapped in. Global CLAUDE.md and hooks still load. Not
             mirrored: user-scope MCP servers, claude.ai org skills. Compare
             candidate runs only against a --candidates run of the old text.
-    codex:  CODEX_HOME=<scratch>/codex-home, a symlink mirror of ~/.codex with
+    codex:  CODEX_HOME=<scratch>-codex-home (a sibling, never inside the session
+            cwd), a symlink mirror of ~/.codex with
             skills/<name> swapped (auth.json stays a symlink, never copied).
   Before any case runs, a probe session quotes each candidate's catalog
   description; on mismatch the run aborts before spending more quota.
@@ -118,7 +119,8 @@ def prepare(args, skills):
         mirror(home / '.claude' / 'agents', dot / 'agents', {})
         mirror(home / '.claude' / 'commands', dot / 'commands', {})
         return ['--setting-sources', 'project,local', '--settings', str(home / '.claude' / 'settings.json')], env
-    ch = args.scratch / 'codex-home'
+    # outside the session cwd: a codex-home/ listed by `ls` reads as part of the checkout
+    ch = args.scratch.parent / f'{args.scratch.name}-codex-home'
     if ch.exists():
         shutil.rmtree(ch)
     ch.mkdir(parents=True)
