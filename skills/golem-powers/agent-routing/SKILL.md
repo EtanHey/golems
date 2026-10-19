@@ -162,9 +162,12 @@ Every `claude.judgment` seat (leads and workers) delegates parity tasks to
   `deploy-local-prod` sub-agent (Agent tool `subagent_type: "deploy-local-prod"`, model pinned to the
   resolved `claude.subagent.cheap` alias). The lead routes the hop and verifies the artifact it reports.
   The M1 stays untouched until the M1 test-rig adapter is active (§ Dispatch Boundaries).
-- **Checks and waits:** CI, a PR, a file or a job that must be checked or waited on goes to the mechanical
-  tier: `claude.subagent.cheap` from a Claude seat, or a Codex watcher resolved with
-  `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher --field model`. Never the lead.
+
+Mechanical checks and waits (CI, a PR, a file or a job that must be checked or waited on) are the
+mechanical tier, never the lead and never `claude.subagent.cheap`. From a Claude seat, pass
+`node scripts/model-roles.mjs claude.subagent.mechanical --field alias` as the Agent tool's `model`; for
+a Codex watcher, use `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher --field model`.
+`claude.subagent.cheap` keeps brain-worker recall, orc-helper and verifiers, per its 2026-09-29 evidence.
 
 Keep `claude.judgment` for multi-source or decision-grade history, deletion decisions,
 PR-gating reviews, and UX/UI judgment. Reserve judgment → 3× cheap fan-out for
@@ -256,7 +259,7 @@ Domain leads are orchestrators one tier below orc:
    - **cmux adapter:** canon #7's "minimize pane churn" is cmux fd-leak hygiene. It means no needless pane open/close, never keeping one worker across PRs.
 
 6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall).
-7. **Leads never do ops themselves:** "Leads never do ops themselves: deploy hops go to the `deploy-local-prod` sub-agent; mechanical checks and waits go to Haiku or gpt-6-luna." (Etan 2026-10-19, via orc) A deploy, install, restart or reconnect hop is a `deploy-local-prod` dispatch; a check or a wait is a mechanical-tier dispatch (§ Cheap sub-agents). Resolve both tiers through `scripts/model-roles.mjs`, never the names in the quote. The lead's part is routing the hop and verifying the artifact it reports; running the hop, the probe or the wait in its own session breaks this rule.
+7. **Leads never do ops themselves:** "Leads never do ops themselves: deploy hops go to the `deploy-local-prod` sub-agent; mechanical checks and waits go to Haiku or gpt-6-luna." (Etan 2026-10-19, via orc) A deploy, install, restart or reconnect hop is a `deploy-local-prod` dispatch; a check or a wait is a `claude.subagent.mechanical` or `codex.subagent.mechanical --use watcher` dispatch (§ Cheap sub-agents). Resolve both through `scripts/model-roles.mjs`; never write the model names. The lead's part is routing the hop and verifying the artifact it reports; the lead never runs the hop, the probe or the wait in its own session.
 
 ## Goal Contract
 
