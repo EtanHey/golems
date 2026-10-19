@@ -1,5 +1,5 @@
 import { afterEach, expect, setDefaultTimeout, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -56,7 +56,7 @@ function payloadFor(fixturePath) {
   };
 }
 
-function runHook(gate, payload, env = {}) {
+function runHook(gate, payload, env = {}, options = {}) {
   const dir = scratchDir();
   const logPath = env.STOP_ADVISORY_LOG_PATH ?? path.join(dir, "stop-advisories.jsonl");
   const childEnv = {
@@ -70,6 +70,7 @@ function runHook(gate, payload, env = {}) {
     input: JSON.stringify(payload),
     encoding: "utf8",
     env: childEnv,
+    timeout: options.timeout,
   });
   return { proc, logPath };
 }
@@ -132,6 +133,26 @@ for (const { gate, red, green } of GATES) {
     expect(proc.status, proc.stderr).toBe(0);
     expect(proc.stdout).toBe("{}");
   });
+
+  // r1 review: a FIFO with no reader blocks a plain append open, which hung Stop.
+  // A bounded spawn turns a hang into a failure instead of a stuck suite.
+  for (const shape of ["fifo", "symlink-to-fifo"]) {
+    test(`${gate} ${shape} at the advisory log path prints {} and exits 0 without hanging`, () => {
+      const dir = scratchDir();
+      const fifo = path.join(dir, "advisories.fifo");
+      expect(spawnSync("mkfifo", [fifo]).status).toBe(0);
+      let logPath = fifo;
+      if (shape === "symlink-to-fifo") {
+        logPath = path.join(dir, "stop-advisories.jsonl");
+        symlinkSync(fifo, logPath);
+      }
+      const { proc } = runHook(gate, payloadFor(red), { STOP_ADVISORY_LOG_PATH: logPath }, { timeout: 3_000 });
+      expect(proc.error).toBeUndefined();
+      expect(proc.signal).toBeNull();
+      expect(proc.status, proc.stderr).toBe(0);
+      expect(proc.stdout).toBe("{}");
+    });
+  }
 
   test(`${gate} quiet advisory is still counted as an advisory in decision telemetry`, () => {
     const dir = scratchDir();

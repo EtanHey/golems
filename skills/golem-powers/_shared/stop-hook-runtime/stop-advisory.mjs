@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { closeSync, constants, fstatSync, mkdirSync, openSync, writeSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -9,6 +9,10 @@ import { publishStopHookReceipt } from "./stop-hook-reader.mjs";
 // logged, not rendered, unless GOLEMS_STOP_ADVISORY_RENDER=1.
 export const ADVISORY_RENDER_ENV = "GOLEMS_STOP_ADVISORY_RENDER";
 
+// O_NONBLOCK: a FIFO with no reader would block a plain append open and hang
+// Stop (r1 review); nonblocking, it fails with ENXIO instead.
+const LOG_OPEN_FLAGS = constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND | constants.O_NONBLOCK;
+
 export function advisoryLogPath() {
   return process.env.STOP_ADVISORY_LOG_PATH ??
     path.join(homedir(), ".claude", "hooks", "stop-advisories.jsonl");
@@ -16,6 +20,18 @@ export function advisoryLogPath() {
 
 function stringOrNull(value) {
   return typeof value === "string" && value ? value : null;
+}
+
+// The message quotes transcript evidence, so a new log is owner-only. Only a
+// regular file is written; a FIFO, device or socket (also via symlink) is skipped.
+function appendToRegularFile(logPath, line) {
+  const fd = openSync(logPath, LOG_OPEN_FLAGS, 0o600);
+  try {
+    if (!fstatSync(fd).isFile()) return;
+    writeSync(fd, line);
+  } finally {
+    closeSync(fd);
+  }
 }
 
 // Returns the hook's stdout payload. Quiet mode appends one log line and
@@ -40,8 +56,7 @@ export function emitAdvisory({ gate, codes, message, payload }) {
     };
     const logPath = advisoryLogPath();
     mkdirSync(path.dirname(logPath), { recursive: true });
-    // The message quotes transcript evidence, so a new log is owner-only.
-    appendFileSync(logPath, `${JSON.stringify(row)}\n`, { encoding: "utf8", mode: 0o600 });
+    appendToRegularFile(logPath, `${JSON.stringify(row)}\n`);
   } catch {
     // The advisory log cannot alter or block the Stop decision.
   }
