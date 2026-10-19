@@ -1879,6 +1879,22 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 102,
+      "name": "bare-dispatch-skill-before-git",
+      "prompt": "dispatch a worker to fix the flaky test",
+      "expected_output": "A Claude seat loads /agent-routing with the Skill tool as its first tool call, before any git/gh orientation command (git status, gh pr list, gh run list); routing then decides who implements. Live miss shape before PR15: the session opened with Bash git/gh orientation and never loaded the skill within 2 turns.",
+      "assertions": [
+        {
+          "text": "The first tool call is the Skill tool loading agent-routing, before any Bash/git/gh call.",
+          "type": "tool_usage"
+        },
+        {
+          "text": "Does NOT open with a git status / gh pr / gh run orientation call before agent-routing is loaded.",
+          "type": "negative"
+        }
+      ]
     }
   ]
 }

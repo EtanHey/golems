@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -82,5 +83,31 @@ test("kickoff-prompt checklist names the three Skill invocations", () => {
   expect(text).toContain("Lead kickoff (any harness)");
   for (const s of ["`/large-plan`", "`/agent-routing`", "`/pr-loop`"]) {
     expect(text.split("Lead kickoff (any harness)")[1].split("\n")[0]).toContain(s);
+  }
+});
+
+// PR15 (orc 2026-10-19): live headless Claude sessions loaded agent-routing and
+// pr-loop on 1/4 ordinary dispatch+PR phrases (large-plan 2/5 positives); every miss opened with a Bash
+// git/gh orientation call. Descriptions name that competing first action.
+const FIRST_ACTION = "invoke before any git/gh";
+for (const name of ["large-plan", "agent-routing", "pr-loop"]) {
+  test(`${name} description names the competing first action`, () => {
+    expect(description(name).toLowerCase()).toContain(FIRST_ACTION);
+  });
+}
+
+test("live trigger eval harness is committed, documented and opt-in only", () => {
+  const harness = skill("skill-creator", "scripts/live-trigger-eval.py");
+  expect(existsSync(harness)).toBe(true);
+  const dry = spawnSync("python3", [harness, "--harness", "claude", "--dry-run"], { encoding: "utf8" });
+  expect(dry.status).toBe(0);
+  expect(dry.stdout).toMatch(/\d+ cases; harness=claude; candidates=installed/);
+  const doc = read(skill("skill-creator", "workflows/live-eval.md"));
+  expect(doc).toContain("scripts/live-trigger-eval.py");
+  expect(doc).toContain("--candidates");
+  expect(doc.toLowerCase()).toContain("never wire it into ci");
+  const workflows = path.join(root, ".github", "workflows");
+  for (const f of readdirSync(workflows)) {
+    expect(read(path.join(workflows, f))).not.toContain("live-trigger-eval");
   }
 });

@@ -170,6 +170,17 @@ git worktree remove "../${SANDBOX}" --force
 git branch -D "${SANDBOX}"
 ```
 
+## Trigger Eval (does the description load the skill?)
+
+`python3 scripts/live-trigger-eval.py --harness claude|codex [--skills a,b] [--sets baseline,positives,negatives] [--candidates <skills-dir>] [--out <dir>]`
+runs each phrase (6 lead baselines + `evals/trigger-evals.json`) in a fresh headless session and counts Skill loads.
+Opt-in and manual: every case spends real quota (Codex ~117k input tokens). Never wire it into CI.
+Default: installed descriptions. `--candidates` puts unmerged descriptions in effect without touching `~/.claude` or `~/.codex`
+(Claude: user skills beat project skills, so it mirrors them into `<scratch>/.claude/` and drops the user setting source; Codex: a `CODEX_HOME` mirror).
+A probe session verifies the candidate text is in effect before any case runs.
+Compare a candidate run only against a `--candidates` run of the old text: the Claude mirror omits user MCP servers and claude.ai org skills.
+Results go to `docs.local/live-trigger/<harness>-<stamp>/`. Record provenance as NON_COMPARABLE (effort NOT DETERMINED), counts only.
+
 ## Gate
 
 | Condition | Action |
