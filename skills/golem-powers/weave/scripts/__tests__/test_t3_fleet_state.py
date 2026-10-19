@@ -372,19 +372,12 @@ class FailOpenProbes(unittest.TestCase):
 LIVE = FIXTURES / "live-2026-10-19-slim.json"
 LIVE_NOW = "2026-10-19T01:36:54Z"  # 1 min after the live capture
 LIVE_PROJECTS = " ".join(p["projectId"] for p in json.loads(LIVE.read_text())["projects"])
-# Titles in the public fixture are neutral placeholders (thread-<n>); match by id.
-LIVE_RUNNING = (
-    "thread:delegated-task:command%3Amcp%3Ad9decfdc-341a-4e44-a99a-45986c4e049b"
-    "%3Adelegate-task%3Askill-lead-pr805-fix-r2",
-    "mcp:6bb2062f-209b-4dd2-91e7-04ff8e6793a0",
-    "mcp:6e21f367-9d2b-4d23-baef-a916aa140d03",
-    "thread:delegated-task:command%3Amcp%3Aab5dc856-fa6b-4b79-9867-305653494527"
-    "%3Adelegate-task%3Asmart-eval-decode-20261019",
-    "mcp:8ac2385e-04e7-4ea5-97a9-d9ea173bec52",
-)
-SCRUB_THREAD = "mcp:6e21f367-9d2b-4d23-baef-a916aa140d03"
-SYSTEM_THREAD = "import:claudeAgent:697CED41-A173-4DF4-B9C7-C8EFFFD9D581"
-ETAN_THREAD = "e38c37b7-ddf9-4c0a-b005-45434544ba82"
+# Titles (thread-<n>) and ids (t-<n>) in the public fixture are neutral placeholders.
+LIVE_RUNNING = ("t-1", "t-2", "t-71", "t-72", "t-81")
+SCRUB_THREAD = "t-71"
+SYSTEM_THREAD = "t-145"
+ETAN_THREAD = "t-74"
+LIVE_LINKED_PARENTS = 152
 
 
 def run_live(doc: dict | None, out: Path, *extra: str) -> subprocess.CompletedProcess:
@@ -448,6 +441,22 @@ class LiveDryRun(Scratch):
         threads = json.loads(LIVE.read_text())["threads"]
         self.assertEqual([t["title"] for t in threads],
                          [f"thread-{n}" for n in range(1, len(threads) + 1)])
+
+    def test_public_fixture_ids_are_opaque(self) -> None:
+        # Lead finding at 92d46fb5 (#807): T3 child ids embed the clientRequestId,
+        # so real ids leaked the same names the titles did.
+        doc = json.loads(LIVE.read_text())
+        opaque = re.compile(r"^t-[0-9]+$")
+        ids = [doc["self_thread_id"]] + [t["threadId"] for t in doc["threads"]]
+        ids += [t["parentThreadId"] for t in doc["threads"] if t["parentThreadId"] is not None]
+        ids += [r["threadId"] for r in doc["pending_requests"]]
+        ids += [x for t in doc["tasks"] for x in (t["taskId"], t["childThreadId"])]
+        self.assertEqual([i for i in ids if not opaque.match(i)], [])
+        self.assertNotIn("delegate-task", LIVE.read_text())
+        # Parent/child links survive the mapping: 152 rows point at a listed parent.
+        listed = {t["threadId"] for t in doc["threads"]}
+        linked = sum(1 for t in doc["threads"] if t["parentThreadId"] in listed)
+        self.assertEqual(linked, LIVE_LINKED_PARENTS)
 
     def test_slim_projection_needs_no_dropped_field(self) -> None:
         doc = json.loads(LIVE.read_text())

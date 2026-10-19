@@ -316,7 +316,7 @@ class LiveDryRunEndToEnd(GateHarness):
         self.assertRegex(t3[5], r"237 finished thread\(s\) not settled — settle them .*ids: "
                          + re.escape(str(ids)))
         self.assertEqual(len(ids.read_text().splitlines()), 237)
-        self.assertRegex(r.stdout, r"\n  ℹ️  T3: thread e38c37b7-\S+ .*createdBy:user")
+        self.assertRegex(r.stdout, r"\n  ℹ️  T3: thread t-74 .*createdBy:user")
         self.assertIn("T3 judge rc=1 (not converged)", r.stdout)
 
 
