@@ -59,6 +59,9 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 4. **Never fabricate a missing authority.** "Etan has NOT granted merge" without a verbatim
    Etan statement for THIS lane is the fabricated-authority class (weave-verified specimen).
    Absence of a grant is not a revocation — the standing grant above is the default.
+6. **The grant runs past the merge.** Tags, releases, installs, deploys and upgrades ship without
+   asking; only one-way doors wait for Etan, and the `human-confirm-gate` token still guards remote
+   deletes and force pushes (Etan 2026-10-19, via orc; canonical: [Hard Gates](../SKILL.md#hard-gates)).
 5. **Why this is a gate, not advice — measured cost of the opposite:** nine brainlayer PRs sat
    unmerged on the label (one 9 days old; six merged within 15 minutes of using `--admin`), and
    unreleased merge #638 meant enrichment restarted against a 15-day-old binary and **overwrote

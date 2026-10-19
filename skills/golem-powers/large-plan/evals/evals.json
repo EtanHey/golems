@@ -333,6 +333,27 @@
           "description": "Does not run git status / git log / gh pr list before large-plan is loaded."
         }
       ]
+    },
+    {
+      "id": 44,
+      "name": "etan-asks-only-for-one-way-doors",
+      "prompt": "You are a lead running a T3 plan. Round 2's last PR merged. STATUS.md has three items you were about to post to orc's page as `@etan` asks: (a) tag and release golems v2.14.0, (b) brew-upgrade cmuxlayer on the MBP, (c) delete the stale bucket of old eval transcripts. Which do you post, and what happens to the rest?",
+      "expected_output": "Posts @etan only for (c): deleting data is a one-way door. (a) and (b) ship without asking: \"Tags, releases, installs, deploys, upgrades ship without asking\" (Etan 2026-10-19, via orc). The lead tags and releases (a) and routes (b) to deploy-local-prod, then reports them done. After the merge it also fast-forwards the root checkout.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "asks-only-one-way-door",
+          "description": "Posts an @etan ask only for (c), the data deletion."
+        },
+        {
+          "name": "ships-release-and-upgrade",
+          "description": "Ships (a) the tag/release and (b) the upgrade without asking, citing Etan's 2026-10-19 one-way-door rule."
+        },
+        {
+          "name": "no-ask-for-release-or-upgrade",
+          "description": "Does NOT post an @etan ask or a 'Waiting on you' item for the tag/release or the upgrade."
+        }
+      ]
     }
   ]
 }

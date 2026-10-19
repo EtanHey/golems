@@ -7,7 +7,7 @@ import { lint } from '../ci/check-model-role-drift.mjs';
 const root = new URL('../../', import.meta.url).pathname;
 const read = p => readFileSync(join(root, p), 'utf8');
 const config = JSON.parse(read('standards/model-roles.json'));
-const roles = ['codex.implement', 'claude.judgment', 'claude.subagent.cheap', 'gemini.gather.text', 'gemini.gather.visual'];
+const roles = ['codex.implement', 'claude.judgment', 'claude.subagent.cheap', 'claude.subagent.mechanical', 'gemini.gather.text', 'gemini.gather.visual'];
 
 test('agent-routing evals cover cheap recall, judgment deletion and visual gathering', () => {
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));

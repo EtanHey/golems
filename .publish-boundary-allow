@@ -131,3 +131,9 @@ scripts/tests/lib/worktree-gc-fixtures.bash
 
 # Authored synthetic Git commit identity and private bystander-preservation fixtures.
 scripts/tests/test-worktree-gc-astra.bats
+
+# History-only: #811 commits 9055532c..9848a190 carried the synthetic Git fixture
+# identity fixture@example.invalid at this path. The live test moved to
+# scripts/tests/pr-loop-root-ff.test.mjs with an allowed example.com identity;
+# no live file has this path. Kept for the history ratchet (no force-push).
+scripts/tests/pr-loop-root-ff-block.test.mjs

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-10-01",
+  "updated": "2026-10-19",
   "swap_rule": "A model change = bench it with the skill-creator harness, then edit ONE line here. No skill/agent file names a role-owned model directly (drift lint).",
   "roles": {
     "claude.judgment": {
@@ -15,6 +15,13 @@
       "use_for": "single-fact brain-worker lookups, orc-helper pane mechanics, verifiers",
       "evidence": "2026-09-29 subagent-routing: brain-worker recall parity at 0.46x; orc-helper 4/4 parity at 0.47x; verifiers 0 wrong at 0.55x",
       "never_for": "deletion decisions, PR-gating review, multi-source history"
+    },
+    "claude.subagent.mechanical": {
+      "model": "claude-haiku-5-5",
+      "alias": "haiku",
+      "use_for": "mechanical checks and waits (Etan 2026-10-19 21:07, via orc)",
+      "evidence": "ruling-based; verifier bench pending (skillcreator-lead follow-up)",
+      "never_for": "judgment, deletion decisions, review, multi-source recall"
     },
     "codex.implement": {
       "model": "gpt-6.1-sol",

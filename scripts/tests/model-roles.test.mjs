@@ -66,6 +66,19 @@ test('resolver known, unknown, candidate and optional fields', () => {
   assert.equal(run('gemini.gather.visual', '--field', 'launcher_tier').stdout, 'flash-high\n');
   assert.equal(run('claude.judgment', '--field', 'missing').status, 2);
 });
+test('Claude mechanical checks and waits resolve their own role, apart from the cheap tier', () => {
+  // Etan 2026-10-19 21:07, via orc: mechanical checks and waits go to the mechanical tier.
+  const run = (...args) => spawnSync(process.execPath, [join(root, 'scripts/model-roles.mjs'), ...args], { encoding: 'utf8' });
+  const role = config().roles['claude.subagent.mechanical'];
+  assert.equal(role.model, 'claude-haiku-5-5');
+  assert.equal(role.alias, 'haiku');
+  assert.notEqual(role.status, 'candidate');
+  assert.match(role.use_for, /mechanical checks and waits/);
+  assert.match(role.never_for, /judgment/);
+  const model = run('claude.subagent.mechanical'); assert.equal(model.status, 0, model.stderr); assert.equal(model.stdout, 'claude-haiku-5-5\n');
+  assert.equal(run('claude.subagent.mechanical', '--field', 'alias').stdout, 'haiku\n');
+  assert.equal(run('claude.subagent.cheap', '--field', 'alias').stdout, 'sonnet\n');
+});
 test('mechanical candidate resolves only for an authorised --use purpose', () => {
   const run = (...args) => spawnSync(process.execPath, [join(root, 'scripts/model-roles.mjs'), ...args], { encoding: 'utf8' });
   const model = config().roles['codex.subagent.mechanical'].model;

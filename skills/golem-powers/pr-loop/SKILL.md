@@ -21,7 +21,7 @@ Who implements and who opens the inner-loop reviewer pane is owned by `/agent-ro
 
 This skill begins at branch preparation and ends at the authority-appropriate endpoint:
 
-- Lead: reviewed, latest-head-green PR merged, verified, and cleaned up; released/installed where applicable at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate).
+- Lead: reviewed, latest-head-green PR merged, verified, root checkout fast-forwarded, and cleaned up; released/installed where applicable at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate), without asking Etan.
 - Worker whose brief says the lead owns merge: ready-for-review PR, review responses addressed, URL handed to the lead, unmerged.
 - A worker must hand the reviewed PR to its lead unmerged.
 
@@ -48,7 +48,7 @@ Run the loop in this order:
 6. Apply the target repo's bot policy, invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 watch wake, one bounded check, or one cheap watcher, never a polling turn.
 7. Classify every finding; fix real bugs, reply to every CRITICAL/MAJOR/HIGH finding, push, and request re-review.
 8. Confirm required checks and reviews are green on `headRefOid`, then either hand off unmerged or merge.
-9. After an authorized merge, verify the remote merge/content, update tracking, and clean up; release/install/live-probe at the feature-batch gate. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
+9. After an authorized merge, verify the remote merge/content, fast-forward the root checkout ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory)), update tracking, and clean up; release/install/live-probe at the feature-batch gate, the deploy hop routed to `deploy-local-prod`. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
 
 ## Merge Cadence (risk-sized)
 
@@ -78,6 +78,9 @@ Who reviews, how many, and the panel: `/agent-routing` § Routing rules (SSOT), 
 
 ## Hard Gates
 
+- **One-way doors only:** "Nothing waits on Etan except true one-way doors: deleting data/creds/accounts, money, messaging people. Tags, releases, installs, deploys, upgrades ship without asking." (Etan 2026-10-19, via orc) A lead never stops for Etan before a tag, release, install, deploy or upgrade: it ships. Remote branch deletes and force pushes still need the `human-confirm-gate` token, because they delete data; that is a one-way door, so the two rules agree.
+- **Leads never do ops themselves** (Etan 2026-10-19, via orc): the deploy hop goes to the `deploy-local-prod` sub-agent and mechanical checks and waits go to the mechanical tier; the lead routes them and verifies the artifact. Tiers and quote: `/agent-routing` § Lead Topology #7.
+- **Root checkout current:** "Leads keep the root checkout ff-only current after each merge." (Etan 2026-10-19, via orc) Why: root brainlayer sat 1,017 commits behind and its lead read stale instructions (bl-lead collab, 2026-10-19 21:06 IDT). Steps: [Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory).
 - Missing Loop-record = not ready. Use the PR-body template; a same-vendor review states its reason.
 
 - Never merge with zero reviews. Waiting 15 minutes does not waive the review gate; merge only after at least one review and the required review conditions pass.
@@ -113,6 +116,10 @@ Who reviews, how many, and the panel: `/agent-routing` § Routing rules (SSOT), 
 | PR changes a visible surface | Merge on the size cadence; queue visual self-QA for the feature-batch gate (run it now for a single-PR batch) |
 | Bot silent or rate-limited | Don't wait; record it unavailable in the PR body and proceed on the routed review |
 | Release gate says `MERGED_UNRELEASED` mid-batch | Expected; keep merging the batch |
+| PR merged; release + install pending; Etan away | Ship: tag, release, install now; route the hop to `deploy-local-prod` and verify its artifact. Never ask Etan |
+| Remote branch delete or force push | `human-confirm-gate` token required (one-way door: deletes data) |
+| Lead must deploy and probe a Mac | Dispatch `deploy-local-prod`; checks and waits go to the mechanical tier, not the lead |
+| You just merged #N | Fast-forward the root checkout (`merge --ff-only`); report if it fails; re-read AGENTS.md/CLAUDE.md if they changed |
 | Last PR of the batch merged | Run the feature-batch gate (heavy/e2e, real-client, visual QA, release gate to `CLEAN`) before any done claim |
 | Linked-worktree merge cleanup fails | Verify whether the remote merge already succeeded before any retry |
 | PR is stacked | Preserve the base branch until children are retargeted |

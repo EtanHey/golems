@@ -48,5 +48,15 @@
     "query": "what's 2+2",
     "should_trigger": false,
     "note": "unrelated"
+  },
+  {
+    "query": "merged #812, what now?",
+    "should_trigger": true,
+    "note": "lead loop after a merge, rule 3 (Etan 2026-10-19): ff-only the root checkout"
+  },
+  {
+    "query": "what in this feature batch still waits on Etan?",
+    "should_trigger": true,
+    "note": "asks to Etan, rule 1 (Etan 2026-10-19): one-way doors only"
   }
 ]

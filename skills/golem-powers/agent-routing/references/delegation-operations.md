@@ -54,6 +54,9 @@ and handoff. Verify with the real post-operation probe.
 
 Ask Etan only for irreversible/out-of-mission actions: destructive data deletion, force-push/history
 rewrite, unowned cleanup, credential/account changes, paid external actions, or human-only license/ToS acceptance.
+Tags, releases, installs, deploys and upgrades are not on that list: they ship without asking (Etan
+2026-10-19, via orc; canonical: `/pr-loop` § Hard Gates). Force-push and remote deletes stay behind the
+human-confirm-gate token: they delete data.
 
 ## Isolation and Quota
 
