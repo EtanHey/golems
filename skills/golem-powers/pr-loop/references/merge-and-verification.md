@@ -109,16 +109,30 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
 
 1. **Root checkout** — "Leads keep the root checkout ff-only current after each merge." (Etan 2026-10-19, via orc)
    Why: root brainlayer sat 1,017 commits behind and its lead read stale instructions (bl-lead collab, 2026-10-19 21:06 IDT).
-   After each merge, on the ROOT checkout (the repo's main checkout, not your linked worktree):
+   After each merge, run this block once, with the two placeholders filled in. `<root>` is the repo's
+   main checkout, not your linked worktree, and `<default>` is its default branch. It runs in a subshell,
+   so its stops never close your shell:
    ```bash
-   git -C <root> branch --show-current   # must print <default>; otherwise report, do not merge
-   OLD=$(git -C <root> rev-parse HEAD)
-   git -C <root> fetch && git -C <root> merge --ff-only origin/<default>
-   git -C <root> diff --name-only "$OLD" HEAD -- '*AGENTS.md' '*CLAUDE.md'
+   ROOT='<root>' DEFAULT='<default>'
+   (
+     set -eu
+     BRANCH=$(git -C "$ROOT" branch --show-current)
+     if [ "$BRANCH" != "$DEFAULT" ]; then
+       echo "ROOT-FF STOP: $ROOT is on '${BRANCH:-detached HEAD}', not $DEFAULT; not merging. Report it." >&2
+       exit 2
+     fi
+     OLD=$(git -C "$ROOT" rev-parse HEAD)
+     git -C "$ROOT" fetch -q origin "$DEFAULT" || { echo "ROOT-FF STOP: fetch failed; report it." >&2; exit 3; }
+     git -C "$ROOT" merge -q --ff-only "origin/$DEFAULT" ||
+       { echo "ROOT-FF STOP: ff-only failed (local changes or divergence); report it, never force." >&2; exit 4; }
+     git -C "$ROOT" diff --name-only "$OLD" HEAD -- '*AGENTS.md' '*CLAUDE.md'
+   )
    ```
-   - If the root is on another branch, or the fast-forward fails (local changes or divergence), report it to your lead or collab with the
-     error line. Never force it: no `reset --hard`, no stash, no rebase of the root.
-   - If the diff lists an AGENTS.md or CLAUDE.md, re-read those files before your next action.
+   - A nonzero exit is a `ROOT-FF STOP`: report its line to your lead or collab and leave the root as it
+     is. Never force it: no `reset --hard`, no stash, no rebase, no branch switch on the root.
+   - Exit 0 prints the AGENTS.md and CLAUDE.md files the merge changed. Re-read those files before your
+     next action.
+   - `scripts/tests/pr-loop-root-ff-block.test.mjs` executes this exact block against Git fixtures.
 2. **Collab file** — If this PR is part of a collab, update the task board status to ✅ Done with PR number
 3. **Roadmap** — If this PR completes a roadmap phase, update `$ORCHESTRATOR_REPO/roadmap/README.md`
 4. **BrainLayer** — `brain_store` what changed and why (tagged `pr-merged`, `<project>`)

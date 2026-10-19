@@ -146,7 +146,7 @@ If yes, add a separate phase or parallel track for the non-code work. Non-code d
 
 A bounded phase ends in `/pr-loop`.
 
-After each merge the lead keeps the root checkout current: "Leads keep the root checkout ff-only current after each merge." (Etan 2026-10-19, via orc) Run `git -C <root> fetch && git -C <root> merge --ff-only origin/<default>` on the ROOT checkout, not a linked worktree. If the fast-forward fails (local changes, divergence, root on another branch), report it in the collab instead of forcing it. If the merged range changed an AGENTS.md or CLAUDE.md, re-read it before the next dispatch. Steps: `/pr-loop` `references/merge-and-verification.md` § After Merge: Update Tracking. Why: root brainlayer sat 1,017 commits behind and its lead read stale instructions (bl-lead collab, 2026-10-19 21:06 IDT).
+After each merge the lead keeps the root checkout current: "Leads keep the root checkout ff-only current after each merge." (Etan 2026-10-19, via orc) Run the guarded block in `/pr-loop` `references/merge-and-verification.md` § After Merge: Update Tracking, step 1, verbatim. It stops with a `ROOT-FF STOP` line, which you report in the collab, and never forces. Exit 0 lists the changed AGENTS.md/CLAUDE.md files to re-read before the next dispatch. Why: root brainlayer sat 1,017 commits behind and its lead read stale instructions (bl-lead collab, 2026-10-19 21:06 IDT).
 
 ### Phase Template
 
