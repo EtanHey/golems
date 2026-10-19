@@ -38,6 +38,7 @@ HERE is orc's fleet collab for a lead's progress; a plan's `collab.md` follows t
 3. **Progress never goes into orc's T3 thread** or the lead's thread as a message. A T3 child's final message is its report; the `delegate_task` completion wakes the lead, which overwrites STATUS.md only: the worker's own line already recorded the change, so the lead appends no second line. It appends one only when no line for that change landed (the child ended without writing it).
 4. **Wake words only for a wake:** `@orc`, `### <lead> → orc`, or a BLOCKED/DONE line, and only for blocked, a lane done, or an Etan decision. Inside a plan, the `### @<agent> → @<listen-name> — … done|blocked` headings below are the same wake for the lead. A progress line carries no `@` tag.
 5. **`@etan`** is for a decision only Etan can make. Routing, scope and model questions go to the lead, never Etan (`/agent-routing` § Goal Contract).
+   Only one-way doors qualify: "Nothing waits on Etan except true one-way doors: deleting data/creds/accounts, money, messaging people. Tags, releases, installs, deploys, upgrades ship without asking." (Etan 2026-10-19, via orc) A tag, release, install, deploy or upgrade is never an `@etan` ask or a dashboard "Waiting on you" item: ship it, then report it as done. A remote branch delete or force push still needs the `human-confirm-gate` token (deleting data is a one-way door).
 6. **Names:** a lead's workers post as `<lead>-w<N>` (`skill-lead-w2`), numbered in dispatch order.
 
 ---

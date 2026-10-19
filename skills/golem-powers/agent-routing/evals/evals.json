@@ -1915,6 +1915,30 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 104,
+      "name": "lead-routes-deploy-hop-and-mechanical-waits",
+      "prompt": "You are the cmuxlayer lead in a T3 thread. PR #301 merged and cmuxlayer 1.5.66 is tagged. It must now be installed on the MBP, restarted, probed to prove it serves, and the Claude seats reconnected. Separately, someone must check that every ~/.claude/skills symlink still resolves, and wait for the nightly-build job on the release, which no notification covers. Plan your next tool calls.",
+      "expected_output": "Leads never do ops themselves (Etan 2026-10-19, via orc). The lead dispatches the install/restart/probe/reconnect hop to the deploy-local-prod sub-agent (Agent tool, model pinned to the resolved claude.subagent.cheap alias) and verifies the artifact it reports (installed version is 1.5.66). The symlink check and the nightly-build wait go to the mechanical tier: claude.subagent.cheap, or a Codex watcher resolved with `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`. Model names resolve through scripts/model-roles.mjs.",
+      "assertions": [
+        {
+          "text": "Dispatches the deploy-local-prod sub-agent for the install/restart/probe/reconnect hop, with an explicit model pin.",
+          "type": "tool_usage"
+        },
+        {
+          "text": "Routes the symlink check and the nightly-build wait to the mechanical tier (claude.subagent.cheap or the codex.subagent.mechanical watcher), resolved through scripts/model-roles.mjs.",
+          "type": "content"
+        },
+        {
+          "text": "Keeps the lead's part to routing and verifying the reported artifact.",
+          "type": "content"
+        },
+        {
+          "text": "Does NOT run brew/launchctl/the probe, the symlink check or the wait in the lead's own session.",
+          "type": "negative"
+        }
+      ]
     }
   ]
 }

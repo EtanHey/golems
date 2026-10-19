@@ -53,5 +53,10 @@
     "query": "what's 2+2",
     "should_trigger": false,
     "note": "unrelated"
+  },
+  {
+    "query": "should I ask Etan before tagging the release?",
+    "should_trigger": true,
+    "note": "release gate, rule 1 (Etan 2026-10-19): it ships without asking"
   }
 ]

@@ -100,9 +100,9 @@ When a round has parallel phases, the orchestrator dispatches through its harnes
 
 1. **Dispatch:** each phase or PR is its own `delegate_task` child. Lifecycle (discover, dispatch, review rounds, PR linking): [agent-routing/references/t3-native.md](../agent-routing/references/t3-native.md). Who does which role: `/agent-routing` § Routing rules (SSOT). Pass the plan and `collab.md` by absolute path, and retain each `taskId`.
 2. **Guard:** the completion notification is the liveness guard (canon #7). Arm no collab monitor, no process/registry liveness watcher, no `ScheduleWakeup` / `CronCreate` / `/loop` polling turn. After dispatch, end the turn.
-3. **On wake:** verify the artifact (PR exists, head SHA, file scope) before relaying or advancing. **Phase exit** below still applies.
+3. **On wake:** verify the artifact (PR exists, head SHA, file scope) before relaying or advancing. After a merge, fast-forward the root checkout first (**Branch Lifecycle** below). **Phase exit** below still applies.
 4. **PR waiting:** the parent calls `watch_pull_request` and ends the turn. A wake is news, not a merge decision.
-5. **Something must sit and watch** (CI, a file, a job no notification covers): "anything that must sit and watch (a PR, CI, a file) uses a cheap [`codex.subagent.mechanical`] sub-agent, never a big-context [`codex.implement`] or lead session." (Etan 2026-10-18, via orc collab) Exactly one bounded child with a deadline and a single terminal report. It never owns the parent's PR watch. Settle it at its terminal state; no re-arm loops. Resolve its model through the supported watcher path: `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher` (add `--field model` for the bare id). A bare call without `--use watcher` still refuses the `candidate` role.
+5. **Leads never do ops themselves** (Etan 2026-10-19, via orc): a deploy, install, restart or reconnect hop is a `deploy-local-prod` dispatch; a check or wait is a mechanical-tier child, both resolved through `scripts/model-roles.mjs` (`/agent-routing` § Lead Topology #7). The lead verifies the artifact they report. **Something must sit and watch** (CI, a file, a job no notification covers): "anything that must sit and watch (a PR, CI, a file) uses a cheap [`codex.subagent.mechanical`] sub-agent, never a big-context [`codex.implement`] or lead session." (Etan 2026-10-18, via orc collab) Exactly one bounded child with a deadline and a single terminal report. It never owns the parent's PR watch. Settle it at its terminal state; no re-arm loops. Resolve its model through the supported watcher path: `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher` (add `--field model` for the bare id). A bare call without `--use watcher` still refuses the `candidate` role.
 6. **Settle** each lane at its terminal state (PR merged or handed off, artifact verified), not only when the plan closes: conclude the child (no new sends), `task_cancel` its `taskId` to stop queued runs, `unwatch_pull_request` its PR, then overwrite STATUS.md (no second collab line: the worker's line already recorded the change; append one only if none landed). Idle with no artifact pending = settle now, not later: "settle idle workers" (Etan 2026-10-18, via orc collab). Mechanics: `/agent-routing` § Goal Contract.
 
 ### cmux adapter: parallel rounds
@@ -145,6 +145,8 @@ If yes, add a separate phase or parallel track for the non-code work. Non-code d
 ### Branch Lifecycle (per phase)
 
 A bounded phase ends in `/pr-loop`.
+
+After each merge the lead keeps the root checkout current: "Leads keep the root checkout ff-only current after each merge." (Etan 2026-10-19, via orc) Run `git -C <root> fetch && git -C <root> merge --ff-only origin/<default>` on the ROOT checkout, not a linked worktree. If the fast-forward fails (local changes, divergence, root on another branch), report it in the collab instead of forcing it. If the merged range changed an AGENTS.md or CLAUDE.md, re-read it before the next dispatch. Steps: `/pr-loop` `references/merge-and-verification.md` § After Merge: Update Tracking. Why: root brainlayer sat 1,017 commits behind and its lead read stale instructions (bl-lead collab, 2026-10-19 21:06 IDT).
 
 ### Phase Template
 
@@ -231,7 +233,7 @@ Each phase findings.md is the shared collaboration room:
 
 When a round has 2+ independent phases, use the **full collab protocol** defined in [workflows/collab.md](workflows/collab.md).
 
-**Status and wakes:** one `STATUS.md` overwritten in place by the lead, plus ONE appended collab line per status change; progress never goes into orc's T3 thread; `@orc` / BLOCKED / DONE wake words only for blocked, a lane done or an Etan decision; `@etan` asks go to orc's stable page; workers post as `<lead>-w<N>`. Rules quoted verbatim in [workflows/collab.md#status-and-wakes](workflows/collab.md#status-and-wakes).
+**Status and wakes:** one `STATUS.md` overwritten in place by the lead, plus ONE appended collab line per status change; progress never goes into orc's T3 thread; `@orc` / BLOCKED / DONE wake words only for blocked, a lane done or an Etan decision; `@etan` asks go to orc's stable page and are for one-way doors only (a release, install or deploy ships without asking); workers post as `<lead>-w<N>`. Rules quoted verbatim in [workflows/collab.md#status-and-wakes](workflows/collab.md#status-and-wakes).
 
 **In T3:** `collab.md` holds decisions and status lines, `STATUS.md` the Task Board (steps 1–2 below). Dispatch and waiting follow [T3-native execution](#t3-native-execution-default-in-t3); none of the watches below are armed.
 

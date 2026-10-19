@@ -158,6 +158,13 @@ Every `claude.judgment` seat (leads and workers) delegates parity tasks to
 - **brain-worker:** single-fact recall ("when did X merge", "what did Etan rule on Y"); use one cheap child instead of the judgment seat's own context.
 - **orc-helper:** spawn/resume/send/read/wait/close pane mechanics; the packaged agent's `role:` pins its alias through the drift lint.
 - **Verifiers:** rerun a claimed command, check an artifact exists, or read a report's DONE marker.
+- **Deploy hops:** release → install → restart → live probe → seat reconnect go to the
+  `deploy-local-prod` sub-agent (Agent tool `subagent_type: "deploy-local-prod"`, model pinned to the
+  resolved `claude.subagent.cheap` alias). The lead routes the hop and verifies the artifact it reports.
+  The M1 stays untouched until the M1 test-rig adapter is active (§ Dispatch Boundaries).
+- **Checks and waits:** CI, a PR, a file or a job that must be checked or waited on goes to the mechanical
+  tier: `claude.subagent.cheap` from a Claude seat, or a Codex watcher resolved with
+  `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher --field model`. Never the lead.
 
 Keep `claude.judgment` for multi-source or decision-grade history, deletion decisions,
 PR-gating reviews, and UX/UI judgment. Reserve judgment → 3× cheap fan-out for
@@ -249,6 +256,7 @@ Domain leads are orchestrators one tier below orc:
    - **cmux adapter:** canon #7's "minimize pane churn" is cmux fd-leak hygiene. It means no needless pane open/close, never keeping one worker across PRs.
 
 6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall).
+7. **Leads never do ops themselves:** "Leads never do ops themselves: deploy hops go to the `deploy-local-prod` sub-agent; mechanical checks and waits go to Haiku or gpt-6-luna." (Etan 2026-10-19, via orc) A deploy, install, restart or reconnect hop is a `deploy-local-prod` dispatch; a check or a wait is a mechanical-tier dispatch (§ Cheap sub-agents). Resolve both tiers through `scripts/model-roles.mjs`, never the names in the quote. The lead's part is routing the hop and verifying the artifact it reports; running the hop, the probe or the wait in its own session breaks this rule.
 
 ## Goal Contract
 
@@ -267,7 +275,9 @@ evidence. A DONE marker is only a prompt to verify the contracted artifact.
 unsure about routing, scope, model or reviewer asks its lead. T3: the child's pending question, which the lead reads with
 `t3_pending_request_read` and answers with `t3_pending_request_respond` ([t3-native § 6](references/t3-native.md#6-pending-questions)).
 cmux adapter: one addressed collab line to the lead. The lead answers from this skill and escalates only a decision Etan
-alone can make, as an `@etan` ask in the collab.
+alone can make, as an `@etan` ask in the collab. Etan alone decides only true one-way doors (deleting
+data/creds/accounts, money, messaging people); a tag, release, install, deploy or upgrade ships without asking (Etan
+2026-10-19, via orc; `/pr-loop` § Hard Gates).
 
 **Settle at the terminal state:** "settle idle workers" (Etan 2026-10-18, via orc collab). When a lane closes (verified
 `DONE`, filed `BLOCKED`/`NOT_GREEN`, or `TRANSFERRED`), the lead settles its worker. T3: conclude the task (no new

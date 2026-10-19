@@ -75,9 +75,9 @@ checks out the default branch, and git refuses when another worktree holds it
 3. **Delete the remote branch explicitly.** After a remote/API merge the branch
    can survive auto-cleanup — check `gh api repos/{owner}/{repo}/branches/<branch>`
    and `git push origin --delete <branch>` if it is still there.
-4. **Pull main where main lives.** Update the worktree that actually holds the
-   default branch (`git -C <main-worktree> pull`), not the linked worktree you
-   worked in.
+4. **Fast-forward main where main lives.** Update the worktree that actually holds the
+   default branch (`git -C <main-worktree> fetch && git -C <main-worktree> merge --ff-only origin/<default>`),
+   not the linked worktree you worked in. See [Update Tracking](#after-merge-update-tracking-mandatory) step 1.
 
 Known topology: brainlayer — `main` is held by `$HOME/Gits/brainlayer-prod`; briefs
 into multi-worktree repos must pin the exact worktree path (see /repogolem's
@@ -107,14 +107,28 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
 
 **Every merged PR MUST update its tracking. No exceptions.**
 
-1. **Collab file** — If this PR is part of a collab, update the task board status to ✅ Done with PR number
-2. **Roadmap** — If this PR completes a roadmap phase, update `$ORCHESTRATOR_REPO/roadmap/README.md`
-3. **BrainLayer** — `brain_store` what changed and why (tagged `pr-merged`, `<project>`)
+1. **Root checkout** — "Leads keep the root checkout ff-only current after each merge." (Etan 2026-10-19, via orc)
+   Why: root brainlayer sat 1,017 commits behind and its lead read stale instructions (bl-lead collab, 2026-10-19 21:06 IDT).
+   After each merge, on the ROOT checkout (the repo's main checkout, not your linked worktree):
+   ```bash
+   git -C <root> branch --show-current   # must print <default>; otherwise report, do not merge
+   OLD=$(git -C <root> rev-parse HEAD)
+   git -C <root> fetch && git -C <root> merge --ff-only origin/<default>
+   git -C <root> diff --name-only "$OLD" HEAD -- '*AGENTS.md' '*CLAUDE.md'
+   ```
+   - If the root is on another branch, or the fast-forward fails (local changes or divergence), report it to your lead or collab with the
+     error line. Never force it: no `reset --hard`, no stash, no rebase of the root.
+   - If the diff lists an AGENTS.md or CLAUDE.md, re-read those files before your next action.
+2. **Collab file** — If this PR is part of a collab, update the task board status to ✅ Done with PR number
+3. **Roadmap** — If this PR completes a roadmap phase, update `$ORCHESTRATOR_REPO/roadmap/README.md`
+4. **BrainLayer** — `brain_store` what changed and why (tagged `pr-merged`, `<project>`)
 
 ```
 WRONG: Merge PR, exit silently               ← Tracking drift!
 WRONG: "I'll update the collab later"         ← You won't. Do it NOW.
 WRONG: Only update one of collab/roadmap/BL   ← Update ALL relevant trackers.
+WRONG: Root checkout left behind origin       ← The next session reads stale instructions.
+WRONG: git -C <root> reset --hard origin/main ← Never force; report the failed ff-only.
 ```
 
 If you are an autonomous agent, this step is NON-NEGOTIABLE. The orchestrator should NEVER discover completed work by accident.
@@ -134,7 +148,11 @@ At the batch gate, in order:
 1. Heavy/e2e suites on the batch head (the default branch after the batch's last merge).
 2. The [Daemon Verification Gate](#daemon-verification-gate), if any batch PR touched daemon, socket, MCP or protocol code.
 3. The [Visual Self-QA Gate](#visual-self-qa-gate), if any batch PR changed a visible surface.
-4. Release/install, then `scripts/ci/release-gate.mjs <repo>` until `CLEAN`. Mid-batch,
+4. Release/install, then `scripts/ci/release-gate.mjs <repo>` until `CLEAN`. Tag, release, install, deploy
+   and upgrade without asking Etan; only one-way doors wait for him ([Hard Gates](../SKILL.md#hard-gates)).
+   The lead routes the deploy hop (release → install → restart → live probe → seat reconnect) to the
+   `deploy-local-prod` sub-agent and verifies the artifact it reports; it does not run the hop itself.
+   Checks and waits go to the mechanical tier (`/agent-routing` § Cheap sub-agents). Mid-batch,
    `MERGED_UNRELEASED` is expected. At the batch endpoint, `MERGED_UNRELEASED`, `RELEASED_UNINSTALLED`
    or `UNKNOWN` is a stop.
 5. The [Deploy Truth Gate](#deploy-truth-gate) live probe, then the done claim.

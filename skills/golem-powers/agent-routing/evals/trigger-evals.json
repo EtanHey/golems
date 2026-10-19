@@ -48,5 +48,15 @@
     "query": "what's 2+2",
     "should_trigger": false,
     "note": "unrelated"
+  },
+  {
+    "query": "deploy 1.5.66 to both Macs",
+    "should_trigger": true,
+    "note": "deploy hop, rule 2 (Etan 2026-10-19): route it to deploy-local-prod"
+  },
+  {
+    "query": "sit on CI for #812 and tell me when it's green",
+    "should_trigger": true,
+    "note": "a wait, rule 2 (Etan 2026-10-19): mechanical tier, never the lead"
   }
 ]
