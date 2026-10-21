@@ -111,7 +111,8 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
    Why: root brainlayer sat 1,017 commits behind and its lead read stale instructions (bl-lead collab, 2026-10-19 21:06 IDT).
    After each merge, run this block once, with the two placeholders filled in. `<root>` is the repo's
    main checkout, not your linked worktree, and `<default>` is its default branch. It runs in a subshell,
-   so its stops never close your shell:
+   so its stops never close your shell. The default branch's configured `@{u}` selects the base:
+   `upstream/<default>` when tracking upstream, otherwise `origin/<default>`; missing or unexpected tracking stops rather than guessing. A deliberate fork-origin policy must STOP if it differs from the PR base; never substitute fork proof for upstream proof.
    ```bash
    ROOT='<root>' DEFAULT='<default>'
    (
@@ -121,16 +122,25 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
        echo "ROOT-FF STOP: $ROOT is on '${BRANCH:-detached HEAD}', not $DEFAULT; not merging. Report it." >&2
        exit 2
      fi
+     BASE=$(git -C "$ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{u}') ||
+       { echo "ROOT-FF STOP: default branch has no tracking ref" >&2; exit 2; }
+     BASE_REMOTE=${BASE%%/*}
+     case "$BASE" in "origin/$DEFAULT"|"upstream/$DEFAULT") ;; *) echo "ROOT-FF STOP: unexpected tracking ref $BASE" >&2; exit 2 ;; esac
      OLD=$(git -C "$ROOT" rev-parse HEAD)
-     git -C "$ROOT" fetch -q origin "$DEFAULT" || { echo "ROOT-FF STOP: fetch failed; report it." >&2; exit 3; }
-     git -C "$ROOT" merge -q --ff-only "origin/$DEFAULT" ||
+     git -C "$ROOT" fetch -q "$BASE_REMOTE" "refs/heads/${DEFAULT}:refs/remotes/$BASE" || { echo "ROOT-FF STOP: fetch failed; report it." >&2; exit 3; }
+     git -C "$ROOT" merge -q --ff-only "$BASE" ||
        { echo "ROOT-FF STOP: ff-only failed (local changes or divergence); report it, never force." >&2; exit 4; }
      git -C "$ROOT" diff --name-only "$OLD" HEAD -- '*AGENTS.md' '*CLAUDE.md'
+     HEAD_SHA=$(git -C "$ROOT" rev-parse HEAD)
+     BASE_SHA=$(git -C "$ROOT" rev-parse "$BASE")
+     COUNTS=$(git -C "$ROOT" rev-list --left-right --count "HEAD...$BASE" | tr '\t' '/')
+     [ "$HEAD_SHA" = "$BASE_SHA" ] && [ "$COUNTS" = 0/0 ] || { echo "ROOT-FF STOP: $BASE ahead/behind=$COUNTS" >&2; exit 5; }
+     printf 'root: %s HEAD=%s %s=%s ahead/behind=%s\n' "$ROOT" "$HEAD_SHA" "$BASE" "$BASE_SHA" "$COUNTS"
    )
    ```
    - A nonzero exit is a `ROOT-FF STOP`: report its line to your lead or collab and leave the root as it
      is. Never force it: no `reset --hard`, no stash, no rebase, no branch switch on the root.
-   - Exit 0 prints the AGENTS.md and CLAUDE.md files the merge changed. Re-read those files before your
+   - Exit 0 prints the changed AGENTS.md and CLAUDE.md paths, then the root receipt readback. Re-read those files before your
      next action.
    - `scripts/tests/pr-loop-root-ff.test.mjs` executes this exact block against Git fixtures.
 2. **Collab file** — If this PR is part of a collab, update the task board status to ✅ Done with PR number
@@ -378,7 +388,8 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
 
 ```
 CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):
-- root: <path> HEAD=<sha> origin/<default>=<sha> ahead/behind=0/0 | ROOT-FF STOP: <reason>
+- root: <path> HEAD=<sha> <base-remote>/<default>=<sha> ahead/behind=0/0
+  OR ROOT-FF STOP: <reason>
 - worktree: <path> removed | kept because <reason>
 - branch: <name> deleted local+remote | kept because <reason>
 - files this PR added outside src/tests: <list or none>; each is: committed reference (docs/reference|docs/rationale|README) |
@@ -386,10 +397,19 @@ CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):
 - docs.local this lane created: <paths>; rolled into <day>/README or deleted
 ```
 
-Required root proof reuses [Update Tracking](#after-merge-update-tracking-mandatory) step 1: read back root HEAD, origin/<default>, and ahead/behind after ROOT-FF. The lead rejects a DONE whose receipt lacks that readback. A STOP records a blocker; it is never a silent pass.
+The required root field has exactly two forms (strip the Markdown bullet/indent before matching this regex):
+```regex
+^(?:root: (/[^\r\n]+) HEAD=([0-9a-f]{40}) ((?:origin|upstream)/[^\s=]+)=\2 ahead/behind=0/0|ROOT-FF STOP: \S[^\r\n]*)$
+```
+OK requires an absolute path, equal full 40-character lowercase hexadecimal SHAs, the configured base tracking ref, and ahead/behind exactly `0/0`; any other counts require STOP. Reuse [Update Tracking](#after-merge-update-tracking-mandatory) step 1's readback. Examples (OK, then STOP):
+```text
+root: /srv/repos/t3code HEAD=0123456789abcdef0123456789abcdef01234567 upstream/main=0123456789abcdef0123456789abcdef01234567 ahead/behind=0/0
+ROOT-FF STOP: not merged
+```
+Unmerged handoffs must use `ROOT-FF STOP: not merged`. The lead rejects a DONE whose receipt lacks a valid root field. A STOP records a blocker; it is never a silent pass.
 
 The lead's phase close (`/large-plan` exit criteria) checks for one receipt per
-worker.
+worker, including a valid root field (OK readback or explicit STOP blocker).
 
 ---
 
