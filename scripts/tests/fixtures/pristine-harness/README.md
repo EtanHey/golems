@@ -31,7 +31,9 @@ external launcher CLIs and randomness are stubbed.
 witness-proven Round 2 escapes supplied by the Opus reviewer. Three other
 Round 1 edits had non-unique anchors and are excluded. `mutation-proof` requires
 every listed edit to change at least one corpus capture; CI runs it as a
-blocking step and derives the required count from the file.
+blocking step and derives the required count from the file. It runs on PRs that
+touch its inputs (`scripts/ci/mutant-inputs-changed.sh`; keep that list in sync
+when adding mutant targets), nightly on master, and on manual dispatch.
 Eight parser top-up mutants cover pass order, function-event visibility and
 commit timing, option preview, three copy boundaries, and definition-time
 alias expansion. Pass swapping and early commit use unique source anchors to
