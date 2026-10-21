@@ -378,12 +378,15 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
 
 ```
 CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):
+- root: <path> HEAD=<sha> origin/<default>=<sha> ahead/behind=0/0 | ROOT-FF STOP: <reason>
 - worktree: <path> removed | kept because <reason>
 - branch: <name> deleted local+remote | kept because <reason>
 - files this PR added outside src/tests: <list or none>; each is: committed reference (docs/reference|docs/rationale|README) |
   stored to BrainLayer <chunk-id> and deleted | moved to docs.local/<day>/ | deleted
 - docs.local this lane created: <paths>; rolled into <day>/README or deleted
 ```
+
+Required root proof reuses [Update Tracking](#after-merge-update-tracking-mandatory) step 1: read back root HEAD, origin/<default>, and ahead/behind after ROOT-FF. The lead rejects a DONE whose receipt lacks that readback. A STOP records a blocker; it is never a silent pass.
 
 The lead's phase close (`/large-plan` exit criteria) checks for one receipt per
 worker.

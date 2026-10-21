@@ -14,6 +14,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const doc = path.join(here, "..", "..", "skills", "golem-powers", "pr-loop", "references",
   "merge-and-verification.md");
 
+test("cleanup receipt requires root readback and rejects missing proof", () => {
+  const receipt = readFileSync(doc, "utf8").split("### Cleanup Receipt")[1].split("## After Merge:")[0];
+  expect(receipt).toContain("- root: <path> HEAD=<sha> origin/<default>=<sha> ahead/behind=0/0 | ROOT-FF STOP: <reason>");
+  expect(receipt).toContain("The lead rejects a DONE whose receipt lacks that readback.");
+  expect(receipt).toContain("A STOP records a blocker; it is never a silent pass.");
+});
+
 function documentedBlock() {
   const section = readFileSync(doc, "utf8").split("### After Merge: Update Tracking (MANDATORY)")[1];
   const fenced = section.match(/^( *)```bash\n([\s\S]*?)^\1```/m);

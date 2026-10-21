@@ -457,6 +457,11 @@
           "description": "The merge comment ends with a block headed CLEANUP RECEIPT"
         },
         {
+          "name": "cleanup-receipt-root-proof",
+          "type": "content",
+          "description": "Requires root: <path> HEAD=<sha> origin/<default>=<sha> ahead/behind=0/0 | ROOT-FF STOP: <reason>, read back after the existing ROOT-FF step. The lead rejects DONE without that readback; STOP records a blocker, never a silent pass."
+        },
+        {
           "name": "cleanup-receipt-worktree-and-branch",
           "type": "content",
           "description": "The receipt states the worktree path removed and the branch deleted local+remote (or a stated reason each was kept)"
@@ -489,6 +494,11 @@
           "name": "cleanup-receipt-present",
           "type": "outcome",
           "description": "The DONE report contains a CLEANUP RECEIPT block"
+        },
+        {
+          "name": "cleanup-receipt-root-proof",
+          "type": "content",
+          "description": "Requires root: <path> HEAD=<sha> origin/<default>=<sha> ahead/behind=0/0 | ROOT-FF STOP: <reason>. If root proof cannot be obtained for this unmerged handoff, records STOP as a blocker; the lead rejects DONE without the readback, never silently passes it."
         },
         {
           "name": "kept-with-reason",
