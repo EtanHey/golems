@@ -82,18 +82,21 @@ class FanoutCacheShape(unittest.TestCase):
         self.require(r"(?:harness|serializ).{0,150}task.{0,60}before.{0,100}(?:skill|reminder|claude)",
                      "Explain task-before-startup-context serialization")
 
-    def test_warm_one_first_item_before_siblings_and_cap_concurrency(self):
+    def test_conditional_warm_seed_before_siblings_and_cap_concurrency(self):
         self.require(r"(?:await|wait for).{0,80}(?:one|first|seed) agent.{0,60}first item.{0,80}before.{0,60}(?:siblings|fan[- ]out)",
                      "Await one agent's first item before launching siblings")
+        self.require(r"only once.{0,50}reusable common boundary",
+                     "Warming requires an existing reusable common boundary")
+        self.require(r"k=1 seed|await the full seed batch",
+                     "Seed wait must be executable with end-of-batch receipts")
         self.require(r"(?:cap|bound|limit)\w*.{0,40}concurrency|concurrency.{0,40}(?:cap|bound|limit)",
                      "Cap sibling concurrency")
 
-    def test_mechanical_budget_routing_defers_to_agent_routing(self):
-        for term in ("/agent-routing", "delegate_task", "luna", "mechanical", "budget"):
-            self.assertIn(term, self.contract, f"Budget-dependent mechanical routing needs {term}")
-        self.require(r"/agent-routing.{0,100}(?:owns|governs|decides)|"
-                     r"(?:follow|defer|per|see).{0,80}/agent-routing",
-                     "Use a routing-law pointer rather than redefining model policy")
+    def test_routing_is_pointer_only(self):
+        self.require(r"routing: follow /agent-routing for dispatch policy\.",
+                     "Keep dispatch policy behind the routing SSOT pointer")
+        self.assertNotRegex(self.contract, r"\b(?:luna|haiku|codex)\b",
+                            "Do not assign models in the cache-shape contract")
 
     def test_no_conflicting_one_miner_per_session_instructions_remain(self):
         stale = re.compile(r"one\s+miner\s+(?:=|per)\s+(?:one\s+)?session|"

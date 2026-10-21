@@ -33,43 +33,46 @@ disposition can actually be assigned to. Unproven — that's what the eval decid
 
 ## Batch size
 
-The mining engine fans miners in waves of ~5 concurrent (the proven "May night"
-cadence); each miner takes K sessions (see the prompt-shape section below). Batch size is a concurrency knob, independent
-of flat-vs-staged:
+For new/manual orchestration dispatches, schedule waves of ~5 concurrent miners
+(the proven "May night" cadence); each takes K sessions (see below). Concurrency
+is independent of K and flat-vs-staged; CLI `batches --size` counts sessions:
 - **Round 1 = 7+ miners** — the proven first-round fan-out width from the original
   May-night weave. Open wide on the first sweep (centerpieces + the densest
   per-track sessions), then narrow to ~5-concurrent batches for the tail.
 - ~5 keeps RAM and token-rate sane next to a live fleet.
 - The convergence gate should have quiesced the fleet first, so 5–8 is safe.
-- Loop the batches until the corpus is exhausted (`weave-run.py batches`).
+- Regroup the manifest for dispatch as described in `run-lifecycle.md` § Dispatch;
+  loop until the corpus is exhausted. The existing runner has not migrated to K batching.
 
 ## Fan-out prompt shape (cache economics)
 
 Measured 2026-10-21 (orchestrator `docs.local/reports/2026-10-21/inference-optimization/`):
-one skill-creator weave session dispatched ~5.8k one-session Haiku miners; each fresh agent
-paid a ~28k-token startup cache write on its first request, 67% of all Claude cache writes
-in 14 days. The harness serializes the task text before the skills/CLAUDE.md reminders, so
-any per-agent variation early in the task strands that shared context. Shape fan-outs so
-siblings share the longest possible prefix, and pay the startup write fewer times:
+one skill-creator session had ~5.8k workflow researchers total, across mixed purposes/models.
+The sampled miner cohort's median first-request startup cache write was ~28k tokens.
+The whole session produced ~67% of 14-day Claude cache writes; first workflow requests
+produced ~36% of fleet writes (54% of that session's workflow writes).
+The harness serializes task text before skills/CLAUDE.md reminders; per-agent variation
+early in the task can strand shared context (inference; wire breakpoints were not observed).
+For new/manual orchestration dispatches:
 
 1. **Byte-identical STATIC block first**: rules, schema, output contract, return line.
    Keep out of STATIC: ids, labels, timestamps, indices, wave names, paths.
-2. **Per-item data last**: the miner's list of context-file labels goes in a final
-   ITEMS section, after STATIC.
+2. **Per-item data last**: exact manifest items go in a final ITEMS section after STATIC.
 3. **Batch: each miner handles K sessions** (default K = 8–12; lower it to fit context,
-   since K compact mine-contexts must leave room for raw-JSONL greps). Every fresh agent
-   pays the ~28k startup write whatever the layout, so 821 one-session miners cost ~23M
-   write tokens where ~80 batched miners cost ~2.3M (ESTIMATE). Centerpieces keep a
-   dedicated miner. Per-session artifacts are unchanged: one findings / denominator /
-   children file per label, empty outputs included.
-4. **Warm, then fan out**: await one seed agent's first item before launching its
-   siblings (`await agent(...)`, then `pipeline`), and cap concurrency separately from K.
-5. **Model/provider**: mechanical mining may run on Codex Luna via `delegate_task` when
-   the lane budget favors Codex; follow `/agent-routing`, which owns that decision.
+   leaving room for raw-JSONL greps). Assuming each fresh agent pays the sampled ~28k
+   startup write, 821 single-session miners cost ~23M versus ~2.3M for 83 miners at K=10
+   (ESTIMATE, startup-only, before dedicated-centerpiece adjustment; excludes later growth).
+   Centerpieces keep dedicated miners. Preserve findings / denominator / children files
+   per label, empty outputs included. See `run-lifecycle.md` § Dispatch for regrouping.
+4. **Conditional warm-start**: only once a reusable common boundary exists, await one
+   seed agent's first item before siblings by using a K=1 seed (`await agent(...)`), or
+   await the full seed batch. Receipts arrive only after all K labels finish.
+   Cap concurrency separately from K; warming alone fixed none of the sampled writes.
+5. **Routing**: follow `/agent-routing` for dispatch policy.
 
-Reordering alone does not prove a cache hit (a reusable breakpoint must exist); batching
-and warm-start are the measured-safe wins. Re-measure with orchestrator
-`scripts/inference-usage/inference_usage.py claude --md`.
+Batching is the estimated win, unmeasured until a follow-up run. Reordering alone does
+not prove reuse, and warming needs a valid common cache boundary. Re-measure before
+claiming savings with orchestrator `scripts/inference-usage/inference_usage.py claude --md`.
 
 ## Centerpieces first
 
