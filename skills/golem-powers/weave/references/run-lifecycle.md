@@ -222,8 +222,8 @@ WD=$ORCHESTRATOR_ROOT/docs.local/weave-$(date +%F)
 
 python3 scripts/weave-run.py discover --hours 24 --workdir "$WD"   # → corpus-manifest.json (centerpieces ★ first)
 python3 scripts/weave-run.py prepare  --workdir "$WD"              # → digests/ + mine-context/ (compact per-session)
-python3 scripts/weave-run.py batches  --workdir "$WD" --size 5     # → batch-manifest.json (one miner per session)
-#   ... dispatch one miner agent per session per batch (see §3) ...
+python3 scripts/weave-run.py batches  --workdir "$WD" --size 5     # → batch-manifest.json (slices of at most 5 sessions)
+#   ... regroup manifest items for K-session miners; cap active groups separately (see Dispatch) ...
 python3 scripts/weave-run.py aggregate --workdir "$WD" --tokens <N> # → ACTION-LEDGER.md + ledger.json + conversion-to-change
 #   ... synthesize the forward-plan from the ledger ...
 #   ... THEN the MANDATORY red-team fact-check closing stage (§4b (verification-and-discharge.md)) before anything is trusted ...
@@ -251,8 +251,8 @@ python3 scripts/weave-run.py aggregate --workdir "$WD" --tokens <N> # → ACTION
   mine them deepest (`references/topology.md`). **Read the centerpiece DIGESTS
   first, map the generational chain against each other, THEN mine workers.**
   [g1:82 → 2026-06-05.md:14,48]
-- **One miner = one session** (not five shards of one). Parallelism = N sessions
-  at once, batches of ~5. **Loop-until-dry** (see §2a phase-recursion) — stop
+- **Whole sessions, K per miner** (never shards of one session; centerpieces get a
+  dedicated miner). Parallelism = waves of ~5 miners. **Loop-until-dry** (see §2a phase-recursion) — stop
   when a round surfaces nothing new.
 - Miners read the compact `mine-context/<label>.md` (digest + grep excerpts),
   then grep the raw JSONL only to quote verbatim. They never read a whole MB-scale
@@ -488,34 +488,63 @@ empty findings file, never an invented one.
 > incident narrative. A "PR never merged / fix never shipped" finding is not
 > evidence until a `gh pr view` / git check confirms it. [g1:77 → 2026-07-10.md:23,37]
 
-**Dispatch (the bridge between `batches` and `aggregate`):** spawn ONE miner per
-session per batch (**waves of 4–6 concurrent** — the frozen 100%-coverage recipe;
+**Dispatch (the bridge between `batches` and `aggregate`):** spawn miners that take K
+sessions each (`topology.md` § Fan-out prompt shape; **waves of 4–6 concurrent** — the frozen 100%-coverage recipe;
 ~4-6 typical (recipe, not a hard cap)), centerpieces first. Two equivalent mechanisms: [g1:68 →
 2026-06-01.md:36; 2026-06-07.md:8]
 
+This is **new/manual orchestration guidance**, not a runtime batching change.
+`weave-run.py batches --size` remains a **session-count limit**, not a miner count
+or concurrency cap. Regroup its `batch-manifest.json` explicitly:
+
+1. Flatten `batches[*].sessions` in manifest order across all slices. Keep each item
+   intact, including its exact `label`, `src`, `ctx`, and `out` paths; never interpolate
+   raw labels into filenames (the manifest already normalizes `/` to `__`).
+2. Extract centerpiece items into dedicated single-item miners and run them first.
+3. Partition the remaining items into consecutive K-sized groups, keeping the short
+   final group. For example, 100 ordinary sessions at K=10 become 10 miner groups,
+   even when the planner emitted 20 slices via `--size 5`.
+4. Put each group's items in the prompt's final ITEMS section. Set `denominator` and
+   `children` paths by replacing that item's `out` suffix `.jsonl` with
+   `.denominator.json` and `.children.json`; keep the exact manifest `ctx`/`out`.
+5. Schedule at most C groups concurrently (e.g. C=5), independently of K and `--size`.
+   With a reusable common boundary, optionally await a K=1 seed or the full seed batch
+   before siblings; the K-label receipt is returned only after the entire batch.
+   Verify disk outputs after each wave, then replan missing sessions until dry.
+
+`weave-cursor-run.py` remains **one-session-only**: it asserts exactly one session,
+uses an item-first prompt, and does not implement K batching. `--chunk-size >1` is
+unsupported; migrating its runner/prompt is a separate follow-up.
+
 - **Workflow (preferred for staged mode):** a `pipeline`/`parallel` of `agent()`
   calls, each given the miner prompt below + a findings JSON schema; the workflow
-  writes each result to `<WD>/findings/<label>.jsonl`. **Schema-return is fine only
+  writes each result to its manifest `out` path. **Schema-return is fine only
   for ANALYSIS agents**, wrapped in `parallel` `.catch(()=>null)` — never for the
   file-writing miners (see the write-gap below). [g1:67 → 2026-05-31.md:105-106]
 - **`session-miner` sub-agent / Task calls** from a skillCreator session (the
   sub-agent is skill-creator-scoped): dispatch N `Agent(subagent_type="session-miner", …)`
   in one message.
 
-Miner prompt skeleton (**return-then-write: write the file, NO competing schema**):
+Miner prompt skeleton (**return-then-write: write the files, NO competing schema**).
+STATIC first and byte-identical across the wave; all paths belong in ITEMS last:
 ```
-Mine ONE session for the weave. Read your context file <WD>/mine-context/<label>.md
-(digest + grep excerpts). For verbatim quotes, grep the raw JSONL by **jsonl_line=N**
-from the Grep excerpts section — never read the whole file. Digest §N is NOT a jsonl
-line. Emit findings (the JSON schema above), one per line, to
-<WD>/findings/<label>.jsonl; every correction includes session/model/bucket/ts. Copy the exact
-user_messages value from this context file's header into
-<WD>/findings/<label>.denominator.json with session/model/user_messages even when the findings file
+You mine weave sessions. For EACH item in ITEMS below, in order: read its exact ctx path
+(digest + grep excerpts). For verbatim quotes, grep the raw JSONL
+by **jsonl_line=N** from the Grep excerpts section — never read the whole file. Digest §N is NOT
+a jsonl line. Emit findings (the JSON schema above), one per line, to
+the item's exact out path; every correction includes session/model/bucket/ts. Copy the exact
+user_messages value from that context file's header into
+the item's denominator path with session/model/user_messages even when the findings file
 is empty. Never recount or estimate it. If you spawn ANY child agent (cmux spawn_agent, t3layer,
-sub-agent), write <WD>/findings/<label>.children.json — a list of
+sub-agent), write the item's children path — a list of
 {agent_id, surface, cli, model, title, purpose, state_at_exit} — and name each child in your reply;
 write an empty list if you spawned none. Files only — no brain_store.
-Write ALL files FIRST, THEN reply exactly: WEAVE_MINE_DONE <label> <count>.
+Write ALL files for a label before starting the next. When every label is done, reply exactly one
+line per label: WEAVE_MINE_DONE <label> <count>.
+
+ITEMS:
+{label: ..., src: ..., ctx: ..., out: ..., denominator: ..., children: ...}
+... (K items, exact manifest paths and derived sidecar paths)
 ```
 [g1:66 → 2026-05-30.md:93-98; 2026-05-31.md:103; 2026-06-06.md:12]
 

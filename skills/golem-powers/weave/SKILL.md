@@ -25,7 +25,10 @@ and verified change is not convergence.
 - Gather runs off-Claude; Claude performs judgment. `/agent-routing`
   `references/model-and-effort.md` § Decide From the Mission owns model/effort choice; quota-probe before launch,
   preserve worker lineage, and announce headless fan-out.
-- Mine one session per miner, centerpieces first, in bounded waves. Expand one
+- New/manual dispatches give each miner K sessions with a STATIC-first prompt (centerpieces
+  keep a dedicated miner; [cache shape](references/topology.md#fan-out-prompt-shape-cache-economics)),
+  centerpieces first, in bounded waves. The existing cursor runner remains single-session
+  and item-first; runtime migration is a follow-up (see run-lifecycle § Dispatch). Expand one
   flat frontier per depth; never nest `parallel()` calls.
 - Loop until both gap and verification queues are dry. Caps are runaway
   backstops, never silent terminators. A zero-agent batch is a coverage defect.
