@@ -222,8 +222,8 @@ WD=$ORCHESTRATOR_ROOT/docs.local/weave-$(date +%F)
 
 python3 scripts/weave-run.py discover --hours 24 --workdir "$WD"   # → corpus-manifest.json (centerpieces ★ first)
 python3 scripts/weave-run.py prepare  --workdir "$WD"              # → digests/ + mine-context/ (compact per-session)
-python3 scripts/weave-run.py batches  --workdir "$WD" --size 5     # → batch-manifest.json (one miner per session)
-#   ... dispatch one miner agent per session per batch (see §3) ...
+python3 scripts/weave-run.py batches  --workdir "$WD" --size 5     # → batch-manifest.json (centerpieces-first waves)
+#   ... dispatch miners per batch, K sessions each, STATIC-first prompt (see §3) ...
 python3 scripts/weave-run.py aggregate --workdir "$WD" --tokens <N> # → ACTION-LEDGER.md + ledger.json + conversion-to-change
 #   ... synthesize the forward-plan from the ledger ...
 #   ... THEN the MANDATORY red-team fact-check closing stage (§4b (verification-and-discharge.md)) before anything is trusted ...
@@ -251,8 +251,8 @@ python3 scripts/weave-run.py aggregate --workdir "$WD" --tokens <N> # → ACTION
   mine them deepest (`references/topology.md`). **Read the centerpiece DIGESTS
   first, map the generational chain against each other, THEN mine workers.**
   [g1:82 → 2026-06-05.md:14,48]
-- **One miner = one session** (not five shards of one). Parallelism = N sessions
-  at once, batches of ~5. **Loop-until-dry** (see §2a phase-recursion) — stop
+- **Whole sessions, K per miner** (never shards of one session; centerpieces get a
+  dedicated miner). Parallelism = waves of ~5 miners. **Loop-until-dry** (see §2a phase-recursion) — stop
   when a round surfaces nothing new.
 - Miners read the compact `mine-context/<label>.md` (digest + grep excerpts),
   then grep the raw JSONL only to quote verbatim. They never read a whole MB-scale
@@ -488,8 +488,8 @@ empty findings file, never an invented one.
 > incident narrative. A "PR never merged / fix never shipped" finding is not
 > evidence until a `gh pr view` / git check confirms it. [g1:77 → 2026-07-10.md:23,37]
 
-**Dispatch (the bridge between `batches` and `aggregate`):** spawn ONE miner per
-session per batch (**waves of 4–6 concurrent** — the frozen 100%-coverage recipe;
+**Dispatch (the bridge between `batches` and `aggregate`):** spawn miners that take K
+sessions each (`topology.md` § Fan-out prompt shape; **waves of 4–6 concurrent** — the frozen 100%-coverage recipe;
 ~4-6 typical (recipe, not a hard cap)), centerpieces first. Two equivalent mechanisms: [g1:68 →
 2026-06-01.md:36; 2026-06-07.md:8]
 
@@ -502,20 +502,27 @@ session per batch (**waves of 4–6 concurrent** — the frozen 100%-coverage re
   sub-agent is skill-creator-scoped): dispatch N `Agent(subagent_type="session-miner", …)`
   in one message.
 
-Miner prompt skeleton (**return-then-write: write the file, NO competing schema**):
+Miner prompt skeleton (**return-then-write: write the files, NO competing schema**).
+STATIC first and byte-identical across the wave (`<WD>` is fixed per run); ITEMS last:
 ```
-Mine ONE session for the weave. Read your context file <WD>/mine-context/<label>.md
-(digest + grep excerpts). For verbatim quotes, grep the raw JSONL by **jsonl_line=N**
-from the Grep excerpts section — never read the whole file. Digest §N is NOT a jsonl
-line. Emit findings (the JSON schema above), one per line, to
+You mine weave sessions. For EACH label in ITEMS below, in order: read your context file
+<WD>/mine-context/<label>.md (digest + grep excerpts). For verbatim quotes, grep the raw JSONL
+by **jsonl_line=N** from the Grep excerpts section — never read the whole file. Digest §N is NOT
+a jsonl line. Emit findings (the JSON schema above), one per line, to
 <WD>/findings/<label>.jsonl; every correction includes session/model/bucket/ts. Copy the exact
-user_messages value from this context file's header into
+user_messages value from that context file's header into
 <WD>/findings/<label>.denominator.json with session/model/user_messages even when the findings file
 is empty. Never recount or estimate it. If you spawn ANY child agent (cmux spawn_agent, t3layer,
 sub-agent), write <WD>/findings/<label>.children.json — a list of
 {agent_id, surface, cli, model, title, purpose, state_at_exit} — and name each child in your reply;
 write an empty list if you spawned none. Files only — no brain_store.
-Write ALL files FIRST, THEN reply exactly: WEAVE_MINE_DONE <label> <count>.
+Write ALL files for a label before starting the next. When every label is done, reply exactly one
+line per label: WEAVE_MINE_DONE <label> <count>.
+
+ITEMS:
+<label-1>
+...
+<label-K>
 ```
 [g1:66 → 2026-05-30.md:93-98; 2026-05-31.md:103; 2026-06-06.md:12]
 
