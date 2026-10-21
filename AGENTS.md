@@ -23,7 +23,9 @@ bun install              # Install all workspace deps
 bun run test             # Package suite (bun test ./packages), as CI runs it
 ```
 
-CI runs on PRs into any base branch, so a stacked PR gets the full suite.
+CI runs on PRs into any base branch, so a stacked PR gets the full suite. The one
+exception is the ~36-min semantic-mutant step: it runs on PRs that touch its inputs
+(`scripts/ci/mutant-inputs-changed.sh`), nightly on master, and on manual dispatch.
 
 ## Worktree-Isolated Agents
 
