@@ -182,7 +182,7 @@ const MUTANTS = [
   ["rule2", "checks and waits handed to the lead", append("agent-routing/SKILL.md", "Checks and waits go to the lead.")],
   ["rule2", "checks and waits handed to the cheap tier", replace("agent-routing/SKILL.md", "claude.subagent.mechanical --field alias", "claude.subagent.cheap --field alias")],
   ["rule3", "the branch guard removed", replace("pr-loop/references/merge-and-verification.md", 'if [ "$BRANCH" != "$DEFAULT" ]; then', 'if false; then')],
-  ["rule3", "a failed merge no longer stops", replace("pr-loop/references/merge-and-verification.md", 'merge -q --ff-only "origin/$DEFAULT" ||', 'merge -q --ff-only "origin/$DEFAULT" ;')],
+  ["rule3", "a failed merge no longer stops", replace("pr-loop/references/merge-and-verification.md", 'merge -q --ff-only "$BASE" ||', 'merge -q --ff-only "$BASE" ;')],
   ["rule3", "an unguarded copy in large-plan", append("large-plan/SKILL.md", "Run `git -C <root> merge --ff-only origin/<default>`.")],
   ["behaviorEvals", "a behavior eval emptied", (c) => { c.evals["pr-loop"].find((e) => e.name === "release-install-ships-while-etan-away").assertions = []; }],
   ["behaviorEvals", "assertions blanked", (c) => { for (const a of c.evals["large-plan"].find((e) => e.name === "etan-asks-only-for-one-way-doors").assertions) a.description = ""; }],
