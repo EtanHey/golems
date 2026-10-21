@@ -14,6 +14,21 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const doc = path.join(here, "..", "..", "skills", "golem-powers", "pr-loop", "references",
   "merge-and-verification.md");
 
+test("cleanup root field grammar accepts proof or STOP and rejects incomplete receipts", () => {
+  const receipt = readFileSync(doc, "utf8").split("### Cleanup Receipt")[1];
+  const grammar = new RegExp(receipt.match(/```regex\n([^\n]+)\n```/)[1]);
+  const sha = "a".repeat(40);
+  for (const remote of ["origin/main", "upstream/master"]) {
+    const ok = `root: /repo HEAD=${sha} ${remote}=${sha} ahead/behind=0/0`;
+    expect(grammar.test(ok)).toBe(true);
+    for (const counts of ["0/1", "1/0", "1/1"]) expect(grammar.test(ok.replace("0/0", counts))).toBe(false);
+    expect(grammar.test(ok.replace(`HEAD=${sha}`, `HEAD=${"b".repeat(40)}`))).toBe(false);
+    expect(grammar.test(ok.replaceAll(sha, "abc123"))).toBe(false);
+  }
+  for (const line of ["ROOT-FF STOP: not merged", "ROOT-FF STOP: ff-only failed"]) expect(grammar.test(line)).toBe(true);
+  for (const line of ["root: ok", "", "worktree: /repo removed", "ROOT-FF STOP: "]) expect(grammar.test(line)).toBe(false);
+});
+
 function documentedBlock() {
   const section = readFileSync(doc, "utf8").split("### After Merge: Update Tracking (MANDATORY)")[1];
   const fenced = section.match(/^( *)```bash\n([\s\S]*?)^\1```/m);
@@ -49,24 +64,28 @@ function commit(repo, file, text) {
 
 // origin.git (bare) <- root (the lead's main checkout) and upstream (another
 // clone that lands the merged PR on origin/main).
-function fixture() {
+function fixture(defaultBranch = "main", remote = "origin") {
   const dir = mkdtempSync(path.join(os.tmpdir(), "root-ff-"));
   dirs.push(dir);
   const origin = path.join(dir, "origin.git");
-  git(dir, "init", "-q", "--bare", "-b", "main", origin);
+  git(dir, "init", "-q", "--bare", "-b", defaultBranch, origin);
   const seed = path.join(dir, "seed");
   git(dir, "clone", "-q", origin, seed);
-  git(seed, "switch", "-q", "-c", "main");
+  git(seed, "switch", "-q", "-c", defaultBranch);
   commit(seed, "AGENTS.md", "v1\n");
   commit(seed, "app.txt", "v1\n");
-  git(seed, "push", "-q", "origin", "main");
+  git(seed, "push", "-q", "origin", defaultBranch);
   const root = path.join(dir, "root");
   git(dir, "clone", "-q", origin, root);
+  if (remote !== "origin") {
+    git(root, "remote", "rename", "origin", remote);
+    git(root, "remote", "add", "origin", seed);
+  }
   const upstream = path.join(dir, "upstream");
   git(dir, "clone", "-q", origin, upstream);
   const land = (file = "AGENTS.md") => {
     const sha = commit(upstream, file, `merged ${Math.random()}\n`);
-    git(upstream, "push", "-q", "origin", "main");
+    git(upstream, "push", "-q", "origin", defaultBranch);
     return sha;
   };
   return { root, land };
@@ -91,14 +110,31 @@ test("the documented block carries placeholders and never forces", () => {
 });
 
 for (const shell of shells) {
-  test(`${shell}: a clean root behind origin fast-forwards and lists changed instructions`, () => {
-    const { root, land } = fixture();
-    const merged = land("AGENTS.md");
-    const run = runBlock(shell, root);
-    expect(run.status).toBe(0);
-    expect(git(root, "rev-parse", "HEAD")).toBe(merged);
-    expect(run.stdout.trim().split("\n")).toEqual(["AGENTS.md"]);
-  });
+  for (const [remote, defaultBranch] of [["origin", "main"], ["upstream", "master"]]) {
+    test(`${shell}: ${remote}/${defaultBranch} fast-forwards and prints root proof`, () => {
+      const { root, land } = fixture(defaultBranch, remote);
+      git(root, "config", "--add", `remote.${remote}.fetch`, `^refs/heads/${defaultBranch}`);
+      const merged = land("AGENTS.md");
+      const run = runBlock(shell, root, defaultBranch);
+      expect(run.status).toBe(0);
+      expect(git(root, "rev-parse", "HEAD")).toBe(merged);
+      expect(run.stdout.trim().split("\n")).toEqual(["AGENTS.md", `root: ${root} HEAD=${merged} ${remote}/${defaultBranch}=${merged} ahead/behind=0/0`]);
+    });
+  }
+
+  for (const state of ["ahead", "no-upstream"]) {
+    test(`${shell}: ${state} root emits STOP, never OK proof`, () => {
+      const { root } = fixture();
+      if (state === "ahead") commit(root, "app.txt", "local work\n");
+      else git(root, "branch", "--unset-upstream");
+      const before = git(root, "rev-parse", "HEAD");
+      const run = runBlock(shell, root);
+      expect(run.status).not.toBe(0);
+      expect(run.stderr).toContain("ROOT-FF STOP:");
+      expect(run.stdout).not.toContain("root:");
+      expect(git(root, "rev-parse", "HEAD")).toBe(before);
+    });
+  }
 
   test(`${shell}: a root on a feature branch stops nonzero and merges nothing`, () => {
     const { root, land } = fixture();

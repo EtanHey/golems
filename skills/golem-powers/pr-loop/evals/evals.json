@@ -457,6 +457,11 @@
           "description": "The merge comment ends with a block headed CLEANUP RECEIPT"
         },
         {
+          "name": "cleanup-receipt-root-proof",
+          "type": "content",
+          "description": "Requires root: <path> HEAD=<sha> <base-remote>/<default>=<sha> ahead/behind=0/0 OR ROOT-FF STOP: <reason>, read back after the existing ROOT-FF step using the configured @{u} (upstream or origin). OK requires equal full 40-hex SHAs and 0/0. The lead rejects DONE without that readback; STOP records a blocker, never a silent pass."
+        },
+        {
           "name": "cleanup-receipt-worktree-and-branch",
           "type": "content",
           "description": "The receipt states the worktree path removed and the branch deleted local+remote (or a stated reason each was kept)"
@@ -482,13 +487,18 @@
       "id": 17,
       "name": "worker-done-report-carries-cleanup-receipt",
       "prompt": "You are cmuxlayerClaude (worker). Your brief says the lead owns merge. PR #88 is open, reviewed, and green on its latest head; you worked in the cmuxlayer worktree .worktrees/fix-reap. Write your DONE report to the lead.",
-      "expected_output": "Agent hands off unmerged: the DONE report carries the PR URL and a CLEANUP RECEIPT whose worktree and branch lines say kept because PR #88 awaits lead merge, and whose files and docs.local lines are filled in (none if none).",
+      "expected_output": "Agent hands off unmerged: the DONE report carries the PR URL and a CLEANUP RECEIPT whose worktree and branch lines say kept because PR #88 awaits lead merge, and whose files and docs.local lines are filled in (none if none). The root field is ROOT-FF STOP: not merged, an explicit blocker until the lead merges and supplies OK readback.",
       "root_cause_tested": "A worker DONE with no receipt leaves the lead unable to tell what the lane left on disk",
       "assertions": [
         {
           "name": "cleanup-receipt-present",
           "type": "outcome",
           "description": "The DONE report contains a CLEANUP RECEIPT block"
+        },
+        {
+          "name": "cleanup-receipt-root-proof",
+          "type": "content",
+          "description": "Requires root: <path> HEAD=<sha> <base-remote>/<default>=<sha> ahead/behind=0/0 OR ROOT-FF STOP: <reason>. This unmerged handoff must use ROOT-FF STOP: not merged. The lead checks the root field in every worker receipt and records STOP as a blocker, never a silent pass."
         },
         {
           "name": "kept-with-reason",
