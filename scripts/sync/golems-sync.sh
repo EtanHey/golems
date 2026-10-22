@@ -75,7 +75,7 @@ payload_root="$work_dir/payload"
 mkdir -p "$payload_root"
 
 # install-golem-dispatch.sh installs worktree-bootstrap.sh next to the dispatcher and refuses without it.
-launcher_files=(golem-dispatch.zsh install-golem-dispatch.sh worktree-bootstrap.sh)
+launcher_files=(golem-dispatch.zsh install-golem-dispatch.sh worktree-bootstrap.sh mcp_policy.py)
 if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
     while IFS= read -r module; do
         launcher_files+=("$module")
@@ -319,12 +319,12 @@ if [[ "$scope" == "launcher" || "$scope" == "all" ]]; then
     if [[ "$host_shell" == "local" ]]; then
         mkdir -p "$host_root/.golems/launcher"
         rsync -a "$launcher_dir/golem-dispatch.zsh" "$launcher_dir/install-golem-dispatch.sh" \
-            "$launcher_dir/worktree-bootstrap.sh" "$launcher_dir/dispatch" \
+            "$launcher_dir/worktree-bootstrap.sh" "$launcher_dir/mcp_policy.py" "$launcher_dir/dispatch" \
             "$host_root/.golems/launcher/"
     else
         ssh "$host" mkdir -p .golems/launcher
         rsync -a "$launcher_dir/golem-dispatch.zsh" "$launcher_dir/install-golem-dispatch.sh" \
-            "$launcher_dir/worktree-bootstrap.sh" "$launcher_dir/dispatch" \
+            "$launcher_dir/worktree-bootstrap.sh" "$launcher_dir/mcp_policy.py" "$launcher_dir/dispatch" \
             "$host:.golems/launcher/"
     fi
 fi

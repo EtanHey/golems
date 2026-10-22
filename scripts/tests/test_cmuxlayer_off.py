@@ -56,7 +56,7 @@ class CmuxlayerOffTests(unittest.TestCase):
                  '.gemini/config/mcp_config.json',
                  'Gits/demo/.mcp.json', 'Gits/another/.mcp.json']
         for path in paths:
-            self.write(path, {'mcpServers': {'cmuxlayer': {'command': 'cmuxlayer'}}})
+            self.write(path, {'mcpServers': {'cmuxlayer': {'command': 'cmuxlayer'}, 'alias': {'command': 'cmuxlayer-mcp'}}})
         output = self.check(red=True)
         for path in paths:
             self.assertIn(str(self.home / path), output)
@@ -151,25 +151,61 @@ class CmuxlayerOffTests(unittest.TestCase):
         for profile in profiles.values():
             self.assertIn('cmuxlayer', profile['mcps']['block'])
 
+    def test_sync_denied_only_catalog_emits_empty_object(self):
+        (self.home / 'Gits/demo').mkdir(parents=True)
+        source = self.home / 'config.json'
+        source.write_text(json.dumps({'reposPath': str(self.home / 'Gits'),
+            'mcpServers': {'cmuxlayer': {'command': 'cmuxlayer'}},
+            'contextProfiles': {'demo': {'mcps': {'allow': ['cmuxlayer']}}}}))
+        result = subprocess.run(['bash', str(ROOT / 'scripts/sync/sync-config.sh'), '--config', str(source), '--enforce'],
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads((self.home / 'Gits/demo/.mcp.json').read_text())['mcpServers'], {})
+
+    def test_shared_checker_policy_alias_table_after_stack_rebase(self):
+        modules = []
+        for name, path in [('checker', CHECK), ('policy', ROOT / 'scripts/repogolem/mcp_policy.py')]:
+            spec = importlib.util.spec_from_file_location(name, path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            modules.append(module)
+        checker, policy = modules
+        for key, command, args, expected in [
+            ('cmuxlayer', 'safe-mcp', [], True),
+            ('cmuxlayer-mcp', 'safe-mcp', [], True),
+            ('alias', 'cmuxlayer', [], True),
+            ('cmux', 'cmuxlayer-mcp', [], True),
+            ('alias', 'node', ['/opt/homebrew/Cellar/cmuxlayer/0.4.107/libexec/dist/index.js'], True),
+            ('cmux', 'sh', ['-c', 'exec ~/.golems/bin/cmuxlayer-mcp;'], True),
+            ('alias', 'safe-mcp', ['--tool=cmuxlayer'], True),
+            ('alias', 'node', ['/opt/homebrew/Cellar/cmuxlayer/0.4.107/libexec/dist/resource-guard.js'], True),
+            ('safe', 'brainlayer-mcp', [], False),
+        ]:
+            with self.subTest(key=key, command=command, args=args):
+                definition = {'command': command, 'args': args}
+                self.assertEqual(policy.denied_server(key, definition), expected)
+                self.assertEqual(bool(list(checker.registrations({'mcpServers': {key: definition}}))), expected)
+
     def test_every_profile_blocks_and_generator_omits_cmuxlayer(self):
         spec = importlib.util.spec_from_file_location('mcp_policy', POLICY)
         policy = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(policy)
-        profiles = {name: {'mcps': {'allow': ['brainlayer', 'cmuxlayer']}}
+        profiles = {name: {'mcps': {'allow': ['brainlayer', 'cmuxlayer', 'alias']}}
                     for name in ['mehayom', 'golems', 'orchestrator', 'coach',
                                  'skill-creator', 'brainlayer', 'voicelayer', 'aftercode', 'future']}
         config = {'reposPath': str(self.home / 'Gits'), 'contextProfiles': profiles,
                   'mcpServers': {'brainlayer': {'command': 'brainlayer-mcp'},
-                                 'cmuxlayer': {'command': 'cmuxlayer'}}}
+                                 'cmuxlayer': {'command': 'cmuxlayer'}, 'alias': {'command': 'cmuxlayer-mcp'}}}
         for name in profiles:
             (self.home / 'Gits' / name).mkdir(parents=True)
         policy.apply_default_mcp_blocks(config)
         for profile in profiles.values():
             self.assertIn('cmuxlayer', profile['mcps']['block'])
             self.assertNotIn('cmuxlayer', profile['mcps']['allow'])
+            self.assertNotIn('alias', profile['mcps']['allow'])
         # Feed the unguarded old config through the real generator as well.
         for profile in profiles.values():
-            profile['mcps'] = {'allow': ['brainlayer', 'cmuxlayer']}
+            profile['mcps'] = {'allow': ['brainlayer', 'cmuxlayer', 'alias']}
         source = self.home / 'config.json'
         source.write_text(json.dumps(config))
         result = subprocess.run(['bash', str(ROOT / 'scripts/sync/sync-config.sh'),

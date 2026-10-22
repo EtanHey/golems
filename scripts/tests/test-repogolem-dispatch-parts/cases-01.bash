@@ -88,7 +88,8 @@ function split_case_007() {
     local source_copy="$TMPDIR_/source-copy" fake_home="$TMPDIR_/isolated-home"
     mkdir -p "$source_copy" "$fake_home" "$TMPDIR_/unrelated"
     cp "$SOURCE_DISPATCHER" "$INSTALL_DISPATCHER" \
-        "$BATS_TEST_DIRNAME/../repogolem/worktree-bootstrap.sh" "$source_copy/"
+        "$BATS_TEST_DIRNAME/../repogolem/worktree-bootstrap.sh" \
+        "$BATS_TEST_DIRNAME/../repogolem/mcp_policy.py" "$source_copy/"
     cp -R "$SOURCE_MODULES" "$source_copy/dispatch"
     run env HOME="$fake_home" zsh "$source_copy/install-golem-dispatch.sh" --force \
         "$fake_home/.config/ralphtools/golem-dispatch.zsh"
@@ -107,7 +108,8 @@ function split_case_008() {
     local source_copy="$TMPDIR_/incomplete-source" fake_home="$TMPDIR_/incomplete-home"
     mkdir -p "$source_copy" "$fake_home"
     cp "$SOURCE_DISPATCHER" "$INSTALL_DISPATCHER" \
-        "$BATS_TEST_DIRNAME/../repogolem/worktree-bootstrap.sh" "$source_copy/"
+        "$BATS_TEST_DIRNAME/../repogolem/worktree-bootstrap.sh" \
+        "$BATS_TEST_DIRNAME/../repogolem/mcp_policy.py" "$source_copy/"
     cp -R "$SOURCE_MODULES" "$source_copy/dispatch"
     rm "$source_copy/dispatch/codex.zsh"
     run env HOME="$fake_home" zsh "$source_copy/install-golem-dispatch.sh" --force \

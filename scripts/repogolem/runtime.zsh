@@ -35,5 +35,5 @@ _repogolem_build_title() {
   print -r -- "$label"
 }
 _golem_setup_env() {
-  _ralph_load_libs && _ralph_setup_mcps '[]' "$1" && _ralph_setup_secrets "$1"
+  _ralph_load_libs && _ralph_setup_mcps '[]' "$1" && _ralph_setup_secrets "$1" && _golem_filter_mcp_file .mcp.json
 }

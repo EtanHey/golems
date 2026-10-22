@@ -57,7 +57,7 @@ sync_a() {
     done
 }
 
-@test "agy sync canonicalizes declared cmux aliases without duplicate servers" {
+@test "agy sync drops retired cmuxlayer including the legacy cmux canonical alias" {
     jq '.projects.b.mcps += ["cmux"]' "$RALPH_REGISTRY_FILE" > "$ROOT/reg.next"
     mv "$ROOT/reg.next" "$RALPH_REGISTRY_FILE"
     jq '.mcpServers.cmux={command:"legacy"} | .mcpServers.cmuxlayer={command:"canonical"}' "$HOME/.gemini/config/mcp_config.json" > "$ROOT/config.next"
@@ -65,9 +65,9 @@ sync_a() {
     jq '.mcpServers.cmux={command:"legacy"} | .mcpServers.cmuxlayer={command:"canonical"}' "$ROOT/a/.mcp.json" > "$ROOT/config.next"
     mv "$ROOT/config.next" "$ROOT/a/.mcp.json"
     sync_a
-    run jq -se 'all(.[]; (.mcpServers | has("cmux") | not) and .mcpServers.cmuxlayer.command == "canonical")' "$ROOT/a/.agents/mcp_config.json"
+    run jq -se 'all(.[]; (.mcpServers | has("cmux") | not) and (.mcpServers | has("cmuxlayer") | not))' "$ROOT/a/.agents/mcp_config.json"
     [ "$status" -eq 0 ] || return 1
-    run jq -e '.mcpServers.cmux == null and .mcpServers.cmuxlayer.command == "canonical"' "$HOME/.gemini/config/mcp_config.json"
+    run jq -e '.mcpServers.cmux == null and .mcpServers.cmuxlayer == null' "$HOME/.gemini/config/mcp_config.json"
     [ "$status" -eq 0 ] || return 1
 }
 

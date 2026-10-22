@@ -24,6 +24,10 @@ if [[ ! -f "$bootstrap_file" ]]; then
   echo "Missing worktree bootstrap: $bootstrap_file" >&2
   exit 1
 fi
+if [[ ! -f "$script_dir/mcp_policy.py" ]]; then
+  echo "Missing MCP deny policy: $script_dir/mcp_policy.py" >&2
+  exit 1
+fi
 module_names="$(sed -n 's/^for _golem_module in \(.*\); do$/\1/p' "$source_file")"
 if [[ ! -d "$modules_dir" || -z "$module_names" ]]; then
   echo "Missing dispatcher modules: $modules_dir" >&2
@@ -65,6 +69,7 @@ mkdir -p "${target_file:h}/dispatch"
 for module in "$modules_dir"/*.zsh(N); do
   cp "$module" "${target_file:h}/dispatch/${module:t}"
 done
+cp "$script_dir/mcp_policy.py" "${target_file:h}/mcp_policy.py"
 # Publish the facade only after every module exists at the installed path.
 cp "$source_file" "$target_file"
 chmod +x "$target_file"
