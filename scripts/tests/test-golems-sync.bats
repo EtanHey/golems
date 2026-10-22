@@ -32,6 +32,7 @@ make_fixture_repo() {
         "$REPO_ROOT/scripts/repogolem/golem-dispatch.zsh" \
         "$REPO_ROOT/scripts/repogolem/install-golem-dispatch.sh" \
         "$REPO_ROOT/scripts/repogolem/worktree-bootstrap.sh" \
+        "$REPO_ROOT/scripts/repogolem/mcp_policy.py" \
         "$FIXTURE_REPO/scripts/repogolem/"
     cp -R "$REPO_ROOT/scripts/repogolem/dispatch" "$FIXTURE_REPO/scripts/repogolem/dispatch"
     if [[ -f "$REPO_ROOT/scripts/sync/golems-sync-coupling-allowlist.tsv" ]]; then
@@ -296,13 +297,14 @@ make_tracked_worktree_skills() {
     [ "$(portable_stat mtime "$dispatcher")" = "$first_mtime" ]
 }
 
-@test "bootstrap-only change reinstalls the launcher" {
+@test "bootstrap and policy-only changes each reinstall the launcher" {
     make_fixture_repo
     run_fixture_sync --only launcher
     [ "$status" -eq 0 ]
 
-    bootstrap="$FIXTURE_REPO/scripts/repogolem/worktree-bootstrap.sh"
-    printf '# bootstrap-only change\n' >> "$bootstrap"
+    for component in worktree-bootstrap.sh mcp_policy.py; do
+    bootstrap="$FIXTURE_REPO/scripts/repogolem/$component"
+    printf '# component-only change\n' >> "$bootstrap"
     git -C "$FIXTURE_REPO" commit --quiet -am 'change bootstrap only'
     git -C "$FIXTURE_REPO" update-ref refs/remotes/origin/master HEAD
 
@@ -313,7 +315,8 @@ make_tracked_worktree_skills() {
     run_fixture_sync --only launcher
     [ "$status" -eq 0 ]
     [[ "$output" == *"added=0 updated=1 unchanged=0 backed-up=0"* ]] || false
-    cmp -s "$bootstrap" "$HOST_ROOT/.config/ralphtools/worktree-bootstrap.sh"
+    cmp -s "$bootstrap" "$HOST_ROOT/.config/ralphtools/$component"
+    done
 }
 
 @test "untouched launcher file set reports unchanged" {

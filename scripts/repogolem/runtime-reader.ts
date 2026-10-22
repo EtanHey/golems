@@ -1,7 +1,23 @@
 // Standalone launch-time reader. Cache bytes are data, never shell code; no op calls.
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+
+export function filterMcpJson(text: string, mode: "registry" | "config" = "config"): string {
+  const result = spawnSync("python3", [join(import.meta.dir, "mcp_policy.py"), mode],
+    { input: text, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+  if (result.status !== 0) throw new Error("runtime cache MCP deny policy failed");
+  return result.stdout;
+}
+
+export function filterMcpRegistry(config: object): void {
+  const filtered: unknown = JSON.parse(filterMcpJson(JSON.stringify(config), "registry"));
+  if (typeof filtered !== "object" || filtered === null || Array.isArray(filtered)) {
+    throw new Error("config: MCP deny policy returned invalid config");
+  }
+  Object.assign(config, filtered);
+}
 
 type ObjectMap = Record<string, any>;
 function trustedParents(path: string) {
@@ -85,6 +101,7 @@ export function readRuntime(dir: string, environment: Record<string, string | un
   return walk(registry);
 }
 export function runtimeMcpConfig(registry: ObjectMap, project: string) {
+  registry = JSON.parse(filterMcpJson(JSON.stringify(registry), "registry"));
   const item = registry.projects?.[project];
   if (!item) throw new Error(`unknown project ${project}`);
   const servers: ObjectMap = { ...registry.global?.mcps };
@@ -97,7 +114,7 @@ export function runtimeMcpConfig(registry: ObjectMap, project: string) {
     };
     if (definition) servers[name] = definition;
   }
-  return { mcpServers: servers };
+  return JSON.parse(filterMcpJson(JSON.stringify({ mcpServers: servers })));
 }
 export function runtimeEnvironment(registry: ObjectMap, project: string): Record<string, string> {
   const out = { ...registry.global?.env, ...registry.projects?.[project]?.secrets };

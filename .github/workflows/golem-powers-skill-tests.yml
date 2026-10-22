@@ -95,6 +95,7 @@ jobs:
 
       - name: bun suites
         run: |
+          bun --no-install test ./scripts/tests/repogolem-mcp-deny.test.ts
           bun --no-install test ./scripts/tests/worktree-census-core.test.ts
           bun --no-install test ./scripts/tests/worktree-census-lexical.test.ts
           bun --no-install test ./scripts/tests/worktree-census-esrch.test.ts

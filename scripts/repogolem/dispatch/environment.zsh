@@ -25,17 +25,29 @@ _golem_setup_env() {
   typeset -f _ralph_load_libs >/dev/null 2>&1 && _ralph_load_libs
   source "$HOME/.config/ralphtools/lib/ralph-secrets.zsh" 2>/dev/null
 
+  # Legacy builders must see the denied registry, without mutating its source.
+  local safe_registry staging
+  staging=$(_golem_staging_dir "$project_name") || return 1
+  safe_registry=$(umask 077; mktemp "$staging/.registry-deny.XXXXXX") || return 1
+  if ! _golem_filter_mcp_json registry < "$RALPH_REGISTRY_FILE" > "$safe_registry"; then
+    rm -f "$safe_registry"; return 1
+  fi
+  local RALPH_REGISTRY_FILE="$safe_registry"
+
   # Get MCPs from registry
   local mcps_json
   mcps_json=$(jq -c --arg p "$project_name" '.projects[$p].mcps // []' "$RALPH_REGISTRY_FILE" 2>/dev/null)
   [[ "$mcps_json" == "null" ]] && mcps_json="[]"
 
   if typeset -f _ralph_setup_mcps >/dev/null 2>&1; then
-    _ralph_setup_mcps "$mcps_json" "$project_name"
+    _ralph_setup_mcps "$mcps_json" "$project_name" || { rm -f "$safe_registry"; return 1; }
   fi
   if typeset -f _ralph_setup_secrets >/dev/null 2>&1; then
-    _ralph_setup_secrets "$project_name"
+    _ralph_setup_secrets "$project_name" || { rm -f "$safe_registry"; return 1; }
   fi
+
+  rm -f "$safe_registry"
+  _golem_filter_mcp_file .mcp.json || return 1
 
   # Caller launch functions set CLI env with `local -x` so child processes
   # inherit it without leaking these vars into the user's shell after exit.
@@ -124,7 +136,14 @@ _golem_copy_mcp_to_worktree() {
   # worktree, not by overwriting on every launch (which would nuke local edits).
   [[ -e "$target_mcp" || -L "$target_mcp" ]] && return 0
 
-  cp "$source_mcp" "$target_mcp" || return 1
+  local staged_mcp
+  staged_mcp=$(umask 077; mktemp "${worktree_dir}/.repogolem-copy.XXXXXX") || return 1
+  if ! _golem_filter_mcp_json < "$source_mcp" > "$staged_mcp"; then
+    rm -f "$staged_mcp"; return 1
+  fi
+  # Publish only filtered bytes, without clobbering a concurrent first copy.
+  ln "$staged_mcp" "$target_mcp" || { rm -f "$staged_mcp"; return 1; }
+  rm -f "$staged_mcp"
   echo "[repogolem] copied .mcp.json into worktree" >&2
 }
 

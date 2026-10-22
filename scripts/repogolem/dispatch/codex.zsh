@@ -512,7 +512,7 @@ _golem_launch_codex() {
       rm -f "$_tmp_merge"
     fi
   fi
-
+  _golem_filter_mcp_file "$merged_mcp_file" || { rm -f "$merged_mcp_file"; return 1; }
   if [[ "$codex_strip_browser_tools" == true ]]; then
     local _tmp_filter
     _tmp_filter=$(umask 077; mktemp "${codex_home}/.repogolem-codex-${codex_profile}.filter.json.XXXXXX") || { rm -f "$merged_mcp_file"; _golem_cleanup_agent_context "$agent_context_file"; return 1; }
