@@ -19,7 +19,7 @@ The ecosystem has 22 repos, 45+ skills, 5 MCP servers (BrainLayer, VoiceLayer, c
 
 Run ALL checks. Report results in table format. Stop and flag if any check is RED.
 
-### 1. MCP Connectivity (all 5 servers)
+### 1. MCP Connectivity and cmuxlayer Absence
 
 Check each MCP server is connected and responsive:
 
@@ -34,10 +34,12 @@ voice_speak(message="Health check", mode="think")
 # GREEN if: no error (think mode = silent log only)
 # RED if: timeout or MCP unavailable
 
-# cmux — check surface listing
-mcp__cmuxlayer__list_surfaces()
-# GREEN if: returns list (even empty)
-# RED if: timeout or MCP unavailable
+# cmuxlayer — must stay absent (read-only, Python 3.11+)
+python3 <ecosystem-health-dir>/scripts/check-cmuxlayer-off.py
+# GREEN if: no registrations and no server processes (exit 0)
+# RED if: any registration/process or unreadable config/process list (exit 1)
+# Reports each offending file + server key, or pid + command. Do not repair automatically.
+# Defaults to HOME, including ~/Gits/*/.mcp.json; --home and --process-list accept fixtures.
 
 # exa — verify connection (no query needed, just check tool exists)
 # GREEN if: exa tools appear in available tools
@@ -48,7 +50,7 @@ mcp__cmuxlayer__list_surfaces()
 # RED if: not listed
 ```
 
-**If any MCP is RED:** Report it immediately. MCP failures cascade — BrainLayer down means no memory, VoiceLayer down means no voice, cmux down means no agent coordination.
+**If any MCP is RED:** Report it immediately. MCP failures cascade — BrainLayer down means no memory, VoiceLayer down means no voice, cmuxlayer present means retired MCP configuration has returned.
 
 ### 2. BrainLayer Responsive
 
@@ -278,7 +280,7 @@ After running all checks, produce a structured report:
 |-------|--------|-------|-------|
 | BrainLayer MCP | ✅ | 297K chunks | <1s response |
 | VoiceLayer MCP | ✅ | connected | daemon mode |
-| cmux MCP | ✅ | connected | N surfaces |
+| cmuxlayer absent | ✅ | no registrations/processes | read-only check |
 | exa MCP | ✅ | available | — |
 | supabase MCP | ✅ | available | — |
 | Voice Bar | ✅ | running | socket OK |
