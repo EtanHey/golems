@@ -119,8 +119,16 @@ Create it interactively:
          SUPABASE_ACCESS_TOKEN: "<token-or-op-ref>"
 
    contextProfiles:
-     # Start with one profile per cloned repo — user adds more later
+     # Repeat this shape for every cloned repo — user adds more later
+     <repo>:
+       mcps:
+         allow: [brainlayer]
+         block: [cmuxlayer]
    ```
+
+   Every profile must include `mcps.block: [cmuxlayer]` and exclude it from `allow`.
+   `scripts/sync/mcp_policy.py` applies this default to every profile before MCP generation,
+   including profiles from older configs; sync never writes that normalization back to the source YAML.
 
    Secrets go in a server's `env`, never its `args`: args (with `${VAR}` expanded) are visible to every local process through `ps`, and `sync-config.sh` rejects a secret-bearing arg.
 

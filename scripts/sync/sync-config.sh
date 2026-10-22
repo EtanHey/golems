@@ -41,7 +41,7 @@ YAML_PYTHON=python3
 if [[ -x "$HOME/.golems/venv/bin/python3" ]]; then
   YAML_PYTHON="$HOME/.golems/venv/bin/python3"
 fi
-"$YAML_PYTHON" - "$CONFIG_FILE" "$REPOS_BASE" "$MODE" "$TARGET_REPO" "$VERBOSE" <<'PY'
+"$YAML_PYTHON" - "$CONFIG_FILE" "$REPOS_BASE" "$MODE" "$TARGET_REPO" "$VERBOSE" "$(dirname "$0")" <<'PY'
 import copy
 import json
 import re
@@ -73,7 +73,11 @@ if not config_file.exists():
     print(f"[sync-config] ERROR: config not found: {config_file}", file=sys.stderr)
     sys.exit(1)
 
+sys.path.insert(0, sys.argv[6])
+from mcp_policy import apply_default_mcp_blocks
+
 config = yaml.safe_load(config_file.read_text()) or {}
+apply_default_mcp_blocks(config)
 profiles = config.get("contextProfiles") or {}
 mcp_servers = config.get("mcpServers") or {}
 repos_base = Path(config.get("reposPath") or repos_base_arg).expanduser().resolve()
