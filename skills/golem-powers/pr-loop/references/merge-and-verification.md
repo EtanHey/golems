@@ -352,7 +352,7 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
     if git -C "$MAIN" worktree prune &&
        WORKTREES=$(git -C "$MAIN" worktree list --porcelain) &&
        ! printf '%s\n' "$WORKTREES" | grep -Fx "worktree $WT"; then
-      echo "removed: $WT; proof: absent from git worktree list --porcelain after git worktree prune"
+      echo "worktree: $WT removed; proof: absent from git worktree list --porcelain after git worktree prune"
     else
       echo "WORKTREE-CLEANUP STOP: $WT removal proof failed; escalate to lead" >&2
       exit 1

@@ -189,5 +189,5 @@ worktree_fallback:
     - "git worktree add -b <branch> ../<wt-dir> <base>"
     - "cd ../<wt-dir> && bun install --frozen-lockfile  # or npm ci / pnpm install --frozen-lockfile / uv sync --frozen; never symlink node_modules (in a workspace monorepo, cross-package imports would run the main checkout's code)"
     - "cp .env ../<wt-dir>/.env"
-  cleanup: "git worktree remove ../<wt-dir>"
+  cleanup: "Follow pr-loop/references/merge-and-verification.md#cleanup-receipt (SSOT), including preservation checks, retirement, and removal proof; name and escalate kept paths to the lead"
   applies_to: [codex, cursor, gemini]
