@@ -4,15 +4,16 @@ main() {
 set -eu
 umask 077
 fail() { printf 'golems install: %s\n' "$*" >&2; exit 1; }
-channel=nightly prefix=${HOME:?HOME is required}/.golems from='' sums='' replace=false
+channel=nightly prefix=${HOME:?HOME is required}/.golems from='' sums='' replace=false preserve_releases=false
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --replace-checkout-links) replace=true; shift; continue ;;
+    --preserve-releases) preserve_releases=true; shift; continue ;;
     --channel|--prefix|--from-file|--sums)
       [ "$#" -ge 2 ] && [ -n "$2" ] || fail "missing value for $1"
       case "$1" in --channel) channel=$2 ;; --prefix) prefix=$2 ;; --from-file) from=$2 ;; --sums) sums=$2 ;; esac
       shift 2 ;;
-    --help) printf '%s\n' 'install.sh [--channel nightly|<tag>] [--prefix PATH] [--from-file TARBALL --sums SHA256SUMS] [--replace-checkout-links]'; exit 0 ;;
+    --help) printf '%s\n' 'install.sh [--channel nightly|<tag>] [--prefix PATH] [--from-file TARBALL --sums SHA256SUMS] [--replace-checkout-links] [--preserve-releases]'; exit 0 ;;
     *) fail "unknown option: $1" ;;
   esac
 done
@@ -360,7 +361,7 @@ if [ "$already" = false ]; then
   while IFS= read -r old; do
     printf '%s\n' "$old" | awk 'length($0)!=18 || !/^[0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+$/ {exit 1}' || fail 'invalid release history'
     retained=$((retained + 1))
-    if [ "$retained" -le 3 ] || [ "$prefix/releases/$old" = "$hook_source" ]; then
+    if [ "$preserve_releases" = true ] || [ "$retained" -le 3 ] || [ "$prefix/releases/$old" = "$hook_source" ]; then
       printf '%s\n' "$old" >> "$work/release-history"
     else
       [ ! -L "$prefix/releases/$old" ] || fail 'refusing to prune a release symlink'

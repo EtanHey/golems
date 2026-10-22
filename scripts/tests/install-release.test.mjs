@@ -445,6 +445,35 @@ test('four upgrades retain current plus two previous releases and atomically rep
   expect(readlinkSync(join(dir, '.golems/current'))).toBe(`releases/${versions[3]}`);
   expect(existsSync(join(dir, '.golems/releases', versions[1], 'current'))).toBe(false);
 });
+test('preserve-releases keeps every prior release byte and mode while activating the verified next release', () => {
+  const dir = home(), versions = [release.version]; ok(install(dir));
+  const snapshot = version => {
+    const root = join(dir, '.golems/releases', version), entries = [];
+    const visit = path => {
+      for (const name of readdirSync(path).sort()) {
+        const at = join(path, name), rel = at.slice(root.length + 1), stat = lstatSync(at);
+        if (stat.isSymbolicLink()) entries.push([rel, 'link', readlinkSync(at), stat.mode & 0o777]);
+        else if (stat.isDirectory()) { entries.push([rel, 'dir', stat.mode & 0o777]); visit(at); }
+        else entries.push([rel, 'file', createHash('sha256').update(readFileSync(at)).digest('hex'), stat.mode & 0o777]);
+      }
+    };
+    visit(root); return entries;
+  };
+  const prior = new Map([[release.version, snapshot(release.version)]]);
+  for (let i = 0; i < 3; i++) {
+    writeFileSync(join(source, 'LICENSE'), `preserved release fixture ${i}\n`); git('add', 'LICENSE'); git('commit', '-m', `preserved upgrade ${i}`);
+    const next = buildRelease({ repo: source, out: join(root, `preserved-upgrade-${i}`) }); versions.push(next.version);
+    ok(install(dir, ['--preserve-releases'], next.tarball, join(dirname(next.tarball), 'SHA256SUMS')));
+    expect(readlinkSync(join(dir, '.golems/current'))).toBe(`releases/${next.version}`);
+    expect(JSON.parse(readFileSync(join(dir, '.golems/releases', next.version, 'MANIFEST.json'))).commit).toBe(next.commit);
+    for (const version of versions.slice(0, -1)) {
+      expect(snapshot(version)).toEqual(prior.get(version));
+      expect(JSON.parse(readFileSync(join(dir, '.golems/releases', version, 'MANIFEST.json'))).version).toBe(version);
+    }
+    prior.set(next.version, snapshot(next.version));
+  }
+  expect(readdirSync(join(dir, '.golems/releases')).sort()).toEqual([...versions].sort());
+});
 
 function runtime(dir) {
   const bin = join(dir, 'runtime'); mkdirSync(bin);

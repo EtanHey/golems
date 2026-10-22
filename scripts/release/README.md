@@ -76,6 +76,10 @@ sh scripts/release/install.sh --channel v2026.10.11-abcdef0
 sh scripts/release/install.sh --from-file golems-2026.10.11-abcdef0.tar.gz --sums SHA256SUMS
 ```
 
+Pass `--preserve-releases` to keep every previously installed release directory
+when activating an update. The default keeps the current release and two prior
+versions, plus any release still pinned by the client hook receipt.
+
 The installer needs POSIX sh, standard macOS/Linux utilities (including awk,
 xargs and mktemp), curl, tar and shasum. A fresh bootstrap needs no Git, Node,
 Bun or Python. Updates with an existing client hook receipt also need Node and
