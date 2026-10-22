@@ -268,12 +268,19 @@ def retire(wt):
                           capture_output=True, text=True)
 
 
+def removal_receipt(wt):
+    return (f"worktree: removed: {wt}; proof: absent from git worktree list --porcelain "
+            "after git worktree prune")
+
+
 def test_recipe_removes_a_pushed_clean_worktree(tmp_path):
     main, wt = lane(tmp_path)
     out = retire(wt)
     assert out.returncode == 0, out.stderr
     assert not wt.exists()
     assert f"removed: {wt}" in out.stdout
+    assert removal_receipt(wt) in out.stdout.splitlines()
+    assert "proof: absent from git worktree list --porcelain after git worktree prune" in out.stdout
     assert str(wt) not in git(main, "worktree", "list")
 
 
@@ -314,6 +321,7 @@ def test_recipe_removes_when_docs_local_holds_only_empty_dirs(tmp_path):
     out = retire(wt)
     assert out.returncode == 0, out.stderr
     assert not wt.exists() and f"removed: {wt}" in out.stdout
+    assert removal_receipt(wt) in out.stdout.splitlines()
 
 
 def test_recipe_removes_when_only_regenerable_caches_are_ignored(tmp_path):
@@ -323,6 +331,7 @@ def test_recipe_removes_when_only_regenerable_caches_are_ignored(tmp_path):
     out = retire(wt)
     assert out.returncode == 0, out.stderr
     assert not wt.exists() and f"removed: {wt}" in out.stdout
+    assert removal_receipt(wt) in out.stdout.splitlines()
 
 
 def test_recipe_pins_main_discovery_and_ls_remote_sha():
@@ -366,3 +375,4 @@ def test_recipe_uses_the_upstream_branch_when_the_local_name_differs(tmp_path):
     out = retire(wt)
     assert out.returncode == 0, out.stderr
     assert not wt.exists() and f"removed: {wt}" in out.stdout
+    assert removal_receipt(wt) in out.stdout.splitlines()

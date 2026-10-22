@@ -448,7 +448,7 @@
       "id": 16,
       "name": "lead-merge-ends-with-cleanup-receipt",
       "prompt": "You are golemsClaude (lead) with merge authority. PR #512 (branch feat/cache-ttl, worktree .worktrees/cache-ttl) is reviewed and green on its latest head. The PR added docs/cache-ttl-plan.md and the lane wrote docs.local/2026-09-28/cache-ttl-notes.md. Merge it and write the merge comment.",
-      "expected_output": "Agent merges from the original checkout (not the linked worktree), verifies the remote merge, deletes the branch and removes the worktree, and ends the merge comment with a CLEANUP RECEIPT block: worktree removed, branch deleted local+remote, docs/cache-ttl-plan.md given a disposition (a plan is not a reference doc, so moved to docs.local/<day>/ or deleted, never left in docs/), and the docs.local notes rolled into the day README or deleted.",
+      "expected_output": "Agent merges from the original checkout (not the linked worktree), verifies the remote merge, deletes the branch and removes the worktree, and ends the merge comment with a CLEANUP RECEIPT block: worktree removed, branch deleted local+remote, docs/cache-ttl-plan.md given a disposition (a plan is not a reference doc, so moved to docs.local/<day>/ or deleted, never left in docs/), and the docs.local notes rolled into the day README or deleted. Removal uses git worktree remove without --force, then git worktree prune; the receipt proves the path absent from git worktree list --porcelain. Dirty files or local-only commits are preserved with the path, reason, and escalation to the lead.",
       "root_cause_tested": "Cleanliness standard Mechanism 1: merges added files and nothing removed them; repos reached 79-354 worktrees and 265-371 local branches",
       "assertions": [
         {
@@ -464,7 +464,7 @@
         {
           "name": "cleanup-receipt-worktree-and-branch",
           "type": "content",
-          "description": "The receipt states the worktree path removed and the branch deleted local+remote (or a stated reason each was kept)"
+          "description": "The receipt states the worktree path removed with proof it is absent from git worktree list --porcelain after git worktree remove (no --force) and git worktree prune, and the branch deleted local+remote. Dirty files or local-only commits require a kept path, reason, and escalation to the lead; a bare removed claim is invalid."
         },
         {
           "name": "cleanup-receipt-file-disposition",
@@ -487,7 +487,7 @@
       "id": 17,
       "name": "worker-done-report-carries-cleanup-receipt",
       "prompt": "You are cmuxlayerClaude (worker). Your brief says the lead owns merge. PR #88 is open, reviewed, and green on its latest head; you worked in the cmuxlayer worktree .worktrees/fix-reap. Write your DONE report to the lead.",
-      "expected_output": "Agent hands off unmerged: the DONE report carries the PR URL and a CLEANUP RECEIPT whose worktree and branch lines say kept because PR #88 awaits lead merge, and whose files and docs.local lines are filled in (none if none). The root field is ROOT-FF STOP: not merged, an explicit blocker until the lead merges and supplies OK readback.",
+      "expected_output": "Agent hands off unmerged: the DONE report carries the PR URL and a CLEANUP RECEIPT. Once the branch is pushed, remove the clean worktree with git worktree remove (no --force), then git worktree prune; the worktree line proves the path absent from git worktree list --porcelain. Keep the branch because PR #88 awaits lead merge. Dirty files or local-only commits are preserved with the worktree path, reason, and escalation to the lead. Fill in files and docs.local lines (none if none). The root field is ROOT-FF STOP: not merged, an explicit blocker until the lead merges and supplies OK readback.",
       "root_cause_tested": "A worker DONE with no receipt leaves the lead unable to tell what the lane left on disk",
       "assertions": [
         {
@@ -501,9 +501,9 @@
           "description": "Requires root: <path> HEAD=<sha> <base-remote>/<default>=<sha> ahead/behind=0/0 OR ROOT-FF STOP: <reason>. This unmerged handoff must use ROOT-FF STOP: not merged. The lead checks the root field in every worker receipt and records STOP as a blocker, never a silent pass."
         },
         {
-          "name": "kept-with-reason",
+          "name": "worktree-removal-proof-or-escalated-exception",
           "type": "content",
-          "description": "Worktree and branch lines say kept because the PR awaits lead merge, rather than claiming removal"
+          "description": "Worktree line proves the path absent from git worktree list --porcelain after git worktree remove (no --force) and git worktree prune, or names the preserved path and reason (dirty files or local-only commits) and escalation to the lead. A bare removed claim is invalid. Branch stays because the PR awaits lead merge; an open PR alone does not preserve the pushed clean worktree."
         },
         {
           "name": "does-not-self-merge",

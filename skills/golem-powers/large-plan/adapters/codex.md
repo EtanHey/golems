@@ -39,11 +39,12 @@ cp .env ../wt-phase-<N>/.env
 # Spawn
 cd ../wt-phase-<N>
 codex --full-auto "Execute phase N. Plan: $(cat ../plan/README.md)"
-
-# Cleanup after merge, then end the DONE report with the CLEANUP RECEIPT
-# (/pr-loop references/merge-and-verification.md § Cleanup Receipt)
-git worktree remove ../wt-phase-<N>
 ```
+
+For cleanup after merge or pushed-branch handoff, follow the
+[/pr-loop Cleanup Receipt SSOT](../../pr-loop/references/merge-and-verification.md#cleanup-receipt),
+including its preservation checks, retirement block, and removal proof.
+Name and escalate kept paths to the lead; end the DONE report with that CLEANUP RECEIPT.
 
 ## Waiting on Workers (no collab monitor)
 

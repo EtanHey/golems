@@ -287,7 +287,10 @@ data/creds/accounts, money, messaging people); a tag, release, install, deploy o
 sends), `task_cancel` its `taskId` so queued runs stop, and `unwatch_pull_request` the lane's PR. cmux adapter: harvest,
 then close the pane through the cmuxlayer MCP (`close_surface`). Idle with no artifact pending = settle now, not later.
 A PR still in its review rounds is not idle; its implementer stays for those fixes (§ Lead Topology #5). The implementer
-removes its own worktree at DONE (`/pr-loop` § Cleanup Receipt); the lead verifies the receipt.
+removes its own worktree at DONE (`/pr-loop` § Cleanup Receipt): `git worktree remove` (no `--force`),
+then `git worktree prune`. Before lane close or settle, the lead verifies removal proof: the path is absent
+from `git worktree list --porcelain`. Dirty files or local-only commits stay; name the path and reason
+in the receipt and escalate to the lead. No proof or escalated exception = invalid receipt.
 
 If the user questions why work is happening or corrects the route, pause spawning and patching,
 explain the evidence-backed state, and store the correction separately.

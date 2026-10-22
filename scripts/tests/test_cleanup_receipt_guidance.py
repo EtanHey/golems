@@ -16,7 +16,8 @@ PR_LOOP = SKILLS / "pr-loop"
 LARGE_PLAN = SKILLS / "large-plan"
 RECEIPT_LINES = (
     "CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):",
-    "- worktree: <path> removed | kept because <reason>",
+    "- worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune",
+    "OR worktree: <path> kept because <reason>; escalated to <lead>",
     "- branch: <name> deleted local+remote | kept because <reason>",
     "- files this PR added outside src/tests: <list or none>",
     "- docs.local this lane created: <paths>; rolled into <day>/README or deleted",

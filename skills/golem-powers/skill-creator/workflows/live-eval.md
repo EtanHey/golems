@@ -164,11 +164,11 @@ and positive comparability claims.
 
 ### Step 9: Cleanup
 
-```bash
-cd $HOME/Gits/golems
-git worktree remove "../${SANDBOX}" --force
-git branch -D "${SANDBOX}"
-```
+Follow the [/pr-loop Cleanup Receipt SSOT](../../pr-loop/references/merge-and-verification.md#cleanup-receipt),
+including its preservation checks, retirement block, and removal proof.
+Preserve eval outputs outside `${SANDBOX}` and obtain the lead’s retirement
+decision for local-only work; run the SSOT block from inside the sandbox.
+Name and escalate kept paths to the lead; never discard local eval work as cleanup.
 
 ## Gate
 

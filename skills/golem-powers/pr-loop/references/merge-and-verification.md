@@ -286,7 +286,9 @@ Not every branch goes through the full PR flow. When implementation is done:
 | **Discard** | Wrong approach, start over | Requires typed "discard" confirmation. `git branch -D <branch>` |
 
 **Worktree cleanup (lane close):** the implementer retires its own worktree at DONE
-([Cleanup Receipt](#cleanup-receipt)). This GC is the lead's sweep for leftovers of settled or
+with `git worktree remove` (no `--force`), then `git worktree prune` and removal proof
+([Cleanup Receipt](#cleanup-receipt)); dirty files or local-only commits are kept and escalated to the lead.
+This GC is the lead's sweep for leftovers of settled or
 merged lanes under `<main>/.worktrees/` only. For options 1 (after merge), 3 (never), and 4
 (after discard), sweep a leftover from the original checkout once its pane is closed:
 ```bash
@@ -332,7 +334,9 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
   above asks for, so it needs no lead decision; local-only history or an
   unarchived `docs.local/` still does. A worker handing off an unmerged PR has
   a pushed branch, so it removes the tree too:
-  `worktree: <path> removed (branch <name> pushed at <sha>)`.
+  `worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune`.
+  This canonical line keeps the `removed: <path>` token for settle consumers and
+  the `worktree:` field for the fleet-wrap receipt parser; append proof on the same line.
 - **How (retirement path, implementer-owned, both harnesses):** run this from
   inside your own worktree, unchanged; it prints the receipt's worktree line.
   ```bash
@@ -341,15 +345,22 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
   BRANCH=${UPSTREAM#origin/}; [ -n "$UPSTREAM" ] || BRANCH=$(git branch --show-current)
   MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
   if [ -n "$(git status --porcelain)" ]; then
-    echo "kept because uncommitted or untracked changes"
+    echo "worktree: $WT kept because uncommitted or untracked changes; escalate to lead"
   elif [ -z "$BRANCH" ] || [ "$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)" != "$(git rev-parse HEAD)" ]; then
-    echo "kept because HEAD is not pushed to origin/$BRANCH"
+    echo "worktree: $WT kept because HEAD is not pushed to origin/$BRANCH; escalate to lead"
   elif [ -n "$(find "$WT" -path "$WT/.git" -prune -o -path '*/node_modules' -prune -o -path '*/docs.local/*' ! -type d -print -quit)" ]; then
-    echo "kept because docs.local unarchived"
+    echo "worktree: $WT kept because docs.local unarchived; escalate to lead"
   elif git -C "$MAIN" worktree remove "$WT"; then
-    echo "removed: $WT"
+    if git -C "$MAIN" worktree prune &&
+       WORKTREES=$(git -C "$MAIN" worktree list --porcelain) &&
+       ! printf '%s\n' "$WORKTREES" | grep -Fx "worktree $WT"; then
+      echo "worktree: removed: $WT; proof: absent from git worktree list --porcelain after git worktree prune"
+    else
+      echo "WORKTREE-CLEANUP STOP: $WT removal proof failed; escalate to lead" >&2
+      exit 1
+    fi
   else
-    echo "kept because git worktree remove exited non-zero"
+    echo "worktree: $WT kept because git worktree remove exited non-zero; escalate to lead"
   fi
   ```
   1. **Preserve first:** `git status --porcelain` is empty, the remote branch SHA
@@ -369,16 +380,20 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
      (`git rev-parse --path-format=absolute --git-common-dir` is `<main>/.git` for T3
      `.t3/worktrees/...` and cmux `<main>/.worktrees/...` alike). `git -C "$MAIN"` runs
      the removal from there, not from inside the tree; never `--force`.
-  3. **T3 child:** run the block as its LAST tool call. Report `removed: <path>` only
-     if the command exited 0. Review-fix rounds get a fresh `delegate_task` worktree
+  3. **T3 child:** run the block as its LAST tool call. Copy its removal proof into
+     the receipt only after remove and prune exited 0 and list readback succeeds.
+     Review-fix rounds get a fresh `delegate_task` worktree
      from the pushed branch, so nothing needs the old tree.
   4. **cmux worker:** the same block BEFORE writing DONE;
      the lead closes the pane afterwards (pane close no longer precedes removal).
   `worktree-gc.sh` is not the implementer's path: it answers `KEEP-out-of-scope` for
   `.t3/worktrees/...` and `KEEP-live` while the worker's pane runs. It stays the lead's
   sweep for leftovers under `<main>/.worktrees/` only.
-- **Receipt:** the worktree line says `removed` only after the removal exited 0;
-  otherwise `kept because <reason>`.
+- **Receipt:** lane close and settle require removal proof after remove and prune.
+  The worktree line says `removed` only after those commands exited 0 and list readback confirms absence.
+  A receipt without removal proof or an escalated preservation exception is invalid.
+  Preserve local-only commits and dirty files; name the path and reason and escalate to the lead.
+  Unarchived `docs.local/` or a failed removal also requires a named exception, never forced deletion.
 - **Regenerable caches:** delete `node_modules`, build output (`dist/`,
   `build/`, `.next/`, `target/`), `__pycache__` and `.pytest_cache` without
   asking.
@@ -390,7 +405,8 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
 CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):
 - root: <path> HEAD=<sha> <base-remote>/<default>=<sha> ahead/behind=0/0
   OR ROOT-FF STOP: <reason>
-- worktree: <path> removed | kept because <reason>
+- worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune
+  OR worktree: <path> kept because <reason>; escalated to <lead>
 - branch: <name> deleted local+remote | kept because <reason>
 - files this PR added outside src/tests: <list or none>; each is: committed reference (docs/reference|docs/rationale|README) |
   stored to BrainLayer <chunk-id> and deleted | moved to docs.local/<day>/ | deleted
@@ -409,7 +425,8 @@ ROOT-FF STOP: not merged
 Unmerged handoffs must use `ROOT-FF STOP: not merged`. The lead rejects a DONE whose receipt lacks a valid root field. A STOP records a blocker; it is never a silent pass.
 
 The lead's phase close (`/large-plan` exit criteria) checks for one receipt per
-worker, including a valid root field (OK readback or explicit STOP blocker).
+worker, including a valid root field (OK readback or explicit STOP blocker) and worktree removal proof
+or a named, escalated preservation exception. A bare `removed` line is invalid.
 
 ---
 

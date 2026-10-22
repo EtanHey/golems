@@ -1,6 +1,7 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, test } from "node:test";
+import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,19 +15,65 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const doc = path.join(here, "..", "..", "skills", "golem-powers", "pr-loop", "references",
   "merge-and-verification.md");
 
+test("cleanup receipt requires removal proof and escalates preserved worktrees", () => {
+  const receipt = readFileSync(doc, "utf8").split("### Cleanup Receipt")[1];
+  assert.ok(receipt.includes("- worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune"));
+  assert.ok(receipt.includes("OR worktree: <path> kept because <reason>; escalated to <lead>"));
+  assert.ok(receipt.includes("A receipt without removal proof or an escalated preservation exception is invalid."));
+  assert.match(receipt, /local-only[\s\S]*dirty[\s\S]*lead/);
+  const recipe = receipt.match(/```bash\n([\s\S]*?)\n\s*```/)[1];
+  assert.match(recipe, /worktree remove[\s\S]*worktree prune[\s\S]*worktree list --porcelain/);
+  assert.ok(!recipe.includes("--force"));
+  assert.ok(recipe.includes('echo "worktree: removed: $WT; proof:'), "recipe must preserve both worktree: and removed: tokens before the proof");
+});
+
+// Discover guidance recursively, including every adapter format. Test/eval data
+// and executable helpers are not agent instructions; Markdown/YAML anywhere
+// under skills and all adapter files are, without a fixed skill/path allowlist.
+function* skillGuidance(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) yield* skillGuidance(file);
+    else if (entry.isFile() && (/\.(md|ya?ml)$/i.test(file) || file.split(path.sep).includes("adapters"))) yield file;
+  }
+}
+
+test("all skill guidance and adapters mentioning git worktree remove require prune and absence proof", () => {
+  const skills = path.resolve(here, "../../skills");
+  const violations = [];
+  let checked = 0;
+  for (const file of skillGuidance(skills)) {
+    const text = readFileSync(file, "utf8");
+    if (!text.includes("git worktree remove")) continue;
+    checked++;
+    for (const [requirement, pattern] of [
+      ["git worktree prune", /git worktree prune/],
+      ["porcelain absence proof", /absent\s+from\s+`?git worktree list --porcelain/],
+      ["no forced removal", /(?:no|without) (?:`)?--force/],
+      ["dirty preservation", /dirty/i],
+      ["local-only preservation", /local-only/],
+      ["lead escalation", /(?:escalat[\s\S]*lead|lead[\s\S]*escalat)/i],
+    ]) {
+      if (!pattern.test(text)) violations.push(`${path.relative(skills, file)}: missing ${requirement}`);
+    }
+  }
+  assert.ok(checked > 0, "no worktree removal guidance discovered");
+  assert.deepEqual(violations, []);
+});
+
 test("cleanup root field grammar accepts proof or STOP and rejects incomplete receipts", () => {
   const receipt = readFileSync(doc, "utf8").split("### Cleanup Receipt")[1];
   const grammar = new RegExp(receipt.match(/```regex\n([^\n]+)\n```/)[1]);
   const sha = "a".repeat(40);
   for (const remote of ["origin/main", "upstream/master"]) {
     const ok = `root: /repo HEAD=${sha} ${remote}=${sha} ahead/behind=0/0`;
-    expect(grammar.test(ok)).toBe(true);
-    for (const counts of ["0/1", "1/0", "1/1"]) expect(grammar.test(ok.replace("0/0", counts))).toBe(false);
-    expect(grammar.test(ok.replace(`HEAD=${sha}`, `HEAD=${"b".repeat(40)}`))).toBe(false);
-    expect(grammar.test(ok.replaceAll(sha, "abc123"))).toBe(false);
+    assert.equal(grammar.test(ok), true);
+    for (const counts of ["0/1", "1/0", "1/1"]) assert.equal(grammar.test(ok.replace("0/0", counts)), false);
+    assert.equal(grammar.test(ok.replace(`HEAD=${sha}`, `HEAD=${"b".repeat(40)}`)), false);
+    assert.equal(grammar.test(ok.replaceAll(sha, "abc123")), false);
   }
-  for (const line of ["ROOT-FF STOP: not merged", "ROOT-FF STOP: ff-only failed"]) expect(grammar.test(line)).toBe(true);
-  for (const line of ["root: ok", "", "worktree: /repo removed", "ROOT-FF STOP: "]) expect(grammar.test(line)).toBe(false);
+  for (const line of ["ROOT-FF STOP: not merged", "ROOT-FF STOP: ff-only failed"]) assert.equal(grammar.test(line), true);
+  for (const line of ["root: ok", "", "worktree: /repo removed", "ROOT-FF STOP: "]) assert.equal(grammar.test(line), false);
 });
 
 function documentedBlock() {
@@ -103,10 +150,10 @@ const shells = ["bash", ...(spawnSync("zsh", ["-c", "true"]).status === 0 ? ["zs
 
 test("the documented block carries placeholders and never forces", () => {
   const block = documentedBlock();
-  expect(block).toContain("'<root>'");
-  expect(block).toContain("'<default>'");
-  expect(block).toContain("merge -q --ff-only");
-  expect(block).not.toMatch(/\breset\b|--force|\bstash\b|\brebase\b|\bpull\b|\bcheckout\b|\bswitch\b/);
+  assert.ok(block.includes("'<root>'"));
+  assert.ok(block.includes("'<default>'"));
+  assert.ok(block.includes("merge -q --ff-only"));
+  assert.doesNotMatch(block, /\breset\b|--force|\bstash\b|\brebase\b|\bpull\b|\bcheckout\b|\bswitch\b/);
 });
 
 for (const shell of shells) {
@@ -116,9 +163,9 @@ for (const shell of shells) {
       git(root, "config", "--add", `remote.${remote}.fetch`, `^refs/heads/${defaultBranch}`);
       const merged = land("AGENTS.md");
       const run = runBlock(shell, root, defaultBranch);
-      expect(run.status).toBe(0);
-      expect(git(root, "rev-parse", "HEAD")).toBe(merged);
-      expect(run.stdout.trim().split("\n")).toEqual(["AGENTS.md", `root: ${root} HEAD=${merged} ${remote}/${defaultBranch}=${merged} ahead/behind=0/0`]);
+      assert.equal(run.status, 0);
+      assert.equal(git(root, "rev-parse", "HEAD"), merged);
+      assert.deepEqual(run.stdout.trim().split("\n"), ["AGENTS.md", `root: ${root} HEAD=${merged} ${remote}/${defaultBranch}=${merged} ahead/behind=0/0`]);
     });
   }
 
@@ -129,10 +176,10 @@ for (const shell of shells) {
       else git(root, "branch", "--unset-upstream");
       const before = git(root, "rev-parse", "HEAD");
       const run = runBlock(shell, root);
-      expect(run.status).not.toBe(0);
-      expect(run.stderr).toContain("ROOT-FF STOP:");
-      expect(run.stdout).not.toContain("root:");
-      expect(git(root, "rev-parse", "HEAD")).toBe(before);
+      assert.notEqual(run.status, 0);
+      assert.ok(run.stderr.includes("ROOT-FF STOP:"));
+      assert.ok(!run.stdout.includes("root:"));
+      assert.equal(git(root, "rev-parse", "HEAD"), before);
     });
   }
 
@@ -143,11 +190,11 @@ for (const shell of shells) {
     const featureBefore = git(root, "rev-parse", "HEAD");
     land();
     const run = runBlock(shell, root);
-    expect(run.status).not.toBe(0);
-    expect(run.stderr).toContain("not merging");
-    expect(run.stdout).toBe("");
-    expect(git(root, "rev-parse", "main")).toBe(mainBefore);
-    expect(git(root, "rev-parse", "feature")).toBe(featureBefore);
+    assert.notEqual(run.status, 0);
+    assert.ok(run.stderr.includes("not merging"));
+    assert.equal(run.stdout, "");
+    assert.equal(git(root, "rev-parse", "main"), mainBefore);
+    assert.equal(git(root, "rev-parse", "feature"), featureBefore);
   });
 
   test(`${shell}: a divergent root stops nonzero before the diff and keeps its commit`, () => {
@@ -155,10 +202,10 @@ for (const shell of shells) {
     const local = commit(root, "app.txt", "local work\n");
     land();
     const run = runBlock(shell, root);
-    expect(run.status).not.toBe(0);
-    expect(run.stderr).toContain("never force");
-    expect(run.stdout).toBe("");
-    expect(git(root, "rev-parse", "HEAD")).toBe(local);
+    assert.notEqual(run.status, 0);
+    assert.ok(run.stderr.includes("never force"));
+    assert.equal(run.stdout, "");
+    assert.equal(git(root, "rev-parse", "HEAD"), local);
   });
 
   test(`${shell}: a failed fetch stops nonzero before the merge`, () => {
@@ -167,15 +214,15 @@ for (const shell of shells) {
     land();
     git(root, "remote", "set-url", "origin", path.join(path.dirname(root), "missing.git"));
     const run = runBlock(shell, root);
-    expect(run.status).not.toBe(0);
-    expect(run.stderr).toContain("fetch failed");
-    expect(run.stdout).toBe("");
-    expect(git(root, "rev-parse", "HEAD")).toBe(before);
+    assert.notEqual(run.status, 0);
+    assert.ok(run.stderr.includes("fetch failed"));
+    assert.equal(run.stdout, "");
+    assert.equal(git(root, "rev-parse", "HEAD"), before);
   });
 
   test(`${shell}: unsubstituted placeholders fail closed`, () => {
     const run = spawnSync(shell, ["-c", documentedBlock()], { env, encoding: "utf8" });
-    expect(run.status).not.toBe(0);
-    expect(run.stdout).toBe("");
+    assert.notEqual(run.status, 0);
+    assert.equal(run.stdout, "");
   });
 }

@@ -387,8 +387,11 @@ receipt is a question to that worker, not a closed phase: the phase stays open u
 does not write a receipt on a worker's behalf.
 Worktree removal belongs to the implementer: "the implementer removes its worktree at DONE" and
 "regenerable caches need no OK" (Etan 2026-10-18, via orc collab). The lead verifies the receipt's
-`worktree: <path> removed` line against `git worktree list` and never removes a worker's worktree itself, except leftovers of settled or merged lanes; retirement path:
-`/pr-loop` § Cleanup Receipt. `git worktree prune` only clears entries the implementer already removed.
+`worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune` line against `git worktree list --porcelain` and never removes a worker's worktree itself, except leftovers of settled or merged lanes; retirement path:
+`/pr-loop` § Cleanup Receipt. Lane close and settle require `git worktree remove` (no `--force`),
+then `git worktree prune`, with removal proof that the path is absent from `git worktree list --porcelain`.
+Dirty files or local-only commits are preserved: the receipt names the path, reason, and lead escalated to.
+Neither removal proof nor an escalated exception = invalid receipt; prune alone never removes a worktree.
 
 ---
 
