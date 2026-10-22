@@ -274,6 +274,7 @@ def test_recipe_removes_a_pushed_clean_worktree(tmp_path):
     assert out.returncode == 0, out.stderr
     assert not wt.exists()
     assert f"removed: {wt}" in out.stdout
+    assert "proof: absent from git worktree list --porcelain after git worktree prune" in out.stdout
     assert str(wt) not in git(main, "worktree", "list")
 
 

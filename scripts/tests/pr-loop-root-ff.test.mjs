@@ -14,6 +14,28 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const doc = path.join(here, "..", "..", "skills", "golem-powers", "pr-loop", "references",
   "merge-and-verification.md");
 
+test("cleanup receipt requires removal proof and escalates preserved worktrees", () => {
+  const receipt = readFileSync(doc, "utf8").split("### Cleanup Receipt")[1];
+  expect(receipt).toContain("- worktree: <path> removed; proof: absent from git worktree list --porcelain after git worktree prune");
+  expect(receipt).toContain("OR worktree: <path> kept because <reason>; escalated to <lead>");
+  expect(receipt).toContain("A receipt without removal proof or an escalated preservation exception is invalid.");
+  expect(receipt).toMatch(/local-only[\s\S]*dirty[\s\S]*lead/);
+  const recipe = receipt.match(/```bash\n([\s\S]*?)\n\s*```/)[1];
+  expect(recipe).toMatch(/worktree remove[\s\S]*worktree prune[\s\S]*worktree list --porcelain/);
+  expect(recipe).not.toContain("--force");
+});
+
+test("lane close and settle paths require remove, prune, and receipt proof", () => {
+  const skills = path.resolve(here, "../../skills/golem-powers");
+  for (const file of ["agent-routing/SKILL.md", "agent-routing/references/t3-native.md",
+    "large-plan/SKILL.md", "large-plan/workflows/execute-phase.md"]) {
+    const text = readFileSync(path.join(skills, file), "utf8");
+    expect(text).toContain("git worktree remove");
+    expect(text).toContain("git worktree prune");
+    expect(text).toContain("removal proof");
+  }
+});
+
 test("cleanup root field grammar accepts proof or STOP and rejects incomplete receipts", () => {
   const receipt = readFileSync(doc, "utf8").split("### Cleanup Receipt")[1];
   const grammar = new RegExp(receipt.match(/```regex\n([^\n]+)\n```/)[1]);

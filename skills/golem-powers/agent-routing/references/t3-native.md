@@ -71,6 +71,10 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
 - Relay only the verified values, then conclude the child: no further sends for new work. At its
   PR's terminal state settle it ("settle idle workers"; "the implementer removes its worktree at
   DONE" (Etan 2026-10-18, via orc collab)).
+- Before settle, require `git worktree remove` (no `--force`), then `git worktree prune`, and the
+  receipt's removal proof that the path is absent from `git worktree list --porcelain`.
+  Preserve dirty files or local-only commits; the receipt names the path, reason, and lead escalated to
+  (`/pr-loop` § Cleanup Receipt). Neither proof nor an escalated exception = invalid receipt.
 
 ## 5. Review rounds
 

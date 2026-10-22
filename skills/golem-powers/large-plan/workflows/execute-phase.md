@@ -125,6 +125,10 @@ git checkout master && git pull
 worker's CLEANUP RECEIPT for this phase is present (`/pr-loop` `references/merge-and-verification.md` § Cleanup
 Receipt) and runs the prune step: `git worktree prune`, delete merged branches, roll `docs.local/<sprint>/` up into
 one README. A missing receipt keeps the phase open until that worker posts it; the lead does not write it for them.
+Lane close and settle require the implementer's `git worktree remove` (no `--force`), then `git worktree prune`,
+and removal proof in the receipt: the path is absent from `git worktree list --porcelain`.
+Preserve dirty files or local-only commits; name the path and reason and escalate to the lead.
+A receipt without removal proof or a named, escalated exception is invalid.
 In a sequential plan the executing agent is the lead.
 
 Only after the gate passes, in `<plan-dir>/README.md`, mark the phase as done:
