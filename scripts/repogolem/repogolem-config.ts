@@ -65,7 +65,7 @@ import Ajv, { type ErrorObject } from "ajv";
 import { parse as parseYaml, parseAllDocuments, stringify as stringifyYaml } from "yaml";
 import { runSync } from "./repogolem-sync";
 import { runInstall } from "./repogolem-install";
-import { parseCache, privatePath, readTransferredSecrets } from "./runtime-reader";
+import { filterMcpRegistry, parseCache, privatePath, readTransferredSecrets } from "./runtime-reader";
 import configSchema from "./config.schema.json";
 import { collectRefs, resolveRefs, secretKey, secretsEnvKeys, secretsEnvText } from "./repogolem-secrets";
 import { opRefsFor, varlockResolver } from "./repogolem-varlock";
@@ -483,7 +483,7 @@ export function secretSources(refs: string[], config: JsonObject): Map<string, s
 export function buildGenerated(configText: string, home: string, sourceSha: string, host: () => string): Generated {
   const { config, machine } = resolveConfig(configText, host);
   const configSha = sha256(configText);
-
+  filterMcpRegistry(config);
   const registry: JsonObject = {
     _generated: { generator: GENERATOR_ID, sourceSha, configSha256: configSha, machine },
   };

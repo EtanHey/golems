@@ -16,7 +16,7 @@ HOST_DUTY_SCRIPTS = {'resource-guard.js', 'mcp-reaper.js'}
 
 
 def references_cmuxlayer(value):
-    tokens = re.split(r"[\s;&|()<>`\"']+", value)
+    tokens = [token.split("=", 1)[-1] for token in re.split(r"[\s;&|()<>`\"']+", value)]
     return any(Path(token).name in BINS or DIST_SCRIPT.search(token) for token in tokens)
 
 

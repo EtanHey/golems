@@ -13,6 +13,7 @@ _golem_launch_claude() {
   # means medium.
   _golem_refuse_claude_sonnet_full_pane || return $?
   local claude_args=("${_extra_args[@]}")
+  local inherit_mcp_config=""
 
   if [[ -n "$_flag_worktree" ]]; then
     _golem_copy_mcp_to_worktree "$project_path" "$_flag_worktree" || return $?
@@ -131,7 +132,16 @@ _golem_launch_claude() {
       local inherit_path
       inherit_path=$(jq -r --arg proj "$inherit_from" '.projects[$proj].path // ""' "$registry" 2>/dev/null)
       inherit_path="${inherit_path/#\~/$HOME}"
-      [[ -n "$inherit_path" && -f "${inherit_path}/.mcp.json" ]] && claude_args+=("--mcp-config" "${inherit_path}/.mcp.json")
+      if [[ -n "$inherit_path" && -f "${inherit_path}/.mcp.json" ]]; then
+        [[ ! -L "${inherit_path}/.mcp.json" ]] || { print -u2 -- "repoGolem: refusing symlinked inherited MCP config"; return 1; }
+        local inherit_cache="$HOME/.golems/cache/mcp"
+        mkdir -p -m 700 "$inherit_cache" || return 1
+        inherit_mcp_config=$(umask 077; mktemp "$inherit_cache/claude-inherit.XXXXXX") || return 1
+        if ! _golem_filter_mcp_json < "${inherit_path}/.mcp.json" > "$inherit_mcp_config"; then
+          rm -f "$inherit_mcp_config"; return 1
+        fi
+        claude_args+=("--mcp-config" "$inherit_mcp_config")
+      fi
     fi
   fi
 
@@ -152,6 +162,7 @@ _golem_launch_claude() {
   fi
 
   _golem_reset_title
+  [[ -n "$inherit_mcp_config" ]] && rm -f "$inherit_mcp_config"
   [[ -n "$_notify_config" ]] && rm -f "$_notify_config" 2>/dev/null
   return "$claude_exit"
 }

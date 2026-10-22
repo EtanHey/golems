@@ -1,3 +1,6 @@
+# Standalone AGY consumers use the same policy module as the full dispatcher.
+typeset -f _golem_filter_mcp_json >/dev/null 2>&1 || source "${${(%):-%x}:A:h}/mcp-deny.zsh" || return 1
+
 _golem_agy_resolve_model() {
   # Gatherers default to Flash-High: qa-video scored 22/22; Pro-High skimmed (14 and 7).
   # Pro is selected only explicitly; other aliases keep their exact agy strings.
@@ -61,6 +64,7 @@ _golem_jq_agy_servers() {
 }
 
 _golem_agy_write_config() {
+  setopt localoptions pipefail
   local target="$1" servers="$2" mode="$3" allowed="${4:-[]}"
   local parent="${target:h}" existing='{}' tmp_file pruned
   mkdir -p "$parent" || return 1
@@ -80,7 +84,7 @@ _golem_agy_write_config() {
           ((.mcpServers // {}) + $servers) | agy_servers
           | with_entries(select(.key as $name | $allowed | index($name)))
         end)
-    ' > "$tmp_file" 2>/dev/null; then
+    ' | _golem_filter_mcp_json > "$tmp_file"; then
     if [[ "$mode" == global ]]; then
       pruned=$(print -r -- "$existing" | jq -r --slurpfile written "$tmp_file" '
         [.[].mcpServers // {} | keys[]] - [$written[].mcpServers | keys[]]

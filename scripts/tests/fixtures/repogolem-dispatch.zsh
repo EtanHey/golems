@@ -41,7 +41,7 @@ fi
 # definitions behind, so a live shell keeps its last complete set.
 # (install-golem-dispatch.sh reads the module list from the `for ... in` line.)
 typeset -ga _golem_modules=()
-for _golem_module in core environment context agy flags claude codex-resume codex cursor gemini; do
+for _golem_module in core mcp-deny environment context agy flags claude codex-resume codex cursor gemini; do
   if [[ ! -f "${_GOLEM_DISPATCH_DIR}/dispatch/${_golem_module}.zsh" ]]; then
     print -u2 -- "Missing dispatcher module: ${_GOLEM_DISPATCH_DIR}/dispatch/${_golem_module}.zsh"
     unset _golem_module _golem_modules

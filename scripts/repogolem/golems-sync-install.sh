@@ -26,7 +26,7 @@ launcher_set_hash() {
 # The dispatcher, bootstrap, and modules the installer deploys from the launcher set.
 deployed_matches_staged() {
     local launcher_root="$1" dispatcher="$2" name
-    for name in golem-dispatch.zsh worktree-bootstrap.sh; do
+    for name in golem-dispatch.zsh worktree-bootstrap.sh mcp_policy.py; do
         [[ -f "${dispatcher%/*}/$name" ]] || return 1
         cmp -s "$launcher_root/$name" "${dispatcher%/*}/$name" || return 1
     done
