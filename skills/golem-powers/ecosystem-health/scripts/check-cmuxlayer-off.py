@@ -9,7 +9,15 @@ import shlex
 import subprocess
 import tomllib
 
-BINS = {'cmuxlayer', 'cmuxlayer-app-server', 'cmuxlayer-proxy'}
+BINS = {'cmuxlayer', 'cmuxlayer-mcp', 'cmuxlayer-app-server', 'cmuxlayer-proxy'}
+DIST_SCRIPT = re.compile(r'(?:^|/)cmuxlayer/(?:[^/]+/)*dist/[^/]+\.js$')
+# Host maintenance duties from cmuxlayer's resource-guard dispatcher, not MCP servers.
+HOST_DUTY_SCRIPTS = {'resource-guard.js', 'mcp-reaper.js'}
+
+
+def references_cmuxlayer(value):
+    tokens = re.split(r"[\s;&|()<>`\"']+", value)
+    return any(Path(token).name in BINS or DIST_SCRIPT.search(token) for token in tokens)
 
 
 def is_cmuxlayer_command(command):
@@ -38,7 +46,7 @@ def is_cmuxlayer_command(command):
             arg = next(remaining, '')
         elif arg.startswith('-'):
             continue
-        return bool(re.search(r'(?:^|/)cmuxlayer/dist/[^/]+\.js$', arg))
+        return bool(DIST_SCRIPT.search(arg)) and Path(arg).name not in HOST_DUTY_SCRIPTS
     return False
 
 
@@ -50,12 +58,12 @@ def registrations(data, prefix=''):
         servers = data.get(field, {})
         if isinstance(servers, dict):
             for key, server in servers.items():
-                command = ''
-                if isinstance(server, dict) and isinstance(server.get('command'), str):
+                references = False
+                if isinstance(server, dict):
                     argv = server.get('args') or []
-                    if isinstance(argv, list) and all(isinstance(arg, str) for arg in argv):
-                        command = shlex.join([server['command'], *argv])
-                if key in BINS or is_cmuxlayer_command(command):
+                    values = [server.get('command'), *(argv if isinstance(argv, list) else [])]
+                    references = any(isinstance(value, str) and references_cmuxlayer(value) for value in values)
+                if key in BINS or references:
                     yield f'{prefix}{field}.{key}'
     enabled = data.get('enabledMcpjsonServers', [])
     if isinstance(enabled, list):
@@ -70,7 +78,8 @@ def registrations(data, prefix=''):
 
 def check(home, process_list=None):
     paths = {home / p for p in ('.claude.json', '.claude/.mcp.json',
-             '.codex/config.toml', '.cursor/mcp.json', '.gemini/settings.json')}
+             '.codex/config.toml', '.cursor/mcp.json', '.gemini/settings.json',
+             '.gemini/config/mcp_config.json')}
     paths.update((home / '.claude').glob('settings*.json'))
     paths.update((home / 'Gits').glob('*/.mcp.json'))
     findings = []

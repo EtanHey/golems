@@ -53,6 +53,7 @@ class CmuxlayerOffTests(unittest.TestCase):
     def test_all_json_registration_locations(self):
         paths = ['.claude.json', '.claude/settings.json', '.claude/settings.local.json',
                  '.claude/.mcp.json', '.cursor/mcp.json', '.gemini/settings.json',
+                 '.gemini/config/mcp_config.json',
                  'Gits/demo/.mcp.json', 'Gits/another/.mcp.json']
         for path in paths:
             self.write(path, {'mcpServers': {'cmuxlayer': {'command': 'cmuxlayer'}}})
@@ -78,12 +79,28 @@ class CmuxlayerOffTests(unittest.TestCase):
                 self.assertIn('mcp_servers.cmuxlayer', self.check(red=True))
 
     def test_registration_alias(self):
-        self.write('.cursor/mcp.json', {'mcpServers': {'legacy': {
-            'command': 'node', 'args': ['/opt/cmuxlayer/dist/index.js']}}})
-        self.assertIn('mcpServers.legacy', self.check(red=True))
+        for definition in [
+            {'command': '~/.golems/bin/cmuxlayer-mcp'},
+            {'command': 'node', 'args': ['/opt/cmuxlayer/dist/index.js']},
+            {'command': '/bin/sh', 'args': ['-c', 'exec cmuxlayer-mcp']},
+            {'command': 'node', 'args': [
+                '/opt/homebrew/Cellar/cmuxlayer/0.4.107/libexec/dist/index.js']},
+            *({'command': '/usr/bin/env', 'args': [name]} for name in [
+                'cmuxlayer', 'cmuxlayer-mcp', 'cmuxlayer-app-server', 'cmuxlayer-proxy']),
+        ]:
+            with self.subTest(definition=definition):
+                self.write('.cursor/mcp.json', {'mcpServers': {'cmux': definition}})
+                self.assertIn('mcpServers.cmux', self.check(red=True))
+
+    def test_shell_wrapped_registration(self):
+        self.write('.cursor/mcp.json', {'mcpServers': {'cmux': {
+            'command': 'sh', 'args': ['-c', 'exec ~/.golems/bin/cmuxlayer-mcp;']}}})
+        self.assertIn('mcpServers.cmux', self.check(red=True))
 
     def test_precise_process_matches(self):
         commands = ['/opt/bin/cmuxlayer', 'cmuxlayer-app-server --stdio',
+                    '~/.golems/bin/cmuxlayer-mcp',
+                    '/opt/homebrew/opt/node/bin/node /opt/homebrew/Cellar/cmuxlayer/0.4.107/libexec/dist/index.js',
                     '/opt/bin/cmuxlayer-proxy',
                     '/opt/bin/node /opt/cmuxlayer/dist/index.js',
                     'node --inspect=9229 /opt/cmuxlayer/dist/server.js']
@@ -91,6 +108,19 @@ class CmuxlayerOffTests(unittest.TestCase):
         output = self.check(red=True)
         for i, cmd in enumerate(commands):
             self.assertIn(f'pid={100+i} {cmd}', output)
+
+    def test_resource_guard_duties_are_not_mcp_servers(self):
+        keg = '/opt/homebrew/Cellar/cmuxlayer/0.4.107/libexec'
+        commands = [
+            '/opt/homebrew/opt/node/bin/node /opt/homebrew/Cellar/cmuxlayer/0.4.107/libexec/dist/resource-guard.js',
+            '/opt/homebrew/opt/node/bin/node /opt/homebrew/Cellar/cmuxlayer/0.4.107/libexec/dist/mcp-reaper.js',
+            '/opt/homebrew/opt/cmuxlayer/bin/cmux-resource-guard',
+            f'/bin/bash {keg}/launchd/resource-guard/cmux-memory-watchdog.sh',
+            f'/bin/bash {keg}/launchd/resource-guard/heavy-ml-guardian.sh',
+            f'/bin/bash {keg}/launchd/cmux-ram-sampler/bin/cmux-ram-sampler.sh',
+        ]
+        self.ps.write_text('\n'.join(f'{300+i} {cmd}' for i, cmd in enumerate(commands)))
+        self.check()
 
     def test_unrelated_process_mentions(self):
         self.ps.write_text('''200 /bin/zsh -c "cd ~/Gits/cmuxlayer; sleep 10"
@@ -102,6 +132,8 @@ class CmuxlayerOffTests(unittest.TestCase):
 206 python3 check-cmuxlayer-off.py
 207 node --eval "console.log('cmuxlayer')"
 208 node --title /opt/cmuxlayer/dist/index.js /other/check.js
+209 node /other/check.js /opt/homebrew/Cellar/cmuxlayer/0.4.107/libexec/dist/index.js
+210 /bin/zsh -c "cd ~/Gits/cmuxlayer; sleep 10"
 ''')
         self.check()
 

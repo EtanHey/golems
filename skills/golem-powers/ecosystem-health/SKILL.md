@@ -13,7 +13,7 @@ Audit the golems ecosystem: MCP servers, BrainLayer, VoiceLayer daemon, JSONL wa
 
 ## Why This Exists
 
-The ecosystem has 22 repos, 45+ skills, 5 MCP servers (BrainLayer, VoiceLayer, cmux, exa, supabase), a 7GB semantic memory store, a JSONL watcher, enrichment pipeline, and multiple long-lived Claude sessions. Things break silently — MCP disconnects, daemons crash, watchers die, enrichment stalls, PRs rot. This skill catches those problems before the user notices.
+The ecosystem has 22 repos, 45+ skills, 4 MCP servers (BrainLayer, VoiceLayer, exa, supabase), a 7GB semantic memory store, a JSONL watcher, enrichment pipeline, and multiple long-lived Claude sessions. Things break silently — MCP disconnects, daemons crash, watchers die, enrichment stalls, PRs rot. This skill catches those problems before the user notices.
 
 ## Quick Check (session start/end)
 
