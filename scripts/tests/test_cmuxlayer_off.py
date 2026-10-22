@@ -109,6 +109,16 @@ class CmuxlayerOffTests(unittest.TestCase):
         self.write('.cursor/mcp.json', '{broken')
         self.assertIn('cannot inspect', self.check(red=True))
 
+    def test_profiles_with_omitted_or_null_lists_get_default_block(self):
+        spec = importlib.util.spec_from_file_location('mcp_policy', POLICY)
+        policy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(policy)
+        profiles = {'missing': {}, 'null': {'mcps': None},
+                    'null_lists': {'mcps': {'allow': None, 'block': None}}}
+        policy.apply_default_mcp_blocks({'contextProfiles': profiles})
+        for profile in profiles.values():
+            self.assertIn('cmuxlayer', profile['mcps']['block'])
+
     def test_every_profile_blocks_and_generator_omits_cmuxlayer(self):
         spec = importlib.util.spec_from_file_location('mcp_policy', POLICY)
         policy = importlib.util.module_from_spec(spec)
