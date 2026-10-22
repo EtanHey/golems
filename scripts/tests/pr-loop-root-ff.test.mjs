@@ -17,14 +17,14 @@ const doc = path.join(here, "..", "..", "skills", "golem-powers", "pr-loop", "re
 
 test("cleanup receipt requires removal proof and escalates preserved worktrees", () => {
   const receipt = readFileSync(doc, "utf8").split("### Cleanup Receipt")[1];
-  assert.ok(receipt.includes("- worktree: <path> removed; proof: absent from git worktree list --porcelain after git worktree prune"));
+  assert.ok(receipt.includes("- worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune"));
   assert.ok(receipt.includes("OR worktree: <path> kept because <reason>; escalated to <lead>"));
   assert.ok(receipt.includes("A receipt without removal proof or an escalated preservation exception is invalid."));
   assert.match(receipt, /local-only[\s\S]*dirty[\s\S]*lead/);
   const recipe = receipt.match(/```bash\n([\s\S]*?)\n\s*```/)[1];
   assert.match(recipe, /worktree remove[\s\S]*worktree prune[\s\S]*worktree list --porcelain/);
   assert.ok(!recipe.includes("--force"));
-  assert.ok(recipe.includes('echo "worktree: $WT removed; proof:'), "recipe must print the receipt worktree field");
+  assert.ok(recipe.includes('echo "worktree: removed: $WT; proof:'), "recipe must preserve both worktree: and removed: tokens before the proof");
 });
 
 // Discover guidance recursively, including every adapter format. Test/eval data

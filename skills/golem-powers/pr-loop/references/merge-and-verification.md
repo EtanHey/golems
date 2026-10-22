@@ -334,7 +334,9 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
   above asks for, so it needs no lead decision; local-only history or an
   unarchived `docs.local/` still does. A worker handing off an unmerged PR has
   a pushed branch, so it removes the tree too:
-  `worktree: <path> removed; proof: absent from git worktree list --porcelain after git worktree prune`.
+  `worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune`.
+  This canonical line keeps the `removed: <path>` token for settle consumers and
+  the `worktree:` field for the fleet-wrap receipt parser; append proof on the same line.
 - **How (retirement path, implementer-owned, both harnesses):** run this from
   inside your own worktree, unchanged; it prints the receipt's worktree line.
   ```bash
@@ -352,7 +354,7 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
     if git -C "$MAIN" worktree prune &&
        WORKTREES=$(git -C "$MAIN" worktree list --porcelain) &&
        ! printf '%s\n' "$WORKTREES" | grep -Fx "worktree $WT"; then
-      echo "worktree: $WT removed; proof: absent from git worktree list --porcelain after git worktree prune"
+      echo "worktree: removed: $WT; proof: absent from git worktree list --porcelain after git worktree prune"
     else
       echo "WORKTREE-CLEANUP STOP: $WT removal proof failed; escalate to lead" >&2
       exit 1
@@ -403,7 +405,7 @@ branch/worktree removal, end the merge comment (lead) or the DONE report
 CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):
 - root: <path> HEAD=<sha> <base-remote>/<default>=<sha> ahead/behind=0/0
   OR ROOT-FF STOP: <reason>
-- worktree: <path> removed; proof: absent from git worktree list --porcelain after git worktree prune
+- worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune
   OR worktree: <path> kept because <reason>; escalated to <lead>
 - branch: <name> deleted local+remote | kept because <reason>
 - files this PR added outside src/tests: <list or none>; each is: committed reference (docs/reference|docs/rationale|README) |
