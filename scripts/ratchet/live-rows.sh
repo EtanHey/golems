@@ -23,7 +23,11 @@ done
 [ -n "$MERGED" ] && [ -n "$LEASE_PR" ] && [ -n "$LEASE_REPO" ] || die "--merged-pr, --lease-pr and --lease-repo are required"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MAIN="$(cd "$(git -C "$HERE" rev-parse --git-common-dir)/.." && pwd)"
+COMMON_DIR="$(git -C "$HERE" rev-parse --git-common-dir)"
+case "$COMMON_DIR" in
+  /*) MAIN="$(cd "$COMMON_DIR/.." && pwd)" ;;
+  *) MAIN="$(cd "$HERE/$COMMON_DIR/.." && pwd)" ;;
+esac
 # Fail before GitHub/lease/issuer probes if the private two-host contract is unavailable.
 export RATCHET_SKILL_CONFIG="${RATCHET_SKILL_CONFIG:-$HOME/.golems/ratchet/installed-skills.json}"
 python3 -B "$HERE/installed-skills.py" --check-config >/dev/null || \
