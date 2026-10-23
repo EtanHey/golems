@@ -16,6 +16,7 @@
     "test-post-stream-tail-gate.bats",
     "test-pr-review-loop-rule.bats",
     "test-pr-size-labels.bats",
+    "test-ratchet-live-rows-common-dir.bats",
     "test-process-stream-agy-cli.bats",
     "test-qa-video-dense-windows.bats",
     "test-qa-video-package.bats",
