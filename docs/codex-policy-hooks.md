@@ -69,29 +69,8 @@ a specific instruction to use native `apply_patch`; timeouts retain the split
 hint. A shell fallback must emit stderr + exit 2
 if the adapter or interpreter cannot start. It must not use the fail-open path.
 The adapter deduplicates patch targets and has a seven-second total budget
-inside the ten-second native timeout. Timeouts receive a static split-patch
-hint. The input budget is exactly 1,048,576 decoded Python characters: ordinary
-evaluation reads one character past that limit and raises
-`ValueError("payload budget exceeded")`,
-which currently reaches the generic repair denial. The guardian batch parses
-JSON before checking its combined size and shape, so malformed or truncated
-input can fail earlier and use that same generic denial. A generic repair
-denial does not identify its cause; size rejection is one source-supported
-possibility, not a diagnosis. The specific historical rejected input and
-exception trace were not retained. The narrow diagnostic correction is tracked
-in [issue #828](https://github.com/EtanHey/golems/issues/828) and is not
-implemented in this version.
-
-For a generic denial, check registration with the status command for the
-installed host. For a release-managed client, use
-`node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client --source ~/.golems/current --status`;
-for an owner hooks-live install, run
-`node scripts/hooks/install-hooks.mjs --host mbp --status` from its checkout.
-Then inspect actual trust through
-`/hooks` from plain `codex` without `--profile`. Status alone does not prove
-native trust. If splitting a request, inspect its exact character count without
-printing secrets, then retry bounded calls or durable shards. Do not infer a
-unique cause from a smaller retry.
+inside the ten-second native timeout. Large/timed-out requests receive a static
+split-patch hint rather than a misleading reinstall instruction.
 
 Untrusted or disabled hooks are skipped. Installation alone is not enforcement:
 the owner must review the exact definitions through `/hooks` from **plain
