@@ -155,6 +155,14 @@ This includes downgrades to releases predating that protocol. Native Codex
 `/hooks` trust still needs review after definitions change. Owner hooks-live
 installations do not enter this client update path.
 
+Client Codex registrations point at the activated release's real, versioned
+`scripts/hooks/codex-policy-hook.py` path. An update can therefore change the
+registered command even when the policy source is unchanged; a native trust
+review may be required. Check client wiring with
+`node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client --source ~/.golems/current --status`,
+then inspect `/hooks` from plain `codex` without `--profile`. Status verifies
+wiring, not native trust.
+
 For a former M1 owner install, install the release with `--replace-checkout-links`,
 then run `node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client
 --source ~/.golems/current --migrate-owner-install --apply`. Verify the same command
