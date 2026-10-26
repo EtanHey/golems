@@ -11,6 +11,7 @@ setup() {
   TEST_ROOT="$(mktemp -d "$fixture_parent/test.XXXXXXXX")"
   export HOME="$TEST_ROOT/home" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
   mkdir -p "$HOME"
+  export WORKTREE_GC_REPORT_DIR="$TEST_ROOT/report" WORKTREE_GC_T3_DB="$TEST_ROOT/t3.sqlite"
   export WORKTREE_GC_CMUX_REGISTRY="$TEST_ROOT/registry.jsonl" GOLEMS_HEAVY_LOCK="$TEST_ROOT/lock"
   : > "$WORKTREE_GC_CMUX_REGISTRY"
   export GC_FIXTURE_ROOT="$TEST_ROOT" GC_SOURCE="$REPO_ROOT/scripts/worktree-gc.sh"
