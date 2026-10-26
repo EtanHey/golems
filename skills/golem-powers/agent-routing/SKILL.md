@@ -19,6 +19,15 @@ description: "Invoke before any git/gh/grep, even for context, to dispatch a wor
 - Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)
 - Why: Claude T3 leads made 0 Skill calls on Oct 16–18 while all three lead skills sat in their catalog (skill-edits audit, 2026-10-18).
 
+## Service tier and placement
+
+- Every delegate/sub-agent explicitly passes Claude `fastMode:false` or Codex `serviceTier:"default"`. Elevated service requires Etan's explicit request for that task.
+- Harness examples do not authorize elevated service.
+- Lead threads use the repo root checkout (`t3_thread_launch` with `workspaceStrategy:{type:"root"}`); only worker threads bind worktrees.
+- Use Theo's official T3 Code nightly; never build or install T3 from our fork.
+
+Attribution: Etan, 2026-10-26.
+
 ## Routing rules (SSOT)
 
 This section is the single source of truth for fleet routing. Fleet canon, global instructions, collab templates and other skills point here; models resolve through `standards/model-roles.json`.
