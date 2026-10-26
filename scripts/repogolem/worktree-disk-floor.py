@@ -63,9 +63,11 @@ def check_space(target):
     if free < floor:
         values = disk_report(parent)
         detail = describe(values) if values is not None else 'free-now only; purgeable unknown'
-        raise ValueError(f'worktree creation refused: {free:.1f} GiB free now at {parent}; '
-                         f'immediate allocation requires {floor:g} GiB free now '
-                         f'(GOLEMS_WORKTREE_MIN_FREE_GB); {detail}')
+        free_gb = free * 1024**3 / 1e9
+        floor_gb = floor * 1024**3 / 1e9
+        raise ValueError(f'worktree creation refused: {free_gb:.1f} GB free now at {parent}; '
+                         f'immediate allocation requires {floor_gb:.1f} GB free now '
+                         f'(GOLEMS_WORKTREE_MIN_FREE_GB={floor:g}); {detail}')
 
 
 if __name__ == '__main__':

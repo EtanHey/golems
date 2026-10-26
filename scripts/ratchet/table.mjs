@@ -31,8 +31,14 @@ export function markerComment(marker) {
 export const VERDICT_PREFIX = "<!-- ratchet-verdict: ";
 
 export function validDiskMeasurement(m) {
-  return m && [m.free_gb, m.floor, m.merged_worktrees, m.ceiling].every(n => Number.isSafeInteger(n) && n >= 0)
-    && typeof m.health === "boolean" && m.health === (m.free_gb >= m.floor && m.merged_worktrees <= m.ceiling);
+  if (!m || ![m.floor, m.merged_worktrees, m.ceiling].every(n => Number.isSafeInteger(n) && n >= 0)) return false;
+  const gb = n => typeof n === "number" && Number.isFinite(n) && n >= 0;
+  const modern = Object.hasOwn(m, "available_gb");
+  if (modern ? !gb(m.free_gb) : !Number.isSafeInteger(m.free_gb) || m.free_gb < 0) return false;
+  if (modern && !(m.source === "brainlayer" && gb(m.available_gb) && m.available_gb >= m.free_gb
+    || m.source === "free_now_only" && m.available_gb === null)) return false;
+  const capacity = modern ? m.available_gb ?? m.free_gb : m.free_gb;
+  return typeof m.health === "boolean" && m.health === (capacity >= m.floor && m.merged_worktrees <= m.ceiling);
 }
 
 export function parseRows(doc) {
@@ -218,7 +224,7 @@ export function renderTable(evaluation, { marker, title = "Ratchet table", produ
   for (const row of evaluation.rows) {
     const m = row.measurement;
     const detail = row.report_only && validDiskMeasurement(m)
-      ? `free_gb=${m.free_gb} floor=${m.floor} merged_worktrees=${m.merged_worktrees} ceiling=${m.ceiling}; measured health ${m.health ? "PASS" : "FAIL"}`
+      ? `${Object.hasOwn(m, "available_gb") ? `Available ${m.available_gb ?? "unknown"} GB; ${m.free_gb} GB free now; ` : ""}free_gb=${m.free_gb} floor=${m.floor} merged_worktrees=${m.merged_worktrees} ceiling=${m.ceiling}; measured health ${m.health ? "PASS" : "FAIL"}`
       : row.detail;
     const value = detail ? `${cell(row, row.value)} (${escapeCell(detail)})` : cell(row, row.value);
     lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status}${row.report_only ? " (report-only)" : ""} |`);

@@ -53,7 +53,7 @@ load lib/worktree-gc-fixtures
       process.exit(table.ok?0:1);
     ' "$REPO_ROOT"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'free_gb=13 floor=60 merged_worktrees=1 ceiling=25'* ]] || false
+  [[ "$output" == *'free_gb=13.958643712 floor=50 merged_worktrees=1 ceiling=25'* ]] || false
   [[ "$output" == *'measured health FAIL'* && "$output" == *'WARN (report-only)'* ]] || false
   [ -d "$eligible" ]
 }

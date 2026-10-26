@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { baseRowsAt, escapeCell, evaluate, markerComment, parseRows, readVerdict, renderTable, upsertComment } from "../ratchet/table.mjs";
+import { baseRowsAt, escapeCell, evaluate, markerComment, parseRows, readVerdict, renderTable, upsertComment, validDiskMeasurement } from "../ratchet/table.mjs";
 
 const script = resolve(import.meta.dir, "../ratchet/table.mjs");
 const BUG = "a".repeat(40);
@@ -494,4 +494,18 @@ describe("bounded disk report-only ruling", () => {
     expect(evaluate(args).ok).toBe(false);
     expect(evaluate({...args,prBody:"ratchet-loosen: disk-free-floor orc/Etan 2026-10-07 report-only until BOTH Macs GC"}).ok).toBe(true);
   });
+});
+
+
+test("Available measurements validate their source and health without losing legacy support", () => {
+  const measured = {free_gb:13.5, available_gb:131, source:"brainlayer", floor:50,
+    merged_worktrees:0, ceiling:25, health:true};
+  expect(validDiskMeasurement(measured)).toBe(true);
+  expect(validDiskMeasurement({...measured,available_gb:50})).toBe(true);
+  expect(validDiskMeasurement({...measured,available_gb:49.999999999,health:false})).toBe(true);
+  expect(validDiskMeasurement({...measured,available_gb:null,source:"free_now_only",health:false})).toBe(true);
+  for (const invalid of [{available_gb:null}, {source:"unknown"}, {available_gb:"131"},
+    {available_gb:-1}, {available_gb:Infinity}, {available_gb:10}, {health:false}]) {
+    expect(validDiskMeasurement({...measured,...invalid})).toBe(false);
+  }
 });

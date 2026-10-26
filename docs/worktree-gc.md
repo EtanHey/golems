@@ -30,10 +30,16 @@ can leave partial destinations that require manual inspection.
 ## Temporary disk health reporting (#710)
 
 Per orc/Etan's 2026-10-07 ruling, `disk-free-floor` has
-`report_only: gc-success-on-both-macs`. It still measures actual free GiB and
-counts the GC's guarded REMOVE plans against the unchanged default thresholds
-60 GiB / 25 worktrees. An unhealthy completed measurement remains `FAIL` in the
-health cell and `WARN (report-only)` in the table; it alone cannot fail the aggregate.
+`report_only: gc-success-on-both-macs`. It measures Available via
+`brainlayer disk --json` and counts the GC's guarded REMOVE plans. Per Etan's
+2026-10-26 ruling, the disk alarm floor is 50 GB Available
+(decimal GB, 1 GB = 1,000,000,000 bytes); the worktree ceiling remains 25.
+The report names Available and free now. If the bounded probe is unavailable,
+it checks raw free-now bytes with an explicit "free-now only; purgeable unknown"
+label and reports Available as unknown. Worktree creation separately retains its
+immediate-allocation floor configured in GiB; its refusal displays both measured
+and required capacity in decimal GB. An unhealthy completed measurement remains
+`FAIL` in the health cell and `WARN (report-only)` in the table; it alone cannot fail the aggregate.
 Healthy data remains PASS. Missing, invalid, contradictory or failed source/plan
 measurements fail the aggregate. Other rows remain enforced. The explicit warning
 measurement travels in the head-bound verdict; the consumer validates it instead

@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess
 from unittest import mock
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -54,6 +56,8 @@ def test_allocation_still_refuses_with_high_available(tmp_path, monkeypatch):
         except ValueError as exc:
             assert 'Available 131.0 GB' in str(exc)
             assert 'immediate allocation' in str(exc)
+            assert '13.5 GB free now' in str(exc)
+            assert 'GiB' not in str(exc)
         else:
             raise AssertionError('must preserve free-now allocation gate')
 
@@ -70,9 +74,6 @@ def test_missing_command_is_optional(tmp_path, capsys):
                     'Filesystem blocks Used Available\nfixture 99999999 0 13183593\n'):
                 module.measure(tmp_path)
             assert 'free-now only; purgeable unknown' in capsys.readouterr().out
-
-
-import pytest
 
 
 @pytest.mark.parametrize('available,healthy', [(131_000_000_000, True),
