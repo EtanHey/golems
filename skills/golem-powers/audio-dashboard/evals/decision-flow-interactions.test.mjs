@@ -49,6 +49,20 @@ function boot() {
   return { window, document: window.document };
 }
 
+test("rendered decision flow uses a hub-compatible route-scoped storage key", () => {
+  const html = renderDecisionFlow({
+    storageKey: "dbx:storage-contract-test",
+    scenes: [scene("only")],
+    decisions: [{ id: "only", title: "Only", sceneIds: ["only"] }],
+  });
+  const assignment = html.match(/\bvar\s+KEY\s*=\s*([^;\n]+)/)?.[1] || "";
+  // Mirror the hub's accepted key expression without a cross-repo import.
+  expect(assignment).toMatch(/getAttribute\(\s*["']data-storage-key["']\s*\)/);
+  const fallback = assignment.match(/\|\|\s*(["'])([^"']*)\1/);
+  expect(fallback?.[2] || "").toMatch(/^dbx:[a-z0-9][a-z0-9._-]*$/i);
+  expect(html).toContain('data-storage-key="dbx:storage-contract-test"');
+});
+
 test("pause keeps the teleprompter open and resumes at the same position", () => {
   const { document } = boot();
   const card = document.querySelector('[data-decision="a"]');

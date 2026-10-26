@@ -1,7 +1,7 @@
 (function(){
   var root=document.documentElement;
   var cards=Array.from(document.querySelectorAll(".df-card"));
-  var KEY=document.body.dataset.storageKey||"dbx:decision-flow";
+  var KEY=document.body.getAttribute("data-storage-key")||"dbx:decision-flow";
   var storageState=document.getElementById("df-storage-state");
   var store={};
   try{store=JSON.parse(localStorage.getItem(KEY)||"{}");}catch(error){store={};}
