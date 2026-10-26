@@ -32,10 +32,15 @@ def t3_threads(path):
 
 
 def add_report(journal, repo, path, branch, reason, detail):
-    admin = subprocess.check_output(["git", "-C", path, "rev-parse", "--absolute-git-dir"], text=True).strip()
+    try:
+        admin = subprocess.check_output(["git", "-C", path, "rev-parse", "--absolute-git-dir"], text=True).strip()
+    except (OSError, subprocess.SubprocessError):
+        if reason != "KEEP-undetermined":
+            raise
+        admin, branch = None, "unknown"
     # Birth time, never mtime: status/fetch must not make stale work look new.
     birth = None
-    for flags in (["-f", "%B"], ["-c", "%W"]):
+    for flags in (["-f", "%B"], ["-c", "%W"]) if admin else ():
         value = subprocess.run(["stat", *flags, admin], capture_output=True, text=True)
         if value.returncode == 0 and value.stdout.strip().isdigit():
             birth = int(value.stdout.strip())

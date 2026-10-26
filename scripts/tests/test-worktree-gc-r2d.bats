@@ -159,7 +159,7 @@ PY
   [[ "$output" == *REMOVED* ]] || return 1
   [ ! -e "$worktree" ]
   [[ "$output" == *"registry line 2"* ]] || return 1
-  [[ "$output" == *"skipped 3 malformed registry rows"* ]] || return 1
+  [[ "$output" == *"encountered 3 malformed registry rows"* ]] || return 1
 }
 
 @test "R2d captured macOS padded ps line detects a reused PID" {
@@ -194,7 +194,7 @@ census = runpy.run_path(sys.argv[1])['census']
 read = []
 class Registry(io.StringIO):
     def __iter__(self):
-        yield from self.readlines()
+        yield from iter(self.readline, '')
         read.append(True)
 def snapshot():
     assert read, 'process snapshot preceded registry read'
