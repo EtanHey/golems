@@ -50,7 +50,7 @@ emit_row() {
   printf '%s\n' "$row" >> "$LOG_FILE"
   printf '%s\n' "$row"
   case "$verdict" in
-    KEEP-dirty|KEEP-unmerged|KEEP-unpushed|KEEP-live|KEEP-detached|KEEP-reflog)
+    KEEP-dirty|KEEP-unmerged|KEEP-unpushed|KEEP-live|KEEP-detached|KEEP-reflog|KEEP-undetermined)
       local report_detail
       report_detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
         "$repo_name" "$worktree_path" "$branch" "$verdict" "$reason" 2>&1)" ||

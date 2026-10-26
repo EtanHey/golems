@@ -14,7 +14,7 @@ registry_fixture() {
 #!/usr/bin/env bash
 if [[ "$*" == '-axo pid=,lstart=' ]]; then
   echo snapshot >> "$PS_TRACE"
-  [[ "${PS_FAIL:-0}" == 0 ]] || exit 1 || return 1
+  [[ "${PS_FAIL:-0}" == 0 ]] || exit 1
   cat "$PS_ROWS"
 else
   echo 4242

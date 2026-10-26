@@ -40,7 +40,7 @@ def add_report(journal, repo, path, branch, reason, detail):
         if value.returncode == 0 and value.stdout.strip().isdigit():
             birth = int(value.stdout.strip())
             break
-    if not birth or time.time() - birth < 72 * 3600:
+    if reason != "KEEP-undetermined" and (not birth or time.time() - birth < 72 * 3600):
         return
     owner = repo
     try:
@@ -81,7 +81,7 @@ def finish_report(journal, directory, run_status, publish):
         for row in rows:
             md.append(f"- `{row['path']}` · `{row['branch']}` · {row['size_bytes']} bytes · {row['reason']}: {row['detail']}\n")
     if not owners:
-        md.append("No dirty/unmerged/unpushed KEEP older than 72 hours.\n")
+        md.append("No undetermined stalls or stale KEEP rows older than 72 hours.\n")
     # Serialize publishers, not deletion decisions; readers see complete files.
     with (directory / ".report.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
