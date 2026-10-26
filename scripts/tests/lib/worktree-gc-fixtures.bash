@@ -11,6 +11,7 @@ setup() {
   TEST_ROOT="$(mktemp -d "$fixture_parent/test.XXXXXXXX")"
   export HOME="$TEST_ROOT/home" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
   mkdir -p "$HOME"
+  export WORKTREE_GC_REPORT_DIR="$TEST_ROOT/report" WORKTREE_GC_T3_DB="$TEST_ROOT/t3.sqlite"
   export WORKTREE_GC_CMUX_REGISTRY="$TEST_ROOT/registry.jsonl" GOLEMS_HEAVY_LOCK="$TEST_ROOT/lock"
   : > "$WORKTREE_GC_CMUX_REGISTRY"
   export GC_FIXTURE_ROOT="$TEST_ROOT" GC_SOURCE="$REPO_ROOT/scripts/worktree-gc.sh"
@@ -57,7 +58,7 @@ make_fixture_repo() {
   git init -q -b "$base_branch" "$seed"
   printf 'fixture\n' > "$seed/fixture.txt"
   git -C "$seed" add fixture.txt
-  git -C "$seed" -c user.name=Fixture -c user.email=fixture@example.invalid \
+  git -C "$seed" -c user.name=Fixture -c user.email=fixture@example.com \
     commit -qm 'initial fixture'
   git -C "$seed" remote add origin "$remote"
   git -C "$seed" push -q -u origin "$base_branch"
@@ -83,6 +84,6 @@ commit_fixture_file() {
 
   printf 'fixture change\n' > "$worktree/$filename"
   git -C "$worktree" add "$filename"
-  git -C "$worktree" -c user.name=Fixture -c user.email=fixture@example.invalid \
+  git -C "$worktree" -c user.name=Fixture -c user.email=fixture@example.com \
     commit -qm "add $filename"
 }
