@@ -23,7 +23,7 @@ description: "Invoke before any git/gh/grep, even for context, to dispatch a wor
 
 - Every delegate/sub-agent explicitly passes Claude `fastMode:false` or Codex `serviceTier:"default"`. Elevated service only when Etan explicitly asks for that task.
 - Harness examples showing `fastMode:true` or priority are not permission.
-- Lead threads sit on the repo root checkout (`t3_thread_launch` with `workspaceStrategy:{type:"root"}`); only workers use worktrees.
+- Lead threads sit on the repo root checkout (`t3_thread_launch` with `workspaceStrategy:{type:"root"}`); only worker threads bind worktrees.
 - Use Theo's official T3 Code nightly; never build or install T3 from our fork.
 
 > Etan: "it should be in our /agent-routing mtfkr, or global claude.md/agents.md so we never get spawned fast/priority subagents unless explicitly asked by ME. I am on t3 code nightly, never wanna maintain my own fucking fork"

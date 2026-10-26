@@ -160,7 +160,7 @@ test("agent-routing states service tier and placement near the top", () => {
     'Claude `fastMode:false`', 'Codex `serviceTier:"default"`',
     "Elevated service only when Etan explicitly asks for that task.",
     "Harness examples", "are not permission", 'workspaceStrategy:{type:"root"}',
-    "only workers use worktrees", "Theo's official T3 Code nightly",
+    "only worker threads bind worktrees", "Theo's official T3 Code nightly",
     "never build or install T3 from our fork",
     "never get spawned fast/priority subagents unless explicitly asked by ME",
     "voicelayer/brainlayer leads being on worktrees for no fucking reason",
