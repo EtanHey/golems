@@ -28,6 +28,14 @@ description: "Invoke before any git/gh/grep, even for context, to dispatch a wor
 
 Attribution: Etan, 2026-10-26.
 
+### Wide fan-out default
+
+- Wide fan-out (weaves, session mining, multi-item audits/recon) defaults to Codex, overriding gathering defaults for these sweeps; single read-only lanes keep their existing route. Codex usage resets frequently and Etan is comfortable spending it.
+- Leads needing strong reasoning across many items may fan out to many `codex.implement` (Sol) children, within existing concurrency limits.
+- Reserve Claude for leads, judgment and UI/taste work; its weekly budget is the scarce resource.
+
+Attribution: Etan, 2026-10-26.
+
 ## Routing rules (SSOT)
 
 This section is the single source of truth for fleet routing. Fleet canon, global instructions, collab templates and other skills point here; models resolve through `standards/model-roles.json`.
