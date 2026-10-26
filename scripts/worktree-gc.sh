@@ -9,6 +9,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source "$SCRIPT_DIR/lib/worktree-git-env.sh"
+# Pins: ~/.config/golems/worktree-gc-pins.txt (one absolute path or branch per line).
+# Owner queue: docs.local/worktree-gc/latest.{json,md}; age is reporting only.
+# Test adapters: WORKTREE_GC_T3_DB, WORKTREE_GC_REPORT_DIR, WORKTREE_GC_PINS_FILE.
 
 usage() {
   printf 'Usage: %s [--dry-run | --prune-plan | --apply] [--idle-hours <n>] [--repo <path> | --path <worktree>]\n' \
@@ -46,6 +49,11 @@ emit_row() {
   row="$repo_name · $worktree_path · $branch · dirty=$dirty · ahead=$ahead · $verdict · $reason"
   printf '%s\n' "$row" >> "$LOG_FILE"
   printf '%s\n' "$row"
+  case "$verdict" in
+    KEEP-dirty|KEEP-unmerged|KEEP-unpushed)
+      python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
+        "$repo_name" "$worktree_path" "$branch" "$verdict" "$reason" ;;
+  esac
 }
 
 is_tool_managed_worktree() {
@@ -170,7 +178,7 @@ path_has_cwd_in() {
   return 1
 }
 
-# Lists open-PR head branches once per repo. A GitHub origin whose PRs cannot
+# Lists open branches and merged PR SHAs once per repo. An origin whose PRs cannot
 # be listed makes every branch worktree KEEP-undetermined.
 load_open_prs() {
   local url
@@ -178,6 +186,8 @@ load_open_prs() {
 
   open_pr_heads=""
   open_pr_failed=""
+  merged_prs="[]"
+  merged_pr_failed=""
   # The configured URL, not `remote get-url` (which applies insteadOf rewrites).
   url="$(git -C "$repo_root" config --get remote.origin.url || true)"
   [[ "$url" =~ github\.com[:/]([^/]+/[^/]+)$ ]] || return 0
@@ -185,6 +195,52 @@ load_open_prs() {
   if ! open_pr_heads="$(gh pr list --repo "$slug" --state open --limit 1000 \
     --json headRefName --jq '.[].headRefName' 2>/dev/null)"; then
     open_pr_failed="cannot list open PRs for $slug (gh failed)"
+  fi
+  if ! merged_prs="$(gh pr list --repo "$slug" --state merged --limit 10000 \
+      --json headRefName,headRefOid 2>/dev/null)" ||
+      ! merged_prs="$(python3 -c 'import json,sys
+rows=json.load(sys.stdin)
+if not isinstance(rows,list) or len(rows)>=10000: raise ValueError("incomplete PR list")
+for r in rows:
+ if not isinstance(r["headRefName"],str) or len(r["headRefOid"])!=40: raise ValueError("invalid PR head")
+print("\n".join(r["headRefName"]+"\t"+r["headRefOid"] for r in rows))' <<< "$merged_prs")"; then
+    merged_pr_failed="cannot list merged PR heads for $slug (gh failed or incomplete)"
+  fi
+}
+
+# A name is only a lookup key: the local HEAD must be covered by the PR SHA.
+head_is_merged() {
+  local path="$1" branch="$2" pr_branch pr_sha
+  git -C "$path" merge-base --is-ancestor HEAD "$base_ref" && return 0
+  [[ -n "$branch" ]] || return 1
+  while IFS=$'\t' read -r pr_branch pr_sha; do
+    [[ "$pr_branch" == "$branch" && "$pr_sha" =~ ^[0-9a-f]{40}$ ]] || continue
+    git -C "$path" merge-base --is-ancestor HEAD "$pr_sha" 2>/dev/null && return 0
+  done <<< "$merged_prs"
+  return 1
+}
+
+check_owner_guards() {
+  local path="$1" branch="$2" pins rc=0
+  local pin_file="${WORKTREE_GC_PINS_FILE:-$HOME/.config/golems/worktree-gc-pins.txt}"
+  if [[ -e "$pin_file" || -L "$pin_file" ]]; then
+    if ! pins="$(cat "$pin_file")"; then
+      emit_row "$repo_name" "$path" "$branch" not-checked undetermined KEEP-undetermined "cannot read pins"
+      return 1
+    fi
+    if line_in "$path" "$pins" || line_in "$branch" "$pins"; then
+      emit_row "$repo_name" "$path" "$branch" not-checked not-checked KEEP-pinned "optional pin file"
+      return 1
+    fi
+  fi
+  if [[ "$is_t3" -eq 1 ]]; then
+    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3 "$path" || rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+      local verdict=KEEP-undetermined
+      [[ "$rc" -eq 3 ]] && verdict=KEEP-live
+      emit_row "$repo_name" "$path" "$branch" not-checked undetermined "$verdict" "T3 binding live or unreadable"
+      return 1
+    fi
   fi
 }
 
@@ -273,6 +329,7 @@ apply_removal() {
       "KEEP-undetermined" "${archive_detail:-ignored-data archive failed}"
     return 0
   fi
+  check_owner_guards "$worktree_path" "$branch_display" || return 0
   # A durable intent must succeed before the destructive call (nightly crash evidence).
   emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" "REMOVING" "$archive_detail"
   # Never --force: git itself refuses a tree that became unclean meanwhile.
@@ -281,7 +338,7 @@ apply_removal() {
       "KEEP-undetermined" "git worktree remove refused"
     return 0
   fi
-  removed_detail="clean and fully represented by $base_ref; $archive_detail"
+  removed_detail="clean; represented by $base_ref or a SHA-qualified merged PR; $archive_detail"
   emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" "REMOVED" "$removed_detail"
 }
 
@@ -309,6 +366,7 @@ process_worktree_block() {
   local index_flags
   local remote_contains
   local ahead
+  local is_t3=0
 
   [[ -n "$worktree_path" ]] || return 0
 
@@ -345,15 +403,19 @@ process_worktree_block() {
     return 0
   fi
 
-  # AIDEV-NOTE: only <main>/.worktrees/<name> is ever eligible (#703 R1 H1):
+  # Only direct children of <main>/.worktrees or ~/.t3/worktrees/<repo>:
   # runtime checkouts (~/.local/share/...), Cursor and superpowers worktrees
   # and trees inside docs.local live elsewhere and are never touched.
   local scope_name="${canonical_worktree#"$main_root/.worktrees/"}"
-  if [[ "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ]]; then
+  local t3_prefix="$(canonical_path "$HOME")/.t3/worktrees/$repo_name/"
+  local t3_name="${canonical_worktree#"$t3_prefix"}"
+  [[ "$canonical_worktree" == "$t3_prefix"?* && "$t3_name" != */* ]] && is_t3=1
+  if [[ "$is_t3" -eq 0 && ( "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ) ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
       "not-checked" "KEEP-out-of-scope" "not under $main_root/.worktrees/"
     return 0
   fi
+  check_owner_guards "$worktree_path" "$branch_display" || return 0
 
   if [[ -n "$locked_reason" ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
@@ -447,10 +509,16 @@ process_worktree_block() {
     return 0
   fi
   if [[ "$ahead" -ne 0 ]]; then
-    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" \
-      "$ahead" "KEEP-unpushed" "$ahead commit(s) absent from $base_ref"
-    found_unpushed=1
-    return 0
+    if [[ -n "$merged_pr_failed" ]]; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" 0 undetermined KEEP-undetermined "$merged_pr_failed"
+      return 0
+    fi
+    if ! head_is_merged "$worktree_path" "$branch_display"; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" "0" \
+        "$ahead" "KEEP-unpushed" "$ahead commit(s) absent from $base_ref and merged PR heads"
+      found_unpushed=1
+      return 0
+    fi
   fi
 
   refresh_remote_base
@@ -515,7 +583,7 @@ process_worktree_block() {
     found_unpushed=1
     return 0
   fi
-  if [[ "$ahead" -ne 0 ]]; then
+  if [[ "$ahead" -ne 0 ]] && ! head_is_merged "$worktree_path" "$branch_display"; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" \
       "$ahead" "KEEP-unpushed" "$ahead commit(s) absent from freshly revalidated $base_ref"
     found_unpushed=1
@@ -678,6 +746,10 @@ idle_seconds=$((idle_hours * 3600))
 LOG_DIR="$SCRIPT_DIR/../docs.local"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/worktree-gc-$(date '+%Y%m%d-%H%M%S')-$$.log"
+REPORT_JOURNAL="$LOG_FILE.rows.jsonl"
+: > "$REPORT_JOURNAL"
+REPORT_DIR="${WORKTREE_GC_REPORT_DIR:-$LOG_DIR/worktree-gc}"
+trap 'rc=$?; python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" || exit 1' EXIT
 
 # A path-only lane close discovers its main root read-only, then validates it.
 # An explicit --repo is never replaced by --path, regardless of argument order.

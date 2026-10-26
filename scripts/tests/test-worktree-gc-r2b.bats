@@ -14,8 +14,8 @@ squash_fixture() {
   mkdir -p "$TEST_ROOT/bin"
   cat > "$TEST_ROOT/bin/gh" <<'STUB'
 #!/usr/bin/env bash
-[[ " $* " == *" --state merged "* ]] || exit 0 || return 1
-[[ "${GH_FAIL:-0}" == 0 ]] || exit 1 || return 1
+[[ " $* " == *" --state merged "* ]] || exit 0
+[[ "${GH_FAIL:-0}" == 0 ]] || exit 1
 printf '[{"headRefName":"topic","headRefOid":"%s"}]\n' "$MERGED_SHA"
 STUB
   chmod +x "$TEST_ROOT/bin/gh"
@@ -48,6 +48,7 @@ bind_thread() {
   squash_fixture
   commit_fixture_file "$worktree" later-pr-commit.txt
   export MERGED_SHA="$(git -C "$worktree" rev-parse HEAD)"
+  git -C "$worktree" branch preserved-pr-tip "$MERGED_SHA"
   git -C "$worktree" reset --hard "$merged_sha" >/dev/null
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]
@@ -102,6 +103,37 @@ bind_thread() {
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]
   [[ "$output" == *KEEP-undetermined* ]] || return 1
+  [ -d "$worktree" ]
+}
+
+@test "R2b T3 settled binding permits removal but every active session status keeps" {
+  t3_fixture; bind_thread "'2026-01-01'"
+  for state in running starting queued waiting preparing; do
+    sqlite3 "$WORKTREE_GC_T3_DB" "DELETE FROM orchestration_v2_projection_provider_sessions; INSERT INTO orchestration_v2_projection_provider_sessions VALUES ('child','$state');"
+    run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+    [[ "$output" == *KEEP-live* ]] || return 1
+    [ -d "$worktree" ]
+  done
+  sqlite3 "$WORKTREE_GC_T3_DB" 'DELETE FROM orchestration_v2_projection_provider_sessions;'
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [[ "$output" == *REMOVED* ]] || return 1
+  [ ! -e "$worktree" ]
+}
+
+@test "R2b T3 invalid schema fails closed" {
+  t3_fixture
+  sqlite3 "$WORKTREE_GC_T3_DB" 'DROP TABLE orchestration_v2_projection_runs;'
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [[ "$output" == *KEEP-undetermined* ]] || return 1
+  [ -d "$worktree" ]
+}
+
+@test "R2b merged PR head from a different branch cannot authorize removal" {
+  squash_fixture
+  git -C "$worktree" branch -m reused-name
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 3 ]
+  [[ "$output" == *KEEP-unpushed* ]] || return 1
   [ -d "$worktree" ]
 }
 
