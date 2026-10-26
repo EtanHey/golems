@@ -33,6 +33,7 @@
     "test-worktree-gc-r2.bats",
     "test-worktree-gc-r2b.bats",
     "test-worktree-gc-r2d.bats",
+    "test-worktree-gc-r2f.bats",
     "test-worktree-gc.bats"
   ],
   "skip": {}

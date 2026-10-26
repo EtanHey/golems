@@ -325,6 +325,12 @@ apply_removal() {
       "KEEP-undetermined" "nested git repository or unscannable tree: ${nested:-scan failed}"
     return 0
   fi
+  local protection_detail
+  if ! protection_detail="$(python3 "$SCRIPT_DIR/lib/worktree-delete-check.py" "$worktree_path")"; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
+      "KEEP-undetermined" "${protection_detail:-deletion permission scan failed}"
+    return 0
+  fi
   if [[ "$apply" -eq 0 ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
       "REMOVE" "eligible prune plan; archive verification required before removal"
