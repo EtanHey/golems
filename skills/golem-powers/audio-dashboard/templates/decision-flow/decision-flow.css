@@ -7,10 +7,11 @@
   --glass:#79cfc2;--glass-soft:rgba(121,207,194,.13);
   --sans:"Avenir Next","Avenir","Segoe UI Variable","Segoe UI",system-ui,sans-serif;
   --serif:"Iowan Old Style","Charter","Palatino Linotype",Palatino,Georgia,serif;
+  --dock-clearance:88px; /* fixed phone dock height plus breathing room; focus scrolling and the last card clear it */
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--ink);color:var(--moon);font:16px/1.55 var(--sans);padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;scroll-padding-bottom:calc(var(--dock-clearance) + env(safe-area-inset-bottom))}
+body{margin:0;background:var(--ink);color:var(--moon);font:16px/1.55 var(--sans);padding-bottom:calc(var(--dock-clearance) + 24px + env(safe-area-inset-bottom))}
 button{font:inherit;color:inherit}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--amber);outline-offset:3px}
@@ -123,6 +124,7 @@ a{color:inherit}
 }
 
 @media(min-width:1040px){
+  html{scroll-padding-bottom:0}
   body{padding-bottom:0}
   .df-layout{display:grid;grid-template-columns:260px minmax(0,740px);grid-template-areas:"side top" "side ledger";column-gap:56px;justify-content:center}
   .df-top{grid-area:top}

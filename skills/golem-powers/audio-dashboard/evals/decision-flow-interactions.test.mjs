@@ -299,3 +299,32 @@ test("player sits above the written briefing so listening comes first", () => {
   expect(order.indexOf("df-player")).toBeLessThan(order.indexOf("df-question"));
   expect(order.indexOf("df-teleprompter")).toBeLessThan(order.indexOf("df-question"));
 });
+
+test("phone layout keeps focused controls clear of the fixed bottom dock", () => {
+  const html = renderDecisionFlow({ scenes: [scene("only")], decisions: [{ id: "only", title: "Only", sceneIds: ["only"] }] });
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+  const dockHeight = Number(css.match(/--dock-clearance:\s*(\d+)px/)?.[1]);
+  expect(dockHeight).toBeGreaterThanOrEqual(80);
+  expect(css).toMatch(/\bhtml\{[^}]*scroll-padding-bottom:calc\(var\(--dock-clearance\) \+ env\(safe-area-inset-bottom\)\)/);
+  expect(css).toMatch(/\bbody\{[^}]*padding-bottom:calc\(var\(--dock-clearance\) \+ 24px \+ env\(safe-area-inset-bottom\)\)/);
+  const desktop = css.slice(css.indexOf("@media(min-width:1040px)"));
+  expect(desktop).toMatch(/\bhtml\{scroll-padding-bottom:0\}/);
+});
+
+test("focusing a card control under the fixed dock scrolls it clear", () => {
+  const { window, document } = boot();
+  const dock = document.querySelector(".df-dock");
+  const free = document.querySelector('[data-decision="a"] .note-area');
+  window.getComputedStyle = ((original) => (element) => element === dock ? { position: "fixed" } : original(element))(window.getComputedStyle.bind(window));
+  dock.getBoundingClientRect = () => ({ top: 773, bottom: 844 });
+  free.getBoundingClientRect = () => ({ top: 718, bottom: 814 });
+  free.__scrolledIntoView = false;
+  free.dispatchEvent(new window.FocusEvent("focusin", { bubbles: true }));
+  expect(free.__scrolledIntoView).toBe(true);
+
+  const clear = document.querySelector('[data-decision="a"] .df-next');
+  clear.getBoundingClientRect = () => ({ top: 600, bottom: 648 });
+  clear.__scrolledIntoView = false;
+  clear.dispatchEvent(new window.FocusEvent("focusin", { bubbles: true }));
+  expect(clear.__scrolledIntoView).toBe(false);
+});

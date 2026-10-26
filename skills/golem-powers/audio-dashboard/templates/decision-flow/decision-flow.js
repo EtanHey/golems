@@ -42,5 +42,6 @@
   function copied(){var state=document.getElementById("df-copy-state");state.textContent="Answers copied";state.classList.add("is-visible");setTimeout(function(){state.classList.remove("is-visible");},1200);}
   document.getElementById("df-copy").addEventListener("click",function(){var text=answersText();if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(copied,function(){fallback(text);});}else fallback(text);});
   function fallback(text){var area=document.createElement("textarea");area.value=text;document.body.appendChild(area);area.select();document.execCommand("copy");area.remove();copied();}
+  document.addEventListener("focusin",function(event){var dock=document.querySelector(".df-dock");var view=document.defaultView;var el=event.target;if(!dock||!view||!el||!el.getBoundingClientRect||dock.contains(el))return;if(view.getComputedStyle(dock).position!=="fixed")return;if(el.getBoundingClientRect().bottom>dock.getBoundingClientRect().top)el.scrollIntoView({block:"nearest"});});
   updateCounts();root.dataset.ready="true";
 })();
