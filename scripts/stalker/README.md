@@ -33,10 +33,10 @@ upload failures keep bounded backoff and resume from the server's Range.
 
 ## Resume an existing recording
 
-Run the canonical post-stream handler with its existing video and chat paths. To deliver without repeating the optional archive operation:
+Run the canonical post-stream handler with its existing video and chat paths:
 
 ```bash
-STREAM_AUTO_ARCHIVE=0 scripts/stalker/post-stream.sh \
+scripts/stalker/post-stream.sh \
   docs.local/stalker-golem/examplechannel-YYYY-MM-DD-HHMMSS \
   docs.local/stalker-golem/examplechannel-YYYY-MM-DD-HHMMSS/video.mp4 \
   docs.local/stalker-golem/examplechannel-YYYY-MM-DD-HHMMSS/chat.log examplechannel
