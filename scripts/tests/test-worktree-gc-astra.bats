@@ -155,7 +155,8 @@ SH
 
 @test "D5 invalid pid cwd or duplicate fields cannot masquerade as a dead empty registry" {
   a="$(make_fixture_repo schema)"; target="$(add_branch_worktree "$a" target)"
-  for row in '{"pid":true,"cwd":"/"}' '{"pid":1,"cwd":"relative"}' '{"pid":1,"pid":2,"cwd":"/"}' '{"pid":1,"cwd":"/","launch_cwd":null}'; do
+  # Invalid PIDs with valid absolute paths are retained per row (R2d N1).
+  for row in '{"pid":true,"cwd":"relative"}' '{"pid":1,"cwd":"relative"}' '{"pid":1,"pid":2,"cwd":"/"}' '{"pid":1,"cwd":"/","launch_cwd":null}'; do
     printf '%s\n' "$row" > "$WORKTREE_GC_CMUX_REGISTRY"
     run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$a"
     [ "$status" -eq 0 ]; [ -d "$target" ]
