@@ -18,6 +18,19 @@ Replace the example with your hub’s HTTPS origin.
 
 The runner requires Node, Python 3 for its kernel-owned run lock, and authenticated Codex. Its generation deadline remains bounded; a timeout is a failed stage, never an empty successful digest. Diagnostic output lives in the run's `.digest-work/` directory.
 
+### Drive archive authentication
+
+Stage 9 uses the Drive API through the sibling Orchestrator checkout's
+`vendor/google-drive-mcp/oauth-token-guard.mjs`. It uses the guard's default token
+path or `GOOGLE_DRIVE_MCP_TOKEN_PATH`; a signed-in Drive desktop app does not
+supply that token. The guard's `--status` command reports token presence and
+expiry without printing credentials. A missing or revoked token requires
+recovery through that MCP's authentication flow before resuming completion.
+
+Failures distinguish `Drive auth failed`, `Drive request timed out` and
+`Drive network error`. Uploads stop immediately on auth failure; transient
+upload failures keep bounded backoff and resume from the server's Range.
+
 ## Resume an existing recording
 
 Run the canonical post-stream handler with its existing video and chat paths. To deliver without repeating the optional archive operation:

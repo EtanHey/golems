@@ -8,13 +8,69 @@ import { createDriveArchive } from '../stalker/stalker-drive-archive.mjs';
 const parentId = 'archive-parent';
 const hash = 'a'.repeat(64);
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers });
-async function fixture(t, fetchImpl) {
+const sanitized = message => error => {
+  assert.equal(error.message, message); assert.equal(error.cause, undefined); return true;
+};
+async function fixture(t, fetchImpl, options = {}) {
   const root = await mkdtemp(join(import.meta.dirname, '.drive-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const absolutePath = join(root, 'video.mp4'); await writeFile(absolutePath, 'abc');
   return { request: { absolutePath, relativePath: 'video.mp4', runName: 'examplechannel-2026-09-08', size: 3, sha256: hash },
-    archive: createDriveArchive({ parentId, tokenImpl: async () => 'private-test-token', fetchImpl, delayImpl: async () => {} }) };
+    archive: createDriveArchive({ parentId, tokenImpl: async () => 'private-test-token', fetchImpl, delayImpl: async () => {}, ...options }) };
 }
+
+test('auth failure is sanitized before any Drive request', async t => {
+  let calls = 0;
+  const { archive, request } = await fixture(t, async () => { calls++; }, {
+    tokenImpl: async () => { throw new Error('private-test-token auth details'); },
+  });
+  await assert.rejects(archive(request), sanitized('Drive auth failed'));
+  assert.equal(calls, 0);
+});
+
+for (const [name, error, message] of [
+  ['timeout', new DOMException('private-test-token timeout details', 'TimeoutError'), 'Drive request timed out'],
+  ['network', new TypeError('private-test-token network details'), 'Drive network error'],
+]) test(`${name} failure keeps its class without request details`, async t => {
+  const { archive, request } = await fixture(t, async () => { throw error; });
+  await assert.rejects(archive(request), sanitized(message));
+});
+
+test('HTTP 401 is an auth failure without exposing the response body', async t => {
+  const { archive, request } = await fixture(t, async () => json({ error: 'private-test-token' }, 401));
+  await assert.rejects(archive(request), sanitized('Drive auth failed'));
+});
+
+for (const authFailure of ['HTTP 401', 'token refresh']) test(`${authFailure} during an upload stops without retries or a session probe`, async t => {
+  let puts = 0, delays = 0, tokens = 0;
+  const { archive, request } = await fixture(t, async (url, init) => {
+    url = String(url);
+    if (url.includes('/archive-parent?')) return json({ id: parentId, mimeType: 'application/vnd.google-apps.folder', trashed: false });
+    if (url.includes('q=')) return json({ files: url.includes('video.mp4') ? [] : [{ id: 'run-folder', mimeType: 'application/vnd.google-apps.folder' }] });
+    if (url.includes('uploadType=resumable')) return json({}, 200, { location: 'https://www.googleapis.com/upload/drive/v3/files?upload_id=test' });
+    assert.equal(init.method, 'PUT'); puts++;
+    return json({ error: 'private-test-token' }, 401);
+  }, { delayImpl: async () => { delays++; }, tokenImpl: async () => {
+    if (++tokens === 5 && authFailure === 'token refresh') throw new Error('private-test-token refresh failure');
+    return 'private-test-token';
+  } });
+  await assert.rejects(archive(request), { message: 'Drive auth failed' });
+  assert.equal(puts, authFailure === 'HTTP 401' ? 1 : 0); assert.equal(delays, 0);
+});
+
+test('exhausted upload timeouts preserve their class and bounded recovery', async t => {
+  let puts = 0, probes = 0, delays = 0;
+  const { archive, request } = await fixture(t, async (url, init) => {
+    url = String(url);
+    if (url.includes('/archive-parent?')) return json({ id: parentId, mimeType: 'application/vnd.google-apps.folder', trashed: false });
+    if (url.includes('q=')) return json({ files: url.includes('video.mp4') ? [] : [{ id: 'run-folder', mimeType: 'application/vnd.google-apps.folder' }] });
+    if (url.includes('uploadType=resumable')) return json({}, 200, { location: 'https://www.googleapis.com/upload/drive/v3/files?upload_id=test' });
+    if (init.headers['Content-Range'] === 'bytes */3') { probes++; return new Response(null, { status: 308 }); }
+    puts++; throw new DOMException('private-test-token timeout details', 'TimeoutError');
+  }, { delayImpl: async () => { delays++; } });
+  await assert.rejects(archive(request), sanitized('Drive request timed out'));
+  assert.equal(puts, 4); assert.equal(probes, 3); assert.equal(delays, 3);
+});
 test('Drive verification reads remote size and hash; matching existing file is reused', async t => {
   const calls = [];
   const { archive, request } = await fixture(t, async (url, init) => {
