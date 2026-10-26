@@ -29,13 +29,13 @@ t3_fixture() {
   worktree="$HOME/.t3/worktrees/t3-repo/candidate"
   git -C "$repo" worktree add -qb topic "$worktree" origin/main
   sqlite3 "$WORKTREE_GC_T3_DB" '
-    CREATE TABLE orchestration_v2_projection_threads(thread_id TEXT PRIMARY KEY,payload_json TEXT);
+    CREATE TABLE orchestration_v2_projection_threads(thread_id TEXT PRIMARY KEY,payload_json TEXT,deleted_at TEXT);
     CREATE TABLE orchestration_v2_projection_runs(thread_id TEXT,status TEXT);
     CREATE TABLE orchestration_v2_projection_provider_sessions(thread_id TEXT,status TEXT);'
 }
 
 bind_thread() {
-  sqlite3 "$WORKTREE_GC_T3_DB" "INSERT INTO orchestration_v2_projection_threads VALUES ('child',json_object('worktreePath','$worktree','settledAt',$1,'lineage',json_object('rootThreadId','owner-root')));"
+  sqlite3 "$WORKTREE_GC_T3_DB" "INSERT INTO orchestration_v2_projection_threads(thread_id,payload_json) VALUES ('child',json_object('worktreePath','$worktree','settledAt',$1,'lineage',json_object('rootThreadId','owner-root')));"
 }
 
 @test "R2b squash merged exact head is removed" {
@@ -145,16 +145,16 @@ bind_thread() {
   other="$(add_branch_worktree "$repo" branch-pin)"
   mkdir -p "$HOME/.config/golems"
   ln -s "$repo" "$HOME/pin-alias"
-  for pin in "$worktree" "$worktree/" "~/.t3/worktrees/t3-repo/candidate/" "$HOME/pin-alias/.worktrees/path-pin-worktree"; do
+  for pin in "$worktree" "$worktree/" "~/.t3/worktrees/pins/candidate/" "$HOME/pin-alias/.worktrees/path-pin-worktree"; do
     if [[ "$pin" == '~/'* ]]; then
-      mkdir -p "$HOME/.t3/worktrees/t3-repo"
-      git -C "$repo" worktree move "$worktree" "$HOME/.t3/worktrees/t3-repo/candidate"
-      worktree="$HOME/.t3/worktrees/t3-repo/candidate"
+      mkdir -p "$HOME/.t3/worktrees/pins"
+      git -C "$repo" worktree move "$worktree" "$HOME/.t3/worktrees/pins/candidate"
+      worktree="$HOME/.t3/worktrees/pins/candidate"
     fi
     printf '  %s \r\nbranch-pin\n# comment\n' "$pin" > "$HOME/.config/golems/worktree-gc-pins.txt"
     run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
     [ "$status" -eq 0 ]
-    [[ "$output" == *KEEP-pinned* ]] || return 1
+    [[ "$output" == *"$worktree · path-pin · dirty=not-checked · ahead=not-checked · KEEP-pinned"* ]] || return 1
     [ -d "$worktree" ]; [ -d "$other" ]
     if [[ "$pin" == '~/'* ]]; then
       git -C "$repo" worktree move "$worktree" "$repo/.worktrees/path-pin-worktree"
@@ -187,16 +187,19 @@ PY
   printf dirty > "$worktree/local.txt"
   age_worktrees
   "$WORKTREE_GC" >/dev/null
+  python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["owners"]' "$WORKTREE_GC_REPORT_DIR/latest.json"
   cp "$WORKTREE_GC_REPORT_DIR/latest.json" "$TEST_ROOT/full.json"
   cp "$WORKTREE_GC_REPORT_DIR/latest.md" "$TEST_ROOT/full.md"
   other="$(add_branch_worktree "$repo" clean)"
-  for args in path repo prune error; do
+  for args in path repo prune error scan-error; do
     case "$args" in
       path) run "$WORKTREE_GC" --path "$other" ;;
       repo) run "$WORKTREE_GC" --repo "$repo" ;;
       prune) run "$WORKTREE_GC" --prune-plan --repo "$repo" ;;
-      error) run "$WORKTREE_GC" --repo "$TEST_ROOT" ;;
+      error) run "$WORKTREE_GC" --repo "$HOME" ;;
+      scan-error) mkdir -p "$HOME/Gits/broken/.git"; run "$WORKTREE_GC" ;;
     esac
+    case "$args" in *error) [ "$status" -eq 2 ] ;; *) [ "$status" -eq 0 ] ;; esac
     cmp "$TEST_ROOT/full.json" "$WORKTREE_GC_REPORT_DIR/latest.json"
     cmp "$TEST_ROOT/full.md" "$WORKTREE_GC_REPORT_DIR/latest.md"
   done
@@ -223,7 +226,7 @@ age_worktrees() {
 
 @test "FIX1 old unsettled deleted T3 binding is reported to its owner" {
   t3_fixture; bind_thread NULL; age_worktrees
-  sqlite3 "$WORKTREE_GC_T3_DB" "UPDATE orchestration_v2_projection_threads SET payload_json=json_set(payload_json,'$.createdAt','2026-01-01','$.deletedAt','2026-02-01');"
+  sqlite3 "$WORKTREE_GC_T3_DB" "UPDATE orchestration_v2_projection_threads SET payload_json=json_set(payload_json,'$.createdAt','2026-01-01'),deleted_at='2026-02-01';"
   run "$WORKTREE_GC"
   [ "$status" -eq 0 ]; [ -d "$worktree" ]
   python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" <<'CHECK'

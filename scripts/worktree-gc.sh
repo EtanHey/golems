@@ -50,9 +50,15 @@ emit_row() {
   printf '%s\n' "$row" >> "$LOG_FILE"
   printf '%s\n' "$row"
   case "$verdict" in
-    KEEP-dirty|KEEP-unmerged|KEEP-unpushed)
-      python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
-        "$repo_name" "$worktree_path" "$branch" "$verdict" "$reason" ;;
+    KEEP-dirty|KEEP-unmerged|KEEP-unpushed|KEEP-live|KEEP-detached|KEEP-reflog)
+      local report_detail
+      report_detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
+        "$repo_name" "$worktree_path" "$branch" "$verdict" "$reason" 2>&1)" ||
+        report_detail="report row failed: $worktree_path; $report_detail"
+      if [[ -n "$report_detail" ]]; then
+        printf '%s\n' "$report_detail" >> "$LOG_FILE" || true
+        printf '%s\n' "$report_detail" || true
+      fi ;;
   esac
 }
 
@@ -221,26 +227,26 @@ head_is_merged() {
 }
 
 check_owner_guards() {
-  local path="$1" branch="$2" pins rc=0
+  local path="$1" branch="$2" pins detail rc=0
   local pin_file="${WORKTREE_GC_PINS_FILE:-$HOME/.config/golems/worktree-gc-pins.txt}"
   if [[ -e "$pin_file" || -L "$pin_file" ]]; then
-    if ! pins="$(cat "$pin_file")"; then
+    if ! pins="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" pins "$pin_file")"; then
       emit_row "$repo_name" "$path" "$branch" not-checked undetermined KEEP-undetermined "cannot read pins"
       return 1
     fi
-    if line_in "$path" "$pins" || line_in "$branch" "$pins"; then
+    if line_in "$(canonical_path "$path")" "$pins" || line_in "$branch" "$pins"; then
       emit_row "$repo_name" "$path" "$branch" not-checked not-checked KEEP-pinned "optional pin file"
       return 1
     fi
   fi
-  if [[ "$is_t3" -eq 1 ]]; then
-    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3 "$path" || rc=$?
-    if [[ "$rc" -ne 0 ]]; then
-      local verdict=KEEP-undetermined
-      [[ "$rc" -eq 3 ]] && verdict=KEEP-live
-      emit_row "$repo_name" "$path" "$branch" not-checked undetermined "$verdict" "T3 binding live or unreadable"
-      return 1
-    fi
+  # Repo-local registrations can also be bound to T3 threads. DB errors fail
+  # closed for the T3 root; existing repo-local scopes still work without T3.
+  detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3 "$path" 2>/dev/null)" || rc=$?
+  if [[ "$rc" -eq 3 || ( "$rc" -ne 0 && "$is_t3" -eq 1 ) ]]; then
+    local verdict=KEEP-undetermined
+    [[ "$rc" -eq 3 ]] && verdict=KEEP-live
+    emit_row "$repo_name" "$path" "$branch" not-checked undetermined "$verdict" "${detail:-T3 binding unreadable}"
+    return 1
   fi
 }
 
@@ -749,7 +755,9 @@ LOG_FILE="$LOG_DIR/worktree-gc-$(date '+%Y%m%d-%H%M%S')-$$.log"
 REPORT_JOURNAL="$LOG_FILE.rows.jsonl"
 : > "$REPORT_JOURNAL"
 REPORT_DIR="${WORKTREE_GC_REPORT_DIR:-$LOG_DIR/worktree-gc}"
-trap 'rc=$?; python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" || exit 1' EXIT
+publish_report=0
+[[ -z "$explicit_repo" && -z "$only_worktree" && "$prune_plan" -eq 0 ]] && publish_report=1
+trap 'rc=$?; python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report" || printf "report finish failed\n" >> "$LOG_FILE"' EXIT
 
 # A path-only lane close discovers its main root read-only, then validates it.
 # An explicit --repo is never replaced by --path, regardless of argument order.
