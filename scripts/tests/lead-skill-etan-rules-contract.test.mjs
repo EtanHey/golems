@@ -150,6 +150,23 @@ function behaviorEvals({ evals }) {
 }
 
 const CHECKS = { rule1, rule2, rule3, behaviorEvals };
+test("agent-routing states service tier and placement near the top", () => {
+  const text = loadCorpus().docs["agent-routing/SKILL.md"];
+  const rule = section(text, "## Service tier and placement");
+  expect(rule.trim()).not.toBe("");
+  expect(rule.trim().split("\n").length + 1).toBeLessThanOrEqual(10);
+  expect(text.indexOf("## Service tier and placement")).toBeLessThan(text.indexOf("## Routing rules (SSOT)"));
+  for (const instruction of [
+    'Claude `fastMode:false`', 'Codex `serviceTier:"default"`',
+    "Elevated service only when Etan explicitly asks for that task.",
+    "Harness examples", "are not permission", 'workspaceStrategy:{type:"root"}',
+    "only workers use worktrees", "Theo's official T3 Code nightly",
+    "never build or install T3 from our fork",
+    "never get spawned fast/priority subagents unless explicitly asked by ME",
+    "voicelayer/brainlayer leads being on worktrees for no fucking reason",
+  ]) expect(rule).toContain(instruction);
+});
+
 for (const [name, check] of Object.entries(CHECKS)) {
   test(`contract ${name} holds on this tree`, () => expect(check(loadCorpus())).toEqual([]));
 }
