@@ -420,7 +420,7 @@ test("decision-flow defaults omitted options to a free-text-only answer", () => 
 
   expect(result.status).toBe(0);
   const html = readFileSync(outputPath, "utf8");
-  expect(html).toContain('<fieldset class="df-options">');
+  expect(html).not.toContain('<fieldset class="df-options">');
   expect(html).toContain('class="note-area df-free"');
   expect((html.match(/<input type="radio"/g) || []).length).toBe(0);
 });

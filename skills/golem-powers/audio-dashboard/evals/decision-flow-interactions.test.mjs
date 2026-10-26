@@ -252,3 +252,50 @@ test("cinema mode rejects executable URL schemes", () => {
   expect(html).not.toContain("javascript:alert(1)");
   expect(html).not.toContain('<a class="df-cinema-link"');
 });
+
+test("setlist index links every card and tracks answered and active state", () => {
+  const { document } = boot();
+  const links = [...document.querySelectorAll(".df-index-list a[data-index-for]")];
+  expect(links.map((link) => link.getAttribute("href"))).toEqual(["#decision-a", "#decision-b"]);
+  expect(document.getElementById("decision-a").dataset.decision).toBe("a");
+  expect(links[0].classList.contains("is-active")).toBe(true);
+
+  const card = document.querySelector('[data-decision="a"]');
+  card.querySelector('input[type="radio"]').click();
+  expect(card.classList.contains("is-answered")).toBe(true);
+  expect(links[0].classList.contains("is-answered")).toBe(true);
+  expect(document.getElementById("df-meter-fill").style.width).toBe("50%");
+  expect(document.getElementById("df-answered").textContent).toBe("1");
+
+  document.querySelector('[data-decision="b"] .df-play').click();
+  expect(links[1].classList.contains("is-active")).toBe(true);
+  expect(links[1].classList.contains("is-playing")).toBe(true);
+  expect(links[0].classList.contains("is-active")).toBe(false);
+});
+
+test("card keeps line breaks, shows listening time, and omits empty option sets", () => {
+  const html = renderDecisionFlow({
+    scenes: [scene("brief"), scene("pick")],
+    decisions: [
+      { id: "brief", title: "Brief", status: "INFO", body: "Done: one.\nOpen: two.", sceneIds: ["brief"] },
+      { id: "pick", title: "Pick", options: ["Yes", "No"], sceneIds: ["pick"] },
+    ],
+  });
+  const window = new Window();
+  window.document.write(html);
+  const brief = window.document.querySelector('[data-decision="brief"]');
+  expect([...brief.querySelectorAll(".df-question p")].map((p) => p.textContent)).toEqual(["Done: one.", "Open: two."]);
+  expect(brief.querySelector(".df-status").textContent).toBe("Info");
+  expect(brief.querySelector(".df-player-state").textContent).toBe("Ready · 1 clip, 0:01");
+  expect(brief.querySelector(".df-options")).toBeNull();
+  expect(brief.querySelector(".note-area")).not.toBeNull();
+  expect(window.document.querySelector('[data-decision="pick"] .df-options')).not.toBeNull();
+});
+
+test("player sits above the written briefing so listening comes first", () => {
+  const { document } = boot();
+  const card = document.querySelector('[data-decision="a"]');
+  const order = [...card.children].map((child) => child.className.split(" ")[0]);
+  expect(order.indexOf("df-player")).toBeLessThan(order.indexOf("df-question"));
+  expect(order.indexOf("df-teleprompter")).toBeLessThan(order.indexOf("df-question"));
+});
