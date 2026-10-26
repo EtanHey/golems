@@ -70,3 +70,43 @@ def test_missing_command_is_optional(tmp_path, capsys):
                     'Filesystem blocks Used Available\nfixture 99999999 0 13183593\n'):
                 module.measure(tmp_path)
             assert 'free-now only; purgeable unknown' in capsys.readouterr().out
+
+
+import pytest
+
+
+@pytest.mark.parametrize('available,healthy', [(131_000_000_000, True),
+    (49_999_999_999, False), (50_000_000_000, True), (None, False)])
+def test_last_line_survives_ratchet_consumers(tmp_path, available, healthy):
+    payload = {} if available is None else dict(available_bytes=available,
+        free_now_bytes=13_500_000_000, purgeable_bytes=available-13_500_000_000)
+    env = dict(os.environ, PATH=fake_brain(tmp_path, payload), RATCHET_GITS_ROOT=str(tmp_path))
+    env.pop('DISK_FREE_FLOOR_GB', None)
+    command = str(ROOT/'scripts/ratchet/mac/disk-free-floor.sh')
+    script = subprocess.run(['bash', command], env=env, capture_output=True, text=True)
+    measurement = json.loads(script.stdout.splitlines()[-1])
+    consumer = subprocess.run(['node', '--input-type=module', '-e', '''
+        import {validDiskMeasurement, evaluate, renderTable} from './scripts/ratchet/table.mjs';
+        import {runRows} from './scripts/ratchet/run-rows.mjs';
+        import {readFileSync} from 'node:fs';
+        const m=JSON.parse(readFileSync(0,'utf8'));
+        const row=JSON.parse(readFileSync('scripts/ratchet/rows.json')).rows.find(r=>r.id==='disk-free-floor');
+        row.command=process.argv[1];
+        const rows={schema:1,rows:[row]}, head='c'.repeat(40);
+        const results=runRows({rows,head});
+        const table=evaluate({rows,baseRows:rows,results,head});
+        console.log(JSON.stringify({valid:validDiskMeasurement(m),results,ok:table.ok,
+            body:renderTable(table,{marker:'fixture'})}));
+        ''', command], input=json.dumps(measurement), cwd=ROOT, env=env, capture_output=True, text=True)
+    assert consumer.returncode == 0, consumer.stderr
+    data = json.loads(consumer.stdout)
+    assert data['valid'] is True
+    assert data['results']['results']['disk-free-floor']['value'] is healthy
+    assert data['ok'] is True  # Unhealthy measurement stays report-only WARN.
+    assert measurement['floor'] == 50
+    assert measurement['source'] == ('free_now_only' if available is None else 'brainlayer')
+    assert measurement['available_gb'] == (None if available is None else available/1e9)
+    assert 'GB free now' in data['body']
+    assert 'Available' in data['body']
+    if available is None:
+        assert 'available_gb=unknown' in script.stdout
