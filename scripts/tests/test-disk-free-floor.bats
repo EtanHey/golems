@@ -36,7 +36,8 @@ load lib/worktree-gc-fixtures
   eligible="$(add_branch_worktree "$repo" eligible)"
   stub="$TEST_ROOT/bin"; mkdir "$stub"
   printf '#!/bin/sh\nprintf "Filesystem 1024-blocks Used Available Capacity Mounted\\nfixture 99999999 0 13631488 0 fixture\\n"\n' > "$stub/df"
-  chmod +x "$stub/df"
+  printf '#!/bin/sh\nexit 127\n' > "$stub/brainlayer"
+  chmod +x "$stub/df" "$stub/brainlayer"
   run env RATCHET_GITS_ROOT="$TEST_ROOT" WORKTREE_GC_IDLE_HOURS=0 PATH="$stub:$PATH" \
     node --input-type=module -e '
       const root=process.argv[1];
@@ -61,7 +62,8 @@ load lib/worktree-gc-fixtures
   repo="$(make_fixture_repo measured)"
   stub="$TEST_ROOT/bin"; mkdir "$stub"
   printf '#!/bin/sh\nprintf "Filesystem header\\nfixture 100 0 invalid 0 fixture\\n"\n' > "$stub/df"
-  chmod +x "$stub/df"
+  printf '#!/bin/sh\nexit 127\n' > "$stub/brainlayer"
+  chmod +x "$stub/df" "$stub/brainlayer"
   run env RATCHET_GITS_ROOT="$TEST_ROOT" PATH="$stub:$PATH" "$REPO_ROOT/scripts/ratchet/mac/disk-free-floor.sh"
   [ "$status" -eq 2 ]
   [[ "$output" != *'"health"'* ]] || false
