@@ -24,6 +24,8 @@ STUB
 
 t3_fixture() {
   repo="$(make_fixture_repo t3-repo)"
+  mkdir -p "$HOME/Gits"
+  mv "$repo" "$HOME/Gits/"; repo="$HOME/Gits/t3-repo"
   worktree="$HOME/.t3/worktrees/t3-repo/candidate"
   git -C "$repo" worktree add -qb topic "$worktree" origin/main
   sqlite3 "$WORKTREE_GC_T3_DB" '
@@ -142,12 +144,23 @@ bind_thread() {
   worktree="$(add_branch_worktree "$repo" path-pin)"
   other="$(add_branch_worktree "$repo" branch-pin)"
   mkdir -p "$HOME/.config/golems"
-  printf '%s\nbranch-pin\n' "$worktree" > "$HOME/.config/golems/worktree-gc-pins.txt"
-  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *KEEP-pinned* ]] || return 1
-  [ -d "$worktree" ]
-  [ -d "$other" ]
+  ln -s "$repo" "$HOME/pin-alias"
+  for pin in "$worktree" "$worktree/" "~/.t3/worktrees/t3-repo/candidate/" "$HOME/pin-alias/.worktrees/path-pin-worktree"; do
+    if [[ "$pin" == '~/'* ]]; then
+      mkdir -p "$HOME/.t3/worktrees/t3-repo"
+      git -C "$repo" worktree move "$worktree" "$HOME/.t3/worktrees/t3-repo/candidate"
+      worktree="$HOME/.t3/worktrees/t3-repo/candidate"
+    fi
+    printf '  %s \r\nbranch-pin\n# comment\n' "$pin" > "$HOME/.config/golems/worktree-gc-pins.txt"
+    run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *KEEP-pinned* ]] || return 1
+    [ -d "$worktree" ]; [ -d "$other" ]
+    if [[ "$pin" == '~/'* ]]; then
+      git -C "$repo" worktree move "$worktree" "$repo/.worktrees/path-pin-worktree"
+      worktree="$repo/.worktrees/path-pin-worktree"
+    fi
+  done
 }
 
 @test "R2b dirty older than 72h is reported under T3 owner" {
@@ -158,7 +171,7 @@ bind_thread() {
   export REAL_STAT="$(command -v stat)"
   printf '#!/usr/bin/env bash\ncase "$*" in *%%B*|*%%W*) echo 1;; *) exec "$REAL_STAT" "$@";; esac\n' > "$TEST_ROOT/bin/stat"
   chmod +x "$TEST_ROOT/bin/stat"
-  run env PATH="$TEST_ROOT/bin:$PATH" "$WORKTREE_GC" --repo "$repo"
+  run env PATH="$TEST_ROOT/bin:$PATH" "$WORKTREE_GC"
   [ "$status" -eq 0 ]
   python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" "$worktree" <<'PY'
 import json, sys
@@ -167,4 +180,76 @@ assert r["path"] == sys.argv[2] and r["reason"] == "KEEP-dirty" and r["size_byte
 PY
   [ -s "$WORKTREE_GC_REPORT_DIR/latest.md" ]
   [ -s "$WORKTREE_GC_REPORT_DIR/receipts.jsonl" ]
+}
+
+@test "FIX1 partial and scan-error runs preserve the full owner report" {
+  t3_fixture
+  printf dirty > "$worktree/local.txt"
+  age_worktrees
+  "$WORKTREE_GC" >/dev/null
+  cp "$WORKTREE_GC_REPORT_DIR/latest.json" "$TEST_ROOT/full.json"
+  cp "$WORKTREE_GC_REPORT_DIR/latest.md" "$TEST_ROOT/full.md"
+  other="$(add_branch_worktree "$repo" clean)"
+  for args in path repo prune error; do
+    case "$args" in
+      path) run "$WORKTREE_GC" --path "$other" ;;
+      repo) run "$WORKTREE_GC" --repo "$repo" ;;
+      prune) run "$WORKTREE_GC" --prune-plan --repo "$repo" ;;
+      error) run "$WORKTREE_GC" --repo "$TEST_ROOT" ;;
+    esac
+    cmp "$TEST_ROOT/full.json" "$WORKTREE_GC_REPORT_DIR/latest.json"
+    cmp "$TEST_ROOT/full.md" "$WORKTREE_GC_REPORT_DIR/latest.md"
+  done
+}
+
+age_worktrees() {
+  mkdir -p "$TEST_ROOT/bin"; export REAL_STAT="$(command -v stat)"
+  printf '#!/usr/bin/env bash\ncase "$*" in *%%B*|*%%W*) echo 1;; *) exec "$REAL_STAT" "$@";; esac\n' > "$TEST_ROOT/bin/stat"
+  chmod +x "$TEST_ROOT/bin/stat"; export PATH="$TEST_ROOT/bin:$PATH"
+}
+
+@test "FIX1 failing report size helper never aborts reaping a later sibling" {
+  t3_fixture; age_worktrees
+  printf dirty > "$worktree/local.txt"
+  other="$HOME/.t3/worktrees/t3-repo/z-clean"
+  git -C "$repo" worktree add -qb clean "$other" origin/main
+  printf '#!/usr/bin/env bash\nprintf "123\\tfixture\\n"; exit 1\n' > "$TEST_ROOT/bin/du"
+  chmod +x "$TEST_ROOT/bin/du"
+  run "$WORKTREE_GC" --apply --idle-hours 0
+  [ "$status" -eq 0 ]; [ ! -e "$other" ]; [ -d "$worktree" ]
+  [[ "$output" == *"size unknown"* ]]
+  python3 -c 'import json,sys; r=json.load(open(sys.argv[1]))["owners"]["t3-repo"][0]; assert r["size_bytes"] is None' "$WORKTREE_GC_REPORT_DIR/latest.json"
+}
+
+@test "FIX1 old unsettled deleted T3 binding is reported to its owner" {
+  t3_fixture; bind_thread NULL; age_worktrees
+  sqlite3 "$WORKTREE_GC_T3_DB" "UPDATE orchestration_v2_projection_threads SET payload_json=json_set(payload_json,'$.createdAt','2026-01-01','$.deletedAt','2026-02-01');"
+  run "$WORKTREE_GC"
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]
+  python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" <<'CHECK'
+import json,sys
+r=json.load(open(sys.argv[1]))["owners"]["owner-root"][0]
+assert r["reason"] == "KEEP-live" and "2026-01-01" in r["detail"] and "2026-02-01" in r["detail"]
+CHECK
+}
+
+@test "FIX1 T3 binding protects repo-local worktrees too" {
+  t3_fixture
+  mkdir -p "$repo/.worktrees"
+  git -C "$repo" worktree move "$worktree" "$repo/.worktrees/topic"
+  worktree="$repo/.worktrees/topic"; bind_thread NULL
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]; [[ "$output" == *KEEP-live* ]]; [ -d "$worktree" ]
+}
+
+@test "FIX1 a failed report row cannot abort sibling reaping" {
+  t3_fixture; age_worktrees
+  printf dirty > "$worktree/local.txt"
+  other="$HOME/.t3/worktrees/t3-repo/z-clean"
+  git -C "$repo" worktree add -qb clean "$other" origin/main
+  export REAL_PYTHON="$(command -v python3)"
+  printf '#!/usr/bin/env bash\n[[ "$2" == add ]] && exit 1\nexec "$REAL_PYTHON" "$@"\n' > "$TEST_ROOT/bin/python3"
+  chmod +x "$TEST_ROOT/bin/python3"
+  run "$WORKTREE_GC" --apply --idle-hours 0
+  [ "$status" -eq 0 ]; [ ! -e "$other" ]; [[ "$output" == *"report row failed"* ]]
 }
