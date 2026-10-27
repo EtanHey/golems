@@ -40,6 +40,10 @@ install to measure a candidate. Two tiers:
   - **Where it runs:** the producer installs the PR head into a SCRATCH HOME (and a scratch
     `CODEX_HOME`), outside every repository. It uses the real installer, the real interpreter
     and the real binaries (git, ssh-keygen, gh, codex).
+  - **Mac Node PATH:** `local-run.sh` resolves Node once before changing HOME, using the
+    installer's `sh -c 'command -v node'` resolution inside Node. It prepends that directory
+    to the caller's full PATH for both scratch installation and row execution, and records
+    the selected absolute path and version in the run's `node.log`.
   - **Trusted keys:** keys a gate trusts are fixtures generated in that scratch HOME. Their pin
     is committed in the scratch tree only, never pushed. A token issuer such as
     `golems-lead-confirm` is called only against that fixture anchor.
