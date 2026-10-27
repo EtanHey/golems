@@ -9,9 +9,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source "$SCRIPT_DIR/lib/worktree-git-env.sh"
+# T3 Code reaps its own worktrees (storageCleanup.ts); this script covers non-T3 checkouts and merged branches.
 # Pins: ~/.config/golems/worktree-gc-pins.txt (one absolute path or branch per line).
 # Owner queue: docs.local/worktree-gc/latest.{json,md}; age is reporting only.
 # Test adapters: WORKTREE_GC_T3_DB, WORKTREE_GC_REPORT_DIR, WORKTREE_GC_PINS_FILE.
+# WORKTREE_GC_T3_ROOTS adds newline-separated managed roots (canonicalized).
 
 usage() {
   printf 'Usage: %s [--dry-run | --prune-plan | --apply] [--idle-hours <n>] [--repo <path> | --path <worktree>]\n' \
@@ -229,6 +231,13 @@ head_is_merged() {
 check_owner_guards() {
   local path="$1" branch="$2" pins detail rc=0
   local pin_file="${WORKTREE_GC_PINS_FILE:-$HOME/.config/golems/worktree-gc-pins.txt}"
+  detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" live-symlink "$path" 2>&1)" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    local verdict=KEEP-undetermined
+    [[ "$rc" -eq 3 ]] && verdict=KEEP-live
+    emit_row "$repo_name" "$path" "$branch" not-checked not-checked "$verdict" "${detail:-live symlink scan failed}"
+    return 1
+  fi
   if [[ -e "$pin_file" || -L "$pin_file" ]]; then
     if ! pins="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" pins "$pin_file")"; then
       emit_row "$repo_name" "$path" "$branch" not-checked undetermined KEEP-undetermined "cannot read pins"
@@ -239,10 +248,10 @@ check_owner_guards() {
       return 1
     fi
   fi
-  # Repo-local registrations can also be bound to T3 threads. DB errors fail
-  # closed for the T3 root; existing repo-local scopes still work without T3.
+  # Repo-local registrations can also be bound to T3 threads.
+  # Existing repo-local scopes still work without T3.
   detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3 "$path" 2>/dev/null)" || rc=$?
-  if [[ "$rc" -eq 3 || ( "$rc" -ne 0 && "$is_t3" -eq 1 ) ]]; then
+  if [[ "$rc" -eq 3 ]]; then
     local verdict=KEEP-undetermined
     [[ "$rc" -eq 3 ]] && verdict=KEEP-live
     emit_row "$repo_name" "$path" "$branch" not-checked undetermined "$verdict" "${detail:-T3 binding unreadable}"
@@ -378,7 +387,7 @@ process_worktree_block() {
   local index_flags
   local remote_contains
   local ahead
-  local is_t3=0
+  local t3_root
 
   [[ -n "$worktree_path" ]] || return 0
 
@@ -391,19 +400,29 @@ process_worktree_block() {
   fi
   only_seen=1
 
-  if is_tool_managed_worktree "$repo_root" "$canonical_worktree"; then
-    return 0
-  fi
-
   if [[ -n "$branch_ref" ]]; then
     branch_display="${branch_ref#refs/heads/}"
   else
     branch_display="(detached)"
   fi
 
+  while IFS= read -r t3_root; do
+    if [[ "$canonical_worktree" == "$t3_root" || "$canonical_worktree" == "$t3_root/"* ]]; then
+      t3_skip_count=$((t3_skip_count + 1))
+      emit_row "$repo_name" "$worktree_path" "$branch_display" not-checked not-checked \
+        skip "t3-managed (T3 storageCleanup owns it)" >/dev/null
+      return 0
+    fi
+  done <<< "$t3_roots"
+
+  if is_tool_managed_worktree "$repo_root" "$canonical_worktree"; then
+    return 0
+  fi
+
   # AIDEV-NOTE: hooks-live is the pinned source of every wired hook; removing it
   # dangles them all. Kept even if someone unlocked it.
   if [[ "$canonical_worktree" == "$repo_root/.worktrees/hooks-live" ]]; then
+    check_owner_guards "$worktree_path" "$branch_display" || return 0
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
       "not-checked" "KEEP-pinned" "hook source pinned by scripts/hooks/install-hooks.sh"
     return 0
@@ -415,14 +434,9 @@ process_worktree_block() {
     return 0
   fi
 
-  # Only direct children of <main>/.worktrees or ~/.t3/worktrees/<repo>:
-  # runtime checkouts (~/.local/share/...), Cursor and superpowers worktrees
-  # and trees inside docs.local live elsewhere and are never touched.
+  # Only direct children of <main>/.worktrees are ours to reap.
   local scope_name="${canonical_worktree#"$main_root/.worktrees/"}"
-  local t3_prefix="$(canonical_path "$HOME")/.t3/worktrees/$repo_name/"
-  local t3_name="${canonical_worktree#"$t3_prefix"}"
-  [[ "$canonical_worktree" == "$t3_prefix"?* && "$t3_name" != */* ]] && is_t3=1
-  if [[ "$is_t3" -eq 0 && ( "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ) ]]; then
+  if [[ "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
       "not-checked" "KEEP-out-of-scope" "not under $main_root/.worktrees/"
     return 0
@@ -638,6 +652,7 @@ process_worktree_block() {
 process_repo() {
   local requested_repo="$1"
   local census
+  local t3_skip_count=0
   local line
 
   if ! repo_root="$(golems_main_repo "$requested_repo")"; then
@@ -678,6 +693,10 @@ process_repo() {
     esac
   done <<< "$census"
   process_worktree_block
+  if (( t3_skip_count > 0 )); then
+    printf '%s · t3-managed (T3 storageCleanup owns it): %s skip\n' "$repo_name" "$t3_skip_count" | tee -a "$LOG_FILE"
+    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3-summary "$REPORT_JOURNAL" "$repo_name" "$t3_skip_count"
+  fi
   # AIDEV-NOTE: never `git worktree prune` here (#703 R1 M1): it drops the
   # registration of a KEEP worktree that is only temporarily away, orphaning
   # its commits. `git worktree remove` already deletes its own admin entry.
@@ -790,6 +809,7 @@ if [[ "${#repos[@]}" -eq 0 ]]; then
   exit 2
 fi
 
+t3_roots="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" roots)"
 found_unpushed=0
 for repo in "${repos[@]}"; do
   process_repo "$repo"

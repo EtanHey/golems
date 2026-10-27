@@ -31,6 +31,42 @@ def t3_threads(path):
     return [json.loads(row) for row in result.stdout.splitlines()]
 
 
+def t3_roots():
+    # Installed settings.json has storageCleanup.worktreeSettledAfterDays and
+    # storageCleanup.worktreeOnMerge, but no worktrees-directory key (2026-10-27).
+    # Additional roots are newline-separated; the default is always protected.
+    roots = [os.path.expanduser("~/.t3/worktrees")]
+    roots.extend(os.environ.get("WORKTREE_GC_T3_ROOTS", "").splitlines())
+    for root in roots:
+        if root.strip():
+            print(os.path.realpath(os.path.expanduser(root.strip())))
+
+
+def live_symlink(path):
+    path = os.path.realpath(path)
+
+    def visit(directory, depth):
+        if os.path.islink(directory):
+            target = os.path.realpath(directory)
+            if target == path or target.startswith(path + os.sep):
+                return directory
+        if depth == 3 or not os.path.isdir(directory):
+            return None
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                found = visit(entry.path, depth + 1)
+                if found:
+                    return found
+        return None
+
+    for root in ("~/.agents", "~/.codex", "~/.claude/skills", "~/.claude/hooks", "~/.golems"):
+        found = visit(os.path.expanduser(root), 0)
+        if found:
+            print("live-symlink-target " + found)
+            return True
+    return False
+
+
 def add_report(journal, repo, path, branch, reason, detail):
     try:
         admin = subprocess.check_output(["git", "-C", path, "rev-parse", "--absolute-git-dir"], text=True).strip()
@@ -75,12 +111,19 @@ def finish_report(journal, directory, run_status, publish):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     owners = {}
+    t3_managed_skips = {}
     for line in Path(journal).read_text().splitlines():
         row = json.loads(line)
-        owners.setdefault(row.pop("owner"), []).append(row)
+        if row.get("kind") == "t3-managed":
+            t3_managed_skips[row["repo"]] = row["count"]
+        else:
+            owners.setdefault(row.pop("owner"), []).append(row)
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    report = dict(generated_at=now, exit_status=int(run_status), owners=owners)
+    report = dict(generated_at=now, exit_status=int(run_status), owners=owners,
+                  t3_managed_skips=t3_managed_skips)
     md = [f"# Worktree GC owner report\n\n{now}; exit={run_status}\n"]
+    for repo, count in sorted(t3_managed_skips.items()):
+        md.append(f"- `{repo}`: {count} skip - t3-managed (T3 storageCleanup owns it)\n")
     for owner, rows in sorted(owners.items()):
         md.append(f"## {owner}\n")
         for row in rows:
@@ -103,7 +146,14 @@ def finish_report(journal, directory, run_status, publish):
 if __name__ == "__main__":
     try:
         command, *args = sys.argv[1:]
-        if command == "t3":
+        if command == "roots":
+            t3_roots()
+        elif command == "live-symlink":
+            sys.exit(3 if live_symlink(args[0]) else 0)
+        elif command == "t3-summary":
+            with open(args[0], "a") as out:
+                out.write(json.dumps(dict(kind="t3-managed", repo=args[1], count=int(args[2]))) + "\n")
+        elif command == "t3":
             live = [t for t in t3_threads(args[0]) if not t["settled"] or t["active"]]
             if live:
                 print("T3 binding live: " + json.dumps(live))
