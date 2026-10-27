@@ -93,12 +93,12 @@
       if(token!==jumpToken)return;
       var now=Date.now(),y=win.scrollY;
       if(y!==lastY||!stillSince){lastY=y;stillSince=now;}
-      if(now>=followLock||now-stillSince>=160){followLock=0;return;}
+      if(now>=followLock||now-stillSince>=160){followLock=0;follow();return;}
       frame(settle);
     }
     if(frame)frame(settle);
   }
-  function activate(index,autoplay,keepFocus){if(index<0||index>=cards.length)return;holdFollow();setActive(cards[index]);cards[index].scrollIntoView({behavior:"smooth",block:"start"});if(!keepFocus)cards[index].querySelector(".df-play").focus({preventScroll:true});if(autoplay)playCard(cards[index],true);}
+  function activate(index,autoplay,keepFocus){if(index<0||index>=cards.length)return;holdFollow();setActive(cards[index]);if(!keepFocus)cards[index].querySelector(".df-play").focus({preventScroll:true});cards[index].scrollIntoView({behavior:"smooth",block:"start"});if(autoplay)playCard(cards[index],true);}
   function goTo(index,keepFocus){activate(index,allAudios().some(function(audio){return !audio.paused;}),keepFocus);}
   cards.forEach(function(card,index){
     var audios=audiosFor(card);
