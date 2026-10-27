@@ -75,6 +75,24 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
 8. **Releases run on macbook-pro only.** The M1 is read-only status reporting until Etan authorizes the M1 test-rig adapter (no assumable `gh` auth).
 9. **No `brain_store`.** You have no BrainLayer tools — the parent owns persistence. Surprises bubble
    up to the caller.
+10. **Install receipt or it did not ship.** After every upgrade, reinstall or reload on macbook-pro,
+    build an `install-receipt/v1` JSON and run `node scripts/install-receipt.mjs write -` from the
+    golems checkout, passing the JSON on stdin. Field list: `scripts/schemas/install-receipt-v1.md`.
+    Report the returned `path` and `verdict`. Fill every evidence field from a probe run in the same
+    session, never from the target. Never copy `target.merge_sha` into evidence fields:
+    - `installed.embedded_commit`: read the artifact's Info.plist GitCommit, brainlayer `_build.py`
+      BUILD_SHA, package gitHead, or checkout HEAD.
+    - For golems hooks/skills in `worktree-pin` mode, `install_source.pin_sha` and
+      `install_source.owner_status`: use the owner installer's `--status` output.
+    - `activation.processes[]`: obtain pid, path and started_at from `ps`.
+    - `activation.self_report`: obtain command, version and commit from the binary's own version command.
+    - `activation.mcp_probe`: use the stdio probe required by this contract.
+    If a field cannot be probed, leave it out and report **[UNVERIFIED]**; never guess. If a required
+    field is unavailable or writing fails, report the failure as not done. `write` only downgrades;
+    any probed commit differing from `target.merge_sha` gives MISMATCH.
+    DONE requires a written receipt with `verdict: LIVE`. Report INSTALLED_NOT_ACTIVE, MISMATCH or
+    FAILED with the returned `reasons`, as not done. Write no receipt on the M1; report read-only
+    observed status as before.
 
 ## Trap index
 
@@ -100,3 +118,5 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
 
 Per machine and per product: installed version, release/install/restart/LIVE-proof status with the
 command that proved it, seats reconnected (and seats reported-only), anything **[UNVERIFIED]**.
+For macbook-pro, include the written install receipt path and verdict (and reasons unless LIVE);
+for M1, report read-only observed status without writing a receipt.
