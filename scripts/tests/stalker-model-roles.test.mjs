@@ -30,21 +30,32 @@ test('scoring resolves roles, preserves overrides, and stops before model calls 
   await cp(join(root, 'scripts/ci/check-model-role-drift.mjs'), join(scripts, 'ci/check-model-role-drift.mjs'));
   await cp(join(root, 'standards'), join(dir, 'standards'), { recursive: true });
   for (const name of ['inputs', 'audio', 'signals', 'score-providers', 'score-workers', 'scoring', 'outputs']) await writeFile(join(stalker, 'process', `${name}.sh`), '');
-  await writeFile(join(stalker, 'process/inputs.sh'), 'derive_stream_labels() { :; }; preflight_stream() { :; }; prepare_stream_inputs() { AGY_BIN=stub; CODEX_BIN=stub; }; run_audio_stages() { :; }; run_signal_stage() { :; }\n');
-  await writeFile(join(scripts, 'lib/stream-helpers.sh'), 'stalker_mark_scoring_started() { :; }; stalker_score_parallel_limit() { echo 1; }; prepare_scoring_stage() { echo "MODEL_CALL:$STALKER_CODEX_MODEL:$STALKER_AGY_MODEL"; exit 0; }\n');
+  await writeFile(join(stalker, 'process/inputs.sh'), 'derive_stream_labels() { :; }; preflight_stream() { :; }; prepare_stream_inputs() { AGY_BIN=${TEST_AGY_BIN-stub}; CODEX_BIN=${TEST_CODEX_BIN-stub}; }; run_audio_stages() { :; }; run_signal_stage() { :; }\n');
+  await writeFile(join(scripts, 'lib/stream-helpers.sh'), 'stalker_mark_scoring_started() { :; }; stalker_score_parallel_limit() { echo 1; }; prepare_scoring_stage() { echo "MODEL_CALL:${STALKER_CODEX_MODEL-}:${STALKER_AGY_MODEL-}"; exit 0; }\n');
   const env = { ...process.env, STALKER_CODEX_MODEL: '', STALKER_AGY_MODEL: '', GOLEMS_MODEL_ROLES_ROOT: dir };
   const run = extra => spawnSync('bash', [join(stalker, 'process-stream.sh'), join(dir, 'video.mp4')], { encoding: 'utf8', env: { ...env, ...extra } });
+  const agy = spawnSync(process.execPath, [join(stalker, 'stalker-model.mjs'), 'agy'], { encoding: 'utf8', env });
+  assert.equal(agy.status, 0, agy.stderr);
+  assert.match(agy.stdout.trim(), /^Gemini .+ \(.+\)$/);
+  assert.doesNotMatch(agy.stdout.trim(), /^(?:flash|pro)-/);
   const defaults = run();
   assert.equal(defaults.status, 0, defaults.stderr);
-  assert.ok(defaults.stdout.includes(`MODEL_CALL:${config.roles['codex.implement'].model}:${config.roles['gemini.gather.text'].launcher_tier}`));
-  assert.match(run({ STALKER_CODEX_MODEL: 'custom-codex', STALKER_AGY_MODEL: 'custom-agy' }).stdout, /MODEL_CALL:custom-codex:custom-agy/);
-  for (const extra of [{ STALKER_CODEX_MODEL: 'gpt-5.6-sol' }, { STALKER_AGY_MODEL: 'gpt-5.6-luna' }]) {
+  assert.ok(defaults.stdout.includes(`MODEL_CALL:${config.roles['codex.implement'].model}:${config.roles['gemini.gather.text'].model}`));
+  assert.ok(run({ STALKER_CODEX_MODEL: config.roles['codex.implement'].model, STALKER_AGY_MODEL: 'custom-agy' }).stdout.includes(`MODEL_CALL:${config.roles['codex.implement'].model}:custom-agy`));
+  for (const model of new Set(Object.entries(config.roles).filter(([name]) => name.startsWith('codex.')).map(([, role]) => role.model))) {
+    assert.equal(run({ STALKER_CODEX_MODEL: model }).status, 0);
+  }
+  for (const extra of [{ STALKER_CODEX_MODEL: 'gpt-5.6-sol' }, { STALKER_CODEX_MODEL: 'gpt-5.5' }, { STALKER_CODEX_MODEL: 'custom-codex' }, { STALKER_AGY_MODEL: 'gpt-5.6-luna' }]) {
     const result = run(extra); assert.notEqual(result.status, 0); assert.match(result.stderr, /Stalker.*forbidden/i); assert.doesNotMatch(result.stdout, /MODEL_CALL/);
   }
   for (const role of ['codex.implement', 'gemini.gather.text']) {
     const missing = structuredClone(config); delete missing.roles[role];
     await writeFile(join(dir, 'standards/model-roles.json'), JSON.stringify(missing));
     const result = run(); assert.notEqual(result.status, 0); assert.ok(result.stderr.includes(role), result.stderr); assert.doesNotMatch(result.stdout, /MODEL_CALL/);
+    assert.match(result.stdout, /ERROR: .* model resolution failed/);
+    const otherOnly = run(role === 'codex.implement' ? { TEST_CODEX_BIN: '' } : { TEST_AGY_BIN: '' });
+    assert.equal(otherOnly.status, 0, otherOnly.stderr);
+    assert.match(otherOnly.stdout, /MODEL_CALL/);
   }
 });
 

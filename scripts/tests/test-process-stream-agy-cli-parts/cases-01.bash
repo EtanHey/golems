@@ -417,7 +417,7 @@ function split_case_012() {
         && grep -F -q '**Volume spike:** yes' "$stream_dir/gems.md" \
         && grep -F -q '**Chat spike:** yes' "$stream_dir/gems.md" \
         && grep -F -q 'Gems found: 1' "$stream_dir/gems.md" \
-        && grep -F -q -- "--model $(node "$REPO_ROOT/scripts/model-roles.mjs" gemini.gather.text --field launcher_tier)" "$AGY_ARGS_FILE"
+        && grep -F -q -- "--model $(node "$REPO_ROOT/scripts/model-roles.mjs" gemini.gather.text --field model)" "$AGY_ARGS_FILE"
 }
 
 function split_case_013() {

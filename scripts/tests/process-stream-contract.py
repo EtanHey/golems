@@ -243,8 +243,8 @@ def main():
         else:
             expected = with_background_policy(json.loads(path.read_text()))
             roles = json.loads((root / "standards/model-roles.json").read_text())["roles"]
-            expected = json.loads(json.dumps(expected).replace("gpt-5.6-sol", roles["codex.implement"]["model"])
-                                  .replace("Gemini 3.1 Pro (High)", roles["gemini.gather.text"]["launcher_tier"]))
+            expected = json.loads(json.dumps(expected).replace("<CODEX_MODEL>", roles["codex.implement"]["model"])
+                                  .replace("<AGY_MODEL>", roles["gemini.gather.text"]["model"]))
             # Completion now ingests and verifies the current digest in both modes.
             for step in expected:
                 commands = step["commands"]

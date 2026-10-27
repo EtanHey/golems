@@ -293,14 +293,14 @@ SH
         HOME="$TMPDIR_/home" \
         CODEX_ARGS_FILE="$CODEX_ARGS_FILE" \
         CODEX_TIMEOUT_FILE="$CODEX_TIMEOUT_FILE" \
-        STALKER_CODEX_MODEL="configured-test-model" \
+        STALKER_CODEX_MODEL="$(node "$REPO_ROOT/scripts/model-roles.mjs" codex.subagent.mechanical --use watcher)" \
         STALKER_CODEX_EFFORT="medium" \
         STALKER_CODEX_TIMEOUT="7s" \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 
     [ "$status" -eq 0 ]
-    grep -F -x -q 'configured-test-model' "$CODEX_ARGS_FILE"
+    grep -F -x -q "$(node "$REPO_ROOT/scripts/model-roles.mjs" codex.subagent.mechanical --use watcher)" "$CODEX_ARGS_FILE"
     grep -F -x -q 'model_reasoning_effort=medium' "$CODEX_ARGS_FILE"
     [ "$(cat "$CODEX_TIMEOUT_FILE")" = "7s" ]
 }

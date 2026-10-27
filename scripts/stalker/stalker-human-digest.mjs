@@ -4,12 +4,11 @@ import { join, resolve } from "node:path";
 import { assertExactBatchCoverage, runDigestMaps } from "./stalker-digest-batches.mjs";
 
 import { OUTPUT_SCHEMA, MAP_SCHEMA, cleanTranscript, assertText, validateSummary } from "./stalker-digest-evidence.mjs";
-export { cleanTranscript } from "./stalker-digest-evidence.mjs";
-
 import { readableSummary } from "./stalker-digest-text.mjs";
 import { curateDigest } from "./stalker-digest-curation.mjs";
-
 import { resolveStalkerModel } from "./stalker-model.mjs";
+export { cleanTranscript } from "./stalker-digest-evidence.mjs";
+
 const REASONING_EFFORT = "medium";
 const TIMEOUT_MS = 180_000;
 const MAP_BATCH_BYTES = 10_000;

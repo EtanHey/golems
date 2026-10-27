@@ -12,7 +12,7 @@ setup() {
     CODEX_ARGS_FILE="$TMPDIR_/codex-args.txt"
     CODEX_TIMEOUT_FILE="$TMPDIR_/codex-timeout.txt"
     mkdir -p "$FAKE_BIN"
-    node "$REPO_ROOT/scripts/model-roles.mjs" gemini.gather.text --field launcher_tier > "$FAKE_BIN/expected-agy-model"
+    node "$REPO_ROOT/scripts/model-roles.mjs" gemini.gather.text --field model > "$FAKE_BIN/expected-agy-model"
     mkdir -p "$TMPDIR_/home/Gits/golems"
     : > "$TMPDIR_/home/Gits/golems/.env"
     export AGY_ARGS_FILE CODEX_ARGS_FILE CODEX_TIMEOUT_FILE

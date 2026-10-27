@@ -94,8 +94,12 @@ run_signal_stage
 # --- 3b: Auto-score with local CLI model ---
 if [ ! -f "$GEMS_FILE" ]; then
     if [ -n "$AGY_BIN" ] || [ -n "$CODEX_BIN" ]; then
-        STALKER_AGY_MODEL=$(node "$SCRIPT_DIR/stalker-model.mjs" agy)
-        STALKER_CODEX_MODEL=$(node "$SCRIPT_DIR/stalker-model.mjs" codex)
+        if [ -n "$AGY_BIN" ]; then
+            STALKER_AGY_MODEL=$(node "$SCRIPT_DIR/stalker-model.mjs" agy) || { log "ERROR: agy model resolution failed"; exit 2; }
+        fi
+        if [ -n "$CODEX_BIN" ]; then
+            STALKER_CODEX_MODEL=$(node "$SCRIPT_DIR/stalker-model.mjs" codex) || { log "ERROR: codex model resolution failed"; exit 2; }
+        fi
         stalker_mark_scoring_started "$OUT_DIR" "$$"
         log "Pass 3b: Auto-scoring transcript candidate segments with local CLI model..."
 
