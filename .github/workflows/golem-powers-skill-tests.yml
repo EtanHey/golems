@@ -90,6 +90,9 @@ jobs:
       - name: Regression gate contracts
         run: python -m pytest scripts/tests/test_private_regression_gate.py -q
 
+      - name: Workspace lease ledger
+        run: python -m pytest scripts/tests/test_workspace_lease.py -q
+
       - name: M1 sync offline guards (fake SSH only)
         run: |
           python -B -m unittest discover -s scripts/tests -p test_m1_sync.py
