@@ -751,3 +751,27 @@ test("a paused clip rewinding to 0 does not re-light its first word", () => {
   // A finished clip reads as fully read, last word included.
   expect([...card.querySelectorAll('.df-word[data-scene="a1"]')].every((word) => word.classList.contains("is-read"))).toBe(true);
 });
+
+test("Next on the final card in story view closes the sheet and lands on the visible Copy answers", () => {
+  const { document } = storyBoot();
+  document.getElementById("df-transport-next").click();
+  document.querySelector('[data-decision="b"] .df-answer-open').click();
+  const next = sheetOf(document, "b").querySelector(".df-next");
+  next.click();
+  expect(sheetOf(document, "b").classList.contains("is-open")).toBe(false);
+  expect(document.querySelectorAll("[inert]").length).toBe(0);
+  expect(document.activeElement).toBe(document.querySelector(".df-story-copy"));
+  expect(next.classList.contains("is-acknowledged")).toBe(true);
+  expect(document.querySelector(".df-story-copy").classList.contains("is-ready")).toBe(true);
+});
+
+test("when a card's final clip ends, every word of the card reads as read", () => {
+  const { window, document } = boot();
+  const card = document.querySelector('[data-decision="a"]');
+  card.querySelector(".df-play").click();
+  card.querySelector('audio[data-audio-scene="a1"]').dispatchEvent(new window.Event("ended"));
+  card.querySelector('audio[data-audio-scene="a2"]').dispatchEvent(new window.Event("ended"));
+  const words = [...card.querySelectorAll(".df-word")];
+  expect(words.every((word) => word.classList.contains("is-read") && !word.classList.contains("is-current"))).toBe(true);
+  expect(card.querySelector(".df-play").textContent).toContain("Play again");
+});

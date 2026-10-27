@@ -81,6 +81,24 @@ layoutTest("controller fits the viewport in every transport, speed and view stat
   expect(failures).toEqual([]);
 }, 60000);
 
+layoutTest("Stop belongs to story view only, at every width", async () => {
+  const url = fixture();
+  const browser = await chromium.launch();
+  try {
+    for (const width of [390, 440, 720, 1280]) {
+      const page = await browser.newPage({ viewport: { width, height: 800 } });
+      await page.goto(url);
+      const display = () => page.evaluate(() => getComputedStyle(document.getElementById("df-transport-stop")).display);
+      expect(await display()).toBe("none");
+      await page.click("#df-view-toggle");
+      expect(await display()).not.toBe("none");
+      await page.close();
+    }
+  } finally {
+    await browser.close();
+  }
+}, 60000);
+
 layoutTest("top chip strip is visible and navigates at 390px and 1280px", async () => {
   const url = fixture();
   const browser = await chromium.launch();
@@ -163,6 +181,14 @@ layoutTest("answer sheet fits the viewport, traps real Tab focus and Esc returns
       await page.keyboard.press("Escape");
       expect(await page.evaluate(() => document.querySelector(".df-sheet.is-open"))).toBeNull();
       expect(await page.evaluate(() => document.activeElement.classList.contains("df-answer-open"))).toBe(true);
+      // Final card: Next inside the sheet must reach a visible, usable Copy answers.
+      await page.click('.df-chip[data-chip-for="d06"]');
+      await page.click(".df-card.is-active .df-answer-open");
+      await page.waitForTimeout(320);
+      await page.click(".df-sheet.is-open .df-next", { timeout: 2000 });
+      const terminal = await page.evaluate(() => ({ open: Boolean(document.querySelector(".df-sheet.is-open")), inert: document.querySelectorAll("[inert]").length, focus: document.activeElement.classList.contains("df-story-copy"), ready: document.activeElement.classList.contains("is-ready"), visible: document.activeElement.getClientRects().length > 0 }));
+      expect(terminal).toEqual({ open: false, inert: 0, focus: true, ready: true, visible: true });
+      await page.click('.df-chip[data-chip-for="v00"]');
       // Real pointer: controls inside the sheet are clickable (nothing covers them), and a tap outside closes it.
       await page.click(".df-card.is-active .df-answer-open");
       await page.waitForTimeout(320);

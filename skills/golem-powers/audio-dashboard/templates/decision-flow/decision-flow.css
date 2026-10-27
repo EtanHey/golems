@@ -203,7 +203,7 @@ body:has(.df-card.is-active.is-playing) .df-tplay{background:transparent;color:v
 .df-story-top,.df-progress,.df-answer-open,.df-sheet-head{display:none}
 .df-sheet{display:contents}
 .df-sheet-backdrop[hidden]{display:none}
-@media(max-width:439px){body:not([data-view="story"]) .df-tstop{display:none}}
+body:not([data-view="story"]) .df-tstop{display:none}
 body[data-view="story"]{--story-top:calc(60px + env(safe-area-inset-top));--story-bottom:calc(158px + env(safe-area-inset-bottom));overflow:hidden;padding-bottom:0;background:var(--ink)}
 body[data-view="story"]::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(130% 62% at 50% -8%,rgba(64,92,140,.42),rgba(16,26,44,0) 62%),radial-gradient(110% 46% at 50% 112%,rgba(121,207,194,.10),rgba(16,26,44,0) 60%);transition:opacity .6s ease}
 body[data-view="story"]::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(90% 44% at 50% 108%,rgba(245,184,61,.20),rgba(245,184,61,0) 70%);opacity:0;transition:opacity .8s ease}
@@ -214,6 +214,7 @@ body[data-view="story"] .df-story-top{position:fixed;top:0;left:0;right:0;z-inde
 .df-story-count{margin:0 auto 0 4px;color:var(--moon);font-size:16px;font-weight:650;font-variant-numeric:tabular-nums}
 .df-story-copy,.df-story-exit{height:40px;padding:0 14px;border:1px solid var(--line-strong);border-radius:999px;background:rgba(16,26,44,.6);color:var(--muted);font-weight:600;cursor:pointer}
 .df-story-exit{color:var(--moon)}
+.df-story-copy.is-ready{border-color:var(--glass);background:var(--glass);color:var(--ink)}
 
 body[data-view="story"] .df-card.is-active{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;margin:0;padding:var(--story-top) 20px var(--story-bottom);border:0;border-radius:0;background:transparent;text-align:center;overflow:hidden}
 body[data-view="story"] .df-card.is-active .df-card-head{display:flex;flex-direction:column;align-items:center;gap:10px;flex:none;margin-top:2vh}
