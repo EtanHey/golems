@@ -65,6 +65,25 @@ layoutTest("review: a real mouse drag between interior words offers Cite without
   } } finally { await browser.close(); }
 }, 60000);
 
+layoutTest("touch Cite reserves its space without moving controls and transport targets stay 44px", async () => {
+  const browser = await chromium.launch({ args: ["--mute-audio"] }), failures = [];
+  try { for (const width of [360, 390, 1280]) for (const view of ["list", "story"]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" }); await page.goto(fixture());
+    if (view === "story") await page.locator("#df-view-toggle").tap();
+    const geometry = () => page.evaluate(() => Object.fromEntries(["df-transport-prev", "df-transport-play", "df-transport-next", "df-transport-stop", "df-speed", "df-view-toggle"].map(id => document.getElementById(id)).filter(node => node.getClientRects().length).map(node => { const r = node.getBoundingClientRect(); return [node.id, { x: r.x, y: r.y, width: r.width, height: r.height }]; })));
+    const before = await geometry();
+    await page.locator(view === "story" ? ".df-card.is-active .df-words" : ".df-card.is-active .df-question p").first().evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); getSelection().removeAllRanges(); getSelection().addRange(range); });
+    await page.locator("#df-controller-cite").waitFor({ state: "visible" }); const selected = await geometry();
+    await page.evaluate(() => getSelection().removeAllRanges()); await page.locator("#df-controller-cite").waitFor({ state: "hidden" }); const cleared = await geometry();
+    for (const [id, rect] of Object.entries(before)) {
+      if (["df-transport-prev", "df-transport-next"].includes(id) && (rect.width < 44 || rect.height < 44)) failures.push({ width, view, id, target: rect });
+      for (const [phase, boxes] of [["selected", selected], ["cleared", cleared]]) if (Object.keys(rect).some(key => Math.abs(rect[key] - boxes[id][key]) > 0.25)) failures.push({ width, view, id, phase, before: rect, after: boxes[id] });
+    }
+    await page.close();
+  } } finally { await browser.close(); }
+  expect(failures).toEqual([]);
+}, 30000);
+
 layoutTest("review: transcript accessibility text preserves spaces between words", async () => {
   const browser = await chromium.launch();
   try { const page = await browser.newPage(); await page.goto(fixture()); await page.click("#df-view-toggle");
@@ -72,15 +91,23 @@ layoutTest("review: transcript accessibility text preserves spaces between words
   } finally { await browser.close(); }
 });
 
-layoutTest("review: touch note targets are 44px and Cite sits below the selection", async () => {
-  const browser = await chromium.launch();
-  try { const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); await page.goto(fixture());
+layoutTest("touch selection offers reachable Cite in the controller or modal sheet", async () => {
+  const browser = await chromium.launch({ args: ["--mute-audio"] });
+  try { for (const width of [360, 390, 1280]) for (const view of ["list", "story", "sheet"]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" }); await page.goto(fixture());
     for (const selector of [".df-card-note", ".df-item-note"]) { const box = await page.locator(selector).first().boundingBox(); expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44); }
-    const bottom = await page.evaluate(() => { const range = document.createRange(); range.selectNodeContents(document.querySelector(".df-question p")); getSelection().removeAllRanges(); getSelection().addRange(range); return range.getBoundingClientRect().bottom; });
-    await page.locator("#df-cite").waitFor({ state: "visible" }); const box = await page.locator("#df-cite").boundingBox();
-    expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44); expect(box.y).toBeGreaterThanOrEqual(bottom);
-  } finally { await browser.close(); }
-});
+    if (view !== "list") await page.locator("#df-view-toggle").tap();
+    if (view === "sheet") await page.locator(".df-card.is-active .df-answer-open").tap();
+    const selected = await page.locator(view === "story" ? ".df-card.is-active .df-words" : view === "sheet" ? ".df-sheet.is-open .df-question p" : ".df-card.is-active .df-question p").first().evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); getSelection().removeAllRanges(); getSelection().addRange(range); return getSelection().toString().trim(); });
+    const cite = page.locator("#df-controller-cite"); await cite.waitFor({ state: "visible" }); expect(await page.locator("#df-speed").evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(16); expect(await page.locator("#df-cite").isVisible()).toBe(false);
+    const box = await cite.boundingBox(); expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44);
+    if (view === "sheet") expect(await cite.evaluate(node => Boolean(node.closest(".df-sheet-head")))).toBe(true);
+    else { expect(await cite.evaluate(node => node.previousElementSibling.id)).toBe("df-transport-next"); expect(await page.locator(".df-transport").evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true); }
+    await cite.tap(); expect(await page.textContent("#df-note-quote")).toBe(selected); await page.locator("#df-note-cancel").tap();
+    if (view === "sheet") expect(await page.locator(".df-sheet-done").first().evaluate(node => node === document.activeElement)).toBe(true);
+    await page.close();
+  } } finally { await browser.close(); }
+}, 60000);
 
 layoutTest("card heading names exclude answer status", async () => {
   const browser = await chromium.launch();

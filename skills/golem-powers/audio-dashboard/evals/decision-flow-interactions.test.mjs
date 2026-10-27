@@ -1,57 +1,8 @@
 import { expect, test } from "bun:test";
 import { Window } from "happy-dom";
+import { scene, boot, selectText, DEFAULT_DECISIONS } from "./decision-flow-harness.mjs";
 
 import { renderDecisionFlow } from "../src/decision-flow.mjs";
-
-function scene(id, words = ["one", "two"]) {
-  return {
-    id,
-    title: id,
-    script: words.join(" "),
-    duration: 1,
-    audioUrl: "data:audio/mpeg;base64,SUQz",
-    words: words.map((word, index) => ({ word, start: index * 0.4, end: index * 0.4 + 0.3 })),
-  };
-}
-
-const DEFAULT_DECISIONS = [
-  { id: "a", title: "A", options: ["Keep", "Change"], sceneIds: ["a1", "a2"] },
-  { id: "b", title: "B", options: ["One", "Two"], sceneIds: ["b1"] },
-];
-
-function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard, storageError = () => false } = {}) {
-  const html = renderDecisionFlow({
-    title: "Audio decision dashboard",
-    kicker: "Audio decision dashboard",
-    heading: "Two calls",
-    subtitle: "Listen and decide.",
-    storageKey: "dbx:interaction-test",
-    cinemaUrl: "./interaction-test-audio.html",
-    scenes,
-    decisions,
-  });
-  const window = new Window();
-  if (seed) window.localStorage.setItem("dbx:interaction-test", JSON.stringify(seed));
-  if (clipboard) Object.defineProperty(window.navigator, "clipboard", { configurable: true, value: clipboard });
-  window.HTMLElement.prototype.scrollIntoView = function scrollIntoView() { this.__scrolledIntoView = true; };
-  Object.defineProperty(window.HTMLMediaElement.prototype, "paused", {
-    configurable: true,
-    get() { return this.__paused ?? true; },
-  });
-  window.HTMLMediaElement.prototype.play = function play() {
-    this.__paused = false;
-    return Promise.resolve();
-  };
-  window.HTMLMediaElement.prototype.pause = function pause() { this.__paused = true; };
-  window.document.write(html);
-  const scripts = [...window.document.querySelectorAll("script")];
-  new Function("document", "localStorage", "navigator", scripts.at(-1).textContent)(
-    window.document,
-    { getItem: key => window.localStorage.getItem(key), setItem: (key, value) => { if (storageError()) throw new Error("quota"); window.localStorage.setItem(key, value); } },
-    window.navigator,
-  );
-  return { window, document: window.document, html };
-}
 
 test("rendered decision flow uses a hub-compatible route-scoped storage key", () => {
   const html = renderDecisionFlow({
@@ -111,12 +62,6 @@ test("failed Clear preserves saved answers and visible controls, and permits ret
   expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test")).vb).toBeUndefined(); expect(card.querySelector(".df-clear-confirm").hidden).toBe(true);
 });
 
-function selectText(run, first, last = first) {
-  const range = run.document.createRange(); range.setStart(first.firstChild, 0); range.setEnd(last.firstChild, last.textContent.length);
-  range.getBoundingClientRect = () => ({ left: 80, right: 160, top: 100, bottom: 120 });
-  const selection = run.window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
-  run.document.dispatchEvent(new run.window.Event("selectionchange"));
-}
 
 test("review: notes alone do not answer a card, while a completed checklist does", () => {
   const plain = boot({ seed: { "a-notes": [{ quote: "one", text: "A comment" }] } });

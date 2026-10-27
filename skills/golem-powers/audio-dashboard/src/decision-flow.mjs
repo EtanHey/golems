@@ -172,6 +172,7 @@ function renderController(decisions) {
         <button type="button" class="df-tbtn" id="df-transport-prev" aria-label="Previous card" disabled>⏮</button>
         <button type="button" class="df-tplay" id="df-transport-play" aria-label="Play the current card"><span class="df-tplay-icon" aria-hidden="true">▶</span><span class="df-tplay-text">Play</span></button>
         <button type="button" class="df-tbtn" id="df-transport-next" aria-label="Next card">⏭</button>
+        <button type="button" class="df-tbtn" id="df-controller-cite" hidden aria-label="Cite selected text" aria-haspopup="dialog" aria-controls="df-note-dialog" title="Cite selected text">❞</button>
         <button type="button" class="df-tbtn df-tstop" id="df-transport-stop" aria-label="Stop and return to the start of the card">■</button>
         <p class="df-now" id="df-now" aria-live="polite"></p>
         <label class="df-speed"><span class="df-sr-only">Playback speed</span><select id="df-speed">${rates}</select></label>
