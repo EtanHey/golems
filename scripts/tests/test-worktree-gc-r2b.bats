@@ -356,3 +356,27 @@ STUB
   [ -d "$HOME/Gits/a-first/.worktrees/topic-worktree" ]
   [ ! -e "$HOME/Gits/c-last/.worktrees/topic-worktree" ]
 }
+
+@test "H1b repo error outranks KEEP-unpushed and cleans per-run scratch files" {
+  mkdir -p "$HOME/Gits"
+  for name in a-unpushed b-refused; do
+    repo="$(make_fixture_repo "$name")"
+    mv "$repo" "$HOME/Gits/"
+  done
+  worktree="$(add_branch_worktree "$HOME/Gits/a-unpushed" topic)"
+  commit_fixture_file "$worktree" local.txt
+  git -C "$HOME/Gits/b-refused" config core.bare true
+  run "$WORKTREE_GC" --dry-run
+  [ "$status" -eq 2 ]
+  [[ "$output" == *KEEP-unpushed* ]] || return 1
+  [[ "$output" == *"ERROR $HOME/Gits/b-refused exit 2:"* ]] || return 1
+  python3 - "$WORKTREE_GC_REPORT_DIR/receipts.jsonl" <<'PY'
+import json, sys
+from pathlib import Path
+receipt = json.loads(Path(sys.argv[1]).read_text().splitlines()[-1])
+assert receipt['exit_status'] == 2
+log = receipt['journal'].removesuffix('.rows.jsonl')
+assert not Path(log + '.repo-state').exists()
+assert not Path(log + '.repo-stderr').exists()
+PY
+}

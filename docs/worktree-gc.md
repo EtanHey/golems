@@ -15,9 +15,17 @@ and every non-cache ignored ancestor protects all descendants. RECEIPT.tsv escap
 backslash, tab, newline and carriage return. Special files are skipped and recorded
 as `special`; FIFOs are never opened. A durable REMOVING row precedes deletion.
 
-Exit codes: 0 = completed; 3 = completed with KEEP-unpushed; 2 = invalid input;
-other nonzero codes = runtime failure. Nightly maps only 3 to success. Shutdown
-signals and timeout kill the prune process group before releasing the suite lock.
+Exit codes: 0 = completed; 3 = completed with KEEP-unpushed; 2 = invalid input
+or any per-repository failure. Each per-repo failure, including crashes with exit
+1 or 7, is logged as an ERROR row with its original exit code and reason, and the
+sweep continues with the next repository. The final exit is 2 if any repo failed;
+2 outranks 3 even when another repo has KEEP-unpushed. The nightly wrapper maps
+only 3 to success and preserves other failures. Shutdown signals and timeout kill
+the prune process group before releasing the suite lock.
+
+Every scan writes `docs.local/worktree-gc/last-run.{json,md}`, including ERROR
+rows for failed repositories. `latest.{json,md}` retains the last successful full
+scan. Per-run `.repo-state` and `.repo-stderr` scratch files are removed on exit.
 
 Tests build repositories outside any Git tree and guard every GC invocation against
 leaving the fixture root. Never probe `--apply` on a real repository. Installation
