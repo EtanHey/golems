@@ -25,7 +25,7 @@ bash skills/golem-powers/claude-desktop-research/scripts/migrate-obsidian-to-dri
 ```
 
 Expected outcomes:
-- files upload into `Brain Drive/Research/cmux/`
+- files upload into `Brain Drive/03_RESEARCH/Active/cmux/`
 - a `DEPRECATED.md` marker is written to the old Obsidian batch folder
 - re-running the command skips unchanged files instead of duplicating them
 
@@ -35,8 +35,8 @@ Expected outcomes:
 2. Re-run the same command once
 3. The second run should report `uploaded: 0` for unchanged files
 4. Spot-check Drive for:
-   - `Brain Drive/Research/<project>/description.md`
-   - `Brain Drive/Research/<project>/instructions.md`
-   - `Brain Drive/Research/<project>/context/`
-   - `Brain Drive/Research/<project>/prompts/`
-   - `Brain Drive/Research/<project>/results/`
+   - `Brain Drive/03_RESEARCH/Active/<project>/description.md`
+   - `Brain Drive/03_RESEARCH/Active/<project>/instructions.md`
+   - `Brain Drive/03_RESEARCH/Active/<project>/context/`
+   - `Brain Drive/03_RESEARCH/Active/<project>/prompts/`
+   - `Brain Drive/03_RESEARCH/Active/<project>/results/`

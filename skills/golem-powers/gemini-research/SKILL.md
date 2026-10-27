@@ -131,7 +131,7 @@ dispatch records at dispatch time:
 |-------|---------|
 | `harvest_owner` | `@brainlayerClaude-LEAD` |
 | `harvest_trigger` | `research_status complete` / Drive export lands / Etan says done |
-| `export_route` | `Drive/Research/<project>/results/R{NN}-gemini-result.md` → brain_store |
+| `export_route` | `Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-gemini-result.md` → brain_store |
 
 Includes researches **Etan fires himself** in gemini.google.com or NotebookLM UI
 (fire=Etan standing rule) — adapters name who harvests and where results export back
@@ -186,7 +186,7 @@ Drive is the source of truth. NotebookLM consumes the same Drive project that `/
    - create a new notebook when the project is new
 
 4. Load Drive context into NotebookLM:
-   - list context files from Drive/Research/<project>/context/
+   - list context files from Brain Drive/03_RESEARCH/Active/<project>/context/
    - add each file into the notebook
    - for raw markdown/text files, download from Drive then upload as file sources
 
@@ -200,7 +200,7 @@ Drive is the source of truth. NotebookLM consumes the same Drive project that `/
 6. Query the notebook for the synthesized answer
 
 7. Write the result to:
-   Drive/Research/<project>/results/R{NN}-gemini-result.md
+   Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-gemini-result.md
 ```
 
 Wrapper (live mode needs both variables, and stops with an error if either is unset):

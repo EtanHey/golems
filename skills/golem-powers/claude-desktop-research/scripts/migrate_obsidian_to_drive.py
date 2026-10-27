@@ -69,10 +69,10 @@ def build_deprecated_notice(project: str) -> str:
     return (
         "# DEPRECATED\n\n"
         "This Claude Web batch is no longer the source of truth.\n\n"
-        f"Canonical Drive location: `Brain Drive/Research/{project}/`\n"
-        f"- prompts: `Brain Drive/Research/{project}/prompts/`\n"
-        f"- context: `Brain Drive/Research/{project}/context/`\n"
-        f"- results: `Brain Drive/Research/{project}/results/`\n\n"
+        f"Canonical Drive location: `Brain Drive/03_RESEARCH/Active/{project}/`\n"
+        f"- prompts: `Brain Drive/03_RESEARCH/Active/{project}/prompts/`\n"
+        f"- context: `Brain Drive/03_RESEARCH/Active/{project}/context/`\n"
+        f"- results: `Brain Drive/03_RESEARCH/Active/{project}/results/`\n\n"
         "Keep this folder only as a migration breadcrumb.\n"
     )
 
@@ -109,7 +109,7 @@ class LocalMirrorBackend:
     root: pathlib.Path
 
     def ensure_structure(self, project: str) -> dict[str, pathlib.Path]:
-        project_root = self.root / "Research" / project
+        project_root = self.root.joinpath(*DRIVE_MODULE.ROOT_CHAIN[1:], project)
         context = project_root / "context"
         prompts = project_root / "prompts"
         results = project_root / "results"

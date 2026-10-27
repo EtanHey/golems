@@ -17,8 +17,11 @@ write_fixture() {
   "folders": [
     {"id": "root", "name": "root", "parent": null},
     {"id": "brain-drive", "name": "Brain Drive", "parent": "root"},
-    {"id": "research", "name": "Research", "parent": "brain-drive"},
-    {"id": "brainlayer", "name": "brainlayer", "parent": "research"},
+    {"id": "legacy-research", "name": "Research", "parent": "brain-drive"},
+    {"id": "legacy-brainlayer", "name": "brainlayer", "parent": "legacy-research"},
+    {"id": "research", "name": "03_RESEARCH", "parent": "brain-drive"},
+    {"id": "active", "name": "Active", "parent": "research"},
+    {"id": "brainlayer", "name": "brainlayer", "parent": "active"},
     {"id": "context", "name": "context", "parent": "brainlayer"},
     {"id": "prompts", "name": "prompts", "parent": "brainlayer"},
     {"id": "results", "name": "results", "parent": "brainlayer"}
@@ -64,11 +67,15 @@ data = json.loads(sys.argv[1])
 fixture = json.loads(pathlib.Path(sys.argv[2]).read_text())
 assert data["project"] == "voicelayer"
 assert set(data["folders"]) == {"project", "context", "prompts", "results"}
-folder_names = {folder["name"] for folder in fixture["folders"]}
-assert "voicelayer" in folder_names
-assert "context" in folder_names
-assert "prompts" in folder_names
-assert "results" in folder_names
+folders = {folder["id"]: folder for folder in fixture["folders"]}
+project = folders[data["folders"]["project"]]
+assert project["name"] == "voicelayer"
+assert project["parent"] == "active"
+for bucket in ("context", "prompts", "results"):
+    folder = folders[data["folders"][bucket]]
+    assert folder["name"] == bucket
+    assert folder["parent"] == project["id"]
+assert not any(folder["parent"] == "legacy-research" and folder["name"] == "voicelayer" for folder in folders.values())
 PY
 
   trap - RETURN

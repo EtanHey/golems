@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from urllib.parse import urlencode
 from urllib.parse import quote
 
-ROOT_CHAIN = ["Brain Drive", "Research"]
+ROOT_CHAIN = ["Brain Drive", "03_RESEARCH", "Active"]
 PROMPT_RE = re.compile(r"^R\d+.*\.md$")
 RESULT_RE = re.compile(r"^R\d+.*-result\.md$")
 

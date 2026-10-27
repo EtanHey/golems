@@ -78,7 +78,7 @@ import json, pathlib, sys
 summary = json.loads(pathlib.Path(sys.argv[1]).read_text())
 drive_root = pathlib.Path(sys.argv[2])
 deprecated = pathlib.Path(sys.argv[3])
-project_root = drive_root / "Research" / "cmux"
+project_root = drive_root / "03_RESEARCH" / "Active" / "cmux"
 assert summary["dry_run"] is False
 assert summary["batches"][0]["actions"]["uploaded"] == 5
 assert summary["batches"][0]["actions"]["skipped"] == 0
@@ -87,7 +87,7 @@ assert (project_root / "instructions.md").read_text().strip() == "cmux project i
 assert (project_root / "prompts" / "R84-vector-db-options.md").read_text().strip() == "# R84\nprompt content"
 assert (project_root / "results" / "R84-claude-web-result.md").read_text().strip() == "result content"
 assert (project_root / "context" / "00-code-map.md").read_text().strip() == "context content"
-assert "Brain Drive/Research/cmux/" in deprecated.read_text()
+assert "Brain Drive/03_RESEARCH/Active/cmux/" in deprecated.read_text()
 PY
 
   CLAUDE_WEB_OBSIDIAN_ROOT="$tmp_dir/source" \
