@@ -39,15 +39,24 @@ stale scans, uncovered active seats or unsuccessful probes downgrade MCP LIVE to
 INSTALLED_NOT_ACTIVE with a specific reason. A version self-report alone is
 insufficient. Other products retain version self-report or MCP probe proof.
 
-### Process-level client proof (I2d FINAL)
+### Process-level client proof (I2f)
 
 `seat_scan.method: client-processes` requires `clients`, `excluded`, and
 `bridge_diff` in addition to `checked_at` and `active_seats`. These fields are
 refused on the two existing seat methods, whose behavior is unchanged.
 
-- `clients[]`: `{pid: positive integer, started_at: UTC Z, command: non-empty
-  string, thread_id: non-empty string or null}`. Record exact argv[0..1] and ps
-  lstart converted from local time to UTC (whole seconds only; fractions are refused).
+- `clients[]`: `{pid: positive integer, started_at: UTC Z, argv: non-empty array
+  of non-empty strings, argv_source: ps-split|procargs2, thread_id: non-empty
+  string or null}`. `argv` replaces `command`; the closed schema rejects the old
+  field. Record every token, with no truncation to argv[0..1]. Record ps lstart
+  in UTC (whole seconds only; fractions are refused).
+  `argv_source` is required. Today's collector emits `ps-split`: the whitespace
+  split of ps's complete command string. This is lossy: an argument containing a
+  space becomes several elements; these are not true argv boundaries. No core
+  client path contains a space, so splitting preserves its matching element;
+  extra splits can only add elements, erring toward a match and stale status
+  (fails closed). `procargs2` reserves true argv from a future native
+  KERN_PROCARGS2 reader; this change does not implement that reader.
 - `excluded[]`: `{rule: socat-relay|daemon-process, reason: non-empty string,
   count: non-negative integer}`.
 - `bridge_diff`: `{from_tag, to_sha, paths: [non-empty strings], changed: boolean}`.
@@ -59,16 +68,23 @@ refused on the two existing seat methods, whose behavior is unchanged.
   core paths: `src/brainlayer/mcp_stdio_bridge.py`, `src/brainlayer/mcp/`, and
   `src/brainlayer/mcp_socket_config.py`.
 
-Core matches BrainLayer and BrainBar clients only when the command ends with
+Core alone matches BrainLayer and BrainBar clients when ANY `argv` element equals
+or ends with one of these paths (the leading `/` enforces a path-suffix boundary):
 `/opt/homebrew/bin/brainlayer-mcp-stdio-bridge`,
 `/opt/homebrew/opt/brainlayer/bin/brainlayer-mcp-stdio-bridge` or
 `/opt/homebrew/Cellar/brainlayer/<version>/bin/brainlayer-mcp-stdio-bridge`,
-optionally preceded by an interpreter executable. Watch, drain, daemon,
-hybrid-helper and supervisor_guard commands are never clients. BrainBar shares
-this matcher because those bridges relay to its `/tmp/brainbar.sock`.
-The Cellar version segment cannot be `.` or `..`. If argv[0] or argv[1] has
-basename `brainlayer-mcp-stdio-bridge` but an unrecognised path, validation refuses
-the receipt even when `bridge_diff.changed=false`.
+at any token index, including `uv run <bridge>` and interpreter wrappers, with
+trailing arguments allowed. A stray path held by an editor also matches, erring
+toward stale. Watch, drain, daemon, hybrid-helper and supervisor_guard commands
+without a matching bridge element are not clients. BrainBar shares this matcher
+because those bridges relay to its `/tmp/brainbar.sock`.
+The Cellar version segment cannot be `.` or `..`. If ANY element has basename
+`brainlayer-mcp-stdio-bridge` but an unrecognised path, validation refuses the
+receipt even when `bridge_diff.changed=false`. Every `clients[]` entry must match
+its product's core rule; otherwise validate and write refuse with
+`unmatched client in seat_scan.clients`. Exclude non-client processes rather than
+silently including unmatched entries. Collectors pass token arrays to the exported
+`CLIENT_RULES` matcher (`.test(argv)`); they never normalise paths or copy matchers.
 
 Core floors both timestamps to whole seconds when comparing
 `started_at <= installed.install_finished_at`:
@@ -78,8 +94,10 @@ write both refuse a differing list, including duplicate claims. When
 `bridge_diff.changed=false`, none are stale and write records why in reasons.
 
 VoiceLayer and VoiceBar are relay products: core derives no stale clients for
-these products, regardless of the recorded commands. The relay rule does not reject commands
-that differ from the observed socat argv or independently verify relay counts.
+these products. A relay client must contain the exact tokens `socat` (or
+`/opt/homebrew/bin/socat`), `STDIO`, and
+`UNIX-CONNECT:/tmp/voicelayer-mcp.sock`, with extra arguments allowed.
+The rule does not independently verify relay counts.
 A `socat-relay` exclusion must record the observed count (including zero) and
 contain this exact sentence; excluded processes may already be absent from `clients`:
 
