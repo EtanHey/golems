@@ -22,12 +22,11 @@ if [[ $dry_run == 1 ]]; then
   exit 0
 fi
 if [[ $uninstall == 0 ]]; then
-  "$script_dir/render-plist.sh" "$script_dir/$label.plist.in" "$installed_plist"
+  # This template has no Node token and must render before GUI PATH is repaired.
+  NODE_BIN=${NODE_BIN:-/usr/bin/false} "$script_dir/render-plist.sh" "$script_dir/$label.plist.in" "$installed_plist"
   plutil -lint "$installed_plist" >/dev/null
 fi
-if launchctl print "$domain/$label" >/dev/null 2>&1; then
-  launchctl bootout "$domain/$label"
-fi
+launchctl bootout "$domain/$label" 2>/dev/null || true
 if [[ $uninstall == 1 ]]; then
   rm -f "$installed_plist"
   printf 'uninstalled %s\n' "$label"

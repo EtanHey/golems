@@ -22,20 +22,21 @@ test("GUI PATH install, dry-run and uninstall are repeatable without real launch
 printf '%s\\n' "$*" >> "$TEST_LOG"
 case "$1" in
   print) test -f "$TEST_STATE" ;;
-  bootout) rm -f "$TEST_STATE" ;;
+  bootout) test -f "$TEST_STATE" || exit 1; rm -f "$TEST_STATE" ;;
   bootstrap) touch "$TEST_STATE" ;;
   *) exit 99 ;;
 esac
 `, { mode: 0o755 });
-    const env = { ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}`,
-      NODE_BIN: process.execPath, TEST_LOG: log, TEST_STATE: state };
-    const run = (args = []) => {
-      const result = spawnSync("bash", [join(root, "launchd/install-gui-path.sh"), ...args], { env, encoding: "utf8" });
+    const env = { ...process.env, HOME: home, PATH: `${bin}:/usr/bin:/bin`,
+      TEST_LOG: log, TEST_STATE: state };
+    delete env.NODE_BIN;
+    const run = (args = [], runEnv = env) => {
+      const result = spawnSync("/bin/bash", [join(root, "launchd/install-gui-path.sh"), ...args], { env: runEnv, encoding: "utf8" });
       assert.equal(result.status, 0, result.stderr);
       return result.stdout;
     };
-    const dry = run(["--dry-run"]);
-    assert.equal(run(["--dry-run"]), dry);
+    const dry = run(["--dry-run"], { ...env, PATH: "/usr/bin:/bin" });
+    assert.equal(run(["--dry-run"], { ...env, PATH: "/usr/bin:/bin" }), dry);
     assert.equal(existsSync(home), false);
     assert.equal(existsSync(log), false);
     run();
@@ -53,7 +54,7 @@ esac
     assert.equal(readFileSync(plist, "utf8"), rendered);
     const calls = readFileSync(log, "utf8");
     const domain = `gui/${process.getuid()}`;
-    assert.equal(calls, `print ${domain}/com.golems.gui-path\nbootstrap ${domain} ${plist}\nprint ${domain}/com.golems.gui-path\nbootout ${domain}/com.golems.gui-path\nbootstrap ${domain} ${plist}\n`);
+    assert.equal(calls, `bootout ${domain}/com.golems.gui-path\nbootstrap ${domain} ${plist}\nbootout ${domain}/com.golems.gui-path\nbootstrap ${domain} ${plist}\n`);
     run(["--uninstall", "--dry-run"]);
     assert.equal(readFileSync(log, "utf8"), calls);
     assert.equal(readFileSync(plist, "utf8"), rendered);
