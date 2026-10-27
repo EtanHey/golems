@@ -8,6 +8,7 @@ import { homedir } from "node:os";
 
 const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const maxClockSkewMs = 5 * 60_000;
 const defaultIgnores = ["docs.local/**", "**/*.md", "collab/**"];
 const defaultTagPattern = "^v?\\d+\\.\\d+\\.\\d+(?:[-+].*)?$";
 
@@ -113,7 +114,7 @@ function commitCounts(repo, tag, remoteRef, ignorePaths, runCommand, includeAge 
     const oldest = integrations.split(/\r?\n/).map(line => line.split(":"))
       .find(([sha]) => shippable.includes(sha));
     const timestamp = Number(oldest?.[1]) * 1000;
-    if (!Number.isFinite(timestamp) || timestamp > Date.now()) throw new Error("cannot determine oldest unreleased integration time");
+    if (!Number.isFinite(timestamp) || timestamp > Date.now() + maxClockSkewMs) throw new Error("cannot determine oldest unreleased integration time");
     counts.oldestShippableAt = new Date(timestamp).toISOString();
   }
   return counts;
@@ -374,12 +375,15 @@ export function releaseExitCode(verdict) {
 export function callbackResult(report, now = Date.now()) {
   if (report.verdict !== "MERGED_UNRELEASED") return { code: releaseExitCode(report.verdict) };
   const age = now - Date.parse(report.commits?.oldestShippableAt);
-  if (!Number.isFinite(age) || age < 0) throw new Error("invalid unreleased integration time");
-  const overdue = age >= 24 * 3600_000;
+  if (!Number.isFinite(age) || age < -maxClockSkewMs) throw new Error("invalid unreleased integration time");
+  // Observed merge-to-release cadence is 1–7 minutes (d5d3a289: 6m49s);
+  // transient failed-gate runs cleared about 2 minutes later. Two hours allows
+  // queue delays without hiding a stalled backlog for a full daily cron cycle.
+  const overdue = Math.max(0, age) >= 2 * 3600_000;
   return {
     code: overdue ? 1 : 0,
     annotation: overdue ? "error" : "warning",
-    message: `MERGED_UNRELEASED: oldest shippable integration ${report.commits.oldestShippableAt}; grace period 24 hours; ${overdue ? "overdue, repair publication" : "publication pending"}`,
+    message: `MERGED_UNRELEASED: oldest shippable integration ${report.commits.oldestShippableAt}; grace period 2 hours; ${overdue ? "overdue, repair publication" : "publication pending"}`,
   };
 }
 

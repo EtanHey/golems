@@ -428,12 +428,12 @@ describe("release gate callback grace period", () => {
     expect(result.report.verdict).toBe("MERGED_UNRELEASED");
     expect(result.stderr).toContain("::warning::");
     expect(result.summary).toContain("MERGED_UNRELEASED");
-    expect(result.summary).toContain("24 hours");
+    expect(result.summary).toContain("2 hours");
   });
 
   test("overdue shippable lag remains non-zero despite a recent commit", () => {
     const result = fixture({ postTagPath: "src/new.js", releaseOnly: true, callback: true, recentCommit: true,
-      postTagDate: new Date(Date.now() - 25 * 3600_000).toISOString() });
+      postTagDate: new Date(Date.now() - 3 * 3600_000).toISOString() });
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("::error::");
     expect(result.report.verdict).toBe("MERGED_UNRELEASED");
@@ -445,10 +445,32 @@ describe("release gate callback grace period", () => {
     expect(result.report.verdict).toBe("UNKNOWN");
   });
 
-  test("a failed publisher stays red even at a clean tag", () => {
-    const result = fixture({ releaseOnly: true, callback: true, releaseConclusion: "failure" });
+  test.each(["success", "cancelled", "skipped"])("publisher conclusion %s passes through", (releaseConclusion) => {
+    const result = fixture({ releaseOnly: true, callback: true, releaseConclusion });
+    expect(result.status).toBe(0);
+    expect(result.report.verdict).toBe("CLEAN");
+  });
+
+  test.each(["failure", "timed_out", "startup_failure", "action_required"])("publisher conclusion %s stays red", (releaseConclusion) => {
+    const result = fixture({ releaseOnly: true, callback: true, releaseConclusion });
     expect(result.status).toBe(2);
-    expect(result.report.error).toContain("failure");
+    expect(result.report.verdict).toBe("UNKNOWN");
+    expect(result.report.error).toContain(releaseConclusion);
+  });
+
+  test("a future integration within five minutes receives grace", () => {
+    const result = fixture({ postTagPath: "src/new.js", releaseOnly: true, callback: true,
+      postTagDate: new Date(Date.now() + 4 * 60_000).toISOString() });
+    expect(result.status).toBe(0);
+    expect(result.report.verdict).toBe("MERGED_UNRELEASED");
+    expect(result.stderr).toContain("::warning::");
+  });
+
+  test("an integration beyond five minutes in the future fails closed", () => {
+    const result = fixture({ postTagPath: "src/new.js", releaseOnly: true, callback: true,
+      postTagDate: new Date(Date.now() + 6 * 60_000).toISOString() });
+    expect(result.status).toBe(2);
+    expect(result.report.verdict).toBe("UNKNOWN");
   });
 
   test("callback requires release-only mode", () => {
@@ -457,11 +479,12 @@ describe("release gate callback grace period", () => {
   });
 });
 
-test("callback threshold includes exactly 24 hours; missing age fails closed", () => {
+test("callback threshold includes exactly 2 hours; missing age fails closed", () => {
   const now = Date.now();
-  const report = { verdict: "MERGED_UNRELEASED", commits: { oldestShippableAt: new Date(now - 24 * 3600_000).toISOString() } };
+  const report = { verdict: "MERGED_UNRELEASED", commits: { oldestShippableAt: new Date(now - 2 * 3600_000).toISOString() } };
   expect(callbackResult(report, now).code).toBe(1);
   expect(callbackResult(report, now - 1).code).toBe(0);
+  expect(callbackResult(report, now + 1).code).toBe(1);
   expect(() => callbackResult({ verdict: "MERGED_UNRELEASED" }, now)).toThrow();
   expect(callbackResult({ verdict: "UNKNOWN" }, now).code).toBe(2);
 });
@@ -479,4 +502,13 @@ test("old docs-only lag stays clean in callback mode", () => {
     postTagDate: new Date(Date.now() - 72 * 3600_000).toISOString() });
   expect(result.status).toBe(0);
   expect(result.report.verdict).toBe("CLEAN");
+});
+
+
+test("callback tolerates five minutes of clock skew, treating future timestamps as age zero", () => {
+  const now = Date.now();
+  const report = { verdict: "MERGED_UNRELEASED", commits: { oldestShippableAt: new Date(now + 5 * 60_000).toISOString() } };
+  expect(callbackResult(report, now)).toMatchObject({ code: 0, annotation: "warning" });
+  expect(callbackResult(report, now + 1).code).toBe(0);
+  expect(() => callbackResult(report, now - 1)).toThrow("invalid unreleased integration time");
 });
