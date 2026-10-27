@@ -537,7 +537,7 @@ def test_apple_named_env_after_empty_entry_is_unknown(spawn, monkeypatch):
 
 
 @pytest.mark.parametrize('name', [
-    b'ptr_munge', b'main_stack', b'executable_file', b'dyld_file',
+    b'ptr_munge', b'main_stack', b'executable_file', b'executable_path', b'arm64e_abi', b'dyld_file',
     b'executable_cdhash', b'executable_boothash', b'th_port',
     b'security_config', b'stack_guard', b'malloc_entropy',
     b'dyld_hw_tpro', b'dyld_hw_tpro_pagers', b'dyld_future_key', b'dyld_',
@@ -546,13 +546,38 @@ def test_reserved_name_queries_are_unknown_before_inspection(monkeypatch, name):
     def unexpected_inspection(*_):
         pytest.fail('reserved names must be rejected before process inspection')
     monkeypatch.setattr(proc, 'identity', unexpected_inspection)
-    for query in (proc.has_env, proc.owned):
+    for query in (proc.has_env,):
         for value in (b'tok', b''):
             result = query(os.getpid(), name, value)
             assert isinstance(result, proc.Unknown)
             assert result.reason == 'reserved-name'
             with pytest.raises(TypeError):
                 bool(result)
+
+
+@pytest.mark.parametrize('name', [b'executable_path', b'arm64e_abi', b'M',
+                                  b'GOLEMS_', b'GOLEMS_lower', b'GOLEMS_A\n',
+                                  b'GOLEMS_A-B', b'GOLEMS_\xff'])
+def test_owned_rejects_names_outside_marker_grammar_before_inspection(monkeypatch, name):
+    def unexpected_inspection(*_):
+        pytest.fail('invalid marker names must be rejected before inspection')
+    monkeypatch.setattr(proc, 'identity', unexpected_inspection)
+    with pytest.raises(ValueError):
+        proc.owned(os.getpid(), name, b'tok')
+
+
+def test_lowercase_dyld_env_before_terminator_fails_closed(spawn, monkeypatch):
+    child, _ = spawn()
+    original = proc.identity(child.pid)
+    data = procargs_buffer([b'p'], [b'dyld_x=1', MARKER + b'=' + TOKEN])
+    monkeypatch.setattr(proc, 'identity', lambda _: original)
+    monkeypatch.setattr(proc, '_darwin_args', lambda _: proc._parse_procargs2(data))
+    monkeypatch.setattr(proc.sys, 'platform', 'darwin')
+    result = proc.owned(child.pid, MARKER, TOKEN)
+    assert isinstance(result, proc.Unknown)
+    assert result.reason == 'ambiguous'
+    with pytest.raises(TypeError):
+        bool(result)
 
 
 def test_dyld_tail_family_is_reserved_and_other_tails_stay_ambiguous():

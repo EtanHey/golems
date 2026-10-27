@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import re
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -42,7 +43,8 @@ KERN_PROCARGS2 = 49
 # System Python emits dyld_hw_tpro/dyld_hw_tpro_pagers on this Mac; reserve the
 # entire dyld_ family so its strings cannot masquerade as ordinary env evidence.
 _APPLE_VECTOR_NAMES = frozenset((
-    b"ptr_munge", b"main_stack", b"executable_file", b"dyld_file",
+    b"ptr_munge", b"main_stack", b"executable_file", b"executable_path",
+    b"arm64e_abi", b"dyld_file",
     b"executable_cdhash", b"executable_boothash", b"th_port",
     b"security_config", b"stack_guard", b"malloc_entropy",
 ))
@@ -386,7 +388,7 @@ def environ(pid: int) -> dict[bytes, bytes] | None:
     padding); unexplained trailing entries raise unavailable. Reserved Apple
     names after an empty entry are unattributable: they may be env or Apple
     strings and are omitted here. Their absence is not a confirmed negative;
-    has_env() and owned() return Unknown('reserved-name') for those names.
+    has_env() returns Unknown('reserved-name'); owned() rejects non-marker names.
     macOS argv/env is process-writable: matches are evidence, NOT sole kill authority.
     Require pgid membership observed while its leader incarnation was alive, or
     an observed ppid chain with matching birth keys to the suite's child, born
@@ -416,7 +418,9 @@ def _validate_env(name: bytes, value: bytes) -> None:
 
 
 def has_env(pid: int, name: bytes, value: bytes) -> Union[bool, Unknown]:
-    """Match the FIRST occurrence; gone returns False; failures raise UNKNOWN.
+    """Match the FIRST occurrence; gone returns False; reserved names return Unknown.
+
+    Inspection failures raise ProcIdentityUnavailable.
 
     Reserved Apple-vector names return Unknown('reserved-name') before inspection
     on either platform; their Darwin env/Apple attribution cannot be established.
@@ -472,13 +476,14 @@ def owned(pid: int, name: bytes, value: bytes) -> Union[bool, Unknown]:
     Returns bool or Unknown, not the verified identity. For kill decisions call
     identity() to retain a snapshot, then owned(), then same_process(snapshot)
     immediately before signalling. Proceed only on owned() is True and a match.
-    Reserved Apple-vector names return Unknown('reserved-name') before inspection.
+    Only GOLEMS_[A-Z0-9_]+ marker names are accepted; others raise ValueError
+    before inspection. Use has_env() for general environment queries.
     This is marker evidence subject to the module's lineage requirement, not
     permission to kill. For a later Linux signal retain pinned_process(snapshot).
     """
     _validate_env(name, value)
-    if _reserved_env_name(name):
-        return Unknown("reserved-name")
+    if re.fullmatch(rb"GOLEMS_[A-Z0-9_]+", name) is None:
+        raise ValueError("ownership requires a GOLEMS_[A-Z0-9_]+ marker name")
     try:
         before = identity(pid)
         if before is None:
