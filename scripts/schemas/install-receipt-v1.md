@@ -18,9 +18,22 @@ Any present embedded commit, worktree pin, owner_status.pin_sha or self-report c
 Owner status exit != 0, drift or settings_drift downgrades LIVE to
 INSTALLED_NOT_ACTIVE: activation is unverified, rather than a proven SHA mismatch.
 For brainlayer, voicelayer, cmuxlayer, brainbar and voicebar, LIVE additionally requires
-`activation.mcp_probe.ok: true` and a non-empty `activation.reconnected_seats`
-array of non-empty strings. A version self-report alone downgrades to
-INSTALLED_NOT_ACTIVE. Other products retain version self-report or MCP probe proof.
+`activation.mcp_probe.ok: true` and `activation.seat_scan` with:
+
+- `method`: `t3-threads` or `list_agents`;
+- `checked_at`: a UTC Z timestamp strictly later than `installed.install_finished_at`;
+- `active_seats`: an array of non-empty seat IDs, each present in
+  `activation.reconnected_seats`.
+
+An empty `active_seats` permits empty or absent `reconnected_seats`. Reconnect only
+seats actively using the server; idle, ready and paused seats receive no reconnect
+or nudge (deploy-local-prod contract #3, 2026-09-24). The agent's own stdio/MCP
+probe never counts as a seat in either list. The current `mcp_probe` schema has no
+seat identifier, so this exclusion is caller-attested, not mechanically checked.
+The seat scan is optional in the schema for existing receipts, but missing scans,
+stale scans, uncovered active seats or unsuccessful probes downgrade MCP LIVE to
+INSTALLED_NOT_ACTIVE with a specific reason. A version self-report alone is
+insufficient. Other products retain version self-report or MCP probe proof.
 Existing FAILED/MISMATCH verdicts remain conservative. `target.merge_sha` remains the required 40-hex PR merge being shipped.
 `target.released_sha` is required and identifies the release tag's commit (the
 commit embedded by the build). All commit SHAs and content hashes must be

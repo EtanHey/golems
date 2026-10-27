@@ -27,9 +27,18 @@ export function assess(r) {
   const identity = r.installed.embedded_commit === r.target.released_sha || (!r.installed.embedded_commit
     && r.installed.content_sha256 && r.installed.content_sha256 === r.target.release_asset?.sha256);
   const fresh = r.activation.processes.some(p => Date.parse(p.started_at) > Date.parse(r.installed.install_finished_at));
-  if (r.verdict === 'LIVE' && MCP_PRODUCTS.includes(r.product)
-    && !(r.activation.mcp_probe?.ok === true && r.activation.reconnected_seats?.length > 0)) {
-    return ['INSTALLED_NOT_ACTIVE', 'Missing MCP proof: successful mcp_probe and non-empty reconnected_seats required'];
+  if (r.verdict === 'LIVE' && MCP_PRODUCTS.includes(r.product)) {
+    if (r.activation.mcp_probe?.ok !== true) {
+      return ['INSTALLED_NOT_ACTIVE', 'Missing MCP proof: successful mcp_probe required'];
+    }
+    const scan = r.activation.seat_scan;
+    if (!scan) return ['INSTALLED_NOT_ACTIVE', 'Missing MCP proof: seat_scan required'];
+    if (!(Date.parse(scan.checked_at) > Date.parse(r.installed.install_finished_at))) {
+      return ['INSTALLED_NOT_ACTIVE', 'Missing MCP proof: seat_scan.checked_at must be later than installed.install_finished_at'];
+    }
+    if (!scan.active_seats.every(seat => r.activation.reconnected_seats?.includes(seat))) {
+      return ['INSTALLED_NOT_ACTIVE', 'Missing MCP proof: every seat_scan.active_seats id must appear in reconnected_seats'];
+    }
   }
   const probe = r.activation.self_report?.version === r.target.version || r.activation.mcp_probe?.ok === true;
   if (r.verdict === 'LIVE' && !(identity && fresh && probe)) return ['INSTALLED_NOT_ACTIVE', 'Missing matching identity, fresh activation process or runtime proof'];
