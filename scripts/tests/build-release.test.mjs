@@ -149,5 +149,5 @@ test('published asset mismatch fails before changing release metadata', () => {
 
 test('publication remains serialized and both jobs use the pinned Node version', () => {
   expect(workflow).toContain('group: golems-release\n      cancel-in-progress: false');
-  expect(workflow.match(/node-version: '22\.22\.0'/g)).toHaveLength(2);
+  expect(workflow.match(/node-version: '24\.22\.1'/g)).toHaveLength(2);
 });
