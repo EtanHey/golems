@@ -40,12 +40,15 @@ if legacy.is_file():
     print(f"apt: direct-archive sources in {legacy}", flush=True)
     found = True
 if not found:
-    sys.exit("apt: no ubuntu.sources or sources.list found for fallback")
+    sys.exit("apt: source switch failed: no sources file found")
 PY
 }
 
 source_label=runner-configured
 for attempt in 1 2 3; do
+  if [[ $attempt -gt 1 ]]; then
+    dpkg --configure -a || true
+  fi
   if [[ $attempt == 2 ]]; then
     switch_sources
     source_label=direct-archive

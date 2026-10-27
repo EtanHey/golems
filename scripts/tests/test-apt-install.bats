@@ -4,6 +4,7 @@ setup() {
   HELPER="$BATS_TEST_DIRNAME/../ci/apt-install.sh"
   export APT_SOURCES_DIR="$BATS_TEST_TMPDIR/apt" CI_APT_COMMAND_TIMEOUT=1
   export APT_TEST_LOG="$BATS_TEST_TMPDIR/calls" APT_TEST_MODE=success
+  export APT_TEST_CHILD_PID="$BATS_TEST_TMPDIR/child.pid"
   mkdir -p "$APT_SOURCES_DIR/sources.list.d" "$BATS_TEST_TMPDIR/bin"
   export PATH="$BATS_TEST_TMPDIR/bin:$PATH"
   cat > "$BATS_TEST_TMPDIR/bin/apt-get" <<'STUB'
@@ -13,7 +14,10 @@ case "$*" in
   *update)
     count=$(grep -c 'update$' "$APT_TEST_LOG")
     if [[ $APT_TEST_MODE == hang && $count == 1 ]]; then
-      trap 'echo terminated >> "$APT_TEST_LOG"; exit 143' TERM
+      sleep 300 &
+      sleeper=$!
+      echo "$sleeper" > "$APT_TEST_CHILD_PID"
+      trap 'wait "$sleeper" || true; echo terminated >> "$APT_TEST_LOG"; exit 143' TERM
       while :; do sleep 0.1; done
     fi
     if [[ $APT_TEST_MODE == hang && $count == 2 ]]; then
@@ -25,6 +29,12 @@ case "$*" in
 esac
 STUB
   chmod +x "$BATS_TEST_TMPDIR/bin/apt-get"
+  cat > "$BATS_TEST_TMPDIR/bin/dpkg" <<'STUB'
+#!/usr/bin/env bash
+echo "$*" >> "$APT_TEST_LOG.dpkg"
+exit 17
+STUB
+  chmod +x "$BATS_TEST_TMPDIR/bin/dpkg"
 }
 
 deb822_sources() {
@@ -48,6 +58,8 @@ SOURCES
   run bash "$HELPER" bats zsh ripgrep ffmpeg
   [ "$status" -eq 0 ]
   grep -qx terminated "$APT_TEST_LOG"
+  [ -s "$APT_TEST_CHILD_PID" ]
+  ! kill -0 "$(cat "$APT_TEST_CHILD_PID")" 2>/dev/null || false
   [ "$(grep -c 'update$' "$APT_TEST_LOG")" -eq 2 ]
   grep -q 'URIs: http://archive.ubuntu.com/ubuntu' "$APT_SOURCES_DIR/sources.list.d/ubuntu.sources"
   grep -q 'URIs: http://security.ubuntu.com/ubuntu' "$APT_SOURCES_DIR/sources.list.d/ubuntu.sources"
@@ -65,6 +77,7 @@ SOURCES
   run bash "$HELPER" bats
   [ "$status" -eq 42 ]
   [ "$(grep -c 'update$' "$APT_TEST_LOG")" -eq 3 ]
+  [ "$(grep -cx -- '--configure -a' "$APT_TEST_LOG.dpkg")" -eq 2 ]
   grep -qx 'deb http://archive.ubuntu.com/ubuntu noble main' "$APT_SOURCES_DIR/sources.list"
   grep -qx 'deb-src http://security.ubuntu.com/ubuntu noble-security main' "$APT_SOURCES_DIR/sources.list"
   grep -qx '# preserve comment' "$APT_SOURCES_DIR/sources.list"
@@ -81,4 +94,12 @@ SOURCES
   run bash "$HELPER" bats
   [ "$status" -eq 43 ]
   [ "$(grep -c 'install ' "$APT_TEST_LOG")" -eq 3 ]
+}
+
+@test "missing sources files fail clearly before a second apt attempt" {
+  export APT_TEST_MODE=fail
+  run bash "$HELPER" bats
+  [ "$status" -ne 0 ]
+  [[ $output == *'apt: source switch failed: no sources file found'* ]] || false
+  [ "$(grep -c 'update$' "$APT_TEST_LOG")" -eq 1 ]
 }
