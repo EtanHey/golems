@@ -278,6 +278,12 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) test(`second ${signal} dur
   assert.ok(Date.now() - hung[0] < 1500, 'second signal did not stop cleanup promptly');
   assertNoRunningCleanup(calls());
 }, { HANG_COMMAND: 'stop', ESCALATE_SIGNALS: `SIGINT,${signal}` }));
+test('second teardown signal stays second across preflight and final cleanup', { skip: process.platform === 'win32' }, () => fixture(async ({ run, seed, calls }) => {
+  seed('stale'); const r = await run('run', 'hook'); assert.equal(r.code, 130, r.stderr);
+  assert.match(r.stderr, /Teardown FAILED: .*second signal/);
+  assert.equal(index(calls(), 'child', 'start'), -1);
+  assert.equal(calls().filter(c => c[1] === 'stub' && c[2] === 'stopped').length, 1);
+}, { GROUP_INTERRUPT: '1' }));
 for (const value of ['0', '60001', 'nope']) test(`teardown timeout override ${value} is rejected`, () => fixture(async ({ run, calls }) => {
   const r = await run('teardown'); assert.equal(r.code, 1); assert.match(r.stderr, /timeout/i); assert.deepEqual(calls(), []);
 }, { GOLEMS_DOCKER_TEARDOWN_TIMEOUT_MS: value }));

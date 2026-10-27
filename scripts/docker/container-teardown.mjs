@@ -17,7 +17,7 @@ export function createLifecycle(selector, { env = process.env, cwd = process.cwd
   const timeout = Number(env.GOLEMS_DOCKER_TEARDOWN_TIMEOUT_MS || MAX_TEARDOWN_TIMEOUT_MS);
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > MAX_TEARDOWN_TIMEOUT_MS)
     throw new Error(`Teardown timeout must be an integer from 1 to ${MAX_TEARDOWN_TIMEOUT_MS} ms`);
-  let cleanupState, inRun = false, cleanupAbort;
+  let cleanupState, inRun = false, cleanupAbort, firstRunSignal;
   const command = (bin, args, signal) => new Promise((done, reject) => {
     const cleanup = cleanupState, description = `${bin} ${args.join(' ')}`;
     if (cleanup?.aborted) { reject(new Error(`Teardown FAILED: ${description}: ${cleanup.aborted.message}`)); return; }
@@ -86,9 +86,13 @@ export function createLifecycle(selector, { env = process.env, cwd = process.cwd
     const errors = [];
     const previous = cleanupState;
     const cleanup = cleanupState = { active: new Set(), aborted: inRun ? cleanupAbort : undefined };
-    let interruption = priorInterruption;
+    let interruption = priorInterruption ?? (inRun ? firstRunSignal : undefined);
     const stop = signal => {
-      if (!interruption) { interruption = signalError(signal); return; }
+      if (!interruption) {
+        interruption = signalError(signal);
+        if (inRun) firstRunSignal = interruption;
+        return;
+      }
       cleanup.aborted = new Error(`second signal ${signal} during teardown`);
       if (inRun) cleanupAbort = cleanup.aborted;
       for (const cancel of cleanup.active) cancel(cleanup.aborted.message, true);
@@ -117,7 +121,7 @@ export function createLifecycle(selector, { env = process.env, cwd = process.cwd
   }
   async function run(argv) {
     if (!Array.isArray(argv) || !argv.length) throw new Error('run requires a command after --');
-    inRun = true; cleanupAbort = undefined;
+    inRun = true; cleanupAbort = undefined; firstRunSignal = undefined;
     const controller = new AbortController();
     let child, closed, exited = false, timer, inflight, finishing = false, failure, interruption;
     let interrupt;
