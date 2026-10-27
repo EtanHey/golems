@@ -1,7 +1,7 @@
 // Closed objects intentionally reject extra payloads (secrets, transcripts, memory content).
 const text = { type: 'string', minLength: 1 };
-const sha = { type: 'string', pattern: '^[0-9a-fA-F]{40}$' };
-const digest = { type: 'string', pattern: '^[0-9a-fA-F]{64}$' };
+const sha = { type: 'string', pattern: '^[0-9a-f]{40}$' };
+const digest = { type: 'string', pattern: '^[0-9a-f]{64}$' };
 const time = { type: 'string', format: 'utc-time' };
 const component = { type: 'string', pattern: '^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,127}$' };
 const object = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });

@@ -88,6 +88,7 @@ test('writer refuses symlinked state directories', () => isolated((run, home) =>
 }));
 
 test('4: concurrent CLI writers publish complete latest receipts and preserve every successful event', async () => {
+  mkdirSync(resolve('docs.local'), { recursive: true });
   const home = mkdtempSync(resolve('docs.local/install-receipt-home-'));
   try {
     const results = [];
@@ -113,3 +114,34 @@ test('4: concurrent CLI writers publish complete latest receipts and preserve ev
     assert.equal(readdirSync(dir).length, successes.length + 1);
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
+
+for (const [name, mutate, expected] of [
+  ['pre-merge worktree pin', r => { r.install_source.pin_sha = 'c'.repeat(40); }, 'MISMATCH'],
+  ['older self-report commit', r => { r.activation.self_report.commit = 'c'.repeat(40); }, 'MISMATCH'],
+  ['owner status exit', r => { r.install_source.owner_status.exit = 1; }, 'INSTALLED_NOT_ACTIVE'],
+  ['owner status drift', r => { r.install_source.owner_status.drift = true; }, 'INSTALLED_NOT_ACTIVE'],
+  ['owner settings drift', r => { r.install_source.owner_status.settings_drift = true; }, 'INSTALLED_NOT_ACTIVE'],
+]) {
+  test(`2–3: ${name} prevents LIVE`, () => isolated(run => {
+    const r = receipt(); mutate(r);
+    assert.notEqual(run('validate', r).status, 0);
+    assert.equal(output(run('write', r)).verdict, expected);
+    r.verdict = expected; assert.equal(output(run('validate', r)).verdict, expected);
+  }));
+}
+test('schema requires lowercase commit SHAs and content hashes', () => isolated(run => {
+  for (const mutate of [r => { r.target.merge_sha = sha.toUpperCase(); },
+    r => { r.install_source.pin_sha = sha.toUpperCase(); },
+    r => { r.installed.embedded_commit = sha.toUpperCase(); },
+    r => { r.activation.self_report.commit = sha.toUpperCase(); },
+    r => { r.installed.content_sha256 = digest.toUpperCase(); }]) {
+    const r = receipt(); mutate(r); assert.notEqual(run('validate', r).status, 0);
+    assert.notEqual(run('write', r).status, 0);
+  }
+}));
+test('writer accepts symlinked HOME while still checking its state directories', () => isolated((run, home) => {
+  const alias = join(home, 'home-alias'); symlinkSync(home, alias);
+  const r = output(spawnSync(process.execPath, [cli, 'write', '-'], { input: JSON.stringify(receipt()), encoding: 'utf8',
+    env: { ...process.env, HOME: alias, XDG_STATE_HOME: join(alias, 'xdg') } }));
+  assert.equal(r.verdict, 'LIVE'); assert.equal(JSON.parse(readFileSync(r.path)).receipt_id, r.receipt_id);
+}));

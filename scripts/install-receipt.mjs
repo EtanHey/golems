@@ -15,10 +15,15 @@ function validate(receipt) {
   if (!valid(receipt)) throw new Error(ajv.errorsText(valid.errors));
 }
 function assess(r) {
-  const mismatch = (r.installed.embedded_commit && r.installed.embedded_commit !== r.target.merge_sha)
+  const commits = [r.installed.embedded_commit, r.install_source?.pin_sha, r.activation.self_report?.commit];
+  const mismatch = commits.some(commit => commit !== undefined && commit !== r.target.merge_sha)
     || (!r.installed.embedded_commit && r.installed.content_sha256 && r.target.release_asset
       && r.installed.content_sha256 !== r.target.release_asset.sha256);
   if (mismatch && r.verdict !== 'FAILED') return ['MISMATCH', 'Installed identity differs from target merge/artifact'];
+  const owner = r.install_source?.owner_status;
+  if (r.verdict === 'LIVE' && owner && (owner.exit !== 0 || owner.drift || owner.settings_drift)) {
+    return ['INSTALLED_NOT_ACTIVE', 'Owner installer status failed or reports drift'];
+  }
   const identity = r.installed.embedded_commit === r.target.merge_sha || (!r.installed.embedded_commit
     && r.installed.content_sha256 && r.installed.content_sha256 === r.target.release_asset?.sha256);
   const fresh = r.activation.processes.some(p => Date.parse(p.started_at) > Date.parse(r.installed.install_finished_at));
@@ -42,7 +47,7 @@ try {
     r.verdict = verdict; if (reason) r.reasons.push(reason);
     const dir = join(process.env.HOME, '.local/state/golems/install-receipts', r.product);
     let ancestor = process.env.HOME;
-    for (const part of ['', '.local', 'state', 'golems', 'install-receipts', r.product]) {
+    for (const part of ['.local', 'state', 'golems', 'install-receipts', r.product]) {
       ancestor = join(ancestor, part);
       try { mkdirSync(ancestor, { mode: 0o700 }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
       if (!lstatSync(ancestor).isDirectory() || lstatSync(ancestor).isSymbolicLink()) throw new Error('State path must contain only local directories');
