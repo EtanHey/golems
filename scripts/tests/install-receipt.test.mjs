@@ -11,10 +11,11 @@ const sha = 'a'.repeat(40), digest = 'b'.repeat(64);
 function receipt() {
   return { schema: 'install-receipt/v1', receipt_id: randomUUID(), written_at: '2026-10-27T10:00:00.000Z',
     writer: { agent: 'test-worker', thread_or_session: 'test' }, host: { alias: 'mbp', hostname: hostname(), user: userInfo().username },
-    product: 'golems', artifact_kind: 'skills-sync', target: { version: '1.0.0', merge_sha: sha },
+    product: 'golems', artifact_kind: 'skills-sync', target: { version: '1.0.0', merge_sha: sha, released_sha: sha,
+      ancestry: { method: 'gh-compare', status: 'identical', checked_at: '2026-10-27T09:00:00Z' } },
     installed: { version: '1.0.0', path: '/fixture/hooks-live', embedded_commit: sha, install_finished_at: '2026-10-27T09:00:00Z' },
     install_source: { mode: 'worktree-pin', path: '/fixture/hooks-live', pin_sha: sha,
-      owner_status: { command: 'install-hooks.sh --host mbp --status', exit: 0, drift: false, settings_drift: false } },
+      owner_status: { pin_sha: sha, command: 'install-hooks.sh --host mbp --status', exit: 0, drift: false, settings_drift: false } },
     activation: { method: 'new-session', processes: [{ pid: 123, path: '/fixture/bin', started_at: '2026-10-27T09:01:00Z' }],
       self_report: { command: 'golems --version', version: '1.0.0', commit: sha } }, verdict: 'LIVE', reasons: [] };
 }
@@ -134,6 +135,9 @@ test('schema requires lowercase commit SHAs and content hashes', () => isolated(
     r => { r.install_source.pin_sha = sha.toUpperCase(); },
     r => { r.installed.embedded_commit = sha.toUpperCase(); },
     r => { r.activation.self_report.commit = sha.toUpperCase(); },
+    r => { r.install_source.owner_status.pin_sha = sha.toUpperCase(); },
+    r => { r.prior = { embedded_commit: sha.toUpperCase() }; },
+    r => { r.target.tap = { commit: sha.toUpperCase(), file: 'formula', url: 'fixture', sha256: digest }; },
     r => { r.installed.content_sha256 = digest.toUpperCase(); }]) {
     const r = receipt(); mutate(r); assert.notEqual(run('validate', r).status, 0);
     assert.notEqual(run('write', r).status, 0);
@@ -152,4 +156,68 @@ test('symlinked CLI rejects a bad receipt for validate and write', () => isolate
     const result = spawnSync(process.execPath, [link, command, '-'], { input: '{}', encoding: 'utf8' });
     assert.equal(result.status, 1); assert.match(result.stderr, /install-receipt:/);
   }
+}));
+
+const released = 'd'.repeat(40);
+test('A2: tag on a bump commit containing the merge is LIVE', () => isolated(run => {
+  const r = receipt(); r.target.released_sha = released; r.target.ancestry.status = 'ahead';
+  r.installed.embedded_commit = r.install_source.pin_sha = r.activation.self_report.commit = released;
+  r.install_source.owner_status.pin_sha = released;
+  assert.equal(output(run('validate', r)).verdict, 'LIVE');
+  assert.equal(output(run('write', r)).verdict, 'LIVE');
+}));
+for (const status of ['behind', 'diverged']) {
+  test(`A2: ancestry ${status} is MISMATCH even with matching bytes`, () => isolated(run => {
+    const r = receipt(); r.target.ancestry.status = status;
+    assert.notEqual(run('validate', r).status, 0);
+    assert.equal(output(run('write', r)).verdict, 'MISMATCH');
+    r.verdict = 'MISMATCH'; assert.equal(output(run('validate', r)).verdict, 'MISMATCH');
+    r.verdict = 'FAILED'; assert.equal(output(run('write', r)).verdict, 'FAILED');
+  }));
+}
+test('A2: released SHA and complete ancestry evidence are required', () => isolated(run => {
+  for (const mutate of [r => { delete r.target.released_sha; },
+    r => { r.target.released_sha = 'abc'; }, r => { r.target.released_sha = 'g'.repeat(40); },
+    r => { delete r.target.ancestry; }, r => { delete r.target.ancestry.checked_at; },
+    r => { r.target.ancestry.method = 'guess'; }, r => { r.target.ancestry.status = 'unknown'; }]) {
+    const r = receipt(); mutate(r);
+    assert.notEqual(run('validate', r).status, 0); assert.notEqual(run('write', r).status, 0);
+  }
+}));
+test('A2: uppercase released SHA is rejected consistently', () => isolated(run => {
+  const r = receipt(); r.target.released_sha = sha.toUpperCase();
+  assert.notEqual(run('validate', r).status, 0);
+  assert.notEqual(run('write', r).status, 0);
+}));
+for (const field of ['embedded', 'pin', 'owner', 'runtime']) {
+  test(`A2: ${field} matching only merge SHA is MISMATCH`, () => isolated(run => {
+    const r = receipt(); r.target.released_sha = released; r.target.ancestry.status = 'ahead';
+    r.installed.embedded_commit = r.install_source.pin_sha = r.activation.self_report.commit = released;
+    r.install_source.owner_status.pin_sha = released;
+    if (field === 'embedded') r.installed.embedded_commit = sha;
+    if (field === 'pin') r.install_source.pin_sha = sha;
+    if (field === 'owner') r.install_source.owner_status.pin_sha = sha;
+    if (field === 'runtime') r.activation.self_report.commit = sha;
+    assert.equal(output(run('write', r)).verdict, 'MISMATCH');
+  }));
+}
+test('A2: git-merge-base ancestry and commitless asset proof remain supported', () => isolated(run => {
+  const r = receipt(); r.target.ancestry.method = 'git-merge-base';
+  delete r.installed.embedded_commit; r.installed.content_sha256 = digest;
+  r.target.release_asset = { name: 'bundle', sha256: digest };
+  assert.equal(output(run('write', r)).verdict, 'LIVE');
+  r.target.ancestry.status = 'behind'; assert.equal(output(run('write', r)).verdict, 'MISMATCH');
+}));
+
+for (const status of ['identical', 'ahead']) {
+  test(`A2 review: self-contradicting ${status} ancestry is MISMATCH`, () => isolated(run => {
+    const r = receipt(); r.target.ancestry.status = status;
+    if (status === 'identical') r.target.merge_sha = released;
+    assert.notEqual(run('validate', r).status, 0);
+    assert.equal(output(run('write', r)).verdict, 'MISMATCH');
+  }));
+}
+test('A2 review: worktree pins require an owner pin', () => isolated(run => {
+  const r = receipt(); delete r.install_source.owner_status.pin_sha;
+  for (const command of ['validate', 'write']) assert.notEqual(run(command, r).status, 0);
 }));

@@ -9,16 +9,20 @@ export function validate(receipt) {
   if (!valid(receipt)) throw new Error(ajv.errorsText(valid.errors));
 }
 export function assess(r) {
-  const commits = [r.installed.embedded_commit, r.install_source?.pin_sha, r.activation.self_report?.commit];
-  const mismatch = commits.some(commit => commit !== undefined && commit !== r.target.merge_sha)
+  const commits = [r.installed.embedded_commit, r.install_source?.pin_sha, r.install_source?.owner_status?.pin_sha, r.activation.self_report?.commit];
+  const status = r.target.ancestry?.status;
+  const sameCommit = r.target.merge_sha === r.target.released_sha;
+  const mismatch = !['identical', 'ahead'].includes(status)
+    || (status === 'identical' && !sameCommit) || (status === 'ahead' && sameCommit)
+    || commits.some(commit => commit !== undefined && commit !== r.target.released_sha)
     || (!r.installed.embedded_commit && r.installed.content_sha256 && r.target.release_asset
       && r.installed.content_sha256 !== r.target.release_asset.sha256);
-  if (mismatch && r.verdict !== 'FAILED') return ['MISMATCH', 'Installed identity differs from target merge/artifact'];
+  if (mismatch && r.verdict !== 'FAILED') return ['MISMATCH', 'Installed identity differs from released commit/artifact or release does not contain merge'];
   const owner = r.install_source?.owner_status;
   if (r.verdict === 'LIVE' && owner && (owner.exit !== 0 || owner.drift || owner.settings_drift)) {
     return ['INSTALLED_NOT_ACTIVE', 'Owner installer status failed or reports drift'];
   }
-  const identity = r.installed.embedded_commit === r.target.merge_sha || (!r.installed.embedded_commit
+  const identity = r.installed.embedded_commit === r.target.released_sha || (!r.installed.embedded_commit
     && r.installed.content_sha256 && r.installed.content_sha256 === r.target.release_asset?.sha256);
   const fresh = r.activation.processes.some(p => Date.parse(p.started_at) > Date.parse(r.installed.install_finished_at));
   const probe = r.activation.self_report?.version === r.target.version || r.activation.mcp_probe?.ok === true;
