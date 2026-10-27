@@ -248,3 +248,28 @@ chmod 755 ~/.agents/skills && chmod -R 755 ~/.agents/skills/*/
 After creating symlinks:
 1. Run [validate](validate.md) to test the full installation
 2. Skills are ready to invoke in your AI CLI of choice
+
+## Pinned third-party design skills (separate from golem-powers)
+
+After explicit authorization, run the vendor mode below. It reads
+`skills/vendor/manifest.json`, verifies every pinned file, preserves upstream licenses,
+creates a durable copy under `~/.golems/vendor/design-skills/<payload-sha256>`, and
+links the manifest-selected skills for each provider. Claude gets only Emil,
+Codex gets all six, and Cursor gets all six for review-only use. It does not run the broad legacy-link cleanup above.
+
+```sh
+bun "$GOLEMS_DIR/skills/golem-powers/golem-install/scripts/repoint-skills.mjs" --source "$GOLEMS_DIR/skills/golem-powers" --vendor-skills
+# Apply the reviewed dry-run by adding --apply.
+```
+
+Conflicts are refused before any writes. Back up existing copies/config and write a
+restore recipe before retiring them; keep Claude's official frontend-design plugin enabled through `claude plugin`. Never
+install a vendored Claude frontend-design or delete plugin caches.
+Do not link into `~/.agents/skills` because that would expose skills to Gemini/agy. Adding an
+authorized provider later is one edit to the manifest's `providers` list. See
+`skills/vendor/VENDOR.md` for pin refresh, read-only drift checks and upstream caveats.
+
+A whole `~/.codex/skills` symlink into `~/.agents/skills` is deliberately refused:
+it would expose Codex-only skills to Gemini. This mode does not migrate an entire
+existing skill root or remove its links. Establish a separately backed-up Codex
+root first; the host verified for this change already uses a real directory.

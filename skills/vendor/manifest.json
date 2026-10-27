@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "providers": [
+    "claude",
+    "codex",
+    "cursor"
+  ],
+  "upstreams": [
+    {
+      "url": "https://github.com/anthropics/skills.git",
+      "ref": "refs/heads/main",
+      "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44"
+    },
+    {
+      "url": "https://github.com/emilkowalski/skills.git",
+      "ref": "refs/heads/main",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202"
+    }
+  ],
+  "skills": [
+    {
+      "name": "frontend-design",
+      "path": "anthropic/frontend-design",
+      "providers": [
+        "codex",
+        "cursor"
+      ]
+    },
+    {
+      "name": "emil-design-eng",
+      "path": "emilkowalski/emil-design-eng"
+    },
+    {
+      "name": "animate",
+      "path": "emilkowalski/animate"
+    },
+    {
+      "name": "review-animations",
+      "path": "emilkowalski/review-animations"
+    },
+    {
+      "name": "improve-animations",
+      "path": "emilkowalski/improve-animations"
+    },
+    {
+      "name": "find-animation-opportunities",
+      "path": "emilkowalski/find-animation-opportunities"
+    }
+  ],
+  "files": {
+    "anthropic/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "anthropic/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
+    "emilkowalski/emil-design-eng/LICENSE": "4ff5bdb7887ec1435c9cab0e8d1a7caee704d894d65c2a008ccc68b1cc2f260b",
+    "emilkowalski/emil-design-eng/SKILL.md": "ffbe68e6007fb42cb8149f089b400a1ca007d59ba23e8948e2be4476f3175939",
+    "emilkowalski/animate/LICENSE": "4ff5bdb7887ec1435c9cab0e8d1a7caee704d894d65c2a008ccc68b1cc2f260b",
+    "emilkowalski/animate/RECIPES.md": "21ff63d84391db8d96ecdf9170095f55a42c836ccc36fd3269c4772bab031ba2",
+    "emilkowalski/animate/SKILL.md": "b8ede161270458e6ae2e45e8a1985373515d4c63de5568ddb0f9012d7634356c",
+    "emilkowalski/review-animations/LICENSE": "4ff5bdb7887ec1435c9cab0e8d1a7caee704d894d65c2a008ccc68b1cc2f260b",
+    "emilkowalski/review-animations/SKILL.md": "6ff590d29e436766135aa3d137be1fac2a867165c7257fc315b189361f1873af",
+    "emilkowalski/review-animations/STANDARDS.md": "e7d3605034acda54ca13e43aec9e64d65b53de20f75b11b8d694e373012fbe07",
+    "emilkowalski/improve-animations/AUDIT.md": "551c8473e20e5f4774680bc24d45e1c68e50992582720905c6b077756b7b5a55",
+    "emilkowalski/improve-animations/LICENSE": "4ff5bdb7887ec1435c9cab0e8d1a7caee704d894d65c2a008ccc68b1cc2f260b",
+    "emilkowalski/improve-animations/PLAN-TEMPLATE.md": "0a08ac8e23fd2082d7ffb86aeed7b789de77328c3cf874b16f1a755f2ef0a6ad",
+    "emilkowalski/improve-animations/SKILL.md": "73962447464433476343e2c12cd08ab39cc99a9e5f3c118c5fb54ed897574ef6",
+    "emilkowalski/find-animation-opportunities/LICENSE": "4ff5bdb7887ec1435c9cab0e8d1a7caee704d894d65c2a008ccc68b1cc2f260b",
+    "emilkowalski/find-animation-opportunities/SKILL.md": "d52a377819b84a71930f0c822cfe2849f40301605a2d5c7eccbfa3b257700df2"
+  }
+}

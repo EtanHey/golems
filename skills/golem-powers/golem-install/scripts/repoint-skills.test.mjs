@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -209,4 +210,121 @@ test("--link-missing skips entirely when ~/.gemini/config does not exist", () =>
   expect(r.out).not.toMatch(/linked=/);
   expect(existsSync(path.join(fx.home, ".gemini", "config"))).toBe(false);
   expect(existsSync(path.join(fx.home, ".gemini", "antigravity", "skills"))).toBe(false);
+});
+
+// Vendor fan-out is separate from the broad legacy-link cleanup.
+function vendorFixture() {
+  const fx = fixture();
+  const vendor = path.join(path.dirname(fx.source), "vendor");
+  const text = "---\nname: emil-design-eng\ndescription: Design UI.\n---\n";
+  const file = "anthropic/emil-design-eng/SKILL.md";
+  mkdirSync(path.dirname(path.join(vendor, file)), { recursive: true });
+  writeFileSync(path.join(vendor, file), text);
+  const manifest = { schema: 1, providers: ["claude", "codex"], skills: [{ name: "emil-design-eng", path: "anthropic/emil-design-eng" }],
+    files: { [file]: createHash("sha256").update(text).digest("hex") } };
+  writeFileSync(path.join(vendor, "manifest.json"), JSON.stringify(manifest));
+  return { ...fx, vendor, manifest, file };
+}
+
+test("vendor dry-run verifies bytes without creating any installed skill", () => {
+  const fx = vendorFixture();
+  const r = run(fx, "--vendor-skills");
+  expect(r.status).toBe(0);
+  expect(r.out).toContain("emil-design-eng");
+  expect(existsSync(path.join(fx.codex, "emil-design-eng"))).toBe(false);
+  expect(existsSync(path.join(fx.home, ".golems/vendor"))).toBe(false);
+});
+
+test("vendor apply is durable, single-source, idempotent and Claude/Codex only", () => {
+  const fx = vendorFixture();
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  const target = realpathSync(path.join(fx.codex, "emil-design-eng"));
+  expect(target).toContain(path.join(fx.home, ".golems/vendor"));
+  expect(realpathSync(path.join(fx.claude, "emil-design-eng"))).toBe(target);
+  expect(existsSync(path.join(fx.agents, "emil-design-eng"))).toBe(false);
+  expect(existsSync(path.join(fx.home, ".cursor/skills/emil-design-eng"))).toBe(false);
+  expect(existsSync(path.join(fx.home, ".gemini"))).toBe(false);
+  expect(lstatSync(path.join(fx.claude, "dangling")).isSymbolicLink()).toBe(true);
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  rmSync(fx.vendor, { recursive: true });
+  expect(existsSync(path.join(target, "SKILL.md"))).toBe(true);
+});
+
+test("vendor conflicts and tampered source fail before any link or copy is installed", () => {
+  const fx = vendorFixture();
+  mkdirSync(path.join(fx.codex, "emil-design-eng"));
+  expect(run(fx, "--vendor-skills", "--apply").status).not.toBe(0);
+  expect(existsSync(path.join(fx.claude, "emil-design-eng"))).toBe(false);
+  expect(existsSync(path.join(fx.home, ".golems/vendor"))).toBe(false);
+  rmSync(path.join(fx.codex, "emil-design-eng"), { recursive: true });
+  writeFileSync(path.join(fx.vendor, fx.file), "unreviewed change");
+  expect(run(fx, "--vendor-skills", "--apply").status).not.toBe(0);
+  expect(existsSync(path.join(fx.claude, "emil-design-eng"))).toBe(false);
+});
+
+test("adding Cursor later is one provider-list edit", () => {
+  const fx = vendorFixture();
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  fx.manifest.providers.push("cursor");
+  writeFileSync(path.join(fx.vendor, "manifest.json"), JSON.stringify(fx.manifest));
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  expect(existsSync(path.join(fx.home, ".cursor/skills/emil-design-eng/SKILL.md"))).toBe(true);
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+});
+
+test("upstream drift is distinct from a query error", async () => {
+  const { checkUpstream } = await import("./vendor-skills.mjs");
+  const commit = "a".repeat(40);
+  const manifest = { upstreams: [{ url: "https://example.test/skills.git", ref: "refs/heads/main", commit }] };
+  expect(checkUpstream(manifest, () => commit)[0].drift).toBe(false);
+  expect(checkUpstream(manifest, () => "b".repeat(40))[0].drift).toBe(true);
+  expect(() => checkUpstream(manifest, () => { throw new Error("offline"); })).toThrow("offline");
+  expect(() => checkUpstream(manifest, () => "bad response")).toThrow("invalid upstream response");
+});
+
+test("Claude keeps its official frontend-design plugin; vendor frontend is Codex/Cursor only", () => {
+  const fx = vendorFixture();
+  const text = "---\nname: frontend-design\ndescription: Design.\n---\n";
+  const file = "anthropic/frontend-design/SKILL.md";
+  mkdirSync(path.dirname(path.join(fx.vendor, file)), { recursive: true });
+  writeFileSync(path.join(fx.vendor, file), text);
+  fx.manifest.files[file] = createHash("sha256").update(text).digest("hex");
+  fx.manifest.providers.push("cursor");
+  fx.manifest.skills.push({ name: "frontend-design", path: "anthropic/frontend-design", providers: ["codex", "cursor"] });
+  writeFileSync(path.join(fx.vendor, "manifest.json"), JSON.stringify(fx.manifest));
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  expect(existsSync(path.join(fx.claude, "frontend-design"))).toBe(false);
+  expect(existsSync(path.join(fx.codex, "frontend-design/SKILL.md"))).toBe(true);
+  expect(existsSync(path.join(fx.home, ".cursor/skills/frontend-design/SKILL.md"))).toBe(true);
+});
+
+test("updater dry-run is inert, apply refreshes reviewed bytes, and mismatched SHA refuses", async () => {
+  const { refreshVendor } = await import("./refresh-vendor.mjs");
+  const fx = vendorFixture(), commit = "a".repeat(40), old = "b".repeat(40);
+  fx.manifest.upstreams = [{ url: "https://example.test/skills.git", commit: old }];
+  writeFileSync(path.join(fx.vendor, "manifest.json"), JSON.stringify(fx.manifest));
+  writeFileSync(path.join(fx.vendor, "VENDOR.md"), old);
+  const clone = path.join(fx.home, "reviewed"), text = "reviewed new instructions";
+  mkdirSync(path.join(clone, "skills/emil-design-eng"), { recursive: true });
+  writeFileSync(path.join(clone, "skills/emil-design-eng/SKILL.md"), text);
+  const git = (_, args) => ({ status: 0, stdout: args.includes("rev-parse") ? commit : "" });
+  const options = { vendor: fx.vendor, clones: [clone], reviewed: [commit], git };
+  const before = readFileSync(path.join(fx.vendor, fx.file), "utf8");
+  expect(refreshVendor(options).apply).toBe(false);
+  expect(readFileSync(path.join(fx.vendor, fx.file), "utf8")).toBe(before);
+  expect(() => refreshVendor({ ...options, reviewed: [old], apply: true })).toThrow("reviewed SHA");
+  refreshVendor({ ...options, apply: true });
+  expect(readFileSync(path.join(fx.vendor, fx.file), "utf8")).toBe(text);
+  expect(readFileSync(path.join(fx.vendor, "VENDOR.md"), "utf8")).toBe(commit);
+});
+
+test("a Codex root symlink into agents refuses before writes, preventing Gemini exposure", () => {
+  const fx = vendorFixture();
+  rmSync(fx.codex, { recursive: true });
+  symlinkSync(fx.agents, fx.codex);
+  const r = run(fx, "--vendor-skills", "--apply");
+  expect(r.status).not.toBe(0);
+  expect(r.out).toContain("vendor root is symlinked");
+  expect(existsSync(path.join(fx.claude, "emil-design-eng"))).toBe(false);
+  expect(existsSync(path.join(fx.agents, "emil-design-eng"))).toBe(false);
 });
