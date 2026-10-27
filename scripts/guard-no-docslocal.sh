@@ -23,20 +23,44 @@
 #        own lane will do the backed-up untrack later.
 #
 #   Regenerate the baseline ONLY when deliberately accepting current state:
-#     git ls-files -- 'docs.local' 'docs.local/**' | LC_ALL=C sort > .docslocal-baseline
+#     git ls-files -- ':(glob)**/docs.local' ':(glob)**/docs.local/**' | LC_ALL=C sort > .docslocal-baseline
 #
 # Exit 0 = clean (or pre-existing debt only). Exit 1 = a new tracked path.
 
 set -uo pipefail
 
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)" || exit 0
+fail() { echo "docs.local guard: $*" >&2; exit 1; }
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || fail "not inside a git repository"
+cd "$root" || fail "cannot enter git repository root"
+
+# Git pathspecs match the component at any depth, including the root.
+paths=(':(glob)**/docs.local' ':(glob)**/docs.local/**')
+history=""
+if [ "$#" -ne 0 ]; then
+  [ "$#" -eq 2 ] && [ "$1" = --range ] || fail "usage: $0 [--range <base>..<head>]"
+  range="$2"
+  [[ "$range" == *..* && "$range" != *...* ]] || fail "expected <base>..<head>"
+  base="${range%%..*}"; head="${range#*..}"
+  git rev-parse --verify --end-of-options "$head^{commit}" >/dev/null 2>&1 || fail "invalid range head"
+  if [[ -n "$base" && ! "$base" =~ ^0+$ ]] \
+    && git rev-parse --verify --end-of-options "$base^{commit}" >/dev/null 2>&1 \
+    && git merge-base --is-ancestor "$base" "$head"; then
+    range="$base..$head"
+  else
+    echo "docs.local guard: no usable range base; scanning full history" >&2
+    range="$head" # Initial/force push: every reachable commit, including the root.
+  fi
+  # -m includes additions relative to merge parents; no rename detection hides a move in.
+  history="$(git log --full-history --root -m --format= --name-only --diff-filter=A --no-renames "$range" -- "${paths[@]}")" || fail "cannot scan commit range"
+fi
 
 BASELINE_FILE=".docslocal-baseline"
 
-tracked="$(git ls-files -- 'docs.local' 'docs.local/**' 2>/dev/null | LC_ALL=C sort || true)"
+index="$(git ls-files -- "${paths[@]}")" || fail "cannot scan git index"
+tracked="$(printf '%s\n%s\n' "$index" "$history" | sed '/^$/d' | LC_ALL=C sort -u)"
 
 if [ -z "$tracked" ]; then
-  echo "docs.local guard: OK — 0 tracked paths"
+  echo "docs.local guard: OK — 0 tracked or range-added paths"
   exit 0
 fi
 
@@ -58,18 +82,21 @@ if [ -n "$new_paths" ]; then
   new_count="$(printf '%s\n' "$new_paths" | grep -c . || true)"
   cat <<BANNER
 
-BLOCKED — $new_count NEW docs.local path(s) became tracked.
+BLOCKED — $new_count NEW docs.local path(s) tracked or added in commit range.
 
 docs.local/ is local-only scratch. It has previously contained dictation
 transcripts and desktop screenshots with personal data. Tracked files here get
 published the moment the repo is public, or the moment someone forks it.
 
-New tracked paths:
+New tracked or range-added paths:
 BANNER
   printf '%s\n' "$new_paths" | sed 's/^/  /'
   cat <<'BANNER'
 
-To fix (this removes them from git, NOT from your disk):
+For range findings, remove the additions from the unpublished commits first;
+a later deletion does not remove published history.
+
+For index findings (this removes them from git, NOT from your disk):
 
   git rm -r --cached <path>
 
