@@ -12,12 +12,19 @@ function fixture({ changed = false, existing = false, fail = false, symlink = fa
     calls.push([bin, ...args]);
     if (fail) throw Error("simulated command failure");
     if (args[0] === "clone") {
-      const dir = args.at(-1); mkdirSync(path.join(dir, "skills/vendor"), { recursive: true });
-      if (dir.endsWith("anthropic")) mkdirSync(path.join(dir, "plugins/frontend-design/skills"), { recursive: true });
-      if (symlink && dir.endsWith("anthropic")) {
-        rmSync(path.join(dir, "plugins/frontend-design/skills"), { recursive: true });
-        mkdirSync(path.join(state, "outside")); symlinkSync(path.join(state, "outside"), path.join(dir, "plugins/frontend-design/skills"));
-      }
+      const dir = args.at(-1), url = args.at(-2);
+      const layout = {
+        "https://github.com/EtanHey/golems.git": "skills/vendor",
+        "https://github.com/anthropics/claude-plugins-official.git": "plugins/frontend-design/skills",
+        "https://github.com/anthropics/skills.git": "skills",
+        "https://github.com/emilkowalski/skills.git": "skills",
+      }[url];
+      if (!layout) throw Error(`unexpected clone source: ${url}`);
+      const root = path.join(dir, layout);
+      if (symlink && url === "https://github.com/anthropics/claude-plugins-official.git") {
+        mkdirSync(path.dirname(root), { recursive: true });
+        mkdirSync(path.join(state, "outside")); symlinkSync(path.join(state, "outside"), root);
+      } else mkdirSync(root, { recursive: true });
     }
     if (args[0] === "rev-parse") return "a".repeat(40);
     if (args[0] === "pr" && args[1] === "list") return existing ? '[{"url":"https://example.test/existing"}]' : '[]';
@@ -27,6 +34,16 @@ function fixture({ changed = false, existing = false, fail = false, symlink = fa
   };
   return { state, logFile, calls, run, tools: { gh: "/opt/homebrew/bin/gh", git: "/usr/bin/git" }, host: () => ({ platform: "darwin", machine: "MacBook Pro", chip: "Apple M4 Max" }), refresh: async () => ({ changed }) };
 }
+
+test("frontend-design clones the official marketplace layout and Emil keeps its own source", async () => {
+  const { update } = await import("../design-skill-updates.mjs"), f = fixture();
+  await update(f);
+  expect(f.calls.filter((c) => c[1] === "clone").map((c) => [c.at(-2), path.basename(c.at(-1))])).toEqual([
+    ["https://github.com/EtanHey/golems.git", "golems"],
+    ["https://github.com/anthropics/claude-plugins-official.git", "anthropic"],
+    ["https://github.com/emilkowalski/skills.git", "emil"],
+  ]);
+});
 
 test("unchanged payload is a logged no-op with no GitHub writes", async () => {
   const { update } = await import("../design-skill-updates.mjs"), f = fixture();
