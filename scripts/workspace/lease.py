@@ -2,14 +2,13 @@
 """Durable workspace ownership ledger. This CLI never allocates or removes workspaces.
 
 Storage: GOLEMS_WORKSPACE_LEASES, default ~/.golems/state/workspace-leases.
-Ephemeral storage is refused, including symlink aliases. Tests alone may explicitly
-set GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP=1 for isolated pytest tmp_path fixtures.
-Never set that override in an allocator or deployment environment.
+Ephemeral storage is always refused, including symlink aliases. Tests use
+self-cleaning ledger directories under the repository's docs.local/ scratch.
 
 Transfer ack JSON: {"path": "<exact bound path>", "owner": "<successor>"}.
 Receipts use workspace-lifecycle/receipt/v1 with path, repo_common_dir and
-disposition. REMOVED requires registered_after=false and physical_after=false;
-if remove_rc is present it must be the integer zero. RETAINED requires reason.
+disposition. REMOVED requires registered_after=false, physical_after=false and
+remove_rc present as the integer zero. RETAINED requires reason.
 Receipt validation trusts the supplied observations; it performs no retirement.
 """
 
@@ -45,11 +44,10 @@ def ledger_directory():
     roots = ["/tmp", "/private/tmp", "/var/folders"]
     if os.environ.get("TMPDIR"):
         roots.append(os.environ["TMPDIR"])
-    if os.environ.get("GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP") != "1":
-        for root in roots:
-            root = Path(root).expanduser().resolve()
-            if directory == root or root in directory.parents:
-                raise ValueError("ephemeral ledger directory refused")
+    for root in roots:
+        root = Path(root).expanduser().resolve()
+        if directory == root or root in directory.parents:
+            raise ValueError("ephemeral ledger directory refused")
     return directory
 
 
@@ -81,9 +79,10 @@ def writer_lock(directory):
         yield
 
 
-def persist(target, record):
+def persist(target, record, *, rollback_new=False):
     record["last_observed_at"] = utc_now()
     temporary = None
+    published = False
     try:
         with tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", dir=target.parent,
@@ -95,11 +94,18 @@ def persist(target, record):
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, target)
+        published = True
         directory_fd = os.open(target.parent, os.O_RDONLY)
         try:
             os.fsync(directory_fd)
         finally:
             os.close(directory_fd)
+    except BaseException:
+        # Only a new reservation can be rolled back; updates must preserve the
+        # existing lease. The caller still holds the ledger writer lock here.
+        if rollback_new and published:
+            target.unlink()
+        raise
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
@@ -138,9 +144,7 @@ def close_lease(record, args):
                 if (receipt.get("registered_after") is not False or
                         receipt.get("physical_after") is not False):
                     raise ValueError("REMOVED requires registration and physical absence")
-                if "remove_rc" in receipt and (
-                    type(receipt["remove_rc"]) is not int or receipt["remove_rc"] != 0
-                ):
+                if type(receipt.get("remove_rc")) is not int or receipt["remove_rc"] != 0:
                     raise ValueError("REMOVED requires a successful remove_rc")
             elif disposition == "RETAINED":
                 if not isinstance(receipt.get("reason"), str) or not receipt["reason"].strip():
@@ -221,7 +225,7 @@ def mutate(directory, args):
                 if args.who not in record["consumers"]:
                     raise ValueError("unknown consumer: " + args.who)
                 record["consumers"].remove(args.who)
-        persist(target, record)
+        persist(target, record, rollback_new=args.command == "reserve")
         return record
 
 

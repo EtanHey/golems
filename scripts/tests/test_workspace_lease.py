@@ -1,4 +1,4 @@
-"""Exercise the real lease CLI; only fixtures may opt into ephemeral ledgers."""
+"""Exercise the real lease CLI with self-cleaning, durable ledger fixtures."""
 
 import json
 import importlib.util
@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import stat
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -15,16 +17,24 @@ CLI = Path(__file__).resolve().parents[1] / "workspace" / "lease.py"
 
 
 @pytest.fixture
-def lease(tmp_path, monkeypatch):
-    monkeypatch.setenv("GOLEMS_WORKSPACE_LEASES", str(tmp_path / "ledger"))
-    monkeypatch.setenv("GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP", "1")
+def durable_ledger():
+    scratch = CLI.parents[2] / "docs.local"
+    scratch.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="workspace-lease-test-", dir=scratch) as directory:
+        yield Path(directory).resolve() / "ledger"
+
+
+@pytest.fixture
+def lease(tmp_path, monkeypatch, durable_ledger):
+    monkeypatch.setenv("GOLEMS_WORKSPACE_LEASES", str(durable_ledger))
+    monkeypatch.delenv("GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP", raising=False)
     repo = tmp_path / "repo.git"
     repo.mkdir()
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 
     class Lease:
-        ledger = tmp_path / "ledger"
+        ledger = durable_ledger
         path = workspace
         common_dir = repo
 
@@ -100,7 +110,7 @@ def test_unwritable_ledger_does_not_allocate(lease):
 @pytest.mark.parametrize("root", ["/tmp", "/private/tmp", "/var/folders"])
 def test_ephemeral_ledger_refused_without_test_override(lease, root):
     env = os.environ.copy()
-    env.pop("GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP")
+    env.pop("GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP", None)
     env["GOLEMS_WORKSPACE_LEASES"] = root + "/workspace-lease-test-never-create"
     result = lease.run("audit", "--json", env=env, ok=False)
     assert "ephemeral" in result.stderr
@@ -108,7 +118,7 @@ def test_ephemeral_ledger_refused_without_test_override(lease, root):
 
 def test_tmpdir_and_symlink_cannot_bypass_guard(lease, tmp_path):
     env = os.environ.copy()
-    env.pop("GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP")
+    env.pop("GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP", None)
     env["TMPDIR"] = str(tmp_path)
     alias = tmp_path / "alias"
     alias.symlink_to(tmp_path, target_is_directory=True)
@@ -301,3 +311,71 @@ def test_unreadable_receipt_attempt_is_preserved(lease, tmp_path, contents):
     assert failed["error"]
     lease.close("--retained", "receipt unavailable")
     assert lease.read()["history"][0] == failed
+
+
+@pytest.mark.parametrize("failure", ["directory-open", "directory-fsync"])
+def test_reserve_postrename_failure_rolls_back_and_allows_retry(lease, monkeypatch, capsys, failure):
+    spec = importlib.util.spec_from_file_location("workspace_lease", CLI)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    original_open = module.os.open
+    original_fsync = module.os.fsync
+
+    def open_directory(path, *args, **kwargs):
+        if Path(path) == lease.ledger:
+            raise OSError("injected directory open failure")
+        return original_open(path, *args, **kwargs)
+
+    def fsync_directory(fd):
+        if stat.S_ISDIR(module.os.fstat(fd).st_mode):
+            raise OSError("injected directory fsync failure")
+        return original_fsync(fd)
+
+    with monkeypatch.context() as injection:
+        injection.setattr(module.os, "open" if failure == "directory-open" else "fsync",
+                          open_directory if failure == "directory-open" else fsync_directory)
+        injection.setattr(sys, "argv", [str(CLI), "reserve", "--lease-id", "sample",
+                                        "--allocator", "direct-git", "--owner", "parent-task",
+                                        "--repo", str(lease.common_dir), "--kind", "worktree",
+                                        "--ownership", "created"])
+        assert module.main() == 1
+    assert "do not allocate: injected directory" in capsys.readouterr().err
+    assert not (lease.ledger / "sample.json").exists()
+    assert not list(lease.ledger.glob("*.tmp"))
+    lease.reserve()
+    assert lease.read()["state"] == "reserved"
+
+
+def test_missing_remove_rc_is_refused_and_recorded(lease):
+    lease.reserve()
+    lease.bind()
+    receipt = lease.receipt()
+    value = json.loads(receipt.read_text())
+    del value["remove_rc"]
+    receipt.write_text(json.dumps(value))
+    result = lease.close("--receipt", receipt, ok=False)
+    assert "remove_rc" in result.stderr
+    record = lease.read()
+    assert record["state"] == "bound"
+    assert record["history"][0]["success"] is False
+    assert record["history"][0]["receipt"] == value
+    assert "remove_rc" in record["history"][0]["error"]
+    for invalid in (None, False, 0.0, "0"):
+        lease.close("--receipt", lease.receipt(remove_rc=invalid), ok=False)
+    assert len(lease.read()["history"]) == 5
+    lease.close("--retained", "removal exit evidence unavailable")
+    assert lease.read()["history"][0] == record["history"][0]
+
+
+def test_inherited_old_override_cannot_enable_ephemeral_cli_ledger(lease):
+    with tempfile.TemporaryDirectory(prefix="workspace-lease-guard-", dir="/tmp") as directory:
+        target = Path(directory) / "ledger"
+        env = os.environ.copy()
+        env.pop("PYTEST_CURRENT_TEST", None)
+        env["GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP"] = "1"
+        env["GOLEMS_WORKSPACE_LEASES"] = str(target)
+        result = lease.run("reserve", "--lease-id", "sample", "--allocator", "direct-git",
+                           "--owner", "parent-task", "--repo", lease.common_dir,
+                           "--kind", "worktree", "--ownership", "created", env=env, ok=False)
+        assert "do not allocate: ephemeral ledger directory refused" in result.stderr
+        assert not target.exists()
