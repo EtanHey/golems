@@ -302,14 +302,16 @@ layoutTest("answer sheet fits the viewport, traps real Tab focus and Esc returns
   }
 }, 60000);
 
-layoutTest("a real far-chip tap at 390px lands on its requested card after smooth scrolling", async () => {
+layoutTest("a real far-chip tap lands on its requested card after smooth scrolling", async () => {
   const browser = await chromium.launch();
-  try { const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "no-preference" });
+  try { for (const width of [390, 1280]) { const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "no-preference" });
     await page.goto(fixture(["v00", ...Array.from({ length: 24 }, (_, index) => "d" + index), "nl2", "nl3"]));
     expect(await page.evaluate(() => scrollY)).toBe(0); await page.locator('[data-chip-for="nl2"]').tap();
     await page.evaluate(() => new Promise(resolve => document.addEventListener("scrollend", event => { if (event.target === document) requestAnimationFrame(resolve); })));
+    await page.waitForTimeout(250); // Include release-time reconciliation in the landing assertion.
     expect(await page.evaluate(() => ({ card: document.querySelector(".df-card.is-active").dataset.decision, chip: document.querySelector('.df-chip[aria-current="true"]').dataset.chipFor, index: document.querySelector(".df-index a.is-active").dataset.indexFor }))).toEqual({ card: "nl2", chip: "nl2", index: "nl2" });
-  } finally { await browser.close(); }
+    await page.close();
+  } } finally { await browser.close(); }
 }, 15000);
 
 for (const [width, height] of [[390, 844], [1280, 800]]) layoutTest(`bottom scroll selects the last card in every navigation surface at ${width}px`, async () => {
@@ -321,3 +323,17 @@ for (const [width, height] of [[390, 844], [1280, 800]]) layoutTest(`bottom scro
     expect(state).toEqual({ bottom: true, card: "d06", chip: "d06", index: "d06", now: "6  Pristine sprints with new leads 7" });
   } finally { await browser.close(); }
 });
+
+layoutTest("an interrupted far-chip jump reconciles bottom after the lock settles", async () => {
+  const browser = await chromium.launch(), states = [];
+  try { for (const width of [390, 1280]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "no-preference" });
+    await page.goto(fixture(["v00", ...Array.from({ length: 24 }, (_, index) => "d" + index), "nl2", "nl3"]));
+    await page.locator('[data-chip-for="nl2"]').tap();
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
+    await page.waitForTimeout(1000); // No extra scroll: the hold must reconcile its suppressed final event.
+    states.push(await page.evaluate(() => ({ bottom: Math.abs(scrollY + innerHeight - document.documentElement.scrollHeight) < 2, card: document.querySelector(".df-card.is-active").dataset.decision, chip: document.querySelector('.df-chip[aria-current="true"]').dataset.chipFor, index: document.querySelector(".df-index a.is-active").dataset.indexFor })));
+    await page.close();
+  } } finally { await browser.close(); }
+  expect(states).toEqual([390, 1280].map(() => ({ bottom: true, card: "nl3", chip: "nl3", index: "nl3" })));
+}, 15000);
