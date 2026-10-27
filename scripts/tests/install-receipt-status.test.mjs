@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { collectStatus, latestRelease, readRemote, readLocal } from '../install-receipt-status.mjs';
+import { collectStatus, latestRelease, readRemote, readLocal, compareInstall } from '../install-receipt-status.mjs';
 
 const sha = 'a'.repeat(40), old = 'b'.repeat(40);
 function receipt(host = 'mbp') {
@@ -17,7 +17,7 @@ function receipt(host = 'mbp') {
 }
 const release = { version: '1.0.0', tag: 'v1.0.0', merge_sha: sha };
 const run = (local, remote, extra = {}) => collectStatus({ products: { golems: 'EtanHey/golems' },
-  localReader: () => local, remoteReader: () => remote, releaseReader: () => release, ...extra });
+  localReader: () => local, remoteReader: () => remote, releaseReader: () => release, localHostname: 'fixture-mbp', comparisonReader: () => 'behind', ...extra });
 
 test('5: product × host matrix uses hooks-live pin without release.json; never promotes activation', () => {
   const rows = run({ golems: receipt() }, { golems: receipt('m1') });
@@ -57,8 +57,8 @@ test('5: release lookup includes prereleases and resolves the tag rather than ta
 test('5: remote transport is exclusively BatchMode ssh to m1 with a read-only reader', () => {
   const result = readRemote(['golems'], (file, args) => {
     assert.equal(file, 'ssh'); assert.deepEqual(args.slice(0, 3), ['-o', 'BatchMode=yes', 'm1']);
-    assert.match(args[3], /readFileSync/); assert.doesNotMatch(args[3], /writeFile|unlink|mkdir/);
-    return JSON.stringify({ golems: receipt('m1') });
+    assert.equal(args[3], 'cat -- "$HOME/.local/state/golems/install-receipts/golems/latest.json"');
+    return JSON.stringify(receipt('m1'));
   });
   assert.equal(result.golems.host.alias, 'm1');
 });
@@ -87,9 +87,35 @@ test('5: local and remote script read latest receipts, distinguish corrupt files
     rmSync(home, { recursive: true, force: true });
   }
 });
-test('5: status CLI loads without an unsettled top-level await', () => {
+test('5: status CLI rejects invalid products without transport', () => {
   // Invalid input stops before transport or release lookup, so this is fully offline.
   try { execFileSync(process.execPath, ['scripts/install-receipt.mjs', 'status', '../invalid'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     assert.fail('invalid product accepted');
   } catch (error) { assert.equal(error.status, 1); assert.match(error.stderr, /Usage: status/); }
+});
+
+test('5: M1 hostname uses local receipts as m1; unknown host fails closed', () => {
+  assert.equal(run({ golems: receipt('m1') }, {}, { localHostname: 'fixture-m1' })[1].status, 'CURRENT');
+  assert.throws(() => run({}, {}, { localHostname: 'unknown-host' }), /Unknown local host/);
+});
+test('5: installs descended from the latest release are AHEAD; divergence is UNKNOWN', () => {
+  const r = receipt(); r.target.merge_sha = old; r.installed.embedded_commit = old; r.install_source.pin_sha = old;
+  r.target.version = r.installed.version = '2.0.0'; r.target.tag = 'v2.0.0';
+  assert.equal(run({ golems: r }, {}, { comparisonReader: () => 'ahead' })[0].status, 'AHEAD');
+  assert.equal(run({ golems: r }, {}, { comparisonReader: () => 'diverged' })[0].status, 'UNKNOWN');
+});
+test('5: cat missing file is NO-RECEIPT; corrupt JSON is MISMATCH; ssh failure is unreachable', () => {
+  const missing = readRemote(['golems'], () => { throw Object.assign(Error(), { status: 1, stderr: 'cat: No such file or directory' }); });
+  assert.equal(missing.golems, null);
+  assert.deepEqual(readRemote(['golems'], () => '{').golems, { error: 'unreadable-receipt' });
+  assert.throws(() => readRemote(['golems'], () => { throw Object.assign(Error(), { status: 255 }); }));
+  assert.throws(() => readRemote(['../escape'], () => assert.fail('must not execute')), /Invalid product/);
+});
+
+test('5: ancestry lookup compares release to install using mocked GitHub only', () => {
+  assert.equal(compareInstall('EtanHey/golems', sha, old, (file, args) => {
+    assert.equal(file, 'gh');
+    assert.deepEqual(args, ['api', `repos/EtanHey/golems/compare/${sha}...${old}`]);
+    return JSON.stringify({ status: 'ahead' });
+  }), 'ahead');
 });
