@@ -62,12 +62,13 @@ def live_symlink(path):
     return False
 
 
-def add_report(journal, repo, path, branch, reason, detail):
+def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
     if reason == "ERROR":
+        detail = " ".join(detail.split())[:400]
         with open(journal, "a") as out:
             out.write(json.dumps(dict(owner=repo, repo=repo, path=path, branch=branch,
                                      size_bytes=None, reason=reason, detail=detail,
-                                     birth_epoch=None)) + "\n")
+                                     birth_epoch=None, stage=stage)) + "\n")
         return
     try:
         admin = subprocess.check_output(["git", "-C", path, "rev-parse", "--absolute-git-dir"], text=True).strip()
@@ -120,29 +121,37 @@ def finish_report(journal, directory, run_status, publish):
         else:
             owners.setdefault(row.pop("owner"), []).append(row)
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    report = dict(generated_at=now, exit_status=int(run_status), owners=owners,
+    error_count = sum(row["reason"] == "ERROR" for rows in owners.values() for row in rows)
+    status = "partial" if error_count or int(run_status) not in (0, 3) else "complete"
+    report = dict(generated_at=now, status=status, error_count=error_count,
+                  exit_status=int(run_status), owners=owners,
                   t3_managed_skips=t3_managed_skips)
-    md = [f"# Worktree GC owner report\n\n{now}; exit={run_status}\n"]
+    md = [f"# Worktree GC owner report\n\n{now}; status={status}; errors={error_count}; exit={run_status}\n"]
     for repo, count in sorted(t3_managed_skips.items()):
         md.append(f"- `{repo}`: {count} skip - t3-managed (T3 storageCleanup owns it)\n")
     for owner, rows in sorted(owners.items()):
         md.append(f"## {owner}\n")
         for row in rows:
-            md.append(f"- `{row['path']}` · `{row['branch']}` · {row['size_bytes']} bytes · {row['reason']}: {row['detail']}\n")
+            stage = f" [{row['stage']}]" if row['reason'] == "ERROR" else ""
+            md.append(f"- `{row['path']}` · `{row['branch']}` · {row['size_bytes']} bytes · {row['reason']}{stage}: {row['detail']}\n")
     if not owners:
         md.append("No undetermined stalls or stale KEEP rows older than 72 hours.\n")
     # Serialize publishers, not deletion decisions; readers see complete files.
     with (directory / ".report.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        artifacts = (("latest.json", json.dumps(report, indent=2) + "\n"), ("latest.md", "\n".join(md)))
-        # Failed scans preserve the last full report; expose their error rows
-        # separately so the current failure remains reviewable by the owner.
-        current = (("last-run.json", artifacts[0][1]), ("last-run.md", artifacts[1][1]))
-        latest = artifacts if publish == "1" and int(run_status) in (0, 3) else ()
-        for name, content in (*current, *latest):
+        json_content = json.dumps(report, indent=2) + "\n"
+        md_content = "\n".join(md)
+        # JSON is authoritative: replace markdown first, JSON last. Matching
+        # generated_at values let readers detect a pair read across publication.
+        artifacts = (("latest.md", md_content), ("latest.json", json_content)) if int(publish) else ()
+        current = (("last-run.md", md_content), ("last-run.json", json_content))
+        for name, content in (*artifacts, *current):
             stage = directory / f".{name}.{os.getpid()}"
-            stage.write_text(content)
-            os.replace(stage, directory / name)
+            try:
+                stage.write_text(content)
+                os.replace(stage, directory / name)
+            finally:
+                stage.unlink(missing_ok=True)
         with (directory / "receipts.jsonl").open("a") as out:
             out.write(json.dumps(dict(at=now, exit_status=int(run_status),
                                      retained=sum(map(len, owners.values())), journal=journal)) + "\n")

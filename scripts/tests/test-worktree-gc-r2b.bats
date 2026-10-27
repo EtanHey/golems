@@ -181,7 +181,7 @@ PY
   [ -s "$WORKTREE_GC_REPORT_DIR/receipts.jsonl" ]
 }
 
-@test "FIX1 partial and scan-error runs preserve the full owner report" {
+@test "FIX1 scoped runs preserve the full owner report" {
   t3_fixture
   printf dirty > "$worktree/local.txt"
   age_worktrees
@@ -190,15 +190,14 @@ PY
   cp "$WORKTREE_GC_REPORT_DIR/latest.json" "$TEST_ROOT/full.json"
   cp "$WORKTREE_GC_REPORT_DIR/latest.md" "$TEST_ROOT/full.md"
   other="$(add_branch_worktree "$repo" clean)"
-  for args in path repo prune error scan-error; do
+  for args in path repo prune error; do
     case "$args" in
       path) run "$WORKTREE_GC" --path "$other" ;;
       repo) run "$WORKTREE_GC" --repo "$repo" ;;
       prune) run "$WORKTREE_GC" --prune-plan --repo "$repo" ;;
       error) run "$WORKTREE_GC" --repo "$HOME" ;;
-      scan-error) mkdir -p "$HOME/Gits/broken/.git"; run "$WORKTREE_GC" ;;
     esac
-    case "$args" in *error) [ "$status" -eq 2 ] ;; *) [ "$status" -eq 0 ] ;; esac
+    case "$args" in error) [ "$status" -eq 2 ] ;; *) [ "$status" -eq 0 ] ;; esac
     cmp "$TEST_ROOT/full.json" "$WORKTREE_GC_REPORT_DIR/latest.json"
     cmp "$TEST_ROOT/full.md" "$WORKTREE_GC_REPORT_DIR/latest.md"
   done

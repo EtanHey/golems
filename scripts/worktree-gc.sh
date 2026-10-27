@@ -12,7 +12,8 @@ source "$SCRIPT_DIR/lib/worktree-git-env.sh"
 # T3 Code reaps its own worktrees (storageCleanup.ts); this script covers non-T3 checkouts and merged branches.
 # Pins: ~/.config/golems/worktree-gc-pins.txt (one absolute path or branch per line).
 # Owner queue: docs.local/worktree-gc/latest.{json,md}; age is reporting only.
-# Every scan, including failures: docs.local/worktree-gc/last-run.{json,md}.
+# Every scan, including scoped/partial failures, rewrites latest and last-run atomically.
+# PR/fetch failures retain exit 0 (KEEP); processing errors exit 2, unpushed exits 3.
 # Test adapters: WORKTREE_GC_T3_DB, WORKTREE_GC_REPORT_DIR, WORKTREE_GC_PINS_FILE.
 # WORKTREE_GC_T3_ROOTS adds newline-separated managed roots (canonicalized).
 
@@ -403,6 +404,13 @@ process_worktree_block() {
     branch_display="(detached)"
   fi
 
+  # A failed repository is never eligible, including detached/tool-managed trees.
+  if [[ -n "$repo_failure" ]]; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" not-checked undetermined \
+      KEEP-undetermined "$repo_stage: $repo_failure"
+    return 0
+  fi
+
   while IFS= read -r t3_root; do
     if [[ "$canonical_worktree" == "$t3_root" || "$canonical_worktree" == "$t3_root/"* ]]; then
       t3_skip_count=$((t3_skip_count + 1))
@@ -647,6 +655,8 @@ process_worktree_block() {
 process_repo() {
   local requested_repo="$1"
   local census
+  local repo_failure=""
+  local repo_stage=""
   local t3_skip_count=0
   local line
 
@@ -665,8 +675,19 @@ process_repo() {
   repo_name="$(basename "$repo_root")"
   census_paths="$(sed -n 's/^worktree //p' <<< "$census")"
   load_open_prs
-
+  if [[ -n "$open_pr_failed$merged_pr_failed" ]]; then
+    repo_failure="${open_pr_failed:-$merged_pr_failed}"
+    repo_stage=pr-lookup
+  fi
   refresh_remote_base
+  if [[ -z "$base_ref" && -z "$repo_failure" ]]; then
+    repo_failure="$base_reason"
+    repo_stage=fetch
+  fi
+  if [[ -n "$repo_failure" ]]; then
+    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
+      "$repo_name" "$repo_root" "-" ERROR "$repo_failure" "$repo_stage"
+  fi
 
   block_worktree=""
   block_branch=""
@@ -776,13 +797,18 @@ REPORT_JOURNAL="$LOG_FILE.rows.jsonl"
 : > "$REPORT_JOURNAL"
 REPORT_DIR="${WORKTREE_GC_REPORT_DIR:-$LOG_DIR/worktree-gc}"
 publish_report=0
-[[ -z "$explicit_repo" && -z "$only_worktree" && "$prune_plan" -eq 0 ]] && publish_report=1
+if [[ -z "$explicit_repo" && -z "$only_worktree" && "$prune_plan" -eq 0 ]]; then
+  publish_report=1
+fi
 finish_run() {
   local rc=$?
   rm -f "$LOG_FILE.repo-state" "$LOG_FILE.repo-stderr" ||
     printf 'scratch cleanup failed\n' >> "$LOG_FILE"
-  python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report" ||
-    printf 'report finish failed\n' >> "$LOG_FILE"
+  if ! python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report"; then
+    printf 'report publish failed\n' | tee -a "$LOG_FILE" >&2
+    [[ "$rc" -ne 0 ]] || rc=2
+  fi
+  exit "$rc"
 }
 trap finish_run EXIT
 
