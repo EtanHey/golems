@@ -26,12 +26,19 @@ t3_fixture() {
   repo="$(make_fixture_repo t3-repo)"
   mkdir -p "$HOME/Gits"
   mv "$repo" "$HOME/Gits/"; repo="$HOME/Gits/t3-repo"
-  worktree="$HOME/.t3/worktrees/t3-repo/candidate"
+  worktree="$repo/.worktrees/candidate"
   git -C "$repo" worktree add -qb topic "$worktree" origin/main
   sqlite3 "$WORKTREE_GC_T3_DB" '
     CREATE TABLE orchestration_v2_projection_threads(thread_id TEXT PRIMARY KEY,payload_json TEXT,deleted_at TEXT);
     CREATE TABLE orchestration_v2_projection_runs(thread_id TEXT,status TEXT);
     CREATE TABLE orchestration_v2_projection_provider_sessions(thread_id TEXT,status TEXT);'
+}
+
+managed_t3_fixture() {
+  t3_fixture
+  mkdir -p "$HOME/.t3/worktrees/t3-repo"
+  git -C "$repo" worktree move "$worktree" "$HOME/.t3/worktrees/t3-repo/candidate"
+  worktree="$HOME/.t3/worktrees/t3-repo/candidate"
 }
 
 bind_thread() {
@@ -100,11 +107,12 @@ bind_thread() {
   [ -d "$worktree" ]
 }
 
-@test "R2b T3 missing DB fails closed" {
-  t3_fixture; rm "$WORKTREE_GC_T3_DB"
+@test "R2b T3 managed root skips even with missing DB" {
+  managed_t3_fixture
+  rm "$WORKTREE_GC_T3_DB"
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]
-  [[ "$output" == *KEEP-undetermined* ]] || return 1
+  [[ "$output" == *t3-managed* ]] || return 1
   [ -d "$worktree" ]
 }
 
@@ -122,11 +130,11 @@ bind_thread() {
   [ ! -e "$worktree" ]
 }
 
-@test "R2b T3 invalid schema fails closed" {
-  t3_fixture
+@test "R2b T3 invalid schema cannot authorize managed-root removal" {
+  managed_t3_fixture
   sqlite3 "$WORKTREE_GC_T3_DB" 'DROP TABLE orchestration_v2_projection_runs;'
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [[ "$output" == *KEEP-undetermined* ]] || return 1
+  [[ "$output" == *t3-managed* ]] || return 1
   [ -d "$worktree" ]
 }
 
@@ -145,21 +153,12 @@ bind_thread() {
   other="$(add_branch_worktree "$repo" branch-pin)"
   mkdir -p "$HOME/.config/golems"
   ln -s "$repo" "$HOME/pin-alias"
-  for pin in "$worktree" "$worktree/" "~/.t3/worktrees/pins/candidate/" "$HOME/pin-alias/.worktrees/path-pin-worktree"; do
-    if [[ "$pin" == '~/'* ]]; then
-      mkdir -p "$HOME/.t3/worktrees/pins"
-      git -C "$repo" worktree move "$worktree" "$HOME/.t3/worktrees/pins/candidate"
-      worktree="$HOME/.t3/worktrees/pins/candidate"
-    fi
+  for pin in "$worktree" "$worktree/" "~/pin-alias/.worktrees/path-pin-worktree/" "$HOME/pin-alias/.worktrees/path-pin-worktree"; do
     printf '  %s \r\nbranch-pin\n# comment\n' "$pin" > "$HOME/.config/golems/worktree-gc-pins.txt"
     run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
     [ "$status" -eq 0 ]
     [[ "$output" == *"$worktree · path-pin · dirty=not-checked · ahead=not-checked · KEEP-pinned"* ]] || return 1
     [ -d "$worktree" ]; [ -d "$other" ]
-    if [[ "$pin" == '~/'* ]]; then
-      git -C "$repo" worktree move "$worktree" "$repo/.worktrees/path-pin-worktree"
-      worktree="$repo/.worktrees/path-pin-worktree"
-    fi
   done
 }
 
@@ -214,7 +213,7 @@ age_worktrees() {
 @test "FIX1 failing report size helper never aborts reaping a later sibling" {
   t3_fixture; age_worktrees
   printf dirty > "$worktree/local.txt"
-  other="$HOME/.t3/worktrees/t3-repo/z-clean"
+  other="$repo/.worktrees/z-clean"
   git -C "$repo" worktree add -qb clean "$other" origin/main
   printf '#!/usr/bin/env bash\nprintf "123\\tfixture\\n"; exit 1\n' > "$TEST_ROOT/bin/du"
   chmod +x "$TEST_ROOT/bin/du"
@@ -238,7 +237,6 @@ CHECK
 
 @test "FIX1 T3 binding protects repo-local worktrees too" {
   t3_fixture
-  mkdir -p "$repo/.worktrees"
   git -C "$repo" worktree move "$worktree" "$repo/.worktrees/topic"
   worktree="$repo/.worktrees/topic"; bind_thread NULL
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
@@ -248,11 +246,62 @@ CHECK
 @test "FIX1 a failed report row cannot abort sibling reaping" {
   t3_fixture; age_worktrees
   printf dirty > "$worktree/local.txt"
-  other="$HOME/.t3/worktrees/t3-repo/z-clean"
+  other="$repo/.worktrees/z-clean"
   git -C "$repo" worktree add -qb clean "$other" origin/main
   export REAL_PYTHON="$(command -v python3)"
   printf '#!/usr/bin/env bash\n[[ "$2" == add ]] && exit 1\nexec "$REAL_PYTHON" "$@"\n' > "$TEST_ROOT/bin/python3"
   chmod +x "$TEST_ROOT/bin/python3"
   run "$WORKTREE_GC" --apply --idle-hours 0
   [ "$status" -eq 0 ]; [ ! -e "$other" ]; [[ "$output" == *"report row failed"* ]]
+}
+
+@test "H1 merged T3 roots skip all descendants and report one count per repo" {
+  t3_fixture
+  root="$HOME/.t3/worktrees"
+  for name in first nested/second; do
+    git -C "$repo" worktree add -q --detach "$root/t3-repo/$name" origin/main
+  done
+  run "$WORKTREE_GC" --apply --idle-hours 0
+  [ "$status" -eq 0 ]
+  [ -d "$root/t3-repo/first" ]; [ -d "$root/t3-repo/nested/second" ]
+  [[ "$output" == *"t3-managed (T3 storageCleanup owns it): 2 skip"* ]]
+  [[ "$output" != *"$root/t3-repo/first"* ]]
+  python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" <<'CHECK'
+import json,sys
+assert json.load(open(sys.argv[1]))["t3_managed_skips"] == {"t3-repo": 2}
+assert open(sys.argv[1].replace(".json", ".md")).read().count("t3-managed") == 1
+CHECK
+}
+@test "H1 canonical adapter root skips but similarly prefixed sibling is removed" {
+  t3_fixture
+  ln -s "$repo/.worktrees" "$HOME/root-alias"
+  export WORKTREE_GC_T3_ROOTS="$HOME/root-alias/candidate"
+  other="$(add_branch_worktree "$repo" candidate-sibling)"
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [ ! -e "$other" ]
+  [[ "$output" == *t3-managed* ]]
+}
+@test "H1 detached live symlink sources are kept across every protected root" {
+  repo="$(make_fixture_repo sources)"
+  worktree="$repo/.worktrees/skills-main"
+  git -C "$repo" worktree add -q --detach "$worktree" origin/main
+  for root in .agents .codex .claude/skills .claude/hooks .golems; do
+    mkdir -p "$HOME/$root/nested"
+    ln -s "$worktree/fixture.txt" "$HOME/$root/nested/source"
+    run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+    [ "$status" -eq 0 ]; [ -d "$worktree" ]
+    [[ "$output" == *"KEEP-live"*"live-symlink-target $HOME/$root/nested/source"* ]]
+    rm "$HOME/$root/nested/source"
+  done
+}
+@test "H1 symlinked skills directory protects resolved descendants without prefix collisions" {
+  repo="$(make_fixture_repo source-alias)"
+  worktree="$(add_branch_worktree "$repo" live)"
+  other="$(add_branch_worktree "$repo" live-sibling)"
+  mkdir -p "$HOME/.agents" "$HOME/shared-skills"
+  ln -s "$HOME/shared-skills" "$HOME/.agents/skills"
+  ln -s "$worktree" "$HOME/shared-skills/source"
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [ ! -e "$other" ]
+  [[ "$output" == *live-symlink-target* ]]
 }
