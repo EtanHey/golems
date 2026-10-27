@@ -10,7 +10,12 @@ const products = {
   cmuxlayer: 'EtanHey/cmuxlayer', golems: 'EtanHey/golems', narrationlayer: 'EtanHey/narrationlayer',
 };
 const execute = (file, args) => execFileSync(file, args, { encoding: 'utf8', timeout: 30000,
+  env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GH_PROMPT_DISABLED: '1' },
   maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+function compareStatus(status) {
+  if (!['identical', 'ahead', 'behind', 'diverged'].includes(status)) throw Error('Invalid compare status');
+  return status;
+}
 
 // Local snapshots and remote bytes are parsed and validated on the calling host.
 export function readLocal(names) {
@@ -52,7 +57,18 @@ export function latestRelease(repo, exec = execute) {
 }
 export function compareInstall(repo, releaseSha, installedSha, exec = execute) {
   const result = JSON.parse(exec('gh', ['api', `repos/${repo}/compare/${releaseSha}...${installedSha}`]));
-  return result.status;
+  return compareStatus(result.status);
+}
+export function peelTag(repo, tag, exec = execute) {
+  if (!tag) throw Error('Missing release tag');
+  const ref = `refs/tags/${tag}`;
+  const lookup = suffix => {
+    const lines = exec('git', ['ls-remote', '--tags', `https://github.com/${repo}.git`, suffix]).trim().split('\n');
+    return lines.map(line => line.split(/\s+/)).find(([sha, name]) => name === suffix && /^[0-9a-f]{40}$/.test(sha))?.[0];
+  };
+  const sha = lookup(`${ref}^{}`) ?? lookup(ref);
+  if (!sha) throw Error('Unresolved release tag');
+  return sha;
 }
 export function hostAlias(name) {
   const normalized = name.toLowerCase().replace(/\.local$/, '');
@@ -61,7 +77,8 @@ export function hostAlias(name) {
   throw Error('Unknown local host alias');
 }
 export function collectStatus({ products: catalog = products, localReader = readLocal,
-  remoteReader = readRemote, releaseReader = latestRelease, localHostname = hostname(), comparisonReader = compareInstall } = {}) {
+  remoteReader = readRemote, releaseReader = latestRelease, localHostname = hostname(), comparisonReader = compareInstall,
+  resolver = { peelTag, compareAncestry: compareInstall } } = {}) {
   const names = Object.keys(catalog), snapshots = {}, releases = new Map();
   const localHost = hostAlias(localHostname);
   const readers = localHost === 'mbp' ? [['mbp', localReader], ['m1', remoteReader]] : [['m1', localReader]];
@@ -94,16 +111,32 @@ export function collectStatus({ products: catalog = products, localReader = read
         || (!r.installed.embedded_commit && r.installed.content_sha256
           && r.installed.content_sha256 === r.target.release_asset?.sha256);
       if (release && r.target.tag === release.tag && r.target.released_sha !== release.released_sha) {
-        return { ...row, status: 'MISMATCH' };
+        return { ...row, status: 'MISMATCH', verification: {
+          released_sha: { claimed: r.target.released_sha, observed: release.released_sha } } };
       }
       if (!identity) return row;
-      // B2 owns independent tag/ancestry verification. Caller claims cannot prove CURRENT.
-      if (row.activation === 'LIVE' || r.target.ancestry.status === 'ahead') {
+      if (row.activation === 'LIVE') {
+        row.verification = {};
+        try {
+          const observed = resolver.peelTag(repo, r.target.tag);
+          if (!/^[0-9a-f]{40}$/.test(observed)) throw Error('Unresolved release tag');
+          row.verification.released_sha = { claimed: r.target.released_sha, observed };
+          if (observed !== r.target.released_sha) return { ...row, status: 'MISMATCH' };
+          const ancestry = compareStatus(resolver.compareAncestry(repo, r.target.merge_sha, observed));
+          row.verification.ancestry = { claimed: r.target.ancestry.status, observed: ancestry ?? null };
+          if (!['identical', 'ahead'].includes(ancestry) || ancestry !== r.target.ancestry.status) {
+            return { ...row, status: 'MISMATCH' };
+          }
+        } catch { return { ...row, status: 'LIVE-UNVERIFIED' }; }
+        if (!release) return { ...row, status: 'LIVE-UNVERIFIED' };
+      }
+      if (row.activation !== 'LIVE' && r.target.ancestry.status === 'ahead') {
         return { ...row, status: 'LIVE-UNVERIFIED' };
       }
       if (!release) return row;
       if (r.target.released_sha === release.released_sha) {
-        return { ...row, status: (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version) ? 'LIVE-UNVERIFIED' : 'BEHIND' };
+        return { ...row, status: (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version)
+          ? (row.activation === 'LIVE' ? 'CURRENT' : 'LIVE-UNVERIFIED') : 'BEHIND' };
       }
       try {
         const comparison = comparisonReader(repo, release.released_sha, r.target.released_sha);
@@ -112,7 +145,7 @@ export function collectStatus({ products: catalog = products, localReader = read
     });
   });
 }
-export function printStatus(args) {
+export function printStatus(args, options = {}) {
   const selected = {};
   for (const arg of args) {
     const [product, repo = products[product], ...extra] = arg.split('=');
@@ -120,8 +153,8 @@ export function printStatus(args) {
       || !repo || !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Usage: status [product[=owner/repo] ...]');
     selected[product] = repo;
   }
-  const rows = collectStatus({ products: args.length ? selected : products });
-  process.stdout.write('PRODUCT\tHOST\tSTATUS\tACTIVATION\tINSTALLED\tLATEST\tCOMMIT\n');
-  for (const r of rows) process.stdout.write([r.product, r.host, r.status, r.activation, r.installed ?? '-', r.latest ?? '-', r.commit ?? '-'].join('\t') + '\n');
+  const rows = collectStatus({ ...options, products: args.length ? selected : products });
+  process.stdout.write('PRODUCT\tHOST\tSTATUS\tACTIVATION\tINSTALLED\tLATEST\tCOMMIT\tVERIFICATION\n');
+  for (const r of rows) process.stdout.write([r.product, r.host, r.status, r.activation, r.installed ?? '-', r.latest ?? '-', r.commit ?? '-', r.verification ? JSON.stringify(r.verification) : '-'].join('\t') + '\n');
   if (rows.some(r => r.status !== 'CURRENT')) process.exitCode = 1;
 }
