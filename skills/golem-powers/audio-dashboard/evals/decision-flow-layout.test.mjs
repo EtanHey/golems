@@ -106,3 +106,74 @@ layoutTest("top chip strip is visible and navigates at 390px and 1280px", async 
     await browser.close();
   }
 }, 60000);
+
+layoutTest("story view is a full-screen stage: title, read-along and bottom transport all inside the viewport", async () => {
+  const url = fixture();
+  const browser = await chromium.launch();
+  try {
+    for (const [width, height] of [[390, 844], [1280, 800]]) {
+      const page = await browser.newPage({ viewport: { width, height } });
+      await page.goto(url);
+      await page.click("#df-view-toggle");
+      const box = await page.evaluate(() => {
+        const rect = (selector) => { const r = document.querySelector(selector).getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height }; };
+        return {
+          title: rect(".df-card.is-active h2"), words: rect(".df-card.is-active .df-teleprompter"), answer: rect(".df-card.is-active .df-answer-open"),
+          controller: rect(".df-controller"), top: rect("#df-story-top"), stop: getComputedStyle(document.getElementById("df-transport-stop")).display,
+          scrollWidth: document.documentElement.scrollWidth, innerWidth, innerHeight,
+          visibleCards: [...document.querySelectorAll(".df-card")].filter((card) => card.getClientRects().length).length,
+          titleAlign: getComputedStyle(document.querySelector(".df-card.is-active")).textAlign,
+        };
+      });
+      expect(box.visibleCards).toBe(1);
+      expect(box.scrollWidth).toBeLessThanOrEqual(box.innerWidth);
+      expect(box.titleAlign).toBe("center");
+      expect(box.title.top).toBeGreaterThanOrEqual(box.top.bottom - 1);
+      expect(box.words.height).toBeGreaterThan(120);
+      expect(box.answer.bottom).toBeLessThanOrEqual(box.controller.top + 24);
+      expect(box.controller.bottom).toBeLessThanOrEqual(box.innerHeight + 1);
+      expect(box.stop).not.toBe("none");
+      await page.close();
+    }
+  } finally {
+    await browser.close();
+  }
+}, 60000);
+
+layoutTest("answer sheet fits the viewport, traps real Tab focus and Esc returns focus", async () => {
+  const url = fixture();
+  const browser = await chromium.launch();
+  try {
+    for (const [width, height] of [[390, 844], [1280, 800]]) {
+      const page = await browser.newPage({ viewport: { width, height } });
+      await page.goto(url);
+      await page.click("#df-view-toggle");
+      await page.click(".df-card.is-active .df-answer-open");
+      await page.waitForTimeout(320); // let the 200ms open animation settle before measuring
+      const sheet = await page.evaluate(() => { const node = document.querySelector(".df-sheet.is-open"); const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, role: node.getAttribute("role"), scrolls: node.scrollHeight >= node.clientHeight }; });
+      expect(sheet.role).toBe("dialog");
+      expect(sheet.left).toBeGreaterThanOrEqual(0);
+      expect(sheet.right).toBeLessThanOrEqual(width);
+      expect(sheet.top).toBeGreaterThanOrEqual(0);
+      expect(sheet.bottom).toBeLessThanOrEqual(height + 1);
+      for (let i = 0; i < 14; i += 1) {
+        await page.keyboard.press(i % 5 === 4 ? "Shift+Tab" : "Tab");
+        expect(await page.evaluate(() => Boolean(document.activeElement.closest(".df-sheet.is-open")))).toBe(true);
+      }
+      await page.keyboard.press("Escape");
+      expect(await page.evaluate(() => document.querySelector(".df-sheet.is-open"))).toBeNull();
+      expect(await page.evaluate(() => document.activeElement.classList.contains("df-answer-open"))).toBe(true);
+      // Real pointer: controls inside the sheet are clickable (nothing covers them), and a tap outside closes it.
+      await page.click(".df-card.is-active .df-answer-open");
+      await page.waitForTimeout(320);
+      await page.click(".df-sheet.is-open .df-check", { timeout: 2000 });
+      expect(await page.evaluate(() => document.querySelector(".df-sheet.is-open .df-check-input").checked)).toBe(true);
+      await page.click(".df-sheet.is-open .df-option", { timeout: 2000 });
+      await page.mouse.click(8, 8);
+      expect(await page.evaluate(() => document.querySelector(".df-sheet.is-open"))).toBeNull();
+      await page.close();
+    }
+  } finally {
+    await browser.close();
+  }
+}, 60000);

@@ -75,3 +75,23 @@ test("verifier fails when the speed selector is missing", () => {
   expect(report.speedSelector).toBe(false);
   expect(report.pass).toBe(false);
 });
+
+test("verifier requires the story stage and one accessible answer sheet per card", () => {
+  const { report } = verify(render());
+  expect(report.answerSheets).toBe(2);
+  expect(report.sheetsMatchCards).toBe(true);
+  expect(report.storyStage).toBe(true);
+  expect(report.sheetAccessibility).toBe(true);
+});
+
+test("verifier fails when a card loses its answer sheet or the sheet loses its dialog wiring", () => {
+  const noSheet = verify(render().replace('<div class="df-sheet" id="sheet-b">', '<div class="df-gone" id="sheet-b">'));
+  expect(noSheet.report.sheetsMatchCards).toBe(false);
+  expect(noSheet.report.pass).toBe(false);
+  const noDialog = verify(render().replace('setAttribute("aria-modal","true")', 'setAttribute("data-x","true")'));
+  expect(noDialog.report.sheetAccessibility).toBe(false);
+  expect(noDialog.report.pass).toBe(false);
+  const noStage = verify(render().replace('id="df-story-top"', 'id="df-gone"'));
+  expect(noStage.report.storyStage).toBe(false);
+  expect(noStage.report.pass).toBe(false);
+});
