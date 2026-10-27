@@ -109,6 +109,7 @@ class LocalMirrorBackend:
     root: pathlib.Path
 
     def ensure_structure(self, project: str) -> dict[str, pathlib.Path]:
+        # The mirror root represents Brain Drive, so omit that first chain component.
         project_root = self.root.joinpath(*DRIVE_MODULE.ROOT_CHAIN[1:], project)
         context = project_root / "context"
         prompts = project_root / "prompts"
