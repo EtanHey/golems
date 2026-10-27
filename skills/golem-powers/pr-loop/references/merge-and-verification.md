@@ -285,13 +285,15 @@ Not every branch goes through the full PR flow. When implementation is done:
 | **Keep as-is** | Need to park work | Just stop. Worktree preserved. |
 | **Discard** | Wrong approach, start over | Requires typed "discard" confirmation. `git branch -D <branch>` |
 
-**Workspace lifecycle:** Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](../../_shared/lifecycle/CONTRACT.md); record REMOVED, RETAINED or acknowledged TRANSFERRED.
+**Worktree cleanup (lane close):** The lead's leftover sweep covers settled or merged lanes under `<main>/.worktrees` only, after all consumers release and the contract permits retirement. Use the existing scoped `worktree-gc.sh` protections; live consumers and unpreserved data stay retained. T3-managed paths remain `KEEP-out-of-scope` for that sweep: never bypass managed-root ownership with a direct-removal fallback. For both harnesses, the authorized parent follows the contract's [interim retirement path](../../_shared/lifecycle/CONTRACT.md#parent-retirement-path-both-harnesses-interim) from outside the resource.
+
+Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](../../_shared/lifecycle/CONTRACT.md); record REMOVED, RETAINED or acknowledged TRANSFERRED.
 
 After allocation, read files from the assigned worktree before editing; another checkout's reads do not carry over. For a linked-worktree merge, use the [remote fallback](#worktree-locked-local-merge) and [root update](#after-merge-update-tracking-mandatory) as applicable. These PR mechanics do not authorize workspace retirement.
 
 ### Cleanup Receipt
 
-End the merge comment or lane report with this block. The contract owns preservation, consumers, collector authority and proof; there is no child-run removal recipe. Keep local-only history, dirty files and unresolved review consumers with a named owner; escalate holds to the lead.
+End the merge comment or lane report with this block. The contract owns preservation, consumers, collector authority and proof; there is no child-run removal recipe. The lead verifies the receipt against the direct remover result, fresh successful registration read and physical observation. Keep local-only history, dirty files and unresolved review consumers with a named owner; escalate holds to the lead.
 
 Keep the existing field lines for parser compatibility. REMOVED requires the contract's direct remover result, fresh successful registration read and physical absence. RETAINED uses `kept because`; acknowledged TRANSFERRED records the successor/custody evidence on that same field with the retained path. A pushed unmerged handoff alone never releases consumers. Append proof or custody references without changing the `worktree:` and `branch:` tokens; historical receipts remain readable, but their shape does not establish valid removal.
 
@@ -299,12 +301,15 @@ Keep the existing field lines for parser compatibility. REMOVED requires the con
 CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):
 - root: <path> HEAD=<sha> <base-remote>/<default>=<sha> ahead/behind=0/0
   OR ROOT-FF STOP: <reason>
-- worktree: removed: <path>; proof: remover rc=0; absent from fresh successful git worktree list --porcelain; physical absence verified
+- worktree: removed: <path>; proof: git worktree remove rc 0; absent from git worktree list --porcelain; path absent (lstat)
   OR worktree: <path> kept because <reason>; escalated to <lead>
 - branch: <name> deleted local+remote | kept because <reason>
-- files this PR added outside src/tests: <list or none>; each has its committed reference or preserved artifact/custody receipt
+- files this PR added outside src/tests: <list or none>; each is: committed reference (docs/reference|docs/rationale|README) |
+  stored to BrainLayer <chunk-id> and deleted | moved to docs.local/<day>/ | deleted with an authorized disposition receipt
 - docs.local this lane created: <paths>; preservation/disposition and linked receipts under the contract and /drive-filing
 ```
+
+File dispositions record completed authorized actions; BrainLayer storage, moving or rollup alone grants no deletion authority. Workspace retirement follows Etan's DONE quote and PHX's merged-PR/last-consumer reading in the contract.
 
 The required root field has exactly two forms (strip the Markdown bullet/indent before matching this regex):
 ```regex

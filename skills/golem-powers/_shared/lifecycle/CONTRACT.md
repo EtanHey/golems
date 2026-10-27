@@ -17,6 +17,8 @@ Track implementer, reviewer, provider session, active/streaming task, terminal, 
 
 The owning lead harvests and verifies deliverables, records consumer releases, then transfers acknowledged custody or records a retained obligation, and only THEN settles when these gates permit. Settling is deletion-relevant: T3's hourly cleanup removes eligible settled worktrees. Releasing a provider and removing its checkout are separate outcomes. If supported official cleanup cannot honor preservation, record RETAINED with owner and the runtime limitation; do not settle to tidy a list. This text proves no guard coverage for unwrapped UI, shell or remote paths; never alter a live app database to bypass it.
 
+Etan's rule is verbatim: "the implementer removes its worktree at DONE" (Etan 2026-10-18, via orc collab). **PHX reading, consistent with canon #2/#9:** DONE = the merged PR; retirement follows after the merge, once its last consumer releases, and the worktree is never left behind. The parent/authorized collector performs removal for the implementer. A RETAINED receipt keeps that owner's obligation open until every gate passes; a merged PR alone grants no deletion authority.
+
 ## Preservation and races
 
 For a worktree or clone, require fresh exact remote Git coverage and a clean tree before retirement. A non-Git lane directory uses its host/filesystem identity and artifact-preservation proofs. Use the verified PR base remote (registered project remote for a non-PR lane). Verify HEAD against that remote's branch; if auto-deletion removed it, use that remote's actual default branch: for an origin-backed base, **HEAD is an ancestor of origin/<default>, plus a clean tree**; an upstream-backed base uses `upstream/<default>`. Never substitute fork-origin coverage for upstream proof. Squash merges require separately verified content coverage; never invent ancestry from a merged PR at another head.
@@ -52,3 +54,60 @@ Record exactly one current disposition, with durable owner and exact resource id
 Existing CLEANUP RECEIPT field lines remain valid; these dispositions define their meaning, not a new parser syntax. Append adverse attempts and immutable operation IDs/generations; never overwrite them. A later valid receipt references earlier failures.
 
 At the next bounded dispatch/close pass, reconcile unresolved leases against exact creation provenance and fresh state. An unreachable host is RETAINED, not absent; ambiguous ownership stays unknown. Recovery after interrupted removal still needs the original remover result and both fresh absence checks. No age-only eligibility, recurring destructive job, HOME-wide prune or retries to erase adverse evidence.
+
+## Parent retirement path (both harnesses, interim)
+
+For a T3 child or cmux worker, run this only in the parent from outside the worktree, after merge and the last consumer's release. The parent must first verify this contract's exact ownership/authority, complete inventory/preservation, managed-root policy and consumer gates; record that preflight outside the retiring scope. Hold the exact resource lock across the final preflight and this block; an uncontrolled writer means RETAINED. A file's mere presence is not authority. This is an interim final-action procedure, not a replacement lifecycle guard or permission to bypass an official adapter's refusal.
+
+Supply canonical `MAIN` (persistent checkout), `WT`, `EXPECTED_HEAD`, verified `BASE_REMOTE`/`DEFAULT`, and `PREFLIGHT_RECEIPT` (the parent-verified preflight record). No child runs this block, even after changing cwd. Until the guard's machine receipt is adopted, use the interim receipt below; keep failed attempts and the preflight outside the retiring scope.
+
+```bash
+(
+  set -u
+  : "${MAIN:?}" "${WT:?}" "${EXPECTED_HEAD:?}" "${BASE_REMOTE:?}" "${DEFAULT:?}" "${PREFLIGHT_RECEIPT:?}"
+  keep() { printf 'worktree: %s kept because %s; escalated to parent owner\n' "$WT" "$1"; }
+  MAIN=$(cd "$MAIN" && pwd -P) || exit 1
+  WT=$(cd "$WT" && pwd -P) || exit 1
+  case "$(pwd -P)/" in "$WT/"*) keep 'caller is inside retiring worktree'; exit 1 ;; esac
+  [ "$WT" != "$MAIN" ] || { keep 'root checkout is never a target'; exit 1; }
+  PREFLIGHT_RECEIPT=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$PREFLIGHT_RECEIPT") || exit 1
+  case "$PREFLIGHT_RECEIPT/" in "$WT/"*) keep 'preflight would be lost'; exit 1 ;; esac
+  [ -s "$PREFLIGHT_RECEIPT" ] || { keep 'verified preflight missing'; exit 1; }
+  COMMON=$(git -C "$MAIN" rev-parse --path-format=absolute --git-common-dir) || exit 1
+  [ "$(git -C "$WT" rev-parse --path-format=absolute --git-common-dir)" = "$COMMON" ] || exit 1
+  case "$BASE_REMOTE" in origin|upstream) ;; *) keep 'unverified base remote'; exit 1 ;; esac
+  git check-ref-format "refs/heads/$DEFAULT" || exit 1
+  git -C "$MAIN" fetch -q "$BASE_REMOTE" "refs/heads/$DEFAULT:refs/remotes/$BASE_REMOTE/$DEFAULT" || exit 1
+  if ! git -C "$WT" merge-base --is-ancestor HEAD "$BASE_REMOTE/$DEFAULT"; then
+    keep 'HEAD is not on the verified default branch'; exit 0
+  fi
+  CONTENT=$(git -C "$WT" status --porcelain --untracked-files=all --ignored) || exit 1
+  [ -z "$CONTENT" ] || { keep 'unpreserved tracked, untracked or ignored content'; exit 0; }
+  [ "$(git -C "$WT" rev-parse HEAD)" = "$EXPECTED_HEAD" ] || { keep 'identity changed'; exit 1; }
+  git -C "$MAIN" worktree remove "$WT"
+  REMOVE_RC=$?
+  WORKTREES=$(git -C "$MAIN" worktree list --porcelain)
+  LIST_RC=$?
+  python3 - "$WT" <<'PY_LSTAT'
+import os, sys
+try:
+    os.lstat(sys.argv[1])
+except FileNotFoundError:
+    sys.exit(0)
+except OSError:
+    sys.exit(2)
+sys.exit(1)
+PY_LSTAT
+  PHYSICAL_RC=$?
+  if [ "$REMOVE_RC" -eq 0 ] && [ "$LIST_RC" -eq 0 ] && [ "$PHYSICAL_RC" -eq 0 ] &&
+     ! printf '%s\n' "$WORKTREES" | grep -Fx -- "worktree $WT"; then
+    printf 'worktree: removed: %s; proof: git worktree remove rc 0; absent from git worktree list --porcelain; path absent (lstat)\n' "$WT"
+  else
+    keep "retirement failed: remove_rc=$REMOVE_RC list_rc=$LIST_RC physical_absence_rc=$PHYSICAL_RC"
+    [ "$REMOVE_RC" -eq 0 ] || exit "$REMOVE_RC"
+    exit 1
+  fi
+)
+```
+
+The code requires fresh merged ancestry and retains all ignored contents, including apparent caches. More complex content/ancestry preservation uses the authorized guard, not relaxed checks here. Record branch disposition separately; this block never deletes a branch. `list` failure or inaccessible physical state is not absence. Keep the direct remover result and both observations even on failure.
