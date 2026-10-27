@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -14,7 +14,17 @@ const root = process.env.FIXTURE, args = process.argv.slice(2);
 const log = value => fs.appendFileSync(path.join(root, 'calls'), JSON.stringify([Date.now(), ...value]) + '\n');
 const tool = path.basename(process.argv[1]);
 log([tool, ...args]);
-if (tool === 'docker' && args[0] === 'ps') {
+const kind = tool === 'supabase' || args[0] === 'compose' ? 'stop' : args[0];
+if (process.env.HANG_COMMAND === kind) {
+  const { spawn } = require('node:child_process');
+  const descendant = spawn(process.execPath, ['-e', 'process.on("SIGTERM", () => {}); setTimeout(() => process.exit(0), 4000)'], { stdio: 'inherit' });
+  log(['stub', 'hung', process.pid, descendant.pid]);
+  process.on('SIGTERM', () => log(['stub', 'TERM']));
+  setTimeout(() => process.exit(0), 4000);
+  (process.env.ESCALATE_SIGNALS || '').split(',').filter(Boolean).forEach((signal, i) => {
+    setTimeout(() => process.kill(process.ppid, signal), 100 + i * 60);
+  });
+} else if (tool === 'docker' && args[0] === 'ps') {
   for (const file of fs.readdirSync(path.join(root, 'state'))) {
     const c = JSON.parse(fs.readFileSync(path.join(root, 'state', file)));
     if (args.includes('label=' + c.label) && (args.includes('--all') || c.running))
@@ -22,6 +32,13 @@ if (tool === 'docker' && args[0] === 'ps') {
   }
 } else if (tool === 'docker' && args[0] === 'update') {
   if (process.env.FAIL_UPDATE) { console.error('protect failed'); process.exit(9); }
+  const removing = args.slice(2).find(id => id === 'd'.repeat(12));
+  if (process.env.MARKED_REMOVAL && removing) {
+    log(['stub', 'removing']);
+    console.error('Error response from daemon: Cannot update container ' + 'd'.repeat(64) + ': container is marked for removal and cannot be "update"');
+    if (process.env.MIXED_ERROR) console.error('permission denied');
+    process.exit(1);
+  }
   if (process.env.MISSING_BUT_PRESENT) {
     console.error('Error response from daemon: No such container: ' + args[2]); process.exit(1);
   }
@@ -64,9 +81,13 @@ if (mode === 'hook' || mode === 'hook-vanish') {
   const { createLifecycle } = await import(process.env.HELPER);
   const lifecycle = createLifecycle(process.env.SELECTOR);
   for (const id of mode === 'hook' ? ['created', 'recreated'] : ['vanishing', 'created']) { create(id); await lifecycle.protect(); }
-} else if (mode === 'create' || mode === 'vanish') {
+} else if (mode === 'create' || mode === 'vanish' || mode === 'removing') {
   create('created');
   if (mode === 'vanish') create('vanishing');
+  if (mode === 'removing') {
+    const id = 'd'.repeat(12);
+    fs.writeFileSync(path.join(root, 'state', id), JSON.stringify({ label: process.env.SELECTOR, name: id, running: false }));
+  }
   await new Promise(done => setTimeout(done, 1100));
 } else if (mode === 'signal' || mode === 'stubborn') {
   create('created');
@@ -91,6 +112,7 @@ async function fixture(fn, { selector = compose, ...env } = {}) {
   const seed = (id, label = selector, running = true) => writeFileSync(join(root, 'state', id), JSON.stringify({ label, name: id, running }));
   const environment = { ...process.env, CI: 'false', FAIL_UPDATE: '', FAIL_STOP: '', SURVIVORS: '', CHILD_EXIT: '',
     VANISH_ON_UPDATE: '', MIXED_ERROR: '', MISSING_BUT_PRESENT: '', GROUP_INTERRUPT: '',
+    MARKED_REMOVAL: '', HANG_COMMAND: '', ESCALATE_SIGNALS: '', GOLEMS_DOCKER_TEARDOWN_TIMEOUT_MS: '',
     ...env, PATH: join(root, 'bin'), FIXTURE: root, SELECTOR: selector, HELPER: pathToFileURL(cli).href };
   const run = (action = 'run', mode = 'create', extra = {}) => new Promise((done, reject) => {
     const args = [cli, action, selector, ...(action === 'run' ? ['--', process.execPath, join(root, 'child.mjs'), mode] : [])];
@@ -224,3 +246,38 @@ for (const selector of [compose, supabase]) test(`foreground group SIGINT cannot
   assert.ok(stopped > index(c, 'child', 'done')); assert.equal(index(c, 'stub', 'SIGINT'), -1);
   assert.ok(c.slice(stopped + 1).some(c => c[1] === 'docker' && c[2] === 'ps' && !c.includes('--all')));
 }, { selector, GROUP_INTERRUPT: '1' }));
+
+for (const exit of [0, 23]) test(`marked-for-removal container stays listed without losing child exit ${exit}`, () => fixture(async ({ run, calls }) => {
+  const r = await run('run', 'removing'); assert.equal(r.code, exit, r.stderr);
+  const c = calls(), removal = index(c, 'stub', 'removing'), done = index(c, 'child', 'done');
+  assert.ok(removal >= 0 && done > removal);
+  assert.ok(c.some((c, i) => i > removal && i < done && c[1] === 'docker' && c[2] === 'update' && c.includes('created') && !c.includes('d'.repeat(12))));
+}, { MARKED_REMOVAL: '1', CHILD_EXIT: String(exit) }));
+test('marked-for-removal error cannot mask another protection failure', () => fixture(async ({ run }) => {
+  const r = await run('run', 'removing'); assert.equal(r.code, 1); assert.match(r.stderr, /permission denied/);
+}, { MARKED_REMOVAL: '1', MIXED_ERROR: '1' }));
+const assertNoRunningCleanup = calls => {
+  const hung = calls.filter(c => c[1] === 'stub' && c[2] === 'hung'); assert.ok(hung.length > 0);
+  for (const c of hung) for (const pid of c.slice(3)) {
+    const result = spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' });
+    assert.ifError(result.error);
+    assert.ok(!result.stdout.trim() || /^[ZX]/.test(result.stdout.trim()), `cleanup PID ${pid} still running: ${result.stdout}`);
+  }
+};
+for (const [selector, kind] of [[compose, 'ps'], [compose, 'update'], [compose, 'stop'], [supabase, 'stop']])
+test(`teardown deadline kills hung ${kind} group for ${selector}`, { skip: process.platform === 'win32' }, () => fixture(async ({ run, seed, calls }) => {
+  seed('created'); const r = await run('teardown'); assert.equal(r.code, 1, r.stderr);
+  assert.match(r.stderr, /Teardown FAILED: .*timed out/);
+  assert.ok(r.stderr.includes(kind === 'stop' ? (selector === compose ? 'docker compose' : 'supabase stop') : `docker ${kind}`), r.stderr);
+  assert.ok(index(calls(), 'stub', 'TERM') >= 0); assertNoRunningCleanup(calls());
+}, { selector, HANG_COMMAND: kind, GOLEMS_DOCKER_TEARDOWN_TIMEOUT_MS: '500' }));
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) test(`second ${signal} during teardown kills its group promptly`, { skip: process.platform === 'win32' }, () => fixture(async ({ run, calls }) => {
+  const r = await run('run', 'hook'); assert.equal(r.code, 130, r.stderr);
+  assert.match(r.stderr, /Teardown FAILED: .*second signal/); assert.match(r.stderr, /docker compose/);
+  const hung = calls().find(c => c[1] === 'stub' && c[2] === 'hung'); assert.ok(hung);
+  assert.ok(Date.now() - hung[0] < 1500, 'second signal did not stop cleanup promptly');
+  assertNoRunningCleanup(calls());
+}, { HANG_COMMAND: 'stop', ESCALATE_SIGNALS: `SIGINT,${signal}` }));
+for (const value of ['0', '60001', 'nope']) test(`teardown timeout override ${value} is rejected`, () => fixture(async ({ run, calls }) => {
+  const r = await run('teardown'); assert.equal(r.code, 1); assert.match(r.stderr, /timeout/i); assert.deepEqual(calls(), []);
+}, { GOLEMS_DOCKER_TEARDOWN_TIMEOUT_MS: value }));
