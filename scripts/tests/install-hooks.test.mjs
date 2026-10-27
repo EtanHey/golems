@@ -132,6 +132,28 @@ function fixtureEnv(fx) {
   return env;
 }
 
+test('owner apply emits a checkout skills-sync receipt through the shared writer', () => {
+  const fx = fixture();
+  const skill = path.join(fx.repo, 'skills/golem-powers/demo-gate');
+  writeFileSync(path.join(skill, 'SKILL.md'), 'receipt fixture');
+  git(fx.repo, 'add', '.'); git(fx.repo, 'commit', '-qm', 'skill fixture'); git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  for (const root of ['.claude/skills', '.agents/skills', '.codex/skills']) {
+    mkdirSync(path.join(fx.home, root), { recursive: true }); symlinkSync(skill, path.join(fx.home, root, 'demo'));
+  }
+  fixtureEnv(fx);
+  const python = pathPython();
+  writeFileSync(path.join(fx.root, 'machine-bin/python3'), `#!/bin/sh\ncase "$*" in *ratchet/installed-skills.py*) printf '%s\\n' '{"measurement":"live","host_identity_valid":true,"name_content_parity":true,"required_readable_valid":true}';; *) exec '${python}' "$@";; esac\n`, { mode: 0o755 });
+  const result = run(fx, '--apply'); expect(result.status).toBe(0);
+  const receipt = JSON.parse(readFileSync(path.join(fx.home, '.local/state/golems/install-receipts/golems/latest.json')));
+  expect(receipt.install_source.mode).toBe('checkout'); expect(receipt.verdict).toBe('LIVE');
+  expect(receipt.installed.embedded_commit).toBe(git(fx.repo, 'rev-parse', 'HEAD'));
+  expect(receipt.activation.processes).toEqual([]);
+  rmSync(path.join(fx.home, '.local'), { recursive: true });
+  symlinkSync(path.join(fx.root, 'refuse-state-link'), path.join(fx.home, '.local'));
+  const failedReceipt = run(fx, '--apply');
+  expect(failedReceipt.status).toBe(0); expect(failedReceipt.out).toContain('SKILLS-SYNC RECEIPT FAILED (install succeeded)');
+});
+
 function guardedFixture({ privateSuite = "absent", candidate = "pass" } = {}) {
   const fx = fixture({ privateSuite: false });
   const guards = ["skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",

@@ -12,8 +12,31 @@ import sys
 from pathlib import Path
 
 ROOTS = ('.claude/skills', '.agents/skills', '.codex/skills')
-IGNORED = {'.pytest_cache'}
+IGNORED = {'.pytest_cache', '.system'}
 INSTALLER_MARKERS = {'.golems-source-commit', '.golems-install.json'}
+
+
+def tree_sha256(root):
+    """Receipt tree: sorted relative-name TAB file-digest lines, following links."""
+    policy, lines = release_policy(), []
+
+    def walk(item, relative='', ancestors=frozenset()):
+        if (item.name in set(policy['excluded_parts']) | IGNORED or
+                re.search(policy['excluded_files'], relative) or item.name == '.DS_Store' or
+                (len(Path(relative).parts) <= 2 and item.name in INSTALLER_MARKERS)):
+            return
+        resolved = item.resolve(strict=True)
+        if resolved in ancestors: raise ValueError('receipt tree symlink cycle')
+        if item.is_dir():
+            for child in sorted(item.iterdir()):
+                walk(child, relative + ('/' if relative else '') + child.name, ancestors | {resolved})
+        elif item.is_file():
+            if any(c in relative for c in '\t\n\r'): raise ValueError('invalid receipt filename')
+            lines.append(relative + '\t' + hashlib.sha256(item.read_bytes()).hexdigest() + '\n')
+        else: raise ValueError('unsupported receipt tree entry')
+
+    walk(Path(root))
+    return hashlib.sha256(''.join(sorted(lines)).encode()).hexdigest()
 
 
 def normalize(value, home):

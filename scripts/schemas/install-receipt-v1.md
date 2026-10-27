@@ -3,6 +3,18 @@
 `install-receipt-v1.mjs` exports the closed JSON Schema. The CLI uses the existing
 Ajv dependency and registers `utc-time` for real UTC calendar timestamps.
 
+`golems` / `skills-sync` uses `install_source.mode: checkout|release-channel`,
+absolute `roots[]` with `tree_sha256`, and `installed.content_sha256` over sorted
+`path\ttree_sha256\n` records. Each tree hashes sorted `relpath\tfile-sha256\n`
+records, resolves links, and imports the installed-skills ratchet exclusions.
+Checkout receipts record each root's resolved commits; mixed or unresolved roots
+are MISMATCH. The source path is the root checkout, independent of release.json.
+LIVE requires clean installer status and `activation.skill_parity` with exit 0,
+pass true and measurement live. No activation process is needed. Installer receipt
+failures are loud but preserve a successful apply. The status reader rehashes roots
+and rechecks identity before reporting CURRENT. Generic process-based fixtures use
+source-checkout so their activation invariants remain independently tested.
+
 ```sh
 node scripts/install-receipt.mjs validate receipt.json
 node scripts/install-receipt.mjs write receipt.json

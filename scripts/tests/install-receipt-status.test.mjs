@@ -11,7 +11,7 @@ const sha = 'a'.repeat(40), old = 'b'.repeat(40);
 function receipt(host = 'mbp') {
   return { schema: 'install-receipt/v1', receipt_id: '00000000-0000-4000-8000-000000000000', written_at: '2026-10-27T10:00:00Z',
     writer: { agent: 'fixture', thread_or_session: 'fixture' }, host: { alias: host, hostname: 'fixture-host', user: 'fixture-user' },
-    product: 'golems', artifact_kind: 'skills-sync', target: { version: '1.0.0', merge_sha: sha, released_sha: sha, ancestry: { method: 'gh-compare', status: 'identical', checked_at: '2026-10-27T09:00:00Z' }, tag: 'v1.0.0' },
+    product: 'golems', artifact_kind: 'source-checkout', target: { version: '1.0.0', merge_sha: sha, released_sha: sha, ancestry: { method: 'gh-compare', status: 'identical', checked_at: '2026-10-27T09:00:00Z' }, tag: 'v1.0.0' },
     installed: { version: '1.0.0', path: '/fixture/hooks-live', embedded_commit: sha, install_finished_at: '2026-10-27T09:00:00Z' },
     install_source: { mode: 'worktree-pin', path: '/fixture/hooks-live', pin_sha: sha,
       owner_status: { pin_sha: sha, command: 'install-hooks.sh --host mbp --status', exit: 0, drift: false, settings_drift: false } },

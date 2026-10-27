@@ -12,7 +12,7 @@ const sha = 'a'.repeat(40), digest = 'b'.repeat(64);
 function receipt() {
   return { schema: 'install-receipt/v1', receipt_id: randomUUID(), written_at: '2026-10-27T10:00:00.000Z',
     writer: { agent: 'test-worker', thread_or_session: 'test' }, host: { alias: 'mbp', hostname: hostname(), user: userInfo().username },
-    product: 'golems', artifact_kind: 'skills-sync', target: { version: '1.0.0', merge_sha: sha, released_sha: sha,
+    product: 'golems', artifact_kind: 'source-checkout', target: { version: '1.0.0', merge_sha: sha, released_sha: sha,
       ancestry: { method: 'gh-compare', status: 'identical', checked_at: '2026-10-27T09:00:00Z' } },
     installed: { version: '1.0.0', path: '/fixture/hooks-live', embedded_commit: sha, install_finished_at: '2026-10-27T09:00:00Z' },
     install_source: { mode: 'worktree-pin', path: '/fixture/hooks-live', pin_sha: sha,

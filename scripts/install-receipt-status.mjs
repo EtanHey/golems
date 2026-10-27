@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { validate, assess, bridgePaths } from './lib/install-receipt-core.mjs';
+import { validate, assess, bridgePaths, rootsDigest } from './lib/install-receipt-core.mjs';
+import { snapshotSkills } from './lib/skills-sync-receipt.mjs';
 
 const products = {
   brainlayer: 'EtanHey/brainlayer', brainbar: 'EtanHey/brainlayer',
@@ -170,7 +171,10 @@ export function hostAlias(name) {
 }
 export function collectStatus({ products: catalog = products, localReader = readLocal,
   remoteReader = readRemote, releaseReader = (repo, options) => latestRelease(repo, execute, options), localHostname = hostname(), comparisonReader = compareInstall,
-  resolver = { peelTag, compareAncestry: compareInstall, compareBridge }, tapReader = readTapVersion, tapPaths: paths = tapPaths } = {}) {
+  resolver = { peelTag, compareAncestry: compareInstall, compareBridge }, tapReader = readTapVersion, tapPaths: paths = tapPaths,
+  skillsReader = (host, r) => host === hostAlias(localHostname)
+    ? snapshotSkills({ mode: r.install_source.mode, source: r.install_source.path })
+    : JSON.parse(execute('ssh', ['-o', 'BatchMode=yes', 'm1', 'node "$HOME/.golems/current/scripts/skills-sync-receipt.mjs" snapshot'])) } = {}) {
   const names = Object.keys(catalog), snapshots = {}, releases = new Map();
   const localHost = hostAlias(localHostname);
   const readers = localHost === 'mbp' ? [['mbp', localReader], ['m1', remoteReader]] : [['m1', localReader]];
@@ -216,8 +220,18 @@ export function collectStatus({ products: catalog = products, localReader = read
       if (!identity) return row;
       if (row.activation === 'LIVE') {
         row.verification = {};
+        let skills;
+        if (r.artifact_kind === 'skills-sync') {
+          try {
+            skills = skillsReader(host, r);
+            if (skills.commit !== r.target.released_sha || rootsDigest(skills.roots) !== r.installed.content_sha256 ||
+              (r.install_source.mode === 'checkout' && skills.root_commits.some(x => x.unresolved || x.commits.length !== 1 || x.commits[0] !== skills.commit))) {
+              return { ...row, status: 'MISMATCH' };
+            }
+          } catch { return { ...row, status: 'LIVE-UNVERIFIED' }; }
+        }
         try {
-          const observed = resolver.peelTag(repo, r.target.tag);
+          const observed = r.install_source?.mode === 'checkout' && skills ? skills.commit : resolver.peelTag(repo, r.target.tag);
           if (!/^[0-9a-f]{40}$/.test(observed)) throw Error('Unresolved release tag');
           row.verification.released_sha = { claimed: r.target.released_sha, observed };
           if (observed !== r.target.released_sha) return { ...row, status: 'MISMATCH' };
@@ -265,7 +279,7 @@ export function collectStatus({ products: catalog = products, localReader = read
       }
       if (!release) return row;
       if (r.target.released_sha === release.released_sha) {
-        return { ...row, status: (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version)
+        return { ...row, status: (r.install_source?.mode === 'checkout' || (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version))
           ? (row.activation === 'LIVE' ? 'CURRENT' : row.activation) : 'BEHIND' };
       }
       try {

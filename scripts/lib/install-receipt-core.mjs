@@ -1,4 +1,5 @@
 import Ajv from 'ajv';
+import { createHash } from 'node:crypto';
 import schema from '../schemas/install-receipt-v1.mjs';
 
 const MCP_PRODUCTS = ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar'];
@@ -29,8 +30,10 @@ const ajv = new Ajv({ strict: false });
 ajv.addFormat('utc-time', value => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(value)
   && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 19) === value.slice(0, 19));
 const valid = ajv.compile(schema);
+export const rootsDigest = roots => createHash('sha256').update(roots.map(r => `${r.path}\t${r.tree_sha256}\n`).sort().join('')).digest('hex');
 export function validate(receipt) {
   if (!valid(receipt)) throw new Error(ajv.errorsText(valid.errors));
+  if (receipt.artifact_kind === 'skills-sync' && new Set(receipt.install_source.roots.map(r => r.path)).size !== receipt.install_source.roots.length) throw Error('duplicate skill root');
   for (const [field, seats] of [['reconnected_seats', receipt.activation.reconnected_seats],
     ['seat_scan.active_seats', receipt.activation.seat_scan?.active_seats]]) {
     if (seats?.includes(receipt.writer.thread_or_session)) {
@@ -86,6 +89,18 @@ export function assess(r) {
       && r.installed.content_sha256 !== r.target.release_asset.sha256);
   if (mismatch && r.verdict !== 'FAILED') return ['MISMATCH', 'Installed identity differs from released commit/artifact or release does not contain merge'];
   const owner = r.install_source?.owner_status;
+  if (r.artifact_kind === 'skills-sync') {
+    const roots = r.install_source.roots, identities = r.install_source.root_commits ?? [];
+    if (r.installed.content_sha256 !== rootsDigest(roots) || (r.install_source.mode === 'checkout' &&
+        (identities.length !== roots.length || identities.some(x => !roots.some(root => root.path === x.path) || x.unresolved || x.commits.length !== 1 || x.commits[0] !== r.target.released_sha)))) {
+      if (r.verdict === 'FAILED') return [r.verdict];
+      return ['MISMATCH', 'Skills root content or commit mismatch: ' + roots.map(x => x.path).join(', ')];
+    }
+    const parity = r.activation.skill_parity;
+    return r.verdict === 'LIVE' && !(r.installed.embedded_commit === r.target.released_sha && owner?.exit === 0 && owner.drift === false && owner.settings_drift === false &&
+      parity?.pass === true && parity.exit === 0 && parity.measurement === 'live')
+      ? ['INSTALLED_NOT_ACTIVE', 'Clean installer status and live installed-skills parity PASS required'] : [r.verdict];
+  }
   if (r.verdict === 'LIVE' && owner && (owner.exit !== 0 || owner.drift || owner.settings_drift)) {
     return ['INSTALLED_NOT_ACTIVE', 'Owner installer status failed or reports drift'];
   }
