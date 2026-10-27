@@ -41,6 +41,7 @@ def snapshot(mode, source, home, prefix):
             else:
                 excluded.append(dict(path=str(entry), kind='vendor' if vendor else 'symlink' if entry.is_symlink() else
                                      'directory' if entry.is_dir() else 'file', count=1))
+                if vendor: excluded[-1]['resolved_target'] = str(entry.resolve(strict=True))
         if mode == 'checkout':
             commits = {commit(p if p.is_dir() else p.parent) for p in targets}
             identities.append(dict(path=str(root), commits=sorted(c for c in commits if c),

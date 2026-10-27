@@ -11,7 +11,7 @@ Skills use checkout/release-channel roots and whole-root hashes (sorted
 Symlinks resolve; receipt-only exclusions leave ratchet `IGNORED` unchanged.
 Only W10 `managed_link` checkout-class entries contribute checkout Git identity;
 release-class/vendor symlinks remain hashed and appear with kind `vendor` in
-`install_source.excluded[]`. Other excluded top-level entries are disclosed with
+`install_source.excluded[]` with their absolute `resolved_target`. Other entries carry
 absolute path, kind and count=1. Those bytes remain in the whole-root hash.
 Mixed/unresolved OWNED commits are MISMATCH; broken links name the installed path.
 Skills released_sha follows the owned commit, independently of the hook pin.

@@ -1,13 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, existsSync, symlinkSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, existsSync, realpathSync, symlinkSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import * as receipts from '../lib/skills-sync-receipt.mjs';
 import { buildSkillsReceipt, snapshotSkills } from '../lib/skills-sync-receipt.mjs';
 import { assess, validate } from '../lib/install-receipt-core.mjs';
 import { collectStatus, hostAlias, readRemote, readLocal } from '../install-receipt-status.mjs';
-
 function fixture(fn) {
   mkdirSync('docs.local', { recursive: true });
   const home = mkdtempSync(resolve('docs.local/skills-receipt-'));
@@ -95,7 +94,7 @@ test('checkout vendor symlinks are hashed and disclosed without unresolved commi
   validate(after); assert.equal(assess(after)[0], 'LIVE');
   assert.equal(after.target.released_sha, before.target.released_sha);
   assert.notEqual(after.installed.content_sha256, before.installed.content_sha256);
-  assert.deepEqual(after.install_source.excluded.filter(row => links.includes(row.path)), links.map(path => ({ path, kind: 'vendor', count: 1 })));
+  assert.deepEqual(after.install_source.excluded.filter(row => links.includes(row.path)), links.map(path => ({ path, kind: 'vendor', count: 1, resolved_target: realpathSync(vendor) })));
   writeFileSync(join(vendor, 'SKILL.md'), 'changed vendor bytes');
   assert.notEqual(build().installed.content_sha256, after.installed.content_sha256);
   const prefix = join(home, '.golems'); mkdirSync(join(prefix, 'bin'));
