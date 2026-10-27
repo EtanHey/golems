@@ -240,3 +240,6 @@ row is CURRENT and no row is TAP-STALE. TAP-UNKNOWN alone does not fail an
 otherwise CURRENT row. Tests inject remote and GitHub readers and make no network calls.
 
 Legacy host aliases `mbp` and `m1` remain readable as `m4-max` and `m1-pro`; new receipts use the canonical slugs.
+
+While cmux is retired, cmuxlayer custody ends at identity + install. A cmuxlayer receipt stays INSTALLED_NOT_ACTIVE with reason 'no live consumer: cmux retired; refuses under T3 by design', and that counts as DONE for cmuxlayer releases.
+Revisit this custody rule if cmux returns.
