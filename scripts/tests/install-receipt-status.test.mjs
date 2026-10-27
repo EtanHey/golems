@@ -348,7 +348,7 @@ test('B2 review: default git and gh calls disable credential prompts and preserv
   try {
     assert.equal(peelTag('EtanHey/golems', 'v1.0.0'), sha);
     assert.equal(compareInstall('EtanHey/golems', sha, sha), 'identical');
-    assert.deepEqual(compareBridge('EtanHey/brainlayer', 'v0.9.0', sha), []);
+    assert.deepEqual(compareBridge('EtanHey/brainlayer', old, sha), { status: 'ahead', files: [] });
     assert.deepEqual(calls, ['git', 'gh', 'gh']);
   } finally { stub.mock.restore(); syncBuiltinESMExports(); }
 });
@@ -362,9 +362,13 @@ function processReceipt(product = 'brainlayer', changed = false) {
     bridge_diff: { from_tag: 'v0.9.0', to_sha: sha, paths: bridgePaths, changed } };
   return r;
 }
-function processStatus(r, compareBridge) {
+function processStatus(r, compareFiles, peelFrom = () => old) {
+  const compareBridge = compareFiles && ((...args) => {
+    const result = compareFiles(...args);
+    return Array.isArray(result) ? { status: 'ahead', files: result } : result;
+  });
   return run({ [r.product]: r }, {}, { products: { [r.product]: `EtanHey/${r.product}` },
-    tapReader: () => '1.0.0', resolver: { ...verified, compareBridge } })[0];
+    tapReader: () => '1.0.0', resolver: { ...verified, peelTag: (repo, tag) => tag === r.target.tag ? sha : peelFrom(repo, tag), compareBridge } })[0];
 }
 for (const product of ['brainlayer', 'brainbar']) {
   test(`I2e: ${product} false unchanged claim exposes observed bridge paths`, () => {
@@ -372,6 +376,7 @@ for (const product of ['brainlayer', 'brainbar']) {
     assert.equal(row.status, 'MISMATCH');
     assert.deepEqual(row.verification.bridge_diff, {
       claimed: { changed: false, paths: bridgePaths },
+      ancestry: { claimed: 'ahead', observed: 'ahead' },
       observed: { changed: true, paths: ['src/brainlayer/mcp_stdio_bridge.py'] },
     });
   });
@@ -382,7 +387,7 @@ test('I2e: directory prefix matches children, not similarly named siblings', () 
 });
 test('I2e: unchanged bridge preserves CURRENT and uses recorded compare endpoints', () => {
   const row = processStatus(processReceipt(), (repo, from, to) => {
-    assert.deepEqual([repo, from, to], ['EtanHey/brainlayer', 'v0.9.0', sha]);
+    assert.deepEqual([repo, from, to], ['EtanHey/brainlayer', old, sha]);
     return ['README.md'];
   });
   assert.equal(row.status, 'CURRENT');
@@ -400,14 +405,14 @@ test('I2e: unavailable or malformed bridge comparison never becomes CURRENT', ()
 });
 test('I2e: GitHub bridge resolver paginates, detects truncation and tracks renames', () => {
   const page = { status: 'ahead', files: [{ filename: 'new.py', previous_filename: bridgePaths[0] }] };
-  assert.deepEqual(compareBridge('EtanHey/brainlayer', 'v0.9.0', sha, (file, args) => {
+  assert.deepEqual(compareBridge('EtanHey/brainlayer', old, sha, (file, args) => {
     assert.equal(file, 'gh');
-    assert.deepEqual(args, ['api', `repos/EtanHey/brainlayer/compare/v0.9.0...${sha}?per_page=100`, '--paginate', '--slurp']);
+    assert.deepEqual(args, ['api', `repos/EtanHey/brainlayer/compare/${old}...${sha}?per_page=100`, '--paginate', '--slurp']);
     return JSON.stringify([page, { status: 'ahead' }]);
-  }), ['new.py', bridgePaths[0]]);
+  }), { status: 'ahead', files: ['new.py', bridgePaths[0]] });
   for (const response of [[{ status: 'ahead', files: Array.from({ length: 300 }, (_, i) => ({ filename: `file${i}` })) }],
     [{ status: 'ahead' }], [{ status: 'ahead', files: [{}] }], [], [{ status: 'invalid', files: [] }]]) {
-    assert.throws(() => compareBridge('EtanHey/brainlayer', 'v0.9.0', sha, () => JSON.stringify(response)));
+    assert.throws(() => compareBridge('EtanHey/brainlayer', old, sha, () => JSON.stringify(response)));
     assert.equal(processStatus(processReceipt(), (repo, from, to) =>
       compareBridge(repo, from, to, () => JSON.stringify(response))).status, 'LIVE-UNVERIFIED');
   }
@@ -425,4 +430,28 @@ test('I2e: relay products still require reachable compare evidence', () => {
 test('I2e: inactive receipts do not request bridge comparison', () => {
   const r = processReceipt(); r.verdict = 'INSTALLED_NOT_ACTIVE';
   assert.equal(processStatus(r, () => assert.fail('inactive compare')).status, 'INSTALLED_NOT_ACTIVE');
+});
+
+for (const status of ['behind', 'diverged', 'identical']) {
+  test(`I2e R1: ${status} prior-tag comparison is MISMATCH even with no files`, () => {
+    const row = processStatus(processReceipt(), (repo, from, to) =>
+      compareBridge(repo, from, to, () => JSON.stringify([{ status, files: [] }])));
+    assert.equal(row.status, 'MISMATCH');
+    assert.deepEqual(row.verification.bridge_diff.ancestry, { claimed: 'ahead', observed: status });
+  });
+}
+for (const fromTag of ['master', old]) {
+  test(`I2e R1: non-tag ${fromTag} cannot become CURRENT`, () => {
+    const r = processReceipt(); r.activation.seat_scan.bridge_diff.from_tag = fromTag;
+    const row = processStatus(r, () => ({ status: 'ahead', files: [] }), (repo, tag) =>
+      peelTag(repo, tag, (file, args) => {
+        assert.ok(args.at(-1).startsWith(`refs/tags/${fromTag}`));
+        return `${old}\t${fromTag === 'master' ? 'refs/heads/master' : fromTag}\n`;
+      }));
+    assert.equal(row.status, 'LIVE-UNVERIFIED');
+  });
+}
+test('I2e R1: prior tag peel failure prevents the file comparison', () => {
+  assert.equal(processStatus(processReceipt(), () => assert.fail('unresolved compare'),
+    () => { throw Error('tag unreachable'); }).status, 'LIVE-UNVERIFIED');
 });

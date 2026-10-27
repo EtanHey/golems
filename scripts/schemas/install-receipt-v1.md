@@ -123,8 +123,9 @@ is the verification authority under invariant 5a: since #893 it independently
 peels the target tag and compares merge_sha to the observed release commit.
 A tag or ancestry contradiction prints MISMATCH; an unavailable lookup prints
 LIVE-UNVERIFIED. Only independently verified LIVE receipts for the latest
-release can print CURRENT. Inactive receipts retain their activation verdict
-when current, including those with valid ahead ancestry.
+release can print CURRENT. Inactive receipts with valid ahead ancestry retain
+their activation verdict whether or not the release is current, including when release lookup fails.
+Other inactive receipts retain their activation verdict when current.
 A receipt naming the latest tag with a released_sha different from its resolved
 commit prints MISMATCH, even if comparison would otherwise say AHEAD/BEHIND.
 
@@ -174,8 +175,15 @@ the highest stable upstream tag: TAP-OK, TAP-STALE, or TAP-UNKNOWN. Products
 without a tap path print TAP-N/A; repo overrides do not use the upstream tap.
 An unreadable tap or a tap ahead of upstream is TAP-UNKNOWN.
 
-For LIVE activation using `client-processes`, status additionally runs
-`gh api repos/<owner>/<repo>/compare/<from_tag>...<to_sha>` with pagination.
+For LIVE activation using `client-processes`, status first peels
+`refs/tags/<from_tag>` with the existing tag resolver. An unresolved reference
+(including a branch name or raw SHA without a matching tag) prints
+LIVE-UNVERIFIED. It then runs
+`gh api repos/<owner>/<repo>/compare/<peeled_from_sha>...<to_sha>` with
+pagination, using commit SHAs at both endpoints. Only `ahead` is accepted:
+`behind`, `diverged`, or `identical` prints MISMATCH with claimed versus
+observed comparison status. This prevents downgrade or divergent histories
+from hiding bridge changes in a three-dot comparison.
 It intersects changed filenames with the product's core bridge paths, using
 prefix matching for directory entries and considering both names of renames.
 BrainLayer and BrainBar share the three core paths listed above; VoiceLayer

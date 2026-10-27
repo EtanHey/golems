@@ -126,27 +126,30 @@ export function compareInstall(repo, releaseSha, installedSha, exec = execute) {
 }
 // GitHub returns files only on the first compare page, capped at 300 even
 // when commit pages are paginated. Exactly 300 cannot prove completeness.
-export function compareBridge(repo, fromTag, toSha, exec = execute) {
+export function compareBridge(repo, fromSha, toSha, exec = execute) {
+  if (![fromSha, toSha].every(value => /^[0-9a-f]{40}$/.test(value))) throw Error('Bridge comparison requires commit SHAs');
   const pages = JSON.parse(exec('gh', ['api',
-    `repos/${repo}/compare/${encodeURIComponent(fromTag)}...${encodeURIComponent(toSha)}?per_page=100`,
+    `repos/${repo}/compare/${fromSha}...${toSha}?per_page=100`,
     '--paginate', '--slurp']));
   if (!Array.isArray(pages) || !pages.length) throw Error('Missing bridge comparison');
+  const status = compareStatus(pages[0].status);
+  if (status !== 'ahead') return { status, files: [] };
   const files = [];
   for (const [index, page] of pages.entries()) {
-    compareStatus(page.status);
+    if (compareStatus(page.status) !== status) throw Error('Inconsistent compare status');
     if (index === 0 || page.files !== undefined) {
       if (!Array.isArray(page.files)) throw Error('Missing compare files');
       files.push(...page.files);
     }
   }
   if (files.length >= 300) throw Error('Truncated bridge comparison (300-file cap)');
-  return [...new Set(files.flatMap(file => {
+  return { status, files: [...new Set(files.flatMap(file => {
     if (typeof file.filename !== 'string' || !file.filename
       || (file.previous_filename !== undefined && (typeof file.previous_filename !== 'string' || !file.previous_filename))) {
       throw Error('Invalid compare file');
     }
     return file.previous_filename ? [file.filename, file.previous_filename] : [file.filename];
-  }))];
+  }))] };
 }
 export function peelTag(repo, tag, exec = execute) {
   if (!tag) throw Error('Missing release tag');
@@ -227,7 +230,14 @@ export function collectStatus({ products: catalog = products, localReader = read
         if (r.activation.seat_scan?.method === 'client-processes') {
           const diff = r.activation.seat_scan.bridge_diff;
           try {
-            const files = resolver.compareBridge(repo, diff.from_tag, diff.to_sha);
+            const fromSha = resolver.peelTag(repo, diff.from_tag);
+            if (!/^[0-9a-f]{40}$/.test(fromSha)) throw Error('Unresolved prior release tag');
+            const comparison = resolver.compareBridge(repo, fromSha, diff.to_sha);
+            const status = compareStatus(comparison?.status);
+            row.verification.bridge_diff = { claimed: { changed: diff.changed, paths: diff.paths },
+              ancestry: { claimed: 'ahead', observed: status } };
+            if (status !== 'ahead') return { ...row, status: 'MISMATCH' };
+            const files = comparison.files;
             if (!Array.isArray(files) || files.some(path => typeof path !== 'string' || !path)) {
               throw Error('Invalid bridge comparison');
             }
@@ -235,7 +245,7 @@ export function collectStatus({ products: catalog = products, localReader = read
             const observed = [...new Set(files.filter(file => paths.some(path =>
               path.endsWith('/') ? file.startsWith(path) : file === path)))];
             row.verification.bridge_diff = {
-              claimed: { changed: diff.changed, paths: diff.paths },
+              ...row.verification.bridge_diff,
               observed: { changed: observed.length > 0, paths: observed },
             };
             if (!diff.changed && observed.length) return { ...row, status: 'MISMATCH' };
