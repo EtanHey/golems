@@ -107,6 +107,11 @@ still counts all available skills. Updates remove only retired release-owned lin
 For legacy commands/ cleanup, use
 `bash <golem-install-dir>/scripts/cleanup-legacy-commands.sh --golems-dir <clone>`.
 
+For authorized pinned design skills, use the separate vendor mode in
+[setup-symlinks](workflows/setup-symlinks.md#pinned-third-party-design-skills-separate-from-golem-powers).
+It installs only the providers in `skills/vendor/manifest.json`; do not glob vendor
+folders into the golem-powers catalog or expose them through shared roots.
+
 ## MCP Servers
 
 Wire these MCPs via `~/.mcp.json` (at `$HOME/Gits/` for cross-repo access):

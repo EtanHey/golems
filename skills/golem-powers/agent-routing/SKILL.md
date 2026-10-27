@@ -84,6 +84,10 @@ Review is sized to risk; the PR's `size:*` label sets the tier.
 - UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement`. The UX/UI judge is a fresh `claude.judgment`, never the implementer, and judges from the recording.
 - UI precedence (interim, 2026-10-19; skill-lead interim pending Etan): for UI/style PRs the UI flow above takes precedence over the table's UX/UI reviewer. The Codex recording is evidence: the recorder also reports any functional defect it observes, so the other vendor has eyes on the change, but it is not "the reviewer". The ONE reviewer for an XS/S UI PR is a fresh Opus (`claude.judgment`, never the implementer instance) that loads `frontend-design:frontend-design` and judges the recording, 1 round. M UI PRs: up to 2 rounds of that reviewer. L, data or security UI PRs get the full panel above, which keeps a Codex reviewer.
 
+Claude keeps the official auto-updating `frontend-design:frontend-design` plugin;
+Codex/Cursor use the pinned `frontend-design` skill. These names each denote one
+provider route (Etan, 2026-10-27).
+
 ### Records
 
 Each PR body records its implementer, review rounds, and bot/reviewer defects. Claude leads orchestrate and route work through visible panes.
@@ -311,3 +315,56 @@ explain the evidence-backed state, and store the correction separately.
 - `/collab-monitor`: cmux/collab-mail only: pane worker monitoring and reviewer handoff mechanics. T3 children use completion notifications instead (§ T3-native dispatch).
 - `/qa-video`: Gemini visual workflow.
 - `/whats-new`: tool-surface changes; they do not revise Routing rules (SSOT) by implication.
+
+## Installed design skill constraints
+
+These fleet constraints apply independently of the usage proposal below:
+
+- `improve-animations` is audit mode only (`quick` or `standard`). Its `execute`
+  mode is **never** used in the fleet: it self-dispatches and self-reviews.
+  Write plans only under `docs.local/animation-plans/`, never a tracked `plans/`
+  directory. Send the plans to the lead, who routes implementation and review.
+  Any authorized read-only helpers are capped at two and follow normal model/tier
+  rules (default service, no fast; Cursor stays Auto-only).
+- `animate` must use the repo's existing dependencies. `pick-ui-library` is not
+  installed: never fetch it or a replacement library to satisfy that reference.
+
+## Design skills usage — DRAFT, pending Etan ratification
+
+This proposal does not change the current UX/UI implementer, Codex pair/recorder,
+independent UI reviewer, or UI precedence above. Claude uses the official
+`frontend-design:frontend-design` plugin route; Codex/Cursor use vendored
+`frontend-design`. Plugin namespacing denotes one route, not a duplicate.
+
+Proposed sequence: `frontend-design` sets the holistic direction before planning
+and reviews the assembled full page at the end. `emil-design-eng` handles each
+interactive component/section inside that direction: feedback, keyboard/focus,
+loading/empty/error states, gestures, interruption and reduced motion. Holistic
+layout/tokens win on visual cohesion; Emil governs local interaction craft.
+
+- VoiceBar and app UIs: holistic → every page/section with Emil → holistic review
+  of the complete navigation/settings flow. Adapt web recipes to native conventions.
+- BrainLayer, cmuxlayer, VoiceLayer, Golems and etanheyman.com websites: holistic
+  frontend-design pass → `/large-plan` → each interactive row's implementer gets
+  both skills, the shared tokens and required states → holistic assembled-page pass.
+- Use `animate` to implement justified motion, `review-animations` explicitly for
+  a motion diff, `improve-animations` to audit/write plans, and
+  `find-animation-opportunities` for restrained proposals. Do not load the full suite
+  into every worker; no animation is a valid decision. Give Emil a concrete task
+  because a bare invocation only greets. `animate` references the uninstalled
+  `pick-ui-library`; use existing repo dependencies and never fetch it. The
+  audit-only, docs.local output and never-execute constraints above always apply.
+
+Options for Etan, with A recommended:
+
+| Option | Implementation and review | Tradeoff |
+| --- | --- | --- |
+| A (recommended) | Claude implements UI with both skills on interactive rows; Codex records real states/checks function; fresh Claude judges UI under existing precedence | Preserves current ownership and adds consistent interaction criteria |
+| B | Claude sets holistic direction; Codex may implement constrained interaction rows with both skills; fresh Claude judges the result | More throughput, more risk of visual drift |
+| C | Claude owns all design and interaction work; Codex only functional QA; fresh Claude judges UI | Simple ownership, less implementation flexibility |
+
+Installation is not policy ratification. Claude keeps the official auto-updating
+frontend-design plugin and the five vendored Emil skills. Codex uses all six
+vendored skills plus the upstream drift/updater path. Cursor has the six skills
+for routed read-only review only, never implementation. Gemini/agy receive none.
+Additional Emil skills await Etan's decision.
