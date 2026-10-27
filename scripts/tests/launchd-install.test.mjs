@@ -7,7 +7,7 @@ const repoRoot = resolve(import.meta.dir, "../..");
 const labels = ["com.golemszikaron.briefing", "com.golems.worktree-gc"];
 const domain = `gui/${process.getuid()}`;
 
-function runInstaller({ loaded = false, failBootstrap = "", failBootout = false, uninstall = false, unloadDelay = 0 } = {}, check) {
+function runInstaller({ loaded = false, failBootstrap = "", failBootout = false, uninstall = false, unloadDelay = 0, prefixOnly = false } = {}, check) {
   const scratch = mkdtempSync(join(tmpdir(), "golems-launchd-install-"));
   const bin = join(scratch, "bin");
   const home = join(scratch, "home");
@@ -20,8 +20,9 @@ function runInstaller({ loaded = false, failBootstrap = "", failBootout = false,
   writeFileSync(join(bin, "launchctl"), `#!/bin/bash
 printf '%s\\n' "$*" >> "$LAUNCHCTL_LOG"
 case "$1" in
-  list) if [[ "$LOADED" == 1 ]]; then printf '%s\\n' '${labels.join("' '")}'; fi ;;
+  list) if [[ "$PREFIX_ONLY" == 1 ]]; then printf '%s\\n' 'com.golemszikaron.briefing.extra' 'com.golems.worktree-gc.extra'; elif [[ "$LOADED" == 1 ]]; then printf '%s\\n' '${labels.join("' '")}'; fi ;;
   print)
+    [[ "$PREFIX_ONLY" != 1 ]] || exit 1
     [[ "$LOADED" == 1 ]] || exit 1
     state="$LAUNCHCTL_LOG.$(basename "$2")"
     [[ -f "$state" ]] || exit 0
@@ -40,6 +41,15 @@ case "$1" in
   *) exit 99 ;;
 esac
 `, { mode: 0o755 });
+  // Fail if a loaded job's plist is removed before bootout has completed.
+  writeFileSync(join(bin, "rm"), `#!/bin/bash
+printf '%s\\n' "rm $*" >> "$LAUNCHCTL_LOG"
+if [[ "$LOADED" == 1 && "$PREFIX_ONLY" != 1 ]]; then
+  state="$LAUNCHCTL_LOG.$(basename "$1" .plist)"
+  [[ -f "$state" && $(cat "$state") == 0 ]] || exit 88
+fi
+/bin/rm "$@"
+`, { mode: 0o755 });
   for (const label of labels) writeFileSync(join(agents, `${label}.plist`), "old definition");
 
   try {
@@ -48,7 +58,7 @@ esac
       env: {
         ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}`,
         LAUNCHCTL_LOG: log, NODE_LOG: join(scratch, "node.log"),
-        LOADED: loaded ? "1" : "0", FAIL_BOOTSTRAP: failBootstrap || "no-such-label",
+        LOADED: loaded ? "1" : "0", PREFIX_ONLY: prefixOnly ? "1" : "0", FAIL_BOOTSTRAP: failBootstrap || "no-such-label",
         FAIL_BOOTOUT: failBootout ? "1" : "0", UNLOAD_DELAY: String(unloadDelay),
       },
       stdout: "pipe", stderr: "pipe",
@@ -114,14 +124,41 @@ describe("launchd installer lifecycle (stubbed launchctl)", () => {
     });
   });
 
-  test("--uninstall still unloads loaded labels and removes their plists", () => {
-    runInstaller({ loaded: true, uninstall: true }, ({ result, agents, calls, helperAction }) => {
+  test("--uninstall waits for bootout before removing each loaded plist", () => {
+    runInstaller({ loaded: true, uninstall: true, unloadDelay: 2 }, ({ result, agents, calls, helperAction }) => {
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       expect(helperAction).toBe("uninstall");
-      expect(calls).toEqual(labels.flatMap((label) => ["list", `unload ${join(agents, `${label}.plist`)}`]));
+      expect(calls).toEqual(labels.flatMap((label) => [
+        `print ${domain}/${label}`, `bootout ${domain}/${label}`,
+        ...Array(4).fill(`print ${domain}/${label}`),
+        `rm ${join(agents, `${label}.plist`)}`,
+      ]));
       for (const label of labels) expect(existsSync(join(agents, `${label}.plist`))).toBe(false);
       expect(result.stdout.toString()).toContain("Uninstalled!");
     });
   });
-});
 
+  test("--uninstall retains plists and fails when a label stays loaded after bootout", () => {
+    runInstaller({ loaded: true, uninstall: true, unloadDelay: 100 }, ({ result, agents, calls }) => {
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain(`ERROR: ${labels[0]} still loaded after bootout`);
+      expect(result.stdout.toString()).not.toContain("Uninstalled!");
+      expect(calls.filter((call) => call === `print ${domain}/${labels[0]}`)).toHaveLength(27);
+      expect(calls.filter((call) => !call.startsWith("print "))).toEqual([`bootout ${domain}/${labels[0]}`]);
+      for (const label of labels) expect(readFileSync(join(agents, `${label}.plist`), "utf8")).toBe("old definition");
+    });
+  }, 10000);
+
+  for (const prefixOnly of [false, true]) {
+    test(`--uninstall removes unloaded labels without bootout (prefix-only jobs: ${prefixOnly})`, () => {
+      runInstaller({ uninstall: true, prefixOnly }, ({ result, agents, calls }) => {
+        expect(result.exitCode, result.stderr.toString()).toBe(0);
+        expect(calls).toEqual(labels.flatMap((label) => [
+          `print ${domain}/${label}`, `rm ${join(agents, `${label}.plist`)}`,
+        ]));
+        for (const label of labels) expect(existsSync(join(agents, `${label}.plist`))).toBe(false);
+        expect(result.stdout.toString()).toContain("Uninstalled!");
+      });
+    });
+  }
+});
