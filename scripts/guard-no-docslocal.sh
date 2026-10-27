@@ -42,10 +42,13 @@ if [ "$#" -ne 0 ]; then
   [[ "$range" == *..* && "$range" != *...* ]] || fail "expected <base>..<head>"
   base="${range%%..*}"; head="${range#*..}"
   git rev-parse --verify --end-of-options "$head^{commit}" >/dev/null 2>&1 || fail "invalid range head"
-  if [[ "$base" =~ ^0+$ ]]; then
-    range="$head" # Initial push: every reachable commit, including the root.
+  if [[ -n "$base" && ! "$base" =~ ^0+$ ]] \
+    && git rev-parse --verify --end-of-options "$base^{commit}" >/dev/null 2>&1 \
+    && git merge-base --is-ancestor "$base" "$head"; then
+    range="$base..$head"
   else
-    git rev-parse --verify --end-of-options "$base^{commit}" >/dev/null 2>&1 || fail "invalid range base"
+    echo "docs.local guard: no usable range base; scanning full history" >&2
+    range="$head" # Initial/force push: every reachable commit, including the root.
   fi
   # -m includes additions relative to merge parents; no rename detection hides a move in.
   history="$(git log --full-history --root -m --format= --name-only --diff-filter=A --no-renames "$range" -- "${paths[@]}")" || fail "cannot scan commit range"

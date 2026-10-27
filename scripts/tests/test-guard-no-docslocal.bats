@@ -91,3 +91,27 @@ commit_fixture() { git -c core.hooksPath=/dev/null commit -qm "$1"; }
   run bash "$GUARD" --range "$BASE..HEAD"
   [ "$status" -ne 0 ]
 }
+@test "unusable push bases fall back to full history on a clean branch" {
+  git checkout -qb old-before
+  git -c core.hooksPath=/dev/null commit -qm before --allow-empty
+  before="$(git rev-parse HEAD)"
+  git checkout -q -
+  for base in '' 0000000000000000000000000000000000000000 missing "$before"; do
+    run bash "$GUARD" --range "$base..HEAD"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'full history'* ]]
+  done
+}
+@test "unusable push bases still reject deleted private additions" {
+  git checkout -qb old-before
+  git -c core.hooksPath=/dev/null commit -qm before --allow-empty
+  before="$(git rev-parse HEAD)"
+  git checkout -q -
+  add_private pkg/docs.local/synthetic; commit_fixture add
+  git rm -q pkg/docs.local/synthetic; commit_fixture remove
+  for base in '' 0000000000000000000000000000000000000000 missing "$before"; do
+    run bash "$GUARD" --range "$base..HEAD"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *'pkg/docs.local/synthetic'* ]]
+  done
+}

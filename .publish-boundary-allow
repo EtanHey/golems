@@ -137,3 +137,7 @@ scripts/tests/test-worktree-gc-astra.bats
 # scripts/tests/pr-loop-root-ff.test.mjs with an allowed example.com identity;
 # no live file has this path. Kept for the history ratchet (no force-push).
 scripts/tests/pr-loop-root-ff-block.test.mjs
+
+# Authored synthetic Git identity in the docs.local guard fixtures; covers history too.
+# Classes: identity-pii
+scripts/tests/test-guard-no-docslocal.bats

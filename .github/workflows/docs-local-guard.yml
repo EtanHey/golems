@@ -21,4 +21,5 @@ jobs:
         env:
           RANGE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
           RANGE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        # Unusable push-before values fall back to a full-history scan in the guard.
         run: bash scripts/guard-no-docslocal.sh --range "$RANGE_BASE..$RANGE_HEAD"
