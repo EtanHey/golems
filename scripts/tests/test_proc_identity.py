@@ -15,6 +15,7 @@ SPEC = importlib.util.spec_from_file_location(
     "proc_identity", Path(__file__).resolve().parents[1] / "hooks/proc_identity.py"
 )
 proc = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = proc
 SPEC.loader.exec_module(proc)
 
 MARKER = b"GOLEMS_HEAVY_SUITE_ID"
@@ -79,7 +80,9 @@ def test_fixture_identity_and_stable_distinct_birth_keys(spawn):
     for name in ("pid", "ppid", "pgid", "uid", "ruid"):
         assert getattr(observed, name) == expected[name]
     assert observed.start == proc.identity(first.pid).start
-    assert observed.start != proc.identity(second.pid).start
+    second_observed = proc.identity(second.pid)
+    assert second_observed.start == proc.identity(second.pid).start
+    assert (observed.pid, observed.start) != (second_observed.pid, second_observed.start)
 
 
 def test_exact_environment_and_raw_argv_round_trip(spawn):
@@ -163,7 +166,8 @@ def test_children_snapshot_captures_parent_edges_and_birth_keys(spawn, monkeypat
     assert set(snapshot).isdisjoint(snapshot.unavailable)
     assert set(snapshot) | set(snapshot.unavailable) == set(listed[0])
     assert snapshot[child.pid] == (
-        expected["ppid"], expected["pgid"], original_identity(child.pid).start
+        expected["ppid"], expected["pgid"], original_identity(child.pid).start,
+        expected["uid"], expected["ruid"]
     )
 
 
@@ -178,7 +182,8 @@ def test_snapshot_distinguishes_gone_permission_and_other_with_uid(spawn, monkey
         raise proc.ProcIdentityUnavailable("fixture denial", reason=reason, uid=os.geteuid())
     monkeypatch.setattr(proc, "identity", observation)
     snapshot = proc.children_snapshot()
-    assert not snapshot
+    with pytest.raises(TypeError, match="unavailable"):
+        bool(snapshot)
     assert [snapshot.unavailable[pid].reason for pid in pids] == ["gone", "permission", "other"]
     assert snapshot.unavailable[pids[1]].uid == os.geteuid()
 
@@ -289,3 +294,399 @@ def test_linux_permission_keeps_uid_and_missing_boot_id_is_not_gone(spawn, monke
     monkeypatch.setattr(proc, "_read", missing_boot)
     with pytest.raises(proc.ProcIdentityUnavailable):
         proc.identity(child.pid)
+
+
+@pytest.fixture
+def raw_exec(spawn):
+    """Use execve directly: dictionaries cannot represent duplicate/empty env entries."""
+    def launch(arguments, environment):
+        executable = Path(sys.executable).resolve()
+        framework_binary = Path(sys.prefix) / 'Resources/Python.app/Contents/MacOS/Python'
+        if sys.platform == 'darwin' and framework_binary.exists():
+            executable = framework_binary
+        launcher = r'''
+import ctypes, os, sys
+libc = ctypes.CDLL(None, use_errno=True)
+args, env = %r, %r
+vector = lambda entries: (ctypes.c_char_p * (len(entries) + 1))(*entries, None)
+libc.execve(os.fsencode(%r), vector(args), vector(env))
+raise OSError(ctypes.get_errno(), 'fixture execve')
+''' % (arguments, environment, str(executable))
+        child, _ = spawn(command=[sys.executable, '-c', launcher])
+        assert select.select([child.stdout], [], [], 5)[0], 'exec fixture never ready'
+        assert child.stdout.readline() == b'ready\n'
+        return child
+    return launch
+
+
+READY = b'import os; os.write(1,b"ready\\n"); os.read(0,1)'
+
+
+@pytest.mark.skipif(sys.platform != 'darwin', reason='Darwin aligned exec-path layout')
+def test_empty_argv0_preserves_arguments_and_first_env(raw_exec):
+    args = [b'', b'-c', READY]
+    child = raw_exec(args, [b'A=1', b'M=tok'])
+    assert proc.argv(child.pid) == args
+    assert proc.environ(child.pid) == {b'A': b'1', b'M': b'tok'}
+
+
+def test_duplicate_env_names_keep_first(raw_exec):
+    child = raw_exec([b'p', b'-c', READY], [b'M=other', b'M=tok'])
+    assert not proc.has_env(child.pid, b'M', b'tok')
+    assert proc.has_env(child.pid, b'M', b'other')
+    assert proc.environ(child.pid)[b'M'] == b'other'
+
+
+@pytest.mark.skipif(sys.platform != 'darwin', reason='Darwin empty env/padding ambiguity')
+def test_empty_env_ends_scan_without_apple_strings(raw_exec):
+    child = raw_exec([b'p', b'-c', READY], [b'A=1', b'', b'M=tok'])
+    with pytest.raises(proc.ProcIdentityUnavailable, match='ambiguous'):
+        proc.environ(child.pid)
+    assert 'empty env string ends the scan' in proc.environ.__doc__
+
+
+def test_macos_writable_region_contract():
+    for text in (proc.__doc__, proc.environ.__doc__, proc.has_env.__doc__):
+        assert 'process-writable' in text
+        assert 'NOT sole kill authority' in text
+        assert 'pgid' in text and 'ppid' in text and 'birth keys' in text
+
+
+@pytest.mark.skipif(sys.platform != 'darwin', reason='Darwin writable argv witness')
+def test_in_place_argv_nul_is_documented_evidence_only(raw_exec):
+    code = rb'''
+import ctypes, os
+libc = ctypes.CDLL(None)
+libc._NSGetArgv.restype = ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))
+address = libc._NSGetArgv().contents[3]
+ctypes.memset(address + 1, 0, 1)
+os.write(1, b'ready\n'); os.read(0, 1)
+'''
+    child = raw_exec([b'p', b'-c', code, b'x:' + MARKER + b'=' + TOKEN], [b'A=1'])
+    assert proc.has_env(child.pid, MARKER, TOKEN)  # Writable argv tail, not kernel authority.
+    test_macos_writable_region_contract()
+
+
+@pytest.mark.skipif(sys.platform != 'darwin', reason='Darwin response overhead')
+@pytest.mark.parametrize('reserve', [256, 8192])
+def test_near_argmax_native_response_is_complete(spawn, reserve):
+    # A long executed path adds response bytes outside the argv/env ARG_MAX budget.
+    import tempfile
+    root = Path(__file__).resolve().parents[2] / 'docs.local'
+    root.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=root, prefix='proc-identity-') as directory:
+        target = Path(directory)
+        for _ in range(8):
+            target /= 'path-padding-' + 'x' * 100
+            target.mkdir()
+        executable = Path(sys.prefix) / 'Resources/Python.app/Contents/MacOS/Python'
+        if not executable.exists():
+            executable = Path(sys.executable).resolve()
+        link = target / 'python'
+        link.symlink_to(executable)
+        args = [b'p', b'-c', READY, b'x' * (os.sysconf('SC_ARG_MAX') - len(READY) - reserve)]
+        launcher = r'''
+import ctypes, os
+libc = ctypes.CDLL(None, use_errno=True)
+args, env = %r, [b'M=tok', b'A=1']
+vector = lambda entries: (ctypes.c_char_p * (len(entries) + 1))(*entries, None)
+libc.execve(%r, vector(args), vector(env))
+raise OSError(ctypes.get_errno(), 'near ARG_MAX fixture')
+''' % (args, os.fsencode(link))
+        # Keep the launcher itself small enough for exec's argument limit.
+        script = Path(directory) / 'launch.py'
+        script.write_text(launcher)
+        child, _ = spawn(command=[sys.executable, str(script)])
+        assert select.select([child.stdout], [], [], 5)[0]
+        assert child.stdout.readline() == b'ready\n'
+        if reserve == 256:
+            with pytest.raises(proc.ProcIdentityUnavailable, match='complete'):
+                proc.argv(child.pid)
+            with pytest.raises(proc.ProcIdentityUnavailable, match='complete'):
+                proc.environ(child.pid)
+        else:
+            assert proc.argv(child.pid) == args
+            assert proc.environ(child.pid) == {b'M': b'tok', b'A': b'1'}
+
+
+def test_entry_errors_recheck_incarnation(spawn, monkeypatch):
+    child, _ = spawn()
+    original = proc.identity(child.pid)
+    replacement = proc.ProcIdentity(child.pid, original.ppid, original.pgid,
+                                    original.uid, original.ruid, (0, 0))
+    for failure in (OSError(22, 'exited during read'), ValueError('short read')):
+        for after in (None, replacement, original):
+            observations = iter((original, after))
+            monkeypatch.setattr(proc, 'identity', lambda _: next(observations))
+            def fail(*_):
+                raise failure
+            monkeypatch.setattr(proc, '_darwin_args' if sys.platform == 'darwin' else '_read', fail)
+            if after is original:
+                with pytest.raises(proc.ProcIdentityUnavailable) as caught:
+                    proc.environ(child.pid)
+                assert caught.value.reason and caught.value.uid == original.uid
+            else:
+                assert proc.environ(child.pid) is None
+
+
+def test_other_uid_and_hidden_errors_retain_owner(spawn, monkeypatch):
+    child, _ = spawn()
+    original = proc.identity(child.pid)
+    foreign = proc.ProcIdentity(child.pid, original.ppid, original.pgid,
+                               original.uid + 1, original.ruid, original.start)
+    monkeypatch.setattr(proc, 'identity', lambda _: foreign)
+    with pytest.raises(proc.ProcIdentityUnavailable) as caught:
+        proc.environ(child.pid)
+    assert caught.value.reason == 'other-uid'
+    assert caught.value.uid == foreign.uid and caught.value.ruid == foreign.ruid
+    monkeypatch.setattr(proc, 'identity', lambda _: original)
+    if sys.platform == 'darwin':
+        monkeypatch.setattr(proc, '_darwin_args', lambda _: ([b'p'], []))
+    else:
+        monkeypatch.setattr(proc, '_linux_env_bounds', lambda _: (4096, 4110))
+        monkeypatch.setattr(proc, '_read', lambda _: b'')
+    with pytest.raises(proc.EnvHidden) as caught:
+        proc.environ(child.pid)
+    assert caught.value.reason == 'hidden'
+    assert caught.value.uid == original.uid
+
+
+def test_unreaped_zombie_is_gone(spawn):
+    child, _ = spawn()
+    child.stdin.close()
+    # waitid WNOWAIT establishes zombie state without reaping our fixture.
+    os.waitid(os.P_PID, child.pid, os.WEXITED | os.WNOWAIT)
+    assert proc.identity(child.pid) is None
+    assert proc.environ(child.pid) is None
+    assert proc.argv(child.pid) is None
+    assert not proc.has_env(child.pid, MARKER, TOKEN)
+
+
+def test_linux_empty_or_partial_environ_is_unavailable(spawn, monkeypatch):
+    child, _ = spawn()
+    observed = proc.identity(child.pid)
+    monkeypatch.setattr(proc.sys, 'platform', 'linux')
+    monkeypatch.setattr(proc, 'identity', lambda _: observed)
+    fields = [b'0'] * 49
+    fields[0], fields[47], fields[48] = b'S', b'4096', b'4110'
+    stat = str(child.pid).encode() + b' (fixture) ' + b' '.join(fields)
+    for data in (b'', b'A=1\0', b'A=1'):
+        monkeypatch.setattr(proc, '_read', lambda path: stat if path.endswith('/stat') else data)
+        with pytest.raises(proc.ProcIdentityUnavailable) as caught:
+            proc.has_env(child.pid, MARKER, TOKEN)
+        assert caught.value.reason and caught.value.uid == observed.uid
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux inaccessible remote memory')
+def test_linux_inaccessible_environment_page_is_unavailable(spawn):
+    code = rb'''
+import ctypes, os
+libc = ctypes.CDLL(None, use_errno=True)
+libc.getenv.restype = ctypes.c_void_p
+address = libc.getenv(b'PAD')
+page = os.sysconf('SC_PAGE_SIZE')
+assert libc.mprotect(ctypes.c_void_p((address // page + 2) * page), page, 0) == 0
+os.write(1,b'ready\n'); os.read(0,1)
+'''
+    child, _ = spawn({b'PAD': b'x' * 65536, MARKER: TOKEN},
+                     command=[sys.executable, '-c', code])
+    assert select.select([child.stdout], [], [], 5)[0]
+    assert child.stdout.readline() == b'ready\n'
+    with pytest.raises(proc.ProcIdentityUnavailable):
+        proc.has_env(child.pid, MARKER, TOKEN)
+
+
+
+def test_system_python_import_compatibility():
+    interpreter = Path('/usr/bin/python3')
+    if not interpreter.exists():
+        pytest.skip('system Python absent')
+    code = "import runpy,sys; runpy.run_path(sys.argv[1], run_name='proc_identity_smoke')"
+    result = subprocess.run([str(interpreter), '-I', '-c', code, str(SPEC.origin)],
+                            capture_output=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+
+
+def procargs_buffer(args, env, trailing=b'\0ptr_munge=0\0executable_boothash=fixture\0'):
+    path = b'/fixture/python\0'
+    path += b'\0' * (-len(path) % 8)
+    return len(args).to_bytes(4, sys.byteorder, signed=True) + path + b'\0'.join(args + env) + b'\0' + trailing
+
+
+def test_pure_parser_empty_argv_and_ambiguities():
+    args = [b'', b'-c', b'code', b'']
+    assert proc._parse_procargs2(procargs_buffer(args, [b'A=1', b'M=tok'])) == (args, [b'A=1', b'M=tok'])
+    for data in (b'', procargs_buffer([b'p'], [b'A=1', b'', b'M=tok']),
+                 procargs_buffer([b'p'], [b'A=1'])[:-16],
+                 (100).to_bytes(4, sys.byteorder, signed=True) + b'/p\0' + b'\0' * 5 + b'p\0',
+                 procargs_buffer([b'p'], [b'A=1']).replace(b'/fixture/python\0', b'/fixture/pythonX')):
+        with pytest.raises(proc.ProcIdentityUnavailable):
+            proc._parse_procargs2(data)
+    # Use a path that actually has alignment padding.
+    data = (1).to_bytes(4, sys.byteorder, signed=True) + b'/p\0X\0\0\0\0p\0A=1\0\0'
+    with pytest.raises(proc.ProcIdentityUnavailable):
+        proc._parse_procargs2(data)
+
+
+@pytest.mark.skipif(sys.platform != 'darwin', reason='Darwin sysctl response retry')
+@pytest.mark.parametrize('never_complete', [False, True])
+def test_procargs_full_response_retries_or_fails(monkeypatch, never_complete):
+    capacities = []
+    data = procargs_buffer([b'p'], [b'A=1'])
+    def sysctl(mib, count, buffer, size, *_):
+        size = proc.ctypes.cast(size, proc.ctypes.POINTER(proc.ctypes.c_size_t))
+        if count == 2:
+            proc.ctypes.cast(buffer, proc.ctypes.POINTER(proc.ctypes.c_int))[0] = 16384
+            return 0
+        if buffer is None:
+            size[0] = 128
+            return 0
+        capacity = size[0]
+        capacities.append(capacity)
+        if never_complete or len(capacities) == 1:
+            size[0] = capacity - 1  # Near-full success is not a completeness guarantee.
+        else:
+            proc.ctypes.memmove(buffer, data, len(data))
+            size[0] = len(data)
+        return 0
+    monkeypatch.setattr(proc._libc, 'sysctl', sysctl)
+    if never_complete:
+        with pytest.raises(proc.ProcIdentityUnavailable):
+            proc._darwin_args(os.getpid())
+    else:
+        assert proc._darwin_args(os.getpid()) == ([b'p'], [b'A=1'])
+    assert len(capacities) > 1 and capacities[1] > capacities[0]
+    assert 128 + 4 < capacities[0] <= 16384 + 4
+
+
+def test_identity_is_frozen_equal_and_same_process(spawn, monkeypatch):
+    from dataclasses import FrozenInstanceError
+    child, _ = spawn()
+    observed = proc.identity(child.pid)
+    assert observed == proc.identity(child.pid)
+    with pytest.raises(FrozenInstanceError):
+        observed.uid = -1
+    assert proc.same_process(observed)
+    changed = proc.ProcIdentity(observed.pid, observed.ppid, observed.pgid,
+                                observed.uid, observed.ruid, (0, 0))
+    monkeypatch.setattr(proc, 'identity', lambda _: changed)
+    assert not proc.same_process(observed)
+    monkeypatch.setattr(proc, 'identity', lambda _: None)
+    assert not proc.same_process(observed)
+
+
+def test_owned_rechecks_and_unknown_cannot_be_false(spawn, monkeypatch):
+    child, _ = spawn({MARKER: TOKEN})
+    assert proc.owned(child.pid, MARKER, TOKEN) is True
+    assert proc.owned(child.pid, MARKER, TOKEN + b'x') is False
+    original = proc.identity(child.pid)
+    def hidden(_):
+        raise proc.EnvHidden('fixture hidden', reason='hidden', uid=original.uid)
+    monkeypatch.setattr(proc, 'environ', hidden)
+    unknown = proc.owned(child.pid, MARKER, TOKEN)
+    assert isinstance(unknown, proc.Unknown) and unknown.reason == 'hidden'
+    with pytest.raises(TypeError):
+        bool(unknown)
+    replacement = proc.ProcIdentity(original.pid, original.ppid, original.pgid,
+                                    original.uid, original.ruid, (0, 0))
+    monkeypatch.setattr(proc, 'environ', lambda _: {MARKER: TOKEN})
+    observations = iter((original, original, replacement))
+    monkeypatch.setattr(proc, 'identity', lambda _: next(observations))
+    assert isinstance(proc.owned(child.pid, MARKER, TOKEN), proc.Unknown)
+
+
+def test_pinned_process_keeps_linux_handle_until_caller_finishes(spawn, monkeypatch):
+    child, _ = spawn()
+    original = proc.identity(child.pid)
+    opened, closed = [], []
+    monkeypatch.setattr(proc.sys, 'platform', 'linux')
+    monkeypatch.setattr(proc.os, 'pidfd_open', lambda pid, flags: opened.append(pid) or 12345, raising=False)
+    monkeypatch.setattr(proc.os, 'close', lambda fd: closed.append(fd))
+    monkeypatch.setattr(proc, 'identity', lambda _: original)
+    with proc.pinned_process(original) as handle:
+        assert handle == 12345 and opened == [child.pid] and not closed
+    assert closed == [12345]
+
+
+def test_identity_rejects_boolean_pid():
+    with pytest.raises(ValueError):
+        proc.identity(True)
+
+
+def test_unknown_contract_and_snapshot_truthiness():
+    assert 'UNKNOWN' in proc.__doc__ and 'cleanup=ok' in proc.__doc__
+    assert '338/762' in proc.__doc__ and 'ancestry first' in proc.__doc__
+    assert 'pidfd' in proc.__doc__ and 'residual' in proc.__doc__
+    for read in (proc.environ, proc.has_env):
+        assert 'UNKNOWN' in read.__doc__
+    with pytest.raises(TypeError, match='unavailable'):
+        bool(proc.ChildrenSnapshot())
+
+
+
+def test_snapshot_enriches_unavailable_with_known_uid(spawn, monkeypatch):
+    child, _ = spawn()
+    monkeypatch.setattr(proc, 'list_pids', lambda: [child.pid])
+    def unavailable(_):
+        raise proc.ProcIdentityUnavailable('fixture unavailable', reason='other')
+    monkeypatch.setattr(proc, 'identity', unavailable)
+    error = proc.children_snapshot().unavailable[child.pid]
+    assert error.reason == 'other'
+    assert (error.uid, error.ruid) == (os.geteuid(), os.getuid())
+
+
+def test_mid_read_identity_failure_retains_known_uid(spawn, monkeypatch):
+    child, _ = spawn()
+    before = proc.identity(child.pid)
+    observations = iter((before, None))
+    def identity(_):
+        item = next(observations)
+        if item is None:
+            raise proc.ProcIdentityUnavailable('fixture lost coverage')
+        return item
+    monkeypatch.setattr(proc, 'identity', identity)
+    def short(*_):
+        raise ValueError('short read')
+    monkeypatch.setattr(proc, '_darwin_args' if sys.platform == 'darwin' else '_read', short)
+    with pytest.raises(proc.ProcIdentityUnavailable) as caught:
+        proc.environ(child.pid)
+    assert caught.value.uid == before.uid and caught.value.ruid == before.ruid
+
+
+def test_linux_complete_range_and_zombie_states(spawn, monkeypatch):
+    child, _ = spawn()
+    observed = proc.identity(child.pid)
+    monkeypatch.setattr(proc.sys, 'platform', 'linux')
+    fields = [b'0'] * 49
+    data = b'A=1\0M=tok\0'
+    fields[0], fields[1], fields[2], fields[19] = b'S', str(observed.ppid).encode(), str(observed.pgid).encode(), b'123'
+    fields[47], fields[48] = b'4096', str(4096 + len(data)).encode()
+    def read(path):
+        if path.endswith('/stat'):
+            return str(child.pid).encode() + b' (fixture) ' + b' '.join(fields)
+        if path.endswith('/status'):
+            return ('Uid: %s %s 0 0\n' % (observed.ruid, observed.uid)).encode()
+        if path.endswith('boot_id'):
+            return b'fixture-boot'
+        return data
+    monkeypatch.setattr(proc, '_read', read)
+    assert proc.environ(child.pid) == {b'A': b'1', b'M': b'tok'}
+    for state in (b'Z', b'X', b'x'):
+        fields[0] = state
+        assert proc.identity(child.pid) is None
+        assert proc.environ(child.pid) is None
+        assert not proc.has_env(child.pid, MARKER, TOKEN)
+
+
+def test_pinned_process_closes_on_changed_identity(spawn, monkeypatch):
+    child, _ = spawn()
+    original = proc.identity(child.pid)
+    closed = []
+    monkeypatch.setattr(proc.sys, 'platform', 'linux')
+    monkeypatch.setattr(proc.os, 'pidfd_open', lambda *_: 12345, raising=False)
+    monkeypatch.setattr(proc.os, 'close', closed.append)
+    monkeypatch.setattr(proc, 'identity', lambda _: None)
+    with pytest.raises(proc.ProcIdentityUnavailable):
+        with proc.pinned_process(original):
+            pytest.fail('changed incarnation must never yield a handle')
+    assert closed == [12345]
