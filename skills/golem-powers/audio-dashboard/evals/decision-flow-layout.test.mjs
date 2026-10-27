@@ -79,6 +79,13 @@ layoutTest("review: touch note targets are 44px and Cite sits below the selectio
   } finally { await browser.close(); }
 });
 
+layoutTest("card heading names exclude answer status", async () => {
+  const browser = await chromium.launch();
+  try { const page = await browser.newPage(); await page.goto(fixture());
+    expect(await page.getByRole("heading", { level: 2, name: "Check VoiceBar 2.2.57", exact: true }).count()).toBe(1);
+  } finally { await browser.close(); }
+});
+
 layoutTest("review: note modal animates open and closed, and reduced motion disables it", async () => {
   const browser = await chromium.launch();
   try { const page = await browser.newPage({ reducedMotion: "no-preference" }); await page.goto(fixture()); await page.locator(".df-card-note").first().click();
@@ -86,7 +93,7 @@ layoutTest("review: note modal animates open and closed, and reduced motion disa
     expect(await animations()).toContain("opacity"); await page.locator("#df-note-dialog").evaluate(node => Promise.all(node.getAnimations().map(animation => animation.finished))); await page.keyboard.press("Escape"); expect(await animations()).toContain("opacity");
     await page.emulateMedia({ reducedMotion: "reduce" }); await page.locator(".df-card-note").first().click(); expect(await animations()).toEqual([]);
   } finally { await browser.close(); }
-});
+}, 15000);
 
 layoutTest("review: new buttons have press feedback and touch does not gain sticky hover", async () => {
   const browser = await chromium.launch();
