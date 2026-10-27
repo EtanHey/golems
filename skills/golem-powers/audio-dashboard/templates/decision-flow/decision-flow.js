@@ -93,12 +93,12 @@
       if(token!==jumpToken)return;
       var now=Date.now(),y=win.scrollY;
       if(y!==lastY||!stillSince){lastY=y;stillSince=now;}
-      if(now>=followLock||now-stillSince>=160){followLock=0;follow(true);return;}
+      if(now>=followLock||now-stillSince>=160){followLock=0;follow();return;}
       frame(settle);
     }
     if(frame)frame(settle);
   }
-  function activate(index,autoplay,keepFocus){if(index<0||index>=cards.length)return;holdFollow();setActive(cards[index]);cards[index].scrollIntoView({behavior:"smooth",block:"start"});if(!keepFocus)cards[index].querySelector(".df-play").focus({preventScroll:true});if(autoplay)playCard(cards[index],true);}
+  function activate(index,autoplay,keepFocus){if(index<0||index>=cards.length)return;holdFollow();setActive(cards[index]);if(!keepFocus)cards[index].querySelector(".df-play").focus({preventScroll:true});cards[index].scrollIntoView({behavior:"smooth",block:"start"});if(autoplay)playCard(cards[index],true);}
   function goTo(index,keepFocus){activate(index,allAudios().some(function(audio){return !audio.paused;}),keepFocus);}
   cards.forEach(function(card,index){
     var audios=audiosFor(card);
@@ -175,13 +175,11 @@
     else if(!event.shiftKey&&(active===last||!inside)){event.preventDefault();first.focus();}
   });
   // Idle list view follows the largest visible card; the last card wins at the document bottom.
-  function follow(preferCurrent){
+  function follow(){
     if(view!=="list"||Date.now()<followLock||allAudios().some(function(audio){return !audio.paused;}))return;
     var win=document.defaultView,bar=document.querySelector(".df-controller"),dock=document.querySelector(".df-dock"),line=(bar?bar.getBoundingClientRect().bottom:0)+24,bottom=win.innerHeight;
     if(dock&&win.getComputedStyle(dock).position==="fixed")bottom=Math.min(bottom,dock.getBoundingClientRect().top);
     var atBottom=root.scrollHeight>win.innerHeight&&win.scrollY+win.innerHeight>=root.scrollHeight-1,card=atBottom?cards[cards.length-1]:null,best=0;
-    // On jump release, retain its visible target; the bottom rule still wins.
-    if(!card&&preferCurrent){var rect=current().getBoundingClientRect();if(rect.bottom>line&&rect.top<bottom)card=current();}
     if(!card)cards.forEach(function(item){var rect=item.getBoundingClientRect(),visible=Math.max(0,Math.min(rect.bottom,bottom)-Math.max(rect.top,line));if(visible>best){best=visible;card=item;}});
     if(card&&card!==current())setActive(card);
   }

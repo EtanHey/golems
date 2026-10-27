@@ -43,6 +43,10 @@ function fixture(ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"])
   return `file://${file}`;
 }
 
+async function waitForScrollSettle(page) {
+  await page.evaluate(() => new Promise(resolve => { let y = scrollY, since = performance.now(); function poll(now) { if (scrollY !== y) { y = scrollY; since = now; } if (now - since >= 200) resolve(); else requestAnimationFrame(poll); } requestAnimationFrame(poll); }));
+}
+
 const TRANSPORT_LABELS = [["▶", "Play"], ["⏸", "Pause"], ["▶", "Resume"], ["↻", "Again"]];
 
 layoutTest("review: a real mouse drag between interior words offers Cite without seeking", async () => {
@@ -303,15 +307,17 @@ layoutTest("answer sheet fits the viewport, traps real Tab focus and Esc returns
 }, 60000);
 
 layoutTest("a real far-chip tap lands on its requested card after smooth scrolling", async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(), landings = [];
   try { for (const width of [390, 1280]) { const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "no-preference" });
     await page.goto(fixture(["v00", ...Array.from({ length: 24 }, (_, index) => "d" + index), "nl2", "nl3"]));
     expect(await page.evaluate(() => scrollY)).toBe(0); await page.locator('[data-chip-for="nl2"]').tap();
-    await page.evaluate(() => new Promise(resolve => document.addEventListener("scrollend", event => { if (event.target === document) requestAnimationFrame(resolve); })));
-    await page.waitForTimeout(250); // Include release-time reconciliation in the landing assertion.
+    await waitForScrollSettle(page);
+    landings.push(await page.evaluate(() => { const target = document.querySelector('[data-decision="nl2"]'); return { width: innerWidth, y: scrollY, top: target.getBoundingClientRect().top, line: parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) + parseFloat(getComputedStyle(target).scrollMarginTop) }; }));
     expect(await page.evaluate(() => ({ card: document.querySelector(".df-card.is-active").dataset.decision, chip: document.querySelector('.df-chip[aria-current="true"]').dataset.chipFor, index: document.querySelector(".df-index a.is-active").dataset.indexFor }))).toEqual({ card: "nl2", chip: "nl2", index: "nl2" });
     await page.close();
   } } finally { await browser.close(); }
+  console.info("far-tap landings", JSON.stringify(landings));
+  for (const { top, line } of landings) expect(Math.abs(top - line)).toBeLessThanOrEqual(3);
 }, 15000);
 
 for (const [width, height] of [[390, 844], [1280, 800]]) layoutTest(`bottom scroll selects the last card in every navigation surface at ${width}px`, async () => {
@@ -324,16 +330,17 @@ for (const [width, height] of [[390, 844], [1280, 800]]) layoutTest(`bottom scro
   } finally { await browser.close(); }
 });
 
-layoutTest("an interrupted far-chip jump reconciles bottom after the lock settles", async () => {
+for (const destination of ["bottom", "mid-page"]) layoutTest(`an interrupted far-chip jump reconciles ${destination} after the lock settles`, async () => {
   const browser = await chromium.launch(), states = [];
   try { for (const width of [390, 1280]) {
     const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "no-preference" });
     await page.goto(fixture(["v00", ...Array.from({ length: 24 }, (_, index) => "d" + index), "nl2", "nl3"]));
-    await page.locator('[data-chip-for="nl2"]').tap();
-    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
-    await page.waitForTimeout(1000); // No extra scroll: the hold must reconcile its suppressed final event.
+    await page.locator(destination === "bottom" ? '[data-chip-for="nl2"]' : '[data-chip-for="d20"]').tap();
+    await page.evaluate(destination => window.scrollTo({ top: destination === "bottom" ? document.documentElement.scrollHeight : scrollY + document.querySelector('[data-decision="d20"]').getBoundingClientRect().top - (innerHeight - 57), behavior: "instant" }), destination);
+    await waitForScrollSettle(page); // No extra scroll: reconcile the suppressed final event.
     states.push(await page.evaluate(() => ({ bottom: Math.abs(scrollY + innerHeight - document.documentElement.scrollHeight) < 2, card: document.querySelector(".df-card.is-active").dataset.decision, chip: document.querySelector('.df-chip[aria-current="true"]').dataset.chipFor, index: document.querySelector(".df-index a.is-active").dataset.indexFor })));
     await page.close();
   } } finally { await browser.close(); }
-  expect(states).toEqual([390, 1280].map(() => ({ bottom: true, card: "nl3", chip: "nl3", index: "nl3" })));
+  const expected = destination === "bottom" ? "nl3" : "d19";
+  expect(states).toEqual([390, 1280].map(() => ({ bottom: destination === "bottom", card: expected, chip: expected, index: expected })));
 }, 15000);
