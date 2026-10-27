@@ -38,6 +38,9 @@ def test_proven_deep_scan_route_precedes_interim_without_retired_pane_fallback()
     route = "Proven T3 Deep-scan route (try it before the interim below):"
     assert guidance.index("Deep scans run from") < guidance.index(route) < guidance.index("**T3 seats (interim):**")
     text = guidance[guidance.index(route):]
+    assert "`delegate_task`" in text
+    assert 'runtimeMode: "auto"' in text
+    assert "completion wakes the lead" in text
     assert "runtimeMode `auto`" in text
     assert "`runtime_mode_escalation_denied`" in text
     assert "TBD by lead" not in guidance
