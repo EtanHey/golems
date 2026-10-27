@@ -28,8 +28,11 @@ For brainlayer, voicelayer, cmuxlayer, brainbar and voicebar, LIVE additionally 
 An empty `active_seats` permits empty or absent `reconnected_seats`. Reconnect only
 seats actively using the server; idle, ready and paused seats receive no reconnect
 or nudge (deploy-local-prod contract #3, 2026-09-24). The agent's own stdio/MCP
-probe never counts as a seat in either list. The current `mcp_probe` schema has no
-seat identifier, so this exclusion is caller-attested, not mechanically checked.
+probe never counts as a seat in either list. For every product, validation rejects
+`activation.reconnected_seats` or `activation.seat_scan.active_seats` containing an
+exact string match of `writer.thread_or_session`; both validate and write refuse
+the receipt and name the field. The schema requires the writer ID, so this check
+always applies. The stdio `mcp_probe` itself still has no seat identifier.
 The seat scan is optional in the schema for existing receipts, but missing scans,
 stale scans, uncovered active seats or unsuccessful probes downgrade MCP LIVE to
 INSTALLED_NOT_ACTIVE with a specific reason. A version self-report alone is

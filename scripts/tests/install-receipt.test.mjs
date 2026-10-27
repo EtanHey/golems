@@ -84,6 +84,35 @@ test('I2b: seat scans validate both methods and reject malformed evidence', () =
     }
   }
 }));
+for (const product of ['golems', 'brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar', 'custom-product']) {
+  for (const field of ['reconnected_seats', 'active_seats']) {
+    test(`I2c: ${product} rejects writer in ${field}`, () => isolated((run, home) => {
+      const r = receipt(); r.product = product;
+      r.activation.reconnected_seats = field === 'reconnected_seats' ? ['test'] : [];
+      r.activation.seat_scan = { method: 't3-threads', checked_at: '2026-10-27T09:02:00Z',
+        active_seats: field === 'active_seats' ? ['test'] : [] };
+      for (const command of ['validate', 'write']) {
+        const result = run(command, r);
+        assert.equal(result.status, 1); assert.match(result.stderr, new RegExp(field));
+      }
+      assert.deepEqual(readdirSync(home), []);
+    }));
+  }
+}
+for (const writer of ['different', 'Test']) {
+  test(`I2c: accepts seat IDs with writer ${writer}`, () => isolated(run => {
+    const r = receipt(); r.writer.thread_or_session = writer;
+    r.activation.reconnected_seats = ['test'];
+    r.activation.seat_scan = { method: 'list_agents', checked_at: '2026-10-27T09:02:00Z', active_seats: ['test'] };
+    for (const command of ['validate', 'write']) assert.equal(output(run(command, r)).verdict, 'LIVE');
+  }));
+}
+test('I2c: MCP malformed seat scan is rejected by validate and write', () => isolated(run => {
+  const r = receipt(); r.product = 'brainlayer'; r.activation.seat_scan = { active_seats: 'test' };
+  for (const command of ['validate', 'write']) {
+    const result = run(command, r); assert.equal(result.status, 1); assert.match(result.stderr, /seat_scan/);
+  }
+}));
 test('I2: non-MCP products keep version self-report activation proof', () => isolated(run => {
   assert.equal(output(run('validate', receipt())).verdict, 'LIVE');
   assert.equal(output(run('write', receipt())).verdict, 'LIVE');

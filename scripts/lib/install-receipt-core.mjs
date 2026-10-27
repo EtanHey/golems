@@ -9,6 +9,12 @@ ajv.addFormat('utc-time', value => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})
 const valid = ajv.compile(schema);
 export function validate(receipt) {
   if (!valid(receipt)) throw new Error(ajv.errorsText(valid.errors));
+  for (const [field, seats] of [['reconnected_seats', receipt.activation.reconnected_seats],
+    ['seat_scan.active_seats', receipt.activation.seat_scan?.active_seats]]) {
+    if (seats?.includes(receipt.writer.thread_or_session)) {
+      throw new Error(`activation.${field} must not contain writer.thread_or_session`);
+    }
+  }
 }
 export function assess(r) {
   const commits = [r.installed.embedded_commit, r.install_source?.pin_sha, r.install_source?.owner_status?.pin_sha, r.activation.self_report?.commit];
