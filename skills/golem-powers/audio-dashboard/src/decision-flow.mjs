@@ -179,12 +179,11 @@ function renderController(decisions) {
 }
 
 // Two-voice cards read like the cinema Q/A: the host asks, the expert explains.
-function renderSpeaker(scene, role) {
+function speakerLabel(scene, role) {
   const name = String(scene.speaker || "").trim();
   if (!name) return "";
-  const person = name.charAt(0).toUpperCase() + name.slice(1);
   const verb = role === "host" ? " asks" : role === "expert" ? " explains" : "";
-  return `<span class="df-speaker"${role ? ` data-role="${role}"` : ""}>${escapeHtml(person + verb)}</span>`;
+  return name.charAt(0).toUpperCase() + name.slice(1) + verb;
 }
 
 function renderCard(decision, index, sceneById) {
@@ -196,9 +195,9 @@ function renderCard(decision, index, sceneById) {
   const transcript = decision.sceneIds.map((sceneId) => {
     const scene = sceneById.get(sceneId);
     const role = scene.role === "host" || scene.role === "expert" ? scene.role : "";
-    const speaker = renderSpeaker(scene, role);
-    const spoken = speaker.replace(/<[^>]+>/g, "").trim().toLowerCase();
-    const title = String(scene.title || "").trim().toLowerCase() === spoken ? "" : `<span class="df-scene-title">${escapeHtml(scene.title)}</span>`;
+    const label = speakerLabel(scene, role);
+    const speaker = label ? `<span class="df-speaker"${role ? ` data-role="${role}"` : ""}>${escapeHtml(label)}</span>` : "";
+    const title = String(scene.title || "").trim().toLowerCase() === label.toLowerCase() ? "" : `<span class="df-scene-title">${escapeHtml(scene.title)}</span>`;
     return `<section class="df-transcript-scene" data-transcript-scene="${escapeHtml(scene.id)}"${role ? ` data-role="${role}"` : ""}><p class="df-scene-label">${speaker}${title}</p><p class="df-words">${renderWords(scene)}</p></section>`;
   }).join("");
   const optionBlocks = options.map((option) =>
