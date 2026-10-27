@@ -28,6 +28,131 @@ function isolated(fn) {
 }
 const output = result => { assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout); };
 
+const bridge = '/opt/homebrew/opt/brainlayer/bin/brainlayer-mcp-stdio-bridge';
+const bridgePaths = ['src/brainlayer/mcp_stdio_bridge.py', 'src/brainlayer/mcp/', 'src/brainlayer/mcp_socket_config.py'];
+const socat = '/opt/homebrew/bin/socat STDIO UNIX-CONNECT:/tmp/voicelayer-mcp.sock';
+const relayReason = 'LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).';
+const client = (started_at = '2026-10-27T09:00:00Z', command = bridge) => ({ pid: 321, started_at, command, thread_id: null });
+const clientKey = c => `pid:${c.pid}@${c.started_at}`;
+function processReceipt(product = 'brainlayer') {
+  const r = receipt(); r.product = product;
+  r.activation.mcp_probe = { server: product, request: 'ping', ok: true, summary: 'fixture probe' };
+  r.activation.seat_scan = { method: 'client-processes', checked_at: '2026-10-27T09:02:00Z',
+    clients: [], excluded: [], bridge_diff: { from_tag: 'v0.9.0', to_sha: sha, paths: bridgePaths, changed: true }, active_seats: [] };
+  return r;
+}
+for (const [name, product, clients, changed, stale] of [
+  ['equal-second stale', 'brainlayer', [client()], true, true],
+  ['PID reuse fresh', 'brainlayer', [client('2026-10-27T09:00:01Z')], true, false],
+  ['unchanged bridge', 'brainlayer', [client()], false, false],
+  ['BrainBar shares bridge clients', 'brainbar', [client()], true, true],
+  ['Cellar bridge argv', 'brainlayer', [client(undefined, '/opt/homebrew/bin/python3 /opt/homebrew/Cellar/brainlayer/1.5.77/bin/brainlayer-mcp-stdio-bridge')], true, true],
+]) {
+  test(`I2d: ${name}`, () => isolated(run => {
+    const r = processReceipt(product), scan = r.activation.seat_scan;
+    scan.clients = clients; scan.bridge_diff.changed = changed;
+    scan.active_seats = stale ? clients.map(clientKey) : [];
+    // A reconnect claim cannot clear a stale process.
+    r.activation.reconnected_seats = scan.active_seats;
+    const validated = run('validate', r);
+    assert.equal(validated.status, stale ? 1 : 0, validated.stderr);
+    const written = output(run('write', r));
+    assert.equal(written.verdict, stale ? 'INSTALLED_NOT_ACTIVE' : 'LIVE');
+    if (stale) assert.ok(written.reasons.join(' ').includes(clientKey(clients[0])));
+    if (!changed) assert.match(written.reasons.join(' '), /bridge_diff.changed=false/);
+  }));
+}
+test('I2d: daemon/helper commands and lookalike paths are never clients', () => isolated(run => {
+  const r = processReceipt();
+  r.activation.seat_scan.clients = ['watch', 'drain', 'daemon', 'hybrid-helper', 'supervisor_guard'].map(name =>
+    client(undefined, `/opt/homebrew/opt/brainlayer/bin/${name}`));
+  r.activation.seat_scan.clients.push(client(undefined, `${bridge}-helper`), client(undefined, `${bridge} --daemon`),
+    client(undefined, `/untrusted${bridge}`));
+  r.activation.seat_scan.excluded = [{ rule: 'daemon-process', reason: 'Server processes are not clients', count: 5 }];
+  assert.equal(output(run('write', r)).verdict, 'LIVE');
+}));
+for (const product of ['voicelayer', 'voicebar']) {
+  test(`I2d: ${product} socat is excluded with the mandatory limitation`, () => isolated(run => {
+    const r = processReceipt(product), scan = r.activation.seat_scan;
+    scan.clients = [client(undefined, socat), { ...client(undefined, socat.replace('/opt/homebrew/bin/', '')), pid: 322 }];
+    scan.excluded = [{ rule: 'socat-relay', reason: relayReason, count: 2 }];
+    assert.equal(output(run('validate', r)).verdict, 'LIVE');
+    assert.equal(output(run('write', r)).verdict, 'LIVE');
+    const filtered = structuredClone(r); filtered.activation.seat_scan.clients = [];
+    assert.equal(output(run('write', filtered)).verdict, 'LIVE');
+    for (const mutate of [s => { s.excluded = []; }, s => { s.excluded[0].reason = 'version neutral'; }]) {
+      const bad = structuredClone(r); mutate(bad.activation.seat_scan);
+      for (const command of ['validate', 'write']) {
+        const result = run(command, bad); assert.equal(result.status, 1); assert.match(result.stderr, /socat-relay/);
+      }
+    }
+  }));
+}
+test('I2d: validate and write refuse forged stale lists, including PID reuse', () => isolated(run => {
+  for (const [clients, seats] of [
+    [[client()], []], [[], [clientKey(client())]],
+    [[client('2026-10-27T09:00:01Z')], [clientKey(client())]],
+    [[client()], [clientKey(client()), clientKey(client())]],
+  ]) {
+    const r = processReceipt(); r.activation.seat_scan.clients = clients; r.activation.seat_scan.active_seats = seats;
+    r.verdict = 'INSTALLED_NOT_ACTIVE';
+    for (const command of ['validate', 'write']) {
+      const result = run(command, r); assert.equal(result.status, 1); assert.match(result.stderr, /active_seats.*derived/);
+    }
+  }
+}));
+test('I2d: cmuxlayer has no observed client matcher', () => isolated(run => {
+  for (const command of ['validate', 'write']) {
+    const result = run(command, processReceipt('cmuxlayer'));
+    assert.equal(result.status, 1); assert.match(result.stderr, /no client matcher for cmuxlayer/);
+  }
+}));
+test('I2d: closed schema refuses malformed process evidence', () => isolated(run => {
+  for (const mutate of [s => { delete s.clients; }, s => { s.clients = [{ ...client(), pid: 1.5 }]; },
+    s => { s.clients = [{ ...client(), pid: 0 }]; }, s => { s.clients = [{ ...client(), started_at: 'yesterday' }]; },
+    s => { s.clients = [{ ...client(), command: '' }]; }, s => { s.clients = [{ ...client(), thread_id: 4 }]; },
+    s => { s.clients = [{ pid: 1 }]; }, s => { s.clients = [{ ...client(), secret: 'forbidden' }]; },
+    s => { delete s.excluded; }, s => { s.excluded = [{ rule: 'guess', reason: 'fixture', count: 1 }]; },
+    s => { s.excluded = [{ rule: 'daemon-process', reason: 'fixture', count: -1 }]; },
+    s => { delete s.bridge_diff; }, s => { s.bridge_diff.changed = 'false'; },
+    s => { s.bridge_diff.to_sha = 'abc'; }]) {
+    const r = processReceipt(); mutate(r.activation.seat_scan);
+    for (const command of ['validate', 'write']) {
+      const result = run(command, r); assert.equal(result.status, 1); assert.match(result.stderr, /seat_scan/);
+    }
+  }
+}));
+test('I2d: LIVE still requires a successful probe and a strictly later scan', () => isolated(run => {
+  for (const mutate of [r => { r.activation.mcp_probe.ok = false; }, r => { delete r.activation.mcp_probe; },
+    r => { r.activation.seat_scan.checked_at = r.installed.install_finished_at; },
+    r => { r.activation.seat_scan.checked_at = '2026-10-27T08:59:59Z'; }]) {
+    const r = processReceipt(); mutate(r);
+    r.activation.seat_scan.clients = [client()]; r.activation.seat_scan.active_seats = [clientKey(client())];
+    assert.equal(run('validate', r).status, 1);
+    const written = output(run('write', r));
+    assert.equal(written.verdict, 'INSTALLED_NOT_ACTIVE');
+    assert.ok(written.reasons.join(' ').includes(clientKey(client())));
+  }
+}));
+test('I2d: bridge diff identifies the release and covers the core bridge paths', () => isolated(run => {
+  for (const mutate of [s => { s.bridge_diff.to_sha = 'c'.repeat(40); }, s => { s.bridge_diff.paths = []; }]) {
+    const r = processReceipt(); mutate(r.activation.seat_scan);
+    for (const command of ['validate', 'write']) {
+      const result = run(command, r); assert.equal(result.status, 1); assert.match(result.stderr, /bridge_diff/);
+    }
+  }
+}));
+test('I2d: a writer-held bridge stays stale and empty socat scans still disclose the limitation', () => isolated(run => {
+  const r = processReceipt(), c = client(); c.thread_id = r.writer.thread_or_session;
+  r.activation.seat_scan.clients = [c]; r.activation.seat_scan.active_seats = [clientKey(c)];
+  assert.equal(output(run('write', r)).verdict, 'INSTALLED_NOT_ACTIVE');
+  const voice = processReceipt('voicebar');
+  voice.activation.seat_scan.excluded = [{ rule: 'socat-relay', count: 0, reason: relayReason }];
+  assert.equal(output(run('write', voice)).verdict, 'LIVE');
+  voice.activation.seat_scan.excluded = [];
+  assert.equal(run('validate', voice).status, 1);
+}));
+
 for (const product of ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar']) {
   for (const proof of ['self-report', 'missing-seats', 'empty-seats', 'failed-probe', 'complete', 'uncovered-seat', 'partial-coverage', 'old-scan', 'equal-scan', 'missing-scan']) {
     test(`I2: ${product} activation with ${proof}`, () => isolated(run => {
