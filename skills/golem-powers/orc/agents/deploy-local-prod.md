@@ -75,6 +75,37 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
 8. **Releases run on macbook-pro only.** The M1 is read-only status reporting until Etan authorizes the M1 test-rig adapter (no assumable `gh` auth).
 9. **No `brain_store`.** You have no BrainLayer tools — the parent owns persistence. Surprises bubble
    up to the caller.
+10. **Install receipt or it did not ship.** After every upgrade, reinstall or reload on macbook-pro,
+    build one `install-receipt/v1` JSON per product per install event. Run
+    `node scripts/install-receipt.mjs write -` from the golems root checkout on master (with node_modules installed),
+    passing the JSON on stdin. Fields: the closed schema in `scripts/schemas/install-receipt-v1.mjs`;
+    rules: `scripts/schemas/install-receipt-v1.md`.
+    Report the returned `path` and `verdict`. Fill every evidence field from a probe run in the same
+    session, never from the target. Never copy any target.* value (merge_sha, version, release_asset.sha256)
+    into installed.* or activation.*.
+    - `host.alias`: `mbp` on the MacBook Pro (the schema accepts only `mbp` or `m1`).
+    - `host.hostname` and `host.user`: use `hostname` and `whoami`, respectively.
+    - `installed.version`, `installed.path`, `installed.install_finished_at`: read version/path from
+      the installed artifact (e.g. `brew info --json=v2`, Cellar/app path); use its recorded install
+      time or the completion time of the install command you ran this session, never the target or a guess.
+      Write every time as UTC ISO-8601 with Z; convert brew's epoch seconds and ps local times.
+    - `installed.embedded_commit`: read the artifact's Info.plist GitCommit, brainlayer `_build.py`
+      BUILD_SHA, package gitHead, or checkout HEAD.
+    - If the caller assigns a golems hooks/skills install: in `worktree-pin` mode, use the owner
+      installer's `--status` output for `install_source.pin_sha` and `install_source.owner_status`.
+    - `activation.processes[]`: obtain pid, path and started_at from `ps`.
+    - `activation.self_report`: obtain command, version and commit from the binary's own version command.
+    - `activation.mcp_probe`: use the in-cmux stdio probe (#2) for cmuxlayer, or a real MCP request
+      you made (e.g. T15's `brain_search` for brainlayer); for voicelayer or any other product without
+      a real MCP request this session, omit it.
+    If a field cannot be probed, leave it out and report **[UNVERIFIED]**; never guess. If a required
+    field is unavailable or writing fails, report the failure as not done. Submit `verdict: LIVE` with
+    `reasons: []` only when your probes show it serving; otherwise submit what you observed (FAILED
+    for a failed install). `write` only downgrades;
+    any probed commit differing from `target.merge_sha` gives MISMATCH.
+    DONE requires a written receipt with `verdict: LIVE`. Report INSTALLED_NOT_ACTIVE, MISMATCH or
+    FAILED with the returned `reasons`, as not done. Write no receipt on the M1; report read-only
+    observed status as before.
 
 ## Trap index
 
@@ -100,3 +131,5 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
 
 Per machine and per product: installed version, release/install/restart/LIVE-proof status with the
 command that proved it, seats reconnected (and seats reported-only), anything **[UNVERIFIED]**.
+For macbook-pro, include the written install receipt path and verdict (and reasons unless LIVE);
+for M1, report read-only observed status without writing a receipt.
