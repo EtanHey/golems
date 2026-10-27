@@ -28,6 +28,35 @@ function isolated(fn) {
 }
 const output = result => { assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout); };
 
+for (const product of ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar']) {
+  for (const proof of ['self-report', 'missing-seats', 'empty-seats', 'failed-probe', 'complete']) {
+    test(`I2: ${product} activation with ${proof}`, () => isolated(run => {
+      const r = receipt(); r.product = product;
+      if (proof !== 'self-report') r.activation.mcp_probe = {
+        server: product, request: 'ping', ok: proof !== 'failed-probe', summary: 'fixture probe',
+      };
+      if (proof === 'empty-seats') r.activation.reconnected_seats = [];
+      if (['failed-probe', 'complete'].includes(proof)) r.activation.reconnected_seats = ['fixture-seat'];
+      const live = proof === 'complete';
+      const validated = run('validate', r);
+      assert.equal(validated.status, live ? 0 : 1, `${proof}: ${validated.stderr}`);
+      const written = output(run('write', r));
+      assert.equal(written.verdict, live ? 'LIVE' : 'INSTALLED_NOT_ACTIVE', proof);
+      if (!live) assert.match(written.reasons.join(' '), /MCP.*mcp_probe.*reconnected_seats/);
+    }));
+  }
+}
+test('I2: non-MCP products keep version self-report activation proof', () => isolated(run => {
+  assert.equal(output(run('validate', receipt())).verdict, 'LIVE');
+  assert.equal(output(run('write', receipt())).verdict, 'LIVE');
+}));
+test('I2: reconnected seats must be an array of non-empty strings', () => isolated(run => {
+  for (const seats of ['fixture-seat', [''], [123]]) {
+    const r = receipt(); r.activation.reconnected_seats = seats;
+    for (const command of ['validate', 'write']) assert.notEqual(run(command, r).status, 0);
+  }
+}));
+
 test('1: validate requires a full merge SHA and accepts owner-installer worktree pins', () => isolated(run => {
   assert.equal(output(run('validate', receipt())).verdict, 'LIVE');
   for (const value of [undefined, 'abc', 'g'.repeat(40)]) {
