@@ -153,8 +153,9 @@ test('publication remains serialized and both jobs use the pinned Node version',
 });
 
 function runsNode(script) {
-  return script.split(/\n|&&|\|\||;/).some(command => {
-    const code = command.replace(/#.*/, '');
+  const uncommented = script.replace(/'[^']*'|"(?:\\.|[^"\\])*"|\\.|(?<![^\s;&|()<>])#[^\n]*/g,
+    token => token.startsWith('#') ? '' : token);
+  return uncommented.split(/\n|&&|\|\||;/).some(code => {
     return /\b(?:node|npm|npx)(?:\s|$)/.test(code) ||
       (/\bbun\s+run(?:\s|$)/.test(code) && !/(?:^|\s)--bun(?:\s|$)/.test(code));
   });
@@ -169,22 +170,40 @@ test('Node command detection includes Bun fallback but excludes forced Bun execu
   }
 });
 
-test('every workflow job running Node has the SHA-pinned setup before execution', () => {
-  const directory = new URL('../../.github/workflows/', import.meta.url);
+function nodeSetupViolations(parsed, file) {
   const violations = [];
-  for (const file of readdirSync(directory).filter(file => /\.ya?ml$/.test(file)).sort()) {
-    const parsed = Bun.YAML.parse(readFileSync(new URL(file, directory), 'utf8'));
-    for (const [jobName, job] of Object.entries(parsed.jobs ?? {})) {
-      let setup;
-      for (const step of job.steps ?? []) {
-        if (step.uses?.startsWith('actions/setup-node@')) setup = step;
-        if (typeof step.run !== 'string' || !runsNode(step.run)) continue;
-        if (setup?.uses !== 'actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38' ||
-            setup.with?.['node-version'] !== '24.22.1' || setup.if !== undefined || setup['continue-on-error']) {
-          violations.push(`${file}:${jobName}: ${step.name ?? step.run.split('\n')[0]}`);
-        }
+  for (const [jobName, job] of Object.entries(parsed.jobs ?? {})) {
+    let setup;
+    for (const step of job.steps ?? []) {
+      if (step.uses?.startsWith('actions/setup-node@')) setup = step;
+      if (typeof step.run !== 'string' || !runsNode(step.run)) continue;
+      if (setup?.uses !== 'actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38' ||
+          setup.with?.['node-version'] !== '24.22.1' || setup.if !== undefined || setup['continue-on-error']) {
+        violations.push(`${file}:${jobName}: ${step.name ?? step.run.split('\n')[0]}`);
       }
     }
   }
+  return violations;
+}
+
+test.each([
+  ["printf '#' | node x.js", 1],
+  ['echo "a # b" | npx tsc', 1],
+  [String.raw`printf '\"#' | node x.js`, 1],
+  [String.raw`echo "a \" # b" | npx tsc`, 1],
+  [String.raw`printf \# | node x.js`, 1],
+  ['echo ${#value} | node x.js', 1],
+  ['echo a#b | node x.js', 1],
+  ['echo hi # node', 0],
+  ['echo hi # "node"', 0],
+  ['echo hi # comment; node ignored.js', 0],
+])('workflow job without setup-node: %s', (run, count) => {
+  expect(nodeSetupViolations({ jobs: { demo: { steps: [{ run }] } } }, 'fixture.yml')).toHaveLength(count);
+});
+
+test('every workflow job running Node has the SHA-pinned setup before execution', () => {
+  const directory = new URL('../../.github/workflows/', import.meta.url);
+  const violations = readdirSync(directory).filter(file => /\.ya?ml$/.test(file)).sort().flatMap(file =>
+    nodeSetupViolations(Bun.YAML.parse(readFileSync(new URL(file, directory), 'utf8')), file));
   expect(violations).toEqual([]);
 });
