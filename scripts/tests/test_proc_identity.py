@@ -526,6 +526,9 @@ def procargs_buffer(args, env, trailing=b'\0ptr_munge=0\0executable_boothash=fix
 
 def test_apple_named_env_after_empty_entry_is_unknown(spawn, monkeypatch):
     child, _ = spawn()
+    observed = proc.ProcIdentity(child.pid, os.getpid(), os.getpgrp(),
+                                 os.geteuid(), os.getuid(), (123, 456))
+    monkeypatch.setattr(proc, 'identity', lambda _: observed)
     data = procargs_buffer([b'p'], [b'A=1', b'', b'ptr_munge=tok'])
     monkeypatch.setattr(proc.sys, 'platform', 'darwin')
     monkeypatch.setattr(proc, '_darwin_args', lambda _: proc._parse_procargs2(data))
@@ -568,7 +571,8 @@ def test_owned_rejects_names_outside_marker_grammar_before_inspection(monkeypatc
 
 def test_lowercase_dyld_env_before_terminator_fails_closed(spawn, monkeypatch):
     child, _ = spawn()
-    original = proc.identity(child.pid)
+    original = proc.ProcIdentity(child.pid, os.getpid(), os.getpgrp(),
+                                 os.geteuid(), os.getuid(), (123, 456))
     data = procargs_buffer([b'p'], [b'dyld_x=1', MARKER + b'=' + TOKEN])
     monkeypatch.setattr(proc, 'identity', lambda _: original)
     monkeypatch.setattr(proc, '_darwin_args', lambda _: proc._parse_procargs2(data))
