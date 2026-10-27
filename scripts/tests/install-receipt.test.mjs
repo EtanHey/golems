@@ -94,6 +94,7 @@ for (const product of ['golems', 'brainlayer', 'voicelayer', 'cmuxlayer', 'brain
       for (const command of ['validate', 'write']) {
         const result = run(command, r);
         assert.equal(result.status, 1); assert.match(result.stderr, new RegExp(field));
+        assert.ok(result.stderr.includes('must not contain writer.thread_or_session'));
       }
       assert.deepEqual(readdirSync(home), []);
     }));

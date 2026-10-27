@@ -32,7 +32,8 @@ probe never counts as a seat in either list. For every product, validation rejec
 `activation.reconnected_seats` or `activation.seat_scan.active_seats` containing an
 exact string match of `writer.thread_or_session`; both validate and write refuse
 the receipt and name the field. The schema requires the writer ID, so this check
-always applies. The stdio `mcp_probe` itself still has no seat identifier.
+always applies. `status` also calls validation and reports such stored receipts
+as MISMATCH. The stdio `mcp_probe` itself still has no seat identifier.
 The seat scan is optional in the schema for existing receipts, but missing scans,
 stale scans, uncovered active seats or unsuccessful probes downgrade MCP LIVE to
 INSTALLED_NOT_ACTIVE with a specific reason. A version self-report alone is
