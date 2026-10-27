@@ -19,7 +19,7 @@ const DEFAULT_DECISIONS = [
   { id: "b", title: "B", options: ["One", "Two"], sceneIds: ["b1"] },
 ];
 
-function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard } = {}) {
+function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard, storageError = () => false } = {}) {
   const html = renderDecisionFlow({
     title: "Audio decision dashboard",
     kicker: "Audio decision dashboard",
@@ -47,7 +47,7 @@ function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"
   const scripts = [...window.document.querySelectorAll("script")];
   new Function("document", "localStorage", "navigator", scripts.at(-1).textContent)(
     window.document,
-    window.localStorage,
+    { getItem: key => window.localStorage.getItem(key), setItem: (key, value) => { if (storageError()) throw new Error("quota"); window.localStorage.setItem(key, value); } },
     window.navigator,
   );
   return { window, document: window.document, html };
@@ -65,6 +65,178 @@ test("rendered decision flow uses a hub-compatible route-scoped storage key", ()
   const fallback = assignment.match(/\|\|\s*(["'])([^"']*)\1/);
   expect(fallback?.[2] || "").toMatch(/^dbx:[a-z0-9][a-z0-9._-]*$/i);
   expect(html).toContain('data-storage-key="dbx:storage-contract-test"');
+});
+
+function noteText(run, text) { run.document.getElementById("df-note-text").value = text; run.document.getElementById("df-note-save").click(); }
+
+const CLEAR_SEED = { vb: "All good", "vb-checks": { 0: true, 1: true, 2: true }, "vb-free": "An answer", "vb-notes": [{ quote: "History row", text: "A note" }], b: "One", "b-free": "Keep this", "b-notes": [{ quote: "B", text: "Also keep this" }], _prefs: { rate: 1.5, view: "list" }, extra: { retained: true } };
+test("Clear requires confirmation and removes only its card's picks, checks, free text and notes", () => {
+  const run = boot({ decisions: CHECK_DECISIONS, seed: CLEAR_SEED }); const { document, window } = run;
+  const card = document.querySelector('[data-decision="vb"]'), clear = card.querySelector(".df-clear");
+  clear.click(); expect(card.querySelector(".df-clear-confirm").hidden).toBe(false);
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(CLEAR_SEED);
+  expect(document.activeElement).toBe(card.querySelector(".df-clear-cancel"));
+  card.querySelector(".df-clear-cancel").click(); expect(document.activeElement).toBe(clear);
+  expect(card.querySelector('input[type="radio"]').checked).toBe(true);
+  clear.click(); card.querySelector(".df-clear-apply").click();
+  const expected = { ...CLEAR_SEED }; for (const key of ["vb", "vb-checks", "vb-free", "vb-notes"]) delete expected[key];
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(expected);
+  expect([...card.querySelectorAll("input")].every(input => !input.checked)).toBe(true);
+  expect(card.querySelector(".df-free").value).toBe(""); expect(card.querySelector(".df-note-count").hidden).toBe(true);
+  for (const selector of ['[data-index-for="vb"]', '[data-chip-for="vb"]']) expect(document.querySelector(selector + " .df-answer-status").textContent).toBe("☐");
+  expect(document.querySelector('[data-chip-for="b"] .df-answer-status').textContent).toBe("✓");
+  expect(card.querySelector(".df-clear-confirm").hidden).toBe(true);
+  expect(boot({ decisions: CHECK_DECISIONS, seed: expected }).document.getElementById("df-answered").textContent).toBe("1");
+});
+
+test("Escape cancels an inline Clear confirmation inside the story sheet without closing the sheet", () => {
+  const { document, window } = storyBoot({ decisions: CHECK_DECISIONS, seed: CLEAR_SEED });
+  document.querySelector('[data-decision="vb"] .df-answer-open').click(); const sheet = sheetOf(document, "vb");
+  sheet.querySelector(".df-clear").click(); sheet.querySelector(".df-clear").focus(); key(window, "Escape");
+  expect(sheet.classList.contains("is-open")).toBe(true); expect(sheet.querySelector(".df-clear-confirm").hidden).toBe(true);
+  expect(document.activeElement).toBe(sheet.querySelector(".df-clear"));
+  sheet.querySelector(".df-clear").click(); sheet.querySelector(".df-clear-apply").click();
+  expect(sheet.classList.contains("is-open")).toBe(true); expect(sheet.querySelector(".df-free").value).toBe("");
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test")).b).toBe("One");
+});
+
+test("failed Clear preserves saved answers and visible controls, and permits retry", () => {
+  let blocked = true; const { document, window } = boot({ decisions: CHECK_DECISIONS, seed: CLEAR_SEED, storageError: () => blocked });
+  const card = document.querySelector('[data-decision="vb"]'); card.querySelector(".df-clear").click(); card.querySelector(".df-clear-apply").click();
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(CLEAR_SEED);
+  expect(card.querySelector('input[type="radio"]').checked).toBe(true); expect(card.querySelector(".df-free").value).toBe("An answer");
+  expect(card.querySelector(".df-clear-error").textContent).toContain("Answers kept"); expect(card.querySelector(".df-clear-confirm").hidden).toBe(false);
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("✓");
+  blocked = false; card.querySelector(".df-clear-apply").click();
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test")).vb).toBeUndefined(); expect(card.querySelector(".df-clear-confirm").hidden).toBe(true);
+});
+
+function selectText(run, first, last = first) {
+  const range = run.document.createRange(); range.setStart(first.firstChild, 0); range.setEnd(last.firstChild, last.textContent.length);
+  range.getBoundingClientRect = () => ({ left: 80, right: 160, top: 100, bottom: 120 });
+  const selection = run.window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+  run.document.dispatchEvent(new run.window.Event("selectionchange"));
+}
+
+test("review: notes alone do not answer a card, while a completed checklist does", () => {
+  const plain = boot({ seed: { "a-notes": [{ quote: "one", text: "A comment" }] } });
+  expect(plain.document.getElementById("df-answered").textContent).toBe("0");
+  const run = boot({ decisions: CHECK_DECISIONS, seed: { "vb-checks": { 0: true }, "vb-notes": [{ quote: "History row", text: "Check again" }] } });
+  const card = run.document.querySelector('[data-decision="vb"]'); expect(card.classList.contains("is-answered")).toBe(false);
+  for (const box of card.querySelectorAll(".df-check-input")) if (!box.checked) box.click();
+  expect(card.classList.contains("is-answered")).toBe(true);
+});
+
+test("a checklist card with a pick and no ticks counts as answered", () => {
+  const { document } = boot({ decisions: CHECK_DECISIONS }); const card = document.querySelector('[data-decision="vb"]');
+  card.querySelectorAll('input[type="radio"]')[1].click();
+  expect(card.querySelectorAll('.df-check-input:checked').length).toBe(0);
+  expect(card.classList.contains("is-answered")).toBe(true);
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("✓");
+});
+
+test("review: a cited selection excludes speaker labels", () => {
+  const run = boot({ scenes: [{ ...scene("a1"), speaker: "ben", role: "host" }, scene("a2"), scene("b1")] });
+  selectText(run, run.document.querySelector(".df-speaker"), run.document.querySelectorAll(".df-word")[1]);
+  run.document.getElementById("df-cite").click();
+  expect(run.document.getElementById("df-note-quote").textContent.trim()).toBe("one two");
+});
+
+test("review: accessible navigation names keep section rank and singular note counts", () => {
+  const { document } = boot({ seed: { a: "Keep", "a-notes": [{ quote: "one", text: "A comment" }] } });
+  for (const selector of ['[data-index-for="a"]', '[data-chip-for="a"]']) expect(document.querySelector(selector).getAttribute("aria-label")).toBe("Section 1: A. Answered. 1 note");
+  expect(document.querySelector(".df-note-count").getAttribute("aria-label")).toBe("1 note");
+});
+
+test("review: plain transcript words retain keyboard word seeking", () => {
+  const { document, window } = boot(); const transcript = document.querySelector(".df-words");
+  expect(document.querySelector(".df-word").tagName).toBe("SPAN");
+  transcript.focus(); key(window, "ArrowRight"); key(window, "Enter");
+  expect(document.querySelector("audio").currentTime).toBe(0.4);
+  expect(document.querySelector("audio").paused).toBe(false);
+});
+
+test("answer indicators are separate from ranks and follow restored and cleared answers", () => {
+  const run = boot({ seed: { a: "Keep" } }); const { document } = run;
+  for (const selector of ['[data-index-for="a"]', '[data-chip-for="a"]']) expect(document.querySelector(selector + " .df-answer-status").textContent).toBe("✓");
+  expect(document.querySelector('[data-chip-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
+  expect(document.querySelector('[data-chip-for="a"] .df-chip-rank').textContent).toBe("1");
+  const free = document.querySelector('[data-decision="b"] .df-free'); free.value = "reply"; free.dispatchEvent(new run.window.Event("input"));
+  expect(document.querySelector('[data-index-for="b"] .df-answer-status').textContent).toBe("✓");
+  free.value = ""; free.dispatchEvent(new run.window.Event("input"));
+  expect(document.querySelector('[data-index-for="b"] .df-answer-status').textContent).toBe("☐");
+  const checklist = boot({ decisions: DEFAULT_DECISIONS.map((decision, index) => ({ ...decision, rank: index ? 1 : "✓" })) });
+  expect(checklist.document.querySelector(".df-chip-rank").textContent).toBe("QA");
+  expect(checklist.document.querySelector(".df-answer-status").textContent).toBe("☐");
+});
+
+test("checklist and card note buttons quote their target, persist and export without checking the item", async () => {
+  let copied = ""; const run = boot({ decisions: CHECK_DECISIONS, clipboard: { writeText: text => { copied = text; return Promise.resolve(); } } });
+  const { document, window } = run; const card = document.querySelector('[data-decision="vb"]');
+  card.querySelector(".df-item-note").click();
+  expect(document.getElementById("df-note-dialog").open).toBe(true);
+  expect(document.getElementById("df-note-quote").textContent).toBe("History row");
+  expect(document.activeElement).toBe(document.getElementById("df-note-text"));
+  noteText(run, "<script>plain text</script>\nStill broken");
+  expect(card.querySelector(".df-check-input").checked).toBe(false);
+  expect(document.getElementById("df-note-dialog").open).toBe(false);
+  expect(card.querySelector(".df-note-count").textContent).toBe("1");
+  expect(document.querySelector('[data-chip-for="vb"] .df-note-count').textContent).toBe("1");
+  const saved = JSON.parse(window.localStorage.getItem("dbx:interaction-test"));
+  expect(saved["vb-notes"]).toEqual([{ quote: "History row", text: "<script>plain text</script>\nStill broken" }]);
+  expect(boot({ decisions: CHECK_DECISIONS, seed: saved }).document.querySelector('[data-chip-for="vb"] .df-note-count').textContent).toBe("1");
+  card.querySelector(".df-card-note").click(); expect(document.getElementById("df-note-quote").textContent).toBe("Check VoiceBar");
+  expect(document.querySelector("#df-note-list script")).toBeNull();
+  document.getElementById("df-note-cancel").click(); document.getElementById("df-copy").click(); await Promise.resolve();
+  expect(copied).toContain("> History row\n\n<script>plain text</script>\nStill broken");
+  expect(copied).toContain("    - [ ] History row\n    - [ ] Pauses");
+});
+
+test("selecting words offers Cite and suppresses seeking; a collapsed selection still seeks", () => {
+  const run = boot(); const { document, window } = run; const words = document.querySelectorAll('[data-decision="a"] .df-word');
+  selectText(run, words[0], words[1]);
+  const cite = document.getElementById("df-cite"); expect(cite.hidden).toBe(false);
+  words[1].click(); expect(document.querySelector('[data-decision="a"] audio').paused).toBe(true);
+  cite.click(); expect(document.getElementById("df-note-quote").textContent).toBe("one two");
+  noteText(run, "Clearer wording please");
+  window.getSelection().removeAllRanges(); document.dispatchEvent(new window.Event("selectionchange"));
+  words[1].click(); expect(document.querySelector('[data-decision="a"] audio').currentTime).toBe(0.4);
+  selectText(run, words[0], document.querySelector('[data-decision="b"] .df-word'));
+  expect(cite.hidden).toBe(true);
+});
+
+test("notes nest inside the story answer sheet, return focus, and can be edited or removed", () => {
+  const run = storyBoot({ decisions: CHECK_DECISIONS }); const { document, window } = run;
+  document.querySelector('[data-decision="vb"] .df-answer-open').click();
+  const opener = document.querySelector('[data-decision="vb"] .df-item-note'); opener.focus(); opener.click();
+  document.getElementById("df-note-dialog").dispatchEvent(new window.Event("cancel", { cancelable: true }));
+  expect(document.activeElement).toBe(opener); expect(sheetOf(document, "vb").classList.contains("is-open")).toBe(true);
+  opener.click(); noteText(run, "First note");
+  opener.click(); document.querySelector(".df-note-edit").click(); noteText(run, "Revised note");
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))["vb-notes"]).toEqual([{ quote: "History row", text: "Revised note" }]);
+  opener.click(); document.querySelector(".df-note-edit").click(); document.getElementById("df-note-delete").click();
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("☐");
+  expect(document.querySelector('[data-chip-for="vb"] .df-note-count').hidden).toBe(true);
+});
+
+test("blank notes and unavailable storage keep the draft open with a recovery message", async () => {
+  let blocked = false, copied = ""; const run = boot({ storageError: () => blocked, clipboard: { writeText: text => { copied = text; return Promise.resolve(); } } }); const { document } = run;
+  document.querySelector(".df-card-note").click(); noteText(run, "  ");
+  expect(document.getElementById("df-note-error").textContent).toContain("Write a note");
+  blocked = true; noteText(run, "Keep this draft");
+  expect(document.getElementById("df-note-dialog").open).toBe(true);
+  expect(document.getElementById("df-note-text").value).toBe("Keep this draft");
+  expect(document.getElementById("df-note-error").textContent).toContain("Try Save note again");
+  expect(document.getElementById("df-answered").textContent).toBe("0");
+  document.getElementById("df-note-copy-draft").click(); await Promise.resolve();
+  expect(copied).toBe("> A\n\nKeep this draft");
+  expect(document.getElementById("df-note-dialog").open).toBe(true);
+  blocked = false; document.getElementById("df-note-save").click();
+  expect(document.getElementById("df-note-dialog").open).toBe(false);
+  document.querySelector(".df-card-note").click(); document.querySelector(".df-note-edit").click();
+  blocked = true; document.getElementById("df-note-delete").click();
+  expect(document.getElementById("df-note-dialog").open).toBe(true);
+  expect(document.getElementById("df-note-error").textContent).toContain("Try Delete note again");
 });
 
 test("pause keeps the teleprompter open and resumes at the same position", () => {
@@ -635,7 +807,7 @@ test("the sheet traps Tab focus in both directions", () => {
   const { window, document } = storyBoot();
   document.querySelector('[data-decision="a"] .df-answer-open').click();
   const sheet = sheetOf(document, "a");
-  const focusable = [...sheet.querySelectorAll("button, input, textarea, select, a[href]")].filter((node) => !node.disabled);
+  const focusable = [...sheet.querySelectorAll("button, input, textarea, select, a[href]")].filter((node) => !node.disabled && !node.closest("[hidden]"));
   focusable.at(-1).focus();
   expect(key(window, "Tab").defaultPrevented).toBe(true);
   expect(document.activeElement).toBe(focusable[0]);

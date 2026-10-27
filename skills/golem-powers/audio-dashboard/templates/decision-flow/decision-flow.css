@@ -43,7 +43,7 @@ a{color:inherit}
 .df-card{position:relative;margin:0 0 14px;padding:18px 16px 18px;background:var(--panel);border:1px solid transparent;border-radius:20px;scroll-margin-top:8px}
 .df-card.is-active{border-color:var(--line-strong)}
 .df-card.is-playing{border-color:rgba(245,184,61,.55)}
-.df-card-head{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"rank title" "rank status";column-gap:13px;row-gap:3px;align-items:start}
+.df-card-head{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"rank title note" "rank status note";column-gap:13px;row-gap:3px;align-items:start}
 .df-rank{grid-area:rank;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line-strong);color:var(--muted);font-weight:650;font-size:15px;font-variant-numeric:tabular-nums;transition:background .2s,color .2s,border-color .2s}
 .df-card.is-active .df-rank{border-color:var(--moon);color:var(--moon)}
 .df-card.is-playing .df-rank{background:var(--amber);border-color:var(--amber);color:var(--ink)}
@@ -68,13 +68,14 @@ a{color:inherit}
 .df-teleprompter{margin:14px -6px 0;padding:16px 16px 18px;background:var(--well);border-radius:16px;max-height:46vh;overflow:auto;overscroll-behavior:contain}
 .df-teleprompter[hidden]{display:none}
 .df-transcript-scene+.df-transcript-scene{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
-.df-scene-label{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;color:var(--amber);font-size:13px;font-weight:600}
+.df-scene-label{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;color:var(--amber);font-size:13px;font-weight:600;user-select:none;-webkit-user-select:none}
 .df-speaker{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;background:var(--moon);color:var(--ink);font-size:13px;font-weight:650}
 .df-speaker[data-role="host"]{background:transparent;color:var(--moon);box-shadow:inset 0 0 0 1.5px var(--line-strong)}
 .df-teleprompter:has([data-role="expert"]) .df-transcript-scene[data-role="host"] .df-words{font-style:italic}
 .df-words{max-width:62ch;margin:8px 0 0;font-family:var(--serif);font-size:19px;line-height:1.7;color:#c9d1df}
-.df-word{display:inline;margin:0;padding:0;border:0;border-radius:3px;background:transparent;color:inherit;font:inherit;cursor:pointer;transition:color .15s}
-.df-word:hover{color:var(--moon);text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:4px}
+.df-word{display:inline;margin:0;padding:0;border:0;border-radius:3px;background:transparent;color:inherit;font:inherit;cursor:pointer;transition:color .15s;user-select:text;-webkit-user-select:text}
+@media(hover:hover) and (pointer:fine){.df-word:hover{color:var(--moon);text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:4px}}
+.df-words:focus-visible .df-word.is-seek-target{outline:2px solid var(--glass);outline-offset:2px}
 .df-word.is-read{color:var(--faint)}
 .df-word.is-current{background:var(--amber);color:var(--ink);box-shadow:0 0 0 .1em var(--amber)}
 
@@ -105,6 +106,12 @@ a{color:inherit}
 .note-area:focus{outline:none;border-color:var(--glass);box-shadow:0 0 0 1px var(--glass)}
 .df-card-actions{display:grid;grid-template-columns:auto 1fr;gap:10px;margin-top:12px}
 .df-card-actions button{min-height:48px;padding:0 16px;border-radius:12px;cursor:pointer}
+.df-card-actions .df-clear{grid-column:1 / -1;justify-self:start;margin-right:auto;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-strong);background:transparent;color:var(--muted)}
+.df-clear-confirm{margin-top:12px;padding:14px;border:1px solid var(--amber);border-radius:12px;background:var(--well)}
+.df-clear-confirm[hidden]{display:none}.df-clear-confirm p{margin:0 0 12px}.df-clear-confirm>div{display:flex;flex-wrap:wrap;gap:8px}
+.df-clear-confirm button{min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:10px;background:transparent;cursor:pointer}
+.df-clear-confirm .df-clear-apply{border-color:var(--amber);background:var(--amber);color:var(--ink);font-weight:650}
+.df-clear-error{color:var(--amber)}.df-clear-error:empty{display:none}.df-clear-confirm .df-clear-error{margin:12px 0 0}
 .df-skip{border:1px solid var(--line-strong);background:transparent;color:var(--muted)}
 .df-next{border:0;background:var(--moon);color:var(--ink);font-weight:650}
 .df-skip.is-acknowledged,.df-next.is-acknowledged{background:var(--glass-soft);color:var(--glass);box-shadow:inset 0 0 0 1px var(--glass)}
@@ -166,7 +173,7 @@ body:has(.df-card.is-active.is-playing) .df-tplay{background:transparent;color:v
   .df-top{padding:56px 0 30px}
   .df-top h1{font-size:40px}
   .df-card{padding:26px 28px 26px}
-  .df-card-head{grid-template-areas:"rank title status";grid-template-columns:auto 1fr auto;align-items:center}
+  .df-card-head{grid-template-areas:"rank title status note";grid-template-columns:auto 1fr auto auto;align-items:center}
   .df-card-head h2{margin:0;font-size:25px}
   .df-player-state{flex:0 1 auto}
   .df-play{flex:0 0 auto}
@@ -284,3 +291,35 @@ body[data-view="story"] .df-sheet.is-open .df-sheet-head{position:sticky;top:0;z
   html{scroll-behavior:auto}
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
+
+/* Notes share the ledger palette; the quote is the anchor and the draft gets the space. */
+.df-answer-status{flex:none;font-size:16px;line-height:1;color:var(--muted)}
+.is-answered>.df-answer-status{color:var(--glass)}
+.df-chip[aria-current="true"]>.df-answer-status{color:var(--ink)}
+.df-note-count{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 4px;border-radius:10px;background:var(--glass);color:var(--ink);font-size:12px;font-weight:650}
+.df-note-count[hidden],#df-cite[hidden],#df-note-delete[hidden]{display:none}
+.df-card-note,.df-item-note{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:44px;min-height:44px;padding:6px;border:1px solid var(--line-strong);border-radius:10px;background:transparent;color:var(--muted);cursor:pointer}
+.df-card-note{grid-area:note}@media(hover:hover) and (pointer:fine){.df-card-note:hover,.df-item-note:hover{color:var(--moon);border-color:var(--glass)}}
+.df-check-row{display:flex;align-items:flex-start;gap:6px}.df-check-row .df-check{flex:1;min-width:0}.df-item-note{flex:none;margin-top:2px}
+.df-check-group+.df-check-row,.df-check-row+.df-check-group{margin-top:8px}
+#df-cite{position:fixed;z-index:80;min-width:44px;min-height:44px;padding:0 13px;border:1px solid var(--glass);border-radius:10px;background:var(--moon);color:var(--ink);box-shadow:0 6px 24px #0006;font-weight:650;cursor:pointer}
+.df-note-dialog{width:min(580px,calc(100% - 24px));max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;padding:22px;border:1px solid var(--line-strong);border-radius:20px;background:var(--panel);color:var(--moon);font:16px/1.5 var(--sans);box-shadow:0 24px 80px #0008}
+.df-note-dialog::backdrop{background:rgba(6,10,18,.72);backdrop-filter:blur(4px)}
+.df-note-dialog,.df-note-dialog::backdrop{opacity:0;transition:opacity 150ms ease-out,transform 150ms ease-out,display 150ms allow-discrete,overlay 150ms allow-discrete}
+.df-note-dialog{transform:scale(.96);transform-origin:center}
+.df-note-dialog[open],.df-note-dialog[open]::backdrop{opacity:1;transform:scale(1);transition-duration:200ms;transition-timing-function:cubic-bezier(.23,1,.32,1)}
+@starting-style{.df-note-dialog[open],.df-note-dialog[open]::backdrop{opacity:0}.df-note-dialog[open]{transform:scale(.96)}}
+.df-card-note,.df-item-note,#df-cite,.df-clear,.df-note-actions button,.df-clear-confirm button,.df-note-edit{transition:transform 160ms ease-out}
+.df-card-note:active,.df-item-note:active,#df-cite:active,.df-clear:active,.df-note-actions button:active,.df-clear-confirm button:active,.df-note-edit:active{transform:scale(.97)}
+.df-note-dialog h2{margin:0;font-size:24px}.df-note-dialog p{margin:6px 0 16px;color:var(--muted)}
+#df-note-quote{margin:16px 0;padding:10px 14px;max-height:24vh;overflow:auto;border-left:3px solid var(--glass);background:var(--well);font:19px/1.5 var(--serif);white-space:pre-wrap;overflow-wrap:anywhere}
+#df-note-text{display:block;width:100%;margin-top:8px;padding:12px;border:1px solid var(--line-strong);border-radius:12px;background:var(--well);color:var(--moon);font:17px/1.5 var(--sans);resize:vertical}
+#df-note-error{color:var(--amber);font-size:15px}#df-note-error:empty{display:none}
+.df-note-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:16px}.df-note-actions button{min-height:44px;padding:0 14px;border:1px solid var(--line-strong);border-radius:10px;background:transparent;cursor:pointer}
+#df-note-save{border-color:var(--glass);background:var(--glass);color:var(--ink);font-weight:650}#df-note-delete{margin-right:auto}
+.df-note-edit{display:block;width:100%;margin-top:14px;padding:12px;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);border-radius:10px;background:var(--well);cursor:pointer}
+body[data-view="story"] .df-card-note{position:absolute;top:calc(var(--story-top) + 8px);right:16px}
+body[data-view="story"] .df-chip{width:24px}body[data-view="story"] .df-chip[aria-current="true"]{width:64px}
+body[data-view="story"] .df-chip .df-answer-status{position:relative;z-index:1;font-size:13px;color:var(--moon)}
+body[data-view="story"] .df-chip.is-answered .df-answer-status,body[data-view="story"] .df-chip[aria-current="true"] .df-answer-status{color:var(--ink)}
+body[data-view="story"] .df-chip .df-note-count{position:absolute;right:0;top:-2px;z-index:2;min-width:13px;height:13px;padding:0 2px;font-size:10px}
