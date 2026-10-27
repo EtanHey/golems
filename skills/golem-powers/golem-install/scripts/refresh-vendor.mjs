@@ -1,21 +1,21 @@
-// Refresh only from already-reviewed local clones; never runs upstream code.
+// Copy expected upstream commits as inert PR data; review before merge/install.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, lstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export function refreshVendor({ vendor, clones, reviewed, apply = false, git = spawnSync }) {
+export function refreshVendor({ vendor, clones, expected, apply = false, git = spawnSync }) {
   const manifestPath = path.join(vendor, "manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath));
   const copies = [], changes = [];
-  if (clones.length !== manifest.upstreams.length || reviewed.length !== clones.length) throw new Error("provide one clone and reviewed SHA per upstream");
+  if (clones.length !== manifest.upstreams.length || expected.length !== clones.length) throw new Error("provide one clone and expected SHA per upstream");
   for (const [i, clone] of clones.entries()) {
     const result = git("git", ["-C", clone, "rev-parse", "HEAD"], { encoding: "utf8" });
     const commit = result.stdout.trim();
-    if (result.status !== 0 || !/^[a-f0-9]{40}$/.test(reviewed[i]) || commit !== reviewed[i]) throw new Error("clone HEAD does not match reviewed SHA");
+    if (result.status !== 0 || !/^[a-f0-9]{40}$/.test(expected[i]) || commit !== expected[i]) throw new Error("clone HEAD does not match expected SHA");
     const clean = git("git", ["-C", clone, "status", "--porcelain", "--untracked-files=all", "--", "skills", "LICENSE"], { encoding: "utf8" });
-    if (clean.status !== 0 || clean.stdout.trim()) throw new Error("reviewed skill sources must be clean");
+    if (clean.status !== 0 || clean.stdout.trim()) throw new Error("expected skill sources must be clean");
     changes.push({ url: manifest.upstreams[i].url, from: manifest.upstreams[i].commit, to: commit });
     manifest.upstreams[i].commit = commit;
     const owner = i === 0 ? "anthropic" : "emilkowalski";
@@ -46,7 +46,7 @@ export function refreshVendor({ vendor, clones, reviewed, apply = false, git = s
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [anthropic, emil, shaA, shaE, flag] = process.argv.slice(2);
-    if (!anthropic || !emil || !shaA || !shaE || (flag && flag !== "--apply")) throw new Error("usage: refresh-vendor.mjs <anthropic-clone> <emil-clone> <reviewed-sha-A> <reviewed-sha-E> [--apply]");
-    console.log(JSON.stringify(refreshVendor({ vendor: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../vendor"), clones: [anthropic, emil], reviewed: [shaA, shaE], apply: flag === "--apply" }), null, 2));
+    if (!anthropic || !emil || !shaA || !shaE || (flag && flag !== "--apply")) throw new Error("usage: refresh-vendor.mjs <anthropic-clone> <emil-clone> <expected-sha-A> <expected-sha-E> [--apply]");
+    console.log(JSON.stringify(refreshVendor({ vendor: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../vendor"), clones: [anthropic, emil], expected: [shaA, shaE], apply: flag === "--apply" }), null, 2));
   } catch (e) { console.error(e.message); process.exitCode = 1; }
 }

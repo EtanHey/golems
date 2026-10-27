@@ -13,7 +13,7 @@ Read all SKILL.md, recipes, references and licenses before refreshing. UI code e
 are inert at installation. External URLs (easing.dev, easings.co, author/library sites)
 are references, not install-time fetches. `improve-animations execute` asks for a
 worker; existing routing and child limits win. Bare Emil invocations stop at a greeting;
-include the concrete task. `review-animations` is explicit-only in Claude; see live
+include the concrete task. `review-animations` is explicit-only in Claude.
 Codex 0.164 discovery exposes enabled:true with no implicit-invocation policy;
 auto-trigger suppression there is UNPROVEN. Invoke this skill explicitly in briefs.
 
@@ -25,17 +25,22 @@ Codex gets all six vendored skills; Cursor gets all six for review-only use.
 Gemini/agy get none. Add providers only after authorization.
 Do not use ~/.agents/skills because Gemini/agy exposure is forbidden.
 
-Refresh: `/whats-new` can run `bun skills/golem-powers/golem-install/scripts/vendor-skills.mjs
---check-upstream` (read-only git ls-remote; exit 3 = drift, 2 = query error).
-Review new upstream instructions first, copy the selected folders and licenses, update
-the SHAs and file hashes, run the fan-out tests and fresh native discovery, and use a PR.
-No remote installer or automatic update is executed. Local hash drift exits nonzero.
+Refresh: `.github/workflows/design-skill-updates.yml` checks both upstreams daily
+at 06:43 UTC and via manual dispatch. It copies only the six selected skill payloads
+as inert data, updates manifest hashes and the VENDOR pins above, and opens a PR.
+It never installs, runs upstream code, or merges. Immutable upstream-pair branches
+and all-state PR lookup avoid force-pushes, duplicate proposals and reopening rejects.
+Read every changed instruction/reference before merge; normal CI and independent
+review apply. New scripts/types or removed files fail the copier for manual review.
+Activation also needs the repository Actions setting "Allow GitHub Actions to
+create and approve pull requests"; it was false at implementation time. Keep
+default token permissions read, and grant write only to the proposal job.
+GitHub may require approval before token-created PR workflows run:
+https://docs.github.com/en/actions/concepts/security/github_token
 
-Updater (dry-run first): after cloning and reading both new upstream skill sources,
-run `bun skills/golem-powers/golem-install/scripts/refresh-vendor.mjs <anthropic-clone>
-<emil-clone> <reviewed-anthropic-sha> <reviewed-emil-sha>`; add `--apply` only after
-review. It checks selected source cleanliness and exact reviewed HEADs, refuses
-scripts/new file types or removed files, refreshes copied bytes, hashes and VENDOR pins.
-Then test and open a PR. Back up old installed links before switching changed payloads;
-installer conflicts require explicit retirement, never automatic overwrites.
-Claude's official frontend-design plugin updates itself independently.
+Manual check: `node skills/golem-powers/golem-install/scripts/vendor-skills.mjs
+--check-upstream` (exit 3 drift, 2 query error). Copier: `node .../refresh-vendor.mjs
+<anthropic-clone> <emil-clone> <expected-sha-A> <expected-sha-E> [--apply]`;
+without --apply it writes nothing. Proposed bytes are not approval to install.
+Back up old installed links before switching changed payloads; conflicts require
+explicit retirement. Claude's official frontend-design plugin updates independently.

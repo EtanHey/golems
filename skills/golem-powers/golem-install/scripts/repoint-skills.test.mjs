@@ -298,7 +298,7 @@ test("Claude keeps its official frontend-design plugin; vendor frontend is Codex
   expect(existsSync(path.join(fx.home, ".cursor/skills/frontend-design/SKILL.md"))).toBe(true);
 });
 
-test("updater dry-run is inert, apply refreshes reviewed bytes, and mismatched SHA refuses", async () => {
+test("updater dry-run is inert, apply proposes pinned bytes, and mismatched SHA refuses", async () => {
   const { refreshVendor } = await import("./refresh-vendor.mjs");
   const fx = vendorFixture(), commit = "a".repeat(40), old = "b".repeat(40);
   fx.manifest.upstreams = [{ url: "https://example.test/skills.git", commit: old }];
@@ -308,11 +308,11 @@ test("updater dry-run is inert, apply refreshes reviewed bytes, and mismatched S
   mkdirSync(path.join(clone, "skills/emil-design-eng"), { recursive: true });
   writeFileSync(path.join(clone, "skills/emil-design-eng/SKILL.md"), text);
   const git = (_, args) => ({ status: 0, stdout: args.includes("rev-parse") ? commit : "" });
-  const options = { vendor: fx.vendor, clones: [clone], reviewed: [commit], git };
+  const options = { vendor: fx.vendor, clones: [clone], expected: [commit], git };
   const before = readFileSync(path.join(fx.vendor, fx.file), "utf8");
   expect(refreshVendor(options).apply).toBe(false);
   expect(readFileSync(path.join(fx.vendor, fx.file), "utf8")).toBe(before);
-  expect(() => refreshVendor({ ...options, reviewed: [old], apply: true })).toThrow("reviewed SHA");
+  expect(() => refreshVendor({ ...options, expected: [old], apply: true })).toThrow("expected SHA");
   refreshVendor({ ...options, apply: true });
   expect(readFileSync(path.join(fx.vendor, fx.file), "utf8")).toBe(text);
   expect(readFileSync(path.join(fx.vendor, "VENDOR.md"), "utf8")).toBe(commit);
@@ -327,4 +327,16 @@ test("a Codex root symlink into agents refuses before writes, preventing Gemini 
   expect(r.out).toContain("vendor root is symlinked");
   expect(existsSync(path.join(fx.claude, "emil-design-eng"))).toBe(false);
   expect(existsSync(path.join(fx.agents, "emil-design-eng"))).toBe(false);
+});
+
+test("scheduled updater proposes review PRs, uses immutable branches and never auto-merges", () => {
+  const workflow = readFileSync(new URL("../../../../.github/workflows/design-skill-updates.yml", import.meta.url), "utf8");
+  expect(workflow).toContain("schedule:");
+  expect(workflow).toContain("workflow_dispatch:");
+  expect(workflow).toContain("refresh-vendor.mjs");
+  expect(workflow).toContain("gh pr create");
+  expect(workflow).toContain("--state all");
+  expect(workflow).not.toMatch(/gh pr merge|--auto|--force|pull_request_target/);
+  expect(workflow).toContain("persist-credentials: false");
+  expect(workflow).toContain("review-before-merge");
 });
