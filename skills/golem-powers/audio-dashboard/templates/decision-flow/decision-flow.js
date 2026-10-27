@@ -124,7 +124,7 @@
     card.querySelector(".df-clear-cancel").addEventListener("click",function(){closeClear(card);});
     card.querySelector(".df-clear-apply").addEventListener("click",function(){clearCard(card);});
     card.querySelector(".df-next").addEventListener("click",function(){var button=this;if(cards[index+1]){activate(index+1,true);return;}if(view==="story"){closeSheet(false);button.classList.add("is-acknowledged");button.textContent="All decisions reviewed → Copy answers";var storyCopy=document.querySelector(".df-story-copy");if(storyCopy){storyCopy.classList.add("is-ready");storyCopy.focus({preventScroll:true});}return;}var copy=document.getElementById("df-copy");button.classList.add("is-acknowledged");button.textContent="All decisions reviewed → Copy answers";copy.scrollIntoView({behavior:"smooth",block:"center"});copy.focus({preventScroll:true});});
-    card.querySelector(".df-skip").addEventListener("click",function(){var button=this;var nextCard=cards[index+1];button.classList.add("is-acknowledged");button.textContent=nextCard?"Skipped · moving on…":"Skipped";if(!nextCard)return;playCard(nextCard,true);setTimeout(function(){activate(index+1,false);},220);});
+    card.querySelector(".df-skip").addEventListener("click",function(){var button=this;var nextCard=cards[index+1];button.classList.add("is-acknowledged");button.textContent=nextCard?"Skipped · moving on…":"Skipped";if(nextCard)activate(index+1,true);});
     var chip=chipFor(card);if(chip)chip.addEventListener("click",function(){goTo(index);});
     var opener=card.querySelector(".df-answer-open");if(opener)opener.addEventListener("click",function(){openSheet(card,opener);});
     var done=card.querySelector(".df-sheet-done");if(done)done.addEventListener("click",function(){closeSheet(true);});
@@ -149,6 +149,7 @@
     node.setAttribute("role","dialog");node.setAttribute("aria-modal","true");node.setAttribute("aria-labelledby","sheet-title-"+card.dataset.decision);node.classList.add("is-open");
     if(backdrop)backdrop.hidden=false;document.body.classList.add("df-sheet-open");
     sheet={card:card,node:node,opener:opener,outside:outside};
+    offerCitation();
     var first=node.querySelector("input, textarea")||focusables(node)[0];if(first)first.focus({preventScroll:true});
   }
   function closeSheet(returnFocus){
@@ -156,6 +157,7 @@
     open.outside.forEach(function(el){el.removeAttribute("inert");});
     ["role","aria-modal","aria-labelledby"].forEach(function(name){open.node.removeAttribute(name);});open.node.classList.remove("is-open");
     if(backdrop)backdrop.hidden=true;document.body.classList.remove("df-sheet-open");
+    offerCitation();
     if(returnFocus&&open.opener&&open.opener.isConnected)open.opener.focus({preventScroll:true});
   }
   if(backdrop)backdrop.addEventListener("click",function(){closeSheet(true);});
@@ -197,7 +199,7 @@
   document.querySelectorAll(".df-story-copy").forEach(function(button){button.addEventListener("click",copyAnswers);});
   function fallback(text){var area=document.createElement("textarea");area.value=text;document.body.appendChild(area);area.select();document.execCommand("copy");area.remove();copied();}
   // Citation: no selection -> Cite offered -> modal draft -> saved, cancelled, or retryable storage error.
-  var noteDialog=document.getElementById("df-note-dialog"),noteText=document.getElementById("df-note-text"),noteQuote=document.getElementById("df-note-quote"),noteError=document.getElementById("df-note-error"),noteDelete=document.getElementById("df-note-delete"),draftCopy=document.getElementById("df-note-copy-draft"),cite=document.getElementById("df-cite"),noteEditor=null;
+  var noteDialog=document.getElementById("df-note-dialog"),noteText=document.getElementById("df-note-text"),noteQuote=document.getElementById("df-note-quote"),noteError=document.getElementById("df-note-error"),noteDelete=document.getElementById("df-note-delete"),draftCopy=document.getElementById("df-note-copy-draft"),cite=document.getElementById("df-cite"),touchCite=document.getElementById("df-controller-cite"),armedCitation=null,noteEditor=null;
   function selectionQuote(){
     var selection=document.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return null;
     var range=selection.getRangeAt(0),start=range.startContainer.nodeType===1?range.startContainer:range.startContainer.parentElement;
@@ -206,15 +208,18 @@
     var contents=range.cloneContents();if(contents.querySelector(".df-scene-label")){
       contents.querySelectorAll(".df-scene-label").forEach(function(node){node.remove();});contents.querySelectorAll("p,section,div,label,small").forEach(function(node){node.appendChild(document.createTextNode("\n"));});quote=contents.textContent.replace(/\n{3,}/g,"\n\n").trim();
     }
-    return card&&card.contains(range.endContainer)&&quote&&!start.closest("input,textarea")?{card:card,quote:quote,range:range,opener:start.closest(".df-words")||start.closest("button")||card.querySelector(".df-card-note")}:null;
+    return card&&card.contains(range.endContainer)&&quote&&!start.closest("input,textarea")?{card:card,quote:quote,range:range,opener:start.closest(".df-words")||start.closest("button")||(sheet&&sheet.node.contains(start)?sheet.node.querySelector(".df-sheet-done"):card.querySelector(".df-card-note"))}:null;
   }
   function offerCitation(){
-    var selected=selectionQuote();cite.hidden=!selected||noteDialog.open;if(cite.hidden)return;
-    var rect=selected.range.getBoundingClientRect(),win=document.defaultView;
-    cite.style.left=Math.max(8,Math.min(rect.left,win.innerWidth-cite.offsetWidth-8))+"px";var below=win.matchMedia("(pointer: coarse)").matches||rect.top<56;cite.style.top=Math.max(8,Math.min(below?rect.bottom+8:rect.top-50,win.innerHeight-cite.offsetHeight-8))+"px";
+    var selected=selectionQuote()||armedCitation,win=document.defaultView,touch=win.matchMedia("(pointer: coarse)").matches;
+    var home=sheet?sheet.node.querySelector(".df-sheet-head"):transportNext.parentNode;
+    if(touchCite.parentNode!==home){if(sheet)home.insertBefore(touchCite,home.querySelector(".df-sheet-done"));else transportNext.insertAdjacentElement("afterend",touchCite);}
+    cite.hidden=!selected||noteDialog.open||touch;touchCite.hidden=!selected||noteDialog.open||!touch;if(cite.hidden)return;
+    var rect=selected.range.getBoundingClientRect();
+    cite.style.left=Math.max(8,Math.min(rect.left,win.innerWidth-cite.offsetWidth-8))+"px";cite.style.top=Math.max(8,Math.min(rect.top<56?rect.bottom+8:rect.top-50,win.innerHeight-cite.offsetHeight-8))+"px";
   }
   function openNote(card,quote,opener){
-    if(noteDialog.open)return;if(isPlaying(card))pauseCard(card);cite.hidden=true;
+    if(noteDialog.open)return;if(isPlaying(card))pauseCard(card);cite.hidden=true;touchCite.hidden=true;armedCitation=null;
     noteEditor={card:card,quote:quote,opener:opener,editing:null,sheetModal:sheet&&sheet.node.getAttribute("aria-modal")};noteQuote.textContent=quote;noteText.value="";noteError.textContent="";noteDelete.hidden=true;draftCopy.hidden=true;
     document.getElementById("df-note-card").textContent=card.dataset.title;
     var list=document.getElementById("df-note-list");list.replaceChildren();
@@ -234,7 +239,8 @@
   }
   cards.forEach(function(card){card.querySelector(".df-card-note").addEventListener("click",function(){openNote(card,card.dataset.title,this);});card.querySelectorAll(".df-item-note").forEach(function(button){button.addEventListener("click",function(){openNote(card,button.previousElementSibling.querySelector("span").textContent,button);});});});
   document.addEventListener("selectionchange",offerCitation);document.addEventListener("scroll",offerCitation,true);
-  cite.addEventListener("pointerdown",function(event){event.preventDefault();});cite.addEventListener("click",function(){var selected=selectionQuote();if(selected)openNote(selected.card,selected.quote,selected.opener);});
+  [cite,touchCite].forEach(function(button){button.addEventListener("pointerdown",function(event){armedCitation=selectionQuote();event.preventDefault();});button.addEventListener("pointercancel",function(){armedCitation=null;offerCitation();});button.addEventListener("click",function(){var selected=armedCitation||selectionQuote();armedCitation=null;if(selected)openNote(selected.card,selected.quote,selected.opener);});});
+  document.addEventListener("pointerdown",function(event){if(!event.target.closest("#df-cite,#df-controller-cite")){armedCitation=null;offerCitation();}});
   document.getElementById("df-note-save").addEventListener("click",function(){saveNote(false);});noteDelete.addEventListener("click",function(){saveNote(true);});
   document.getElementById("df-note-cancel").addEventListener("click",function(){closeNote(true);});noteDialog.addEventListener("cancel",function(event){event.preventDefault();closeNote(true);});
   draftCopy.addEventListener("click",function(){

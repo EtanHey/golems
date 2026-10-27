@@ -5,6 +5,7 @@ const decisions = ["a", "b", "c"].map(id => ({ id, title: id.toUpperCase(), body
 function setup(touch = false) {
   let now = 0;
   const timers = [], run = boot({ decisions, scenes: decisions.flatMap(d => d.sceneIds.map(id => scene(id))), touch, clock: { now: () => now }, schedule: fn => timers.push(fn) });
+  run.document.querySelector(".df-dock").getBoundingClientRect = () => ({ top: 744, bottom: 768 });
   return { ...run, timers, settle: () => { now += 6000; } };
 }
 function key(run, value) { run.document.dispatchEvent(new run.window.KeyboardEvent("keydown", { key: value, bubbles: true })); }
@@ -30,7 +31,7 @@ test("touch Cite survives selection dismissal during a tap, opens its quote, and
 test("a delayed Skip cannot override a newer navigation or restart audio after Stop", () => {
   const run = setup(), d = run.document;
   d.querySelector(".df-skip").click(); d.getElementById("df-transport-prev").click();
-  d.getElementById("df-view-toggle").click(); d.getElementById("df-transport-stop").click(); run.timers.shift()();
+  d.getElementById("df-view-toggle").click(); d.getElementById("df-transport-stop").click(); run.timers.shift()?.();
   expect(d.querySelector(".df-card.is-active").dataset.decision).toBe("a");
   expect([...d.querySelectorAll("audio")].every(a => a.paused)).toBe(true); run.window.close();
 });
@@ -59,11 +60,11 @@ const transitions = [
   ["answer", m => quiet(m) && m.view === "story", m => { m.sheet = true; }],
   ["done", m => m.sheet && !m.note && !m.clear, m => { m.sheet = false; }],
   ["note", m => !m.note && !m.clear && (m.view === "list" || m.sheet), m => { m.note = true; m.selection = false; if (m.playback[m.current] === "playing") m.playback[m.current] = "paused"; }],
-  ["select", quiet, m => { m.selection = true; }],
-  ["crossSelect", m => quiet(m) && m.current < 2, m => { m.selection = true; }],
+  ["select", quiet, m => { m.selection = { card: m.current, valid: true }; }],
+  ["crossSelect", m => quiet(m) && m.view === "list" && m.current < 2, m => { m.selection = { card: m.current, valid: false }; }],
   ["deselect", m => quiet(m) && m.selection, m => { m.selection = false; }],
-  ["word", m => quiet(m) && m.selection, () => {}],
-  ["cite", m => quiet(m) && m.selection, m => { m.note = true; m.selection = false; if (m.playback[m.current] === "playing") m.playback[m.current] = "paused"; }],
+  ["word", m => quiet(m) && m.selection && (m.view === "story" || ["playing", "paused"].includes(m.playback[m.current])), () => {}],
+  ["cite", m => quiet(m) && m.selection?.valid, m => { m.note = true; const owner = m.selection.card; m.selection = false; if (m.playback[owner] === "playing") m.playback[owner] = "paused"; }],
   ["blank", m => m.note, () => {}],
   ["save", m => m.note, m => { m.note = false; }],
   ["cancel", m => m.note, m => { m.note = false; }],
@@ -83,10 +84,10 @@ function drive(run, before, event, n) {
   if (event === "speed") { const speed = d.getElementById("df-speed"); speed.value = String([0.8, 1, 1.25, 1.5, 1.75, 2][n % 6]); speed.dispatchEvent(new run.window.Event("change")); return; }
   if (event === "view") return click("#df-view-toggle");
   if (event === "done") return card.querySelector(".df-sheet-done").click();
-  if (event === "select" || event === "crossSelect") { selectText(run, card.querySelector(".df-word"), (event === "crossSelect" ? d.querySelectorAll(".df-card")[(before.current + 1) % 3] : card).querySelector(".df-word")); return; }
+  if (event === "select" || event === "crossSelect") { const selector = before.view === "list" ? ".df-question p" : ".df-word"; selectText(run, card.querySelector(selector), (event === "crossSelect" ? d.querySelectorAll(".df-card")[before.current + 1] : card).querySelector(selector)); return; }
   if (event === "deselect") { selection.removeAllRanges(); d.dispatchEvent(new run.window.Event("selectionchange")); return; }
   if (event === "word") return card.querySelectorAll(".df-word")[1].click();
-  if (event === "cite") { if (d.getElementById("df-cite").hidden) { selectText(run, card.querySelector(".df-word")); } return click("#df-cite"); }
+  if (event === "cite") return click("#df-cite");
   if (event === "blank" || event === "save") { d.getElementById("df-note-text").value = event === "blank" ? "" : "A generated note"; return click("#df-note-save"); }
   if (event === "cancel") return key(run, "Escape");
   if (event === "scroll") { run.settle(); d.querySelectorAll(".df-card").forEach((c, i) => { c.getBoundingClientRect = () => ({ top: i === n % 3 ? 100 : 2000, bottom: i === n % 3 ? 700 : 2200 }); }); run.window.dispatchEvent(new run.window.Event("scroll")); }

@@ -75,8 +75,8 @@ layoutTest("touch selection offers reachable Cite in the controller or modal she
     for (const selector of [".df-card-note", ".df-item-note"]) { const box = await page.locator(selector).first().boundingBox(); expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44); }
     if (view !== "list") await page.locator("#df-view-toggle").tap();
     if (view === "sheet") await page.locator(".df-card.is-active .df-answer-open").tap();
-    const selected = await page.locator(view === "story" ? ".df-card.is-active .df-words" : ".df-card.is-active .df-question p").first().evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); getSelection().removeAllRanges(); getSelection().addRange(range); return getSelection().toString().trim(); });
-    const cite = page.locator("#df-controller-cite"); await cite.waitFor({ state: "visible" }); expect(await page.locator("#df-cite").isVisible()).toBe(false);
+    const selected = await page.locator(view === "story" ? ".df-card.is-active .df-words" : view === "sheet" ? ".df-sheet.is-open .df-question p" : ".df-card.is-active .df-question p").first().evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); getSelection().removeAllRanges(); getSelection().addRange(range); return getSelection().toString().trim(); });
+    const cite = page.locator("#df-controller-cite"); await cite.waitFor({ state: "visible" }); expect(await page.locator("#df-speed").evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(16); expect(await page.locator("#df-cite").isVisible()).toBe(false);
     const box = await cite.boundingBox(); expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44);
     if (view === "sheet") expect(await cite.evaluate(node => Boolean(node.closest(".df-sheet-head")))).toBe(true);
     else { expect(await cite.evaluate(node => node.previousElementSibling.id)).toBe("df-transport-next"); expect(await page.locator(".df-transport").evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true); }
