@@ -197,6 +197,18 @@ def test_brainlayer_live_proof_names_stdio_bridge():
     assert "socat child on `/tmp/brainbar.sock`" not in bullet
 
 
+def test_brainbar_socket_never_offers_socat():
+    for line in AGENT.read_text().splitlines():
+        if line.lstrip().startswith("|"):
+            for cell in line.split("|"):
+                assert not ("socat" in cell.lower() and "brainbar.sock" in cell), cell
+    cells = AGENT.read_text().split("|")
+    for cell in cells:
+        sentences = re.split(r"(?<=[.!?])\s+", cell)
+        for sentence in sentences:
+            assert not ("socat" in sentence.lower() and "brainbar.sock" in sentence), sentence
+
+
 def test_voicelayer_embedded_commit_uses_installed_package_only():
     text = " ".join(AGENT.read_text().split())
     assert "/opt/homebrew/opt/voicelayer/bin/voicelayer --version --json" in text
