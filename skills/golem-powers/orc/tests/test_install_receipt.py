@@ -52,6 +52,39 @@ def test_all_times_are_converted_to_utc():
     assert "Write every time as UTC ISO-8601 with Z; convert brew's epoch seconds and ps local times" in AGENT.read_text()
 
 
+def test_release_identity_comes_from_the_remote_tag():
+    text = AGENT.read_text()
+    assert "git ls-remote --exit-code --tags <repo-url> refs/tags/<tag> 'refs/tags/<tag>^{}'" in text
+    assert "if a `^{}` line is printed (annotated tag), use its SHA; otherwise use the single plain line" in text
+    assert "A non-zero exit is unavailable evidence" in text
+    assert "Never copy `merge_sha` into `target.released_sha`" in text
+    assert "Neither `target.released_sha` nor `target.ancestry` comes from the caller or the target" in text
+
+
+def test_ancestry_is_probed_in_the_schema_direction():
+    text = AGENT.read_text()
+    assert "gh api repos/<owner>/<repo>/compare/<merge_sha>...<released_sha> --jq .status" in text
+    assert "record `target.ancestry.method` as `gh-compare`" in text
+    assert "`target.ancestry.checked_at`" in text
+    assert "UTC Z time of the call" in text
+    assert "git merge-base --is-ancestor <merge_sha> <released_sha>" in text
+    assert "`target.ancestry.method` as `git-merge-base`" in text
+    assert "git merge-base --is-ancestor <released_sha> <merge_sha>" in text
+    assert "`ahead` when the first exits 0" in text
+    assert "`behind` when only the second exits 0" in text
+    assert "`diverged` when both exit 1" in text
+    assert "Any other exit, or any gh error, is a probe error" in text
+
+
+def test_identity_matches_release_and_live_requires_ancestry():
+    text = AGENT.read_text()
+    assert ("Any present `installed.embedded_commit`, `install_source.pin_sha`, "
+            "`install_source.owner_status.pin_sha` or `activation.self_report.commit` "
+            "differing from `target.released_sha` gives MISMATCH.") in " ".join(text.split())
+    assert "LIVE also requires ancestry `identical` or `ahead`" in text
+    assert not re.search(r"(?:equal|equals|differing from|match(?:es)?)\s+`target\.merge_sha`", text)
+
+
 @pytest.fixture(scope="module")
 def schema():
     result = subprocess.run(
@@ -72,7 +105,10 @@ def assert_receipt_fields(text, schema):
 
 
 def test_receipt_field_names_match_exported_schema(schema):
-    assert_receipt_fields(AGENT.read_text(), schema)
+    text = AGENT.read_text()
+    assert {"target.released_sha", "target.ancestry", "target.ancestry.status",
+            "target.ancestry.checked_at", "target.ancestry.method"} <= set(FIELD.findall(text))
+    assert_receipt_fields(text, schema)
 
 
 def test_top_level_mutation_is_rejected(schema):
