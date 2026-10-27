@@ -12,6 +12,37 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source "$HERE/lib/worktree-git-env.sh"
+PIN="${GOLEMS_WORKTREE_GC_PIN_ROOT-$HOME/Gits/golems/.worktrees/hooks-live}"
+PIN_SHA=unavailable
+refuse_pin() {
+  echo "worktree-gc-nightly: REFUSE $1 (pin=$PIN, pin SHA $PIN_SHA)" >&2
+  exit 2
+}
+
+# The root checkout can lag the installed safety fixes. Never execute its GC.
+[[ -d "$PIN" ]] || refuse_pin 'pin missing'
+PIN="$(cd "$PIN" && pwd -P)" || refuse_pin 'cannot resolve pin'
+pin_head="$(git -C "$PIN" rev-parse --verify 'HEAD^{commit}' 2>/dev/null)" || refuse_pin 'pin HEAD unavailable'
+PIN_SHA="$pin_head"
+top="$(git -C "$PIN" rev-parse --show-toplevel 2>/dev/null)" || refuse_pin 'not a golems worktree'
+[[ "$top" == "$PIN" ]] || refuse_pin 'not a golems worktree'
+admin="$(git -C "$PIN" rev-parse --absolute-git-dir 2>/dev/null)" || refuse_pin 'not a golems worktree'
+common="$(git -C "$PIN" rev-parse --git-common-dir 2>/dev/null)" || refuse_pin 'not a golems worktree'
+[[ "$common" == /* ]] || common="$PIN/$common"
+common="$(cd "$common" && pwd -P)" || refuse_pin 'not a golems worktree'
+main="$(golems_main_repo "$HOME/Gits/golems" 2>/dev/null)" || refuse_pin 'not a golems worktree'
+main_admin="$(git -C "$main" rev-parse --absolute-git-dir)" || refuse_pin 'not a golems worktree'
+[[ "$common" == "$main_admin" && "$admin" != "$common" ]] || refuse_pin 'not a golems worktree'
+pin_status="$(git -C "$PIN" status --porcelain --untracked-files=all 2>/dev/null)" || refuse_pin 'pin status unavailable'
+[[ -z "$pin_status" ]] || refuse_pin 'pin dirty'
+# Use the currently fetched ref; network availability must never waive ancestry.
+git -C "$PIN" rev-parse --verify refs/remotes/origin/master >/dev/null 2>&1 || refuse_pin 'origin/master missing'
+git -C "$PIN" merge-base --is-ancestor HEAD origin/master 2>/dev/null || refuse_pin 'HEAD is not on origin/master'
+GC_SCRIPT="$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$PIN/scripts/worktree-gc.sh" 2>/dev/null)" || refuse_pin 'cannot resolve GC script'
+[[ "$GC_SCRIPT" == "$PIN/"* ]] || refuse_pin 'GC script outside pin'
+[[ -f "$GC_SCRIPT" ]] || refuse_pin 'GC script missing'
+echo "worktree-gc-nightly: verified pin SHA $PIN_SHA ($PIN)" >&2
+
 # Nightly must prove registry coverage; standalone GC may omit a registry.
 export WORKTREE_GC_CMUX_REGISTRY="${WORKTREE_GC_CMUX_REGISTRY-$HOME/.cmuxlayer/session-registry.jsonl}"
 LOCK="${GOLEMS_HEAVY_LOCK:-$HOME/.local/state/golems/heavy-suite.lock}"
@@ -85,4 +116,4 @@ exec perl -MFcntl=:flock -MPOSIX=:sys_wait_h,:signal_h -e '
   # 3 = completed with KEEP-unpushed. A runtime crash (1) remains a failure.
   print STDERR "worktree-gc-nightly: FAILED gc exit $rc\n" if $rc && $rc != 3;
   exit($rc == 3 ? 0 : $rc);
-' "$LOCK" "$LIMIT" /bin/bash "$HERE/worktree-gc.sh" --apply "$@"
+' "$LOCK" "$LIMIT" /bin/bash "$GC_SCRIPT" --apply "$@"

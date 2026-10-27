@@ -10,12 +10,13 @@ setup() {
   fi
   TEST_ROOT="$(mktemp -d "$fixture_parent/test.XXXXXXXX")"
   export HOME="$TEST_ROOT/home" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+  unset GOLEMS_WORKTREE_GC_PIN_ROOT
   mkdir -p "$HOME"
   export WORKTREE_GC_REPORT_DIR="$TEST_ROOT/report" WORKTREE_GC_T3_DB="$TEST_ROOT/t3.sqlite"
   export WORKTREE_GC_CMUX_REGISTRY="$TEST_ROOT/registry.jsonl" GOLEMS_HEAVY_LOCK="$TEST_ROOT/lock"
   : > "$WORKTREE_GC_CMUX_REGISTRY"
   export GC_FIXTURE_ROOT="$TEST_ROOT" GC_SOURCE="$REPO_ROOT/scripts/worktree-gc.sh"
-  WORKTREE_GC="$TEST_ROOT/contained-gc"
+  export WORKTREE_GC="$TEST_ROOT/contained-gc"
   cat > "$WORKTREE_GC" <<'GUARD'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -41,6 +42,18 @@ fi
 exec "$GC_SOURCE" ${args[@]+"${args[@]}"}
 GUARD
   chmod +x "$WORKTREE_GC"
+  export WORKTREE_GC_NIGHTLY="$TEST_ROOT/contained-nightly"
+  cat > "$WORKTREE_GC_NIGHTLY" <<'NIGHTLY'
+#!/usr/bin/env bash
+set -euo pipefail
+source "$GC_ENV_SCRUB"
+source "$GC_FIXTURE_HELPERS"
+make_nightly_pin "$GC_SOURCE"
+GC_SOURCE="$NIGHTLY_PIN/scripts/worktree-gc-nightly.sh" exec "$WORKTREE_GC" "$@"
+NIGHTLY
+  export GC_FIXTURE_HELPERS="$BATS_TEST_DIRNAME/lib/worktree-gc-fixtures.bash"
+  export REPO_ROOT TEST_ROOT
+  chmod +x "$WORKTREE_GC_NIGHTLY"
 }
 
 teardown() {
@@ -86,4 +99,22 @@ commit_fixture_file() {
   git -C "$worktree" add "$filename"
   git -C "$worktree" -c user.name=Fixture -c user.email=fixture@example.com \
     commit -qm "add $filename"
+}
+
+# A synthetic golems repository supplies the nightly pin; never use an installed pin.
+make_nightly_pin() {
+  local gc_source="$1" repo="$HOME/Gits/golems"
+  NIGHTLY_PIN="$repo/.worktrees/hooks-live"
+  export NIGHTLY_PIN
+  [[ -d "$NIGHTLY_PIN" ]] && return 0
+  mkdir -p "$repo/scripts/lib"
+  cp "$REPO_ROOT/scripts/worktree-gc-nightly.sh" "$repo/scripts/"
+  cp "$gc_source" "$repo/scripts/worktree-gc.sh"
+  cp -R "$REPO_ROOT/scripts/lib/." "$repo/scripts/lib/"
+  git init -q -b master "$repo"
+  printf '.worktrees/\ndocs.local/\n' > "$repo/.git/info/exclude"
+  git -C "$repo" add scripts
+  git -C "$repo" -c user.name=Fixture -c user.email=fixture@example.com commit -qm 'nightly fixture'
+  git -C "$repo" update-ref refs/remotes/origin/master HEAD
+  git -C "$repo" worktree add -q --detach "$NIGHTLY_PIN" HEAD
 }

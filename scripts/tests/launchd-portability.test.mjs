@@ -58,7 +58,11 @@ describe("launchd templates are portable", () => {
       });
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       const rendered = readFileSync(destination, "utf8");
-      expect(rendered).toContain("<string>/opt/golems/scripts/worktree-gc-nightly.sh</string>");
+      const pin = "/Users/example/Gits/golems/.worktrees/hooks-live";
+      expect(rendered).toContain(`<string>${pin}/scripts/worktree-gc-nightly.sh</string>`);
+      expect(rendered).toContain(`<key>WorkingDirectory</key>\n\t<string>${pin}</string>`);
+      expect(rendered).not.toContain("<string>/opt/golems/scripts/worktree-gc-nightly.sh</string>");
+      expect(rendered).not.toContain("<key>WorkingDirectory</key>\n\t<string>/opt/golems</string>");
       // Clear of BrainLayer's 03:17 backup and 04:20 scrub (03:00-05:30).
       expect(rendered).toContain("<key>Hour</key>\n\t\t<integer>6</integer>");
       // lsof lives in /usr/sbin; without it every candidate fails closed as KEEP-undetermined.

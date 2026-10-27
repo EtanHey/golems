@@ -19,6 +19,8 @@ Exit codes: 0 = completed; 3 = completed with KEEP-unpushed; 2 = invalid input;
 other nonzero codes = runtime failure. Nightly maps only 3 to success. Shutdown
 signals and timeout kill the prune process group before releasing the suite lock.
 
+Nightly GC runs the pinned `$HOME/Gits/golems/.worktrees/hooks-live` copy and refuses an unverified pin, logging its SHA.
+
 Tests build repositories outside any Git tree and guard every GC invocation against
 leaving the fixture root. Never probe `--apply` on a real repository. Installation
 and launchd loading belong to the lead after review and merge.

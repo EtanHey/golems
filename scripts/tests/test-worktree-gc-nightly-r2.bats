@@ -1,10 +1,143 @@
 #!/usr/bin/env bats
 load lib/worktree-gc-fixtures
 
+prepare_stub_pin() {
+  export GC_CALLS="$TEST_ROOT/gc-calls"
+  stub="$TEST_ROOT/stub-gc.sh"
+  cat > "$stub" <<'STUB'
+#!/bin/bash
+printf '%s\n' "$0 $*" >> "$GC_CALLS"
+if [[ -n "${GC_CHILD_PID:-}" ]]; then
+  sleep 60 &
+  echo "$!" > "$GC_CHILD_PID"
+  wait
+fi
+exit "${GC_STUB_EXIT:-0}"
+STUB
+  make_nightly_pin "$stub"
+  # Exercise a copied wrapper, including its unsafe pre-fix sibling fallback.
+  driver="$TEST_ROOT/driver"
+  mkdir -p "$driver/lib"
+  cp "$REPO_ROOT/scripts/worktree-gc-nightly.sh" "$driver/"
+  cp "$GC_ENV_SCRUB" "$driver/lib/"
+  cp "$stub" "$driver/worktree-gc.sh"
+  NIGHTLY_DRIVER="$driver/worktree-gc-nightly.sh"
+}
+
+assert_pin_refusal() {
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"worktree-gc-nightly: REFUSE"*"$1"* ]] || false
+  [ "$(printf '%s\n' "$output" | wc -l)" -eq 1 ]
+  [[ "$output" =~ pin\ SHA\ ([a-f0-9]{40}|unavailable) ]] || false
+  [ ! -e "$GC_CALLS" ]
+}
+
+@test "nightly pin: missing default pin refuses without a root-checkout fallback" {
+  prepare_stub_pin
+  mv "$NIGHTLY_PIN" "$TEST_ROOT/moved-pin"
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'pin missing'
+}
+
+@test "nightly pin: dirty tracked and untracked bytes refuse" {
+  prepare_stub_pin
+  for state in tracked untracked; do
+    if [[ "$state" == tracked ]]; then
+      printf '\n# dirty\n' >> "$NIGHTLY_PIN/scripts/worktree-gc.sh"
+    else
+      touch "$NIGHTLY_PIN/untracked"
+    fi
+    run /bin/bash "$NIGHTLY_DRIVER"
+    assert_pin_refusal 'pin dirty'
+    git -C "$NIGHTLY_PIN" restore scripts/worktree-gc.sh
+  done
+}
+
+@test "nightly pin: existing non-git directory refuses with an unavailable SHA" {
+  prepare_stub_pin
+  mkdir "$TEST_ROOT/not-git"
+  run env GOLEMS_WORKTREE_GC_PIN_ROOT="$TEST_ROOT/not-git" /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'pin HEAD unavailable'
+}
+
+@test "nightly pin: side-branch HEAD not on origin/master refuses" {
+  prepare_stub_pin
+  commit_fixture_file "$NIGHTLY_PIN" side-only
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'HEAD is not on origin/master'
+}
+
+@test "nightly pin: missing origin/master refuses" {
+  prepare_stub_pin
+  git -C "$NIGHTLY_PIN" update-ref -d refs/remotes/origin/master
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'origin/master missing'
+}
+
+@test "nightly pin: tracked GC symlink escaping the pin refuses" {
+  prepare_stub_pin
+  rm "$NIGHTLY_PIN/scripts/worktree-gc.sh"
+  ln -s "$stub" "$NIGHTLY_PIN/scripts/worktree-gc.sh"
+  git -C "$NIGHTLY_PIN" add scripts/worktree-gc.sh
+  git -C "$NIGHTLY_PIN" -c user.name=Fixture -c user.email=fixture@example.com commit -qm 'escaping GC'
+  git -C "$NIGHTLY_PIN" update-ref refs/remotes/origin/master HEAD
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'GC script outside pin'
+}
+
+@test "nightly pin: unrelated git worktree refuses" {
+  prepare_stub_pin
+  other="$(make_fixture_repo unrelated master)"
+  other_pin="$(add_branch_worktree "$other" other-pin origin/master)"
+  run env GOLEMS_WORKTREE_GC_PIN_ROOT="$other_pin" /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'not a golems worktree'
+}
+
+@test "nightly pin: root checkout and nested directory refuse" {
+  prepare_stub_pin
+  for path in "$HOME/Gits/golems" "$NIGHTLY_PIN/scripts"; do
+    run env GOLEMS_WORKTREE_GC_PIN_ROOT="$path" /bin/bash "$NIGHTLY_DRIVER"
+    assert_pin_refusal 'not a golems worktree'
+  done
+}
+
+@test "nightly pin: clean default pin invokes stub once with --apply and logs SHA" {
+  prepare_stub_pin
+  sha="$(git -C "$NIGHTLY_PIN" rev-parse HEAD)"
+  run /bin/bash "$NIGHTLY_DRIVER" --idle-hours 12
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pin SHA $sha"* ]] || false
+  [ "$(cat "$GC_CALLS")" = "$NIGHTLY_PIN/scripts/worktree-gc.sh --apply --idle-hours 12" ]
+}
+
+@test "nightly pin: override selects a verified golems worktree" {
+  prepare_stub_pin
+  override="$HOME/Gits/golems/.worktrees/test-pin"
+  git -C "$HOME/Gits/golems" worktree add -q --detach "$override" HEAD
+  run env GOLEMS_WORKTREE_GC_PIN_ROOT="$override" /bin/bash "$NIGHTLY_DRIVER"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pin SHA $(git -C "$override" rev-parse HEAD)"* ]] || false
+  [ "$(cat "$GC_CALLS")" = "$override/scripts/worktree-gc.sh --apply" ]
+}
+
+@test "nightly pin: clean ancestor of the fetched origin/master is accepted" {
+  prepare_stub_pin
+  commit_fixture_file "$HOME/Gits/golems" master-only
+  git -C "$HOME/Gits/golems" update-ref refs/remotes/origin/master HEAD
+  run /bin/bash "$NIGHTLY_DRIVER"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$GC_CALLS")" = "$NIGHTLY_PIN/scripts/worktree-gc.sh --apply" ]
+}
+
+@test "nightly pin: legacy fixture launcher uses a synthetic pin and GC stub" {
+  prepare_stub_pin
+  run env GC_SOURCE="$stub" "$WORKTREE_GC_NIGHTLY"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$GC_CALLS")" = "$NIGHTLY_PIN/scripts/worktree-gc.sh --apply" ]
+}
+
 nightly() {
-  # The same containment guard fronts the wrapper, using only a fixture lock.
-  GC_SOURCE="$REPO_ROOT/scripts/worktree-gc-nightly.sh" \
-    GOLEMS_HEAVY_LOCK="$TEST_ROOT/heavy-suite.lock" "$WORKTREE_GC" "$@"
+  GOLEMS_HEAVY_LOCK="$TEST_ROOT/heavy-suite.lock" "$WORKTREE_GC_NIGHTLY" "$@"
 }
 
 @test "nightly R2 containment: nested non-repo cannot evaluate its enclosing fixture" {
@@ -20,52 +153,35 @@ nightly() {
 }
 
 @test "nightly R2: a GC runtime crash remains a failure" {
+  prepare_stub_pin
   repo="$(make_fixture_repo crash)"
   worktree="$(add_branch_worktree "$repo" sentinel)"
-  stub="$TEST_ROOT/bin"
-  mkdir "$stub"
-  printf '#!/usr/bin/env bash\n[[ " $* " == *" worktree list "* ]] && exit 1\nexec "$REAL_GIT" "$@"\n' > "$stub/git"
-  chmod +x "$stub/git"
-  # Fail from mkdir (GC set -e exit 1), after the wrapper starts its child.
-  printf '#!/usr/bin/env bash\n[[ "$1" == -p && "$2" == */docs.local ]] && exit 1\nexec /bin/mkdir "$@"\n' > "$stub/mkdir"
-  chmod +x "$stub/mkdir"
-  run env REAL_GIT="$(command -v git)" PATH="$stub:$PATH" \
-    GC_SOURCE="$REPO_ROOT/scripts/worktree-gc-nightly.sh" GOLEMS_HEAVY_LOCK="$TEST_ROOT/lock" \
-    "$WORKTREE_GC" --repo "$repo" --idle-hours 0
+  run env GC_STUB_EXIT=1 /bin/bash "$NIGHTLY_DRIVER" --repo "$repo" --idle-hours 0
   [ "$status" -eq 1 ]
   [[ "$output" == *"FAILED"* ]] || false
   [ -f "$worktree/fixture.txt" ]
 }
 
 @test "nightly R2: completed KEEP-only code succeeds" {
+  prepare_stub_pin
   repo="$(make_fixture_repo keep)"
   worktree="$(add_branch_worktree "$repo" sentinel)"
   commit_fixture_file "$worktree" local.txt
-  run nightly --repo "$repo" --idle-hours 0
+  run env GC_STUB_EXIT=3 /bin/bash "$NIGHTLY_DRIVER" --repo "$repo" --idle-hours 0
   [ "$status" -eq 0 ]
-  [[ "$output" == *"KEEP-unpushed"* ]] || false
+  [ -e "$GC_CALLS" ]
+  [[ "$output" != *"FAILED"* ]] || false
 }
 
 @test "nightly R2: TERM kills descendants before releasing the lock" {
+  prepare_stub_pin
   repo="$(make_fixture_repo term)"
   worktree="$(add_branch_worktree "$repo" sentinel)"
-  stub="$TEST_ROOT/bin"
-  mkdir "$stub"
-  cat > "$stub/git" <<'SH'
-#!/usr/bin/env bash
-if [[ " $* " == *" fetch "* ]]; then
-  sleep 60 &
-  echo "$!" > "$GC_CHILD_PID"
-  wait
-fi
-exec "$REAL_GIT" "$@"
-SH
-  chmod +x "$stub/git"
-  run python3 - "$WORKTREE_GC" "$REPO_ROOT/scripts/worktree-gc-nightly.sh" "$repo" "$TEST_ROOT" "$stub" "$(command -v git)" <<'PY'
+  run python3 - "$NIGHTLY_DRIVER" "$repo" "$TEST_ROOT" <<'PY'
 import os,signal,subprocess,sys,time
-runner,source,repo,root,stub,git=sys.argv[1:]
-env=dict(os.environ,GC_SOURCE=source,GOLEMS_HEAVY_LOCK=root+'/lock',GC_CHILD_PID=root+'/child',REAL_GIT=git,PATH=stub+':'+os.environ['PATH'])
-p=subprocess.Popen([runner,'--repo',repo,'--idle-hours','0'],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,start_new_session=True)
+runner,repo,root=sys.argv[1:]
+env=dict(os.environ,GOLEMS_HEAVY_LOCK=root+'/lock',GC_CHILD_PID=root+'/child')
+p=subprocess.Popen(['/bin/bash',runner,'--repo',repo,'--idle-hours','0'],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,start_new_session=True)
 child=None
 try:
     for _ in range(100):
