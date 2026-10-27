@@ -15,7 +15,7 @@ export function bridgePaths(product) {
   return CLIENT_RULES.get(product)?.bridge ? [...BRIDGE_PATHS] : [];
 }
 
-function staleClients(r) {
+export function staleClients(r) {
   const scan = r.activation.seat_scan, rule = CLIENT_RULES.get(r.product);
   if (!rule) throw new Error(`no client matcher for ${r.product}`);
   const clients = scan.clients.filter(c => (rule.bridge ?? rule.relay).test(c.command));
