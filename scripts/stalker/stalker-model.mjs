@@ -1,7 +1,6 @@
-import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadConfig, REPO } from '../ci/check-model-role-drift.mjs';
+import { readJSON, validate, REPO } from '../ci/check-model-role-drift.mjs';
 
 export function resolveStalkerModel(provider = 'codex') {
   const route = {
@@ -10,21 +9,32 @@ export function resolveStalkerModel(provider = 'codex') {
   }[provider];
   if (!route) throw new Error(`Stalker: unknown model provider ${provider}`);
   const [override, role, field] = route;
-  let model = process.env[override];
-  if (!model) {
-    try {
-      model = execFileSync(process.execPath, [fileURLToPath(new URL('../model-roles.mjs', import.meta.url)), role, '--field', field], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-    } catch (error) {
-      throw new Error(`Stalker: cannot resolve ${role}.${field}: ${error.stderr || error.message}`);
+  let roles;
+  try {
+    const root = process.env.GOLEMS_MODEL_ROLES_ROOT ?? REPO;
+    const config = readJSON(join(root, 'standards/model-roles.json'));
+    const schema = readJSON(join(root, 'standards/model-roles.schema.json'));
+    // Codex policy depends on every Codex row; agy needs only its selected role.
+    // Global validation remains in the owning lint, independent of CLI availability.
+    roles = config.roles;
+    if (roles && typeof roles === 'object' && !Array.isArray(roles)) {
+      roles = Object.fromEntries(Object.entries(roles).filter(([name]) => provider === 'codex' ? name.startsWith('codex.') : name === role));
     }
+    const errors = validate({ ...config, roles }, schema);
+    if (errors.length) throw new Error(errors.join('\n'));
+    if (!Object.hasOwn(roles, role)) throw new Error(`unknown role: ${role}`);
+    if (roles[role].status === 'candidate') throw new Error(`unbenched model role: ${role}`);
+    for (const [name, row] of Object.entries(roles)) {
+      if (!row.model.trim() || /^gpt-5\.6-/i.test(row.model.trim())) throw new Error(`forbidden or empty model for ${name}: ${row.model}`);
+    }
+  } catch (error) {
+    throw new Error(`Stalker: cannot resolve ${role}.${field} (${provider}): ${error.message}`);
   }
-  if (!model.trim() || /^gpt-5\.6-/i.test(model.trim())) throw new Error(`Stalker: forbidden or empty model for ${override}: ${model}`);
+  const model = process.env[override] || roles[role][field];
+  if (!model.trim() || /^gpt-5\.6-/i.test(model.trim())) throw new Error(`Stalker: forbidden or empty model for ${role} (${override}): ${model}`);
   if (provider === 'codex') {
-    let roles;
-    try { roles = loadConfig(process.env.GOLEMS_MODEL_ROLES_ROOT ?? REPO).roles; }
-    catch (error) { throw new Error(`Stalker: cannot load Codex model allowlist: ${error.message}`); }
-    const allowed = new Set(Object.entries(roles).filter(([name]) => name.startsWith('codex.')).map(([, role]) => role.model));
-    if (!allowed.has(model)) throw new Error(`Stalker: forbidden model for ${override}: ${model}`);
+    const allowed = new Set(Object.values(roles).map(row => row.model));
+    if (!allowed.has(model)) throw new Error(`Stalker: forbidden model for ${role} (${override}): ${model}`);
   }
   return model;
 }

@@ -57,6 +57,57 @@ test('scoring resolves roles, preserves overrides, and stops before model calls 
     assert.equal(otherOnly.status, 0, otherOnly.stderr);
     assert.match(otherOnly.stdout, /MODEL_CALL/);
   }
+  const mutations = {
+    'missing-role': (roles, name) => { delete roles[name]; },
+    'missing-model': (roles, name) => { delete roles[name].model; },
+    'invalid-type': (roles, name) => { roles[name].model = 123; },
+    'null-model': (roles, name) => { roles[name].model = null; },
+    'empty-model': (roles, name) => { roles[name].model = ''; },
+    'blank-model': (roles, name) => { roles[name].model = '   '; },
+    'forbidden-model': (roles, name) => { roles[name].model = 'gpt-5.6-sol'; },
+    'missing-use-for': (roles, name) => { delete roles[name].use_for; },
+  };
+  for (const [provider, selected, unavailable, bins, override] of [
+    ['codex', 'codex.implement', 'gemini.gather.text', { TEST_AGY_BIN: '' }, 'STALKER_CODEX_MODEL'],
+    ['agy', 'gemini.gather.text', 'codex.implement', { TEST_CODEX_BIN: '' }, 'STALKER_AGY_MODEL'],
+  ]) {
+    for (const [mutation, mutate] of Object.entries(mutations)) {
+      for (const useOverride of [false, true]) {
+        const extra = { ...bins, ...(useOverride ? { [override]: config.roles[selected].model } : {}) };
+        await t.test(`${provider} ${useOverride ? 'override' : 'default'} ignores unavailable ${mutation}`, async () => {
+          const changed = structuredClone(config); mutate(changed.roles, unavailable);
+          await writeFile(join(dir, 'standards/model-roles.json'), JSON.stringify(changed));
+          const result = run(extra);
+          assert.equal(result.status, 0, result.stderr);
+          assert.ok(result.stdout.includes(provider === 'codex'
+            ? `MODEL_CALL:${config.roles[selected].model}:`
+            : `MODEL_CALL::${config.roles[selected].model}`), result.stdout);
+        });
+        await t.test(`${provider} ${useOverride ? 'override' : 'default'} rejects selected ${mutation} before spend`, async () => {
+          const changed = structuredClone(config); mutate(changed.roles, selected);
+          await writeFile(join(dir, 'standards/model-roles.json'), JSON.stringify(changed));
+          const result = run(extra);
+          assert.equal(result.status, 2, result.stderr);
+          assert.ok(result.stderr.includes(selected), result.stderr);
+          assert.doesNotMatch(result.stdout, /MODEL_CALL/);
+        });
+      }
+    }
+  }
+  for (const policyRole of ['codex.security', 'codex.subagent.mechanical']) {
+    for (const [mutation, mutate] of Object.entries(mutations).filter(([name]) => name !== 'missing-role')) {
+      for (const useOverride of [false, true]) {
+        await t.test(`Codex ${useOverride ? 'override' : 'default'} rejects policy ${policyRole} ${mutation}`, async () => {
+          const changed = structuredClone(config); mutate(changed.roles, policyRole);
+          await writeFile(join(dir, 'standards/model-roles.json'), JSON.stringify(changed));
+          const result = run({ TEST_AGY_BIN: '', ...(useOverride ? { STALKER_CODEX_MODEL: config.roles['codex.implement'].model } : {}) });
+          assert.equal(result.status, 2, result.stderr);
+          assert.ok(result.stderr.includes(policyRole), result.stderr);
+          assert.doesNotMatch(result.stdout, /MODEL_CALL/);
+        });
+      }
+    }
+  }
 });
 
 test('both digest stages reject missing roles and forbidden overrides before generation', () => {
