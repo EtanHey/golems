@@ -248,13 +248,9 @@ check_owner_guards() {
       return 1
     fi
   fi
-  # Repo-local registrations can also be bound to T3 threads.
-  # Existing repo-local scopes still work without T3.
   detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3 "$path" 2>/dev/null)" || rc=$?
   if [[ "$rc" -eq 3 ]]; then
-    local verdict=KEEP-undetermined
-    [[ "$rc" -eq 3 ]] && verdict=KEEP-live
-    emit_row "$repo_name" "$path" "$branch" not-checked undetermined "$verdict" "${detail:-T3 binding unreadable}"
+    emit_row "$repo_name" "$path" "$branch" not-checked undetermined KEEP-live "$detail"
     return 1
   fi
 }
@@ -434,7 +430,6 @@ process_worktree_block() {
     return 0
   fi
 
-  # Only direct children of <main>/.worktrees are ours to reap.
   local scope_name="${canonical_worktree#"$main_root/.worktrees/"}"
   if [[ "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
@@ -553,7 +548,6 @@ process_worktree_block() {
       "undetermined" "KEEP-undetermined" "$base_reason"
     return 0
   fi
-
 
   if ! index_entries="$(git -C "$worktree_path" ls-files --stage)"; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "undetermined" \

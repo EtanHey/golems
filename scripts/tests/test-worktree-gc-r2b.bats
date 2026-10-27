@@ -1,8 +1,6 @@
 #!/usr/bin/env bats
 load lib/worktree-gc-fixtures
 
-# These liveness/report fixtures are repo-local: T3-managed roots now skip outright.
-
 squash_fixture() {
   repo="$(make_fixture_repo squash)"
   worktree="$(add_branch_worktree "$repo" topic)"
@@ -34,6 +32,13 @@ t3_fixture() {
     CREATE TABLE orchestration_v2_projection_threads(thread_id TEXT PRIMARY KEY,payload_json TEXT,deleted_at TEXT);
     CREATE TABLE orchestration_v2_projection_runs(thread_id TEXT,status TEXT);
     CREATE TABLE orchestration_v2_projection_provider_sessions(thread_id TEXT,status TEXT);'
+}
+
+managed_t3_fixture() {
+  t3_fixture
+  mkdir -p "$HOME/.t3/worktrees/t3-repo"
+  git -C "$repo" worktree move "$worktree" "$HOME/.t3/worktrees/t3-repo/candidate"
+  worktree="$HOME/.t3/worktrees/t3-repo/candidate"
 }
 
 bind_thread() {
@@ -103,11 +108,7 @@ bind_thread() {
 }
 
 @test "R2b T3 managed root skips even with missing DB" {
-  t3_fixture
-  target="$HOME/.t3/worktrees/t3-repo/candidate"
-  mkdir -p "$(dirname "$target")"
-  git -C "$repo" worktree move "$worktree" "$target"
-  worktree="$target"
+  managed_t3_fixture
   rm "$WORKTREE_GC_T3_DB"
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]
@@ -130,11 +131,7 @@ bind_thread() {
 }
 
 @test "R2b T3 invalid schema cannot authorize managed-root removal" {
-  t3_fixture
-  target="$HOME/.t3/worktrees/t3-repo/candidate"
-  mkdir -p "$(dirname "$target")"
-  git -C "$repo" worktree move "$worktree" "$target"
-  worktree="$target"
+  managed_t3_fixture
   sqlite3 "$WORKTREE_GC_T3_DB" 'DROP TABLE orchestration_v2_projection_runs;'
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [[ "$output" == *t3-managed* ]] || return 1
@@ -240,7 +237,6 @@ CHECK
 
 @test "FIX1 T3 binding protects repo-local worktrees too" {
   t3_fixture
-  mkdir -p "$repo/.worktrees"
   git -C "$repo" worktree move "$worktree" "$repo/.worktrees/topic"
   worktree="$repo/.worktrees/topic"; bind_thread NULL
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
@@ -259,13 +255,11 @@ CHECK
   [ "$status" -eq 0 ]; [ ! -e "$other" ]; [[ "$output" == *"report row failed"* ]]
 }
 
-
 @test "H1 merged T3 roots skip all descendants and report one count per repo" {
   t3_fixture
   root="$HOME/.t3/worktrees"
   for name in first nested/second; do
-    target="$root/t3-repo/$name"
-    git -C "$repo" worktree add -q --detach "$target" origin/main
+    git -C "$repo" worktree add -q --detach "$root/t3-repo/$name" origin/main
   done
   run "$WORKTREE_GC" --apply --idle-hours 0
   [ "$status" -eq 0 ]
@@ -274,12 +268,10 @@ CHECK
   [[ "$output" != *"$root/t3-repo/first"* ]]
   python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" <<'CHECK'
 import json,sys
-r=json.load(open(sys.argv[1]))
-assert r["t3_managed_skips"] == {"t3-repo": 2}
+assert json.load(open(sys.argv[1]))["t3_managed_skips"] == {"t3-repo": 2}
 assert open(sys.argv[1].replace(".json", ".md")).read().count("t3-managed") == 1
 CHECK
 }
-
 @test "H1 canonical adapter root skips but similarly prefixed sibling is removed" {
   t3_fixture
   ln -s "$repo/.worktrees" "$HOME/root-alias"
@@ -289,7 +281,6 @@ CHECK
   [ "$status" -eq 0 ]; [ -d "$worktree" ]; [ ! -e "$other" ]
   [[ "$output" == *t3-managed* ]]
 }
-
 @test "H1 detached live symlink sources are kept across every protected root" {
   repo="$(make_fixture_repo sources)"
   worktree="$repo/.worktrees/skills-main"
@@ -303,7 +294,6 @@ CHECK
     rm "$HOME/$root/nested/source"
   done
 }
-
 @test "H1 symlinked skills directory protects resolved descendants without prefix collisions" {
   repo="$(make_fixture_repo source-alias)"
   worktree="$(add_branch_worktree "$repo" live)"

@@ -32,14 +32,9 @@ def t3_threads(path):
 
 
 def t3_roots():
-    # Installed settings.json has storageCleanup.worktreeSettledAfterDays and
-    # storageCleanup.worktreeOnMerge, but no worktrees-directory key (2026-10-27).
-    # Additional roots are newline-separated; the default is always protected.
-    roots = [os.path.expanduser("~/.t3/worktrees")]
-    roots.extend(os.environ.get("WORKTREE_GC_T3_ROOTS", "").splitlines())
-    for root in roots:
-        if root.strip():
-            print(os.path.realpath(os.path.expanduser(root.strip())))
+    roots = ["~/.t3/worktrees", *os.environ.get("WORKTREE_GC_T3_ROOTS", "").splitlines()]
+    print("\n".join(os.path.realpath(os.path.expanduser(root.strip()))
+                    for root in roots if root.strip()))
 
 
 def live_symlink(path):
