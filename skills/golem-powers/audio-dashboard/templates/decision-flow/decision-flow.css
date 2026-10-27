@@ -293,8 +293,14 @@ body[data-view="story"] .df-sheet.is-open .df-sheet-head{position:sticky;top:0;z
 }
 
 /* Notes share the ledger palette; the quote is the anchor and the draft gets the space. */
-.df-answer-status{flex:none;font-size:16px;line-height:1;color:var(--muted)}
-.is-answered>.df-answer-status{color:var(--glass)}
+.df-answer-status{display:inline-flex;flex:none;width:20px;height:20px;vertical-align:-.14em;color:var(--muted)}
+.df-answer-status svg{display:block;width:100%;height:100%;overflow:visible}
+.df-answer-status circle{fill:none;stroke:currentColor;stroke-width:1.75}
+.df-answer-status path{display:none;fill:none;stroke:var(--ink);stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round}
+.df-answer-status[data-answered="true"]{color:var(--glass)}
+.df-answer-status[data-answered="true"] circle{fill:var(--glass)}
+.df-answer-status[data-answered="true"] path{display:block}
+.df-card-head h2>.df-answer-status{margin-right:8px}
 .df-chip[aria-current="true"]>.df-answer-status{color:var(--ink)}
 .df-note-count{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 4px;border-radius:10px;background:var(--glass);color:var(--ink);font-size:12px;font-weight:650}
 .df-note-count[hidden],#df-cite[hidden],#df-note-delete[hidden]{display:none}

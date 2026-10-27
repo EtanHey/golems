@@ -83,8 +83,8 @@ test("Clear requires confirmation and removes only its card's picks, checks, fre
   expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(expected);
   expect([...card.querySelectorAll("input")].every(input => !input.checked)).toBe(true);
   expect(card.querySelector(".df-free").value).toBe(""); expect(card.querySelector(".df-note-count").hidden).toBe(true);
-  for (const selector of ['[data-index-for="vb"]', '[data-chip-for="vb"]']) expect(document.querySelector(selector + " .df-answer-status").textContent).toBe("☐");
-  expect(document.querySelector('[data-chip-for="b"] .df-answer-status').textContent).toBe("✓");
+  for (const selector of ['[data-index-for="vb"]', '[data-chip-for="vb"]']) expect(document.querySelector(selector + " .df-answer-status").getAttribute("aria-label")).toBe("Awaiting answer");
+  expect(document.querySelector('[data-chip-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
   expect(card.querySelector(".df-clear-confirm").hidden).toBe(true);
   expect(boot({ decisions: CHECK_DECISIONS, seed: expected }).document.getElementById("df-answered").textContent).toBe("1");
 });
@@ -106,7 +106,7 @@ test("failed Clear preserves saved answers and visible controls, and permits ret
   expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(CLEAR_SEED);
   expect(card.querySelector('input[type="radio"]').checked).toBe(true); expect(card.querySelector(".df-free").value).toBe("An answer");
   expect(card.querySelector(".df-clear-error").textContent).toContain("Answers kept"); expect(card.querySelector(".df-clear-confirm").hidden).toBe(false);
-  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("✓");
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
   blocked = false; card.querySelector(".df-clear-apply").click();
   expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test")).vb).toBeUndefined(); expect(card.querySelector(".df-clear-confirm").hidden).toBe(true);
 });
@@ -132,7 +132,7 @@ test("a checklist card with a pick and no ticks counts as answered", () => {
   card.querySelectorAll('input[type="radio"]')[1].click();
   expect(card.querySelectorAll('.df-check-input:checked').length).toBe(0);
   expect(card.classList.contains("is-answered")).toBe(true);
-  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("✓");
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
 });
 
 test("review: a cited selection excludes speaker labels", () => {
@@ -156,18 +156,36 @@ test("review: plain transcript words retain keyboard word seeking", () => {
   expect(document.querySelector("audio").paused).toBe(false);
 });
 
+test("SVG answer indicators restore, update and clear across card headers, sidebar and chips", () => {
+  const { document } = boot({ decisions: CHECK_DECISIONS, seed: { vb: "All good" } });
+  const card = document.querySelector('[data-decision="vb"]');
+  const marks = () => [card.querySelector(".df-card-head .df-answer-status"), ...['[data-index-for="vb"]', '[data-chip-for="vb"]'].map(selector => document.querySelector(selector + " .df-answer-status"))];
+  function expectMarks(done) {
+    for (const mark of marks()) {
+      expect(mark).not.toBeNull(); expect(mark.getAttribute("role")).toBe("img");
+      expect(mark.getAttribute("aria-label")).toBe(done ? "Answered" : "Awaiting answer");
+      expect(mark.dataset.answered).toBe(String(done)); expect(mark.textContent).toBe("");
+      expect(mark.querySelector("svg circle")).not.toBeNull(); expect(mark.querySelector("svg path")).not.toBeNull();
+      expect(mark.querySelector("svg").getAttribute("aria-hidden")).toBe("true");
+    }
+  }
+  expectMarks(true); card.querySelector(".df-clear").click(); card.querySelector(".df-clear-apply").click(); expectMarks(false);
+  for (const checkbox of card.querySelectorAll('input[type="checkbox"]')) checkbox.click(); expectMarks(true);
+  expect(card.querySelector(".df-rank").textContent).toBe("1");
+});
+
 test("answer indicators are separate from ranks and follow restored and cleared answers", () => {
   const run = boot({ seed: { a: "Keep" } }); const { document } = run;
-  for (const selector of ['[data-index-for="a"]', '[data-chip-for="a"]']) expect(document.querySelector(selector + " .df-answer-status").textContent).toBe("✓");
+  for (const selector of ['[data-index-for="a"]', '[data-chip-for="a"]']) expect(document.querySelector(selector + " .df-answer-status").getAttribute("aria-label")).toBe("Answered");
   expect(document.querySelector('[data-chip-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
   expect(document.querySelector('[data-chip-for="a"] .df-chip-rank').textContent).toBe("1");
   const free = document.querySelector('[data-decision="b"] .df-free'); free.value = "reply"; free.dispatchEvent(new run.window.Event("input"));
-  expect(document.querySelector('[data-index-for="b"] .df-answer-status').textContent).toBe("✓");
+  expect(document.querySelector('[data-index-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
   free.value = ""; free.dispatchEvent(new run.window.Event("input"));
-  expect(document.querySelector('[data-index-for="b"] .df-answer-status').textContent).toBe("☐");
+  expect(document.querySelector('[data-index-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
   const checklist = boot({ decisions: DEFAULT_DECISIONS.map((decision, index) => ({ ...decision, rank: index ? 1 : "✓" })) });
   expect(checklist.document.querySelector(".df-chip-rank").textContent).toBe("QA");
-  expect(checklist.document.querySelector(".df-answer-status").textContent).toBe("☐");
+  expect(checklist.document.querySelector(".df-answer-status").getAttribute("aria-label")).toBe("Awaiting answer");
 });
 
 test("checklist and card note buttons quote their target, persist and export without checking the item", async () => {
@@ -215,7 +233,7 @@ test("notes nest inside the story answer sheet, return focus, and can be edited 
   opener.click(); document.querySelector(".df-note-edit").click(); noteText(run, "Revised note");
   expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))["vb-notes"]).toEqual([{ quote: "History row", text: "Revised note" }]);
   opener.click(); document.querySelector(".df-note-edit").click(); document.getElementById("df-note-delete").click();
-  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("☐");
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
   expect(document.querySelector('[data-chip-for="vb"] .df-note-count').hidden).toBe(true);
 });
 
