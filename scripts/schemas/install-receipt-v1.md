@@ -68,13 +68,16 @@ refused on the two existing seat methods, whose behavior is unchanged.
   core paths: `src/brainlayer/mcp_stdio_bridge.py`, `src/brainlayer/mcp/`, and
   `src/brainlayer/mcp_socket_config.py`.
 
-Core alone matches BrainLayer and BrainBar clients when ANY `argv` element equals
-or ends with one of these paths (the leading `/` enforces a path-suffix boundary):
+Core alone matches BrainLayer and BrainBar clients when ANY `argv` element contains
+one of these paths as the whole element or immediately after an option separator
+`=` or `:` (the path must extend to the end of the element):
 `/opt/homebrew/bin/brainlayer-mcp-stdio-bridge`,
 `/opt/homebrew/opt/brainlayer/bin/brainlayer-mcp-stdio-bridge` or
 `/opt/homebrew/Cellar/brainlayer/<version>/bin/brainlayer-mcp-stdio-bridge`,
 at any token index, including `uv run <bridge>` and interpreter wrappers, with
-trailing arguments allowed. A stray path held by an editor also matches, erring
+trailing arguments allowed. For example, `--bridge=/opt/homebrew/opt/brainlayer/bin/brainlayer-mcp-stdio-bridge`
+matches; arbitrary directory prefixes and Cellar `..` traversal paths are refused.
+A stray path held by an editor also matches, erring
 toward stale. Watch, drain, daemon, hybrid-helper and supervisor_guard commands
 without a matching bridge element are not clients. BrainBar shares this matcher
 because those bridges relay to its `/tmp/brainbar.sock`.
@@ -85,6 +88,7 @@ its product's core rule; otherwise validate and write refuse with
 `unmatched client in seat_scan.clients`. Exclude non-client processes rather than
 silently including unmatched entries. Collectors pass token arrays to the exported
 `CLIENT_RULES` matcher (`.test(argv)`); they never normalise paths or copy matchers.
+The per-element bridge regex is private; exported matchers consume full argv arrays.
 
 Core floors both timestamps to whole seconds when comparing
 `started_at <= installed.install_finished_at`:

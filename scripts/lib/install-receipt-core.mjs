@@ -3,7 +3,7 @@ import schema from '../schemas/install-receipt-v1.mjs';
 
 const MCP_PRODUCTS = ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar'];
 const BRIDGE_PATHS = ['src/brainlayer/mcp_stdio_bridge.py', 'src/brainlayer/mcp/', 'src/brainlayer/mcp_socket_config.py'];
-export const BRIDGE = /\/opt\/homebrew\/(?:bin|(?:opt\/brainlayer|Cellar\/brainlayer\/(?!\.{1,2}\/)[^/\s]+)\/bin)\/brainlayer-mcp-stdio-bridge$/;
+const BRIDGE = /(?:^|[=:])\/opt\/homebrew\/(?:bin|(?:opt\/brainlayer|Cellar\/brainlayer\/(?!\.{1,2}\/)[^/\s]+)\/bin)\/brainlayer-mcp-stdio-bridge$/;
 export const SOCAT = { test: argv => argv.some(arg => /^(?:\/opt\/homebrew\/bin\/)?socat$/.test(arg))
   && argv.includes('STDIO') && argv.includes('UNIX-CONNECT:/tmp/voicelayer-mcp.sock') };
 export const SOCAT_REASON = 'LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).';

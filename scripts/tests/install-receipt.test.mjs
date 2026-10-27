@@ -5,7 +5,8 @@ import { resolve, join } from 'node:path';
 import { hostname, userInfo } from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { assess } from '../lib/install-receipt-core.mjs';
+import * as core from '../lib/install-receipt-core.mjs';
+const { assess, CLIENT_RULES } = core;
 
 const cli = resolve('scripts/install-receipt.mjs');
 const sha = 'a'.repeat(40), digest = 'b'.repeat(64);
@@ -102,7 +103,7 @@ test('I2d R1: bridge diff must start at a distinct prior-version tag', () => iso
   }
 }));
 test('I2d R1: unrecognised bridge paths fail closed, even with unchanged bridge code', () => isolated(run => {
-  for (const path of ['/untrusted/bin/brainlayer-mcp-stdio-bridge', 'brainlayer-mcp-stdio-bridge',
+  for (const path of [`/untrusted${bridge}`, 'brainlayer-mcp-stdio-bridge',
     '/opt/homebrew/Cellar/brainlayer/../bin/brainlayer-mcp-stdio-bridge',
     '/opt/homebrew/Cellar/brainlayer/./bin/brainlayer-mcp-stdio-bridge']) {
     for (const commandText of [path, `/opt/homebrew/bin/python3 ${path}`, `uv run ${path} --verbose`]) {
@@ -201,7 +202,7 @@ test('I2d: a writer-held bridge stays stale and empty socat scans still disclose
 for (const product of ['brainlayer', 'brainbar']) {
   for (const commandText of [`${bridge} --verbose`, `uv run ${bridge} --verbose`,
     `/usr/bin/env python3 ${bridge}`, `editor ${bridge} --daemon`,
-    `/fixture/root${bridge}`, `/fixture/root/opt/homebrew/Cellar/brainlayer/1.5.77/bin/brainlayer-mcp-stdio-bridge`,
+    `--bridge=${bridge}`, `--bridge:${bridge}`,
     `python3 ${bridge} --label an argument with spaces`]) {
     test(`I2f: ${product} full ps-split argv matches ${commandText}`, () => isolated(run => {
       const r = processReceipt(product), c = client(undefined, commandText);
@@ -215,6 +216,45 @@ for (const product of ['brainlayer', 'brainbar']) {
     }));
   }
 }
+for (const product of ['brainlayer', 'brainbar']) {
+  test(`I2f R1: ${product} refuses prefixed paths and the Cellar dot-dot bypass`, () => isolated(run => {
+    for (const path of [`/untrusted${bridge}`, `/fixture/root${bridge}`,
+      '/fixture/root/opt/homebrew/Cellar/brainlayer/1.5.77/bin/brainlayer-mcp-stdio-bridge',
+      '/opt/homebrew/Cellar/brainlayer/../opt/homebrew/bin/brainlayer-mcp-stdio-bridge']) {
+      for (const started_at of ['2026-10-27T09:00:00Z', '2026-10-27T09:00:01Z']) {
+        const r = processReceipt(product);
+        r.activation.seat_scan.clients = [client(started_at, `uv run ${path} --verbose`)];
+        for (const command of ['validate', 'write']) {
+          const result = run(command, r);
+          assert.equal(result.status, 1); assert.match(result.stderr, /unrecognised bridge path/);
+        }
+      }
+    }
+  }));
+  test(`I2f R1: ${product} refuses a prefixed bridge basename`, () => isolated(run => {
+    const r = processReceipt(product);
+    r.activation.seat_scan.clients = [client(undefined, '/opt/homebrew/bin/xbrainlayer-mcp-stdio-bridge')];
+    for (const command of ['validate', 'write']) {
+      const result = run(command, r);
+      assert.equal(result.status, 1); assert.match(result.stderr, /unmatched client in seat_scan.clients/);
+    }
+  }));
+  test(`I2f R1: ${product} extra-args bridge started after install is LIVE`, () => isolated(run => {
+    const r = processReceipt(product);
+    r.activation.seat_scan.clients = [client('2026-10-27T09:00:01Z', `uv run ${bridge} --verbose`)];
+    for (const command of ['validate', 'write']) assert.equal(output(run(command, r)).verdict, 'LIVE');
+  }));
+}
+test('I2f R1: exported bridge matchers consume argv arrays without regex coercion', () => {
+  assert.equal('BRIDGE' in core, false);
+  for (const product of ['brainlayer', 'brainbar']) {
+    const matcher = CLIENT_RULES.get(product).bridge;
+    assert.equal(matcher.test(['uv', 'run', bridge, '--verbose']), true);
+    assert.equal(matcher.test(['uv', 'run', '--bridge=' + bridge, '--verbose']), true);
+    assert.equal(matcher.test(['/untrusted' + bridge]), false);
+    assert.throws(() => matcher.test(bridge), TypeError);
+  }
+});
 for (const product of ['brainlayer', 'brainbar', 'voicelayer', 'voicebar']) {
   test(`I2f: ${product} refuses every unmatched client even with unchanged bridge code`, () => isolated((run, home) => {
     for (const changed of [true, false]) {
