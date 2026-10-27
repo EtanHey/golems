@@ -162,6 +162,22 @@ lead records two short artifacts:
   or PR link and the row it would become. This list is the §12 sprint backlog, which starts by
   turning targets into rows and tightening ceilings.
 
+## Scheduled alert deduplication
+
+Push, pull_request and manual runs keep the raw table verdict. Only hourly scheduled
+runs use `scripts/ratchet/schedule.mjs`: a new `(latest guarded master SHA, sorted failing
+row IDs)` cause fails once. Identical repeats pass with a `master still RED` warning
+and summary linking the first run; their table still shows the actual failing rows.
+One bot-owned `ratchet-red` issue stores the cause and first-run URL. Repeats edit its
+body without posting comments or changing issue state. Recovery closes it; recurrence
+reopens it and fails again. Serialized schedules prevent competing state writers.
+Re-running a failed scheduled run without fixing its cause also finishes green with
+the unchanged-cause warning. Malformed tables/state and API failures stay RED. A corrupt
+stored state body blocks every scheduled run with exit 2, even after the table recovers;
+remove the issue's `ratchet-red` label or its `<!-- golems-ratchet-schedule -->` marker
+to reset tracking before the next run. A green scheduled conclusion with
+this warning is alert deduplication, not evidence that master or its receipts passed.
+
 ## CI debt ceilings and live-tier freshness
 
 `py-undefined-names` uses pinned pyflakes 4.0.0 `UndefinedName` diagnostics (F821),
@@ -184,8 +200,9 @@ install's status and token probe; this CI row checks the receipt, never uses lea
 installs hooks. It is labeled `unit` so receipt checks cannot be mistaken for a live replay.
 
 The existing required `ratchet` job enforces this row only on guarded-path PRs, and on master
-pushes, plus hourly and on
-manual dispatch. Non-guarded PRs are exempt before any live API request, so the lead install
+pushes and manual dispatch. Hourly scheduled runs evaluate this row under the
+[scheduled alert deduplication](#scheduled-alert-deduplication) policy above.
+Non-guarded PRs are exempt before any live API request, so the lead install
 cannot block unrelated work. Failure output prints the exact `live-rows.sh` command; run it from
 the open lease PR checkout after the lead installs current master. After the lead publishes the receipt, rerun the failed master/PR ratchet jobs
 (or dispatch the workflow); posting a comment alone does not rerun CI. This prevents a green CI
