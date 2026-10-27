@@ -2,7 +2,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { runDigestCodex } from "./stalker-digest-runner.mjs";
 
-const MODEL = "gpt-5.6-sol";
+import { resolveStalkerModel } from "./stalker-model.mjs";
 const REASONING_EFFORT = "medium";
 const TIMEOUT_MS = 180_000;
 const MAX_INPUT_BYTES = 96 * 1024;
@@ -135,13 +135,14 @@ function chronologicalHalves(candidates) {
 }
 
 async function singleCuration({ candidates, workDir, generateImpl, timeline, label, input }) {
+  const model = resolveStalkerModel();
   const schemaPath = join(workDir, `${label}-schema.json`);
   const outputPath = join(workDir, `${label}.json`);
   await writeFile(schemaPath, `${JSON.stringify(selectionSchema(candidates), null, 2)}\n`);
   await rm(outputPath, { force: true });
   await generateImpl({
     input, outputPath, schemaPath, cwd: workDir,
-    model: MODEL, reasoningEffort: REASONING_EFFORT, timeoutMs: TIMEOUT_MS,
+    model, reasoningEffort: REASONING_EFFORT, timeoutMs: TIMEOUT_MS,
     diagnosticLabel: label,
   });
   const raw = await readFile(outputPath, "utf8").catch((error) => {

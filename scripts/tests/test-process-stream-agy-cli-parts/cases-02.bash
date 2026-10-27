@@ -246,7 +246,7 @@ SH
     [[ "$output" == *"agy failed"* ]] || false
     [[ "$output" == *"codex exec fallback scored segment after agy failure"* ]] || false
     grep -F -x -q -- '-m' "$CODEX_ARGS_FILE"
-    grep -F -x -q 'gpt-5.6-sol' "$CODEX_ARGS_FILE"
+    grep -F -x -q "$(node "$REPO_ROOT/scripts/model-roles.mjs" codex.implement --field model)" "$CODEX_ARGS_FILE"
     grep -F -x -q -- '-c' "$CODEX_ARGS_FILE"
     grep -F -x -q 'model_reasoning_effort=low' "$CODEX_ARGS_FILE"
     [ "$(cat "$CODEX_TIMEOUT_FILE")" = "120s" ]

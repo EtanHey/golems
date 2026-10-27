@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolveModelRole } from "../model-roles.mjs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
@@ -48,7 +49,7 @@ const validSelection = {
 
 test("selects only original objects, orders them chronologically, and uses the fixed model contract", async () => {
   const { summary, request, values } = await runSelection("valid", validSelection);
-  assert.equal(request.model, "gpt-5.6-sol");
+  assert.equal(request.model, process.env.STALKER_CODEX_MODEL || resolveModelRole("codex.implement"));
   assert.equal(request.reasoningEffort, "medium");
   assert.equal(request.timeoutMs, 180_000);
   assert.match(request.diagnosticLabel, /^human-digest-curation$/);

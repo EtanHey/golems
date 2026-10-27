@@ -94,10 +94,11 @@ run_signal_stage
 # --- 3b: Auto-score with local CLI model ---
 if [ ! -f "$GEMS_FILE" ]; then
     if [ -n "$AGY_BIN" ] || [ -n "$CODEX_BIN" ]; then
+        STALKER_AGY_MODEL=$(node "$SCRIPT_DIR/stalker-model.mjs" agy)
+        STALKER_CODEX_MODEL=$(node "$SCRIPT_DIR/stalker-model.mjs" codex)
         stalker_mark_scoring_started "$OUT_DIR" "$$"
         log "Pass 3b: Auto-scoring transcript candidate segments with local CLI model..."
 
-        STALKER_AGY_MODEL="${STALKER_AGY_MODEL:-Gemini 3.1 Pro (High)}"
         # A scoring prompt that has not answered in ~45s is dead weight. The old
         # 5m default (commit 3a6fed6f, #558) meant a wedged agy burned the full
         # timeout on EVERY segment before the working codex exec fallback ran —
@@ -111,7 +112,6 @@ if [ ! -f "$GEMS_FILE" ]; then
         # never let a workstation's interactive defaults silently turn every
         # segment into a max-reasoning call. The fallback also gets a hard
         # deadline so a wedged codex process cannot stall the whole stream.
-        STALKER_CODEX_MODEL="${STALKER_CODEX_MODEL:-gpt-5.6-sol}"
         STALKER_CODEX_EFFORT="${STALKER_CODEX_EFFORT:-low}"
         STALKER_CODEX_TIMEOUT="${STALKER_CODEX_TIMEOUT:-120s}"
         # Circuit breaker: after this many consecutive agy failures/timeouts,
