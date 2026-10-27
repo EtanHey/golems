@@ -12,11 +12,13 @@ On macOS the argv/env region is process-writable: an env match is evidence,
 NOT sole kill authority. Corroborate with kernel-side lineage: pgid membership
 seen while the leader incarnation was alive, or an observed ppid chain with
 matching birth keys to the suite's child, born after suite start. Call
-same_process immediately before every signal; re-snapshot after TERM before
-KILL. Darwin has no pidfd: a residual pid-reuse gap remains between checking
-and signaling. On Linux use pinned_process and signal.pidfd_send_signal with
-its retained pidfd; a later os.kill(pid) would reopen that gap. If pidfd is
-unavailable, pinned_process raises rather than promise a safe numeric-PID signal.
+identity() to retain a snapshot, then owned(), then same_process(snapshot)
+immediately before every signal; owned() returns bool or Unknown, not identity.
+Re-snapshot after TERM before KILL. Darwin has no pidfd: a residual pid-reuse
+gap remains between checking and signaling. On Linux use pinned_process and
+signal.pidfd_send_signal with its retained pidfd; a later os.kill(pid) would
+reopen that gap. If pidfd is unavailable, pinned_process raises rather than
+promise a safe numeric-PID signal.
 """
 from __future__ import annotations
 
@@ -35,6 +37,20 @@ PROC_PIDT_SHORTBSDINFO = 13
 CTL_KERN = 1
 KERN_ARGMAX = 8
 KERN_PROCARGS2 = 49
+
+# One reservation policy for Darwin tail classification and public env queries.
+# System Python emits dyld_hw_tpro/dyld_hw_tpro_pagers on this Mac; reserve the
+# entire dyld_ family so its strings cannot masquerade as ordinary env evidence.
+_APPLE_VECTOR_NAMES = frozenset((
+    b"ptr_munge", b"main_stack", b"executable_file", b"dyld_file",
+    b"executable_cdhash", b"executable_boothash", b"th_port",
+    b"security_config", b"stack_guard", b"malloc_entropy",
+))
+_APPLE_VECTOR_PREFIXES = (b"dyld_",)
+
+
+def _reserved_env_name(name: bytes) -> bool:
+    return name in _APPLE_VECTOR_NAMES or name.startswith(_APPLE_VECTOR_PREFIXES)
 
 
 class ProcIdentityUnavailable(RuntimeError):
@@ -224,7 +240,8 @@ def _parse_procargs2(data: bytes) -> tuple[list[bytes], list[bytes]]:
     """Pure Darwin layout parser. Unexplained trailing entries mean ambiguity.
 
     An empty env string ends the scan, indistinguishable from kernel padding.
-    Known apple strings may follow padding; other tails cannot certify absence.
+    Reserved Apple names may follow padding; attribution of those names is
+    ambiguous, so public env queries reject them. Other tails fail closed.
     """
     try:
         argc = int.from_bytes(data[:4], sys.byteorder, signed=True)
@@ -246,15 +263,13 @@ def _parse_procargs2(data: bytes) -> tuple[list[bytes], list[bytes]]:
             offset = end + 1
         # Protected binaries can end immediately after argv. Otherwise each
         # apple string must be terminated and recognizable, never env evidence.
-        apple_keys = (b"ptr_munge=", b"main_stack=", b"executable_file=",
-                      b"dyld_file=", b"executable_cdhash=", b"executable_boothash=", b"th_port=",
-                      b"security_config=", b"stack_guard=", b"malloc_entropy=")
         tail = data[offset:]
         if tail and not tail.endswith(b"\0"):
             raise ValueError("unterminated trailing region")
-        if any(entry and not entry.startswith(apple_keys) for entry in tail.split(b"\0")):
+        if any(entry and (b"=" not in entry or not _reserved_env_name(entry.split(b"=", 1)[0]))
+               for entry in tail.split(b"\0")):
             raise ValueError("unrecognized entries after env terminator")
-        if any(entry.startswith(apple_keys) for entry in entries):
+        if any(_reserved_env_name(entry.split(b"=", 1)[0]) for entry in entries):
             raise ValueError("apple string crossed environment boundary")
         return arguments, entries
     except (ValueError, IndexError) as error:
@@ -368,7 +383,10 @@ def environ(pid: int) -> dict[bytes, bytes] | None:
     """First occurrence of each byte name; gone returns None, errors mean UNKNOWN.
 
     On Darwin an empty env string ends the scan (indistinguishable from kernel
-    padding); unexplained trailing entries raise unavailable, never partial env.
+    padding); unexplained trailing entries raise unavailable. Reserved Apple
+    names after an empty entry are unattributable: they may be env or Apple
+    strings and are omitted here. Their absence is not a confirmed negative;
+    has_env() and owned() return Unknown('reserved-name') for those names.
     macOS argv/env is process-writable: matches are evidence, NOT sole kill authority.
     Require pgid membership observed while its leader incarnation was alive, or
     an observed ppid chain with matching birth keys to the suite's child, born
@@ -397,15 +415,19 @@ def _validate_env(name: bytes, value: bytes) -> None:
         raise ValueError("invalid environment name or value")
 
 
-def has_env(pid: int, name: bytes, value: bytes) -> bool:
+def has_env(pid: int, name: bytes, value: bytes) -> Union[bool, Unknown]:
     """Match the FIRST occurrence; gone returns False; failures raise UNKNOWN.
 
+    Reserved Apple-vector names return Unknown('reserved-name') before inspection
+    on either platform; their Darwin env/Apple attribution cannot be established.
     macOS argv/env is process-writable: a match is evidence, NOT sole kill authority.
     Require pgid membership observed while its leader incarnation was alive, or
     an observed ppid chain with matching birth keys to the suite's child, born
     after suite start. EnvHidden/unavailable is UNKNOWN, never not-ours or cleanup=ok.
     """
     _validate_env(name, value)
+    if _reserved_env_name(name):
+        return Unknown("reserved-name")
     env = environ(pid)
     return env is not None and env.get(name) == value
 
@@ -447,10 +469,16 @@ def pinned_process(snapshot: ProcIdentity):
 def owned(pid: int, name: bytes, value: bytes) -> Union[bool, Unknown]:
     """Bracket an env match with the same incarnation; Unknown never means not-ours.
 
+    Returns bool or Unknown, not the verified identity. For kill decisions call
+    identity() to retain a snapshot, then owned(), then same_process(snapshot)
+    immediately before signalling. Proceed only on owned() is True and a match.
+    Reserved Apple-vector names return Unknown('reserved-name') before inspection.
     This is marker evidence subject to the module's lineage requirement, not
     permission to kill. For a later Linux signal retain pinned_process(snapshot).
     """
     _validate_env(name, value)
+    if _reserved_env_name(name):
+        return Unknown("reserved-name")
     try:
         before = identity(pid)
         if before is None:

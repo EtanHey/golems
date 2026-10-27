@@ -507,10 +507,65 @@ def test_system_python_import_compatibility():
     assert result.returncode == 0, result.stderr
 
 
+@pytest.mark.skipif(sys.platform != 'darwin', reason='Darwin system Python Apple vector')
+def test_system_python_marker_is_owned(spawn):
+    interpreter = Path('/usr/bin/python3')
+    if not interpreter.exists():
+        pytest.skip('system Python absent')
+    child, _ = spawn({MARKER: TOKEN}, command=[str(interpreter), '-I', '-c', READY])
+    assert select.select([child.stdout], [], [], 5)[0], 'system Python never ready'
+    assert child.stdout.readline() == b'ready\n'
+    assert proc.owned(child.pid, MARKER, TOKEN) is True
+
+
 def procargs_buffer(args, env, trailing=b'\0ptr_munge=0\0executable_boothash=fixture\0'):
     path = b'/fixture/python\0'
     path += b'\0' * (-len(path) % 8)
     return len(args).to_bytes(4, sys.byteorder, signed=True) + path + b'\0'.join(args + env) + b'\0' + trailing
+
+
+def test_apple_named_env_after_empty_entry_is_unknown(spawn, monkeypatch):
+    child, _ = spawn()
+    data = procargs_buffer([b'p'], [b'A=1', b'', b'ptr_munge=tok'])
+    monkeypatch.setattr(proc.sys, 'platform', 'darwin')
+    monkeypatch.setattr(proc, '_darwin_args', lambda _: proc._parse_procargs2(data))
+    assert proc.has_env(child.pid, b'A', b'1') is True
+    assert proc.has_env(child.pid, b'A', b'wrong') is False
+    result = proc.has_env(child.pid, b'ptr_munge', b'tok')
+    assert isinstance(result, proc.Unknown)
+    assert result.reason == 'reserved-name'
+
+
+@pytest.mark.parametrize('name', [
+    b'ptr_munge', b'main_stack', b'executable_file', b'dyld_file',
+    b'executable_cdhash', b'executable_boothash', b'th_port',
+    b'security_config', b'stack_guard', b'malloc_entropy',
+    b'dyld_hw_tpro', b'dyld_hw_tpro_pagers', b'dyld_future_key', b'dyld_',
+])
+def test_reserved_name_queries_are_unknown_before_inspection(monkeypatch, name):
+    def unexpected_inspection(*_):
+        pytest.fail('reserved names must be rejected before process inspection')
+    monkeypatch.setattr(proc, 'identity', unexpected_inspection)
+    for query in (proc.has_env, proc.owned):
+        for value in (b'tok', b''):
+            result = query(os.getpid(), name, value)
+            assert isinstance(result, proc.Unknown)
+            assert result.reason == 'reserved-name'
+            with pytest.raises(TypeError):
+                bool(result)
+
+
+def test_dyld_tail_family_is_reserved_and_other_tails_stay_ambiguous():
+    for name in (b'dyld_hw_tpro', b'dyld_hw_tpro_pagers', b'dyld_future_key'):
+        data = procargs_buffer([b'p'], [b'A=1'], trailing=b'\0' + name + b'=1\0')
+        assert proc._parse_procargs2(data) == ([b'p'], [b'A=1'])
+        with pytest.raises(proc.ProcIdentityUnavailable) as caught:
+            proc._parse_procargs2(procargs_buffer([b'p'], [b'A=1', name + b'=1']))
+        assert caught.value.reason == 'ambiguous'
+    for tail in (b'dyldish=1\0', b'ptr_munge_suffix=1\0', b'dyld_hw_tpro\0'):
+        with pytest.raises(proc.ProcIdentityUnavailable) as caught:
+            proc._parse_procargs2(procargs_buffer([b'p'], [b'A=1'], trailing=b'\0' + tail))
+        assert caught.value.reason == 'ambiguous'
 
 
 def test_pure_parser_empty_argv_and_ambiguities():
