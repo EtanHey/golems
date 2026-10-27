@@ -49,30 +49,31 @@ export function pythonProblem(python) {
 
 // Retain the stable PATH spelling (e.g. ~/.local/bin/node), not process.execPath's
 // versioned realpath. Once installed, PATH never selects the hook runtime again.
-export function resolveHookNode(entries, hooksDir, settingsPath, status) {
+export function resolveHookNode(entries, hooksDir, settingsPath, status, override) {
   const managed = entries.filter(e => e.command?.includes("{node}"));
-  if (!managed.length) return null;
+  if (!managed.length && !override) return null;
   const recordPath = path.join(hooksDir, "golems-hook-node.json");
   let recorded;
-  if (existsSync(recordPath)) {
+  if (!override && existsSync(recordPath)) {
     try {
       recorded = JSON.parse(readFileSync(recordPath, "utf8"));
       if (!recorded || typeof recorded.path !== "string" || typeof recorded.version !== "string" || !/^v\d+\.\d+\.\d+$/.test(recorded.version)) throw new Error();
     } catch { return { problem: `invalid Node record ${recordPath}` }; }
   }
-  let node = recorded?.path;
-  if (!recorded) {
+  let node = override ?? recorded?.path;
+  if (!override && !recorded) {
     // Migrate an existing install without changing its registered runtime.
     const hooks = existsSync(settingsPath) ? JSON.parse(readFileSync(settingsPath, "utf8")).hooks ?? {} : {};
     const commands = Object.values(hooks).flatMap(g => Array.isArray(g) ? g : [])
       .flatMap(g => Array.isArray(g?.hooks) ? g.hooks : []).map(h => String(h?.command ?? ""));
     const registered = new Set(commands.filter(cmd => managed.some(e => cmd.includes(e.match)))
-      .map(cmd => cmd.trim().split(/\s+/)[0]));
+      .map(cmd => cmd.trim().split(/\s+/)[0])
+      .filter(first => PLAIN_PATH.test(first) && /^node(?:js|(?:-v?)?\d+(?:\.\d+)*)?$/.test(path.basename(first))));
     if (registered.size > 1) return { problem: "conflicting registered Node paths; inspect settings.json" };
     node = [...registered][0];
-    // A pre-installer bare `node` never pinned a runtime; preserve its PATH
-    // resolution on the first apply. Status still rejects an unpinned command.
-    if ((!node || node === "node") && !status) {
+    // Bare commands and shell wrappers never pinned a Node runtime. Resolve
+    // PATH only if no absolute Node registration can be adopted.
+    if (!node && !status) {
       const found = spawnSync("sh", ["-c", "command -v node"], { encoding: "utf8" });
       node = found.status === 0 ? found.stdout.trim() : "";
     }

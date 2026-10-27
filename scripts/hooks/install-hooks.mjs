@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // install-hooks — wire Claude Code hooks from ONE pinned golems tree (GO-5 S14).
-//   scripts/hooks/install-hooks.sh --host mbp|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--restore-live]
+//   scripts/hooks/install-hooks.sh --host mbp|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--node <abs path>] [--restore-live]
 //   scripts/hooks/install-hooks.sh --host mbp --status [--python <abs path>]
 //   node scripts/hooks/install-hooks.mjs --host client --source <release dir> --migrate-owner-install [--apply]
 // Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
@@ -91,7 +91,7 @@ function mustGit(cwd, ...args) {
 
 function parseArgs(argv) {
   const o = { apply: false, status: false, update: null, host: null,
-    repo: path.join(homedir(), "Gits/golems"), manifest: null, python: null };
+    repo: path.join(homedir(), "Gits/golems"), manifest: null, python: null, node: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--apply") o.apply = true;
@@ -100,10 +100,11 @@ function parseArgs(argv) {
     else if (a === "--migrate-owner-install") o.migrateOwnerInstall = true;
     else if (a === "--restore-live") o.restoreLive = true;
     else if (a === "--update") o.update = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : "origin/master";
-    else if (["--host", "--repo", "--manifest", "--python", "--source"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
+    else if (["--host", "--repo", "--manifest", "--python", "--node", "--source"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
     else die(`unknown or incomplete argument: ${a}`, 64);
   }
   if (!o.host) die("--host <mbp|client> is required", 64);
+  if (o.node && (o.status || o.source)) die("--node repairs owner installations; use it without --status or --source", 64);
   if (o.migrateOwnerInstall && (!o.source || o.host !== "client")) die("--migrate-owner-install requires --host client --source <release dir>", 64);
   return o;
 }
@@ -142,8 +143,8 @@ function context(o, sha) {
   const hooksDir = path.join(homedir(), ".claude", "hooks");
   const live = path.join(o.repo, ".worktrees", "hooks-live");
   const settingsPath = path.join(homedir(), ".claude", "settings.json");
-  const hookNode = resolveHookNode(entries, hooksDir, settingsPath, o.status);
-  if (hookNode?.problem && !o.status) die(`hook-node BAD: ${hookNode.problem}; refusing installation`);
+  const hookNode = resolveHookNode(entries, hooksDir, settingsPath, o.status, o.node);
+  if (hookNode?.problem && !o.status) die(`hook-node BAD: ${hookNode.problem}; refusing installation; repair with --node <path> (absolute executable Node)`);
   const node = hookNode?.path ?? "";
   // --python overrides the candidates for this run; it is validated the same way.
   const hookPython = resolveHookPython({ override: o.python, pathPython: pathPython() });

@@ -519,6 +519,68 @@ test("canonical Node status detects a vanished binary despite another Node on PA
   expect(run(fx, "--apply").status).toBe(1);
 });
 
+for (const damage of ["vanished", "non-executable", "malformed record"]) {
+  test(`explicit Node repair recovers a ${damage} canonical runtime`, () => {
+    const fx = canonicalNodeFixture();
+    if (damage === "vanished") rmSync(fx.nodeA);
+    else if (damage === "non-executable") chmodSync(fx.nodeA, 0o644);
+    else writeFileSync(fx.record, "{invalid JSON");
+    expect(run(fx, "--status").status).toBe(1);
+    const refused = run(fx, "--apply");
+    expect(refused.status).toBe(1);
+    expect(refused.out).toContain("--node <path>");
+    const settings = readFileSync(fx.settingsPath, "utf8"), record = readFileSync(fx.record, "utf8");
+    expect(run(fx, "--dry-run", "--node", fx.nodeB).status).toBe(0);
+    expect(readFileSync(fx.settingsPath, "utf8")).toBe(settings);
+    expect(readFileSync(fx.record, "utf8")).toBe(record);
+    expect(run(fx, "--update", "--apply", "--node", fx.nodeB).status).toBe(0);
+    expect(JSON.parse(readFileSync(fx.record, "utf8"))).toEqual({ path: fx.nodeB, version: "v24.22.1" });
+    expect(readFileSync(fx.settingsPath, "utf8")).not.toContain(fx.nodeA);
+    expect(run(fx, "--status").status).toBe(0);
+  });
+}
+
+test("legacy Node adoption ignores python, bare node and shell wrapper first tokens", () => {
+  const fx = canonicalNodeFixture(); rmSync(fx.record);
+  const settings = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  for (const first of ["python3", "node", "/bin/sh -c"]) {
+    settings.hooks.Stop.push({ hooks: [{ type: "command", command: `${first} /old/brainbar-stop-index.py` }] });
+  }
+  writeFileSync(fx.settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(JSON.parse(readFileSync(fx.record, "utf8"))).toEqual({ path: fx.nodeA, version: "v22.22.0" });
+  expect(run(fx, "--status").status).toBe(0);
+});
+
+test("Node repair validates overrides before settings or recorded state change", () => {
+  const fx = canonicalNodeFixture();
+  const settings = readFileSync(fx.settingsPath, "utf8"), record = readFileSync(fx.record, "utf8");
+  const notExecutable = path.join(fx.root, "not-executable-node");
+  writeFileSync(notExecutable, "#!/bin/sh\necho v22.22.0\n", { mode: 0o644 });
+  const unknownVersion = path.join(fx.root, "unknown-version-node");
+  writeFileSync(unknownVersion, "#!/bin/sh\necho v22.22.0-preview\n", { mode: 0o755 });
+  for (const invalid of ["node", `${fx.nodeB};bad`, path.join(fx.root, "missing-node"), notExecutable, unknownVersion]) {
+    const result = run(fx, "--apply", "--node", invalid);
+    expect(result.status).toBe(1);
+    expect(result.out).toContain("hook-node BAD");
+    expect(result.out).toContain("--node <path>");
+    expect(readFileSync(fx.settingsPath, "utf8")).toBe(settings);
+    expect(readFileSync(fx.record, "utf8")).toBe(record);
+  }
+  expect(run(fx, "--status", "--node", fx.nodeB).status).toBe(64);
+  expect(run(fx, "--source", fx.root, "--node", fx.nodeB).status).toBe(64);
+  expect(run(fx, "--status").status).toBe(0);
+});
+
+test("legacy Node adoption recognizes a version-suffixed Node binary", () => {
+  const fx = canonicalNodeFixture(); rmSync(fx.record);
+  const alias = path.join(fx.root, "node-v22.22.0"); symlinkSync(fx.nodeA, alias);
+  writeFileSync(fx.settingsPath, readFileSync(fx.settingsPath, "utf8").replaceAll(fx.nodeA, alias));
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(JSON.parse(readFileSync(fx.record, "utf8")).path).toBe(alias);
+  expect(run(fx, "--status").status).toBe(0);
+});
+
 test("canonical Node version changes are drift until apply acknowledges the same path", () => {
   const fx = canonicalNodeFixture();
   writeFileSync(fx.nodeA, readFileSync(fx.nodeA, "utf8").replace("v22.22.0", "v22.23.0"));
