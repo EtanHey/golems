@@ -106,6 +106,7 @@ jobs:
                    ./scripts/tests/design-skill-updates.test.mjs \
                    ./scripts/tests/deploy-drift-check.test.mjs \
                    ./scripts/tests/launchd-portability.test.mjs \
+                   ./scripts/tests/launchd-install.test.mjs \
                    ./scripts/tests/reconcile-to-mac.test.mjs \
                    ./scripts/tests/release-gate.test.mjs \
                    ./scripts/tests/ratchet-table.test.mjs \
