@@ -18,6 +18,35 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
   spawn pins its model explicitly."). An inherited model is not a pin.
 - The role's model is missing from the catalog → report `BLOCKED` to the lead. Never substitute.
 
+## Codex instances
+
+Ordinary Codex implementers, recon and reviewers explicitly select `target.providerInstanceId: "codex-worker"`.
+Children inherit the parent's instance unless it is named, including when the lead uses `codex` or Claude.
+Keep `codex` for security (implementers + scans), UI / computer-use recorders, browser / web-QA workers,
+leads and Etan. If `codex-worker` is missing from `orchestrator_capabilities`, fall back to `codex` and report it.
+
+Recreate the worker instance in `~/.t3/userdata/settings.json` under `providerInstances` (hot-reloaded).
+The receipt's exact instance definition, with driver `codex`:
+
+```json
+{
+  "id": "codex-worker",
+  "driver": "codex",
+  "binaryPath": "/Users/etanheyman/.codex/packages/standalone/releases/0.164.0-aarch64-apple-darwin/bin/codex",
+  "codexVersion": "codex-cli 0.164.0",
+  "CODEX_HOME": "/Users/etanheyman/.codex",
+  "launchArgs": "-c plugins._default.enabled=true -c plugins.codex-security@openai-curated-remote.enabled=false -c plugins.computer-history@openai-bundled.enabled=false -c plugins.computer-use@openai-bundled.enabled=false -c plugins.unified-computer-use@openai-bundled.enabled=false -c mcp_servers.node_repl.enabled=false -c thread_unload_delay_secs=60",
+  "T3NightlyBundleVersion": "0.1.3-nightly.20261026.3740",
+  "scope": "MBP only"
+}
+```
+
+`CODEX_HOME` is the shared `~/.codex`; no credential copy. The driver removes
+`T3CODE_CODEX_LAUNCH_ARGS` only in its child environment. To undo, remove the entry.
+
+Re-run the G-verify worker lane after every Codex CLI upgrade: `plugins._default` behaviour is
+0.164-specific. The definition above records the verified version; an upgrade needs fresh worker-lane evidence.
+
 ## 2. Dispatch
 
 - `delegate_task` with `mode: "async"`. Use `mode: "wait"` only when this turn cannot continue
