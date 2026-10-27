@@ -101,3 +101,25 @@ test("every pinned exception names a real skill", () => {
   const stale = Object.keys(EXCEPTIONS).filter((n) => !names.has(n));
   expect(stale).toEqual([]);
 });
+
+// Static routing coverage; this does not prove live agent skill selection.
+test("Gemini deep research requests name the research skill and exclude quick search/filing", () => {
+  const description = parseDescription(path.join(skillsDir, "gemini-research/SKILL.md"));
+  expect(description).toMatch(/Gemini Deep Research/);
+  expect(description).toContain("NotebookLM");
+  expect(description).toMatch(/NOT for .*Exa web search.*drive-filing/);
+});
+
+test("incoming research docs links name lifecycle handling", () => {
+  const description = parseDescription(path.join(skillsDir, "research-lifecycle/SKILL.md"));
+  expect(description).toContain("research docs link");
+  expect(description).toContain("Google Docs");
+  expect(description).toContain("Deep Research report URL");
+  expect(description).toContain("NOT for drive-filing");
+});
+
+test("Brain Drive upload requests name filing and exclude deep research", () => {
+  const description = parseDescription(path.join(skillsDir, "drive-filing/SKILL.md"));
+  expect(description).toContain("Brain Drive upload");
+  expect(description).toContain("NOT for Gemini Deep Research");
+});
