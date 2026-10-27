@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { collectStatus, latestRelease, readRemote, readLocal, compareInstall } from '../install-receipt-status.mjs';
+import { collectStatus, latestRelease, readRemote, readLocal, compareInstall, peelTag, printStatus } from '../install-receipt-status.mjs';
 
 const sha = 'a'.repeat(40), old = 'b'.repeat(40);
 function receipt(host = 'mbp') {
@@ -17,7 +17,7 @@ function receipt(host = 'mbp') {
 }
 const release = { version: '1.0.0', tag: 'v1.0.0', released_sha: sha };
 const run = (local, remote, extra = {}) => collectStatus({ products: { golems: 'EtanHey/golems' },
-  localReader: () => local, remoteReader: () => remote, releaseReader: () => release, localHostname: 'fixture-mbp', comparisonReader: () => 'behind', ...extra });
+  localReader: () => local, remoteReader: () => remote, releaseReader: () => release, localHostname: 'fixture-mbp', comparisonReader: () => 'behind', resolver: { peelTag: () => { throw Error('offline'); } }, ...extra });
 
 test('5: product × host matrix uses hooks-live pin without release.json; never promotes activation', () => {
   const rows = run({ golems: receipt() }, { golems: receipt('m1') });
@@ -148,4 +148,83 @@ test('A2 review: LIVE is unverified pending B2, including failed release lookup'
 test('A2 review: PR-A-era receipts are MISMATCH', () => {
   const r = receipt(); delete r.target.released_sha; delete r.target.ancestry;
   assert.equal(run({ golems: r }, {})[0].status, 'MISMATCH');
+});
+
+function liveReceipt(host = 'mbp') {
+  const r = receipt(host); r.verdict = 'LIVE';
+  r.activation.processes = [{ pid: 1, path: '/fixture/bin', started_at: '2026-10-27T09:01:00Z' }];
+  r.activation.self_report = { command: 'version', version: '1.0.0', commit: sha };
+  return r;
+}
+const verified = { peelTag: () => sha, compareAncestry: () => 'identical' };
+test('5a: behind or diverged merge ancestry is MISMATCH with claimed and observed evidence', () => {
+  for (const status of ['behind', 'diverged']) {
+    const row = run({ golems: liveReceipt() }, {}, { resolver: { ...verified, compareAncestry: () => status } })[0];
+    assert.equal(row.status, 'MISMATCH');
+    assert.deepEqual(row.verification.ancestry, { claimed: 'identical', observed: status });
+  }
+});
+test('5a: changed release tag is MISMATCH even when the latest-release lookup agrees with the claim', () => {
+  const row = run({ golems: liveReceipt() }, {}, { resolver: { ...verified, peelTag: () => old } })[0];
+  assert.equal(row.status, 'MISMATCH');
+  assert.deepEqual(row.verification.released_sha, { claimed: sha, observed: old });
+});
+test('5a: failure in either independent lookup is LIVE-UNVERIFIED', () => {
+  for (const lookup of ['peelTag', 'compareAncestry']) {
+    let called = false;
+    assert.equal(run({ golems: liveReceipt() }, {}, { resolver: { ...verified,
+      [lookup]: () => { called = true; throw Error('offline'); } } })[0].status, 'LIVE-UNVERIFIED');
+    assert.equal(called, true);
+  }
+});
+test('5a: only verified LIVE receipts for the latest release become CURRENT on both hosts', () => {
+  const calls = [];
+  const resolver = {
+    peelTag: (repo, tag) => { calls.push([repo, tag]); return sha; },
+    compareAncestry: (repo, merge, released) => { calls.push([repo, merge, released]); return 'identical'; },
+  };
+  assert.deepEqual(run({ golems: liveReceipt() }, { golems: liveReceipt('m1') }, { resolver }).map(r => r.status), ['CURRENT', 'CURRENT']);
+  assert.deepEqual(calls, [['EtanHey/golems', 'v1.0.0'], ['EtanHey/golems', sha, sha],
+    ['EtanHey/golems', 'v1.0.0'], ['EtanHey/golems', sha, sha]]);
+  const bumped = liveReceipt(); bumped.target.merge_sha = old; bumped.target.ancestry.status = 'ahead';
+  assert.equal(run({ golems: bumped }, {}, { resolver: { ...verified, compareAncestry: () => 'ahead' } })[0].status, 'CURRENT');
+  assert.equal(run({ golems: liveReceipt() }, {}, { resolver: verified, releaseReader: () => { throw Error('offline'); } })[0].status, 'LIVE-UNVERIFIED');
+  assert.notEqual(run({ golems: receipt() }, {}, { resolver: verified })[0].status, 'CURRENT');
+});
+test('5a: tag resolver peels annotated tags and falls back only for lightweight tags', () => {
+  for (const annotated of [true, false]) {
+    const calls = [];
+    assert.equal(peelTag('EtanHey/golems', 'v1.0.0', (file, args) => {
+      calls.push([file, args]);
+      return args.at(-1).endsWith('^{}') ? (annotated ? `${sha}\trefs/tags/v1.0.0^{}\n` : '') : `${sha}\trefs/tags/v1.0.0\n`;
+    }), sha);
+    assert.deepEqual(calls, [
+      ['git', ['ls-remote', '--tags', 'https://github.com/EtanHey/golems.git', 'refs/tags/v1.0.0^{}']],
+      ...(!annotated ? [['git', ['ls-remote', '--tags', 'https://github.com/EtanHey/golems.git', 'refs/tags/v1.0.0']]] : []),
+    ]);
+  }
+  for (const output of ['', 'malformed', `${sha}\trefs/tags/wrong`]) {
+    assert.throws(() => peelTag('EtanHey/golems', 'v1.0.0', () => output), /Unresolved/);
+  }
+  assert.throws(() => peelTag('EtanHey/golems', 'v1.0.0', () => { throw Error('offline'); }), /offline/);
+});
+test('5a: independently verified old LIVE release is BEHIND; contradictory ancestry is MISMATCH', () => {
+  const r = liveReceipt(); r.target.tag = 'v0.9.0';
+  const newer = { ...release, released_sha: old };
+  assert.equal(run({ golems: r }, {}, { resolver: verified, releaseReader: () => newer })[0].status, 'BEHIND');
+  r.target.merge_sha = old; r.target.ancestry.status = 'ahead';
+  assert.equal(run({ golems: r }, {}, { resolver: verified })[0].status, 'MISMATCH');
+  delete r.target.tag;
+  assert.equal(run({ golems: r }, {}, { resolver: { ...verified, peelTag: (_repo, tag) => peelTag('EtanHey/golems', tag, () => assert.fail('missing tag must not execute')) } })[0].status, 'LIVE-UNVERIFIED');
+});
+test('5a: printed mismatch exposes claimed and observed tag SHAs', () => {
+  const write = process.stdout.write, exitCode = process.exitCode; let output = '';
+  try {
+    process.stdout.write = chunk => { output += chunk; return true; };
+    printStatus(['golems'], { localHostname: 'fixture-m1', localReader: () => ({ golems: liveReceipt('m1') }),
+      releaseReader: () => release, resolver: { ...verified, peelTag: () => old } });
+    assert.match(output, /MISMATCH/);
+    assert.ok(output.includes(JSON.stringify({ claimed: sha, observed: old })));
+    assert.equal(process.exitCode, 1);
+  } finally { process.stdout.write = write; process.exitCode = exitCode; }
 });
