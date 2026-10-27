@@ -35,10 +35,28 @@ def inventory(path):
     return ['file', digest(path)]
 
 
+def managed_link(entry, home):
+    if not entry.is_symlink():
+        return None
+    target = entry.resolve()
+    if any(target.is_relative_to(home / p) for p in ('.golems/releases', '.golems/current', '.golems/vendor')):
+        return 'release'
+    checkout = str(target).rsplit('/skills/', 1)[0] if '/skills/' in str(target) else ''
+    return 'checkout' if checkout.endswith('/golems') or re.fullmatch(r'.*/golems/\.worktrees/[^/]+', checkout) else None
+
+
 def remote(mode, head, version, stage):
     home = Path.home()
     if mode == 'status':
-        print(json.dumps(installed()))
+        attempts = list((home / '.golems/m1-sync').glob(head + '-*'))
+        for attempt in attempts:
+            marker = attempt / 'success.json'
+            require(marker.is_file() and not marker.is_symlink()
+                    and json.loads(marker.read_text()).get('head') == head,
+                    'M1 sync needs attention: incomplete stage ' + str(attempt))
+        record = installed()
+        require(record.get('commit') != head or attempts, 'M1 sync needs attention: no success marker for ' + head)
+        print(json.dumps(dict(record, sync_verified=bool(attempts))))
         return
     work = home / stage
     config = home / '.codex/config.toml'
@@ -49,10 +67,10 @@ def remote(mode, head, version, stage):
         preserved, keep = {}, []
         for root in roots:
             for entry in root.iterdir():
-                if entry.is_symlink() and any(entry.resolve().is_relative_to(home / p)
-                        for p in ('.golems/releases', '.golems/current', '.golems/vendor')):
+                kind = managed_link(entry, home)
+                if kind == 'release':
                     continue
-                preserved[str(entry)] = inventory(entry)
+                preserved[str(entry)] = ['checkout-link', os.readlink(entry)] if kind == 'checkout' else inventory(entry)
                 if root == home / '.codex/skills' and not entry.is_symlink():
                     keep.append(str(entry))
         backup = home / '.claude' / ('skills.bak-' + work.name + '.tgz')
@@ -89,7 +107,16 @@ def remote(mode, head, version, stage):
         print(json.dumps(dict(config_before=state['config'], config_after=after)))
         require(after == state['config'], 'config.toml changed')
         for path, value in state['preserved'].items():
-            require(inventory(Path(path)) == value, 'M1-only skill changed: ' + path)
+            entry = Path(path)
+            if isinstance(value, list) and value[0] == 'checkout-link':
+                expected = home / '.golems/current/skills/golem-powers' / entry.name
+                unchanged = entry.is_symlink() and (os.readlink(entry) == value[1] or entry.resolve() == expected.resolve())
+            else:
+                unchanged = inventory(entry) == value
+            require(unchanged, 'M1-only skill changed: ' + path)
+    marker = work / 'success.json.pending'
+    marker.write_text(json.dumps(dict(head=head)))
+    marker.replace(work / 'success.json')
 
 
 def verify(work, head, version):
@@ -120,10 +147,16 @@ def after_m1_sync(head, work):
 def authorized():
     try:
         path = Path.home() / '.golems/ratchet/m1-sync-authorized.json'
-        metadata = path.lstat()
-        require(stat.S_ISREG(metadata.st_mode) and metadata.st_uid == os.getuid()
-                and not metadata.st_mode & 0o077, 'owner-only regular file required')
-        grant = json.loads(path.read_text())
+        parent = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            require(not os.fstat(parent).st_mode & 0o022, 'authorization directory is writable by others')
+            with os.fdopen(os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)) as stream:
+                metadata = os.fstat(stream.fileno())
+                require(stat.S_ISREG(metadata.st_mode) and metadata.st_uid == os.getuid()
+                        and not metadata.st_mode & 0o077, 'owner-only regular file required')
+                grant = json.load(stream)
+        finally:
+            os.close(parent)
         require(type(grant) is dict and type(grant.get('schema')) is int
                 and grant['schema'] == 1 and grant.get('item') == 32
                 and grant.get('scope') == 'm1-skills-install'
@@ -145,18 +178,20 @@ def sync(head, version, work):
     check_authorization()
     work.mkdir(parents=True, exist_ok=False)
     tag = 'v' + version
-    try:
-        release = subprocess.run(['gh', 'release', 'view', tag, '--repo', 'EtanHey/golems',
-                                  '--json', 'isDraft', '--jq', '.isDraft'], capture_output=True, check=True)
-    except subprocess.CalledProcessError:
+    release = subprocess.run(['gh', 'api', 'repos/EtanHey/golems/releases/tags/' + tag,
+                              '--jq', '.draft'], capture_output=True)
+    if (release.returncode and b'HTTP 404' in release.stderr) or (not release.returncode and release.stdout.strip() == b'true'):
         print(f'release for {head} not published yet; re-run when it is', file=sys.stderr)
         return 2
-    require(release.stdout.strip() == b'false', 'release is not published (draft)')
+    if release.returncode:
+        print(release.stderr.decode(errors='replace').strip(), file=sys.stderr)
+        return 1
+    require(release.stdout.strip() == b'false', 'invalid release metadata')
     subprocess.run(['gh', 'release', 'download', tag, '--repo', 'EtanHey/golems', '--dir', str(work),
                     '--pattern', f'golems-{version}.tar.gz', '--pattern', 'SHA256SUMS', '--pattern', 'MANIFEST.json'], check=True)
     verify(work, head, version)  # No SSH, even a read, before verification.
     source = Path(__file__).read_bytes()
-    stage = '.golems/m1-sync/' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%f')
+    stage = '.golems/m1-sync/' + head + '-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%f')
 
     def ssh(mode, capture=False):
         command = shlex.join(['python3', '-B', '-', '--remote', mode, head, version, stage])
@@ -164,7 +199,8 @@ def sync(head, version, work):
                               stdout=subprocess.PIPE if capture else None, check=True)
     before = ssh('status', capture=True).stdout
     (work / 'release-before.json').write_bytes(before)
-    if json.loads(before).get('commit') == head:
+    record = json.loads(before)
+    if record.get('commit') == head and record.get('sync_verified') is True:
         print('M1 already at ' + head + '; no copy or backup')
         return 0
     ssh('prepare')

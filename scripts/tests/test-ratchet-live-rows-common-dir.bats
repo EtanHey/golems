@@ -206,7 +206,7 @@ PY
     fi
     [ "$status" -eq 1 ]
     [[ "$output" == *"cd: "*"No such file or directory"* ]]
-    [[ "$output" == *"live-rows.sh: line "* ]]
+    [[ "$output" == *"live-rows.sh: line 30"* ]]
     [ ! -e "$FIXTURE_ROOT/observed-main" ]
     [ "$(fixture_git -C "$MAIN" rev-parse HEAD)" = "$FIXED_HEAD" ]
 }

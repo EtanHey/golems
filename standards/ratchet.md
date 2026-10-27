@@ -289,18 +289,27 @@ installs (pending, #32); without it the parity row stays red after a guarded mer
 authorizes a sync. `--no-sync-m1` explicitly retains the default after a manual sync. Both
 paths keep parity read-only and blocking, with no sync-helper invocation.
 Authorization is `~/.golems/ratchet/m1-sync-authorized.json`: a regular, current-user-owned file
-with no group/other permissions. Fields: schema version 1 (`schema`), item 32 (`item`), scope
+with no group/other permissions, opened with O_NOFOLLOW and checked with fstat; its parent must
+not be group/world-writable. This is a policy gate: anything that can set HOME can forge it;
+nothing cryptographically ties `words` to Etan. Fields: schema version 1 (`schema`), item 32 (`item`), scope
 `m1-skills-install` (`scope`), Etan's verbatim answer (`words`), YYYY-MM-DD answer date (`date`).
 Only Etan's own answer to #32 may create it; no enabling sample is shipped. Missing/invalid
 authorization prints exactly `M1 sync not authorized (Etan #32)` before release lookup/SSH/SCP.
 
 Authorized `--sync-m1` requires published `v<UTC commit date>-<short LIVE_HEAD>` assets and
-verifies SHA256SUMS, MANIFEST identity and every payload file before SSH. Missing release
-exits 2 with a re-run instruction; an already-current M1 gets no copy or backup. Otherwise:
+verifies SHA256SUMS, MANIFEST identity and every payload file before SSH. Missing/draft release
+exits 2 with a re-run instruction; gh auth/network errors exit 1 with the actual error.
+An M1 is current only when release.json and a post-guard success marker both report X, with
+no unfinished stage for X. Only then is there no copy or backup. An incomplete stage or an
+installed X without a marker fails with `needs attention`; investigate the original failure,
+never infer success from release.json alone. A successful apply atomically writes success.json
+in its head-prefixed stage only after every guard and repoint passes. Otherwise:
 back up skill roots (log path/size), record release/config/skill inventories, copy verified
 assets via BatchMode SSH/SCP, `install.sh --from-file --sums --preserve-releases`, then vendor
 repoint dry-run/apply. Preserve M1-only entries and Codex `Keeping existing path` messages;
-compare config.toml hashes even after install failure. No /Applications, BrainLayer, audio,
+release/vendor links may be replaced. Managed checkout links may repoint to the installed
+same-name skill, but must remain present. Compare config.toml hashes even after install failure.
+No /Applications, BrainLayer, audio,
 restarts or signals. Failures stop before parity. Local run logs/assets: `m1-sync.log`,
 `m1-sync/`; remote stage retains before.json/install.log. `after_m1_sync` reserves RC-I5's future
 skills-sync receipt hook without issuing one. Offline tests (fake gh/ssh/scp via PATH):
