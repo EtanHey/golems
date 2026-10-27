@@ -50,6 +50,8 @@ Merge this entry into the existing map:
 }
 ```
 
+binaryPath shown for this Mac; expand `~/.local/bin/codex` to your $HOME (T3 needs an absolute path).
+
 `binaryPath` must be the `~/.local/bin/codex` link, which follows Codex upgrades, never a versioned release path.
 Receipt facts: verified on codex-cli 0.164.0, T3 nightly 0.1.3-nightly.20261026.3740, MBP only.
 `CODEX_HOME` defaults to the shared `~/.codex`; no credential copy. To undo, remove the entry.
