@@ -21,16 +21,22 @@ export function refreshVendor({ vendor, clones, expected, apply = false, git = s
     const owner = i === 0 ? "anthropic" : "emilkowalski";
     for (const skill of manifest.skills.filter((s) => s.path.startsWith(`${owner}/`))) {
       const dir = path.join(clone, "skills", skill.name);
+      if (!lstatSync(dir).isDirectory()) throw new Error(`upstream type requires separate review: ${dir}`);
       for (const entry of readdirSync(dir)) {
         const src = path.join(dir, entry);
-        if (!lstatSync(src).isFile() || !/^(.*\.md|LICENSE(\.txt)?)$/.test(entry)) throw new Error(`new script/type requires separate review: ${src}`);
+        if (!lstatSync(src).isFile() || !/^(.*\.md|LICENSE(\.txt)?)$/.test(entry)) throw new Error(`upstream type or script requires separate review: ${src}`);
         copies.push({ src, file: `${skill.path}/${entry}` });
       }
-      if (owner === "emilkowalski") copies.push({ src: path.join(clone, "LICENSE"), file: `${skill.path}/LICENSE` });
+      if (owner === "emilkowalski") {
+        const license = path.join(clone, "LICENSE");
+        if (!lstatSync(license).isFile()) throw new Error(`upstream type requires separate review: ${license}`);
+        copies.push({ src: license, file: `${skill.path}/LICENSE` });
+      }
     }
   }
   const files = Object.fromEntries(copies.map(({ src, file }) => [file, createHash("sha256").update(readFileSync(src)).digest("hex")]));
   if (Object.keys(manifest.files).some((file) => !(file in files))) throw new Error("upstream removed a file; review retirement separately");
+  if (Object.keys(files).length === Object.keys(manifest.files).length && Object.entries(files).every(([file, sum]) => manifest.files[file] === sum)) return { apply: false, changed: false, changes: [], files: Object.keys(files).length };
   manifest.files = { ...manifest.files, ...files };
   if (apply) {
     for (const { src, file } of copies) cpSync(src, path.join(vendor, file));
@@ -40,7 +46,7 @@ export function refreshVendor({ vendor, clones, expected, apply = false, git = s
     writeFileSync(provenance, text);
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
   }
-  return { apply, changes, files: Object.keys(files).length };
+  return { apply, changed: true, changes, files: Object.keys(files).length };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

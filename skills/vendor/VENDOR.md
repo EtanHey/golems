@@ -28,8 +28,9 @@ Gemini/agy get none. Add providers only after authorization.
 Do not use ~/.agents/skills because Gemini/agy exposure is forbidden.
 
 Refresh: `.github/workflows/design-skill-updates.yml` checks both upstreams daily
-at 06:43 UTC and via manual dispatch. It copies only the six selected skill payloads
-as inert data, updates manifest hashes and the VENDOR pins above, and opens a PR.
+at 06:43 UTC when `vars.DESIGN_SKILL_UPDATES == 'true'`; explicit manual dispatch
+on master can run regardless of that variable. It copies only the six selected skill payloads
+as inert data; only changed payload hashes update manifest/VENDOR pins and open a PR.
 It never installs, runs upstream code, or merges. Immutable upstream-pair branches
 and all-state PR lookup avoid force-pushes, duplicate proposals and reopening rejects.
 Read every changed instruction/reference before merge; normal CI and independent
@@ -37,12 +38,13 @@ review apply. New scripts/types or removed files fail the copier for manual revi
 Activation also needs the repository Actions setting "Allow GitHub Actions to
 create and approve pull requests"; it was false at implementation time. Keep
 default token permissions read, and grant write only to the proposal job.
-GitHub may require approval before token-created PR workflows run:
-https://docs.github.com/en/actions/concepts/security/github_token
+GITHUB_TOKEN-opened PRs do not trigger pull_request CI. Start the required checks
+with a maintainer push or close/reopen, or use a suitable App/user token route.
+Enable DESIGN_SKILL_UPDATES only after the activation route is settled.
 
 Manual check: `node skills/golem-powers/golem-install/scripts/vendor-skills.mjs
 --check-upstream` (exit 3 drift, 2 query error). Copier: `node .../refresh-vendor.mjs
 <anthropic-clone> <emil-clone> <expected-sha-A> <expected-sha-E> [--apply]`;
 without --apply it writes nothing. Proposed bytes are not approval to install.
-Back up old installed links before switching changed payloads; conflicts require
-explicit retirement. Claude's official frontend-design plugin updates independently.
+Owned vendor links move to the verified new payload on apply; old snapshots stay.
+Foreign links and directories still require explicit retirement. Claude's official frontend-design plugin updates independently.

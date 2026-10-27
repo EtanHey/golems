@@ -11,9 +11,6 @@ on:
       - 'skills/golem-powers/golem-install/scripts/repoint-skills*'
 permissions:
   contents: read
-concurrency:
-  group: design-skill-updates-${{ github.event_name }}
-  cancel-in-progress: false
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -28,7 +25,10 @@ jobs:
       - run: node skills/golem-powers/golem-install/scripts/vendor-skills.mjs --check
   propose:
     needs: verify
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    concurrency:
+      group: design-skill-updates
+      cancel-in-progress: false
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.DESIGN_SKILL_UPDATES == 'true'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -77,8 +77,9 @@ jobs:
           skill discovery after installation. Preserve the five-skill Emil scope and
           provider boundaries: Claude official frontend plugin + Emil; Codex/Cursor
           vendor copies (Cursor review-only); no Gemini/agy. Never merge automatically.
-          GitHub may require approval of Actions runs created by GITHUB_TOKEN; approve
-          those runs and require normal CI plus independent review before merge.
+          GITHUB_TOKEN-opened PRs do not trigger pull_request CI. Required checks must
+          be started by a maintainer push or close/reopen, or a suitable App/user token
+          route. Require normal CI plus independent review before merge.
           size:L because the exact upstream skill payload can exceed 400 copied lines.
           Loop-record: implementer=automation/upstream-sync/default reviewer=none rounds=0/0 defects=0 role=worker
           — designSkillsUpdater (automation) · GitHub Actions

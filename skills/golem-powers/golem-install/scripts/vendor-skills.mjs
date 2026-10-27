@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, symlinkSync } from "node:fs";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, renameSync, symlinkSync, unlinkSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,12 +17,14 @@ function verify(root, files) {
 }
 
 export function installVendorSkills({ home, source, apply = false }) {
+  home = realpathSync(home);
   const vendor = path.resolve(source, "..", "vendor");
   const bytes = readFileSync(path.join(vendor, "manifest.json"));
   const manifest = JSON.parse(bytes);
   if (manifest.schema !== 1) throw new Error("unsupported vendor manifest");
   verify(vendor, manifest.files);
-  const snapshot = path.join(home, ".golems/vendor/design-skills", hash(JSON.stringify({ skills: manifest.skills.map(({ name, path }) => ({ name, path })), files: manifest.files, upstreams: manifest.upstreams })));
+  const ownedRoot = path.join(home, ".golems/vendor/design-skills");
+  const snapshot = path.join(ownedRoot, hash(JSON.stringify({ skills: manifest.skills.map(({ name, path }) => ({ name, path })), files: manifest.files, upstreams: manifest.upstreams })));
   const links = [];
   for (const provider of manifest.providers) {
     if (!roots[provider]) throw new Error(`unsupported vendor provider: ${provider}`);
@@ -35,7 +37,13 @@ export function installVendorSkills({ home, source, apply = false }) {
       if (provider === "claude" && skill.name === "frontend-design") throw new Error("Claude frontend-design must use the official plugin");
       if (!/^[a-z0-9-]+$/.test(skill.name) || !manifest.files[`${skill.path}/SKILL.md`] || path.basename(skill.path) !== skill.name) throw new Error("invalid vendor skill entry");
       const entry = path.join(root, skill.name), target = path.join(snapshot, skill.path);
-      if (present(entry) && (!lstatSync(entry).isSymbolicLink() || !existsSync(entry) || realpathSync(entry) !== target)) throw new Error(`vendor conflict; back up and retire explicitly: ${entry}`);
+      if (present(entry)) {
+        if (!lstatSync(entry).isSymbolicLink()) throw new Error(`vendor conflict; back up and retire explicitly: ${entry}`);
+        const previous = existsSync(entry) ? realpathSync(entry) : path.resolve(path.dirname(entry), readlinkSync(entry));
+        const relative = path.relative(existsSync(ownedRoot) ? realpathSync(ownedRoot) : ownedRoot, previous);
+        const pin = relative.split(path.sep)[0];
+        if (!/^[a-f0-9]{64}$/.test(pin) || relative !== path.join(pin, skill.path)) throw new Error(`vendor conflict; back up and retire explicitly: ${entry}`);
+      }
       links.push({ entry, target, name: skill.name, provider });
     }
   }
@@ -53,7 +61,8 @@ export function installVendorSkills({ home, source, apply = false }) {
     renameSync(staging, snapshot);
   }
   for (const link of links) {
-    if (apply && !present(link.entry)) {
+    if (apply && (!existsSync(link.entry) || realpathSync(link.entry) !== realpathSync(link.target))) {
+      if (present(link.entry)) unlinkSync(link.entry);
       mkdirSync(path.dirname(link.entry), { recursive: true });
       symlinkSync(link.target, link.entry);
     }
