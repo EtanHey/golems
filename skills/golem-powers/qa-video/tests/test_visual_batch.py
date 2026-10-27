@@ -1,6 +1,7 @@
 """Offline scheduler checks using a subprocess helper; no provider requests."""
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -210,6 +211,51 @@ def test_unknown_detail_is_successful_coverage(setup):
     code, result, _ = finish(launch())
     assert code == 0 and result['status'] == 'COMPLETE' and not result['unresolved']
     assert 'NOT DETERMINED' in (work / 'visual/findings.jsonl').read_text()
+
+
+@pytest.mark.parametrize('response', ['partial-sheet', 'missing', 'whole-unknown'])
+def test_real_gather_coverage_survives_batch_and_debrief(tmp_path, monkeypatch, response):
+    # Replace the provider boundary only; the production CLI computes coverage.
+    provider = tmp_path / 'agy'
+    provider.write_text('''#!/usr/bin/env python3
+import json, os, sys
+prompt = sys.argv[sys.argv.index('--print') + 1]
+paths = json.loads(prompt.splitlines()[-1])['image_paths']
+fixture = json.loads(os.environ['SHEET_RESPONSE'])
+items = [{'path': p, 'finding': fixture['finding']} for p in paths] if fixture else []
+print(json.dumps({'status': 'SUCCESS', 'response': json.dumps({'images': items})}))
+''')
+    provider.chmod(0o755)
+    fixture = json.loads((Path(__file__).parent / 'fixtures/partial-sheet.json').read_text())
+    expected = fixture['finding']
+    if response == 'missing':
+        fixture = {}
+    elif response == 'whole-unknown':
+        fixture = {'finding': 'NOT DETERMINED (entire sheet unreadable)'}
+    monkeypatch.setenv('PATH', str(tmp_path) + os.pathsep + os.environ['PATH'])
+    monkeypatch.setenv('SHEET_RESPONSE', json.dumps(fixture))
+    image = tmp_path / 'moment-00.jpg'
+    image.write_bytes(b'provider fixture input')
+    result = subprocess.run([sys.executable, str(DRIVER), '--model', 'fixture-model',
+                             '--question', 'facts', '--workdir', str(tmp_path), str(image)],
+                            capture_output=True, text=True, timeout=10)
+    item, = [json.loads(row) for row in (tmp_path / 'visual/findings.jsonl').read_text().splitlines()]
+    spec = importlib.util.spec_from_file_location('debrief', SKILL / 'scripts/debrief.py')
+    debrief = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(debrief)
+    debrief.evidence_note(tmp_path, 'debrief', json.loads(result.stdout)['status'],
+                          {'moments': [{'start': 0, 'text': 'Read this slide.'}]},
+                          ['moment-00.jpg\t0\t0'])
+    note = (tmp_path / 'debrief.md').read_text()
+    if response == 'partial-sheet':
+        assert result.returncode == 0 and item['ok'] is True
+        assert 'Coverage: 1/1; complete;' in item['finding']
+        assert expected in item['finding'] and expected in note
+        assert item['finding'].count('NOT DETERMINED') == note.count('NOT DETERMINED') == 1
+    else:
+        assert result.returncode == 2 and item['ok'] is False
+        assert 'Coverage: 0/1; partial;' in item['finding']
+        assert 'visual: NOT DETERMINED (budget/failed)' in note
 
 
 @pytest.mark.parametrize('persistent', [False, True])

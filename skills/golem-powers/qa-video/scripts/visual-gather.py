@@ -101,7 +101,9 @@ def gather(paths, run):
         if len('\n'.join(lines + [line])) > budget:
             break
         lines.append(line)
-        if 'NOT DETERMINED' not in finding.upper():
+        # Inline uncertainty belongs to that tile; a leading marker means the
+        # whole image is unread (including the missing-response placeholder).
+        if not finding.upper().startswith('NOT DETERMINED'):
             covered += 1
     omitted = len(paths) - len(lines)
     status = 'complete' if covered == len(paths) else 'partial'
