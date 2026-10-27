@@ -118,13 +118,21 @@ function selectText(run, first, last = first) {
   run.document.dispatchEvent(new run.window.Event("selectionchange"));
 }
 
-test("review: commentary is not an answer and checklist completion requires every check", () => {
+test("review: notes alone do not answer a card, while a completed checklist does", () => {
   const plain = boot({ seed: { "a-notes": [{ quote: "one", text: "A comment" }] } });
   expect(plain.document.getElementById("df-answered").textContent).toBe("0");
-  const run = boot({ decisions: CHECK_DECISIONS, seed: { vb: "All good", "vb-free": "Done", "vb-checks": { 0: true }, "vb-notes": [{ quote: "History row", text: "Check again" }] } });
+  const run = boot({ decisions: CHECK_DECISIONS, seed: { "vb-checks": { 0: true }, "vb-notes": [{ quote: "History row", text: "Check again" }] } });
   const card = run.document.querySelector('[data-decision="vb"]'); expect(card.classList.contains("is-answered")).toBe(false);
   for (const box of card.querySelectorAll(".df-check-input")) if (!box.checked) box.click();
   expect(card.classList.contains("is-answered")).toBe(true);
+});
+
+test("a checklist card with a pick and no ticks counts as answered", () => {
+  const { document } = boot({ decisions: CHECK_DECISIONS }); const card = document.querySelector('[data-decision="vb"]');
+  card.querySelectorAll('input[type="radio"]')[1].click();
+  expect(card.querySelectorAll('.df-check-input:checked').length).toBe(0);
+  expect(card.classList.contains("is-answered")).toBe(true);
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("✓");
 });
 
 test("review: a cited selection excludes speaker labels", () => {
@@ -830,7 +838,7 @@ test("answers made in the sheet persist and show in list view, and the reverse",
   document.getElementById("df-story-exit").click();
   const card = document.querySelector('[data-decision="vb"]');
   expect(card.querySelector('input[type="radio"]').checked).toBe(true);
-  expect(card.classList.contains("is-answered")).toBe(false);
+  expect(card.classList.contains("is-answered")).toBe(true);
   card.querySelector(".df-free").value = "typed in list";
   card.querySelector(".df-free").dispatchEvent(new window.Event("input", { bubbles: true }));
   document.getElementById("df-view-toggle").click();
