@@ -68,6 +68,49 @@ test("rendered decision flow uses a hub-compatible route-scoped storage key", ()
 });
 
 function noteText(run, text) { run.document.getElementById("df-note-text").value = text; run.document.getElementById("df-note-save").click(); }
+
+const CLEAR_SEED = { vb: "All good", "vb-checks": { 0: true, 1: true }, "vb-free": "An answer", "vb-notes": [{ quote: "History row", text: "A note" }], b: "One", "b-free": "Keep this", "b-notes": [{ quote: "B", text: "Also keep this" }], _prefs: { rate: 1.5, view: "list" }, extra: { retained: true } };
+test("Clear requires confirmation and removes only its card's picks, checks, free text and notes", () => {
+  const run = boot({ decisions: CHECK_DECISIONS, seed: CLEAR_SEED }); const { document, window } = run;
+  const card = document.querySelector('[data-decision="vb"]'), clear = card.querySelector(".df-clear");
+  clear.click(); expect(card.querySelector(".df-clear-confirm").hidden).toBe(false);
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(CLEAR_SEED);
+  expect(document.activeElement).toBe(card.querySelector(".df-clear-cancel"));
+  card.querySelector(".df-clear-cancel").click(); expect(document.activeElement).toBe(clear);
+  expect(card.querySelector('input[type="radio"]').checked).toBe(true);
+  clear.click(); card.querySelector(".df-clear-apply").click();
+  const expected = { ...CLEAR_SEED }; for (const key of ["vb", "vb-checks", "vb-free", "vb-notes"]) delete expected[key];
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(expected);
+  expect([...card.querySelectorAll("input")].every(input => !input.checked)).toBe(true);
+  expect(card.querySelector(".df-free").value).toBe(""); expect(card.querySelector(".df-note-count").hidden).toBe(true);
+  for (const selector of ['[data-index-for="vb"]', '[data-chip-for="vb"]']) expect(document.querySelector(selector + " .df-answer-status").textContent).toBe("☐");
+  expect(document.querySelector('[data-chip-for="b"] .df-answer-status').textContent).toBe("✓");
+  expect(card.querySelector(".df-clear-confirm").hidden).toBe(true);
+  expect(boot({ decisions: CHECK_DECISIONS, seed: expected }).document.getElementById("df-answered").textContent).toBe("1");
+});
+
+test("Escape cancels an inline Clear confirmation inside the story sheet without closing the sheet", () => {
+  const { document, window } = storyBoot({ decisions: CHECK_DECISIONS, seed: CLEAR_SEED });
+  document.querySelector('[data-decision="vb"] .df-answer-open').click(); const sheet = sheetOf(document, "vb");
+  sheet.querySelector(".df-clear").click(); sheet.querySelector(".df-clear").focus(); key(window, "Escape");
+  expect(sheet.classList.contains("is-open")).toBe(true); expect(sheet.querySelector(".df-clear-confirm").hidden).toBe(true);
+  expect(document.activeElement).toBe(sheet.querySelector(".df-clear"));
+  sheet.querySelector(".df-clear").click(); sheet.querySelector(".df-clear-apply").click();
+  expect(sheet.classList.contains("is-open")).toBe(true); expect(sheet.querySelector(".df-free").value).toBe("");
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test")).b).toBe("One");
+});
+
+test("failed Clear preserves saved answers and visible controls, and permits retry", () => {
+  let blocked = true; const { document, window } = boot({ decisions: CHECK_DECISIONS, seed: CLEAR_SEED, storageError: () => blocked });
+  const card = document.querySelector('[data-decision="vb"]'); card.querySelector(".df-clear").click(); card.querySelector(".df-clear-apply").click();
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(CLEAR_SEED);
+  expect(card.querySelector('input[type="radio"]').checked).toBe(true); expect(card.querySelector(".df-free").value).toBe("An answer");
+  expect(card.querySelector(".df-clear-error").textContent).toContain("Answers kept"); expect(card.querySelector(".df-clear-confirm").hidden).toBe(false);
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("✓");
+  blocked = false; card.querySelector(".df-clear-apply").click();
+  expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test")).vb).toBeUndefined(); expect(card.querySelector(".df-clear-confirm").hidden).toBe(true);
+});
+
 function selectText(run, first, last = first) {
   const range = run.document.createRange(); range.setStart(first.firstChild, 0); range.setEnd(last.firstChild, last.textContent.length);
   range.getBoundingClientRect = () => ({ left: 80, right: 160, top: 100, bottom: 120 });
@@ -726,7 +769,7 @@ test("the sheet traps Tab focus in both directions", () => {
   const { window, document } = storyBoot();
   document.querySelector('[data-decision="a"] .df-answer-open').click();
   const sheet = sheetOf(document, "a");
-  const focusable = [...sheet.querySelectorAll("button, input, textarea, select, a[href]")].filter((node) => !node.disabled);
+  const focusable = [...sheet.querySelectorAll("button, input, textarea, select, a[href]")].filter((node) => !node.disabled && !node.closest("[hidden]"));
   focusable.at(-1).focus();
   expect(key(window, "Tab").defaultPrevented).toBe(true);
   expect(document.activeElement).toBe(focusable[0]);

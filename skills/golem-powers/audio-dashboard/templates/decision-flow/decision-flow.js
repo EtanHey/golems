@@ -97,6 +97,9 @@
     card.querySelectorAll('input[type="radio"]').forEach(function(input){if(store[input.name]===input.value)input.checked=true;input.addEventListener("change",function(){store[input.name]=input.value;persist();});});
     checklistBoxes(card).forEach(function(box){box.checked=checksFor(card)[box.dataset.checkIndex]===true;box.addEventListener("change",function(){var next={};checklistBoxes(card).forEach(function(item){if(item.checked)next[item.dataset.checkIndex]=true;});store[card.dataset.decision+"-checks"]=next;persist();});});
     var free=card.querySelector(".df-free");if(store[free.dataset.note])free.value=store[free.dataset.note];free.addEventListener("input",function(){store[free.dataset.note]=free.value;persist();});
+    card.querySelector(".df-clear").addEventListener("click",function(){var panel=card.querySelector(".df-clear-confirm");panel.hidden=false;this.setAttribute("aria-expanded","true");panel.scrollIntoView({block:"nearest"});panel.querySelector(".df-clear-cancel").focus({preventScroll:true});});
+    card.querySelector(".df-clear-cancel").addEventListener("click",function(){closeClear(card);});
+    card.querySelector(".df-clear-apply").addEventListener("click",function(){clearCard(card);});
     card.querySelector(".df-next").addEventListener("click",function(){var button=this;if(cards[index+1]){activate(index+1,true);return;}if(view==="story"){closeSheet(false);button.classList.add("is-acknowledged");button.textContent="All decisions reviewed → Copy answers";var storyCopy=document.querySelector(".df-story-copy");if(storyCopy){storyCopy.classList.add("is-ready");storyCopy.focus({preventScroll:true});}return;}var copy=document.getElementById("df-copy");button.classList.add("is-acknowledged");button.textContent="All decisions reviewed → Copy answers";copy.scrollIntoView({behavior:"smooth",block:"center"});copy.focus({preventScroll:true});});
     card.querySelector(".df-skip").addEventListener("click",function(){var button=this;var nextCard=cards[index+1];button.classList.add("is-acknowledged");button.textContent=nextCard?"Skipped · moving on…":"Skipped";if(!nextCard)return;playCard(nextCard,true);setTimeout(function(){activate(index+1,false);},220);});
     var chip=chipFor(card);if(chip)chip.addEventListener("click",function(){goTo(index);});
@@ -133,7 +136,14 @@
     if(returnFocus&&open.opener&&open.opener.isConnected)open.opener.focus({preventScroll:true});
   }
   if(backdrop)backdrop.addEventListener("click",function(){closeSheet(true);});
+  function closeClear(card){card.querySelector(".df-clear-confirm").hidden=true;card.querySelector(".df-clear-error").textContent="";var button=card.querySelector(".df-clear");button.setAttribute("aria-expanded","false");button.focus({preventScroll:true});}
+  function clearCard(card){
+    var original=store,id=card.dataset.decision;store=Object.assign({},store);["","-checks","-free","-notes"].forEach(function(suffix){delete store[id+suffix];});
+    if(!persist()){store=original;updateCounts();card.querySelector(".df-clear-error").textContent="Couldn't clear on this device. Answers kept. Try Clear this card again.";return;}
+    card.querySelectorAll('input[type="radio"], .df-check-input').forEach(function(input){input.checked=false;});card.querySelector(".df-free").value="";closeClear(card);
+  }
   document.addEventListener("keydown",function(event){
+    if(event.key==="Escape"&&!(noteDialog&&noteDialog.open)){var focusedCard=document.activeElement&&document.activeElement.closest(".df-card"),pending=focusedCard&&focusedCard.querySelector(".df-clear-confirm:not([hidden])");if(pending){event.preventDefault();closeClear(focusedCard);return;}}
     var modal=noteDialog&&noteDialog.open?noteDialog:sheet&&sheet.node;if(!modal)return;
     if(event.key==="Escape"){event.preventDefault();if(modal===noteDialog)closeNote(true);else closeSheet(true);return;}
     if(event.key!=="Tab")return;var list=focusables(modal);if(modal!==noteDialog&&cite&&!cite.hidden)list.push(cite);if(!list.length)return;

@@ -71,6 +71,14 @@ layoutTest("Cite & note fits mobile and desktop, traps native dialog focus and r
       expect(await page.isChecked('[data-decision="v00"] .df-check-input >> nth=0')).toBe(false);
       await page.reload();
       expect(await page.locator('[data-chip-for="v00"] .df-note-count').textContent()).toBe("1");
+      if (view === "story") await page.click(".df-card.is-active .df-answer-open");
+      await page.click('[data-decision="v00"] .df-clear');
+      expect(await page.locator('[data-decision="v00"] .df-clear-confirm').isVisible()).toBe(true);
+      await page.keyboard.press("Escape");
+      expect(await page.evaluate(() => document.activeElement.classList.contains("df-clear"))).toBe(true);
+      await page.click('[data-decision="v00"] .df-clear'); await page.click('[data-decision="v00"] .df-clear-apply');
+      expect(await page.locator('[data-chip-for="v00"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
+      expect(await page.locator('[data-chip-for="v00"] .df-note-count').isVisible()).toBe(false);
       await page.close();
     }
   } finally { await browser.close(); }

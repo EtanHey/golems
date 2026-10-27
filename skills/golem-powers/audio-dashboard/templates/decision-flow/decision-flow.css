@@ -105,6 +105,12 @@ a{color:inherit}
 .note-area:focus{outline:none;border-color:var(--glass);box-shadow:0 0 0 1px var(--glass)}
 .df-card-actions{display:grid;grid-template-columns:auto 1fr;gap:10px;margin-top:12px}
 .df-card-actions button{min-height:48px;padding:0 16px;border-radius:12px;cursor:pointer}
+.df-card-actions .df-clear{grid-column:1 / -1;justify-self:start;margin-right:auto;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-strong);background:transparent;color:var(--muted)}
+.df-clear-confirm{margin-top:12px;padding:14px;border:1px solid var(--amber);border-radius:12px;background:var(--well)}
+.df-clear-confirm[hidden]{display:none}.df-clear-confirm p{margin:0 0 12px}.df-clear-confirm>div{display:flex;flex-wrap:wrap;gap:8px}
+.df-clear-confirm button{min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:10px;background:transparent;cursor:pointer}
+.df-clear-confirm .df-clear-apply{border-color:var(--amber);background:var(--amber);color:var(--ink);font-weight:650}
+.df-clear-error{color:var(--amber)}.df-clear-error:empty{display:none}.df-clear-confirm .df-clear-error{margin:12px 0 0}
 .df-skip{border:1px solid var(--line-strong);background:transparent;color:var(--muted)}
 .df-next{border:0;background:var(--moon);color:var(--ink);font-weight:650}
 .df-skip.is-acknowledged,.df-next.is-acknowledged{background:var(--glass-soft);color:var(--glass);box-shadow:inset 0 0 0 1px var(--glass)}

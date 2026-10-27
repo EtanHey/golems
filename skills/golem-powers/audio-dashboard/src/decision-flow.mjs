@@ -234,7 +234,8 @@ function renderCard(decision, index, sceneById) {
       ${renderChecklist(decision)}
       ${optionBlocks ? `<fieldset class="df-options"><legend class="df-sr-only">${escapeHtml(decision.title)} options</legend>${optionBlocks}</fieldset>` : ""}
       <textarea class="note-area df-free" data-note="${escapeHtml(decision.id)}-free" data-title="${escapeHtml(decision.title)}" placeholder="${optionBlocks ? "Or write it in your own words" : "Anything to add? Write it here"}"></textarea>
-      <div class="df-card-actions"><button type="button" class="df-skip">Skip for now</button><button type="button" class="df-next">Next decision →</button></div>
+      <div class="df-card-actions"><button type="button" class="df-clear" aria-label="Clear answers for ${escapeHtml(decision.title)}" aria-expanded="false" aria-controls="clear-${escapeHtml(decision.id)}"><span aria-hidden="true">⌫</span> Clear</button><button type="button" class="df-skip">Skip for now</button><button type="button" class="df-next">Next decision →</button></div>
+      <div class="df-clear-confirm" id="clear-${escapeHtml(decision.id)}" role="group" aria-label="Confirm clearing ${escapeHtml(decision.title)}" hidden><p>Clear this card’s picks, checklist, answer and notes?</p><div><button type="button" class="df-clear-cancel">Keep answers</button><button type="button" class="df-clear-apply">Clear this card</button></div><p class="df-clear-error" role="alert"></p></div>
     </div>
     </div>
   </article>`;
