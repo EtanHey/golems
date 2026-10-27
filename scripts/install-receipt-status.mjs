@@ -30,7 +30,13 @@ function compareStatus(status) {
 export function readLocal(names) {
   return Object.fromEntries(names.map(product => {
     try {
-      return [product, JSON.parse(readFileSync(join(process.env.HOME, '.local/state/golems/install-receipts', product, 'latest.json'), 'utf8'))];
+      const r = JSON.parse(readFileSync(join(process.env.HOME, '.local/state/golems/install-receipts', product, 'latest.json'), 'utf8'));
+      if (product === 'golems' && r?.artifact_kind === 'skills-sync' && r.install_source?.mode === 'release-channel') {
+        const record = JSON.parse(readFileSync(join(r.install_source.path, '..', 'release.json'), 'utf8'));
+        if (!/^[0-9a-f]{40}$/.test(record.commit)) throw Error('Invalid release identity');
+        if (record.commit !== r.installed.embedded_commit) return [product, null];
+      }
+      return [product, r];
     } catch (error) {
       return [product, error.code === 'ENOENT' ? null : { error: 'unreadable-receipt' }];
     }
@@ -48,8 +54,19 @@ export function readRemote(names, exec = execute) {
       return [product, error.status === 1 && /No such file or directory/.test(String(error.stderr))
         ? null : { error: 'unreadable-receipt' }];
     }
-    try { return [product, JSON.parse(bytes)]; }
-    catch { return [product, { error: 'unreadable-receipt' }]; }
+    let r;
+    try { r = JSON.parse(bytes); } catch { return [product, { error: 'unreadable-receipt' }]; }
+    if (product === 'golems' && r?.artifact_kind === 'skills-sync' && r.install_source?.mode === 'release-channel') {
+      try {
+        const record = JSON.parse(exec('ssh', ['-o', 'BatchMode=yes', 'm1', 'cat -- "$HOME/.golems/release.json"']));
+        if (!/^[0-9a-f]{40}$/.test(record.commit)) throw Error('Invalid release identity');
+        if (record.commit !== r.installed.embedded_commit) return [product, null];
+      } catch (error) {
+        if (error.status === 255) throw error;
+        return [product, { error: 'unreadable-receipt' }];
+      }
+    }
+    return [product, r];
   }));
 }
 
@@ -166,7 +183,7 @@ export function peelTag(repo, tag, exec = execute) {
 export function hostAlias(name) {
   const normalized = name.toLowerCase().replace(/\.local$/, '');
   if (/(^|[-_])mbp($|[-_])/.test(normalized) || /^macbook-pro$/.test(normalized)) return 'mbp';
-  if (/(^|[-_])m1($|[-_])/.test(normalized)) return 'm1';
+  if (/(^|[-_])m1($|[-_])/.test(normalized) || normalized === 'locals-macbook-pro') return 'm1';
   throw Error('Unknown local host alias');
 }
 export function collectStatus({ products: catalog = products, localReader = readLocal,

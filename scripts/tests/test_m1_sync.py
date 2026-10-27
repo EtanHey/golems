@@ -127,7 +127,7 @@ with open(os.environ['EVENTS'], 'a') as f: f.write('apply\\n' if '--apply' in sy
     def test_flag_runs_full_sync_before_parity(self):
         r = self.invoke_live('--sync-m1')
         self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
-        self.assertIn('install\ndry-run\napply\nparity\n', self.events())
+        self.assertIn('install\ndry-run\napply\nssh\nparity\n', self.events())
         backup = next(self.remote.glob('.claude/skills.bak-*'))
         with tarfile.open(backup) as archive:
             self.assertEqual(archive.extractfile('.codex/skills/only-m1/SKILL.md').read(), b'retain me')
@@ -209,7 +209,7 @@ with open(os.environ['EVENTS'], 'a') as f: f.write('apply\\n' if '--apply' in sy
         events = self.events()
         r = self.invoke()
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(self.events(), events + 'ssh\n')
+        self.assertEqual(self.events(), events + 'ssh\nssh\n')
 
     def test_current_without_success_marker_needs_attention(self):
         self.record(HEAD)
@@ -276,6 +276,49 @@ with open(os.environ['EVENTS'], 'a') as f: f.write('apply\\n' if '--apply' in sy
             self.assertIn(message, r.stderr)
             self.assertNotIn('not published yet', r.stderr)
             self.assertEqual(self.events(), '')
+
+    def receipt_writer(self, fail=False):
+        writer = self.remote / '.golems/current/scripts/skills-sync-receipt.mjs'
+        writer.parent.mkdir(parents=True, exist_ok=True)
+        writer.write_text('// fixture writer; exercised by fake node')
+        self.stub('node', '''import json
+assert Path(sys.argv[1]).resolve() == (Path(os.environ['REMOTE_HOME']) / '.golems/current/scripts/skills-sync-receipt.mjs').resolve()
+assert sys.argv[2:5] == ['emit', 'release-channel', 'm1']
+record = json.loads((Path.home() / '.golems/release.json').read_text())
+assert record['commit'] == "''' + HEAD + '''"
+with open(os.environ['EVENTS'], 'a') as f: f.write('receipt\\n')
+''' + ('sys.exit(1)\n' if fail else "print('skills-sync receipt: LIVE')\n"))
+
+    def test_receipt_runs_from_installed_release_after_apply(self):
+        self.receipt_writer()
+        r = self.invoke()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('apply\nssh\nreceipt\n', self.events())
+        self.assertIn('m1-receipt: LIVE', r.stdout)
+
+    def test_missing_writer_is_unavailable_without_receipt_writes(self):
+        r = self.invoke()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('m1-receipt: unavailable', r.stdout)
+        self.assertFalse((self.remote / '.local/state/golems/install-receipts').exists())
+
+    def test_failed_writer_is_unavailable_and_current_sync_can_retry(self):
+        self.receipt_writer(fail=True)
+        r = self.invoke()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('m1-receipt: unavailable', r.stdout)
+        self.receipt_writer()
+        again = self.invoke()
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertIn('m1-receipt: LIVE', again.stdout)
+
+    def test_missing_node_is_unavailable_without_receipt_writes(self):
+        self.receipt_writer()
+        self.stub('node', 'sys.exit(127)\n')
+        r = self.invoke()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('m1-receipt: unavailable', r.stdout)
+        self.assertFalse((self.remote / '.local/state/golems/install-receipts').exists())
 
 
 if __name__ == '__main__':

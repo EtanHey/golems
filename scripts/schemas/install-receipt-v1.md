@@ -1,7 +1,9 @@
 # install-receipt/v1 — PR-A
 
 `install-receipt-v1.mjs` exports the closed JSON Schema. The CLI uses the existing
-Ajv dependency and registers `utc-time` for real UTC calendar timestamps.
+bundled Ajv validator and registers `utc-time` for real UTC calendar timestamps.
+Regenerate the standalone validator and dependency licenses with
+`bash scripts/build-receipt-validator.sh` after installing the locked dependencies.
 
 `golems` / `skills-sync` uses `install_source.mode: checkout|release-channel`,
 absolute `roots[]` with `tree_sha256`, and `installed.content_sha256` over sorted

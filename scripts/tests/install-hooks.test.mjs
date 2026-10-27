@@ -122,6 +122,7 @@ const bakFiles = (fx) => spawnSync("ls", [path.join(fx.home, ".claude")], { enco
 
 function fixtureEnv(fx) {
   const env = { ...process.env, HOME: fx.home, CODEX_HOME: path.join(fx.home, ".codex"),
+    RATCHET_SKILL_CONFIG: path.join(fx.home, 'fixture-parity-not-configured.json'),
     GOLEMS_HEAVY_LOCK: path.join(fx.root, "fixture-heavy.lock"),
     GOLEMS_HEAVY_MIN_FREE_GB: "0", GOLEMS_WORKTREE_MIN_FREE_GB: "0", ...(fx.env ?? {}) };
   // The parent suite owns the real mutex; nested synthetic installs use fixture-only state.

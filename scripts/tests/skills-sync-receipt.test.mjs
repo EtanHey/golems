@@ -5,7 +5,7 @@ import { resolve, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { buildSkillsReceipt, snapshotSkills } from '../lib/skills-sync-receipt.mjs';
 import { assess, validate } from '../lib/install-receipt-core.mjs';
-import { collectStatus } from '../install-receipt-status.mjs';
+import { collectStatus, hostAlias, readRemote } from '../install-receipt-status.mjs';
 
 function fixture(fn) {
   mkdirSync('docs.local', { recursive: true });
@@ -82,4 +82,14 @@ test('status rechecks checkout trees; no release.json or process needed; drift n
     skillsReader: () => snapshotSkills({ mode: 'checkout', source, home }) });
   assert.equal(rows()[0].status, 'CURRENT'); assert.equal(rows()[1].status, 'NO-RECEIPT');
   writeFileSync(join(source, 'SKILL.md'), 'drift'); assert.equal(rows()[0].status, 'MISMATCH');
+}));
+test('new M1 release without its receipt is NO-RECEIPT; reads use fake SSH only', () => fixture(({ build, commit }) => {
+  const old = build(); old.install_source.mode = 'release-channel'; old.host.alias = 'm1';
+  const read = current => readRemote(['golems'], (file, args) => {
+    assert.equal(file, 'ssh'); assert.match(args[3], /^cat -- /);
+    return JSON.stringify(args[3].includes('release.json') ? { commit: current } : old);
+  });
+  assert.equal(read('f'.repeat(40)).golems, null);
+  assert.equal(read(commit).golems.installed.embedded_commit, commit);
+  assert.equal(hostAlias('Locals-MacBook-Pro.local'), 'm1');
 }));

@@ -16,7 +16,7 @@ beforeAll(() => {
   const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repo, encoding: 'utf8' }).split('\0').filter(Boolean);
   paths.push('scripts/release/install.sh', 'skills/catalog.json');
   paths.push('scripts/hooks/client-install-transaction.mjs');
-  for (const path of new Set(paths.filter(p => /^(skills\/(golem-powers\/|catalog.json$)|scripts\/(pr-watch|repogolem\/|hooks\/|model-roles.mjs|ci\/check-model-role-drift.mjs)|packages\/golem-skills\/|standards\/model-roles|\.claude\/hooks\/block-dangerous-commands.py|hooks\/daemon-gate-precheck.py|\.bun-version$|LICENSE$|package.json$|release-gate.json$|scripts\/release\/install.sh$)/.test(p)))) {
+  for (const path of new Set(paths.filter(p => /^(skills\/(golem-powers\/|catalog.json$)|scripts\/(pr-watch|repogolem\/|hooks\/|lib\/|schemas\/|install-receipt|skills-sync-receipt|ratchet\/(installed-skills|skills-receipt)\.py|release\/shipped-paths.json|model-roles.mjs|ci\/check-model-role-drift.mjs)|packages\/golem-skills\/|standards\/model-roles|\.claude\/hooks\/block-dangerous-commands.py|hooks\/daemon-gate-precheck.py|\.bun-version$|LICENSE$|package.json$|release-gate.json$|scripts\/release\/install.sh$)/.test(p)))) {
     if (!existsSync(join(repo, path))) continue;
     mkdirSync(dirname(join(source, path)), { recursive: true });
     copyFileSync(join(repo, path), join(source, path));
@@ -479,7 +479,8 @@ function runtime(dir) {
   const bin = join(dir, 'runtime'); mkdirSync(bin);
   for (const name of readdirSync(minimal)) symlinkSync(join(minimal, name), join(bin, name));
   for (const name of ['node', 'python3']) symlinkSync(execFileSync('/usr/bin/which', [name], { encoding: 'utf8' }).trim(), join(bin, name));
-  const env = { ...process.env, HOME: dir, CODEX_HOME: join(dir, '.codex'), PATH: bin, TMP_BLOCK_LEDGER: join(dir, 'ledger.jsonl') };
+  const env = { ...process.env, HOME: dir, CODEX_HOME: join(dir, '.codex'), PATH: bin, TMP_BLOCK_LEDGER: join(dir, 'ledger.jsonl'),
+    RATCHET_SKILL_CONFIG: join(dir, 'fixture-parity-not-configured.json') };
   for (const key of ['WEAVE_ALLOW_TMP', 'PYTHONPATH', 'PYTHONHOME', 'GOLEM_ROLE', 'GOLEMS_WORKER', 'GOLEMS_HEAVY_SUITE_HELD']) delete env[key];
   return env;
 }
@@ -488,6 +489,23 @@ const update = (dir, env, next) => {
   return spawnSync(installed ? wrapper : '/bin/sh', [installed ? 'update' : installer, '--from-file', next.tarball, '--sums', join(dirname(next.tarball), 'SHA256SUMS')], { env, encoding: 'utf8' });
 };
 const hooks = (dir, env, flag) => spawnSync('node', [join(dir, '.golems/current/scripts/hooks/install-hooks.mjs'), '--host', 'client', '--source', join(dir, '.golems/current'), flag], { env, encoding: 'utf8' });
+test('install.sh emits release receipt without node_modules, then clean status/parity permits LIVE', () => {
+  const dir = home(), env = runtime(dir); ok(update(dir, env, release));
+  const latest = join(dir, '.local/state/golems/install-receipts/golems/latest.json');
+  const initial = JSON.parse(readFileSync(latest));
+  expect(initial.verdict).toBe('INSTALLED_NOT_ACTIVE'); expect(initial.install_source.mode).toBe('release-channel');
+  expect(initial.installed.embedded_commit).toBe(release.commit);
+  expect(initial.install_source.roots.some(r => r.path === join(dir, '.golems/bin'))).toBe(true);
+  expect(existsSync(join(dir, '.golems/current/node_modules'))).toBe(false);
+  ok(hooks(dir, env, '--apply'));
+  const python = execFileSync('/usr/bin/which', ['python3'], { encoding: 'utf8' }).trim();
+  rmSync(join(dir, 'runtime/python3'));
+  writeFileSync(join(dir, 'runtime/python3'), `#!/bin/sh\ncase "$*" in *ratchet/installed-skills.py*) printf '%s\\n' '{"measurement":"live","host_identity_valid":true,"name_content_parity":true,"required_readable_valid":true}';; *) exec '${python}' "$@";; esac\n`, { mode: 0o755 });
+  const next = upgrade(); ok(update(dir, env, next));
+  const final = JSON.parse(readFileSync(latest));
+  expect(final.verdict).toBe('LIVE');
+  expect(final.installed.embedded_commit).toBe(next.commit);
+});
 function upgrade(change = () => {}) {
   writeFileSync(join(source, 'LICENSE'), `hook update ${serial++}\n`); change(); git('add', '.'); git('commit', '-m', 'hook update fixture');
   return buildRelease({ repo: source, out: join(root, `hooks-upgrade-${serial++}`) });

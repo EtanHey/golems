@@ -1,4 +1,4 @@
-import Ajv from 'ajv';
+import Ajv from './vendor/receipt-ajv.generated.mjs';
 import { createHash } from 'node:crypto';
 import schema from '../schemas/install-receipt-v1.mjs';
 

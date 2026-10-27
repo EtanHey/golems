@@ -33,6 +33,10 @@ export function buildSkillsReceipt({ mode, source, alias, owner, parity, snapsho
   return r;
 }
 export function emitSkillsReceipt({ mode, source, alias, ownerArgs = [], prefix = resolve(source, '..') }) {
+  if (mode === 'release-channel') {
+    const record = JSON.parse(readFileSync(resolve(prefix, 'release.json'))), manifest = JSON.parse(readFileSync(resolve(source, 'MANIFEST.json')));
+    if (record.commit !== manifest.commit || record.version !== manifest.version) throw Error('receipt writer/content release identity mismatch');
+  }
   const status = run(process.execPath, [resolve(scripts, 'hooks/install-hooks.mjs'), ...ownerArgs, '--status']);
   const text = status.stdout ?? '', drift = text.match(/\bdrift=(\d+)/)?.[1], settings = text.match(/settings-drift=(\d+)/)?.[1];
   const pin = text.match(/hooks-live=([0-9a-f]{40})\b/)?.[1];
