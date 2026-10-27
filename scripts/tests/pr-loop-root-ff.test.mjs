@@ -1,7 +1,7 @@
 import { afterEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,50 +15,33 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const doc = path.join(here, "..", "..", "skills", "golem-powers", "pr-loop", "references",
   "merge-and-verification.md");
 
-test("cleanup receipt requires removal proof and escalates preserved worktrees", () => {
+test("cleanup receipt keeps compatible fields and delegates retirement to the contract", () => {
   const receipt = readFileSync(doc, "utf8").split("### Cleanup Receipt")[1];
-  assert.ok(receipt.includes("- worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune"));
+  assert.ok(receipt.includes("- worktree: removed: <path>; proof:"));
   assert.ok(receipt.includes("OR worktree: <path> kept because <reason>; escalated to <lead>"));
-  assert.ok(receipt.includes("A receipt without removal proof or an escalated preservation exception is invalid."));
-  assert.match(receipt, /local-only[\s\S]*dirty[\s\S]*lead/);
-  const recipe = receipt.match(/```bash\n([\s\S]*?)\n\s*```/)[1];
-  assert.match(recipe, /worktree remove[\s\S]*worktree prune[\s\S]*worktree list --porcelain/);
-  assert.ok(!recipe.includes("--force"));
-  assert.ok(recipe.includes('echo "worktree: removed: $WT; proof:'), "recipe must preserve both worktree: and removed: tokens before the proof");
+  for (const field of ["- branch:", "- files this PR added outside src/tests:", "- docs.local this lane created:"]) assert.ok(receipt.includes(field));
+  assert.match(receipt, /REMOVED[\s\S]*RETAINED[\s\S]*TRANSFERRED/);
+  assert.doesNotMatch(receipt, /```bash/);
 });
 
-// Discover guidance recursively, including every adapter format. Test/eval data
-// and executable helpers are not agent instructions; Markdown/YAML anywhere
-// under skills and all adapter files are, without a fixed skill/path allowlist.
-function* skillGuidance(dir) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const file = path.join(dir, entry.name);
-    if (entry.isDirectory()) yield* skillGuidance(file);
-    else if (entry.isFile() && (/\.(md|ya?ml)$/i.test(file) || file.split(path.sep).includes("adapters"))) yield file;
-  }
-}
-
-test("all skill guidance and adapters mentioning git worktree remove require prune and absence proof", () => {
-  const skills = path.resolve(here, "../../skills");
-  const violations = [];
-  let checked = 0;
-  for (const file of skillGuidance(skills)) {
+// PR 1 gateways only; later slices migrate the remaining provider/phase adapters.
+test("PR1 gateways link the lifecycle contract without the C1-C6 cleanup recipes", () => {
+  for (const relative of ["pr-loop/SKILL.md", "pr-loop/references/merge-and-verification.md", "fleet-wrap-gate/SKILL.md"]) {
+    const file = path.resolve(here, "../../skills/golem-powers", relative);
     const text = readFileSync(file, "utf8");
-    if (!text.includes("git worktree remove")) continue;
-    checked++;
-    for (const [requirement, pattern] of [
-      ["git worktree prune", /git worktree prune/],
-      ["porcelain absence proof", /absent\s+from\s+`?git worktree list --porcelain/],
-      ["no forced removal", /(?:no|without) (?:`)?--force/],
-      ["dirty preservation", /dirty/i],
-      ["local-only preservation", /local-only/],
-      ["lead escalation", /(?:escalat[\s\S]*lead|lead[\s\S]*escalat)/i],
-    ]) {
-      if (!pattern.test(text)) violations.push(`${path.relative(skills, file)}: missing ${requirement}`);
-    }
+    const target = text.match(/\]\(([^)]+_shared\/lifecycle\/CONTRACT\.md)\)/)?.[1];
+    assert.ok(target, `${relative}: missing contract link`);
+    assert.equal(path.resolve(path.dirname(file), target), path.resolve(here, "../../skills/golem-powers/_shared/lifecycle/CONTRACT.md"));
+    assert.doesNotMatch(text, /git worktree prune|worktree remove[^\n]*--force|regenerable cache|removes the tree too|inside your own worktree, unchanged/);
   }
-  assert.ok(checked > 0, "no worktree removal guidance discovered");
-  assert.deepEqual(violations, []);
+});
+
+test("shared contract preserves terminal, scratch and archive obligations", () => {
+  const contract = readFileSync(path.resolve(here, "../../skills/golem-powers/_shared/lifecycle/CONTRACT.md"), "utf8");
+  for (const rule of ["REMOVED", "RETAINED", "TRANSFERRED", "No `--force`", "No broad `git worktree prune`", "No child self-rm", "ignored `docs.local`", "origin/<default>", "return code", "physical absence", "registration", "streaming", "restore", "membership", "readability", "local-only", "scratch/<unique-lease-or-task-id>/", "worktree-archive/<lease-id>/", "staging", "adverse", "credentials"]) assert.ok(contract.includes(rule), `missing ${rule}`);
+  assert.match(contract, /before allocation/);
+  assert.match(contract, /verified PR base remote[\s\S]*upstream\/<default>[\s\S]*Never substitute fork-origin coverage/);
+  assert.match(contract, /outside[\s\S]*retiring/);
 });
 
 test("cleanup root field grammar accepts proof or STOP and rejects incomplete receipts", () => {
