@@ -5,6 +5,7 @@ import { resolve, join } from 'node:path';
 import { hostname, userInfo } from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { assess } from '../lib/install-receipt-core.mjs';
 
 const cli = resolve('scripts/install-receipt.mjs');
 const sha = 'a'.repeat(40), digest = 'b'.repeat(64);
@@ -47,6 +48,7 @@ for (const [name, product, clients, changed, stale] of [
   ['unchanged bridge', 'brainlayer', [client()], false, false],
   ['BrainBar shares bridge clients', 'brainbar', [client()], true, true],
   ['Cellar bridge argv', 'brainlayer', [client(undefined, '/opt/homebrew/bin/python3 /opt/homebrew/Cellar/brainlayer/1.5.77/bin/brainlayer-mcp-stdio-bridge')], true, true],
+  ['brew symlink bridge', 'brainlayer', [client(undefined, '/opt/homebrew/bin/brainlayer-mcp-stdio-bridge')], true, true],
 ]) {
   test(`I2d: ${name}`, () => isolated(run => {
     const r = processReceipt(product), scan = r.activation.seat_scan;
@@ -66,10 +68,47 @@ test('I2d: daemon/helper commands and lookalike paths are never clients', () => 
   const r = processReceipt();
   r.activation.seat_scan.clients = ['watch', 'drain', 'daemon', 'hybrid-helper', 'supervisor_guard'].map(name =>
     client(undefined, `/opt/homebrew/opt/brainlayer/bin/${name}`));
-  r.activation.seat_scan.clients.push(client(undefined, `${bridge}-helper`), client(undefined, `${bridge} --daemon`),
-    client(undefined, `/untrusted${bridge}`));
+  r.activation.seat_scan.clients.push(client(undefined, `${bridge}-helper`), client(undefined, `${bridge} --daemon`));
   r.activation.seat_scan.excluded = [{ rule: 'daemon-process', reason: 'Server processes are not clients', count: 5 }];
   assert.equal(output(run('write', r)).verdict, 'LIVE');
+}));
+test('I2d R1: fractional client timestamps are refused and core floors seconds defensively', () => isolated(run => {
+  const r = processReceipt(), c = client('2026-10-27T09:00:00.300Z');
+  r.activation.seat_scan.clients = [c];
+  for (const command of ['validate', 'write']) {
+    const result = run(command, r); assert.equal(result.status, 1); assert.match(result.stderr, /started_at/);
+  }
+  assert.equal(assess(r)[0], 'INSTALLED_NOT_ACTIVE');
+  assert.ok(assess(r)[1].includes(clientKey(c)));
+}));
+test('I2d R1: bridge diff must start at a distinct prior-version tag', () => isolated(run => {
+  for (const [priorVersion, fromTag] of [[undefined, 'v1.0.0'], ['0.9.0', 'v0.8.0']]) {
+    const r = processReceipt(); r.target.tag = 'v1.0.0';
+    if (priorVersion) r.prior = { version: priorVersion };
+    r.activation.seat_scan.bridge_diff.from_tag = fromTag;
+    for (const command of ['validate', 'write']) {
+      const result = run(command, r); assert.equal(result.status, 1); assert.match(result.stderr, /from_tag/);
+    }
+  }
+  for (const version of ['0.9.0', 'v0.9.0']) {
+    const r = processReceipt(); r.target.tag = 'v1.0.0'; r.prior = { version };
+    assert.equal(output(run('validate', r)).verdict, 'LIVE');
+  }
+}));
+test('I2d R1: unrecognised bridge paths fail closed, even with unchanged bridge code', () => isolated(run => {
+  for (const path of [`/untrusted${bridge}`, 'brainlayer-mcp-stdio-bridge',
+    '/opt/homebrew/Cellar/brainlayer/../bin/brainlayer-mcp-stdio-bridge',
+    '/opt/homebrew/Cellar/brainlayer/./bin/brainlayer-mcp-stdio-bridge']) {
+    for (const commandText of [path, `/opt/homebrew/bin/python3 ${path}`]) {
+      for (const changed of [true, false]) {
+        const r = processReceipt(); r.activation.seat_scan.clients = [client(undefined, commandText)];
+        r.activation.seat_scan.bridge_diff.changed = changed;
+        for (const command of ['validate', 'write']) {
+          const result = run(command, r); assert.equal(result.status, 1); assert.match(result.stderr, /unrecognised bridge path/);
+        }
+      }
+    }
+  }
 }));
 for (const product of ['voicelayer', 'voicebar']) {
   test(`I2d: ${product} socat is excluded with the mandatory limitation`, () => isolated(run => {

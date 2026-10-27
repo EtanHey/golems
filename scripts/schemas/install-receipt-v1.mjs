@@ -32,7 +32,8 @@ export default {
       seat_scan: {
         ...object({ method: { enum: ['t3-threads', 'list_agents', 'client-processes'] }, checked_at: time,
           active_seats: array(text),
-          clients: array(object({ pid: { type: 'integer', minimum: 1 }, started_at: time, command: text,
+          clients: array(object({ pid: { type: 'integer', minimum: 1 },
+            started_at: { ...time, pattern: '^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ$' }, command: text,
             thread_id: { type: ['string', 'null'], minLength: 1 } }, ['pid', 'started_at', 'command', 'thread_id'])),
           excluded: array(object({ rule: { enum: ['socat-relay', 'daemon-process'] }, reason: text,
             count: { type: 'integer', minimum: 0 } }, ['rule', 'reason', 'count'])),

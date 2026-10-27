@@ -47,32 +47,40 @@ refused on the two existing seat methods, whose behavior is unchanged.
 
 - `clients[]`: `{pid: positive integer, started_at: UTC Z, command: non-empty
   string, thread_id: non-empty string or null}`. Record exact argv[0..1] and ps
-  lstart converted from local time to UTC (one-second resolution).
+  lstart converted from local time to UTC (whole seconds only; fractions are refused).
 - `excluded[]`: `{rule: socat-relay|daemon-process, reason: non-empty string,
   count: non-negative integer}`.
 - `bridge_diff`: `{from_tag, to_sha, paths: [non-empty strings], changed: boolean}`.
-  `to_sha` must equal `target.released_sha`. The diff is caller-attested evidence;
+  `to_sha` must equal `target.released_sha`. `from_tag` must differ from `target.tag`;
+  when `prior.version` is present it must equal that version prefixed with `v`
+  (preserving an existing `v` prefix). The diff is caller-attested evidence;
   core does not run git or ps. BrainLayer and BrainBar diffs must cover all three
   core paths: `src/brainlayer/mcp_stdio_bridge.py`, `src/brainlayer/mcp/`, and
   `src/brainlayer/mcp_socket_config.py`.
 
 Core matches BrainLayer and BrainBar clients only when the command ends with
+`/opt/homebrew/bin/brainlayer-mcp-stdio-bridge`,
 `/opt/homebrew/opt/brainlayer/bin/brainlayer-mcp-stdio-bridge` or
 `/opt/homebrew/Cellar/brainlayer/<version>/bin/brainlayer-mcp-stdio-bridge`,
 optionally preceded by an interpreter executable. Watch, drain, daemon,
 hybrid-helper and supervisor_guard commands are never clients. BrainBar shares
 this matcher because those bridges relay to its `/tmp/brainbar.sock`.
+The Cellar version segment cannot be `.` or `..`. If argv[0] or argv[1] has
+basename `brainlayer-mcp-stdio-bridge` but an unrecognised path, validation refuses
+the receipt even when `bridge_diff.changed=false`.
 
-Core derives stale clients from `started_at <= installed.install_finished_at`:
+Core floors both timestamps to whole seconds when comparing
+`started_at <= installed.install_finished_at`:
 the equal second is stale. IDs are `pid:<pid>@<started_at>` so a reused PID with
 a later start is fresh. `active_seats` must equal that derived set; validate and
 write both refuse a differing list, including duplicate claims. When
 `bridge_diff.changed=false`, none are stale and write records why in reasons.
 
-VoiceLayer and VoiceBar match only `socat STDIO UNIX-CONNECT:/tmp/voicelayer-mcp.sock`
-with bare `socat` or `/opt/homebrew/bin/socat`. These version-neutral relays are
-excluded. A `socat-relay` exclusion must record the observed count (including zero)
-and contain this exact sentence; excluded processes may already be absent from `clients`:
+VoiceLayer and VoiceBar are relay products: core derives no stale clients for
+these products, regardless of the recorded commands. The relay rule does not reject commands
+that differ from the observed socat argv or independently verify relay counts.
+A `socat-relay` exclusion must record the observed count (including zero) and
+contain this exact sentence; excluded processes may already be absent from `clients`:
 
 > LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).
 

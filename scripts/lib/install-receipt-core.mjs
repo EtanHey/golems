@@ -3,7 +3,7 @@ import schema from '../schemas/install-receipt-v1.mjs';
 
 const MCP_PRODUCTS = ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar'];
 const BRIDGE_PATHS = ['src/brainlayer/mcp_stdio_bridge.py', 'src/brainlayer/mcp/', 'src/brainlayer/mcp_socket_config.py'];
-const BRIDGE = /^(?:\S+\s+)?\/opt\/homebrew\/(?:opt\/brainlayer|Cellar\/brainlayer\/[^/\s]+)\/bin\/brainlayer-mcp-stdio-bridge$/;
+const BRIDGE = /^(?:\S+\s+)?\/opt\/homebrew\/(?:bin|(?:opt\/brainlayer|Cellar\/brainlayer\/(?!\.{1,2}\/)[^/\s]+)\/bin)\/brainlayer-mcp-stdio-bridge$/;
 const SOCAT = /^(?:\/opt\/homebrew\/bin\/)?socat STDIO UNIX-CONNECT:\/tmp\/voicelayer-mcp\.sock$/;
 const SOCAT_REASON = 'LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).';
 const CLIENT_RULES = new Map([
@@ -16,7 +16,8 @@ function staleClients(r) {
   if (!rule) throw new Error(`no client matcher for ${r.product}`);
   const clients = scan.clients.filter(c => (rule.bridge ?? rule.relay).test(c.command));
   if (rule.relay || !scan.bridge_diff.changed) return [];
-  return [...new Set(clients.filter(c => Date.parse(c.started_at) <= Date.parse(r.installed.install_finished_at))
+  return [...new Set(clients.filter(c => Math.floor(Date.parse(c.started_at) / 1000)
+    <= Math.floor(Date.parse(r.installed.install_finished_at) / 1000))
     .map(c => `pid:${c.pid}@${c.started_at}`))];
 }
 
@@ -34,7 +35,19 @@ export function validate(receipt) {
   }
   const scan = receipt.activation.seat_scan;
   if (scan?.method !== 'client-processes') return;
+  for (const c of scan.clients) {
+    if (c.command.trim().split(/\s+/).slice(0, 2).some(arg =>
+      arg.split('/').at(-1) === 'brainlayer-mcp-stdio-bridge' && !BRIDGE.test(arg))) {
+      throw new Error('seat_scan.clients contains an unrecognised bridge path');
+    }
+  }
   const derived = staleClients(receipt), rule = CLIENT_RULES.get(receipt.product);
+  if (scan.bridge_diff.from_tag === receipt.target.tag) {
+    throw new Error('seat_scan.bridge_diff.from_tag must differ from target.tag');
+  }
+  if (receipt.prior?.version && scan.bridge_diff.from_tag !== `v${receipt.prior.version.replace(/^v/, '')}`) {
+    throw new Error('seat_scan.bridge_diff.from_tag must match the prior installed version tag');
+  }
   if (scan.bridge_diff.to_sha !== receipt.target.released_sha) {
     throw new Error('seat_scan.bridge_diff.to_sha must equal target.released_sha');
   }
