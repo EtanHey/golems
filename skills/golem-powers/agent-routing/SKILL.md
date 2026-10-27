@@ -316,6 +316,19 @@ explain the evidence-backed state, and store the correction separately.
 - `/qa-video`: Gemini visual workflow.
 - `/whats-new`: tool-surface changes; they do not revise Routing rules (SSOT) by implication.
 
+## Installed design skill constraints
+
+These fleet constraints apply independently of the usage proposal below:
+
+- `improve-animations` is audit mode only (`quick` or `standard`). Its `execute`
+  mode is **never** used in the fleet: it self-dispatches and self-reviews.
+  Write plans only under `docs.local/animation-plans/`, never a tracked `plans/`
+  directory. Send the plans to the lead, who routes implementation and review.
+  Any authorized read-only helpers are capped at two and follow normal model/tier
+  rules (default service, no fast; Cursor stays Auto-only).
+- `animate` must use the repo's existing dependencies. `pick-ui-library` is not
+  installed: never fetch it or a replacement library to satisfy that reference.
+
 ## Design skills usage — DRAFT, pending Etan ratification
 
 This proposal does not change the current UX/UI implementer, Codex pair/recorder,
@@ -339,8 +352,8 @@ layout/tokens win on visual cohesion; Emil governs local interaction craft.
   `find-animation-opportunities` for restrained proposals. Do not load the full suite
   into every worker; no animation is a valid decision. Give Emil a concrete task
   because a bare invocation only greets. `animate` references the uninstalled
-  `pick-ui-library`; do not silently fetch it. Upstream delegation/execute variants
-  stay subordinate to current routing and a child's brief.
+  `pick-ui-library`; use existing repo dependencies and never fetch it. The
+  audit-only, docs.local output and never-execute constraints above always apply.
 
 Options for Etan, with A recommended:
 

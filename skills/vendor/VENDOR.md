@@ -8,12 +8,14 @@ Status: upstream bytes copied without edits; usage policy is a separate DRAFT.
 | Emil Kowalski | https://github.com/emilkowalski/skills | 2d228630ba1446365f614a108cb8252f1feda202 | MIT, LICENSE in each skill |
 
 Only the five named Emil skills are included. `animate` references `pick-ui-library`,
-which is not installed: do not silently fetch it. No selected folder has scripts.
+which is not installed: use existing repo dependencies and never fetch it. No selected folder has scripts.
 Read all SKILL.md, recipes, references and licenses before refreshing. UI code examples
 are inert at installation. External URLs (easing.dev, easings.co, author/library sites)
-are references, not install-time fetches. `improve-animations execute` asks for a
-worker; existing routing and child limits win. Bare Emil invocations stop at a greeting;
-include the concrete task. `review-animations` is explicit-only in Claude.
+are references, not install-time fetches. `improve-animations` is audit mode only;
+its execute mode is **never** used in the fleet. Write plans under
+`docs.local/animation-plans/` and send them to the lead for routing. Use quick or
+standard, with at most two authorized read-only helpers under normal routing.
+Bare Emil invocations stop at a greeting; include the concrete task. `review-animations` is explicit-only in Claude.
 Codex 0.164 discovery exposes enabled:true with no implicit-invocation policy;
 auto-trigger suppression there is UNPROVEN. Invoke this skill explicitly in briefs.
 
