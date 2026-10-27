@@ -153,12 +153,13 @@ test('publication remains serialized and both jobs use the pinned Node version',
 });
 
 function runsNode(script) {
-  const uncommented = script.replace(/'[^']*'|"(?:\\.|[^"\\])*"|\\.|(?<![^\s;&|()<>])#[^\n]*/g,
+  const hasNodeCommand = code => /\b(?:node|npm|npx)(?:\s|$)/.test(code) ||
+    (/\bbun\s+run(?:\s|$)/.test(code) && !/(?:^|\s)--bun(?:\s|$)/.test(code));
+  const legacy = script.split(/\n|&&|\|\||;/).some(command => hasNodeCommand(command.replace(/#.*/, '')));
+  const uncommented = script.replace(/\$'(?:\\.|[^'\\])*'|'[^']*'|"(?:\\.|[^"\\])*"|\\.|(?<![^\s;&|(<>])#[^\n]*/g,
     token => token.startsWith('#') ? '' : token);
-  return uncommented.split(/\n|&&|\|\||;/).some(code => {
-    return /\b(?:node|npm|npx)(?:\s|$)/.test(code) ||
-      (/\bbun\s+run(?:\s|$)/.test(code) && !/(?:^|\s)--bun(?:\s|$)/.test(code));
-  });
+  // AIDEV-NOTE: Full heredoc parsing is out of scope; union with the legacy detector is the safety net.
+  return legacy || uncommented.split(/\n|&&|\|\||;/).some(hasNodeCommand);
 }
 
 test('Node command detection includes Bun fallback but excludes forced Bun execution', () => {
@@ -194,9 +195,13 @@ test.each([
   [String.raw`printf \# | node x.js`, 1],
   ['echo ${#value} | node x.js', 1],
   ['echo a#b | node x.js', 1],
+  ['echo $(echo a)#b | node x.js', 1],
+  [String.raw`echo $'x\'y #' | node x.js`, 1],
+  [String.raw`echo $'\' #' | node x.js`, 1],
+  ["cat <<EOF\nit's\nEOF\necho ' #'; node x.js", 1],
   ['echo hi # node', 0],
   ['echo hi # "node"', 0],
-  ['echo hi # comment; node ignored.js', 0],
+  ['echo hi # comment; node ignored.js', 1], // Fail-safe union retains the legacy over-detection.
 ])('workflow job without setup-node: %s', (run, count) => {
   expect(nodeSetupViolations({ jobs: { demo: { steps: [{ run }] } } }, 'fixture.yml')).toHaveLength(count);
 });
