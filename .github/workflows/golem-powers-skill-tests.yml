@@ -168,6 +168,7 @@ jobs:
         run: |
           node --test scripts/tests/install-receipt.test.mjs \
                       scripts/tests/t3-mcp-holders.test.mjs \
+                      scripts/tests/container-teardown.test.mjs \
                       scripts/tests/pr-chain-span.test.mjs \
                       scripts/tests/bats-coverage.test.mjs \
                       scripts/tests/codex-internal-role.test.mjs \
