@@ -18,7 +18,7 @@ write_fixture() {
     {"id": "root", "name": "root", "parent": null},
     {"id": "brain-drive", "name": "Brain Drive", "parent": "root"},
     {"id": "legacy-research", "name": "Research", "parent": "brain-drive"},
-    {"id": "legacy-brainlayer", "name": "brainlayer", "parent": "legacy-research"},
+    {"id": "legacy-dialogkit", "name": "dialogkit", "parent": "legacy-research"},
     {"id": "research", "name": "03_RESEARCH", "parent": "brain-drive"},
     {"id": "active", "name": "Active", "parent": "research"},
     {"id": "brainlayer", "name": "brainlayer", "parent": "active"},
@@ -180,6 +180,10 @@ if auth != "fresh-token":
     print("curl: (56) The requested URL returned error: 401", file=sys.stderr)
     raise SystemExit(56)
 
+if "name = 'Research'" in __import__("urllib.parse", fromlist=["unquote"]).unquote(joined):
+    print(json.dumps({"files": []}))
+    raise SystemExit(0)
+
 print(json.dumps({"files": [{"id": "brainlayer", "name": "brainlayer", "mimeType": "application/vnd.google-apps.folder"}]}))
 EOF
   chmod +x "$tmp_dir/bin/curl"
@@ -203,6 +207,68 @@ PY
   rm -rf "$tmp_dir"
 }
 
+run_legacy_guard_case() {
+  local tmp_dir fixture before command exit_code
+  tmp_dir=$(mktemp -d)
+  trap 'rm -rf "$tmp_dir"' RETURN
+  fixture="$tmp_dir/fixture.json"
+  write_fixture "$fixture"
+  python3 - "$fixture" <<'PYTEST'
+import json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+data = json.loads(path.read_text())
+data["folders"] = [f for f in data["folders"] if f["id"] in {"root", "brain-drive", "research", "legacy-research", "legacy-dialogkit"}]
+data["files"] = []
+path.write_text(json.dumps(data))
+PYTEST
+  before=$(cat "$fixture")
+  for command in list-prompts list-results list-context-files resolve-project-folder ensure-project-folders; do
+    set +e
+    DRIVE_PATHS_FIXTURE="$fixture" python3 "$SCRIPT" "$command" dialogkit >"$tmp_dir/stdout" 2>"$tmp_dir/stderr"
+    exit_code=$?
+    set -e
+    [[ $exit_code -ne 0 ]] || fail "expected legacy $command to fail"
+    grep -Fq 'legacy research folder Brain Drive/Research/dialogkit exists; it is being moved to 03_RESEARCH/Active (R2c). Not creating a duplicate. Ask the lead.' "$tmp_dir/stderr" || fail "missing legacy diagnostic"
+    [[ "$(cat "$fixture")" == "$before" ]] || fail "legacy lookup mutated folders"
+  done
+  trap - RETURN
+  rm -rf "$tmp_dir"
+}
+
+run_missing_active_case() {
+  local tmp_dir fixture
+  tmp_dir=$(mktemp -d)
+  trap 'rm -rf "$tmp_dir"' RETURN
+  fixture="$tmp_dir/fixture.json"
+  write_fixture "$fixture"
+  python3 - "$fixture" <<'PYTEST'
+import json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+data = json.loads(path.read_text())
+data["folders"] = [f for f in data["folders"] if f["id"] in {"root", "brain-drive", "research", "legacy-research", "legacy-dialogkit"}]
+data["files"] = []
+path.write_text(json.dumps(data))
+PYTEST
+  DRIVE_PATHS_FIXTURE="$fixture" python3 "$SCRIPT" ensure-project-folders voicelayer >"$tmp_dir/output"
+  python3 - "$fixture" "$tmp_dir/output" <<'PYTEST'
+import json, pathlib, sys
+folders = json.loads(pathlib.Path(sys.argv[1]).read_text())["folders"]
+research = [f for f in folders if f["name"] == "03_RESEARCH" and f["parent"] == "brain-drive"]
+assert len(research) == 1 and research[0]["id"] == "research"
+active = [f for f in folders if f["name"] == "Active" and f["parent"] == "research"]
+assert len(active) == 1
+result = json.loads(pathlib.Path(sys.argv[2]).read_text())
+by_id = {f["id"]: f for f in folders}
+project = by_id[result["folders"]["project"]]
+assert project["parent"] == active[0]["id"]
+assert by_id[result["folders"]["context"]]["parent"] == project["id"]
+PYTEST
+  trap - RETURN
+  rm -rf "$tmp_dir"
+}
+
+run_legacy_guard_case
+run_missing_active_case
 run_existing_folder_case
 run_create_missing_case
 run_listing_case
