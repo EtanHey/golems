@@ -15,6 +15,18 @@ def result(items, status='SUCCESS'):
     return CompletedProcess([], 0, json.dumps({'status': status, 'response': json.dumps({'images': items})}), '')
 
 
+@pytest.mark.parametrize('finding,expected', [
+    ('tile 0: ALPHA; tile 1: NOT DETERMINED', True),
+    ('ALPHA', True),
+    ('NOT DETERMINED (call failed or missing response)', False),
+    ('  not determined (whole sheet unreadable)  ', False),
+    ('', False),
+    ('   ', False),
+])
+def test_importable_finding_is_read(finding, expected):
+    assert v.finding_is_read(finding) is expected
+
+
 def test_success_is_capped_and_paths_are_explicit():
     calls = []
     def run(paths):

@@ -82,6 +82,12 @@ def parse(result, paths):
         return {}
 
 
+def finding_is_read(finding):
+    """Count returned evidence as read even when individual tiles are uncertain."""
+    finding = finding.strip()
+    return bool(finding) and not finding.upper().startswith('NOT DETERMINED')
+
+
 def gather(paths, run):
     paths = list(dict.fromkeys(paths))
     found = {}
@@ -101,9 +107,7 @@ def gather(paths, run):
         if len('\n'.join(lines + [line])) > budget:
             break
         lines.append(line)
-        # Inline uncertainty belongs to that tile; a leading marker means the
-        # whole image is unread (including the missing-response placeholder).
-        if not finding.upper().startswith('NOT DETERMINED'):
+        if finding_is_read(finding):
             covered += 1
     omitted = len(paths) - len(lines)
     status = 'complete' if covered == len(paths) else 'partial'
