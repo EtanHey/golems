@@ -161,7 +161,8 @@ jobs:
 
       - name: node suites
         run: |
-          node --test scripts/tests/pr-chain-span.test.mjs \
+          node --test scripts/tests/install-receipt.test.mjs \
+                      scripts/tests/pr-chain-span.test.mjs \
                       scripts/tests/bats-coverage.test.mjs \
                       scripts/tests/codex-internal-role.test.mjs \
                       scripts/tests/google-drive-oauth-guard.test.mjs \
