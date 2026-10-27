@@ -104,7 +104,7 @@ jobs:
         with:
           # Exclude root-owned locks and incomplete downloads.
           path: ${{ runner.temp }}/apt-archives/*.deb
-          key: ${{ runner.os }}-${{ runner.arch }}-apt-script-zsh-v1
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-script-zsh-v1
 
       - name: reconcile-to-mac prerequisites
         timeout-minutes: 10
@@ -221,7 +221,7 @@ jobs:
         with:
           # Exclude root-owned locks and incomplete downloads.
           path: ${{ runner.temp }}/apt-archives/*.deb
-          key: ${{ runner.os }}-${{ runner.arch }}-apt-python-zsh-jq-v1
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-python-zsh-jq-v1
 
       - name: Install launcher harness tools
         timeout-minutes: 10
@@ -273,7 +273,7 @@ jobs:
         with:
           # Exclude root-owned locks and incomplete downloads.
           path: ${{ runner.temp }}/apt-archives/*.deb
-          key: ${{ runner.os }}-${{ runner.arch }}-apt-bats-bats-zsh-ripgrep-ffmpeg-v1
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-bats-bats-zsh-ripgrep-ffmpeg-v1
 
       - name: Install bats, zsh, ripgrep and ffmpeg
         # Three stalled updates can take 450s, plus the install. Keep a hard

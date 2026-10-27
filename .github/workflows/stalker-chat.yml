@@ -64,7 +64,7 @@ jobs:
         with:
           # Exclude root-owned locks and incomplete downloads.
           path: ${{ runner.temp }}/apt-archives/*.deb
-          key: ${{ runner.os }}-${{ runner.arch }}-apt-stalker-bats-v1
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-stalker-bats-v1
 
       - name: Install Bats
         timeout-minutes: 10

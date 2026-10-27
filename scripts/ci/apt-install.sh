@@ -8,6 +8,7 @@ apt_options=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::http
 # CI caches only *.deb files here; apt's lock and partial files stay job-local.
 if [[ -n ${CI_APT_ARCHIVES_DIR:-} ]]; then
   mkdir -p "$CI_APT_ARCHIVES_DIR/partial"
+  chown _apt "$CI_APT_ARCHIVES_DIR/partial" 2>/dev/null || true
   apt_options+=(-o "Dir::Cache::Archives=$CI_APT_ARCHIVES_DIR" -o APT::Keep-Downloaded-Packages=true)
 fi
 
