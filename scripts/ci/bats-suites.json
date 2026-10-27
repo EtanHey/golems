@@ -8,6 +8,7 @@
     "test-golem-install-validate.bats",
     "test-golems-sync.bats",
     "test-grill-me-upstream-port.bats",
+    "test-guard-no-docslocal.bats",
     "test-install-wired-hook.bats",
     "test-never-fabricate-r20.bats",
     "test-pkill-guard.bats",
