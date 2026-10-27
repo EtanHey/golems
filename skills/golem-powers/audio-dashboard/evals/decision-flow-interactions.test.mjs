@@ -573,3 +573,12 @@ test("two-voice cards label each part of the read-along with its speaker", () =>
   expect(document.querySelector('[data-decision="a"] [data-transcript-scene="a1"]').dataset.role).toBe("host");
   expect(document.querySelector('[data-decision="b"] .df-speaker')).toBeNull();
 });
+
+test("a scene title that repeats the speaker label is not shown twice", () => {
+  const ask = { ...scene("a1"), title: "Ben asks", role: "host", speaker: "ben" };
+  const answer = { ...scene("a2"), title: "The trade-off", role: "expert", speaker: "theo" };
+  const { document } = boot({ scenes: [ask, answer, scene("b1")] });
+  const [first, second] = document.querySelectorAll('[data-decision="a"] .df-scene-label');
+  expect(first.textContent).toBe("Ben asks");
+  expect(second.textContent).toBe("Theo explainsThe trade-off");
+});

@@ -197,7 +197,9 @@ function renderCard(decision, index, sceneById) {
     const scene = sceneById.get(sceneId);
     const role = scene.role === "host" || scene.role === "expert" ? scene.role : "";
     const speaker = renderSpeaker(scene, role);
-    return `<section class="df-transcript-scene" data-transcript-scene="${escapeHtml(scene.id)}"${role ? ` data-role="${role}"` : ""}><p class="df-scene-label">${speaker}<span class="df-scene-title">${escapeHtml(scene.title)}</span></p><p class="df-words">${renderWords(scene)}</p></section>`;
+    const spoken = speaker.replace(/<[^>]+>/g, "").trim().toLowerCase();
+    const title = String(scene.title || "").trim().toLowerCase() === spoken ? "" : `<span class="df-scene-title">${escapeHtml(scene.title)}</span>`;
+    return `<section class="df-transcript-scene" data-transcript-scene="${escapeHtml(scene.id)}"${role ? ` data-role="${role}"` : ""}><p class="df-scene-label">${speaker}${title}</p><p class="df-words">${renderWords(scene)}</p></section>`;
   }).join("");
   const optionBlocks = options.map((option) =>
     `<label class="df-option"><input type="radio" name="${escapeHtml(decision.id)}" value="${escapeHtml(option.value)}"><span><b>${escapeHtml(option.label)}</b>${option.summary ? `<small>${escapeHtml(option.summary)}</small>` : ""}</span></label>`,
