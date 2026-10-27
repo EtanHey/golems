@@ -109,7 +109,6 @@ def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
 
 
 def finish_report(journal, directory, run_status, publish):
-    # Keep the legacy publish argument for callers; every scan now publishes.
     import fcntl
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -140,12 +139,19 @@ def finish_report(journal, directory, run_status, publish):
     # Serialize publishers, not deletion decisions; readers see complete files.
     with (directory / ".report.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        artifacts = (("latest.json", json.dumps(report, indent=2) + "\n"), ("latest.md", "\n".join(md)))
-        current = (("last-run.json", artifacts[0][1]), ("last-run.md", artifacts[1][1]))
-        for name, content in (*current, *artifacts):
+        json_content = json.dumps(report, indent=2) + "\n"
+        md_content = "\n".join(md)
+        # JSON is authoritative: replace markdown first, JSON last. Matching
+        # generated_at values let readers detect a pair read across publication.
+        artifacts = (("latest.md", md_content), ("latest.json", json_content)) if int(publish) else ()
+        current = (("last-run.md", md_content), ("last-run.json", json_content))
+        for name, content in (*artifacts, *current):
             stage = directory / f".{name}.{os.getpid()}"
-            stage.write_text(content)
-            os.replace(stage, directory / name)
+            try:
+                stage.write_text(content)
+                os.replace(stage, directory / name)
+            finally:
+                stage.unlink(missing_ok=True)
         with (directory / "receipts.jsonl").open("a") as out:
             out.write(json.dumps(dict(at=now, exit_status=int(run_status),
                                      retained=sum(map(len, owners.values())), journal=journal)) + "\n")

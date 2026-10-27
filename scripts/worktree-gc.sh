@@ -796,13 +796,19 @@ LOG_FILE="$LOG_DIR/worktree-gc-$(date '+%Y%m%d-%H%M%S')-$$.log"
 REPORT_JOURNAL="$LOG_FILE.rows.jsonl"
 : > "$REPORT_JOURNAL"
 REPORT_DIR="${WORKTREE_GC_REPORT_DIR:-$LOG_DIR/worktree-gc}"
-publish_report=1
+publish_report=0
+if [[ -z "$explicit_repo" && -z "$only_worktree" && "$prune_plan" -eq 0 ]]; then
+  publish_report=1
+fi
 finish_run() {
   local rc=$?
   rm -f "$LOG_FILE.repo-state" "$LOG_FILE.repo-stderr" ||
     printf 'scratch cleanup failed\n' >> "$LOG_FILE"
-  python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report" ||
-    printf 'report finish failed\n' >> "$LOG_FILE"
+  if ! python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report"; then
+    printf 'report publish failed\n' | tee -a "$LOG_FILE" >&2
+    [[ "$rc" -ne 0 ]] || rc=2
+  fi
+  exit "$rc"
 }
 trap finish_run EXIT
 

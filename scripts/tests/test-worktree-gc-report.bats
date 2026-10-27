@@ -79,12 +79,12 @@ SH
   assert_partial_report
 }
 
-@test "every run rewrites latest artifacts with a new timestamp" {
+@test "every full scan rewrites latest artifacts with a new timestamp" {
   report_fixture
-  run "$WORKTREE_GC" --dry-run --repo "$healthy"
+  run "$WORKTREE_GC" --dry-run
   [ "$status" -eq 0 ]
   cp "$WORKTREE_GC_REPORT_DIR/latest.json" "$TEST_ROOT/first.json"
-  run "$WORKTREE_GC" --dry-run --repo "$healthy"
+  run "$WORKTREE_GC" --dry-run
   [ "$status" -eq 0 ]
   python3 - "$TEST_ROOT/first.json" "$WORKTREE_GC_REPORT_DIR" <<'PY'
 import json, pathlib, sys
@@ -95,4 +95,85 @@ assert after['generated_at'] > before['generated_at']
 assert after['status'] == 'complete' and after['error_count'] == 0
 assert after['generated_at'] in (root / 'latest.md').read_text()
 PY
+}
+
+@test "scoped scans preserve every repo in the last full report byte for byte" {
+  report_fixture
+  printf dirty > "$failed_tree/local.txt"
+  run "$WORKTREE_GC" --dry-run
+  [ "$status" -eq 0 ]
+  python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" <<'PYTEST'
+import json, sys
+assert set(json.load(open(sys.argv[1]))['owners']) == {'a-failed', 'z-healthy'}
+PYTEST
+  cp "$WORKTREE_GC_REPORT_DIR/latest.json" "$TEST_ROOT/full.json"
+  cp "$WORKTREE_GC_REPORT_DIR/latest.md" "$TEST_ROOT/full.md"
+  for scope in repo path prune; do
+    case "$scope" in
+      repo) run "$WORKTREE_GC" --repo "$healthy" ;;
+      path) run "$WORKTREE_GC" --path "$healthy_tree" ;;
+      prune) run "$WORKTREE_GC" --prune-plan ;;
+    esac
+    [ "$status" -eq 0 ]
+    cmp "$TEST_ROOT/full.json" "$WORKTREE_GC_REPORT_DIR/latest.json"
+    cmp "$TEST_ROOT/full.md" "$WORKTREE_GC_REPORT_DIR/latest.md"
+    [ -s "$WORKTREE_GC_REPORT_DIR/last-run.json" ]
+  done
+}
+
+@test "full scan processing error still publishes partial with error row" {
+  report_fixture
+  mkdir -p "$HOME/Gits/broken/.git"
+  run "$WORKTREE_GC" --dry-run
+  [ "$status" -eq 2 ]
+  python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" <<'PYTEST'
+import json, sys
+r = json.load(open(sys.argv[1]))
+assert r['status'] == 'partial' and r['exit_status'] == 2
+assert r['error_count'] == 1
+assert r['owners']['broken'][0]['reason'] == 'ERROR'
+assert 'z-healthy' in r['owners']
+PYTEST
+}
+
+@test "publish failure exits nonzero and cleans stage files with json committed last" {
+  report_fixture
+  for artifact in latest.md latest.json; do
+    rm "$WORKTREE_GC_REPORT_DIR/$artifact"
+    mkdir "$WORKTREE_GC_REPORT_DIR/$artifact"
+    run "$WORKTREE_GC" --dry-run
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"report publish failed"* ]] || return 1
+    python3 - "$WORKTREE_GC_REPORT_DIR" "$artifact" <<'PYTEST'
+import pathlib, sys
+root = pathlib.Path(sys.argv[1])
+assert not list(root.glob('.latest.*'))
+assert not list(root.glob('.last-run.*'))
+if sys.argv[2] == 'latest.md':
+    assert (root / 'latest.json').read_text() == 'stale\n'
+else:
+    assert 'status=complete' in (root / 'latest.md').read_text()
+PYTEST
+    rmdir "$WORKTREE_GC_REPORT_DIR/$artifact"
+    printf 'stale\n' > "$WORKTREE_GC_REPORT_DIR/$artifact"
+  done
+}
+
+@test "apply keeps eligible failed repo tree and removes eligible healthy sibling" {
+  report_fixture
+  rm "$healthy_tree/local.txt"
+  git -C "$failed" remote remove origin
+  run "$WORKTREE_GC" --apply --idle-hours 0
+  [ "$status" -eq 0 ]
+  [ -d "$failed_tree" ]
+  [ -d "$detached" ]
+  [ ! -e "$healthy_tree" ]
+  [[ "$output" == *"REMOVED"* ]] || return 1
+  python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" "$failed_tree" <<'PYTEST'
+import json, sys
+r = json.load(open(sys.argv[1]))
+assert r['status'] == 'partial' and r['error_count'] == 1
+row, = [row for row in r['owners']['a-failed'] if row['path'] == sys.argv[2]]
+assert row['reason'] == 'KEEP-undetermined'
+PYTEST
 }

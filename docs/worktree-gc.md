@@ -24,8 +24,16 @@ only 3 to success and preserves other failures. Shutdown signals and timeout kil
 the prune process group before releasing the suite lock.
 
 Every scan writes `docs.local/worktree-gc/last-run.{json,md}`, including ERROR
-rows for failed repositories. `latest.{json,md}` retains the last successful full
-scan. Per-run `.repo-state` and `.repo-stderr` scratch files are removed on exit.
+rows for failed repositories. `latest.{json,md}` is the last FULL scan, complete
+or partial, including scans that exit with an error. Scoped runs (`--repo`,
+`--path`, or `--prune-plan`) never change `latest.*`. Reports include `status`,
+`error_count`, and an error `stage` on ERROR rows. Lookup failures remain exit 0
+with `status=partial`; processing failures exit 2. Markdown is replaced first,
+then authoritative JSON, each via a temporary file and rename. Compare the shared
+`generated_at` to detect reads across publication. A publish failure exits nonzero
+with `report publish failed` and cleans temporary files. EXIT reporting cannot
+cover SIGKILL. Per-run `.repo-state` and `.repo-stderr` scratch files are removed
+on exit.
 
 Tests build repositories outside any Git tree and guard every GC invocation against
 leaving the fixture root. Never probe `--apply` on a real repository. Installation
