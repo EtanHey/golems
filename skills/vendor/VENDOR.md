@@ -22,7 +22,10 @@ auto-trigger suppression there is UNPROVEN. Invoke this skill explicitly in brie
 Install: use golem-install's `repoint-skills.mjs --source <golem-powers> --vendor-skills`
 (dry-run), then `--apply`. It verifies manifest hashes, copies a durable pinned payload
 under ~/.golems/vendor/design-skills/, and links the providers selected in manifest.json (with per-skill overrides).
-Claude keeps its official auto-updating frontend-design plugin and gets only Emil.
+Claude gets the plain frontend-design skill and the five Emil skills on both Macs.
+The official plugin stays enabled and untouched, so its doubled label remains until
+Etan approves a separate toggle. This partially reverses #851 by adding the vendored
+copy; it does not change the plugin.
 See `/agent-routing` for the roles and usage constraints of every installed provider.
 Gemini/agy get none. Add providers only after authorization.
 Do not use ~/.agents/skills because Gemini/agy exposure is forbidden.

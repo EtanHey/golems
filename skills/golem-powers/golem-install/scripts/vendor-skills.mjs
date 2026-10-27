@@ -34,7 +34,6 @@ export function installVendorSkills({ home, source, apply = false }) {
     }
     for (const skill of manifest.skills) {
       if (skill.providers && !skill.providers.includes(provider)) continue;
-      if (provider === "claude" && skill.name === "frontend-design") throw new Error("Claude frontend-design must use the official plugin");
       if (!/^[a-z0-9-]+$/.test(skill.name) || !manifest.files[`${skill.path}/SKILL.md`] || path.basename(skill.path) !== skill.name) throw new Error("invalid vendor skill entry");
       const entry = path.join(root, skill.name), target = path.join(snapshot, skill.path);
       if (present(entry)) {

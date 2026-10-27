@@ -282,7 +282,7 @@ test("upstream drift is distinct from a query error", async () => {
   expect(() => checkUpstream(manifest, () => "bad response")).toThrow("invalid upstream response");
 });
 
-test("Claude keeps its official frontend-design plugin; vendor frontend is Codex/Cursor only", () => {
+test("Claude installs the vendored frontend-design alongside Codex and Cursor", () => {
   const fx = vendorFixture();
   const text = "---\nname: frontend-design\ndescription: Design.\n---\n";
   const file = "anthropic/frontend-design/SKILL.md";
@@ -290,12 +290,34 @@ test("Claude keeps its official frontend-design plugin; vendor frontend is Codex
   writeFileSync(path.join(fx.vendor, file), text);
   fx.manifest.files[file] = createHash("sha256").update(text).digest("hex");
   fx.manifest.providers.push("cursor");
-  fx.manifest.skills.push({ name: "frontend-design", path: "anthropic/frontend-design", providers: ["codex", "cursor"] });
+  fx.manifest.skills.push({ name: "frontend-design", path: "anthropic/frontend-design", providers: ["claude", "codex", "cursor"] });
   writeFileSync(path.join(fx.vendor, "manifest.json"), JSON.stringify(fx.manifest));
   expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
-  expect(existsSync(path.join(fx.claude, "frontend-design"))).toBe(false);
+  expect(lstatSync(path.join(fx.claude, "frontend-design")).isSymbolicLink()).toBe(true);
+  expect(readFileSync(path.join(fx.claude, "frontend-design/SKILL.md"), "utf8")).toBe(text);
   expect(existsSync(path.join(fx.codex, "frontend-design/SKILL.md"))).toBe(true);
   expect(existsSync(path.join(fx.home, ".cursor/skills/frontend-design/SKILL.md"))).toBe(true);
+});
+
+test("the shipped manifest installs identical frontend-design bytes in every provider root", () => {
+  const home = realpathSync(mkdtempSync(path.join(tmpdir(), "vendor-release-home-")));
+  dirs.push(home);
+  const source = path.resolve(path.dirname(script), "../..");
+  const expected = readFileSync(path.resolve(source, "../vendor/anthropic/frontend-design/SKILL.md"), "utf8");
+  const settings = path.join(home, ".claude/settings.json");
+  mkdirSync(path.dirname(settings), { recursive: true });
+  const plugin = JSON.stringify({ enabledPlugins: { "frontend-design@claude-plugins-official": true } });
+  writeFileSync(settings, plugin);
+  const result = run({ home, source }, "--vendor-skills", "--apply");
+  expect(result.status).toBe(0);
+  for (const provider of ["claude", "codex", "cursor"]) {
+    const entry = path.join(home, `.${provider}/skills/frontend-design`);
+    expect(lstatSync(entry).isSymbolicLink()).toBe(true);
+    expect(realpathSync(entry)).toContain(path.join(home, ".golems/vendor/design-skills"));
+    expect(readFileSync(path.join(entry, "SKILL.md"), "utf8")).toBe(expected);
+  }
+  expect(readFileSync(settings, "utf8")).toBe(plugin);
+  expect(run({ home, source }, "--vendor-skills", "--apply").status).toBe(0);
 });
 
 test("updater dry-run is inert, apply proposes pinned bytes, and mismatched SHA refuses", async () => {

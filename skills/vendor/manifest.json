@@ -22,6 +22,7 @@
       "name": "frontend-design",
       "path": "anthropic/frontend-design",
       "providers": [
+        "claude",
         "codex",
         "cursor"
       ]

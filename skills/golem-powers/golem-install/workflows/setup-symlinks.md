@@ -254,7 +254,7 @@ After creating symlinks:
 After explicit authorization, run the vendor mode below. It reads
 `skills/vendor/manifest.json`, verifies every pinned file, preserves upstream licenses,
 creates a durable copy under `~/.golems/vendor/design-skills/<payload-sha256>`, and
-links the manifest-selected skills for each provider. Claude gets only Emil,
+links the manifest-selected skills for each provider. Claude gets frontend-design and the five Emil skills,
 while provider usage roles are defined in `/agent-routing`. It does not run the broad legacy-link cleanup above.
 
 ```sh
@@ -263,8 +263,11 @@ bun "$GOLEMS_DIR/skills/golem-powers/golem-install/scripts/repoint-skills.mjs" -
 ```
 
 Conflicts are refused before any writes. Back up existing copies/config and write a
-restore recipe before retiring them; keep Claude's official frontend-design plugin enabled through `claude plugin`. Never
-install a vendored Claude frontend-design or delete plugin caches.
+restore recipe before retiring them. Claude receives the plain `frontend-design` skill
+on both Macs through the same manifest. The official plugin stays enabled and is
+untouched: `frontend-design:frontend-design` still appears alongside the plain skill
+until Etan approves a separate plugin toggle. This is a partial fix by design.
+Never delete plugin caches.
 Do not link into `~/.agents/skills` because that would expose skills to Gemini/agy. Adding an
 authorized provider later is one edit to the manifest's `providers` list. See
 `skills/vendor/VENDOR.md` for pin refresh, read-only drift checks and upstream caveats.
