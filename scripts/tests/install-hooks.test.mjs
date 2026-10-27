@@ -473,6 +473,103 @@ test("every shipped host set carries the same git-guardian and tmp-block guards"
   }
 });
 
+function canonicalNodeFixture() {
+  const fx = fixture();
+  addWrappedStopHook(fx);
+  const manifest = JSON.parse(readFileSync(fx.manifest, "utf8"));
+  manifest.hosts.mbp.push({ id: "demo-node", kind: "golems", event: "Stop", link: "demo-gate",
+    source: "skills/golem-powers/demo-gate", match: "demo.mjs", command: "{node} {hooks}/demo-gate/hooks/demo.mjs" });
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const realNode = spawnSync("node", ["-p", "process.execPath"], { encoding: "utf8" }).stdout.trim();
+  const fake = (name, version) => {
+    const bin = path.join(fx.root, name); mkdirSync(bin);
+    const at = path.join(bin, "node");
+    writeFileSync(at, `#!/bin/sh\nif [ "$1" = --version ]; then echo ${version}; else exec '${realNode}' "$@"; fi\n`, { mode: 0o755 });
+    return at;
+  };
+  fx.nodeA = fake("node-a", "v22.22.0"); fx.nodeB = fake("node-b", "v24.22.1");
+  fx.record = path.join(fx.home, ".claude/hooks/golems-hook-node.json");
+  fx.env = { PATH: `${path.dirname(fx.nodeA)}:${process.env.PATH}` };
+  expect(run(fx, "--apply").status).toBe(0);
+  fx.env.PATH = `${path.dirname(fx.nodeB)}:${process.env.PATH}`;
+  return fx;
+}
+
+test("canonical Node status and reapply ignore caller PATH without rewriting registrations", () => {
+  const fx = canonicalNodeFixture();
+  const before = readFileSync(fx.settingsPath, "utf8");
+  const status = run(fx, "--status");
+  expect(status.out).toContain("demo-node ok");
+  expect(status.out).toContain("brainbar-stop-index ok");
+  expect(status.status).toBe(0);
+  const shell = spawnSync("bash", [path.join(path.dirname(installer), "install-hooks.sh"), "--repo", fx.repo,
+    "--manifest", fx.manifest, "--host", "mbp", "--status"], { env: fixtureEnv(fx), encoding: "utf8" });
+  expect(shell.status).toBe(0);
+  expect(JSON.parse(readFileSync(fx.record, "utf8"))).toEqual({ path: fx.nodeA, version: "v22.22.0" });
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+});
+
+test("canonical Node status detects a vanished binary despite another Node on PATH", () => {
+  const fx = canonicalNodeFixture(); rmSync(fx.nodeA);
+  const result = run(fx, "--status");
+  expect(result.status).toBe(1);
+  expect(result.out).toContain("hook-node BAD");
+  expect(result.out).toContain("missing or not executable");
+  expect(run(fx, "--apply").status).toBe(1);
+});
+
+test("canonical Node version changes are drift until apply acknowledges the same path", () => {
+  const fx = canonicalNodeFixture();
+  writeFileSync(fx.nodeA, readFileSync(fx.nodeA, "utf8").replace("v22.22.0", "v22.23.0"));
+  const result = run(fx, "--status");
+  expect(result.status).toBe(1);
+  expect(result.out).toContain("version changed: recorded v22.22.0, actual v22.23.0");
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(JSON.parse(readFileSync(fx.record, "utf8"))).toEqual({ path: fx.nodeA, version: "v22.23.0" });
+  expect(run(fx, "--status").status).toBe(0);
+});
+
+test("legacy Node registrations supply the canonical path without status writing a record", () => {
+  const fx = canonicalNodeFixture(); rmSync(fx.record);
+  const before = readFileSync(fx.settingsPath, "utf8");
+  const result = run(fx, "--status");
+  expect(result.status).toBe(0);
+  expect(result.out).toContain("legacy registration; version baseline recorded on --apply");
+  expect(existsSync(fx.record)).toBe(false);
+  expect(run(fx, "--dry-run").status).toBe(0);
+  expect(existsSync(fx.record)).toBe(false);
+  expect(run(fx, "--apply").status).toBe(0);
+  expect(JSON.parse(readFileSync(fx.record, "utf8")).path).toBe(fx.nodeA);
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+});
+
+test("canonical Node registration tampering remains drift even when the replacement is on PATH", () => {
+  const fx = canonicalNodeFixture();
+  writeFileSync(fx.settingsPath, readFileSync(fx.settingsPath, "utf8").replaceAll(fx.nodeA, fx.nodeB));
+  const result = run(fx, "--status");
+  expect(result.status).toBe(1);
+  expect(result.out).toContain("demo-node drifted");
+  expect(result.out).toContain("brainbar-stop-index drifted");
+});
+
+test("canonical Node refuses non-executable binaries and malformed records without PATH fallback", () => {
+  const fx = canonicalNodeFixture(); chmodSync(fx.nodeA, 0o644);
+  expect(run(fx, "--status").out).toContain("missing or not executable");
+  expect(run(fx, "--status").status).toBe(1);
+  writeFileSync(fx.record, "{}");
+  expect(run(fx, "--status").out).toContain("invalid Node record");
+  expect(run(fx, "--apply").status).toBe(1);
+});
+
+test("legacy conflicting Node registrations refuse adoption instead of selecting caller PATH", () => {
+  const fx = canonicalNodeFixture(); rmSync(fx.record);
+  writeFileSync(fx.settingsPath, readFileSync(fx.settingsPath, "utf8").replace(fx.nodeA, fx.nodeB));
+  expect(run(fx, "--status").out).toContain("conflicting registered Node paths");
+  expect(run(fx, "--status").status).toBe(1);
+  expect(run(fx, "--apply").status).toBe(1);
+});
+
 test("{node} is the PATH node (`command -v node`), so a node upgrade that removes the old realpath keeps hooks running", () => {
   const fx = fixture();
   const m = manifestFor();
@@ -768,6 +865,7 @@ function pinnedManifestFixture() {
   const directory = path.join(fx.root, 'invoking-checkout/scripts/hooks');
   mkdirSync(directory, { recursive: true });
   cpSync(installer, path.join(directory, 'install-hooks.mjs'));
+  cpSync(path.join(path.dirname(installer), "hook-interpreters.mjs"), path.join(directory, "hook-interpreters.mjs"));
   mkdirSync(path.join(directory, '../repogolem'), { recursive: true });
   cpSync(path.join(here, '../repogolem/worktree-disk-floor.py'), path.join(directory, '../repogolem/worktree-disk-floor.py'));
   cpSync(path.join(here, '../hooks/codex-hooks-install.mjs'), path.join(directory, 'codex-hooks-install.mjs'));
@@ -1188,7 +1286,7 @@ test("policy status rejects missing fail-closed registration and stale launcher;
 test("installer refuses a legacy source launcher paired with fail-closed before pin or settings writes", () => {
   const fx = closedFixture();
   const source = path.join(fx.root, "installer"); mkdirSync(source);
-  for (const name of ["install-hooks.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
+  for (const name of ["install-hooks.mjs", "hook-interpreters.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
   writeFileSync(path.join(source, "fail-open.py"), legacyLauncher);
   const before = readFileSync(fx.settingsPath, "utf8");
   const result = spawnSync("node", [path.join(source, "install-hooks.mjs"), "--repo", fx.repo,
@@ -1218,7 +1316,7 @@ function policyFixture() {
     cpSync(path.join(sourceRepo, "skills/golem-powers", name), path.join(fx.repo, "skills/golem-powers", name), { recursive: true,
       filter: (s) => !/\/(tests|evals|__pycache__)(\/|$)|\.pyc$/.test(s.slice(sourceRepo.length)) });
   }
-  for (const name of ["install-hooks.mjs", "install-hooks.sh", "codex-hooks-install.mjs", "fail-open.py",
+  for (const name of ["install-hooks.mjs", "install-hooks.sh", "hook-interpreters.mjs", "codex-hooks-install.mjs", "fail-open.py",
     "private-regression-gate.py", "heavy-suite.py", "codex-policy-hook.py"]) {
     cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
   }

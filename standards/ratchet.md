@@ -151,6 +151,21 @@ node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --hea
   - `scripts/ratchet/local-run.sh` produces the per-PR candidate tier, in a scratch HOME;
   - `scripts/ratchet/live-rows.sh` produces the post-merge live tier, and the lead runs it.
 
+Owner hook installs retain their canonical Node path in
+`~/.claude/hooks/golems-hook-node.json` with the version observed at `--apply`.
+Later installs and `install-hooks.sh --status` use that path regardless of caller PATH;
+the shell entry point may run under another Node without changing the hook runtime.
+Missing/non-executable binaries, changed versions, invalid records and registration
+changes fail status. Re-run `--apply` to acknowledge an upgrade at the same path.
+Legacy installs without a record use the single absolute path already registered by
+their managed Node hooks; status is read-only and reports the missing version baseline.
+The next apply records it without switching runtimes. Conflicting legacy paths refuse
+adoption. A fresh install (or migration of an old bare `node` command) chooses the
+stable absolute PATH spelling once, rather than
+the versioned realpath. Neither the live status row nor the candidate receipt needs
+a PATH workaround for hook registration comparisons; the lead still owns the live
+post-merge receipt.
+
 ## Convergence close: baseline and open targets (Etan, 2026-10-06)
 
 The ratchet is the starting point of the §12 pristine sprint. At convergence close, each repo's
