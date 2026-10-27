@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { collectStatus, latestRelease, readRemote, readLocal, compareInstall, peelTag, printStatus, readTapVersion } from '../install-receipt-status.mjs';
+import { collectStatus, latestRelease, readRemote, readLocal, compareInstall, peelTag, printStatus, readTapVersion, compareBridge } from '../install-receipt-status.mjs';
 
 const sha = 'a'.repeat(40), old = 'b'.repeat(40);
 function receipt(host = 'mbp') {
@@ -336,17 +336,122 @@ test('B2 review: missing or unexpected compare status is LIVE-UNVERIFIED', () =>
 });
 test('B2 review: default git and gh calls disable credential prompts and preserve the environment', () => {
   const calls = [];
-  const stub = mock.method(childProcess, 'execFileSync', (file, _args, options) => {
+  const stub = mock.method(childProcess, 'execFileSync', (file, args, options) => {
     calls.push(file);
     assert.equal(options.env.GIT_TERMINAL_PROMPT, '0');
     assert.equal(options.env.GH_PROMPT_DISABLED, '1');
     assert.equal(options.env.PATH, process.env.PATH);
+    if (args.includes('--slurp')) return JSON.stringify([{ status: 'ahead', files: [] }]);
     return file === 'git' ? `${sha}\trefs/tags/v1.0.0^{}\n` : JSON.stringify({ status: 'identical' });
   });
   syncBuiltinESMExports();
   try {
     assert.equal(peelTag('EtanHey/golems', 'v1.0.0'), sha);
     assert.equal(compareInstall('EtanHey/golems', sha, sha), 'identical');
-    assert.deepEqual(calls, ['git', 'gh']);
+    assert.deepEqual(compareBridge('EtanHey/brainlayer', old, sha), { status: 'ahead', files: [] });
+    assert.deepEqual(calls, ['git', 'gh', 'gh']);
   } finally { stub.mock.restore(); syncBuiltinESMExports(); }
+});
+
+const bridgePaths = ['src/brainlayer/mcp_stdio_bridge.py', 'src/brainlayer/mcp/', 'src/brainlayer/mcp_socket_config.py'];
+function processReceipt(product = 'brainlayer', changed = false) {
+  const r = liveReceipt(); r.product = product;
+  r.activation.mcp_probe = { server: product, request: 'ping', ok: true, summary: 'fixture' };
+  r.activation.seat_scan = { method: 'client-processes', checked_at: '2026-10-27T09:02:00Z',
+    clients: [], excluded: [], active_seats: [],
+    bridge_diff: { from_tag: 'v0.9.0', to_sha: sha, paths: bridgePaths, changed } };
+  return r;
+}
+function processStatus(r, compareFiles, peelFrom = () => old) {
+  const compareBridge = compareFiles && ((...args) => {
+    const result = compareFiles(...args);
+    return Array.isArray(result) ? { status: 'ahead', files: result } : result;
+  });
+  return run({ [r.product]: r }, {}, { products: { [r.product]: `EtanHey/${r.product}` },
+    tapReader: () => '1.0.0', resolver: { ...verified, peelTag: (repo, tag) => tag === r.target.tag ? sha : peelFrom(repo, tag), compareBridge } })[0];
+}
+for (const product of ['brainlayer', 'brainbar']) {
+  test(`I2e: ${product} false unchanged claim exposes observed bridge paths`, () => {
+    const row = processStatus(processReceipt(product), () => ['src/brainlayer/mcp_stdio_bridge.py']);
+    assert.equal(row.status, 'MISMATCH');
+    assert.deepEqual(row.verification.bridge_diff, {
+      claimed: { changed: false, paths: bridgePaths },
+      ancestry: { claimed: 'ahead', observed: 'ahead' },
+      observed: { changed: true, paths: ['src/brainlayer/mcp_stdio_bridge.py'] },
+    });
+  });
+}
+test('I2e: directory prefix matches children, not similarly named siblings', () => {
+  assert.equal(processStatus(processReceipt(), () => ['src/brainlayer/mcp/server.py']).status, 'MISMATCH');
+  assert.equal(processStatus(processReceipt(), () => ['src/brainlayer/mcp-other/server.py']).status, 'CURRENT');
+});
+test('I2e: unchanged bridge preserves CURRENT and uses recorded compare endpoints', () => {
+  const row = processStatus(processReceipt(), (repo, from, to) => {
+    assert.deepEqual([repo, from, to], ['EtanHey/brainlayer', old, sha]);
+    return ['README.md'];
+  });
+  assert.equal(row.status, 'CURRENT');
+  assert.deepEqual(row.verification.bridge_diff.observed, { changed: false, paths: [] });
+});
+test('I2e: conservative changed claim is noted without downgrade', () => {
+  const row = processStatus(processReceipt('brainlayer', true), () => []);
+  assert.equal(row.status, 'CURRENT');
+  assert.match(row.verification.bridge_diff.note, /stricter/i);
+});
+test('I2e: unavailable or malformed bridge comparison never becomes CURRENT', () => {
+  for (const compareBridge of [() => { throw Error('unreachable'); }, () => null, undefined]) {
+    assert.equal(processStatus(processReceipt(), compareBridge).status, 'LIVE-UNVERIFIED');
+  }
+});
+test('I2e: GitHub bridge resolver paginates, detects truncation and tracks renames', () => {
+  const page = { status: 'ahead', files: [{ filename: 'new.py', previous_filename: bridgePaths[0] }] };
+  assert.deepEqual(compareBridge('EtanHey/brainlayer', old, sha, (file, args) => {
+    assert.equal(file, 'gh');
+    assert.deepEqual(args, ['api', `repos/EtanHey/brainlayer/compare/${old}...${sha}?per_page=100`, '--paginate', '--slurp']);
+    return JSON.stringify([page, { status: 'ahead' }]);
+  }), { status: 'ahead', files: ['new.py', bridgePaths[0]] });
+  for (const response of [[{ status: 'ahead', files: Array.from({ length: 300 }, (_, i) => ({ filename: `file${i}` })) }],
+    [{ status: 'ahead' }], [{ status: 'ahead', files: [{}] }], [], [{ status: 'invalid', files: [] }]]) {
+    assert.throws(() => compareBridge('EtanHey/brainlayer', old, sha, () => JSON.stringify(response)));
+    assert.equal(processStatus(processReceipt(), (repo, from, to) =>
+      compareBridge(repo, from, to, () => JSON.stringify(response))).status, 'LIVE-UNVERIFIED');
+  }
+});
+
+test('I2e: relay products still require reachable compare evidence', () => {
+  for (const product of ['voicelayer', 'voicebar']) {
+    const r = processReceipt(product);
+    r.activation.seat_scan.excluded = [{ rule: 'socat-relay', count: 0,
+      reason: 'LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).' }];
+    assert.equal(processStatus(r, () => bridgePaths).status, 'CURRENT');
+    assert.equal(processStatus(r, () => { throw Error('offline'); }).status, 'LIVE-UNVERIFIED');
+  }
+});
+test('I2e: inactive receipts do not request bridge comparison', () => {
+  const r = processReceipt(); r.verdict = 'INSTALLED_NOT_ACTIVE';
+  assert.equal(processStatus(r, () => assert.fail('inactive compare')).status, 'INSTALLED_NOT_ACTIVE');
+});
+
+for (const status of ['behind', 'diverged', 'identical']) {
+  test(`I2e R1: ${status} prior-tag comparison is MISMATCH even with no files`, () => {
+    const row = processStatus(processReceipt(), (repo, from, to) =>
+      compareBridge(repo, from, to, () => JSON.stringify([{ status, files: [] }])));
+    assert.equal(row.status, 'MISMATCH');
+    assert.deepEqual(row.verification.bridge_diff.ancestry, { claimed: 'ahead', observed: status });
+  });
+}
+for (const fromTag of ['master', old]) {
+  test(`I2e R1: non-tag ${fromTag} cannot become CURRENT`, () => {
+    const r = processReceipt(); r.activation.seat_scan.bridge_diff.from_tag = fromTag;
+    const row = processStatus(r, () => ({ status: 'ahead', files: [] }), (repo, tag) =>
+      peelTag(repo, tag, (file, args) => {
+        assert.ok(args.at(-1).startsWith(`refs/tags/${fromTag}`));
+        return `${old}\t${fromTag === 'master' ? 'refs/heads/master' : fromTag}\n`;
+      }));
+    assert.equal(row.status, 'LIVE-UNVERIFIED');
+  });
+}
+test('I2e R1: prior tag peel failure prevents the file comparison', () => {
+  assert.equal(processStatus(processReceipt(), () => assert.fail('unresolved compare'),
+    () => { throw Error('tag unreachable'); }).status, 'LIVE-UNVERIFIED');
 });

@@ -11,6 +11,10 @@ const CLIENT_RULES = new Map([
   ['voicelayer', { relay: SOCAT }], ['voicebar', { relay: SOCAT }],
 ]);
 
+export function bridgePaths(product) {
+  return CLIENT_RULES.get(product)?.bridge ? [...BRIDGE_PATHS] : [];
+}
+
 function staleClients(r) {
   const scan = r.activation.seat_scan, rule = CLIENT_RULES.get(r.product);
   if (!rule) throw new Error(`no client matcher for ${r.product}`);
