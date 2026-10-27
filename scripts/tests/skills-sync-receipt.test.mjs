@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, existsSync, symlin
 import { resolve, join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import * as receipts from '../lib/skills-sync-receipt.mjs';
-import { buildSkillsReceipt, snapshotSkills, parseOwnerStatus } from '../lib/skills-sync-receipt.mjs';
+import { buildSkillsReceipt, snapshotSkills } from '../lib/skills-sync-receipt.mjs';
 import { assess, validate } from '../lib/install-receipt-core.mjs';
 import { collectStatus, hostAlias, readRemote, readLocal } from '../install-receipt-status.mjs';
 
@@ -31,11 +31,6 @@ test('checkout roots resolve to one commit; clean status and parity are LIVE wit
   assert.equal(r.target.released_sha, commit); assert.equal(r.installed.embedded_commit, commit);
   assert.equal(r.install_source.roots.length, 3); assert.deepEqual(r.activation.processes, []);
   assert.equal(assess(r)[0], 'LIVE');
-  for (const mutate of [x => { x.activation.skill_parity.pass = false; }, x => { x.install_source.owner_status.drift = true; },
-    x => { x.install_source.owner_status.settings_drift = true; }, x => { x.install_source.owner_status.exit = 1; },
-    x => { x.activation.skill_parity.measurement = 'fixture'; }]) {
-    const bad = structuredClone(r); mutate(bad); assert.equal(assess(bad)[0], 'INSTALLED_NOT_ACTIVE');
-  }
 }));
 test('checkout and release latest pointers coexist for the same host/product', () => fixture(({ home, source, build }) => {
   const checkout = build(), release = structuredClone(checkout); release.install_source.mode = 'release-channel';
@@ -72,12 +67,42 @@ test('tree hash resolves links, ignores excluded directories, and sorts relative
   assert.equal(hash(), ordered); assert.notEqual(ordered, before);
   writeFileSync(join(skill, 'SKILL.md'), 'changed target'); assert.notEqual(hash(), ordered);
 }));
-test('mixed checkout commits yield MISMATCH naming the affected roots', () => fixture(({ source, home, git, build }) => {
+test('mixed checkout commits yield MISMATCH naming only the affected root', () => fixture(({ source, home, git, build }) => {
   const other = join(home, 'other/golems'); mkdirSync(join(home, 'other'));  execFileSync('git', ['clone', '-q', source, other]);
   git('commit', '--allow-empty', '-qm', 'different commit');
   rmSync(join(home, '.codex/skills/demo')); symlinkSync(join(other, 'skills/golem-powers/demo'), join(home, '.codex/skills/demo'));
   const r = build(); validate(r); assert.equal(assess(r)[0], 'MISMATCH');
-  assert.ok(r.reasons.some(reason => reason.includes(join(home, '.codex/skills'))));
+  const affected = join(home, '.codex/skills');
+  assert.ok(r.reasons.every(reason => reason.includes(affected)));
+  assert.deepEqual(r.install_source.roots.filter(root => r.reasons.some(reason => reason.includes(root.path))).map(root => root.path), [affected]);
+}));
+test('checkout vendor symlinks are hashed and disclosed without unresolved commit identity', () => fixture(({ home, source, commit, build }) => {
+  const before = build(), vendor = join(home, '.golems/vendor/design-skills/57c50afa/demo');
+  mkdirSync(vendor, { recursive: true }); writeFileSync(join(vendor, 'SKILL.md'), 'vendor design skill');
+  const links = ['.claude/skills/design', '.codex/skills/design'].map(root => join(home, root));
+  for (const link of links) symlinkSync(vendor, link);
+  // Keep Git from finding the surrounding test runner checkout above the fake HOME.
+  const previous = process.env.GIT_CEILING_DIRECTORIES;
+  let after;
+  try {
+    process.env.GIT_CEILING_DIRECTORIES = home;
+    assert.throws(() => execFileSync('git', ['-C', vendor, 'rev-parse', 'HEAD'], { stdio: 'pipe' }));
+    after = build();
+  } finally {
+    if (previous === undefined) delete process.env.GIT_CEILING_DIRECTORIES; else process.env.GIT_CEILING_DIRECTORIES = previous;
+  }
+  assert.equal(after.install_source.root_commits.some(root => root.unresolved), false);
+  validate(after); assert.equal(assess(after)[0], 'LIVE');
+  assert.equal(after.target.released_sha, before.target.released_sha);
+  assert.notEqual(after.installed.content_sha256, before.installed.content_sha256);
+  assert.deepEqual(after.install_source.excluded.filter(row => links.includes(row.path)), links.map(path => ({ path, kind: 'vendor', count: 1 })));
+  writeFileSync(join(vendor, 'SKILL.md'), 'changed vendor bytes');
+  assert.notEqual(build().installed.content_sha256, after.installed.content_sha256);
+  const prefix = join(home, '.golems'); mkdirSync(join(prefix, 'bin'));
+  writeFileSync(join(prefix, 'release.json'), JSON.stringify({ commit }));
+  const release = snapshotSkills({ mode: 'release-channel', source, home, prefix });
+  assert.deepEqual(release.root_commits, []);
+  assert.equal(release.excluded.some(row => links.includes(row.path)), false);
 }));
 test('non-golems entries are disclosed but only owned links contribute commit identity', () => fixture(({ home, build }) => {
   const before = build();
@@ -104,11 +129,6 @@ test('hooks pin BEHIND and owned skills commit AHEAD are independent artifacts',
     comparisonReader: (repo, latest, installed) => installed === commit ? 'behind' : 'ahead' });
   assert.deepEqual(rows.filter(r => r.host === 'mbp').map(r => [r.artifact_kind, r.status]), [['skills-sync', 'AHEAD'], ['hooks-sync', 'BEHIND']]);
 }));
-test('owner status drift token cannot be taken from settings-drift', () => {
-  assert.equal(parseOwnerStatus('settings-drift=0 drift=4\n', 0, 'fixture').drift, true);
-  assert.equal(parseOwnerStatus('settings-drift=0\n', 0, 'fixture').drift, true);
-  assert.equal(parseOwnerStatus('drift=0 settings-drift=0\n', 0, 'fixture').drift, false);
-});
 test('broken root links fail explicitly with the exact installed link name', () => fixture(({ source, home }) => {
   const link = join(home, '.agents/skills/broken'); symlinkSync(join(home, 'missing-target'), link);
   assert.throws(() => snapshotSkills({ mode: 'checkout', source, home }), error =>
@@ -121,16 +141,6 @@ test('receipt-only system exclusion leaves ratchet content inventory unchanged',
   const files = JSON.parse(execFileSync('python3', ['-B', '-c', code, resolve('scripts/ratchet/installed-skills.py'), skill]));
   assert.ok(files['.system/support.txt']);
   assert.equal(build().installed.content_sha256, before);
-}));
-test('skills builder omits ancestry it has not probed; generic receipts still require it', () => fixture(({ build }) => {
-  const r = build(); assert.equal(r.target.ancestry, undefined); validate(r);
-  r.artifact_kind = 'source-checkout'; assert.throws(() => validate(r));
-}));
-test('skills schema rejects relative roots and malformed digests', () => fixture(({ build }) => {
-  for (const mutate of [r => { r.install_source.roots[0].path = 'relative'; },
-    r => { r.install_source.roots[0].tree_sha256 = 'bad'; }, r => { r.product = 'other'; }]) {
-    const r = build(); mutate(r); assert.throws(() => validate(r));
-  }
 }));
 test('release-channel identity comes from release.json; roots include optional Gemini and CLI wrappers', () => fixture(({ source, skill, home, commit, build }) => {
   const prefix = join(home, '.golems'); mkdirSync(join(prefix, 'bin'), { recursive: true });

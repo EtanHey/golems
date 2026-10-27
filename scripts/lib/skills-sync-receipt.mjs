@@ -47,7 +47,8 @@ export function buildSkillsReceipt({ mode, source, alias, owner, parity, snapsho
   r.installed.content_sha256 = rootsDigest(snapshot.roots);
   Object.assign(r.install_source, { roots: snapshot.roots, root_commits: identities, excluded: snapshot.excluded ?? [] });
   r.activation.skill_parity = parity;
-  if (mixed) { r.verdict = 'MISMATCH'; r.reasons.push('Mixed/unresolved golems-owned roots: ' + JSON.stringify(identities)); }
+  if (mixed) { r.verdict = 'MISMATCH'; r.reasons.push('Mixed/unresolved golems-owned roots: ' +
+    JSON.stringify(identities.filter(root => !commits.size || root.unresolved || root.commits.some(commit => commit !== sha)))); }
   return assessed(r);
 }
 export function buildHooksReceipt({ source, alias, owner }) {

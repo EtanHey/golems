@@ -34,10 +34,12 @@ def snapshot(mode, source, home, prefix):
         if root == Path(prefix) / 'bin': continue
         targets = []
         for entry in sorted(root.iterdir()):
-            if entry.name not in skills.RECEIPT_IGNORED and sync.managed_link(entry, Path(home)):
+            owner = sync.managed_link(entry, Path(home))
+            vendor = mode == 'checkout' and owner == 'release'
+            if entry.name not in skills.RECEIPT_IGNORED and owner and not vendor:
                 targets.append(entry.resolve(strict=True))
             else:
-                excluded.append(dict(path=str(entry), kind='symlink' if entry.is_symlink() else
+                excluded.append(dict(path=str(entry), kind='vendor' if vendor else 'symlink' if entry.is_symlink() else
                                      'directory' if entry.is_dir() else 'file', count=1))
         if mode == 'checkout':
             commits = {commit(p if p.is_dir() else p.parent) for p in targets}

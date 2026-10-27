@@ -24,7 +24,7 @@ export default {
     install_source: object({ mode: { enum: ['release-channel', 'worktree-pin', 'checkout'] }, path: text, pin_sha: sha,
       roots: { ...array(object({ path: { type: 'string', pattern: '^/' }, tree_sha256: digest }, ['path', 'tree_sha256'])), minItems: 1 },
       root_commits: array(object({ path: { type: 'string', pattern: '^/' }, commits: array(sha), unresolved: { type: 'boolean' } }, ['path', 'commits', 'unresolved'])),
-      excluded: array(object({ path: { type: 'string', pattern: '^/' }, kind: { enum: ['symlink', 'directory', 'file'] }, count: { type: 'integer', minimum: 1 } }, ['path', 'kind', 'count'])),
+      excluded: array(object({ path: { type: 'string', pattern: '^/' }, kind: { enum: ['symlink', 'directory', 'file', 'vendor'] }, count: { type: 'integer', minimum: 1 } }, ['path', 'kind', 'count'])),
       owner_status: object({ pin_sha: sha, command: text, exit: { type: 'integer' }, drift: { type: 'boolean' }, settings_drift: { type: 'boolean' } },
         ['command', 'exit', 'drift', 'settings_drift']) }, ['mode', 'path']),
     prior: object({ version: text, embedded_commit: sha }),

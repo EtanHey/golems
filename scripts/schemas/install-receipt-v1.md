@@ -9,8 +9,9 @@ The `golems` family has independent `skills-sync` and `hooks-sync` artifacts.
 Skills use checkout/release-channel roots and whole-root hashes (sorted
 `relpath\tfile-sha256\n` lines, then sorted `path\ttree_sha256\n` lines).
 Symlinks resolve; receipt-only exclusions leave ratchet `IGNORED` unchanged.
-Only golems-owned entries, as classified by W10 `managed_link`, contribute Git
-identity. `install_source.excluded[]` discloses each other top-level entry with
+Only W10 `managed_link` checkout-class entries contribute checkout Git identity;
+release-class/vendor symlinks remain hashed and appear with kind `vendor` in
+`install_source.excluded[]`. Other excluded top-level entries are disclosed with
 absolute path, kind and count=1. Those bytes remain in the whole-root hash.
 Mixed/unresolved OWNED commits are MISMATCH; broken links name the installed path.
 Skills released_sha follows the owned commit, independently of the hook pin.

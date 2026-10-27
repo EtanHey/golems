@@ -102,7 +102,8 @@ export function assess(r) {
     if (r.installed.content_sha256 !== rootsDigest(roots) || (r.install_source.mode === 'checkout' &&
         (identities.length !== roots.length || !identities.some(x => x.commits.length) || identities.some(x => !roots.some(root => root.path === x.path) || x.unresolved || x.commits.some(c => c !== r.target.released_sha))))) {
       if (r.verdict === 'FAILED') return [r.verdict];
-      return ['MISMATCH', 'Skills root content or commit mismatch: ' + roots.map(x => x.path).join(', ')];
+      const affected = identities.filter(x => x.unresolved || x.commits.some(c => c !== r.target.released_sha)).map(x => x.path);
+      return ['MISMATCH', 'Skills root content or commit mismatch: ' + (affected.length ? affected : roots.map(x => x.path)).join(', ')];
     }
     const parity = r.activation.skill_parity;
     return r.verdict === 'LIVE' && !(r.installed.embedded_commit === r.target.released_sha && owner?.exit === 0 && owner.drift === false && owner.settings_drift === false &&
