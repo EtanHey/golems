@@ -219,7 +219,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 1. **Discover:** call `orchestrator_capabilities` first; pin provider, model and effort in `target` from its live catalog (canon #5).
 2. **Dispatch:** `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
 3. **Wait:** completion wakes the parent. End the turn; never poll or spawn a watcher for it.
-4. **Settle:** read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child.
+4. **Settle:** read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child, `task_cancel` its `taskId`, `unwatch_pull_request` its PR, then `t3_thread_organize` action `settle` on the child thread to release its provider session and MCP children (`task_cancel` alone does not).
 5. **Review rounds:** every round is a new `delegate_task` carrying prior findings; never `t3_thread_send` to the `childThreadId`.
 6. **Questions:** a child's pending question is answered by the lead, never forwarded to Etan as a routing question.
 7. **Top-level threads:** `t3_thread_launch` / `create_threads` only when a separate conversation is explicitly asked for.
@@ -297,7 +297,8 @@ data/creds/accounts, money, messaging people); a tag, release, install, deploy o
 
 **Settle at the terminal state:** "settle idle workers" (Etan 2026-10-18, via orc collab). When a lane closes (verified
 `DONE`, filed `BLOCKED`/`NOT_GREEN`, or `TRANSFERRED`), the lead settles its worker. T3: conclude the task (no new
-sends), `task_cancel` its `taskId` so queued runs stop, and `unwatch_pull_request` the lane's PR. cmux adapter: harvest,
+sends), `task_cancel` its `taskId` so queued runs stop, and `unwatch_pull_request` the lane's PR, then `t3_thread_organize` action `settle` on the child thread
+to release its provider session and MCP children (`task_cancel` alone does not). cmux adapter: harvest,
 then close the pane through the cmuxlayer MCP (`close_surface`). Idle with no artifact pending = settle now, not later.
 A PR still in its review rounds is not idle; its implementer stays for those fixes (§ Lead Topology #5). The implementer
 removes its own worktree at DONE (`/pr-loop` § Cleanup Receipt): `git worktree remove` (no `--force`),

@@ -75,6 +75,9 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
   receipt's removal proof that the path is absent from `git worktree list --porcelain`.
   Preserve dirty files or local-only commits; the receipt names the path, reason, and lead escalated to
   (`/pr-loop` § Cleanup Receipt). Neither proof nor an escalated exception = invalid receipt.
+- Then `task_cancel` the `taskId`, `unwatch_pull_request` its PR, and `t3_thread_organize` action `settle`
+  on the child thread to release its provider session and MCP children (`task_cancel` alone does not).
+  Source: T3 upstream `96fc7b95`, `Orchestrator.ts:3849-3922`.
 
 ## 5. Review rounds
 
