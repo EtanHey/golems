@@ -83,6 +83,19 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
     Report the returned `path` and `verdict`. Fill every evidence field from a probe run in the same
     session, never from the target. Never copy any target.* value (merge_sha, version, release_asset.sha256)
     into installed.* or activation.*.
+    Neither `target.released_sha` nor `target.ancestry` comes from the caller or the target;
+    probe both independently. Never copy `merge_sha` into `target.released_sha`.
+    - `target.released_sha`: resolve the release tag with
+      `git ls-remote --tags <repo-url> refs/tags/<tag> 'refs/tags/<tag>^{}'`;
+      use the peeled `^{}` line for an annotated tag, the plain tag line otherwise.
+    - `target.ancestry`: run
+      `gh api repos/<owner>/<repo>/compare/<merge_sha>...<released_sha> --jq .status`;
+      record `method: gh-compare`, the returned `target.ancestry.status`, and
+      `target.ancestry.checked_at` as the UTC Z time of the call. If gh is unavailable, run
+      `git merge-base --is-ancestor <merge_sha> <released_sha>` in the product's checkout:
+      record `method: git-merge-base`, `identical` for equal SHAs, `ahead` for a different descendant,
+      or `diverged` when the merge is not an ancestor. Probe errors are unavailable evidence.
+      Follow `scripts/schemas/install-receipt-v1.md` for ancestry semantics.
     - `host.alias`: `mbp` on the MacBook Pro (the schema accepts only `mbp` or `m1`).
     - `host.hostname` and `host.user`: use `hostname` and `whoami`, respectively.
     - `installed.version`, `installed.path`, `installed.install_finished_at`: read version/path from
@@ -102,7 +115,10 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
     field is unavailable or writing fails, report the failure as not done. Submit `verdict: LIVE` with
     `reasons: []` only when your probes show it serving; otherwise submit what you observed (FAILED
     for a failed install). `write` only downgrades;
-    any probed commit differing from `target.merge_sha` gives MISMATCH.
+    any probed commit differing from `target.released_sha` gives MISMATCH.
+    Present `installed.embedded_commit`, `install_source.pin_sha`, `install_source.owner_status.pin_sha`
+    and `activation.self_report.commit` must equal `target.released_sha`.
+    LIVE also requires ancestry `identical` or `ahead`, per the schema doc above.
     DONE requires a written receipt with `verdict: LIVE`. Report INSTALLED_NOT_ACTIVE, MISMATCH or
     FAILED with the returned `reasons`, as not done. Write no receipt on the M1; report read-only
     observed status as before.
