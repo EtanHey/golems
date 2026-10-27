@@ -119,22 +119,13 @@ def test_mcp_seat_scan_uses_same_session_active_seats():
         "brainlayer, voicelayer, cmuxlayer, brainbar and voicebar",
         "`activation.mcp_probe.ok: true`",
         "strictly after `installed.install_finished_at`",
-        "active seats must be a subset of reconnected seats",
-        "An empty scan with no reconnects is valid",
-        "only seats you actually reconnected in this session",
-        "seat or thread ID", "verified per contract #3",
-        "Your own session or thread (including the session that dispatched you)",
-        "and your own stdio/MCP probe never count as a seat in either list",
-        "running or working threads whose session uses that server",
-        "contract #3 remains unchanged",
-        "you have no T3 tools",
-        "cannot run a `t3-threads` scan or reconnect a T3 thread",
-        "Scan with `list_agents` and record the exact call",
-        "it sees cmux seats only",
-        "Unless you can show that no T3 thread is running on this Mac",
-        "active seats cannot be determined: give no LIVE and report **[UNVERIFIED]**",
-        "name the gap for the caller",
-        "applies once C3 lands",
+        "`node scripts/t3-mcp-holders.mjs <server>`",
+        "`method: client-processes`", "writer verifies `active_seats`",
+        "Never hand-compute", "needs a fresh thread", "one-shot follow-up receipt",
+        "No T3 reconnect exists", "contract #3 remains unchanged",
+        "including the session that dispatched you", "Do not exclude your own client",
+        "cmuxlayer refuses `client-processes`", "prior installed version's tag",
+        "Never assume `changed: false`", "shared Codex app-server",
         "(then voicelayer cannot be LIVE: report INSTALLED_NOT_ACTIVE)",
     ):
         assert required in text
@@ -185,3 +176,43 @@ def test_field_checker_rejects_nested_and_array_drift(field, valid):
     }}
     assert FIELD.findall(f"`{field}`") == [field]
     assert schema_has_field(schema, field) is valid
+
+
+def test_t10_retains_held_kegs_until_followup_cleanup():
+    text = " ".join(AGENT.read_text().split())
+    assert "exactly one keg once the follow-up `brew cleanup <formula>` has run" in text
+    assert "A second keg is expected while T14's held jobs or stale clients remain" in text
+
+
+def test_contract_two_points_to_receipt_mcp_proof():
+    text = " ".join(AGENT.read_text().split())
+    assert "These checks prove the install is serving" in text
+    assert "LIVE also needs the Install receipt item's MCP proof" in text
+
+
+def test_voicelayer_embedded_commit_uses_installed_package_only():
+    text = " ".join(AGENT.read_text().split())
+    assert "/opt/homebrew/opt/voicelayer/bin/voicelayer --version --json" in text
+    assert 'Use `gitCommit` only when `source` is `"package"`' in text
+    assert "never a PATH lookup" in text
+    assert "omit embedded_commit and report **[UNVERIFIED]**" in text
+
+
+def test_other_scan_methods_define_the_own_probe_exclusion():
+    text = " ".join(AGENT.read_text().split())
+    assert "For other scan methods" in text
+    assert "Your own session or thread (including the session that dispatched you)" in text
+    assert "and your own stdio/MCP probe never count as a seat in either list" in text
+
+
+def test_draft_scan_is_the_record_and_plain_scan_is_optional():
+    text = " ".join(AGENT.read_text().split())
+    assert "plain scan is an optional preview" in text
+    assert "Use the receipt-draft output and its own stderr mapping notes as the record" in text
+
+
+def test_client_argv_provenance_follows_i2f():
+    text = " ".join(AGENT.read_text().split())
+    assert '`argv_source: "ps-split"`' in text
+    assert "raw whitespace split of the complete ps command" in text
+    assert "do not normalise paths or truncate tokens" in text

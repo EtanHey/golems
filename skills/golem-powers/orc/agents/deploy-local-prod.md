@@ -42,6 +42,8 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
    - **brainlayer** — `launchctl list` **by label** (read PID / last-exit-status / label as three
      columns; non-zero exit on a `-` PID is a deploy finding, not noise) + a live socat child on
      `/tmp/brainbar.sock`. First confirm `brew info brainlayer` shows the target release version (refresh the tap if not); a no-op upgrade is not an install. Install only through the product's release path (brainlayer: the Homebrew keg via `brew upgrade brainlayer`); never an editable `pip install -e` from a checkout, because the installed artifact must carry the merge SHA (canon #4).
+   These checks prove the install is serving; LIVE also needs the Install receipt item's MCP proof
+   (`mcp_probe` plus `seat_scan`) for all three products.
 3. **NEVER ask Etan to reconnect an MCP.** His rule, verbatim: *"agents never say 'now I need you to
    reconnect my MCP.'"* You push it yourself — but **only into Claude seats that are mid-turn or
    actively using that server** (check state with `list_agents`/`read_screen` first). **Idle, ready
@@ -116,6 +118,11 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
       Write every time as UTC ISO-8601 with Z; convert brew's epoch seconds and ps local times.
     - `installed.embedded_commit`: read the artifact's Info.plist GitCommit, brainlayer `_build.py`
       BUILD_SHA, package gitHead, or checkout HEAD.
+      For a voicelayer formula, run the INSTALLED binary:
+      `/opt/homebrew/opt/voicelayer/bin/voicelayer --version --json` (or its absolute Cellar path),
+      never a PATH lookup that could hit a dev checkout. Use `gitCommit` only when `source` is `"package"`.
+      If `source` is `checkout` or null, omit embedded_commit and report **[UNVERIFIED]**.
+      Until the first stamped package ships in a voicelayer release, expect **[UNVERIFIED]**.
     - If the caller assigns a golems hooks/skills install: in `worktree-pin` mode, use the owner
       installer's `--status` output for `install_source.pin_sha` and `install_source.owner_status`.
     - `activation.processes[]`: obtain pid, path and started_at from `ps`.
@@ -128,18 +135,47 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
       `activation.mcp_probe.ok: true` plus a seat scan per `scripts/schemas/install-receipt-v1.md`.
       Record `activation.seat_scan.method`, `activation.seat_scan.checked_at` strictly after
       `installed.install_finished_at`, and `activation.seat_scan.active_seats`.
-      Interim procedure (contract #3 remains unchanged): you have no T3 tools, so you
-      cannot run a `t3-threads` scan or reconnect a T3 thread. Scan with `list_agents` and
-      record the exact call; it sees cmux seats only. Unless you can show that no T3 thread
-      is running on this Mac, active seats cannot be determined: give no LIVE and report
-      **[UNVERIFIED]** (name the gap for the caller). `t3-threads` (running or working threads
-      whose session uses that server) applies once C3 lands.
-    - `activation.reconnected_seats`: only seats you actually reconnected in this session, each
-      identified by seat or thread ID and verified per contract #3. Never assume a reconnect.
-      The active seats must be a subset of reconnected seats.
-      An empty scan with no reconnects is valid.
-      Your own session or thread (including the session that dispatched you)
-      and your own stdio/MCP probe never count as a seat in either list.
+      After the install, the plain scan is an optional preview:
+      `node scripts/t3-mcp-holders.mjs <server>` from the golems root. For the receipt, run
+      `node scripts/t3-mcp-holders.mjs <server> --receipt-draft <draft.json|->` on the draft receipt
+      after probing its bridge_diff and install time. This read-only mode imports core's
+      `staleClients` to derive the list and prints the completed draft; the writer verifies
+      `active_seats` and refuses a mismatching list. Never hand-compute or copy the rule.
+      Stale = bridge clients with started_at ≤ install_finished_at (whole seconds), and ONLY
+      when bridge_diff.changed is true. socat relays never count as stale.
+      Use the receipt-draft output and its own stderr mapping notes as the record, including
+      `method: client-processes`, `checked_at`, `clients[]` and `excluded[]`.
+      Clients carry `argv` plus `argv_source: "ps-split"` instead of `command`: use the raw
+      whitespace split of the complete ps command; do not normalise paths or truncate tokens.
+      This split is lossy for arguments containing spaces; it is not a native argv reader.
+      That mode takes a new snapshot; do not combine it with an earlier preview scan.
+      Do not exclude your own client, including the session that dispatched you, or your probe:
+      the writer compares client start times to the install time (equal seconds are stale).
+      A probe started after the install is fresh by that rule.
+      Resolve `activation.seat_scan.bridge_diff` from a real source comparison: `from_tag` is the
+      prior installed version's tag (different from target.tag), `to_sha` is target.released_sha,
+      and `paths` covers core's bridge paths. Probe with
+      `gh api repos/<owner>/<repo>/compare/<from_tag>...<released_sha>` and inspect changed files
+      against the paths returned by core's `bridgePaths(product)` accessor, obtained with:
+      `node --input-type=module -e 'import {bridgePaths} from "./scripts/lib/install-receipt-core.mjs"; console.log(JSON.stringify(bridgePaths(process.argv[1])))' <server>`.
+      Use that returned array for `paths`; do not duplicate the bridge-path list. Never assume `changed: false`.
+      No T3 reconnect exists; reconnect is parked upstream and contract #3 remains unchanged.
+      For each stale client, report its thread or `unmapped` as "needs a fresh thread";
+      the shared Codex app-server cannot attribute children per thread and stays `unmapped`.
+      Leave INSTALLED_NOT_ACTIVE while stale clients remain. Never touch those seats.
+      After those sessions end, run a one-shot follow-up receipt; never poll.
+      Retain the old keg with `HOMEBREW_NO_INSTALL_CLEANUP=1` while held jobs or stale clients live;
+      run follow-up `brew cleanup <formula>` only once they are gone and record it.
+      For voicelayer and voicebar, keep the `socat-relay` exclusion, even with count 0, with reason:
+      "LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps)."
+      cmuxlayer refuses `client-processes`: use a complete supported seat scan or report
+      **[UNVERIFIED]** and INSTALLED_NOT_ACTIVE.
+    - For other scan methods, `activation.reconnected_seats` contains only seats you actually
+      reconnected in this session, identified by seat or thread ID and verified per contract #3.
+      Their active seats must be a subset of reconnected seats. An empty scan with no reconnects
+      is valid only with complete coverage. Your own session or thread (including the session
+      that dispatched you) and your own stdio/MCP probe never count as a seat in either list
+      for these other scan methods.
     If a field cannot be probed, leave it out and report **[UNVERIFIED]**; never guess. If a required
     field is unavailable or writing fails, report the failure as not done. Submit `verdict: LIVE` with
     `reasons: []` only when your probes show it serving; otherwise submit what you observed (FAILED
@@ -164,7 +200,7 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
 | T7 | **M1 PATH** — non-interactive ssh lacks `/opt/homebrew/bin`; also no `timeout(1)` | prefix every remote command with `export PATH=/opt/homebrew/bin:$PATH;`; use node/perl timers |
 | T8 | **M1 GitHub auth** cannot be assumed | never release from the M1; read-only status checks only until Etan authorizes the M1 test-rig adapter |
 | T9 | **cmux access control blocks out-of-band probes** — an SSH probe is denied and returns **0 tools**, which looks like a broken bottle | run the probe from inside cmux, or record it *blocked* and fall back to `doctor --json` |
-| T10 | **Two Cellar versions after upgrade** — old keg still linkable, a pinned wrapper still boots old code | `ls -1 /opt/homebrew/Cellar/<pkg>/` must show exactly one; check the `bin/` symlink target |
+| T10 | **Two Cellar versions after upgrade** — old keg still linkable, a pinned wrapper still boots old code | `ls -1 /opt/homebrew/Cellar/<pkg>/` must show exactly one keg once the follow-up `brew cleanup <formula>` has run. A second keg is expected while T14's held jobs or stale clients remain, and must be reported; check the `bin/` symlink target |
 | T11 | **Reconnect does not resume the turn** | nudge only seats that were mid-turn; never idle/paused seats |
 | T12 | **Retired app-rebuild timer** — do not recreate `com.golems.apps-update` | `brew upgrade --cask` or `sync-to-mac` on demand |
 | T13 | **Remote live proof needs a pane on that machine** — cmux access-control denies non-descendant processes, so `cmuxlayer doctor --json` is the ssh ceiling | for a real live-green on a remote Mac, run from a seat already inside cmux there; otherwise report the ceiling you hit |
