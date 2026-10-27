@@ -295,3 +295,13 @@ layoutTest("answer sheet fits the viewport, traps real Tab focus and Esc returns
     await browser.close();
   }
 }, 60000);
+
+for (const [width, height] of [[390, 844], [1280, 800]]) layoutTest(`bottom scroll selects the last card in every navigation surface at ${width}px`, async () => {
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width, height }, reducedMotion: "reduce" }); await page.goto(fixture());
+    await page.evaluate(async () => { window.scrollTo(0, document.documentElement.scrollHeight); await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
+    const state = await page.evaluate(() => ({ bottom: Math.abs(scrollY + innerHeight - document.documentElement.scrollHeight) < 2, card: document.querySelector(".df-card.is-active").dataset.decision, chip: document.querySelector('.df-chip[aria-current="true"]').dataset.chipFor, index: document.querySelector(".df-index a.is-active").dataset.indexFor, now: document.getElementById("df-now").textContent }));
+    expect(state).toEqual({ bottom: true, card: "d06", chip: "d06", index: "d06", now: "6  Pristine sprints with new leads 7" });
+  } finally { await browser.close(); }
+});
