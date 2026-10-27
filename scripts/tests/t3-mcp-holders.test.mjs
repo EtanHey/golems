@@ -157,9 +157,11 @@ test('missing provider remains an unmapped client with its PID in mapping notes'
   const note = JSON.parse(r.stderr.trim()); assert.equal(note.pid,100); assert.equal(note.reason,'provider gone');
 });
 test('noncanonical bridge paths are retained so writer refuses them', () => {
-  for(const command of ['/work/bin/brainlayer-mcp-stdio-bridge', '/usr/bin/env /work/bin/brainlayer-mcp-stdio-bridge']) {
+  for(const command of ['/work/bin/brainlayer-mcp-stdio-bridge', '/usr/bin/env /work/bin/brainlayer-mcp-stdio-bridge', 'uv run /work/bin/brainlayer-mcp-stdio-bridge --verbose', 'runner --bridge=/work/bin/brainlayer-mcp-stdio-bridge']) {
     const r=scan('brainlayer',[command]);assert.equal(r.status,0,r.stderr);
-    assert.equal(JSON.parse(r.stdout).clients[0].command,command);
+    assert.deepEqual(JSON.parse(r.stdout).clients[0].argv,command.trim().split(/\s+/));
+    assert.equal(JSON.parse(r.stdout).clients[0].argv_source,'ps-split');
+    assert.equal('command' in JSON.parse(r.stdout).clients[0],false);
     const rejected=scan('brainlayer',[command],{receiptDraft:draft()});
     assert.notEqual(rejected.status,0);assert.match(rejected.stderr,/unrecognised bridge path/);
   }
@@ -186,4 +188,25 @@ test('dispatcher ancestor and own clients remain included and notes identify eac
   const notes=r.stderr.trim().split('\n').filter(Boolean).map(JSON.parse);
   assert.deepEqual(notes.map(n=>n.pid),[100,101]);assert.equal(notes[0].provider_pid,process.pid);
   assert.deepEqual(JSON.parse(r.stdout).clients.map(c=>c.pid),[100,101]);
+});
+
+test('whole argv bridge matches at every index and with trailing arguments become stale', () => {
+  const commands = [`${bridge} --verbose`, `uv run ${bridge}`, `/usr/bin/env python3 ${bridge} --verbose`,
+    `runner --bridge=${bridge}`, `runner server:${bridge}`];
+  const r=scan('brainlayer',commands,{receiptDraft:draft()});assert.equal(r.status,0,r.stderr);
+  const receipt=JSON.parse(r.stdout);assert.doesNotThrow(()=>validate(receipt));
+  assert.equal(receipt.activation.seat_scan.active_seats.length,commands.length);
+  receipt.activation.seat_scan.clients.forEach((client,i)=>{
+    assert.deepEqual(client.argv,commands[i].split(/\s+/));assert.equal(client.argv_source,'ps-split');
+    assert.equal('command' in client,false);
+  });
+});
+test('ps whitespace splitting preserves raw elements, quotes and unnormalised paths', () => {
+  const command=`/usr/bin/env\tpython3 ${bridge} --label="two words"`;
+  const r=scan('brainlayer',[command]);assert.equal(r.status,0,r.stderr);
+  assert.deepEqual(JSON.parse(r.stdout).clients[0].argv,
+    ['/usr/bin/env','python3',bridge,'--label="two','words"']);
+  const prefixed=`runner /prefix${bridge}`;
+  const bad=scan('brainlayer',[prefixed],{receiptDraft:draft()});
+  assert.notEqual(bad.status,0);assert.match(bad.stderr,/unrecognised bridge path/);
 });

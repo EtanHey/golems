@@ -209,3 +209,10 @@ def test_draft_scan_is_the_record_and_plain_scan_is_optional():
     text = " ".join(AGENT.read_text().split())
     assert "plain scan is an optional preview" in text
     assert "Use the receipt-draft output and its own stderr mapping notes as the record" in text
+
+
+def test_client_argv_provenance_follows_i2f():
+    text = " ".join(AGENT.read_text().split())
+    assert '`argv_source: "ps-split"`' in text
+    assert "raw whitespace split of the complete ps command" in text
+    assert "do not normalise paths or truncate tokens" in text

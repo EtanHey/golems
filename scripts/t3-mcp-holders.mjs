@@ -58,11 +58,12 @@ async function main() {
   let daemonCount = 0, relayCount = 0;
   for (const child of [...processes.values()].sort((a,b) => a.pid-b.pid)) {
     const { pid, command } = child;
-    if (rule.relay?.test(command)) { relayCount++; continue; }
+    const argv = command.trim().split(/\s+/);
+    if (rule.relay?.test(argv)) { relayCount++; continue; }
     if (rule.relay) continue;
-    const bridgeShaped = command.trim().split(/\s+/).slice(0, 2)
+    const bridgeShaped = argv
       .some(arg => arg.split('/').at(-1) === 'brainlayer-mcp-stdio-bridge');
-    if (!rule.bridge.test(command) && !bridgeShaped) {
+    if (!rule.bridge.test(argv) && !bridgeShaped) {
       if (DAEMON.test(command)) daemonCount++;
       continue;
     }
@@ -79,7 +80,7 @@ async function main() {
       : !provider ? 'provider gone' : ambiguous ? 'ambiguous session flags' : !native ? 'no Claude native session id' : matches?.size > 1 ? 'ambiguous native session join' : 'native session absent from T3 state';
     console.error(JSON.stringify({ pid, holder: thread ?? `unmapped:${child.parent}:${native ?? 'unknown'}`, provider_pid: child.parent,
       provider_started_at: provider?.started_at ?? null, native_session_id: native ?? null, cwd, ...(thread ? {} : { reason }) }));
-    clients.push({ pid, started_at: child.started_at, command: child.command, thread_id: thread });
+    clients.push({ pid, started_at: child.started_at, argv, argv_source: 'ps-split', thread_id: thread });
   }
   if (rule.relay) excluded.push({ rule: 'socat-relay', reason: SOCAT_REASON, count: relayCount });
   if (daemonCount) excluded.push({ rule: 'daemon-process', reason: 'Product watch, drain, ingestion, daemon, hybrid helper and supervisor processes are not per-seat clients.', count: daemonCount });

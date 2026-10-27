@@ -145,6 +145,9 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
       when bridge_diff.changed is true. socat relays never count as stale.
       Use the receipt-draft output and its own stderr mapping notes as the record, including
       `method: client-processes`, `checked_at`, `clients[]` and `excluded[]`.
+      Clients carry `argv` plus `argv_source: "ps-split"` instead of `command`: use the raw
+      whitespace split of the complete ps command; do not normalise paths or truncate tokens.
+      This split is lossy for arguments containing spaces; it is not a native argv reader.
       That mode takes a new snapshot; do not combine it with an earlier preview scan.
       Do not exclude your own client, including the session that dispatched you, or your probe:
       the writer compares client start times to the install time (equal seconds are stale).
