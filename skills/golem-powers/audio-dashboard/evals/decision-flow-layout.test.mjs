@@ -25,8 +25,7 @@ function scene(id) {
   };
 }
 
-function fixture() {
-  const ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"];
+function fixture(ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"]) {
   const html = renderDecisionFlow({
     storageKey: "dbx:layout-test",
     heading: "Check the new VoiceBar first, then 25 calls to make.",
@@ -42,6 +41,10 @@ function fixture() {
   const file = path.join(dir, "dashboard.html");
   writeFileSync(file, html);
   return `file://${file}`;
+}
+
+async function waitForScrollSettle(page) {
+  await page.evaluate(() => new Promise(resolve => { let y = scrollY, since = performance.now(); function poll(now) { if (scrollY !== y) { y = scrollY; since = now; } if (now - since >= 200) resolve(); else requestAnimationFrame(poll); } requestAnimationFrame(poll); }));
 }
 
 const TRANSPORT_LABELS = [["▶", "Play"], ["⏸", "Pause"], ["▶", "Resume"], ["↻", "Again"]];
@@ -62,6 +65,25 @@ layoutTest("review: a real mouse drag between interior words offers Cite without
   } } finally { await browser.close(); }
 }, 60000);
 
+layoutTest("touch Cite reserves its space without moving controls and transport targets stay 44px", async () => {
+  const browser = await chromium.launch({ args: ["--mute-audio"] }), failures = [];
+  try { for (const width of [360, 390, 1280]) for (const view of ["list", "story"]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" }); await page.goto(fixture());
+    if (view === "story") await page.locator("#df-view-toggle").tap();
+    const geometry = () => page.evaluate(() => Object.fromEntries(["df-transport-prev", "df-transport-play", "df-transport-next", "df-transport-stop", "df-speed", "df-view-toggle"].map(id => document.getElementById(id)).filter(node => node.getClientRects().length).map(node => { const r = node.getBoundingClientRect(); return [node.id, { x: r.x, y: r.y, width: r.width, height: r.height }]; })));
+    const before = await geometry();
+    await page.locator(view === "story" ? ".df-card.is-active .df-words" : ".df-card.is-active .df-question p").first().evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); getSelection().removeAllRanges(); getSelection().addRange(range); });
+    await page.locator("#df-controller-cite").waitFor({ state: "visible" }); const selected = await geometry();
+    await page.evaluate(() => getSelection().removeAllRanges()); await page.locator("#df-controller-cite").waitFor({ state: "hidden" }); const cleared = await geometry();
+    for (const [id, rect] of Object.entries(before)) {
+      if (["df-transport-prev", "df-transport-next"].includes(id) && (rect.width < 44 || rect.height < 44)) failures.push({ width, view, id, target: rect });
+      for (const [phase, boxes] of [["selected", selected], ["cleared", cleared]]) if (Object.keys(rect).some(key => Math.abs(rect[key] - boxes[id][key]) > 0.25)) failures.push({ width, view, id, phase, before: rect, after: boxes[id] });
+    }
+    await page.close();
+  } } finally { await browser.close(); }
+  expect(failures).toEqual([]);
+}, 30000);
+
 layoutTest("review: transcript accessibility text preserves spaces between words", async () => {
   const browser = await chromium.launch();
   try { const page = await browser.newPage(); await page.goto(fixture()); await page.click("#df-view-toggle");
@@ -69,13 +91,28 @@ layoutTest("review: transcript accessibility text preserves spaces between words
   } finally { await browser.close(); }
 });
 
-layoutTest("review: touch note targets are 44px and Cite sits below the selection", async () => {
-  const browser = await chromium.launch();
-  try { const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); await page.goto(fixture());
+layoutTest("touch selection offers reachable Cite in the controller or modal sheet", async () => {
+  const browser = await chromium.launch({ args: ["--mute-audio"] });
+  try { for (const width of [360, 390, 1280]) for (const view of ["list", "story", "sheet"]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" }); await page.goto(fixture());
     for (const selector of [".df-card-note", ".df-item-note"]) { const box = await page.locator(selector).first().boundingBox(); expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44); }
-    const bottom = await page.evaluate(() => { const range = document.createRange(); range.selectNodeContents(document.querySelector(".df-question p")); getSelection().removeAllRanges(); getSelection().addRange(range); return range.getBoundingClientRect().bottom; });
-    await page.locator("#df-cite").waitFor({ state: "visible" }); const box = await page.locator("#df-cite").boundingBox();
-    expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44); expect(box.y).toBeGreaterThanOrEqual(bottom);
+    if (view !== "list") await page.locator("#df-view-toggle").tap();
+    if (view === "sheet") await page.locator(".df-card.is-active .df-answer-open").tap();
+    const selected = await page.locator(view === "story" ? ".df-card.is-active .df-words" : view === "sheet" ? ".df-sheet.is-open .df-question p" : ".df-card.is-active .df-question p").first().evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); getSelection().removeAllRanges(); getSelection().addRange(range); return getSelection().toString().trim(); });
+    const cite = page.locator("#df-controller-cite"); await cite.waitFor({ state: "visible" }); expect(await page.locator("#df-speed").evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(16); expect(await page.locator("#df-cite").isVisible()).toBe(false);
+    const box = await cite.boundingBox(); expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44);
+    if (view === "sheet") expect(await cite.evaluate(node => Boolean(node.closest(".df-sheet-head")))).toBe(true);
+    else { expect(await cite.evaluate(node => node.previousElementSibling.id)).toBe("df-transport-next"); expect(await page.locator(".df-transport").evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true); }
+    await cite.tap(); expect(await page.textContent("#df-note-quote")).toBe(selected); await page.locator("#df-note-cancel").tap();
+    if (view === "sheet") expect(await page.locator(".df-sheet-done").first().evaluate(node => node === document.activeElement)).toBe(true);
+    await page.close();
+  } } finally { await browser.close(); }
+}, 60000);
+
+layoutTest("card heading names exclude answer status", async () => {
+  const browser = await chromium.launch();
+  try { const page = await browser.newPage(); await page.goto(fixture());
+    expect(await page.getByRole("heading", { level: 2, name: "Check VoiceBar 2.2.57", exact: true }).count()).toBe(1);
   } finally { await browser.close(); }
 });
 
@@ -86,7 +123,7 @@ layoutTest("review: note modal animates open and closed, and reduced motion disa
     expect(await animations()).toContain("opacity"); await page.locator("#df-note-dialog").evaluate(node => Promise.all(node.getAnimations().map(animation => animation.finished))); await page.keyboard.press("Escape"); expect(await animations()).toContain("opacity");
     await page.emulateMedia({ reducedMotion: "reduce" }); await page.locator(".df-card-note").first().click(); expect(await animations()).toEqual([]);
   } finally { await browser.close(); }
-});
+}, 15000);
 
 layoutTest("review: new buttons have press feedback and touch does not gain sticky hover", async () => {
   const browser = await chromium.launch();
@@ -295,3 +332,42 @@ layoutTest("answer sheet fits the viewport, traps real Tab focus and Esc returns
     await browser.close();
   }
 }, 60000);
+
+layoutTest("a real far-chip tap lands on its requested card after smooth scrolling", async () => {
+  const browser = await chromium.launch(), landings = [];
+  try { for (const width of [390, 1280]) { const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "no-preference" });
+    await page.goto(fixture(["v00", ...Array.from({ length: 24 }, (_, index) => "d" + index), "nl2", "nl3"]));
+    expect(await page.evaluate(() => scrollY)).toBe(0); await page.locator('[data-chip-for="nl2"]').tap();
+    await waitForScrollSettle(page);
+    landings.push(await page.evaluate(() => { const target = document.querySelector('[data-decision="nl2"]'); return { width: innerWidth, y: scrollY, top: target.getBoundingClientRect().top, line: parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) + parseFloat(getComputedStyle(target).scrollMarginTop) }; }));
+    expect(await page.evaluate(() => ({ card: document.querySelector(".df-card.is-active").dataset.decision, chip: document.querySelector('.df-chip[aria-current="true"]').dataset.chipFor, index: document.querySelector(".df-index a.is-active").dataset.indexFor }))).toEqual({ card: "nl2", chip: "nl2", index: "nl2" });
+    await page.close();
+  } } finally { await browser.close(); }
+  console.info("far-tap landings", JSON.stringify(landings));
+  for (const { top, line } of landings) expect(Math.abs(top - line)).toBeLessThanOrEqual(3);
+}, 15000);
+
+for (const [width, height] of [[390, 844], [1280, 800]]) layoutTest(`bottom scroll selects the last card in every navigation surface at ${width}px`, async () => {
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width, height }, reducedMotion: "reduce" }); await page.goto(fixture());
+    await page.evaluate(async () => { window.scrollTo(0, document.documentElement.scrollHeight); await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
+    const state = await page.evaluate(() => ({ bottom: Math.abs(scrollY + innerHeight - document.documentElement.scrollHeight) < 2, card: document.querySelector(".df-card.is-active").dataset.decision, chip: document.querySelector('.df-chip[aria-current="true"]').dataset.chipFor, index: document.querySelector(".df-index a.is-active").dataset.indexFor, now: document.getElementById("df-now").textContent }));
+    expect(state).toEqual({ bottom: true, card: "d06", chip: "d06", index: "d06", now: "6  Pristine sprints with new leads 7" });
+  } finally { await browser.close(); }
+});
+
+for (const destination of ["bottom", "mid-page"]) layoutTest(`an interrupted far-chip jump reconciles ${destination} after the lock settles`, async () => {
+  const browser = await chromium.launch(), states = [];
+  try { for (const width of [390, 1280]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "no-preference" });
+    await page.goto(fixture(["v00", ...Array.from({ length: 24 }, (_, index) => "d" + index), "nl2", "nl3"]));
+    await page.locator(destination === "bottom" ? '[data-chip-for="nl2"]' : '[data-chip-for="d20"]').tap();
+    await page.evaluate(destination => window.scrollTo({ top: destination === "bottom" ? document.documentElement.scrollHeight : scrollY + document.querySelector('[data-decision="d20"]').getBoundingClientRect().top - (innerHeight - 57), behavior: "instant" }), destination);
+    await waitForScrollSettle(page); // No extra scroll: reconcile the suppressed final event.
+    states.push(await page.evaluate(() => ({ bottom: Math.abs(scrollY + innerHeight - document.documentElement.scrollHeight) < 2, card: document.querySelector(".df-card.is-active").dataset.decision, chip: document.querySelector('.df-chip[aria-current="true"]').dataset.chipFor, index: document.querySelector(".df-index a.is-active").dataset.indexFor })));
+    await page.close();
+  } } finally { await browser.close(); }
+  const expected = destination === "bottom" ? "nl3" : "d19";
+  expect(states).toEqual([390, 1280].map(() => ({ bottom: destination === "bottom", card: expected, chip: expected, index: expected })));
+}, 15000);

@@ -162,6 +162,7 @@ unread sheets marked NOT DETERMINED. Quota/auth errors stop dispatch with a
 nonzero exit and the cause: our own visual dispatch. Do not relaunch blindly.
 Retry/refine only unresolved sheets within the remaining session budget, using
 a fresh workdir. An unread/unresolved sheet never supports a visual finding.
+`unresolved` lists unread sheets only; an ok finding with inline NOT DETERMINED tiles is a refinement candidate for those tiles.
 An explicitly requested visible `video-qa` worker keeps the same evidence ledger.
 
 For each window (sheet), state:

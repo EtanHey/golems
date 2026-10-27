@@ -1,6 +1,6 @@
 ---
 name: drive-filing
-description: "Brain Drive filing, archival, and the docs.local lifecycle. Triggers: Drive/Brain Drive upload, archive this, post-digest archival, docs.local cleanup, docs.local artifacts, rollup, folders, prompts/results, audits, plans, transcripts, dashboards. NOT for Gemini Drive/web research."
+description: "Brain Drive filing, archival, and docs.local lifecycle. Triggers: Drive/Brain Drive upload, archive this, post-digest archival, docs.local cleanup, docs.local artifacts, rollup, folders, prompts/results, audits, plans, transcripts, dashboards. NOT for Gemini Deep Research/queries."
 ---
 
 # /drive-filing — filing, archival, and the docs.local lifecycle
@@ -34,6 +34,8 @@ configuration; never copy live Drive IDs into this skill.
 | `06_ARCHIVE` | `${BRAIN_DRIVE_ARCHIVE_FOLDER_ID}` | **Forever** storage of finished heavy artifacts (transcripts, audio/video, big audits/plans). Target of § Archive a heavy artifact. |
 
 > Folder *semantics* (what each numbered folder means) are confirmed with brainlayer-LEAD (s:57, owns Drive/backup). Legacy non-numbered folders (`Research` ×2 duplicates, `Sessions`, `Collabs`, `_inbox-*`, `BrainBar Design Audit`) are pre-taxonomy scatter — **do not add to them**; file into the numbered model. (Consolidation of the legacy dupes is an s:57 cleanup task.)
+
+Legacy `Brain Drive/Research/<project>/` folders are being moved under 03_RESEARCH/Active; if a prompt isn't found in Active, check the legacy path read-only and report it, never write there.
 
 ## Decision tree (where does THIS artifact go?)
 

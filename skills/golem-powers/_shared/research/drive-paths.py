@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from urllib.parse import urlencode
 from urllib.parse import quote
 
-ROOT_CHAIN = ["Brain Drive", "Research"]
+ROOT_CHAIN = ["Brain Drive", "03_RESEARCH", "Active"]
 PROMPT_RE = re.compile(r"^R\d+.*\.md$")
 RESULT_RE = re.compile(r"^R\d+.*-result\.md$")
 
@@ -258,12 +258,28 @@ def ensure_folder_chain(backend: FixtureBackend | GoogleDriveBackend, names: lis
     return folders
 
 
+def reject_legacy_project(backend: FixtureBackend | GoogleDriveBackend, project: str) -> None:
+    parent_id = backend.root_id
+    for name in ["Brain Drive", "Research", project]:
+        folder = backend.find_folder(parent_id, name)
+        if folder is None:
+            return
+        parent_id = folder["id"]
+    raise DrivePathsError(
+        f"legacy research folder Brain Drive/Research/{project} exists; "
+        "it is being moved to 03_RESEARCH/Active (R2c). "
+        "Not creating a duplicate. Ask the lead."
+    )
+
+
 def resolve_project_folder(backend: FixtureBackend | GoogleDriveBackend, project: str) -> str:
+    reject_legacy_project(backend, project)
     folders = ensure_folder_chain(backend, [*ROOT_CHAIN, project])
     return folders[-1]["id"]
 
 
 def ensure_project_folders(backend: FixtureBackend | GoogleDriveBackend, project: str) -> dict:
+    reject_legacy_project(backend, project)
     root_folders = ensure_folder_chain(backend, [*ROOT_CHAIN, project])
     project_folder = root_folders[-1]
     context = backend.find_folder(project_folder["id"], "context") or backend.create_folder(project_folder["id"], "context")

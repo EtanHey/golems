@@ -1,57 +1,8 @@
 import { expect, test } from "bun:test";
 import { Window } from "happy-dom";
+import { scene, boot, selectText, DEFAULT_DECISIONS } from "./decision-flow-harness.mjs";
 
 import { renderDecisionFlow } from "../src/decision-flow.mjs";
-
-function scene(id, words = ["one", "two"]) {
-  return {
-    id,
-    title: id,
-    script: words.join(" "),
-    duration: 1,
-    audioUrl: "data:audio/mpeg;base64,SUQz",
-    words: words.map((word, index) => ({ word, start: index * 0.4, end: index * 0.4 + 0.3 })),
-  };
-}
-
-const DEFAULT_DECISIONS = [
-  { id: "a", title: "A", options: ["Keep", "Change"], sceneIds: ["a1", "a2"] },
-  { id: "b", title: "B", options: ["One", "Two"], sceneIds: ["b1"] },
-];
-
-function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard, storageError = () => false } = {}) {
-  const html = renderDecisionFlow({
-    title: "Audio decision dashboard",
-    kicker: "Audio decision dashboard",
-    heading: "Two calls",
-    subtitle: "Listen and decide.",
-    storageKey: "dbx:interaction-test",
-    cinemaUrl: "./interaction-test-audio.html",
-    scenes,
-    decisions,
-  });
-  const window = new Window();
-  if (seed) window.localStorage.setItem("dbx:interaction-test", JSON.stringify(seed));
-  if (clipboard) Object.defineProperty(window.navigator, "clipboard", { configurable: true, value: clipboard });
-  window.HTMLElement.prototype.scrollIntoView = function scrollIntoView() { this.__scrolledIntoView = true; };
-  Object.defineProperty(window.HTMLMediaElement.prototype, "paused", {
-    configurable: true,
-    get() { return this.__paused ?? true; },
-  });
-  window.HTMLMediaElement.prototype.play = function play() {
-    this.__paused = false;
-    return Promise.resolve();
-  };
-  window.HTMLMediaElement.prototype.pause = function pause() { this.__paused = true; };
-  window.document.write(html);
-  const scripts = [...window.document.querySelectorAll("script")];
-  new Function("document", "localStorage", "navigator", scripts.at(-1).textContent)(
-    window.document,
-    { getItem: key => window.localStorage.getItem(key), setItem: (key, value) => { if (storageError()) throw new Error("quota"); window.localStorage.setItem(key, value); } },
-    window.navigator,
-  );
-  return { window, document: window.document, html };
-}
 
 test("rendered decision flow uses a hub-compatible route-scoped storage key", () => {
   const html = renderDecisionFlow({
@@ -83,8 +34,8 @@ test("Clear requires confirmation and removes only its card's picks, checks, fre
   expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(expected);
   expect([...card.querySelectorAll("input")].every(input => !input.checked)).toBe(true);
   expect(card.querySelector(".df-free").value).toBe(""); expect(card.querySelector(".df-note-count").hidden).toBe(true);
-  for (const selector of ['[data-index-for="vb"]', '[data-chip-for="vb"]']) expect(document.querySelector(selector + " .df-answer-status").textContent).toBe("☐");
-  expect(document.querySelector('[data-chip-for="b"] .df-answer-status').textContent).toBe("✓");
+  for (const selector of ['[data-index-for="vb"]', '[data-chip-for="vb"]']) expect(document.querySelector(selector + " .df-answer-status").getAttribute("aria-label")).toBe("Awaiting answer");
+  expect(document.querySelector('[data-chip-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
   expect(card.querySelector(".df-clear-confirm").hidden).toBe(true);
   expect(boot({ decisions: CHECK_DECISIONS, seed: expected }).document.getElementById("df-answered").textContent).toBe("1");
 });
@@ -106,17 +57,11 @@ test("failed Clear preserves saved answers and visible controls, and permits ret
   expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))).toEqual(CLEAR_SEED);
   expect(card.querySelector('input[type="radio"]').checked).toBe(true); expect(card.querySelector(".df-free").value).toBe("An answer");
   expect(card.querySelector(".df-clear-error").textContent).toContain("Answers kept"); expect(card.querySelector(".df-clear-confirm").hidden).toBe(false);
-  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("✓");
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
   blocked = false; card.querySelector(".df-clear-apply").click();
   expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test")).vb).toBeUndefined(); expect(card.querySelector(".df-clear-confirm").hidden).toBe(true);
 });
 
-function selectText(run, first, last = first) {
-  const range = run.document.createRange(); range.setStart(first.firstChild, 0); range.setEnd(last.firstChild, last.textContent.length);
-  range.getBoundingClientRect = () => ({ left: 80, right: 160, top: 100, bottom: 120 });
-  const selection = run.window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
-  run.document.dispatchEvent(new run.window.Event("selectionchange"));
-}
 
 test("review: notes alone do not answer a card, while a completed checklist does", () => {
   const plain = boot({ seed: { "a-notes": [{ quote: "one", text: "A comment" }] } });
@@ -132,7 +77,7 @@ test("a checklist card with a pick and no ticks counts as answered", () => {
   card.querySelectorAll('input[type="radio"]')[1].click();
   expect(card.querySelectorAll('.df-check-input:checked').length).toBe(0);
   expect(card.classList.contains("is-answered")).toBe(true);
-  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("✓");
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
 });
 
 test("review: a cited selection excludes speaker labels", () => {
@@ -156,18 +101,48 @@ test("review: plain transcript words retain keyboard word seeking", () => {
   expect(document.querySelector("audio").paused).toBe(false);
 });
 
+test("SVG answer indicators restore, update and clear across card headers, sidebar and chips", () => {
+  const { document } = boot({ decisions: CHECK_DECISIONS, seed: { vb: "All good" } });
+  const card = document.querySelector('[data-decision="vb"]');
+  const marks = () => [card.querySelector(".df-card-head .df-answer-status"), ...['[data-index-for="vb"]', '[data-chip-for="vb"]'].map(selector => document.querySelector(selector + " .df-answer-status"))];
+  function expectMarks(done) {
+    for (const mark of marks()) {
+      expect(mark).not.toBeNull(); expect(mark.getAttribute("role")).toBe("img");
+      expect(mark.getAttribute("aria-label")).toBe(done ? "Answered" : "Awaiting answer");
+      expect(mark.dataset.answered).toBe(String(done)); expect(mark.textContent).toBe("");
+      expect(mark.querySelector("svg circle")).not.toBeNull(); expect(mark.querySelector("svg path")).not.toBeNull();
+      expect(mark.querySelector("svg").getAttribute("aria-hidden")).toBe("true");
+    }
+  }
+  expectMarks(true); card.querySelector(".df-clear").click(); card.querySelector(".df-clear-apply").click(); expectMarks(false);
+  for (const checkbox of card.querySelectorAll('input[type="checkbox"]')) checkbox.click(); expectMarks(true);
+  expect(card.querySelector(".df-rank").textContent).toBe("1");
+});
+
+test("partial checklists restore and update progress rings without overriding an explicit answer", () => {
+  const { document } = boot({ decisions: CHECK_DECISIONS, seed: { "vb-checks": { 0: true } } });
+  const card = document.querySelector('[data-decision="vb"]'), boxes = card.querySelectorAll('input[type="checkbox"]');
+  function status(label, progress) { for (const root of [card.querySelector(".df-card-head"), document.querySelector('[data-index-for="vb"]'), document.querySelector('[data-chip-for="vb"]')]) {
+    const mark = root.querySelector(".df-answer-status"); expect(mark.getAttribute("aria-label")).toBe(label); expect(mark.dataset.progress).toBe(String(progress));
+  } }
+  status("In progress, 1 of 3 checked", true); boxes[1].click(); status("In progress, 2 of 3 checked", true);
+  boxes[2].click(); status("Answered", false); boxes[0].click(); status("In progress, 2 of 3 checked", true);
+  card.querySelector('input[type="radio"]').click(); status("Answered", false);
+  card.querySelector(".df-clear").click(); card.querySelector(".df-clear-apply").click(); status("Awaiting answer", false);
+});
+
 test("answer indicators are separate from ranks and follow restored and cleared answers", () => {
   const run = boot({ seed: { a: "Keep" } }); const { document } = run;
-  for (const selector of ['[data-index-for="a"]', '[data-chip-for="a"]']) expect(document.querySelector(selector + " .df-answer-status").textContent).toBe("✓");
+  for (const selector of ['[data-index-for="a"]', '[data-chip-for="a"]']) expect(document.querySelector(selector + " .df-answer-status").getAttribute("aria-label")).toBe("Answered");
   expect(document.querySelector('[data-chip-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
   expect(document.querySelector('[data-chip-for="a"] .df-chip-rank').textContent).toBe("1");
   const free = document.querySelector('[data-decision="b"] .df-free'); free.value = "reply"; free.dispatchEvent(new run.window.Event("input"));
-  expect(document.querySelector('[data-index-for="b"] .df-answer-status').textContent).toBe("✓");
+  expect(document.querySelector('[data-index-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
   free.value = ""; free.dispatchEvent(new run.window.Event("input"));
-  expect(document.querySelector('[data-index-for="b"] .df-answer-status').textContent).toBe("☐");
+  expect(document.querySelector('[data-index-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
   const checklist = boot({ decisions: DEFAULT_DECISIONS.map((decision, index) => ({ ...decision, rank: index ? 1 : "✓" })) });
   expect(checklist.document.querySelector(".df-chip-rank").textContent).toBe("QA");
-  expect(checklist.document.querySelector(".df-answer-status").textContent).toBe("☐");
+  expect(checklist.document.querySelector(".df-answer-status").getAttribute("aria-label")).toBe("Awaiting answer");
 });
 
 test("checklist and card note buttons quote their target, persist and export without checking the item", async () => {
@@ -215,7 +190,7 @@ test("notes nest inside the story answer sheet, return focus, and can be edited 
   opener.click(); document.querySelector(".df-note-edit").click(); noteText(run, "Revised note");
   expect(JSON.parse(window.localStorage.getItem("dbx:interaction-test"))["vb-notes"]).toEqual([{ quote: "History row", text: "Revised note" }]);
   opener.click(); document.querySelector(".df-note-edit").click(); document.getElementById("df-note-delete").click();
-  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').textContent).toBe("☐");
+  expect(document.querySelector('[data-chip-for="vb"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
   expect(document.querySelector('[data-chip-for="vb"] .df-note-count').hidden).toBe(true);
 });
 
@@ -708,6 +683,7 @@ test("desktop setlist links set the current card like chips do", () => {
 });
 
 function placeCards(document, tops) {
+  document.querySelector(".df-dock").getBoundingClientRect = () => ({ top: document.defaultView.innerHeight - 88 });
   [...document.querySelectorAll(".df-card")].forEach((card, index) => {
     card.getBoundingClientRect = () => ({ top: tops[index], bottom: tops[index] + 400 });
   });
@@ -733,6 +709,15 @@ test("scroll-follow never steals the current card from playing audio or a fresh 
   placeCards(jumped.document, [-500, 140]);
   jumped.window.dispatchEvent(new jumped.window.Event("scroll"));
   expect(jumped.document.querySelector('[data-decision="a"]').classList.contains("is-active")).toBe(true);
+});
+
+test("scroll-follow picks the largest visible card below the reading line", () => {
+  const { window, document } = boot(); placeCards(document, [0, 200]);
+  document.querySelector('[data-decision="a"]').getBoundingClientRect = () => ({ top: 0, bottom: 200 });
+  document.querySelector(".df-controller").getBoundingClientRect = () => ({ bottom: 100 });
+  document.querySelector(".df-dock").getBoundingClientRect = () => ({ top: 700 });
+  window.dispatchEvent(new window.Event("scroll"));
+  expect(document.querySelector(".df-card.is-active").dataset.decision).toBe("b");
 });
 
 test("two-voice cards label each part of the read-along with its speaker", () => {

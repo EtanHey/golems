@@ -12,7 +12,7 @@ import pytest
 
 SKILL = Path(__file__).resolve().parents[1]
 INSTALL = SKILL / "scripts" / "install.sh"
-NAMES = ("orc-helper", "brain-worker", "coach-mail", "visual-gatherer", "qa-video-runner")
+NAMES = ("orc-helper", "brain-worker", "deploy-local-prod", "coach-mail", "visual-gatherer", "qa-video-runner")
 SCRATCH = Path(__file__).resolve().parent / ".scratch"
 
 

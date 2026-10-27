@@ -64,6 +64,11 @@ Interim route (Etan 2026-09-30/10-01): Daybreak Blue requires a hardware securit
 
 Security effort is `high` on the interim route (Etan 2026-09-30: "6.1 Sol high implements"); a security phase records it like any other phase effort.
 Deep scans run from `<repo>Codex --scan -E high` (workspace-write, no approvals, computer use off, Locals T3code on by default, Drive read-only and other connectors off, the `codex.security` model, a per-launch Deep Scan cost cap); a bypass seat cannot start one. XS/S security PRs get a diff-scoped Standard scan, M/L or anything touching auth/guards a full Deep scan; the PR body records the scan's reported token use, and cost is never a reason to skip it.
+
+Proven T3 Deep-scan route (try it before the interim below): from the lead, `delegate_task` with `runtimeMode: "auto"` on the `codex` instance, gpt-6.1-sol at high effort, serviceTier `default`, scope `.` (Deep scans the whole target). `auto` gives the managed workspace-write profile Deep needs; `full-access` disables it. The child's completion wakes the lead, so no `t3_thread_send` is needed. The start call blocks until the scan aggregates, so don't wait for an early scan id. Also proven end to end: a top-level T3 Codex thread with runtimeMode `auto`. It can't `t3_thread_send` to a `full-access` lead (`runtime_mode_escalation_denied`), so its brief names a report path and the lead reads that report. Proven 2026-10-27 on etanheyman.com #127 and a delegated start probe.
+
+**T3 seats (interim):** If the Deep scan can't start from a T3 seat ("the parent must provide a managed filesystem permission profile"), run a Standard scan with its scope widened to every touched auth/guard path, plus one full-repo Standard pass. Record in the PR body: "Deep scan unavailable from T3 (interim)", both scans' scope, and their reported token use. Tell the Claude security reviewer, before its round, that Deep was unavailable and which Standard scopes ran. Cost is never a reason to skip either pass.
+
 When Daybreak Blue returns, evaluate its first security PRs: if they show more review rounds or more defects than the prior route, flip the pair (`claude.judgment` implements, Daybreak Blue reviews) and record the evidence in the PR bodies (carried from canon #1, 2026-09-29).
 
 ### Inner loop (sequential)
@@ -217,9 +222,15 @@ Visible cmux fleets: § Dispatch Boundaries › cmux adapter.
 A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The lifecycle, as rules: [references/t3-native.md](references/t3-native.md).
 
 1. **Discover:** call `orchestrator_capabilities` first; pin provider, model and effort in `target` from its live catalog (canon #5).
+   For ordinary Codex implementers, recon and reviewers, explicitly name `target.providerInstanceId: "codex-worker"` every time.
+   `codex` stays for: security (implementers + scans), UI / computer-use recorders, browser / web-QA workers, leads and Etan.
+   A Codex child inherits its parent's Codex instance. A Claude lead naming only the codex driver gets whichever codex instance T3 lists first; always name the instance.
+   Remember: the role picks the model, the work type picks the instance. Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
+   Otherwise each Codex worker thread starts codex-security, computer-history, node_repl and cua_repl (~24.5 MiB, 4 processes), which T3 keeps until settle/idle release.
+   Recreate, upgrade verification and missing-instance fallback: [Codex instances](references/t3-native.md#codex-instances).
 2. **Dispatch:** `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
 3. **Wait:** completion wakes the parent. End the turn; never poll or spawn a watcher for it.
-4. **Settle:** read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child.
+4. **Settle:** at the PR's terminal state (merged or handed off; never at the first DONE — a PR in review rounds keeps its implementer) (a child with no PR, such as a reviewer or recon: as soon as its report is verified), read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child, `task_cancel` its `taskId`, `unwatch_pull_request` its PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. See § Goal Contract for provider release timing and the worktree caveat.
 5. **Review rounds:** every round is a new `delegate_task` carrying prior findings; never `t3_thread_send` to the `childThreadId`.
 6. **Questions:** a child's pending question is answered by the lead, never forwarded to Etan as a routing question.
 7. **Top-level threads:** `t3_thread_launch` / `create_threads` only when a separate conversation is explicitly asked for.
@@ -297,7 +308,10 @@ data/creds/accounts, money, messaging people); a tag, release, install, deploy o
 
 **Settle at the terminal state:** "settle idle workers" (Etan 2026-10-18, via orc collab). When a lane closes (verified
 `DONE`, filed `BLOCKED`/`NOT_GREEN`, or `TRANSFERRED`), the lead settles its worker. T3: conclude the task (no new
-sends), `task_cancel` its `taskId` so queued runs stop, and `unwatch_pull_request` the lane's PR. cmux adapter: harvest,
+sends), `task_cancel` its `taskId` so queued runs stop, and `unwatch_pull_request` the lane's PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread.
+This releases its provider session (Claude: MCP children exit at once; shared Codex: the thread unloads and its MCPs close after Codex's unload delay); `task_cancel` alone does not detach.
+Settle once nothing still needs the child's worktree (a pending reviewer or fix round): T3's hourly cleanup removes settled threads' worktree checkouts (it keeps the branch).
+Source: T3 `storageCleanup.ts:85-90,1017-1029,1236-1261`. cmux adapter: harvest,
 then close the pane through the cmuxlayer MCP (`close_surface`). Idle with no artifact pending = settle now, not later.
 A PR still in its review rounds is not idle; its implementer stays for those fixes (§ Lead Topology #5). The implementer
 removes its own worktree at DONE (`/pr-loop` § Cleanup Receipt): `git worktree remove` (no `--force`),
