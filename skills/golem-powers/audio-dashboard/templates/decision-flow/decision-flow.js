@@ -85,8 +85,20 @@
   function playCard(card,forcePlay){var audios=audiosFor(card);var playing=audios.find(function(audio){return !audio.paused;});if(playing){if(forcePlay)return;pauseCard(card);return;}var index=Number(card.dataset.audioIndex||0);if(index>=audios.length){audios.forEach(function(audio){audio.currentTime=0;});resetHighlights(card);index=0;}playAt(card,index);}
   function restartCard(card){audiosFor(card).forEach(function(audio){audio.pause();audio.currentTime=0;});resetHighlights(card);card.dataset.audioIndex="0";playAt(card,0);}
   function setActive(active){if(sheet&&sheet.card!==active)closeSheet(false);cards.forEach(function(card){card.classList.toggle("is-active",card===active);markIndex(card,"is-active",card===active);});updateTransport();}
-  var followLock=0;
-  function activate(index,autoplay,keepFocus){if(index<0||index>=cards.length)return;followLock=Date.now()+1000;setActive(cards[index]);cards[index].scrollIntoView({behavior:"smooth",block:"start"});if(!keepFocus)cards[index].querySelector(".df-play").focus({preventScroll:true});if(autoplay)playCard(cards[index],true);}
+  var followLock=0,jumpToken=0;
+  function holdFollow(){
+    var token=++jumpToken,win=document.defaultView,lastY=win.scrollY,stillSince=0;
+    followLock=Date.now()+5000;
+    function settle(){
+      if(token!==jumpToken)return;
+      var now=Date.now(),y=win.scrollY;
+      if(y!==lastY||!stillSince){lastY=y;stillSince=now;}
+      if(now>=followLock||now-stillSince>=160){followLock=0;return;}
+      frame(settle);
+    }
+    if(frame)frame(settle);
+  }
+  function activate(index,autoplay,keepFocus){if(index<0||index>=cards.length)return;holdFollow();setActive(cards[index]);cards[index].scrollIntoView({behavior:"smooth",block:"start"});if(!keepFocus)cards[index].querySelector(".df-play").focus({preventScroll:true});if(autoplay)playCard(cards[index],true);}
   function goTo(index,keepFocus){activate(index,allAudios().some(function(audio){return !audio.paused;}),keepFocus);}
   cards.forEach(function(card,index){
     var audios=audiosFor(card);
