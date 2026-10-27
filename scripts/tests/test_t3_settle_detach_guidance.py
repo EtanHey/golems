@@ -98,3 +98,9 @@ def test_cleanup_adapter_matches_the_skill_table():
     row = site_text(*SITES[4]).split("|")[2].strip()
     adapter = site_text(*SITES[5])
     assert adapter == normalized(row), "monitor_cleanup.t3 must match the skill table"
+
+
+def test_no_pr_children_settle_when_their_report_is_verified():
+    clause = "(a child with no PR, such as a reviewer or recon: as soon as its report is verified)"
+    assert all(clause in normalized(site_text(*SITES[i])) for i in (0, 3)), (
+        "agent-routing step 4 and large-plan step 6 must settle verified no-PR children")
