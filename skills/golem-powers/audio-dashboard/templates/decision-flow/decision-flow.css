@@ -142,14 +142,6 @@ body:has(.df-card.is-active.is-playing) .df-tplay{background:transparent;color:v
 .df-chip[aria-current="true"] .df-chip-rank{color:var(--ink)}
 .df-chip[aria-current="true"].is-playing{background:var(--amber);border-color:var(--amber)}
 
-/* Story view: the same cards, one at a time, set larger. */
-body[data-view="story"] .df-card:not(.is-active){display:none}
-body[data-view="story"] .df-card.is-active{padding-top:24px;border-color:var(--line-strong)}
-body[data-view="story"] .df-card.is-active .df-rank{width:44px;height:44px;font-size:18px}
-body[data-view="story"] .df-card.is-active .df-card-head h2{font-size:28px;line-height:1.16}
-body[data-view="story"] .df-card.is-active .df-teleprompter[hidden]{display:block}
-body[data-view="story"] .df-card.is-active .df-teleprompter{max-height:56vh}
-body[data-view="story"] .df-card.is-active .df-words{font-size:22px;line-height:1.65}
 
 /* Checklist decisions. */
 .df-checklist{display:grid;gap:8px;margin:0 0 16px;padding:0;border:0;min-width:0}
@@ -171,8 +163,6 @@ body[data-view="story"] .df-card.is-active .df-words{font-size:22px;line-height:
   .df-now{display:block}
   .df-wide-only{display:inline}
   .df-chips{margin:10px 0 0;padding:0;scroll-padding-inline:0}
-  body[data-view="story"] .df-card.is-active .df-card-head h2{font-size:36px}
-  body[data-view="story"] .df-card.is-active .df-words{font-size:24px}
   .df-top{padding:56px 0 30px}
   .df-top h1{font-size:40px}
   .df-card{padding:26px 28px 26px}
@@ -205,6 +195,89 @@ body[data-view="story"] .df-card.is-active .df-words{font-size:22px;line-height:
   .df-dock{position:static;margin-top:18px;padding:18px 0 0;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;grid-template-columns:1fr;grid-template-areas:"tally" "meter" "copy";row-gap:10px}
   #df-copy{width:100%;margin-top:4px}
   .df-copy-state{left:auto;right:28px;bottom:28px;transform:none}
+}
+
+/* ---- Story view: a full-screen listening stage built from the current card itself ----
+   The card's own title, speaker labels and read-along take the stage; the controller becomes the bottom
+   transport with the card chips as a story-arc rail; everything that is not audio waits in the Answer sheet. */
+.df-story-top,.df-progress,.df-answer-open,.df-sheet-head{display:none}
+.df-sheet{display:contents}
+.df-sheet-backdrop[hidden]{display:none}
+body:not([data-view="story"]) .df-tstop{display:none}
+body[data-view="story"]{--story-top:calc(60px + env(safe-area-inset-top));--story-bottom:calc(158px + env(safe-area-inset-bottom));overflow:hidden;padding-bottom:0;background:var(--ink)}
+body[data-view="story"]::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(130% 62% at 50% -8%,rgba(64,92,140,.42),rgba(16,26,44,0) 62%),radial-gradient(110% 46% at 50% 112%,rgba(121,207,194,.10),rgba(16,26,44,0) 60%);transition:opacity .6s ease}
+body[data-view="story"]::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(90% 44% at 50% 108%,rgba(245,184,61,.20),rgba(245,184,61,0) 70%);opacity:0;transition:opacity .8s ease}
+body[data-view="story"]:has(.df-card.is-active.is-playing)::after{opacity:1}
+body[data-view="story"] .df-top,body[data-view="story"] .df-side,body[data-view="story"] .df-dock{display:none}
+body[data-view="story"] .df-card:not(.is-active){display:none}
+body[data-view="story"] .df-story-top{position:fixed;top:0;left:0;right:0;z-index:30;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
+.df-story-count{margin:0 auto 0 4px;color:var(--moon);font-size:16px;font-weight:650;font-variant-numeric:tabular-nums}
+.df-story-copy,.df-story-exit{height:40px;padding:0 14px;border:1px solid var(--line-strong);border-radius:999px;background:rgba(16,26,44,.6);color:var(--muted);font-weight:600;cursor:pointer}
+.df-story-exit{color:var(--moon)}
+.df-story-copy.is-ready{border-color:var(--glass);background:var(--glass);color:var(--ink)}
+
+body[data-view="story"] .df-card.is-active{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;margin:0;padding:var(--story-top) 20px var(--story-bottom);border:0;border-radius:0;background:transparent;text-align:center;overflow:hidden}
+body[data-view="story"] .df-card.is-active .df-card-head{display:flex;flex-direction:column;align-items:center;gap:10px;flex:none;margin-top:2vh}
+body[data-view="story"] .df-card.is-active .df-rank{width:40px;height:40px;font-size:16px}
+body[data-view="story"] .df-card.is-active .df-card-head h2{max-width:20ch;margin:0;font-size:clamp(27px,7.4vw,46px);line-height:1.12;letter-spacing:-.014em}
+body[data-view="story"] .df-card.is-active .df-player{display:none}
+body[data-view="story"] .df-card.is-active .df-teleprompter,body[data-view="story"] .df-card.is-active .df-teleprompter[hidden]{display:block;flex:1 1 auto;min-height:0;width:100%;max-width:880px;max-height:none;margin:2vh auto 0;padding:7vh 2px;background:transparent;border-radius:0;overflow:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(transparent,#000 16%,#000 84%,transparent);mask-image:linear-gradient(transparent,#000 16%,#000 84%,transparent)}
+body[data-view="story"] .df-card.is-active .df-teleprompter::-webkit-scrollbar{display:none}
+body[data-view="story"] .df-card.is-active .df-transcript-scene+.df-transcript-scene{margin-top:5vh;padding-top:0;border-top:0}
+body[data-view="story"] .df-card.is-active .df-scene-label{justify-content:center}
+body[data-view="story"] .df-card.is-active .df-scene-title{display:none}
+body[data-view="story"] .df-card.is-active .df-words{max-width:none;margin:12px 0 0;font-size:clamp(23px,6vw,34px);line-height:1.55;color:#aeb8ca}
+body[data-view="story"] .df-card.is-active .df-word.is-read{color:#5d6a83}
+body[data-view="story"] .df-card.is-active .df-word.is-current{background:transparent;box-shadow:none;color:#ffd27a;text-shadow:0 0 22px rgba(245,184,61,.55)}
+body[data-view="story"] .df-card.is-active .df-answer-open{display:inline-flex;flex:none;align-items:center;justify-content:center;min-height:48px;margin:14px auto 0;padding:0 22px;border:1.5px solid var(--glass);border-radius:999px;background:rgba(16,26,44,.55);color:var(--glass);font-weight:650;cursor:pointer}
+.df-ao-offer,.df-ao-done{display:none}
+.df-answer-open.is-offer .df-ao-todo,.df-card.is-answered .df-answer-open .df-ao-todo,.df-card.is-answered .df-answer-open .df-ao-offer{display:none}
+.df-answer-open.is-offer .df-ao-offer{display:inline}
+.df-card.is-answered .df-answer-open .df-ao-done{display:inline}
+body[data-view="story"] .df-card.is-active .df-answer-open.is-offer{border-color:var(--amber);background:var(--amber);color:var(--ink);animation:df-offer 2.4s ease-in-out 2}
+body[data-view="story"] .df-card.is-active.is-answered .df-answer-open{border-color:transparent;background:var(--glass-soft)}
+@keyframes df-offer{50%{box-shadow:0 0 0 8px rgba(245,184,61,.18)}}
+
+/* Bottom transport: progress, controls, then the story-arc rail of card nodes. */
+body[data-view="story"] .df-controller{position:fixed;top:auto;bottom:0;left:0;right:0;z-index:25;display:flex;flex-direction:column;align-items:center;margin:0;padding:0 16px calc(12px + env(safe-area-inset-bottom));border:0;background:linear-gradient(rgba(16,26,44,0),rgba(11,19,34,.94) 26%);-webkit-backdrop-filter:none;backdrop-filter:none}
+body[data-view="story"] .df-progress{display:block;order:1;width:100%;max-width:880px;height:3px;margin:0 0 14px;border-radius:2px;background:rgba(236,239,245,.12);overflow:hidden}
+.df-progress i{display:block;height:100%;width:0;background:var(--moon);border-radius:2px;transition:width .25s linear}
+body[data-view="story"]:has(.df-card.is-active.is-playing) .df-progress i{background:var(--amber)}
+body[data-view="story"] .df-transport{order:2;justify-content:center;gap:8px;width:auto}
+body[data-view="story"] .df-tbtn{width:44px;height:44px}
+body[data-view="story"] .df-tplay{width:64px;height:50px}
+body[data-view="story"] .df-tplay-icon{font-size:18px}
+body[data-view="story"] .df-now,body[data-view="story"] .df-view-toggle{display:none}
+body[data-view="story"] .df-speed{margin-left:0}
+body[data-view="story"] .df-chips{order:3;justify-content:safe center;gap:2px;width:100%;max-width:880px;margin:12px 0 0;padding:0;scroll-padding-inline:24px}
+body[data-view="story"] .df-chip{position:relative;justify-content:center;width:16px;height:34px;padding:0;border:0;border-radius:6px;background:transparent;scroll-snap-align:center}
+body[data-view="story"] .df-chip::before{content:"";position:absolute;left:3px;right:3px;top:6px;bottom:6px;border-radius:4px;background:rgba(236,239,245,.16);transition:background .2s}
+body[data-view="story"] .df-chip-title,body[data-view="story"] .df-chip-rank{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+body[data-view="story"] .df-chip.is-answered::before{background:rgba(121,207,194,.7)}
+body[data-view="story"] .df-chip.is-playing::before{background:var(--amber)}
+body[data-view="story"] .df-chip[aria-current="true"]{width:42px;background:transparent}
+body[data-view="story"] .df-chip[aria-current="true"]::before{left:2px;right:2px;top:2px;bottom:2px;background:var(--moon);box-shadow:0 0 16px rgba(236,239,245,.35)}
+body[data-view="story"] .df-chip[aria-current="true"].is-playing::before{background:var(--amber);box-shadow:0 0 16px rgba(245,184,61,.5)}
+body[data-view="story"] .df-chip[aria-current="true"] .df-chip-rank{position:relative;z-index:1;width:auto;height:auto;clip:auto;color:var(--ink);font-size:13px}
+
+/* Answer sheet: a bottom sheet on the phone, a centred dialog on wider screens. */
+.df-sheet-backdrop{position:fixed;inset:0;z-index:55;background:rgba(6,10,18,.62);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+body.df-sheet-open{overflow:hidden}
+body[data-view="story"].df-sheet-open .df-card.is-active{z-index:50}
+body[data-view="story"] .df-card.is-active .df-sheet{display:none}
+body[data-view="story"] .df-card.is-active .df-sheet.is-open{position:fixed;left:0;right:0;bottom:0;z-index:60;display:block;max-height:min(88vh,780px);overflow:auto;overscroll-behavior:contain;padding:0 18px calc(20px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0;background:var(--panel);box-shadow:0 -24px 60px rgba(0,0,0,.45);text-align:left;animation:df-sheet-in .2s ease-out}
+body[data-view="story"] .df-sheet.is-open .df-sheet-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 -18px 4px;padding:16px 18px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+.df-sheet-title{margin:0;font-size:19px;line-height:1.25;font-weight:600}
+.df-sheet-done{flex:none;height:44px;padding:0 18px;border:0;border-radius:999px;background:var(--moon);color:var(--ink);font-weight:650;cursor:pointer}
+@keyframes df-sheet-in{from{opacity:0;transform:translateY(18px)}}
+@media(min-width:720px){
+  body[data-view="story"]{--story-top:76px;--story-bottom:172px}
+  body[data-view="story"] .df-story-top{padding:16px 28px}
+  body[data-view="story"] .df-card.is-active .df-rank{width:46px;height:46px;font-size:18px}
+  body[data-view="story"] .df-card.is-active .df-words{font-size:clamp(28px,2.6vw,36px)}
+  body[data-view="story"] .df-tplay{width:auto;min-width:124px;height:52px}
+  body[data-view="story"] .df-card.is-active .df-sheet.is-open{left:50%;right:auto;top:50%;bottom:auto;width:min(680px,92vw);max-height:84vh;padding-bottom:24px;border-radius:22px;transform:translate(-50%,-50%);animation:df-dialog-in .2s ease-out}
+  @keyframes df-dialog-in{from{opacity:0;transform:translate(-50%,calc(-50% + 14px))}}
 }
 
 @media(prefers-reduced-motion:reduce){

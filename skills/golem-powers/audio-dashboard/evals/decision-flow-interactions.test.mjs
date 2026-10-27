@@ -299,9 +299,9 @@ test("card keeps line breaks, shows listening time, and omits empty option sets"
 test("player sits above the written briefing so listening comes first", () => {
   const { document } = boot();
   const card = document.querySelector('[data-decision="a"]');
-  const order = [...card.children].map((child) => child.className.split(" ")[0]);
-  expect(order.indexOf("df-player")).toBeLessThan(order.indexOf("df-question"));
-  expect(order.indexOf("df-teleprompter")).toBeLessThan(order.indexOf("df-question"));
+  const before = (first, second) => Boolean(card.querySelector(first).compareDocumentPosition(card.querySelector(second)) & 4);
+  expect(before(".df-player", ".df-question")).toBe(true);
+  expect(before(".df-teleprompter", ".df-question")).toBe(true);
 });
 
 test("phone layout keeps focused controls clear of the fixed bottom dock", () => {
@@ -581,4 +581,197 @@ test("a scene title that repeats the speaker label is not shown twice", () => {
   const [first, second] = document.querySelectorAll('[data-decision="a"] .df-scene-label');
   expect(first.textContent).toBe("Ben asks");
   expect(second.textContent).toBe("Theo explainsThe trade-off");
+});
+
+// ---- round 3: cinema-grade story view + answer sheet ----
+
+function storyBoot(options) {
+  const run = boot(options);
+  run.document.getElementById("df-view-toggle").click();
+  return run;
+}
+function key(window, name, extra = {}) {
+  const event = new window.KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true, ...extra });
+  (window.document.activeElement || window.document.body).dispatchEvent(event);
+  return event;
+}
+const sheetOf = (document, id) => document.querySelector(`[data-decision="${id}"] .df-sheet`);
+
+test("story view shows its own chrome: position, exit and an Answer button per card", () => {
+  const { document } = storyBoot();
+  expect(document.body.dataset.view).toBe("story");
+  expect(document.getElementById("df-story-count").textContent).toBe("1 / 2");
+  expect(document.querySelectorAll(".df-card .df-answer-open").length).toBe(2);
+  expect(sheetOf(document, "a").getAttribute("role")).toBeNull();
+  document.getElementById("df-transport-next").click();
+  expect(document.getElementById("df-story-count").textContent).toBe("2 / 2");
+  document.getElementById("df-story-exit").click();
+  expect(document.body.dataset.view).toBe("list");
+});
+
+test("Answer opens an accessible modal sheet and Esc closes it, returning focus", () => {
+  const { window, document } = storyBoot();
+  const opener = document.querySelector('[data-decision="a"] .df-answer-open');
+  opener.focus();
+  opener.click();
+  const sheet = sheetOf(document, "a");
+  expect(sheet.classList.contains("is-open")).toBe(true);
+  expect(sheet.getAttribute("role")).toBe("dialog");
+  expect(sheet.getAttribute("aria-modal")).toBe("true");
+  expect(document.getElementById(sheet.getAttribute("aria-labelledby")).textContent).toBe("A");
+  expect(sheet.contains(document.activeElement)).toBe(true);
+  expect(document.querySelector(".df-controller").hasAttribute("inert")).toBe(true);
+  expect(document.getElementById("df-sheet-backdrop").hidden).toBe(false);
+
+  const escape = key(window, "Escape");
+  expect(escape.defaultPrevented).toBe(true);
+  expect(sheet.classList.contains("is-open")).toBe(false);
+  expect(sheet.getAttribute("role")).toBeNull();
+  expect(document.querySelector(".df-controller").hasAttribute("inert")).toBe(false);
+  expect(document.activeElement).toBe(opener);
+});
+
+test("the sheet traps Tab focus in both directions", () => {
+  const { window, document } = storyBoot();
+  document.querySelector('[data-decision="a"] .df-answer-open').click();
+  const sheet = sheetOf(document, "a");
+  const focusable = [...sheet.querySelectorAll("button, input, textarea, select, a[href]")].filter((node) => !node.disabled);
+  focusable.at(-1).focus();
+  expect(key(window, "Tab").defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(focusable[0]);
+  expect(key(window, "Tab", { shiftKey: true }).defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(focusable.at(-1));
+});
+
+test("Done and the backdrop both close the sheet", () => {
+  const { document } = storyBoot();
+  document.querySelector('[data-decision="a"] .df-answer-open').click();
+  sheetOf(document, "a").querySelector(".df-sheet-done").click();
+  expect(sheetOf(document, "a").classList.contains("is-open")).toBe(false);
+  document.querySelector('[data-decision="a"] .df-answer-open').click();
+  document.getElementById("df-sheet-backdrop").click();
+  expect(sheetOf(document, "a").classList.contains("is-open")).toBe(false);
+});
+
+test("answers made in the sheet persist and show in list view, and the reverse", () => {
+  const { window, document } = storyBoot({ decisions: CHECK_DECISIONS });
+  document.querySelector('[data-decision="vb"] .df-answer-open').click();
+  const sheet = sheetOf(document, "vb");
+  sheet.querySelector('input[type="radio"]').click();
+  sheet.querySelectorAll(".df-check-input")[0].click();
+  sheet.querySelector(".df-sheet-done").click();
+  const saved = JSON.parse(window.localStorage.getItem("dbx:interaction-test"));
+  expect(saved.vb).toBe("All good");
+  expect(saved["vb-checks"]).toEqual({ 0: true });
+  document.getElementById("df-story-exit").click();
+  const card = document.querySelector('[data-decision="vb"]');
+  expect(card.querySelector('input[type="radio"]').checked).toBe(true);
+  expect(card.classList.contains("is-answered")).toBe(true);
+  card.querySelector(".df-free").value = "typed in list";
+  card.querySelector(".df-free").dispatchEvent(new window.Event("input", { bubbles: true }));
+  document.getElementById("df-view-toggle").click();
+  document.querySelector('[data-decision="vb"] .df-answer-open').click();
+  expect(sheetOf(document, "vb").querySelector(".df-free").value).toBe("typed in list");
+});
+
+test("Next inside the sheet closes it and moves the story to the next card, playing", () => {
+  const { document } = storyBoot();
+  document.querySelector('[data-decision="a"] .df-answer-open').click();
+  sheetOf(document, "a").querySelector(".df-next").click();
+  expect(sheetOf(document, "a").classList.contains("is-open")).toBe(false);
+  const b = document.querySelector('[data-decision="b"]');
+  expect(b.classList.contains("is-active")).toBe(true);
+  expect(b.querySelector("audio").paused).toBe(false);
+});
+
+test("moving to another card or back to list view closes an open sheet", () => {
+  const { document } = storyBoot();
+  document.querySelector('[data-decision="a"] .df-answer-open').click();
+  document.getElementById("df-story-exit").click();
+  expect(sheetOf(document, "a").classList.contains("is-open")).toBe(false);
+  expect(document.getElementById("df-sheet-backdrop").hidden).toBe(true);
+});
+
+test("the Answer button only opens the sheet in story view", () => {
+  const { document } = boot();
+  document.querySelector('[data-decision="a"] .df-answer-open').click();
+  expect(sheetOf(document, "a").classList.contains("is-open")).toBe(false);
+});
+
+test("Stop ends the current card's audio and returns it to the start", () => {
+  const { window, document } = boot();
+  const card = document.querySelector('[data-decision="a"]');
+  const audio = card.querySelector('audio[data-audio-scene="a1"]');
+  document.getElementById("df-transport-play").click();
+  audio.currentTime = 0.5;
+  audio.dispatchEvent(new window.Event("timeupdate"));
+  document.getElementById("df-transport-stop").click();
+  expect(audio.paused).toBe(true);
+  expect(audio.currentTime).toBe(0);
+  expect(card.querySelectorAll(".df-word.is-current, .df-word.is-read").length).toBe(0);
+  expect(document.getElementById("df-transport-play").textContent).toContain("Play");
+  expect(card.classList.contains("is-paused")).toBe(false);
+});
+
+test("story progress tracks the current card's place across its clips", () => {
+  const { window, document } = storyBoot();
+  const card = document.querySelector('[data-decision="a"]');
+  document.getElementById("df-transport-play").click();
+  const first = card.querySelector('audio[data-audio-scene="a1"]');
+  first.currentTime = 0.5;
+  first.dispatchEvent(new window.Event("timeupdate"));
+  expect(document.getElementById("df-progress-fill").style.width).toBe("25%");
+  first.dispatchEvent(new window.Event("ended"));
+  const second = card.querySelector('audio[data-audio-scene="a2"]');
+  second.currentTime = 0.5;
+  second.dispatchEvent(new window.Event("timeupdate"));
+  expect(document.getElementById("df-progress-fill").style.width).toBe("75%");
+});
+
+test("when an unanswered story card finishes, its Answer button invites an answer", () => {
+  const { window, document } = storyBoot();
+  const card = document.querySelector('[data-decision="b"]');
+  document.getElementById("df-transport-next").click();
+  document.getElementById("df-transport-play").click();
+  card.querySelector("audio").dispatchEvent(new window.Event("ended"));
+  expect(card.querySelector(".df-answer-open").classList.contains("is-offer")).toBe(true);
+  expect(card.querySelector(".df-sheet").classList.contains("is-open")).toBe(false);
+});
+
+test("a paused clip rewinding to 0 does not re-light its first word", () => {
+  const { window, document } = boot();
+  const card = document.querySelector('[data-decision="a"]');
+  const first = card.querySelector('audio[data-audio-scene="a1"]');
+  card.querySelector(".df-play").click();
+  first.dispatchEvent(new window.Event("ended"));
+  // Real browsers fire timeupdate when playAt rewinds the finished clip to 0.
+  first.currentTime = 0;
+  first.dispatchEvent(new window.Event("timeupdate"));
+  expect(card.querySelectorAll('.df-word[data-scene="a1"].is-current').length).toBe(0);
+  // A finished clip reads as fully read, last word included.
+  expect([...card.querySelectorAll('.df-word[data-scene="a1"]')].every((word) => word.classList.contains("is-read"))).toBe(true);
+});
+
+test("Next on the final card in story view closes the sheet and lands on the visible Copy answers", () => {
+  const { document } = storyBoot();
+  document.getElementById("df-transport-next").click();
+  document.querySelector('[data-decision="b"] .df-answer-open').click();
+  const next = sheetOf(document, "b").querySelector(".df-next");
+  next.click();
+  expect(sheetOf(document, "b").classList.contains("is-open")).toBe(false);
+  expect(document.querySelectorAll("[inert]").length).toBe(0);
+  expect(document.activeElement).toBe(document.querySelector(".df-story-copy"));
+  expect(next.classList.contains("is-acknowledged")).toBe(true);
+  expect(document.querySelector(".df-story-copy").classList.contains("is-ready")).toBe(true);
+});
+
+test("when a card's final clip ends, every word of the card reads as read", () => {
+  const { window, document } = boot();
+  const card = document.querySelector('[data-decision="a"]');
+  card.querySelector(".df-play").click();
+  card.querySelector('audio[data-audio-scene="a1"]').dispatchEvent(new window.Event("ended"));
+  card.querySelector('audio[data-audio-scene="a2"]').dispatchEvent(new window.Event("ended"));
+  const words = [...card.querySelectorAll(".df-word")];
+  expect(words.every((word) => word.classList.contains("is-read") && !word.classList.contains("is-current"))).toBe(true);
+  expect(card.querySelector(".df-play").textContent).toContain("Play again");
 });

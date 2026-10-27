@@ -170,10 +170,12 @@ function renderController(decisions) {
         <button type="button" class="df-tbtn" id="df-transport-prev" aria-label="Previous card" disabled>⏮</button>
         <button type="button" class="df-tplay" id="df-transport-play" aria-label="Play the current card"><span class="df-tplay-icon" aria-hidden="true">▶</span><span class="df-tplay-text">Play</span></button>
         <button type="button" class="df-tbtn" id="df-transport-next" aria-label="Next card">⏭</button>
+        <button type="button" class="df-tbtn df-tstop" id="df-transport-stop" aria-label="Stop and return to the start of the card">■</button>
         <p class="df-now" id="df-now" aria-live="polite"></p>
         <label class="df-speed"><span class="df-sr-only">Playback speed</span><select id="df-speed">${rates}</select></label>
         <button type="button" class="df-view-toggle" id="df-view-toggle" aria-pressed="false">Story<span class="df-wide-only"> view</span></button>
       </div>
+      <span class="df-progress" aria-hidden="true"><i id="df-progress-fill"></i></span>
       <div class="df-chips">${chips}</div>
     </nav>`;
 }
@@ -219,6 +221,9 @@ function renderCard(decision, index, sceneById) {
       ${audio}
     </div>
     <div class="df-teleprompter" hidden aria-live="off">${transcript}</div>
+    <button type="button" class="df-answer-open" aria-haspopup="dialog" aria-controls="sheet-${escapeHtml(decision.id)}"><span class="df-ao-todo">Answer this card</span><span class="df-ao-offer">Your turn: answer this card</span><span class="df-ao-done">Answered, review</span></button>
+    <div class="df-sheet" id="sheet-${escapeHtml(decision.id)}">
+    <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
     <div class="df-question">${renderParagraphs(decision.body)}</div>
     ${renderRail(decision.rail)}
@@ -227,6 +232,7 @@ function renderCard(decision, index, sceneById) {
       ${optionBlocks ? `<fieldset class="df-options"><legend class="df-sr-only">${escapeHtml(decision.title)} options</legend>${optionBlocks}</fieldset>` : ""}
       <textarea class="note-area df-free" data-note="${escapeHtml(decision.id)}-free" data-title="${escapeHtml(decision.title)}" placeholder="${optionBlocks ? "Or write it in your own words" : "Anything to add? Write it here"}"></textarea>
       <div class="df-card-actions"><button type="button" class="df-skip">Skip for now</button><button type="button" class="df-next">Next decision →</button></div>
+    </div>
     </div>
   </article>`;
 }
