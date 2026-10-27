@@ -449,3 +449,31 @@ test("bot PR instructions trigger missing CI instead of asking to approve nonexi
   const provenance = readFileSync(new URL("../../../vendor/VENDOR.md", import.meta.url), "utf8");
   expect(provenance).not.toContain("may require approval");
 });
+
+function officialRefreshFixture() {
+  const fx = refreshFixture();
+  const root = path.join(fx.clones[0], 'plugins/frontend-design');
+  mkdirSync(path.join(root, '.claude-plugin'), { recursive: true });
+  renameSync(path.join(fx.clones[0], 'skills'), path.join(root, 'skills'));
+  fx.manifest.upstreams[0].skillsRoot = 'plugins/frontend-design/skills';
+  fx.manifest.upstreams[0].pluginMetadata = 'plugins/frontend-design/.claude-plugin/plugin.json';
+  fx.manifest.upstreams[0].version = '1.1.1';
+  writeFileSync(path.join(root, '.claude-plugin/plugin.json'), JSON.stringify({ version: '1.1.1' }));
+  writeFileSync(path.join(fx.vendor, 'manifest.json'), JSON.stringify(fx.manifest));
+  return { ...fx, root };
+}
+
+for (const drift of ['hash', 'version', 'none']) {
+  test(`official plugin ${drift} drift uses the existing proposal copier`, async () => {
+    const { refreshVendor } = await import('./refresh-vendor.mjs');
+    const fx = officialRefreshFixture();
+    if (drift === 'hash') writeFileSync(path.join(fx.root, 'skills/emil-design-eng/SKILL.md'), 'new official instructions');
+    if (drift === 'version') writeFileSync(path.join(fx.root, '.claude-plugin/plugin.json'), JSON.stringify({ version: '1.1.2' }));
+    const before = readFileSync(path.join(fx.vendor, 'manifest.json'), 'utf8');
+    expect(refreshVendor(fx).changed).toBe(drift !== 'none');
+    expect(readFileSync(path.join(fx.vendor, 'manifest.json'), 'utf8')).toBe(before);
+    expect(refreshVendor({ ...fx, apply: true }).changed).toBe(drift !== 'none');
+    if (drift === 'hash') expect(readFileSync(path.join(fx.vendor, fx.file), 'utf8')).toBe('new official instructions');
+    if (drift === 'version') expect(JSON.parse(readFileSync(path.join(fx.vendor, 'manifest.json'))).upstreams[0].version).toBe('1.1.2');
+  });
+}

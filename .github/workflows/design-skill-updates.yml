@@ -7,6 +7,8 @@ on:
     paths:
       - '.github/workflows/design-skill-updates.yml'
       - 'skills/vendor/**'
+      - 'scripts/design-skill-updates.mjs'
+      - 'scripts/tests/design-skill-updates.test.mjs'
       - 'skills/golem-powers/golem-install/scripts/*vendor*'
       - 'skills/golem-powers/golem-install/scripts/repoint-skills*'
 permissions:
@@ -26,6 +28,7 @@ jobs:
           bun-version-file: .bun-version
       - run: bun test ./skills/golem-powers/golem-install/scripts/repoint-skills.test.mjs
       - run: node skills/golem-powers/golem-install/scripts/vendor-skills.mjs --check
+      - run: bun test scripts/tests/design-skill-updates.test.mjs
   propose:
     needs: verify
     concurrency:
@@ -53,7 +56,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p docs.local/design-upstream
-          git clone --depth 1 https://github.com/anthropics/skills.git docs.local/design-upstream/anthropic
+          git clone --depth 1 https://github.com/anthropics/claude-plugins-official.git docs.local/design-upstream/anthropic
           git clone --depth 1 https://github.com/emilkowalski/skills.git docs.local/design-upstream/emil
           sha_a=$(git -C docs.local/design-upstream/anthropic rev-parse HEAD)
           sha_e=$(git -C docs.local/design-upstream/emil rev-parse HEAD)
