@@ -5,6 +5,11 @@ set -euo pipefail
 sources_dir=${APT_SOURCES_DIR:-/etc/apt}
 command_timeout=${CI_APT_COMMAND_TIMEOUT:-150}
 apt_options=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
+# CI caches only *.deb files here; apt's lock and partial files stay job-local.
+if [[ -n ${CI_APT_ARCHIVES_DIR:-} ]]; then
+  mkdir -p "$CI_APT_ARCHIVES_DIR/partial"
+  apt_options+=(-o "Dir::Cache::Archives=$CI_APT_ARCHIVES_DIR" -o APT::Keep-Downloaded-Packages=true)
+fi
 
 switch_sources() {
   python3 - "$sources_dir" <<'PY'
