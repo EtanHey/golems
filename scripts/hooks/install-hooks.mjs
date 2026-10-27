@@ -103,7 +103,6 @@ function parseArgs(argv) {
     else if (["--host", "--repo", "--manifest", "--python", "--node", "--source"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
     else die(`unknown or incomplete argument: ${a}`, 64);
   }
-  o.host = ({ "m4-max": "mbp", "m1-pro": "m1" })[o.host] ?? o.host;
   if (!o.host) die("--host <mbp|client> is required", 64);
   if (o.node && (o.status || o.source)) die("--node repairs owner installations; use it without --status or --source", 64);
   if (o.migrateOwnerInstall && (!o.source || o.host !== "client")) die("--migrate-owner-install requires --host client --source <release dir>", 64);
@@ -477,7 +476,7 @@ function relock(repo, live) {
 function machineHost() {
   const r = spawnSync("scutil", ["--get", "LocalHostName"], { encoding: "utf8" });
   const name = r.status === 0 ? r.stdout.trim() : "";
-  const host = { "MacBook-Pro": "m4-max", "Locals-MacBook-Pro": "m1-pro" }[name];
+  const host = { "MacBook-Pro": "mbp", "Locals-MacBook-Pro": "m1" }[name];
   if (!host) die("machine identity unavailable or unmapped; refusing installation");
   return host;
 }
@@ -548,7 +547,7 @@ function purgeBytecode(live, dirs = []) {
 }
 
 function install(o) {
-  const machine = o.apply ? ({ "m4-max": "mbp", "m1-pro": "m1" })[machineHost()] : o.host;
+  const machine = o.apply ? machineHost() : o.host;
   if (o.apply && machine !== o.host) die(`machine identity ${machine} does not match requested host ${o.host}; refusing installation`);
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
   // Read/validate the immutable selected manifest before creating or moving the pin.
