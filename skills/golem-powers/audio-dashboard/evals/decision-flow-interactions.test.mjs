@@ -174,6 +174,18 @@ test("SVG answer indicators restore, update and clear across card headers, sideb
   expect(card.querySelector(".df-rank").textContent).toBe("1");
 });
 
+test("partial checklists restore and update progress rings without overriding an explicit answer", () => {
+  const { document } = boot({ decisions: CHECK_DECISIONS, seed: { "vb-checks": { 0: true } } });
+  const card = document.querySelector('[data-decision="vb"]'), boxes = card.querySelectorAll('input[type="checkbox"]');
+  function status(label, progress) { for (const root of [card.querySelector(".df-card-head"), document.querySelector('[data-index-for="vb"]'), document.querySelector('[data-chip-for="vb"]')]) {
+    const mark = root.querySelector(".df-answer-status"); expect(mark.getAttribute("aria-label")).toBe(label); expect(mark.dataset.progress).toBe(String(progress));
+  } }
+  status("In progress, 1 of 3 checked", true); boxes[1].click(); status("In progress, 2 of 3 checked", true);
+  boxes[2].click(); status("Answered", false); boxes[0].click(); status("In progress, 2 of 3 checked", true);
+  card.querySelector('input[type="radio"]').click(); status("Answered", false);
+  card.querySelector(".df-clear").click(); card.querySelector(".df-clear-apply").click(); status("Awaiting answer", false);
+});
+
 test("answer indicators are separate from ranks and follow restored and cleared answers", () => {
   const run = boot({ seed: { a: "Keep" } }); const { document } = run;
   for (const selector of ['[data-index-for="a"]', '[data-chip-for="a"]']) expect(document.querySelector(selector + " .df-answer-status").getAttribute("aria-label")).toBe("Answered");
