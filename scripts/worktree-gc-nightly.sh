@@ -15,7 +15,7 @@ PIN="${GOLEMS_WORKTREE_GC_PIN_ROOT-$HOME/Gits/golems/.worktrees/hooks-live}"
 PIN_SHA=unavailable
 # Match install-hooks.mjs: porcelain must not trust flags, caches or replacements.
 git() {
-  GIT_NO_REPLACE_OBJECTS=1 command git -c core.fsmonitor=false -c core.untrackedCache=false "$@"
+  GIT_NO_REPLACE_OBJECTS=1 command git -c core.fsmonitor=false -c core.untrackedCache=false -c core.commitGraph=false "$@"
 }
 log_pin_lag() {
   local lag
@@ -59,6 +59,8 @@ main_admin="$(git -C "$main" rev-parse --absolute-git-dir 2>/dev/null)" || refus
 [[ "$common" == "$main_admin" && "$admin" != "$common" ]] || refuse_pin 'not a golems worktree'
 replaced="$(git -C "$PIN" for-each-ref --format='%(refname)' refs/replace/ 2>/dev/null)" || refuse_pin 'cannot inspect replace refs'
 [[ -z "$replaced" ]] || refuse_pin 'replace refs present'
+grafts="$(git -C "$PIN" rev-parse --git-path info/grafts)" || refuse_pin 'cannot inspect pin grafts'
+(cd "$PIN" && [[ ! -f "$grafts" ]]) || refuse_pin 'pin grafts present'
 flags="$(git -C "$PIN" ls-files -v 2>/dev/null)" || refuse_pin 'pin index unavailable'
 while IFS= read -r entry; do
   [[ ! "$entry" =~ ^(S|[a-z])[[:space:]] ]] || refuse_pin 'pin dirty (index flags hide content)'

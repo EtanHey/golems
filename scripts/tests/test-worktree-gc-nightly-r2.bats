@@ -230,6 +230,22 @@ PY
   assert_pin_refusal 'replace refs'
 }
 
+@test "nightly B2: graft faking published ancestry refuses before GC invocation" {
+  prepare_stub_pin
+  published="$(git -C "$NIGHTLY_PIN" rev-parse refs/remotes/origin/master)"
+  commit_fixture_file "$NIGHTLY_PIN" unpublished
+  unpublished="$(git -C "$NIGHTLY_PIN" rev-parse HEAD)"
+  run git -C "$NIGHTLY_PIN" merge-base --is-ancestor HEAD refs/remotes/origin/master
+  [ "$status" -eq 1 ]
+  grafts="$(git -C "$NIGHTLY_PIN" rev-parse --git-path info/grafts)"
+  [[ "$grafts" == /* ]] || grafts="$NIGHTLY_PIN/$grafts"
+  printf '%s %s\n' "$published" "$unpublished" > "$grafts"
+  run env GIT_NO_REPLACE_OBJECTS=1 git -c core.commitGraph=false -C "$NIGHTLY_PIN" merge-base --is-ancestor HEAD refs/remotes/origin/master
+  [ "$status" -eq 0 ]
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'pin grafts present'
+}
+
 @test "nightly R1: pre-floor pin refuses before invocation" {
   prepare_stub_pin
   # Keep runnable files but fork history before the synthetic safety floor.
