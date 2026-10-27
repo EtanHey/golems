@@ -145,3 +145,11 @@ test('writer accepts symlinked HOME while still checking its state directories',
     env: { ...process.env, HOME: alias, XDG_STATE_HOME: join(alias, 'xdg') } }));
   assert.equal(r.verdict, 'LIVE'); assert.equal(JSON.parse(readFileSync(r.path)).receipt_id, r.receipt_id);
 }));
+
+test('symlinked CLI rejects a bad receipt for validate and write', () => isolated((_run, home) => {
+  const link = join(home, 'receipt-cli.mjs'); symlinkSync(cli, link);
+  for (const command of ['validate', 'write']) {
+    const result = spawnSync(process.execPath, [link, command, '-'], { input: '{}', encoding: 'utf8' });
+    assert.equal(result.status, 1); assert.match(result.stderr, /install-receipt:/);
+  }
+}));

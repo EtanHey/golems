@@ -36,3 +36,43 @@ transcripts, dictionary terms and BrainLayer content. Allowed text fields are
 summaries and identity evidence only; callers must never put private content in
 them. The CLI records supplied evidence; it does not run activation commands or
 independently attest the reported installation. Cross-Mac `status` is PR-B.
+
+## Cross-Mac status (PR-B)
+
+```sh
+node scripts/install-receipt.mjs status
+node scripts/install-receipt.mjs status golems voicebar
+node scripts/install-receipt.mjs status custom-product=owner/repo
+node --test scripts/tests/install-receipt*.test.mjs
+```
+
+Status reads each product's `latest.json` locally and via
+`ssh -o BatchMode=yes m1` using `cat` on a strictly validated, quoted receipt
+path. JSON parsing and schema validation happen locally; remote Node is not
+required. It never installs, activates, or writes receipts. The local alias is
+detected from hostname (mbp / MacBook-Pro, or m1); an unknown hostname stops
+with an error. On M1, local receipts populate M1 and MBP remains UNKNOWN.
+Default products are brainlayer, brainbar, voicelayer,
+voicebar, cmuxlayer, golems and narrationlayer; paired apps use their parent repo.
+Override the repository with `product=owner/repo` when its release channel differs.
+
+`gh api` paginates published releases, includes prereleases, excludes drafts,
+and resolves the newest publication's tag to its commit. This does not use the
+stable-only `releases/latest` endpoint or trust `target_commitish`.
+
+The tab-separated matrix reports CURRENT, AHEAD, BEHIND, NO-RECEIPT or MISMATCH.
+For different commits, `gh api` compares latest-release SHA to installed SHA:
+descendants are AHEAD, ancestors BEHIND; divergence or comparison failure is
+UNKNOWN, without guessing order from version strings.
+SSH/remote-reader failure is UNREACHABLE; release lookup failure is UNKNOWN.
+Invalid receipts, wrong product/host, failed installs and owner status drift
+are MISMATCH. A missing receipt has activation UNKNOWN, never LIVE. Release
+currency and activation are separate: CURRENT does not upgrade the receipt's
+activation verdict or prove a current runtime probe. For hooks-live,
+`install_source.mode: worktree-pin` and recorded owner status need no
+`release.json`. The pin SHA participates in mismatch detection; CURRENT still
+requires installed.embedded_commit to match target.merge_sha, or a matching
+installed content hash when no embedded commit exists. A pin alone is not
+installed identity proof. Reads are snapshots of recorded install evidence,
+not a new owner-installer or runtime attestation. Exit is nonzero unless every
+row is CURRENT. Tests inject remote and GitHub readers and make no network calls.
