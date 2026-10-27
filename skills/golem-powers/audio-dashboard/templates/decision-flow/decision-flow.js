@@ -41,8 +41,9 @@
   function updateTransport(){
     if(!transportPlay)return;var card=current();var index=cards.indexOf(card);var audios=audiosFor(card);
     transportPrev.disabled=index<=0;transportNext.disabled=index>=cards.length-1;
-    var label=isPlaying(card)?"⏸ Pause":card.classList.contains("is-paused")?"▶ Resume":Number(card.dataset.audioIndex||0)>=audios.length?"↻ Again":"▶ Play";
-    transportPlay.textContent=label;transportPlay.setAttribute("aria-label",label.slice(2)+" card: "+card.dataset.title);
+    var state=isPlaying(card)?["⏸","Pause"]:card.classList.contains("is-paused")?["▶","Resume"]:Number(card.dataset.audioIndex||0)>=audios.length?["↻","Again"]:["▶","Play"];
+    // Icon and word are separate so the phone row can show the icon alone; the word stays in the accessible name.
+    transportPlay.innerHTML='<span class="df-tplay-icon" aria-hidden="true">'+state[0]+'</span><span class="df-tplay-text">'+state[1]+'</span>';transportPlay.setAttribute("aria-label",state[1]+" card: "+card.dataset.title);
     var rank=card.querySelector(".df-rank");nowLabel.textContent=(rank?rank.textContent+"  ":"")+card.dataset.title;
   }
   function applyRate(){allAudios().forEach(function(audio){audio.defaultPlaybackRate=rate;audio.playbackRate=rate;});if(speed)speed.value=String(rate);}

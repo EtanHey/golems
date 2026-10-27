@@ -168,7 +168,7 @@ function renderController(decisions) {
   return `<nav class="df-controller" aria-label="Card controller">
       <div class="df-transport">
         <button type="button" class="df-tbtn" id="df-transport-prev" aria-label="Previous card" disabled>⏮</button>
-        <button type="button" class="df-tplay" id="df-transport-play" aria-label="Play the current card">▶ Play</button>
+        <button type="button" class="df-tplay" id="df-transport-play" aria-label="Play the current card"><span class="df-tplay-icon" aria-hidden="true">▶</span><span class="df-tplay-text">Play</span></button>
         <button type="button" class="df-tbtn" id="df-transport-next" aria-label="Next card">⏭</button>
         <p class="df-now" id="df-now" aria-live="polite"></p>
         <label class="df-speed"><span class="df-sr-only">Playback speed</span><select id="df-speed">${rates}</select></label>

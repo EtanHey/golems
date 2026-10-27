@@ -115,16 +115,20 @@ a{color:inherit}
 /* Controller: sticky transport plus a scrollable strip of card chips. */
 .df-controller{position:sticky;top:0;z-index:15;margin:0 -16px 14px;padding:calc(8px + env(safe-area-inset-top)) 16px 8px;background:rgba(16,26,44,.95);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .df-transport{display:flex;align-items:center;gap:6px}
-.df-tbtn{flex:none;width:42px;height:42px;border:1px solid var(--line-strong);border-radius:50%;background:transparent;color:var(--moon);font-size:15px;cursor:pointer}
+.df-tbtn{flex:none;width:40px;height:42px;border:1px solid var(--line-strong);border-radius:50%;background:transparent;color:var(--moon);font-size:15px;cursor:pointer}
 .df-tbtn:disabled{opacity:.35;cursor:default}
-.df-tplay{flex:none;min-width:98px;height:42px;padding:0 14px;border:0;border-radius:999px;background:var(--amber);color:var(--ink);font-weight:650;cursor:pointer}
+/* Phone budget (360px): 40 + 48 + 40 + 84 + 76 + 4 gaps = 312px, so the row never wraps or scrolls; the play word joins at 440px. */
+.df-tplay{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:48px;height:42px;padding:0;border:0;border-radius:999px;background:var(--amber);color:var(--ink);font-weight:650;cursor:pointer}
+.df-tplay-icon{font-size:15px;line-height:1}
+.df-tplay-text{display:none}
 body:has(.df-card.is-active.is-playing) .df-tplay{background:transparent;color:var(--amber);box-shadow:inset 0 0 0 2px var(--amber)}
 .df-now{display:none;flex:1 1 auto;min-width:0;margin:0 6px;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .df-speed{flex:none;margin-left:auto}
-.df-speed select{height:42px;padding:0 26px 0 12px;border:1px solid var(--line-strong);border-radius:999px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239aa6bc' stroke-width='1.5'/%3E%3C/svg%3E") right 11px center/10px 6px no-repeat;color:var(--moon);font:600 16px/1 var(--sans);font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none;cursor:pointer}
+.df-speed select{width:84px;height:42px;padding:0 24px 0 12px;border:1px solid var(--line-strong);border-radius:999px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239aa6bc' stroke-width='1.5'/%3E%3C/svg%3E") right 11px center/10px 6px no-repeat;color:var(--moon);font:600 16px/1 var(--sans);font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none;cursor:pointer}
 .df-speed select option{background:var(--panel);color:var(--moon)}
-.df-view-toggle{flex:none;height:42px;padding:0 14px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer}
-.df-view-toggle[aria-pressed="true"]{background:var(--moon);border-color:var(--moon);color:var(--ink);font-weight:650}
+.df-view-toggle{flex:none;min-width:76px;height:42px;padding:0 12px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;color:var(--muted);font-weight:600;cursor:pointer}
+.df-view-toggle[aria-pressed="true"]{background:var(--moon);border-color:var(--moon);color:var(--ink)}
+@media(min-width:440px){.df-tplay{width:auto;min-width:112px;padding:0 16px}.df-tplay-text{display:inline}}
 .df-wide-only{display:none}
 .df-chips{position:relative;display:flex;gap:6px;margin:8px -16px 0;padding:0 16px 2px;overflow-x:auto;scroll-snap-type:x proximity;scroll-padding-inline:16px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .df-chips::-webkit-scrollbar{display:none}
@@ -166,7 +170,7 @@ body[data-view="story"] .df-card.is-active .df-words{font-size:22px;line-height:
   .df-controller{margin:0 -32px 16px;padding:12px 32px}
   .df-now{display:block}
   .df-wide-only{display:inline}
-  .df-chips{margin:10px 0 0;padding:0}
+  .df-chips{margin:10px 0 0;padding:0;scroll-padding-inline:0}
   body[data-view="story"] .df-card.is-active .df-card-head h2{font-size:36px}
   body[data-view="story"] .df-card.is-active .df-words{font-size:24px}
   .df-top{padding:56px 0 30px}
@@ -188,7 +192,6 @@ body[data-view="story"] .df-card.is-active .df-words{font-size:22px;line-height:
   .df-layout{display:grid;grid-template-columns:260px minmax(0,740px);grid-template-areas:"side top" "side ctrl" "side ledger";column-gap:56px;justify-content:center}
   .df-top{grid-area:top}
   .df-controller{grid-area:ctrl;margin:0 0 16px;padding:12px 0}
-  .df-chips{display:none}
   .df-ledger{grid-area:ledger;padding-bottom:96px}
   .df-side{grid-area:side;position:sticky;top:0;align-self:start;display:flex;flex-direction:column;height:100vh;padding:56px 0 28px}
   .df-index{display:block;flex:1 1 auto;min-height:0;overflow:auto;margin:0 -10px}
