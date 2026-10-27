@@ -738,6 +738,7 @@ test("desktop setlist links set the current card like chips do", () => {
 });
 
 function placeCards(document, tops) {
+  document.querySelector(".df-dock").getBoundingClientRect = () => ({ top: document.defaultView.innerHeight - 88 });
   [...document.querySelectorAll(".df-card")].forEach((card, index) => {
     card.getBoundingClientRect = () => ({ top: tops[index], bottom: tops[index] + 400 });
   });
@@ -763,6 +764,15 @@ test("scroll-follow never steals the current card from playing audio or a fresh 
   placeCards(jumped.document, [-500, 140]);
   jumped.window.dispatchEvent(new jumped.window.Event("scroll"));
   expect(jumped.document.querySelector('[data-decision="a"]').classList.contains("is-active")).toBe(true);
+});
+
+test("scroll-follow picks the largest visible card below the reading line", () => {
+  const { window, document } = boot(); placeCards(document, [0, 200]);
+  document.querySelector('[data-decision="a"]').getBoundingClientRect = () => ({ top: 0, bottom: 200 });
+  document.querySelector(".df-controller").getBoundingClientRect = () => ({ bottom: 100 });
+  document.querySelector(".df-dock").getBoundingClientRect = () => ({ top: 700 });
+  window.dispatchEvent(new window.Event("scroll"));
+  expect(document.querySelector(".df-card.is-active").dataset.decision).toBe("b");
 });
 
 test("two-voice cards label each part of the read-along with its speaker", () => {
