@@ -82,10 +82,13 @@ def parse(result, paths):
         return {}
 
 
+_UNREAD_LEAD = re.compile(r'^\W*not\s*determined\b', re.I)
+_NOISE = re.compile(r'not\s*determined|\b(?:tile|image|frame)\s*\d+\b|[\W_]+', re.I)
+
+
 def finding_is_read(finding):
-    """Count returned evidence as read even when individual tiles are uncertain."""
-    finding = finding.strip()
-    return bool(finding) and not finding.upper().startswith('NOT DETERMINED')
+    """A returned finding is read unless it leads with, or consists only of, NOT DETERMINED."""
+    return not _UNREAD_LEAD.match(finding) and bool(_NOISE.sub('', finding))
 
 
 def gather(paths, run):
@@ -99,7 +102,7 @@ def gather(paths, run):
     for path in paths:
         if path not in found:
             found.update(parse(run([path]), [path]))
-    lines, covered = [], 0
+    lines, covered, tiles_unclear = [], 0, 0
     budget = 2300  # reserve room for coverage and omitted-count footer
     for path in paths:
         finding = found.get(path, 'NOT DETERMINED (call failed or missing response)')
@@ -109,9 +112,12 @@ def gather(paths, run):
         lines.append(line)
         if finding_is_read(finding):
             covered += 1
+            if 'NOT DETERMINED' in finding.upper():
+                tiles_unclear += 1
     omitted = len(paths) - len(lines)
     status = 'complete' if covered == len(paths) else 'partial'
-    footer = f'Coverage: {covered}/{len(paths)}; {status}; {omitted} image findings omitted by output cap.'
+    footer = (f'Coverage: {covered}/{len(paths)}; {status}; {omitted} image findings omitted by output cap.'
+              f'; {tiles_unclear} with unclear tiles')
     return '\n'.join([footer, *lines])
 
 

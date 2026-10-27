@@ -213,7 +213,7 @@ def test_unknown_detail_is_successful_coverage(setup):
     assert 'NOT DETERMINED' in (work / 'visual/findings.jsonl').read_text()
 
 
-@pytest.mark.parametrize('response', ['partial-sheet', 'missing', 'whole-unknown'])
+@pytest.mark.parametrize('response', ['partial-sheet', 'missing', 'whole-unknown', 'all-tiles-unknown'])
 def test_real_gather_coverage_survives_batch_and_debrief(tmp_path, monkeypatch, response):
     # Replace the provider boundary only; the production CLI computes coverage.
     provider = tmp_path / 'agy'
@@ -232,6 +232,8 @@ print(json.dumps({'status': 'SUCCESS', 'response': json.dumps({'images': items})
         fixture = {}
     elif response == 'whole-unknown':
         fixture = {'finding': 'NOT DETERMINED (entire sheet unreadable)'}
+    elif response == 'all-tiles-unknown':
+        fixture = {'finding': 'tile 1: NOT DETERMINED; tile 2: NOT DETERMINED'}
     monkeypatch.setenv('PATH', str(tmp_path) + os.pathsep + os.environ['PATH'])
     monkeypatch.setenv('SHEET_RESPONSE', json.dumps(fixture))
     image = tmp_path / 'moment-00.jpg'
@@ -250,11 +252,13 @@ print(json.dumps({'status': 'SUCCESS', 'response': json.dumps({'images': items})
     if response == 'partial-sheet':
         assert result.returncode == 0 and item['ok'] is True
         assert 'Coverage: 1/1; complete;' in item['finding']
+        assert '; 1 with unclear tiles' in item['finding'].splitlines()[0]
         assert expected in item['finding'] and expected in note
         assert item['finding'].count('NOT DETERMINED') == note.count('NOT DETERMINED') == 1
     else:
         assert result.returncode == 2 and item['ok'] is False
         assert 'Coverage: 0/1; partial;' in item['finding']
+        assert '; 0 with unclear tiles' in item['finding']
         assert 'visual: NOT DETERMINED (budget/failed)' in note
 
 

@@ -22,9 +22,33 @@ def result(items, status='SUCCESS'):
     ('  not determined (whole sheet unreadable)  ', False),
     ('', False),
     ('   ', False),
+    ('"NOT DETERMINED"', False),
+    ('**NOT DETERMINED**', False),
+    ('- NOT DETERMINED', False),
+    ('not determined', False),
+    ('NOTDETERMINED', False),
+    ('tile 1: NOT DETERMINED; tile 2: NOT DETERMINED', False),
+    ('Tile 0 NOT DETERMINED, tile 1 not determined.', False),
+    ('NOT DETERMINED: tile 0 color; tile 1: ALPHA heading', False),
+    (json.loads((SKILL / 'tests/fixtures/partial-sheet.json').read_text())['finding'], True),
+    ('label=ALPHA; banner=ERROR: OFFLINE; blue_circles=3', True),
+    ('label=BETA; banner=absent; blue_circles=5', True),
+    ('3', True),
+    ('Grid of 6 video-frame tiles; tile 4 text NOT DETERMINED', True),
 ])
 def test_importable_finding_is_read(finding, expected):
     assert v.finding_is_read(finding) is expected
+
+
+def test_footer_counts_only_read_sheets_with_unclear_tiles():
+    items = [
+        {'path': '/mixed.png', 'finding': 'tile 0: ALPHA; tile 1: NOT DETERMINED'},
+        {'path': '/clear.png', 'finding': '3'},
+        {'path': '/unread.png', 'finding': 'tile 0 NOT DETERMINED, tile 1 not determined.'},
+    ]
+    text = v.gather([item['path'] for item in items], lambda _: result(items))
+    assert 'Coverage: 2/3; partial;' in text
+    assert '; 1 with unclear tiles' in text.splitlines()[0]
 
 
 def test_success_is_capped_and_paths_are_explicit():
