@@ -22,6 +22,12 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
    lead's, not yours.** Merge ownership follows `/agent-routing` and `/pr-loop`. You never merge a PR, and you never start a deploy of unmerged code.
 
    **M1 is off-limits until Etan authorizes the M1 test-rig adapter** (golems /agent-routing § Dispatch Boundaries › M1). On the M1 you may run read-only status checks and report them; you do not install, restart, upgrade or reconnect anything there. This restriction also forbids helper kills and probe-triggered process changes on the M1.
+
+   **Before any `brew upgrade`**, run `node scripts/install-receipt.mjs status` from the golems root checkout.
+   Read the deploying product's own row: **TAP-STALE: STOP** and report to that product's lead.
+   Do not run the upgrade. **TAP-UNKNOWN: proceed** and report the tap as **[UNVERIFIED]**.
+   **never key on the exit code**: status exits 1 for any non-CURRENT row, which is normal before a deploy.
+   An M1 UNREACHABLE row does not block a MacBook Pro deploy.
 2. **LIVE proof or it did not ship.** A PR that merged, a bottle that built, and a `brew upgrade`
    that printed success are three separate things, none of which is "it serves requests on this Mac."
    `installed == tag` must be proven by artifact evidence, not by a git log:
@@ -114,6 +120,18 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
     - `activation.mcp_probe`: use the in-cmux stdio probe (#2) for cmuxlayer, or a real MCP request
       you made (e.g. T15's `brain_search` for brainlayer); for voicelayer or any other product without
       a real MCP request this session, omit it.
+    - For brainlayer, voicelayer, cmuxlayer, brainbar and voicebar, LIVE requires
+      `activation.mcp_probe.ok: true` plus a seat scan per `scripts/schemas/install-receipt-v1.md`.
+      Record `activation.seat_scan.method`, `activation.seat_scan.checked_at` strictly after
+      `installed.install_finished_at`, and `activation.seat_scan.active_seats`.
+      Interim procedure (contract #3 remains unchanged): `t3-threads` uses T3 thread state to find
+      running or working threads whose session uses that server; `list_agents` gets active seats
+      from a cmux seat via `list_agents`. Record the exact command or tool used in the report.
+      If active seats cannot be determined, give no LIVE and report **[UNVERIFIED]**.
+    - `activation.reconnected_seats`: only seats you actually reconnected in this session, each
+      identified by seat or thread ID and verified per contract #3. Never assume a reconnect.
+      The active seats must be a subset of reconnected seats. An empty scan with no reconnects is valid.
+      Your own session or thread and your own stdio/MCP probe never count as a seat in either list.
     If a field cannot be probed, leave it out and report **[UNVERIFIED]**; never guess. If a required
     field is unavailable or writing fails, report the failure as not done. Submit `verdict: LIVE` with
     `reasons: []` only when your probes show it serving; otherwise submit what you observed (FAILED

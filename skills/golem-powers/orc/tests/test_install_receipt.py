@@ -107,8 +107,47 @@ def assert_receipt_fields(text, schema):
 def test_receipt_field_names_match_exported_schema(schema):
     text = AGENT.read_text()
     assert {"target.released_sha", "target.ancestry", "target.ancestry.status",
-            "target.ancestry.checked_at", "target.ancestry.method"} <= set(FIELD.findall(text))
+            "target.ancestry.checked_at", "target.ancestry.method",
+            "activation.seat_scan.method", "activation.seat_scan.checked_at",
+            "activation.seat_scan.active_seats", "activation.reconnected_seats"} <= set(FIELD.findall(text))
     assert_receipt_fields(text, schema)
+
+
+def test_mcp_seat_scan_uses_same_session_active_seats():
+    text = " ".join(AGENT.read_text().split())
+    for required in (
+        "brainlayer, voicelayer, cmuxlayer, brainbar and voicebar",
+        "`activation.mcp_probe.ok: true`",
+        "strictly after `installed.install_finished_at`",
+        "active seats must be a subset of reconnected seats",
+        "An empty scan with no reconnects is valid",
+        "only seats you actually reconnected in this session",
+        "seat or thread ID", "verified per contract #3",
+        "Your own session or thread and your own stdio/MCP probe never count as a seat in either list",
+        "running or working threads whose session uses that server",
+        "from a cmux seat via `list_agents`",
+        "Record the exact command or tool used in the report",
+        "If active seats cannot be determined, give no LIVE and report **[UNVERIFIED]**",
+    ):
+        assert required in text
+
+
+def test_tap_gate_checks_product_row_before_brew_upgrade():
+    text = " ".join(AGENT.read_text().split())
+    for required in (
+        "Before any `brew upgrade`",
+        "`node scripts/install-receipt.mjs status` from the golems root checkout",
+        "deploying product's own row",
+        "**TAP-STALE: STOP**", "report to that product's lead", "Do not run the upgrade",
+        "**TAP-UNKNOWN: proceed**", "report the tap as **[UNVERIFIED]**",
+        "never key on the exit code", "exits 1 for any non-CURRENT row",
+        "M1 UNREACHABLE row does not block a MacBook Pro deploy",
+    ):
+        assert required in text
+
+
+def test_contract_three_keeps_idle_ready_paused_rule():
+    assert ("**Idle, ready\n   and paused seats get no reconnect and no nudge**: they reconnect themselves on first failure, per") in AGENT.read_text()
 
 
 def test_top_level_mutation_is_rejected(schema):
