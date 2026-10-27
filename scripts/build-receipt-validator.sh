@@ -25,7 +25,10 @@ import sys
 parts = []
 for name in ['ajv', 'fast-deep-equal', 'fast-uri', 'json-schema-traverse', 'require-from-string']:
     package = Path('node_modules') / name
-    license = next(package / p for p in ('LICENSE', 'LICENSE.md', 'LICENSE.txt') if (package / p).exists())
+    license = next((p for p in sorted(package.glob('*')) if p.is_file()
+                    and p.name.lower() in ('license', 'license.md', 'license.txt')), None)
+    if license is None:
+        sys.exit('receipt validator: Missing license for ' + name + ' in ' + str(package))
     parts.append(name + '\n' + license.read_text())
 Path(sys.argv[1], 'receipt-ajv.generated.LICENSE').write_text('\n\n'.join(parts))
 PY
