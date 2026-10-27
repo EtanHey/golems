@@ -1,13 +1,13 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, spyOn, beforeEach, afterEach, afterAll } from "bun:test";
+import * as axiom from "@golems/shared/lib/axiom";
 
-// Mock axiom before importing
-const mockLogError = mock(() => {});
-const mockFlushAxiom = mock(() => Promise.resolve());
+const mockLogError = spyOn(axiom, "logError").mockImplementation(() => {});
+const mockFlushAxiom = spyOn(axiom, "flushAxiom").mockImplementation(() => Promise.resolve());
 
-mock.module("@golems/shared/lib/axiom", () => ({
-  logError: mockLogError,
-  flushAxiom: mockFlushAxiom,
-}));
+afterAll(() => {
+  mockLogError.mockRestore();
+  mockFlushAxiom.mockRestore();
+});
 
 import {
   installProcessGuards,
