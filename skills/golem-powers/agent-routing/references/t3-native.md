@@ -69,15 +69,17 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
   reported head, and its file list matches the scope (`gh pr view <url> --json
   headRefOid,files,isDraft,labels`). Re-run a cheap claimed check or hand it to a cheap verifier.
 - Relay only the verified values, then conclude the child: no further sends for new work. At its
-  PR's terminal state settle it ("settle idle workers"; "the implementer removes its worktree at
+  PR's terminal state (merged or handed off; never at the first DONE) settle it ("settle idle workers"; "the implementer removes its worktree at
   DONE" (Etan 2026-10-18, via orc collab)).
 - Before settle, require `git worktree remove` (no `--force`), then `git worktree prune`, and the
   receipt's removal proof that the path is absent from `git worktree list --porcelain`.
   Preserve dirty files or local-only commits; the receipt names the path, reason, and lead escalated to
   (`/pr-loop` § Cleanup Receipt). Neither proof nor an escalated exception = invalid receipt.
-- Then `task_cancel` the `taskId`, `unwatch_pull_request` its PR, and `t3_thread_organize` action `settle`
-  on the child thread to release its provider session and MCP children (`task_cancel` alone does not).
-  Source: T3 upstream `96fc7b95`, `Orchestrator.ts:3849-3922`.
+- Then `task_cancel` the `taskId`, `unwatch_pull_request` its PR, and `t3_thread_organize {action: "settle", threadId: <childThreadId>}`.
+  Never omit threadId: an omitted threadId settles the calling lead thread.
+  See /agent-routing § Goal Contract for provider release timing and the worktree caveat.
+  Source: T3 upstream `96fc7b95`, `Orchestrator.ts:3851-3854,3887-3910` (settle detaches) and
+  `OrchestratorMcpService.ts:2371-2423` (`task_cancel` doesn't).
 
 ## 5. Review rounds
 
