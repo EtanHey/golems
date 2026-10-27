@@ -5,7 +5,8 @@ import { resolve, join } from 'node:path';
 import { hostname, userInfo } from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { assess } from '../lib/install-receipt-core.mjs';
+import * as core from '../lib/install-receipt-core.mjs';
+const { assess, CLIENT_RULES } = core;
 
 const cli = resolve('scripts/install-receipt.mjs');
 const sha = 'a'.repeat(40), digest = 'b'.repeat(64);
@@ -33,7 +34,9 @@ const bridge = '/opt/homebrew/opt/brainlayer/bin/brainlayer-mcp-stdio-bridge';
 const bridgePaths = ['src/brainlayer/mcp_stdio_bridge.py', 'src/brainlayer/mcp/', 'src/brainlayer/mcp_socket_config.py'];
 const socat = '/opt/homebrew/bin/socat STDIO UNIX-CONNECT:/tmp/voicelayer-mcp.sock';
 const relayReason = 'LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).';
-const client = (started_at = '2026-10-27T09:00:00Z', command = bridge) => ({ pid: 321, started_at, command, thread_id: null });
+const client = (started_at = '2026-10-27T09:00:00Z', command = bridge) => ({
+  pid: 321, started_at, argv: command.trim().split(/\s+/), argv_source: 'ps-split', thread_id: null,
+});
 const clientKey = c => `pid:${c.pid}@${c.started_at}`;
 function processReceipt(product = 'brainlayer') {
   const r = receipt(); r.product = product;
@@ -64,13 +67,17 @@ for (const [name, product, clients, changed, stale] of [
     if (!changed) assert.match(written.reasons.join(' '), /bridge_diff.changed=false/);
   }));
 }
-test('I2d: daemon/helper commands and lookalike paths are never clients', () => isolated(run => {
-  const r = processReceipt();
-  r.activation.seat_scan.clients = ['watch', 'drain', 'daemon', 'hybrid-helper', 'supervisor_guard'].map(name =>
-    client(undefined, `/opt/homebrew/opt/brainlayer/bin/${name}`));
-  r.activation.seat_scan.clients.push(client(undefined, `${bridge}-helper`), client(undefined, `${bridge} --daemon`));
-  r.activation.seat_scan.excluded = [{ rule: 'daemon-process', reason: 'Server processes are not clients', count: 5 }];
-  assert.equal(output(run('write', r)).verdict, 'LIVE');
+test('I2d: daemon/helper commands and lookalike paths are refused as clients', () => isolated(run => {
+  for (const commandText of ['watch', 'drain', 'daemon', 'hybrid-helper', 'supervisor_guard'].map(name =>
+    `/opt/homebrew/opt/brainlayer/bin/${name}`).concat(`${bridge}-helper`)) {
+    const r = processReceipt();
+    r.activation.seat_scan.clients = [client(undefined, commandText)];
+    r.activation.seat_scan.excluded = [{ rule: 'daemon-process', reason: 'Server processes are not clients', count: 5 }];
+    for (const command of ['validate', 'write']) {
+      const result = run(command, r);
+      assert.equal(result.status, 1); assert.match(result.stderr, /unmatched client in seat_scan.clients/);
+    }
+  }
 }));
 test('I2d R1: fractional client timestamps are refused and core floors seconds defensively', () => isolated(run => {
   const r = processReceipt(), c = client('2026-10-27T09:00:00.300Z');
@@ -99,7 +106,7 @@ test('I2d R1: unrecognised bridge paths fail closed, even with unchanged bridge 
   for (const path of [`/untrusted${bridge}`, 'brainlayer-mcp-stdio-bridge',
     '/opt/homebrew/Cellar/brainlayer/../bin/brainlayer-mcp-stdio-bridge',
     '/opt/homebrew/Cellar/brainlayer/./bin/brainlayer-mcp-stdio-bridge']) {
-    for (const commandText of [path, `/opt/homebrew/bin/python3 ${path}`]) {
+    for (const commandText of [path, `/opt/homebrew/bin/python3 ${path}`, `uv run ${path} --verbose`]) {
       for (const changed of [true, false]) {
         const r = processReceipt(); r.activation.seat_scan.clients = [client(undefined, commandText)];
         r.activation.seat_scan.bridge_diff.changed = changed;
@@ -149,7 +156,7 @@ test('I2d: cmuxlayer has no observed client matcher', () => isolated(run => {
 test('I2d: closed schema refuses malformed process evidence', () => isolated(run => {
   for (const mutate of [s => { delete s.clients; }, s => { s.clients = [{ ...client(), pid: 1.5 }]; },
     s => { s.clients = [{ ...client(), pid: 0 }]; }, s => { s.clients = [{ ...client(), started_at: 'yesterday' }]; },
-    s => { s.clients = [{ ...client(), command: '' }]; }, s => { s.clients = [{ ...client(), thread_id: 4 }]; },
+    s => { s.clients = [{ ...client(), argv: [''] }]; }, s => { s.clients = [{ ...client(), thread_id: 4 }]; },
     s => { s.clients = [{ pid: 1 }]; }, s => { s.clients = [{ ...client(), secret: 'forbidden' }]; },
     s => { delete s.excluded; }, s => { s.excluded = [{ rule: 'guess', reason: 'fixture', count: 1 }]; },
     s => { s.excluded = [{ rule: 'daemon-process', reason: 'fixture', count: -1 }]; },
@@ -190,6 +197,109 @@ test('I2d: a writer-held bridge stays stale and empty socat scans still disclose
   assert.equal(output(run('write', voice)).verdict, 'LIVE');
   voice.activation.seat_scan.excluded = [];
   assert.equal(run('validate', voice).status, 1);
+}));
+
+for (const product of ['brainlayer', 'brainbar']) {
+  for (const commandText of [`${bridge} --verbose`, `uv run ${bridge} --verbose`,
+    `/usr/bin/env python3 ${bridge}`, `editor ${bridge} --daemon`,
+    `--bridge=${bridge}`, `--bridge:${bridge}`,
+    `python3 ${bridge} --label an argument with spaces`]) {
+    test(`I2f: ${product} full ps-split argv matches ${commandText}`, () => isolated(run => {
+      const r = processReceipt(product), c = client(undefined, commandText);
+      r.activation.seat_scan.clients = [c]; r.activation.seat_scan.active_seats = [clientKey(c)];
+      assert.equal(assess(r)[0], 'INSTALLED_NOT_ACTIVE');
+      const result = run('validate', r);
+      assert.equal(result.status, 1); assert.match(result.stderr, /Stale MCP client processes/);
+      assert.equal(output(run('write', r)).verdict, 'INSTALLED_NOT_ACTIVE');
+      r.verdict = 'INSTALLED_NOT_ACTIVE';
+      assert.equal(output(run('validate', r)).verdict, 'INSTALLED_NOT_ACTIVE');
+    }));
+  }
+}
+for (const product of ['brainlayer', 'brainbar']) {
+  test(`I2f R1: ${product} refuses prefixed paths and the Cellar dot-dot bypass`, () => isolated(run => {
+    for (const path of [`/untrusted${bridge}`, `/fixture/root${bridge}`,
+      '/fixture/root/opt/homebrew/Cellar/brainlayer/1.5.77/bin/brainlayer-mcp-stdio-bridge',
+      '/opt/homebrew/Cellar/brainlayer/../opt/homebrew/bin/brainlayer-mcp-stdio-bridge']) {
+      for (const started_at of ['2026-10-27T09:00:00Z', '2026-10-27T09:00:01Z']) {
+        const r = processReceipt(product);
+        r.activation.seat_scan.clients = [client(started_at, `uv run ${path} --verbose`)];
+        for (const command of ['validate', 'write']) {
+          const result = run(command, r);
+          assert.equal(result.status, 1); assert.match(result.stderr, /unrecognised bridge path/);
+        }
+      }
+    }
+  }));
+  test(`I2f R1: ${product} refuses a prefixed bridge basename`, () => isolated(run => {
+    const r = processReceipt(product);
+    r.activation.seat_scan.clients = [client(undefined, '/opt/homebrew/bin/xbrainlayer-mcp-stdio-bridge')];
+    for (const command of ['validate', 'write']) {
+      const result = run(command, r);
+      assert.equal(result.status, 1); assert.match(result.stderr, /unmatched client in seat_scan.clients/);
+    }
+  }));
+  test(`I2f R1: ${product} extra-args bridge started after install is LIVE`, () => isolated(run => {
+    const r = processReceipt(product);
+    r.activation.seat_scan.clients = [client('2026-10-27T09:00:01Z', `uv run ${bridge} --verbose`)];
+    for (const command of ['validate', 'write']) assert.equal(output(run(command, r)).verdict, 'LIVE');
+  }));
+}
+test('I2f R1: exported bridge matchers consume argv arrays without regex coercion', () => {
+  assert.equal('BRIDGE' in core, false);
+  for (const product of ['brainlayer', 'brainbar']) {
+    const matcher = CLIENT_RULES.get(product).bridge;
+    assert.equal(matcher.test(['uv', 'run', bridge, '--verbose']), true);
+    assert.equal(matcher.test(['uv', 'run', '--bridge=' + bridge, '--verbose']), true);
+    assert.equal(matcher.test(['/untrusted' + bridge]), false);
+    assert.throws(() => matcher.test(bridge), TypeError);
+  }
+});
+for (const product of ['brainlayer', 'brainbar', 'voicelayer', 'voicebar']) {
+  test(`I2f: ${product} refuses every unmatched client even with unchanged bridge code`, () => isolated((run, home) => {
+    for (const changed of [true, false]) {
+      const r = processReceipt(product);
+      r.activation.seat_scan.clients = [client(undefined, 'unrelated --verbose')];
+      r.activation.seat_scan.bridge_diff.changed = changed;
+      for (const command of ['validate', 'write']) {
+        const result = run(command, r);
+        assert.equal(result.status, 1); assert.match(result.stderr, /unmatched client in seat_scan.clients/);
+      }
+    }
+    assert.deepEqual(readdirSync(home), []);
+  }));
+}
+for (const product of ['voicelayer', 'voicebar']) {
+  test(`I2f: ${product} socat tokens match with extra arguments`, () => isolated(run => {
+    const r = processReceipt(product), scan = r.activation.seat_scan;
+    scan.clients = [client(undefined, `socat -d -d STDIO UNIX-CONNECT:/tmp/voicelayer-mcp.sock,ignored`),
+      client(undefined, `/opt/homebrew/bin/socat -d STDIO UNIX-CONNECT:/tmp/voicelayer-mcp.sock --extra`)];
+    scan.excluded = [{ rule: 'socat-relay', reason: relayReason, count: 2 }];
+    // Socket lookalikes cannot silently count as matched relays.
+    const bad = run('validate', r); assert.equal(bad.status, 1);
+    assert.match(bad.stderr, /unmatched client in seat_scan.clients/);
+    scan.clients[0] = client(undefined, 'socat -d -d STDIO UNIX-CONNECT:/tmp/voicelayer-mcp.sock');
+    assert.equal(output(run('validate', r)).verdict, 'LIVE');
+    assert.equal(output(run('write', r)).verdict, 'LIVE');
+  }));
+}
+test('I2f: argv source and non-empty token arrays replace command', () => isolated(run => {
+  for (const argv_source of ['ps-split', 'procargs2']) {
+    const r = processReceipt(), c = client('2026-10-27T09:00:01Z');
+    c.argv_source = argv_source;
+    if (argv_source === 'procargs2') c.argv.push('--label', 'an argument with spaces');
+    r.activation.seat_scan.clients = [c];
+    assert.equal(output(run('validate', r)).verdict, 'LIVE');
+  }
+  for (const mutate of [c => { delete c.argv; }, c => { c.argv = []; },
+    c => { c.argv = bridge; }, c => { c.argv = ['']; }, c => { c.argv = [123]; },
+    c => { delete c.argv_source; }, c => { c.argv_source = 'guess'; },
+    c => { c.command = bridge; }, c => { delete c.argv; c.command = bridge; }]) {
+    const r = processReceipt(), c = client(); mutate(c); r.activation.seat_scan.clients = [c];
+    for (const command of ['validate', 'write']) {
+      const result = run(command, r); assert.equal(result.status, 1); assert.match(result.stderr, /seat_scan/);
+    }
+  }
 }));
 
 for (const product of ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar']) {

@@ -3,11 +3,13 @@ import schema from '../schemas/install-receipt-v1.mjs';
 
 const MCP_PRODUCTS = ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar'];
 const BRIDGE_PATHS = ['src/brainlayer/mcp_stdio_bridge.py', 'src/brainlayer/mcp/', 'src/brainlayer/mcp_socket_config.py'];
-const BRIDGE = /^(?:\S+\s+)?\/opt\/homebrew\/(?:bin|(?:opt\/brainlayer|Cellar\/brainlayer\/(?!\.{1,2}\/)[^/\s]+)\/bin)\/brainlayer-mcp-stdio-bridge$/;
-const SOCAT = /^(?:\/opt\/homebrew\/bin\/)?socat STDIO UNIX-CONNECT:\/tmp\/voicelayer-mcp\.sock$/;
+const BRIDGE = /(?:^|[=:])\/opt\/homebrew\/(?:bin|(?:opt\/brainlayer|Cellar\/brainlayer\/(?!\.{1,2}\/)[^/\s]+)\/bin)\/brainlayer-mcp-stdio-bridge$/;
+export const SOCAT = { test: argv => argv.some(arg => /^(?:\/opt\/homebrew\/bin\/)?socat$/.test(arg))
+  && argv.includes('STDIO') && argv.includes('UNIX-CONNECT:/tmp/voicelayer-mcp.sock') };
 export const SOCAT_REASON = 'LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).';
+const bridgeRule = { test: argv => argv.some(arg => BRIDGE.test(arg)) };
 export const CLIENT_RULES = new Map([
-  ['brainlayer', { bridge: BRIDGE }], ['brainbar', { bridge: BRIDGE }],
+  ['brainlayer', { bridge: bridgeRule }], ['brainbar', { bridge: bridgeRule }],
   ['voicelayer', { relay: SOCAT }], ['voicebar', { relay: SOCAT }],
 ]);
 
@@ -18,7 +20,7 @@ export function bridgePaths(product) {
 export function staleClients(r) {
   const scan = r.activation.seat_scan, rule = CLIENT_RULES.get(r.product);
   if (!rule) throw new Error(`no client matcher for ${r.product}`);
-  const clients = scan.clients.filter(c => (rule.bridge ?? rule.relay).test(c.command));
+  const clients = scan.clients.filter(c => (rule.bridge ?? rule.relay).test(c.argv));
   if (rule.relay || !scan.bridge_diff.changed) return [];
   return [...new Set(clients.filter(c => Math.floor(Date.parse(c.started_at) / 1000)
     <= Math.floor(Date.parse(r.installed.install_finished_at) / 1000))
@@ -39,13 +41,18 @@ export function validate(receipt) {
   }
   const scan = receipt.activation.seat_scan;
   if (scan?.method !== 'client-processes') return;
+  const rule = CLIENT_RULES.get(receipt.product);
+  if (!rule) throw new Error(`no client matcher for ${receipt.product}`);
   for (const c of scan.clients) {
-    if (c.command.trim().split(/\s+/).slice(0, 2).some(arg =>
+    if (c.argv.some(arg =>
       arg.split('/').at(-1) === 'brainlayer-mcp-stdio-bridge' && !BRIDGE.test(arg))) {
       throw new Error('seat_scan.clients contains an unrecognised bridge path');
     }
+    if (!(rule.bridge ?? rule.relay).test(c.argv)) {
+      throw new Error('unmatched client in seat_scan.clients');
+    }
   }
-  const derived = staleClients(receipt), rule = CLIENT_RULES.get(receipt.product);
+  const derived = staleClients(receipt);
   if (scan.bridge_diff.from_tag === receipt.target.tag) {
     throw new Error('seat_scan.bridge_diff.from_tag must differ from target.tag');
   }
