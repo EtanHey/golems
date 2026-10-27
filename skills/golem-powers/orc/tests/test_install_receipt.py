@@ -44,6 +44,14 @@ def test_install_finished_at_has_a_session_source():
     assert "completion time of the install command you ran this session" in text
 
 
+def test_host_alias_uses_schema_enum():
+    assert "`host.alias`: `mbp` on the MacBook Pro (the schema accepts only `mbp` or `m1`)" in AGENT.read_text()
+
+
+def test_all_times_are_converted_to_utc():
+    assert "Write every time as UTC ISO-8601 with Z; convert brew's epoch seconds and ps local times" in AGENT.read_text()
+
+
 @pytest.fixture(scope="module")
 def schema():
     result = subprocess.run(
