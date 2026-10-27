@@ -86,15 +86,18 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
     Neither `target.released_sha` nor `target.ancestry` comes from the caller or the target;
     probe both independently. Never copy `merge_sha` into `target.released_sha`.
     - `target.released_sha`: resolve the release tag with
-      `git ls-remote --tags <repo-url> refs/tags/<tag> 'refs/tags/<tag>^{}'`;
-      use the peeled `^{}` line for an annotated tag, the plain tag line otherwise.
+      `git ls-remote --exit-code --tags <repo-url> refs/tags/<tag> 'refs/tags/<tag>^{}'`;
+      if a `^{}` line is printed (annotated tag), use its SHA; otherwise use the single plain line.
+      A non-zero exit is unavailable evidence.
     - `target.ancestry`: run
       `gh api repos/<owner>/<repo>/compare/<merge_sha>...<released_sha> --jq .status`;
-      record `method: gh-compare`, the returned `target.ancestry.status`, and
-      `target.ancestry.checked_at` as the UTC Z time of the call. If gh is unavailable, run
-      `git merge-base --is-ancestor <merge_sha> <released_sha>` in the product's checkout:
-      record `method: git-merge-base`, `identical` for equal SHAs, `ahead` for a different descendant,
-      or `diverged` when the merge is not an ancestor. Probe errors are unavailable evidence.
+      record `target.ancestry.method` as `gh-compare`, the returned `target.ancestry.status`, and
+      `target.ancestry.checked_at` as the UTC Z time of the call. If gh is unavailable, fetch the
+      product's checkout and run `git merge-base --is-ancestor <merge_sha> <released_sha>`; if it
+      exits 1, also run `git merge-base --is-ancestor <released_sha> <merge_sha>`. Record
+      `target.ancestry.method` as `git-merge-base` and `identical` for equal SHAs, `ahead` when the first exits 0,
+      `behind` when only the second exits 0, or `diverged` when both exit 1.
+      Any other exit, or any gh error, is a probe error: unavailable evidence.
       Follow `scripts/schemas/install-receipt-v1.md` for ancestry semantics.
     - `host.alias`: `mbp` on the MacBook Pro (the schema accepts only `mbp` or `m1`).
     - `host.hostname` and `host.user`: use `hostname` and `whoami`, respectively.
@@ -114,10 +117,9 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
     If a field cannot be probed, leave it out and report **[UNVERIFIED]**; never guess. If a required
     field is unavailable or writing fails, report the failure as not done. Submit `verdict: LIVE` with
     `reasons: []` only when your probes show it serving; otherwise submit what you observed (FAILED
-    for a failed install). `write` only downgrades;
-    any probed commit differing from `target.released_sha` gives MISMATCH.
-    Present `installed.embedded_commit`, `install_source.pin_sha`, `install_source.owner_status.pin_sha`
-    and `activation.self_report.commit` must equal `target.released_sha`.
+    for a failed install). `write` only downgrades.
+    Any present `installed.embedded_commit`, `install_source.pin_sha`, `install_source.owner_status.pin_sha`
+    or `activation.self_report.commit` differing from `target.released_sha` gives MISMATCH.
     LIVE also requires ancestry `identical` or `ahead`, per the schema doc above.
     DONE requires a written receipt with `verdict: LIVE`. Report INSTALLED_NOT_ACTIVE, MISMATCH or
     FAILED with the returned `reasons`, as not done. Write no receipt on the M1; report read-only
