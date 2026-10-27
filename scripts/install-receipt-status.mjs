@@ -9,6 +9,14 @@ const products = {
   voicelayer: 'EtanHey/voicelayer', voicebar: 'EtanHey/voicelayer',
   cmuxlayer: 'EtanHey/cmuxlayer', golems: 'EtanHey/golems', narrationlayer: 'EtanHey/narrationlayer',
 };
+const latestSources = {
+  brainlayer: 'tags', brainbar: 'tags', voicelayer: 'tags', voicebar: 'tags',
+  cmuxlayer: 'tags', golems: 'releases', narrationlayer: 'tags',
+};
+const tapPaths = {
+  brainlayer: 'Formula/brainlayer.rb', brainbar: 'Casks/brainbar.rb',
+  voicelayer: 'Formula/voicelayer.rb', voicebar: 'Casks/voicebar.rb', cmuxlayer: 'Formula/cmuxlayer.rb',
+};
 const execute = (file, args) => execFileSync(file, args, { encoding: 'utf8', timeout: 30000,
   env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GH_PROMPT_DISABLED: '1' },
   maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -44,16 +52,73 @@ export function readRemote(names, exec = execute) {
   }));
 }
 
-export function latestRelease(repo, exec = execute) {
-  const pages = JSON.parse(exec('gh', ['api', `repos/${repo}/releases`, '--paginate', '--slurp']));
-  const releases = pages.flat().filter(r => !r.draft && r.published_at && r.tag_name);
-  releases.sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
-  const release = releases[0];
-  if (!release) throw Error('No published release');
-  // The commits endpoint resolves annotated and lightweight tags to the actual commit.
-  const commit = JSON.parse(exec('gh', ['api', `repos/${repo}/commits/${encodeURIComponent(release.tag_name)}`]));
-  if (!/^[0-9a-f]{40}$/.test(commit.sha)) throw Error('Unresolved release tag');
-  return { version: release.tag_name.replace(/^v(?=\d)/, ''), tag: release.tag_name, released_sha: commit.sha };
+// Strict SemVer; build metadata has no effect on precedence.
+function semver(version) {
+  const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(version);
+  if (!match) throw Error('Invalid version');
+  const pre = match[4]?.split('.');
+  if (pre?.some(id => /^0\d+$/.test(id))) throw Error('Invalid version');
+  return { core: match.slice(1, 4).map(BigInt), pre };
+}
+function compareVersions(a, b) {
+  const left = semver(a), right = semver(b);
+  const cmp = (x, y) => x < y ? -1 : x > y ? 1 : 0;
+  for (let i = 0; i < 3; i++) {
+    const order = cmp(left.core[i], right.core[i]);
+    if (order) return order;
+  }
+  if (!left.pre || !right.pre) return cmp(Number(!left.pre), Number(!right.pre));
+  for (let i = 0; i < Math.max(left.pre.length, right.pre.length); i++) {
+    const x = left.pre[i], y = right.pre[i];
+    if (x === undefined || y === undefined) return cmp(left.pre.length, right.pre.length);
+    const xn = /^\d+$/.test(x), yn = /^\d+$/.test(y);
+    const order = xn && yn ? cmp(BigInt(x), BigInt(y)) : xn !== yn ? (xn ? -1 : 1) : cmp(x, y);
+    if (order) return order;
+  }
+  return 0;
+}
+export function latestRelease(repo, exec = execute, { source = 'tags', stableOnly = false } = {}) {
+  if (source === 'releases') {
+    const pages = JSON.parse(exec('gh', ['api', `repos/${repo}/releases`, '--paginate', '--slurp']));
+    const releases = pages.flat().filter(r => !r.draft && r.published_at && r.tag_name);
+    releases.sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
+    const release = releases[0];
+    if (!release) throw Error('No published release');
+    const commit = JSON.parse(exec('gh', ['api', `repos/${repo}/commits/${encodeURIComponent(release.tag_name)}`]));
+    if (!/^[0-9a-f]{40}$/.test(commit.sha)) throw Error('Unresolved release tag');
+    return { version: release.tag_name.replace(/^v(?=\d)/, ''), tag: release.tag_name, released_sha: commit.sha };
+  }
+  const refs = new Map();
+  for (const line of exec('git', ['ls-remote', '--tags', `https://github.com/${repo}.git`]).trim().split('\n')) {
+    const match = /^([0-9a-f]{40})\s+refs\/tags\/(.+?)(\^\{\})?$/.exec(line);
+    if (!match) continue;
+    const [, sha, tag, peeled] = match, version = tag.replace(/^v(?=\d)/, '');
+    try { const parsed = semver(version); if (stableOnly && parsed.pre) continue; } catch { continue; }
+    const ref = refs.get(tag) ?? { version, tag };
+    ref[peeled ? 'peeled' : 'plain'] = sha;
+    refs.set(tag, ref);
+  }
+  const release = [...refs.values()].sort((a, b) => compareVersions(b.version, a.version)
+    || a.tag.localeCompare(b.tag))[0];
+  if (!release) throw Error('No version tag');
+  return { version: release.version, tag: release.tag, released_sha: release.peeled ?? release.plain };
+}
+export function readTapVersion(path, exec = execute) {
+  const response = JSON.parse(exec('gh', ['api', `repos/EtanHey/homebrew-layers/contents/${path}`]));
+  if (response.encoding !== 'base64' || !response.content) throw Error('Unreadable tap version');
+  const formula = Buffer.from(response.content, 'base64').toString('utf8');
+  const version = formula.match(/^\s*version\s+"([^"]+)"/m)?.[1]
+    ?? formula.match(/^\s*url\s+"https:\/\/github\.com\/[^"\s]+\/archive\/refs\/tags\/v?([^"/]+)\.tar\.gz"/m)?.[1]
+    ?? formula.match(/^\s*url\s+"https:\/\/(?:registry\.npmjs\.org|files\.pythonhosted\.org)\/[^"\s]+?-(\d[^"/]+)\.(?:tar\.gz|tgz)"/m)?.[1];
+  semver(version);
+  return version;
+}
+function tapStatus(path, release, reader) {
+  if (!path) return 'TAP-N/A';
+  try {
+    const order = compareVersions(reader(path), release.version);
+    return order === 0 ? 'TAP-OK' : order < 0 ? 'TAP-STALE' : 'TAP-UNKNOWN';
+  } catch { return 'TAP-UNKNOWN'; }
 }
 export function compareInstall(repo, releaseSha, installedSha, exec = execute) {
   const result = JSON.parse(exec('gh', ['api', `repos/${repo}/compare/${releaseSha}...${installedSha}`]));
@@ -77,8 +142,8 @@ export function hostAlias(name) {
   throw Error('Unknown local host alias');
 }
 export function collectStatus({ products: catalog = products, localReader = readLocal,
-  remoteReader = readRemote, releaseReader = latestRelease, localHostname = hostname(), comparisonReader = compareInstall,
-  resolver = { peelTag, compareAncestry: compareInstall } } = {}) {
+  remoteReader = readRemote, releaseReader = (repo, options) => latestRelease(repo, execute, options), localHostname = hostname(), comparisonReader = compareInstall,
+  resolver = { peelTag, compareAncestry: compareInstall }, tapReader = readTapVersion, tapPaths: paths = tapPaths } = {}) {
   const names = Object.keys(catalog), snapshots = {}, releases = new Map();
   const localHost = hostAlias(localHostname);
   const readers = localHost === 'mbp' ? [['mbp', localReader], ['m1', remoteReader]] : [['m1', localReader]];
@@ -87,12 +152,19 @@ export function collectStatus({ products: catalog = products, localReader = read
   }
   return names.flatMap(product => {
     const repo = catalog[product];
-    if (!releases.has(repo)) {
-      try { releases.set(repo, releaseReader(repo)); } catch { releases.set(repo, null); }
-    }
-    const release = releases.get(repo);
+    const lookup = (source, stableOnly = false) => {
+      const key = `${repo}:${source}:${stableOnly}`;
+      if (!releases.has(key)) {
+        try { releases.set(key, releaseReader(repo, { source, stableOnly })); } catch { releases.set(key, null); }
+      }
+      return releases.get(key);
+    };
+    const release = lookup(latestSources[product] ?? 'tags');
+    const path = paths[product];
+    const override = paths === tapPaths && repo !== products[product];
+    const tap = path && override ? 'TAP-UNKNOWN' : tapStatus(path, path ? lookup('tags', true) : null, tapReader);
     return ['mbp', 'm1'].map(host => {
-      const row = { product, host, status: 'UNKNOWN', activation: 'UNKNOWN', latest: release?.tag ?? null };
+      const row = { product, host, status: 'UNKNOWN', activation: 'UNKNOWN', tap, latest: release?.tag ?? null };
       if (!snapshots[host]) return { ...row, status: host === 'm1' && localHost !== 'm1' ? 'UNREACHABLE' : 'UNKNOWN' };
       const r = snapshots[host][product];
       if (r == null) return { ...row, status: 'NO-RECEIPT' };
@@ -131,12 +203,12 @@ export function collectStatus({ products: catalog = products, localReader = read
         if (!release) return { ...row, status: 'LIVE-UNVERIFIED' };
       }
       if (row.activation !== 'LIVE' && r.target.ancestry.status === 'ahead') {
-        return { ...row, status: 'LIVE-UNVERIFIED' };
+        return { ...row, status: row.activation };
       }
       if (!release) return row;
       if (r.target.released_sha === release.released_sha) {
         return { ...row, status: (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version)
-          ? (row.activation === 'LIVE' ? 'CURRENT' : 'LIVE-UNVERIFIED') : 'BEHIND' };
+          ? (row.activation === 'LIVE' ? 'CURRENT' : row.activation) : 'BEHIND' };
       }
       try {
         const comparison = comparisonReader(repo, release.released_sha, r.target.released_sha);
@@ -154,7 +226,7 @@ export function printStatus(args, options = {}) {
     selected[product] = repo;
   }
   const rows = collectStatus({ ...options, products: args.length ? selected : products });
-  process.stdout.write('PRODUCT\tHOST\tSTATUS\tACTIVATION\tINSTALLED\tLATEST\tCOMMIT\tVERIFICATION\n');
-  for (const r of rows) process.stdout.write([r.product, r.host, r.status, r.activation, r.installed ?? '-', r.latest ?? '-', r.commit ?? '-', r.verification ? JSON.stringify(r.verification) : '-'].join('\t') + '\n');
-  if (rows.some(r => r.status !== 'CURRENT')) process.exitCode = 1;
+  process.stdout.write('PRODUCT\tHOST\tSTATUS\tACTIVATION\tINSTALLED\tLATEST\tTAP\tCOMMIT\tVERIFICATION\n');
+  for (const r of rows) process.stdout.write([r.product, r.host, r.status, r.activation, r.installed ?? '-', r.latest ?? '-', r.tap, r.commit ?? '-', r.verification ? JSON.stringify(r.verification) : '-'].join('\t') + '\n');
+  if (rows.some(r => r.status !== 'CURRENT' || r.tap === 'TAP-STALE')) process.exitCode = 1;
 }

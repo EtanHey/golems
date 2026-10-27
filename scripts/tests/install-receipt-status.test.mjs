@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { collectStatus, latestRelease, readRemote, readLocal, compareInstall, peelTag, printStatus } from '../install-receipt-status.mjs';
+import { collectStatus, latestRelease, readRemote, readLocal, compareInstall, peelTag, printStatus, readTapVersion } from '../install-receipt-status.mjs';
 
 const sha = 'a'.repeat(40), old = 'b'.repeat(40);
 function receipt(host = 'mbp') {
@@ -24,7 +24,7 @@ const run = (local, remote, extra = {}) => collectStatus({ products: { golems: '
 test('5: product × host matrix uses hooks-live pin without release.json; never promotes activation', () => {
   const rows = run({ golems: receipt() }, { golems: receipt('m1') });
   assert.deepEqual(rows.map(r => [r.product, r.host, r.status, r.activation]), [
-    ['golems', 'mbp', 'LIVE-UNVERIFIED', 'INSTALLED_NOT_ACTIVE'], ['golems', 'm1', 'LIVE-UNVERIFIED', 'INSTALLED_NOT_ACTIVE']]);
+    ['golems', 'mbp', 'INSTALLED_NOT_ACTIVE', 'INSTALLED_NOT_ACTIVE'], ['golems', 'm1', 'INSTALLED_NOT_ACTIVE', 'INSTALLED_NOT_ACTIVE']]);
 });
 test('5: older valid installation is BEHIND; identity drift is MISMATCH', () => {
   const behind = receipt(); behind.target.merge_sha = old; behind.target.released_sha = old; behind.installed.embedded_commit = old; behind.install_source.pin_sha = behind.install_source.owner_status.pin_sha = old;
@@ -41,20 +41,107 @@ test('5: absent receipts stay UNKNOWN; corrupt receipt and remote failure never 
   assert.deepEqual(run({}, {}).map(r => [r.status, r.activation]), [['NO-RECEIPT', 'UNKNOWN'], ['NO-RECEIPT', 'UNKNOWN']]);
   assert.equal(run({ golems: { error: 'invalid-json' } }, {})[0].status, 'MISMATCH');
   const rows = run({ golems: receipt() }, {}, { remoteReader: () => { throw Error('ssh failed'); } });
-  assert.equal(rows[0].status, 'LIVE-UNVERIFIED'); assert.equal(rows[1].status, 'UNREACHABLE');
+  assert.equal(rows[0].status, 'INSTALLED_NOT_ACTIVE'); assert.equal(rows[1].status, 'UNREACHABLE');
   assert.equal(run({ golems: receipt() }, {}, { releaseReader: () => { throw Error('offline'); } })[0].status, 'UNKNOWN');
 });
-test('5: release lookup includes prereleases and resolves the tag rather than target branch', () => {
+test('I1 review: golems newest published release wins over same-day hash order', () => {
   const calls = [];
-  const result = latestRelease('EtanHey/golems', (file, args) => {
-    calls.push([file, args]);
-    if (args.includes('--paginate')) return JSON.stringify([[{ tag_name: 'v1.0.0', published_at: '2026-10-01' }],
-      [{ tag_name: 'v1.1.0-rc.1', prerelease: true, published_at: '2026-10-27', target_commitish: 'master' },
-        { tag_name: 'v9', draft: true, published_at: '2026-10-28' }]]);
-    assert.equal(args[1], 'repos/EtanHey/golems/commits/v1.1.0-rc.1'); return JSON.stringify({ sha });
-  });
-  assert.deepEqual(result, { version: '1.1.0-rc.1', tag: 'v1.1.0-rc.1', released_sha: sha });
-  assert.equal(calls.length, 2); assert.ok(calls.every(([file]) => file === 'gh'));
+  const rows = run({}, {}, { releaseReader: (repo, options) => latestRelease(repo, (file, args) => {
+    calls.push(file);
+    if (file === 'git') return `${old}\trefs/tags/v2026.10.27-fb60890\n${sha}\trefs/tags/v2026.10.27-14cf983\n`;
+    if (args.includes('--paginate')) return JSON.stringify([
+      [{ tag_name: 'v2026.10.27-fb60890', published_at: '2026-10-27T10:00:00Z' }],
+      [{ tag_name: 'v2026.10.27-14cf983', published_at: '2026-10-27T15:00:00Z' },
+        { tag_name: 'v2026.10.27-ffffff0', published_at: '2026-10-27T16:00:00Z', draft: true }]]);
+    assert.deepEqual(args, ['api', 'repos/EtanHey/golems/commits/v2026.10.27-14cf983']);
+    return JSON.stringify({ sha });
+  }, options) });
+  assert.deepEqual(rows.map(r => r.latest), ['v2026.10.27-14cf983', 'v2026.10.27-14cf983']);
+  assert.deepEqual(calls, ['gh', 'gh']);
+});
+test('I1 review: latest includes rc tags while TAP compares the highest stable tag', () => {
+  const calls = [];
+  const rows = run({}, {}, { products: { cmuxlayer: 'EtanHey/cmuxlayer' }, tapReader: () => '1.0.0',
+    releaseReader: (repo, options) => latestRelease(repo, (file, args) => {
+      calls.push(file); assert.equal(args[1], '--tags');
+      return `${old}\trefs/tags/v0.9.0\n${sha}\trefs/tags/v1.0.0\n${old}\trefs/tags/v1.1.0-rc.1\n`;
+    }, options) });
+  assert.deepEqual(rows.map(r => [r.latest, r.tap]), [['v1.1.0-rc.1', 'TAP-OK'], ['v1.1.0-rc.1', 'TAP-OK']]);
+  assert.deepEqual(calls, ['git', 'git']);
+});
+test('I1: tags outrank lagging Releases; annotated and lightweight tags resolve to commits', () => {
+  for (const annotated of [true, false]) {
+    const result = latestRelease('EtanHey/cmuxlayer', (file, args) => {
+      assert.equal(file, 'git');
+      assert.deepEqual(args, ['ls-remote', '--tags', 'https://github.com/EtanHey/cmuxlayer.git']);
+      return `${old}\trefs/tags/v0.4.106\n${old}\trefs/tags/archive/v99.0.0\n`
+        + `${annotated ? old : sha}\trefs/tags/v0.4.109\n`
+        + (annotated ? `${sha}\trefs/tags/v0.4.109^{}\n` : '');
+    });
+    assert.deepEqual(result, { version: '0.4.109', tag: 'v0.4.109', released_sha: sha });
+  }
+});
+test('I1: SemVer numeric, prerelease and build precedence; invalid tags are ignored', () => {
+  const tags = ['1.2.3', '1.10.0-alpha', '1.10.0-alpha.2', '1.10.0-alpha.10',
+    '1.10.0-beta', '1.10.0-rc.1', '1.10.0', '1.10.0+build.1'];
+  for (let end = 1; end <= tags.length; end++) {
+    const result = latestRelease('EtanHey/golems', () => tags.slice(0, end)
+      .concat(['archive/v99.0.0', 'v2', '01.0.0', '2.0.0-01'])
+      .map(tag => `${sha}\trefs/tags/${tag}`).reverse().join('\n'));
+    assert.equal(result.version.split('+')[0], tags[end - 1].split('+')[0]);
+  }
+  assert.throws(() => latestRelease('EtanHey/golems', () => `${sha}\trefs/tags/archive/v99.0.0`), /No version tag/);
+});
+test('I1: tap reads remote HEAD and parses casks, explicit formula versions and archive URLs', () => {
+  for (const content of ['  version "1.0.0"',
+    '  url "https://registry.npmjs.org/voicelayer-mcp/-/voicelayer-mcp-1.0.0.tgz"',
+    '  url "https://files.pythonhosted.org/packages/ab/cd/brainlayer-1.0.0.tar.gz"', '  url "https://github.com/EtanHey/cmuxlayer/archive/refs/tags/v1.0.0.tar.gz"']) {
+    assert.equal(readTapVersion('Formula/cmuxlayer.rb', (file, args) => {
+      assert.equal(file, 'gh');
+      assert.deepEqual(args, ['api', 'repos/EtanHey/homebrew-layers/contents/Formula/cmuxlayer.rb']);
+      return JSON.stringify({ encoding: 'base64', content: Buffer.from(content).toString('base64') });
+    }), '1.0.0');
+  }
+  assert.throws(() => readTapVersion('Casks/brainbar.rb', () => JSON.stringify({ content: '' })), /version/i);
+});
+test('I1: TAP equal, behind, ahead and unreadable fail closed independently of receipts', () => {
+  for (const [version, expected] of [['1.0.0', 'TAP-OK'], ['0.9.0', 'TAP-STALE'], ['2.0.0', 'TAP-UNKNOWN'], [null, 'TAP-UNKNOWN']]) {
+    let calls = 0;
+    const rows = run({}, {}, { products: { cmuxlayer: 'EtanHey/cmuxlayer' }, tapReader: path => {
+      calls++; assert.equal(path, 'Formula/cmuxlayer.rb');
+      if (version === null) throw Error('offline'); return version;
+    } });
+    assert.deepEqual(rows.map(r => r.tap), [expected, expected]);
+    assert.equal(calls, 1);
+  }
+  assert.equal(run({}, {})[0].tap, 'TAP-N/A');
+  assert.equal(run({}, {}, { products: { cmuxlayer: 'EtanHey/cmuxlayer' }, tapReader: () => '1.0.0',
+    releaseReader: () => { throw Error('offline'); } })[0].tap, 'TAP-UNKNOWN');
+});
+test('I1: a repository override is not compared with the upstream tap', () => {
+  assert.equal(run({}, {}, { products: { cmuxlayer: 'owner/fork' }, tapReader: () => assert.fail('wrong tap') })[0].tap, 'TAP-UNKNOWN');
+});
+test('I1: TAP-STALE exits nonzero; TAP-UNKNOWN preserves otherwise CURRENT exit', () => {
+  const write = process.stdout.write, exitCode = process.exitCode;
+  try {
+    for (const [version, expected, code] of [['0.9.0', 'TAP-STALE', 1], ['1.0.0', 'TAP-OK', 0], [null, 'TAP-UNKNOWN', 0]]) {
+      let output = ''; process.exitCode = 0;
+      process.stdout.write = chunk => { output += chunk; return true; };
+      printStatus(['golems'], { localHostname: 'fixture-mbp', localReader: () => ({ golems: liveReceipt() }),
+        remoteReader: () => ({ golems: liveReceipt('m1') }), releaseReader: () => release, resolver: verified,
+        tapPaths: { golems: 'Formula/fixture.rb' }, tapReader: () => { if (!version) throw Error('offline'); return version; } });
+      assert.match(output, /\tTAP\t/); assert.ok(output.includes(expected)); assert.equal(process.exitCode, code);
+    }
+  } finally { process.stdout.write = write; process.exitCode = exitCode; }
+});
+test('I1: a LIVE claim without runtime proof is not LIVE-*', () => {
+  for (const ancestry of ['identical', 'ahead']) {
+    const r = receipt(); r.product = 'cmuxlayer'; r.verdict = 'LIVE';
+    r.activation.processes = [{ pid: 1, path: '/fixture/bin', started_at: '2026-10-27T09:01:00Z' }];
+    if (ancestry === 'ahead') { r.target.merge_sha = old; r.target.ancestry.status = 'ahead'; }
+    const row = run({ cmuxlayer: r }, {}, { products: { cmuxlayer: 'EtanHey/cmuxlayer' }, tapReader: () => '1.0.0' })[0];
+    assert.equal(row.activation, 'INSTALLED_NOT_ACTIVE'); assert.equal(row.status, row.activation);
+  }
 });
 test('5: remote transport is exclusively BatchMode ssh to m1 with a read-only reader', () => {
   const result = readRemote(['golems'], (file, args) => {
@@ -97,7 +184,7 @@ test('5: status CLI rejects invalid products without transport', () => {
 });
 
 test('5: M1 hostname uses local receipts as m1; unknown host fails closed', () => {
-  assert.equal(run({ golems: receipt('m1') }, {}, { localHostname: 'fixture-m1' })[1].status, 'LIVE-UNVERIFIED');
+  assert.equal(run({ golems: receipt('m1') }, {}, { localHostname: 'fixture-m1' })[1].status, 'INSTALLED_NOT_ACTIVE');
   assert.throws(() => run({}, {}, { localHostname: 'unknown-host' }), /Unknown local host/);
 });
 test('5: installs descended from the latest release are AHEAD; divergence is UNKNOWN', () => {
@@ -122,9 +209,9 @@ test('5: ancestry lookup compares release to install using mocked GitHub only', 
   }), 'ahead');
 });
 
-test('A2: status leaves claimed bump-commit ancestry LIVE-UNVERIFIED', () => {
+test('A2: status preserves inactive verdict for claimed bump-commit ancestry', () => {
   const r = receipt(); r.target.merge_sha = old; r.target.ancestry.status = 'ahead';
-  assert.equal(run({ golems: r }, {})[0].status, 'LIVE-UNVERIFIED');
+  assert.equal(run({ golems: r }, {})[0].status, 'INSTALLED_NOT_ACTIVE');
   for (const status of ['behind', 'diverged']) {
     r.target.ancestry.status = status;
     assert.equal(run({ golems: r }, {})[0].status, 'MISMATCH');
