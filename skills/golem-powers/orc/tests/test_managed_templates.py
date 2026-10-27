@@ -18,10 +18,17 @@ def recall_modes(text):
 
 
 def test_deploy_t6_preserves_live_socket():
-    t6 = next(line for line in (AGENTS / "deploy-local-prod.md").read_text().splitlines()
-              if line.startswith("| T6 |"))
+    rows = [line for line in (AGENTS / "deploy-local-prod.md").read_text().splitlines()
+            if line.startswith("| T6 |")]
+    assert len(rows) == 1, "Expected exactly one T6 row in deploy-local-prod.md"
+    t6 = rows[0]
     assert "must be empty" not in t6
     assert "Never delete a live socket" in t6
+    assert "lsof ~/.local/state/cmux/cmuxlayer-stated.sock" in t6
+    assert "count distinct owner PIDs" in t6
+    assert "isolated D45 probe daemons may coexist" in t6
+    assert "If the socket is stale/unowned or has 2+ owners, STOP and report to the cmuxlayer lead" in t6
+    assert "Never delete or recreate it yourself" in t6
 
 
 @pytest.mark.parametrize("mode", ["context", "stats", "injections", "sessions", "summary"])
