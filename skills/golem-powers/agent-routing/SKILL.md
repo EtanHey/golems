@@ -217,6 +217,12 @@ Visible cmux fleets: § Dispatch Boundaries › cmux adapter.
 A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The lifecycle, as rules: [references/t3-native.md](references/t3-native.md).
 
 1. **Discover:** call `orchestrator_capabilities` first; pin provider, model and effort in `target` from its live catalog (canon #5).
+   For ordinary Codex implementers, recon and reviewers, explicitly name `target.providerInstanceId: "codex-worker"` every time.
+   `codex` stays for: security (implementers + scans), UI / computer-use recorders, browser / web-QA workers, leads and Etan.
+   A Codex child inherits its parent's Codex instance. A Claude lead naming only the codex driver gets whichever codex instance T3 lists first; always name the instance.
+   Remember: the role picks the model, the work type picks the instance. Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
+   Otherwise each Codex worker thread starts codex-security, computer-history, node_repl and cua_repl (~24.5 MiB, 4 processes), which T3 keeps until settle/idle release.
+   Recreate, upgrade verification and missing-instance fallback: [Codex instances](references/t3-native.md#codex-instances).
 2. **Dispatch:** `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
 3. **Wait:** completion wakes the parent. End the turn; never poll or spawn a watcher for it.
 4. **Settle:** at the PR's terminal state (merged or handed off; never at the first DONE — a PR in review rounds keeps its implementer) (a child with no PR, such as a reviewer or recon: as soon as its report is verified), read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child, `task_cancel` its `taskId`, `unwatch_pull_request` its PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. See § Goal Contract for provider release timing and the worktree caveat.
