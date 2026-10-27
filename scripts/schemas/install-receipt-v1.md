@@ -13,12 +13,22 @@ node --test scripts/tests/install-receipt.test.mjs
 Input must contain the schema fields shown in the test fixture. `write` assigns a
 fresh UUID and UTC `written_at`, checks the local hostname/user, and returns the
 stored receipt plus its `path`. It can downgrade LIVE but never promote a verdict.
-Any present embedded commit, worktree pin or self-report commit differing from
-`target.merge_sha` yields MISMATCH, even with a matching asset digest or MCP probe.
+Any present embedded commit, worktree pin, owner_status.pin_sha or self-report commit differing from
+`target.released_sha` yields MISMATCH, even with a matching asset digest or MCP probe.
 Owner status exit != 0, drift or settings_drift downgrades LIVE to
 INSTALLED_NOT_ACTIVE: activation is unverified, rather than a proven SHA mismatch.
-Existing FAILED/MISMATCH verdicts remain conservative. Commit SHAs and content
-hashes must be lowercase hex; uppercase input is rejected by the schema.
+Existing FAILED/MISMATCH verdicts remain conservative. `target.merge_sha` remains the required 40-hex PR merge being shipped.
+`target.released_sha` is required and identifies the release tag's commit (the
+commit embedded by the build); validate/write lowercase-normalise this field.
+Other commit SHAs and content hashes must be lowercase hex.
+Required `target.ancestry` records `method` (gh-compare or git-merge-base),
+`status` (identical, ahead, behind or diverged) and UTC `checked_at`.
+Compare merge_sha as base to released_sha as head: LIVE requires identical or
+ahead, proving the release contains the merge. Behind/diverged yields MISMATCH;
+missing or incomplete ancestry is invalid. An existing FAILED stays FAILED.
+A release tagged on a later version-bump commit can therefore be LIVE without
+relabeling its embedded commit with the PR merge SHA. With no embedded commit,
+a matching asset digest still requires valid ancestry.
 For hooks-live, use `install_source.mode: worktree-pin`, `pin_sha`, and
 `owner_status` from the owner installer's `--status`; no `release.json` is needed.
 
@@ -70,8 +80,9 @@ are MISMATCH. A missing receipt has activation UNKNOWN, never LIVE. Release
 currency and activation are separate: CURRENT does not upgrade the receipt's
 activation verdict or prove a current runtime probe. For hooks-live,
 `install_source.mode: worktree-pin` and recorded owner status need no
-`release.json`. The pin SHA participates in mismatch detection; CURRENT still
-requires installed.embedded_commit to match target.merge_sha, or a matching
+`release.json`. Release currency compares target.released_sha with the resolved latest tag commit.
+The pin SHA participates in mismatch detection; CURRENT still
+requires installed.embedded_commit to match target.released_sha, or a matching
 installed content hash when no embedded commit exists. A pin alone is not
 installed identity proof. Reads are snapshots of recorded install evidence,
 not a new owner-installer or runtime attestation. Exit is nonzero unless every

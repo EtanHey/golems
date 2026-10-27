@@ -48,7 +48,7 @@ export function latestRelease(repo, exec = execute) {
   // The commits endpoint resolves annotated and lightweight tags to the actual commit.
   const commit = JSON.parse(exec('gh', ['api', `repos/${repo}/commits/${encodeURIComponent(release.tag_name)}`]));
   if (!/^[0-9a-f]{40}$/.test(commit.sha)) throw Error('Unresolved release tag');
-  return { version: release.tag_name.replace(/^v(?=\d)/, ''), tag: release.tag_name, merge_sha: commit.sha };
+  return { version: release.tag_name.replace(/^v(?=\d)/, ''), tag: release.tag_name, released_sha: commit.sha };
 }
 export function compareInstall(repo, releaseSha, installedSha, exec = execute) {
   const result = JSON.parse(exec('gh', ['api', `repos/${repo}/compare/${releaseSha}...${installedSha}`]));
@@ -90,15 +90,15 @@ export function collectStatus({ products: catalog = products, localReader = read
       if (['MISMATCH', 'FAILED'].includes(row.activation) || (owner && (owner.exit !== 0 || owner.drift || owner.settings_drift))) {
         return { ...row, status: 'MISMATCH' };
       }
-      const identity = r.installed.embedded_commit === r.target.merge_sha
+      const identity = r.installed.embedded_commit === r.target.released_sha
         || (!r.installed.embedded_commit && r.installed.content_sha256
           && r.installed.content_sha256 === r.target.release_asset?.sha256);
       if (!identity || !release) return row;
-      if (r.target.merge_sha === release.merge_sha) {
+      if (r.target.released_sha === release.released_sha) {
         return { ...row, status: (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version) ? 'CURRENT' : 'BEHIND' };
       }
       try {
-        const comparison = comparisonReader(repo, release.merge_sha, r.target.merge_sha);
+        const comparison = comparisonReader(repo, release.released_sha, r.target.released_sha);
         return { ...row, status: comparison === 'ahead' ? 'AHEAD' : comparison === 'behind' ? 'BEHIND' : 'UNKNOWN' };
       } catch { return row; }
     });

@@ -9,13 +9,13 @@ const sha = 'a'.repeat(40), old = 'b'.repeat(40);
 function receipt(host = 'mbp') {
   return { schema: 'install-receipt/v1', receipt_id: '00000000-0000-4000-8000-000000000000', written_at: '2026-10-27T10:00:00Z',
     writer: { agent: 'fixture', thread_or_session: 'fixture' }, host: { alias: host, hostname: 'fixture-host', user: 'fixture-user' },
-    product: 'golems', artifact_kind: 'skills-sync', target: { version: '1.0.0', merge_sha: sha, tag: 'v1.0.0' },
+    product: 'golems', artifact_kind: 'skills-sync', target: { version: '1.0.0', merge_sha: sha, released_sha: sha, ancestry: { method: 'gh-compare', status: 'identical', checked_at: '2026-10-27T09:00:00Z' }, tag: 'v1.0.0' },
     installed: { version: '1.0.0', path: '/fixture/hooks-live', embedded_commit: sha, install_finished_at: '2026-10-27T09:00:00Z' },
     install_source: { mode: 'worktree-pin', path: '/fixture/hooks-live', pin_sha: sha,
       owner_status: { command: 'install-hooks.sh --host mbp --status', exit: 0, drift: false, settings_drift: false } },
     activation: { method: 'none', processes: [] }, verdict: 'INSTALLED_NOT_ACTIVE', reasons: [] };
 }
-const release = { version: '1.0.0', tag: 'v1.0.0', merge_sha: sha };
+const release = { version: '1.0.0', tag: 'v1.0.0', released_sha: sha };
 const run = (local, remote, extra = {}) => collectStatus({ products: { golems: 'EtanHey/golems' },
   localReader: () => local, remoteReader: () => remote, releaseReader: () => release, localHostname: 'fixture-mbp', comparisonReader: () => 'behind', ...extra });
 
@@ -25,7 +25,7 @@ test('5: product × host matrix uses hooks-live pin without release.json; never 
     ['golems', 'mbp', 'CURRENT', 'INSTALLED_NOT_ACTIVE'], ['golems', 'm1', 'CURRENT', 'INSTALLED_NOT_ACTIVE']]);
 });
 test('5: older valid installation is BEHIND; identity drift is MISMATCH', () => {
-  const behind = receipt(); behind.target.merge_sha = old; behind.installed.embedded_commit = old; behind.install_source.pin_sha = old;
+  const behind = receipt(); behind.target.merge_sha = old; behind.target.released_sha = old; behind.installed.embedded_commit = old; behind.install_source.pin_sha = old;
   behind.target.version = behind.installed.version = '0.9.0'; behind.target.tag = 'v0.9.0';
   assert.equal(run({ golems: behind }, {}).at(0).status, 'BEHIND');
   for (const mutate of [r => { r.installed.embedded_commit = old; }, r => { r.install_source.pin_sha = old; },
@@ -51,7 +51,7 @@ test('5: release lookup includes prereleases and resolves the tag rather than ta
         { tag_name: 'v9', draft: true, published_at: '2026-10-28' }]]);
     assert.equal(args[1], 'repos/EtanHey/golems/commits/v1.1.0-rc.1'); return JSON.stringify({ sha });
   });
-  assert.deepEqual(result, { version: '1.1.0-rc.1', tag: 'v1.1.0-rc.1', merge_sha: sha });
+  assert.deepEqual(result, { version: '1.1.0-rc.1', tag: 'v1.1.0-rc.1', released_sha: sha });
   assert.equal(calls.length, 2); assert.ok(calls.every(([file]) => file === 'gh'));
 });
 test('5: remote transport is exclusively BatchMode ssh to m1 with a read-only reader', () => {
@@ -99,7 +99,7 @@ test('5: M1 hostname uses local receipts as m1; unknown host fails closed', () =
   assert.throws(() => run({}, {}, { localHostname: 'unknown-host' }), /Unknown local host/);
 });
 test('5: installs descended from the latest release are AHEAD; divergence is UNKNOWN', () => {
-  const r = receipt(); r.target.merge_sha = old; r.installed.embedded_commit = old; r.install_source.pin_sha = old;
+  const r = receipt(); r.target.merge_sha = old; r.target.released_sha = old; r.installed.embedded_commit = old; r.install_source.pin_sha = old;
   r.target.version = r.installed.version = '2.0.0'; r.target.tag = 'v2.0.0';
   assert.equal(run({ golems: r }, {}, { comparisonReader: () => 'ahead' })[0].status, 'AHEAD');
   assert.equal(run({ golems: r }, {}, { comparisonReader: () => 'diverged' })[0].status, 'UNKNOWN');
@@ -118,4 +118,13 @@ test('5: ancestry lookup compares release to install using mocked GitHub only', 
     assert.deepEqual(args, ['api', `repos/EtanHey/golems/compare/${sha}...${old}`]);
     return JSON.stringify({ status: 'ahead' });
   }), 'ahead');
+});
+
+test('A2: status recognises a tag on a bump commit as CURRENT', () => {
+  const r = receipt(); r.target.merge_sha = old; r.target.ancestry.status = 'ahead';
+  assert.equal(run({ golems: r }, {})[0].status, 'CURRENT');
+  for (const status of ['behind', 'diverged']) {
+    r.target.ancestry.status = status;
+    assert.equal(run({ golems: r }, {})[0].status, 'MISMATCH');
+  }
 });
