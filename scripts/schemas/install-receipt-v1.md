@@ -38,6 +38,65 @@ The seat scan is optional in the schema for existing receipts, but missing scans
 stale scans, uncovered active seats or unsuccessful probes downgrade MCP LIVE to
 INSTALLED_NOT_ACTIVE with a specific reason. A version self-report alone is
 insufficient. Other products retain version self-report or MCP probe proof.
+
+### Process-level client proof (I2d FINAL)
+
+`seat_scan.method: client-processes` requires `clients`, `excluded`, and
+`bridge_diff` in addition to `checked_at` and `active_seats`. These fields are
+refused on the two existing seat methods, whose behavior is unchanged.
+
+- `clients[]`: `{pid: positive integer, started_at: UTC Z, command: non-empty
+  string, thread_id: non-empty string or null}`. Record exact argv[0..1] and ps
+  lstart converted from local time to UTC (whole seconds only; fractions are refused).
+- `excluded[]`: `{rule: socat-relay|daemon-process, reason: non-empty string,
+  count: non-negative integer}`.
+- `bridge_diff`: `{from_tag, to_sha, paths: [non-empty strings], changed: boolean}`.
+  `to_sha` must equal `target.released_sha`. `from_tag` must differ from `target.tag`;
+  when `prior.version` is present it must equal that version prefixed with `v`
+  (preserving an existing `v` prefix). The diff is caller-attested evidence;
+  core does not run git or ps. BrainLayer and BrainBar diffs must cover all three
+  core paths: `src/brainlayer/mcp_stdio_bridge.py`, `src/brainlayer/mcp/`, and
+  `src/brainlayer/mcp_socket_config.py`.
+
+Core matches BrainLayer and BrainBar clients only when the command ends with
+`/opt/homebrew/bin/brainlayer-mcp-stdio-bridge`,
+`/opt/homebrew/opt/brainlayer/bin/brainlayer-mcp-stdio-bridge` or
+`/opt/homebrew/Cellar/brainlayer/<version>/bin/brainlayer-mcp-stdio-bridge`,
+optionally preceded by an interpreter executable. Watch, drain, daemon,
+hybrid-helper and supervisor_guard commands are never clients. BrainBar shares
+this matcher because those bridges relay to its `/tmp/brainbar.sock`.
+The Cellar version segment cannot be `.` or `..`. If argv[0] or argv[1] has
+basename `brainlayer-mcp-stdio-bridge` but an unrecognised path, validation refuses
+the receipt even when `bridge_diff.changed=false`.
+
+Core floors both timestamps to whole seconds when comparing
+`started_at <= installed.install_finished_at`:
+the equal second is stale. IDs are `pid:<pid>@<started_at>` so a reused PID with
+a later start is fresh. `active_seats` must equal that derived set; validate and
+write both refuse a differing list, including duplicate claims. When
+`bridge_diff.changed=false`, none are stale and write records why in reasons.
+
+VoiceLayer and VoiceBar are relay products: core derives no stale clients for
+these products, regardless of the recorded commands. The relay rule does not reject commands
+that differ from the observed socat argv or independently verify relay counts.
+A `socat-relay` exclusion must record the observed count (including zero) and
+contain this exact sentence; excluded processes may already be absent from `clients`:
+
+> LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).
+
+VoiceBar shares this rule because its daemon serves that socket. No observed
+client matcher exists for cmuxlayer: this method is refused with
+`no client matcher for cmuxlayer`. Other unconfigured products are also refused.
+
+For this method, MCP LIVE requires a successful `mcp_probe`, no derived stale
+clients, and `checked_at > install_finished_at`, plus the existing identity and
+fresh daemon activation requirements. Reconnected seat claims cannot clear a
+stale process. Otherwise write downgrades LIVE to INSTALLED_NOT_ACTIVE and lists
+stale pairs in reasons. An existing conservative verdict is never promoted.
+The writer's own pre-install bridge still counts: expect the first receipt to
+remain INSTALLED_NOT_ACTIVE until old sessions end. Follow up with one mechanical
+recheck; never poll from a lead.
+
 Existing FAILED/MISMATCH verdicts remain conservative. `target.merge_sha` remains the required 40-hex PR merge being shipped.
 `target.released_sha` is required and identifies the release tag's commit (the
 commit embedded by the build). All commit SHAs and content hashes must be
