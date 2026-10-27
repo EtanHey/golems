@@ -42,6 +42,14 @@ test("shared contract preserves terminal, scratch and archive obligations", () =
   assert.match(contract, /before allocation/);
   assert.match(contract, /verified PR base remote[\s\S]*upstream\/<default>[\s\S]*Never substitute fork-origin coverage/);
   assert.match(contract, /outside[\s\S]*retiring/);
+  const reviewWording = [
+    "For a worktree or clone, require fresh exact remote Git coverage and a clean tree before retirement. A non-Git lane directory uses its host/filesystem identity and artifact-preservation proofs.",
+    "OUTSIDE the child's worktree and any other workspace subtree scheduled for retirement. The scratch resource may later be retired by the authorized collector under its own recorded disposition and the same gates.",
+    "latest, partial, unharvested or timeless research",
+    "custody ledgers/manifests/receipts that are the only preservation proof or have dependent references",
+    "Keep a lightweight local ledger pointer after archival; relocation or compaction must preserve its reference chain outside the retiring scope.",
+  ];
+  assert.deepEqual(reviewWording.filter((phrase) => !contract.includes(phrase)), [], "missing reviewed lifecycle obligations");
 });
 
 test("cleanup root field grammar accepts proof or STOP and rejects incomplete receipts", () => {
