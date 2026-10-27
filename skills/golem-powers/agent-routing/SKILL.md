@@ -65,7 +65,9 @@ Interim route (Etan 2026-09-30/10-01): Daybreak Blue requires a hardware securit
 Security effort is `high` on the interim route (Etan 2026-09-30: "6.1 Sol high implements"); a security phase records it like any other phase effort.
 Deep scans run from `<repo>Codex --scan -E high` (workspace-write, no approvals, computer use off, Locals T3code on by default, Drive read-only and other connectors off, the `codex.security` model, a per-launch Deep Scan cost cap); a bypass seat cannot start one. XS/S security PRs get a diff-scoped Standard scan, M/L or anything touching auth/guards a full Deep scan; the PR body records the scan's reported token use, and cost is never a reason to skip it.
 
-**T3 seats (interim):** If the Deep scan can't start from a T3 seat ("the parent must provide a managed filesystem permission profile"), run a Standard scan with its scope widened to every touched auth/guard path, plus one full-repo Standard pass. Record in the PR body: "Deep scan unavailable from T3 (interim)", both scans' scope, and their reported token use. Cost is never a reason to skip either pass. Fallback when the PR still needs Deep: a cmux `<repo>Codex --scan -E high` pane or the M1 lane, routed by the lead.
+**T3 seats (interim):** If the Deep scan can't start from a T3 seat ("the parent must provide a managed filesystem permission profile"), run a Standard scan with its scope widened to every touched auth/guard path, plus one full-repo Standard pass. Record in the PR body: "Deep scan unavailable from T3 (interim)", both scans' scope, and their reported token use. Cost is never a reason to skip either pass.
+
+Proven T3 Deep-scan route: <TBD by lead>
 
 When Daybreak Blue returns, evaluate its first security PRs: if they show more review rounds or more defects than the prior route, flip the pair (`claude.judgment` implements, Daybreak Blue reviews) and record the evidence in the PR bodies (carried from canon #1, 2026-09-29).
 

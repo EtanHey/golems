@@ -39,11 +39,8 @@ def test_managed_profile_failure_requires_both_standard_passes_and_receipts():
         assert phrase in text, phrase
 
 
-def test_still_required_deep_scan_goes_through_the_lead():
+def test_deep_scan_route_awaits_lead_proof_without_retired_pane_fallback():
     text = interim_guidance()
-    for phrase in (
-        "Fallback when the PR still needs Deep",
-        "cmux `<repo>Codex --scan -E high` pane",
-        "M1 lane, routed by the lead",
-    ):
-        assert phrase in text, phrase
+    assert "Proven T3 Deep-scan route: <TBD by lead>" in text
+    assert "cmux" not in text
+    assert "<repo>Codex --scan" not in text
