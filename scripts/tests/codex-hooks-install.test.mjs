@@ -145,6 +145,11 @@ for (const host of ["mbp", "m1"]) {
       RATCHET_SKILL_CONFIG: path.join(f.root, "fixture-parity-not-configured.json"),
       GOLEMS_HEAVY_LOCK: path.join(f.root, "fixture-heavy.lock"), GOLEMS_HEAVY_MIN_FREE_GB: "0", GOLEMS_WORKTREE_MIN_FREE_GB: "0" };
     const bin = path.join(f.root, "machine-bin"); mkdirSync(bin);
+    const probes = path.join(f.root, "owner-status-probes"), preload = path.join(bin, "count-probes.cjs");
+    writeFileSync(preload, `const cp=require('node:child_process'),fs=require('node:fs'),spawn=cp.spawnSync;
+cp.spawnSync=function(file,args,options){if(file===process.execPath&&args.includes('--status'))fs.appendFileSync(${JSON.stringify(probes)},'probe\\n');return spawn.call(this,file,args,options);};
+require('node:module').syncBuiltinESMExports();\n`);
+    env.NODE_OPTIONS = [process.env.NODE_OPTIONS, `--require=${preload}`].filter(Boolean).join(" ");
     writeFileSync(path.join(bin, "scutil"), `#!/bin/sh\nprintf '%s\\n' '${host === "mbp" ? "MacBook-Pro" : "Locals-MacBook-Pro"}'\n`, { mode: 0o755 });
     env.PATH = `${bin}:${env.PATH}`;
     delete env.GOLEMS_HEAVY_SUITE_HELD;
@@ -154,6 +159,7 @@ for (const host of ["mbp", "m1"]) {
     const dry = invoke("--update", selected); expect(dry.status).toBe(0);
     expect(readdirSync(f.codexHome)).toEqual(["config.toml"]);
     const applied = invoke("--update", selected, "--apply"); expect(applied.status).toBe(0);
+    expect(readFileSync(probes, "utf8")).toBe("probe\n");
     expect(applied.stdout).toContain("plain codex with no --profile");
     const installed = JSON.parse(readFileSync(path.join(f.codexHome, "hooks.json")));
     expect(installed.hooks.PreToolUse.length).toBe(2);
@@ -165,6 +171,7 @@ for (const host of ["mbp", "m1"]) {
     expect(status.stdout).toContain("trust=missing");
     const hooks = readFileSync(path.join(f.codexHome, "hooks.json"));
     expect(invoke("--apply").status).toBe(0);
+    expect(readFileSync(probes, "utf8")).toBe("probe\nprobe\n");
     expect(readFileSync(path.join(f.codexHome, "hooks.json"))).toEqual(hooks);
     git("worktree", "unlock", f.live);
   });
