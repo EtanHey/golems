@@ -3,12 +3,14 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { buildRelease } from '../release/build-release.mjs';
 
 const repo = resolve(import.meta.dir, '../..'), installer = join(repo, 'scripts/release/install.sh');
 setDefaultTimeout(60_000);
-const root = realpathSync(mkdtempSync(join(repo, '.golems-install-test-'))), source = join(root, 'source'), minimal = join(root, 'bin');
+const root = realpathSync(mkdtempSync(join(tmpdir(), 'golems-install-test-'))), source = join(root, 'source'), minimal = join(root, 'bin');
+afterAll(() => rmSync(root, { recursive: true, force: true }));
 let release, serial = 0;
 const git = (...args) => execFileSync('git', ['-C', source, ...args], { encoding: 'utf8' }).trim();
 beforeAll(() => {
@@ -30,7 +32,6 @@ beforeAll(() => {
     symlinkSync(execFileSync('/usr/bin/which', [name], { encoding: 'utf8' }).trim(), join(minimal, name));
   }
 }, 60_000);
-afterAll(() => rmSync(root, { recursive: true, force: true }));
 function home() { const dir = join(root, `home-${serial++}`); mkdirSync(dir); return dir; }
 function install(dir, extra = [], tarball = release.tarball, sums = join(root, 'assets/SHA256SUMS')) {
   return spawnSync('/bin/sh', [installer, '--from-file', tarball, '--sums', sums, ...extra], { env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8' });
@@ -523,7 +524,7 @@ test('release receipt fixture ignores an inherited unknown hosted-runner hostnam
   }
   ok(update(dir, env, release));
   const receipt = JSON.parse(readFileSync(join(dir, '.local/state/golems/install-receipts/golems/latest-skills-sync-release-channel.json')));
-  expect(receipt.host).toMatchObject({ alias: 'm1', hostname: 'fixture-m1' });
+  expect(receipt.host).toMatchObject({ alias: 'm1-pro', hostname: 'fixture-m1' });
   expect(receipt.verdict).toBe('INSTALLED_NOT_ACTIVE');
 });
 function upgrade(change = () => {}) {
