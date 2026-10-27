@@ -462,8 +462,8 @@ test("the shipped manifest names no E1 hook and retires the M1 owner profiles", 
   expect(realManifest.hosts.client.some((h) => h.event === "Stop")).toBe(false);
 });
 
-test("every shipped host set carries the same git-guardian and tmp-block guards", () => {
-  for (const id of ["pre_tool_use", "tmp-block"]) {
+test("every shipped host set carries the same heredoc-guard, git-guardian and tmp-block guards", () => {
+  for (const id of ["heredoc-guard", "pre_tool_use", "tmp-block"]) {
     const mbp = realManifest.hosts.mbp.filter((hook) => hook.id === id);
     expect(mbp).toHaveLength(1);
     expect(mbp[0].timeout).toBe(5);
@@ -1093,11 +1093,11 @@ const closedDeny = { decision: "block", reason: REPAIR_REASON, hookSpecificOutpu
 const callHook = (fx, command, input = "{}") => spawnSync("sh", ["-c", command],
   { input, encoding: "utf8", env: { ...fixtureEnv(fx), HOME: fx.home } });
 
-test("the policy gates (tmp-block, git-guardian, human-confirm) opt into fail-closed on every host where they run", () => {
+test("the policy gates (heredoc-guard, tmp-block, git-guardian, human-confirm) opt into fail-closed on every host where they run", () => {
   for (const entries of Object.values(realManifest.hosts)) {
     expect(entries.filter((e) => e.command?.includes("--fail-closed")).map((e) => e.id).sort())
-      .toEqual(["human-confirm-gate", "pre_tool_use", "tmp-block"]);
-    for (const id of ["human-confirm-gate", "pre_tool_use", "tmp-block"]) {
+      .toEqual(["heredoc-guard", "human-confirm-gate", "pre_tool_use", "tmp-block"]);
+    for (const id of ["heredoc-guard", "human-confirm-gate", "pre_tool_use", "tmp-block"]) {
       expect(entries.find((e) => e.id === id).timeout).toBeGreaterThanOrEqual(2);  // watchdog budget = timeout - 1
       expect(entries.find((e) => e.id === id).command).toContain("golems-fail-open.py --fail-closed ");
     }
