@@ -10,7 +10,7 @@ setup() {
   fi
   TEST_ROOT="$(mktemp -d "$fixture_parent/test.XXXXXXXX")"
   export HOME="$TEST_ROOT/home" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
-  unset GOLEMS_WORKTREE_GC_PIN_ROOT
+  unset GOLEMS_WORKTREE_GC_PIN_ROOT GOLEMS_WORKTREE_GC_REEXEC
   mkdir -p "$HOME"
   export WORKTREE_GC_REPORT_DIR="$TEST_ROOT/report" WORKTREE_GC_T3_DB="$TEST_ROOT/t3.sqlite"
   export WORKTREE_GC_CMUX_REGISTRY="$TEST_ROOT/registry.jsonl" GOLEMS_HEAVY_LOCK="$TEST_ROOT/lock"
@@ -113,6 +113,15 @@ make_nightly_pin() {
   cp -R "$REPO_ROOT/scripts/lib/." "$repo/scripts/lib/"
   git init -q -b master "$repo"
   printf '.worktrees/\ndocs.local/\n' > "$repo/.git/info/exclude"
+  # Model the production safety boundary with local fixture-only commits.
+  git -C "$repo" -c user.name=Fixture -c user.email=fixture@example.com commit -qm 'before GC safety floor' --allow-empty
+  git -C "$repo" -c user.name=Fixture -c user.email=fixture@example.com commit -qm 'GC safety floor' --allow-empty
+  local floor
+  floor="$(git -C "$repo" rev-parse HEAD)"
+  sed -E "s/^GC_MIN_SAFE_SHA=[a-f0-9]+$/GC_MIN_SAFE_SHA=$floor/" \
+    "$repo/scripts/worktree-gc-nightly.sh" > "$repo/scripts/nightly.fixture"
+  mv "$repo/scripts/nightly.fixture" "$repo/scripts/worktree-gc-nightly.sh"
+  chmod +x "$repo/scripts/worktree-gc-nightly.sh"
   git -C "$repo" add scripts
   git -C "$repo" -c user.name=Fixture -c user.email=fixture@example.com commit -qm 'nightly fixture'
   git -C "$repo" update-ref refs/remotes/origin/master HEAD

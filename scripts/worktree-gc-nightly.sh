@@ -10,14 +10,38 @@
 # Extra arguments pass through to worktree-gc.sh --apply.
 set -uo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-source "$HERE/lib/worktree-git-env.sh"
+GC_MIN_SAFE_SHA=21051c815433bab7cb77a0633e06b19c10fb2cad
 PIN="${GOLEMS_WORKTREE_GC_PIN_ROOT-$HOME/Gits/golems/.worktrees/hooks-live}"
 PIN_SHA=unavailable
+# Match install-hooks.mjs: porcelain must not trust flags, caches or replacements.
+git() {
+  GIT_NO_REPLACE_OBJECTS=1 command git -c core.fsmonitor=false -c core.untrackedCache=false "$@"
+}
+log_pin_lag() {
+  local lag
+  lag="$(git -C "$PIN" rev-list --count HEAD..refs/remotes/origin/master 2>/dev/null)" || lag=unavailable
+  if [[ "$lag" =~ ^[0-9]+$ ]]; then
+    echo "worktree-gc-nightly: pin is $lag commits behind origin/master" >&2
+  else
+    echo 'worktree-gc-nightly: pin lag unavailable' >&2
+  fi
+}
 refuse_pin() {
+  log_pin_lag
   echo "worktree-gc-nightly: REFUSE $1 (pin=$PIN, pin SHA $PIN_SHA)" >&2
   exit 2
 }
+if [[ "${GOLEMS_WORKTREE_GC_PIN_ROOT+x}" == x ]]; then
+  echo "worktree-gc-nightly: WARNING GOLEMS_WORKTREE_GC_PIN_ROOT override in use: $PIN" >&2
+fi
+PYTHON=/usr/bin/python3
+[[ -x "$PYTHON" ]] || PYTHON=python3
+realpath() {
+  "$PYTHON" -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$1"
+}
+WRAPPER="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || refuse_pin 'cannot resolve wrapper'
+HERE="$(cd "$(dirname "$WRAPPER")" && pwd -P)" || refuse_pin 'cannot resolve wrapper directory'
+source "$HERE/lib/worktree-git-env.sh"
 
 # The root checkout can lag the installed safety fixes. Never execute its GC.
 [[ -d "$PIN" ]] || refuse_pin 'pin missing'
@@ -31,17 +55,33 @@ common="$(git -C "$PIN" rev-parse --git-common-dir 2>/dev/null)" || refuse_pin '
 [[ "$common" == /* ]] || common="$PIN/$common"
 common="$(cd "$common" && pwd -P)" || refuse_pin 'not a golems worktree'
 main="$(golems_main_repo "$HOME/Gits/golems" 2>/dev/null)" || refuse_pin 'not a golems worktree'
-main_admin="$(git -C "$main" rev-parse --absolute-git-dir)" || refuse_pin 'not a golems worktree'
+main_admin="$(git -C "$main" rev-parse --absolute-git-dir 2>/dev/null)" || refuse_pin 'not a golems worktree'
 [[ "$common" == "$main_admin" && "$admin" != "$common" ]] || refuse_pin 'not a golems worktree'
+replaced="$(git -C "$PIN" for-each-ref --format='%(refname)' refs/replace/ 2>/dev/null)" || refuse_pin 'cannot inspect replace refs'
+[[ -z "$replaced" ]] || refuse_pin 'replace refs present'
+flags="$(git -C "$PIN" ls-files -v 2>/dev/null)" || refuse_pin 'pin index unavailable'
+while IFS= read -r entry; do
+  [[ ! "$entry" =~ ^(S|[a-z])[[:space:]] ]] || refuse_pin 'pin dirty (index flags hide content)'
+done <<< "$flags"
 pin_status="$(git -C "$PIN" status --porcelain --untracked-files=all 2>/dev/null)" || refuse_pin 'pin status unavailable'
 [[ -z "$pin_status" ]] || refuse_pin 'pin dirty'
-# Use the currently fetched ref; network availability must never waive ancestry.
+git -C "$PIN" diff --quiet --no-ext-diff --ignore-submodules=none HEAD -- 2>/dev/null || refuse_pin 'pin dirty (HEAD content differs)'
+# Use the currently fetched full ref; network availability must never waive ancestry.
 git -C "$PIN" rev-parse --verify refs/remotes/origin/master >/dev/null 2>&1 || refuse_pin 'origin/master missing'
-git -C "$PIN" merge-base --is-ancestor HEAD origin/master 2>/dev/null || refuse_pin 'HEAD is not on origin/master'
-GC_SCRIPT="$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$PIN/scripts/worktree-gc.sh" 2>/dev/null)" || refuse_pin 'cannot resolve GC script'
+git -C "$PIN" merge-base --is-ancestor HEAD refs/remotes/origin/master 2>/dev/null || refuse_pin 'HEAD is not on origin/master'
+git -C "$PIN" merge-base --is-ancestor "$GC_MIN_SAFE_SHA" HEAD 2>/dev/null || refuse_pin 'pin predates GC safety floor'
+GC_SCRIPT="$(realpath "$PIN/scripts/worktree-gc.sh" 2>/dev/null)" || refuse_pin 'cannot resolve GC script'
 [[ "$GC_SCRIPT" == "$PIN/"* ]] || refuse_pin 'GC script outside pin'
 [[ -f "$GC_SCRIPT" ]] || refuse_pin 'GC script missing'
+log_pin_lag
 echo "worktree-gc-nightly: verified pin SHA $PIN_SHA ($PIN)" >&2
+if [[ "$WRAPPER" != "$PIN/"* ]]; then
+  [[ -z "${GOLEMS_WORKTREE_GC_REEXEC:-}" ]] || refuse_pin 're-exec loop'
+  pinned_wrapper="$(realpath "$PIN/scripts/worktree-gc-nightly.sh" 2>/dev/null)" || refuse_pin 'cannot resolve pinned wrapper'
+  [[ "$pinned_wrapper" == "$PIN/"* && -x "$pinned_wrapper" ]] || refuse_pin 'pinned wrapper missing or outside pin'
+  export GOLEMS_WORKTREE_GC_REEXEC=1
+  exec "$PIN/scripts/worktree-gc-nightly.sh" "$@"
+fi
 
 # Nightly must prove registry coverage; standalone GC may omit a registry.
 export WORKTREE_GC_CMUX_REGISTRY="${WORKTREE_GC_CMUX_REGISTRY-$HOME/.cmuxlayer/session-registry.jsonl}"

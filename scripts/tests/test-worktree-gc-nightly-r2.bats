@@ -18,7 +18,7 @@ STUB
   # Exercise a copied wrapper, including its unsafe pre-fix sibling fallback.
   driver="$TEST_ROOT/driver"
   mkdir -p "$driver/lib"
-  cp "$REPO_ROOT/scripts/worktree-gc-nightly.sh" "$driver/"
+  cp "$NIGHTLY_PIN/scripts/worktree-gc-nightly.sh" "$driver/"
   cp "$GC_ENV_SCRUB" "$driver/lib/"
   cp "$stub" "$driver/worktree-gc.sh"
   NIGHTLY_DRIVER="$driver/worktree-gc-nightly.sh"
@@ -27,7 +27,7 @@ STUB
 assert_pin_refusal() {
   [ "$status" -ne 0 ]
   [[ "$output" == *"worktree-gc-nightly: REFUSE"*"$1"* ]] || false
-  [ "$(printf '%s\n' "$output" | wc -l)" -eq 1 ]
+  [ "$(printf '%s\n' "$output" | sed -n '/worktree-gc-nightly: REFUSE/p' | wc -l)" -eq 1 ]
   [[ "$output" =~ pin\ SHA\ ([a-f0-9]{40}|unavailable) ]] || false
   [ ! -e "$GC_CALLS" ]
 }
@@ -202,4 +202,142 @@ finally:
 PY
   [ "$status" -eq 0 ]
   [ -d "$worktree" ]
+}
+
+
+@test "nightly B1: skip-worktree edited GC refuses before invocation" {
+  prepare_stub_pin
+  git -C "$NIGHTLY_PIN" update-index --skip-worktree scripts/worktree-gc.sh
+  printf '\n# hidden edit\n' >> "$NIGHTLY_PIN/scripts/worktree-gc.sh"
+  [ -z "$(git -C "$NIGHTLY_PIN" status --porcelain)" ]
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'pin dirty'
+}
+
+@test "nightly B1: assume-unchanged edited GC refuses before invocation" {
+  prepare_stub_pin
+  git -C "$NIGHTLY_PIN" update-index --assume-unchanged scripts/worktree-gc.sh
+  printf '\n# hidden edit\n' >> "$NIGHTLY_PIN/scripts/worktree-gc.sh"
+  [ -z "$(git -C "$NIGHTLY_PIN" status --porcelain)" ]
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'pin dirty'
+}
+
+@test "nightly B1: replace ref refuses before invocation" {
+  prepare_stub_pin
+  git -C "$NIGHTLY_PIN" replace HEAD HEAD~1
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'replace refs'
+}
+
+@test "nightly R1: pre-floor pin refuses before invocation" {
+  prepare_stub_pin
+  # Keep runnable files but fork history before the synthetic safety floor.
+  old="$(printf 'pre-floor pin\n' | git -C "$NIGHTLY_PIN" -c user.name=Fixture -c user.email=fixture@example.com commit-tree 'HEAD^{tree}' -p HEAD~2)"
+  git -C "$NIGHTLY_PIN" checkout -q --detach "$old"
+  git -C "$NIGHTLY_PIN" update-ref refs/remotes/origin/master HEAD
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'pin predates GC safety floor'
+}
+
+@test "nightly R1: production safety floor is the full ratified commit" {
+  run sed -n '/^GC_MIN_SAFE_SHA=/p' "$REPO_ROOT/scripts/worktree-gc-nightly.sh"
+  [ "$output" = 'GC_MIN_SAFE_SHA=21051c815433bab7cb77a0633e06b19c10fb2cad' ]
+}
+
+@test "nightly N1: logs zero lag and arbitrarily old safe pins without a freshness limit" {
+  prepare_stub_pin
+  run /bin/bash "$NIGHTLY_DRIVER"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'pin is 0 commits behind origin/master'* ]] || false
+  for n in {1..12}; do
+    git -C "$HOME/Gits/golems" -c user.name=Fixture -c user.email=fixture@example.com commit -qm 'new master' --allow-empty
+  done
+  git -C "$HOME/Gits/golems" update-ref refs/remotes/origin/master HEAD
+  run /bin/bash "$NIGHTLY_DRIVER"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'pin is 12 commits behind origin/master'* ]]
+}
+
+@test "nightly N2: outside wrapper re-execs pinned wrapper and sources pinned lib" {
+  prepare_stub_pin
+  export LIB_CALLS="$TEST_ROOT/lib-calls"
+  printf '\nprintf "driver\\n" >> "$LIB_CALLS"\n' >> "$driver/lib/worktree-git-env.sh"
+  printf '\nprintf "pin\\n" >> "$LIB_CALLS"\n' >> "$NIGHTLY_PIN/scripts/lib/worktree-git-env.sh"
+  git -C "$NIGHTLY_PIN" add scripts/lib/worktree-git-env.sh
+  git -C "$NIGHTLY_PIN" -c user.name=Fixture -c user.email=fixture@example.com commit -qm 'record pinned library'
+  git -C "$NIGHTLY_PIN" update-ref refs/remotes/origin/master HEAD
+  run /bin/bash "$NIGHTLY_DRIVER" --idle-hours 12
+  [ "$status" -eq 0 ]
+  [ "$(cat "$LIB_CALLS")" = $'driver\npin' ]
+  [ "$(cat "$GC_CALLS")" = "$NIGHTLY_PIN/scripts/worktree-gc.sh --apply --idle-hours 12" ]
+}
+
+@test "nightly N2: re-exec marker refuses an outside wrapper instead of looping" {
+  prepare_stub_pin
+  run env GOLEMS_WORKTREE_GC_REEXEC=1 /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 're-exec loop'
+}
+
+@test "nightly N3: override emits a loud warning with its path even on refusal" {
+  prepare_stub_pin
+  for path in "$NIGHTLY_PIN" "$TEST_ROOT/missing"; do
+    run env GOLEMS_WORKTREE_GC_PIN_ROOT="$path" /bin/bash "$NIGHTLY_DRIVER"
+    [[ "$output" == *"WARNING GOLEMS_WORKTREE_GC_PIN_ROOT override in use: $path"* ]] || false
+  done
+}
+
+@test "nightly N4: local origin/master cannot shadow the remote ancestry ref" {
+  prepare_stub_pin
+  commit_fixture_file "$NIGHTLY_PIN" side-only
+  git -C "$NIGHTLY_PIN" update-ref refs/heads/origin/master HEAD
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'HEAD is not on origin/master'
+}
+
+@test "nightly python nit: system python wins over a PATH shim" {
+  prepare_stub_pin
+  [[ -x /usr/bin/python3 ]] || skip 'system python absent; fallback is required'
+  mkdir "$TEST_ROOT/bin"
+  printf '#!/bin/sh\nexit 99\n' > "$TEST_ROOT/bin/python3"
+  chmod +x "$TEST_ROOT/bin/python3"
+  run env PATH="$TEST_ROOT/bin:$PATH" /bin/bash "$NIGHTLY_DRIVER"
+  [ "$status" -eq 0 ]
+  [ -f "$GC_CALLS" ]
+}
+
+@test "nightly docs R1: safety floor maintenance is explicit" {
+  run cat "$REPO_ROOT/docs/worktree-gc.md"
+  [[ "$output" == *'Raise the floor with every GC safety fix.'* ]]
+}
+
+@test "nightly docs N5: refused-night log visibility is explicit" {
+  run cat "$REPO_ROOT/docs/worktree-gc.md"
+  [[ "$output" == *'Refused nights are visible only in the launchd log (`StandardErrorPath`)'* ]]
+}
+
+
+@test "nightly B1: HEAD diff catches edited GC even if porcelain omits it" {
+  prepare_stub_pin
+  export REAL_GIT="$(command -v git)"
+  mkdir "$TEST_ROOT/bin"
+  cat > "$TEST_ROOT/bin/git" <<'SHIM'
+#!/bin/bash
+for arg in "$@"; do
+  [[ "$arg" != status ]] || exit 0
+ done
+exec "$REAL_GIT" "$@"
+SHIM
+  chmod +x "$TEST_ROOT/bin/git"
+  printf '\n# content changed\n' >> "$NIGHTLY_PIN/scripts/worktree-gc.sh"
+  run env PATH="$TEST_ROOT/bin:$PATH" /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'pin dirty'
+}
+
+@test "nightly N1: refused dirty pin still logs its measured lag" {
+  prepare_stub_pin
+  touch "$NIGHTLY_PIN/untracked"
+  run /bin/bash "$NIGHTLY_DRIVER"
+  assert_pin_refusal 'pin dirty'
+  [[ "$output" == *'pin is 0 commits behind origin/master'* ]]
 }
