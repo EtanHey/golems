@@ -20,7 +20,7 @@ const CAP = 120;
 const EXCEPTIONS = {
   "agent-routing": 278 /* 279 -> 278 (PR15: "Invoke before any git/gh/grep, even for context" lead names the competing first action; "pick provider/model" and the "Triggers:" label dropped); 285 -> 279 (skill-edits PR1: ordinary dispatch phrases front-loaded, "Route work…" lead and "routing"/"worker assignment"/"delegate"/"parallel agents" dropped as covered by the skill name, "Dispatch a worker", "delegate_task" and "in parallel"/"fan out"); earlier: absorbed cursor-multitask (pinned 222) and its fan-out triggers: 119 + 222 -> 259; +26 for the #208 Gemini-gatherer ruling ("who gathers", "gemini gatherer"; bare "multitask" dropped as a substring of "/multitask") */,
   "audio-dashboard": 168 /* +5: spine test pins the literal "real word-click-seek read-along dashboard" */,
-  "drive-filing": 282 /* absorbed drive-usage (250), google-drive-archive (105), archive (107): 462 -> 282 */,
+  "drive-filing": 281 /* 282 -> 281 (R2: "Gemini Deep Research/queries" exclusion); absorbed drive-usage (250), google-drive-archive (105), archive (107): 462 -> 282 */,
   "ecosystem-health": 199 /* absorbed context-check (109) and its triggers: 105 + 109 -> 199 */,
   "codex-workflows": 142,
   "collab-monitor": 286 /* absorbed cron-payload-discipline (107) and its triggers: 185 + 107 -> 286 */,
@@ -107,6 +107,9 @@ test("Gemini deep research requests name the research skill and exclude quick se
   const description = parseDescription(path.join(skillsDir, "gemini-research/SKILL.md"));
   expect(description).toMatch(/Gemini Deep Research/);
   expect(description).toContain("NotebookLM");
+  expect(description).toContain("compare options");
+  expect(description).not.toContain("docs link");
+  expect(description).toContain("or report links");
   expect(description).toMatch(/NOT for .*Exa web search.*drive-filing/);
 });
 
@@ -115,7 +118,8 @@ test("incoming research docs links name lifecycle handling", () => {
   expect(description).toContain("research docs link");
   expect(description).toContain("Google Docs");
   expect(description).toContain("Deep Research report URL");
-  expect(description).toContain("NOT for drive-filing");
+  expect(description).toContain("Research corpus");
+  expect(description).toContain("NOT drive-filing");
 });
 
 test("Brain Drive upload requests name filing and exclude deep research", () => {

@@ -1,6 +1,6 @@
 ---
 name: gemini-research
-description: "Deep research: Gemini Deep Research, NotebookLM, synthesis. NOT for Exa web search or drive-filing."
+description: "Deep research, compare options: Gemini Deep Research, NotebookLM. NOT for Exa web search, drive-filing or report links."
 ---
 
 # Gemini Deep Research — MCP-Native Workflow
@@ -10,6 +10,20 @@ Create notebooks, add sources, run research, query content, and generate artifac
 Triggers on: gemini research, Gemini Deep Research, NotebookLM, notebook research, add sources to notebook, generate podcast, create audio overview, study materials, slides, quizzes, and source-grounded reports.
 
 > **🔑 DRIVE-WORKSPACE RULE (Etan, standing — never violate):** Etan's Gemini has his Google Drive workspace CONNECTED. Every deep-research prompt must REFERENCE the relevant Google Doc(s) by NAME (e.g. *"ground this in my 'Context Strategy' doc in my Drive"*) so Gemini pulls them itself via the Drive connector. **NEVER instruct Etan to attach/upload files** — he should never have to attach anything. Reference doc names, not attachments.
+
+## Grounding prep
+
+When asked to research this, find out what's current, or compare options, check
+whether the question needs current project state. If it does, the lead dispatches
+a sub-agent to run `/research-lifecycle` preparation first: verify local context,
+refresh the Drive grounding corpus, and return exact grounding doc names and the
+lifecycle receipt. Pick its execution profile per `/agent-routing` § Execution
+capability (Drive write + shell); a read-only gatherer may only report staleness.
+Do not emit the prompt while preparation is blocked.
+
+Include one line in the hand-off to Etan: "Before Start Research, check that Drive
+is on as a Deep Research source so it reads the named grounding docs."
+Keep the existing grounding and prompt-author START/EDIT gates below.
 
 ## ROUTING — Three Gemini/NotebookLM UIs (READ FIRST)
 
@@ -31,19 +45,6 @@ Triggers on: gemini research, Gemini Deep Research, NotebookLM, notebook researc
 ## Gemini Deep Research (Standalone UI at gemini.google.com)
 
 **Separate from NotebookLM.** Distinct interaction model. Use this when you need broad WEB research with source gathering and a plan-review flow BEFORE the research runs.
-
-### Grounding prep
-
-When asked to research this, find out what's current, or compare options, check
-whether the question needs current project state. If it does, the lead dispatches
-a gatherer sub-agent to run `/research-lifecycle` preparation first: verify local
-context, refresh the Drive grounding corpus, and return exact grounding doc names
-and the lifecycle receipt. Follow `/agent-routing` for a gatherer with the tools
-needed; do not emit the prompt while preparation is blocked.
-
-Include one line in the hand-off to Etan: "Give Gemini Deep Research access to
-Drive so it can read the current corpus; the prompt names the grounding docs."
-Keep the existing grounding and prompt-author START/EDIT gates below.
 
 | Feature | Details |
 |---|---|
