@@ -30,6 +30,15 @@
   <div class="df-story-top" id="df-story-top"><p class="df-story-count" id="df-story-count"></p><button type="button" class="df-story-copy">Copy answers</button><button type="button" class="df-story-exit" id="df-story-exit">List view</button></div>
   <div class="df-sheet-backdrop" id="df-sheet-backdrop" hidden></div>
   <p class="df-copy-state" id="df-copy-state" aria-live="polite"></p>
+  <button type="button" id="df-cite" hidden aria-haspopup="dialog" aria-controls="df-note-dialog">❞ Cite</button>
+  <dialog class="df-note-dialog" id="df-note-dialog" aria-labelledby="df-note-title" aria-describedby="df-note-quote" aria-modal="true">
+    <h2 id="df-note-title">Cite &amp; note</h2><p id="df-note-card"></p>
+    <blockquote id="df-note-quote"></blockquote>
+    <label for="df-note-text">Your note</label><textarea id="df-note-text" rows="4"></textarea>
+    <p id="df-note-error" role="alert"></p>
+    <div class="df-note-actions"><button type="button" id="df-note-delete" hidden>Delete note</button><button type="button" id="df-note-copy-draft" hidden>Copy draft</button><button type="button" id="df-note-cancel">Cancel</button><button type="button" id="df-note-save">Save note</button></div>
+    <div id="df-note-list" aria-label="Saved notes"></div>
+  </dialog>
   <script id="tpdata" type="application/json">{{TPDATA}}</script>
   <script>{{SCRIPT}}</script>
 </body>

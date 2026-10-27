@@ -33,14 +33,16 @@
   function chipFor(card){return document.querySelector('.df-chip[data-chip-for="'+card.dataset.decision+'"]');}
   function revealChip(chip){if(!chipStrip||!chip)return;var left=chip.offsetLeft,right=left+chip.offsetWidth;if(left<chipStrip.scrollLeft)chipStrip.scrollLeft=Math.max(0,left-12);else if(right>chipStrip.scrollLeft+chipStrip.clientWidth)chipStrip.scrollLeft=right-chipStrip.clientWidth+12;}
   function markIndex(card,name,on){var link=indexLink(card);if(link)link.classList.toggle(name,on);var chip=chipFor(card);if(!chip)return;chip.classList.toggle(name,on);if(name==="is-active"){if(on){chip.setAttribute("aria-current","true");revealChip(chip);}else chip.removeAttribute("aria-current");}}
-  function persist(){try{localStorage.setItem(KEY,JSON.stringify(store));storageState.textContent="Answers saved locally.";storageState.classList.remove("is-error");}catch(error){storageState.textContent="Storage unavailable · use Copy answers";storageState.classList.add("is-error");}updateCounts();}
+  function persist(){var saved=true;try{localStorage.setItem(KEY,JSON.stringify(store));storageState.textContent="Answers saved locally.";storageState.classList.remove("is-error");}catch(error){saved=false;storageState.textContent="Storage unavailable · use Copy answers";storageState.classList.add("is-error");}updateCounts();return saved;}
   function savePrefs(){store._prefs={rate:rate,view:view};persist();}
   function checklistBoxes(card){return Array.from(card.querySelectorAll(".df-checklist .df-check-input"));}
   function checksFor(card){var value=store[card.dataset.decision+"-checks"];return value&&typeof value==="object"?value:{};}
   function checkedCount(card){var checks=checksFor(card);return checklistBoxes(card).filter(function(box){return checks[box.dataset.checkIndex]===true;}).length;}
   function checklistComplete(card){var total=checklistBoxes(card).length;return total>0&&checkedCount(card)===total;}
-  function answered(card){var id=card.dataset.decision;return Boolean(store[id]||String(store[id+"-free"]||"").trim()||checklistComplete(card));}
-  function updateCounts(){cards.forEach(function(card){var done=answered(card);card.classList.toggle("is-answered",done);if(done){var offer=card.querySelector(".df-answer-open");if(offer)offer.classList.remove("is-offer");}markIndex(card,"is-answered",done);var counter=card.querySelector(".df-checklist-count");if(counter)counter.textContent=checkedCount(card)+" of "+checklistBoxes(card).length+" checked";});var count=cards.filter(answered).length;var fill=document.getElementById("df-meter-fill");if(fill)fill.style.width=(cards.length?count/cards.length*100:0)+"%";document.getElementById("df-answered").textContent=String(count);document.getElementById("df-remaining").textContent=String(cards.length-count);}
+  function notesFor(card){var notes=store[card.dataset.decision+"-notes"];return Array.isArray(notes)?notes.filter(function(note){return note&&typeof note.quote==="string"&&typeof note.text==="string"&&note.text.trim();}):[];}
+  function answerMarks(card){var count=notesFor(card).length,done=answered(card),label=done?"Answered":"Awaiting answer";[indexLink(card),chipFor(card)].filter(Boolean).forEach(function(node){var mark=node.querySelector(".df-answer-status");mark.textContent=done?"✓":"☐";mark.setAttribute("aria-label",label);mark.title=label;node.setAttribute("aria-label",card.dataset.title+". "+label+(count?". "+count+" notes":""));});[card,chipFor(card)].filter(Boolean).forEach(function(node){var badge=node.querySelector(".df-note-count");badge.textContent=String(count);badge.hidden=!count;badge.setAttribute("aria-label",count+" notes");});}
+  function answered(card){var id=card.dataset.decision;return Boolean(store[id]||String(store[id+"-free"]||"").trim()||checklistComplete(card)||notesFor(card).length);}
+  function updateCounts(){cards.forEach(function(card){var done=answered(card);answerMarks(card);card.classList.toggle("is-answered",done);if(done){var offer=card.querySelector(".df-answer-open");if(offer)offer.classList.remove("is-offer");}markIndex(card,"is-answered",done);var counter=card.querySelector(".df-checklist-count");if(counter)counter.textContent=checkedCount(card)+" of "+checklistBoxes(card).length+" checked";});var count=cards.filter(answered).length;var fill=document.getElementById("df-meter-fill");if(fill)fill.style.width=(cards.length?count/cards.length*100:0)+"%";document.getElementById("df-answered").textContent=String(count);document.getElementById("df-remaining").textContent=String(cards.length-count);}
   function audiosFor(card){return Array.from(card.querySelectorAll("audio[data-audio-scene]"));}
   function allAudios(){return Array.from(document.querySelectorAll("audio[data-audio-scene]"));}
   function isPlaying(card){return audiosFor(card).some(function(audio){return !audio.paused;});}
@@ -66,7 +68,7 @@
   function stopCard(card){audiosFor(card).forEach(function(audio){audio.pause();audio.currentTime=0;});resetHighlights(card);card.dataset.audioIndex="0";card.classList.remove("is-playing","is-paused");markIndex(card,"is-playing",false);card.querySelector(".df-play").textContent="▶ Play full section";card.querySelector(".df-player-state").textContent="Stopped · plays from the start";card.querySelector(".df-teleprompter").hidden=true;updateTransport();}
   function completeCard(card){audiosFor(card).forEach(function(audio){audio.pause();});clearHighlights(card);card.querySelectorAll(".df-word").forEach(function(word){word.classList.add("is-read");});card.dataset.audioIndex=String(audiosFor(card).length);card.classList.remove("is-playing","is-paused");markIndex(card,"is-playing",false);card.querySelector(".df-play").textContent="↻ Play again";card.querySelector(".df-player-state").textContent="Complete · ready to answer";card.querySelector(".df-teleprompter").hidden=true;if(view==="story"&&!answered(card))card.querySelector(".df-answer-open").classList.add("is-offer");updateTransport();}
   // Highlight reads media time (audio.currentTime), so it stays exact at any playback rate.
-  function setHighlight(card,sceneId,time){var words=Array.from(card.querySelectorAll('.df-word[data-scene="'+sceneId+'"]'));var current=-1;words.forEach(function(word,index){if(time>=Number(word.dataset.wordStart)-0.04)current=index;});words.forEach(function(word,index){word.classList.toggle("is-read",index<current);word.classList.toggle("is-current",index===current);});var mark=sceneId+":"+current;if(current>=0&&card.dataset.hl!==mark){card.dataset.hl=mark;words[current].scrollIntoView({block:"nearest"});}}
+  function setHighlight(card,sceneId,time){var words=Array.from(card.querySelectorAll('.df-word[data-scene="'+sceneId+'"]'));var current=-1;words.forEach(function(word,index){if(time>=Number(word.dataset.wordStart)-0.04)current=index;});words.forEach(function(word,index){word.classList.toggle("is-read",index<current);word.classList.toggle("is-current",index===current);});var mark=sceneId+":"+current;if(current>=0&&card.dataset.hl!==mark){card.dataset.hl=mark;if(!selectionQuote()&&!(noteDialog&&noteDialog.open))words[current].scrollIntoView({block:"nearest"});}}
   var frame=typeof requestAnimationFrame==="function"?requestAnimationFrame:null;var ticking=false;
   function tick(){var audio=allAudios().find(function(item){return !item.paused;});if(!audio){ticking=false;return;}setHighlight(audio.closest(".df-card"),audio.dataset.audioScene,audio.currentTime);updateProgress(audio.closest(".df-card"));frame(tick);}
   function startTicking(){if(frame&&!ticking){ticking=true;frame(tick);}}
@@ -91,7 +93,7 @@
     audios.forEach(function(audio,audioIndex){audio.onended=function(){clearHighlights(card,audio.dataset.audioScene);playAt(card,audioIndex+1);};audio.ontimeupdate=function(){if(audio.paused)return;setHighlight(card,audio.dataset.audioScene,audio.currentTime);updateProgress(card);};});
     card.querySelector(".df-play").addEventListener("click",function(){playCard(card);});
     card.querySelector(".df-restart").addEventListener("click",function(){restartCard(card);});
-    card.querySelectorAll(".df-word").forEach(function(word){word.addEventListener("click",function(){var audioIndex=audios.findIndex(function(item){return item.dataset.audioScene===word.dataset.scene;});if(audioIndex<0)return;audios.forEach(function(audio,indexToReset){audio.pause();if(indexToReset>audioIndex){audio.currentTime=0;card.querySelectorAll('.df-word[data-scene="'+audio.dataset.audioScene+'"]').forEach(function(laterWord){laterWord.classList.remove("is-current","is-read");});}});clearHighlights(card);card.dataset.audioIndex=String(audioIndex);audios[audioIndex].currentTime=Number(word.dataset.wordStart);playAt(card,audioIndex);});});
+    card.querySelectorAll(".df-word").forEach(function(word){word.addEventListener("click",function(){if(selectionQuote())return;var audioIndex=audios.findIndex(function(item){return item.dataset.audioScene===word.dataset.scene;});if(audioIndex<0)return;audios.forEach(function(audio,indexToReset){audio.pause();if(indexToReset>audioIndex){audio.currentTime=0;card.querySelectorAll('.df-word[data-scene="'+audio.dataset.audioScene+'"]').forEach(function(laterWord){laterWord.classList.remove("is-current","is-read");});}});clearHighlights(card);card.dataset.audioIndex=String(audioIndex);audios[audioIndex].currentTime=Number(word.dataset.wordStart);playAt(card,audioIndex);});});
     card.querySelectorAll('input[type="radio"]').forEach(function(input){if(store[input.name]===input.value)input.checked=true;input.addEventListener("change",function(){store[input.name]=input.value;persist();});});
     checklistBoxes(card).forEach(function(box){box.checked=checksFor(card)[box.dataset.checkIndex]===true;box.addEventListener("change",function(){var next={};checklistBoxes(card).forEach(function(item){if(item.checked)next[item.dataset.checkIndex]=true;});store[card.dataset.decision+"-checks"]=next;persist();});});
     var free=card.querySelector(".df-free");if(store[free.dataset.note])free.value=store[free.dataset.note];free.addEventListener("input",function(){store[free.dataset.note]=free.value;persist();});
@@ -132,12 +134,12 @@
   }
   if(backdrop)backdrop.addEventListener("click",function(){closeSheet(true);});
   document.addEventListener("keydown",function(event){
-    if(!sheet)return;
-    if(event.key==="Escape"){event.preventDefault();closeSheet(true);return;}
-    if(event.key!=="Tab")return;var list=focusables(sheet.node);if(!list.length)return;
-    var first=list[0],last=list[list.length-1],active=document.activeElement;
-    if(event.shiftKey&&(active===first||!sheet.node.contains(active))){event.preventDefault();last.focus();}
-    else if(!event.shiftKey&&(active===last||!sheet.node.contains(active))){event.preventDefault();first.focus();}
+    var modal=noteDialog&&noteDialog.open?noteDialog:sheet&&sheet.node;if(!modal)return;
+    if(event.key==="Escape"){event.preventDefault();if(modal===noteDialog)closeNote(true);else closeSheet(true);return;}
+    if(event.key!=="Tab")return;var list=focusables(modal);if(modal!==noteDialog&&cite&&!cite.hidden)list.push(cite);if(!list.length)return;
+    var first=list[0],last=list[list.length-1],active=document.activeElement,inside=modal.contains(active)||active===cite;
+    if(event.shiftKey&&(active===first||!inside)){event.preventDefault();last.focus();}
+    else if(!event.shiftKey&&(active===last||!inside)){event.preventDefault();first.focus();}
   });
   // List view: while nothing plays, the current card is the one under the controller; a jump holds it for a moment.
   function follow(){if(view!=="list"||Date.now()<followLock||allAudios().some(function(audio){return !audio.paused;}))return;var bar=document.querySelector(".df-controller");var line=(bar?bar.getBoundingClientRect().bottom:0)+24;var card=cards.find(function(item){return item.getBoundingClientRect().bottom>line;});if(card&&card!==current())setActive(card);}
@@ -147,14 +149,57 @@
   function toggleView(){closeSheet(false);view=view==="story"?"list":"story";applyView();savePrefs();current().scrollIntoView({block:"start"});}
   if(viewToggle)viewToggle.addEventListener("click",toggleView);
   var storyExit=document.getElementById("df-story-exit");if(storyExit)storyExit.addEventListener("click",function(){toggleView();if(viewToggle)viewToggle.focus({preventScroll:true});});
-  function checklistLines(card){var list=card.querySelector(".df-checklist");if(!list)return [];var checks=checksFor(card);var mark=function(box){return (checks[box.dataset.checkIndex]===true?"[x] ":"[ ] ")+box.parentNode.textContent.trim();};var lines=["- checklist: "+checkedCount(card)+" of "+checklistBoxes(card).length+" checked"];Array.from(list.children).forEach(function(node){if(node.classList.contains("df-check-group")){lines.push("  - "+node.querySelector(".df-check-group-title").textContent);node.querySelectorAll(".df-check-input").forEach(function(box){lines.push("    - "+mark(box));});}else if(node.classList.contains("df-check")){lines.push("  - "+mark(node.querySelector(".df-check-input")));}});return lines;}
-  function answersText(){var lines=["## Decision answers - "+KEY.replace(/^dbx:/,"")];cards.forEach(function(card){var id=card.dataset.decision;lines.push("### "+card.dataset.title);lines.push("- picked: "+(store[id]||"(no option picked)"));lines.push.apply(lines,checklistLines(card));if(store[id+"-free"])lines.push("- in your words: "+store[id+"-free"]);});return lines.join("\n");}
+  function checklistLines(card){var list=card.querySelector(".df-checklist");if(!list)return [];var checks=checksFor(card);var mark=function(box){return (checks[box.dataset.checkIndex]===true?"[x] ":"[ ] ")+box.parentNode.textContent.trim();};var lines=["- checklist: "+checkedCount(card)+" of "+checklistBoxes(card).length+" checked"];Array.from(list.children).forEach(function(node){if(node.classList.contains("df-check-group")){lines.push("  - "+node.querySelector(".df-check-group-title").textContent);node.querySelectorAll(".df-check-input").forEach(function(box){lines.push("    - "+mark(box));});}else if(node.classList.contains("df-check-row")){lines.push("  - "+mark(node.querySelector(".df-check-input")));}});return lines;}
+  function answersText(){var lines=["## Decision answers - "+KEY.replace(/^dbx:/,"")];cards.forEach(function(card){var id=card.dataset.decision;lines.push("### "+card.dataset.title);lines.push("- picked: "+(store[id]||"(no option picked)"));lines.push.apply(lines,checklistLines(card));if(store[id+"-free"])lines.push("- in your words: "+store[id+"-free"]);notesFor(card).forEach(function(note){lines.push("",note.quote.split("\n").map(function(line){return "> "+line;}).join("\n"),"",note.text);});});return lines.join("\n");}
   function copied(){var state=document.getElementById("df-copy-state");state.textContent="Answers copied";state.classList.add("is-visible");setTimeout(function(){state.classList.remove("is-visible");},1200);}
   function copyAnswers(){var text=answersText();if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(copied,function(){fallback(text);});}else fallback(text);}
   document.getElementById("df-copy").addEventListener("click",copyAnswers);
   document.querySelectorAll(".df-story-copy").forEach(function(button){button.addEventListener("click",copyAnswers);});
   function fallback(text){var area=document.createElement("textarea");area.value=text;document.body.appendChild(area);area.select();document.execCommand("copy");area.remove();copied();}
+  // Citation: no selection -> Cite offered -> modal draft -> saved, cancelled, or retryable storage error.
+  var noteDialog=document.getElementById("df-note-dialog"),noteText=document.getElementById("df-note-text"),noteQuote=document.getElementById("df-note-quote"),noteError=document.getElementById("df-note-error"),noteDelete=document.getElementById("df-note-delete"),draftCopy=document.getElementById("df-note-copy-draft"),cite=document.getElementById("df-cite"),noteEditor=null;
+  function selectionQuote(){
+    var selection=document.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return null;
+    var range=selection.getRangeAt(0),start=range.startContainer.nodeType===1?range.startContainer:range.startContainer.parentElement;
+    var card=start&&start.closest(".df-card"),quote=selection.toString().trim();
+    return card&&card.contains(range.endContainer)&&quote&&!start.closest("input,textarea")?{card:card,quote:quote,range:range,opener:start.closest("button")||card.querySelector(".df-card-note")}:null;
+  }
+  function offerCitation(){
+    var selected=selectionQuote();cite.hidden=!selected||noteDialog.open;if(cite.hidden)return;
+    var rect=selected.range.getBoundingClientRect(),win=document.defaultView;
+    cite.style.left=Math.max(8,Math.min(rect.left,win.innerWidth-90))+"px";cite.style.top=Math.max(8,Math.min(rect.top>=52?rect.top-46:rect.bottom+8,win.innerHeight-48))+"px";
+  }
+  function openNote(card,quote,opener){
+    if(noteDialog.open)return;if(isPlaying(card))pauseCard(card);cite.hidden=true;
+    noteEditor={card:card,quote:quote,opener:opener,editing:null,sheetModal:sheet&&sheet.node.getAttribute("aria-modal")};noteQuote.textContent=quote;noteText.value="";noteError.textContent="";noteDelete.hidden=true;draftCopy.hidden=true;
+    document.getElementById("df-note-card").textContent=card.dataset.title;
+    var list=document.getElementById("df-note-list");list.replaceChildren();
+    notesFor(card).forEach(function(note,index){var button=document.createElement("button");button.type="button";button.className="df-note-edit";button.textContent=note.quote+"\n"+note.text;button.setAttribute("aria-label","Edit note: "+note.quote+". "+note.text);button.addEventListener("click",function(){noteEditor.editing=index;noteEditor.quote=note.quote;noteQuote.textContent=note.quote;noteText.value=note.text;noteDelete.hidden=false;noteError.textContent="";noteText.focus();});list.appendChild(button);});
+    if(sheet)sheet.node.removeAttribute("aria-modal");noteDialog.showModal();noteText.focus();document.getSelection().removeAllRanges();
+  }
+  function closeNote(returnFocus){
+    if(!noteEditor)return;var opener=noteEditor.opener,sheetModal=noteEditor.sheetModal;noteEditor=null;noteDialog.close();if(sheet&&sheetModal)sheet.node.setAttribute("aria-modal",sheetModal);
+    if(returnFocus!==false&&opener&&opener.isConnected)opener.focus({preventScroll:true});
+  }
+  function saveNote(remove){
+    if(!noteEditor)return;var text=noteText.value.trim();if(!remove&&!text){noteError.textContent="Write a note before saving.";noteText.focus();return;}
+    var key=noteEditor.card.dataset.decision+"-notes",original=store[key],next=notesFor(noteEditor.card).slice(),index=noteEditor.editing;
+    if(remove)next.splice(index,1);else if(index===null)next.push({quote:noteEditor.quote,text:text});else next[index]={quote:noteEditor.quote,text:text};
+    store[key]=next;if(!persist()){if(original===undefined)delete store[key];else store[key]=original;updateCounts();draftCopy.hidden=remove;noteError.textContent=remove?"Couldn't delete on this device. The note is still saved. Try Delete note again.":"Couldn't save on this device. Your draft is still here. Try Save note again, or Copy draft.";return;}
+    closeNote(true);
+  }
+  cards.forEach(function(card){card.querySelector(".df-card-note").addEventListener("click",function(){openNote(card,card.dataset.title,this);});card.querySelectorAll(".df-item-note").forEach(function(button){button.addEventListener("click",function(){openNote(card,button.previousElementSibling.querySelector("span").textContent,button);});});});
+  document.addEventListener("selectionchange",offerCitation);document.addEventListener("scroll",offerCitation,true);
+  cite.addEventListener("pointerdown",function(event){event.preventDefault();});cite.addEventListener("click",function(){var selected=selectionQuote();if(selected)openNote(selected.card,selected.quote,selected.opener);});
+  document.getElementById("df-note-save").addEventListener("click",function(){saveNote(false);});noteDelete.addEventListener("click",function(){saveNote(true);});
+  document.getElementById("df-note-cancel").addEventListener("click",function(){closeNote(true);});noteDialog.addEventListener("cancel",function(event){event.preventDefault();closeNote(true);});
+  draftCopy.addEventListener("click",function(){
+    var editor=noteEditor,text=noteQuote.textContent.split("\n").map(function(line){return "> "+line;}).join("\n")+"\n\n"+noteText.value;
+    function copiedDraft(){if(noteEditor===editor)noteError.textContent="Draft copied. It is not saved on this device.";}
+    function fallbackDraft(){if(noteEditor!==editor)return;var area=document.createElement("textarea");area.value=text;noteDialog.appendChild(area);area.select();var ok=false;try{ok=document.execCommand("copy");}catch(error){}area.remove();noteText.focus();if(ok)copiedDraft();else noteError.textContent="Copy unavailable. Select your quote and note to copy them.";}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(copiedDraft,fallbackDraft);else fallbackDraft();
+  });
   // Keep focused controls clear of the fixed phone dock and the sticky controller.
-  document.addEventListener("focusin",function(event){var dock=document.querySelector(".df-dock");var bar=document.querySelector(".df-controller");var view=document.defaultView;var el=event.target;if(!dock||!view||!el||!el.getBoundingClientRect||dock.contains(el)||(bar&&bar.contains(el))||document.body.dataset.view==="story")return;var box=el.getBoundingClientRect();var underDock=view.getComputedStyle(dock).position==="fixed"&&box.bottom>dock.getBoundingClientRect().top;var underBar=bar&&view.getComputedStyle(bar).position==="sticky"&&box.top<bar.getBoundingClientRect().bottom;if(underDock||underBar)el.scrollIntoView({block:"nearest"});});
+  document.addEventListener("focusin",function(event){var dock=document.querySelector(".df-dock");var bar=document.querySelector(".df-controller");var view=document.defaultView;var el=event.target;if(!dock||!view||!el||!el.getBoundingClientRect||el.closest(".df-note-dialog")||dock.contains(el)||(bar&&bar.contains(el))||document.body.dataset.view==="story")return;var box=el.getBoundingClientRect();var underDock=view.getComputedStyle(dock).position==="fixed"&&box.bottom>dock.getBoundingClientRect().top;var underBar=bar&&view.getComputedStyle(bar).position==="sticky"&&box.top<bar.getBoundingClientRect().bottom;if(underDock||underBar)el.scrollIntoView({block:"nearest"});});
   applyRate();applyView();updateCounts();updateTransport();root.dataset.ready="true";
 })();

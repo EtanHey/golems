@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TEMPLATE_ROOT = path.join(ROOT, "templates", "decision-flow");
+const NOTE_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 11V4H4v16l4-4h7M8 8h8M8 12h4M19 14v8m-4-4h8"/></svg>';
+const ANSWER_MARK = '<span class="df-answer-status" role="img" aria-label="Awaiting answer" title="Awaiting answer">☐</span>';
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -111,12 +113,12 @@ function formatDuration(seconds) {
 }
 
 function rankLabel(decision, index) {
-  return String(decision.rank ?? index + 1);
+  return String(decision.rank === "✓" ? "QA" : (decision.rank ?? index + 1));
 }
 
 function renderIndex(decisions) {
   return `<ol class="df-index-list">${decisions.map((decision, index) =>
-    `<li><a href="#decision-${escapeHtml(decision.id)}" data-index-for="${escapeHtml(decision.id)}"${index === 0 ? ' class="is-active"' : ""}><span class="df-index-rank">${escapeHtml(rankLabel(decision, index))}</span><span class="df-index-title">${escapeHtml(decision.title)}</span></a></li>`,
+    `<li><a href="#decision-${escapeHtml(decision.id)}" data-index-for="${escapeHtml(decision.id)}"${index === 0 ? ' class="is-active"' : ""}><span class="df-index-rank">${escapeHtml(rankLabel(decision, index))}</span>${ANSWER_MARK}<span class="df-index-title">${escapeHtml(decision.title)}</span></a></li>`,
   ).join("")}</ol>`;
 }
 
@@ -150,7 +152,7 @@ function renderChecklist(decision) {
   if (!groups.length) return "";
   const total = groups.reduce((sum, group) => sum + group.items.length, 0);
   const box = ({ index, label }) =>
-    `<label class="df-check"><input type="checkbox" class="df-check-input" data-check-index="${index}"><span>${escapeHtml(label)}</span></label>`;
+    `<div class="df-check-row"><label class="df-check"><input type="checkbox" class="df-check-input" data-check-index="${index}"><span>${escapeHtml(label)}</span></label><button type="button" class="df-item-note" data-check-note="${index}" aria-label="Add note about ${escapeHtml(label)}" title="Add note">${NOTE_ICON}</button></div>`;
   const body = groups.map((group) => group.title
     ? `<div class="df-check-group"><p class="df-check-group-title">${escapeHtml(group.title)}</p>${group.items.map(box).join("")}</div>`
     : group.items.map(box).join(""),
@@ -160,7 +162,7 @@ function renderChecklist(decision) {
 
 function renderController(decisions) {
   const chips = decisions.map((decision, index) =>
-    `<button type="button" class="df-chip" data-chip-for="${escapeHtml(decision.id)}"${index === 0 ? ' aria-current="true"' : ""}><span class="df-chip-rank">${escapeHtml(rankLabel(decision, index))}</span><span class="df-chip-title">${escapeHtml(decision.title)}</span></button>`,
+    `<button type="button" class="df-chip" data-chip-for="${escapeHtml(decision.id)}"${index === 0 ? ' aria-current="true"' : ""}><span class="df-chip-rank">${escapeHtml(rankLabel(decision, index))}</span>${ANSWER_MARK}<span class="df-chip-title">${escapeHtml(decision.title)}</span><span class="df-note-count" hidden></span></button>`,
   ).join("");
   const rates = PLAYBACK_RATES.map((rate) =>
     `<option value="${rate}"${rate === 1 ? " selected" : ""}>${rate}×</option>`,
@@ -214,6 +216,7 @@ function renderCard(decision, index, sceneById) {
       <span class="df-rank" aria-hidden="true">${escapeHtml(rankLabel(decision, index))}</span>
       <h2>${escapeHtml(decision.title)}</h2>
       <span class="df-status" data-status="${escapeHtml(status.toLowerCase())}">${escapeHtml(sentenceCase(status))}</span>
+      <button type="button" class="df-card-note" aria-label="Add or review notes for ${escapeHtml(decision.title)}" title="Cite &amp; note">${NOTE_ICON}<span class="df-note-count" hidden></span></button>
     </header>
     <div class="df-player">
       <button type="button" class="df-play" aria-label="Play this decision's full audio">▶ Play full section</button><button type="button" class="df-restart" aria-label="Restart this decision's audio">↻ Restart</button>

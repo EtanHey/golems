@@ -33,6 +33,7 @@ function fixture() {
     decisions: ids.map((id, index) => ({
       id, rank: index === 0 ? "✓" : index - 1, title: index === 0 ? "Check VoiceBar 2.2.57" : `Pristine sprints with new leads ${index}`,
       options: ["A. Keep going", "B. Stop"], sceneIds: [id],
+      body: "A written briefing to cite while deciding.",
       ...(index === 0 ? { checklist: [{ title: "Fixed", items: ["History row", "Pauses"] }] } : {}),
     })),
   });
@@ -43,6 +44,37 @@ function fixture() {
 }
 
 const TRANSPORT_LABELS = [["▶", "Play"], ["⏸", "Pause"], ["▶", "Resume"], ["↻", "Again"]];
+
+layoutTest("Cite & note fits mobile and desktop, traps native dialog focus and returns to the answer sheet", async () => {
+  const browser = await chromium.launch();
+  try {
+    for (const width of [390, 1280]) for (const view of ["list", "story"]) {
+      const page = await browser.newPage({ viewport: { width, height: 844 } }); await page.goto(fixture());
+      if (view === "story") { await page.click("#df-view-toggle"); await page.click(".df-card.is-active .df-answer-open"); }
+      const opener = '[data-decision="v00"] .df-item-note'; await page.locator(opener).first().click();
+      expect(await page.textContent("#df-note-quote")).toBe("History row");
+      const rect = await page.locator("#df-note-dialog").boundingBox();
+      expect(rect.x).toBeGreaterThanOrEqual(0); expect(rect.x + rect.width).toBeLessThanOrEqual(width);
+      expect(rect.y).toBeGreaterThanOrEqual(0); expect(rect.y + rect.height).toBeLessThanOrEqual(845);
+      for (let i = 0; i < 8; i++) {
+        await page.keyboard.press(i % 3 ? "Tab" : "Shift+Tab");
+        expect(await page.evaluate(() => Boolean(document.activeElement.closest("#df-note-dialog")))).toBe(true);
+      }
+      await page.keyboard.press("Escape");
+      expect(await page.evaluate(() => document.activeElement.classList.contains("df-item-note"))).toBe(true);
+      if (view === "story") expect(await page.locator(".df-sheet.is-open").count()).toBe(1);
+      await page.evaluate(() => { const range = document.createRange(); range.selectNodeContents(document.querySelector('[data-decision="v00"] .df-question p')); getSelection().removeAllRanges(); getSelection().addRange(range); });
+      await page.locator("#df-cite").click(); expect(await page.textContent("#df-note-quote")).toBe("A written briefing to cite while deciding.");
+      await page.fill("#df-note-text", "This needs more detail."); await page.click("#df-note-save");
+      expect(await page.locator('[data-chip-for="v00"] .df-note-count').textContent()).toBe("1");
+      expect(await page.locator('[data-chip-for="v00"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
+      expect(await page.isChecked('[data-decision="v00"] .df-check-input >> nth=0')).toBe(false);
+      await page.reload();
+      expect(await page.locator('[data-chip-for="v00"] .df-note-count').textContent()).toBe("1");
+      await page.close();
+    }
+  } finally { await browser.close(); }
+}, 60000);
 
 layoutTest("controller fits the viewport in every transport, speed and view state", async () => {
   const url = fixture();
