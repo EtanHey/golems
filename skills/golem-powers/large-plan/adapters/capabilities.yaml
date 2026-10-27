@@ -76,7 +76,7 @@ platform_features:
   pr_waiting:
     t3: "parent watch_pull_request; a sit-and-watch need gets one bounded codex.subagent.mechanical child"
   monitor_cleanup:
-    t3: "unwatch_pull_request; task_cancel any child still running"
+    t3: "At each child's terminal state (PR merged or handed off), task_cancel its taskId; unwatch_pull_request its PR; then t3_thread_organize {action: \"settle\", threadId: <childThreadId>}. Never omit threadId: an omitted threadId settles the calling lead thread. See /agent-routing § Goal Contract for provider release timing and the worktree caveat."
     claude_code: "TaskStop returned Monitor task ID when plan closes"
     universal: "end the process-exit watch; no collab watch to stop"
   plan_mode:

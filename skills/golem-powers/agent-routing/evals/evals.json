@@ -1728,7 +1728,7 @@
       "id": 101,
       "name": "result-available-merged-settle-unwatch",
       "prompt": "You are a lead in a T3 thread. task_status for your implementer child shows status completed, workState result_available, hasPendingChildRuns true. You verified its PR and the PR merged. What next for that child?",
-      "expected_output": "Settles it now: relays the verified result, sends no new work, task_cancel its taskId to stop the pending runs, unwatch_pull_request the merged PR. The next PR gets a fresh implementer (§ Lead Topology #5). \"settle idle workers\" (Etan 2026-10-18, via orc collab).",
+      "expected_output": "Settles it now: relays the verified result, sends no new work, task_cancel its taskId to stop the pending runs, unwatch_pull_request the merged PR, then t3_thread_organize {action: \"settle\", threadId: <childThreadId>}. Never omit threadId: an omitted threadId settles the calling lead thread. See /agent-routing § Goal Contract for provider release timing and the worktree caveat. The next PR gets a fresh implementer (§ Lead Topology #5). \"settle idle workers\" (Etan 2026-10-18, via orc collab).",
       "assertions": [
         {
           "text": "Calls task_cancel on the child's taskId and unwatch_pull_request on the merged PR",
