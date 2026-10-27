@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { validate } from '../lib/install-receipt-core.mjs';
+import { validate, bridgePaths } from '../lib/install-receipt-core.mjs';
 
 const bridge = '/opt/homebrew/opt/brainlayer/bin/brainlayer-mcp-stdio-bridge';
 const script = resolve('scripts/t3-mcp-holders.mjs');
@@ -128,7 +128,7 @@ function draft() {
       ancestry:{method:'gh-compare',status:'identical',checked_at:'2026-10-27T16:00:00Z'}},
     installed:{version:'1.0.0',path:'/fixture/bin',embedded_commit:sha,install_finished_at:'2026-10-27T16:00:00Z'},
     activation:{method:'new-session',processes:[],seat_scan:{bridge_diff:{from_tag:'v0.9.0',to_sha:sha,
-      paths:['src/brainlayer/mcp_stdio_bridge.py','src/brainlayer/mcp/','src/brainlayer/mcp_socket_config.py'],changed:true}}},
+      paths:bridgePaths('brainlayer'),changed:true}}},
     verdict:'INSTALLED_NOT_ACTIVE',reasons:[] };
 }
 test('receipt-draft mode derives the core-accepted stale list without copying its rule', () => {

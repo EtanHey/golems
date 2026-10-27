@@ -153,8 +153,9 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
       prior installed version's tag (different from target.tag), `to_sha` is target.released_sha,
       and `paths` covers core's bridge paths. Probe with
       `gh api repos/<owner>/<repo>/compare/<from_tag>...<released_sha>` and inspect changed files
-      against `src/brainlayer/mcp_stdio_bridge.py`, `src/brainlayer/mcp/` and
-      `src/brainlayer/mcp_socket_config.py`. Never assume `changed: false`.
+      against the paths returned by core's `bridgePaths(product)` accessor, obtained with:
+      `node --input-type=module -e 'import {bridgePaths} from "./scripts/lib/install-receipt-core.mjs"; console.log(JSON.stringify(bridgePaths(process.argv[1])))' <server>`.
+      Use that returned array for `paths`; do not duplicate the bridge-path list. Never assume `changed: false`.
       No T3 reconnect exists; reconnect is parked upstream and contract #3 remains unchanged.
       For each stale client, report its thread or `unmapped` as "needs a fresh thread";
       the shared Codex app-server cannot attribute children per thread and stays `unmapped`.
