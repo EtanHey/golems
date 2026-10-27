@@ -126,7 +126,7 @@ test('hooks pin BEHIND and owned skills commit AHEAD are independent artifacts',
     resolver: { compareAncestry: () => 'identical' }, hooksReader: () => owner,
     skillsReader: () => snapshotSkills({ mode: 'checkout', source, home }),
     comparisonReader: (repo, latest, installed) => installed === commit ? 'behind' : 'ahead' });
-  assert.deepEqual(rows.filter(r => r.host === 'mbp').map(r => [r.artifact_kind, r.status]), [['skills-sync', 'AHEAD'], ['hooks-sync', 'BEHIND']]);
+  assert.deepEqual(rows.filter(r => r.host === 'm4-max').map(r => [r.artifact_kind, r.status]), [['skills-sync', 'AHEAD'], ['hooks-sync', 'BEHIND']]);
 }));
 test('broken root links fail explicitly with the exact installed link name', () => fixture(({ source, home }) => {
   const link = join(home, '.agents/skills/broken'); symlinkSync(join(home, 'missing-target'), link);
@@ -172,5 +172,5 @@ test('new M1 release without its receipt is NO-RECEIPT; reads use fake SSH only'
   });
   assert.equal(read('f'.repeat(40)).golems, null);
   assert.equal(read(commit).golems.installed.embedded_commit, commit);
-  assert.equal(hostAlias('Locals-MacBook-Pro.local'), 'm1');
+  assert.equal(hostAlias('Locals-MacBook-Pro.local'), 'm1-pro');
 }));

@@ -673,9 +673,9 @@ async function install(o) {
     console.log(CODEX_TRUST_HINT);
   }
   try {
-    const { emitSkillsReceipt, emitHooksReceipt } = await import('../lib/skills-sync-receipt.mjs');
-    const args = { mode: 'checkout', source: o.repo, alias: o.host,
-      ownerArgs: ['--host', o.host, '--repo', o.repo, ...['manifest', 'python'].flatMap(key => o[key] ? ['--' + key, o[key]] : [])] };
+    const { emitSkillsReceipt, emitHooksReceipt, probeOwnerStatus } = await import('../lib/skills-sync-receipt.mjs');
+    const ownerArgs = ['--host', o.host, '--repo', o.repo, ...['manifest', 'python'].flatMap(key => o[key] ? ['--' + key, o[key]] : [])];
+    const args = { mode: 'checkout', source: o.repo, alias: o.host, ownerArgs, owner: probeOwnerStatus(ownerArgs) };
     for (const [kind, emit] of [['hooks-sync', emitHooksReceipt], ['skills-sync', emitSkillsReceipt]]) {
       try { emit(args); } catch (error) { console.error(`${kind.toUpperCase()} RECEIPT FAILED (install succeeded): ${error.message}`); }
     }
