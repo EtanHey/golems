@@ -1,5 +1,3 @@
-"""PHX ruling: T3's managed-profile failure requires both Standard scan passes."""
-
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -11,21 +9,15 @@ def implementation_guidance():
     return text[text.index("### Implementation and review"):text.index("### Inner loop")]
 
 
-def interim_guidance():
-    text = implementation_guidance()
-    return text[text.index("**T3 seats (interim):**"):]
-
-
 def test_t3_interim_follows_existing_deep_scan_rule():
     text = implementation_guidance()
     assert "Deep scans run from `<repo>Codex --scan -E high`" in text
     assert "XS/S security PRs get a diff-scoped Standard scan" in text
     assert "M/L or anything touching auth/guards a full Deep scan" in text
-    assert text.index("Deep scans run from") < text.index("**T3 seats (interim):**")
 
 
 def test_managed_profile_failure_requires_both_standard_passes_and_receipts():
-    text = interim_guidance()
+    text = implementation_guidance().split("**T3 seats (interim):**", 1)[1]
     for phrase in (
         "If the Deep scan can't start from a T3 seat",
         "the parent must provide a managed filesystem permission profile",
@@ -41,11 +33,13 @@ def test_managed_profile_failure_requires_both_standard_passes_and_receipts():
         assert phrase in text, phrase
 
 
-def test_deep_scan_route_awaits_lead_proof_without_retired_pane_fallback():
+def test_proven_deep_scan_route_precedes_interim_without_retired_pane_fallback():
     guidance = implementation_guidance()
-    route = "Proven T3 Deep-scan route (try it before the interim below): `TBD by lead`"
-    assert route in guidance
-    assert guidance.index(route) < guidance.index("**T3 seats (interim):**")
+    route = "Proven T3 Deep-scan route (try it before the interim below):"
+    assert guidance.index("Deep scans run from") < guidance.index(route) < guidance.index("**T3 seats (interim):**")
     text = guidance[guidance.index(route):]
+    assert "runtimeMode `auto`" in text
+    assert "`runtime_mode_escalation_denied`" in text
+    assert "TBD by lead" not in guidance
     assert "cmux" not in text
     assert "<repo>Codex --scan" not in text
