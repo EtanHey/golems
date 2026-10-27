@@ -63,6 +63,12 @@ def live_symlink(path):
 
 
 def add_report(journal, repo, path, branch, reason, detail):
+    if reason == "ERROR":
+        with open(journal, "a") as out:
+            out.write(json.dumps(dict(owner=repo, repo=repo, path=path, branch=branch,
+                                     size_bytes=None, reason=reason, detail=detail,
+                                     birth_epoch=None)) + "\n")
+        return
     try:
         admin = subprocess.check_output(["git", "-C", path, "rev-parse", "--absolute-git-dir"], text=True).strip()
     except (OSError, subprocess.SubprocessError):
@@ -129,7 +135,11 @@ def finish_report(journal, directory, run_status, publish):
     with (directory / ".report.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         artifacts = (("latest.json", json.dumps(report, indent=2) + "\n"), ("latest.md", "\n".join(md)))
-        for name, content in artifacts if publish == "1" and int(run_status) in (0, 3) else ():
+        # Failed scans preserve the last full report; expose their error rows
+        # separately so the current failure remains reviewable by the owner.
+        current = (("last-run.json", artifacts[0][1]), ("last-run.md", artifacts[1][1]))
+        latest = artifacts if publish == "1" and int(run_status) in (0, 3) else ()
+        for name, content in (*current, *latest):
             stage = directory / f".{name}.{os.getpid()}"
             stage.write_text(content)
             os.replace(stage, directory / name)

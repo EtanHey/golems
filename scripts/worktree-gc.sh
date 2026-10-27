@@ -805,9 +805,35 @@ fi
 
 t3_roots="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" roots)"
 found_unpushed=0
+repo_error=0
 for repo in "${repos[@]}"; do
-  process_repo "$repo"
+  repo_name="$(basename "$repo")"
+  # Do not put process_repo in an if/||: Bash would disable errexit inside
+  # every removal gate. A subshell keeps it enabled and isolates repo state.
+  repo_state="$LOG_FILE.repo-state"
+  repo_stderr="$LOG_FILE.repo-stderr"
+  set +e
+  (
+    set -e
+    trap 'printf "%s %s\n" "$found_unpushed" "$only_seen" > "$repo_state"' EXIT
+    process_repo "$repo"
+  ) 2> "$repo_stderr"
+  repo_rc=$?
+  set -e
+  read -r found_unpushed only_seen < "$repo_state"
+  cat "$repo_stderr" >&2
+  if [[ "$repo_rc" -ne 0 ]]; then
+    repo_error=2
+    reason="$(normalize_reason "$(cat "$repo_stderr")")"
+    reason="exit $repo_rc: ${reason:-repository processing failed}"
+    printf 'ERROR %s %s\n' "$repo" "$reason" | tee -a "$LOG_FILE" >&2
+    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
+      "$(basename "$repo")" "$repo" "-" ERROR "$reason" ||
+      printf 'ERROR report row failed: %s\n' "$repo" | tee -a "$LOG_FILE" >&2
+  fi
 done
+
+[[ "$repo_error" -eq 0 ]] || exit "$repo_error"
 
 # A lane close pastes this row into its receipt; a silent no-op would hide a wrong path.
 if [[ -n "$only_worktree" && "$only_seen" -eq 0 ]]; then
