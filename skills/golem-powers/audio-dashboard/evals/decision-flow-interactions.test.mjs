@@ -252,3 +252,79 @@ test("cinema mode rejects executable URL schemes", () => {
   expect(html).not.toContain("javascript:alert(1)");
   expect(html).not.toContain('<a class="df-cinema-link"');
 });
+
+test("setlist index links every card and tracks answered and active state", () => {
+  const { document } = boot();
+  const links = [...document.querySelectorAll(".df-index-list a[data-index-for]")];
+  expect(links.map((link) => link.getAttribute("href"))).toEqual(["#decision-a", "#decision-b"]);
+  expect(document.getElementById("decision-a").dataset.decision).toBe("a");
+  expect(links[0].classList.contains("is-active")).toBe(true);
+
+  const card = document.querySelector('[data-decision="a"]');
+  card.querySelector('input[type="radio"]').click();
+  expect(card.classList.contains("is-answered")).toBe(true);
+  expect(links[0].classList.contains("is-answered")).toBe(true);
+  expect(document.getElementById("df-meter-fill").style.width).toBe("50%");
+  expect(document.getElementById("df-answered").textContent).toBe("1");
+
+  document.querySelector('[data-decision="b"] .df-play').click();
+  expect(links[1].classList.contains("is-active")).toBe(true);
+  expect(links[1].classList.contains("is-playing")).toBe(true);
+  expect(links[0].classList.contains("is-active")).toBe(false);
+});
+
+test("card keeps line breaks, shows listening time, and omits empty option sets", () => {
+  const html = renderDecisionFlow({
+    scenes: [scene("brief"), scene("pick")],
+    decisions: [
+      { id: "brief", title: "Brief", status: "INFO", body: "Done: one.\nOpen: two.", sceneIds: ["brief"] },
+      { id: "pick", title: "Pick", options: ["Yes", "No"], sceneIds: ["pick"] },
+    ],
+  });
+  const window = new Window();
+  window.document.write(html);
+  const brief = window.document.querySelector('[data-decision="brief"]');
+  expect([...brief.querySelectorAll(".df-question p")].map((p) => p.textContent)).toEqual(["Done: one.", "Open: two."]);
+  expect(brief.querySelector(".df-status").textContent).toBe("Info");
+  expect(brief.querySelector(".df-player-state").textContent).toBe("Ready · 1 clip, 0:01");
+  expect(brief.querySelector(".df-options")).toBeNull();
+  expect(brief.querySelector(".note-area")).not.toBeNull();
+  expect(window.document.querySelector('[data-decision="pick"] .df-options')).not.toBeNull();
+});
+
+test("player sits above the written briefing so listening comes first", () => {
+  const { document } = boot();
+  const card = document.querySelector('[data-decision="a"]');
+  const order = [...card.children].map((child) => child.className.split(" ")[0]);
+  expect(order.indexOf("df-player")).toBeLessThan(order.indexOf("df-question"));
+  expect(order.indexOf("df-teleprompter")).toBeLessThan(order.indexOf("df-question"));
+});
+
+test("phone layout keeps focused controls clear of the fixed bottom dock", () => {
+  const html = renderDecisionFlow({ scenes: [scene("only")], decisions: [{ id: "only", title: "Only", sceneIds: ["only"] }] });
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+  const dockHeight = Number(css.match(/--dock-clearance:\s*(\d+)px/)?.[1]);
+  expect(dockHeight).toBeGreaterThanOrEqual(80);
+  expect(css).toMatch(/\bhtml\{[^}]*scroll-padding-bottom:calc\(var\(--dock-clearance\) \+ env\(safe-area-inset-bottom\)\)/);
+  expect(css).toMatch(/\bbody\{[^}]*padding-bottom:calc\(var\(--dock-clearance\) \+ 24px \+ env\(safe-area-inset-bottom\)\)/);
+  const desktop = css.slice(css.indexOf("@media(min-width:1040px)"));
+  expect(desktop).toMatch(/\bhtml\{scroll-padding-bottom:0\}/);
+});
+
+test("focusing a card control under the fixed dock scrolls it clear", () => {
+  const { window, document } = boot();
+  const dock = document.querySelector(".df-dock");
+  const free = document.querySelector('[data-decision="a"] .note-area');
+  window.getComputedStyle = ((original) => (element) => element === dock ? { position: "fixed" } : original(element))(window.getComputedStyle.bind(window));
+  dock.getBoundingClientRect = () => ({ top: 773, bottom: 844 });
+  free.getBoundingClientRect = () => ({ top: 718, bottom: 814 });
+  free.__scrolledIntoView = false;
+  free.dispatchEvent(new window.FocusEvent("focusin", { bubbles: true }));
+  expect(free.__scrolledIntoView).toBe(true);
+
+  const clear = document.querySelector('[data-decision="a"] .df-next');
+  clear.getBoundingClientRect = () => ({ top: 600, bottom: 648 });
+  clear.__scrolledIntoView = false;
+  clear.dispatchEvent(new window.FocusEvent("focusin", { bubbles: true }));
+  expect(clear.__scrolledIntoView).toBe(false);
+});

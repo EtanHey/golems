@@ -3,21 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101a2c">
 <title>{{TITLE}}</title>
 <style>{{STYLES}}</style>
 </head>
 <body data-storage-key="{{STORAGE_KEY}}">
-  <header class="df-top">
-    <div><p class="df-kicker">{{KICKER}}</p>{{MODE_SWITCH}}<h1>{{HEADING}}</h1><p class="df-subtitle">{{SUBTITLE}}</p><p class="df-storage-state" id="df-storage-state" aria-live="polite">Answers save only for this dashboard on this device.</p></div>
-    <button type="button" id="df-copy">Copy answers</button>
-  </header>
-  <section class="df-aggregate" aria-label="Decision progress">
-    <div><b>{{DECISION_COUNT}}</b><span>decisions</span></div>
-    <div><b id="df-answered">0</b><span>answered</span></div>
-    <div><b id="df-remaining">{{DECISION_COUNT}}</b><span>remaining</span></div>
-    <div><b>{{SCENE_COUNT}}</b><span>audio clips</span></div>
-  </section>
-  <main class="df-ledger">{{CARDS}}</main>
+  <div class="df-layout">
+    <header class="df-top">
+      <p class="df-kicker">{{KICKER}}</p>
+      {{MODE_SWITCH}}
+      <h1>{{HEADING}}</h1>
+      <p class="df-subtitle">{{SUBTITLE}}</p>
+      <p class="df-storage-state" id="df-storage-state" aria-live="polite">Answers save only for this dashboard on this device.</p>
+    </header>
+    <aside class="df-side">
+      <nav class="df-index" aria-label="Decisions">{{INDEX}}</nav>
+      <section class="df-dock" aria-label="Decision progress">
+        <p class="df-tally"><b id="df-answered">0</b> of {{DECISION_COUNT}} answered, <span id="df-remaining">{{DECISION_COUNT}}</span> left</p>
+        <span class="df-meter" aria-hidden="true"><i id="df-meter-fill"></i></span>
+        <button type="button" id="df-copy">Copy answers</button>
+      </section>
+    </aside>
+    <main class="df-ledger">{{CARDS}}</main>
+  </div>
   <p class="df-copy-state" id="df-copy-state" aria-live="polite"></p>
   <script id="tpdata" type="application/json">{{TPDATA}}</script>
   <script>{{SCRIPT}}</script>

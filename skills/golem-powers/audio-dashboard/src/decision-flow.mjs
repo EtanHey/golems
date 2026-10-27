@@ -95,6 +95,31 @@ function renderRail(rows = []) {
   ).join("")}</dl>`;
 }
 
+function renderParagraphs(text) {
+  return String(text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean)
+    .map((line) => `<p>${escapeHtml(line)}</p>`).join("");
+}
+
+function sentenceCase(value) {
+  const text = String(value || "");
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}
+
+function formatDuration(seconds) {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function rankLabel(decision, index) {
+  return String(decision.rank ?? index + 1);
+}
+
+function renderIndex(decisions) {
+  return `<ol class="df-index-list">${decisions.map((decision, index) =>
+    `<li><a href="#decision-${escapeHtml(decision.id)}" data-index-for="${escapeHtml(decision.id)}"${index === 0 ? ' class="is-active"' : ""}><span class="df-index-rank">${escapeHtml(rankLabel(decision, index))}</span><span class="df-index-title">${escapeHtml(decision.title)}</span></a></li>`,
+  ).join("")}</ol>`;
+}
+
 function renderCard(decision, index, sceneById) {
   const options = (decision.options || []).map(normalizeOption);
   const audio = decision.sceneIds.map((sceneId) => {
@@ -109,23 +134,27 @@ function renderCard(decision, index, sceneById) {
     `<label class="df-option"><input type="radio" name="${escapeHtml(decision.id)}" value="${escapeHtml(option.value)}"><span><b>${escapeHtml(option.label)}</b>${option.summary ? `<small>${escapeHtml(option.summary)}</small>` : ""}</span></label>`,
   ).join("");
   const status = String(decision.status || "OPEN");
+  const clips = decision.sceneIds.length;
+  const listenTime = formatDuration(decision.sceneIds.reduce((sum, sceneId) => sum + (Number(sceneById.get(sceneId).duration) || 0), 0));
 
-  return `<article class="df-card${index === 0 ? " is-active" : ""}" data-decision="${escapeHtml(decision.id)}" data-title="${escapeHtml(decision.title)}" data-index="${index}">
+  return `<article class="df-card${index === 0 ? " is-active" : ""}" id="decision-${escapeHtml(decision.id)}" data-decision="${escapeHtml(decision.id)}" data-title="${escapeHtml(decision.title)}" data-index="${index}">
     <header class="df-card-head">
-      <div class="df-identity"><span class="df-rank">#${escapeHtml(decision.rank ?? index + 1)}</span><span class="df-kind">decision</span><h2>${escapeHtml(decision.title)}</h2><span class="df-status">${escapeHtml(status)}</span></div>
-      ${renderRail(decision.rail)}
+      <span class="df-rank" aria-hidden="true">${escapeHtml(rankLabel(decision, index))}</span>
+      <h2>${escapeHtml(decision.title)}</h2>
+      <span class="df-status" data-status="${escapeHtml(status.toLowerCase())}">${escapeHtml(sentenceCase(status))}</span>
     </header>
-    ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
-    <p class="df-question">${escapeHtml(decision.body || "")}</p>
     <div class="df-player">
       <button type="button" class="df-play" aria-label="Play this decision's full audio">▶ Play full section</button><button type="button" class="df-restart" aria-label="Restart this decision's audio">↻ Restart</button>
-      <span class="df-player-state" aria-live="polite">Ready · ${decision.sceneIds.length} clip${decision.sceneIds.length === 1 ? "" : "s"}</span>
+      <span class="df-player-state" aria-live="polite">Ready · ${clips} clip${clips === 1 ? "" : "s"}, ${listenTime}</span>
       ${audio}
     </div>
     <div class="df-teleprompter" hidden aria-live="off">${transcript}</div>
+    ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
+    <div class="df-question">${renderParagraphs(decision.body)}</div>
+    ${renderRail(decision.rail)}
     <div class="df-answer">
-      <fieldset class="df-options"><legend class="df-sr-only">${escapeHtml(decision.title)} options</legend>${optionBlocks}</fieldset>
-      <textarea class="note-area df-free" data-note="${escapeHtml(decision.id)}-free" data-title="${escapeHtml(decision.title)}" placeholder="Or write it in your own words..."></textarea>
+      ${optionBlocks ? `<fieldset class="df-options"><legend class="df-sr-only">${escapeHtml(decision.title)} options</legend>${optionBlocks}</fieldset>` : ""}
+      <textarea class="note-area df-free" data-note="${escapeHtml(decision.id)}-free" data-title="${escapeHtml(decision.title)}" placeholder="${optionBlocks ? "Or write it in your own words" : "Anything to add? Write it here"}"></textarea>
       <div class="df-card-actions"><button type="button" class="df-skip">Skip for now</button><button type="button" class="df-next">Next decision →</button></div>
     </div>
   </article>`;
@@ -159,6 +188,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{MODE_SWITCH}}", safeModeUrl ? `<p class="df-mode-label">Audio decision dashboard · <a class="df-cinema-link" href="${escapeHtml(safeModeUrl)}">Open Cinema listening mode</a></p>` : `<p class="df-mode-label">Audio decision dashboard</p>`],
     ["{{STYLES}}", styles],
     ["{{CARDS}}", cards],
+    ["{{INDEX}}", renderIndex(decisions)],
     ["{{TPDATA}}", safeJson(tpdata)],
     ["{{SCRIPT}}", script],
   ].reduce((html, [token, value]) => replaceToken(html, token, value), shell);
