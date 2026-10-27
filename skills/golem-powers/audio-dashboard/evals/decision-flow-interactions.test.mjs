@@ -69,7 +69,7 @@ test("rendered decision flow uses a hub-compatible route-scoped storage key", ()
 
 function noteText(run, text) { run.document.getElementById("df-note-text").value = text; run.document.getElementById("df-note-save").click(); }
 
-const CLEAR_SEED = { vb: "All good", "vb-checks": { 0: true, 1: true }, "vb-free": "An answer", "vb-notes": [{ quote: "History row", text: "A note" }], b: "One", "b-free": "Keep this", "b-notes": [{ quote: "B", text: "Also keep this" }], _prefs: { rate: 1.5, view: "list" }, extra: { retained: true } };
+const CLEAR_SEED = { vb: "All good", "vb-checks": { 0: true, 1: true, 2: true }, "vb-free": "An answer", "vb-notes": [{ quote: "History row", text: "A note" }], b: "One", "b-free": "Keep this", "b-notes": [{ quote: "B", text: "Also keep this" }], _prefs: { rate: 1.5, view: "list" }, extra: { retained: true } };
 test("Clear requires confirmation and removes only its card's picks, checks, free text and notes", () => {
   const run = boot({ decisions: CHECK_DECISIONS, seed: CLEAR_SEED }); const { document, window } = run;
   const card = document.querySelector('[data-decision="vb"]'), clear = card.querySelector(".df-clear");
@@ -117,6 +117,36 @@ function selectText(run, first, last = first) {
   const selection = run.window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
   run.document.dispatchEvent(new run.window.Event("selectionchange"));
 }
+
+test("review: commentary is not an answer and checklist completion requires every check", () => {
+  const plain = boot({ seed: { "a-notes": [{ quote: "one", text: "A comment" }] } });
+  expect(plain.document.getElementById("df-answered").textContent).toBe("0");
+  const run = boot({ decisions: CHECK_DECISIONS, seed: { vb: "All good", "vb-free": "Done", "vb-checks": { 0: true }, "vb-notes": [{ quote: "History row", text: "Check again" }] } });
+  const card = run.document.querySelector('[data-decision="vb"]'); expect(card.classList.contains("is-answered")).toBe(false);
+  for (const box of card.querySelectorAll(".df-check-input")) if (!box.checked) box.click();
+  expect(card.classList.contains("is-answered")).toBe(true);
+});
+
+test("review: a cited selection excludes speaker labels", () => {
+  const run = boot({ scenes: [{ ...scene("a1"), speaker: "ben", role: "host" }, scene("a2"), scene("b1")] });
+  selectText(run, run.document.querySelector(".df-speaker"), run.document.querySelectorAll(".df-word")[1]);
+  run.document.getElementById("df-cite").click();
+  expect(run.document.getElementById("df-note-quote").textContent.trim()).toBe("one two");
+});
+
+test("review: accessible navigation names keep section rank and singular note counts", () => {
+  const { document } = boot({ seed: { a: "Keep", "a-notes": [{ quote: "one", text: "A comment" }] } });
+  for (const selector of ['[data-index-for="a"]', '[data-chip-for="a"]']) expect(document.querySelector(selector).getAttribute("aria-label")).toBe("Section 1: A. Answered. 1 note");
+  expect(document.querySelector(".df-note-count").getAttribute("aria-label")).toBe("1 note");
+});
+
+test("review: plain transcript words retain keyboard word seeking", () => {
+  const { document, window } = boot(); const transcript = document.querySelector(".df-words");
+  expect(document.querySelector(".df-word").tagName).toBe("SPAN");
+  transcript.focus(); key(window, "ArrowRight"); key(window, "Enter");
+  expect(document.querySelector("audio").currentTime).toBe(0.4);
+  expect(document.querySelector("audio").paused).toBe(false);
+});
 
 test("answer indicators are separate from ranks and follow restored and cleared answers", () => {
   const run = boot({ seed: { a: "Keep" } }); const { document } = run;
@@ -800,7 +830,7 @@ test("answers made in the sheet persist and show in list view, and the reverse",
   document.getElementById("df-story-exit").click();
   const card = document.querySelector('[data-decision="vb"]');
   expect(card.querySelector('input[type="radio"]').checked).toBe(true);
-  expect(card.classList.contains("is-answered")).toBe(true);
+  expect(card.classList.contains("is-answered")).toBe(false);
   card.querySelector(".df-free").value = "typed in list";
   card.querySelector(".df-free").dispatchEvent(new window.Event("input", { bubbles: true }));
   document.getElementById("df-view-toggle").click();

@@ -18,9 +18,10 @@ try {
 const layoutTest = chromium ? test : test.skip;
 
 function scene(id) {
+  const words = "one two three four five six seven eight nine ten".split(" ");
   return {
-    id, title: `Scene ${id}`, script: "one two three", duration: 2, audioUrl: "data:audio/mpeg;base64,SUQz",
-    words: [{ word: "one", start: 0, end: 0.3 }, { word: "two", start: 0.4, end: 0.7 }, { word: "three", start: 0.8, end: 1.1 }],
+    id, title: `Scene ${id}`, script: words.join(" "), duration: 2, audioUrl: "data:audio/mpeg;base64,SUQz",
+    words: words.map((word, index) => ({ word, start: index * 0.15, end: index * 0.15 + 0.1 })),
   };
 }
 
@@ -45,6 +46,57 @@ function fixture() {
 
 const TRANSPORT_LABELS = [["▶", "Play"], ["⏸", "Pause"], ["▶", "Resume"], ["↻", "Again"]];
 
+layoutTest("review: a real mouse drag between interior words offers Cite without seeking", async () => {
+  const browser = await chromium.launch();
+  try { for (const width of [390, 1280]) for (const view of ["list", "story"]) {
+    const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: "reduce" }); await page.goto(fixture()); await page.click("#df-view-toggle");
+    if (view === "list") { await page.click("#df-story-exit"); await page.locator('[data-chip-for="d00"]').click(); await page.locator('[data-decision="d00"] .df-play').click(); await page.locator('[data-decision="d00"] .df-teleprompter').evaluate(node => node.scrollIntoView({ block: "center" })); }
+    const words = page.locator(".df-card.is-active .df-words").first().locator(".df-word");
+    const start = await words.nth(4).boundingBox(), end = await words.nth(7).boundingBox();
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2); await page.mouse.down();
+    await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 12 }); await page.mouse.up();
+    const selected = await page.evaluate(() => getSelection().toString()); expect(selected).toContain("six seven");
+    expect(await page.locator("#df-cite").isVisible()).toBe(true);
+    expect(await page.evaluate(() => document.querySelector("audio").paused)).toBe(true);
+    await page.click("#df-cite"); expect(await page.textContent("#df-note-quote")).toBe(selected.trim()); await page.close();
+  } } finally { await browser.close(); }
+}, 60000);
+
+layoutTest("review: transcript accessibility text preserves spaces between words", async () => {
+  const browser = await chromium.launch();
+  try { const page = await browser.newPage(); await page.goto(fixture()); await page.click("#df-view-toggle");
+    expect(await page.locator(".df-card.is-active .df-words").first().ariaSnapshot()).toContain("one two three four five six seven eight nine ten");
+  } finally { await browser.close(); }
+});
+
+layoutTest("review: touch note targets are 44px and Cite sits below the selection", async () => {
+  const browser = await chromium.launch();
+  try { const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); await page.goto(fixture());
+    for (const selector of [".df-card-note", ".df-item-note"]) { const box = await page.locator(selector).first().boundingBox(); expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44); }
+    const bottom = await page.evaluate(() => { const range = document.createRange(); range.selectNodeContents(document.querySelector(".df-question p")); getSelection().removeAllRanges(); getSelection().addRange(range); return range.getBoundingClientRect().bottom; });
+    await page.locator("#df-cite").waitFor({ state: "visible" }); const box = await page.locator("#df-cite").boundingBox();
+    expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44); expect(box.y).toBeGreaterThanOrEqual(bottom);
+  } finally { await browser.close(); }
+});
+
+layoutTest("review: note modal animates open and closed, and reduced motion disables it", async () => {
+  const browser = await chromium.launch();
+  try { const page = await browser.newPage({ reducedMotion: "no-preference" }); await page.goto(fixture()); await page.locator(".df-card-note").first().click();
+    const animations = () => page.evaluate(() => document.getElementById("df-note-dialog").getAnimations().map(animation => animation.transitionProperty));
+    expect(await animations()).toContain("opacity"); await page.locator("#df-note-dialog").evaluate(node => Promise.all(node.getAnimations().map(animation => animation.finished))); await page.keyboard.press("Escape"); expect(await animations()).toContain("opacity");
+    await page.emulateMedia({ reducedMotion: "reduce" }); await page.locator(".df-card-note").first().click(); expect(await animations()).toEqual([]);
+  } finally { await browser.close(); }
+});
+
+layoutTest("review: new buttons have press feedback and touch does not gain sticky hover", async () => {
+  const browser = await chromium.launch();
+  try { const page = await browser.newPage({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 }, reducedMotion: "reduce" }); await page.goto(fixture());
+    const button = page.locator(".df-card-note").first(), color = await button.evaluate(node => getComputedStyle(node).color);
+    await button.hover(); expect(await button.evaluate(node => getComputedStyle(node).color)).toBe(color);
+    await page.mouse.down(); expect(await button.evaluate(node => new DOMMatrix(getComputedStyle(node).transform).a)).toBeLessThan(1); await page.mouse.up();
+  } finally { await browser.close(); }
+});
+
 layoutTest("Cite & note fits mobile and desktop, traps native dialog focus and returns to the answer sheet", async () => {
   const browser = await chromium.launch();
   try {
@@ -67,7 +119,7 @@ layoutTest("Cite & note fits mobile and desktop, traps native dialog focus and r
       await page.locator("#df-cite").click(); expect(await page.textContent("#df-note-quote")).toBe("A written briefing to cite while deciding.");
       await page.fill("#df-note-text", "This needs more detail."); await page.click("#df-note-save");
       expect(await page.locator('[data-chip-for="v00"] .df-note-count').textContent()).toBe("1");
-      expect(await page.locator('[data-chip-for="v00"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
+      expect(await page.locator('[data-chip-for="v00"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
       expect(await page.isChecked('[data-decision="v00"] .df-check-input >> nth=0')).toBe(false);
       await page.reload();
       expect(await page.locator('[data-chip-for="v00"] .df-note-count').textContent()).toBe("1");

@@ -86,7 +86,7 @@ function assertSceneOwnership(decisions, scenes) {
 
 function renderWords(scene) {
   return scene.words.map((word, index) =>
-    `<button type="button" class="df-word" data-scene="${escapeHtml(scene.id)}" data-word-index="${index}" data-word-start="${word.start}" aria-label="Seek to ${escapeHtml(word.word)}">${escapeHtml(word.word)}</button>`,
+    `<span class="df-word" data-scene="${escapeHtml(scene.id)}" data-word-index="${index}" data-word-start="${word.start}">${escapeHtml(word.word)}</span>`,
   ).join(" ");
 }
 
@@ -202,7 +202,7 @@ function renderCard(decision, index, sceneById) {
     const label = speakerLabel(scene, role);
     const speaker = label ? `<span class="df-speaker"${role ? ` data-role="${role}"` : ""}>${escapeHtml(label)}</span>` : "";
     const title = String(scene.title || "").trim().toLowerCase() === label.toLowerCase() ? "" : `<span class="df-scene-title">${escapeHtml(scene.title)}</span>`;
-    return `<section class="df-transcript-scene" data-transcript-scene="${escapeHtml(scene.id)}"${role ? ` data-role="${role}"` : ""}><p class="df-scene-label">${speaker}${title}</p><p class="df-words">${renderWords(scene)}</p></section>`;
+    return `<section class="df-transcript-scene" data-transcript-scene="${escapeHtml(scene.id)}"${role ? ` data-role="${role}"` : ""}><p class="df-scene-label">${speaker}${title}</p><p class="df-words" tabindex="0" role="group" aria-label="Transcript: ${escapeHtml(scene.title)}" aria-describedby="df-seek-help">${renderWords(scene)}</p></section>`;
   }).join("");
   const optionBlocks = options.map((option) =>
     `<label class="df-option"><input type="radio" name="${escapeHtml(decision.id)}" value="${escapeHtml(option.value)}"><span><b>${escapeHtml(option.label)}</b>${option.summary ? `<small>${escapeHtml(option.summary)}</small>` : ""}</span></label>`,
