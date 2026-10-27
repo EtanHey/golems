@@ -255,7 +255,7 @@ After explicit authorization, run the vendor mode below. It reads
 `skills/vendor/manifest.json`, verifies every pinned file, preserves upstream licenses,
 creates a durable copy under `~/.golems/vendor/design-skills/<payload-sha256>`, and
 links the manifest-selected skills for each provider. Claude gets only Emil,
-Codex gets all six, and Cursor gets all six for review-only use. It does not run the broad legacy-link cleanup above.
+while provider usage roles are defined in `/agent-routing`. It does not run the broad legacy-link cleanup above.
 
 ```sh
 bun "$GOLEMS_DIR/skills/golem-powers/golem-install/scripts/repoint-skills.mjs" --source "$GOLEMS_DIR/skills/golem-powers" --vendor-skills

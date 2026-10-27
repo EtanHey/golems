@@ -15,7 +15,7 @@ are references, not install-time fetches. `improve-animations` is audit mode onl
 its execute mode is **never** used in the fleet. Write plans under
 `docs.local/animation-plans/` and send them to the lead for routing. Use quick or
 standard, with at most two authorized read-only helpers under normal routing.
-Bare Emil invocations stop at a greeting; include the concrete task. `review-animations` is explicit-only in Claude.
+Bare Emil invocations stop at a greeting; include the concrete task. See `/agent-routing` for invocation restrictions.
 Codex 0.164 discovery exposes enabled:true with no implicit-invocation policy;
 auto-trigger suppression there is UNPROVEN. Invoke this skill explicitly in briefs.
 
@@ -23,7 +23,7 @@ Install: use golem-install's `repoint-skills.mjs --source <golem-powers> --vendo
 (dry-run), then `--apply`. It verifies manifest hashes, copies a durable pinned payload
 under ~/.golems/vendor/design-skills/, and links the providers selected in manifest.json (with per-skill overrides).
 Claude keeps its official auto-updating frontend-design plugin and gets only Emil.
-Codex gets all six vendored skills; Cursor gets all six for review-only use.
+See `/agent-routing` for the roles and usage constraints of every installed provider.
 Gemini/agy get none. Add providers only after authorization.
 Do not use ~/.agents/skills because Gemini/agy exposure is forbidden.
 
