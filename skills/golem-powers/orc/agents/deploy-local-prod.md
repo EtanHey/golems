@@ -76,19 +76,30 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
 9. **No `brain_store`.** You have no BrainLayer tools — the parent owns persistence. Surprises bubble
    up to the caller.
 10. **Install receipt or it did not ship.** After every upgrade, reinstall or reload on macbook-pro,
-    build an `install-receipt/v1` JSON and run `node scripts/install-receipt.mjs write -` from the
-    golems checkout, passing the JSON on stdin. Field list: `scripts/schemas/install-receipt-v1.md`.
+    build one `install-receipt/v1` JSON per product per install event. Run
+    `node scripts/install-receipt.mjs write -` from the golems root checkout on master (with node_modules installed),
+    passing the JSON on stdin. Fields: the closed schema in `scripts/schemas/install-receipt-v1.mjs`;
+    rules: `scripts/schemas/install-receipt-v1.md`.
     Report the returned `path` and `verdict`. Fill every evidence field from a probe run in the same
-    session, never from the target. Never copy `target.merge_sha` into evidence fields:
+    session, never from the target. Never copy any target.* value (merge_sha, version, release_asset.sha256)
+    into installed.* or activation.*.
+    - `host.hostname` and `host.user`: use `hostname` and `whoami`, respectively.
+    - `installed.version`, `installed.path`, `installed.install_finished_at`: read version/path from
+      the installed artifact (e.g. `brew info --json=v2`, Cellar/app path); use its recorded install
+      time or the completion time of the install command you ran this session, never the target or a guess.
     - `installed.embedded_commit`: read the artifact's Info.plist GitCommit, brainlayer `_build.py`
       BUILD_SHA, package gitHead, or checkout HEAD.
-    - For golems hooks/skills in `worktree-pin` mode, `install_source.pin_sha` and
-      `install_source.owner_status`: use the owner installer's `--status` output.
-    - `activation.processes[]`: obtain pid, path and started_at from `ps`.
+    - If the caller assigns a golems hooks/skills install: in `worktree-pin` mode, use the owner
+      installer's `--status` output for `install_source.pin_sha` and `install_source.owner_status`.
+    - `activation.processes[]`: obtain pid, path and started_at from `ps`; convert start times to UTC ISO-8601 Z.
     - `activation.self_report`: obtain command, version and commit from the binary's own version command.
-    - `activation.mcp_probe`: use the stdio probe required by this contract.
+    - `activation.mcp_probe`: use the in-cmux stdio probe (#2) for cmuxlayer, or a real MCP request
+      you made (e.g. T15's `brain_search` for brainlayer); for voicelayer or any other product without
+      a real MCP request this session, omit it.
     If a field cannot be probed, leave it out and report **[UNVERIFIED]**; never guess. If a required
-    field is unavailable or writing fails, report the failure as not done. `write` only downgrades;
+    field is unavailable or writing fails, report the failure as not done. Submit `verdict: LIVE` with
+    `reasons: []` only when your probes show it serving; otherwise submit what you observed (FAILED
+    for a failed install). `write` only downgrades;
     any probed commit differing from `target.merge_sha` gives MISMATCH.
     DONE requires a written receipt with `verdict: LIVE`. Report INSTALLED_NOT_ACTIVE, MISMATCH or
     FAILED with the returned `reasons`, as not done. Write no receipt on the M1; report read-only
