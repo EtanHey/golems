@@ -10,7 +10,12 @@ const products = {
   cmuxlayer: 'EtanHey/cmuxlayer', golems: 'EtanHey/golems', narrationlayer: 'EtanHey/narrationlayer',
 };
 const execute = (file, args) => execFileSync(file, args, { encoding: 'utf8', timeout: 30000,
+  env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GH_PROMPT_DISABLED: '1' },
   maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+function compareStatus(status) {
+  if (!['identical', 'ahead', 'behind', 'diverged'].includes(status)) throw Error('Invalid compare status');
+  return status;
+}
 
 // Local snapshots and remote bytes are parsed and validated on the calling host.
 export function readLocal(names) {
@@ -52,7 +57,7 @@ export function latestRelease(repo, exec = execute) {
 }
 export function compareInstall(repo, releaseSha, installedSha, exec = execute) {
   const result = JSON.parse(exec('gh', ['api', `repos/${repo}/compare/${releaseSha}...${installedSha}`]));
-  return result.status;
+  return compareStatus(result.status);
 }
 export function peelTag(repo, tag, exec = execute) {
   if (!tag) throw Error('Missing release tag');
@@ -105,6 +110,10 @@ export function collectStatus({ products: catalog = products, localReader = read
       const identity = r.installed.embedded_commit === r.target.released_sha
         || (!r.installed.embedded_commit && r.installed.content_sha256
           && r.installed.content_sha256 === r.target.release_asset?.sha256);
+      if (release && r.target.tag === release.tag && r.target.released_sha !== release.released_sha) {
+        return { ...row, status: 'MISMATCH', verification: {
+          released_sha: { claimed: r.target.released_sha, observed: release.released_sha } } };
+      }
       if (!identity) return row;
       if (row.activation === 'LIVE') {
         row.verification = {};
@@ -113,17 +122,13 @@ export function collectStatus({ products: catalog = products, localReader = read
           if (!/^[0-9a-f]{40}$/.test(observed)) throw Error('Unresolved release tag');
           row.verification.released_sha = { claimed: r.target.released_sha, observed };
           if (observed !== r.target.released_sha) return { ...row, status: 'MISMATCH' };
-          const ancestry = resolver.compareAncestry(repo, r.target.merge_sha, observed);
+          const ancestry = compareStatus(resolver.compareAncestry(repo, r.target.merge_sha, observed));
           row.verification.ancestry = { claimed: r.target.ancestry.status, observed: ancestry ?? null };
           if (!['identical', 'ahead'].includes(ancestry) || ancestry !== r.target.ancestry.status) {
             return { ...row, status: 'MISMATCH' };
           }
         } catch { return { ...row, status: 'LIVE-UNVERIFIED' }; }
         if (!release) return { ...row, status: 'LIVE-UNVERIFIED' };
-      }
-      if (release && r.target.tag === release.tag && r.target.released_sha !== release.released_sha) {
-        return { ...row, status: 'MISMATCH', verification: { ...row.verification,
-          released_sha: { claimed: r.target.released_sha, observed: release.released_sha } } };
       }
       if (row.activation !== 'LIVE' && r.target.ancestry.status === 'ahead') {
         return { ...row, status: 'LIVE-UNVERIFIED' };

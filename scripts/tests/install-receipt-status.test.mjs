@@ -1,4 +1,6 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
@@ -227,4 +229,37 @@ test('5a: printed mismatch exposes claimed and observed tag SHAs', () => {
     assert.ok(output.includes(JSON.stringify({ claimed: sha, observed: old })));
     assert.equal(process.exitCode, 1);
   } finally { process.stdout.write = write; process.exitCode = exitCode; }
+});
+
+
+test('B2 review: latest-tag SHA contradiction is MISMATCH without installed identity', () => {
+  const r = receipt(); delete r.installed.embedded_commit;
+  r.target.merge_sha = r.target.released_sha = old;
+  r.install_source.pin_sha = r.install_source.owner_status.pin_sha = old;
+  assert.equal(run({ golems: r }, {})[0].status, 'MISMATCH');
+});
+test('B2 review: missing or unexpected compare status is LIVE-UNVERIFIED', () => {
+  for (const status of [undefined, null, 'unexpected', 42]) {
+    const compareAncestry = (repo, merge, released) => compareInstall(repo, merge, released,
+      () => JSON.stringify({ status }));
+    assert.equal(run({ golems: liveReceipt() }, {}, { resolver: { ...verified, compareAncestry } })[0].status, 'LIVE-UNVERIFIED');
+    assert.throws(() => compareAncestry('EtanHey/golems', sha, sha), /Invalid compare status/);
+    assert.equal(run({ golems: liveReceipt() }, {}, { resolver: { ...verified, compareAncestry: () => status } })[0].status, 'LIVE-UNVERIFIED');
+  }
+});
+test('B2 review: default git and gh calls disable credential prompts and preserve the environment', () => {
+  const calls = [];
+  const stub = mock.method(childProcess, 'execFileSync', (file, _args, options) => {
+    calls.push(file);
+    assert.equal(options.env.GIT_TERMINAL_PROMPT, '0');
+    assert.equal(options.env.GH_PROMPT_DISABLED, '1');
+    assert.equal(options.env.PATH, process.env.PATH);
+    return file === 'git' ? `${sha}\trefs/tags/v1.0.0^{}\n` : JSON.stringify({ status: 'identical' });
+  });
+  syncBuiltinESMExports();
+  try {
+    assert.equal(peelTag('EtanHey/golems', 'v1.0.0'), sha);
+    assert.equal(compareInstall('EtanHey/golems', sha, sha), 'identical');
+    assert.deepEqual(calls, ['git', 'gh']);
+  } finally { stub.mock.restore(); syncBuiltinESMExports(); }
 });
