@@ -6,12 +6,14 @@ ajv.addFormat('utc-time', value => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})
   && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 19) === value.slice(0, 19));
 const valid = ajv.compile(schema);
 export function validate(receipt) {
-  if (typeof receipt?.target?.released_sha === 'string') receipt.target.released_sha = receipt.target.released_sha.toLowerCase();
   if (!valid(receipt)) throw new Error(ajv.errorsText(valid.errors));
 }
 export function assess(r) {
   const commits = [r.installed.embedded_commit, r.install_source?.pin_sha, r.install_source?.owner_status?.pin_sha, r.activation.self_report?.commit];
-  const mismatch = !['identical', 'ahead'].includes(r.target.ancestry?.status)
+  const status = r.target.ancestry?.status;
+  const sameCommit = r.target.merge_sha === r.target.released_sha;
+  const mismatch = !['identical', 'ahead'].includes(status)
+    || (status === 'identical' && !sameCommit) || (status === 'ahead' && sameCommit)
     || commits.some(commit => commit !== undefined && commit !== r.target.released_sha)
     || (!r.installed.embedded_commit && r.installed.content_sha256 && r.target.release_asset
       && r.installed.content_sha256 !== r.target.release_asset.sha256);

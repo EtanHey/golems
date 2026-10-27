@@ -34,5 +34,6 @@ export default {
   }, ['schema', 'receipt_id', 'written_at', 'writer', 'host', 'product', 'artifact_kind', 'target', 'installed', 'activation', 'verdict', 'reasons']),
   allOf: [{ if: { properties: { artifact_kind: { enum: ['source-checkout', 'skills-sync'] } } }, then: { required: ['install_source'] } },
     { if: { required: ['install_source'], properties: { install_source: { properties: { mode: { const: 'worktree-pin' } } } } },
-      then: { properties: { install_source: { required: ['pin_sha', 'owner_status'] } } } }],
+      then: { properties: { install_source: { required: ['pin_sha', 'owner_status'],
+        properties: { owner_status: { required: ['pin_sha'] } } } } } }],
 };

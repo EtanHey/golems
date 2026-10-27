@@ -93,9 +93,17 @@ export function collectStatus({ products: catalog = products, localReader = read
       const identity = r.installed.embedded_commit === r.target.released_sha
         || (!r.installed.embedded_commit && r.installed.content_sha256
           && r.installed.content_sha256 === r.target.release_asset?.sha256);
-      if (!identity || !release) return row;
+      if (release && r.target.tag === release.tag && r.target.released_sha !== release.released_sha) {
+        return { ...row, status: 'MISMATCH' };
+      }
+      if (!identity) return row;
+      // B2 owns independent tag/ancestry verification. Caller claims cannot prove CURRENT.
+      if (row.activation === 'LIVE' || r.target.ancestry.status === 'ahead') {
+        return { ...row, status: 'LIVE-UNVERIFIED' };
+      }
+      if (!release) return row;
       if (r.target.released_sha === release.released_sha) {
-        return { ...row, status: (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version) ? 'CURRENT' : 'BEHIND' };
+        return { ...row, status: (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version) ? 'LIVE-UNVERIFIED' : 'BEHIND' };
       }
       try {
         const comparison = comparisonReader(repo, release.released_sha, r.target.released_sha);

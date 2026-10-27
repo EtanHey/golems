@@ -12,7 +12,7 @@ function receipt(host = 'mbp') {
     product: 'golems', artifact_kind: 'skills-sync', target: { version: '1.0.0', merge_sha: sha, released_sha: sha, ancestry: { method: 'gh-compare', status: 'identical', checked_at: '2026-10-27T09:00:00Z' }, tag: 'v1.0.0' },
     installed: { version: '1.0.0', path: '/fixture/hooks-live', embedded_commit: sha, install_finished_at: '2026-10-27T09:00:00Z' },
     install_source: { mode: 'worktree-pin', path: '/fixture/hooks-live', pin_sha: sha,
-      owner_status: { command: 'install-hooks.sh --host mbp --status', exit: 0, drift: false, settings_drift: false } },
+      owner_status: { pin_sha: sha, command: 'install-hooks.sh --host mbp --status', exit: 0, drift: false, settings_drift: false } },
     activation: { method: 'none', processes: [] }, verdict: 'INSTALLED_NOT_ACTIVE', reasons: [] };
 }
 const release = { version: '1.0.0', tag: 'v1.0.0', released_sha: sha };
@@ -22,10 +22,10 @@ const run = (local, remote, extra = {}) => collectStatus({ products: { golems: '
 test('5: product × host matrix uses hooks-live pin without release.json; never promotes activation', () => {
   const rows = run({ golems: receipt() }, { golems: receipt('m1') });
   assert.deepEqual(rows.map(r => [r.product, r.host, r.status, r.activation]), [
-    ['golems', 'mbp', 'CURRENT', 'INSTALLED_NOT_ACTIVE'], ['golems', 'm1', 'CURRENT', 'INSTALLED_NOT_ACTIVE']]);
+    ['golems', 'mbp', 'LIVE-UNVERIFIED', 'INSTALLED_NOT_ACTIVE'], ['golems', 'm1', 'LIVE-UNVERIFIED', 'INSTALLED_NOT_ACTIVE']]);
 });
 test('5: older valid installation is BEHIND; identity drift is MISMATCH', () => {
-  const behind = receipt(); behind.target.merge_sha = old; behind.target.released_sha = old; behind.installed.embedded_commit = old; behind.install_source.pin_sha = old;
+  const behind = receipt(); behind.target.merge_sha = old; behind.target.released_sha = old; behind.installed.embedded_commit = old; behind.install_source.pin_sha = behind.install_source.owner_status.pin_sha = old;
   behind.target.version = behind.installed.version = '0.9.0'; behind.target.tag = 'v0.9.0';
   assert.equal(run({ golems: behind }, {}).at(0).status, 'BEHIND');
   for (const mutate of [r => { r.installed.embedded_commit = old; }, r => { r.install_source.pin_sha = old; },
@@ -39,7 +39,7 @@ test('5: absent receipts stay UNKNOWN; corrupt receipt and remote failure never 
   assert.deepEqual(run({}, {}).map(r => [r.status, r.activation]), [['NO-RECEIPT', 'UNKNOWN'], ['NO-RECEIPT', 'UNKNOWN']]);
   assert.equal(run({ golems: { error: 'invalid-json' } }, {})[0].status, 'MISMATCH');
   const rows = run({ golems: receipt() }, {}, { remoteReader: () => { throw Error('ssh failed'); } });
-  assert.equal(rows[0].status, 'CURRENT'); assert.equal(rows[1].status, 'UNREACHABLE');
+  assert.equal(rows[0].status, 'LIVE-UNVERIFIED'); assert.equal(rows[1].status, 'UNREACHABLE');
   assert.equal(run({ golems: receipt() }, {}, { releaseReader: () => { throw Error('offline'); } })[0].status, 'UNKNOWN');
 });
 test('5: release lookup includes prereleases and resolves the tag rather than target branch', () => {
@@ -95,11 +95,11 @@ test('5: status CLI rejects invalid products without transport', () => {
 });
 
 test('5: M1 hostname uses local receipts as m1; unknown host fails closed', () => {
-  assert.equal(run({ golems: receipt('m1') }, {}, { localHostname: 'fixture-m1' })[1].status, 'CURRENT');
+  assert.equal(run({ golems: receipt('m1') }, {}, { localHostname: 'fixture-m1' })[1].status, 'LIVE-UNVERIFIED');
   assert.throws(() => run({}, {}, { localHostname: 'unknown-host' }), /Unknown local host/);
 });
 test('5: installs descended from the latest release are AHEAD; divergence is UNKNOWN', () => {
-  const r = receipt(); r.target.merge_sha = old; r.target.released_sha = old; r.installed.embedded_commit = old; r.install_source.pin_sha = old;
+  const r = receipt(); r.target.merge_sha = old; r.target.released_sha = old; r.installed.embedded_commit = old; r.install_source.pin_sha = r.install_source.owner_status.pin_sha = old;
   r.target.version = r.installed.version = '2.0.0'; r.target.tag = 'v2.0.0';
   assert.equal(run({ golems: r }, {}, { comparisonReader: () => 'ahead' })[0].status, 'AHEAD');
   assert.equal(run({ golems: r }, {}, { comparisonReader: () => 'diverged' })[0].status, 'UNKNOWN');
@@ -120,11 +120,32 @@ test('5: ancestry lookup compares release to install using mocked GitHub only', 
   }), 'ahead');
 });
 
-test('A2: status recognises a tag on a bump commit as CURRENT', () => {
+test('A2: status leaves claimed bump-commit ancestry LIVE-UNVERIFIED', () => {
   const r = receipt(); r.target.merge_sha = old; r.target.ancestry.status = 'ahead';
-  assert.equal(run({ golems: r }, {})[0].status, 'CURRENT');
+  assert.equal(run({ golems: r }, {})[0].status, 'LIVE-UNVERIFIED');
   for (const status of ['behind', 'diverged']) {
     r.target.ancestry.status = status;
     assert.equal(run({ golems: r }, {})[0].status, 'MISMATCH');
   }
+});
+
+test('A2 review: latest tag with a different resolved SHA is MISMATCH', () => {
+  const r = receipt(); r.target.merge_sha = r.target.released_sha = old;
+  r.installed.embedded_commit = r.install_source.pin_sha = r.install_source.owner_status.pin_sha = old;
+  for (const comparison of ['ahead', 'behind']) {
+    assert.equal(run({ golems: r }, {}, { comparisonReader: () => comparison })[0].status, 'MISMATCH');
+  }
+});
+test('A2 review: LIVE is unverified pending B2, including failed release lookup', () => {
+  const r = receipt(); r.verdict = 'LIVE';
+  r.activation.processes = [{ pid: 1, path: '/fixture/bin', started_at: '2026-10-27T09:01:00Z' }];
+  r.activation.self_report = { command: 'version', version: '1.0.0', commit: sha };
+  assert.equal(run({ golems: r }, {})[0].status, 'LIVE-UNVERIFIED');
+  r.target.merge_sha = old; r.target.ancestry.status = 'ahead';
+  assert.equal(run({ golems: r }, {})[0].status, 'LIVE-UNVERIFIED');
+  assert.equal(run({ golems: r }, {}, { releaseReader: () => { throw Error('offline'); } })[0].status, 'LIVE-UNVERIFIED');
+});
+test('A2 review: PR-A-era receipts are MISMATCH', () => {
+  const r = receipt(); delete r.target.released_sha; delete r.target.ancestry;
+  assert.equal(run({ golems: r }, {})[0].status, 'MISMATCH');
 });
