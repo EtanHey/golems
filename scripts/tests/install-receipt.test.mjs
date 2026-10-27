@@ -28,7 +28,7 @@ function isolated(fn) {
 }
 const output = result => { assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout); };
 
-for (const product of ['brainlayer', 'voicelayer', 'cmuxlayer']) {
+for (const product of ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar']) {
   for (const proof of ['self-report', 'missing-seats', 'empty-seats', 'failed-probe', 'complete']) {
     test(`I2: ${product} activation with ${proof}`, () => isolated(run => {
       const r = receipt(); r.product = product;

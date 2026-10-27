@@ -17,7 +17,7 @@ Any present embedded commit, worktree pin, owner_status.pin_sha or self-report c
 `target.released_sha` yields MISMATCH, even with a matching asset digest or MCP probe.
 Owner status exit != 0, drift or settings_drift downgrades LIVE to
 INSTALLED_NOT_ACTIVE: activation is unverified, rather than a proven SHA mismatch.
-For brainlayer, voicelayer and cmuxlayer, LIVE additionally requires
+For brainlayer, voicelayer, cmuxlayer, brainbar and voicebar, LIVE additionally requires
 `activation.mcp_probe.ok: true` and a non-empty `activation.reconnected_seats`
 array of non-empty strings. A version self-report alone downgrades to
 INSTALLED_NOT_ACTIVE. Other products retain version self-report or MCP probe proof.

@@ -1,7 +1,7 @@
 import Ajv from 'ajv';
 import schema from '../schemas/install-receipt-v1.mjs';
 
-const MCP_PRODUCTS = ['brainlayer', 'voicelayer', 'cmuxlayer'];
+const MCP_PRODUCTS = ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar'];
 
 const ajv = new Ajv({ strict: false });
 ajv.addFormat('utc-time', value => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(value)
