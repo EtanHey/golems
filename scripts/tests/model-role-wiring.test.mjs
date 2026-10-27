@@ -105,6 +105,9 @@ test('packaged helper role matches config and caller-selected brain-worker stays
   assert.match(helper, /role: claude.subagent.cheap/);
   assert.ok(helper.includes(`model: ${config.roles['claude.subagent.cheap'].alias}`));
   assert.match(helper, /^effort: medium$/m); // benched agent-level override
+  const deploy = read('skills/golem-powers/orc/agents/deploy-local-prod.md').split('---')[1];
+  assert.match(deploy, /^role: claude.subagent.cheap$/m);
+  assert.ok(deploy.includes(`model: ${config.roles['claude.subagent.cheap'].alias}`));
   for (const role of Object.values(config.roles)) {
     assert.ok(!Object.hasOwn(role, 'effort'));
     assert.ok(!Object.hasOwn(role, 'effort_note'));
