@@ -62,15 +62,15 @@ function writeReceipt(receipt) {
   console.log(`${receipt.artifact_kind} receipt: ` + JSON.parse(written.stdout).verdict);
   return receipt;
 }
-export function emitHooksReceipt({ source, alias, ownerArgs }) {
-  return writeReceipt(buildHooksReceipt({ source: resolve(source, '.worktrees/hooks-live'), alias, owner: probeOwnerStatus(ownerArgs) }));
+export function emitHooksReceipt({ source, alias, ownerArgs, owner }) {
+  return writeReceipt(buildHooksReceipt({ source: resolve(source, '.worktrees/hooks-live'), alias, owner: owner ?? probeOwnerStatus(ownerArgs) }));
 }
-export function emitSkillsReceipt({ mode, source, alias, ownerArgs = [], prefix = resolve(source, '..') }) {
+export function emitSkillsReceipt({ mode, source, alias, ownerArgs = [], owner, prefix = resolve(source, '..') }) {
   if (mode === 'release-channel') {
     const record = JSON.parse(readFileSync(resolve(prefix, 'release.json'))), manifest = JSON.parse(readFileSync(resolve(source, 'MANIFEST.json')));
     if (record.commit !== manifest.commit || record.version !== manifest.version) throw Error('receipt writer/content release identity mismatch');
   }
-  const owner = probeOwnerStatus(ownerArgs);
+  owner ??= probeOwnerStatus(ownerArgs);
   const probe = run('python3', ['-B', resolve(scripts, 'ratchet/installed-skills.py')]);
   if (probe.status === 255) throw Error('Parity SSH unavailable (strict host-key verification)');
   let measured; try { measured = JSON.parse(probe.stdout); } catch { measured = {}; }
