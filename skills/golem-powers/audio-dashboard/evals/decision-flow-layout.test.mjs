@@ -25,8 +25,7 @@ function scene(id) {
   };
 }
 
-function fixture() {
-  const ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"];
+function fixture(ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"]) {
   const html = renderDecisionFlow({
     storageKey: "dbx:layout-test",
     heading: "Check the new VoiceBar first, then 25 calls to make.",
@@ -302,6 +301,16 @@ layoutTest("answer sheet fits the viewport, traps real Tab focus and Esc returns
     await browser.close();
   }
 }, 60000);
+
+layoutTest("a real far-chip tap at 390px lands on its requested card after smooth scrolling", async () => {
+  const browser = await chromium.launch();
+  try { const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "no-preference" });
+    await page.goto(fixture(["v00", ...Array.from({ length: 24 }, (_, index) => "d" + index), "nl2", "nl3"]));
+    expect(await page.evaluate(() => scrollY)).toBe(0); await page.locator('[data-chip-for="nl2"]').tap();
+    await page.evaluate(() => new Promise(resolve => document.addEventListener("scrollend", event => { if (event.target === document) requestAnimationFrame(resolve); })));
+    expect(await page.evaluate(() => ({ card: document.querySelector(".df-card.is-active").dataset.decision, chip: document.querySelector('.df-chip[aria-current="true"]').dataset.chipFor, index: document.querySelector(".df-index a.is-active").dataset.indexFor }))).toEqual({ card: "nl2", chip: "nl2", index: "nl2" });
+  } finally { await browser.close(); }
+}, 15000);
 
 for (const [width, height] of [[390, 844], [1280, 800]]) layoutTest(`bottom scroll selects the last card in every navigation surface at ${width}px`, async () => {
   const browser = await chromium.launch();
