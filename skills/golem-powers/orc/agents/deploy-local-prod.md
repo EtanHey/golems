@@ -40,7 +40,7 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
    - **voicelayer** — `voicelayer-deploy-check.sh` exit 0; `launchctl list | grep -i voicelayer` with
      a live PID; `pgrep -fl VoiceBar` showing the **mcp-server-daemon.ts child** (app alone ≠ live).
    - **brainlayer** — `launchctl list` **by label** (read PID / last-exit-status / label as three
-     columns; non-zero exit on a `-` PID is a deploy finding, not noise) + a live socat child on
+     columns; non-zero exit on a `-` PID is a deploy finding, not noise) + a live `brainlayer-mcp-stdio-bridge` client relaying to
      `/tmp/brainbar.sock`. First confirm `brew info brainlayer` shows the target release version (refresh the tap if not); a no-op upgrade is not an install. Install only through the product's release path (brainlayer: the Homebrew keg via `brew upgrade brainlayer`); never an editable `pip install -e` from a checkout, because the installed artifact must carry the merge SHA (canon #4).
    These checks prove the install is serving; LIVE also needs the Install receipt item's MCP proof
    (`mcp_probe` plus `seat_scan`) for all three products.
