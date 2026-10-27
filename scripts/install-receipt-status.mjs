@@ -164,8 +164,8 @@ export function peelTag(repo, tag, exec = execute) {
 }
 export function hostAlias(name) {
   const normalized = name.toLowerCase().replace(/\.local$/, '');
-  if (/(^|[-_])mbp($|[-_])/.test(normalized) || /^macbook-pro$/.test(normalized)) return 'mbp';
-  if (/(^|[-_])m1($|[-_])/.test(normalized)) return 'm1';
+  if (normalized === 'm4-max' || /(^|[-_])mbp($|[-_])/.test(normalized) || /^macbook-pro$/.test(normalized)) return 'm4-max';
+  if (normalized === 'm1-pro' || normalized === 'locals-macbook-pro' || /(^|[-_])m1($|[-_])/.test(normalized)) return 'm1-pro';
   throw Error('Unknown local host alias');
 }
 export function collectStatus({ products: catalog = products, localReader = readLocal,
@@ -173,7 +173,7 @@ export function collectStatus({ products: catalog = products, localReader = read
   resolver = { peelTag, compareAncestry: compareInstall, compareBridge }, tapReader = readTapVersion, tapPaths: paths = tapPaths } = {}) {
   const names = Object.keys(catalog), snapshots = {}, releases = new Map();
   const localHost = hostAlias(localHostname);
-  const readers = localHost === 'mbp' ? [['mbp', localReader], ['m1', remoteReader]] : [['m1', localReader]];
+  const readers = localHost === 'm4-max' ? [['m4-max', localReader], ['m1-pro', remoteReader]] : [['m1-pro', localReader]];
   for (const [host, reader] of readers) {
     try { snapshots[host] = reader(names); } catch { snapshots[host] = null; }
   }
@@ -190,14 +190,14 @@ export function collectStatus({ products: catalog = products, localReader = read
     const path = paths[product];
     const override = paths === tapPaths && repo !== products[product];
     const tap = path && override ? 'TAP-UNKNOWN' : tapStatus(path, path ? lookup('tags', true) : null, tapReader);
-    return ['mbp', 'm1'].map(host => {
+    return ['m4-max', 'm1-pro'].map(host => {
       const row = { product, host, status: 'UNKNOWN', activation: 'UNKNOWN', tap, latest: release?.tag ?? null };
-      if (!snapshots[host]) return { ...row, status: host === 'm1' && localHost !== 'm1' ? 'UNREACHABLE' : 'UNKNOWN' };
+      if (!snapshots[host]) return { ...row, status: host === 'm1-pro' && localHost !== 'm1-pro' ? 'UNREACHABLE' : 'UNKNOWN' };
       const r = snapshots[host][product];
       if (r == null) return { ...row, status: 'NO-RECEIPT' };
       try {
         validate(r);
-        if (r.product !== product || r.host.alias !== host) throw Error('Wrong receipt identity');
+        if (r.product !== product || hostAlias(r.host.alias) !== host) throw Error('Wrong receipt identity');
       } catch { return { ...row, status: 'MISMATCH' }; }
       row.activation = assess(r)[0];
       row.installed = r.installed.version;

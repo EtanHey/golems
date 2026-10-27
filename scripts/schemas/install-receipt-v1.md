@@ -179,7 +179,7 @@ Status reads each product's `latest.json` locally and via
 `ssh -o BatchMode=yes m1` using `cat` on a strictly validated, quoted receipt
 path. JSON parsing and schema validation happen locally; remote Node is not
 required. It never installs, activates, or writes receipts. The local alias is
-detected from hostname (mbp / MacBook-Pro, or m1); an unknown hostname stops
+detected from hostname as `m4-max` (M4 Max) or `m1-pro` (M1 Pro); an unknown hostname stops
 with an error. On M1, local receipts populate M1 and MBP remains UNKNOWN.
 Default products are brainlayer, brainbar, voicelayer,
 voicebar, cmuxlayer, golems and narrationlayer; paired apps use their parent repo.
@@ -238,3 +238,8 @@ installed identity proof. Reads are snapshots of recorded install evidence,
 not a new owner-installer or runtime attestation. Exit is nonzero unless every
 row is CURRENT and no row is TAP-STALE. TAP-UNKNOWN alone does not fail an
 otherwise CURRENT row. Tests inject remote and GitHub readers and make no network calls.
+
+Legacy host aliases `mbp` and `m1` remain readable as `m4-max` and `m1-pro`; new receipts use the canonical slugs.
+
+While cmux is retired, cmuxlayer custody ends at identity + install. A cmuxlayer receipt stays INSTALLED_NOT_ACTIVE with reason 'no live consumer: cmux retired; refuses under T3 by design', and that counts as DONE for cmuxlayer releases.
+Revisit this custody rule if cmux returns.
