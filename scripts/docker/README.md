@@ -9,8 +9,11 @@ node scripts/docker/container-teardown.mjs run com.supabase.cli.project=my-tests
 
 Only these exact label selectors are accepted; name globs are rejected. Use a
 dedicated project: preflight protects and stops **all** its stale containers.
-Compose runs in the caller's working directory; provide its compose file there
-or via `COMPOSE_FILE`. Supabase stop selects the explicit project ID.
+Restart-policy changes are permanent and never restored. Selecting a long-lived
+dev stack stops it and removes its automatic restart policy.
+Compose runs in the caller's working directory. Any compose configuration there
+or in `COMPOSE_FILE` can limit stop to its services; remaining project containers
+are reported as survivors. Supabase stop selects the explicit project ID.
 
 The wrapper disables restart policies every 250 ms while the child runs. Call
 `protect()` immediately after **each** create/recreate step to close that polling
@@ -23,12 +26,18 @@ const lifecycle = createLifecycle('com.supabase.cli.project=my-tests');
 await lifecycle.protect();
 ```
 
+A container removed between listing and protection is skipped only after an
+exact missing-container error and a confirming re-list. Other protection errors
+remain fatal, including any failure for a container that still exists.
+
 `preflight`, `protect` and `teardown` are also CLI subcommands with the same
 selector. Module callers can `await lifecycle.run(['node', 'integration.mjs'])`;
 it owns preflight and teardown. Teardown always protects, stops without removing
 volumes/backups, then reports every running survivor. Errors aggregate, with the
-wrapped command's exit code and error first. SIGINT/SIGTERM reach the child; it
+wrapped command's exit code and error first. SIGINT/SIGTERM/SIGHUP reach the child; it
 gets at most 1.5 seconds before SIGKILL and teardown. Cleanup has no abort signal.
+Lifecycle subprocesses run in separate process groups and stay awaited, so a
+terminal Ctrl-C cannot kill cleanup commands directly.
 `CI=true` makes lifecycle methods no-ops and passes through the wrapped command.
 SIGKILL of the wrapper skips teardown: restart=no and next-run preflight cover
 protected containers; callers must use the hook to minimize the creation gap.

@@ -22,13 +22,31 @@ if (tool === 'docker' && args[0] === 'ps') {
   }
 } else if (tool === 'docker' && args[0] === 'update') {
   if (process.env.FAIL_UPDATE) { console.error('protect failed'); process.exit(9); }
+  if (process.env.MISSING_BUT_PRESENT) {
+    console.error('Error response from daemon: No such container: ' + args[2]); process.exit(1);
+  }
+  if (process.env.VANISH_ON_UPDATE && args.includes('vanishing')) {
+    fs.rmSync(path.join(root, 'state', 'vanishing'));
+    log(['stub', 'vanished']);
+    console.error('Error response from daemon: No such container: vanishing');
+    if (process.env.MIXED_ERROR) console.error('permission denied');
+    process.exit(1);
+  }
 } else if (tool === 'supabase' || (tool === 'docker' && args[0] === 'compose')) {
   if (process.env.FAIL_STOP) { console.error('stop failed'); process.exit(8); }
-  const label = (tool === 'supabase' ? 'com.supabase.cli.project=' : 'com.docker.compose.project=') + 'fixture';
-  for (const file of fs.readdirSync(path.join(root, 'state'))) {
-    const p = path.join(root, 'state', file), c = JSON.parse(fs.readFileSync(p));
-    if (c.label === label && !process.env.SURVIVORS) fs.writeFileSync(p, JSON.stringify({...c, running: false}));
-  }
+  const stop = () => {
+    const label = (tool === 'supabase' ? 'com.supabase.cli.project=' : 'com.docker.compose.project=') + 'fixture';
+    for (const file of fs.readdirSync(path.join(root, 'state'))) {
+      const p = path.join(root, 'state', file), c = JSON.parse(fs.readFileSync(p));
+      if (c.label === label && !process.env.SURVIVORS) fs.writeFileSync(p, JSON.stringify({...c, running: false}));
+    }
+    log(['stub', 'stopped']);
+  };
+  if (process.env.GROUP_INTERRUPT) {
+    process.on('SIGINT', () => { log(['stub', 'SIGINT']); process.exit(77); });
+    process.kill(-process.ppid, 'SIGINT');
+    setTimeout(stop, 40);
+  } else stop();
 } else { console.error('unexpected stub call'); process.exit(99); }
 `;
 const childSource = String.raw`
@@ -42,16 +60,17 @@ const create = id => {
   fs.writeFileSync(path.join(root, 'state', id), JSON.stringify({ label: process.env.SELECTOR, name: id, running: true }));
   log(['child', 'create', id]);
 };
-if (mode === 'hook') {
+if (mode === 'hook' || mode === 'hook-vanish') {
   const { createLifecycle } = await import(process.env.HELPER);
   const lifecycle = createLifecycle(process.env.SELECTOR);
-  for (const id of ['created', 'recreated']) { create(id); await lifecycle.protect(); }
-} else if (mode === 'create') {
+  for (const id of mode === 'hook' ? ['created', 'recreated'] : ['vanishing', 'created']) { create(id); await lifecycle.protect(); }
+} else if (mode === 'create' || mode === 'vanish') {
   create('created');
+  if (mode === 'vanish') create('vanishing');
   await new Promise(done => setTimeout(done, 1100));
 } else if (mode === 'signal' || mode === 'stubborn') {
   create('created');
-  for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => { log(['child', signal]); if (mode === 'signal') process.exit(0); });
+  for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(signal, () => { log(['child', signal]); if (mode === 'signal') process.exit(0); });
   setInterval(() => {}, 100);
   setTimeout(() => process.exit(91), 6000);
   console.log('READY');
@@ -71,10 +90,11 @@ async function fixture(fn, { selector = compose, ...env } = {}) {
   const calls = () => readFileSync(join(root, 'calls'), 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
   const seed = (id, label = selector, running = true) => writeFileSync(join(root, 'state', id), JSON.stringify({ label, name: id, running }));
   const environment = { ...process.env, CI: 'false', FAIL_UPDATE: '', FAIL_STOP: '', SURVIVORS: '', CHILD_EXIT: '',
+    VANISH_ON_UPDATE: '', MIXED_ERROR: '', MISSING_BUT_PRESENT: '', GROUP_INTERRUPT: '',
     ...env, PATH: join(root, 'bin'), FIXTURE: root, SELECTOR: selector, HELPER: pathToFileURL(cli).href };
   const run = (action = 'run', mode = 'create', extra = {}) => new Promise((done, reject) => {
     const args = [cli, action, selector, ...(action === 'run' ? ['--', process.execPath, join(root, 'child.mjs'), mode] : [])];
-    const child = spawn(process.execPath, args, { env: { ...environment, ...extra } });
+    const child = spawn(process.execPath, args, { env: { ...environment, ...extra }, detached: process.platform !== 'win32' });
     let stdout = '', stderr = '', sent = false;
     child.stdout.on('data', data => {
       stdout += data;
@@ -87,10 +107,20 @@ async function fixture(fn, { selector = compose, ...env } = {}) {
   });
   try { await fn({ run, calls, seed, root, environment }); }
   finally {
-    for (const [, ...args] of calls()) {
-      assert.doesNotMatch(args.join(' '), /down\s+-v|--volumes|--no-backup|rm\s+-v|volume\s+rm/);
-    }
-    rmSync(root, { recursive: true, force: true });
+    try {
+      for (const [, tool, ...args] of calls()) {
+        if (tool === 'docker') {
+          if (args[0] === 'ps') {
+            assert.ok(['{{.ID}}', '{{.Names}}'].includes(args.at(-1)));
+            assert.deepEqual(args, ['ps', ...(args.includes('--all') ? ['--all'] : []), '--filter', `label=${selector}`, '--format', args.at(-1)]);
+          } else if (args[0] === 'update') {
+            assert.equal(args[1], '--restart=no'); assert.ok(args.length > 2);
+            assert.ok(args.slice(2).every(id => /^[a-z0-9_-]+$/.test(id)));
+          } else assert.deepEqual(args, ['compose', '--project-name', selector.split('=')[1], 'stop']);
+        } else if (tool === 'supabase') assert.deepEqual(args, ['stop', '--project-id', selector.split('=')[1]]);
+        else assert.ok(['child', 'stub'].includes(tool), `unexpected tool: ${tool}`);
+      }
+    } finally { rmSync(root, { recursive: true, force: true }); }
   }
 }
 const index = (calls, tool, command) => calls.findIndex(c => c[1] === tool && c[2] === command);
@@ -112,7 +142,7 @@ test('poll protects a running child; teardown protects all, stops, then checks s
   const result = await run(); assert.equal(result.code, 0, result.stderr);
   const c = calls(), done = index(c, 'child', 'done');
   assert.ok(c.some((c, i) => i < done && c[1] === 'docker' && c[2] === 'update' && c.includes('created')));
-  assert.deepEqual(c.slice(done + 1).map(c => c.slice(1)), [
+  assert.deepEqual(c.slice(done + 1).filter(c => c[1] !== 'stub').map(c => c.slice(1)), [
     ['docker', 'ps', '--all', '--filter', `label=${compose}`, '--format', '{{.ID}}'],
     ['docker', 'update', '--restart=no', 'created'],
     ['docker', 'compose', '--project-name', 'fixture', 'stop'],
@@ -132,7 +162,8 @@ test('Supabase preflight uses project stop without deleting backups', () => fixt
   seed('stale'); const r = await run('preflight'); assert.equal(r.code, 0, r.stderr);
   assert.deepEqual(calls().filter(c => c[1] === 'supabase').map(c => c.slice(2)), [['stop', '--project-id', 'fixture']]);
 }, { selector: supabase }));
-for (const [mode, signal, exit] of [['signal', 'SIGTERM', 143], ['stubborn', 'SIGTERM', 143], ['signal', 'SIGINT', 130]])
+for (const [mode, signal, exit] of [['signal', 'SIGTERM', 143], ['stubborn', 'SIGTERM', 143], ['signal', 'SIGINT', 130],
+  ['signal', 'SIGHUP', 129], ['stubborn', 'SIGHUP', 129]])
 test(`${signal} reaches ${mode} child; teardown follows the bounded wait`, () => fixture(async ({ run, calls }) => {
   const r = await run('run', mode, { WRAPPER_SIGNAL: signal }); assert.equal(r.code, exit, r.stderr);
   const c = calls(), term = index(c, 'child', signal), stop = index(c, 'docker', 'compose');
@@ -144,7 +175,8 @@ test('CI passes through child exits and skips every lifecycle Docker call', () =
   for (const action of ['preflight', 'protect', 'teardown']) assert.equal((await run(action)).code, 0);
   assert.equal(calls().some(c => ['docker', 'supabase'].includes(c[1])), false);
 }, { CI: 'true', CHILD_EXIT: '23' }));
-for (const selector of ['name=fixture*', 'com.docker.compose.project=', 'com.supabase.cli.project=fixture*', 'com.docker.compose.project=a,b'])
+for (const selector of ['name=fixture*', 'com.docker.compose.project=', 'com.supabase.cli.project=fixture*', 'com.docker.compose.project=a,b',
+  'com.docker.compose.project=MyTests', 'com.docker.compose.project=my.tests', 'com.docker.compose.project=fixture\n'])
 test(`invalid selector ${selector} fails before invoking Docker`, () => fixture(async ({ run, calls }) => {
   const r = await run('teardown'); assert.equal(r.code, 1); assert.match(r.stderr, /selector/i); assert.deepEqual(calls(), []);
 }, { selector }));
@@ -152,7 +184,7 @@ test('failed preflight refuses to start work', () => fixture(async ({ run, seed,
   seed('stale'); const r = await run('run', 'hook'); assert.equal(r.code, 1);
   assert.match(r.stderr, /stale/); assert.equal(index(calls(), 'child', 'start'), -1);
 }, { FAIL_STOP: '1' }));
-test('failed polling aborts the child and still tears down', () => fixture(async ({ run, calls }) => {
+test('non-disappearance polling errors still abort the child and tear down', () => fixture(async ({ run, calls }) => {
   const r = await run(); assert.equal(r.code, 1); assert.match(r.stderr, /protect failed/);
   assert.ok(index(calls(), 'docker', 'compose') > index(calls(), 'child', 'start'));
 }, { FAIL_UPDATE: '1' }));
@@ -168,3 +200,27 @@ test('module run preserves the primary failure and cleanup error as AggregateErr
     assert.match(error.errors[1].message, /stop failed/); return true;
   });
 }, { CHILD_EXIT: '23', FAIL_STOP: '1' }));
+for (const exit of [0, 23]) test(`vanishing container during polling preserves child completion and exit ${exit}`, () => fixture(async ({ run, calls }) => {
+  const r = await run('run', 'vanish'); assert.equal(r.code, exit, r.stderr);
+  const c = calls(), vanished = index(c, 'stub', 'vanished'), done = index(c, 'child', 'done');
+  assert.ok(vanished >= 0 && done > vanished);
+  assert.ok(c.some((c, i) => i > vanished && i < done && c[1] === 'docker' && c[2] === 'update' && c.includes('created') && !c.includes('vanishing')));
+}, { VANISH_ON_UPDATE: '1', CHILD_EXIT: String(exit) }));
+test('explicit protect hook tolerates a confirmed disappearance', () => fixture(async ({ run, calls }) => {
+  const r = await run('run', 'hook-vanish'); assert.equal(r.code, 0, r.stderr);
+  const c = calls(), vanished = index(c, 'stub', 'vanished');
+  assert.ok(vanished >= 0 && index(c, 'child', 'done') > vanished);
+}, { VANISH_ON_UPDATE: '1' }));
+test('teardown remains strict if an allegedly missing container still exists', () => fixture(async ({ run, seed }) => {
+  seed('created'); const r = await run('teardown'); assert.equal(r.code, 1); assert.match(r.stderr, /No such container: created/);
+}, { MISSING_BUT_PRESENT: '1' }));
+test('a disappearance never masks another Docker error', () => fixture(async ({ run }) => {
+  const r = await run('run', 'vanish'); assert.equal(r.code, 1); assert.match(r.stderr, /permission denied/);
+}, { VANISH_ON_UPDATE: '1', MIXED_ERROR: '1' }));
+for (const selector of [compose, supabase]) test(`foreground group SIGINT cannot kill ${selector} teardown`, { skip: process.platform === 'win32' }, () => fixture(async ({ run, calls }) => {
+  const r = await run('run', 'hook'); assert.equal(r.code, 130, r.stderr);
+  assert.match(r.stderr, /Interrupted by SIGINT/); assert.doesNotMatch(r.stderr, /Command failed/);
+  const c = calls(), stopped = index(c, 'stub', 'stopped');
+  assert.ok(stopped > index(c, 'child', 'done')); assert.equal(index(c, 'stub', 'SIGINT'), -1);
+  assert.ok(c.slice(stopped + 1).some(c => c[1] === 'docker' && c[2] === 'ps' && !c.includes('--all')));
+}, { selector, GROUP_INTERRUPT: '1' }));
