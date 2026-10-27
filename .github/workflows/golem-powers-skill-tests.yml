@@ -90,6 +90,9 @@ jobs:
       - name: Regression gate contracts
         run: python -m pytest scripts/tests/test_private_regression_gate.py -q
 
+      - name: M1 sync offline guards (fake SSH only)
+        run: python -B -m unittest discover -s scripts/tests -p test_m1_sync.py
+
       - run: bun install --frozen-lockfile
 
       # reconcile-to-mac: the retire-law tests spawn zsh, and the CLI dry run

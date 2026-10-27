@@ -284,6 +284,28 @@ actionable error before GitHub, lease or issuer probes. Creating the file only s
 inputs; it does not install hooks, deploy the checker or prove the whole live tier. The lead runs
 that post-install tier, including real issuers and publication, after review.
 
+M1 sync is **off by default**. `--sync-m1` requires Etan's standing authorization for M1
+installs (pending, #32); without it the parity row stays red after a guarded merge until he
+authorizes a sync. `--no-sync-m1` explicitly retains the default after a manual sync. Both
+paths keep parity read-only and blocking, with no sync-helper invocation.
+Authorization is `~/.golems/ratchet/m1-sync-authorized.json`: a regular, current-user-owned file
+with no group/other permissions. Fields: schema version 1 (`schema`), item 32 (`item`), scope
+`m1-skills-install` (`scope`), Etan's verbatim answer (`words`), YYYY-MM-DD answer date (`date`).
+Only Etan's own answer to #32 may create it; no enabling sample is shipped. Missing/invalid
+authorization prints exactly `M1 sync not authorized (Etan #32)` before release lookup/SSH/SCP.
+
+Authorized `--sync-m1` requires published `v<UTC commit date>-<short LIVE_HEAD>` assets and
+verifies SHA256SUMS, MANIFEST identity and every payload file before SSH. Missing release
+exits 2 with a re-run instruction; an already-current M1 gets no copy or backup. Otherwise:
+back up skill roots (log path/size), record release/config/skill inventories, copy verified
+assets via BatchMode SSH/SCP, `install.sh --from-file --sums --preserve-releases`, then vendor
+repoint dry-run/apply. Preserve M1-only entries and Codex `Keeping existing path` messages;
+compare config.toml hashes even after install failure. No /Applications, BrainLayer, audio,
+restarts or signals. Failures stop before parity. Local run logs/assets: `m1-sync.log`,
+`m1-sync/`; remote stage retains before.json/install.log. `after_m1_sync` reserves RC-I5's future
+skills-sync receipt hook without issuing one. Offline tests (fake gh/ssh/scp via PATH):
+`WEAVE_ALLOW_TMP=1 python3 -B -m unittest discover -s scripts/tests -p test_m1_sync.py`.
+
 Name/content parity and required readability are separate output fields. Explicitly approved
 source-invalid entries remain in `disclosed_invalid`; they cannot satisfy a required-readable
 entry. The initial source had one dangling entry on both hosts and an empty namespace on both;
