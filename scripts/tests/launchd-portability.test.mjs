@@ -10,7 +10,7 @@ describe("launchd templates are portable", () => {
   test("tracked plist templates contain no developer home path", () => {
     for (const name of readdirSync(launchdRoot).filter((entry) => entry.endsWith(".plist"))) {
       const content = readFileSync(join(launchdRoot, name), "utf8");
-      expect(content, name).not.toContain("/Users/example");
+      expect(content, name).not.toMatch(/\/Users\/[^/]+\//);
     }
   });
 
@@ -27,13 +27,13 @@ describe("launchd templates are portable", () => {
         destination,
       ], {
         cwd: repoRoot,
-        env: { ...process.env, HOME: "/Users/example", GOLEMS_ROOT: "/opt/golems" },
+        env: { ...process.env, HOME: "/fixture/home", GOLEMS_ROOT: "/opt/golems" },
         stdout: "pipe",
         stderr: "pipe",
       });
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       const rendered = readFileSync(destination, "utf8");
-      expect(rendered).toContain("/Users/example");
+      expect(rendered).toContain("/fixture/home");
       expect(rendered).toContain("/opt/golems/packages/services/src/briefing.ts");
       expect(rendered).toContain("<string>/opt/homebrew/bin/bun</string>");
       expect(rendered).toContain("<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>");
@@ -52,13 +52,17 @@ describe("launchd templates are portable", () => {
     try {
       const result = Bun.spawnSync(["bash", join(launchdRoot, "render-plist.sh"), source, destination], {
         cwd: repoRoot,
-        env: { ...process.env, HOME: "/Users/example", GOLEMS_ROOT: "/opt/golems" },
+        env: { ...process.env, HOME: "/fixture/home", GOLEMS_ROOT: "/opt/golems" },
         stdout: "pipe",
         stderr: "pipe",
       });
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       const rendered = readFileSync(destination, "utf8");
-      expect(rendered).toContain("<string>/opt/golems/scripts/worktree-gc-nightly.sh</string>");
+      const pin = "/fixture/home/Gits/golems/.worktrees/hooks-live";
+      expect(rendered).toContain(`<string>${pin}/scripts/worktree-gc-nightly.sh</string>`);
+      expect(rendered).toContain(`<key>WorkingDirectory</key>\n\t<string>${pin}</string>`);
+      expect(rendered).not.toContain("<string>/opt/golems/scripts/worktree-gc-nightly.sh</string>");
+      expect(rendered).not.toContain("<key>WorkingDirectory</key>\n\t<string>/opt/golems</string>");
       // Clear of BrainLayer's 03:17 backup and 04:20 scrub (03:00-05:30).
       expect(rendered).toContain("<key>Hour</key>\n\t\t<integer>6</integer>");
       // lsof lives in /usr/sbin; without it every candidate fails closed as KEEP-undetermined.
