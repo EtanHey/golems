@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Usage: node scripts/install-receipt.mjs validate|write <receipt.json|->
+// Usage: node scripts/install-receipt.mjs validate|write <receipt.json|-> | status
 import Ajv from 'ajv';
+import { pathToFileURL } from 'node:url';
 import { readFileSync, mkdirSync, lstatSync, writeFileSync, linkSync, unlinkSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { hostname, userInfo } from 'node:os';
@@ -11,10 +12,10 @@ const ajv = new Ajv({ strict: false });
 ajv.addFormat('utc-time', value => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(value)
   && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 19) === value.slice(0, 19));
 const valid = ajv.compile(schema);
-function validate(receipt) {
+export function validate(receipt) {
   if (!valid(receipt)) throw new Error(ajv.errorsText(valid.errors));
 }
-function assess(r) {
+export function assess(r) {
   const commits = [r.installed.embedded_commit, r.install_source?.pin_sha, r.activation.self_report?.commit];
   const mismatch = commits.some(commit => commit !== undefined && commit !== r.target.merge_sha)
     || (!r.installed.embedded_commit && r.installed.content_sha256 && r.target.release_asset
@@ -31,8 +32,13 @@ function assess(r) {
   if (r.verdict === 'LIVE' && !(identity && fresh && probe)) return ['INSTALLED_NOT_ACTIVE', 'Missing matching identity, fresh activation process or runtime proof'];
   return [r.verdict];
 }
+async function main() {
 try {
   const [command, input, ...extra] = process.argv.slice(2);
+  if (command === 'status') {
+    const { printStatus } = await import('./install-receipt-status.mjs');
+    printStatus([input, ...extra].filter(value => value !== undefined));
+  } else {
   if (!['validate', 'write'].includes(command) || !input || extra.length) throw new Error('Usage: install-receipt.mjs validate|write <receipt.json|->');
   const r = JSON.parse(readFileSync(input === '-' ? 0 : input, 'utf8'));
   if (command === 'write') { r.receipt_id = randomUUID(); r.written_at = new Date().toISOString(); }
@@ -64,8 +70,11 @@ try {
     }
     process.stdout.write(JSON.stringify({ ...r, path: file }) + '\n');
   }
+  }
 } catch (error) {
   // Input values are deliberately excluded: validation errors must not echo forbidden payloads.
   process.stderr.write(`install-receipt: ${error instanceof SyntaxError ? 'Invalid JSON' : error.message}\n`);
   process.exitCode = 1;
 }
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
