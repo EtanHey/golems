@@ -23,6 +23,11 @@ case "$*" in
     if [[ $APT_TEST_MODE == hang && $count == 2 ]]; then
       grep -q 'URIs: http://archive.ubuntu.com/ubuntu' "$APT_SOURCES_DIR/sources.list.d/ubuntu.sources" || exit 44
     fi
+    if [[ $APT_TEST_MODE == third-party ]]; then
+      for source in "$APT_SOURCES_DIR"/sources.list.d/microsoft*; do
+        [[ ! -f $source ]] || exit 100
+      done
+    fi
     [[ $APT_TEST_MODE != fail ]] || exit 42
     ;;
   *install*) [[ $APT_TEST_MODE != install-fail ]] || exit 43 ;;
@@ -120,4 +125,35 @@ SOURCES
   run bash "$HELPER" bats
   [ "$status" -eq 0 ]
   ! grep -q 'Dir::Cache::Archives' "$APT_TEST_LOG"
+}
+
+@test "third-party list and deb822 sources are backed up before the first update" {
+  deb822_sources
+  cp "$APT_SOURCES_DIR/sources.list.d/ubuntu.sources" "$BATS_TEST_TMPDIR/original"
+  for name in microsoft-prod.list microsoft-prod.sources; do
+    printf '%s\n' 'broken Microsoft source' > "$APT_SOURCES_DIR/sources.list.d/$name"
+  done
+  export APT_TEST_MODE=third-party
+  run bash "$HELPER" bats
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'update$' "$APT_TEST_LOG")" -eq 1 ]
+  cmp "$BATS_TEST_TMPDIR/original" "$APT_SOURCES_DIR/sources.list.d/ubuntu.sources"
+  for name in microsoft-prod.list microsoft-prod.sources; do
+    [ ! -e "$APT_SOURCES_DIR/sources.list.d/$name" ]
+    grep -qx 'broken Microsoft source' "$APT_SOURCES_DIR/sources.list.d.disabled-by-ci/$name"
+    [[ $output == *"apt: disabled third-party source $name"* ]] || false
+  done
+}
+
+@test "Ubuntu-only sources are unchanged and need no backup directory" {
+  deb822_sources
+  printf '%s\n' 'deb http://archive.ubuntu.com/ubuntu noble main' > "$APT_SOURCES_DIR/sources.list"
+  cp "$APT_SOURCES_DIR/sources.list.d/ubuntu.sources" "$BATS_TEST_TMPDIR/original"
+  run bash "$HELPER" bats
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'update$' "$APT_TEST_LOG")" -eq 1 ]
+  cmp "$BATS_TEST_TMPDIR/original" "$APT_SOURCES_DIR/sources.list.d/ubuntu.sources"
+  grep -qx 'deb http://archive.ubuntu.com/ubuntu noble main' "$APT_SOURCES_DIR/sources.list"
+  [ ! -e "$APT_SOURCES_DIR/sources.list.d.disabled-by-ci" ]
+  [[ $output != *'disabled third-party source'* ]] || false
 }
