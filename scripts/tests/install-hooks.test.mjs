@@ -122,6 +122,7 @@ const bakFiles = (fx) => spawnSync("ls", [path.join(fx.home, ".claude")], { enco
 
 function fixtureEnv(fx) {
   const env = { ...process.env, HOME: fx.home, CODEX_HOME: path.join(fx.home, ".codex"),
+    RATCHET_SKILL_CONFIG: path.join(fx.home, 'fixture-parity-not-configured.json'),
     GOLEMS_HEAVY_LOCK: path.join(fx.root, "fixture-heavy.lock"),
     GOLEMS_HEAVY_MIN_FREE_GB: "0", GOLEMS_WORKTREE_MIN_FREE_GB: "0", ...(fx.env ?? {}) };
   // The parent suite owns the real mutex; nested synthetic installs use fixture-only state.
@@ -131,6 +132,34 @@ function fixtureEnv(fx) {
   env.PATH = `${bin}:${env.PATH}`;
   return env;
 }
+
+test('owner apply emits a checkout skills-sync receipt through the shared writer', () => {
+  const fx = fixture();
+  const skill = path.join(fx.repo, 'skills/golem-powers/demo-gate');
+  writeFileSync(path.join(skill, 'SKILL.md'), 'receipt fixture');
+  git(fx.repo, 'add', '.'); git(fx.repo, 'commit', '-qm', 'skill fixture'); git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  for (const root of ['.claude/skills', '.agents/skills', '.codex/skills']) {
+    mkdirSync(path.join(fx.home, root), { recursive: true }); symlinkSync(skill, path.join(fx.home, root, 'demo'));
+  }
+  fixtureEnv(fx);
+  const python = pathPython();
+  writeFileSync(path.join(fx.root, 'machine-bin/python3'), `#!/bin/sh\ncase "$*" in *ratchet/installed-skills.py*) printf '%s\\n' '{"measurement":"live","host_identity_valid":true,"name_content_parity":true,"required_readable_valid":true}';; *) exec '${python}' "$@";; esac\n`, { mode: 0o755 });
+  const result = run(fx, '--apply'); expect(result.status).toBe(0);
+  const receipt = JSON.parse(readFileSync(path.join(fx.home, '.local/state/golems/install-receipts/golems/latest-skills-sync-checkout.json')));
+  expect(receipt.install_source.mode).toBe('checkout'); expect(receipt.verdict).toBe('LIVE');
+  expect(receipt.installed.embedded_commit).toBe(git(fx.repo, 'rev-parse', 'HEAD'));
+  expect(receipt.activation.processes).toEqual([]);
+  const hookReceipt = path.join(fx.home, '.local/state/golems/install-receipts/golems/latest-hooks-sync-worktree-pin.json');
+  const pin = JSON.parse(readFileSync(hookReceipt)).target.released_sha;
+  git(fx.repo, 'commit', '--allow-empty', '-qm', 'root advanced independently'); git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  expect(run(fx, '--apply').status).toBe(0);
+  expect(JSON.parse(readFileSync(hookReceipt)).target.released_sha).toBe(pin);
+  expect(JSON.parse(readFileSync(path.join(fx.home, '.local/state/golems/install-receipts/golems/latest-skills-sync-checkout.json'))).target.released_sha).toBe(git(fx.repo, 'rev-parse', 'HEAD'));
+  rmSync(path.join(fx.home, '.local'), { recursive: true });
+  symlinkSync(path.join(fx.root, 'refuse-state-link'), path.join(fx.home, '.local'));
+  const failedReceipt = run(fx, '--apply');
+  expect(failedReceipt.status).toBe(0); expect(failedReceipt.out).toContain('SKILLS-SYNC RECEIPT FAILED (install succeeded)');
+});
 
 function guardedFixture({ privateSuite = "absent", candidate = "pass" } = {}) {
   const fx = fixture({ privateSuite: false });

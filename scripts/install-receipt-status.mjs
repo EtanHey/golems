@@ -1,8 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { hostname } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { validate, assess, bridgePaths } from './lib/install-receipt-core.mjs';
+import { validate, assess, bridgePaths, rootsDigest } from './lib/install-receipt-core.mjs';
+import { snapshotSkills, probeOwnerStatus } from './lib/skills-sync-receipt.mjs';
 
 const products = {
   brainlayer: 'EtanHey/brainlayer', brainbar: 'EtanHey/brainlayer',
@@ -26,30 +27,63 @@ function compareStatus(status) {
 }
 
 // Local snapshots and remote bytes are parsed and validated on the calling host.
-export function readLocal(names) {
-  return Object.fromEntries(names.map(product => {
+const skillLatest = (kind, mode) => {
+  if (!['checkout', 'release-channel', 'worktree-pin'].includes(mode)) throw Error('Invalid skills receipt mode');
+  return `latest-${kind}-${mode}.json`;
+};
+export function readLocal(names, { skillsMode = existsSync(join(process.env.HOME, '.golems/release.json')) ? 'release-channel' : 'checkout' } = {}) {
+  return Object.fromEntries(names.flatMap(product => (product === 'golems' ? ['skills-sync', 'hooks-sync'] : [null]).map(kind => {
+    const key = kind === 'hooks-sync' ? 'golems:hooks-sync' : product;
+    const mode = kind === 'hooks-sync' ? 'worktree-pin' : skillsMode;
     try {
-      return [product, JSON.parse(readFileSync(join(process.env.HOME, '.local/state/golems/install-receipts', product, 'latest.json'), 'utf8'))];
+      const dir = join(process.env.HOME, '.local/state/golems/install-receipts', product);
+      const selected = product === 'golems' ? skillLatest(kind, mode) : 'latest.json';
+      const r = JSON.parse(readFileSync(join(dir, existsSync(join(dir, selected)) ? selected : 'latest.json'), 'utf8'));
+      if ((kind === 'hooks-sync' && r?.artifact_kind !== kind) || (r?.artifact_kind === 'skills-sync' && r.install_source?.mode !== mode)) return [key, null];
+      if (product === 'golems' && r?.artifact_kind === 'skills-sync' && r.install_source?.mode === 'release-channel') {
+        const record = JSON.parse(readFileSync(join(r.install_source.path, '..', 'release.json'), 'utf8'));
+        if (!/^[0-9a-f]{40}$/.test(record.commit)) throw Error('Invalid release identity');
+        if (record.commit !== r.installed.embedded_commit) return [key, null];
+      }
+      return [key, r];
     } catch (error) {
-      return [product, error.code === 'ENOENT' ? null : { error: 'unreadable-receipt' }];
+      return [key, error.code === 'ENOENT' ? null : { error: 'unreadable-receipt' }];
     }
-  }));
+  })));
 }
-export function readRemote(names, exec = execute) {
-  return Object.fromEntries(names.map(product => {
+export function readRemote(names, exec = execute, { skillsMode = 'release-channel' } = {}) {
+  return Object.fromEntries(names.flatMap(product => (product === 'golems' ? ['skills-sync', 'hooks-sync'] : [null]).map(kind => {
+    const key = kind === 'hooks-sync' ? 'golems:hooks-sync' : product;
+    const mode = kind === 'hooks-sync' ? 'worktree-pin' : skillsMode;
     if (!/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,127}$/.test(product)) throw Error('Invalid product');
     let bytes;
     try {
-      bytes = exec('ssh', ['-o', 'BatchMode=yes', 'm1',
-        `cat -- "$HOME/.local/state/golems/install-receipts/${product}/latest.json"`]);
+      const read = file => exec('ssh', ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', 'm1', `cat -- "$HOME/.local/state/golems/install-receipts/${product}/${file}"`]);
+      try { bytes = read(product === 'golems' ? skillLatest(kind, mode) : 'latest.json'); }
+      catch (error) {
+        if (product !== 'golems' || error.status !== 1 || !/No such file or directory/.test(String(error.stderr))) throw error;
+        bytes = read('latest.json');
+      }
     } catch (error) {
       if (error.status === 255 || error.status == null) throw error;
-      return [product, error.status === 1 && /No such file or directory/.test(String(error.stderr))
+      return [key, error.status === 1 && /No such file or directory/.test(String(error.stderr))
         ? null : { error: 'unreadable-receipt' }];
     }
-    try { return [product, JSON.parse(bytes)]; }
-    catch { return [product, { error: 'unreadable-receipt' }]; }
-  }));
+    let r;
+    try { r = JSON.parse(bytes); } catch { return [key, { error: 'unreadable-receipt' }]; }
+    if ((kind === 'hooks-sync' && r?.artifact_kind !== kind) || (r?.artifact_kind === 'skills-sync' && r.install_source?.mode !== mode)) return [key, null];
+    if (product === 'golems' && r?.artifact_kind === 'skills-sync' && r.install_source?.mode === 'release-channel') {
+      try {
+        const record = JSON.parse(exec('ssh', ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', 'm1', 'cat -- "$HOME/.golems/release.json"']));
+        if (!/^[0-9a-f]{40}$/.test(record.commit)) throw Error('Invalid release identity');
+        if (record.commit !== r.installed.embedded_commit) return [key, null];
+      } catch (error) {
+        if (error.status === 255) throw error;
+        return [key, { error: 'unreadable-receipt' }];
+      }
+    }
+    return [key, r];
+  })));
 }
 
 // Strict SemVer; build metadata has no effect on precedence.
@@ -170,7 +204,14 @@ export function hostAlias(name) {
 }
 export function collectStatus({ products: catalog = products, localReader = readLocal,
   remoteReader = readRemote, releaseReader = (repo, options) => latestRelease(repo, execute, options), localHostname = hostname(), comparisonReader = compareInstall,
-  resolver = { peelTag, compareAncestry: compareInstall, compareBridge }, tapReader = readTapVersion, tapPaths: paths = tapPaths } = {}) {
+  resolver = { peelTag, compareAncestry: compareInstall, compareBridge }, tapReader = readTapVersion, tapPaths: paths = tapPaths,
+  hooksReader = (host, r) => {
+    if (host !== hostAlias(localHostname)) throw Error('Remote owner hook probe unavailable');
+    return probeOwnerStatus(['--host', host === 'm4-max' ? 'mbp' : 'm1', '--repo', resolve(r.install_source.path, '../..')]);
+  },
+  skillsReader = (host, r) => host === hostAlias(localHostname)
+    ? snapshotSkills({ mode: r.install_source.mode, source: r.install_source.path })
+    : JSON.parse(execute('ssh', ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', 'm1', 'node "$HOME/.golems/current/scripts/skills-sync-receipt.mjs" snapshot'])) } = {}) {
   const names = Object.keys(catalog), snapshots = {}, releases = new Map();
   const localHost = hostAlias(localHostname);
   const readers = localHost === 'm4-max' ? [['m4-max', localReader], ['m1-pro', remoteReader]] : [['m1-pro', localReader]];
@@ -190,10 +231,11 @@ export function collectStatus({ products: catalog = products, localReader = read
     const path = paths[product];
     const override = paths === tapPaths && repo !== products[product];
     const tap = path && override ? 'TAP-UNKNOWN' : tapStatus(path, path ? lookup('tags', true) : null, tapReader);
-    return ['m4-max', 'm1-pro'].map(host => {
-      const row = { product, host, status: 'UNKNOWN', activation: 'UNKNOWN', tap, latest: release?.tag ?? null };
+    const kinds = product === 'golems' && Object.values(snapshots).some(x => x && Object.hasOwn(x, 'golems:hooks-sync')) ? ['skills-sync', 'hooks-sync'] : [undefined];
+    return kinds.flatMap(kind => ['m4-max', 'm1-pro'].map(host => {
+      const row = { product, host, ...(kind ? { artifact_kind: kind } : {}), status: 'UNKNOWN', activation: 'UNKNOWN', tap, latest: release?.tag ?? null };
       if (!snapshots[host]) return { ...row, status: host === 'm1-pro' && localHost !== 'm1-pro' ? 'UNREACHABLE' : 'UNKNOWN' };
-      const r = snapshots[host][product];
+      const r = snapshots[host][kind === 'hooks-sync' ? 'golems:hooks-sync' : product];
       if (r == null) return { ...row, status: 'NO-RECEIPT' };
       try {
         validate(r);
@@ -216,14 +258,31 @@ export function collectStatus({ products: catalog = products, localReader = read
       if (!identity) return row;
       if (row.activation === 'LIVE') {
         row.verification = {};
+        let skills;
+        if (r.artifact_kind === 'skills-sync') {
+          try {
+            skills = skillsReader(host, r);
+            row.verification.excluded = skills.excluded ?? [];
+            if (skills.commit !== r.target.released_sha || rootsDigest(skills.roots) !== r.installed.content_sha256 ||
+              (r.install_source.mode === 'checkout' && (!skills.root_commits.some(x => x.commits.length) || skills.root_commits.some(x => x.unresolved || x.commits.some(c => c !== skills.commit))))) {
+              return { ...row, status: 'MISMATCH' };
+            }
+          } catch { return { ...row, status: 'LIVE-UNVERIFIED' }; }
+        }
+        let hooks;
+        if (r.artifact_kind === 'hooks-sync') {
+          try { hooks = hooksReader(host, r); } catch { return { ...row, status: 'LIVE-UNVERIFIED' }; }
+          if (hooks.pin_sha !== r.target.released_sha || hooks.exit !== 0 || hooks.drift || hooks.settings_drift) return { ...row, status: 'MISMATCH' };
+        }
         try {
-          const observed = resolver.peelTag(repo, r.target.tag);
+          const observed = hooks?.pin_sha ?? (r.install_source?.mode === 'checkout' && skills ? skills.commit : resolver.peelTag(repo, r.target.tag));
           if (!/^[0-9a-f]{40}$/.test(observed)) throw Error('Unresolved release tag');
           row.verification.released_sha = { claimed: r.target.released_sha, observed };
           if (observed !== r.target.released_sha) return { ...row, status: 'MISMATCH' };
           const ancestry = compareStatus(resolver.compareAncestry(repo, r.target.merge_sha, observed));
-          row.verification.ancestry = { claimed: r.target.ancestry.status, observed: ancestry ?? null };
-          if (!['identical', 'ahead'].includes(ancestry) || ancestry !== r.target.ancestry.status) {
+          row.verification.ancestry = { claimed: r.target.ancestry?.status ?? null, observed: ancestry ?? null };
+          const expected = r.target.ancestry?.status ?? (r.target.merge_sha === observed ? 'identical' : undefined);
+          if (!['identical', 'ahead'].includes(ancestry) || ancestry !== expected) {
             return { ...row, status: 'MISMATCH' };
           }
         } catch { return { ...row, status: 'LIVE-UNVERIFIED' }; }
@@ -260,19 +319,19 @@ export function collectStatus({ products: catalog = products, localReader = read
         }
         if (!release) return { ...row, status: 'LIVE-UNVERIFIED' };
       }
-      if (row.activation !== 'LIVE' && r.target.ancestry.status === 'ahead') {
+      if (row.activation !== 'LIVE' && r.target.ancestry?.status === 'ahead') {
         return { ...row, status: row.activation };
       }
       if (!release) return row;
       if (r.target.released_sha === release.released_sha) {
-        return { ...row, status: (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version)
+        return { ...row, status: (['checkout', 'worktree-pin'].includes(r.install_source?.mode) || (r.target.tag ? r.target.tag === release.tag : r.target.version === release.version))
           ? (row.activation === 'LIVE' ? 'CURRENT' : row.activation) : 'BEHIND' };
       }
       try {
         const comparison = comparisonReader(repo, release.released_sha, r.target.released_sha);
         return { ...row, status: comparison === 'ahead' ? 'AHEAD' : comparison === 'behind' ? 'BEHIND' : 'UNKNOWN' };
       } catch { return row; }
-    });
+    }));
   });
 }
 export function printStatus(args, options = {}) {
@@ -284,7 +343,7 @@ export function printStatus(args, options = {}) {
     selected[product] = repo;
   }
   const rows = collectStatus({ ...options, products: args.length ? selected : products });
-  process.stdout.write('PRODUCT\tHOST\tSTATUS\tACTIVATION\tINSTALLED\tLATEST\tTAP\tCOMMIT\tVERIFICATION\n');
-  for (const r of rows) process.stdout.write([r.product, r.host, r.status, r.activation, r.installed ?? '-', r.latest ?? '-', r.tap, r.commit ?? '-', r.verification ? JSON.stringify(r.verification) : '-'].join('\t') + '\n');
+  process.stdout.write('PRODUCT\tHOST\tSTATUS\tACTIVATION\tINSTALLED\tLATEST\tTAP\tCOMMIT\tVERIFICATION\tARTIFACT\n');
+  for (const r of rows) process.stdout.write([r.product, r.host, r.status, r.activation, r.installed ?? '-', r.latest ?? '-', r.tap, r.commit ?? '-', r.verification ? JSON.stringify(r.verification) : '-', r.artifact_kind ?? '-'].join('\t') + '\n');
   if (rows.some(r => r.status !== 'CURRENT' || r.tap === 'TAP-STALE')) process.exitCode = 1;
 }

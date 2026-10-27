@@ -1,21 +1,28 @@
 # install-receipt/v1 — PR-A
 
 `install-receipt-v1.mjs` exports the closed JSON Schema. The CLI uses the existing
-Ajv dependency and registers `utc-time` for real UTC calendar timestamps.
+bundled Ajv validator and registers `utc-time` for real UTC calendar timestamps.
+Regenerate the standalone validator and dependency licenses with
+`bash scripts/build-receipt-validator.sh` after installing the locked dependencies.
 
-The golems core supports independent skills-sync and hooks-sync artifacts.
-Skills identity is the golems-owned roots commit; hook identity is the hooks-live
-pin. Builders omit unprobed ancestry, and only these artifacts permit omission
-when merge/release identities are identical. Other artifact rules are unchanged.
-Skills LIVE requires clean owner status plus live parity; hooks LIVE requires
-clean owner status. The builder accepts owned-commit snapshots and excluded-entry
-metadata; scanner, installer and paired status wiring follow in the next layer.
-
-The writer stores latest-<artifact_kind>-<mode>.json for these artifacts, so
-checkout skills, release skills and hooks never replace each other's pointer.
-Generic artifacts retain latest.json. Bundled Ajv needs no client node_modules;
-regenerate with bash scripts/build-receipt-validator.sh, or verify locked Bun/Ajv
-versions and committed bundle/license bytes with its --check option.
+The `golems` family has independent `skills-sync` and `hooks-sync` artifacts.
+Skills use checkout/release-channel roots and whole-root hashes (sorted
+`relpath\tfile-sha256\n` lines, then sorted `path\ttree_sha256\n` lines).
+Symlinks resolve; receipt-only exclusions leave ratchet `IGNORED` unchanged.
+Only golems-owned entries, as classified by W10 `managed_link`, contribute Git
+identity. `install_source.excluded[]` discloses each other top-level entry with
+absolute path, kind and count=1. Those bytes remain in the whole-root hash.
+Mixed/unresolved OWNED commits are MISMATCH; broken links name the installed path.
+Skills released_sha follows the owned commit, independently of the hook pin.
+Hooks use worktree-pin and released_sha equal to the owner --status hooks-live pin;
+owner status covers ~/.claude/hooks, so no extra hook-root snapshot is needed.
+Skills LIVE requires clean owner status plus live parity PASS. Hooks LIVE requires
+clean owner status. Neither needs a process or an invented ancestry probe.
+Status checks both artifacts independently before CURRENT; hooks BEHIND and skills
+AHEAD can coexist. Failures preserve successful installs and print explicit errors.
+Latest files are `latest-<artifact_kind>-<mode>.json`; generic artifacts retain
+latest.json. All M1 SSH probes use BatchMode=yes and StrictHostKeyChecking=yes;
+UpdateHostKeys=no disables trust-store updates; an unknown host key yields unavailable and never changes known_hosts.
 
 ```sh
 node scripts/install-receipt.mjs validate receipt.json
@@ -168,9 +175,9 @@ commit prints MISMATCH, even if comparison would otherwise say AHEAD/BEHIND.
 Writes go to `$HOME/.local/state/golems/install-receipts/<product>/` regardless
 of XDG_STATE_HOME. Event names are `<UTC-timestamp>-<version>.json`; collisions
 fail without replacing an event. An exclusive temporary file is linked into the
-event name, then renamed atomically over `latest.json`. A failed latest update
+event name, then atomically over `latest.json` (`latest-<kind>-<mode>.json` for golems artifacts). A failed latest update
 can leave a complete event, never a partial latest receipt.
-Under the single-writer rule, `latest.json` is last-rename-wins, not timestamp-ordered.
+Each latest pointer is last-rename-wins; checkout and release-channel skills pointers are separate.
 Symlinked directories below HOME are refused; HOME itself may be a symlink.
 Keep this state local to each Mac, outside sync folders.
 
@@ -189,10 +196,10 @@ node scripts/install-receipt.mjs status custom-product=owner/repo
 node --test scripts/tests/install-receipt*.test.mjs
 ```
 
-Status reads each product's `latest.json` locally and via
+Status reads each product's latest pointer locally and via
 `ssh -o BatchMode=yes m1` using `cat` on a strictly validated, quoted receipt
-path. JSON parsing and schema validation happen locally; remote Node is not
-required. It never installs, activates, or writes receipts. The local alias is
+path. JSON parsing and validation happen locally; skills rehashing additionally
+uses the installed remote Node helper. Status never writes receipts. The local alias is
 detected from hostname as `m4-max` (M4 Max) or `m1-pro` (M1 Pro); an unknown hostname stops
 with an error. On M1, local receipts populate M1 and MBP remains UNKNOWN.
 Default products are brainlayer, brainbar, voicelayer,

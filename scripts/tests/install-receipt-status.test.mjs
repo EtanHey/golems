@@ -145,8 +145,8 @@ test('I1: a LIVE claim without runtime proof is not LIVE-*', () => {
 });
 test('5: remote transport is exclusively BatchMode ssh to m1 with a read-only reader', () => {
   const result = readRemote(['golems'], (file, args) => {
-    assert.equal(file, 'ssh'); assert.deepEqual(args.slice(0, 3), ['-o', 'BatchMode=yes', 'm1']);
-    assert.equal(args[3], 'cat -- "$HOME/.local/state/golems/install-receipts/golems/latest.json"');
+    assert.equal(file, 'ssh'); assert.deepEqual(args.slice(0, 7), ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', 'm1']);
+    assert.match(args.at(-1), /^cat -- "\$HOME\/\.local\/state\/golems\/install-receipts\/golems\/latest-(?:skills-sync-release-channel|hooks-sync-worktree-pin)\.json"$/);
     return JSON.stringify(receipt('m1'));
   });
   assert.equal(result.golems.host.alias, 'm1');
@@ -167,7 +167,7 @@ test('5: local and remote script read latest receipts, distinguish corrupt files
     const file = join(dir, 'latest.json'), bytes = JSON.stringify(receipt('m1'));
     writeFileSync(file, bytes);
     assert.equal(readLocal(['golems']).golems.host.alias, 'm1');
-    const remote = readRemote(['golems'], (_file, args) => execFileSync('/bin/sh', ['-c', args[3]], { encoding: 'utf8' }));
+    const remote = readRemote(['golems'], (_file, args) => execFileSync('/bin/sh', ['-c', args.at(-1)], { encoding: 'utf8' }));
     assert.equal(remote.golems.install_source.pin_sha, sha);
     assert.equal(readLocal(['absent']).absent, null);
     writeFileSync(file, '{'); assert.deepEqual(readLocal(['golems']).golems, { error: 'unreadable-receipt' });
