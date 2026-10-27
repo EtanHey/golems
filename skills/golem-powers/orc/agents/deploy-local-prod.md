@@ -23,10 +23,13 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
 
    **M1 is off-limits until Etan authorizes the M1 test-rig adapter** (golems /agent-routing § Dispatch Boundaries › M1). On the M1 you may run read-only status checks and report them; you do not install, restart, upgrade or reconnect anything there. This restriction also forbids helper kills and probe-triggered process changes on the M1.
 
-   **Before any `brew upgrade`**, run `node scripts/install-receipt.mjs status` from the golems root checkout.
-   Read the deploying product's own row: **TAP-STALE: STOP** and report to that product's lead.
+   **Before any `brew upgrade`**, run `node scripts/install-receipt.mjs status <product>`
+   from the golems root checkout for each formula or cask you are about to upgrade
+   (`brainlayer` Formula, `brainbar` Cask, and so on). Read the `TAP` column of its `mbp` row:
+   **TAP-STALE: STOP** and report to that product's lead.
    Do not run the upgrade. **TAP-UNKNOWN: proceed** and report the tap as **[UNVERIFIED]**.
-   **never key on the exit code**: status exits 1 for any non-CURRENT row, which is normal before a deploy.
+   **never key on the exit code**: status exits 1 for any non-CURRENT row,
+   which is normal before a deploy.
    An M1 UNREACHABLE row does not block a MacBook Pro deploy.
 2. **LIVE proof or it did not ship.** A PR that merged, a bottle that built, and a `brew upgrade`
    that printed success are three separate things, none of which is "it serves requests on this Mac."
@@ -119,19 +122,24 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
     - `activation.self_report`: obtain command, version and commit from the binary's own version command.
     - `activation.mcp_probe`: use the in-cmux stdio probe (#2) for cmuxlayer, or a real MCP request
       you made (e.g. T15's `brain_search` for brainlayer); for voicelayer or any other product without
-      a real MCP request this session, omit it.
+      a real MCP request this session, omit it
+      (then voicelayer cannot be LIVE: report INSTALLED_NOT_ACTIVE).
     - For brainlayer, voicelayer, cmuxlayer, brainbar and voicebar, LIVE requires
       `activation.mcp_probe.ok: true` plus a seat scan per `scripts/schemas/install-receipt-v1.md`.
       Record `activation.seat_scan.method`, `activation.seat_scan.checked_at` strictly after
       `installed.install_finished_at`, and `activation.seat_scan.active_seats`.
-      Interim procedure (contract #3 remains unchanged): `t3-threads` uses T3 thread state to find
-      running or working threads whose session uses that server; `list_agents` gets active seats
-      from a cmux seat via `list_agents`. Record the exact command or tool used in the report.
-      If active seats cannot be determined, give no LIVE and report **[UNVERIFIED]**.
+      Interim procedure (contract #3 remains unchanged): you have no T3 tools, so you
+      cannot run a `t3-threads` scan or reconnect a T3 thread. Scan with `list_agents` and
+      record the exact call; it sees cmux seats only. Unless you can show that no T3 thread
+      is running on this Mac, active seats cannot be determined: give no LIVE and report
+      **[UNVERIFIED]** (name the gap for the caller). `t3-threads` (running or working threads
+      whose session uses that server) applies once C3 lands.
     - `activation.reconnected_seats`: only seats you actually reconnected in this session, each
       identified by seat or thread ID and verified per contract #3. Never assume a reconnect.
-      The active seats must be a subset of reconnected seats. An empty scan with no reconnects is valid.
-      Your own session or thread and your own stdio/MCP probe never count as a seat in either list.
+      The active seats must be a subset of reconnected seats.
+      An empty scan with no reconnects is valid.
+      Your own session or thread (including the session that dispatched you)
+      and your own stdio/MCP probe never count as a seat in either list.
     If a field cannot be probed, leave it out and report **[UNVERIFIED]**; never guess. If a required
     field is unavailable or writing fails, report the failure as not done. Submit `verdict: LIVE` with
     `reasons: []` only when your probes show it serving; otherwise submit what you observed (FAILED

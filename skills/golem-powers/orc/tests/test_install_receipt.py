@@ -123,11 +123,19 @@ def test_mcp_seat_scan_uses_same_session_active_seats():
         "An empty scan with no reconnects is valid",
         "only seats you actually reconnected in this session",
         "seat or thread ID", "verified per contract #3",
-        "Your own session or thread and your own stdio/MCP probe never count as a seat in either list",
+        "Your own session or thread (including the session that dispatched you)",
+        "and your own stdio/MCP probe never count as a seat in either list",
         "running or working threads whose session uses that server",
-        "from a cmux seat via `list_agents`",
-        "Record the exact command or tool used in the report",
-        "If active seats cannot be determined, give no LIVE and report **[UNVERIFIED]**",
+        "contract #3 remains unchanged",
+        "you have no T3 tools",
+        "cannot run a `t3-threads` scan or reconnect a T3 thread",
+        "Scan with `list_agents` and record the exact call",
+        "it sees cmux seats only",
+        "Unless you can show that no T3 thread is running on this Mac",
+        "active seats cannot be determined: give no LIVE and report **[UNVERIFIED]**",
+        "name the gap for the caller",
+        "applies once C3 lands",
+        "(then voicelayer cannot be LIVE: report INSTALLED_NOT_ACTIVE)",
     ):
         assert required in text
 
@@ -136,8 +144,9 @@ def test_tap_gate_checks_product_row_before_brew_upgrade():
     text = " ".join(AGENT.read_text().split())
     for required in (
         "Before any `brew upgrade`",
-        "`node scripts/install-receipt.mjs status` from the golems root checkout",
-        "deploying product's own row",
+        "`node scripts/install-receipt.mjs status <product>`",
+        "from the golems root checkout for each formula or cask you are about to upgrade",
+        "Read the `TAP` column of its `mbp` row",
         "**TAP-STALE: STOP**", "report to that product's lead", "Do not run the upgrade",
         "**TAP-UNKNOWN: proceed**", "report the tap as **[UNVERIFIED]**",
         "never key on the exit code", "exits 1 for any non-CURRENT row",
@@ -147,7 +156,9 @@ def test_tap_gate_checks_product_row_before_brew_upgrade():
 
 
 def test_contract_three_keeps_idle_ready_paused_rule():
-    assert ("**Idle, ready\n   and paused seats get no reconnect and no nudge**: they reconnect themselves on first failure, per") in AGENT.read_text()
+    text = " ".join(AGENT.read_text().split())
+    assert ("**Idle, ready and paused seats get no reconnect and no nudge**: "
+            "they reconnect themselves on first failure, per") in text
 
 
 def test_top_level_mutation_is_rejected(schema):
