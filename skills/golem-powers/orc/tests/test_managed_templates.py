@@ -17,6 +17,13 @@ def recall_modes(text):
             if (m := MODE.search(call.group(1)))]
 
 
+def test_deploy_t6_preserves_live_socket():
+    t6 = next(line for line in (AGENTS / "deploy-local-prod.md").read_text().splitlines()
+              if line.startswith("| T6 |"))
+    assert "must be empty" not in t6
+    assert "Never delete a live socket" in t6
+
+
 @pytest.mark.parametrize("mode", ["context", "stats", "injections", "sessions", "summary"])
 def test_mode_scanner_recognizes_qualified_and_multiline_calls(mode):
     text = f'mcp__brainlayer__brain_recall(\n mode="{mode}") brain_recall(mode: \'{mode}\')'
