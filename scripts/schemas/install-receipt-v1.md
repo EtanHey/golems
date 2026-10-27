@@ -53,8 +53,9 @@ refused on the two existing seat methods, whose behavior is unchanged.
 - `bridge_diff`: `{from_tag, to_sha, paths: [non-empty strings], changed: boolean}`.
   `to_sha` must equal `target.released_sha`. `from_tag` must differ from `target.tag`;
   when `prior.version` is present it must equal that version prefixed with `v`
-  (preserving an existing `v` prefix). The diff is caller-attested evidence;
-  core does not run git or ps. BrainLayer and BrainBar diffs must cover all three
+  (preserving an existing `v` prefix). The diff is caller-attested at write time;
+  core does not run git or ps. Status independently re-derives it for LIVE receipts
+  using this method (see below). BrainLayer and BrainBar diffs must cover all three
   core paths: `src/brainlayer/mcp_stdio_bridge.py`, `src/brainlayer/mcp/`, and
   `src/brainlayer/mcp_socket_config.py`.
 
@@ -118,9 +119,12 @@ required for worktree-pin. No `release.json` is needed.
 PR-A-era receipts without released_sha/ancestry are now invalid, show MISMATCH
 in status, and must be re-emitted with actual evidence. Ancestry is caller-attested
 at write time. The writer stays offline and checks only recorded values. Status
-is the verification authority under invariant 5a; independent tag and ancestry
-re-verification ships separately in PR-B2. Until then, recorded LIVE or claimed
-ahead ancestry prints LIVE-UNVERIFIED, and status never prints CURRENT.
+is the verification authority under invariant 5a: since #893 it independently
+peels the target tag and compares merge_sha to the observed release commit.
+A tag or ancestry contradiction prints MISMATCH; an unavailable lookup prints
+LIVE-UNVERIFIED. Only independently verified LIVE receipts for the latest
+release can print CURRENT. Inactive receipts retain their activation verdict
+when current, including those with valid ahead ancestry.
 A receipt naming the latest tag with a released_sha different from its resolved
 commit prints MISMATCH, even if comparison would otherwise say AHEAD/BEHIND.
 
@@ -158,17 +162,39 @@ Default products are brainlayer, brainbar, voicelayer,
 voicebar, cmuxlayer, golems and narrationlayer; paired apps use their parent repo.
 Override the repository with `product=owner/repo` when its release channel differs.
 
-`gh api` paginates published releases, includes prereleases, excludes drafts,
-and resolves the newest publication's tag to its commit. This does not use the
-stable-only `releases/latest` endpoint or trust `target_commitish`.
+Since #897, latest for brainlayer, brainbar, voicelayer, voicebar, cmuxlayer and
+narrationlayer is the highest SemVer tag from `git ls-remote --tags`, including
+prereleases; annotated tags are peeled to commits. Golems uses `gh api` to
+paginate published Releases, includes prereleases, excludes drafts, and selects
+by publication date before resolving that tag to its commit. It does not use
+`releases/latest` or trust `target_commitish`.
 
-The tab-separated matrix reports LIVE-UNVERIFIED, AHEAD, BEHIND, NO-RECEIPT or
-MISMATCH. CURRENT is reserved for independent verification in PR-B2.
+The TAP column independently compares the Homebrew formula/cask version with
+the highest stable upstream tag: TAP-OK, TAP-STALE, or TAP-UNKNOWN. Products
+without a tap path print TAP-N/A; repo overrides do not use the upstream tap.
+An unreadable tap or a tap ahead of upstream is TAP-UNKNOWN.
+
+For LIVE activation using `client-processes`, status additionally runs
+`gh api repos/<owner>/<repo>/compare/<from_tag>...<to_sha>` with pagination.
+It intersects changed filenames with the product's core bridge paths, using
+prefix matching for directory entries and considering both names of renames.
+BrainLayer and BrainBar share the three core paths listed above; VoiceLayer
+and VoiceBar have no core bridge paths because their clients are relays.
+A non-empty intersection with claimed `changed=false` prints MISMATCH and
+claimed versus observed paths in VERIFICATION. Claimed `changed=true` with an
+empty intersection is noted as stricter and keeps the otherwise valid verdict.
+A failed/unreachable or malformed comparison, or a file list reaching GitHub's
+300-file cap, prints LIVE-UNVERIFIED. Pagination does not remove that file cap.
+All git/gh calls use argv-only execution with GIT_TERMINAL_PROMPT=0 and
+GH_PROMPT_DISABLED=1. The writer's offline validation semantics are unchanged.
+
+The tab-separated matrix reports CURRENT, LIVE-UNVERIFIED, AHEAD, BEHIND,
+NO-RECEIPT, MISMATCH, UNKNOWN, UNREACHABLE or a conservative activation verdict.
 For different commits, `gh api` compares latest-release SHA to installed SHA:
 descendants are AHEAD, ancestors BEHIND; divergence or comparison failure is
 UNKNOWN, without guessing order from version strings.
 SSH/remote-reader failure is UNREACHABLE; release lookup failure is UNKNOWN
-(or LIVE-UNVERIFIED for recorded LIVE or claimed ahead ancestry).
+(or LIVE-UNVERIFIED for independently assessed LIVE activation).
 Invalid receipts, wrong product/host, failed installs and owner status drift
 are MISMATCH. A missing receipt has activation UNKNOWN, never LIVE. Release
 currency and activation are separate: CURRENT does not upgrade the receipt's
@@ -180,4 +206,5 @@ requires installed.embedded_commit to match target.released_sha, or a matching
 installed content hash when no embedded commit exists. A pin alone is not
 installed identity proof. Reads are snapshots of recorded install evidence,
 not a new owner-installer or runtime attestation. Exit is nonzero unless every
-row is CURRENT. Tests inject remote and GitHub readers and make no network calls.
+row is CURRENT and no row is TAP-STALE. TAP-UNKNOWN alone does not fail an
+otherwise CURRENT row. Tests inject remote and GitHub readers and make no network calls.
