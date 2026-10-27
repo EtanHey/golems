@@ -27,6 +27,24 @@ Every scan writes `docs.local/worktree-gc/last-run.{json,md}`, including ERROR
 rows for failed repositories. `latest.{json,md}` retains the last successful full
 scan. Per-run `.repo-state` and `.repo-stderr` scratch files are removed on exit.
 
+Nightly GC runs the pinned `$HOME/Gits/golems/.worktrees/hooks-live` copy and refuses
+an unverified pin, logging its SHA. Verified means an unmodified published master
+commit at or after `GC_MIN_SAFE_SHA`, not necessarily the latest commit. Raise the floor with every GC safety fix.
+Every run logs how many commits the pin is behind the fetched origin/master
+(or that lag is unavailable); there is no hard freshness limit. The full remote
+ref is authoritative, even if a local branch has the same short name.
+An outside wrapper re-execs the verified pinned wrapper so its library and GC
+come from the pin. A `GOLEMS_WORKTREE_GC_PIN_ROOT` override emits a WARNING with
+its path, including on refusal.
+
+The default completed-run reports now live in the pin's `docs.local/worktree-gc/latest.{json,md}`
+(unless `WORKTREE_GC_REPORT_DIR` overrides that location).
+Refused nights are visible only in the launchd log (`StandardErrorPath`),
+rendered as `@GOLEMS_ROOT@/docs.local/worktree-gc-launchd.log`; they do not update
+`latest.*`. Inspect that log to detect a pin that keeps refusing.
+Verification can still race a concurrent `install-hooks --update`; the installer
+does not take the nightly lock.
+
 Tests build repositories outside any Git tree and guard every GC invocation against
 leaving the fixture root. Never probe `--apply` on a real repository. Installation
 and launchd loading belong to the lead after review and merge.
