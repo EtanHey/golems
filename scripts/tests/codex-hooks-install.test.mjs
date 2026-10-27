@@ -113,8 +113,8 @@ test("shell fallback blocks missing interpreter and adapter with value-free stde
   }
 });
 
-test("hooks-live CLI uses the selected manifest for both hosts despite invoking-checkout drift", () => {
-  for (const host of ["mbp", "m1"]) {
+for (const host of ["mbp", "m1"]) {
+  test(`hooks-live CLI uses the selected manifest on ${host} despite invoking-checkout drift`, () => {
     const f = fixture();
     const defaultHome = f.codexHome;
     f.codexHome = path.join(f.root, "alternate-codex"); mkdirSync(f.codexHome);
@@ -142,6 +142,7 @@ test("hooks-live CLI uses the selected manifest for both hosts despite invoking-
     // Neither main checkout contents nor the caller's default manifest are used.
     writeFileSync(path.join(repo, "scripts/hooks/manifest.json"), "uncommitted invoking drift");
     const env = { ...process.env, HOME: path.join(f.root, "home"), CODEX_HOME: f.codexHome,
+      RATCHET_SKILL_CONFIG: path.join(f.root, "fixture-parity-not-configured.json"),
       GOLEMS_HEAVY_LOCK: path.join(f.root, "fixture-heavy.lock"), GOLEMS_HEAVY_MIN_FREE_GB: "0", GOLEMS_WORKTREE_MIN_FREE_GB: "0" };
     const bin = path.join(f.root, "machine-bin"); mkdirSync(bin);
     writeFileSync(path.join(bin, "scutil"), `#!/bin/sh\nprintf '%s\\n' '${host === "mbp" ? "MacBook-Pro" : "Locals-MacBook-Pro"}'\n`, { mode: 0o755 });
@@ -166,8 +167,8 @@ test("hooks-live CLI uses the selected manifest for both hosts despite invoking-
     expect(invoke("--apply").status).toBe(0);
     expect(readFileSync(path.join(f.codexHome, "hooks.json"))).toEqual(hooks);
     git("worktree", "unlock", f.live);
-  }
-});
+  });
+}
 
 test("codexCommand registers the adapter as python3 -I -B", () => {
   const cmd = codexCommand("python3", "/live/a.py", "git-guardian");
