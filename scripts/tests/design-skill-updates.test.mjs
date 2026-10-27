@@ -13,9 +13,10 @@ function fixture({ changed = false, existing = false, fail = false, symlink = fa
     if (fail) throw Error("simulated command failure");
     if (args[0] === "clone") {
       const dir = args.at(-1); mkdirSync(path.join(dir, "skills/vendor"), { recursive: true });
+      if (dir.endsWith("anthropic")) mkdirSync(path.join(dir, "plugins/frontend-design/skills"), { recursive: true });
       if (symlink && dir.endsWith("anthropic")) {
-        rmSync(path.join(dir, "skills"), { recursive: true });
-        mkdirSync(path.join(state, "outside")); symlinkSync(path.join(state, "outside"), path.join(dir, "skills"));
+        rmSync(path.join(dir, "plugins/frontend-design/skills"), { recursive: true });
+        mkdirSync(path.join(state, "outside")); symlinkSync(path.join(state, "outside"), path.join(dir, "plugins/frontend-design/skills"));
       }
     }
     if (args[0] === "rev-parse") return "a".repeat(40);
