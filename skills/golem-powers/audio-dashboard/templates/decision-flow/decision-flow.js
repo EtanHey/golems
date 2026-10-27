@@ -139,8 +139,15 @@
     if(event.shiftKey&&(active===first||!sheet.node.contains(active))){event.preventDefault();last.focus();}
     else if(!event.shiftKey&&(active===last||!sheet.node.contains(active))){event.preventDefault();first.focus();}
   });
-  // List view: while nothing plays, the current card is the one under the controller; a jump holds it for a moment.
-  function follow(){if(view!=="list"||Date.now()<followLock||allAudios().some(function(audio){return !audio.paused;}))return;var bar=document.querySelector(".df-controller");var line=(bar?bar.getBoundingClientRect().bottom:0)+24;var card=cards.find(function(item){return item.getBoundingClientRect().bottom>line;});if(card&&card!==current())setActive(card);}
+  // Idle list view follows the largest visible card; the last card wins at the document bottom.
+  function follow(){
+    if(view!=="list"||Date.now()<followLock||allAudios().some(function(audio){return !audio.paused;}))return;
+    var win=document.defaultView,bar=document.querySelector(".df-controller"),dock=document.querySelector(".df-dock"),line=(bar?bar.getBoundingClientRect().bottom:0)+24,bottom=win.innerHeight;
+    if(dock&&win.getComputedStyle(dock).position==="fixed")bottom=Math.min(bottom,dock.getBoundingClientRect().top);
+    var atBottom=root.scrollHeight>win.innerHeight&&win.scrollY+win.innerHeight>=root.scrollHeight-1,card=atBottom?cards[cards.length-1]:null,best=0;
+    if(!card)cards.forEach(function(item){var rect=item.getBoundingClientRect(),visible=Math.max(0,Math.min(rect.bottom,bottom)-Math.max(rect.top,line));if(visible>best){best=visible;card=item;}});
+    if(card&&card!==current())setActive(card);
+  }
   var followQueued=false;
   if(document.defaultView)document.defaultView.addEventListener("scroll",function(){if(!frame){follow();return;}if(followQueued)return;followQueued=true;frame(function(){followQueued=false;follow();});},{passive:true});
   if(speed)speed.addEventListener("change",function(){var next=Number(speed.value);rate=RATES.indexOf(next)>=0?next:1;applyRate();savePrefs();});
