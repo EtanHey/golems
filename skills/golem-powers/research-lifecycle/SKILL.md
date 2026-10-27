@@ -1,6 +1,6 @@
 ---
 name: research-lifecycle
-description: "Refresh local research context and the Drive grounding corpus. Triggers: stale context, R-number."
+description: "Refresh docs: stale context, R-number, research docs link (Google Docs/Deep Research report URL). NOT for drive-filing."
 ---
 
 # Research Lifecycle — Context Freshness Management
@@ -26,6 +26,19 @@ Every research dispatch — fleet-fired OR **Etan-fired in his own Gemini/Notebo
 Applies to `/gemini-research`, `/claude-desktop-research`, and orc W5 research dispatches. The E07 integrity gate catches bad claims; this gate catches **throughput** — results sitting unharvested since morning.
 
 ---
+
+## INCOMING RESEARCH DOC LINK — harvest before closing
+
+When a research docs link arrives (Google Docs link or Gemini Deep Research
+report URL), invoke this skill without waiting for an explicit slash command.
+The lead has its gatherer read the report, identify its project and R-number,
+and locate the matching research prompt in Drive. Use `/drive-filing` to resolve
+the canonical destination; file the report next to that prompt in its R-number
+folder, preserving the prompt/result association. Verify the filed document by
+readback and record its link in the harvest receipt before closing the harvest.
+If the prompt or R-number cannot be resolved, report the missing association to
+the lead and keep the harvest PARKED; do not guess a folder or claim completion.
+Then apply the existing harvest contract and lifecycle gates as applicable.
 
 ## THE LIFECYCLE
 
@@ -276,6 +289,7 @@ The lifecycle may be marked complete only when the command exits 0 and every row
 
 | Trigger | Action |
 |---------|--------|
+| Research docs link arrives (Google Docs / Deep Research report URL) | Gatherer files the report beside its R-number prompt and verifies readback |
 | Sprint merged PRs that address research findings | Run full lifecycle (Steps 1-5) |
 | Before writing a new R-number research prompt | Run Steps 2-5, then the Gemini prompt preflight |
 | Nightly/project maintenance runs | Check if context files are stale (Step 3 at minimum) |

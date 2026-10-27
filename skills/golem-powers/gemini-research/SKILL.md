@@ -1,6 +1,6 @@
 ---
 name: gemini-research
-description: "NotebookLM/Gemini research: sources, Deep Research, queries, artifacts. Triggers: Gemini, synthesis."
+description: "Deep research: Gemini Deep Research, NotebookLM, synthesis. NOT for Exa web search or drive-filing."
 ---
 
 # Gemini Deep Research — MCP-Native Workflow
@@ -31,6 +31,19 @@ Triggers on: gemini research, Gemini Deep Research, NotebookLM, notebook researc
 ## Gemini Deep Research (Standalone UI at gemini.google.com)
 
 **Separate from NotebookLM.** Distinct interaction model. Use this when you need broad WEB research with source gathering and a plan-review flow BEFORE the research runs.
+
+### Grounding prep
+
+When asked to research this, find out what's current, or compare options, check
+whether the question needs current project state. If it does, the lead dispatches
+a gatherer sub-agent to run `/research-lifecycle` preparation first: verify local
+context, refresh the Drive grounding corpus, and return exact grounding doc names
+and the lifecycle receipt. Follow `/agent-routing` for a gatherer with the tools
+needed; do not emit the prompt while preparation is blocked.
+
+Include one line in the hand-off to Etan: "Give Gemini Deep Research access to
+Drive so it can read the current corpus; the prompt names the grounding docs."
+Keep the existing grounding and prompt-author START/EDIT gates below.
 
 | Feature | Details |
 |---|---|

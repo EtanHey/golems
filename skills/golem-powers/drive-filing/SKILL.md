@@ -1,6 +1,6 @@
 ---
 name: drive-filing
-description: "Brain Drive filing, archival, and the docs.local lifecycle. Triggers: Drive/Brain Drive upload, archive this, post-digest archival, docs.local cleanup, docs.local artifacts, rollup, folders, prompts/results, audits, plans, transcripts, dashboards. NOT for Gemini Drive/web research."
+description: "Brain Drive filing, archival, and docs.local lifecycle. Triggers: Drive/Brain Drive upload, archive this, post-digest archival, docs.local cleanup, docs.local artifacts, rollup, folders, prompts/results, audits, plans, transcripts, dashboards. NOT for Gemini Deep Research/queries."
 ---
 
 # /drive-filing — filing, archival, and the docs.local lifecycle
