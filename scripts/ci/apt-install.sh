@@ -50,6 +50,15 @@ if not found:
 PY
 }
 
+# Only invoked on ephemeral CI runners: packages here come from Ubuntu.
+# Disable runner-image third-party repositories before even the first update.
+for file in "$sources_dir"/sources.list.d/*; do
+  [[ -f $file && ${file##*/} != ubuntu.sources ]] || continue
+  mkdir -p "$sources_dir/sources.list.d.disabled-by-ci"
+  mv -- "$file" "$sources_dir/sources.list.d.disabled-by-ci/"
+  echo "apt: disabled third-party source ${file##*/}"
+done
+
 source_label=runner-configured
 for attempt in 1 2 3; do
   if [[ $attempt -gt 1 ]]; then

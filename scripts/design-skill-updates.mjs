@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repository = "EtanHey/golems";
-const sources = ["https://github.com/anthropics/skills.git", "https://github.com/emilkowalski/skills.git"];
+const sources = ["https://github.com/anthropics/claude-plugins-official.git", "https://github.com/emilkowalski/skills.git"];
 function command(bin, args, cwd) {
   const env = { ...process.env, PATH: "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin", GH_PROMPT_DISABLED: "1", GIT_TERMINAL_PROMPT: "0", GH_NO_UPDATE_NOTIFIER: "1" };
   const r = spawnSync(bin, args, { cwd, env, encoding: "utf8", timeout: 300000, maxBuffer: 8 * 1024 * 1024 });
@@ -39,7 +39,7 @@ export async function update({ state, logFile, run = command, host = readHost, r
     const base = run(git, ["rev-parse", "HEAD"], project);
     for (const [i, url] of sources.entries()) {
       run(git, ["clone", "--depth", "1", url, clones[i]]);
-      if (!lstatSync(path.join(clones[i], "skills")).isDirectory()) throw Error(`upstream skills root is not a regular directory: ${i}`);
+      if (!lstatSync(path.join(clones[i], i === 0 ? "plugins/frontend-design/skills" : "skills")).isDirectory()) throw Error(`upstream skills root is not a regular directory: ${i}`);
     }
     const expected = clones.map((cwd) => run(git, ["rev-parse", "HEAD"], cwd));
     log(`BASE ${base} UPSTREAM ${expected.join(" ")}`);
