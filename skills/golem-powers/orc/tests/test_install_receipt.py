@@ -190,6 +190,13 @@ def test_contract_two_points_to_receipt_mcp_proof():
     assert "LIVE also needs the Install receipt item's MCP proof" in text
 
 
+def test_brainlayer_live_proof_names_stdio_bridge():
+    text = " ".join(AGENT.read_text().split())
+    bullet = text.split("- **brainlayer** —", 1)[1].split("These checks prove", 1)[0]
+    assert "a live `brainlayer-mcp-stdio-bridge` client relaying to `/tmp/brainbar.sock`" in bullet
+    assert "socat child on `/tmp/brainbar.sock`" not in bullet
+
+
 def test_voicelayer_embedded_commit_uses_installed_package_only():
     text = " ".join(AGENT.read_text().split())
     assert "/opt/homebrew/opt/voicelayer/bin/voicelayer --version --json" in text
