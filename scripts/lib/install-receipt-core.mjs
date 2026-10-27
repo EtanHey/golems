@@ -5,8 +5,8 @@ const MCP_PRODUCTS = ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voic
 const BRIDGE_PATHS = ['src/brainlayer/mcp_stdio_bridge.py', 'src/brainlayer/mcp/', 'src/brainlayer/mcp_socket_config.py'];
 const BRIDGE = /^(?:\S+\s+)?\/opt\/homebrew\/(?:bin|(?:opt\/brainlayer|Cellar\/brainlayer\/(?!\.{1,2}\/)[^/\s]+)\/bin)\/brainlayer-mcp-stdio-bridge$/;
 const SOCAT = /^(?:\/opt\/homebrew\/bin\/)?socat STDIO UNIX-CONNECT:\/tmp\/voicelayer-mcp\.sock$/;
-const SOCAT_REASON = 'LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).';
-const CLIENT_RULES = new Map([
+export const SOCAT_REASON = 'LIVE = daemon serves the new code; socat seats connected before a daemon restart got EOF and are dead for voicelayer until their session restarts (not visible to ps).';
+export const CLIENT_RULES = new Map([
   ['brainlayer', { bridge: BRIDGE }], ['brainbar', { bridge: BRIDGE }],
   ['voicelayer', { relay: SOCAT }], ['voicebar', { relay: SOCAT }],
 ]);

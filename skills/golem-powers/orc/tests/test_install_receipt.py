@@ -196,3 +196,16 @@ def test_voicelayer_embedded_commit_uses_installed_package_only():
     assert 'Use `gitCommit` only when `source` is `"package"`' in text
     assert "never a PATH lookup" in text
     assert "omit embedded_commit and report **[UNVERIFIED]**" in text
+
+
+def test_other_scan_methods_define_the_own_probe_exclusion():
+    text = " ".join(AGENT.read_text().split())
+    assert "For other scan methods" in text
+    assert "Your own session or thread (including the session that dispatched you)" in text
+    assert "and your own stdio/MCP probe never count as a seat in either list" in text
+
+
+def test_draft_scan_is_the_record_and_plain_scan_is_optional():
+    text = " ".join(AGENT.read_text().split())
+    assert "plain scan is an optional preview" in text
+    assert "Use the receipt-draft output and its own stderr mapping notes as the record" in text

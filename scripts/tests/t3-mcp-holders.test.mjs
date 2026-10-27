@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { validate } from '../lib/install-receipt-core.mjs';
@@ -8,36 +8,60 @@ import { validate } from '../lib/install-receipt-core.mjs';
 const bridge = '/opt/homebrew/opt/brainlayer/bin/brainlayer-mcp-stdio-bridge';
 const script = resolve('scripts/t3-mcp-holders.mjs');
 const session = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
-function scan(server, commands, { missingState = false, ambiguous = false, pgrepFailure = false, sessionFlag = '--resume=', threadId = 'mcp:mapped', timeZone = 'UTC', receiptDraft } = {}) {
+const sqlite = spawnSync('which', ['sqlite3'], {encoding:'utf8'}).stdout.trim();
+function scan(server, commands, { missingState = false, ambiguous = false, snapshotFailure = false,
+  sessionFlag = '--resume=', extraSessionFlags = '', threadId = 'mcp:mapped', timeZone = 'UTC',
+  receiptDraft, vanished = false, missingProvider = false, callerProvider = false,
+  date = 'Tue Oct 27 16:00:00 2026' } = {}) {
   const dir = mkdtempSync(resolve('docs.local/c3-fixture-'));
   try {
     const bin = join(dir, 'bin'); mkdirSync(bin);
-    const processes = commands.map((command, i) => ({ pid: 100 + i, parent: 200 + i, command }));
-    const fixture = { processes, session, pgrepFailure, sessionFlag };
+    const processes = commands.map((command, i) => ({ pid: 100 + i,
+      parent: callerProvider ? process.pid : 200 + i, command }));
+    const fixture = { processes, session, snapshotFailure, sessionFlag, extraSessionFlags,
+      vanished, missingProvider, date, sqlite };
     writeFileSync(join(dir, 'fixture.json'), JSON.stringify(fixture));
-    const fake = `#!/usr/bin/env node
+    const fake = String.raw`#!/usr/bin/env node
 const fs = require('node:fs');
 const data = JSON.parse(fs.readFileSync(process.env.C3_FIXTURE));
 const name = process.argv[1].split('/').pop(), args = process.argv.slice(2);
-if (name === 'pgrep') { if(data.pgrepFailure) process.exit(2); console.log(data.processes.map(p=>p.pid).join('\\n')); process.exit(data.processes.length ? 0 : 1); }
-if (name === 'lsof') { console.log('p200\\nfcwd\\nn/work/project'); process.exit(0); }
-const pid = Number(args.at(-1));
-const child = data.processes.find(p=>p.pid===pid);
-if (child) console.log(child.parent + ' Tue Oct 27 16:00:00 2026 ' + child.command);
-else console.log('1 Tue Oct 27 15:00:00 2026 ' + (pid === 202 ? '/bin/codex app-server' : '/bin/claude --output-format stream-json ' + data.sessionFlag + data.session));
+fs.appendFileSync(process.env.C3_CALLS, JSON.stringify({name,args,tz:process.env.TZ}) + '\n');
+if (name === 'sqlite3') {
+  if (!args.includes('-batch') || args[args.indexOf('-init')+1] !== '/dev/null') process.exit(2);
+  const r = require('node:child_process').spawnSync(data.sqlite,args,{encoding:'utf8'});
+  process.stdout.write(r.stdout); process.exit(r.status);
+}
+if (name === 'pgrep') { console.log([...data.processes.map(p=>p.pid), ...(data.vanished?[999]:[])].join('\n')); process.exit(data.processes.length ? 0 : 1); }
+if (name === 'lsof') { console.log('p200\nfcwd\nn/work/project'); process.exit(0); }
+const provider = pid => pid === 202 ? '/bin/codex app-server' : '/bin/claude --output-format stream-json ' + data.sessionFlag + data.session + ' ' + data.extraSessionFlags;
+if (args[0] === '-axo') {
+  if(data.snapshotFailure) process.exit(2);
+  for(const p of data.processes) console.log(p.pid + ' ' + p.parent + ' ' + data.date + ' ' + p.command);
+  if(!data.missingProvider) for(const pid of new Set(data.processes.map(p=>p.parent))) console.log(pid + ' 1 ' + data.date + ' ' + provider(pid));
+} else {
+  const pid = Number(args.at(-1));
+  if(data.vanished || data.snapshotFailure) process.exit(1);
+  const child = data.processes.find(p=>p.pid===pid);
+  if(child) console.log(child.parent + ' ' + data.date + ' ' + child.command);
+  else console.log('1 ' + data.date + ' ' + provider(pid));
+}
 `;
-    for (const command of ['pgrep', 'ps', 'lsof']) writeFileSync(join(bin, command), fake, { mode: 0o755 });
+    for (const command of ['pgrep', 'ps', 'lsof', 'sqlite3']) writeFileSync(join(bin, command), fake, { mode: 0o755 });
     const db = join(dir, 'state.sqlite');
     if (!missingState) {
       const payload = JSON.stringify({ nativeThreadRef: { nativeId: session, strength: 'strong' } });
       const sql = `CREATE TABLE orchestration_v2_projection_provider_threads (thread_id TEXT, driver TEXT, payload_json TEXT);
 INSERT INTO orchestration_v2_projection_provider_threads VALUES ('${threadId}','claudeAgent','${payload}');
 ${ambiguous ? `INSERT INTO orchestration_v2_projection_provider_threads VALUES ('mcp:other','claudeAgent','${payload}');` : ''}`;
-      assert.equal(spawnSync('sqlite3', [db, sql]).status, 0);
+      assert.equal(spawnSync(sqlite, ['-init','/dev/null',db, sql]).status, 0);
     }
-    return spawnSync(process.execPath, [script, server, ...(receiptDraft ? ['--receipt-draft', '-'] : [])], { input: receiptDraft ? JSON.stringify(receiptDraft) : undefined, encoding: 'utf8', env: {
-      ...process.env, PATH: `${bin}:${process.env.PATH}`, TZ: timeZone, C3_FIXTURE: join(dir, 'fixture.json'), T3_MCP_STATE_DB: db,
+    writeFileSync(join(dir,'calls.jsonl'),'');
+    const result = spawnSync(process.execPath, [script, server, ...(receiptDraft ? ['--receipt-draft', '-'] : [])], { input: receiptDraft ? JSON.stringify(receiptDraft) : undefined, encoding: 'utf8', env: {
+      ...process.env, PATH: `${bin}:${process.env.PATH}`, TZ: timeZone, C3_FIXTURE: join(dir, 'fixture.json'),
+      C3_CALLS: join(dir,'calls.jsonl'), T3_MCP_STATE_DB: db,
     } });
+    result.calls = readFileSync(join(dir,'calls.jsonl'),'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+    return result;
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }
 mkdirSync('docs.local', { recursive: true });
@@ -63,10 +87,10 @@ test('unavailable state and ambiguous native joins preserve unmapped clients', (
 });
 test('all bridge install paths and brainbar alias match, near matches do not', () => {
   const commands = [bridge, '/opt/homebrew/Cellar/brainlayer/1.5.78/bin/brainlayer-mcp-stdio-bridge',
-    '/opt/homebrew/bin/brainlayer-mcp-stdio-bridge', `${bridge}-fake`, `echo ${bridge}`];
+    '/opt/homebrew/bin/brainlayer-mcp-stdio-bridge', `${bridge}-fake`, `echo ${bridge}`, `/opt/homebrew/bin/uv ${bridge}`, `/usr/bin/env ${bridge}`, `/opt/homebrew/bin/python3.13t ${bridge}`];
   const r = scan('brainbar', commands);
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(JSON.parse(r.stdout).clients.length, 3);
+  assert.equal(JSON.parse(r.stdout).clients.length, 7);
 });
 test('both socat forms are excluded with the mandatory limitation, including empty scan', () => {
   for (const server of ['voicelayer', 'voicebar']) {
@@ -82,7 +106,7 @@ test('empty scan succeeds; unsupported products and discovery failure cannot loo
   const r = scan('brainlayer', []); assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(JSON.parse(r.stdout).clients, []);
   assert.notEqual(scan('cmuxlayer', []).status, 0);
-  assert.notEqual(scan('brainlayer', [], {pgrepFailure:true}).status, 0);
+  assert.notEqual(scan('brainlayer', [], {snapshotFailure:true}).status, 0);
 });
 
 test('imported id joins and both native session flags work; local start converts to UTC', () => {
@@ -92,7 +116,7 @@ test('imported id joins and both native session flags work; local start converts
     assert.equal(r.status, 0, r.stderr);
     const client = JSON.parse(r.stdout).clients[0];
     assert.equal(client.thread_id, threadId);
-    assert.equal(client.started_at, '2026-10-27T14:00:00Z');
+    assert.equal(client.started_at, '2026-10-27T16:00:00Z');
   }
 });
 
@@ -119,4 +143,47 @@ test('writer cross-check rejects a mismatching script-derived stale list', () =>
   const r = scan('brainlayer', [bridge], {receiptDraft:draft()}); assert.equal(r.status, 0, r.stderr);
   const receipt = JSON.parse(r.stdout); receipt.activation.seat_scan.active_seats = [];
   assert.throws(() => validate(receipt), /must equal the derived stale/);
+});
+
+test('single UTC snapshot tolerates a transient process vanishing before per-PID probing', () => {
+  const r = scan('brainlayer', [bridge], {vanished:true}); assert.equal(r.status,0,r.stderr);
+  assert.equal(JSON.parse(r.stdout).clients.length,1);
+  assert.deepEqual(r.calls.filter(c=>['ps','pgrep'].includes(c.name)),
+    [{name:'ps',args:['-axo','pid=,ppid=,lstart=,command='],tz:'UTC'}]);
+});
+test('missing provider remains an unmapped client with its PID in mapping notes', () => {
+  const r = scan('brainlayer',[bridge],{missingProvider:true}); assert.equal(r.status,0,r.stderr);
+  assert.equal(JSON.parse(r.stdout).clients[0].thread_id,null);
+  const note = JSON.parse(r.stderr.trim()); assert.equal(note.pid,100); assert.equal(note.reason,'provider gone');
+});
+test('noncanonical bridge paths are retained so writer refuses them', () => {
+  for(const command of ['/work/bin/brainlayer-mcp-stdio-bridge', '/usr/bin/env /work/bin/brainlayer-mcp-stdio-bridge']) {
+    const r=scan('brainlayer',[command]);assert.equal(r.status,0,r.stderr);
+    assert.equal(JSON.parse(r.stdout).clients[0].command,command);
+    const rejected=scan('brainlayer',[command],{receiptDraft:draft()});
+    assert.notEqual(rejected.status,0);assert.match(rejected.stderr,/unrecognised bridge path/);
+  }
+});
+test('multiple session flags and forks never select a guessed native session', () => {
+  for(const extraSessionFlags of [`--session-id=${session}`, '--fork-session']) {
+    const r=scan('brainlayer',[bridge],{extraSessionFlags});assert.equal(r.status,0,r.stderr);
+    assert.equal(JSON.parse(r.stdout).clients[0].thread_id,null);assert.match(r.stderr,/ambiguous session flags/);
+  }
+});
+test('fall-back hour is unambiguous UTC regardless of caller timezone', () => {
+  for(const timeZone of ['UTC','America/New_York']) {
+    const r=scan('brainlayer',[bridge],{timeZone,date:'Sun Nov 1 01:30:00 2026'});assert.equal(r.status,0,r.stderr);
+    assert.equal(JSON.parse(r.stdout).clients[0].started_at,'2026-11-01T01:30:00Z');
+  }
+});
+test('missing draft seat scan gets a clean prerequisite error', () => {
+  const receiptDraft=draft();delete receiptDraft.activation.seat_scan;
+  const r=scan('brainlayer',[bridge],{receiptDraft});assert.notEqual(r.status,0);
+  assert.match(r.stderr,/draft must carry activation\.seat_scan\.bridge_diff from a real compare probe/);
+});
+test('dispatcher ancestor and own clients remain included and notes identify each PID', () => {
+  const r=scan('brainlayer',[bridge,bridge],{callerProvider:true,threadId:'mcp:dispatcher'});assert.equal(r.status,0,r.stderr);
+  const notes=r.stderr.trim().split('\n').filter(Boolean).map(JSON.parse);
+  assert.deepEqual(notes.map(n=>n.pid),[100,101]);assert.equal(notes[0].provider_pid,process.pid);
+  assert.deepEqual(JSON.parse(r.stdout).clients.map(c=>c.pid),[100,101]);
 });

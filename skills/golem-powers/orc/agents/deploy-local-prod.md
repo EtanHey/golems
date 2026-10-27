@@ -135,16 +135,17 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
       `activation.mcp_probe.ok: true` plus a seat scan per `scripts/schemas/install-receipt-v1.md`.
       Record `activation.seat_scan.method`, `activation.seat_scan.checked_at` strictly after
       `installed.install_finished_at`, and `activation.seat_scan.active_seats`.
-      After the install, run `node scripts/t3-mcp-holders.mjs <server>` from the golems root.
-      Record `method: client-processes` and its `checked_at`, `clients[]` and `excluded[]` output
-      in the seat scan. To fill `active_seats`, run
+      After the install, the plain scan is an optional preview:
+      `node scripts/t3-mcp-holders.mjs <server>` from the golems root. For the receipt, run
       `node scripts/t3-mcp-holders.mjs <server> --receipt-draft <draft.json|->` on the draft receipt
       after probing its bridge_diff and install time. This read-only mode imports core's
       `staleClients` to derive the list and prints the completed draft; the writer verifies
       `active_seats` and refuses a mismatching list. Never hand-compute or copy the rule.
       Stale = bridge clients with started_at ≤ install_finished_at (whole seconds), and ONLY
       when bridge_diff.changed is true. socat relays never count as stale.
-      Keep stdout JSON and stderr mapping notes in the report.
+      Use the receipt-draft output and its own stderr mapping notes as the record, including
+      `method: client-processes`, `checked_at`, `clients[]` and `excluded[]`.
+      That mode takes a new snapshot; do not combine it with an earlier preview scan.
       Do not exclude your own client, including the session that dispatched you, or your probe:
       the writer compares client start times to the install time (equal seconds are stale).
       A probe started after the install is fresh by that rule.
@@ -168,7 +169,9 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
     - For other scan methods, `activation.reconnected_seats` contains only seats you actually
       reconnected in this session, identified by seat or thread ID and verified per contract #3.
       Their active seats must be a subset of reconnected seats. An empty scan with no reconnects
-      is valid only with complete coverage. The own-probe exclusion applies only to these methods.
+      is valid only with complete coverage. Your own session or thread (including the session
+      that dispatched you) and your own stdio/MCP probe never count as a seat in either list
+      for these other scan methods.
     If a field cannot be probed, leave it out and report **[UNVERIFIED]**; never guess. If a required
     field is unavailable or writing fails, report the failure as not done. Submit `verdict: LIVE` with
     `reasons: []` only when your probes show it serving; otherwise submit what you observed (FAILED
