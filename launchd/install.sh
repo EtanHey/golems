@@ -42,22 +42,27 @@ mkdir -p "$LAUNCH_AGENTS"
 
 "$NODE_BIN" "$SCRIPT_DIR/../scripts/install-google-drive-oauth-guard.mjs" install
 
+domain="gui/$(id -u)"
+
 for plist in "${PLISTS[@]}"; do
     label="${plist%.plist}"
 
-    # Unload if already loaded
-    if launchctl list | grep -q "$label"; then
+    # Remove the loaded definition so bootstrap picks up the rendered plist.
+    if launchctl print "$domain/$label" >/dev/null 2>&1; then
         echo "  Unloading existing $label..."
-        launchctl unload "$LAUNCH_AGENTS/$plist" 2>/dev/null || true
+        launchctl bootout "$domain/$label" 2>/dev/null || true
     fi
 
     # Render host-specific paths into the installed plist.
     echo "  Installing $plist..."
     "$SCRIPT_DIR/render-plist.sh" "$SCRIPT_DIR/$plist" "$LAUNCH_AGENTS/$plist"
 
-    # Load
+    # Bootstrap failures must stop installation before the success message.
     echo "  Loading $label..."
-    launchctl load "$LAUNCH_AGENTS/$plist"
+    if ! launchctl bootstrap "$domain" "$LAUNCH_AGENTS/$plist"; then
+        echo "ERROR: Failed to bootstrap $label in $domain" >&2
+        exit 1
+    fi
 done
 
 echo ""
