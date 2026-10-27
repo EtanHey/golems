@@ -181,14 +181,13 @@ PY
   [ -s "$WORKTREE_GC_REPORT_DIR/receipts.jsonl" ]
 }
 
-@test "FIX1 partial and scan-error runs preserve the full owner report" {
+@test "PR-M scoped and scan-error runs always refresh the owner report" {
   t3_fixture
   printf dirty > "$worktree/local.txt"
   age_worktrees
   "$WORKTREE_GC" >/dev/null
   python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["owners"]' "$WORKTREE_GC_REPORT_DIR/latest.json"
   cp "$WORKTREE_GC_REPORT_DIR/latest.json" "$TEST_ROOT/full.json"
-  cp "$WORKTREE_GC_REPORT_DIR/latest.md" "$TEST_ROOT/full.md"
   other="$(add_branch_worktree "$repo" clean)"
   for args in path repo prune error scan-error; do
     case "$args" in
@@ -199,8 +198,16 @@ PY
       scan-error) mkdir -p "$HOME/Gits/broken/.git"; run "$WORKTREE_GC" ;;
     esac
     case "$args" in *error) [ "$status" -eq 2 ] ;; *) [ "$status" -eq 0 ] ;; esac
-    cmp "$TEST_ROOT/full.json" "$WORKTREE_GC_REPORT_DIR/latest.json"
-    cmp "$TEST_ROOT/full.md" "$WORKTREE_GC_REPORT_DIR/latest.md"
+    python3 - "$TEST_ROOT/full.json" "$WORKTREE_GC_REPORT_DIR" "$args" <<'PYTEST'
+import json, pathlib, sys
+before = json.load(open(sys.argv[1]))
+root = pathlib.Path(sys.argv[2])
+after = json.loads((root / 'latest.json').read_text())
+assert after['generated_at'] > before['generated_at']
+assert after['generated_at'] in (root / 'latest.md').read_text()
+assert after == json.loads((root / 'last-run.json').read_text())
+assert after['status'] == ('partial' if 'error' in sys.argv[3] else 'complete')
+PYTEST
   done
 }
 
