@@ -14,7 +14,12 @@ function scene(id, words = ["one", "two"]) {
   };
 }
 
-function boot() {
+const DEFAULT_DECISIONS = [
+  { id: "a", title: "A", options: ["Keep", "Change"], sceneIds: ["a1", "a2"] },
+  { id: "b", title: "B", options: ["One", "Two"], sceneIds: ["b1"] },
+];
+
+function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard } = {}) {
   const html = renderDecisionFlow({
     title: "Audio decision dashboard",
     kicker: "Audio decision dashboard",
@@ -22,13 +27,12 @@ function boot() {
     subtitle: "Listen and decide.",
     storageKey: "dbx:interaction-test",
     cinemaUrl: "./interaction-test-audio.html",
-    scenes: [scene("a1"), scene("a2"), scene("b1")],
-    decisions: [
-      { id: "a", title: "A", options: ["Keep", "Change"], sceneIds: ["a1", "a2"] },
-      { id: "b", title: "B", options: ["One", "Two"], sceneIds: ["b1"] },
-    ],
+    scenes,
+    decisions,
   });
   const window = new Window();
+  if (seed) window.localStorage.setItem("dbx:interaction-test", JSON.stringify(seed));
+  if (clipboard) Object.defineProperty(window.navigator, "clipboard", { configurable: true, value: clipboard });
   window.HTMLElement.prototype.scrollIntoView = function scrollIntoView() { this.__scrolledIntoView = true; };
   Object.defineProperty(window.HTMLMediaElement.prototype, "paused", {
     configurable: true,
@@ -46,7 +50,7 @@ function boot() {
     window.localStorage,
     window.navigator,
   );
-  return { window, document: window.document };
+  return { window, document: window.document, html };
 }
 
 test("rendered decision flow uses a hub-compatible route-scoped storage key", () => {
@@ -327,4 +331,245 @@ test("focusing a card control under the fixed dock scrolls it clear", () => {
   clear.__scrolledIntoView = false;
   clear.dispatchEvent(new window.FocusEvent("focusin", { bubbles: true }));
   expect(clear.__scrolledIntoView).toBe(false);
+});
+
+// ---- round 2: speed, controller, story view, checklist ----
+
+function speedSelect(document) { return document.getElementById("df-speed"); }
+function change(window, element, value) {
+  element.value = value;
+  element.dispatchEvent(new window.Event("change", { bubbles: true }));
+}
+
+test("speed selector offers the fixed rates, applies to every card's audio and persists per dashboard", () => {
+  const { window, document } = boot();
+  const select = speedSelect(document);
+  expect([...select.options].map((option) => option.value)).toEqual(["0.8", "1", "1.25", "1.5", "1.75", "2"]);
+  expect(select.value).toBe("1");
+  change(window, select, "1.5");
+  for (const audio of document.querySelectorAll("audio")) {
+    expect(audio.playbackRate).toBe(1.5);
+    expect(audio.defaultPlaybackRate).toBe(1.5);
+  }
+  const saved = JSON.parse(window.localStorage.getItem("dbx:interaction-test"));
+  expect(saved._prefs.rate).toBe(1.5);
+
+  const again = boot({ seed: saved });
+  expect(speedSelect(again.document).value).toBe("1.5");
+  expect([...again.document.querySelectorAll("audio")].every((audio) => audio.playbackRate === 1.5)).toBe(true);
+});
+
+test("an unknown persisted rate falls back to 1x", () => {
+  const { document } = boot({ seed: { _prefs: { rate: 9 } } });
+  expect(speedSelect(document).value).toBe("1");
+  expect(document.querySelector("audio").playbackRate).toBe(1);
+});
+
+test("word highlight follows media time exactly at 2x", () => {
+  const { window, document } = boot();
+  change(window, speedSelect(document), "2");
+  const card = document.querySelector('[data-decision="a"]');
+  const audio = card.querySelector('audio[data-audio-scene="a1"]');
+  card.querySelector(".df-play").click();
+  expect(audio.playbackRate).toBe(2);
+  audio.currentTime = 0.4; // word 1 starts at 0.4s of media time, regardless of rate
+  audio.dispatchEvent(new window.Event("timeupdate"));
+  expect(card.querySelector('.df-word[data-scene="a1"][data-word-index="1"]').classList.contains("is-current")).toBe(true);
+  expect(card.querySelectorAll(".df-word.is-current").length).toBe(1);
+});
+
+test("controller has one chip per card and tapping a chip flies to that card", () => {
+  const { document } = boot();
+  const chips = [...document.querySelectorAll(".df-chip[data-chip-for]")];
+  expect(chips.map((chip) => chip.dataset.chipFor)).toEqual(["a", "b"]);
+  expect(chips[0].getAttribute("aria-current")).toBe("true");
+  chips[1].click();
+  const b = document.querySelector('[data-decision="b"]');
+  expect(b.classList.contains("is-active")).toBe(true);
+  expect(b.__scrolledIntoView).toBe(true);
+  expect(chips[1].getAttribute("aria-current")).toBe("true");
+  expect(chips[0].hasAttribute("aria-current")).toBe(false);
+  expect(b.querySelector("audio").paused).toBe(true); // nothing was playing, so navigation stays silent
+});
+
+test("chips show playing and answered states", () => {
+  const { document } = boot();
+  const [chipA, chipB] = document.querySelectorAll(".df-chip");
+  document.querySelector('[data-decision="b"] .df-play').click();
+  expect(chipB.classList.contains("is-playing")).toBe(true);
+  document.querySelector('[data-decision="a"] input[type="radio"]').click();
+  expect(chipA.classList.contains("is-answered")).toBe(true);
+});
+
+test("transport play/pause drives only the current card's scenes", () => {
+  const { document } = boot();
+  const toggle = document.getElementById("df-transport-play");
+  const a = document.querySelector('[data-decision="a"]');
+  const b = document.querySelector('[data-decision="b"]');
+  toggle.click();
+  expect(a.querySelector('audio[data-audio-scene="a1"]').paused).toBe(false);
+  expect(b.querySelector("audio").paused).toBe(true);
+  expect(toggle.textContent).toContain("Pause");
+  toggle.click();
+  expect(a.querySelector('audio[data-audio-scene="a1"]').paused).toBe(true);
+  expect(a.querySelector(".df-teleprompter").hidden).toBe(false);
+  expect(toggle.textContent).toContain("Resume");
+});
+
+test("transport previous/next move the current card, keep playing when audio was playing, and stop at the ends", () => {
+  const { document } = boot();
+  const prev = document.getElementById("df-transport-prev");
+  const next = document.getElementById("df-transport-next");
+  const a = document.querySelector('[data-decision="a"]');
+  const b = document.querySelector('[data-decision="b"]');
+  expect(prev.disabled).toBe(true);
+  next.click();
+  expect(b.classList.contains("is-active")).toBe(true);
+  expect(b.querySelector("audio").paused).toBe(true);
+  expect(next.disabled).toBe(true);
+  expect(prev.disabled).toBe(false);
+
+  prev.click();
+  document.getElementById("df-transport-play").click();
+  expect(a.querySelector('audio[data-audio-scene="a1"]').paused).toBe(false);
+  next.click();
+  expect(b.querySelector("audio").paused).toBe(false);
+  expect(a.querySelector('audio[data-audio-scene="a1"]').paused).toBe(true);
+});
+
+test("transport follows a card that starts playing from its own button", () => {
+  const { document } = boot();
+  document.querySelector('[data-decision="b"] .df-play').click();
+  expect(document.getElementById("df-transport-play").textContent).toContain("Pause");
+  expect(document.getElementById("df-transport-next").disabled).toBe(true);
+});
+
+test("story view toggle shows one card at a time and persists", () => {
+  const { window, document } = boot();
+  const toggle = document.getElementById("df-view-toggle");
+  expect(document.body.dataset.view).toBe("list");
+  expect(toggle.getAttribute("aria-pressed")).toBe("false");
+  toggle.click();
+  expect(document.body.dataset.view).toBe("story");
+  expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  const saved = JSON.parse(window.localStorage.getItem("dbx:interaction-test"));
+  expect(saved._prefs.view).toBe("story");
+  expect(boot({ seed: saved }).document.body.dataset.view).toBe("story");
+  toggle.click();
+  expect(document.body.dataset.view).toBe("list");
+});
+
+test("controller adds no global Play-All surface", () => {
+  const { html } = boot();
+  expect(html).not.toContain('id="cinema"');
+  expect(html).not.toContain('id="pa-bar"');
+  expect(html).not.toContain('data-transport="single"');
+  expect(html.toLowerCase()).not.toContain("play all");
+});
+
+const CHECK_DECISIONS = [
+  {
+    id: "vb", title: "Check VoiceBar", options: ["All good", "Found a problem"], sceneIds: ["a1", "a2"],
+    checklist: [{ title: "Fixed", items: ["History row", "Pauses"] }, "Tooltips"],
+  },
+  { id: "b", title: "B", options: ["One", "Two"], sceneIds: ["b1"] },
+];
+
+test("checklist renders grouped checkboxes that persist under the dashboard key", () => {
+  const { window, document } = boot({ decisions: CHECK_DECISIONS });
+  const card = document.querySelector('[data-decision="vb"]');
+  const boxes = [...card.querySelectorAll('.df-checklist input[type="checkbox"]')];
+  expect(boxes.length).toBe(3);
+  expect([...card.querySelectorAll(".df-check-group-title")].map((node) => node.textContent)).toEqual(["Fixed"]);
+  expect(card.querySelector(".df-checklist-count").textContent).toBe("0 of 3 checked");
+  boxes[1].click();
+  expect(card.querySelector(".df-checklist-count").textContent).toBe("1 of 3 checked");
+  const saved = JSON.parse(window.localStorage.getItem("dbx:interaction-test"));
+  expect(saved["vb-checks"]).toEqual({ 1: true });
+  const again = boot({ decisions: CHECK_DECISIONS, seed: saved });
+  const restored = [...again.document.querySelectorAll('[data-decision="vb"] .df-checklist input')];
+  expect(restored.map((box) => box.checked)).toEqual([false, true, false]);
+});
+
+test("a fully checked checklist counts as answered; a partial one does not", () => {
+  const { document } = boot({ decisions: CHECK_DECISIONS });
+  const card = document.querySelector('[data-decision="vb"]');
+  const boxes = [...card.querySelectorAll(".df-checklist input")];
+  boxes[0].click();
+  boxes[1].click();
+  expect(card.classList.contains("is-answered")).toBe(false);
+  expect(document.getElementById("df-answered").textContent).toBe("0");
+  boxes[2].click();
+  expect(card.classList.contains("is-answered")).toBe(true);
+  expect(document.getElementById("df-answered").textContent).toBe("1");
+  expect(document.querySelector('.df-chip[data-chip-for="vb"]').classList.contains("is-answered")).toBe(true);
+});
+
+test("Copy answers exports checklist items as [x] and [ ] lines", async () => {
+  let copiedText = "";
+  const { document } = boot({ decisions: CHECK_DECISIONS, clipboard: { writeText: (text) => { copiedText = text; return Promise.resolve(); } } });
+  const boxes = [...document.querySelectorAll('[data-decision="vb"] .df-checklist input')];
+  boxes[0].click();
+  boxes[2].click();
+  document.getElementById("df-copy").click();
+  await Promise.resolve();
+  expect(copiedText).toContain("- checklist: 2 of 3 checked");
+  expect(copiedText).toContain("  - Fixed\n    - [x] History row\n    - [ ] Pauses");
+  expect(copiedText).toContain("  - [x] Tooltips");
+});
+
+test("checklist items must be non-empty text", () => {
+  expect(() => renderDecisionFlow({
+    scenes: [scene("only")],
+    decisions: [{ id: "only", title: "Only", sceneIds: ["only"], checklist: ["ok", ""] }],
+  })).toThrow(/checklist/);
+});
+
+test("desktop setlist links set the current card like chips do", () => {
+  const { window, document } = boot();
+  const link = document.querySelector('.df-index-list a[data-index-for="b"]');
+  const event = new window.MouseEvent("click", { bubbles: true, cancelable: true });
+  link.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(true);
+  expect(document.querySelector('[data-decision="b"]').classList.contains("is-active")).toBe(true);
+  expect(document.getElementById("df-transport-next").disabled).toBe(true);
+});
+
+function placeCards(document, tops) {
+  [...document.querySelectorAll(".df-card")].forEach((card, index) => {
+    card.getBoundingClientRect = () => ({ top: tops[index], bottom: tops[index] + 400 });
+  });
+}
+
+test("in list view the current card follows scrolling while nothing plays", () => {
+  const { window, document } = boot();
+  placeCards(document, [-500, 140]);
+  window.dispatchEvent(new window.Event("scroll"));
+  expect(document.querySelector('[data-decision="b"]').classList.contains("is-active")).toBe(true);
+  expect(document.querySelector('.df-chip[data-chip-for="b"]').getAttribute("aria-current")).toBe("true");
+});
+
+test("scroll-follow never steals the current card from playing audio or a fresh jump", () => {
+  const playing = boot();
+  playing.document.getElementById("df-transport-play").click();
+  placeCards(playing.document, [-500, 140]);
+  playing.window.dispatchEvent(new playing.window.Event("scroll"));
+  expect(playing.document.querySelector('[data-decision="a"]').classList.contains("is-active")).toBe(true);
+
+  const jumped = boot();
+  jumped.document.querySelector('.df-chip[data-chip-for="a"]').click();
+  placeCards(jumped.document, [-500, 140]);
+  jumped.window.dispatchEvent(new jumped.window.Event("scroll"));
+  expect(jumped.document.querySelector('[data-decision="a"]').classList.contains("is-active")).toBe(true);
+});
+
+test("two-voice cards label each part of the read-along with its speaker", () => {
+  const ask = { ...scene("a1"), role: "host", speaker: "ben" };
+  const answer = { ...scene("a2"), role: "expert", speaker: "theo" };
+  const plain = scene("b1");
+  const { document } = boot({ scenes: [ask, answer, plain] });
+  const labels = [...document.querySelectorAll('[data-decision="a"] .df-speaker')];
+  expect(labels.map((label) => [label.dataset.role, label.textContent])).toEqual([["host", "Ben asks"], ["expert", "Theo explains"]]);
+  expect(document.querySelector('[data-decision="a"] [data-transcript-scene="a1"]').dataset.role).toBe("host");
+  expect(document.querySelector('[data-decision="b"] .df-speaker')).toBeNull();
 });

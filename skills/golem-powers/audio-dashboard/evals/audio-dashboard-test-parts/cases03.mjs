@@ -425,6 +425,26 @@ test("decision-flow defaults omitted options to a free-text-only answer", () => 
   expect((html.match(/<input type="radio"/g) || []).length).toBe(0);
 });
 
+test("decision-flow build passes each scene's speaker and role into the read-along", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-speakers-"));
+  const jobDir = path.join(root, "job");
+  writeSegment(jobDir, "ask", [{ word: "why", start: 0.05, end: 0.4 }, { word: "now", start: 0.45, end: 0.8 }]);
+  writeSegment(jobDir, "answer", [{ word: "because", start: 0.05, end: 0.4 }, { word: "proof", start: 0.45, end: 0.8 }]);
+  const { result, outputPath } = buildDashboard({
+    type: "decision-flow",
+    id: "two-voices",
+    scenes: [
+      { id: "ask", title: "The question", role: "host", reference: "ben-c1", script: "why now" },
+      { id: "answer", title: "The answer", role: "expert", speaker: "Theo", script: "because proof" },
+    ],
+    decisions: [{ id: "d1", title: "Two voices", options: ["Yes"], sceneIds: ["ask", "answer"] }],
+  }, jobDir, "two-voices");
+  expect(result.status).toBe(0);
+  const html = readFileSync(outputPath, "utf8");
+  expect(html).toContain('<span class="df-speaker" data-role="host">Ben asks</span>');
+  expect(html).toContain('<span class="df-speaker" data-role="expert">Theo explains</span>');
+});
+
 test("decision-flow fails closed when a scene is not owned by exactly one decision", () => {
   const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-ownership-"));
   const jobDir = path.join(root, "job");
