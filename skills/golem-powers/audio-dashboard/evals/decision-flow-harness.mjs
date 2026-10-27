@@ -17,7 +17,7 @@ export const DEFAULT_DECISIONS = [
   { id: "b", title: "B", options: ["One", "Two"], sceneIds: ["b1"] },
 ];
 
-export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard, storageError = () => false, touch = false, clock = Date, schedule = setTimeout } = {}) {
+export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard, storageError = () => false, touch = false, clock = Date, schedule = setTimeout, runtimeTransform = source => source } = {}) {
   const html = renderDecisionFlow({
     title: "Audio decision dashboard",
     kicker: "Audio decision dashboard",
@@ -45,7 +45,7 @@ export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), sce
   window.HTMLMediaElement.prototype.pause = function pause() { this.__paused = true; };
   window.document.write(html);
   const scripts = [...window.document.querySelectorAll("script")];
-  new Function("document", "localStorage", "navigator", "Date", "setTimeout", scripts.at(-1).textContent)(
+  new Function("document", "localStorage", "navigator", "Date", "setTimeout", runtimeTransform(scripts.at(-1).textContent))(
     window.document,
     { getItem: key => window.localStorage.getItem(key), setItem: (key, value) => { if (storageError()) throw new Error("quota"); window.localStorage.setItem(key, value); } },
     window.navigator, clock, schedule,
