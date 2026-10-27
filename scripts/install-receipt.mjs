@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Usage: node scripts/install-receipt.mjs validate|write <receipt.json|-> | status
+import { hostAlias } from './install-receipt-status.mjs';
 import { validate, assess } from './lib/install-receipt-core.mjs';
 import { readFileSync, mkdirSync, lstatSync, writeFileSync, linkSync, unlinkSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -15,7 +16,7 @@ try {
   } else {
   if (!['validate', 'write'].includes(command) || !input || extra.length) throw new Error('Usage: install-receipt.mjs validate|write <receipt.json|->');
   const r = JSON.parse(readFileSync(input === '-' ? 0 : input, 'utf8'));
-  if (command === 'write') { r.receipt_id = randomUUID(); r.written_at = new Date().toISOString(); }
+  if (command === 'write') { r.host.alias = hostAlias(r.host.alias); r.receipt_id = randomUUID(); r.written_at = new Date().toISOString(); }
   validate(r);
   const [verdict, reason] = assess(r);
   if (command === 'validate') {

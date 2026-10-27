@@ -592,3 +592,12 @@ test('A2 review: worktree pins require an owner pin', () => isolated(run => {
   const r = receipt(); delete r.install_source.owner_status.pin_sha;
   for (const command of ['validate', 'write']) assert.notEqual(run(command, r).status, 0);
 }));
+
+test('writer canonicalizes legacy aliases and refuses unknown machines', () => isolated((run) => {
+  for (const [legacy, canonical] of [['mbp', 'm4-max'], ['m1', 'm1-pro']]) {
+    const r = receipt(); r.host.alias = legacy;
+    assert.equal(output(run('write', r)).host.alias, canonical);
+  }
+  const r = receipt(); r.host.alias = 'unknown-machine';
+  assert.notEqual(run('write', r).status, 0);
+}));

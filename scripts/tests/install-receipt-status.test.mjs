@@ -24,7 +24,7 @@ const run = (local, remote, extra = {}) => collectStatus({ products: { golems: '
 test('5: product × host matrix uses hooks-live pin without release.json; never promotes activation', () => {
   const rows = run({ golems: receipt() }, { golems: receipt('m1') });
   assert.deepEqual(rows.map(r => [r.product, r.host, r.status, r.activation]), [
-    ['golems', 'mbp', 'INSTALLED_NOT_ACTIVE', 'INSTALLED_NOT_ACTIVE'], ['golems', 'm1', 'INSTALLED_NOT_ACTIVE', 'INSTALLED_NOT_ACTIVE']]);
+    ['golems', 'm4-max', 'INSTALLED_NOT_ACTIVE', 'INSTALLED_NOT_ACTIVE'], ['golems', 'm1-pro', 'INSTALLED_NOT_ACTIVE', 'INSTALLED_NOT_ACTIVE']]);
 });
 test('5: older valid installation is BEHIND; identity drift is MISMATCH', () => {
   const behind = receipt(); behind.target.merge_sha = old; behind.target.released_sha = old; behind.installed.embedded_commit = old; behind.install_source.pin_sha = behind.install_source.owner_status.pin_sha = old;
@@ -454,4 +454,9 @@ for (const fromTag of ['master', old]) {
 test('I2e R1: prior tag peel failure prevents the file comparison', () => {
   assert.equal(processStatus(processReceipt(), () => assert.fail('unresolved compare'),
     () => { throw Error('tag unreachable'); }).status, 'LIVE-UNVERIFIED');
+});
+
+test('canonical machine names preserve legacy receipt identity', () => {
+  assert.deepEqual(run({ golems: receipt() }, { golems: receipt('m1') }).map(r => r.host), ['m4-max', 'm1-pro']);
+  assert.deepEqual(run({ golems: receipt('m4-max') }, { golems: receipt('m1-pro') }).map(r => r.status), ['INSTALLED_NOT_ACTIVE', 'INSTALLED_NOT_ACTIVE']);
 });

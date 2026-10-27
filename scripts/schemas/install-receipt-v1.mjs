@@ -12,7 +12,7 @@ export default {
     schema: { const: 'install-receipt/v1' },
     receipt_id: { type: 'string', pattern: '^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$' }, written_at: time,
     writer: object({ agent: text, thread_or_session: text }, ['agent', 'thread_or_session']),
-    host: object({ alias: { enum: ['mbp', 'm1'] }, hostname: text, user: text }, ['alias', 'hostname', 'user']),
+    host: object({ alias: { enum: ['m4-max', 'm1-pro', 'mbp', 'm1'] }, hostname: text, user: text }, ['alias', 'hostname', 'user']),
     product: component, artifact_kind: { enum: ['brew-formula', 'brew-cask', 'pypi', 'npm', 'source-checkout', 'skills-sync'] },
     target: object({ version: component, tag: text, merge_sha: sha, released_sha: sha,
       ancestry: object({ method: { enum: ['gh-compare', 'git-merge-base'] },
