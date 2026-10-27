@@ -315,6 +315,17 @@ restarts or signals. Failures stop before parity. Local run logs/assets: `m1-syn
 skills-sync receipt hook without issuing one. Offline tests (fake gh/ssh/scp via PATH):
 `WEAVE_ALLOW_TMP=1 python3 -B -m unittest discover -s scripts/tests -p test_m1_sync.py`.
 
+Recover a stuck stage or missing marker only as part of an M1 sync authorized under Etan #32;
+the default read-only live-row path never performs recovery. The authorized lead first retains
+the failed stage's before.json/install.log, then restores the affected skill roots from the
+matching known-good `~/.claude/skills.bak-*.tgz`. Return `~/.golems/current` to the corresponding
+retained pre-sync release, and restore config.toml from a trusted pre-sync backup if its guard
+failed. Then reset `~/.golems/release.json` to the recorded pre-sync release (or remove it if
+there was none), and remove the exact failed stage directory under `~/.golems/m1-sync/` after
+retaining its evidence. Re-run the authorized `--sync-m1` flow to create a fresh completion
+marker only after all guards pass. Never hand-write `success.json` or clear state to claim
+success without restoring the affected state first.
+
 Name/content parity and required readability are separate output fields. Explicitly approved
 source-invalid entries remain in `disclosed_invalid`; they cannot satisfy a required-readable
 entry. The initial source had one dangling entry on both hosts and an empty namespace on both;

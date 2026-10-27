@@ -225,6 +225,20 @@ with open(os.environ['EVENTS'], 'a') as f: f.write('apply\\n' if '--apply' in sy
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('needs attention', r.stderr)
 
+    def test_non_object_marker_needs_attention_without_traceback(self):
+        self.record(HEAD)
+        stage = self.remote / '.golems/m1-sync' / (HEAD + '-invalid-marker')
+        stage.mkdir(parents=True)
+        for payload in ('[]', 'null', '"bad"', '123', 'true', '{'):
+            with self.subTest(payload=payload):
+                (stage / 'success.json').write_text(payload)
+                events = self.events()
+                r = self.invoke()
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn('needs attention', r.stderr)
+                self.assertNotIn('Traceback', r.stderr)
+                self.assertEqual(self.events(), events + 'ssh\n')
+
     def test_checkout_links_can_be_replaced(self):
         for checkout, name in (('Gits/golems', 'checkout'), ('Gits/golems/.worktrees/worker', 'checkout-worker')):
             target = self.remote / checkout / ('skills/golem-powers/' + name)
@@ -241,7 +255,7 @@ with open(os.environ['EVENTS'], 'a') as f: f.write('apply\\n' if '--apply' in sy
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('M1-only skill changed', r.stderr)
 
-    def test_other_checkout_link_is_preserved(self):
+    def test_other_checkout_link_replacement_is_caught(self):
         target = self.remote / 'Gits/another-repo/skills/golem-powers/checkout-other'
         target.mkdir(parents=True)
         (self.remote / '.codex/skills/checkout-other').symlink_to(target)

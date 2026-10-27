@@ -51,8 +51,11 @@ def remote(mode, head, version, stage):
         attempts = list((home / '.golems/m1-sync').glob(head + '-*'))
         for attempt in attempts:
             marker = attempt / 'success.json'
-            require(marker.is_file() and not marker.is_symlink()
-                    and json.loads(marker.read_text()).get('head') == head,
+            try:
+                completion = json.loads(marker.read_text()) if marker.is_file() and not marker.is_symlink() else None
+            except (ValueError, OSError):
+                completion = None
+            require(isinstance(completion, dict) and completion.get('head') == head,
                     'M1 sync needs attention: incomplete stage ' + str(attempt))
         record = installed()
         require(record.get('commit') != head or attempts, 'M1 sync needs attention: no success marker for ' + head)
