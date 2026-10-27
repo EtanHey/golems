@@ -179,6 +179,8 @@ jobs:
         run: |
           node --test scripts/tests/install-receipt.test.mjs \
                       scripts/tests/t3-mcp-holders.test.mjs \
+                      scripts/tests/golems-receipt-core.test.mjs \
+                      scripts/tests/receipt-validator-build.test.mjs \
                       scripts/tests/container-teardown.test.mjs \
                       scripts/tests/pr-chain-span.test.mjs \
                       scripts/tests/bats-coverage.test.mjs \

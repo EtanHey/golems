@@ -3,6 +3,20 @@
 `install-receipt-v1.mjs` exports the closed JSON Schema. The CLI uses the existing
 Ajv dependency and registers `utc-time` for real UTC calendar timestamps.
 
+The golems core supports independent skills-sync and hooks-sync artifacts.
+Skills identity is the golems-owned roots commit; hook identity is the hooks-live
+pin. Builders omit unprobed ancestry, and only these artifacts permit omission
+when merge/release identities are identical. Other artifact rules are unchanged.
+Skills LIVE requires clean owner status plus live parity; hooks LIVE requires
+clean owner status. The builder accepts owned-commit snapshots and excluded-entry
+metadata; scanner, installer and paired status wiring follow in the next layer.
+
+The writer stores latest-<artifact_kind>-<mode>.json for these artifacts, so
+checkout skills, release skills and hooks never replace each other's pointer.
+Generic artifacts retain latest.json. Bundled Ajv needs no client node_modules;
+regenerate with bash scripts/build-receipt-validator.sh, or verify locked Bun/Ajv
+versions and committed bundle/license bytes with its --check option.
+
 ```sh
 node scripts/install-receipt.mjs validate receipt.json
 node scripts/install-receipt.mjs write receipt.json

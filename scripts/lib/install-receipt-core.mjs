@@ -1,4 +1,5 @@
-import Ajv from 'ajv';
+import Ajv from './vendor/receipt-ajv.generated.mjs';
+import { createHash } from 'node:crypto';
 import schema from '../schemas/install-receipt-v1.mjs';
 
 const MCP_PRODUCTS = ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar'];
@@ -31,8 +32,10 @@ const ajv = new Ajv({ strict: false });
 ajv.addFormat('utc-time', value => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(value)
   && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 19) === value.slice(0, 19));
 const valid = ajv.compile(schema);
+export const rootsDigest = roots => createHash('sha256').update(roots.map(r => `${r.path}\t${r.tree_sha256}\n`).sort().join('')).digest('hex');
 export function validate(receipt) {
   if (!valid(receipt)) throw new Error(ajv.errorsText(valid.errors));
+  if (receipt.artifact_kind === 'skills-sync' && new Set(receipt.install_source.roots.map(r => r.path)).size !== receipt.install_source.roots.length) throw Error('duplicate skill root');
   for (const [field, seats] of [['reconnected_seats', receipt.activation.reconnected_seats],
     ['seat_scan.active_seats', receipt.activation.seat_scan?.active_seats]]) {
     if (seats?.includes(receipt.writer.thread_or_session)) {
@@ -83,9 +86,10 @@ export function assess(r) {
     : scan?.method === 'client-processes' && !scan.bridge_diff.changed
       ? 'No stale MCP clients: bridge_diff.changed=false; recorded bridge code is unchanged' : undefined;
   const explain = reason => clientReason ? `${reason}; ${clientReason}` : reason;
-  const commits = [r.installed.embedded_commit, r.install_source?.pin_sha, r.install_source?.owner_status?.pin_sha, r.activation.self_report?.commit];
-  const status = r.target.ancestry?.status;
+  const commits = [r.installed.embedded_commit, r.install_source?.pin_sha,
+    ...(r.artifact_kind === 'skills-sync' ? [] : [r.install_source?.owner_status?.pin_sha]), r.activation.self_report?.commit];
   const sameCommit = r.target.merge_sha === r.target.released_sha;
+  const status = r.target.ancestry?.status ?? (['skills-sync', 'hooks-sync'].includes(r.artifact_kind) && sameCommit ? 'identical' : undefined);
   const mismatch = !['identical', 'ahead'].includes(status)
     || (status === 'identical' && !sameCommit) || (status === 'ahead' && sameCommit)
     || commits.some(commit => commit !== undefined && commit !== r.target.released_sha)
@@ -93,6 +97,20 @@ export function assess(r) {
       && r.installed.content_sha256 !== r.target.release_asset.sha256);
   if (mismatch && r.verdict !== 'FAILED') return ['MISMATCH', 'Installed identity differs from released commit/artifact or release does not contain merge'];
   const owner = r.install_source?.owner_status;
+  if (r.artifact_kind === 'skills-sync') {
+    const roots = r.install_source.roots, identities = r.install_source.root_commits ?? [];
+    if (r.installed.content_sha256 !== rootsDigest(roots) || (r.install_source.mode === 'checkout' &&
+        (identities.length !== roots.length || !identities.some(x => x.commits.length) || identities.some(x => !roots.some(root => root.path === x.path) || x.unresolved || x.commits.some(c => c !== r.target.released_sha))))) {
+      if (r.verdict === 'FAILED') return [r.verdict];
+      return ['MISMATCH', 'Skills root content or commit mismatch: ' + roots.map(x => x.path).join(', ')];
+    }
+    const parity = r.activation.skill_parity;
+    return r.verdict === 'LIVE' && !(r.installed.embedded_commit === r.target.released_sha && owner?.exit === 0 && owner.drift === false && owner.settings_drift === false &&
+      parity?.pass === true && parity.exit === 0 && parity.measurement === 'live')
+      ? ['INSTALLED_NOT_ACTIVE', 'Clean installer status and live installed-skills parity PASS required'] : [r.verdict];
+  }
+  if (r.artifact_kind === 'hooks-sync') return r.verdict === 'LIVE' && !(owner?.exit === 0 && !owner.drift && !owner.settings_drift)
+    ? ['INSTALLED_NOT_ACTIVE', 'Clean owner hook status required'] : [r.verdict];
   if (r.verdict === 'LIVE' && owner && (owner.exit !== 0 || owner.drift || owner.settings_drift)) {
     return ['INSTALLED_NOT_ACTIVE', 'Owner installer status failed or reports drift'];
   }
