@@ -29,6 +29,8 @@ export default {
       processes: array(object({ pid: { type: 'integer', minimum: 1 }, path: text, started_at: time }, ['pid', 'path', 'started_at'])),
       self_report: object({ command: text, version: text, commit: sha }, ['command', 'version']),
       mcp_probe: object({ server: text, request: text, ok: { type: 'boolean' }, summary: text }, ['server', 'request', 'ok', 'summary']),
+      seat_scan: object({ method: { enum: ['t3-threads', 'list_agents'] }, checked_at: time,
+        active_seats: array(text) }, ['method', 'checked_at', 'active_seats']),
       reconnected_seats: array(text) }, ['method', 'processes']),
     verdict: { enum: ['LIVE', 'INSTALLED_NOT_ACTIVE', 'MISMATCH', 'FAILED'] }, reasons: array(text),
   }, ['schema', 'receipt_id', 'written_at', 'writer', 'host', 'product', 'artifact_kind', 'target', 'installed', 'activation', 'verdict', 'reasons']),

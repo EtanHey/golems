@@ -29,23 +29,61 @@ function isolated(fn) {
 const output = result => { assert.equal(result.status, 0, result.stderr); return JSON.parse(result.stdout); };
 
 for (const product of ['brainlayer', 'voicelayer', 'cmuxlayer', 'brainbar', 'voicebar']) {
-  for (const proof of ['self-report', 'missing-seats', 'empty-seats', 'failed-probe', 'complete']) {
+  for (const proof of ['self-report', 'missing-seats', 'empty-seats', 'failed-probe', 'complete', 'uncovered-seat', 'partial-coverage', 'old-scan', 'equal-scan', 'missing-scan']) {
     test(`I2: ${product} activation with ${proof}`, () => isolated(run => {
       const r = receipt(); r.product = product;
       if (proof !== 'self-report') r.activation.mcp_probe = {
         server: product, request: 'ping', ok: proof !== 'failed-probe', summary: 'fixture probe',
       };
+      if (proof !== 'missing-scan') r.activation.seat_scan = {
+        method: 't3-threads', checked_at: '2026-10-27T09:02:00Z', active_seats: [],
+      };
       if (proof === 'empty-seats') r.activation.reconnected_seats = [];
-      if (['failed-probe', 'complete'].includes(proof)) r.activation.reconnected_seats = ['fixture-seat'];
-      const live = proof === 'complete';
+      if (['failed-probe', 'complete', 'uncovered-seat', 'partial-coverage'].includes(proof)) {
+        r.activation.seat_scan.active_seats = ['fixture-seat'];
+      }
+      if (proof === 'partial-coverage') {
+        r.activation.seat_scan.active_seats.push('other-seat');
+        r.activation.reconnected_seats = ['fixture-seat'];
+      }
+      if (proof === 'old-scan') r.activation.seat_scan.checked_at = '2026-10-27T08:59:00Z';
+      if (proof === 'equal-scan') r.activation.seat_scan.checked_at = r.installed.install_finished_at;
+      if (proof === 'complete') r.activation.seat_scan.method = 'list_agents';
+      if (['failed-probe', 'complete', 'old-scan', 'equal-scan', 'missing-scan'].includes(proof)) {
+        r.activation.reconnected_seats = ['fixture-seat'];
+      }
+      const live = ['missing-seats', 'empty-seats', 'complete'].includes(proof);
       const validated = run('validate', r);
       assert.equal(validated.status, live ? 0 : 1, `${proof}: ${validated.stderr}`);
       const written = output(run('write', r));
       assert.equal(written.verdict, live ? 'LIVE' : 'INSTALLED_NOT_ACTIVE', proof);
-      if (!live) assert.match(written.reasons.join(' '), /MCP.*mcp_probe.*reconnected_seats/);
+      if (!live) {
+        const reason = ['self-report', 'failed-probe'].includes(proof) ? /mcp_probe/
+          : proof === 'missing-scan' ? /seat_scan/
+          : ['old-scan', 'equal-scan'].includes(proof) ? /checked_at.*install_finished_at/
+          : /active_seats.*reconnected_seats/;
+        assert.match(written.reasons.join(' '), reason);
+      }
     }));
   }
 }
+test('I2b: seat scans validate both methods and reject malformed evidence', () => isolated(run => {
+  for (const method of ['t3-threads', 'list_agents']) {
+    const r = receipt(); r.activation.seat_scan = { method, checked_at: '2026-10-27T09:02:00Z', active_seats: [] };
+    assert.equal(output(run('validate', r)).verdict, 'LIVE');
+    for (const mutate of [scan => { scan.method = 'guess'; }, scan => { delete scan.method; },
+      scan => { delete scan.checked_at; }, scan => { scan.checked_at = '2026-02-30T09:02:00Z'; },
+      scan => { scan.checked_at = '2026-10-27T09:02:00+00:00'; }, scan => { delete scan.active_seats; },
+      scan => { scan.active_seats = ['']; }, scan => { scan.active_seats = [123]; },
+      scan => { scan.active_seats = 'fixture-seat'; }]) {
+      const bad = structuredClone(r); mutate(bad.activation.seat_scan);
+      for (const command of ['validate', 'write']) {
+        const result = run(command, bad);
+        assert.notEqual(result.status, 0); assert.match(result.stderr, /seat_scan/);
+      }
+    }
+  }
+}));
 test('I2: non-MCP products keep version self-report activation proof', () => isolated(run => {
   assert.equal(output(run('validate', receipt())).verdict, 'LIVE');
   assert.equal(output(run('write', receipt())).verdict, 'LIVE');
