@@ -96,6 +96,7 @@ jobs:
       - name: M1 sync offline guards (fake SSH only)
         run: |
           python -B -m unittest discover -s scripts/tests -p test_m1_sync.py
+          python -B -m unittest discover -s scripts/tests -p test_m1_receipt_real_writer.py
           python3.9 -B -m unittest discover -s scripts/tests -p test_m1_sync.py
 
       - run: bun install --frozen-lockfile
