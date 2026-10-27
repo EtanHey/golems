@@ -43,7 +43,14 @@ if (process.env.HANG_COMMAND === kind) {
     console.error('Error response from daemon: No such container: ' + args[2]); process.exit(1);
   }
   if (process.env.VANISH_ON_UPDATE && args.includes('vanishing')) {
-    fs.rmSync(path.join(root, 'state', 'vanishing'));
+    if (process.env.RACE_VANISH_ON_UPDATE) {
+      // A competing caller removes the container after this update selected its ID.
+      const competitor = require('node:child_process').spawnSync(process.execPath, ['-e',
+        'require("node:fs").rmSync(process.argv[1], { force: true })', path.join(root, 'state', 'vanishing')]);
+      if (competitor.status !== 0) throw new Error('competing removal failed');
+      log(['stub', 'competing-removal']);
+    }
+    fs.rmSync(path.join(root, 'state', 'vanishing'), { force: true });
     log(['stub', 'vanished']);
     console.error('Error response from daemon: No such container: vanishing');
     if (process.env.MIXED_ERROR) console.error('permission denied');
@@ -111,7 +118,7 @@ async function fixture(fn, { selector = compose, ...env } = {}) {
   const calls = () => readFileSync(join(root, 'calls'), 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
   const seed = (id, label = selector, running = true) => writeFileSync(join(root, 'state', id), JSON.stringify({ label, name: id, running }));
   const environment = { ...process.env, CI: 'false', FAIL_UPDATE: '', FAIL_STOP: '', SURVIVORS: '', CHILD_EXIT: '',
-    VANISH_ON_UPDATE: '', MIXED_ERROR: '', MISSING_BUT_PRESENT: '', GROUP_INTERRUPT: '',
+    VANISH_ON_UPDATE: '', RACE_VANISH_ON_UPDATE: '', MIXED_ERROR: '', MISSING_BUT_PRESENT: '', GROUP_INTERRUPT: '',
     MARKED_REMOVAL: '', HANG_COMMAND: '', ESCALATE_SIGNALS: '', GOLEMS_DOCKER_TEARDOWN_TIMEOUT_MS: '',
     ...env, PATH: join(root, 'bin'), FIXTURE: root, SELECTOR: selector, HELPER: pathToFileURL(cli).href };
   const run = (action = 'run', mode = 'create', extra = {}) => new Promise((done, reject) => {
@@ -233,6 +240,13 @@ test('explicit protect hook tolerates a confirmed disappearance', () => fixture(
   const c = calls(), vanished = index(c, 'stub', 'vanished');
   assert.ok(vanished >= 0 && index(c, 'child', 'done') > vanished);
 }, { VANISH_ON_UPDATE: '1' }));
+test('explicit protect hook tolerates a competing removal before stub deletion', () => fixture(async ({ run, calls }) => {
+  const r = await run('run', 'hook-vanish'); assert.equal(r.code, 0, r.stderr);
+  const c = calls(), competing = index(c, 'stub', 'competing-removal'), vanished = index(c, 'stub', 'vanished');
+  assert.ok(competing >= 0 && vanished > competing);
+  assert.ok(index(c, 'child', 'done') > vanished);
+  assert.doesNotMatch(r.stderr, /ENOENT/);
+}, { VANISH_ON_UPDATE: '1', RACE_VANISH_ON_UPDATE: '1' }));
 test('teardown remains strict if an allegedly missing container still exists', () => fixture(async ({ run, seed }) => {
   seed('created'); const r = await run('teardown'); assert.equal(r.code, 1); assert.match(r.stderr, /No such container: created/);
 }, { MISSING_BUT_PRESENT: '1' }));
