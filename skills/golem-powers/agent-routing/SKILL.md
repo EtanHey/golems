@@ -219,7 +219,8 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 1. **Discover:** call `orchestrator_capabilities` first; pin provider, model and effort in `target` from its live catalog (canon #5).
    For ordinary Codex implementers, recon and reviewers, explicitly name `target.providerInstanceId: "codex-worker"` every time.
    `codex` stays for: security (implementers + scans), UI / computer-use recorders, browser / web-QA workers, leads and Etan.
-   Children inherit their parent's instance: a lead on `codex` or any Claude lead saves nothing unless it names `codex-worker`.
+   A Codex child inherits its parent's Codex instance. A Claude lead naming only the codex driver gets whichever codex instance T3 lists first; always name the instance.
+   Remember: the role picks the model, the work type picks the instance. Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
    Otherwise each Codex worker thread starts codex-security, computer-history, node_repl and cua_repl (~24.5 MiB, 4 processes), which T3 keeps until settle/idle release.
    Recreate, upgrade verification and missing-instance fallback: [Codex instances](references/t3-native.md#codex-instances).
 2. **Dispatch:** `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
