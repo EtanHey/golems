@@ -44,6 +44,7 @@ import {
   analyzeVoiceRoles,
   formatVoiceRoleReport,
   voiceRoleRunbook,
+  voicePersonFromProfile,
 } from "../src/voice-role-gate.mjs";
 import {
   analyzeTranscriptFidelity,
@@ -384,12 +385,15 @@ function main() {
     else missing.push(`audio:${sceneId}`);
     if (!existsSync(wav)) missing.push(`wav:${sceneId}`);
 
+    const speaker = s.speaker || voicePersonFromProfile(s.reference ?? s.profile);
     scenes.push({
       id: sceneId,
       domain: s.domain || "overview",
       ...(s.domainLabel ? { domainLabel: s.domainLabel } : {}),
       title: s.title || sceneId,
       script: s.script,
+      ...(s.role ? { role: s.role } : {}),
+      ...(speaker ? { speaker } : {}),
       words,
       ...(existsSync(mp3) ? { duration: ffprobeDurationSeconds(mp3) } : {}),
       ...(audioUrl ? { audioUrl } : {}),

@@ -1,0 +1,108 @@
+// Real-layout checks in headless Chromium. Skips (loudly) where Playwright/Chromium is unavailable.
+import { expect, test } from "bun:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { renderDecisionFlow } from "../src/decision-flow.mjs";
+
+let chromium = null;
+try {
+  ({ chromium } = await import("playwright"));
+  const probe = await chromium.launch();
+  await probe.close();
+} catch (error) {
+  console.warn(`decision-flow layout tests skipped: ${error?.message?.split("\n")[0]}`);
+  chromium = null;
+}
+const layoutTest = chromium ? test : test.skip;
+
+function scene(id) {
+  return {
+    id, title: `Scene ${id}`, script: "one two three", duration: 2, audioUrl: "data:audio/mpeg;base64,SUQz",
+    words: [{ word: "one", start: 0, end: 0.3 }, { word: "two", start: 0.4, end: 0.7 }, { word: "three", start: 0.8, end: 1.1 }],
+  };
+}
+
+function fixture() {
+  const ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"];
+  const html = renderDecisionFlow({
+    storageKey: "dbx:layout-test",
+    heading: "Check the new VoiceBar first, then 25 calls to make.",
+    scenes: ids.map(scene),
+    decisions: ids.map((id, index) => ({
+      id, rank: index === 0 ? "✓" : index - 1, title: index === 0 ? "Check VoiceBar 2.2.57" : `Pristine sprints with new leads ${index}`,
+      options: ["A. Keep going", "B. Stop"], sceneIds: [id],
+      ...(index === 0 ? { checklist: [{ title: "Fixed", items: ["History row", "Pauses"] }] } : {}),
+    })),
+  });
+  const dir = mkdtempSync(path.join(tmpdir(), "decision-flow-layout-"));
+  const file = path.join(dir, "dashboard.html");
+  writeFileSync(file, html);
+  return `file://${file}`;
+}
+
+const TRANSPORT_LABELS = [["▶", "Play"], ["⏸", "Pause"], ["▶", "Resume"], ["↻", "Again"]];
+
+layoutTest("controller fits the viewport in every transport, speed and view state", async () => {
+  const url = fixture();
+  const browser = await chromium.launch();
+  const failures = [];
+  try {
+    for (const width of [360, 375, 390, 440, 720, 1280]) {
+      const page = await browser.newPage({ viewport: { width, height: 800 } });
+      await page.goto(url);
+      for (const view of ["list", "story"]) {
+        if ((await page.evaluate(() => document.body.dataset.view)) !== view) await page.click("#df-view-toggle");
+        for (const rate of ["0.8", "1.75"]) {
+          await page.selectOption("#df-speed", rate);
+          for (const label of TRANSPORT_LABELS) {
+            const result = await page.evaluate(([icon, word]) => {
+              // Same structure updateTransport writes.
+              document.getElementById("df-transport-play").innerHTML = `<span class="df-tplay-icon" aria-hidden="true">${icon}</span><span class="df-tplay-text">${word}</span>`;
+              const limit = document.documentElement.clientWidth;
+              const controls = [...document.querySelectorAll(".df-transport > *")].filter((node) => node.getClientRects().length);
+              const out = controls.filter((node) => { const box = node.getBoundingClientRect(); return box.left < 0 || box.right > limit; })
+                .map((node) => `${node.id || node.className}@${Math.round(node.getBoundingClientRect().right)}`);
+              const clipped = [...document.querySelectorAll(".df-transport button, .df-transport select")]
+                .filter((node) => node.scrollWidth > node.clientWidth + 1).map((node) => node.id || node.className);
+              out.push(...clipped.map((name) => `${name}:content-clipped`));
+              return { out, scrollWidth: document.documentElement.scrollWidth, limit, rows: controls.map((node) => { const box = node.getBoundingClientRect(); return (box.top + box.bottom) / 2; }).sort((x, y) => x - y).filter((center, index, all) => index === 0 || center - all[index - 1] > 6).length };
+            }, label);
+            if (result.out.length || result.scrollWidth > result.limit || result.rows !== 1) failures.push({ width, view, rate, label, ...result });
+          }
+        }
+      }
+      await page.close();
+    }
+  } finally {
+    await browser.close();
+  }
+  expect(failures).toEqual([]);
+}, 60000);
+
+layoutTest("top chip strip is visible and navigates at 390px and 1280px", async () => {
+  const url = fixture();
+  const browser = await chromium.launch();
+  try {
+    for (const width of [390, 1280]) {
+      const page = await browser.newPage({ viewport: { width, height: 800 } });
+      await page.goto(url);
+      const strip = await page.evaluate(() => {
+        const node = document.querySelector(".df-controller .df-chips");
+        const box = node.getBoundingClientRect();
+        return { display: getComputedStyle(node).display, width: box.width, height: box.height, chips: node.querySelectorAll(".df-chip").length };
+      });
+      expect(strip.display).not.toBe("none");
+      expect(strip.width).toBeGreaterThan(200);
+      expect(strip.height).toBeGreaterThan(30);
+      expect(strip.chips).toBe(8);
+      await page.click('.df-chip[data-chip-for="d03"]');
+      expect(await page.evaluate(() => document.querySelector('[data-decision="d03"]').classList.contains("is-active"))).toBe(true);
+      expect(await page.getAttribute('.df-chip[data-chip-for="d03"]', "aria-current")).toBe("true");
+      await page.close();
+    }
+  } finally {
+    await browser.close();
+  }
+}, 60000);

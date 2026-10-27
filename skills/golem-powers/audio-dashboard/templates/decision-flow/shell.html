@@ -7,7 +7,7 @@
 <title>{{TITLE}}</title>
 <style>{{STYLES}}</style>
 </head>
-<body data-storage-key="{{STORAGE_KEY}}">
+<body data-storage-key="{{STORAGE_KEY}}" data-view="list">
   <div class="df-layout">
     <header class="df-top">
       <p class="df-kicker">{{KICKER}}</p>
@@ -16,6 +16,7 @@
       <p class="df-subtitle">{{SUBTITLE}}</p>
       <p class="df-storage-state" id="df-storage-state" aria-live="polite">Answers save only for this dashboard on this device.</p>
     </header>
+    {{CONTROLLER}}
     <aside class="df-side">
       <nav class="df-index" aria-label="Decisions">{{INDEX}}</nav>
       <section class="df-dock" aria-label="Decision progress">
