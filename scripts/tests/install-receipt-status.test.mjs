@@ -44,6 +44,31 @@ test('5: absent receipts stay UNKNOWN; corrupt receipt and remote failure never 
   assert.equal(rows[0].status, 'INSTALLED_NOT_ACTIVE'); assert.equal(rows[1].status, 'UNREACHABLE');
   assert.equal(run({ golems: receipt() }, {}, { releaseReader: () => { throw Error('offline'); } })[0].status, 'UNKNOWN');
 });
+test('I1 review: golems newest published release wins over same-day hash order', () => {
+  const calls = [];
+  const rows = run({}, {}, { releaseReader: (repo, options) => latestRelease(repo, (file, args) => {
+    calls.push(file);
+    if (file === 'git') return `${old}\trefs/tags/v2026.10.27-fb60890\n${sha}\trefs/tags/v2026.10.27-14cf983\n`;
+    if (args.includes('--paginate')) return JSON.stringify([
+      [{ tag_name: 'v2026.10.27-fb60890', published_at: '2026-10-27T10:00:00Z' }],
+      [{ tag_name: 'v2026.10.27-14cf983', published_at: '2026-10-27T15:00:00Z' },
+        { tag_name: 'v2026.10.27-ffffff0', published_at: '2026-10-27T16:00:00Z', draft: true }]]);
+    assert.deepEqual(args, ['api', 'repos/EtanHey/golems/commits/v2026.10.27-14cf983']);
+    return JSON.stringify({ sha });
+  }, options) });
+  assert.deepEqual(rows.map(r => r.latest), ['v2026.10.27-14cf983', 'v2026.10.27-14cf983']);
+  assert.deepEqual(calls, ['gh', 'gh']);
+});
+test('I1 review: latest includes rc tags while TAP compares the highest stable tag', () => {
+  const calls = [];
+  const rows = run({}, {}, { products: { cmuxlayer: 'EtanHey/cmuxlayer' }, tapReader: () => '1.0.0',
+    releaseReader: (repo, options) => latestRelease(repo, (file, args) => {
+      calls.push(file); assert.equal(args[1], '--tags');
+      return `${old}\trefs/tags/v0.9.0\n${sha}\trefs/tags/v1.0.0\n${old}\trefs/tags/v1.1.0-rc.1\n`;
+    }, options) });
+  assert.deepEqual(rows.map(r => [r.latest, r.tap]), [['v1.1.0-rc.1', 'TAP-OK'], ['v1.1.0-rc.1', 'TAP-OK']]);
+  assert.deepEqual(calls, ['git', 'git']);
+});
 test('I1: tags outrank lagging Releases; annotated and lightweight tags resolve to commits', () => {
   for (const annotated of [true, false]) {
     const result = latestRelease('EtanHey/cmuxlayer', (file, args) => {
@@ -94,7 +119,7 @@ test('I1: TAP equal, behind, ahead and unreadable fail closed independently of r
     releaseReader: () => { throw Error('offline'); } })[0].tap, 'TAP-UNKNOWN');
 });
 test('I1: a repository override is not compared with the upstream tap', () => {
-  assert.equal(run({}, {}, { products: { cmuxlayer: 'owner/fork' }, tapReader: () => assert.fail('wrong tap') })[0].tap, 'TAP-N/A');
+  assert.equal(run({}, {}, { products: { cmuxlayer: 'owner/fork' }, tapReader: () => assert.fail('wrong tap') })[0].tap, 'TAP-UNKNOWN');
 });
 test('I1: TAP-STALE exits nonzero; TAP-UNKNOWN preserves otherwise CURRENT exit', () => {
   const write = process.stdout.write, exitCode = process.exitCode;
@@ -109,7 +134,7 @@ test('I1: TAP-STALE exits nonzero; TAP-UNKNOWN preserves otherwise CURRENT exit'
     }
   } finally { process.stdout.write = write; process.exitCode = exitCode; }
 });
-test('I1: inactive MCP receipt cannot print LIVE from release identity or ahead ancestry', () => {
+test('I1: a LIVE claim without runtime proof is not LIVE-*', () => {
   for (const ancestry of ['identical', 'ahead']) {
     const r = receipt(); r.product = 'cmuxlayer'; r.verdict = 'LIVE';
     r.activation.processes = [{ pid: 1, path: '/fixture/bin', started_at: '2026-10-27T09:01:00Z' }];
@@ -184,7 +209,7 @@ test('5: ancestry lookup compares release to install using mocked GitHub only', 
   }), 'ahead');
 });
 
-test('I1: status preserves inactive verdict for claimed bump-commit ancestry', () => {
+test('A2: status preserves inactive verdict for claimed bump-commit ancestry', () => {
   const r = receipt(); r.target.merge_sha = old; r.target.ancestry.status = 'ahead';
   assert.equal(run({ golems: r }, {})[0].status, 'INSTALLED_NOT_ACTIVE');
   for (const status of ['behind', 'diverged']) {

@@ -9,6 +9,10 @@ const products = {
   voicelayer: 'EtanHey/voicelayer', voicebar: 'EtanHey/voicelayer',
   cmuxlayer: 'EtanHey/cmuxlayer', golems: 'EtanHey/golems', narrationlayer: 'EtanHey/narrationlayer',
 };
+const latestSources = {
+  brainlayer: 'tags', brainbar: 'tags', voicelayer: 'tags', voicebar: 'tags',
+  cmuxlayer: 'tags', golems: 'releases', narrationlayer: 'tags',
+};
 const tapPaths = {
   brainlayer: 'Formula/brainlayer.rb', brainbar: 'Casks/brainbar.rb',
   voicelayer: 'Formula/voicelayer.rb', voicebar: 'Casks/voicebar.rb', cmuxlayer: 'Formula/cmuxlayer.rb',
@@ -73,13 +77,23 @@ function compareVersions(a, b) {
   }
   return 0;
 }
-export function latestRelease(repo, exec = execute) {
+export function latestRelease(repo, exec = execute, { source = 'tags', stableOnly = false } = {}) {
+  if (source === 'releases') {
+    const pages = JSON.parse(exec('gh', ['api', `repos/${repo}/releases`, '--paginate', '--slurp']));
+    const releases = pages.flat().filter(r => !r.draft && r.published_at && r.tag_name);
+    releases.sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
+    const release = releases[0];
+    if (!release) throw Error('No published release');
+    const commit = JSON.parse(exec('gh', ['api', `repos/${repo}/commits/${encodeURIComponent(release.tag_name)}`]));
+    if (!/^[0-9a-f]{40}$/.test(commit.sha)) throw Error('Unresolved release tag');
+    return { version: release.tag_name.replace(/^v(?=\d)/, ''), tag: release.tag_name, released_sha: commit.sha };
+  }
   const refs = new Map();
   for (const line of exec('git', ['ls-remote', '--tags', `https://github.com/${repo}.git`]).trim().split('\n')) {
     const match = /^([0-9a-f]{40})\s+refs\/tags\/(.+?)(\^\{\})?$/.exec(line);
     if (!match) continue;
     const [, sha, tag, peeled] = match, version = tag.replace(/^v(?=\d)/, '');
-    try { semver(version); } catch { continue; }
+    try { const parsed = semver(version); if (stableOnly && parsed.pre) continue; } catch { continue; }
     const ref = refs.get(tag) ?? { version, tag };
     ref[peeled ? 'peeled' : 'plain'] = sha;
     refs.set(tag, ref);
@@ -128,7 +142,7 @@ export function hostAlias(name) {
   throw Error('Unknown local host alias');
 }
 export function collectStatus({ products: catalog = products, localReader = readLocal,
-  remoteReader = readRemote, releaseReader = latestRelease, localHostname = hostname(), comparisonReader = compareInstall,
+  remoteReader = readRemote, releaseReader = (repo, options) => latestRelease(repo, execute, options), localHostname = hostname(), comparisonReader = compareInstall,
   resolver = { peelTag, compareAncestry: compareInstall }, tapReader = readTapVersion, tapPaths: paths = tapPaths } = {}) {
   const names = Object.keys(catalog), snapshots = {}, releases = new Map();
   const localHost = hostAlias(localHostname);
@@ -138,11 +152,17 @@ export function collectStatus({ products: catalog = products, localReader = read
   }
   return names.flatMap(product => {
     const repo = catalog[product];
-    if (!releases.has(repo)) {
-      try { releases.set(repo, releaseReader(repo)); } catch { releases.set(repo, null); }
-    }
-    const release = releases.get(repo);
-    const tap = tapStatus(paths === tapPaths && repo !== products[product] ? null : paths[product], release, tapReader);
+    const lookup = (source, stableOnly = false) => {
+      const key = `${repo}:${source}:${stableOnly}`;
+      if (!releases.has(key)) {
+        try { releases.set(key, releaseReader(repo, { source, stableOnly })); } catch { releases.set(key, null); }
+      }
+      return releases.get(key);
+    };
+    const release = lookup(latestSources[product] ?? 'tags');
+    const path = paths[product];
+    const override = paths === tapPaths && repo !== products[product];
+    const tap = path && override ? 'TAP-UNKNOWN' : tapStatus(path, path ? lookup('tags', true) : null, tapReader);
     return ['mbp', 'm1'].map(host => {
       const row = { product, host, status: 'UNKNOWN', activation: 'UNKNOWN', tap, latest: release?.tag ?? null };
       if (!snapshots[host]) return { ...row, status: host === 'm1' && localHost !== 'm1' ? 'UNREACHABLE' : 'UNKNOWN' };
