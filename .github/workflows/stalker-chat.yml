@@ -59,8 +59,16 @@ jobs:
           bun-version-file: .bun-version
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Cache apt downloads (bats)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          # Exclude root-owned locks and incomplete downloads.
+          path: ${{ runner.temp }}/apt-archives/*.deb
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-stalker-bats-v1
+
       - name: Install Bats
-        run: sudo apt-get update && sudo apt-get install -y bats
+        timeout-minutes: 10
+        run: sudo CI_APT_ARCHIVES_DIR="${{ runner.temp }}/apt-archives" bash scripts/ci/apt-install.sh bats
       - name: Verify bundled chat deploy and completion ordering
         run: |
           bun run test:stalker-chat

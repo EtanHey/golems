@@ -103,3 +103,21 @@ SOURCES
   [[ $output == *'apt: source switch failed: no sources file found'* ]] || false
   [ "$(grep -c 'update$' "$APT_TEST_LOG")" -eq 1 ]
 }
+
+@test "optional archives directory is created and passed to both apt commands with retention" {
+  deb822_sources
+  export CI_APT_ARCHIVES_DIR="$BATS_TEST_TMPDIR/downloaded debs"
+  run bash "$HELPER" zsh jq
+  [ "$status" -eq 0 ]
+  [ -d "$CI_APT_ARCHIVES_DIR/partial" ]
+  [ "$(grep -cF "Dir::Cache::Archives=$CI_APT_ARCHIVES_DIR" "$APT_TEST_LOG")" -eq 2 ]
+  grep -q 'APT::Keep-Downloaded-Packages=true.*install -y --no-install-recommends zsh jq' "$APT_TEST_LOG"
+}
+
+@test "default apt cache behavior needs no archives override" {
+  deb822_sources
+  unset CI_APT_ARCHIVES_DIR
+  run bash "$HELPER" bats
+  [ "$status" -eq 0 ]
+  ! grep -q 'Dir::Cache::Archives' "$APT_TEST_LOG"
+}
