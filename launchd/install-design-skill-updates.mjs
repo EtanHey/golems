@@ -14,10 +14,20 @@ function command(bin, args) {
   return r.stdout;
 }
 const xml = (s) => s.replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]);
-export function install({ home = homedir(), nodeBin = existsSync("/opt/homebrew/bin/node") ? "/opt/homebrew/bin/node" : process.execPath, host = readHost, run = command } = {}) {
+function resolveTool(name) {
+  for (const dir of ["/usr/bin", "/bin", "/opt/homebrew/bin", "/usr/local/bin"]) {
+    const bin = path.join(dir, name);
+    try { accessSync(bin, constants.X_OK); return bin; } catch {}
+  }
+  throw Error(`missing executable in trusted tool directories: ${name}`);
+}
+export function install({ home = homedir(), nodeBin = existsSync("/opt/homebrew/bin/node") ? "/opt/homebrew/bin/node" : process.execPath, ghBin = resolveTool("gh"), gitBin = resolveTool("git"), host = readHost, run = command } = {}) {
   const h = host();
   if (h.platform !== "darwin" || h.machine !== "MacBook Pro" || /\bM1\b/.test(h.chip ?? "")) throw Error("MBP only; refusing this host");
-  accessSync(nodeBin, constants.X_OK);
+  for (const bin of [nodeBin, ghBin, gitBin]) {
+    if (!path.isAbsolute(bin)) throw Error(`tool must be an absolute path: ${bin}`);
+    accessSync(bin, constants.X_OK);
+  }
   const label = "com.golems.design-skill-updates", service = `gui/${process.getuid()}/${label}`;
   const state = path.join(home, ".golems/state/design-skill-updates");
   const bytes = readFileSync(path.join(root, "scripts/design-skill-updates.mjs"));
@@ -29,7 +39,7 @@ export function install({ home = homedir(), nodeBin = existsSync("/opt/homebrew/
   mkdirSync(path.dirname(runner), { recursive: true });
   if (existsSync(runner) && !readFileSync(runner).equals(bytes)) throw Error("installed runner hash drift");
   writeFileSync(runner, bytes, { mode: 0o644 });
-  const values = { NODE_BIN: nodeBin, RUNNER: runner, HOME: home, STATE: state, PATH: `${path.dirname(nodeBin)}:/opt/homebrew/bin:${home}/.local/bin:${home}/.bun/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin` };
+  const values = { NODE_BIN: nodeBin, GH_BIN: ghBin, GIT_BIN: gitBin, RUNNER: runner, HOME: home, STATE: state, PATH: "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin" };
   const text = readFileSync(path.join(root, "launchd", label + ".plist"), "utf8").replace(/@([A-Z_]+)@/g, (_, key) => xml(values[key]));
   mkdirSync(path.dirname(plist), { recursive: true });
   writeFileSync(plist + ".candidate", text, { mode: 0o600 });

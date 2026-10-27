@@ -16,10 +16,16 @@ Manual proof: run the installed runner path printed by the installer with Node.
 Unchanged payloads log NOOP and exit 0. Changes use the merged master's copier in
 an isolated temporary checkout and existing gh login to open a normal review PR.
 No upstream code runs. Existing proposals are not reopened. A runner-side guard
-rejects a symlinked upstream skills/ root. Normal Git hooks remain enabled.
+rejects a symlinked upstream skills/ root. The fresh clone enables no Git hooks
+and installs no dependencies; the proposal PR's CI and review are the gate.
+The installer pins absolute gh/git paths, including the credential helper. Its
+PATH puts system directories first and excludes home tool directories. Prompts
+and gh update notifications are disabled.
 
 Logs: ~/.golems/state/design-skill-updates/updates.log, launchd.stdout.log and
-launchd.stderr.log. Errors log ERROR and return nonzero. Only this run's temporary
+launchd.stderr.log. At run start, logs at 1 MiB are copied to a single .1 backup
+and truncated in place, preserving launchd's open descriptors. Errors log ERROR
+and return nonzero. Only this run's temporary
 checkout is removed; durable logs and remote proposals remain.
 
 Inspect: launchctl print gui/$(id -u)/com.golems.design-skill-updates
