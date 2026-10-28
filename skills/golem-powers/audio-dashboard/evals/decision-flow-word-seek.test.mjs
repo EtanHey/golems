@@ -9,6 +9,7 @@ try {
   const probe = await chromium.launch();
   await probe.close();
 } catch (error) {
+  if (process.env.ADASH_LAYOUT_REQUIRED === "1") throw new Error(`decision-flow word-seek tests require Playwright/Chromium (ADASH_LAYOUT_REQUIRED=1): ${error?.message}`, { cause: error });
   console.warn(`decision-flow word seek tests skipped: ${error?.message?.split('\n')[0]}`);
   chromium = null;
 }
