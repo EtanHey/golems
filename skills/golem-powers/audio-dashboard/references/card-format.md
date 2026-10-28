@@ -16,7 +16,6 @@ belong to the parent decision, preserving exactly-one-decision scene ownership.
 its **Listen deeper** button; parent audio stays paused until explicitly resumed.
 This is authoring guidance; the renderer does not supply this interaction.
 
-
 Run `bun scripts/validate-evidence.mjs --spec <job.json>` from the skill directory
 after rendering (include `--published "<sync command>"` for publish evidence).
 The HTML evidence gate inspects decision-flow, cinema and hand-built cards

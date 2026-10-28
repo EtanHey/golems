@@ -177,11 +177,26 @@ function collectTimingRecords(evidence, html) {
 // Inspect rendered cards, including hand-built .card surfaces. Parse HTML rather
 // than matching whole elements so nested markup and quoted attributes stay scoped.
 function hasTextOnlyDetails(html) {
-  const attrs = node => Object.fromEntries((node.attrs || []).map(a => [a.name, a.value]));
+  const attrCache = new WeakMap();
+  const narratedCache = new WeakMap();
+  const attrs = node => {
+    if (!attrCache.has(node)) attrCache.set(node, Object.fromEntries((node.attrs || []).map(a => [a.name, a.value])));
+    return attrCache.get(node);
+  };
   const isCard = node => /(?:^|\s)(?:df-card|dbx-card|card)(?:\s|$)/.test(attrs(node).class || "") ||
     Object.hasOwn(attrs(node), "data-card");
   const children = node => (node.childNodes || []).filter(n => !["script", "style", "template"].includes(n.tagName));
   const text = node => node.nodeName === "#text" ? node.value : children(node).map(text).join("");
+  const normalize = value => String(value || "").replace(/&(?:nbsp|#160|#xa0);/gi, " ").replace(/\s+/g, " ");
+  const isDetailsControl = node => ["button", "a", "summary"].includes(node.tagName) ||
+    attrs(node).role === "button" || (node.tagName === "input" && /^(button|submit|reset)$/i.test(attrs(node).type || ""));
+  const detailsLabel = node => /view\s+details/i.test(normalize(text(node)) + " " +
+    normalize(attrs(node)["aria-label"]) + " " + (node.tagName === "input" ? normalize(attrs(node).value) : ""));
+  const cardName = node => {
+    const a = attrs(node);
+    const heading = descendants(node).find(n => /^h[1-6]$/.test(n.tagName));
+    return [a.id || a["data-card"], a["data-title"] || (heading && normalize(text(heading)))].filter(Boolean).join(" / ") || "unnamed card";
+  };
   const descendants = node => children(node).flatMap(n => isCard(n) ? [] : [n, ...descendants(n)]);
   function visit(node) {
     if (isCard(node)) {
@@ -190,31 +205,43 @@ function hasTextOnlyDetails(html) {
       const visual = nodes.some(n => ["svg", "canvas", "img", "figure"].includes(n.tagName) &&
         !isControlIcon(n, node)) || nodes.some(opensVisual);
       const details = nodes.filter(n => !inNarratedDetails(n, node)).some(n => n.tagName === "details" ||
-        (["button", "a", "summary"].includes(n.tagName) && /view\s+details/i.test(text(n))) ||
-        /view\s+details/i.test(attrs(n)["aria-label"] || ""));
-      if (!visual && details) return true;
+        (isDetailsControl(n) && detailsLabel(n)) ||
+        /view\s+details/i.test(normalize(attrs(n)["aria-label"])));
+      if (!visual && details) return cardName(node);
     }
-    return children(node).some(visit);
+    for (const child of children(node)) {
+      const name = visit(child);
+      if (name) return name;
+    }
+    return null;
+  }
+  function isNarratedDetails(details) {
+    if (narratedCache.has(details)) return narratedCache.get(details);
+    // Nested details own their narration; they cannot exempt the outer expander.
+    const localContent = node => children(node).flatMap(child =>
+      child.tagName === "details" || isCard(child) ? [] : [child, ...localContent(child)]);
+    const content = localContent(details);
+    const audio = content.some(child => child.tagName === "audio" &&
+      (attrs(child).src || children(child).some(source => source.tagName === "source" && attrs(source).src)));
+    const timed = content.some(child => Object.hasOwn(attrs(child), "data-word-start"));
+    const labelled = content.some(child =>
+      (child.tagName === "summary" || /(?:^|\s)(?:plabel|player-label)(?:\s|$)/.test(attrs(child).class || "")) &&
+      /(?:listen|explains)\s*\(?deeper/i.test(normalize(text(child))));
+    const narrated = Boolean(audio && (timed || labelled));
+    narratedCache.set(details, narrated);
+    return narrated;
   }
   function inNarratedDetails(node, card) {
     for (let n = node; n && n !== card; n = n.parentNode) {
-      if (n.tagName !== "details") continue;
-      const content = descendants(n);
-      const audio = content.some(child => child.tagName === "audio" &&
-        (attrs(child).src || descendants(child).some(source => source.tagName === "source" && attrs(source).src)));
-      const timed = content.some(child => Object.hasOwn(attrs(child), "data-word-start"));
-      if (audio && (timed || /(?:listen|explains)\s*\(?deeper/i.test(text(n)))) return true;
+      if (n.tagName === "details") return isNarratedDetails(n);
     }
     return false;
   }
   function opensVisual(node) {
     const a = attrs(node);
-    if (!/view\s+details/i.test(text(node) || a["aria-label"] || "")) return false;
-    if (Object.hasOwn(a, "data-open-visual")) return true;
+    if (!isDetailsControl(node) || !detailsLabel(node)) return false;
+    if (["button", "a", "summary"].includes(node.tagName) && Object.hasOwn(a, "data-open-visual")) return true;
     const targets = (a["aria-controls"] || "").split(/\s+/).map(id => byId.get(id)).filter(Boolean);
-    if (a["aria-haspopup"] === "dialog" && !targets.length) {
-      targets.push(...dialogs);
-    }
     return targets.some(target =>
       (target.tagName === "dialog" || attrs(target).role === "dialog") &&
       descendants(target).some(n => ["svg", "canvas", "img", "figure"].includes(n.tagName) && !isControlIcon(n, target)));
@@ -230,7 +257,6 @@ function hasTextOnlyDetails(html) {
   const root = { childNodes: [] };
   let parent = root;
   const byId = new Map();
-  const dialogs = [];
   new HTMLRewriter().on("*", {
     element(element) {
       const node = { tagName: element.tagName, attrs: [...element.attributes].map(([name, value]) => ({ name, value })),
@@ -238,7 +264,6 @@ function hasTextOnlyDetails(html) {
       parent.childNodes.push(node);
       const a = attrs(node);
       if (a.id) byId.set(a.id, node);
-      if (node.tagName === "dialog" || a.role === "dialog") dialogs.push(node);
       if (element.canHaveContent) {
         parent = node;
         element.onEndTag(() => { parent = node.parentNode; });
@@ -255,9 +280,10 @@ export function validateAudioDashboardEvidence(evidence = {}) {
   const outputPath = textOf(evidence.outputPath);
   const wordsJson = Array.isArray(evidence.wordsJson) ? evidence.wordsJson : [];
   const violations = [];
-  if (hasTextOnlyDetails(html)) {
+  const textOnlyCard = hasTextOnlyDetails(html);
+  if (textOnlyCard) {
     addViolation(violations, "TEXT_ONLY_VIEW_DETAILS",
-      "text-only cards must omit details expanders; offer Listen deeper or no secondary action");
+      `${textOnlyCard}: text-only cards must omit details expanders; offer Listen deeper or no secondary action`);
   }
 
   if (WRONG_GENERATOR_RE.test(generator)) {
