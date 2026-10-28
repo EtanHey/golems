@@ -309,6 +309,30 @@ function normalizeComparison(decision, timeoutMs) {
   };
 }
 
+// A comparison page declares itself ready with this marker. An error or 404 page never carries it, so where the
+// browser reports no navigation status (WebKit) the marker is the success evidence.
+export const COMPARISON_READY_META = '<meta name="adash-comparison" content="ready">';
+const READY_META = /<meta\b(?=[^>]*\bname\s*=\s*["']?adash-comparison["'\s>/])(?=[^>]*\bcontent\s*=\s*["']?ready["'\s>/])[^>]*>/i;
+const READY_HTML = /<html\b[^>]*\bdata-adash-comparison\s*=\s*["']?ready["'\s>/]/i;
+
+export function hasComparisonReadyMarker(html) {
+  return READY_META.test(String(html ?? "")) || READY_HTML.test(String(html ?? ""));
+}
+
+// For producers that generate comparison pages: add the ready marker to the page head.
+export function markComparisonReady(html) {
+  const page = String(html ?? "");
+  if (hasComparisonReadyMarker(page)) return page;
+  if (/<head\b[^>]*>/i.test(page)) return page.replace(/<head\b[^>]*>/i, (head) => `${head}${COMPARISON_READY_META}`);
+  return page.replace(/^(\s*<!doctype[^>]*>)?/i, (doctype) => `${doctype}${COMPARISON_READY_META}`);
+}
+
+// Each card's comparison target, as the dashboard-relative URL the renderer emits.
+export function comparisonPages(decisions = []) {
+  return decisions.filter((decision) => decision.comparison !== undefined)
+    .map((decision) => ({ decision: decision.id, url: normalizeComparison(decision, DEFAULT_COMPARISON_TIMEOUT_MS).url }));
+}
+
 function renderComparisonOpener(comparison) {
   if (!comparison) return "";
   return `<button type="button" class="df-compare-open" aria-haspopup="dialog" aria-controls="df-compare" data-compare-url="${escapeHtml(comparison.url)}" data-compare-title="${escapeHtml(comparison.title)}" data-compare-timeout="${comparison.timeoutMs}">${COMPARE_ICON}<span>${escapeHtml(comparison.label)}</span></button>`;
