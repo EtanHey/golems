@@ -16,3 +16,12 @@ belong to the parent decision, preserving exactly-one-decision scene ownership.
 its **Listen deeper** button; parent audio stays paused until explicitly resumed.
 This is authoring guidance; the renderer does not supply this interaction.
 
+Run `bun scripts/validate-evidence.mjs --spec <job.json>` from the skill directory
+after rendering (include `--published "<sync command>"` for publish evidence).
+The HTML evidence gate inspects decision-flow, cinema and hand-built cards
+(`.df-card`, `.dbx-card`, `.card`, `[data-card]`) and rejects text-only details
+expanders with `TEXT_ONLY_VIEW_DETAILS`. Decorative control icons do not count
+as visualizations. Inline SVG/canvas/images/figures and View details controls
+that open a visual or visual dialog count. Narrated details sections with audio
+and timed words or a Listen deeper audio block pass; a separate plain text
+expander still fails. This runs at render time, without sweeping published files.
