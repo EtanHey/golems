@@ -1951,6 +1951,22 @@
           "type": "negative"
         }
       ]
+    },
+    {
+      "id": 105,
+      "name": "worktree-exact-base-and-preparation-error",
+      "prompt": "Launch a requested new worktree thread with baseRef main in a master-only project. If launch is later accepted, its one thread read shows a failed run plus a user message quoting Workspace preparation failed. What happens?",
+      "expected_output": "Run the target-host exact-base preflight first and stop before launch for missing main; never substitute master. With a verified base, read the launched thread exactly once and inspect its run/workspace fields. An actual failed run is ERROR with threadId/runId/baseRef/root and sanitized reason. User quotes alone are not failures; preparing is PENDING. Never poll or retry.",
+      "assertions": [
+        {
+          "text": "Uses the canonical launch guard and fails missing explicit main before any launch; default intent follows actual origin/HEAD.",
+          "type": "tool_usage"
+        },
+        {
+          "text": "Checks exactly one actual thread read after worktree launch, propagates durable failure, and never uses whole-page substring matching or retries.",
+          "type": "behavioral"
+        }
+      ]
     }
   ]
 }

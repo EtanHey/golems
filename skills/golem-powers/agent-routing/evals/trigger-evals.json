@@ -58,5 +58,15 @@
     "query": "sit on CI for #812 and tell me when it's green",
     "should_trigger": true,
     "note": "a wait, rule 2 (Etan 2026-10-19): mechanical tier, never the lead"
+  },
+  {
+    "query": "launch a new worktree thread using baseRef main",
+    "should_trigger": true,
+    "note": "exact-base preflight and one-read preparation rule"
+  },
+  {
+    "query": "launch a root thread for a discussion without a worktree",
+    "should_trigger": false,
+    "note": "root/scratch are independent of the worktree base guard"
   }
 ]
