@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "scripts/hooks/fail-open.py"
 ISOLATED = ("-I", "-B")
 TARGETS = {
+    "secret-write-guard": "skills/golem-powers/secret-write-guard/hooks/secret-write-pretooluse.py",
     "tmp-block": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "git-guardian": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
     "human-confirm": "skills/golem-powers/human-confirm-gate/hooks/human-confirm-pretooluse.py",

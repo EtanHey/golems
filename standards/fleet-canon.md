@@ -63,7 +63,7 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    receipt; the artifact at the contracted path is. A turn ending "waiting for X" arms a watch on X first.
 
 10. **never-privatize** - Privatizing a repo is never the remedy for a leak; prevention is: publication-boundary
-    guards, the docs.local law, secrets never on disk inside a repo. A leak is fixed by removing the blob path
+    guards, the docs.local law, secrets never on disk inside a repo. (Etan 2026-10-28: default outside repos; inside a repo only to a path a guard verifies is gitignored BEFORE the write, fail closed; never committed.) A leak is fixed by removing the blob path
     (an orphan-commit republish from an audited SHA) while the public repo STAYS public. Privatizing loses the
     stars and kills CI (public repos are exempt from the Actions billing lock). The archived VoiceLayer is the
     scar this rule exists to prevent; golems went public on 2026-09-05 by exactly this shape.

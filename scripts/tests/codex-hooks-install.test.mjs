@@ -20,6 +20,16 @@ function fixture() {
   return { root, codexHome, live, manifest, host: "mbp" };
 }
 
+test("SEC1 registers through the existing adapter without changing Codex config", () => {
+  const f = fixture();
+  f.manifest.codex_hosts.mbp.push({ ...f.manifest.codex_hosts.mbp[0], gate: "secret-write-guard" });
+  const config = readFileSync(path.join(f.codexHome, "config.toml"));
+  applyCodexHooks(planCodexHooks(f));
+  expect(planCodexHooks(f).registered).toBe(true);
+  expect(readFileSync(path.join(f.codexHome, "hooks.json"), "utf8")).toContain("secret-write-guard");
+  expect(readFileSync(path.join(f.codexHome, "config.toml"))).toEqual(config);
+});
+
 test("both hosts preserve config and external hooks, backup once, install idempotently", () => {
   for (const host of ["mbp", "m1"]) {
     const f = { ...fixture(), host };

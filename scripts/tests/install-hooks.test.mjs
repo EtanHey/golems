@@ -1253,11 +1253,11 @@ const closedDeny = { decision: "block", reason: REPAIR_REASON, hookSpecificOutpu
 const callHook = (fx, command, input = "{}") => spawnSync("sh", ["-c", command],
   { input, encoding: "utf8", env: { ...fixtureEnv(fx), HOME: fx.home } });
 
-test("the policy gates (tmp-block, git-guardian, human-confirm) opt into fail-closed on every host where they run", () => {
+test("the policy gates opt into fail-closed on every host where they run", () => {
   for (const entries of Object.values(realManifest.hosts)) {
     expect(entries.filter((e) => e.command?.includes("--fail-closed")).map((e) => e.id).sort())
-      .toEqual(["human-confirm-gate", "pre_tool_use", "tmp-block"]);
-    for (const id of ["human-confirm-gate", "pre_tool_use", "tmp-block"]) {
+      .toEqual(["human-confirm-gate", "pre_tool_use", "secret-write-guard", "tmp-block"]);
+    for (const id of ["human-confirm-gate", "pre_tool_use", "secret-write-guard", "tmp-block"]) {
       expect(entries.find((e) => e.id === id).timeout).toBeGreaterThanOrEqual(2);  // watchdog budget = timeout - 1
       expect(entries.find((e) => e.id === id).command).toContain("golems-fail-open.py --fail-closed ");
     }
