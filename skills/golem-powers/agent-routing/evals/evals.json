@@ -1271,19 +1271,23 @@
     {
       "id": 46,
       "name": "ux-ui-implementation-review-split",
-      "prompt": "Route a UX/UI PR to implement a redesigned settings screen. Who implements, who reviews, and when may the reviewer start?",
-      "expected_output": "The LEAD routes claude.judgment to implement. Review is sized by the PR's size:* label under the interim UI precedence line in § Review sizing: a Codex worker (codex.implement) records the changed states with computer use and reports any functional defect as evidence; the reviewer is a fresh claude.judgment (never the implementer instance) that loads frontend-design:frontend-design and judges the recording, 1 round for XS/S and up to 2 rounds for M. Only an L, data or security UI PR gets the full panel, which keeps a Codex reviewer. The lead starts review only after the implementer reports DONE, per /agent-routing § Routing rules (SSOT).",
+      "prompt": "Route a redesigned settings screen implemented by Claude and, separately, Codex plumbing for that visual PR. Who reviews each case, what proof must they cite, and when may review start?",
+      "expected_output": "For a Claude visual slice, route a fresh claude.judgment taste reviewer (never the implementer) with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer for cross-vendor review, including XS/S/M. For Codex plumbing, the fresh Claude taste reviewer is already the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it as well. Keep 1 round for XS/S, up to 2 rounds for M (round 2 only for BLOCKING), and the full panel for L/data/security. The LEAD starts reviews only after the implementer reports DONE. A Codex recorder may record changed states and report functional defects as evidence; recording does not replace review.",
       "assertions": [
         {
-          "text": "Routes claude.judgment to implement and sizes review by the size:* label: a Codex (codex.implement) recording as evidence plus one fresh claude.judgment frontend-design:frontend-design reviewer for XS/S/M; a Codex reviewer only in the L, data or security full panel",
+          "text": "Claude visual slices get a fresh claude.judgment taste reviewer, never the implementer, with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer, including XS/S/M.",
           "type": "behavioral"
         },
         {
-          "text": "The LEAD starts the reviewer only after the implementer reports DONE",
+          "text": "Codex plumbing gets the fresh Claude taste review, which is the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it too.",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT use the ordinary Codex-implements/Claude-reviews split for UX/UI, does NOT require a Codex reviewer for an XS/S/M UI PR, and does not start review on an unfinished diff",
+          "text": "The LEAD starts reviews only after the implementer reports DONE. Keep 1 round for XS/S, up to 2 rounds for M (second only for BLOCKING), and full panel for L/data/security.",
+          "type": "behavioral"
+        },
+        {
+          "text": "A Codex recorder reports real changed states and functional defects as evidence; recording never substitutes for independent review, the UI is not judged from the diff alone, and unfinished work is not reviewed.",
           "type": "negative"
         }
       ]
@@ -1812,18 +1816,22 @@
       "id": 94,
       "name": "ui-pr-recorded-states-frontend-design",
       "prompt": "A UI PR restyles the settings buttons. Route its review.",
-      "expected_output": "A Codex worker (codex.implement) uses computer use to record the changed states (default, hover, clicked, …) and hands the recording to a fresh claude.judgment reviewer. That reviewer loads frontend-design:frontend-design and judges the UX/UI from the recording.",
+      "expected_output": "For a Claude visual slice, route a fresh claude.judgment taste reviewer (never the implementer) with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer for cross-vendor review, including XS/S/M. For Codex plumbing, the fresh Claude taste reviewer is already the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it as well. Keep 1 round for XS/S, up to 2 rounds for M (round 2 only for BLOCKING), and the full panel for L/data/security. The LEAD starts reviews only after the implementer reports DONE. A Codex recorder may record changed states and report functional defects as evidence; recording does not replace review.",
       "assertions": [
         {
-          "text": "Has a Codex worker record the changed states with computer use before the UX/UI judgment.",
+          "text": "Claude visual slices get a fresh claude.judgment taste reviewer, never the implementer, with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer, including XS/S/M.",
           "type": "behavioral"
         },
         {
-          "text": "The UX/UI judge is a fresh claude.judgment that loads frontend-design:frontend-design.",
+          "text": "Codex plumbing gets the fresh Claude taste review, which is the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it too.",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT judge the UI from the diff alone, and the implementer does not judge its own UI.",
+          "text": "The LEAD starts reviews only after the implementer reports DONE. Keep 1 round for XS/S, up to 2 rounds for M (second only for BLOCKING), and full panel for L/data/security.",
+          "type": "behavioral"
+        },
+        {
+          "text": "A Codex recorder reports real changed states and functional defects as evidence; recording never substitutes for independent review, the UI is not judged from the diff alone, and unfinished work is not reviewed.",
           "type": "negative"
         }
       ]
@@ -1846,20 +1854,24 @@
     },
     {
       "id": 96,
-      "name": "xs-ui-pr-one-opus-reviewer-codex-records",
+      "name": "xs-ui-pr-claude-taste-plus-codex-review",
       "prompt": "Open a PR for an XS UI change: a new focus ring on the sidebar links, implemented by claude.judgment. Route its review.",
-      "expected_output": "Per the interim UI precedence line: a Codex worker (codex.implement) records the changed states with computer use (default, hover, focus, clicked) and reports any functional defect it sees; that recording is evidence, not the reviewer. Exactly one fresh claude.judgment reviewer (not the implementer instance) loads frontend-design:frontend-design and judges the recording, 1 round.",
+      "expected_output": "For a Claude visual slice, route a fresh claude.judgment taste reviewer (never the implementer) with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer for cross-vendor review, including XS/S/M. For Codex plumbing, the fresh Claude taste reviewer is already the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it as well. Keep 1 round for XS/S, up to 2 rounds for M (round 2 only for BLOCKING), and the full panel for L/data/security. The LEAD starts reviews only after the implementer reports DONE. A Codex recorder may record changed states and report functional defects as evidence; recording does not replace review.",
       "assertions": [
         {
-          "text": "Has a Codex worker record the changed states with computer use and report any functional defect it observes, as evidence.",
+          "text": "Claude visual slices get a fresh claude.judgment taste reviewer, never the implementer, with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer, including XS/S/M.",
           "type": "behavioral"
         },
         {
-          "text": "Routes exactly one fresh Opus (claude.judgment) reviewer that loads frontend-design:frontend-design, for 1 round.",
+          "text": "Codex plumbing gets the fresh Claude taste review, which is the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it too.",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT add a second (Codex) reviewer or a second round for the XS UI PR, and the implementer instance does not review.",
+          "text": "The LEAD starts reviews only after the implementer reports DONE. Keep 1 round for XS/S, up to 2 rounds for M (second only for BLOCKING), and full panel for L/data/security.",
+          "type": "behavioral"
+        },
+        {
+          "text": "A Codex recorder reports real changed states and functional defects as evidence; recording never substitutes for independent review, the UI is not judged from the diff alone, and unfinished work is not reviewed.",
           "type": "negative"
         }
       ]

@@ -59,3 +59,32 @@ test('label events rerun real gates without job-level label skips', () => {
   const loop = workflow.split('  loop-record:\n')[1].split('  ratchet:\n')[0];
   assert.ok(loop.includes("if: github.event_name == 'pull_request'"));
 });
+for (const [name, input] of [
+  ['unclosed fence', '```\n' + body],
+  ['longer fence close', '```\n' + body + '\n````'],
+  ['unclosed comment', '<!--\n' + body],
+  ['inline-code links', body.replace(/(\[proof\]\([^)]+\))/g, '`$1`')],
+]) test(`hidden Markdown regression: ${name}`, () => assert.equal(run(input).status, 1));
+test('unclosed excluded regions fail even after visible complete proof', () => {
+  for (const suffix of ['\n```', '\n<!--']) assert.equal(run(body + suffix).status, 1);
+});
+test('fence requires matching character and at least opener length', () => {
+  for (const [open, close] of [['````', '```'], ['~~~', '```']])
+    assert.equal(run(open + '\n' + body + '\n' + close).status, 1);
+  assert.equal(run('````\nignored\n`````\n' + body).status, 0);
+  assert.equal(run('~~~\nignored\n~~~~\n' + body).status, 0);
+});
+test('commented or inline-code heading does not become a real heading', () => {
+  assert.equal(run(body.replace('## Visual proof', '`## Visual proof`')).status, 1);
+  assert.equal(run(body.replace('## Visual proof', '<!-- hidden -->## Visual proof')).status, 1);
+});
+test('GitHub file URLs share private-path and traversal validation', () => {
+  const prefix = 'https://github.com/EtanHey/golems/blob/c27915c9ef8eeef69b55888abe996f08740c4d1b/';
+  for (const path of ['docs' + '.local/proof.png', '../../fake.png', 'node_modules/proof.png',
+    '%2e%2e/fake.png', 'artifacts/%2E./fake.png', 'artifacts/%252e%252e/fake.png',
+    'artifacts%2f..%2ffake.png', 'artifacts/%6eode_modules/proof.png']) {
+    for (const url of [prefix + path, prefix.replace('/blob/', '/raw/') + path])
+      assert.equal(run(body.replace(/^Desktop before:.*$/m, `Desktop before: [proof](${url})`)).status, 1, url);
+  }
+  assert.equal(run(body.replace(/^Desktop before:.*$/m, `Desktop before: [proof](${prefix}artifacts/proof.png)`)).status, 0);
+});
