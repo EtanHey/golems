@@ -6,15 +6,21 @@ retains worktrees containing ignored or untracked files, or missing status evide
 Callers must hold the W2 lease with all consumers released before calling; W4
 must enforce that precondition. Handle scans and repeated inventories reduce
 the race window but cannot exclude a brand-new writer in the milliseconds
-between the last check and Git's delete. The caller must exclude those writers.
+between the last check and Git's delete. Quarantine prevents late writes using
+an old absolute path; it does not exclude writers that discover the moved path.
+lsof cannot see every process (other users or sandboxed processes); the lease
+precondition and caller writer exclusion still apply.
 """
 import argparse
 from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
+import time
+from uuid import uuid4
 
 
 def git(repo, *args):
@@ -43,18 +49,18 @@ def worktrees(repo):
     return rows
 
 
-def observe(receipt, repo, path):
+def observe(receipt, repo, path, prefix=""):
     errors = []
     try:
         rows = worktrees(repo)
-        receipt["registered_after"] = any(Path(r["worktree"]) == path for r in rows)
+        receipt[prefix + "registered_after"] = any(Path(r["worktree"]) == path for r in rows)
     except (OSError, ValueError) as error:
         errors.append(str(error))
     try:
         os.lstat(path)
-        receipt["physical_after"] = True
+        receipt[prefix + "physical_after"] = True
     except FileNotFoundError:
-        receipt["physical_after"] = False
+        receipt[prefix + "physical_after"] = False
     except OSError as error:
         errors.append("lstat failed: " + str(error))
     return errors
@@ -103,53 +109,109 @@ def inventory(receipt, path):
     return status, index.stdout
 
 
+def lsof_name(value):
+    # lsof escapes non-printable bytes, including newlines, even in -F output.
+    escapes = {b"b": b"\b", b"f": b"\f", b"r": b"\r", b"n": b"\n", b"t": b"\t",
+               b"\\": b"\\"}
+    def unescape(match):
+        if match[1] is not None:
+            return escapes[match[1]]
+        if match[2] is not None:
+            return bytes([int(match[2], 16)])
+        return bytes([match[3][0] ^ 64])
+    raw = value.encode("utf-8")
+    return re.sub(rb"\\([bfrnt\\])|\\x([0-9a-fA-F]{2})|\^([@-_])", unescape, raw).decode(
+        "utf-8", errors="surrogateescape")
+
+
 def open_handles(path):
     try:
-        result = subprocess.run(["lsof", "+D", str(path), "-Fpc"],
+        result = subprocess.run(["lsof", "-n", "-P", "-F", "pcfn"],
                                 capture_output=True, timeout=20)
         stdout = result.stdout.decode("utf-8")
         stderr = result.stderr.decode("utf-8")
     except (OSError, subprocess.TimeoutExpired, UnicodeError) as error:
         raise ValueError("open-handle evidence incomplete: " + str(error)) from error
-    # lsof's documented no-match result is exit 1 with no output or warnings.
-    if result.returncode == 1 and not stdout and not stderr:
-        return []
-    # Some macOS scans exit 1 alongside positive matches. Those handles still
-    # prove retention is necessary; only empty, warning-free exit 1 proves none.
-    if result.returncode not in (0, 1) or stderr:
+    if result.returncode not in (0, 1) or not stdout or stderr:
         raise ValueError(f"open-handle evidence incomplete: lsof exited {result.returncode}: " + stderr)
-    handles, pid = [], None
+    handles, pid, command, descriptor = [], None, None, None
+    named = False
+    target = path.resolve()
     for field in stdout.splitlines():
-        if field.startswith("p") and field[1:].isdigit() and int(field[1:]) > 0 and pid is None:
-            pid = int(field[1:])
-        elif field.startswith("c") and len(field) > 1 and pid is not None:
-            handles.append({"pid": pid, "command": field[1:]})
-            pid = None
-        elif field.startswith("f") and len(field) > 1 and handles and pid is None:
-            # macOS includes file descriptors (e.g. fcwd) even with -Fpc.
-            continue
+        kind, value = field[:1], field[1:]
+        if kind == "p" and value.isdigit() and int(value) > 0:
+            if pid is not None and (command is None or not named):
+                raise ValueError("open-handle evidence incomplete: missing command/file name")
+            pid, command, descriptor, named = int(value), None, None, False
+        elif kind == "c" and value and pid is not None and command is None:
+            command = value
+        elif kind == "f" and value and command is not None:
+            if descriptor is not None and not named:
+                raise ValueError("open-handle evidence incomplete: missing file name")
+            descriptor, named = value, False
+        elif kind == "n" and descriptor is not None and not named:
+            named = True  # Empty names occur for unnamed OS handles.
+            if value.startswith("/"):
+                # Literal caret sequences can look like lsof control escapes;
+                # retain on either interpretation rather than miss a live path.
+                try:
+                    names = [Path(name).resolve() for name in (value, lsof_name(value))]
+                except (OSError, RuntimeError, ValueError) as error:
+                    raise ValueError("open-handle evidence incomplete: " + str(error)) from error
+                if any(name == target or name.is_relative_to(target) for name in names):
+                    handles.append(dict(pid=pid, command=command, descriptor=descriptor,
+                                        name=value))
         else:
             raise ValueError("open-handle evidence incomplete: unparseable lsof output")
-    if not handles or pid is not None:
-        raise ValueError("open-handle evidence incomplete: missing pid/command")
+    if pid is None or command is None or not named:
+        raise ValueError("open-handle evidence incomplete: missing pid/command/file name")
     return handles
+
+
+def scan_handles(receipt, path, phase):
+    started = time.monotonic()
+    try:
+        handles = open_handles(path)
+        receipt["open_handles"] = handles
+        if handles:
+            raise ValueError("open handles: " + ", ".join(
+                f"{h['pid']}/{h['command']}" for h in handles))
+    finally:
+        receipt["scan_durations_seconds"][phase] = time.monotonic() - started
+
+
+def move_back(receipt, repo, quarantine, path):
+    try:
+        result = git(repo, "worktree", "move", str(quarantine), str(path))
+        receipt["move_back_rc"], receipt["move_back_stderr"] = result.returncode, result.stderr
+        if result.returncode == 0:
+            return
+        detail = result.stderr
+    except OSError as error:
+        detail = str(error)
+    receipt["reason"] += f"; move back to {path} failed; quarantined at {quarantine}: {detail}"
 
 
 def retire(args):
     lexical = Path(args.path).absolute()
     path = lexical.resolve()
     receipt = dict(schema="workspace-lifecycle/receipt/v1", disposition="RETAINED",
-                   path=str(path), repo=None, branch=None, head=None, remove_rc=None,
+                   path=str(path), repo_common_dir=None, branch=None, head=None, remove_rc=None,
+                   quarantine_path=None, move_rc=None, move_stderr="",
+                   move_back_rc=None, move_back_stderr="", scan_durations_seconds={},
+                   quarantine_registered_after=None, quarantine_physical_after=None,
                    remove_stderr="", registered_after=None, physical_after=None,
                    branch_retained=True)
     repo = Path(args.repo).resolve()
     refused = True
+    moved = False
+    quarantine = None
     try:
         common = git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
         if common.returncode:
             raise ValueError("repo identity unavailable: " + common.stderr)
         repo = Path(common.stdout.rstrip("\n")).resolve()
-        receipt["repo"] = str(repo)
+        receipt["repo_common_dir"] = str(repo)
         if any(p.is_symlink() for p in (lexical, *lexical.parents)):
             raise ValueError("path or parent is a symlink")
         if args.receipt_out and Path(args.receipt_out).resolve().is_relative_to(path):
@@ -168,26 +230,42 @@ def retire(args):
         if args.expect_head is not None and args.expect_head != receipt["head"]:
             raise ValueError("expected head differs from observed head")
         before = inventory(receipt, path)
-        handles = open_handles(path)
-        receipt["open_handles"] = handles
-        if handles:
-            raise ValueError("open handles: " + ", ".join(
-                f"{h['pid']}/{h['command']}" for h in handles))
+        scan_handles(receipt, path, "before_move")
         if inventory(receipt, path) != before:
             raise ValueError("worktree inventory changed since first read")
+        quarantine = path.with_name(path.name + ".retiring-" + uuid4().hex)
+        receipt["quarantine_path"] = str(quarantine)
+        if os.path.lexists(quarantine):
+            raise ValueError("quarantine destination already exists")
+        move = git(repo, "worktree", "move", str(path), str(quarantine))
+        receipt["move_rc"], receipt["move_stderr"] = move.returncode, move.stderr
+        if move.returncode:
+            raise ValueError("quarantine move failed: " + move.stderr)
+        moved = True
+        scan_handles(receipt, quarantine, "after_move")
+        if inventory(receipt, quarantine) != before:
+            raise ValueError("worktree inventory changed after quarantine move")
         refused = False
-        removed = git(repo, "worktree", "remove", str(path))
+        removed = git(repo, "worktree", "remove", str(quarantine))
         receipt["remove_rc"], receipt["remove_stderr"] = removed.returncode, removed.stderr
     except (OSError, ValueError) as error:
         receipt["reason"] = str(error)
 
+    if moved and (refused or receipt["remove_rc"] != 0):
+        receipt.setdefault("reason", "remove failed: " + receipt["remove_stderr"])
+        if os.path.lexists(quarantine):
+            move_back(receipt, repo, quarantine, path)
     errors = observe(receipt, repo, path)
+    if quarantine is not None:
+        errors.extend(observe(receipt, repo, quarantine, "quarantine_"))
     if errors:
         receipt["reason"] = "; ".join(filter(None, [receipt.get("reason"), *errors]))
     if (not refused and not errors and receipt["remove_rc"] == 0
-            and receipt["registered_after"] is False and receipt["physical_after"] is False):
+            and receipt["registered_after"] is False and receipt["physical_after"] is False
+            and receipt["quarantine_registered_after"] is False
+            and receipt["quarantine_physical_after"] is False):
         receipt["disposition"] = "REMOVED"
-        receipt["reason"] = "remove succeeded; registration and physical path absent"
+        receipt["reason"] = "remove succeeded; original and quarantine registrations and physical paths absent"
     elif "reason" not in receipt:
         receipt["reason"] = "remove failed or absence proofs incomplete"
     receipt["observed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
