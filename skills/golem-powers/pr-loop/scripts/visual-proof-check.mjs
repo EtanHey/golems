@@ -23,7 +23,10 @@ try {
       const value = lines[0].slice(field.length + 1).trim();
       if (field === 'GIF' && value === 'none: no animation or interaction changed') return false;
       // Reviewable GitHub attachments or repo-relative committed files; ignored/private paths fail.
-      const links = [...value.matchAll(/!?\[[^\]]*\]\(([^\s)]+)\)/g)].map(match => match[1]);
+      const links = [...value.matchAll(/!?\[[^\]]*\]\(([^\s)]+)\)/g)]
+        .filter(match => !isEscaped(value, match.index + (match[0].startsWith('!') ? 1 : 0))
+          && !isEscaped(value, match.index + match[0].indexOf(']')))
+        .map(match => match[1]);
       return !links.some(link => {
         if (/^https:\/\/github\.com\/user-attachments\/(assets|files)\//.test(link)) return true;
         // Inspect the raw URL path before URL normalization can erase parent traversal.
@@ -62,8 +65,14 @@ function safeFilePath(path) {
 function visibleMarkdown(markdown) {
   let fence = null;
   let comment = false;
+  let rawHtml = null;
   const visible = [];
   for (const line of markdown.replace(/\r\n/g, '\n').split('\n')) {
+    if (rawHtml) {
+      if (new RegExp(`</${rawHtml}\\s*>`, 'i').test(line)) rawHtml = null;
+      visible.push('');
+      continue;
+    }
     if (fence) {
       const close = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
       if (close && close[1][0] === fence[0] && close[1].length >= fence.length) fence = null;
@@ -88,9 +97,19 @@ function visibleMarkdown(markdown) {
     }
     const open = clean.match(/^ {0,3}(`{3,}|~{3,})/);
     if (open) { fence = open[1]; clean = ''; }
+    const html = clean.match(/<(pre|textarea|script|style)(?=[\s/>]|$)/i);
+    if (html) {
+      rawHtml = html[1].toLowerCase();
+      if (new RegExp(`</${rawHtml}\\s*>`, 'i').test(clean.slice(html.index + html[0].length))) rawHtml = null;
+      clean = '';
+    } else if (/<\/?[a-z][a-z0-9-]*(?=[\s/>]|$)|<\?|<![A-Z\[]/i.test(clean)) {
+      // Conservatively reject other raw HTML instead of approximating block parsing.
+      // This also excludes inline HTML/images; proof must use visible Markdown links.
+      throw Error('raw HTML is unsupported in visual proof');
+    }
     visible.push(clean);
   }
-  if (comment || fence) throw Error('unclosed Markdown comment or fence');
+  if (comment || fence || rawHtml) throw Error('unclosed Markdown comment, fence or raw HTML');
   // Preserve character positions: removing excluded text must never create a heading/link.
   const prose = visible.join('\n');
   let result = '';
@@ -110,4 +129,10 @@ function visibleMarkdown(markdown) {
     i = after;
   }
   return result;
+}
+
+function isEscaped(text, index) {
+  let backslashes = 0;
+  while (index > 0 && text[--index] === '\\') backslashes++;
+  return backslashes % 2 === 1;
 }

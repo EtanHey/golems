@@ -88,3 +88,35 @@ test('GitHub file URLs share private-path and traversal validation', () => {
   }
   assert.equal(run(body.replace(/^Desktop before:.*$/m, `Desktop before: [proof](${prefix}artifacts/proof.png)`)).status, 0);
 });
+const htmlEscapeCases = [
+  ['exact pre whole-body', `<pre>\n${body}\n</pre>`, 1],
+  ['single-field pre', body.replace(/^Desktop before:.*$/m, line => `<pre>\n${line}\n</pre>`), 1],
+  ['textarea wrapping', `<textarea>\n${body}\n</textarea>`, 1],
+  ['script wrapping', `<script>\n${body}\n</script>`, 1],
+  ['unclosed pre at EOF', `<pre>\n${body}`, 1],
+  ['escaped committed-relative link', body.replace(/^Desktop before:.*$/m, 'Desktop before: \\[proof](skills/golem-powers/pr-loop/SKILL.md)'), 1],
+  ['ordinary proof', body, 0],
+  ['CRLF proof', body.replace(/\n/g, '\r\n'), 0],
+  ['longer-fence close positive', '````\nignored\n`````\n' + body, 0],
+  ['nested comment opener before ordinary proof', '<!-- <!-- -->\n' + body, 0],
+];
+for (const [name, input, expected] of htmlEscapeCases)
+  test(`HTML and escapes: ${name}`, () => assert.equal(run(input).status, expected));
+test('HTML masking is case insensitive and fail-closed', () => {
+  for (const tag of ['PRE', 'TeXtArEa', 'SCRIPT', 'style']) {
+    assert.equal(run(`<${tag}>\n${body}\n</${tag}>`).status, 1);
+    assert.equal(run(body + `\n<${tag}>`).status, 1);
+    assert.equal(run(`<${tag}>ignored</${tag}>\n` + body).status, 0);
+  }
+  for (const tag of ['div', 'table', 'details', 'custom-block'])
+    assert.equal(run(`<${tag}>\n${body}\n</${tag}>`).status, 1);
+  assert.equal(run(body.replace(/^Desktop before:.*$/m, line => `<div>${line}</div>`)).status, 1);
+});
+test('escaped closing bracket and odd/even backslash parity', () => {
+  for (const count of [1, 3]) {
+    const slashes = '\\'.repeat(count);
+    for (const link of [`${slashes}[proof](skills/golem-powers/pr-loop/SKILL.md)`, `[proof${slashes}](skills/golem-powers/pr-loop/SKILL.md)`])
+      assert.equal(run(body.replace(/^Desktop before:.*$/m, `Desktop before: ${link}`)).status, 1);
+  }
+  assert.equal(run(body.replace(/^Desktop before:.*$/m, 'Desktop before: \\\\[proof](skills/golem-powers/pr-loop/SKILL.md)')).status, 0);
+});
