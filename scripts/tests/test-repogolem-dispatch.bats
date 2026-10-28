@@ -599,6 +599,10 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
     split_case_160
 }
 
+@test "registry claudeSettings passes --settings when the file exists, warns and skips when missing" {
+    split_case_161
+}
+
 @test "every agent-shaped Codex launch strips codex_apps connectors; computer use is never touched" {
     split_case_136
 }
