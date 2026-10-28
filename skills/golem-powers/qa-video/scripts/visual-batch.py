@@ -5,11 +5,9 @@ import importlib.util
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import json
 import math
-import os
 import random
 import re
 from pathlib import Path
-import signal
 import subprocess
 import sys
 import time
@@ -25,58 +23,124 @@ def atomic(path, text):
 
 
 def read_sheet(helper, question, timeout, sheet, model=None, workdir=None):
-    process = subprocess.Popen([sys.executable, str(helper), '--question', question,
-                                '--timeout', str(timeout), *(['--model', model] if model else []), sheet],
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               text=True, start_new_session=True)
     try:
-        out, err = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        os.killpg(process.pid, signal.SIGKILL)
-        out, err = process.communicate()
-        return {'sheet': sheet, 'finding': 'NOT DETERMINED (helper timeout)', 'fatal': '', 'ok': False,
-                'cause': 'helper timeout', 'setup_failure': False}
+        result = visual.bounded_run([sys.executable, str(helper), '--question', question,
+                                    '--timeout', str(timeout),
+                                    *(['--model', model] if model else []), sheet], timeout)
+    except (subprocess.TimeoutExpired, OverflowError) as error:
+        cause = 'helper timeout' if isinstance(error, subprocess.TimeoutExpired) else str(error)
+        return failed(sheet, cause)
+    out, err = result.stdout, result.stderr
     fatal = next((s for s in err.splitlines() if s.startswith('DISPATCH_STOPPED:')), '')
-    complete = (process.returncode == 0 and 'Coverage: 1/1; complete;' in out
+    complete = (result.returncode == 0 and 'Coverage: 1/1; complete;' in out
                 and len(out.strip().splitlines()) > 1
                 and not any(token in out.lower() for token in ('<truncated', 'stream was interrupted')))
     return {'sheet': sheet, 'finding': out.strip() if complete else
             'NOT DETERMINED (helper failed or partial)\n' + out.strip(), 'fatal': fatal, 'ok': complete and not fatal,
-            'cause': ('exit ' + str(process.returncode) + ': ' if process.returncode else 'empty or truncated output: ') + visual.safe_cause(err, workdir or '.') if not complete or fatal else '',
+            'cause': ('exit ' + str(result.returncode) + ': ' if result.returncode else 'empty or truncated output: ') + visual.safe_cause(err, workdir or '.') if not complete or fatal else '',
             'setup_failure': not complete and not fatal and 'NOT DETERMINED: setup failed' in out, 'attempt': 1}
 
 
+def failed(sheet, cause):
+    return dict(sheet=sheet, finding='NOT DETERMINED', fatal='', ok=False,
+                state='FAILED', cause=cause, offending_indexes=[])
+
+
+def citation_number(token):
+    if len(token.lstrip('-')) > 9:
+        raise ValueError('numeric citation exceeds 9 digits')
+    return int(token)
+
+
 def validate(item, tile_count):
-    indexes = []
-    # Accept singular references, lists and inclusive ranges, including negatives.
-    for match in re.finditer(r"\btiles?\s+(-?\d+(?:\s*(?:-|–|to|,|and)\s*-?\d+)*)", item['finding'], re.I):
-        indexes.extend(int(n) for n in re.findall(r"-?\d+", re.sub(r"(?<=\d)-(?=\d)", " ", match[1])))
-    if indexes and tile_count is None:
+    try:
+        return validate_citations(item, tile_count)
+    except (ValueError, TypeError, KeyError, OverflowError) as error:
+        return failed(item.get('sheet', ''), 'malformed output: ' + str(error))
+
+
+def validate_citations(item, tile_count):
+    bad, intervals = set(), []
+    malformed = False
+    # Read a complete numeric expression after each tile/frame label. Lists may
+    # contain ranges, optional hashes and Oxford commas. Indexing stays zero-based.
+    label = re.compile(r'\b(?:tiles?|frames?)\b', re.I)
+    number = r'\#?\s*(-?\d+)'
+    span = re.compile(number + r'(?:\s*(?:-|–|to)\s*' + number + r')?', re.I)
+    finding = '\n'.join(line for line in item['finding'].splitlines()
+                        if not line.startswith('Coverage:'))
+    for citation in label.finditer(finding):
+        tail = finding[citation.end():].lstrip()
+        # Bare nouns at the end of a sentence are not indexed citations.
+        if not tail or (tail.startswith((';', '.')) and not re.match(r'[;.]\s*\d', tail)):
+            continue
+        match = span.match(tail)
+        if not match:
+            malformed = True
+            continue
+        while match:
+            lo = citation_number(match[1])
+            hi = citation_number(match[2]) if match[2] is not None else lo
+            if hi < lo:
+                malformed = True
+                break
+            intervals.append((lo, hi))
+            tail = tail[match.end():]
+            separator = re.match(r'\s*(?:,\s*(?:and\s+)?|and\s+)', tail, re.I)
+            if not separator:
+                # An unfinished range, decimal or malformed numeric token fails closed.
+                if re.match(r'\w|\s*(?:[-–/&+]|to\b|[.]\d|\d|\#)', tail, re.I):
+                    malformed = True
+                break
+            rest = tail[separator.end():]
+            match = span.match(rest)
+            if not match:
+                malformed = True
+                break
+            tail = rest
+    if intervals and tile_count is None:
         return dict(item, state='FAILED', ok=False, offending_indexes=[], cause='tile count unavailable')
-    bad = sorted({n for n in indexes if tile_count is not None and (n < 0 or n >= tile_count)})
-    conflict = bool(re.search(r"\bCONFLICT\b", item['finding']))
-    state = 'INVALID' if bad or conflict else ('READ' if item['ok'] else 'FAILED')
-    return dict(item, state=state, ok=state == 'READ', offending_indexes=bad,
-                cause=('out-of-bounds tiles: ' + str(bad) if bad else 'conflicting read')
-                if state == 'INVALID' else item.get('cause', ''))
+    offending_intervals = []
+    for lo, hi in intervals:
+        for start, end in ((lo, min(hi, -1)), (max(lo, tile_count or 0), hi)):
+            if start <= end:
+                offending_intervals.append([start, end])
+                # Small violations list every index. Huge intervals remain exact
+                # intervals without allocating billions of Python integers.
+                if end - start < 1000:
+                    bad.update(range(start, end + 1))
+    conflict = bool(re.search(r'\bCONFLICT\b', item['finding']))
+    invalid = bool(offending_intervals or malformed or conflict)
+    state = 'INVALID' if invalid else ('READ' if item['ok'] else 'FAILED')
+    cause = ('unparseable tile/frame citation' if malformed else
+             'out-of-bounds tiles: ' + str(offending_intervals) if offending_intervals else
+             'conflicting read' if conflict else item.get('cause', ''))
+    return dict(item, state=state, ok=state == 'READ', offending_indexes=sorted(bad),
+                offending_intervals=offending_intervals, cause=cause)
 
 
-def retry_read(read, question, tile_count, deadline, timeout, *, clock=time.monotonic,
-               sleep=time.sleep, jitter=random.random):
-    history = []
-    for attempt in range(1, 3):
+def retry_read(read, question, tile_count, deadline, timeout, *, clock=None,
+               sleep=time.sleep, jitter=random.random, previous=None):
+    clock = clock or time.monotonic
+    history = list(previous.get('history', [])) if previous else []
+    item = previous
+    for attempt in range(len(history) + 1, 3):
+        if history:
+            delay = .25 * 2 ** (attempt - 2) + jitter() * .1
+            if clock() + delay >= deadline:
+                break
+            sleep(delay)
         remaining = deadline - clock()
         if remaining <= 0:
             break
         bound = f' Tile indexes are zero-based; valid range 0..{tile_count-1}.' if tile_count else ''
-        item = validate(read(question + bound, min(timeout, remaining)), tile_count)
+        try:
+            item = validate(read(question + bound, min(timeout, remaining)), tile_count)
+        except OSError as error:
+            item = failed(previous['sheet'] if previous else '', visual.safe_cause(str(error), '.'))
         history.append({'attempt': attempt, 'state': item['state'], 'cause': item.get('cause', '')})
-        if item['ok'] or item.get('fatal') or attempt == 2:
+        if item['ok'] or item.get('fatal'):
             break
-        delay = .25 * 2 ** (attempt - 1) + jitter() * .1
-        if clock() + delay >= deadline:
-            break
-        sleep(delay)
     if not history:
         return dict(state='NOT_READ', ok=False, finding='NOT DETERMINED (budget)', fatal='',
                     cause='budget', attempts=0, history=[])
@@ -137,9 +201,10 @@ def run(args, sheets):
     progress()
     if args.helper.resolve() == Path(__file__).resolve().with_name('visual-gather.py') and not model:
         try:
-            model = visual.resolve_model()[1]
+            model = visual.resolve_model(deadline=deadline)[1]
         except (ValueError, OSError, subprocess.SubprocessError, visual.DispatchError) as error:
-            status = 'DISPATCH_STOPPED' if isinstance(error, visual.DispatchError) else 'SETUP_FAILED'
+            status = ('DISPATCH_STOPPED' if isinstance(error, visual.DispatchError) else
+                      'BUDGET_EXCEEDED' if time.monotonic() >= deadline else 'SETUP_FAILED')
             cause = visual.safe_cause(getattr(error, 'stderr', '') or str(error), work)
     with (work / 'visual/findings.jsonl').open('a', buffering=1) as log:
         with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
@@ -183,18 +248,10 @@ def run(args, sheets):
                 continue
             retrying = True
             progress()
-            previous = dict(item)
-            first = True
             def read(question, timeout):
-                nonlocal first
-                if first:
-                    first = False
-                    return previous
-                try:
-                    return read_sheet(args.helper, question, timeout, previous['sheet'], model, work)
-                except OSError as error:
-                    return dict(previous, ok=False, cause=visual.safe_cause(str(error), work))
-            item = retry_read(read, args.question, counts.get(item['sheet']), deadline, args.timeout)
+                return read_sheet(args.helper, question, timeout, item['sheet'], model, work)
+            item = retry_read(read, args.question, counts.get(item['sheet']), deadline,
+                              args.timeout, previous=item)
             findings[i] = item
             log.write(json.dumps(item)+'\n')
             if item['fatal']:

@@ -147,7 +147,7 @@ def test_cli_adds_only_supplied_image_directories(monkeypatch, capsys):
     def run(args, **kwargs):
         commands.append(args)
         return result([{'path': image, 'finding': 'ALPHA'}])
-    monkeypatch.setattr(v.subprocess, 'run', run)
+    monkeypatch.setattr(v, 'bounded_run', run)
     assert v.main() == 0
     assert lookups[0] == ['git', '-C', str((SKILL / 'scripts').resolve()), 'rev-parse', '--show-toplevel']
     assert lookups[1][1] == '/discovered-checkout/scripts/model-roles.mjs'

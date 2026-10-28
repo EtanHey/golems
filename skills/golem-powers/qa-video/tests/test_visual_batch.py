@@ -291,7 +291,7 @@ def test_cached_model_avoids_concurrent_setup(setup, monkeypatch):
     spec = importlib.util.spec_from_file_location('batch', DRIVER)
     batch = importlib.util.module_from_spec(spec); spec.loader.exec_module(batch)
     lookups, models = [], []
-    monkeypatch.setattr(batch.visual, 'resolve_model', lambda: lookups.append(1) or ('tier', 'fixture-model'))
+    monkeypatch.setattr(batch.visual, 'resolve_model', lambda **kwargs: lookups.append(1) or ('tier', 'fixture-model'))
     def read(helper, question, timeout, sheet, model, work):
         models.append(model)
         return {'sheet': sheet, 'finding': 'fixture', 'fatal': '', 'ok': True}
