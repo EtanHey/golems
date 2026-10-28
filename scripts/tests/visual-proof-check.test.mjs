@@ -49,11 +49,13 @@ test('required job supplies event inputs safely and reacts to labels', () => {
   assert.ok(!job.split('        run: |')[1].includes('${{'));
 });
 
-test('label-only events run Loop-record and successfully skip the heavy ratchet job', () => {
+test('label events rerun real gates without job-level label skips', () => {
   const workflow = readFileSync('.github/workflows/ratchet.yml', 'utf8');
+  assert.ok(workflow.includes('edited, labeled, unlabeled]'));
+  const jobConditions = workflow.match(/^ {4}if:.*(?:\n(?: {6,}.*|[ \t]*$))*/gm) ?? [];
+  for (const condition of jobConditions) {
+    assert.doesNotMatch(condition, /\b(?:labeled|unlabeled)\b/, 'job condition must not skip real gates on label events');
+  }
   const loop = workflow.split('  loop-record:\n')[1].split('  ratchet:\n')[0];
-  const ratchet = workflow.split('  ratchet:\n')[1];
   assert.ok(loop.includes("if: github.event_name == 'pull_request'"));
-  assert.ok(!loop.includes("github.event.action != 'labeled'"));
-  assert.ok(ratchet.includes("if: github.event.action != 'labeled' && github.event.action != 'unlabeled'"));
 });
