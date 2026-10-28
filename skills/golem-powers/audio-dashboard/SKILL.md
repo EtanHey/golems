@@ -262,6 +262,8 @@ orchestration scripts, never to private engine checkouts.
 
 ### Job spec
 
+For decision-flow dashboards, `heading` is a title of at most 8 words. Put status and context in `subtitle`, which the decision-flow template renders collapsed under Details.
+
 `--spec` points at a JSON job (see `examples/job.json`):
 
 ```json

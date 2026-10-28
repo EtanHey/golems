@@ -25,8 +25,9 @@ function scene(id) {
   };
 }
 
-function fixture(ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"]) {
+function fixture(ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"], extra = {}) {
   const html = renderDecisionFlow({
+    ...extra,
     storageKey: "dbx:layout-test",
     heading: "Check the new VoiceBar first, then 25 calls to make.",
     scenes: ids.map(scene),
@@ -46,6 +47,60 @@ function fixture(ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"])
 async function waitForScrollSettle(page) {
   await page.evaluate(() => new Promise(resolve => { let y = scrollY, since = performance.now(); function poll(now) { if (scrollY !== y) { y = scrollY; since = now; } if (now - since >= 200) resolve(); else requestAnimationFrame(poll); } requestAnimationFrame(poll); }));
 }
+
+layoutTest("header Details summary is a 44px target that never overlaps the heading or mode label", async () => {
+  const browser = await chromium.launch(), failures = [];
+  try { for (const width of [360, 390, 1280]) for (const cinemaUrl of [undefined, "./layout-test-audio.html"]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, reducedMotion: "reduce" });
+    await page.goto(fixture(undefined, { subtitle: "Status: 3 merged, 2 waiting on review, storage healthy.", cinemaUrl }));
+    const box = selector => page.locator(selector).first().boundingBox();
+    const summary = await box(".df-context > summary");
+    if (summary.width < 44 || summary.height < 44) failures.push({ width, summary });
+    if (cinemaUrl) {
+      expect(await page.locator(".df-cinema-link").isVisible()).toBe(true);
+      // The link wraps as one unit, never split across lines.
+      if ((await page.locator(".df-cinema-link").evaluate(node => node.getClientRects().length)) !== 1) failures.push({ width, split: ".df-cinema-link" });
+    }
+    for (const selector of [".df-top h1", ".df-mode-label", ".df-kicker", ...(cinemaUrl ? [".df-cinema-link"] : [])]) {
+      // Rendered text rects, not element boxes: the header text reserves room for the summary with padding.
+      const lines = await page.locator(selector).first().evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); return [...range.getClientRects()].map(r => ({ x: r.x, y: r.y, width: r.width, height: r.height })); });
+      for (const other of lines) if (summary.x < other.x + other.width && other.x < summary.x + summary.width && summary.y < other.y + other.height && other.y < summary.y + summary.height) failures.push({ width, selector, summary, other });
+    }
+    expect(await page.locator(".df-subtitle").isVisible()).toBe(false);
+    await page.locator(".df-context > summary").focus(); await page.keyboard.press("Enter");
+    expect(await page.locator(".df-subtitle").isVisible()).toBe(true);
+    expect(await page.locator(".df-scope").isVisible()).toBe(true);
+    await page.close();
+  } } finally { await browser.close(); }
+  expect(failures).toEqual([]);
+}, 30000);
+
+layoutTest("page heading outranks card titles and, on desktop, shares the sidebar's top line", async () => {
+  const browser = await chromium.launch(), failures = [];
+  try { for (const width of [390, 1280]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, reducedMotion: "reduce" }); await page.goto(fixture());
+    const size = selector => page.locator(selector).first().evaluate(node => parseFloat(getComputedStyle(node).fontSize));
+    const h1 = await size(".df-top h1"), card = await size(".df-card .df-title");
+    if (h1 < card * 1.12) failures.push({ width, h1, card });
+    if (width === 1280) {
+      const kicker = await page.locator(".df-kicker").boundingBox(), first = await page.locator(".df-index a, .df-index li").first().boundingBox();
+      if (Math.abs(kicker.y - first.y) > 1) failures.push({ width, kickerTop: kicker.y, sidebarTop: first.y });
+    }
+    await page.close();
+  } } finally { await browser.close(); }
+  expect(failures).toEqual([]);
+}, 30000);
+
+layoutTest("storage state is visually hidden until it reports an error", async () => {
+  const browser = await chromium.launch();
+  try { const page = await browser.newPage({ viewport: { width: 390, height: 844 } }); await page.goto(fixture());
+    const size = () => page.locator("#df-storage-state").evaluate(node => { const r = node.getBoundingClientRect(); return r.width * r.height; });
+    expect(await size()).toBeLessThanOrEqual(1);
+    await page.evaluate(() => { const node = document.getElementById("df-storage-state"); node.textContent = "Storage unavailable · use Copy answers"; node.classList.add("is-error"); });
+    expect(await size()).toBeGreaterThan(100);
+    expect(await page.locator("#df-storage-state").isVisible()).toBe(true);
+  } finally { await browser.close(); }
+});
 
 const TRANSPORT_LABELS = [["▶", "Play"], ["⏸", "Pause"], ["▶", "Resume"], ["↻", "Again"]];
 
