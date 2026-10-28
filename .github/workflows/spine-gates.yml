@@ -11,6 +11,7 @@ on:
       - "skills/golem-powers/audio-dashboard/**"
       - ".github/workflows/spine-gates.yml"
       - "package.json"
+      - "bun.lock"
   push:
     branches: [master]
     paths:
@@ -20,6 +21,8 @@ on:
 jobs:
   replay:
     runs-on: ubuntu-latest
+    env:
+      ADASH_LAYOUT_REQUIRED: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -30,5 +33,7 @@ jobs:
           bun-version-file: .bun-version
       - name: Install test dependencies
         run: bun install --frozen-lockfile
+      - name: Install Chromium for audio-dashboard layout tests
+        run: bunx playwright install --with-deps chromium
       - name: Replay spine gate fixtures (RED must FLAG, GREEN must PASS)
         run: bun run test:spine-gates
