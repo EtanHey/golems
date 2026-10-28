@@ -59,8 +59,8 @@ class ContextTests(unittest.TestCase):
 
     def snapshot(self, names=None):
         paths = [self.root / n for n in names] if names is not None else self.root.rglob('*')
-        return {str(p.relative_to(self.root)): ('dir' if p.is_dir() else
-                (p.stat().st_size, hashlib.sha256(p.read_bytes()).hexdigest())) for p in paths}
+        return {str(p.relative_to(self.root)): (('symlink', os.readlink(p)) if p.is_symlink() else
+                'dir' if p.is_dir() else (p.stat().st_size, hashlib.sha256(p.read_bytes()).hexdigest())) for p in paths}
 
     def call(self, function, *args):
         before = self.snapshot()
@@ -86,12 +86,12 @@ class ContextTests(unittest.TestCase):
         with self.assertRaises(self.api.Invalid):
             self.identity(platform, channel, **changes)
 
-    def cli(self, args=None, raw=None, code=0, reason='CONTEXT_ONLY', account='ok', direct=False):
+    def cli(self, args=None, raw=None, code=0, reason='CONTEXT_ONLY', account='ok', direct=False, account_home=None):
         payload = json.dumps(self.metadata_for()) if raw is None else raw
         self.metadata.write_bytes(payload if isinstance(payload, bytes) else payload.encode())
         self.original['metadata.json'] = self.snapshot(['metadata.json'])['metadata.json']
         args = ['prepare-capture', '--platform', 'twitch', '--channel', 'ThEo', '--metadata', str(self.metadata)] if args is None else args
-        command = [sys.executable, str(CORE)] if direct else [sys.executable, '-c', CHILD, str(CORE), str(self.home), account]
+        command = [sys.executable, str(CORE)] if direct else [sys.executable, '-c', CHILD, str(CORE), str(self.home if account_home is None else account_home), account]
         before = self.snapshot()
         run = subprocess.run(command + args, capture_output=True, text=True)
         self.assertEqual(before, self.snapshot())
@@ -125,6 +125,17 @@ class ContextTests(unittest.TestCase):
         alias.symlink_to(self.home, target_is_directory=True)
         with mock.patch.object(self.api, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(alias))):
             self.assertEqual(self.call(self.api.canonical_db), self.home / SUFFIX)
+        loop, dangling, regular = (self.root / name for name in ('loop-home', 'dangling-home', 'file-home'))
+        loop.symlink_to(loop)
+        dangling.symlink_to(self.root / 'missing-home')
+        regular.write_bytes(b'PRIVATE_FILE_HOME')
+        for home in (loop, dangling, regular):
+            with self.subTest(home=home.name, surface='api'):
+                with mock.patch.object(self.api, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))):
+                    with self.assertRaises(self.api.AccountError):
+                        self.call(self.api.canonical_db)
+            with self.subTest(home=home.name, surface='cli'):
+                self.cli(code=73, reason='ACCOUNT_ERROR', account_home=home)
         for home in ('relative', '', None, '/bad\x00home'):
             with mock.patch.object(self.api, 'getpwuid', return_value=SimpleNamespace(pw_dir=home)):
                 with self.assertRaises(self.api.AccountError):

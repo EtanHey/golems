@@ -22,7 +22,10 @@ def canonical_db() -> Path:
         home = getpwuid(getuid()).pw_dir
         if not isinstance(home, str) or '\x00' in home or not Path(home).is_absolute():
             raise ValueError
-        return Path(home).resolve() / '.local/state/golems/stalker/admission.sqlite3'
+        home = Path(home).resolve(strict=True)
+        if not home.is_dir():
+            raise ValueError
+        return home / '.local/state/golems/stalker/admission.sqlite3'
     except (KeyError, OSError, ValueError, TypeError, RuntimeError, AttributeError):
         raise AccountError('ACCOUNT_ERROR') from None
 
