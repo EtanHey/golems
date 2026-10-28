@@ -13,6 +13,8 @@ function probe(code: string, env: Record<string, string> = {}) {
   `], {
     cwd: import.meta.dir,
     env: {
+      HOME: process.env.HOME,
+      TMPDIR: process.env.TMPDIR,
       PATH: process.env.PATH ?? "",
       NODE_ENV: "test",
       SUPABASE_URL: "http://127.0.0.1:9",

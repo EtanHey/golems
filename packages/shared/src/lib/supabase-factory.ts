@@ -17,7 +17,7 @@ type CachedClient = { url: string; client: SupabaseClient };
 let _serviceClient: CachedClient | null = null;
 let _anonClient: CachedClient | null = null;
 
-function supabaseAllowed(url: string | undefined): boolean {
+export function supabaseAllowed(url: string | undefined): boolean {
   if (!isTestMode()) return true;
   if (process.env.GOLEMS_ALLOW_LIVE_SUPABASE_IN_TESTS !== "1") return false;
   if (!url) return false;

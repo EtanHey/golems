@@ -1,3 +1,4 @@
+import { testBun } from "@golems/shared/test-bun";
 import { describe, it, expect } from "bun:test";
 import { join } from "node:path";
 import {
@@ -87,8 +88,8 @@ describe("retired webhook", () => {
       const health = await handler(new Request("http://fixture/health"));
       console.log(JSON.stringify({ status: result.status, sends, health: health.status, body: await health.json() }));
     `;
-    const child = Bun.spawn([process.execPath, "--eval", script], {
-      env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", UPTIMEROBOT_WEBHOOK_SECRET: "synthetic-token" },
+    const child = Bun.spawn([...testBun, "--eval", script], {
+      env: { TMPDIR: process.env.TMPDIR, PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", UPTIMEROBOT_WEBHOOK_SECRET: "synthetic-token" },
       stdout: "pipe", stderr: "pipe",
     });
     const output = await new Response(child.stdout).text();

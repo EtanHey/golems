@@ -13,6 +13,7 @@
  */
 
 import { promises as fs } from "fs";
+import { supabaseAllowed } from "@golems/shared/lib/supabase-factory";
 import { execSync } from "child_process";
 import type { AxiomCredentials } from "@golems/shared/lib/axiom-credentials";
 import type { PrunedSeat } from "@golems/shared/lib/config";
@@ -278,6 +279,11 @@ async function checkEnvFile() {
 async function checkSupabase() {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseAllowed(supabaseUrl)) {
+    results.push({ name: "Supabase", status: "warn", message: "Disabled by the Supabase test boundary" });
+    return;
+  }
 
   if (!supabaseUrl || !supabaseKey) {
     results.push({

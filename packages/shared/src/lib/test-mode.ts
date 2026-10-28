@@ -6,8 +6,9 @@ const bunTestEntry = typeof Bun !== "undefined" &&
 /** Set by Bun's test-only preload, even when NODE_ENV is overridden. */
 export function markBunTestRuntime(): void {
   runningBunTests = true;
+  process.env.GOLEMS_TEST_MODE = "1";
 }
 
 export function isTestMode(): boolean {
-  return runningBunTests || bunTestEntry || process.env.NODE_ENV === "test" || process.env.BUN_ENV === "test";
+  return runningBunTests || bunTestEntry || process.env.GOLEMS_TEST_MODE === "1" || process.env.NODE_ENV === "test" || process.env.BUN_ENV === "test";
 }

@@ -4,7 +4,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 
 describe("loadEnv", () => {
-  it("prevents bun run test from inheriting startup .env values", () => {
+  it("prevents the no-env-file test command from inheriting startup dotenv values", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "golems-env-startup-"));
     try {
       copyFileSync(join(import.meta.dir, "../../../..", "bunfig.toml"), join(tempDir, "bunfig.toml"));
@@ -12,9 +12,9 @@ describe("loadEnv", () => {
       writeFileSync(join(tempDir, "package.json"), JSON.stringify({ scripts: {
         test: `bun --no-env-file -e 'console.log(process.env.GOLEMS_ENV_SENTINEL ?? "absent")'`,
       } }));
-      const result = Bun.spawnSync([process.execPath, "run", "test"], {
+      const result = Bun.spawnSync([process.execPath, "--no-env-file", "run", "test"], {
         cwd: tempDir,
-        env: { PATH: process.env.PATH ?? "", NODE_ENV: "test", SUPABASE_URL: "http://127.0.0.1:9" },
+        env: { HOME: process.env.HOME, TMPDIR: process.env.TMPDIR, PATH: process.env.PATH ?? "", NODE_ENV: "test", SUPABASE_URL: "http://127.0.0.1:9" },
       });
       expect(result.exitCode).toBe(0);
       expect(result.stdout.toString().trim()).toBe("absent");
@@ -32,7 +32,7 @@ describe("loadEnv", () => {
       const result = Bun.spawnSync([process.execPath, "--no-env-file", "-e", `
         const { loadEnv } = await import(${JSON.stringify(isolatedModule)});
         console.log(loadEnv());
-      `], { cwd: tempDir, env: { NODE_ENV: "production", RAILWAY_ENVIRONMENT: "production", SUPABASE_URL: "http://127.0.0.1:9" } });
+      `], { cwd: tempDir, env: { HOME: process.env.HOME, TMPDIR: process.env.TMPDIR, NODE_ENV: "production", RAILWAY_ENVIRONMENT: "production", SUPABASE_URL: "http://127.0.0.1:9" } });
       expect(result.exitCode).toBe(0);
       expect(result.stdout.toString().trim()).toBe("false");
       expect(result.stderr.toString()).toContain("No .env file found");
@@ -54,7 +54,7 @@ describe("loadEnv", () => {
           console.log(loadEnv() === false && process.env.GOLEMS_ENV_SENTINEL === undefined);
         `], {
           cwd: tempDir,
-          env: { ...mode, GOLEMS_ALLOW_LIVE_SUPABASE_IN_TESTS: "1", SUPABASE_URL: "http://127.0.0.1:9" },
+          env: { HOME: process.env.HOME, TMPDIR: process.env.TMPDIR, ...mode, GOLEMS_ALLOW_LIVE_SUPABASE_IN_TESTS: "1", SUPABASE_URL: "http://127.0.0.1:9" },
         });
         expect(result.exitCode).toBe(0);
         expect(result.stdout.toString().trim()).toBe("true");
@@ -85,7 +85,7 @@ describe("loadEnv", () => {
           const result = Bun.spawnSync([process.execPath, "--no-env-file", "-e", `
             await import(${JSON.stringify(join(lib, "load-env.ts"))});
             console.log(process.env.GOLEMS_ENV_SENTINEL ?? "absent");
-          `], { cwd, env: { NODE_ENV: "production", SUPABASE_URL: "http://127.0.0.1:9" } });
+          `], { cwd, env: { HOME: process.env.HOME, TMPDIR: process.env.TMPDIR, NODE_ENV: "production", SUPABASE_URL: "http://127.0.0.1:9" } });
           expect(result.exitCode).toBe(0);
           expect(result.stdout.toString().trim()).toBe(
             topology === "own-env" ? "own" : topology === "root-checkout" ? "parent" : "absent",
