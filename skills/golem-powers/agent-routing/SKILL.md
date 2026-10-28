@@ -21,6 +21,7 @@ description: "Invoke before any git/gh/grep, even for context, to dispatch a wor
 
 ## Service tier and placement
 
+- Lead launch prompts say: "Read and follow <repo>/LEAD.md and the global LEAD.md" (`~/.codex/LEAD.md`, installed from the private global instruction source). Neither shared instruction body imports the lead layer; delegates' briefs never name it.
 - Every delegate/sub-agent explicitly passes Claude `fastMode:false` or Codex `serviceTier:"default"`. Elevated service requires Etan's explicit request for that task.
 - Harness examples do not authorize elevated service.
 - Lead threads use the repo root checkout (`t3_thread_launch` with `workspaceStrategy:{type:"root"}`); only worker threads bind worktrees.

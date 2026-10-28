@@ -93,6 +93,9 @@ jobs:
       - name: Workspace lease ledger
         run: python -m pytest scripts/tests/test_workspace_lease.py -q
 
+      - name: Global instruction installer (synthetic HOME only)
+        run: python -m pytest scripts/tests/test_global_instructions.py -q
+
       - name: M1 sync offline guards (fake SSH only)
         run: |
           python -B -m unittest discover -s scripts/tests -p test_m1_sync.py
