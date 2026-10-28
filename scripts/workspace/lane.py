@@ -7,8 +7,10 @@ under the workspace lifecycle contract before calling. T3 roots use settle and
 T3's cleanup instead. Failures keep their lease/archive recovery evidence.
 Close resumes from close-state.json and verifies existing archive bytes rather
 than overwriting them. Only direct-git leases in the main repo's .worktrees fit.
+Retirement requires W2b's begin-close/close-token/abort-close lease interface.
 """
 import argparse
+import fcntl
 import json
 from pathlib import Path
 import re
@@ -123,7 +125,7 @@ def read_close_state(destination, record):
     state = lease.read_json(marker)
     if any(state.get(key) != value for key, value in close_identity(record).items()):
         raise ValueError("close-state identity differs from lease")
-    if state.get("stage") not in ("preparing", "archived", "retired", "closed"):
+    if state.get("stage") not in ("preparing", "archived", "retired", "retained", "closed"):
         raise ValueError("invalid close-state stage")
     return state
 
@@ -157,15 +159,30 @@ def verify_removed(record, repo, path, evidence):
             raise ValueError("REMOVED absence proofs incomplete: " + "; ".join(errors))
 
 
+def lease_command(*args):
+    result = subprocess.run([sys.executable, str(Path(lease.__file__)), *args],
+                            capture_output=True, text=True)
+    if result.returncode:
+        raise ValueError("W2b lease " + args[0] + " refused: " + result.stderr.strip())
+    return json.loads(result.stdout)
+
+
+def require_w2b():
+    result = subprocess.run([sys.executable, str(Path(lease.__file__)), "--help"],
+                            capture_output=True, text=True)
+    if result.returncode or any(name not in result.stdout for name in ("begin-close", "abort-close")):
+        raise ValueError("W2b closing interface required before lane archival or retirement")
+
+
 def close_lane(args):
     directory = lease.ledger_directory()
     target = lease.lease_file(directory, args.lease_id)
-    # Keep consumer add/release/bind/close serialized through retirement and persistence.
-    with lease.writer_lock(directory):
+    # Serialize this caller's retries separately; W2b owns consumer exclusion.
+    with (directory / (args.lease_id + ".lane-close.lock")).open("a") as operation_lock:
+        fcntl.flock(operation_lock, fcntl.LOCK_EX)
         record = lease.read_json(target)
         if record.get("schema") != lease.SCHEMA or record.get("lease_id") != args.lease_id:
             raise ValueError("invalid lease record identity/schema")
-        lease.require_no_consumers(record)
         if record["resource_kind"] != "worktree" or record["ownership"] != "created":
             raise ValueError("retirement requires a created worktree lease")
         if record["allocator"] != "direct-git":
@@ -189,6 +206,18 @@ def close_lane(args):
         if record["state"] == "closed" and record["disposition"] != "REMOVED":
             summary["reason"] = record["terminal_receipt"]["reason"]
             return summary, 1
+        require_w2b()
+        token = record.get("close_token")
+        if record["state"] not in ("closing", "closed"):
+            expected = close_identity(record)
+            token = lease_command("begin-close", "--lease-id", args.lease_id)["close_token"]
+            record = lease.read_json(target)
+            if (close_identity(record) != expected or record["state"] != "closing"
+                    or record.get("close_token") != token):
+                lease_command("abort-close", "--lease-id", args.lease_id, "--close-token", token)
+                raise ValueError("lease identity changed during begin-close; no archival or retirement")
+        if record["state"] == "closing" and (not isinstance(token, str) or not token):
+            raise ValueError("closing lease has no recovery token")
         destination = root / args.lease_id
         receipt, manifest = destination / "receipt.json", destination / "manifest.json"
         state = None
@@ -196,6 +225,10 @@ def close_lane(args):
         try:
             if destination.exists() or destination.is_symlink():
                 state = read_close_state(destination, record)
+                if (state.get("close_token") not in (None, token)
+                        and state["stage"] != "retained"):
+                    raise ValueError("close-state token differs from closing lease")
+                state["close_token"] = token
             if not receipt.exists():
                 lease.require_open(record)
                 entries, status = retire.local_files(path)
@@ -207,7 +240,8 @@ def close_lane(args):
                 identity = list(retire.directory_identity(path))
                 if state is None:
                     destination.mkdir(parents=True, mode=0o700, exist_ok=False)
-                    state = dict(close_identity(record), stage="preparing", source_identity=identity)
+                    state = dict(close_identity(record), stage="preparing", source_identity=identity,
+                                 close_token=token)
                     write_close_state(destination, state)
                     archive_files(path, entries, destination, record)
                 elif state.get("source_identity") != identity:
@@ -236,16 +270,18 @@ def close_lane(args):
             write_close_state(destination, state)
         except (OSError, ValueError) as error:
             summary.update(disposition="RETAINED", reason=str(error))
-        close = ["close", "--lease-id", args.lease_id]
-        close += (["--receipt", str(receipt)] if summary["disposition"] == "REMOVED"
-                  else ["--retained", summary["reason"]])
         if record["state"] != "closed":
-            try:
-                lease.close_lease(record, lease.parser().parse_args(close))
-            finally:
-                lease.persist(target, record)
+            if summary["disposition"] == "REMOVED":
+                lease_command("close", "--lease-id", args.lease_id, "--close-token", token,
+                              "--receipt", str(receipt))
+            else:
+                lease_command("abort-close", "--lease-id", args.lease_id, "--close-token", token)
         if state is not None:
-            state.update(stage="closed", summary=summary)
+            state.update(stage="closed" if summary["disposition"] == "REMOVED" else "retained",
+                         summary=summary)
+            if summary["disposition"] == "RETAINED":
+                state.setdefault("retained_attempts", []).append(
+                    dict(at=lease.utc_now(), reason=summary["reason"], close_token=token))
             write_close_state(destination, state)
         return summary, 0 if summary["disposition"] == "REMOVED" else 1
 
