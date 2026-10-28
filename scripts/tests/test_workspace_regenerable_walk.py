@@ -2,11 +2,12 @@
 from contextlib import contextmanager
 import os
 from pathlib import Path
+import subprocess
 
 import pytest
 
 from test_workspace_preservation import ignored
-from test_workspace_retire import git, load_retire, retire_args, run, tree
+from test_workspace_retire import REAL_GIT, git, load_retire, retire_args, run, tree
 
 
 def cache(tree, name=".venv"):
@@ -166,3 +167,86 @@ def test_nested_repository_receipt_caps_paths(tree):
     paths = receipt["regenerable_walks"][-1]["nested_repositories"]
     assert len(paths) == 20
     assert all(path.startswith(".venv/") and path.endswith("/.git") for path in paths)
+
+
+def bare_repository(root, main):
+    package = root / "src/somepkg"
+    package.mkdir(parents=True)
+    git(package, "init", "-q", "--bare")
+    git(package, "config", "user.name", "Fixture")
+    git(package, "config", "user.email", "fixture@example.com")
+    def write_object(*words, payload):
+        return subprocess.check_output([REAL_GIT, "-C", str(package), *words],
+                                       input=payload).decode().strip()
+    blob = write_object("hash-object", "-w", "--stdin", payload=b"exclusive bare work\n")
+    tree_id = write_object("mktree", payload=f"100644 blob {blob}\tprecious\n".encode())
+    head = git(package, "commit-tree", tree_id, "-m", "exclusive bare fixture commit")
+    git(package, "update-ref", "refs/heads/unpublished", head)
+    git(package, "symbolic-ref", "HEAD", "refs/heads/unpublished")
+    assert git(package, "rev-parse", "--is-bare-repository") == "true"
+    assert not (package / ".git").exists()
+    assert subprocess.run([REAL_GIT, "-C", str(main), "cat-file", "-e", head],
+                          capture_output=True).returncode != 0
+    return head
+
+
+@pytest.mark.parametrize("phase", ["before", "after"])
+@pytest.mark.parametrize("opaque_objects", [False, True])
+def test_bare_repository_retained_intact(tree, monkeypatch, phase, opaque_objects):
+    root = cache(tree)
+    heads, moved_paths = [], []
+    def provision(worktree):
+        moved_paths.append(worktree)
+        heads.append(bare_repository(worktree / ".venv", tree[0]))
+        if opaque_objects:
+            (worktree / ".venv/src/somepkg/objects").chmod(0)
+    if phase == "before":
+        provision(tree[1])
+    else:
+        module = load_retire()
+        at_move(module, tree, monkeypatch, provision)
+    receipt = {}
+    try:
+        if phase == "before":
+            result, receipt = run(tree)
+            code = result.returncode
+        else:
+            receipt, code = module.retire(retire_args(tree))
+        assert code == 2 and receipt["disposition"] == "RETAINED"
+        assert "nested repository in regenerable dir: .venv/src/somepkg" in receipt["reason"]
+        assert receipt["remove_rc"] is None
+        assert receipt["move_back_rc"] == (0 if phase == "after" else None)
+        assert receipt["regenerable_walks"][-1]["nested_repositories"] == [".venv/src/somepkg"]
+    finally:
+        candidates = [tree[1], *moved_paths]
+        if receipt.get("quarantine_path"):
+            candidates.append(Path(receipt["quarantine_path"]))
+        for worktree in candidates:
+            objects = worktree / ".venv/src/somepkg/objects"
+            if os.path.lexists(objects):
+                objects.chmod(0o700)
+    package = root / "src/somepkg"
+    assert git(package, "rev-parse", "HEAD") == heads[0]
+    assert git(package, "show", heads[0] + ":precious") == "exclusive bare work"
+
+
+@pytest.mark.parametrize("marker", ["objects", "packed-refs", "objects/pack"])
+def test_bare_repository_shape_without_refs_retained(tree, marker):
+    root = cache(tree)
+    (root / "HEAD").write_text("ref: refs/heads/unpublished\n")
+    if marker == "packed-refs":
+        (root / marker).write_text("# pack-refs with: peeled\n")
+    else:
+        (root / marker).mkdir(parents=True)
+    result, receipt = run(tree)
+    assert result.returncode == 2 and receipt["disposition"] == "RETAINED"
+    assert "nested repository in regenerable dir: .venv" in receipt["reason"]
+    assert receipt["remove_rc"] is None and root.is_dir()
+
+
+def test_plain_head_without_repository_shape_removed(tree):
+    root = cache(tree, "node_modules")
+    (root / "HEAD").write_text("ordinary dependency data\n")
+    result, receipt = run(tree)
+    assert result.returncode == 0 and receipt["disposition"] == "REMOVED"
+    assert all(not walk["nested_repositories"] for walk in receipt["regenerable_walks"])

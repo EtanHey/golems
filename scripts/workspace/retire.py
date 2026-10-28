@@ -8,8 +8,9 @@ allowlist or --archive-manifest: a JSON object with archive_root and entries of
 may be absolute or relative to archive_root. Archives and the manifest must
 survive outside the original/quarantine paths; archive_root cannot be ephemeral.
 Directories require file-by-file coverage. This primitive never writes archives.
-Regenerable directories are scanned without following symlinks; any .git entry
-or incomplete scan retains the worktree. Each inventory's scan is capped at
+Regenerable directories are scanned without following symlinks; any .git entry,
+HEAD with objects/ or packed-refs, or incomplete scan retains the worktree.
+Detected repositories are not descended into. Each inventory's scan is capped at
 30 seconds or 100,000 entries, with duration/count/budget evidence in the receipt.
 Callers must hold the W2 lease with all consumers released before calling; W4
 must enforce that precondition. Handle scans and repeated inventories reduce
@@ -235,20 +236,38 @@ def inspect_regenerable(receipt, path, names, patterns):
             info = os.fstat(descriptor)
             if not info.st_mode & 0o444 or not info.st_mode & 0o111:
                 raise PermissionError("unreadable directory: " + str(relative))
+            children, repository = [], None
+            head = objects = packed = False
             with os.scandir(descriptor) as entries:
                 for entry in entries:
                     budget()
                     walk["entry_count"] += 1
                     child = relative / entry.name
                     if entry.name == ".git":
-                        walk["nested_repositories"].append(child.as_posix())
-                        if len(walk["nested_repositories"]) == 20:
-                            raise ValueError(nested_reason())
-                        continue
+                        repository = child
+                        break
                     # Always stat, including files: stale dirents are incomplete evidence.
                     mode = entry.stat(follow_symlinks=False).st_mode
+                    if entry.name == "HEAD":
+                        head = stat.S_ISREG(mode) or stat.S_ISLNK(mode)
+                    elif entry.name == "objects":
+                        objects = stat.S_ISDIR(mode) or stat.S_ISLNK(mode)
+                    elif entry.name == "packed-refs":
+                        packed = True
+                    # objects/ also covers objects/pack. No refs/ requirement:
+                    # partial repositories and ambiguous symlink markers retain.
+                    if head and (objects or packed):
+                        repository = relative
+                        break
                     if stat.S_ISDIR(mode):
-                        visit(descriptor, entry.name, child)
+                        children.append(entry.name)
+            if repository is not None:
+                walk["nested_repositories"].append(repository.as_posix())
+                if len(walk["nested_repositories"]) == 20:
+                    raise ValueError(nested_reason())
+            else:
+                for child in children:
+                    visit(descriptor, child, relative / child)
             after = os.stat(name, dir_fd=parent, follow_symlinks=False)
             if (after.st_dev, after.st_ino) != (info.st_dev, info.st_ino):
                 raise OSError("directory changed while walking: " + str(relative))
