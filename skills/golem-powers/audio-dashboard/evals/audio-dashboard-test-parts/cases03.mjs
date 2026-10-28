@@ -495,7 +495,8 @@ test("decision-flow build passes a comparison and its timeout into the rendered 
   expect(result.stderr).toContain("comparison page for gate is not on disk yet");
 });
 
-test("decision-flow build rejects a local comparison page without the ready marker", () => {
+test("decision-flow build accepts only the canonical comparison ready marker", async () => {
+  const { CANONICAL, REJECTED } = await import("../fixtures/comparison-markers/specimens.mjs");
   const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-comparison-ready-"));
   const jobDir = path.join(root, "job");
   writeSegment(jobDir, "only", [
@@ -512,15 +513,16 @@ test("decision-flow build rejects a local comparison page without the ready mark
     scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
     decisions: [{ id: "gate", title: "Gate", body: "Compare the takes.", sceneIds: ["only"], comparison: { url: "visuals/gate.html#chart" } }]
   };
+  const build = html => { writeFileSync(page, html); return buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result; };
 
-  writeFileSync(page, '<!doctype html><figure><svg width="320" height="120"></svg></figure>');
-  const unmarked = buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result;
-  expect(unmarked.status).not.toBe(0);
-  expect(unmarked.stderr).toContain("comparison page lacks the ready marker: gate visuals/gate.html#chart");
-
-  writeFileSync(page, '<!doctype html><html><head><meta name="adash-comparison" content="ready"></head><figure><svg width="320" height="120"></svg></figure></html>');
-  expect(buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result.status).toBe(0);
-});
+  for (const [name, html] of Object.entries(CANONICAL)) expect([name, build(html).status]).toEqual([name, 0]);
+  for (const [name, html] of Object.entries(REJECTED)) {
+    const rejected = build(html);
+    expect([name, rejected.status === 0]).toEqual([name, false]);
+    expect(rejected.stderr).toContain("comparison page lacks the canonical ready marker: gate visuals/gate.html#chart");
+    expect(rejected.stderr).toContain("markComparisonReady");
+  }
+}, 120000);
 
 test("decision-flow rejects duplicate decision ids before render", () => {
   const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-duplicate-"));
