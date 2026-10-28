@@ -20,9 +20,11 @@ _cases_spec.loader.exec_module(_cases)
 desynced_patch_cases = _cases.desynced_patch_cases
 
 
-@unittest.skipUnless(shutil.which("codex"), "Codex CLI not installed")
+@unittest.skipUnless(shutil.which("codex") or os.environ.get("GOLEMS_REQUIRE_CODEX") == "1",
+                     "Codex CLI not installed")
 class NativeHooksTests(unittest.TestCase):
     def test_native_preexecution_denial_and_allow(self):
+        self.assertIsNotNone(shutil.which("codex"), "Codex CLI not installed (GOLEMS_REQUIRE_CODEX=1)")
         (ROOT / "docs.local").mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch)
