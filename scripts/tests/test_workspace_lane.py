@@ -17,10 +17,6 @@ tree = worktree_fixture
 
 CLI = Path(__file__).resolve().parents[1] / "workspace/lane.py"
 LEASE = CLI.with_name("lease.py")
-W2B_AVAILABLE = "begin-close" in subprocess.check_output(
-    [sys.executable, str(LEASE), "--help"], text=True)
-requires_w2b = pytest.mark.skipif(not W2B_AVAILABLE,
-    reason="PENDING W2b on master: begin-close / close-token / abort-close integration")
 
 
 @pytest.fixture
@@ -61,7 +57,6 @@ def lane(tree, monkeypatch):
 
 
 @pytest.mark.parametrize("detached", [False, True])
-@requires_w2b
 def test_open_close_caches_keeps_branch(lane, tree, detached):
     opened = json.loads(lane.open(*(["--detach"] if detached else ["--branch", "task/sample"])).stdout)
     path = Path(opened["path"])
@@ -81,7 +76,6 @@ def test_open_close_caches_keeps_branch(lane, tree, detached):
     assert receipt["remove_rc"] == 0 and receipt["branch_retained"] is True
 
 
-@requires_w2b
 def test_ignored_report_archived_and_manifest_verified(lane):
     opened = json.loads(lane.open().stdout)
     report = Path(opened["path"]) / "docs.local/report.md"
@@ -99,7 +93,6 @@ def test_ignored_report_archived_and_manifest_verified(lane):
 
 
 @pytest.mark.parametrize("name", ["untracked.txt", "tracked"])
-@requires_w2b
 def test_uncommitted_work_retained_without_archive(lane, name):
     opened = json.loads(lane.open().stdout)
     path = Path(opened["path"])
@@ -115,7 +108,6 @@ def test_uncommitted_work_retained_without_archive(lane, name):
     assert not lane.archive.exists()
 
 
-@requires_w2b
 def test_consumer_refuses_close_without_touching_contents(lane):
     opened = json.loads(lane.open().stdout)
     lane.run("consumer", "add", "--lease-id", opened["lease_id"], "--who", "reviewer", script=LEASE)
@@ -179,7 +171,6 @@ def test_unsafe_archive_root_refused(lane, location):
     assert target.is_dir() and lane.record(opened)["state"] == "bound"
 
 
-@requires_w2b
 def test_default_archive_root_uses_main_checkout(lane):
     repo = lane.archive.parent / "persistent-repo"
     repo.mkdir()
@@ -195,7 +186,6 @@ def test_default_archive_root_uses_main_checkout(lane):
 
 
 @pytest.mark.parametrize("marker", ["directory", "gitfile", "bare"])
-@requires_w2b
 def test_ignored_nested_repository_never_archived(lane, tree, marker):
     opened = json.loads(lane.open().stdout)
     root = Path(opened["path"]) / "docs.local"
@@ -271,7 +261,6 @@ sys.exit(lane.main())
 
 
 @pytest.mark.parametrize("point", ["archive", "retire", "persist"])
-@requires_w2b
 def test_interrupted_close_resumes_without_rearchiving(lane, point):
     opened = json.loads(lane.open().stdout)
     report = Path(opened["path"]) / "docs.local/report.md"
@@ -293,7 +282,6 @@ def test_interrupted_close_resumes_without_rearchiving(lane, point):
     assert json.loads((destination / "close-state.json").read_text())["stage"] == "closed"
 
 
-@requires_w2b
 def test_interrupted_close_rejects_tampered_archive(lane):
     opened = json.loads(lane.open().stdout)
     report = Path(opened["path"]) / "docs.local/report.md"
@@ -344,33 +332,52 @@ def test_manifest_covered_subtrees_checked_at_retirement(lane, tree, monkeypatch
     assert receipt["ignored_walks"][-1]["phase"] == ("after_move" if phase == "after" else "before_move")
 
 
-@pytest.mark.skipif(W2B_AVAILABLE, reason="only exercises absence of the W2b dependency")
 def test_missing_w2b_refuses_before_archive_or_retire(lane):
     opened = json.loads(lane.open().stdout)
     before = lane.record(opened)
-    result = lane.close(opened, ok=False)
+    script = '''import sys
+sys.path.insert(0, sys.argv.pop(1))
+import lane
+original = lane.subprocess.run
+def legacy_help(command, *args, **kwargs):
+    result = original(command, *args, **kwargs)
+    if command == [sys.executable, str(lane.Path(lane.lease.__file__)), "--help"]:
+        result.stdout = "reserve bind consumer close audit"
+    return result
+lane.subprocess.run = legacy_help
+sys.exit(lane.main())
+'''
+    result = subprocess.run([sys.executable, "-c", script, str(CLI.parent), "close",
+        "--lease-id", opened["lease_id"], "--archive-root", str(lane.archive)],
+        capture_output=True, text=True)
+    assert result.returncode != 0
     assert "W2b" in result.stderr and Path(opened["path"]).is_dir()
     assert lane.record(opened) == before and not lane.archive.exists()
 
 
-@requires_w2b
 def test_consumer_interleaving_is_refused_before_retire(lane):
     opened = json.loads(lane.open().stdout)
     script = '''import subprocess, sys
 sys.path.insert(0, sys.argv.pop(1))
 import lane
-original = lane.archive_files
-def interleave(path, entries, destination, record):
-    assert record["state"] == "closing"
-    result = subprocess.run([sys.executable, str(lane.Path(lane.lease.__file__)),
-        "consumer", "add", "--lease-id", record["lease_id"], "--who", "late-reviewer"],
-        capture_output=True, text=True, timeout=5)
-    assert result.returncode != 0 and "lease is closing" in result.stderr, result.stderr
-    assert lane.lease.read_json(lane.lease.lease_file(lane.lease.ledger_directory(),
-        record["lease_id"]))["consumers"] == []
-    return original(path, entries, destination, record)
-lane.archive_files = interleave
-sys.exit(lane.main())
+original = lane.lease_command
+attempts = []
+def interleave(*args):
+    response = original(*args)
+    if args[0] == "begin-close":
+        lease_id = args[args.index("--lease-id") + 1]
+        result = subprocess.run([sys.executable, str(lane.Path(lane.lease.__file__)),
+            "consumer", "add", "--lease-id", lease_id, "--who", "late-reviewer"],
+            capture_output=True, text=True, timeout=5)
+        assert result.returncode != 0 and "lease is closing" in result.stderr, result.stderr
+        record = lane.lease.read_json(lane.lease.lease_file(lane.lease.ledger_directory(), lease_id))
+        assert record["state"] == "closing" and record["consumers"] == []
+        attempts.append(lease_id)
+    return response
+lane.lease_command = interleave
+code = lane.main()
+assert len(attempts) == 1
+sys.exit(code)
 '''
     result = subprocess.run([sys.executable, "-c", script, str(CLI.parent), "close",
         "--lease-id", opened["lease_id"], "--archive-root", str(lane.archive)],
