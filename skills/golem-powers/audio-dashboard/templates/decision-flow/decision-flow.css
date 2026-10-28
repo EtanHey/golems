@@ -357,10 +357,6 @@ body[data-view="story"] .df-chip .df-answer-status{position:relative;z-index:1;f
 body[data-view="story"] .df-chip.is-answered .df-answer-status,body[data-view="story"] .df-chip[aria-current="true"] .df-answer-status{color:var(--ink)}
 body[data-view="story"] .df-chip .df-note-count{position:absolute;right:0;top:-2px;z-index:2;min-width:13px;height:13px;padding:0 2px;font-size:10px}
 
-/* Rail links: a linked PR reads as repo#number, never a bare number. */
-.df-rail-link{color:var(--glass);text-decoration-color:rgba(121,207,194,.45);text-underline-offset:3px;overflow-wrap:anywhere}
-@media(hover:hover) and (pointer:fine){.df-rail-link:hover{color:var(--moon);text-decoration-color:currentColor}}
-.df-rail-ref{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 
 /* Comparison: one shared dialog that always settles - loaded, or a failure with Retry and Back. */
 .df-compare-open{display:inline-flex;align-items:center;gap:8px;min-height:44px;margin:14px 0 0;padding:0 16px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;color:var(--moon);cursor:pointer;transition:transform 160ms ease-out,border-color 160ms ease}

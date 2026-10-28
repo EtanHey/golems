@@ -91,65 +91,11 @@ function renderWords(scene) {
   ).join(" ");
 }
 
-// A bare "#39" names no repository; only an explicit repository-qualified href may link it.
-const BARE_REFERENCE = /(?<![\w&#/])#(\d+)\b/g;
-const GITHUB_REFERENCE = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/(pull|issues)\/(\d+)(?:[/?#]|$)/;
-
-function safeHref(value) {
-  let url;
-  try {
-    url = new URL(String(value ?? "").trim());
-  } catch {
-    return "";
-  }
-  return (url.protocol === "https:" || url.protocol === "http:") && url.hostname ? url.href : "";
-}
-
-function renderRailValue(row, decisionId) {
-  const value = String(row.value ?? "").trim();
-  const href = safeHref(row.href);
-  if (!href) return escapeHtml(row.value);
-  const reference = href.match(GITHUB_REFERENCE);
-  if (!reference) return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(value || href)}</a>`;
-  const [, owner, repo, kind, number] = reference;
-  const stated = [...value.matchAll(BARE_REFERENCE)].map((match) => match[1]);
-  if (stated.some((statedNumber) => statedNumber !== number)) {
-    throw new Error(`decision-flow: ${decisionId} rail "${row.label}" says ${value} but links ${owner}/${repo}#${number}`);
-  }
-  const label = `${repo}#${number}`;
-  const text = !value || /^#\d+$/.test(value) ? escapeHtml(label) : `${escapeHtml(value)} <span class="df-rail-ref">${escapeHtml(label)}</span>`;
-  return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer" title="${kind === "pull" ? "Pull request" : "Issue"} ${escapeHtml(`${owner}/${repo}#${number}`)}">${text}</a>`;
-}
-
-function renderRail(rows = [], decisionId = "") {
+function renderRail(rows = []) {
   if (!rows.length) return "";
   return `<dl class="df-rail">${rows.map((row) =>
-    `<div><dt>${escapeHtml(row.label)}</dt><dd>${renderRailValue(row, decisionId)}</dd></div>`,
+    `<div><dt>${escapeHtml(row.label)}</dt><dd>${escapeHtml(row.value)}</dd></div>`,
   ).join("")}</dl>`;
-}
-
-// Producer check: every "#N" a card shows must be linked on that card by a repository-qualified href.
-export function findBareReferences(decisions = []) {
-  const found = [];
-  for (const decision of decisions) {
-    const rail = Array.isArray(decision.rail) ? decision.rail : [];
-    const linked = new Set(rail.map((row) => safeHref(row.href).match(GITHUB_REFERENCE)?.[4]).filter(Boolean));
-    const fields = [
-      ["title", decision.title],
-      ["summary", decision.summary],
-      ["body", decision.body],
-      ...(decision.options || []).flatMap((option, index) => typeof option === "string"
-        ? [[`option ${index}`, option]]
-        : [[`option ${index}`, option?.label ?? option?.title], [`option ${index} summary`, option?.summary]]),
-      ...rail.filter((row) => !safeHref(row.href)).map((row) => [`rail ${row.label}`, row.value]),
-    ];
-    for (const [field, text] of fields) {
-      for (const match of String(text ?? "").matchAll(BARE_REFERENCE)) {
-        if (!linked.has(match[1])) found.push({ decision: decision.id, field, ref: match[0] });
-      }
-    }
-  }
-  return found;
 }
 
 function renderParagraphs(text) {
@@ -324,7 +270,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
     <div class="df-question">${renderParagraphs(decision.body)}</div>
-    ${renderRail(decision.rail, decision.id)}
+    ${renderRail(decision.rail)}
     <div class="df-answer">
       ${renderChecklist(decision)}
       ${optionBlocks ? `<fieldset class="df-options"><legend class="df-sr-only">${escapeHtml(decision.title)} options</legend>${optionBlocks}</fieldset>` : ""}

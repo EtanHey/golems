@@ -1,6 +1,6 @@
 # Card detail affordances
 
-Attribution: Etan, 2026-10-28 dashboard feedback (AD-14 to AD-16).
+Attribution: Etan, 2026-10-28 dashboard feedback.
 
 A card without a visualization must not have a **View details** expander.
 Repeating its existing text adds no useful detail. Either offer no secondary
@@ -43,16 +43,12 @@ or text-only element fails. A URL pointing back to the dashboard itself must
 include such a fragment; a whole-page self-reference fails. No scripts execute
 and no external pages are fetched.
 
-## Comparisons and references
+## Comparisons
+
+Attribution: Etan, 2026-10-28 dashboard feedback (AD-15).
 
 A decision-flow card declares a comparison with `comparison: { url, label?,
 title?, timeoutMs? }`. The renderer supplies the dialog. It shows Loading, then
 the page, or a failure message with Retry and Back once the frame errors or
 `timeoutMs` passes (default 10 s). It never waits forever. Retry loads a fresh
 frame, and a late event from an earlier attempt is ignored.
-
-A card that names an issue or PR links it. Supply the repository-qualified URL
-as a rail `href`: `{ "label": "PR", "value": "#39", "href":
-"https://github.com/OWNER/REPO/pull/39" }`. The producer must already know the
-repository; never infer one from a bare number. `build-dashboard` rejects any
-`#N` on a card that has no matching linked rail row.

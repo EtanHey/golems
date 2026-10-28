@@ -1,4 +1,4 @@
-"""Compose ADX2 (AD-15/AD-16) proof: before/after stills, pixel diffs and frame-sequence GIFs.
+"""Compose ADX2a (AD-15) proof: before/after stills, pixel diffs and frame-sequence GIFs.
 Run the browser eval with ADX2_OUTPUT=docs.local/adx2-proof/after, and capture the same synthetic spec
 with origin/master's renderer into docs.local/adx2-proof/before/{1280,390}-card.png, before this script.
 """

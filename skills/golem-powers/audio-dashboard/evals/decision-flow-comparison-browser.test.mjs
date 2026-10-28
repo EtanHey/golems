@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { renderDecisionFlow } from '../src/decision-flow.mjs';
 
-// AD-15/AD-16 in a real browser: Chromium fires load, not error, for failed frame navigations.
+// AD-15 in a real browser: Chromium fires load, not error, for failed frame navigations.
 let chromium = null;
 try {
   ({ chromium } = await import('playwright'));
@@ -27,7 +27,7 @@ const ADX2_SPEC = {
   storageKey: 'adx2-synthetic', heading: 'Voice comparison',
   scenes: ['ok', 'missing', 'down', 'slow'].map(sceneFor),
   decisions: [
-    card('ok', 'Keep the warmer voice?', 'visuals/ok.html', { rail: [{ label: 'Owner', value: 'Operator' }, { label: 'PR', value: '#39', href: 'https://github.com/OWNER/REPO/pull/39' }] }),
+    card('ok', 'Keep the warmer voice?', 'visuals/ok.html', { rail: [{ label: 'Owner', value: 'Operator' }] }),
     card('missing', 'Missing page', 'visuals/missing.html'),
     card('down', 'Network down', 'visuals/down.html'),
     card('slow', 'Stalled server', 'visuals/slow.html', { comparison: { url: 'visuals/slow.html', timeoutMs: 1500 } }),
@@ -37,7 +37,7 @@ const html = renderDecisionFlow(ADX2_SPEC);
 if (output) writeFileSync(path.join(output, 'dashboard.html'), html);
 const visual = '<!doctype html><body style="margin:0;font:16px system-ui;background:#fff"><figure style="margin:24px"><figcaption>Voice A vs Voice B, listener preference</figcaption><svg width="320" height="120" role="img" aria-label="A 64 percent, B 36 percent"><rect x="0" y="20" width="205" height="32" fill="#2a7a6e"/><rect x="0" y="68" width="115" height="32" fill="#c98a12"/><text x="214" y="42">A 64%</text><text x="124" y="90">B 36%</text></svg></figure></body>';
 
-for (const width of [1280, 390]) browserTest(`comparison settles in Chromium and the PR link is real at ${width}px`, async () => {
+for (const width of [1280, 390]) browserTest(`comparison settles in Chromium at ${width}px`, async () => {
   const browser = await chromium.launch({ args: ['--mute-audio'] });
   try {
     const page = await browser.newPage({ viewport: { width, height: 844 }, reducedMotion: 'reduce' });
@@ -52,12 +52,6 @@ for (const width of [1280, 390]) browserTest(`comparison settles in Chromium and
     const state = () => page.locator('#df-compare').getAttribute('data-state');
     const opener = id => page.locator(`#decision-${id} .df-compare-open`);
 
-    // AD-16: the PR is a real anchor labelled repo#number.
-    const link = page.locator('#decision-ok .df-rail-link');
-    expect(await link.getAttribute('href')).toBe('https://github.com/OWNER/REPO/pull/39');
-    expect(await link.getAttribute('rel')).toBe('noopener noreferrer');
-    expect((await link.textContent()).trim()).toBe('REPO#39');
-    await link.scrollIntoViewIfNeeded();
     await page.evaluate(() => window.scrollTo(0, document.getElementById('decision-ok').getBoundingClientRect().top + scrollY - document.querySelector('.df-controller').getBoundingClientRect().bottom - 12));
     await capture(page, `${width}-card.png`);
 

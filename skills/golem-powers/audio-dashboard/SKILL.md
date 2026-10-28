@@ -318,19 +318,11 @@ decision's non-empty `sceneIds` array.
     { "id": "d1", "rank": 1, "title": "Decision one", "status": "OPEN",
       "body": "Choose the path.", "options": ["Option A", "Option B"],
       "sceneIds": ["d1q", "d1a"],
-      "rail": [{ "label": "Owner", "value": "Operator" },
-               { "label": "PR", "value": "#39", "href": "https://github.com/OWNER/REPO/pull/39" }],
+      "rail": [{ "label": "Owner", "value": "Operator" }],
       "comparison": { "url": "visuals/d1.html", "label": "View comparison", "timeoutMs": 10000 } }
   ]
 }
 ```
-
-**Issue and PR references must be links.** Any `#N` a card shows needs a rail row
-on that card whose `href` is the repository-qualified PR/issue URL the producer
-already has. Never infer a repository from a bare number. The build fails on an
-unlinked `#N`, rejects a value whose number contradicts its GitHub `href`, and
-renders GitHub links as `repo#N`. Only `http(s)` hrefs become anchors; anything
-else, including `javascript:` and `data:`, stays plain text.
 
 **Comparisons settle.** `comparison.url` is a relative page inside the dashboard
 directory (no scheme, no leading `/`). It opens in a shared dialog that shows

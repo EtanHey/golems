@@ -473,31 +473,25 @@ test("decision-flow fails closed when a scene is not owned by exactly one decisi
   expect(result.stderr).toContain("orphan");
 });
 
-test("decision-flow build rejects a bare #number until the card links a repository-qualified URL", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-bare-ref-"));
+test("decision-flow build passes a comparison and its timeout into the rendered card", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-comparison-"));
   const jobDir = path.join(root, "job");
   writeSegment(jobDir, "only", [
     { word: "alpha", start: 0.05, end: 0.42 },
     { word: "beta", start: 0.45, end: 0.80 }
   ]);
-  const spec = rail => ({
+  const { result, outputPath } = buildDashboard({
     type: "decision-flow",
-    id: "decision-flow-bare-ref",
+    id: "decision-flow-comparison",
     scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
     comparisonTimeoutMs: 4000,
-    decisions: [{ id: "gate", title: "Gate", body: "Merged in #39.", sceneIds: ["only"], rail, comparison: { url: "visuals/gate.html" } }]
-  });
-
-  const bare = buildDashboard(spec([{ label: "PR", value: "#39" }]), jobDir, "decision-flow-bare-ref").result;
-  expect(bare.status).not.toBe(0);
-  expect(bare.stderr).toContain("bare issue/PR reference");
-  expect(bare.stderr).toContain("gate body #39");
-
-  const { result, outputPath } = buildDashboard(spec([{ label: "PR", value: "#39", href: "https://github.com/EtanHey/golems/pull/39" }]), jobDir, "decision-flow-bare-ref");
+    decisions: [{ id: "gate", title: "Gate", body: "Compare the takes.", sceneIds: ["only"], comparison: { url: "visuals/gate.html" } }]
+  }, jobDir, "decision-flow-comparison");
   expect(result.status).toBe(0);
   const html = readFileSync(outputPath, "utf8");
-  expect(html).toContain('href="https://github.com/EtanHey/golems/pull/39"');
+  expect(html).toContain('data-compare-url="visuals/gate.html"');
   expect(html).toContain('data-compare-timeout="4000"');
+  expect(html).toContain('id="df-compare"');
 });
 
 test("decision-flow rejects duplicate decision ids before render", () => {

@@ -63,7 +63,7 @@ import {
 } from "../src/build-receipts.mjs";
 import { analyzeTeleprompterDrift, formatTeleprompterDriftReport } from "../src/teleprompter-drift-gate.mjs";
 import { injectDecisionSurfaceIntoHtml } from "../src/decision-surface.mjs";
-import { findBareReferences, renderDecisionFlow } from "../src/decision-flow.mjs";
+import { renderDecisionFlow } from "../src/decision-flow.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -451,11 +451,6 @@ function main() {
 
   let html;
   if (dashboardType === "decision-flow") {
-    // A bare "#39" names no repository; the producer must link a repository-qualified URL on the card.
-    const bareReferences = findBareReferences(Array.isArray(spec.decisions) ? spec.decisions : []);
-    if (bareReferences.length) {
-      fail(`decision-flow bare issue/PR reference: ${bareReferences.map(({ decision, field, ref }) => `${decision} ${field} ${ref}`).join("; ")}. Add a rail row with href set to the repository-qualified PR/issue URL; never infer the repository from the number.`);
-    }
     try {
       html = renderDecisionFlow({
         title: spec.title || "Decision flow",
