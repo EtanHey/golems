@@ -45,7 +45,7 @@ test('CRLF body is accepted', () => assert.equal(check(`${record}\r\n`).status, 
 test('workflow validates edited bodies through env and preserves default PR events', async () => {
   const { readFileSync } = await import('node:fs');
   const workflow = readFileSync('.github/workflows/ratchet.yml', 'utf8');
-  assert.match(workflow, /pull_request:\n    types: \[opened, synchronize, reopened, edited\]/);
+  assert.match(workflow, /pull_request:\n    types: \[opened, synchronize, reopened, edited, labeled, unlabeled\]/);
   assert.match(workflow, /^  ratchet:/m);
   const job = workflow.slice(workflow.indexOf('  loop-record:'), workflow.indexOf('  ratchet:'));
   assert.match(job, /if: github.event_name == 'pull_request'/);
