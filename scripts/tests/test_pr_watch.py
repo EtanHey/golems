@@ -67,8 +67,14 @@ if sys.argv[1] == 'api':
         print(json.dumps({'workflow_runs': []}))
     sys.exit(0)
 steps = json.loads((p / 'steps').read_text())
-n = int((p / 'calls').read_text()) if (p / 'calls').exists() else 0
-(p / 'calls').write_text(str(n + 1))
+import fcntl
+counter = p / 'calls'
+counter_tmp = p / f'calls.{os.getpid()}.tmp'
+with (p / 'calls.lock').open('a') as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    n = int(counter.read_text()) if counter.exists() else 0
+    counter_tmp.write_text(str(n + 1))
+    os.replace(counter_tmp, counter)
 with (p / 'argv').open('a') as f: f.write(json.dumps(sys.argv[1:]) + '\\n')
 step = steps[min(n, len(steps) - 1)]
 if 'sleep' in step:
@@ -84,6 +90,49 @@ if 'error' in step:
 print(json.dumps(step))
 ''')
         gh.chmod(0o755)
+
+    def test_concurrent_counter_increments_are_not_lost(self):
+        count = 32
+        (self.home / 'steps').write_text(json.dumps([snapshot()]))
+        gh = self.home / 'gh'
+        # Release all writers together after they have been launched.
+        gh.write_text(gh.read_text().replace(
+            "p = Path(os.environ['FIXTURE_DIR'])",
+            "sys.stdin.buffer.read(1)\np = Path(os.environ['FIXTURE_DIR'])"))
+        children = []
+        try:
+            for _ in range(count):
+                children.append(subprocess.Popen(
+                    [str(gh), 'pr', 'view'], stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    env=dict(os.environ, FIXTURE_DIR=str(self.home))))
+            for child in children:
+                child.stdin.write(b'!')
+                child.stdin.flush()
+            results = [child.communicate(timeout=8) for child in children]
+            self.assertEqual(int((self.home / 'calls').read_text()), count,
+                             [err.decode() for _, err in results if err])
+            for child, (_, err) in zip(children, results):
+                self.assertEqual(child.returncode, 0, err.decode())
+        finally:
+            for child in children:
+                if child.poll() is None:
+                    child.kill()
+                child.communicate()
+
+    def test_interrupted_counter_write_preserves_last_complete_count(self):
+        (self.home / 'calls').write_text('1')
+        (self.home / 'steps').write_text(json.dumps([snapshot()]))
+        gh = self.home / 'gh'
+        # Kill after writing the next count, before it can be published.
+        gh.write_text(gh.read_text().replace(
+            '.write_text(str(n + 1))',
+            '.write_text(str(n + 1)); os.kill(os.getpid(), 9)'))
+        result = subprocess.run([str(gh), 'pr', 'view'],
+                                env=dict(os.environ, FIXTURE_DIR=str(self.home)),
+                                capture_output=True, text=True, timeout=8)
+        self.assertEqual(result.returncode, -9)
+        self.assertEqual((self.home / 'calls').read_text(), '1')
 
     def run_watch(self, steps, deadline='3s', retries=0, settle='1ms'):
         (self.home / 'steps').write_text(json.dumps(steps))
