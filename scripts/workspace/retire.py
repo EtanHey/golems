@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Retire one separately authorized worktree; never force, prune or retry.
 
-The caller owns consumer/lease and content-preservation checks. This primitive
-retains worktrees containing ignored or untracked files, or missing status evidence.
+The caller owns consumer/lease and content-preservation checks. Untracked files
+always retain the worktree. Ignored files require the committed regenerable-paths
+allowlist or --archive-manifest: a JSON object with archive_root and entries of
+{path, sha256, size, archived_to}. Paths are relative to the worktree; archived_to
+may be absolute or relative to archive_root. Archives and the manifest must
+survive outside the original/quarantine paths; archive_root cannot be ephemeral.
+Directories require file-by-file coverage. This primitive never writes archives.
 Callers must hold the W2 lease with all consumers released before calling; W4
 must enforce that precondition. Handle scans and repeated inventories reduce
 the race window but cannot exclude a brand-new writer in the milliseconds
@@ -13,6 +18,7 @@ precondition and caller writer exclusion still apply.
 """
 import argparse
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -79,7 +85,7 @@ def local_files(path):
         if len(entry) < 4 or entry[2] != " ":
             raise ValueError("status evidence incomplete: malformed entry")
         if entry[:2] in ("!!", "??"):
-            paths.append(entry[3:])
+            paths.append((entry[:2], entry[3:]))
         elif "R" in entry[:2] or "C" in entry[:2]:
             # Porcelain -z emits a second path for tracked renames/copies.
             if not next(entries, None):
@@ -87,8 +93,125 @@ def local_files(path):
     return paths, status.stdout
 
 
+def regular_hash(path):
+    if any(p.is_symlink() for p in (path, *path.parents)):
+        raise ValueError("archive evidence is a symlink: " + str(path))
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode) or not info.st_mode & 0o444:
+        raise ValueError("archive evidence is not a readable regular file: " + str(path))
+    digest = hashlib.sha256()
+    size = 0
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+            size += len(block)
+    return digest.hexdigest(), size
+
+
+def verified_archive(receipt, path, manifest):
+    if manifest is None:
+        return set()
+    excluded = [Path(receipt["path"]), path]
+    excluded.extend(Path(receipt[key]) for key in ("quarantine_path", "quarantine_container")
+                    if receipt[key] is not None)
+    def surviving(candidate, label="archive evidence"):
+        if any(candidate.resolve().is_relative_to(root) for root in excluded):
+            raise ValueError(label + " is inside retiring path: " + str(candidate))
+    def protect_receipt(candidate):
+        if receipt["receipt_out"] and Path(receipt["receipt_out"]).resolve() == candidate.resolve():
+            receipt["receipt_destination_refused"] = True
+            raise ValueError("receipt destination would overwrite archive evidence: " + str(candidate))
+    manifest = Path(manifest).absolute()
+    surviving(manifest)
+    protect_receipt(manifest)
+    receipt["archive_verified_count"] = 0
+    raw = manifest.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    if receipt["archive_manifest_sha256"] not in (None, digest):
+        raise ValueError("archive manifest changed since first read")
+    receipt["archive_manifest_sha256"] = digest
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict) or not isinstance(data.get("archive_root"), str):
+            raise ValueError("invalid archive_root or manifest object")
+        root = Path(data["archive_root"])
+        entries = data.get("entries")
+        if not isinstance(entries, list):
+            raise ValueError("archive entries must be a list")
+        # Protect every destination before a bad earlier entry can abort verification.
+        for entry in entries:
+            if isinstance(entry, dict) and isinstance(entry.get("archived_to"), str):
+                protect_receipt(root / entry["archived_to"])
+        if not root.is_absolute():
+            raise ValueError("archive_root must be absolute")
+        root = root.resolve()
+        surviving(root, "archive_root")
+        temporary = ["/tmp", "/private/tmp", "/var/tmp", "/var/folders", "/dev/shm", tempfile.gettempdir()]
+        temporary.extend(os.environ[key] for key in ("TMPDIR", "TMP", "TEMP") if os.environ.get(key))
+        def durable(candidate):
+            if any(candidate.resolve().is_relative_to(Path(value).resolve()) for value in temporary):
+                raise ValueError("archive_root or archived_to is under an ephemeral directory")
+        durable(root)
+        if not root.is_dir():
+            raise ValueError("archive_root unavailable")
+        verified = set()
+        for entry in entries:
+            if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
+                raise ValueError("invalid archive entry path")
+            name = entry["path"]
+            relative = Path(name)
+            if relative.is_absolute() or any(part in ("", ".", "..") for part in name.split("/")):
+                raise ValueError("archive entry path must be worktree-relative: " + name)
+            if name in verified or not isinstance(entry.get("archived_to"), str):
+                raise ValueError("duplicate path or invalid archived_to: " + name)
+            archived = root / entry["archived_to"]
+            if not archived.resolve().is_relative_to(root):
+                raise ValueError("archived_to escapes archive_root: " + name)
+            surviving(archived)
+            durable(archived)
+            if (not isinstance(entry.get("sha256"), str)
+                    or re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]) is None
+                    or type(entry.get("size")) is not int or entry["size"] < 0):
+                raise ValueError("invalid archive hash or size: " + name)
+            expected = entry["sha256"], entry["size"]
+            if regular_hash(path / relative) != expected or regular_hash(archived) != expected:
+                raise ValueError("archive hash/size mismatch: " + name)
+            verified.add(name)
+            receipt["archive_verified_count"] = len(verified)
+        return verified
+    except (TypeError, KeyError, UnicodeError) as error:
+        raise ValueError("invalid archive manifest: " + str(error)) from error
+
+
+def archived_entry(path, name, verified):
+    entry = path / name
+    info = entry.lstat()
+    if stat.S_ISREG(info.st_mode):
+        return name in verified
+    if not stat.S_ISDIR(info.st_mode) or not info.st_mode & 0o444 or not info.st_mode & 0o111:
+        raise ValueError("unreadable or unsupported ignored entry: " + name)
+    # Walk explicitly: glob/rglob can suppress directory enumeration errors.
+    return all([archived_entry(path, child.relative_to(path).as_posix(), verified)
+                for child in entry.iterdir()])
+
+
 def inventory(receipt, path):
-    files, status = local_files(path)
+    entries, status = local_files(path)
+    patterns = Path(__file__).with_name("regenerable-paths.txt").read_text().splitlines()
+    verified = verified_archive(receipt, path, receipt["archive_manifest"])
+    files, regenerable = [], []
+    for kind, name in entries:
+        if kind == "!!" and any(
+                ("/" + pattern in "/" + name if pattern.endswith("/") else
+                 not name.endswith("/") and Path(name).name == pattern)
+                for pattern in patterns if pattern):
+            regenerable.append(name)
+        elif kind == "!!" and verified and archived_entry(path, name, verified):
+            continue
+        else:
+            files.append(name)
+    receipt["regenerable_entries_count"] = len(regenerable)
+    receipt["regenerable_entries"] = regenerable[:20]
     receipt["local_files_count"], receipt["local_files"] = len(files), files[:20]
     if files:
         raise ValueError(f"local files present (ignored/untracked): {len(files)}")
@@ -280,6 +403,11 @@ def retire(args):
                    quarantine_registered_after=None, quarantine_physical_after=None,
                    remove_stderr="", registered_after=None, physical_after=None,
                    branch_retained=True)
+    manifest = getattr(args, "archive_manifest", None)
+    receipt.update(regenerable_entries_count=0, regenerable_entries=[],
+                   receipt_out=args.receipt_out,
+                   archive_manifest=str(Path(manifest).absolute()) if manifest is not None else None,
+                   archive_manifest_sha256=None, archive_verified_count=0)
     repo = Path(args.repo).resolve()
     refused = True
     custody_verified = False
@@ -413,14 +541,16 @@ def main():
     parser.add_argument("--expect-branch")
     parser.add_argument("--expect-head")
     parser.add_argument("--receipt-out")
+    parser.add_argument("--archive-manifest", metavar="FILE")
     args = parser.parse_args()
     receipt, code = retire(args)
     payload = json.dumps(receipt, ensure_ascii=True) + "\n"
     if args.receipt_out:
         try:
             # A refused nested destination must not add files to the target.
-            if Path(args.receipt_out).resolve().is_relative_to(Path(receipt["path"])):
-                raise ValueError("receipt destination is inside retiring path")
+            if (receipt.get("receipt_destination_refused") or
+                    Path(args.receipt_out).resolve().is_relative_to(Path(receipt["path"]))):
+                raise ValueError("receipt destination refused by preservation checks")
             write_receipt(args.receipt_out, payload)
         except (OSError, ValueError) as error:
             receipt["disposition"] = "RETAINED"
