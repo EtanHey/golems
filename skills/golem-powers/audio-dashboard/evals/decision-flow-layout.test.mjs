@@ -54,13 +54,18 @@ layoutTest("review: a real mouse drag between interior words offers Cite without
   try { for (const width of [390, 1280]) for (const view of ["list", "story"]) {
     const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: "reduce" }); await page.goto(fixture()); await page.click("#df-view-toggle");
     if (view === "list") { await page.click("#df-story-exit"); await page.locator('[data-chip-for="d00"]').click(); await page.locator('[data-decision="d00"] .df-play').click(); await page.locator('[data-decision="d00"] .df-teleprompter').evaluate(node => node.scrollIntoView({ block: "center" })); }
-    const words = page.locator(".df-card.is-active .df-words").first().locator(".df-word");
+    // Scrolling can change the active navigation card; drag the transcript we opened.
+    const card = page.locator(`[data-decision="${view === "list" ? "d00" : "v00"}"]`);
+    const words = card.locator(".df-words").first().locator(".df-word");
+    const audio = card.locator("audio").first();
+    const beforeTime = await audio.evaluate(node => node.currentTime);
     const start = await words.nth(4).boundingBox(), end = await words.nth(7).boundingBox();
     await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2); await page.mouse.down();
     await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 12 }); await page.mouse.up();
     const selected = await page.evaluate(() => getSelection().toString()); expect(selected).toContain("six seven");
     expect(await page.locator("#df-cite").isVisible()).toBe(true);
-    expect(await page.evaluate(() => document.querySelector("audio").paused)).toBe(true);
+    expect(await audio.evaluate(node => node.paused)).toBe(true);
+    expect(await audio.evaluate(node => node.currentTime)).toBe(beforeTime);
     await page.click("#df-cite"); expect(await page.textContent("#df-note-quote")).toBe(selected.trim()); await page.close();
   } } finally { await browser.close(); }
 }, 60000);
