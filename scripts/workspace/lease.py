@@ -13,6 +13,9 @@ Receipt validation trusts the supplied observations; it performs no retirement.
 
 Before retirement, begin-close atomically excludes new consumers and binding.
 Use its close_token for close or abort-close (which restores the prior state).
+The token guards against cross-caller and accidental closes. It is
+not a secret from the same OS user: the ledger file is readable.
+Only begin-close stdout returns the token; other output and history omit it.
 Closing leases never expire; audit reports their closing_age_seconds. Retry an
 interrupted close with the original receipt; identical closed receipts are no-ops.
 Close attempts are journaled before updating terminal state. If the ledger is
@@ -76,6 +79,18 @@ def read_json(path):
     return value
 
 
+def without_close_token(value, token):
+    if isinstance(value, dict):
+        return {without_close_token(key, token): without_close_token(item, token)
+                for key, item in value.items()
+                if key != "close_token"}
+    if isinstance(value, list):
+        return [without_close_token(item, token) for item in value]
+    if isinstance(value, str) and token:
+        return value.replace(token, "[close-token omitted]")
+    return value
+
+
 @contextmanager
 def writer_lock(directory):
     directory.mkdir(parents=True, exist_ok=True)
@@ -99,7 +114,11 @@ def persist(target, record, *, rollback_new=False):
             prefix=".lease-", suffix=".tmp", delete=False,
         ) as stream:
             temporary = Path(stream.name)
-            json.dump(record, stream, indent=2, sort_keys=True)
+            # Keep control state and exact receipt identity internally, while
+            # excluding tokens echoed by receipt fields or OS errors from history.
+            durable = dict(record, history=without_close_token(
+                record["history"], record.get("close_token")))
+            json.dump(durable, stream, indent=2, sort_keys=True)
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
@@ -299,7 +318,10 @@ def audit(directory):
             raise ValueError("invalid lease schema: " + path.name)
         if record["state"] != "closed":
             created = datetime.fromisoformat(record["created_at"].replace("Z", "+00:00"))
-            observation = dict(record, age_seconds=max(0, (now - created).total_seconds()))
+            observation = without_close_token(record, record.get("close_token"))
+            observation.pop("closing_previous_state", None)
+            observation.update(age_seconds=max(0, (now - created).total_seconds()),
+                               closing=record["state"] == "closing")
             if record["state"] == "closing":
                 since = datetime.fromisoformat(record["closing_since"].replace("Z", "+00:00"))
                 observation["closing_age_seconds"] = max(0, (now - since).total_seconds())
@@ -355,16 +377,19 @@ def main():
                 for record in records:
                     line = "{lease_id}\t{state}\t{age_seconds:.0f}s\t{owner}\t{path}".format(**record)
                     if record["state"] == "closing":
-                        line += "\tclosing_age={closing_age_seconds:.0f}s".format(**record)
+                        line += ("\tclosing: true\tclosing_since={closing_since}"
+                                 "\tclosing_age={closing_age_seconds:.0f}s").format(**record)
                     print(line)
         else:
             record = mutate(directory, args)
-            result = {"close_token": record["close_token"]} if args.command == "begin-close" else record
+            result = ({"close_token": record["close_token"]} if args.command == "begin-close"
+                      else without_close_token(record, record.get("close_token")))
             print(json.dumps(result, sort_keys=True))
         return 0
     except (ValueError, OSError, KeyError, TypeError) as error:
         prefix = "do not allocate: " if args.command == "reserve" else "lease refused: "
-        print(prefix + str(error), file=sys.stderr)
+        message = without_close_token(str(error), getattr(args, "close_token", None))
+        print(prefix + message, file=sys.stderr)
         return 1
 
 

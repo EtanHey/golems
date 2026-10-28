@@ -591,3 +591,63 @@ def test_invalid_receipt_does_not_release_closing_lease(lease):
     result = lease.run("consumer", "--lease-id", "sample", "add", "--who", "late", ok=False)
     assert "lease is closing" in result.stderr
     lease.close("--receipt", lease.receipt(), "--close-token", token)
+
+
+@pytest.mark.parametrize("as_json", [False, True])
+def test_audit_never_discloses_close_token(lease, as_json):
+    lease.reserve()
+    lease.bind()
+    token = lease.begin_close()
+    before = lease.read()
+    result = lease.run("audit", *(["--json"] if as_json else []))
+    assert token not in result.stdout + result.stderr
+    assert "close_token" not in result.stdout
+    if as_json:
+        observation = json.loads(result.stdout)[0]
+        assert observation["closing"] is True
+        assert observation["closing_since"] == before["closing_since"]
+        assert observation["closing_age_seconds"] >= 0
+    else:
+        assert "closing: true" in result.stdout
+        assert before["closing_since"] in result.stdout
+        assert "closing_age=" in result.stdout
+    assert lease.read() == before
+
+
+def test_close_token_not_echoed_in_errors_history_or_abort_output(lease):
+    lease.reserve()
+    lease.bind()
+    token = lease.begin_close()
+    missing = lease.path / (token + ".json")
+    failed = lease.close("--receipt", missing, "--close-token", token, ok=False)
+    assert token not in failed.stdout + failed.stderr
+    assert token not in json.dumps(lease.read()["history"])
+    aborted = lease.run("abort-close", "--lease-id", "sample", "--close-token", token)
+    assert token not in aborted.stdout + aborted.stderr
+    assert json.loads(aborted.stdout)["state"] == "bound"
+
+
+def test_only_begin_close_returns_token_even_when_receipt_echoes_it(lease):
+    lease.reserve()
+    lease.bind()
+    begun = lease.run("begin-close", "--lease-id", "sample")
+    token = json.loads(begun.stdout)["close_token"]
+    assert json.loads(begun.stdout) == {"close_token": token}
+    receipt = lease.receipt(close_token=token, reason="receipt for " + token,
+                            notes=[{token: "caller correlation"}])
+    for _ in range(2):
+        closed = lease.close("--receipt", receipt, "--close-token", token)
+        assert token not in closed.stdout + closed.stderr
+        assert "close_token" not in closed.stdout
+        assert json.loads(closed.stdout)["state"] == "closed"
+        assert token not in json.dumps(lease.read()["history"])
+    # Internal receipt identity stays intact for exact retry validation.
+    assert lease.read()["terminal_receipt"] == json.loads(receipt.read_text())
+
+
+def test_help_describes_close_token_guard_and_same_user_limit(lease):
+    help_text = lease.run("--help").stdout
+    assert "cross-caller" in help_text
+    assert "accidental closes" in help_text
+    assert "not a secret from the same OS user" in help_text
+    assert "ledger file is readable" in help_text
