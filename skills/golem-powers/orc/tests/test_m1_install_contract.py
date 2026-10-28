@@ -2,11 +2,12 @@
 import hashlib
 from pathlib import Path
 import re
+import subprocess
 
 import pytest
 
 AGENTS = Path(__file__).resolve().parents[1] / "agents"
-PIN = "a00bdae44a1a85b4d2124397411c18a9713c9abe9e560b9cc727af5636bc4e17"
+PIN = "d64b9400d1984cb353ca14f0b05aba00a81fc40e142787efa3e3015ab57bdc44"
 
 
 # Reviewed Contract 1 scope; changes require explicit review of the complete block.
@@ -90,3 +91,53 @@ def test_m1_scope_rejects_independent_writes(directive):
     text = (AGENTS / "deploy-local-prod.md").read_text()
     with pytest.raises(AssertionError, match="Unapproved M1 statement"):
         assert_m1_scope(text + "\n" + directive + "\n")
+
+
+APPROVED_DEPLOY_ROUTING = "  M1 Pro golems installs follow the deploy-local-prod agent's Contract 1 (Etan's #32 standing grant); everything else on the M1 stays untouched until the M1 test-rig adapter is active (§ Dispatch Boundaries)."
+APPROVED_OTHER_STATE = "   and bootstrap authority. Everything else on the M1 Pro stays read-only status reporting."
+
+
+def assert_no_blanket_m1_restrictions(text, *, is_routing=False):
+    if is_routing:
+        text, count = re.subn(
+            r"(?ms)^### M1 test-rig adapter\n.*?(?=^## |\Z)", "", text
+        )
+        assert count == 1, "Expected exactly one M1 test-rig adapter section"
+    for line in text.splitlines():
+        # A read-only inspection command or an unrelated later sentence does
+        # not say that M1 installs are forbidden. Inspect prose sentences.
+        prose = re.sub(r"`[^`]*`", "", line)
+        restriction = r"(?:untouched|read.only|off.limits)"
+        if re.search(
+            rf"\bm1(?: pro)?\s+(?:(?:is|stays|remains|must stay|must remain)\s+)?{restriction}"
+            rf"|\bm1(?: pro)?\s+(?:golems )?installs?\b[^.!?;\n]*{restriction}"
+            rf"|{restriction}\s+for golems installs[^.!?;\n]*\bm1\b",
+            prose, re.I,
+        ):
+            assert line in (APPROVED_DEPLOY_ROUTING, APPROVED_OTHER_STATE), (
+                "Blanket M1 restriction: " + line
+            )
+
+
+def test_golems_guidance_has_no_blanket_m1_install_restriction():
+    root = AGENTS.parents[3]
+    paths = subprocess.check_output(
+        ["git", "ls-files", "-z", "*.md"], cwd=root
+    ).decode().split("\0")
+    for relative in filter(None, paths):
+        path = root / relative
+        assert_no_blanket_m1_restrictions(
+            path.read_text(),
+            is_routing=relative == "skills/golem-powers/agent-routing/SKILL.md",
+        )
+
+
+def test_routing_rejects_restored_blanket_m1_restriction():
+    root = AGENTS.parents[3]
+    text = (root / "skills/golem-powers/agent-routing/SKILL.md").read_text()
+    assert text.count(APPROVED_DEPLOY_ROUTING) == 1
+    old = "  The M1 stays untouched until the M1 test-rig adapter is active (§ Dispatch Boundaries)."
+    with pytest.raises(AssertionError, match="Blanket M1 restriction"):
+        assert_no_blanket_m1_restrictions(
+            text.replace(APPROVED_DEPLOY_ROUTING, old), is_routing=True
+        )

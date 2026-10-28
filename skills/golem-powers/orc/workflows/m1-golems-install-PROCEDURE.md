@@ -2,7 +2,9 @@
 
 ## 0. Scope and authority
 
-Status: **PROCEDURE_READY r4h; execution has not occurred.** r4h = r4g plus one lead edit: §2 reads builder policy `scripts/release/shipped-paths.json` from Git at MERGE_SHA (as §1 does) instead of from the release archive, which does not ship it. The revised §1 offline bootstrap replay passes all 653 release members and the Git-source check. The required archive-read audit finds a different blocker: §2 still reads `scripts/release/shipped-paths.json` from the archive, but that path is also excluded from the recorded release. Its exact local read raises `KeyError`; the requested PROCEDURE_READY r4g status is withheld pending a separate release-custody decision on that dependency. `scripts/ratchet/installed-skills.py` is now separately loaded as source code from `MERGE_SHA`, with its blob ID and SHA256 retained in evidence; it need not be shipped or installed on the M1 Pro. Bootstrap run 1 still requires PHX's explicit go to CI-hygiene and the executable §1b refusal gate. Only PHX gives that go. All later runs use the full I5 gate. Local static/fake-output checks do not establish an M1 Pro install or rollback pass.
+Status: **r4n procedure revision (B′)** — PHX's reviewed pre-step permits exactly the KNOWN_DRIFT unlink below, after durable snapshot custody and before strict presync. This is offline procedure work only; live execution still requires the existing authorization and shipping gates. Historical r4m STOP evidence remains retained below.
+
+Retained B′ contract: The M1 Pro requirements manifest is derived deterministically from the SAME reviewed M4 Max manifest selected by its existing parity config: schema 2, identical canonical roots, exactly reversed identity pins, and no other keys. Both observed identities are checked by the Git-sourced library. The additional reviewed KNOWN_DRIFT unlink has separate durable snapshot/custody and rollback verification; it does not change the parity prerequisite contract. The two exact §2 files and their created-if-absent M1 parent have idempotent creation and snapshot/rollback custody; a new parent is owner-only mode `0700`. This research authorizes no live execution and performed no live writes. Bootstrap still requires PHX's actual go and §1b; all later runs require the full I5 gate and revalidation of shipped bytes. The historical r4j decision/trace is retained below; B′ explicitly revises B's byte-identity contract.
 
 Etan's three rulings, supplied verbatim in BRIEF-M1-PROCEDURE-r2.md:
 
@@ -18,11 +20,11 @@ Executor: CI-hygiene's deploy agent, from the **M4 Max**, targeting alias `m1` w
 
 **External preconditions:** CI-hygiene creates `$HOME/.golems/ratchet/m1-sync-authorized.json` OUTSIDE this procedure from Etan's three quoted rulings above (chunk ids `brainbar-23b709c5-f4b`, `brainbar-ed39050a-c93`, `brainbar-60c4e641-8a9`). For bootstrap run 1, PHX creates the go record OUTSIDE this procedure and supplies its exact absolute path through `PHX_GO_FILE`. This procedure only verifies that the required grant and, in bootstrap mode, PHX go record exist and are well-formed; a missing or malformed required record means STOP. It must never create, edit, or delete either file.
 
-`collab/TEMPLATE.md` was read. This is a static runbook. PR Loop: N/A for this two-file research task. TDD: N/A for documentation. Syntax/source checks do not establish an install or rollback pass. GitHub source inspected at #918 head `4b6ddf3d24b7426773bf4896a3c39973e9b8b2dc`: sync-m1.py, installed-skills.py, skills-receipt.py, skills-sync-receipt.mjs, lib/skills-sync-receipt.mjs, lib/install-receipt-core.mjs, release/install.sh, and vendor-skills.mjs. Revalidate final merged/shipped bytes below. The research worker executed no M1 Pro action or deployment.
+`collab/TEMPLATE.md` was read in the original research. This is a static runbook. PR Loop: N/A for this procedure-only research task. TDD: local behavior self-tests/replays below. Syntax/source checks do not establish an install or rollback pass. GitHub source inspected at #918 head `4b6ddf3d24b7426773bf4896a3c39973e9b8b2dc`: sync-m1.py, installed-skills.py, skills-receipt.py, skills-sync-receipt.mjs, lib/skills-sync-receipt.mjs, lib/install-receipt-core.mjs, release/install.sh, and vendor-skills.mjs. Revalidate final merged/shipped bytes below. r4i used strict read-only SSH to inspect M1 config prerequisites; it executed no M1 mutation or deployment.
 
 ## 1. Check prerequisites before any M1 Pro action
 
-Run this block first. Any failed prerequisite stops the shell. Do not create a grant, parity config, missing root, runtime, or SSH trust entry to make it pass. Those are separate work. CI-hygiene must have created `$HOME/.golems/ratchet/m1-sync-authorized.json` OUTSIDE this procedure from Etan's quoted rulings (`brainbar-23b709c5-f4b`, `brainbar-ed39050a-c93`, `brainbar-60c4e641-8a9`). PHX must have created bootstrap's go record OUTSIDE this procedure and supplied its exact absolute path in `PHX_GO_FILE`. The procedure only verifies these required files exist and are well-formed (grant in both modes; PHX go in bootstrap mode), STOPs otherwise, and never creates, edits, or deletes either file. The sole exception is bootstrap run 1 under §1b; it uses the frozen reviewed hash and defers only the explicitly listed receipt checks.
+Run this block first. Any failed prerequisite stops the shell. Do not create a grant, parity config, missing root, runtime, or SSH trust entry to make it pass, except EXACTLY §2's created-if-absent M1 Pro `$HOME/.golems/ratchet` parent (mode `0700`) and reviewed M1 Pro `$HOME/.golems/ratchet/installed-skills.json` four-key template and `$HOME/.golems/ratchet/requirements.json` derived B′ manifest: create either only if absent, mode `0600`, owned by the running user; verify present files without rewriting. The parent `.golems` must already be a real, non-symlink directory owned by the running user. An existing `ratchet` must be a real, non-symlink directory owned by that user and not group/world writable; never chmod it. This exception creates no identity key, skill root, M4 Max parity config/manifest, grant, or trust entry. The separate KNOWN_DRIFT exception in §2 permits only the reviewed post-snapshot unlink of `.gemini/config/skills/tmp-block`, with exact link text, ownership, real-parent and absent-target checks, durable custody and rollback verification. All other missing prerequisites remain separate work. CI-hygiene must have created `$HOME/.golems/ratchet/m1-sync-authorized.json` OUTSIDE this procedure from Etan's quoted rulings (`brainbar-23b709c5-f4b`, `brainbar-ed39050a-c93`, `brainbar-60c4e641-8a9`). PHX must have created bootstrap's go record OUTSIDE this procedure and supplied its exact absolute path in `PHX_GO_FILE`. The procedure only verifies these required files exist and are well-formed (grant in both modes; PHX go in bootstrap mode), STOPs otherwise, and never creates, edits, or deletes either file. The sole exception is bootstrap run 1 under §1b; it uses the frozen reviewed hash and defers only the explicitly listed receipt checks.
 
 ```bash
 set -Eeuo pipefail
@@ -535,7 +537,7 @@ ssh -G m1 > "$RUN/m4-ssh-effective.txt"
 fi
 ```
 
-Both hosts' `ssh -G` output must contain each required option exactly once: `batchmode yes`, `stricthostkeychecking true` (or `yes`), and `updatehostkeys false` (or `no`). These are OpenSSH's serialized safe values, checked by the same parser on the M4 Max and M1 Pro. §2's shared parser rejects wrong, missing, malformed, or duplicate options. The M4 Max proof above is validated before its first connection. After read-only preflight, the controller creates M1 Pro ssh/scp shims **only** in the run's `.golems/m1-sync/.transport-<SHA>-<UTC>/bin` staging directory, proves `command -v` for both, and runs `ssh -G` through that shim against the host in the M1 Pro's actual parity configuration. Staging evidence is the only mutation before that proof; no install/snapshot mutation proceeds without it. Every prepare/apply/controller/rollback/parity command receives the explicit M1 Pro PATH through the M4 Max shim; helpers themselves remain unmodified. Every local ssh/scp of `live-rows.sh` and `sync-m1.py` inherits the M4 Max shims. Unknown invocation shape STOPs. The remote shim prepends the same flags and execs `/usr/bin/ssh` or `/usr/bin/scp`.
+Both hosts' `ssh -G` output must contain each required option exactly once: `batchmode yes`, `stricthostkeychecking true` (or `yes`), and `updatehostkeys false` (or `no`). These are OpenSSH's serialized safe values, checked by the same parser on the M4 Max and M1 Pro. §2's shared parser rejects wrong, missing, malformed, or duplicate options. The M4 Max proof above is validated before its first connection. Preflight is read-only until the explicit §2 parent/config/requirements pre-step, which proves the M1 peer options with explicit strict flags before parent creation or either active-file write. The controller then creates M1 Pro ssh/scp shims **only** in the run's `.golems/m1-sync/.transport-<SHA>-<UTC>/bin` staging directory, proves `command -v` for both, and runs `ssh -G` through that shim against the host in the M1 Pro's actual parity configuration. The reviewed parent (only if absent), two parity files and staging evidence are the only mutations before that shim proof; no install/snapshot mutation proceeds without it. Every prepare/apply/controller/rollback/parity command receives the explicit M1 Pro PATH through the M4 Max shim; helpers themselves remain unmodified. Every local ssh/scp of `live-rows.sh` and `sync-m1.py` inherits the M4 Max shims. Unknown invocation shape STOPs. The remote shim prepends the same flags and execs `/usr/bin/ssh` or `/usr/bin/scp`.
 
 The M4 Max initial known_hosts digest/absence is checked before and after every controller mode; the M1 Pro preflight digest/absence is checked before and after shim proof, snapshot, post, finish, and recovery. The existing protected-state checks compare it after sync/parity too. Any change means rollback + STOP after snapshot; before snapshot, STOP with retained evidence. Never restore known_hosts. The run-specific remote transport staging survives failures/recovery and stays inside §7 O02; it is not a helper success stage or receipt.
 
@@ -547,17 +549,31 @@ This block writes a controller only into the run's **M4 Max evidence directory**
 
 Require all five roots as existing real directories. This runbook creates **none** of them. The installer can create Claude, Agents, Codex, and vendor-selected Cursor roots; this invocation does not create Gemini. A missing root stops preflight.
 
-Every root gets the exact shipped I5 `tree_sha256()` and a complete listing hash including hidden entries, modes, link text, and resolved content. I5 exclusions such as `.system` do not apply to the complete preservation listing. The snapshot lists every M1-only entry as `owned=false`; `post.json` enumerates those proven unchanged.
+Every hashable root gets the exact shipped I5 `tree_sha256()` and a complete listing hash including hidden entries, modes, link text, and resolved content. I5 exclusions such as `.system` do not apply to the complete preservation listing. Dangling/broken root links are recorded with `link_text` and `target_state`, an unavailable I5 hash (`null`) and a named `hash_stop`. Preflight retains all five listings in its STOP JSON before the parity pre-step or snapshot; no install follows an unknown dangling/broken entry. Only an exact KNOWN_DRIFT match may pass the pre-snapshot guard with its I5 hash still null. The archive first preserves that link object without dereference; the reviewed pre-step then records/fsyncs custody, repeats every condition, unlinks that one path and fsyncs its root. Presync tolerates nothing and computes frozen I5 hashes over all five roots. Absent entries and resolving links are recorded no-ops; regular files/directories are hashed normally. Rollback restores and verifies the archived link text, mode and owner, including on retry. Non-following mutable/archive listings preserve link text and metadata without evaluating targets in the extraction staging tree, where relative links may temporarily dangle. The followed root listings in snapshot state retain target state. The snapshot lists every M1-only entry as `owned=false`; `post.json` enumerates those proven unchanged.
+
+KNOWN_DRIFT is deliberately a one-row table; it grants no generic dangling repair:
+
+| Root | Name | Expected link text | Action |
+|---|---|---|---|
+| `.gemini/config/skills` | `tmp-block` | `../../../.agents/skills/tmp-block` | `remove-dangling-link` |
+
+PHX ruling for this pre-step: the installer-made, contentless link is inside the five reviewed skill roots; remove it only when its text matches exactly, it belongs to the M1 user, its parent is the real root and its resolved target is absent. Otherwise leave resolving/absent/non-link entries alone or STOP on unsafe dangling/broken entries. Record custody and restore the link object on rollback. No live action is authorized by this procedure revision.
 
 ```bash
 cat > "$RUN/m1-control.py" <<'PY'
-import contextlib, fcntl, hashlib, inspect, io, json, os, pwd, re, shlex, shutil, stat, subprocess, sys, tarfile
+import ast, contextlib, fcntl, hashlib, inspect, io, json, os, pwd, re, shlex, shutil, stat, subprocess, sys, tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 ROOTS = ['.claude/skills', '.agents/skills', '.codex/skills', '.cursor/skills', '.gemini/config/skills']
 FIXED = ROOTS + ['.golems/bin', '.golems/vendor', '.golems/current', '.golems/release.json',
     '.golems/release-history', '.claude/hooks', '.claude/settings.json', '.codex/hooks.json',
-    '.local/state/golems/install-receipts/golems']
+    '.local/state/golems/install-receipts/golems', '.golems/ratchet/installed-skills.json',
+    '.golems/ratchet/requirements.json']
+KNOWN_DRIFT = [dict(root='.gemini/config/skills', name='tmp-block',
+                    link_text='../../../.agents/skills/tmp-block', action='remove-dangling-link')]
+PARITY_CONFIG = '.golems/ratchet/installed-skills.json'
+PARITY_REQUIREMENTS = '.golems/ratchet/requirements.json'
+PARITY_PARENT = '.golems/ratchet'
 PATTERNS = ['.claude/settings.json.bak-*', '.claude/settings.json.install-hooks-tmp',
     '.codex/hooks.json.golems-backup-*', '.codex/hooks.json.new-*',
     '.golems/.install-lock', '.golems/.install-*', '.golems/.hooks-rollback-*']
@@ -697,11 +713,126 @@ def frozen_hashes(ns, params):
     exec(compile(params['frozen_source'], 'frozen-i5.py', 'exec'), frozen)
     shipped = ns.get('tree_sha256')
     def measured(root):
-        value = frozen['tree_sha256'](root)
+        refusal = root_hash_stop(str(root), tree(Path(root), True), params['policy'])
+        need(refusal is None, refusal)
+        try: value = frozen['tree_sha256'](root)
+        except Exception as error:
+            raise ValueError('STOP: I5_TREE_HASH ' + type(error).__name__ + ': ' + str(error)) from error
         if not params.get('bootstrap'):
             need(shipped is not None and shipped(root) == value, 'STOP: shipped/frozen tree_sha256 differs: ' + str(root))
         return value
     ns['tree_sha256'] = measured
+
+def link_resolution(path):
+    # A link object exists independently of its target. Never lose its raw text.
+    row = {'link_text': os.readlink(path)}
+    try:
+        resolved = path.resolve(strict=True)
+        resolved.stat()
+    except (FileNotFoundError, NotADirectoryError):
+        row['target_state'] = 'dangling'
+        return row, None
+    except (OSError, RuntimeError) as error:
+        row.update(target_state='broken', target_error=type(error).__name__)
+        return row, None
+    row['target_state'] = 'resolved'
+    return row, resolved
+
+def root_hash_stop(relative, listing, policy=None):
+    for row in listing['rows']:
+        # Match frozen I5 exclusions at every ancestor; complete listings still
+        # retain excluded links as data, and rollback retains their exact text.
+        if policy is not None:
+            parts = Path(row['path']).parts
+            prefixes = ['/'.join(parts[:i]) for i in range(1, len(parts) + 1)]
+            if (any(part in set(policy['excluded_parts']) | {'.pytest_cache', '.system', '.DS_Store'} for part in parts) or
+                    any(re.search(policy['excluded_files'], prefix) for prefix in prefixes) or
+                    any(part in {'.golems-source-commit', '.golems-install.json'} for part in parts[:2])):
+                continue
+        if row.get('target_state') in ('dangling', 'broken'):
+            name = relative + ('/' + row['path'] if row['path'] else '')
+            return 'STOP: DANGLING_ROOT_LINK ' + name + ' -> ' + row['link_text']
+    return None
+
+def known_drift_status(home):
+    spec = KNOWN_DRIFT[0]
+    root, path = home / spec['root'], home / spec['root'] / spec['name']
+    plain_parents(home, [str(path.relative_to(home))])
+    need(root.is_dir() and not root.is_symlink() and path.parent == root,
+         'STOP: DANGLING_ROOT_LINK unsafe known-drift parent')
+    row = dict(spec, removed_by_run=False)
+    try: info = path.lstat()
+    except FileNotFoundError: return dict(row, status='absent')
+    if not stat.S_ISLNK(info.st_mode): return dict(row, status='ordinary')
+    link, resolved = link_resolution(path)
+    if resolved is not None: return dict(row, status='resolved', observed_link_text=link['link_text'])
+    refusal = 'STOP: DANGLING_ROOT_LINK ' + spec['root'] + '/' + spec['name'] + ' -> ' + link['link_text']
+    need(info.st_uid == os.getuid() and os.readlink(os.fsencode(path)) == os.fsencode(spec['link_text']) and
+         link['target_state'] == 'dangling', refusal)
+    # Only actual absence qualifies; ENOTDIR, cycles and inaccessible targets STOP.
+    try: path.resolve(strict=False).lstat()
+    except FileNotFoundError: pass
+    except (OSError, RuntimeError) as error: raise ValueError(refusal) from error
+    else: raise ValueError(refusal)
+    return dict(row, status='matched', mode=stat.S_IMODE(info.st_mode), uid=info.st_uid,
+                gid=info.st_gid, mtime_ns=info.st_mtime_ns, dev=info.st_dev, ino=info.st_ino,
+                root_identity=identity(root))
+
+def require_hashable_capture(captured, home=None, policy=None, allow_known_drift=False):
+    drift = None
+    try:
+        if allow_known_drift: drift = known_drift_status(home)
+        stops = []
+        for relative, row in captured['roots'].items():
+            if not row.get('hash_stop'): continue
+            refusal = row['hash_stop']
+            if drift and drift['status'] == 'matched' and relative == drift['root']:
+                listing = dict(row['complete'], rows=[r for r in row['complete']['rows'] if r['path'] != drift['name']])
+                refusal = root_hash_stop(relative, listing, policy)
+            if refusal: stops.append(refusal)
+        if stops: raise ValueError(stops[0])
+    except ValueError as error:
+        error.details = {'before': captured, 'stops': locals().get('stops', [str(error)]), 'known_drift': drift}
+        raise
+    return drift
+
+def remove_known_drift(home, saved, expected):
+    observed = known_drift_status(home)
+    need(observed == expected, 'STOP: known drift changed after snapshot')
+    record = dict(observed, removed_by_run=observed['status'] == 'matched')
+    evidence(saved / 'known-drift-before.json', record)
+    if record['removed_by_run']:
+        root = home / record['root']
+        fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            info = os.fstat(fd)
+            need([info.st_dev, info.st_ino] == record['root_identity'], 'STOP: known drift root changed')
+            # Repeat all eligibility and identity checks after the durable intent,
+            # immediately before unlink; bind the operation to the verified root.
+            need(known_drift_status(home) == observed, 'STOP: known drift changed before unlink')
+            os.unlink(record['name'], dir_fd=fd)
+            os.fsync(fd)
+        finally: os.close(fd)
+        need(not present(root / record['name']), 'STOP: known drift unlink did not leave absence')
+    record['complete'] = True
+    evidence(saved / 'known-drift-complete.json', record)
+    return record
+
+def verify_known_drift_restore(home, saved):
+    record = json.loads((saved / 'known-drift-before.json').read_text())
+    if record['removed_by_run']:
+        path = home / record['root'] / record['name']
+        info = path.lstat()
+        need(stat.S_ISLNK(info.st_mode) and os.readlink(os.fsencode(path)) == os.fsencode(record['link_text']) and
+             stat.S_IMODE(info.st_mode) == record['mode'] and info.st_uid == record['uid'] and info.st_gid == record['gid'],
+             'STOP: known drift rollback link text/mode/owner mismatch')
+    return dict(record, rollback_verified=True)
+
+def controller_error(error, mode):
+    message = str(error)
+    if not message.startswith('STOP: '):
+        message = 'STOP: CONTROLLER_EXCEPTION ' + type(error).__name__ + ': ' + message
+    return dict(verdict='STOP', mode=mode, error=message, **getattr(error, 'details', {}))
 
 def tree(path, follow):
     rows = []
@@ -709,18 +840,26 @@ def tree(path, follow):
         s = p.lstat()
         row = {'path': rel, 'mode': stat.S_IMODE(s.st_mode), 'uid': s.st_uid, 'gid': s.st_gid}
         if stat.S_ISLNK(s.st_mode):
-            row.update(kind='symlink', target=os.readlink(p))
+            row.update(kind='symlink', target=os.readlink(p), link_text=os.readlink(p))
             if not follow:
                 rows.append(row)
                 return
-            resolved = p.resolve(strict=True)
+            link, resolved = link_resolution(p)
+            row.update(link)
+            if resolved is None:
+                rows.append(row)
+                return
             row['resolved'] = str(resolved)
             target_stat = p.stat()
             row.update(target_mode=stat.S_IMODE(target_stat.st_mode), target_uid=target_stat.st_uid, target_gid=target_stat.st_gid)
         else:
             resolved = p.resolve(strict=True)
             row['kind'] = 'directory' if stat.S_ISDIR(s.st_mode) else 'file' if stat.S_ISREG(s.st_mode) else 'special'
-        need(resolved not in ancestors, 'symlink cycle: ' + str(p))
+        if resolved in ancestors and row['kind'] == 'symlink':
+            row.update(target_state='broken', target_error='SymlinkCycle')
+            rows.append(row)
+            return
+        need(resolved not in ancestors, 'STOP: TREE_CYCLE ' + str(p))
         if p.is_dir():
             rows.append(row)
             for child in sorted(p.iterdir()):
@@ -745,11 +884,12 @@ def plain_parents(home, paths):
             if parent == home.parent: break
             need(parent == home or parent.is_relative_to(home), 'path escapes HOME')
             if present(parent): need(parent.is_dir() and not parent.is_symlink(), 'unsafe parent: ' + str(parent))
-REAL_DIRS = ROOTS + ['.golems', '.golems/releases', '.golems/bin', '.golems/vendor',
+REAL_DIRS = ROOTS + ['.golems', '.golems/ratchet', '.golems/releases', '.golems/bin', '.golems/vendor',
     '.golems/vendor/design-skills', '.golems/m1-sync', '.golems/m1-procedure.lock', '.claude/hooks',
     '.local/state/golems', '.local/state/golems/install-receipts',
     '.local/state/golems/install-receipts/golems']
 def real_directories(home, params):
+    parity_parent_needed(home)
     for pattern in PATTERNS[-3:]:
         need(not list(home.glob(pattern)), 'active/stale installer state before snapshot/sync: ' + pattern)
     directories = set(REAL_DIRS)
@@ -761,19 +901,19 @@ def real_directories(home, params):
         path = home / relative
         plain_parents(home, [relative])
         if present(path):
-            need(path.is_dir() and not path.is_symlink(), 'unsafe footprint directory: ' + str(path))
+            need(path.is_dir() and not path.is_symlink(), 'STOP: UNSAFE_FOOTPRINT_DIRECTORY ' + relative)
     vendor = home / '.golems/vendor/design-skills'
     if present(vendor):
         need(vendor.is_dir() and not vendor.is_symlink(), 'unsafe vendor directory')
         # Snapshot/staging trees contain verified regular files, never writable directory links.
         for child in vendor.rglob('*'):
-            need(not child.is_symlink(), 'symlink in vendor write tree: ' + str(child))
+            need(not child.is_symlink(), 'STOP: SYMLINK_IN_VENDOR_WRITE_TREE ' + str(child.relative_to(home)))
             if child.is_dir(): directories.add(str(child.relative_to(home)))
     for relative in sorted(directories):
         path = home / relative
         plain_parents(home, [relative])
         if present(path):
-            need(path.is_dir() and not path.is_symlink(), 'unsafe footprint directory: ' + str(path))
+            need(path.is_dir() and not path.is_symlink(), 'STOP: UNSAFE_FOOTPRINT_DIRECTORY ' + relative)
 
 def hooks_config(path):
     if not present(path): return {'exists': False, 'json': {}}
@@ -859,6 +999,334 @@ def evidence(path, value):
         output.flush()
         os.fsync(output.fileno())
     sync_directory(path.parent)
+def parity_template(home):
+    # M1 peer alias/key were inspected read-only; absolute paths use this host's HOME.
+    return dict(schema=1, host='macbook-pro', identity=str(home / '.ssh/id_ed25519'),
+                requirements=str(home / '.golems/ratchet/requirements.json'))
+
+def parity_parent_needed(home):
+    plain_parents(home, [PARITY_PARENT])
+    parent = home / '.golems'
+    need(parent.is_dir() and not parent.is_symlink() and parent.lstat().st_uid == os.getuid(),
+         'STOP: existing .golems parent must be a real directory owned by this uid')
+    path = home / PARITY_PARENT
+    if not present(path): return True
+    info = path.lstat()
+    need(stat.S_ISDIR(info.st_mode) and not path.is_symlink() and info.st_uid == os.getuid()
+         and not (info.st_mode & 0o022), 'STOP: parity parent must be real, this uid, not group/world writable')
+    return False
+
+def create_parity_parent(home, record_before):
+    created = parity_parent_needed(home)
+    record_before(created)  # Durable original absence and intent before mkdir.
+    if created:
+        path = home / PARITY_PARENT
+        path.mkdir(mode=0o700)  # Exactly one directory; no parents/exist_ok/chmod.
+        sync_directory(path.parent)
+        need(not parity_parent_needed(home) and stat.S_IMODE(path.lstat().st_mode) == 0o700,
+             'STOP: newly created parity parent must be mode 0700')
+    return created
+
+def restore_parity_parent(home, record):
+    if not record['parent_created_by_run']: return
+    need(not record['before']['exists'] and not record['requirements']['before']['exists'],
+         'STOP: created-parent custody requires both files originally absent')
+    need(not present(home / PARITY_CONFIG) and not present(home / PARITY_REQUIREMENTS),
+         'STOP: restore both parity files to absence before removing created parent')
+    if parity_parent_needed(home): return  # Already removed by an interrupted/prior rollback.
+    path = home / PARITY_PARENT
+    need(not list(path.iterdir()), 'STOP: created parity parent contains unexpected data')
+    ROLLBACK['mutated'] = True
+    path.rmdir()  # Empty only; racing additions refuse removal. Never recurse.
+    sync_directory(path.parent)
+
+def parity_parent_self_test(base):
+    base.mkdir(mode=0o700)
+    passed = []
+    labels = ('absent', 'present-ok', 'symlink', 'group-writable', 'world-writable',
+              'missing-golems', 'symlink-golems', 'rollback-created-empty',
+              'rollback-created-nonempty', 'rollback-preexisting')
+    for label in labels:
+        home = base / label; home.mkdir(mode=0o700)
+        golems = home / '.golems'; path = home / PARITY_PARENT
+        if label == 'symlink-golems':
+            target = home / 'target'; target.mkdir(mode=0o700); golems.symlink_to(target)
+        elif label != 'missing-golems': golems.mkdir(mode=0o700)
+        if label in ('present-ok', 'group-writable', 'world-writable', 'rollback-preexisting'):
+            path.mkdir(mode=0o700)
+            path.chmod({'group-writable': 0o770, 'world-writable': 0o707}.get(label, 0o750))
+        elif label == 'symlink':
+            target = home / 'target'; target.mkdir(mode=0o700); path.symlink_to(target)
+        before = tree(golems, False); inode = identity(path) if present(path) else None; records = []
+        try: created = create_parity_parent(home, records.append)
+        except (ValueError, OSError):
+            need(label in ('symlink', 'group-writable', 'world-writable', 'missing-golems', 'symlink-golems'),
+                 'unexpected parent STOP: ' + label)
+            need(tree(golems, False) == before and not records, 'parent refusal changed state/custody')
+        else:
+            need(label not in ('symlink', 'group-writable', 'world-writable', 'missing-golems', 'symlink-golems'),
+                 'unsafe parent accepted: ' + label)
+            need(records == [created], 'missing parent creation custody')
+            if label in ('present-ok', 'rollback-preexisting'):
+                need(not created and tree(golems, False) == before and identity(path) == inode,
+                     'pre-existing parent changed')
+            else:
+                need(created and path.lstat().st_uid == os.getuid() and
+                     stat.S_IMODE(path.lstat().st_mode) == 0o700, 'wrong created parent mode/owner/flag')
+            if label.startswith('rollback-'):
+                record = dict(parent_created_by_run=created, before={'exists': False},
+                              requirements={'before': {'exists': False}})
+                if label == 'rollback-created-nonempty': (path / 'unexpected').write_text('retain')
+                try: restore_parity_parent(home, record)
+                except ValueError:
+                    need(label == 'rollback-created-nonempty' and (path / 'unexpected').read_text() == 'retain',
+                         'wrong nonempty rollback refusal')
+                else:
+                    need(label != 'rollback-created-nonempty' and present(path) is (not created),
+                         'wrong parent rollback result')
+                    restore_parity_parent(home, record)  # Retry preserves the same result.
+        passed.append(label)
+    print('PARITY_PARENT_SELF_TEST_PASS: ' + ', '.join(passed))
+
+def verify_parity_config(path, template):
+    info = path.lstat()
+    need(stat.S_ISREG(info.st_mode) and not path.is_symlink() and info.st_uid == os.getuid()
+         and stat.S_IMODE(info.st_mode) == 0o600, 'STOP: parity config must be this uid, regular, non-symlink, mode 0600')
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            need(key not in result, 'STOP: duplicate parity config key')
+            result[key] = value
+        return result
+    actual = json.loads(path.read_text(), object_pairs_hook=unique)
+    need(isinstance(actual, dict) and set(actual) == set(template) and
+         all(type(actual[k]) is type(v) and actual[k] == v for k, v in template.items()),
+         'STOP: parity config differs from reviewed template; never overwrite')
+
+def create_parity_config(home, template, record_before):
+    path = home / PARITY_CONFIG
+    plain_parents(home, [PARITY_CONFIG])
+    need(path.parent.is_dir() and not path.parent.is_symlink(), 'STOP: parity config parent missing/unsafe; do not create it')
+    before = tree(path, False)
+    if present(path):
+        verify_parity_config(path, template)
+        record = dict(created_by_run=False, before=before, template=template)
+        record_before(record)
+        return record
+    record = dict(created_by_run=True, before=before, template=template)
+    record_before(record)  # Durable original absence and intent before the exclusive create.
+    raw = (json.dumps(template, sort_keys=True, indent=2) + '\n').encode()
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'wb') as output:
+        os.fchmod(output.fileno(), 0o600)
+        output.write(raw); output.flush(); os.fsync(output.fileno())
+    sync_directory(path.parent)
+    verify_parity_config(path, template)
+    return record
+
+def parity_config_self_test(base):
+    base.mkdir(mode=0o700)
+    passed = []
+    for label in ('absent', 'identical', 'different', 'mode0644', 'symlink'):
+        home = base / label; (home / '.golems/ratchet').mkdir(parents=True, mode=0o700)
+        path = home / PARITY_CONFIG; template = parity_template(home)
+        raw = (json.dumps(template, sort_keys=True, indent=2) + '\n').encode()
+        if label == 'symlink':
+            target = home / 'target'; target.write_bytes(raw); target.chmod(0o600)
+            path.symlink_to(target)
+        elif label != 'absent':
+            values = dict(template, host='wrong-peer') if label == 'different' else template
+            path.write_text(json.dumps(values)); path.chmod(0o644 if label == 'mode0644' else 0o600)
+        before = tree(path, False); original_id = identity(path) if present(path) else None
+        records = []
+        try: record = create_parity_config(home, template, records.append)
+        except (ValueError, OSError):
+            need(label in ('different', 'mode0644', 'symlink'), 'self-test unexpectedly STOPped: ' + label)
+            need(tree(path, False) == before and identity(path) == original_id and not records, 'STOP case changed file/evidence')
+        else:
+            need(label in ('absent', 'identical'), 'self-test must STOP: ' + label)
+            need(record['created_by_run'] == (label == 'absent') and record['before'] == before, 'wrong creation custody')
+            if label == 'absent': need(path.read_bytes() == raw and path.stat().st_mode & 0o777 == 0o600, 'wrong created bytes/mode')
+            else: need(tree(path, False) == before and identity(path) == original_id, 'identical file rewritten')
+        passed.append(label)
+    print('PARITY_CONFIG_SELF_TEST_PASS: ' + ', '.join(passed))
+
+def unique_json(raw):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            need(key not in result, 'STOP: duplicate requirements key')
+            result[key] = value
+        return result
+    return json.loads(raw, object_pairs_hook=unique)
+
+def canonical(value):
+    return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()
+
+def derived_requirements(origin, ns, m1, m4):
+    need(sha(origin['raw'].encode()) == origin['sha256'], 'STOP: M4 requirements source digest mismatch')
+    source = unique_json(origin['raw'])
+    ns['validate'](source, required=True)
+    need(source['identities'] == [m4, m1], 'STOP: reviewed M4 requirements identity pins differ')
+    derived = dict(schema=2, roots=source['roots'], identities=list(reversed(source['identities'])))
+    ns['validate'](derived, required=True)
+    need(set(derived) == {'schema', 'roots', 'identities'} and
+         canonical(derived['roots']) == canonical(source['roots']) and
+         derived['identities'] == [m1, m4], 'STOP: derived requirements drift')
+    return (json.dumps(derived, sort_keys=True, indent=2) + '\n').encode()
+
+def verify_requirements(path, expected):
+    info = path.lstat()
+    need(stat.S_ISREG(info.st_mode) and not path.is_symlink() and info.st_uid == os.getuid()
+         and stat.S_IMODE(info.st_mode) == 0o600,
+         'STOP: requirements must be this uid, regular, non-symlink, mode 0600')
+    need(path.read_bytes() == expected, 'STOP: requirements differ from derived bytes; never overwrite')
+
+def create_requirements(home, expected, record_before):
+    path = home / PARITY_REQUIREMENTS
+    plain_parents(home, [PARITY_REQUIREMENTS])
+    need(path.parent.is_dir() and not path.parent.is_symlink(), 'STOP: requirements parent missing/unsafe; do not create it')
+    before = tree(path, False)
+    if present(path): verify_requirements(path, expected)
+    record = dict(created_by_run=not present(path), before=before, sha256=sha(expected))
+    record_before(record)
+    if record['created_by_run']:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, 'wb') as output:
+            os.fchmod(output.fileno(), 0o600)
+            output.write(expected); output.flush(); os.fsync(output.fileno())
+        sync_directory(path.parent)
+    verify_requirements(path, expected)
+    record['after'] = tree(path, False)
+    need(record['created_by_run'] or record['after'] == before, 'STOP: existing requirements changed')
+    return record
+
+def requirements_self_test(base, ns, required, m1, m4):
+    base.mkdir(mode=0o700)
+    raw = json.dumps(required)
+    origin = dict(raw=raw, sha256=sha(raw.encode()), path='<offline-reviewed-M4-manifest>')
+    expected = derived_requirements(origin, ns, m1, m4)
+    derived = json.loads(expected)
+    need(derived == dict(schema=2, roots=required['roots'], identities=[m1, m4]), 'wrong B-prime derivation')
+    for label in ('absent', 'identical', 'different', 'roots-drift', 'mode0644', 'symlink'):
+        home = base / label; (home / '.golems/ratchet').mkdir(parents=True, mode=0o700)
+        path = home / PARITY_REQUIREMENTS
+        if label == 'symlink':
+            target = home / 'target'; target.write_bytes(expected); target.chmod(0o600); path.symlink_to(target)
+        elif label != 'absent':
+            value = json.loads(expected)
+            if label == 'different': value['identities'].reverse()
+            if label == 'roots-drift': value['roots'][next(iter(value['roots']))]['allow_empty'].append('drift')
+            path.write_bytes(expected if label in ('identical', 'mode0644') else (json.dumps(value, sort_keys=True, indent=2)+'\n').encode())
+            path.chmod(0o644 if label == 'mode0644' else 0o600)
+        before = tree(path, False); inode = identity(path) if present(path) else None; records = []
+        try: record = create_requirements(home, expected, records.append)
+        except (ValueError, OSError):
+            need(label not in ('absent', 'identical'), 'unexpected requirements STOP: ' + label)
+            need(tree(path, False) == before and identity(path) == inode and not records, 'refused requirements changed')
+        else:
+            need(label in ('absent', 'identical'), 'requirements self-test must STOP: ' + label)
+            need(record['created_by_run'] == (label == 'absent'), 'wrong requirements custody')
+            if label == 'identical': need(tree(path, False) == before and identity(path) == inode, 'requirements rewritten')
+            verify_requirements(path, expected)
+    print('DERIVED_REQUIREMENTS_SELF_TEST_PASS: exact derivation; absent; identical; different STOP; roots drift STOP; 0644 STOP; symlink STOP')
+
+def root_link_self_test(base):
+    base.mkdir(mode=0o700)
+    for label, text, mode in (('relative', '../missing', 0o755),
+                              ('absolute', str(base / 'missing'), 0o700),
+                              ('cycle', 'cycle', 0o755)):
+        path = base / label
+        path.symlink_to(text)
+        if hasattr(os, 'lchmod'): os.lchmod(path, mode)
+        before = tree(path, False)
+        listing = tree(path, True)
+        row = listing['rows'][0]
+        need(row['link_text'] == text and row['target_state'] == ('broken' if label == 'cycle' else 'dangling'),
+             'link state self-test failed: ' + label)
+        need(not owned(path, base), 'broken link must not be classified as owned')
+        refusal = root_hash_stop('.gemini/config/skills', listing)
+        try: require_hashable_capture({'roots': {'fixture': {'hash_stop': refusal}}})
+        except ValueError as error:
+            need(controller_error(error, 'preflight')['error'] == refusal, 'lost named root STOP')
+        else: raise AssertionError('unhashable root accepted')
+        archive_path = base / (label + '.tar')
+        with tarfile.open(archive_path, 'x', dereference=False) as archive:
+            archive.add(path, arcname=label)
+        staging = base / (label + '-restore'); staging.mkdir(mode=0o700)
+        with tarfile.open(archive_path) as archive:
+            members = archive.getmembers()
+            kwargs = {'filter': 'fully_trusted'} if 'filter' in inspect.signature(archive.extractall).parameters else {}
+            archive.extractall(staging, members=members, **kwargs)
+        restore_member_metadata(staging, members)
+        need(tree(staging / label, False) == before and os.readlink(staging / label) == text,
+             'link rollback bytes/mode self-test failed: ' + label)
+    try: (base / 'missing-regular-file').read_bytes()
+    except FileNotFoundError as error:
+        result = controller_error(error, 'preflight')
+        need(result['verdict'] == 'STOP' and result['error'].startswith('STOP: CONTROLLER_EXCEPTION FileNotFoundError:'),
+             'raw exception escaped named controller envelope')
+    print('ROOT_LINK_SELF_TEST_PASS: relative dangling; absolute dangling; cycle; exact tar restore/modes; CONTROLLER_EXCEPTION')
+
+def reviewed_parity_schema(source):
+    expected = {
+        'observed_identity': '12e09aac70400499ee10803ab09db221a7786d02bc42a56c7edca6a073566208',
+        'object_keys': 'f38f25167d6beed3401da1b6e3994fcd2a93b5d2880222171b2c9e896fc15219',
+        'identity': 'ce2bf76691b913d601100bf59bfa1dcfdf84503c2677b62704f43f17ebbf318a',
+        'validate': '6031c875454fc58db75dc8df4600bd1615ab1b5b4f19ca1490ee3a478c149cb5',
+        'load_config': '90a798a78b8cb9482a11fd9decfa91b8d2b99888500138842ff60e0b11d6e06f',
+    }
+    found = {}
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.FunctionDef) and node.name in expected:
+            need(node.name not in found, 'STOP: duplicate parity schema function')
+            raw = '\n'.join(source.splitlines()[node.lineno-1:node.end_lineno]) + '\n'
+            found[node.name] = sha(raw.encode())
+    need(found == expected, 'STOP: parity schema/identity source changed at MERGE_SHA; review template first')
+
+def parity_config_pre_step(home, ns, params, custody):
+    reviewed_parity_schema(params['i5_source'])
+    template = parity_template(home)
+    expected = derived_requirements(params['m4_requirements'], ns, ns['observed_identity'](), params['expected_m4_identity'])
+    # Refuse either existing mismatch before any evidence or active-file write.
+    plain_parents(home, [PARITY_CONFIG, PARITY_REQUIREMENTS, '.ssh/id_ed25519'])
+    parity_parent_needed(home)
+    if present(home / PARITY_CONFIG): verify_parity_config(home / PARITY_CONFIG, template)
+    if present(home / PARITY_REQUIREMENTS): verify_requirements(home / PARITY_REQUIREMENTS, expected)
+    key = Path(template['identity'])
+    need(key.is_file() and not key.is_symlink(), 'STOP: reviewed M1 parity identity prerequisite missing/unsafe')
+    require_strict_ssh_config(command(['/usr/bin/ssh', *STRICT, '-G', template['host']]))
+    need(not present(custody), 'STOP: parity config pre-step already attempted; retain evidence')
+    custody.mkdir(mode=0o700, parents=True)
+    record = dict(created_by_run=not present(home / PARITY_CONFIG),
+                  before=tree(home / PARITY_CONFIG, False), template=template)
+    def parent_before(created):
+        record['parent_created_by_run'] = created
+        evidence(custody / 'before.json', record)
+    create_parity_parent(home, parent_before)
+    requirements_record = create_requirements(home, expected, lambda row: evidence(custody / 'requirements-before.json', row))
+    def config_before(row):
+        need(all(record[k] == v for k, v in row.items()), 'STOP: parity config changed since parent custody')
+    record.update(create_parity_config(home, template, config_before))
+    ns['load_config'](str(home / PARITY_CONFIG))
+    record['after'] = tree(home / PARITY_CONFIG, False)
+    need(record['created_by_run'] or record['after'] == record['before'], 'STOP: existing parity config changed during pre-step')
+    record['requirements'] = requirements_record
+    record['requirements_source'] = {k: params['m4_requirements'][k] for k in ('path', 'sha256')}
+    evidence(custody / 'complete.json', record)
+    return record
+
+def restore_member_metadata(staging, members):
+    for member in members:
+        restored_path = staging / member.name
+        os.chown(restored_path, member.uid, member.gid, follow_symlinks=False)
+        if restored_path.is_symlink():
+            if hasattr(os, 'lchmod'): os.lchmod(restored_path, member.mode)
+            else: need(stat.S_IMODE(restored_path.lstat().st_mode) == member.mode, 'cannot restore symlink mode')
+        else: os.chmod(restored_path, member.mode)
+        if restored_path.is_file() and not restored_path.is_symlink():
+            with restored_path.open('rb') as restored_file: os.fsync(restored_file.fileno())
+
 def move_restore(source, destination):
     ROLLBACK['mutated'] = True  # Conservative if the rename or following fsync is interrupted.
     source.rename(destination)
@@ -876,7 +1344,8 @@ def identity(path):
 
 def owned(entry, home):
     if not entry.is_symlink(): return False
-    resolved = entry.resolve(strict=True)
+    _, resolved = link_resolution(entry)
+    if resolved is None: return False
     release, vendor = home / '.golems/releases', home / '.golems/vendor/design-skills'
     if resolved.is_relative_to(release):
         parts = resolved.relative_to(release).parts
@@ -892,14 +1361,17 @@ def capture(home, ns):
         root = home / relative
         need(root.is_dir() and not root.is_symlink(), 'missing or symlinked root: ' + relative)
         entries = {p.name: {'owned': owned(p, home), 'state': tree(p, True)} for p in sorted(root.iterdir())}
-        roots[relative] = {'tree_sha256': ns['tree_sha256'](root), 'complete': tree(root, True), 'entries': entries}
+        complete = tree(root, True)
+        refusal = root_hash_stop(relative, complete, ns['release_policy']())
+        roots[relative] = {'tree_sha256': None if refusal else ns['tree_sha256'](root),
+                           'hash_stop': refusal, 'complete': complete, 'entries': entries}
     config = home / '.codex/config.toml'
     return {'roots': roots, 'current': os.readlink(home / '.golems/current'),
         'config_sha256': sha(config.read_bytes()) if present(config) else None,
         'configs': {p: hooks_config(home / p) for p in ('.claude/settings.json', '.codex/hooks.json')},
         'mutable': {p: tree(home / p, False) for p in mutable(home)}, 'protected': protected(home)}
 
-def verify_roots(before, after, home, params, restore=False):
+def verify_roots(before, after, home, params, restore=False, known_drift=None):
     unchanged = []
     catalog = params['catalog']['roots']
     allowed = {ROOTS[0]: set(catalog['claude']), ROOTS[1]: set(catalog['agents']),
@@ -922,6 +1394,13 @@ def verify_roots(before, after, home, params, restore=False):
         for name in sorted(a['entries'].keys() | b['entries'].keys()):
             old, new = a['entries'].get(name), b['entries'].get(name)
             path = home / root / name
+            if (known_drift and known_drift['removed_by_run'] and known_drift.get('complete') and
+                    root == known_drift['root'] and name == known_drift['name']):
+                need(old and new is None, 'STOP: known drift removal changed after pre-step')
+                link = old['state']['rows'][0]
+                need(link['link_text'] == known_drift['link_text'] and
+                     all(link[k] == known_drift[k] for k in ('mode', 'uid', 'gid')), 'STOP: known drift custody mismatch')
+                continue
             if old and not old['owned']:
                 need(new == old, 'M1-only entry changed: ' + str(path))
                 unchanged.append(str(path))
@@ -929,7 +1408,7 @@ def verify_roots(before, after, home, params, restore=False):
             if old == new and name not in allowed[root] and root != ROOTS[4]: continue
             if root == ROOTS[4]:
                 need(old and new and path.is_symlink(), 'unexpected Gemini mutation: ' + str(path))
-                need(old['state']['rows'][0]['target'] == new['state']['rows'][0]['target'], 'Gemini link repointed')
+                need(old['state']['rows'][0]['link_text'] == new['state']['rows'][0]['link_text'], 'Gemini link repointed')
             elif new is None:
                 need(root in ROOTS[:3] and old and old['owned'] and name not in allowed[root], 'unexpected removal')
                 continue
@@ -987,12 +1466,13 @@ def remote(params, mode):
             bin_dir = home / params['bootstrap']['transport_dir'] / 'bin'
             for binary in ('ssh', 'scp'):
                 need(shutil.which(binary) == str(bin_dir / binary), 'STOP: M1 Pro shim missing or PATH changed')
-            config = ns['load_config'](str(home / '.golems/ratchet/installed-skills.json'))
+            config = parity_template(home) if mode == 'rollback' else ns['load_config'](str(home / PARITY_CONFIG))
             require_strict_ssh_config(command(['ssh', '-G', config['host']]))
     stem = params['head'] + '-' + params['stamp']
     initial = home / '.golems/m1-sync' / stem
     saved = initial.with_name('.procedure-' + stem)
     lock = home / '.golems/m1-procedure.lock'
+    config_custody = home / '.golems/m1-sync' / ('.parity-config-' + stem)
     plain_parents(home, FIXED + ['.golems/m1-sync/' + stem, '.golems/m1-procedure.lock'])
     need(not present(home / '.golems/m1-sync') or not (home / '.golems/m1-sync').is_symlink(), 'symlinked staging parent')
     if mode in ('preflight', 'snapshot', 'presync'):
@@ -1010,20 +1490,36 @@ def remote(params, mode):
         need((home / '.golems/current').is_symlink(), 'current must be an existing symlink')
         need((home / '.golems/current').resolve(strict=True).is_relative_to(home / '.golems/releases'), 'current is outside retained releases')
         need(not (home / '.golems/release.json').is_symlink(), 'release.json must not be a symlink')
-        config = ns['load_config'](str(home / '.golems/ratchet/installed-skills.json'))
-        ns['validate'](json.loads(Path(config['requirements']).read_text()), required=True)
-        return {'verdict': 'PREFLIGHT_READY', 'before': capture(home, ns), 'known_hosts': trust_file(home)}
+        before = capture(home, ns)
+        drift = require_hashable_capture(before, home, params['policy'], allow_known_drift=True)
+        # Before any parent/config/custody write; only the exact recorded drift may wait for snapshot.
+        config_record = parity_config_pre_step(home, ns, params, config_custody)
+        return {'verdict': 'PREFLIGHT_READY', 'before': before, 'parity_config': config_record, 'known_drift': drift, 'known_hosts': trust_file(home)}
     if mode == 'snapshot':
+        captured = capture(home, ns)
+        drift = require_hashable_capture(captured, home, params['policy'], allow_known_drift=True)
+        # Before lock/stage/archive creation; every unknown dangling entry still STOPs.
         need(not present(lock) and not present(initial) and not present(saved), 'concurrent/reused run')
         lock.mkdir(mode=0o700)
         initial.mkdir(mode=0o700, parents=True)
-        before = capture(home, ns)
-        state = {'started': utc(), 'before': before, 'paths': mutable(home),
+        config_record = json.loads((config_custody / 'complete.json').read_text())
+        verify_parity_config(home / PARITY_CONFIG, parity_template(home))
+        verify_requirements(home / PARITY_REQUIREMENTS, derived_requirements(params['m4_requirements'], ns,
+                            params['expected_m1_identity'], params['expected_m4_identity']))
+        need(capture(home, ns) == captured, 'STOP: PRE_SNAPSHOT_STATE_CHANGED')
+        need(captured['mutable'][PARITY_CONFIG] == config_record['after'], 'STOP: parity config changed after pre-step')
+        before = json.loads(json.dumps(captured))
+        need(captured['mutable'][PARITY_REQUIREMENTS] == config_record['requirements']['after'], 'STOP: requirements changed after pre-step')
+        before['mutable'][PARITY_CONFIG] = config_record['before']
+        before['mutable'][PARITY_REQUIREMENTS] = config_record['requirements']['before']
+        state = {'started': utc(), 'before': before, 'parity_config': config_record, 'known_drift': drift, 'paths': mutable(home),
             'receipt_parents': {p: present(home / p) for p in ('.local/state/golems', '.local/state/golems/install-receipts')},
             'existing_skill_backups': sorted(str(p) for p in (home / '.claude').glob('skills.bak-*'))}
         archive_path = initial / 'pre-snapshot.tgz'
         with tarfile.open(archive_path, 'x:gz', dereference=False) as archive:
             for relative in state['paths']:
+                if relative == PARITY_CONFIG and config_record['created_by_run']: continue
+                if relative == PARITY_REQUIREMENTS and config_record['requirements']['created_by_run']: continue
                 if present(home / relative): archive.add(home / relative, arcname=relative)
         with tarfile.open(archive_path) as archive:
             for member in archive.getmembers():
@@ -1031,21 +1527,39 @@ def remote(params, mode):
         state['archive_sha256'] = sha(archive_path.read_bytes())
         (initial / 'current-target.txt').write_text(before['current'] + '\n')
         (initial / 'pre-snapshot.sha256').write_text(state['archive_sha256'] + '  pre-snapshot.tgz\n')
-        (initial / 'state.json').write_text(json.dumps(state, sort_keys=True))
-        need(capture(home, ns) == before, 'pre-state changed while snapshot was written')
+        with archive_path.open('rb') as archive_file: os.fsync(archive_file.fileno())
+        evidence(initial / 'state.json', state)
+        need(capture(home, ns) == captured, 'pre-state changed while snapshot was written')
         # Never impersonate a successful sync attempt with a fabricated success.json.
         initial.rename(saved)
+        sync_directory(saved.parent)
+        record = remove_known_drift(home, saved, drift)
+        after_removal = capture(home, ns)
+        require_hashable_capture(after_removal)  # STRICT after the one reviewed unlink.
         return {'snapshot': str(saved / 'pre-snapshot.tgz'), 'original_path': str(archive_path),
-                'sha256': state['archive_sha256'], 'before': before}
+                'sha256': state['archive_sha256'], 'before': before, 'parity_config': config_record,
+                'known_drift': record, 'root_hashes': {r: v['tree_sha256'] for r, v in after_removal['roots'].items()}}
     need(saved.is_dir() and not saved.is_symlink(), 'complete snapshot custody directory missing')
     state = json.loads((saved / 'state.json').read_text())
     before = state['before']
+    if mode in ('presync', 'post'):
+        verify_requirements(home / PARITY_REQUIREMENTS, derived_requirements(params['m4_requirements'], ns,
+                            params['expected_m1_identity'], params['expected_m4_identity']))
+        need(tree(home / PARITY_REQUIREMENTS, False) == state['parity_config']['requirements']['after'], 'STOP: requirements changed after pre-step')
     if mode == 'presync':
-        return {'verdict': 'REAL_DIRECTORIES_VERIFIED_BEFORE_SYNC'}
+        strict_capture = capture(home, ns)
+        require_hashable_capture(strict_capture)
+        need(tree(home / PARITY_CONFIG, False) == state['parity_config']['after'], 'STOP: parity config changed before sync')
+        return {'verdict': 'REAL_DIRECTORIES_VERIFIED_BEFORE_SYNC',
+                'known_drift': json.loads((saved / 'known-drift-complete.json').read_text()),
+                'root_hashes': {r: v['tree_sha256'] for r, v in strict_capture['roots'].items()}}
     if mode == 'receipt':
         return json.loads((home / '.local/state/golems/install-receipts/golems/latest-skills-sync-release-channel.json').read_text())
     if mode == 'post':
+        verify_parity_config(home / PARITY_CONFIG, parity_template(home))
+        need(tree(home / PARITY_CONFIG, False) == state['parity_config']['after'], 'STOP: parity config changed during sync')
         after = capture(home, ns)
+        require_hashable_capture(after)
         need(after['protected'] == before['protected'], 'OUTSIDE SCOPE: STOP; protected state changed')
         need(after['config_sha256'] == before['config_sha256'], 'config.toml changed')
         diffs = {}
@@ -1055,7 +1569,8 @@ def remote(params, mode):
             need(all(p and p[0] == 'hooks' for p in changes), 'non-hooks JSON change: ' + path + ' ' + repr(changes))
             need(not old['exists'] or new['exists'], 'shared config removed: ' + path)
             diffs[path] = changes
-        unchanged = verify_roots(before, after, home, params)
+        drift_record = json.loads((saved / 'known-drift-complete.json').read_text())
+        unchanged = verify_roots(before, after, home, params, known_drift=drift_record)
         need(after['current'] == 'releases/' + params['version'], 'wrong current target')
         record = json.loads((home / '.golems/release.json').read_text())
         need(record['commit'] == params['head'] and record['version'] == params['version'], 'wrong release identity')
@@ -1184,15 +1699,7 @@ def remote(params, mode):
                                  member.linkname in {m.name for m in members if m.isfile()}, 'unsafe archive hard link')
                     kwargs = {'filter': 'fully_trusted'} if 'filter' in inspect.signature(archive.extractall).parameters else {}
                     archive.extractall(staging, members=members, **kwargs)
-                for member in members:
-                    restored_path = staging / member.name
-                    os.chown(restored_path, member.uid, member.gid, follow_symlinks=False)
-                    if restored_path.is_symlink():
-                        if hasattr(os, 'lchmod'): os.lchmod(restored_path, member.mode)
-                        else: need(stat.S_IMODE(restored_path.lstat().st_mode) == member.mode, 'cannot restore symlink mode')
-                    else: os.chmod(restored_path, member.mode)
-                    if restored_path.is_file() and not restored_path.is_symlink():
-                        with restored_path.open('rb') as restored_file: os.fsync(restored_file.fileno())
+                restore_member_metadata(staging, members)
                 for relative in state['paths']:
                     need(tree(staging / relative, False) == before['mutable'][relative], 'staged extraction mismatch: ' + relative)
                 need(os.readlink(staging / '.golems/current') == old_target, 'staged current target mismatch')
@@ -1221,6 +1728,8 @@ def remote(params, mode):
                     need(tree(path, False) == expected, 'ambiguous restore move; STOP: ' + relative)
                 journal['restored'].append(relative)
                 checkpoint(saved, journal)
+            ROLLBACK['phase'] = 'parity-parent'
+            restore_parity_parent(home, state['parity_config'])
             ROLLBACK['phase'] = 'receipt-ancestors'
             for index, relative in enumerate(sorted(state['receipt_parents'], key=lambda p: -len(Path(p).parts))):
                 if relative in journal['ancestors']: continue
@@ -1231,6 +1740,7 @@ def remote(params, mode):
                 journal['ancestors'].append(relative)
                 checkpoint(saved, journal)
             ROLLBACK['phase'] = 'verify'
+            drift_restored = verify_known_drift_restore(home, saved)
             restored = capture(home, ns)
             verify_roots(before, restored, home, params, restore=True)
             need(restored['current'] == old_target, 'rollback current mismatch')
@@ -1244,6 +1754,7 @@ def remote(params, mode):
                     parity_exit = ns['main']()
             finally: sys.argv = previous_argv
             result = {'verdict': 'ROLLBACK_RESTORED_NOT_GREEN', 'mutated': ROLLBACK['mutated'], 'restored': restored,
+                'parity_config': state['parity_config'], 'known_drift': drift_restored,
                 'owner_exit': owner.returncode, 'owner_stdout': owner.stdout, 'owner_stderr': owner.stderr,
                 'parity_exit': parity_exit, 'parity_stdout': out.getvalue(), 'parity_stderr': err.getvalue(), 'quarantine': str(quarantine)}
             evidence(saved / ('rollback-result-attempt-' + str(params['rollback_attempt']) + '.json'), result)
@@ -1269,13 +1780,17 @@ if 'PARAMS' in globals():
             evidence(ROLLBACK['saved'] / ('rollback-attempt-' + str(PARAMS['rollback_attempt']) + '.json'), result)
         print(json.dumps(result, sort_keys=True))
     except Exception as error:
-        print(type(error).__name__ + ': ' + str(error), file=sys.stderr)
+        result = controller_error(error, MODE)
+        print(result['error'], file=sys.stderr)
         if MODE == 'rollback':
             result = {'verdict': 'ROLLBACK_PARTIAL_NOT_GREEN', 'mutated': ROLLBACK['mutated'],
-                      'phase': ROLLBACK['phase'], 'error': type(error).__name__ + ': ' + str(error)}
+                      'phase': ROLLBACK['phase'], 'error': result['error']}
             if ROLLBACK['saved'] is not None:
-                evidence(ROLLBACK['saved'] / ('rollback-attempt-' + str(PARAMS['rollback_attempt']) + '.json'), result)
-            print(json.dumps(result, sort_keys=True))
+                try: evidence(ROLLBACK['saved'] / ('rollback-attempt-' + str(PARAMS['rollback_attempt']) + '.json'), result)
+                except Exception as evidence_error:
+                    result['evidence_error'] = controller_error(evidence_error, MODE)['error']
+                    print(result['evidence_error'], file=sys.stderr)
+        print(json.dumps(result, sort_keys=True))
         sys.exit(1)
 else:
     try:
@@ -1326,7 +1841,8 @@ else:
             evidence_stem = mode
             need(not present(run / (mode + '.json')) and not present(run / (mode + '.stderr')), 'mode already attempted; retain its evidence and STOP')
         # The M4 Max is also an SSH initiator; retain and compare its trust/config bytes.
-        m4_paths = [Path.home() / '.ssh/known_hosts', Path.home() / '.codex/config.toml']
+        m4_paths = [Path.home() / '.ssh/known_hosts', Path.home() / '.codex/config.toml',
+                    Path.home() / '.golems/ratchet/installed-skills.json']
         need(mode == 'rollback' or not any(p.is_symlink() for p in m4_paths), 'protected M4 Max file is symlinked; re-audit')
         m4_now = {str(p): tree(p, False) for p in m4_paths}
         m4_file = run / 'm4-protected-before.json'
@@ -1341,11 +1857,22 @@ else:
                            'RELEASE_SHIPPING_POLICY': params['policy']}
             exec(compile(params['i5_source'], str(release), 'exec'), identity_ns)
             config = identity_ns['load_config'](str(Path.home() / '.golems/ratchet/installed-skills.json'))
-            requirements = json.loads(Path(config['requirements']).read_text())
+            origin_path = Path(config['requirements'])
+            need(origin_path.is_absolute() and not origin_path.is_symlink(), 'STOP: unsafe reviewed M4 requirements path')
+            raw = origin_path.read_bytes()
+            requirements = unique_json(raw)
+            evidence(run / 'm4-requirements.json', dict(path=str(origin_path), sha256=sha(raw), raw=raw.decode()))
             identity_ns['validate'](requirements, required=True)
             need(identity_ns['observed_identity']() == requirements['identities'][0], 'wrong M4 Max identity')
             evidence(identity_file, requirements['identities'][1])
+            evidence(run / 'expected-m4-identity.json', requirements['identities'][0])
+        params['m4_requirements'] = json.loads((run / 'm4-requirements.json').read_text())
+        origin = params['m4_requirements']
+        origin_path = Path(origin['path'])
+        need(not origin_path.is_symlink() and origin_path.is_file() and
+             sha(origin_path.read_bytes()) == origin['sha256'], 'STOP: reviewed M4 requirements changed')
         params['expected_m1_identity'] = json.loads(identity_file.read_text())
+        params['expected_m4_identity'] = json.loads((run / 'expected-m4-identity.json').read_text())
         if mode == 'finish' and not params['bootstrap']: params['accepted_receipt_id'] = json.loads((run / 'post.json').read_text())['receipt_id']
         payload = 'PARAMS = ' + repr(params) + '\nMODE = ' + repr(mode) + '\n' + Path(__file__).read_text()
         result = subprocess.run(['ssh', *STRICT, 'm1', 'python3 -I -B -'], input=payload, text=True, capture_output=True)
@@ -1368,30 +1895,101 @@ else:
             sync_directory(run)
         else:
             (run / (mode + '.stderr')).write_text(result.stderr)
-            with (run / (mode + '.json')).open('x') as output: output.write(result.stdout)
+            try: remote_result = json.loads(result.stdout)
+            except ValueError:
+                error = ValueError('STOP: CONTROLLER_TRANSPORT exit=' + str(result.returncode))
+                error.details = {'stdout': result.stdout, 'stderr': result.stderr}
+                remote_result = controller_error(error, mode)
+            evidence(run / (mode + '.json'), remote_result)
         if params['bootstrap']:
             need(trust_file(Path.home()) == json.loads((run / 'm4-trust-initial.json').read_text()), 'STOP: M4 Max known_hosts changed')
         need(m4_after == json.loads(m4_file.read_text()), 'OUTSIDE SCOPE: STOP; M4 Max trust/config changed')
-        need(result.returncode == 0, mode + ' failed; retain ' + str(run / (evidence_stem + '.stderr')))
+        need(result.returncode == 0, (remote_result.get('error') if mode != 'rollback' else None) or
+             'STOP: CONTROLLER_COMMAND_FAILED ' + mode + '; retain ' + str(run / (evidence_stem + '.stderr')))
         json.loads(result.stdout)
         print(mode + ': recorded ' + str(run / (evidence_stem + '.json')))
     except Exception as error:
-        print(type(error).__name__ + ': ' + str(error), file=sys.stderr)
+        failure = controller_error(error, sys.argv[1] if len(sys.argv) > 1 else 'unknown')
+        print(failure['error'], file=sys.stderr)
+        # Local source/transport failures must also leave parseable preflight evidence.
+        if failure['mode'] == 'preflight' and os.environ.get('RUN'):
+            destination = Path(os.environ['RUN']) / 'preflight.json'
+            if not present(destination):
+                try: evidence(destination, failure)
+                except Exception as evidence_error:
+                    print(controller_error(evidence_error, failure['mode'])['error'], file=sys.stderr)
         sys.exit(1)
 PY
+# Offline filesystem self-tests write only under the M4 Max run evidence directory.
+python3 -I -B - "$RUN/m1-control.py" "$RUN/parity-config-self-tests" <<'PYCONFIGTEST'
+import ast, json, sys
+from pathlib import Path
+source = Path(sys.argv[1]).read_text(); module = ast.parse(source)
+# Load definitions/constants only, so testing cannot enter the controller's SSH path.
+module.body = [n for n in module.body if isinstance(n, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.Assign))]
+ns = {}; exec(compile(module, sys.argv[1], 'exec'), ns)
+ns['parity_config_self_test'](Path(sys.argv[2]))
+ns['parity_parent_self_test'](Path(sys.argv[2]) / 'parent-cases')
+ns['root_link_self_test'](Path(sys.argv[2]) / 'root-link-cases')
+# r4j: test the actual Git-sourced inventory/compare library without entering main.
+i5_source = ns['subprocess'].check_output(['git', '-C', ns['os'].environ['GOLEMS_ROOT'],
+    'show', ns['os'].environ['MERGE_SHA'] + ':scripts/ratchet/installed-skills.py'], text=True)
+i5 = {'__name__': 'procedure_offline_direction_test', '__file__': '<offline-i5>'}
+exec(compile(i5_source, '<offline-i5>', 'exec'), i5)
+m4 = dict(machine='a'*64, hostname='c'*64, home='d'*64)
+m1 = dict(machine='b'*64, hostname='e'*64, home='f'*64)
+entry = dict(kind='dir', exists=True, normalized_target='$HOME/example', skill_sha256='0'*64,
+    files={'SKILL.md': dict(kind='file', sha256='0'*64, executable=False)}, internal_skills={})
+roots = {r: dict(exists=True, entries={'example': entry}) for r in i5['ROOTS']}
+required = dict(schema=2, identities=[m4, m1], roots={r: dict(readable=['example'],
+    allow_broken=[], allow_empty=[], target_aliases={}) for r in i5['ROOTS']})
+left, right = (dict(schema=2, identity=pin, roots=roots) for pin in (m4, m1))
+assert i5['compare'](left, right, required)['errors'] == []
+ns['requirements_self_test'](Path(sys.argv[2]) / 'derived-requirements', i5, required, m1, m4)
+derived = json.loads(ns['derived_requirements'](dict(raw=json.dumps(required),
+    sha256=ns['sha'](json.dumps(required).encode())), i5, m1, m4))
+assert i5['compare'](right, left, derived)['errors'] == []
+reverse = i5['compare'](right, left, required)
+assert reverse['host_identity_valid'] is False and len(reverse['errors']) == 2
+assert all('unexpected machine/hostname/HOME identity' in e for e in reverse['errors'])
+# An absent scratch .golems does not prevent library inventory; no host config is read.
+fixture_home = Path(sys.argv[2]) / 'inventory-without-config'; fixture_home.mkdir(mode=0o700)
+class FixturePath(type(Path())):
+    @classmethod
+    def home(cls): return cls(fixture_home)
+def forbidden_config(*args): raise AssertionError('inventory must never load parity config')
+i5.update(Path=FixturePath, observed_identity=lambda: m1, load_config=forbidden_config,
+    RELEASE_SHIPPING_POLICY=dict(schema=1, roots=['skills/golem-powers/'], support=['package.json'],
+    excluded_parts=['docs.local'], excluded_files=r'\.pyc$'))
+inventory = i5['inventory'](); i5['validate'](inventory)
+assert inventory['identity'] == m1 and not (fixture_home / '.golems').exists()
+print('PARITY_DIRECTION_SELF_TEST_PASS: M4-first PASS; derived M1-first PASS; swapped-back M1-first identity STOP; inventory needs no config')
+PYCONFIGTEST
 python3 -I -B "$RUN/m1-control.py" preflight
 if [ "$PROC_MODE" = bootstrap-run-1 ]; then
 python3 -I -B "$RUN/m1-control.py" transport
 fi
 ```
 
-Preflight pins the M1 Pro machine/hostname/HOME identity from the M4 Max's existing private parity requirements, checks the M4 Max identity, and verifies that pinned M1 Pro identity before every remote mode, including recovery. It validates the existing on-M1 Pro parity configuration and requirements without creating them. Prior research found the default M1 Pro config absent; that remains a prerequisite failure unless separately resolved.
+**Reviewed, idempotent §2 config + B′ requirements pre-step.** The M4 Max reads the SAME reviewed manifest through its existing parity config's `requirements` value at runtime, records that exact absolute path, SHA256 and raw bytes in `$RUN/m4-requirements.json`, and checks the source digest on every controller invocation. No manifest path under a checkout is hard-coded. Its source validator requires exactly `schema`, `roots`, `identities` and schema 2. The derived M1 bytes are deterministic sorted, indented JSON with a final newline: the same roots object (canonical JSON equal), the two identity pins in reverse order, and no other changes. Git-sourced `observed_identity()` at MERGE_SHA must match the M4 pin on the M4 Max and the M1 pin on the M1 Pro. A changed source or pin mismatch STOPs.
 
-Before preflight, snapshot, and immediately before sync, `real_directories()` requires every existing footprint directory and its ancestors through HOME to be real directories. This includes `.golems`, `vendor`, `vendor/design-skills`, existing vendor descendants, target release parents, bin, client roots/hooks, staging, and receipt parents. Any symlink stops before snapshot/sync mutation.
+The r4i config template remains:
+
+```json
+{"schema":1,"host":"macbook-pro","identity":"$M1_HOME/.ssh/id_ed25519","requirements":"$M1_HOME/.golems/ratchet/requirements.json"}
+```
+
+The exact source schema/identity function bytes remain checked by `reviewed_parity_schema()`; changed bytes STOP for review. The key and peer trust remain existing read-only prerequisites. On the M1 Pro only, the pre-step creates exactly `.golems/ratchet` if absent, mode `0700`, after checking that `.golems` already exists as a real, non-symlink directory owned by the running user. An existing `ratchet` must be real, non-symlink, owned by that user, and not group/world writable; otherwise STOP. Never chmod an existing directory. Both files are checked before any write: present config must match the exact four keys/types/values (existing whitespace is preserved); present requirements must equal the exact derived bytes. Each must be a regular non-symlink file, running uid, mode `0600`. Any mismatch, roots drift, `0644` or symlink STOPs without rewriting. Absent files are exclusively created as `0600` only after strict peer option proof; identical files retain their bytes and inode. No other manifest, config, key, skill root, grant or trust entry is created. Parent creation follows the existing key and strict peer checks; no missing key or trust entry is provisioned.
+
+Pre-step custody remains `.golems/m1-sync/.parity-config-<MERGE_SHA>-<UTC_TS>/`. `before.json` records `parent_created_by_run` and the config's original state before the exclusive parent `mkdir`; `requirements-before.json` is fsynced before requirements creation, and the config's original state is rechecked before its creation. `complete.json` retains `parent_created_by_run`, both file `created_by_run` flags, original and resulting listings, source path and SHA256. Snapshot state replaces both active pre-step files with their original bytes/absence. Pre-existing files are archived; files created by this run are excluded from tar and rollback moves them into retained quarantine, restoring original absence. Snapshot state retains the parent creation flag separately from the two file paths, avoiding overlapping archive/rollback paths. After restoring both files to absence, rollback removes `.golems/ratchet` only when `parent_created_by_run=true` and it is empty, using `rmdir`; unexpected contents STOP and remain intact. Pre-existing directories remain untouched, and retry accepts an already removed created parent. Snapshot, presync, post and finish check requirements bytes/metadata against the source derivation and custody. Interrupted creation or pre-snapshot failure retains evidence and STOPs without claiming complete rollback; no automatic retry or cleanup.
+
+Inline local tests exercise exact derivation, an M1-first parity pass, swapped-back identity errors through the existing compare, roots drift, absent/create, identical/no-op, differing bytes, `0644` and symlink refusal. Parent tests also cover absent → `0700` plus custody flag, existing-safe no-op, symlink/group-writable/world-writable refusal, missing/symlink `.golems` refusal, empty-created rollback and retry, nonempty-created refusal, and pre-existing-directory preservation. These tests run only in the M4 Max run evidence directory. Prior r4i read-only observations and the historical r4j source trace below do not prove current machine prerequisites or live parity.
+
+Before preflight, snapshot, and immediately before sync, `real_directories()` requires every existing footprint directory and its ancestors through HOME to be real directories. This includes `.golems`, `.golems/ratchet` (also owner and writable-mode checks; absence permitted until the pre-step), `vendor`, `vendor/design-skills`, existing vendor descendants, target release parents, bin, client roots/hooks, staging, and receipt parents. Any symlink stops before snapshot/sync mutation.
 
 The protected scan reads full file contents under `/Applications`, LaunchAgents, Homebrew, and known/discovered BrainLayer paths. It also records the complete `launchctl print gui/$(id -u)` output (including the full service list), `launchctl print-disabled gui/$(id -u)`, `ls -la "$HOME/Library/LaunchAgents"`, SHA256 of each user plist, and BrainLayer process/socket state. These outputs are compared exactly before/after, including finish and rollback; ANY difference triggers rollback and STOP, including a non-BrainLayer job or disabled override. No changing fields are normalized away. Read errors, unsupported entries, or concurrent changes STOP. These scans can be slow. Do not truncate them, exclude a changing DB/log, or stop a daemon to obtain a pass. The scan cannot attribute a difference to this install; even an unrelated change conservatively stops acceptance.
 
-The full tar includes the five roots, wrappers, vendor tree, hooks, shared hook configs, activation/history files, receipts, and hook-config sidecars. Links are stored without dereference. Old release bytes remain retained by `--preserve-releases`. Existing skills backups are immutable; the helper exclusively creates a new archive. The previous `current` target is also recorded as text.
+The full tar includes the five roots, wrappers, vendor tree, hooks, shared hook configs, activation/history files, receipts, hook-config sidecars, and both pre-existing M1 parity files. Each file's `created_by_run=true` instead preserves its original absence in the snapshot; rollback quarantines each new file. Links are stored without dereference. Old release bytes remain retained by `--preserve-releases`. Existing skills backups are immutable; the helper exclusively creates a new archive. The previous `current` target is also recorded as text.
 
 **Snapshot naming conflict:** the helper treats every `<MERGE_SHA>-*` stage as a prior sync attempt requiring its own success.json. The controller first writes the required `~/.golems/m1-sync/<MERGE_SHA>-<UTC_TS>/pre-snapshot.tgz`, records SHA256, then renames that directory to `~/.golems/m1-sync/.procedure-<MERGE_SHA>-<UTC_TS>`. This in-scope custody move preserves the snapshot without inventing a success marker. Rollback uses the recorded `.procedure-...` path. Do not leave a symlink at the original name.
 
@@ -1532,7 +2130,9 @@ assert parity['error_count'] == 0
 assert post['verdict'] == 'LIVE_WITH_FIVE_ROOT_CHECKS'
 assert len(snapshot['before']['roots']) == len(post['after']['roots']) == 5
 for root in sorted(post['after']['roots']):
-    print(root, 'pre=' + snapshot['before']['roots'][root]['tree_sha256'],
+    original = snapshot['before']['roots'][root]
+    print(root, 'original=' + (original['tree_sha256'] or 'unavailable(' + str(original.get('hash_stop')) + ')'),
+          'pre_sync=' + snapshot['root_hashes'][root],
           'post=' + post['after']['roots'][root]['tree_sha256'])
 print('LIVE receipt; five roots verified; real two-host parity PASS')
 PY
@@ -1587,7 +2187,7 @@ Keep stderr and disclosed-invalid counts, including allowlisted entries. Report 
 
 Triggers: **any nonzero step after snapshot starts; any failed post-check; any §7b change; missing/stale/invalid/unavailable/non-LIVE receipt; failed real parity; or any deviation from the written commands.** Before snapshot, stop without installing. If snapshot capture fails, no sync runs; retain partial snapshot/lock and report unavailable complete rollback custody.
 
-The ERR/INT/TERM handlers invoke the exact controller `rollback` command once. Each invocation reserves `rollback-attempt-<N>.json/.stderr` on the M4 Max and retains a numbered remote result. `mutated=false` means no restoration mutation, including a writer-active refusal; evidence writes are excluded. `mutated=true` conservatively means restoration may have mutated paths. A transport failure without a complete remote result records `mutated=null` (unknown), never false. It verifies snapshot SHA256, refuses an active remote writer, and acquires a process-scoped rollback guard. It persists a move plan before creating quarantine, checkpoints each completed quarantine move, extracts into a fresh numbered staging tree, checkpoints completed extraction, then checkpoints each move from staging to its original path, including the recorded `current` link. Interrupted extractions remain retained; the next attempt uses a fresh staging tree. Rename/checkpoint gaps are reconciled using the planned inode identity or exact restored tree; ambiguous state stops. Original absence is restored: newly introduced root children and sidecars remain quarantined instead of surviving a tar overlay. New receipt events, backups, vendor copies, and failed hook/temp objects are preserved in quarantine. Old/new releases and helper stages remain retained. Nothing is deleted by the rollback commands.
+The ERR/INT/TERM handlers invoke the exact controller `rollback` command once. Each invocation reserves `rollback-attempt-<N>.json/.stderr` on the M4 Max and retains a numbered remote result. `mutated=false` means no restoration mutation, including a writer-active refusal; evidence writes are excluded. `mutated=true` conservatively means restoration may have mutated paths. A transport failure without a complete remote result records `mutated=null` (unknown), never false. It verifies snapshot SHA256, refuses an active remote writer, and acquires a process-scoped rollback guard. It persists a move plan before creating quarantine, checkpoints each completed quarantine move, extracts into a fresh numbered staging tree, checkpoints completed extraction, then checkpoints each move from staging to its original path, including the recorded `current` link. Interrupted extractions remain retained; the next attempt uses a fresh staging tree. Rename/checkpoint gaps are reconciled using the planned inode identity or exact restored tree; ambiguous state stops. Original absence is restored: newly introduced root children and sidecars remain quarantined instead of surviving a tar overlay. New receipt events, backups, vendor copies, and failed hook/temp objects are preserved in quarantine. Old/new releases and helper stages remain retained. Nothing is deleted by the rollback commands. The parity config and derived requirements are in the same checkpointed plan: each file created by §2 is removed from its active path into quarantine (`created_by_run=true`); each existing file regains its exact pre-step bytes/mode/uid from the snapshot. Original absence is verified, including on rollback retry.
 
 Rollback rechecks all five complete listings and I5 hashes, shared configs, wrappers/hooks/activation/history/receipt state, and protected state against **pre-state**. It reruns hook status and real parity. Parity uses the verified I5 source sent through stdin, so restoring an older release cannot reintroduce its non-strict SSH argv. Target-release receipt assertions cannot pass after restoring the old release; the failed candidate remains failed. The returned verdict is always `ROLLBACK_RESTORED_NOT_GREEN`; retain hook/parity output and exits, including pre-existing failures.
 
@@ -1637,7 +2237,7 @@ Snapshot mismatch, ambiguous checkpoint reconciliation, failed move/extraction, 
 
 ## 7. Footprint (all writes, in scope under ruling 3)
 
-M1 Pro paths below are relative to that machine's `Path.home()`. O01–O12 are the same path families as the inventory, all **IN-SCOPE** under ruling 3.
+M1 Pro paths below are relative to that machine's `Path.home()`. O01–O12 are the same path families as the inventory, all **IN-SCOPE** under ruling 3. O13/O14/O15 retain the reviewed parity prerequisite footprint. O16 is the one reviewed KNOWN_DRIFT unlink after snapshot; no other dangling repair or parity-config/requirements write is authorized.
 
 | ID | Write family | Purpose |
 |---|---|---|
@@ -1653,8 +2253,13 @@ M1 Pro paths below are relative to that machine's `Path.home()`. O01–O12 are t
 | O10 | `.codex/hooks.json`, `.golems-backup-*`, `.new-*` | Only hook registration keys may change in shared JSON. |
 | O11 | `.golems/vendor/design-skills/PIN/**` and staging siblings | Verified vendor snapshots. |
 | O12 | `.local/state/golems/install-receipts/**` and ancestors | Event/temp/latest files and rollback evidence. |
+| O13 | `.golems/ratchet/installed-skills.json` only | §2 reviewed four-key template; create absent file as `0600`/running uid, verify present file without rewrite; snapshot/rollback records `created_by_run` and restores bytes or absence. Existing key stays read-only; parent creation is O15. |
+| O14 | `.golems/ratchet/requirements.json` only | §2 B′ deterministic derivation from the reviewed runtime-selected M4 manifest: identical canonical roots, exactly reversed pins, schema 2 only; create absent file as `0600`/running uid, verify exact present bytes without rewrite; snapshot/rollback restores original bytes or absence. |
+| O15 | `.golems/ratchet` directory only | M1 Pro §2 creates exactly this absent parent as `0700`, running uid; `.golems` must already be real, non-symlink and user-owned. Existing parent must be real, non-symlink, user-owned and not group/world writable; never chmod. `before.json`/`complete.json` and snapshot state retain `parent_created_by_run`; rollback uses empty-only `rmdir` after both files return to absence, never removes a pre-existing parent. |
 
-Five roots: `.claude/skills`, `.agents/skills`, `.codex/skills`, `.cursor/skills`, `.gemini/config/skills`. M4 Max writes include this run's `docs.local/ratchet-runs/` evidence and run log, plus the standard live-rows producer effects explicitly enumerated in §7c. GitHub reads/downloads and that producer's sticky-comment publication are in scope. Existing authorization, parity configs, identities, signing key/anchor, and SSH trust are read-only prerequisites.
+| O16 | `.gemini/config/skills/tmp-block` only | After archiving the symlink object without dereference, record/fsync its exact text and lstat mode/uid/gid/mtime plus `removed_by_run`; recheck ownership, real parent, byte-equal text and absent target, unlink only this path and fsync the root. Absent/resolving/non-link entries are no-ops. Full rollback restores and verifies byte-exact text, mode and owner; retry is idempotent. |
+
+Five roots: `.claude/skills`, `.agents/skills`, `.codex/skills`, `.cursor/skills`, `.gemini/config/skills`. M4 Max writes include this run's `docs.local/ratchet-runs/` evidence and run log, plus the standard live-rows producer effects explicitly enumerated in §7c. GitHub reads/downloads and that producer's sticky-comment publication are in scope. Existing authorization, parity configs, identities, signing key/anchor, and SSH trust are read-only prerequisites, except EXACTLY O13/O14/O15 and the O16 single-link pre-step in §2 on the M1 Pro: the reviewed config at `.golems/ratchet/installed-skills.json` and derived requirements at `.golems/ratchet/requirements.json`, both mode `0600`, running uid, and only their absent parent `.golems/ratchet` as `0700`. Every other requirements file, identity key, parity config, and both M4 Max source files remain read-only.
 
 ## 7b. OUTSIDE SCOPE: STOP
 
@@ -1824,4 +2429,116 @@ Research validation (r4c): eight extracted Bash blocks pass `bash -n`; twenty Py
 
 Research validation (r4g): eight Bash blocks pass `bash -n`; twenty-two Python heredocs and the generated M4 Max shim pass `py_compile`. The five existing inline self-tests pass (ancestry, bootstrap refusal, strict SSH configuration, recursive JSON diff, and side-effect metadata). The frozen source hash remains unchanged; bootstrap hashing, full-mode equal hashes, and refusal on differing full-mode hashes pass their local cases. The retained run-1 asset hashes are unchanged. At `218a5a50111819cf8efd146890e0ed0b5341d372`, bootstrap's §1 offline replay exits 0 after the transform self-tests, exact derived `package.json`, transform audit, and all 653 archive members. Its I5 source blob is `d4ccdc422de57a05b870ecff6c398b4da3d9dfe8`, SHA256 `99fb600db0a10738f8ce7f097ab188d6a714f9286ec8e1d35ab8f83636b250be`. The extracted controller source-loader passes the real Git-source control and STOPs on a missing commit, altered `git show` bytes, or altered preflight evidence. The historical full-mode replay correctly STOPs on missing `scripts/skills-sync-receipt.mjs`; neither receipt script ships in that pre-I5 release. The complete three-site `extractfile(`/`getmember(` audit finds an additional unconditional non-shipped dependency: §2's `document('scripts/release/shipped-paths.json')`. Replaying only those exact archive-read statements locally raises `KeyError: "filename 'scripts/release/shipped-paths.json' not found"` before any controller mode or SSH. The installer, catalog, and vendor manifest are shipped; `MANIFEST.json` is generated and verified. Evidence and the validation harness are under `docs.local/scratch/m1proc-r4g/`, with the completed report in `round-2/validation.json`. The first audit harness incorrectly assumed every intended member was shipped; its failed round is retained, and round 2 records the actual policy result. Boundary greps remain empty. Sections 3–8's prior content, the frozen functions, all three quoted rulings, and all unrelated r4f bytes are unchanged. No M1 contact, live-row/producer, installer, or rollback run occurred. A separate decision on the policy source is required before readiness; run 1 remains STOPPED.
 
-PROCEDURE_READY r4h (pending the Codex delta re-check)
+Research validation (r4i): all eight extracted Bash blocks pass `bash -n`; all twenty-three Python heredocs and the original generated M4 Max shim pass `py_compile`. The five new filesystem cases pass: absent creates exact template bytes/mode `0600`; identical preserves bytes/inode; one-field mismatch, `0644`, and symlink each STOP without rewriting. The five prior inline self-tests also pass. Two full offline replays through §§1–2 exit 0, with recorded GitHub-response stubs, the retained run-1 assets at `218a5a50111819cf8efd146890e0ed0b5341d372`, all 653 release members, actual Git source/blob verification, and SSH stub execution in a scratch M1 HOME. Each replay then executes the extracted snapshot, presync, rollback and second rollback: the new-config case restores original absence; the existing-config case restores exact whitespace/bytes/mode after a simulated failed-sync config overwrite. Protected-system inventories, runtime/peer observations, hook status and identity pins are fixtures; parity failures remain recorded as NOT_GREEN. These tests prove the local controller paths, not actual M1 rollback, live parity or installation. A separate missing-requirements scratch case reproduces the next live prerequisite failure before config/custody writes. Read-only strict SSH confirmed the M1 key/peer alias, absent config/parent and absent requirements in the inspected Golems/Orchestrator locations; no remote mutation occurred. All three quoted rulings and frozen I5 source remain byte-identical; boundary greps for private HOME paths, private evidence paths, email-shaped hostnames and the private M1 username are empty. Evidence: `docs.local/scratch/m1proc-r4i/validate.py`, `round-4/results.json` (original absence), `round-5/results.json` (prior bytes), and each round's `next-blocker.txt`. The separate generated-shim extraction initially selected the wrong heredoc and stopped with `StopIteration`; selecting the heredoc containing the shim corrected the harness, and original shim compilation passed. The live run remains STOPPED; the missing schema-2 M1 requirements file is not created under the config-only exception.
+
+## Historical r4j decision: superseded by the explicit B′ contract in r4k
+
+**STOP — no option was silently substituted.** The preferred A is technically valid for inventory alone: at current master `218a5a50111819cf8efd146890e0ed0b5341d372`, `scripts/ratchet/installed-skills.py:226–264` builds an inventory without a requirements manifest, and `main:372–373` dispatches `--inventory` before config loading at `:375`. The verified source can therefore be executed as a library and its `inventory()`, `observed_identity()` and frozen/shipped tree hashes called without `main()` or `load_config()`. This would remove the controller's M1 parity config dependency. It does **not** remove every M1 comparison in the unchanged procedure.
+
+The decisive counterexample is full §3. Both the previously reviewed #918 head `4b6ddf3d24b7426773bf4896a3c39973e9b8b2dc` and its current OPEN head `c86484fbd59104bb0308f1454a09ce5456ebc45b` retain this call chain:
+
+| Source at current #918 head | M1 Pro call and dependency |
+| --- | --- |
+| `scripts/ratchet/sync-m1.py:162–173,232–240` | Full sync's successful install **and** already-current path call `after_m1_sync()`. It uses strict SSH to run `--remote receipt` on the M1 Pro. |
+| `scripts/ratchet/sync-m1.py:50–59` | Remote receipt runs the installed `scripts/skills-sync-receipt.mjs emit release-channel` on the M1 Pro. |
+| `scripts/skills-sync-receipt.mjs:8–12`; `scripts/lib/skills-sync-receipt.mjs:69–82` | `emitSkillsReceipt()` spawns `python3 -B scripts/ratchet/installed-skills.py` **without `--inventory`** at library line 75. It requires live/pass parity for the receipt subsequently accepted in §4. |
+| `scripts/ratchet/installed-skills.py:388–407,417–423` | That M1 process calls `main()` → `load_config()` at line 400 → M1 requirements read/validation → SSH peer inventory → `compare(local M1, remote M4, requirements)` at line 423. Its config missing-file failure is now line 369 (master's historical line 344). |
+
+The retained r4i controller's exact M1 config-loader sites are baseline lines 965 (`parity_config_pre_step`), 1079 (`transport`), 1099 (non-preflight bootstrap guard except rollback), and 1363 (rollback `ns['main']()` → master line 375). Each reaches master's `load_config:339–360` if its prerequisites permit, with a missing config raising at line 344. Baseline line 1463 is the **M4 Max** identity/config preflight, not another M1 caller. The schema-source hash check merely inspects `load_config` bytes and never calls it. Since neither whole-procedure option holds, those M1 sites remain explicitly blocked; none is claimed removed.
+
+Thus A cannot cover the full run without a Golems receipt/helper change. This worker is not authorized to change Golems code or replace its receipt route. Bootstrap's frozen W10 `after_m1_sync()` is a no-op, but bootstrap-only success cannot qualify A for all later runs. No controller-only edit is presented as removing that independent M1 comparison.
+
+**B also cannot pass as specified.** The existing M4 Max requirements are ordered `[M4 Max, M1 Pro]`, as checked by the controller's local `observed_identity() == requirements['identities'][0]` preflight and its pinning of the M1 to index 1. Master's `installed-skills.py:296–300` and current #918 `:320–325` compare local then remote against those ordered pins. A byte-identical mirror on the M1 would therefore compare `[M1 Pro, M4 Max]` to `[M4 Max, M1 Pro]` and fail **both** identities. The current r4i `parity_config_pre_step()` also explicitly requires `[M1 Pro, M4 Max]`, rejecting the mirrored document before config creation. Reversing the pins would be a different manifest and would violate B's byte-identical requirement. No manifest, config, key, or parent directory has been provisioned.
+
+The inline offline tests now prove three relevant behaviors using actual Git-sourced library functions: an M4-first comparison passes; the identical requirements with reversed hosts reports exactly two identity errors; inventory with an absent scratch `.golems` and a trap on `load_config()` succeeds without creating it. The existing five config filesystem cases and five earlier self-tests remain applicable to the retained, blocked r4i code. Their success cannot resolve either decision-rule contradiction.
+
+### Static §3–§6 M1 dependency trace
+
+The §3–§6 calls remain unchanged in r4k. B′ supplies the two config/requirements dependencies explicitly; it does not remove config loading. This retained trace lists no further unaccounted M1-side file dependency: the existing key, peer trust, roots, runtime and installed receipt/policy/library inputs remain prerequisites and shipping gates, not new files synthesized by this pre-step.
+
+| Section | M1-side reads/calls and required files |
+| --- | --- |
+| §3 bootstrap | Frozen W10 helper `sync-m1.py:50–122` reads existing `.golems/release.json`, retained releases and attempt `success.json` markers; prepare reads all existing roots and `.codex/config.toml`, then its own stage `before.json`; apply reads verified archive/SHA256SUMS/MANIFEST and extracts their installer, followed by installed Bun `repoint-skills.mjs`. No installed-skills config is loaded by this frozen helper. Live-rows' parity row is initiated on the M4 Max. |
+| §3 full | The same install inputs plus the independently initiated M1 receipt/parity chain above. M1 needs its owner-only `.golems/ratchet/installed-skills.json`, that config's existing private key, its schema-2 requirements with **M1-first** pins, and existing SSH trust for its peer. These are required even on the helper's no-op path. |
+| §4 receipt/post | Controller `receipt` reads the installed latest receipt; `post` reads snapshot state, existing M1 parity config, shared hook configs, release/current manifest and payload, wrappers, immutable receipt event/latest, all five roots and protected state. Hashing is library-only, but r4i's remote bootstrap guard calls `load_config()` before entering these modes. Full receipt dependencies additionally include `scripts/ratchet/skills-receipt.py:8–13,26–52` importing sibling installed-skills/sync-m1 source, reading builder policy, roots/bin and release.json; `scripts/lib/skills-sync-receipt.mjs:21–24,60–65` also needs the receipt CLI, hooks status and receipt libraries/schema. |
+| §5 | The direct two-host parity command runs on the M4 Max. Its M1 child is `python3 - --inventory`, dispatched before config loading; it reads M1 roots, release.json when present, machine UUID/hostname/HOME, and receives source + policy through stdin. No M1 parity config, requirements or M1-to-M4 key is needed **for that child**. Finish repeats the controller's post dependencies. |
+| §6 | Controller rollback reads snapshot archive/state/checkpoints and retained old release, restores only the recorded footprint, then runs old hook status. The current `ns['main']()` call with no arguments initiates parity on the M1 and reaches master's `load_config:339–360`, including its missing-file failure at line 344; the retained bootstrap rollback guard uses a template only for SSH option proof. Moving this comparison to the M4 Max is possible for the controller, but cannot repair §3 full's independent receipt call. |
+
+Current #918's `scripts/release/shipped-paths.json:4` now explicitly ships installed-skills.py, sync-m1.py, skills-receipt.py, builder policy, receipt CLI/library/schema and generated validator support. Therefore the older archive-omission finding is **not** asserted against that PR head. Its shipping-policy bytes differ from the frozen §1 audit: the procedure's existing transform hash gate requires re-audit at a future changed MERGE_SHA before a full run, as designed. A current source file being present is not proof its future released bytes or dependencies pass.
+
+### r4j local validation and stop state
+
+The full offline replay through §§1–2 uses the retained run-1 assets at `218a5a50111819cf8efd146890e0ed0b5341d372`, recorded GitHub-response stubs, actual Git-source/blob verification, and stubbed SSH executing the controller in a scratch M1 HOME with **no requirements manifest**. §1 and §1b exit 0, validating all 653 archive members. §2 exits 1 with `reviewed M1 parity requirements prerequisite missing/unsafe`, before config or pre-step custody creation. This is the next failure, preserved rather than filled with a fabricated manifest. Protected-system scans, runtime/peer observations and identity pins are fixtures; no actual SSH connection, M1 write, producer, installer, or rollback was executed.
+
+Evidence is under `docs.local/scratch/m1proc-r4j/`: the byte-preserved r4i baseline, `validate.py`, `replay-final/results.json`, `replay-final/next-blocker.txt` (with the earlier `replay-1` STOP also retained), GitHub source captures and `static-source-trace.json`. The replay intentionally records §2's nonzero result; the harness's successful assertion of that STOP is not a successful procedure replay. All eight Bash blocks pass `bash -n`; all twenty-three Python heredocs and the generated M4 Max SSH/SCP shims pass `py_compile`. The five existing config filesystem cases, five prior inline self-tests, and new directionality/inventory checks pass. Boundary scans for private HOME/evidence paths, email-shaped strings and the private M1 username are empty. The three verbatim rulings and frozen I5 definitions remain byte-identical. See `final-validation.json` for these checks and the final procedure SHA256. These checks do not upgrade the intentionally failing §2 replay to READY.
+
+Historical r4j verdict: PROCEDURE_BLOCKED: A requires changing full-mode Golems receipt parity; B's byte-identical M4 manifest reverses the identities required on the M1. The retained r4i replay stops on the missing M1 requirements file before writing config. Lead resolution must choose a Golems change for A or explicitly revise B's manifest contract; this worker makes neither decision.
+
+
+## Historical r4k B′ validation and readiness
+
+B′ is the lead's explicit resolution of r4j: it permits a DERIVED manifest, not a byte-identical mirror. The retained §3–§6 trace still accounts for the M1 receipt writer's independent parity invocation. Both it and controller rollback read the same r4i config and the M1-first requirements now provisioned by §2. The existing key/peer trust, root trees, release metadata/payload, hook status, installed receipt CLI/libraries/schema and builder policy remain required; no further unaccounted M1-side file dependency was found in that retained trace. This is a static dependency conclusion at the captured heads, not a promise about a future release. The source/schema and release transform/shipping gates remain active.
+
+Research validation (r4k): eight extracted Bash blocks pass `bash -n`; twenty-three extracted Python heredocs and the generated M4 Max transport shims pass `py_compile`; generated M1 transport shims pass `sh -n`. The five config filesystem cases and five earlier inline self-tests pass. B′ checks pass for exact derivation and M1-first compare; swapping the pins back produces the existing compare's two identity errors. Six requirements filesystem cases pass their expected outcomes: absent/create, identical/no-op, differing bytes STOP, roots drift STOP, `0644` STOP and symlink STOP. Refusals preserve prior bytes/inode and write no creation custody.
+
+Two final offline replays through §§1–2 exit 0: one starts with both files absent, the other with both present. Both create or preserve the exact derived requirements and config as appropriate, retain source path/SHA256 evidence, and execute a passing M1-side Git-sourced inventory/compare with a fixture peer. Each then exercises snapshot, presync, a simulated failed-sync overwrite of both files, rollback and second rollback. Original absence or exact prior bytes/mode are restored for BOTH files; post-restore parity unavailability remains `ROLLBACK_RESTORED_NOT_GREEN`. Recorded GitHub stubs, protected-system/runtime/peer/identity observations and scratch HOME/config pointer substitutions are fixtures. The reviewed roots in the scratch source manifest come from the real runtime-selected M4 manifest; only its M1 identity pin is fixture-specific. Neither that fixture comparison nor these rollback exercises establish live parity or actual M1 restoration.
+
+Evidence: `docs.local/scratch/m1proc-r4k/validate.py`, `round-3/results.json` (absent), `round-4/results.json` (present), their `m1-side-derived-parity.json` files, and `final-validation.json`. Earlier successful rounds remain retained; final rounds include the additional M4 config-preservation guard. The historical r4j STOP and its evidence are retained. The three verbatim rulings, frozen I5 definitions, and §§3–§6 command blocks remain unchanged. Boundary scans for private HOME/evidence paths, email-shaped strings and the private M1 username are empty. Only the procedure and its designated local scratch evidence were written. No SSH connection, live M1 action, live producer, installer, key/root creation or deployment occurred. At r4k the missing ratchet parent remained an explicit STOP prerequisite; r4l below supersedes that parent-only restriction.
+
+## Historical r4l parent-directory validation and readiness
+
+The M1-only §2 exception now includes exactly the absent `.golems/ratchet` parent, created as `0700` after checking its existing real, user-owned `.golems` parent and the read-only key/peer prerequisites. Existing `ratchet` directories are never chmodded and must be real, user-owned and not group/world writable. `before.json`, `complete.json` and snapshot custody retain `parent_created_by_run`. Rollback first restores both files, then uses empty-only `rmdir` for a created parent; it preserves pre-existing parents, refuses unexpected contents and accepts an already completed removal on retry. O15 records this footprint, and `real_directories()` enforces parent safety before preflight, snapshot and sync.
+
+Offline validation: both replays through §§1–2 exit 0. `round-1` starts with `.golems` present and no `ratchet`, creates the parent as `0700` with custody flags, then restores both files and parent to absence in rollback and retry. `round-2` starts with a safe existing `0750` parent and both files present, preserves the parent mode/inode and restores exact file bytes/modes in both rollback attempts. Each fixture M1-side comparison has zero errors. All ten parent cases, five config cases, six requirements cases, earlier inline rejection checks and identity-direction checks pass. Eight Bash blocks and twenty-three Python heredocs pass syntax checks; original M4 transport shim compilation and generated M1 shim syntax checks pass. All Bash blocks outside §2, the frozen I5 definitions and three verbatim rulings remain unchanged. Boundary scans for private HOME/evidence paths, email-shaped strings and the private M1 username are empty.
+
+Evidence: `docs.local/scratch/m1proc-r4l/validate.py`, `round-1/results.json`, `round-2/results.json`, each round's custody/snapshot/rollback records and `m1-side-derived-parity.json`, plus `final-check.py` and `final-validation.json`. Fixture protected-state/runtime/peer observations remain offline substitutes; rollback parity unavailability remains `ROLLBACK_RESTORED_NOT_GREEN`. No M1 contact, live installation, producer, deployment or real-machine rollback occurred. Only this procedure and the designated r4l scratch directory were edited; existing run evidence remains untouched.
+
+## Historical r4m real-listing trace and blocked state (superseded by r4n only for KNOWN_DRIFT)
+
+The retained depth-1 listing covers all five roots and records one dangling link: `.gemini/config/skills/tmp-block -> ../../../.agents/skills/tmp-block`; `.agents/skills/tmp-block` is absent. The listing is evidence of names, object types, link text and modes, not of unlisted target contents, runtime availability, trust, requirements readability or protected-state stability. The replay substitutes HOME only in absolute link text and supplies explicitly synthetic target/file bytes and host observations. It does not repair the dangling link.
+
+### Resolution and preservation code paths
+
+All references below are to this procedure, whose controller is embedded in §2:
+
+| Procedure file:line | Role and dangling-link behavior |
+| --- | --- |
+| `m1-skills-sync-PROCEDURE.md:716` | `link_resolution()` retains `link_text`, returns `target_state=dangling` for missing/non-directory targets or `broken` for resolution errors; `owned():1269` returns false for either. |
+| `m1-skills-sync-PROCEDURE.md:761` | `tree()` follows targets only for complete/content listings; dangling/broken/cyclic links are rows, not exceptions. Non-following archive/mutable listings retain raw link text and lstat metadata without resolving a staging-relative target. Its canonical JSON digest includes those rows. |
+| `m1-skills-sync-PROCEDURE.md:1282` | `capture()` retains all five complete listings and per-entry ownership. An unhashable root has `tree_sha256=null` plus `hash_stop`; optional FIXED absence remains `{exists:false, rows:[]}`. |
+| `m1-skills-sync-PROCEDURE.md:731` | `root_hash_stop()` follows frozen I5 exclusions; `require_hashable_capture():748` preserves listings in the named STOP. `frozen_hashes():701` guards every direct hash call, including bin, and names other frozen failures. Frozen `tree_sha256():417` remains byte-identical. |
+| `m1-skills-sync-PROCEDURE.md:815` | `real_directories()` permits absent optional directories, rejects existing symlink write destinations through `STOP: UNSAFE_FOOTPRINT_DIRECTORY`, and names vendor-tree symlinks. It never dereferences a root child to decide whether a footprint directory is safe. |
+| `m1-skills-sync-PROCEDURE.md:1411` | Preflight requires hashability before parity parent/config/custody writes. Snapshot repeats the guard at `:1416` before lock/stage creation, archives without dereference at `:1434`, and records full pre-state. Presync repeats the guard at `:1459`. |
+| `m1-skills-sync-PROCEDURE.md:1468` | Post/finish guard a fresh capture before acceptance; `verify_roots():1298` preserves M1-only state and checks changed Gemini link text before any strict destination resolution. Broken changed roots stop by name. |
+| `m1-skills-sync-PROCEDURE.md:1606` | Rollback extracts link objects without dereference; `restore_member_metadata():1243` restores link uid/gid/mode without following a missing target. Staged non-following equality at `:1609` and restored full capture at `:1648` verify the same text, metadata, absence and content. No repair is added. |
+| `m1-skills-sync-PROCEDURE.md:1680` | The M1 entry catches unexpected exceptions as `STOP: CONTROLLER_EXCEPTION <type>: <msg>` and prints JSON even outside rollback. Local capture at `:1802` also writes a JSON transport failure for invalid/empty remote output; local preflight-loader errors receive the same envelope. |
+
+### §2–§6 trace against the recorded M1 listing
+
+1. §2 roots contain respectively 50 Claude, 50 Agents, 53 Codex, 6 Cursor and 38 Gemini entries; all five root directories exist. Equality across provider catalogs is neither required nor fabricated.
+2. §2 records the Gemini dangling link and STOPs before the reviewed parity pre-step, transport staging, snapshot or install; its listing is retained in `preflight.json`, not an empty file.
+3. §2 absent receipt leaf and ratchet/config/requirements are optional pre-state. The latter three can be created only by the existing reviewed O13–O15 pre-step, which this STOP never reaches.
+4. §2 accepts both `lrwx------` and `lrwxr-xr-x` as observed metadata; it imposes no invented uniform link mode. Snapshot/rollback preserve each, including during extraction where relative targets temporarily dangle.
+5. §3 pinned `install.sh:295–337` updates Claude/Agents/Codex only; Agents catalog has no `tmp-block`. It cannot heal the missing Agents target. Existing noncatalog real directories and unrelated link objects are retained.
+6. §3 `sync-m1.py:104–106` calls repoint twice with `--vendor-skills`; `repoint-skills.mjs:130–132` takes the vendor-only early return, bypassing the general dangling repair/prune walk. The pinned vendor manifest selects Claude/Codex/Cursor, so Gemini is not rewritten or pruned.
+7. §3 preserves absolute Claude skill links through `current`, relative `current -> releases/...` text, and relative Gemini links as objects. Catalog, vendor and indirect-content changes remain subject to owned-link and manifest-byte checks; no manual repair/deletion is introduced.
+8. §3 existing `.claude/hooks/tmp-block` points into retained release `2026.10.27-0abede3`; this is an expected release-pinned client hook, separate from the broken skill link. Installer hook reinstallation may update managed hooks; `--preserve-releases` retains the old target for rollback. Actual hook-receipt validity still needs live checking.
+9. §4/finish frozen I5 rejects remaining Gemini `tmp-block` with `ValueError: broken symlink in skills root`; the controller therefore stops in §2. Hashes are never substituted with the complete-listing digest. Cursor's six vendor entries have a separate five-root check, not a nonexistent receipt field.
+10. §5 pinned parity inventories Claude/Agents/Codex, compares names/content between HOSTS per root, and validates the runtime requirements; cross-provider extras are not errors by themselves. The listing alone cannot prove supporting bytes/readability or two-host parity. No real parity ran.
+11. §6 archive/link restoration retains exact link text and modes, including dangling links as data, and remains NOT_GREEN. On this fixture no snapshot exists, so rollback is not entered. Successful earlier fixture rollbacks cannot upgrade this preflight STOP.
+12. Full mode at this pre-I5 merge remains ineligible under §1's existing receipt/shipping gates. No future source/receipt acceptance is inferred from this bootstrap replay.
+
+Offline r4m validation: all eight Bash blocks and twenty-three Python heredocs pass syntax checks. The ten parent, five config and six requirements cases, identity-direction/inventory checks and prior inline self-tests remain green. The added relative/absolute dangling and cyclic-link cases preserve exact archive-restored text/modes and produce named errors. The frozen I5 source and all command blocks outside §2 remain unchanged. Two earlier-shape replay controls (absent parent/files and pre-existing parent/files) pass §§1–2, snapshot, presync, rollback and retry; their unavailable parity remains `ROLLBACK_RESTORED_NOT_GREEN`. The real-listing replay passes §§1/1b and deliberately exits 1 in §2 with the exact named dangling STOP, with all five listings and an unchanged fixture HOME. An injected raw M1 `FileNotFoundError` crosses the stubbed SSH boundary and leaves parseable `preflight.json` containing `STOP: CONTROLLER_EXCEPTION`; local source-loader failure does likewise. These are offline proofs only. No M1 contact, live installer/producer, or live rollback occurred. All source/replay artifacts and the detailed report are under `docs.local/scratch/m1proc-r4m/`.
+
+Proposed ruling only, not an executable procedure step: replace the existing `.gemini/config/skills/tmp-block` symlink's text `../../../.agents/skills/tmp-block` with `../../../.claude/skills/tmp-block`, leaving its mode/owner intact. Claude's catalog contains `tmp-block`; Agents' catalog does not. Creating an Agents link instead would invite the installer's noncatalog release-link pruning. Replacing this pre-existing Gemini object requires a separate ruling and separately authorized implementation; do not execute it from this procedure. After such a ruling, revalidate real listing, frozen hashes, preservation and parity before any retry.
+
+BLOCKED-NEEDS-RULING: replace ~/.gemini/config/skills/tmp-block link text ../../../.agents/skills/tmp-block with ../../../.claude/skills/tmp-block, preserving link mode/owner.
+
+
+## r4n reviewed single-link pre-step and offline validation
+
+The one-row KNOWN_DRIFT exception supersedes r4m's proposed link-repoint ruling and its known-link preflight STOP only. No link is repointed and no missing Agents entry is created. Snapshot preserves the original symlink object, text, mode and owner before the single guarded unlink; post-sync preservation permits exactly that custody-backed removal. Unknown dangling/broken entries still STOP with `DANGLING_ROOT_LINK`, retaining their detailed target state in the five-root listing. Strict presync rejects even a reintroduced exact known link. The preflight, snapshot, presync and rollback JSON retain known-drift results; the durable intent additionally records lstat mtime and object identity.
+
+Offline real-listing replay through §§1/1b/2, snapshot/removal and presync exits 0 with frozen I5 hashes over all five roots. The snapshot tar retains the original Gemini link; two full rollback attempts restore its byte-exact text, mode `0755`, uid and gid. The absent/present parity prerequisite controls, raw-failure reproduction, exception envelopes, parent/config/requirements cases, syntax and immutable frozen-source/Bash contracts remain required checks in the r4n report. The restored fixture parity remains `ROLLBACK_RESTORED_NOT_GREEN`; these offline results establish no M1 install, runtime parity, producer or native acceptance. §7b and §7c are unchanged: the O16 unlink changes no protected path or M4 producer footprint.
+
+Evidence is under `docs.local/scratch/m1proc-r4n/`, including the retained failed first harness replay (its extra inventory rejects synthetic release metadata), corrected required replay, exact-link behavior cases and final verification. No M1 contact or live execution occurred. Only this procedure and that scratch directory were edited.
