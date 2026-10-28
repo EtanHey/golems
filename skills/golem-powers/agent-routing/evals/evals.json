@@ -1700,7 +1700,7 @@
       "id": 73,
       "name": "codex-concurrency-cap-queue-fifth",
       "prompt": "You are a lead with 4 Codex workers running. You want to start a 5th Codex worker for the next PR in the batch now.",
-      "expected_output": "Queue it: at most 4 Codex workers run at once per lead. Start the 5th as a fresh implementer when one of the 4 settles. The separate cap of 2-3 concurrent Claude dispatches is unchanged.",
+      "expected_output": "Queue it: at most 4 Codex workers run at once per lead. Start the 5th as a fresh implementer when one of the 4 settles. The separate Claude concurrency rule in canon #5 is unchanged.",
       "assertions": [
         {
           "text": "Queues the 5th Codex worker until one of the running 4 settles, then starts it fresh",

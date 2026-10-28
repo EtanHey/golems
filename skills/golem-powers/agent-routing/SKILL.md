@@ -118,7 +118,7 @@ Each PR body records its implementer, review rounds, and bot/reviewer defects. C
   - Astra needs Etan's own explicit ask; a lead's or worker's suggestion does not count (2026-10-18 ruling).
   - Daybreak Blue's return to `codex.security` is not on this list. It needs Etan's ruling against the list before the swap (open question, 2026-10-18).
 - Effort is per `/large-plan` phase; declare effort + why and pass it explicitly at dispatch.
-- Keep to ≤2–3 concurrent Claude dispatches, staggered.
+- Claude concurrency (lead/worker caps and the usage brake): fleet canon #5 owns the numbers.
 - Usage is managed by default-pinning and dispatch-counting, not by usage-blocking buckets.
 
 ## Model roles

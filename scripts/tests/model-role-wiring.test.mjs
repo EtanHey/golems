@@ -48,7 +48,14 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(text, /Every non-Cursor Agent\/Workflow\/Task spawn pins its model explicitly/);
   assert.match(text, /claude.judgment.*1M/);
   assert.match(text, /pin is never removed/);
-  assert.match(text, /≤2–3 concurrent Claude dispatches, staggered/);
+  assert.match(text, /Claude concurrency .*fleet canon #5 owns the numbers/);
+  assert.doesNotMatch(text, /2–3 concurrent Claude dispatches/);
+  const canon = read('standards/fleet-canon.md');
+  assert.match(canon, /at most 10 active Claude leads fleet-wide, normally 5-7/);
+  assert.match(canon, /<=2 top-tier.*<=2 mid-tier, <=4 light-tier.*<=20% of the rolling 5h/s);
+  assert.match(canon, />=60% no new Claude workers and <=5 active leads/);
+  assert.match(canon, />=80% no Claude workers and <=3 essential lead turns/);
+  assert.doesNotMatch(canon, /2-3 concurrent Claude dispatches/);
   assert.doesNotMatch(text, /flip back to/);
   const evals = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json')).evals;
   for (const [id, role] of [[46, 'claude.judgment'], [47, 'codex.security'], [48, 'lead'], [49, 'codex.implement']]) {
@@ -217,7 +224,8 @@ test('one PR = one fresh implementer replaces lane-wide worker reuse', () => {
   assert.doesNotMatch(topology, /follow-ups on its own diff/);
   assert.doesNotMatch(goal, /continue the same lane/);
   assert.match(goal, /a new PR gets a fresh implementer/);
-  assert.ok(skill.includes('Keep to ≤2–3 concurrent Claude dispatches, staggered.'));
+  assert.ok(skill.includes('fleet canon #5 owns the numbers'));
+  assert.ok(!skill.includes('2–3 concurrent Claude dispatches'));
   const ops = read('skills/golem-powers/agent-routing/references/delegation-operations.md');
   assert.doesNotMatch(ops, /Reuse before spawn|do not fork the lane/);
   assert.match(ops, /\*\*One PR = one fresh implementer\.\*\*/);

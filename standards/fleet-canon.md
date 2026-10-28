@@ -33,7 +33,13 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    the pin is never removed. A prior session's model never persists into the next.
    A non-default model is used only by explicit per-invocation selection.
    Every non-Cursor Agent/Workflow/Task spawn pins its model explicitly.
-   Keep to <=2-3 concurrent Claude dispatches, staggered.
+   Claude concurrency: at most 10 active Claude leads fleet-wide, normally 5-7; a slot is an actually
+   running turn (idle, snoozed or waiting threads don't count). Claude workers by tier (tier->model in
+   model-roles.json): <=2 top-tier (inside the shared 10-slot top-tier ceiling), <=2 mid-tier, <=4 light-tier;
+   all Claude workers together <=20% of the rolling 5h.
+   Brake on tokenlayer `usage.json` five_hour.used_pct: >=60% no new Claude workers and <=5 active leads;
+   >=80% no Claude workers and <=3 essential lead turns.
+   (Etan, 2026-10-28, via fleet control: "3 is too low", "~20 too wide", "even 10 might not kill it as long as they're leads".)
    Usage is managed by pinning and dispatch-counting.
 
 6. **launchers** - repoGolem launchers default to `{repo}{Cli}` with hyphens stripped
