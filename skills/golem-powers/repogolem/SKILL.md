@@ -91,7 +91,7 @@ does not inject registry agent front-matter or boot-store instructions. Short
 `~/.codex/config.toml` is never edited; `*Codex` launchers pass `-c` overrides (codex-cli 0.160.1):
 
 - **Computer use stays on** for every launch, workers included ("that's how they can properly test").
-- **Locals T3code defaults on in ALL Codex launches:** workers, bare, aliases, prompts,
+- **Locals T3code defaults on in ALL Codex launches:** workers, leads, bare, aliases, prompts,
   fresh/resume/continue and scan. Its normalized `locals_t3code` name resolves from Codex's normal
   cache; no opt-in, special flags or F2 binding is required. Missing cache/name does not block launch.
 - **Other connectors are fail-safe stripped.** Every agent-shaped launch loses the other `codex_apps` cloud
