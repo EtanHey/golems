@@ -242,14 +242,14 @@ function hasTextOnlyDetails(html, outputPath) {
     }
     return false;
   }
+  const targetHasVisual = target => target && target.tagName !== "iframe" &&
+    (["dialog", "figure", "section"].includes(target.tagName) || attrs(target).role === "dialog") &&
+    [target, ...descendants(target)].some(n =>
+      ["svg", "canvas", "img", "figure", "video"].includes(n.tagName) && !isControlIcon(n, target));
   function opensVisual(node) {
     const a = attrs(node);
     if (!isDetailsControl(node) || !detailsLabel(node)) return false;
     const marker = (a["data-open-visual"] || "").trim();
-    const targetHasVisual = target => target && target.tagName !== "iframe" &&
-      (["dialog", "figure", "section"].includes(target.tagName) || attrs(target).role === "dialog") &&
-      [target, ...descendants(target)].some(n =>
-        ["svg", "canvas", "img", "figure", "video"].includes(n.tagName) && !isControlIcon(n, target));
     if (marker && /[\/\\]|\.html(?:[?#]|$)|^[a-z][a-z0-9+.-]*:/i.test(marker)) return Boolean(localPageHasVisual(marker));
     const target = byId.get(marker.replace(/^#/, ""));
     if (target) return Boolean(targetHasVisual(target));
@@ -270,11 +270,14 @@ function hasTextOnlyDetails(html, outputPath) {
       const target = realpathSync(fileURLToPath(url));
       // Only inspect pages within this dashboard's directory, including subdirectories.
       if (target.startsWith(base + path.sep)) {
-        const root = parseMarkup(readFileSync(target, "utf8"));
+        const fragment = decodeURIComponent(url.hash.slice(1));
+        if (target === realpathSync(outputPath)) return Boolean(fragment && targetHasVisual(byId.get(fragment)));
+        const ids = new Map();
+        const root = parseMarkup(readFileSync(target, "utf8"), ids);
         const containsVisual = node =>
           (["svg", "canvas", "img", "figure", "video"].includes(node.tagName) && !isControlIcon(node, root)) ||
           children(node).some(containsVisual);
-        visual = containsVisual(root);
+        visual = url.href.includes("#") ? Boolean(targetHasVisual(ids.get(fragment))) : containsVisual(root);
       }
     } catch {
       // Missing/unreadable files and malformed local URLs cannot prove a visual.
