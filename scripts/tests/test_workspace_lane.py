@@ -5,10 +5,12 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 
 import pytest
 
-from test_workspace_retire import git, tree as worktree_fixture
+from test_workspace_retire import git, load_retire, tree as worktree_fixture
+from test_workspace_regenerable_walk import at_move, bare_repository, nested
 
 tree = worktree_fixture
 
@@ -142,9 +144,17 @@ def test_t3_managed_path_refused(lane, tmp_path, monkeypatch):
     lane.run("reserve", "--lease-id", "managed", "--allocator", "direct-git", "--owner", "parent",
              "--repo", target, "--kind", "worktree", "--ownership", "created", script=LEASE)
     lane.run("bind", "--lease-id", "managed", "--path", target, "--head", "abc", script=LEASE)
+    before = lane.record({"lease_id": "managed"})
     result = lane.close({"lease_id": "managed"}, ok=False)
     assert "settle" in result.stderr and "T3" in result.stderr
     assert target.is_dir() and not lane.archive.exists()
+    assert lane.record({"lease_id": "managed"}) == before
+    alias = tmp_path / "managed-alias"
+    alias.symlink_to(target, target_is_directory=True)
+    before["path"] = str(alias)
+    (lane.ledger / "managed.json").write_text(json.dumps(before))
+    assert "T3" in lane.close({"lease_id": "managed"}, ok=False).stderr
+    assert lane.record({"lease_id": "managed"}) == before and target.is_dir()
 
 
 @pytest.mark.parametrize("location", ["inside", "tmp", "alias"])
@@ -172,3 +182,149 @@ def test_default_archive_root_uses_main_checkout(lane):
     opened = json.loads(lane.open("--repo", repo).stdout)
     summary = json.loads(lane.run("close", "--lease-id", opened["lease_id"]).stdout)
     assert Path(summary["receipt"]).is_relative_to(repo / "docs.local/worktree-archive")
+
+
+@pytest.mark.parametrize("marker", ["directory", "gitfile", "bare"])
+def test_ignored_nested_repository_never_archived(lane, tree, marker):
+    opened = json.loads(lane.open().stdout)
+    root = Path(opened["path"]) / "docs.local"
+    if marker == "bare":
+        head = bare_repository(root, tree[0])
+    else:
+        head = nested(root, lane.archive.parent / "separate.git", marker)
+    summary = json.loads(lane.close(opened, ok=False).stdout)
+    assert summary["disposition"] == "RETAINED" and "nested repository" in summary["reason"]
+    assert git(root / "src/somepkg", "rev-parse", "HEAD") == head
+    assert lane.record(opened)["disposition"] == "RETAINED"
+    assert not lane.archive.exists(), "nested repository must be detected before any archive copy"
+
+
+@pytest.mark.parametrize("violation", ["outside", "allocator"])
+def test_close_requires_direct_git_repo_worktree_boundary(lane, tree, violation):
+    opened = json.loads(lane.open().stdout)
+    target = Path(opened["path"])
+    outside = tree[0].parent / "outside-lane"
+    git(tree[0], "worktree", "move", str(target), str(outside))
+    target.symlink_to(outside, target_is_directory=True)
+    before = lane.record(opened)
+    assert "symlink" in lane.close(opened, ok=False).stderr
+    assert lane.record(opened) == before and not lane.archive.exists()
+    target.unlink()
+    if violation == "allocator":
+        git(tree[0], "worktree", "move", str(outside), str(target))
+    else:
+        target = outside
+    record_path = lane.ledger / (opened["lease_id"] + ".json")
+    record = lane.record(opened)
+    record["path"] = str(target)
+    record["allocator"] = "cmux" if violation == "allocator" else "direct-git"
+    record_path.write_text(json.dumps(record))
+    result = lane.close(opened, ok=False)
+    assert "direct-git" in result.stderr or ".worktrees" in result.stderr
+    assert lane.record(opened) == record and target.is_dir() and not lane.archive.exists()
+
+
+def crash_close(lane, opened, point):
+    script = '''import os, sys
+sys.path.insert(0, sys.argv.pop(1))
+import lane
+point = sys.argv.pop(1)
+if point == "archive":
+    original = lane.archive_files
+    def crash(*args, **kwargs):
+        original(*args, **kwargs)
+        os._exit(77)
+    lane.archive_files = crash
+elif point == "retire":
+    original = lane.subprocess.run
+    def crash(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if str(lane.Path(lane.retire.__file__)) in args[0]:
+            os._exit(77)
+        return result
+    lane.subprocess.run = crash
+else:
+    original = lane.lease.persist
+    def crash(target, record, **kwargs):
+        original(target, record, **kwargs)
+        if record["state"] == "closed":
+            os._exit(77)
+    lane.lease.persist = crash
+sys.exit(lane.main())
+'''
+    result = subprocess.run([sys.executable, "-c", script, str(CLI.parent), point,
+                             "close", "--lease-id", opened["lease_id"],
+                             "--archive-root", str(lane.archive)], capture_output=True, text=True)
+    assert result.returncode == 77, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("point", ["archive", "retire", "persist"])
+def test_interrupted_close_resumes_without_rearchiving(lane, point):
+    opened = json.loads(lane.open().stdout)
+    report = Path(opened["path"]) / "docs.local/report.md"
+    report.parent.mkdir()
+    report.write_bytes(b"preserve across crash\n")
+    crash_close(lane, opened, point)
+    destination = lane.archive / opened["lease_id"]
+    manifest_path = destination / "manifest.json"
+    before = manifest_path.read_bytes()
+    entry, = json.loads(before)["entries"]
+    archived = Path(entry["archived_to"])
+    identity = archived.stat().st_ino
+    summary = json.loads(lane.close(opened).stdout)
+    assert summary["disposition"] == "REMOVED" and not report.parent.exists()
+    assert manifest_path.read_bytes() == before and archived.stat().st_ino == identity
+    assert archived.read_bytes() == b"preserve across crash\n"
+    assert lane.record(opened)["disposition"] == "REMOVED"
+    assert json.loads(lane.close(opened).stdout) == summary
+    assert json.loads((destination / "close-state.json").read_text())["stage"] == "closed"
+
+
+def test_interrupted_close_rejects_tampered_archive(lane):
+    opened = json.loads(lane.open().stdout)
+    report = Path(opened["path"]) / "docs.local/report.md"
+    report.parent.mkdir()
+    report.write_text("original evidence\n")
+    crash_close(lane, opened, "archive")
+    destination = lane.archive / opened["lease_id"]
+    manifest = (destination / "manifest.json").read_bytes()
+    entry, = json.loads(manifest)["entries"]
+    archived = Path(entry["archived_to"])
+    archived.write_text("tampered\n")
+    summary = json.loads(lane.close(opened, ok=False).stdout)
+    assert summary["disposition"] == "RETAINED" and "hash/size mismatch" in summary["reason"]
+    assert report.read_text() == "original evidence\n" and archived.read_text() == "tampered\n"
+    assert (destination / "manifest.json").read_bytes() == manifest
+
+
+@pytest.mark.parametrize("phase", ["before", "after"])
+def test_manifest_covered_subtrees_checked_at_retirement(lane, tree, monkeypatch, phase):
+    opened = json.loads(lane.open().stdout)
+    path = Path(opened["path"])
+    content = path / "docs.local"
+    content.mkdir()
+    (content / "report").write_text("preserved\n")
+    if phase == "before":
+        nested(content, lane.archive.parent / "unused.git", "directory")
+    lane.archive.mkdir()
+    entries = []
+    for source in content.rglob("*"):
+        if source.is_file():
+            relative = source.relative_to(path)
+            archived = lane.archive / relative
+            archived.parent.mkdir(parents=True, exist_ok=True)
+            data = source.read_bytes()
+            archived.write_bytes(data)
+            entries.append(dict(path=relative.as_posix(), archived_to=str(archived),
+                                size=len(data), sha256=hashlib.sha256(data).hexdigest()))
+    manifest = lane.archive / "manifest.json"
+    manifest.write_text(json.dumps(dict(archive_root=str(lane.archive), entries=entries)))
+    module = load_retire()
+    if phase == "after":
+        at_move(module, (tree[0], path, None), monkeypatch,
+                lambda moved: (moved / "docs.local/nested/.git").mkdir(parents=True))
+    receipt, code = module.retire(SimpleNamespace(repo=str(tree[0]), path=str(path),
+        expect_head=opened["head"], expect_branch=None, receipt_out=None, archive_manifest=str(manifest)))
+    assert code != 0 and receipt["disposition"] == "RETAINED"
+    assert "nested repository" in receipt["reason"] and path.is_dir()
+    assert receipt["ignored_walks"][-1]["phase"] == ("after_move" if phase == "after" else "before_move")

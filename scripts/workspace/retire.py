@@ -8,7 +8,7 @@ allowlist or --archive-manifest: a JSON object with archive_root and entries of
 may be absolute or relative to archive_root. Archives and the manifest must
 survive outside the original/quarantine paths; archive_root cannot be ephemeral.
 Directories require file-by-file coverage. This primitive never writes archives.
-Regenerable directories are scanned without following symlinks; any .git entry,
+Regenerable and archived ignored directories are scanned without following symlinks; any .git entry,
 HEAD with objects/ or packed-refs, or incomplete scan retains the worktree.
 Detected repositories are not descended into. Each inventory's scan is capped at
 30 seconds or 100,000 entries, with duration/count/budget evidence in the receipt.
@@ -123,7 +123,8 @@ def require_persistent_archive(candidate):
         raise ValueError("archive_root or archived_to is under an ephemeral directory")
 
 
-def verified_archive(receipt, path, manifest):
+def verified_archive(receipt, path, manifest, *, source_present=True):
+    """Verify sources and archive bytes; absent-source mode is for receipt recovery only."""
     if manifest is None:
         return set()
     excluded = [Path(receipt["path"]), path]
@@ -184,7 +185,8 @@ def verified_archive(receipt, path, manifest):
                     or type(entry.get("size")) is not int or entry["size"] < 0):
                 raise ValueError("invalid archive hash or size: " + name)
             expected = entry["sha256"], entry["size"]
-            if regular_hash(path / relative) != expected or regular_hash(archived) != expected:
+            if ((source_present and regular_hash(path / relative) != expected)
+                    or regular_hash(archived) != expected):
                 raise ValueError("archive hash/size mismatch: " + name)
             verified.add(name)
             receipt["archive_verified_count"] = len(verified)
@@ -206,10 +208,6 @@ def archived_entry(path, name, verified):
 
 
 def inspect_regenerable(receipt, path, names, patterns):
-    started = time.monotonic()
-    walk = dict(phase="before_move" if path == Path(receipt["path"]) else "after_move",
-                duration_seconds=0.0, entry_count=0, budget_hit=None, nested_repositories=[])
-    receipt["regenerable_walks"].append(walk)
     directories = {pattern[:-1] for pattern in patterns if pattern.endswith("/")}
     roots = set()
     for name in names:
@@ -218,10 +216,30 @@ def inspect_regenerable(receipt, path, names, patterns):
             if part in directories:
                 roots.add(Path(*parts[:index + 1]))
                 break
+    inspect_directories(receipt, path, roots, "regenerable")
+
+
+def inspect_ignored(receipt, path, names):
+    roots = set()
+    for name in names:
+        relative = Path(name)
+        mode = (path / relative).lstat().st_mode
+        root = relative if stat.S_ISDIR(mode) else relative.parent
+        if root != Path("."):
+            roots.add(root)
+    if roots:
+        inspect_directories(receipt, path, roots, "ignored")
+
+
+def inspect_directories(receipt, path, roots, scope):
+    started = time.monotonic()
+    walk = dict(phase="before_move" if path == Path(receipt["path"]) else "after_move",
+                duration_seconds=0.0, entry_count=0, budget_hit=None, nested_repositories=[])
+    receipt.setdefault(scope + "_walks", []).append(walk)
     def nested_reason():
-        return "nested repository in regenerable dir: " + ", ".join(walk["nested_repositories"])
+        return "nested repository in " + scope + " dir: " + ", ".join(walk["nested_repositories"])
     def incomplete(detail):
-        reason = "regenerable walk evidence incomplete: " + detail
+        reason = scope + " walk evidence incomplete: " + detail
         return ValueError(nested_reason() + "; " + reason if walk["nested_repositories"] else reason)
     def budget():
         if time.monotonic() - started >= REGENERABLE_WALK_SECONDS:
@@ -315,6 +333,8 @@ def regenerable_patterns():
 def inventory(receipt, path):
     entries, status = local_files(path)
     patterns = regenerable_patterns()
+    inspect_ignored(receipt, path, [name for kind, name in entries
+                                   if kind == "!!" and not is_regenerable(name, patterns)])
     verified = verified_archive(receipt, path, receipt["archive_manifest"])
     files, regenerable = [], []
     for kind, name in entries:
