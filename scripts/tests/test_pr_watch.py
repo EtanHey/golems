@@ -68,7 +68,10 @@ if sys.argv[1] == 'api':
     sys.exit(0)
 steps = json.loads((p / 'steps').read_text())
 n = int((p / 'calls').read_text()) if (p / 'calls').exists() else 0
-(p / 'calls').write_text(str(n + 1))
+counter = p / 'calls'
+counter_tmp = p / 'calls.tmp'
+counter_tmp.write_text(str(n + 1))
+os.replace(counter_tmp, counter)
 with (p / 'argv').open('a') as f: f.write(json.dumps(sys.argv[1:]) + '\\n')
 step = steps[min(n, len(steps) - 1)]
 if 'sleep' in step:
@@ -84,6 +87,20 @@ if 'error' in step:
 print(json.dumps(step))
 ''')
         gh.chmod(0o755)
+
+    def test_interrupted_counter_write_preserves_last_complete_count(self):
+        (self.home / 'calls').write_text('1')
+        (self.home / 'steps').write_text(json.dumps([snapshot()]))
+        gh = self.home / 'gh'
+        # Kill after writing the next count, before it can be published.
+        gh.write_text(gh.read_text().replace(
+            '.write_text(str(n + 1))',
+            '.write_text(str(n + 1)); os.kill(os.getpid(), 9)'))
+        result = subprocess.run([str(gh), 'pr', 'view'],
+                                env=dict(os.environ, FIXTURE_DIR=str(self.home)),
+                                capture_output=True, text=True, timeout=8)
+        self.assertEqual(result.returncode, -9)
+        self.assertEqual((self.home / 'calls').read_text(), '1')
 
     def run_watch(self, steps, deadline='3s', retries=0, settle='1ms'):
         (self.home / 'steps').write_text(json.dumps(steps))
