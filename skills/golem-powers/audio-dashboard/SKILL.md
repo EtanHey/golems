@@ -332,11 +332,15 @@ a failure message with **Retry** and **Back** after a frame error or after
 `timeoutMs` (default 10000; per card, or the spec-level `comparisonTimeoutMs`).
 A load counts only with positive evidence from a readable same-origin frame: a
 2xx/3xx navigation `responseStatus`, or, where the browser has no such field
-(Safari/WebKit), the page's ready marker. **Every comparison page must carry it**
-in its head: `<meta name="adash-comparison" content="ready">` (or
-`data-adash-comparison="ready"` on `<html>`). Error pages never have it, so they
-never pass. `markComparisonReady(html)` from `src/decision-flow.mjs` adds it to
-generated pages, and the build fails on a local comparison page without it.
+(Safari/WebKit), the page's ready marker. **Every comparison page must carry the
+canonical marker:** the page starts with an optional doctype, `<html …>`,
+`<head …>`, then (whitespace only) exactly
+`<meta name="adash-comparison" content="ready">`, the first child of `<head>`.
+`data-adash-comparison="ready"` on that leading `<html>` start tag also works.
+Error pages never carry it. The build accepts only this form and fails otherwise,
+even for pages a browser would accept: run hand-built or generated pages through
+`markComparisonReady(html)` from `src/decision-flow.mjs`, which inserts it
+without removing anything.
 Serve the dashboard over http(s): from `file:` the frame cannot be checked, so
 the dialog shows the failure state. Back and Esc return focus to the opener.
 

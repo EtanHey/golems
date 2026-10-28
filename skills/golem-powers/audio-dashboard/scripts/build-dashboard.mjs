@@ -472,7 +472,7 @@ function main() {
       if (!existsSync(pagePath)) {
         console.error(`[build-dashboard] WARN: comparison page for ${decision} is not on disk yet, so its ready marker was not checked: ${url}`);
       } else if (!hasComparisonReadyMarker(readFileSync(pagePath, "utf8"))) {
-        fail(`decision-flow comparison page lacks the ready marker: ${decision} ${url}. Add <meta name="adash-comparison" content="ready"> to its <head>.`);
+        fail(`decision-flow comparison page lacks the canonical ready marker: ${decision} ${url}. Use the canonical marker (markComparisonReady): <meta name="adash-comparison" content="ready"> as the first child of <head>, or data-adash-comparison="ready" on <html>.`);
       }
     }
   } else {

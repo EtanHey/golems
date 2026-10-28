@@ -239,51 +239,41 @@ function normalizeComparison(decision, timeoutMs) {
 // A comparison page declares itself ready with this marker. An error or 404 page never carries it, so where the
 // browser reports no navigation status (WebKit) the marker is the success evidence.
 export const COMPARISON_READY_META = '<meta name="adash-comparison" content="ready">';
-// Elements a browser keeps in <head>. Any other element starts the body, so a meta after it is body content.
-const HEAD_ELEMENTS = new Set(["html", "head", "title", "base", "link", "meta", "style", "script", "noscript", "template"]);
+// Canonical-form contract (the build accepts nothing else). The leading bytes of the page must be: optional
+// doctype, the <html> start tag, then either data-adash-comparison="ready" on that tag, or the <head> start
+// tag followed (whitespace only) by exactly <meta name="adash-comparison" content="ready">. A meta that is the
+// first child of an explicit <head> is in document.head in every browser, so build-accept implies the runtime
+// check accepts. Valid but non-canonical pages are rejected on purpose: producers use markComparisonReady.
+const ci = (word) => [...word].map((letter) => `[${letter.toLowerCase()}${letter.toUpperCase()}]`).join("");
+// Quote-aware start-tag attributes, so a ">" inside a quoted value cannot end the tag early.
+const TAG_ATTRIBUTES = String.raw`(?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>` + "`" + String.raw`]+))?)*\s*/?`;
+const CANONICAL_PREFIX = new RegExp(String.raw`^﻿?\s*(?:<!${ci("doctype")}(?:\s[^>]*)?>\s*)?<${ci("html")}(${TAG_ATTRIBUTES})>(\s*<${ci("head")}${TAG_ATTRIBUTES}>)?(\s*<meta name="adash-comparison" content="ready"\s*/?>)?`);
+const ATTRIBUTE = /\s+([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+const SCAN_LIMIT = 16384;
 
-// Parse the page (Bun's HTMLRewriter, as the View details gate does) so that comments, raw text such as textarea
-// content, attribute values and look-alike attributes never count. Mirrors the runtime check: the first
-// meta[name="adash-comparison"] in the head says "ready", or <html> carries data-adash-comparison="ready".
-function readyMarker(page) {
-  let inBody = false, metaContent = null, htmlReady = false;
-  new HTMLRewriter().on("*", {
-    element(element) {
-      const tag = element.tagName.toLowerCase();
-      if (tag === "html" && element.getAttribute("data-adash-comparison") === "ready") htmlReady = true;
-      if (!HEAD_ELEMENTS.has(tag)) inBody = true;
-      if (tag === "meta" && !inBody && metaContent === null && element.getAttribute("name") === "adash-comparison") {
-        metaContent = element.getAttribute("content") ?? "";
-      }
-    },
-  }).transform(page);
-  return htmlReady || metaContent === "ready";
+function canonicalMarker(page) {
+  const match = page.slice(0, SCAN_LIMIT).match(CANONICAL_PREFIX);
+  if (!match) return { html: null, head: null, ready: false };
+  // The browser keeps the first of duplicate attributes.
+  const attribute = [...match[1].matchAll(ATTRIBUTE)].find((found) => found[1].toLowerCase() === "data-adash-comparison");
+  const htmlReady = Boolean(attribute) && (attribute[2] ?? attribute[3] ?? attribute[4]) === "ready";
+  return { html: match[0].length - (match[2]?.length ?? 0) - (match[3]?.length ?? 0), head: match[2] ? match[0].length - (match[3]?.length ?? 0) : null, ready: htmlReady || Boolean(match[2] && match[3]) };
 }
 
 export function hasComparisonReadyMarker(html) {
-  return readyMarker(String(html ?? ""));
+  return canonicalMarker(String(html ?? "")).ready;
 }
 
-// For producers that generate comparison pages: add a real ready marker to the page head. Placement uses parsed
-// elements too, so a commented-out <head> or marker cannot absorb it.
+// For producers: return the page with the canonical marker, never removing a tag. It goes right after the
+// leading <head> start tag; a missing <head> (or <html>) is created in front of the existing content.
 export function markComparisonReady(html) {
   const page = String(html ?? "");
-  if (readyMarker(page)) return page;
-  let hasHead = false;
-  new HTMLRewriter().on("head", { element() { hasHead = true; } }).transform(page);
-  let placed = false;
-  const marked = new HTMLRewriter().on("*", {
-    element(element) {
-      if (placed) return;
-      const tag = element.tagName.toLowerCase();
-      if (hasHead ? tag === "head" : tag !== "html") {
-        placed = true;
-        if (tag === "head") element.prepend(COMPARISON_READY_META, { html: true });
-        else element.before(COMPARISON_READY_META, { html: true });
-      }
-    },
-  }).transform(page);
-  return placed ? marked : page.replace(/^(\s*<!doctype[^>]*>)?/i, (doctype) => `${doctype}${COMPARISON_READY_META}`);
+  const { html: htmlEnd, head: headEnd, ready } = canonicalMarker(page);
+  if (ready) return page;
+  if (headEnd !== null) return page.slice(0, headEnd) + COMPARISON_READY_META + page.slice(headEnd);
+  if (htmlEnd !== null) return `${page.slice(0, htmlEnd)}<head>${COMPARISON_READY_META}</head>${page.slice(htmlEnd)}`;
+  const doctype = page.match(new RegExp(String.raw`^﻿?\s*(?:<!${ci("doctype")}(?:\s[^>]*)?>)?`))[0];
+  return `${doctype}<html><head>${COMPARISON_READY_META}</head>${page.slice(doctype.length)}`;
 }
 
 // Each card's comparison target, as the dashboard-relative URL the renderer emits.

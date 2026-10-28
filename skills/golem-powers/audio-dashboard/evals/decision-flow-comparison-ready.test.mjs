@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { COMPARISON_READY_META, markComparisonReady, renderDecisionFlow } from '../src/decision-flow.mjs';
+import { COMPARISON_READY_META, hasComparisonReadyMarker, markComparisonReady, renderDecisionFlow } from '../src/decision-flow.mjs';
+import { CANONICAL, REJECTED } from './fixtures/comparison-markers/specimens.mjs';
 
 // ADX-2c review r1: without responseStatus (WebKit), success is an explicit ready marker on the comparison page,
 // not a guess about which marks are charts. An error or 404 page never carries the marker.
@@ -78,3 +79,21 @@ for (const [engine, type, noStatus] of engines) (type ? test : test.skip)(`witho
     await browser.close();
   }
 }, 30000);
+
+// ADX-2d review r1, parity: every page the build accepts (each canonical fixture, and the helper's output for
+// every rejected one) must load in the runtime check, served as HTTP 200 with no responseStatus.
+const accepted = [
+  ...Object.entries(CANONICAL),
+  ...Object.entries(REJECTED).map(([name, page]) => [`markComparisonReady(${name})`, markComparisonReady(page)]),
+];
+for (const [engine, type, noStatus] of engines) (type ? test : test.skip)(`build-accepted pages load in the runtime (${engine})`, async () => {
+  const browser = await type.launch();
+  try {
+    for (const [name, body] of accepted) {
+      expect([name, hasComparisonReadyMarker(body)]).toEqual([name, true]);
+      expect([name, (await settle(browser, { status: 200, body, noStatus })).state]).toEqual([name, 'loaded']);
+    }
+  } finally {
+    await browser.close();
+  }
+}, 180000);

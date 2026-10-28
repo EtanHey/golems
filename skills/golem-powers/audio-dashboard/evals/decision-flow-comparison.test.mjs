@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { COMPARISON_READY_META, hasComparisonReadyMarker, markComparisonReady, renderDecisionFlow } from "../src/decision-flow.mjs";
+import { renderDecisionFlow } from "../src/decision-flow.mjs";
 import { boot, scene } from "./decision-flow-harness.mjs";
 
 // AD-15 (Etan, 2026-10-28 dashboard feedback): a comparison that never loads must not sit on "Loading…".
@@ -255,17 +255,4 @@ test("a file: dashboard cannot verify its comparison and says how to fix that", 
   expect(run.message()).toContain("over http(s)");
   expect(run.retry.hidden).toBe(false);
   run.window.close();
-});
-
-test("the ready marker is recognised in either form and added by markComparisonReady", () => {
-  expect(hasComparisonReadyMarker(`<head>${COMPARISON_READY_META}</head>`)).toBe(true);
-  expect(hasComparisonReadyMarker("<meta content='ready' name=adash-comparison>")).toBe(true);
-  expect(hasComparisonReadyMarker('<html lang="en" data-adash-comparison="ready">')).toBe(true);
-  expect(hasComparisonReadyMarker('<meta name="adash-comparison" content="pending">')).toBe(false);
-  expect(hasComparisonReadyMarker('<meta name="adash-comparison-x" content="ready">')).toBe(false);
-  expect(hasComparisonReadyMarker("<h1>404</h1>")).toBe(false);
-  expect(markComparisonReady("<!doctype html><html><head><title>x</title></head></html>")).toBe(`<!doctype html><html><head>${COMPARISON_READY_META}<title>x</title></head></html>`);
-  expect(markComparisonReady("<!doctype html><svg></svg>")).toBe(`<!doctype html>${COMPARISON_READY_META}<svg></svg>`);
-  const marked = markComparisonReady("<svg></svg>");
-  expect(markComparisonReady(marked)).toBe(marked);
 });
