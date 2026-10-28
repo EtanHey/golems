@@ -213,3 +213,85 @@ def test_cleanup_refuses_unignored_token_path(workflow):
     assert result.returncode != 0 and 'not verified gitignored' in result.stderr
     assert lease['state'] == 'bound' and Path(worker['worktree']).exists()
     assert not (workflow.manifest.parent / '.worker.close-token').exists()
+
+
+def test_retained_receipt_retry_finishes_lease(workflow):
+    assert workflow.launch().returncode == 0
+    assert workflow.cli('watch', '--manifest', workflow.manifest, '--timeout', '5', '--interval', '0.05').returncode == 0
+    assert workflow.cli('harvest', '--manifest', workflow.manifest).returncode == 0
+    worker = json.loads(workflow.manifest.read_text())['workers']['worker']
+    path = Path(worker['worktree'])
+    (path / 'untracked').write_text('preserve')
+    assert workflow.cli('cleanup', '--manifest', workflow.manifest).returncode != 0
+    receipt_path = workflow.manifest.parent / 'worker.retire.json'
+    receipt = receipt_path.read_bytes()
+    (path / 'untracked').unlink()
+    retry = workflow.cli('cleanup', '--manifest', workflow.manifest)
+    assert retry.returncode != 0
+    assert 'worktree retained' in retry.stderr
+    lease = json.loads((workflow.ledger / (worker['lease_id'] + '.json')).read_text())
+    assert lease['state'] == 'closed' and lease['disposition'] == 'RETAINED'
+    assert lease['terminal_receipt']['reason'] == json.loads(receipt)['reason']
+    assert path.exists() and receipt_path.read_bytes() == receipt
+    assert not (workflow.manifest.parent / '.worker.close-token').exists()
+
+
+def test_token_write_failure_aborts_close_without_publication(workflow, monkeypatch):
+    import importlib.util
+    assert workflow.launch().returncode == 0
+    assert workflow.cli('watch', '--manifest', workflow.manifest, '--timeout', '5', '--interval', '0.05').returncode == 0
+    assert workflow.cli('harvest', '--manifest', workflow.manifest).returncode == 0
+    worker = json.loads(workflow.manifest.read_text())['workers']['worker']
+    spec = importlib.util.spec_from_file_location('token_workflow', CLI.parent / 'codex_workflows.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.setenv('GOLEMS_WORKSPACE_LEASES', str(workflow.ledger))
+    real_fsync = os.fsync
+    run_dir = workflow.manifest.parent
+    triggered = []
+
+    def fail_token_fsync(fd):
+        info = os.fstat(fd)
+        for candidate in run_dir.glob('.worker.close-token*'):
+            if candidate.stat().st_ino == info.st_ino and candidate.stat().st_dev == info.st_dev:
+                triggered.append(True)
+                raise OSError('injected token fsync failure')
+        return real_fsync(fd)
+
+    monkeypatch.setattr(module._workers.os, 'fsync', fail_token_fsync)
+    with pytest.raises(module.CodexWorkflowError, match='injected token fsync failure'):
+        module.cleanup_worker(workflow.manifest, 'worker')
+    assert triggered
+    lease = json.loads((workflow.ledger / (worker['lease_id'] + '.json')).read_text())
+    assert lease['state'] == 'bound'
+    assert Path(worker['worktree']).exists()
+    assert not (run_dir / '.worker.close-token').exists()
+    assert not (run_dir / 'worker.retire.json').exists()
+
+
+def test_token_is_complete_and_private_before_atomic_rename(workflow, monkeypatch):
+    import importlib.util
+    assert workflow.launch().returncode == 0
+    assert workflow.cli('watch', '--manifest', workflow.manifest, '--timeout', '5', '--interval', '0.05').returncode == 0
+    assert workflow.cli('harvest', '--manifest', workflow.manifest).returncode == 0
+    spec = importlib.util.spec_from_file_location('atomic_token_workflow', CLI.parent / 'codex_workflows.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.setenv('GOLEMS_WORKSPACE_LEASES', str(workflow.ledger))
+    real_rename = os.rename
+    observed = []
+    token_path = workflow.manifest.parent / '.worker.close-token'
+
+    def inspect_rename(source, destination):
+        if Path(destination) == token_path:
+            source = Path(source)
+            assert not token_path.exists()
+            assert source.stat().st_mode & 0o077 == 0
+            assert len(source.read_text()) == 64
+            observed.append(True)
+        return real_rename(source, destination)
+
+    monkeypatch.setattr(module._workers.os, 'rename', inspect_rename)
+    module.cleanup_worker(workflow.manifest, 'worker')
+    assert observed == [True]
+    assert not token_path.exists()

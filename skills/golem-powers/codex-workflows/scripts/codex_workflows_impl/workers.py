@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 
@@ -332,6 +333,8 @@ def cleanup_worker(
         raise CodexWorkflowError(f"cannot verify lease before retirement: {exc}") from exc
 
     token_path = Path(manifest_path).resolve().parent / f".{worker_name}.close-token"
+    if token_path.is_relative_to(worktree.resolve()):
+        raise CodexWorkflowError("close token must be outside the retiring worktree")
     token = None
     if token_path.is_symlink():
         raise CodexWorkflowError("close token symlink refused")
@@ -363,34 +366,62 @@ def cleanup_worker(
             raise
         except (ValueError, KeyError, TypeError) as exc:
             raise CodexWorkflowError(f"invalid begin-close response: {exc}") from exc
+        temporary = None
+        published = False
         try:
-            fd = os.open(token_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            fd, temporary_name = tempfile.mkstemp(prefix=f".{worker_name}.close-token.", dir=token_path.parent)
+            temporary = Path(temporary_name)
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                if git_root.returncode == 0:
+                    ignored_temp = _run_git(token_path.parent, "check-ignore", "-q", "--no-index", "--", str(temporary), check=False)
+                    if ignored_temp.returncode != 0:
+                        raise OSError("temporary close token path is not verified gitignored")
                 handle.write(token)
                 handle.flush()
                 os.fsync(handle.fileno())
-        except OSError as exc:
-            raise CodexWorkflowError(f"cannot preserve close token; reconciliation required: {exc}") from exc
+            os.rename(temporary, token_path)
+            published = True
+            dir_fd = os.open(token_path.parent, os.O_RDONLY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        except (OSError, CodexWorkflowError) as exc:
+            try:
+                lifecycle_tool("lease.py", "abort-close", "--lease-id", worker["lease_id"], "--close-token", token)
+            except CodexWorkflowError as abort_error:
+                raise CodexWorkflowError(f"cannot preserve close token: {exc}; abort-close failed: {abort_error}; reconciliation required") from exc
+            if temporary is not None and temporary.exists():
+                temporary.unlink()
+            if published:
+                token_path.unlink()
+            raise CodexWorkflowError(f"cannot preserve close token; close aborted: {exc}") from exc
 
     if receipt_path.is_symlink():
         raise CodexWorkflowError("retirement receipt symlink refused")
-    if receipt_path.exists():
+    existing_receipt = receipt_path.exists()
+    if existing_receipt:
         try:
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
             if (receipt.get("schema") != "workspace-lifecycle/receipt/v1"
                     or receipt.get("path") != lease["path"]
-                    or receipt.get("repo_common_dir") != lease["repo_common_dir"]
-                    or receipt.get("disposition") != "REMOVED"
+                    or receipt.get("repo_common_dir") != lease["repo_common_dir"]):
+                raise ValueError("receipt identity mismatch")
+            if receipt.get("disposition") == "RETAINED":
+                if not isinstance(receipt.get("reason"), str) or not receipt["reason"].strip():
+                    raise ValueError("retained receipt missing reason")
+            elif (receipt.get("disposition") != "REMOVED"
                     or receipt.get("registered_after") is not False
                     or receipt.get("physical_after") is not False
                     or type(receipt.get("remove_rc")) is not int or receipt["remove_rc"] != 0):
-                raise ValueError("receipt identity or removal proof mismatch")
-            try:
-                os.lstat(worktree)
-            except FileNotFoundError:
-                pass
-            else:
-                raise ValueError("retired path exists again")
+                raise ValueError("receipt removal proof mismatch")
+            if receipt["disposition"] == "REMOVED":
+                try:
+                    os.lstat(worktree)
+                except FileNotFoundError:
+                    pass
+                else:
+                    raise ValueError("retired path exists again")
         except (OSError, ValueError, TypeError) as exc:
             raise CodexWorkflowError(f"cannot resume retirement receipt: {exc}") from exc
     else:
@@ -409,7 +440,10 @@ def cleanup_worker(
                   "retirement_reason": reason, "retirement_receipt": str(receipt_path),
                   "worktree_removed": disposition == "REMOVED"})
     if disposition == "RETAINED":
-        lifecycle_tool("lease.py", "abort-close", "--lease-id", worker["lease_id"], "--close-token", token)
+        if existing_receipt:
+            lifecycle_tool("lease.py", "close", "--lease-id", worker["lease_id"], "--close-token", token, "--retained", reason)
+        else:
+            lifecycle_tool("lease.py", "abort-close", "--lease-id", worker["lease_id"], "--close-token", token)
         token_path.unlink()
         raise CodexWorkflowError(f"worktree retained: {reason}")
     lifecycle_tool("lease.py", "close", "--lease-id", worker["lease_id"],

@@ -29,6 +29,21 @@ Run the harness through `scripts/codex-workflows.sh`. Detailed interfaces are in
   local history and consumer obligations before authorizing retirement. Harvest alone
   is insufficient; cleanup is not automatic. Untracked files retain the worktree.
 
+### Interrupted cleanup token recovery
+
+Cleanup publishes its private close token atomically in the run directory, outside
+the worker worktree. A crash after `begin-close` returns but before token publication
+can leave a lease in `closing` without a usable token file. Run `lease.py audit
+--json` and inspect that lease's `closing_since` and `closing_age_seconds`; it never
+expires or releases itself. If the token from the `begin-close` stdout log was securely
+preserved, the operator can run `lease.py abort-close --lease-id <id> --close-token
+<token>` and then reconcile any stale token file before another cleanup attempt.
+Treat that token as a secret. The workflow normally captures stdout in memory and
+does not create a token log, so it may be unavailable after a crash. If it cannot be
+recovered, leave the lease reported as closing; do not auto-release it or delete the
+worktree. Inspect and preserve any stale or partial token file before reconciliation;
+its presence alone does not prove a complete token was published.
+
 ## Non-Negotiable Guards
 
 1. Discover the real default branch with `git remote show origin`. Never assume
