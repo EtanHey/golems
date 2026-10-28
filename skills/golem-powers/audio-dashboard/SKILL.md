@@ -262,6 +262,8 @@ orchestration scripts, never to private engine checkouts.
 
 ### Job spec
 
+`heading` is a title of at most 8 words. Put status and context in `subtitle`, which renders collapsed under Details.
+
 `--spec` points at a JSON job (see `examples/job.json`):
 
 ```json
