@@ -360,3 +360,39 @@ body[data-view="story"] .df-chip{width:24px}body[data-view="story"] .df-chip[ari
 body[data-view="story"] .df-chip .df-answer-status{position:relative;z-index:1;font-size:13px;color:var(--moon)}
 body[data-view="story"] .df-chip.is-answered .df-answer-status,body[data-view="story"] .df-chip[aria-current="true"] .df-answer-status{color:var(--ink)}
 body[data-view="story"] .df-chip .df-note-count{position:absolute;right:0;top:-2px;z-index:2;min-width:13px;height:13px;padding:0 2px;font-size:10px}
+
+
+/* Comparison: one shared dialog that always settles - loaded, or a failure with Retry and Back. */
+.df-compare-open{display:inline-flex;align-items:center;gap:8px;min-height:44px;margin:14px 0 0;padding:0 16px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;color:var(--moon);cursor:pointer;transition:transform 160ms ease-out,border-color 160ms ease}
+.df-compare-open svg{color:var(--glass)}
+.df-compare-open:active{transform:scale(.97)}
+@media(hover:hover) and (pointer:fine){.df-compare-open:hover{border-color:var(--glass)}}
+body[data-view="story"] .df-card.is-active .df-compare-open{flex:none;margin:10px auto 0;background:rgba(16,26,44,.55)}
+.df-compare{width:min(1080px,calc(100% - 24px));height:min(820px,calc(100dvh - 32px));max-height:none;padding:0;border:1px solid var(--line-strong);border-radius:20px;background:var(--panel);color:var(--moon);font:16px/1.5 var(--sans);box-shadow:0 24px 80px #0008;overflow:hidden}
+.df-compare[open]{display:grid;grid-template-rows:auto minmax(0,1fr)}
+.df-compare::backdrop{background:rgba(6,10,18,.72);backdrop-filter:blur(4px)}
+.df-compare,.df-compare::backdrop{opacity:0;transition:opacity 150ms ease-out,transform 150ms ease-out,display 150ms allow-discrete,overlay 150ms allow-discrete}
+.df-compare{transform:scale(.96);transform-origin:center}
+.df-compare[open],.df-compare[open]::backdrop{opacity:1;transform:scale(1);transition-duration:200ms;transition-timing-function:cubic-bezier(.23,1,.32,1)}
+@starting-style{.df-compare[open],.df-compare[open]::backdrop{opacity:0}.df-compare[open]{transform:scale(.96)}}
+.df-compare-head{display:flex;align-items:center;gap:12px;min-width:0;padding:10px 14px;border-bottom:1px solid var(--line)}
+.df-compare-head h2{min-width:0;margin:0;overflow:hidden;font-size:16px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.df-compare-back,.df-compare-actions button{min-height:44px;padding:0 16px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;cursor:pointer;transition:transform 160ms ease-out}
+.df-compare-back{flex:none}
+.df-compare-back:active,.df-compare-actions button:active{transform:scale(.97)}
+.df-compare-stage,.df-compare-status{grid-row:2;grid-column:1;min-height:0}
+.df-compare-stage{background:var(--well)}
+.df-compare-frame{display:block;width:100%;height:100%;border:0;background:#fff;opacity:0;transition:opacity 200ms ease-out}
+.df-compare[data-state="loaded"] .df-compare-frame{opacity:1}
+.df-compare[data-state="failed"] .df-compare-frame{visibility:hidden}
+.df-compare-status{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;color:var(--muted)}
+.df-compare[data-state="loaded"] .df-compare-status,.df-compare[data-state="idle"] .df-compare-status{display:none}
+.df-compare-status p{max-width:38ch;margin:0}
+.df-compare[data-state="failed"] .df-compare-status p{color:var(--moon)}
+.df-compare-spinner{width:22px;height:22px;border:2px solid var(--line-strong);border-top-color:var(--amber);border-radius:50%;animation:df-compare-spin 700ms linear infinite}
+.df-compare[data-state="failed"] .df-compare-spinner{display:none}
+@keyframes df-compare-spin{to{transform:rotate(1turn)}}
+.df-compare-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.df-compare-actions button[hidden]{display:none}
+#df-compare-retry{border-color:var(--glass);background:var(--glass);color:var(--ink);font-weight:650}
+@media(max-width:600px){.df-compare{width:100%;max-width:100%;height:100dvh;max-height:100dvh;margin:0;border:0;border-radius:0}}

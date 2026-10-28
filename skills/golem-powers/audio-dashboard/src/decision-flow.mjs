@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TEMPLATE_ROOT = path.join(ROOT, "templates", "decision-flow");
 const NOTE_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 11V4H4v16l4-4h7M8 8h8M8 12h4M19 14v8m-4-4h8"/></svg>';
+const COMPARE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>';
 const ANSWER_MARK = '<span class="df-answer-status" role="img" aria-label="Awaiting answer" title="Awaiting answer" data-answered="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><circle class="df-answer-progress" cx="12" cy="12" r="9" pathLength="1"/><path d="m7.5 12 3 3 6-6"/></svg></span>';
 
 function escapeHtml(value) {
@@ -264,8 +265,65 @@ function speakerLabel(scene, role) {
   return name.charAt(0).toUpperCase() + name.slice(1) + verb;
 }
 
-function renderCard(decision, index, sceneById) {
+export const DEFAULT_COMPARISON_TIMEOUT_MS = 10000;
+
+function comparisonTimeout(value, where) {
+  if (!Number.isInteger(value) || value < 1000 || value > 120000) {
+    throw new Error(`decision-flow: ${where} must be an integer from 1000 to 120000`);
+  }
+  return value;
+}
+
+// Judge the URL the browser will load, not the raw string: the WHATWG parser drops tab/LF/CR and resolves
+// "../" and "%2e%2e/", so "java\nscript:" and directory escapes only show up after parsing.
+const COMPARISON_BASE = new URL("https://dashboard.invalid/dashboard/index.html");
+const COMPARISON_DIR = new URL("./", COMPARISON_BASE);
+
+function comparisonUrl(value, decisionId) {
+  const raw = String(value ?? "");
+  let url = null;
+  try {
+    // A leading "/" or "\\" leaves the directory; a leading "#" or "?" points back at the dashboard itself.
+    url = /^\s*[\\/#?]|[\u0000-\u001f\u007f]/.test(raw) || !raw.trim() ? null : new URL(raw, COMPARISON_BASE);
+  } catch {
+    url = null;
+  }
+  const relative = url && url.origin === COMPARISON_BASE.origin && url.pathname.startsWith(COMPARISON_DIR.pathname) && !/%2f|%5c/i.test(url.pathname)
+    ? url.pathname.slice(COMPARISON_DIR.pathname.length) + url.search + url.hash
+    : "";
+  if (!relative) {
+    throw new Error(`decision-flow: ${decisionId} comparison.url must be a relative URL inside the dashboard directory`);
+  }
+  return relative;
+}
+
+// An explicit comparison target: a page inside the dashboard directory, opened in the shared dialog.
+function normalizeComparison(decision, timeoutMs) {
+  if (decision.comparison === undefined) return null;
+  const spec = typeof decision.comparison === "string" ? { url: decision.comparison } : decision.comparison || {};
+  return {
+    url: comparisonUrl(spec.url, decision.id),
+    label: String(spec.label ?? "").trim() || "View comparison",
+    title: String(spec.title ?? "").trim() || `Comparison · ${decision.title}`,
+    timeoutMs: spec.timeoutMs === undefined ? timeoutMs : comparisonTimeout(spec.timeoutMs, `${decision.id} comparison.timeoutMs`),
+  };
+}
+
+function renderComparisonOpener(comparison) {
+  if (!comparison) return "";
+  return `<button type="button" class="df-compare-open" aria-haspopup="dialog" aria-controls="df-compare" data-compare-url="${escapeHtml(comparison.url)}" data-compare-title="${escapeHtml(comparison.title)}" data-compare-timeout="${comparison.timeoutMs}">${COMPARE_ICON}<span>${escapeHtml(comparison.label)}</span></button>`;
+}
+
+// One shared dialog: loading -> loaded | failed (error or timeout) -> loading on Retry; Back closes.
+const COMPARE_DIALOG = `<dialog class="df-compare" id="df-compare" aria-labelledby="df-compare-title" aria-modal="true" data-state="idle">
+    <div class="df-compare-head"><button type="button" class="df-compare-back" id="df-compare-back"><span aria-hidden="true">←</span> Back</button><h2 id="df-compare-title"></h2></div>
+    <div class="df-compare-stage" id="df-compare-stage"></div>
+    <div class="df-compare-status" role="status" aria-live="polite"><span class="df-compare-spinner" aria-hidden="true"></span><p id="df-compare-message"></p><div class="df-compare-actions"><button type="button" id="df-compare-retry" hidden>Retry</button><button type="button" id="df-compare-close" hidden>Back to the card</button></div></div>
+  </dialog>`;
+
+function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
   const options = (decision.options || []).map(normalizeOption);
+  const comparison = normalizeComparison(decision, comparisonTimeoutMs);
   const audio = decision.sceneIds.map((sceneId) => {
     const scene = sceneById.get(sceneId);
     return `<audio preload="metadata" data-audio-scene="${escapeHtml(scene.id)}" src="${escapeHtml(scene.audioUrl)}"></audio>`;
@@ -299,6 +357,7 @@ function renderCard(decision, index, sceneById) {
     </div>
     <div class="df-teleprompter" hidden aria-live="off">${transcript}</div>
     <button type="button" class="df-answer-open" aria-haspopup="dialog" aria-controls="sheet-${escapeHtml(decision.id)}"><span class="df-ao-todo">Answer this card</span><span class="df-ao-offer">Your turn: answer this card</span><span class="df-ao-done">Answered, review</span></button>
+    ${renderComparisonOpener(comparison)}
     <div class="df-sheet" id="sheet-${escapeHtml(decision.id)}">
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
@@ -315,10 +374,11 @@ function renderCard(decision, index, sceneById) {
   </article>`;
 }
 
-export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, decisions, storageKey, cinemaUrl }) {
+export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, decisions, storageKey, cinemaUrl, comparisonTimeoutMs = DEFAULT_COMPARISON_TIMEOUT_MS }) {
   if (!Array.isArray(scenes) || scenes.length === 0) throw new Error("decision-flow: scenes must be non-empty");
   if (!Array.isArray(decisions) || decisions.length === 0) throw new Error("decision-flow: decisions must be non-empty");
   assertSceneOwnership(decisions, scenes);
+  const timeoutMs = comparisonTimeout(comparisonTimeoutMs, "comparisonTimeoutMs");
 
   const sceneById = new Map(scenes.map((scene) => [scene.id, scene]));
   const tpdata = Object.fromEntries(scenes.map((scene) => [scene.id, {
@@ -329,7 +389,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
   const shell = readFileSync(path.join(TEMPLATE_ROOT, "shell.html"), "utf8");
   const styles = readFileSync(path.join(TEMPLATE_ROOT, "decision-flow.css"), "utf8");
   const script = readFileSync(path.join(TEMPLATE_ROOT, "decision-flow.js"), "utf8");
-  const cards = decisions.map((decision, index) => renderCard(decision, index, sceneById)).join("\n");
+  const cards = decisions.map((decision, index) => renderCard(decision, index, sceneById, timeoutMs)).join("\n");
   const safeModeUrl = safeCinemaUrl(cinemaUrl);
 
   return [
@@ -344,6 +404,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{STYLES}}", styles],
     ["{{CONTROLLER}}", renderController(decisions)],
     ["{{CARDS}}", cards],
+    ["{{COMPARE_DIALOG}}", decisions.some((decision) => decision.comparison !== undefined) ? COMPARE_DIALOG : ""],
     ["{{INDEX}}", renderIndex(decisions)],
     ["{{TPDATA}}", safeJson(tpdata)],
     ["{{SCRIPT}}", script],
