@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execSync } from 'node:child_process';
 import { lint } from '../ci/check-model-role-drift.mjs';
 const root = new URL('../../', import.meta.url).pathname;
 const read = p => readFileSync(join(root, p), 'utf8');
@@ -52,9 +52,22 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.doesNotMatch(text, /2–3 concurrent Claude dispatches/);
   const canon = read('standards/fleet-canon.md');
   assert.match(canon, /at most 10 active Claude leads fleet-wide, normally 5-7/);
-  assert.match(canon, /<=2 top-tier.*<=2 mid-tier, <=4 light-tier.*<=20% of the rolling 5h/s);
+  const roleMap = config.roles;
+  for (const id of ['claude.judgment', 'claude.subagent.cheap', 'claude.subagent.mechanical']) {
+    assert.ok(id in roleMap, `${id} must exist in model-roles.json`);
+    assert.ok(canon.includes('`' + id + '`'), `canon #5 must name ${id}`);
+  }
+  assert.match(canon, /<=2 `claude\.judgment`.*<=2 `claude\.subagent\.cheap`, <=4 `claude\.subagent\.mechanical`.*<=20% of the rolling 5h/s);
   assert.match(canon, />=60% no new Claude workers and <=5 active leads/);
   assert.match(canon, />=80% no Claude workers and <=3 essential lead turns/);
+  assert.match(canon, /every account actually serving/);
+  assert.match(canon, /Stale, unknown or\s+rejected telemetry counts as NO headroom/);
+  assert.match(canon, /weekly rejection overrides five-hour\s+headroom/);
+  assert.match(canon, /used% x 300 \/ elapsed-minutes > 80/);
+  assert.doesNotMatch(canon, /tier->model/);
+  for (const f of execSync("git ls-files 'skills/**/*.md'", { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean)) {
+    assert.doesNotMatch(read(f), /canon #5[^\n]{0,80}2[-–]3|2[-–]3[^\n]{0,80}canon #5/i, `${f} restates the old 2-3 cap`);
+  }
   assert.doesNotMatch(canon, /2-3 concurrent Claude dispatches/);
   assert.doesNotMatch(text, /flip back to/);
   const evals = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json')).evals;

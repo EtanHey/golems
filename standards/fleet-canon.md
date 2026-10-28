@@ -34,11 +34,14 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    A non-default model is used only by explicit per-invocation selection.
    Every non-Cursor Agent/Workflow/Task spawn pins its model explicitly.
    Claude concurrency: at most 10 active Claude leads fleet-wide, normally 5-7; a slot is an actually
-   running turn (idle, snoozed or waiting threads don't count). Claude workers by tier (tier->model in
-   model-roles.json): <=2 top-tier (inside the shared 10-slot top-tier ceiling), <=2 mid-tier, <=4 light-tier;
+   running turn (idle, snoozed or waiting threads don't count). Claude workers (role ids in model-roles.json): <=2 `claude.judgment` (inside the shared
+   10-slot `claude.judgment` ceiling with leads), <=2 `claude.subagent.cheap`, <=4 `claude.subagent.mechanical`;
    all Claude workers together <=20% of the rolling 5h.
-   Brake on tokenlayer `usage.json` five_hour.used_pct: >=60% no new Claude workers and <=5 active leads;
+   Brake on tokenlayer `usage.json` five_hour.used_pct, checking every account actually serving:
+   >=60% no new Claude workers and <=5 active leads;
    >=80% no Claude workers and <=3 essential lead turns.
+   Stale, unknown or rejected telemetry counts as NO headroom; a weekly rejection overrides five-hour
+   headroom; warn early when used% x 300 / elapsed-minutes > 80.
    (Etan, 2026-10-28, via fleet control: "3 is too low", "~20 too wide", "even 10 might not kill it as long as they're leads".)
    Usage is managed by pinning and dispatch-counting.
 
