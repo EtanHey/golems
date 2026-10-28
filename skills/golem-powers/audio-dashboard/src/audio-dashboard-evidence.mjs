@@ -174,12 +174,91 @@ function collectTimingRecords(evidence, html) {
   return flatten([tpdata, dashboardData, fromEvidence]);
 }
 
+// Inspect rendered cards, including hand-built .card surfaces. Parse HTML rather
+// than matching whole elements so nested markup and quoted attributes stay scoped.
+function hasTextOnlyDetails(html) {
+  const attrs = node => Object.fromEntries((node.attrs || []).map(a => [a.name, a.value]));
+  const isCard = node => /(?:^|\s)(?:df-card|dbx-card|card)(?:\s|$)/.test(attrs(node).class || "") ||
+    Object.hasOwn(attrs(node), "data-card");
+  const children = node => (node.childNodes || []).filter(n => !["script", "style", "template"].includes(n.tagName));
+  const text = node => node.nodeName === "#text" ? node.value : children(node).map(text).join("");
+  const descendants = node => children(node).flatMap(n => isCard(n) ? [] : [n, ...descendants(n)]);
+  function visit(node) {
+    if (isCard(node)) {
+      const nodes = descendants(node);
+      // Decorative control icons do not make a card a visualization.
+      const visual = nodes.some(n => ["svg", "canvas", "img", "figure"].includes(n.tagName) &&
+        !isControlIcon(n, node)) || nodes.some(opensVisual);
+      const details = nodes.filter(n => !inNarratedDetails(n, node)).some(n => n.tagName === "details" ||
+        (["button", "a", "summary"].includes(n.tagName) && /view\s+details/i.test(text(n))) ||
+        /view\s+details/i.test(attrs(n)["aria-label"] || ""));
+      if (!visual && details) return true;
+    }
+    return children(node).some(visit);
+  }
+  function inNarratedDetails(node, card) {
+    for (let n = node; n && n !== card; n = n.parentNode) {
+      if (n.tagName !== "details") continue;
+      const content = descendants(n);
+      const audio = content.some(child => child.tagName === "audio" &&
+        (attrs(child).src || descendants(child).some(source => source.tagName === "source" && attrs(source).src)));
+      const timed = content.some(child => Object.hasOwn(attrs(child), "data-word-start"));
+      if (audio && (timed || /(?:listen|explains)\s*\(?deeper/i.test(text(n)))) return true;
+    }
+    return false;
+  }
+  function opensVisual(node) {
+    const a = attrs(node);
+    if (!/view\s+details/i.test(text(node) || a["aria-label"] || "")) return false;
+    if (Object.hasOwn(a, "data-open-visual")) return true;
+    const targets = (a["aria-controls"] || "").split(/\s+/).map(id => byId.get(id)).filter(Boolean);
+    if (a["aria-haspopup"] === "dialog" && !targets.length) {
+      targets.push(...dialogs);
+    }
+    return targets.some(target =>
+      (target.tagName === "dialog" || attrs(target).role === "dialog") &&
+      descendants(target).some(n => ["svg", "canvas", "img", "figure"].includes(n.tagName) && !isControlIcon(n, target)));
+  }
+  function isControlIcon(node, card) {
+    for (let n = node; n && n !== card; n = n.parentNode) {
+      if (["button", "a"].includes(n.tagName) ||
+          /(?:^|\s)(?:df-answer-status|df-title)(?:\s|$)/.test(attrs(n).class || "")) return true;
+    }
+    return false;
+  }
+  // Requires Bun's HTMLRewriter; run this module and its callers with Bun.
+  const root = { childNodes: [] };
+  let parent = root;
+  const byId = new Map();
+  const dialogs = [];
+  new HTMLRewriter().on("*", {
+    element(element) {
+      const node = { tagName: element.tagName, attrs: [...element.attributes].map(([name, value]) => ({ name, value })),
+        childNodes: [], parentNode: parent };
+      parent.childNodes.push(node);
+      const a = attrs(node);
+      if (a.id) byId.set(a.id, node);
+      if (node.tagName === "dialog" || a.role === "dialog") dialogs.push(node);
+      if (element.canHaveContent) {
+        parent = node;
+        element.onEndTag(() => { parent = node.parentNode; });
+      }
+    },
+    text(chunk) { parent.childNodes.push({ nodeName: "#text", value: chunk.text }); },
+  }).transform(html);
+  return visit(root);
+}
+
 export function validateAudioDashboardEvidence(evidence = {}) {
   const html = textOf(evidence.html);
   const generator = textOf(evidence.generator);
   const outputPath = textOf(evidence.outputPath);
   const wordsJson = Array.isArray(evidence.wordsJson) ? evidence.wordsJson : [];
   const violations = [];
+  if (hasTextOnlyDetails(html)) {
+    addViolation(violations, "TEXT_ONLY_VIEW_DETAILS",
+      "text-only cards must omit details expanders; offer Listen deeper or no secondary action");
+  }
 
   if (WRONG_GENERATOR_RE.test(generator)) {
     addViolation(

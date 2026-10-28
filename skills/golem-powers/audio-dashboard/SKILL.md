@@ -187,7 +187,8 @@ this skill dir):
    cinema/global Play-All surface.
 5. **Evidence gate** — `bun scripts/validate-evidence.mjs --spec <job.json>
    [--published "<sync cmd>"]` runs `src/audio-dashboard-evidence.mjs` against the
-   real rendered dashboard + job dir. Note: the gate only returns **PASS** once
+   real rendered dashboard + job dir. `validate-evidence` also enforces the
+   text-only card rule in [card-format.md](references/card-format.md). Note: the gate only returns **PASS** once
    publish evidence is supplied via `--published` (the tailnet-sync invariant);
    without it the gate correctly reports `REJECTED: MISSING_TAILNET_SYNC` with
    every other invariant passing. Run it after step 6, or pass `--published`
