@@ -665,7 +665,12 @@ test("decision-flow build rejects a bare #number until the card links a reposito
   expect(bare.stderr).toContain("bare issue/PR reference");
   expect(bare.stderr).toContain("gate body #39");
 
-  const { result, outputPath } = buildDashboard(spec([{ label: "PR", value: "#39", href: "https://github.com/EtanHey/golems/pull/39" }]), jobDir, "decision-flow-bare-ref");
+  // Review r1 B1: a safe but generic URL on "#39" is not a repository-qualified target.
+  const generic = buildDashboard(spec([{ label: "PR", value: "#39", href: "https://example.com/" }]), jobDir, "decision-flow-bare-ref").result;
+  expect(generic.status).not.toBe(0);
+  expect(generic.stderr).toContain("gate rail PR #39");
+
+  const { result, outputPath } = buildDashboard(spec([{ label: "PR", value: "#39", href: "https://github.com/EtanHey/golems/pull/39" }, { label: "Doc", value: "Design note", href: "https://example.com/design" }]), jobDir, "decision-flow-bare-ref");
   expect(result.status).toBe(0);
   expect(readFileSync(outputPath, "utf8")).toContain('href="https://github.com/EtanHey/golems/pull/39"');
 });

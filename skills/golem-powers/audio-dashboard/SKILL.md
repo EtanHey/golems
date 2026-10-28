@@ -95,8 +95,11 @@ Any `#N` a card shows must be a link. Add a rail row on that card whose `href`
 is the repository-qualified PR/issue URL the producer already has:
 `{ "label": "PR", "value": "#39", "href": "https://github.com/OWNER/REPO/pull/39" }`.
 Never infer a repository from a bare number. The build fails on an unlinked
-`#N` and rejects a value whose number contradicts its GitHub `href`. GitHub links
-render as `repo#N`. Only `http(s)` hrefs become anchors; anything else,
+`#N`, on a `#N` row whose own `href` is not that PR/issue (a generic URL does not
+count), and on a value whose number contradicts its GitHub `href`. GitHub links
+render as `repo#N`. A `#N` inside a `code span` or right after a colour word
+(`color #123`, `background: #123456`, `fill=#333`) is a CSS colour, not a
+reference; everywhere else it is one. Only `http(s)` hrefs become anchors; anything else,
 including `javascript:` and `data:`, stays plain text.
 
 ## Vendored Engine (what makes it portable)

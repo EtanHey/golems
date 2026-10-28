@@ -91,7 +91,17 @@ function renderWords(scene) {
 }
 
 // A bare "#39" names no repository; only an explicit repository-qualified href may link it.
+// Reference rule: a "#N" in authored text is an issue/PR reference unless it sits inside a `code span`
+// or directly follows a colour word ("color #123", "background: #123456", "fill=#333"), where it is a CSS
+// colour. Other 3- and 6-digit numbers stay references, so a real "#123" is never hidden.
 const BARE_REFERENCE = /(?<![\w&#/])#(\d+)\b/g;
+const COLOUR_CONTEXT = /\b(?:colou?rs?|background(?:-colou?r)?|fill|stroke|border(?:-colou?r)?|outline(?:-colou?r)?|hex)\s*[:=]?\s*["']?$/i;
+
+function referenceTokens(text) {
+  const source = String(text ?? "");
+  const prose = source.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
+  return [...prose.matchAll(BARE_REFERENCE)].filter((match) => !COLOUR_CONTEXT.test(prose.slice(0, match.index)));
+}
 const GITHUB_REFERENCE = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/(pull|issues)\/(\d+)(?:[/?#]|$)/;
 
 function safeHref(value) {
@@ -111,7 +121,7 @@ function renderRailValue(row) {
   const reference = href.match(GITHUB_REFERENCE);
   if (!reference) return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(value || href)}</a>`;
   const [, owner, repo, kind, number] = reference;
-  const stated = [...value.matchAll(BARE_REFERENCE)].map((match) => match[1]);
+  const stated = referenceTokens(value).map((match) => match[1]);
   if (stated.some((statedNumber) => statedNumber !== number)) {
     throw new Error(`decision-flow: rail "${row.label}" says ${value} but links ${owner}/${repo}#${number}`);
   }
@@ -133,6 +143,15 @@ export function findBareReferences(decisions = []) {
   for (const decision of decisions) {
     const rail = Array.isArray(decision.rail) ? decision.rail : [];
     const linked = new Set(rail.map((row) => safeHref(row.href).match(GITHUB_REFERENCE)?.[4]).filter(Boolean));
+    // A rail value that carries its own href must link the PR/issue it names; a generic URL labelled "#39" does not.
+    for (const row of rail) {
+      const href = safeHref(row.href);
+      if (!href) continue;
+      const number = href.match(GITHUB_REFERENCE)?.[4];
+      for (const match of referenceTokens(row.value)) {
+        if (match[1] !== number) found.push({ decision: decision.id, field: `rail ${row.label}`, ref: match[0] });
+      }
+    }
     const fields = [
       ["title", decision.title],
       ["summary", decision.summary],
@@ -143,7 +162,7 @@ export function findBareReferences(decisions = []) {
       ...rail.filter((row) => !safeHref(row.href)).map((row) => [`rail ${row.label}`, row.value]),
     ];
     for (const [field, text] of fields) {
-      for (const match of String(text ?? "").matchAll(BARE_REFERENCE)) {
+      for (const match of referenceTokens(text)) {
         if (!linked.has(match[1])) found.push({ decision: decision.id, field, ref: match[0] });
       }
     }

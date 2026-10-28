@@ -24,7 +24,9 @@ A card that names an issue or PR links it. Supply the repository-qualified URL
 as a rail `href`: `{ "label": "PR", "value": "#39", "href":
 "https://github.com/OWNER/REPO/pull/39" }`. The producer must already know the
 repository; never infer one from a bare number. `build-dashboard` rejects any
-`#N` on a card that has no matching linked rail row.
+`#N` on a card that has no matching linked rail row, and a `#N` row whose own
+href is a generic URL. Put CSS colours in a `code span` or after a colour word
+(`color #123`) so they are not read as references.
 
 Run `bun scripts/validate-evidence.mjs --spec <job.json>` from the skill directory
 after rendering (include `--published "<sync command>"` for publish evidence).
