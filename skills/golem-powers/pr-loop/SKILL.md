@@ -161,6 +161,7 @@ Rollout to other repos is a follow-up; this change wires golems only.
 ## Cross-Skill Routing
 
 - `/agent-routing` § Routing rules (SSOT) owns the inner-loop reviewer and implementation routing.
+- A PR opened by a worker on the other Mac (remote PR watch, settle): [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md) § 2 and § 4.
 - `/coderabbit` owns receiving-side review technique; this skill owns advancement through the PR loop.
 - `/never-fabricate` owns verification receipts and claim discipline.
 - `/deploy-verify` owns post-merge deployed/live proof.

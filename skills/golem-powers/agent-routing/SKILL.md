@@ -258,6 +258,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 
 - Superseded placement: "**The M1 Pro becomes a TEST RIG only.** Development stays on the MBP. … Nothing changes on the M1 for this yet." (Etan 2026-10-18, via orc collab) The 2026-10-28 placement below now governs.
 - M1 placement (Etan, 2026-10-28): "I want the m1 pro to be used for tests." Full suites, E2E and XCUITest default to M1 Pro: ≥10 GiB guard, max 3 heavy lanes, never during a sync window, PHX admission required. Quick focused unit tests stay local.
+- Dispatching to the other Mac (linked T3 environment, remote code writes, project ids, admission ledger)? Read [references/cross-machine.md](references/cross-machine.md). It replaces the m1-router launch transport.
 
 ### cmux adapter
 

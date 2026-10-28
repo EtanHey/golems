@@ -91,3 +91,4 @@ Gatherer brief rules: prompts only (answer keys stay with the lead); READ-ONLY; 
 - macOS/launchd mechanics or the deferred rename-hook design? Read [references/platform-notes.md](references/platform-notes.md).
 - Selecting a CLI or driving its TUI? Read the matching `adapters/*.md` and `adapters/capabilities.yaml`.
 - Writing a worker prompt? Run `workflows/prompt-audit.md` §8 and include verified paths, output/audience limits, response markers, final DONE line, per-job effort, and the worker's own GitHub identity instructions.
+- Launching work on the other Mac (M1)? No router pane: use [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md).

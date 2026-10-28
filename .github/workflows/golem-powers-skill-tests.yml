@@ -158,6 +158,7 @@ jobs:
                    ./scripts/tests/repogolem-env-classifier.test.ts \
                    ./scripts/tests/skill-description-cap.test.mjs \
                    ./scripts/tests/skill-kickoff-contract.test.mjs \
+                   ./scripts/tests/cross-machine-skills.test.mjs \
                    ./scripts/tests/lead-skill-etan-rules-contract.test.mjs \
                    ./scripts/tests/pr-loop-root-ff.test.mjs \
                    ./scripts/tests/hooks-fail-open.test.mjs \
