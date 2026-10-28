@@ -99,6 +99,10 @@ a{color:inherit}
 .df-rail div{display:grid;gap:1px}
 .df-rail dt{color:var(--faint);font-size:13px}
 .df-rail dd{margin:0;font-size:15px;line-height:1.45}
+/* Rail links: a linked PR reads as repo#number, never a bare number. */
+.df-rail-link{color:var(--glass);text-decoration-color:rgba(121,207,194,.45);text-underline-offset:3px;overflow-wrap:anywhere}
+@media(hover:hover) and (pointer:fine){.df-rail-link:hover{color:var(--moon);text-decoration-color:currentColor}}
+.df-rail-ref{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 
 /* Answer. */
 .df-answer{margin:20px 0 0}

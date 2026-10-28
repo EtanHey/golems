@@ -90,11 +90,84 @@ function renderWords(scene) {
   ).join(" ");
 }
 
+// A bare "#39" names no repository; only an explicit repository-qualified href may link it.
+// Reference rule: a "#N" in authored text is an issue/PR reference unless it sits inside a `code span`
+// or directly follows a colour word ("color #123", "background: #123456", "fill=#333"), where it is a CSS
+// colour. Other 3- and 6-digit numbers stay references, so a real "#123" is never hidden.
+const BARE_REFERENCE = /(?<![\w&#/])#(\d+)\b/g;
+const COLOUR_CONTEXT = /\b(?:colou?rs?|background(?:-colou?r)?|fill|stroke|border(?:-colou?r)?|outline(?:-colou?r)?|hex)\s*[:=]?\s*["']?$/i;
+
+function referenceTokens(text) {
+  const source = String(text ?? "");
+  const prose = source.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
+  return [...prose.matchAll(BARE_REFERENCE)].filter((match) => !COLOUR_CONTEXT.test(prose.slice(0, match.index)));
+}
+const GITHUB_REFERENCE = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/(pull|issues)\/(\d+)(?:[/?#]|$)/;
+
+function safeHref(value) {
+  let url;
+  try {
+    url = new URL(String(value ?? "").trim());
+  } catch {
+    return "";
+  }
+  return (url.protocol === "https:" || url.protocol === "http:") && url.hostname ? url.href : "";
+}
+
+function renderRailValue(row) {
+  const value = String(row.value ?? "").trim();
+  const href = safeHref(row.href);
+  if (!href) return escapeHtml(row.value);
+  const reference = href.match(GITHUB_REFERENCE);
+  if (!reference) return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(value || href)}</a>`;
+  const [, owner, repo, kind, number] = reference;
+  const stated = referenceTokens(value).map((match) => match[1]);
+  if (stated.some((statedNumber) => statedNumber !== number)) {
+    throw new Error(`decision-flow: rail "${row.label}" says ${value} but links ${owner}/${repo}#${number}`);
+  }
+  const label = `${repo}#${number}`;
+  const text = !value || /^#\d+$/.test(value) ? escapeHtml(label) : `${escapeHtml(value)} <span class="df-rail-ref">${escapeHtml(label)}</span>`;
+  return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer" title="${kind === "pull" ? "Pull request" : "Issue"} ${escapeHtml(`${owner}/${repo}#${number}`)}">${text}</a>`;
+}
+
 function renderRail(rows = []) {
   if (!rows.length) return "";
   return `<dl class="df-rail">${rows.map((row) =>
-    `<div><dt>${escapeHtml(row.label)}</dt><dd>${escapeHtml(row.value)}</dd></div>`,
+    `<div><dt>${escapeHtml(row.label)}</dt><dd>${renderRailValue(row)}</dd></div>`,
   ).join("")}</dl>`;
+}
+
+// Producer check: every "#N" a card shows must be linked on that card by a repository-qualified href.
+export function findBareReferences(decisions = []) {
+  const found = [];
+  for (const decision of decisions) {
+    const rail = Array.isArray(decision.rail) ? decision.rail : [];
+    const linked = new Set(rail.map((row) => safeHref(row.href).match(GITHUB_REFERENCE)?.[4]).filter(Boolean));
+    // A rail value that carries its own href must link the PR/issue it names; a generic URL labelled "#39" does not.
+    for (const row of rail) {
+      const href = safeHref(row.href);
+      if (!href) continue;
+      const number = href.match(GITHUB_REFERENCE)?.[4];
+      for (const match of referenceTokens(row.value)) {
+        if (match[1] !== number) found.push({ decision: decision.id, field: `rail ${row.label}`, ref: match[0] });
+      }
+    }
+    const fields = [
+      ["title", decision.title],
+      ["summary", decision.summary],
+      ["body", decision.body],
+      ...(decision.options || []).flatMap((option, index) => typeof option === "string"
+        ? [[`option ${index}`, option]]
+        : [[`option ${index}`, option?.label ?? option?.title], [`option ${index} summary`, option?.summary]]),
+      ...rail.filter((row) => !safeHref(row.href)).map((row) => [`rail ${row.label}`, row.value]),
+    ];
+    for (const [field, text] of fields) {
+      for (const match of referenceTokens(text)) {
+        if (!linked.has(match[1])) found.push({ decision: decision.id, field, ref: match[0] });
+      }
+    }
+  }
+  return found;
 }
 
 function renderParagraphs(text) {
