@@ -19,14 +19,14 @@ a{color:inherit}
 
 /* Layout: one column on the phone; setlist index beside the ledger on desktop. */
 .df-layout{max-width:1120px;margin:0 auto;padding:0 16px}
-.df-top{position:relative;padding:calc(12px + env(safe-area-inset-top)) 4px 10px}
-.df-kicker{margin:0;padding-right:76px;color:var(--faint);font-size:13px;font-weight:500}
+.df-top{position:relative;padding:calc(16px + env(safe-area-inset-top)) 4px 10px}
+.df-kicker{margin:0;padding-right:76px;color:var(--muted);font-size:13px;font-weight:500}
 .df-mode-label{margin:0 0 6px;padding-right:76px;color:var(--faint);font-size:13px}
-.df-cinema-link{color:var(--muted);text-decoration-color:var(--line-strong);text-underline-offset:3px}
+.df-cinema-link{white-space:nowrap;color:var(--muted);text-decoration-color:var(--line-strong);text-underline-offset:3px}
 .df-cinema-link:hover{color:var(--moon)}
-.df-top h1{margin:0;font-size:21px;line-height:1.2;font-weight:600;letter-spacing:-.012em;text-wrap:balance}
+.df-top h1{margin:0;font-size:24px;line-height:1.18;font-weight:600;letter-spacing:-.012em;text-wrap:balance}
 /* Details sits on the kicker line: a 44px pill target, chevron shows open state. */
-.df-context>summary{position:absolute;top:env(safe-area-inset-top);right:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:68px;min-height:44px;padding:0 10px;border-radius:999px;list-style:none;cursor:pointer;color:var(--muted);font-size:14px;transition:color .15s,transform .16s ease-out}
+.df-context>summary{position:absolute;top:calc(4px + env(safe-area-inset-top));right:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:68px;min-height:44px;padding:0 10px;border-radius:999px;list-style:none;cursor:pointer;color:var(--muted);font-size:14px;transition:color .15s,transform .16s ease-out}
 .df-context>summary::-webkit-details-marker{display:none}
 .df-context>summary::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s cubic-bezier(.23,1,.32,1)}
 .df-context[open]>summary::after{transform:translateY(1px) rotate(225deg)}
@@ -183,7 +183,7 @@ body:has(.df-card.is-active.is-playing) .df-tplay{background:transparent;color:v
   .df-chips{margin:10px 0 0;padding:0;scroll-padding-inline:0}
   .df-top{padding:28px 0 14px}
   .df-context>summary{top:16px}
-  .df-top h1{font-size:26px}
+  .df-top h1{font-size:32px}
   .df-card{padding:26px 28px 26px}
   .df-card-head{grid-template-areas:"rank title status note";grid-template-columns:auto 1fr auto auto;align-items:center}
   .df-title{margin:0;font-size:25px}
@@ -202,7 +202,7 @@ body:has(.df-card.is-active.is-playing) .df-tplay{background:transparent;color:v
   .df-top{grid-area:top}
   .df-controller{grid-area:ctrl;margin:0 0 16px;padding:12px 0}
   .df-ledger{grid-area:ledger;padding-bottom:96px}
-  .df-side{grid-area:side;position:sticky;top:0;align-self:start;display:flex;flex-direction:column;height:100vh;padding:56px 0 28px}
+  .df-side{grid-area:side;position:sticky;top:0;align-self:start;display:flex;flex-direction:column;height:100vh;padding:28px 0 28px}
   .df-index{display:block;flex:1 1 auto;min-height:0;overflow:auto;margin:0 -10px}
   .df-index-list{list-style:none;margin:0;padding:0 10px}
   .df-index-list a{display:flex;gap:12px;align-items:baseline;padding:7px 10px;border-radius:10px;color:var(--muted);font-size:14.5px;line-height:1.35;text-decoration:none}
