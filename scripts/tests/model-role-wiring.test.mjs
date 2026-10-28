@@ -35,7 +35,7 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(text, /\| Security \| `codex.security` at effort `high` \| `claude.judgment` \|.*`codex-security` deep scan per security PR/);
   assert.match(text, /Security effort is `high` on the interim route/); // MF-2: canon-only rule carried into the SSOT
   assert.match(text, /When Daybreak Blue returns, evaluate its first security PRs: if they show more review rounds or more defects than the prior route, flip the pair/); // MF-1
-  assert.match(text, /\| Everything else.*\| `claude.judgment` \(Codex Sol by documented exception\) \| Codex Sol \(Claude reviews a Codex exception\) \|/);
+  assert.match(text, /\| Everything else.*\| Codex Sol \(hard\) \/ Terra \(bounded\), 2026-10-28 \| `claude.judgment`; only Sol reviews a Claude implementation \(2026-10-28\) \|/);
   assert.match(text, /only after.*implementer reports done/);
   assert.match(text, /DONE marker or report line/);
   assert.match(text, /PR head stable.*10 min.*checks finished/);
@@ -146,7 +146,7 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
   for (const rule of [
     '"**EXPERIMENT, starting now for a few days: FLIP the roles.** Claude Opus 5.5 IMPLEMENTS and Codex gpt-6.1-sol REVIEWS." (Etan 2026-10-18, via orc collab)',
     '"Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)',
-    'Claude implements by default', 'fresh context', 'bounded lifetime', 'explicit effort', 'serviceTier:"default"', 'Claude only', 'reverts when the Claude windows reset',
+    'Codex Sol for hard work and Terra for bounded work', 'Reviewers (2026-10-28) are Sol or Opus only', 'Gemini/Antigravity gather and never review', 'Sonnet 5.5 is a valid worker tier', 'Never fast/priority', 'fresh context', 'bounded lifetime', 'explicit effort', 'serviceTier:"default"', 'Claude only', 'does not revert at a window reset',
   ]) assert.ok(block.includes(rule), rule);
   const sizing = ssot.split('### Review sizing')[1]?.split('\n### ')[0];
   assert.ok(sizing, 'review sizing section is required');
@@ -168,10 +168,10 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
   for (const rule of ['2026-10-28', 'red-team Claude', 'BOTH skills', "the table's Codex reviewer (cross-vendor, canon #1)", 'Codex plumbing', 'already the other vendor', 'Both reviews cite the Visual proof']) assert.ok(uiLine.includes(rule), rule);
   for (const rule of ['never the implementer', 'frontend-design:frontend-design', 'emil-design-eng', 'round caps', 'full panel']) assert.ok(sizing.includes(rule), rule);
   const matrix = skill.split('## Role Matrix')[1].split('### Evidence')[0];
-  assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*documented Codex Sol exceptions/);
+  assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*Codex Sol.*Terra/);
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
   assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
-  for (const [id, name] of [[90, 'trial-refactor-opus-implements-sol-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only'], [96, 'xs-ui-pr-claude-taste-plus-codex-review'], [97, 'astra-on-etan-explicit-ask']]) {
+  for (const [id, name] of [[90, 'rebalance-refactor-codex-implements-opus-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only'], [96, 'xs-ui-pr-claude-taste-plus-codex-review'], [97, 'astra-on-etan-explicit-ask']]) {
     const e = suite.evals.find(e => e.id === id);
     assert.equal(e?.name, name);
     assert.ok(e.prompt && e.expected_output, name);
@@ -506,9 +506,9 @@ test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk
   // Eval 14: Spark is no longer allowed for internal children.
   assert.doesNotMatch(JSON.stringify(byId(14)), /Allows Spark/);
   // Codex-implements answers for "everything else" are explicitly dated after the trial.
-  for (const id of [9, 34, 49]) assert.match(byId(id).prompt, /2026-10-28.*Claude implementation by default/s, `eval ${id} is dated post-trial`);
+  for (const id of [9, 34, 49]) assert.match(byId(id).prompt, /2026-10-28.*Codex Sol.*Terra.*default implementation/s, `eval ${id} is dated post-trial`);
   // Trial-agnostic implementer wording where the point is "not the lead, not Cursor".
-  for (const id of [2, 3, 5, 8, 22]) assert.match(JSON.stringify(byId(id)), /documented.*exception/, `eval ${id} names the bounded exception`);
+  for (const id of [2, 3, 5, 8, 22]) assert.match(JSON.stringify(byId(id)), /Codex Sol.*Terra/, `eval ${id} names the default implementers`);
   // M1: failed probe stays on the MBP; nothing moves before Etan authorizes the rig.
   assert.match(JSON.stringify(byId(55)), /MBP/);
   assert.doesNotMatch(JSON.stringify(byId(55)), /cmux/);

@@ -35,7 +35,7 @@
     "codex.subagent.mechanical": {
       "model": "gpt-6-luna",
       "status": "candidate",
-      "gate": "bench after fleet convergence (skill-creator); not yet benched. Exception: Etan 2026-10-04 via orc authorises this role for Codex-internal mechanical sub-agents only; workers remain codex.implement. Exception: Etan 2026-10-18 23:25 via orc collab authorises watcher sub-agents: \"Watching: anything that must sit and watch (a PR, CI, a file) uses a cheap gpt-6-luna sub-agent, never a big-context Sol or lead session.\" Resolve with --use watcher or --use codex-internal-subagent",
+      "gate": "bench after fleet convergence (skill-creator); not yet benched as a general role default (RT-2). Model permission follows /agent-routing, including the 2026-10-28 fan-out/gather/mechanical rule. Exception: Etan 2026-10-04 via orc authorises this role for Codex-internal mechanical sub-agents only; this historical worker restriction is superseded by /agent-routing. Exception: Etan 2026-10-18 23:25 via orc collab authorises watcher sub-agents: \"Watching: anything that must sit and watch (a PR, CI, a file) uses a cheap gpt-6-luna sub-agent, never a big-context Sol or lead session.\" Resolve with --use watcher or --use codex-internal-subagent",
       "use_for": "rebases, CI polling, version bumps, file moves",
       "never_for": "judgment of any kind"
     },

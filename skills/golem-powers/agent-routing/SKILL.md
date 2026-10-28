@@ -52,16 +52,20 @@ Historical quote (superseded by the 2026-10-28 default):
 > "**EXPERIMENT, starting now for a few days: FLIP the roles.** Claude Opus 5.5 IMPLEMENTS and Codex gpt-6.1-sol REVIEWS." (Etan 2026-10-18, via orc collab)
 
 - Historical metrics remain: "Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)
-- Claude implements by default. Codex Sol implementation is a documented exception: fresh context, bounded lifetime (one PR or ~100 turns), explicit effort, `serviceTier:"default"`.
+Etan (2026-10-28, via orc/PHX): use Sol/Terra/Luna for more of the work so the Claude 5-hour window survives; not all work needs Claude.
+
+- Default implementers (2026-10-28) are Codex Sol for hard work and Terra for bounded work. Claude handles leads and only the hardest/taste-critical implementation. Codex workers keep fresh context, bounded lifetime (one PR or ~100 turns), explicit effort and `serviceTier:"default"`.
+- Reviewers (2026-10-28) are Sol or Opus only, whichever vendor did not implement. Gemini/Antigravity gather and never review.
+- UI/UX (2026-10-28): Claude Opus implements and reviews taste; Codex handles only mechanical parts. A fresh taste reviewer and the other-vendor reviewer remain required.
 - Leads are Claude only; Codex never holds a lead seat or long context. "I think codexes should just be workers and not leads and not hold long context." (Etan, 2026-10-28)
-- Fan-out, gather and mechanical work may use Codex Luna or Terra, or Claude Haiku; harder workers and reviews use Codex Sol. Cross-vendor review remains required. "tara and soul and luna are great models they have different capabilities ... luna and tara are cheaper than soul soul is also pretty cheap yeah like fanning out luna's and tara's is acceptable, although we now have more Claude usage, so Haiku could probably also help there, because Haiku is a little smarter than Luna for now" (Etan, 2026-10-28)
-- Budget pacing (2026-10-28): while Claude 5h/weekly windows are tight, gathers, reviews and fan-outs move to Codex or Antigravity, subject to cross-vendor review and the no-Gemini-review rule. This reverts when the Claude windows reset.
+- Fan-outs, gathers and mechanical work (2026-10-28) use Luna/Terra/Haiku; Sonnet 5.5 is a valid worker tier between Haiku and Opus. Antigravity's pool is for research/gather.
+- Keep the Claude 5h window alive (2026-10-28). Never fast/priority: explicitly pass `fastMode:false` / `serviceTier:"default"`. This supersedes the dated budget-pacing note; it does not revert at a window reset.
 
 | Work | Implements | Reviews | Plus |
 |---|---|---|---|
 | UX/UI | `claude.judgment` | Codex (`codex.implement`) | — |
 | Security | `codex.security` at effort `high` | `claude.judgment` | a `codex-security` deep scan per security PR |
-| Everything else (refactors, splits, deletions, tests, fixes, mechanical, docs) | `claude.judgment` (Codex Sol by documented exception) | Codex Sol (Claude reviews a Codex exception) | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
+| Everything else (refactors, splits, deletions, tests, fixes, mechanical, docs) | Codex Sol (hard) / Terra (bounded), 2026-10-28 | `claude.judgment`; only Sol reviews a Claude implementation (2026-10-28) | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
 
 The reviewer is always the other vendor.
 
@@ -90,7 +94,7 @@ Review is sized to risk; the PR's `size:*` label sets the tier.
 
 - "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs follow the UI flow below.
 - M: up to 2 rounds, and round 2 only for BLOCKING findings (canon #9).
-- "Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab) The panel is a fresh `claude.judgment` reviewer plus a read-only Cursor diff pass, giving one shared verdict. When the implementer is `claude.judgment` (UX/UI, or the default Everything-else row), the table's Codex reviewer stays on, so cross-vendor review still holds. No Gemini model ever reviews, at any size.
+- "Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab) The panel is a fresh `claude.judgment` reviewer plus a read-only Cursor diff pass, giving one shared verdict; the Cursor pass is a read-only input to the Opus verdict, not a reviewer. When the implementer is `claude.judgment` (UX/UI or the hardest/taste-critical work), the table's Codex reviewer stays on, so cross-vendor review still holds. No Gemini model ever reviews, at any size.
 - UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement` and reports functional defects; proof requirements now follow [pr-loop Visual proof](../pr-loop/SKILL.md#visual-proof).
 - UI flow (Etan FRONTEND RULE, 2026-10-28): A Claude-implemented visual slice gets the red-team Claude (taste, BOTH skills) plus the table's Codex reviewer (cross-vendor, canon #1); Codex plumbing gets the red-team Claude, which is already the other vendor. Both reviews cite the Visual proof.
   The red-team Claude is a fresh `claude.judgment`, never the implementer, loading `frontend-design:frontend-design` and `emil-design-eng`; normal size-based round caps and the full panel remain.
@@ -148,17 +152,17 @@ Read every reference triggered by the mission before dispatch. The live referenc
 | Tool | Role | Does | Never does |
 |---|---|---|---|
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
-| **`codex.implement`** | Implement / review | Bounded Sol implementation exceptions and harder workers; cross-vendor review per SSOT | Research, data gathering, orchestration |
+| **`codex.implement`** | Implement / review | Default hard implementation and cross-vendor review per SSOT; bounded work uses Terra (2026-10-28) | Research, data gathering, orchestration |
 | **`codex.security`** | Implement (security) | Security implementation per SSOT | Gathering, orchestration, reviewing its own work |
 | **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Running commands, implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
 | **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Running commands, implementing, reviewing, deciding, UX/UI judgment |
-| **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; implementation outside UX/UI and the default Everything-else row |
+| **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; routine implementation outside UX/UI and the hardest/taste-critical work |
 
 Decision rules:
 
 1. Read-only query, scan, search, audit, or lookup -> the fan-out/gather models permitted by the 2026-10-28 SSOT rule or Cursor; for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
 2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
-3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; everything else -> `claude.judgment`, with documented Codex Sol exceptions.
+3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; everything else -> Codex Sol (hard) / Terra (bounded); Claude only for the hardest/taste-critical implementation (2026-10-28).
 4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
 5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
 6. Independent parallel units -> § Fan-out engine chooses the engine; Routing rules (SSOT) owns Cursor model selection.
