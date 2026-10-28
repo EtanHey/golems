@@ -135,9 +135,9 @@ def test_no_private_tailnet_url_in_public_skills():
         assert ".ts.net" not in read(path), path
 
 
-def test_cleanup_receipt_documents_an_executable_parent_path_for_both_harnesses():
+def test_cleanup_receipt_documents_an_executable_parent_path_for_direct_git():
     text = read(CONTRACT)
-    for token in ("T3 child", "cmux worker", "parent from outside", "PREFLIGHT_RECEIPT",
+    for token in ("direct-git worktrees", "cmux worker", "parent from outside", "PREFLIGHT_RECEIPT",
                   "git worktree remove rc 0", "path absent (lstat)", "REMOVE_RC=$?",
                   "git worktree list --porcelain"):
         assert token in text, token
@@ -208,7 +208,7 @@ import os
 import re
 import subprocess
 
-RECIPE_HEADING = "## Parent retirement path (both harnesses, interim)"
+RECIPE_HEADING = "## Parent retirement path (direct-git worktrees, interim)"
 
 
 def retirement_recipe():
@@ -404,3 +404,20 @@ def test_recipe_uses_the_upstream_branch_when_the_local_name_differs(tmp_path):
     assert out.returncode == 0, out.stderr
     assert not wt.exists() and f"removed: {wt}" in out.stdout
     assert removal_receipt(wt) in out.stdout.splitlines()
+
+
+def test_t3_managed_retirement_uses_official_adapter():
+    text = read(CONTRACT)
+    assert "T3-managed worktrees (`~/.t3/worktrees/**`) retire through T3's official adapter" in text
+    assert "once every gate in this contract passes, settle the child" in text
+    assert "Never run `git worktree remove`, retire tooling or the interim block below on a T3-managed root" in text
+
+
+def test_interim_parent_block_is_only_for_direct_git_worktrees():
+    text = section(read(CONTRACT), "## Parent retirement path")
+    assert "For a T3 child" not in text
+    assert "`<repo>/.worktrees/` and other direct-git worktrees, such as cmux workers" in text
+
+
+def test_allowlisted_caches_do_not_release_docs_local_hold():
+    assert "Ignored caches named on the committed regenerable-paths allowlist are not preservation holds; `docs.local/` always is." in read(CONTRACT)
