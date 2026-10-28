@@ -47,7 +47,7 @@ def read_metadata(argv):
         except subprocess.TimeoutExpired:
             if attempt == 1:
                 raise
-            print(f'golems-lead-confirm: gh {argv[1]} view timed out after {GH_READ_TIMEOUT}s; retrying once', file=sys.stderr)
+            print('golems-lead-confirm: GitHub metadata probe timed out; retrying once', file=sys.stderr)
 
 
 def issuer_metadata(op):

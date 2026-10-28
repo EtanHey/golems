@@ -76,9 +76,12 @@ else:
             for verb in ('repo', 'pr'):
                 argv = [str(self.fake), verb, 'view', 'fixture', '--json', 'number']
                 ok = subprocess.CompletedProcess(argv, 0, ' {} \n', '')
+                notice = io.StringIO()
                 with patch.object(tokens.subprocess, 'run', side_effect=[subprocess.TimeoutExpired(argv, 15), ok]) as run:
-                    with contextlib.redirect_stderr(self.stderr):
+                    with contextlib.redirect_stderr(notice):
                         self.assertEqual(self.issuer.read_metadata(argv), '{}')
+                self.assertEqual(notice.getvalue(),
+                                 'golems-lead-confirm: GitHub metadata probe timed out; retrying once\n')
                 self.assertEqual(run.call_count, 2)
                 self.assertEqual([call.kwargs['timeout'] for call in run.call_args_list], [15, 15])
                 for error in (subprocess.CalledProcessError(1, argv), OSError('unavailable')):
