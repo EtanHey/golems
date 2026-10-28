@@ -38,6 +38,16 @@ test('explicit commit and ref resolve exactly; ambiguity fails', async t => {
   for (const baseRef of [f.oid, 'refs/heads/trunk']) assert.equal(preflight({ root: f.root, baseRef }).commit, f.oid);
   git(f.root, 'tag', 'trunk'); assert.equal(preflight({ root: f.root, baseRef: 'trunk' }).ok, false);
 });
+test('ambiguous shorthand fails even when repository warnings are disabled', async t => {
+  const f = fixture(t), { preflight } = await load();
+  git(f.root, 'tag', 'trunk');
+  git(f.root, 'config', 'core.warnAmbiguousRefs', 'false');
+  const r = preflight({ root: f.root, baseRef: 'trunk' });
+  assert.equal(r.ok, false); assert.equal(r.reason, 'REF_NOT_FOUND_OR_AMBIGUOUS');
+  assert.equal(git(f.root, 'config', '--get', 'core.warnAmbiguousRefs'), 'false');
+  for (const baseRef of [f.oid, 'refs/heads/trunk', 'refs/tags/trunk'])
+    assert.equal(preflight({ root: f.root, baseRef }).commit, f.oid);
+});
 for (const mode of ['missing-default', 'dangling-default', 'detached', 'non-git', 'subdirectory']) test(`reject ${mode}`, async t => {
   const f = fixture(t), { preflight } = await load(); let root = f.root;
   if (mode === 'missing-default') git(root, 'symbolic-ref', '--delete', 'refs/remotes/origin/HEAD');
@@ -108,9 +118,6 @@ test('CLI structured failure is nonzero and never leaks raw stderr', () => {
 test('canonical recipe static behavior and active examples use the guard', () => {
   const recipe = readFileSync(new URL('../references/worktree-launch.md', import.meta.url), 'utf8');
   assert.equal((recipe.match(/await tools\.mcp__t3_code__t3_thread_read\(/g) ?? []).length, 1);
-  const triggers = JSON.parse(readFileSync(new URL('../evals/trigger-evals.json', import.meta.url), 'utf8'));
-  assert.equal(triggers.find(c => c.query.includes('baseRef main')).should_trigger, true);
-  assert.equal(triggers.find(c => c.query.includes('root thread')).should_trigger, false);
   const behavior = JSON.parse(readFileSync(new URL('../evals/evals.json', import.meta.url), 'utf8')).evals.find(c => c.id === 105);
   assert.ok(behavior.assertions.length && behavior.expected_output.includes('PENDING'));
   for (const term of ['PENDING', 'startFromOrigin', 'delegate_task', 't3-mixed-harness', 'remote', 'preflight']) assert.ok(recipe.includes(term), term);

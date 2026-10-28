@@ -21,7 +21,8 @@ export function preflight(input) {
   receipt.root = root;
   const git = (...args) => {
     const r = spawnSync('git', ['--no-optional-locks', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
-      '-c', 'credential.helper=', '-c', 'protocol.allow=never', '-C', root, ...args], { env, encoding: 'utf8', timeout: 5000 });
+      '-c', 'credential.helper=', '-c', 'protocol.allow=never', '-c', 'core.warnAmbiguousRefs=true',
+      '-C', root, ...args], { env, encoding: 'utf8', timeout: 5000 });
     if (r.error || r.status !== 0 || r.stderr?.trim()) return null;
     return r.stdout.trim();
   };
