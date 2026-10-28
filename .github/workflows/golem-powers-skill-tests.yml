@@ -90,8 +90,11 @@ jobs:
       - name: Regression gate contracts
         run: python -m pytest scripts/tests/test_private_regression_gate.py -q
 
-      - name: Workspace lease ledger
-        run: python -m pytest scripts/tests/test_workspace_lease.py -q
+      - name: Workspace lifecycle guards and lane helper
+        run: >-
+          python -m pytest -q scripts/tests/test_workspace_lease.py
+          scripts/tests/test_workspace_lane.py scripts/tests/test_workspace_retire.py
+          scripts/tests/test_workspace_preservation.py scripts/tests/test_workspace_regenerable_walk.py
 
       - name: Global instruction installer (synthetic HOME only)
         run: python -m pytest scripts/tests/test_global_instructions.py -q
