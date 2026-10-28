@@ -82,15 +82,28 @@ INT/TERM/HUP return 130/143/129. Child errors retain their status. Cleanup failu
 changes a successful command to 70; other failures remain primary.
 
 The wrapper captures the leader's native birth identity before releasing its
-exec gate. Cleanup discovers group members while that leader incarnation lives,
-observed descendant edges, and exact byte environment markers born after the
-leader. A bare marker or reused PGID cannot authorize a signal. Every recipient
-is checked again immediately before TERM/KILL (Linux retains a pidfd). UID
-exclusions and unresolved identity evidence prevent successful cleanup. Nested
-wrappers retain the root ID but clean only their observed inner tree. Two empty
-observations and a reaped child are required for successful cleanup. The slot is
-also released after a bounded failed attempt; cleanup failure returns 70 only
-when the command would otherwise succeed.
+exec gate. The launch trampoline remains the suite's group leader through
+cleanup; it waits the actual command and reports its status over a private pipe.
+The pipe descriptors are closed in the command. Signal authority comes **only**
+from either:
+
+- Membership in the suite's own process group observed while the suite leader
+  was alive, with the leader's start time matching its captured identity.
+- An observed lineage edge: a parent chain to the suite leader recorded by
+  `proc_identity` while the parent incarnations were alive.
+
+The environment marker may only narrow candidates; it never authorizes a
+signal, even for a process born after suite start. A matching marker without
+either authority is listed in `unattributed_marker_processes` as
+"unattributed marker process (not signalled)" and makes cleanup incomplete.
+It is never included among proven members or signal targets. Every recipient
+is checked again immediately before TERM/KILL (Linux retains a pidfd). A reused
+PGID, UID exclusions and unresolved identity evidence cannot establish cleanup.
+Nested wrappers retain the root ID but clean only their observed inner tree;
+they do not classify the root's other marker processes. Two empty observations
+and a reaped child are required for successful cleanup. The slot is also
+released after a bounded failed attempt; cleanup failure returns 70 only when
+the command would otherwise succeed.
 
 Private, atomic run records live in `~/.local/state/golems/runs/<suite_id>.json`;
 terminal `<suite_id>.cleanup.json` receipts retain identities seen, signals,
@@ -98,5 +111,6 @@ survivors and incomplete evidence, without command/environment contents. The
 active record is removed only after verified cleanup. Unreadable processes
 outside the observed tree do not become members or signal targets. Known members
 with unavailable identity or changed UIDs prevent successful cleanup. A detached
-branch hiding its marker before any lineage observation cannot be recovered safely. Wrapper SIGKILL, owner-exit supervision and inherited
+branch escaping its original group before any lineage observation cannot be
+signalled safely, even if it retains the marker. Wrapper SIGKILL, owner-exit supervision and inherited
 root deadlines need A2; this change does not install a guardian or update hooks-live.

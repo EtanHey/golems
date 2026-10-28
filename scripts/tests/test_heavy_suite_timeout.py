@@ -176,3 +176,60 @@ def test_live_receipt_and_configuration_precedence(tree, cli, expected):
         release.touch()
         if p.poll() is None: p.terminate()
         p.communicate(timeout=5)
+
+
+@pytest.mark.parametrize('expires', [False, True])
+def test_unrelated_later_marker_is_reported_without_signalling(tree, expires):
+    home, marker, _ = tree
+    ready, release, stranger_ready = (home / name for name in ('ready', 'release', 'stranger-ready'))
+    code = f"import time; from pathlib import Path; Path({str(ready)!r}).touch();\nwhile not Path({str(release)!r}).exists(): time.sleep(.01)"
+    wrapper = subprocess.Popen([sys.executable, str(SCRIPT), '--timeout-seconds', '0.5' if expires else '3', '--kill-grace-seconds', '.1', '--', sys.executable, '-c', code], env={**env(home), 'LIFECYCLE_FIXTURE_ID': marker}, stderr=subprocess.PIPE, text=True)
+    stranger, snapshot = None, None
+    try:
+        wait_for(ready)
+        run = next((home / '.local/state/golems/runs').glob('*.json'))
+        record = json.loads(run.read_text())
+        while record['leader_birth'] is None:
+            assert wrapper.poll() is None
+            time.sleep(.01); record = json.loads(run.read_text())
+        stranger_code = f"import time; from pathlib import Path; Path({str(stranger_ready)!r}).touch(); time.sleep(60)"
+        stranger = subprocess.Popen([sys.executable, '-c', stranger_code], start_new_session=True, env={**env(home), 'GOLEMS_HEAVY_SUITE_ID': record['suite_id']}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        snapshot = proc.identity(stranger.pid)
+        wait_for(stranger_ready)
+        assert snapshot.ppid == os.getpid() and snapshot.pgid == stranger.pid
+        assert snapshot.start > (tuple(bytes.fromhex(key) if isinstance(key, str) else key for key in record['leader_birth']))
+        if not expires: release.touch()
+        _, err = wrapper.communicate(timeout=10)
+        assert stranger.poll() is None, 'unrelated marker process was signalled'
+        assert wrapper.returncode == (124 if expires else 70), err
+        receipt = json.loads(run.read_text())
+        assert receipt['cleanup'] == 'failed' and receipt['incomplete']
+        assert any(row['pid'] == stranger.pid and row['status'] == 'unattributed marker process (not signalled)' for row in receipt['unattributed_marker_processes'])
+        assert stranger.pid not in {row['pid'] for row in receipt['signalled']}
+        assert stranger.pid not in {row['pid'] for row in receipt['members_seen']}
+        assert not survivors(marker)
+    finally:
+        release.touch()
+        if wrapper.poll() is None: wrapper.terminate()
+        wrapper.communicate(timeout=5)
+        if snapshot is not None and proc.same_process(snapshot):
+            with proc.pinned_process(snapshot) as fd:
+                if fd is None: os.kill(snapshot.pid, signal.SIGKILL)
+                else: signal.pidfd_send_signal(fd, signal.SIGKILL)
+        if stranger is not None: stranger.wait(timeout=5)
+
+
+def test_finished_command_retains_live_group_leader_until_cleanup(monkeypatch):
+    m = load_module(); cleanup = m.cleanup_tree
+    def with_live_leader(tree, child, *args):
+        assert child.poll() is None and proc.same_process(tree.leader)
+        return cleanup(tree, child, *args)
+    monkeypatch.setattr(m, 'cleanup_tree', with_live_leader)
+    assert m.main(['--', sys.executable, '-c', 'pass']) == 0
+
+
+@pytest.mark.parametrize('closed_stdin', [False, True])
+def test_command_does_not_inherit_launch_control_pipes(tmp_path, closed_stdin):
+    probe = "import os;\nfor fd in range(3,256):\n try: os.fstat(fd)\n except OSError: continue\n raise AssertionError('launch descriptor inherited')"
+    result = subprocess.run([sys.executable, str(SCRIPT), '--', sys.executable, '-c', probe], env={**env(tmp_path), 'GOLEMS_HEAVY_FORCE': '1'}, capture_output=True, text=True, timeout=5, preexec_fn=(lambda: os.close(0)) if closed_stdin else None)
+    assert result.returncode == 0, result.stderr

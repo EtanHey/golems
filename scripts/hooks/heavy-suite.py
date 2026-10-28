@@ -163,9 +163,9 @@ class SuiteTree:
     def __init__(self, leader, suite_id, nested):
         self.leader, self.suite_id, self.nested = leader, suite_id.encode(), nested
         self.known = {} if leader is None else {(leader.pid, leader.start): leader}
-        self.incomplete, self.signalled = set(), []
+        self.incomplete, self.signalled, self.unattributed = set(), [], {}
 
-    def scan(self):
+    def scan(self, markers=True):
         snapshot = proc.children_snapshot()
         rows = {pid: proc.ProcIdentity(pid, *row[:2], row[3], row[4], row[2]) for pid, row in snapshot.items()}
         leader = rows.get(self.leader.pid) if self.leader else None
@@ -183,15 +183,19 @@ class SuiteTree:
                 parent = rows.get(row.ppid)
                 lineage = parent is not None and (parent.pid, parent.start) in self.known and row.start >= parent.start
                 proven = key in self.known or lineage or (group_live and row.pgid == leader.pgid and row.start >= leader.start)
-                if not proven and not self.nested and self.leader and row.start > self.leader.start and row.uid == os.geteuid():
-                    marker = proc.owned(pid, b"GOLEMS_HEAVY_SUITE_ID", self.suite_id)
-                    proven = marker is True and proc.same_process(row)
                 if proven:
                     if key not in self.known: self.known[key] = row; changed = True
                     if (row.uid, row.ruid) != (os.geteuid(), os.getuid()):
                         self.incomplete.add(f"uid-filtered:{pid}")
                     else: found[pid] = row
             if not changed: break
+        if markers and not self.nested:
+            for pid, row in rows.items():
+                key = (pid, row.start)
+                if key in self.known or row.uid != os.geteuid(): continue
+                if proc.owned(pid, b"GOLEMS_HEAVY_SUITE_ID", self.suite_id) is True and proc.same_process(row):
+                    self.unattributed[key] = {**vars(row), "status": "unattributed marker process (not signalled)"}
+                    self.incomplete.add(f"unattributed marker process (not signalled):{pid}")
         return found
 
     def send(self, rows, signum):
@@ -225,8 +229,19 @@ def cleanup_tree(tree, child, grace, signum=None):
     return False, list(rows)
 
 
+def private_pipe():
+    descriptors = []
+    for fd in os.pipe():
+        if fd < 3:
+            replacement = fcntl.fcntl(fd, fcntl.F_DUPFD_CLOEXEC, 3)
+            os.close(fd); fd = replacement
+        descriptors.append(fd)
+    return descriptors
+
+
 def run_command(command, timeout=1800, grace=10, slot=None):
     child, pending, tree, path = None, [], None, None
+    gate_read = gate_write = status_read = status_write = None
     suite_id = os.environ.get("GOLEMS_HEAVY_SUITE_ID", "")
     nested = re.fullmatch(r"[0-9a-f]{32}", suite_id) is not None
     suite_id = suite_id if nested else uuid.uuid4().hex
@@ -245,29 +260,44 @@ def run_command(command, timeout=1800, grace=10, slot=None):
             path = directory / (suite_id + ".json"); save_run(path, record)
             notice(f"SUITE START pid={os.getpid()} slot={slot} suite_id={suite_id} timeout={timeout:g}")
         if pending: raise InterruptedError()
-        gate_read, gate_write = os.pipe()
-        bootstrap = "import os,sys; fd=int(sys.argv[1]); ready=os.read(fd,1); os.close(fd)\ntry: os.execvpe(sys.argv[2],sys.argv[2:],os.environ) if ready else sys.exit(125)\nexcept OSError: sys.exit(2)"
+        gate_read, gate_write = private_pipe()
+        status_read, status_write = private_pipe()
+        os.set_blocking(status_read, False)
+        bootstrap = """import os,subprocess,sys
+control, status = map(int, sys.argv[1:3])
+if os.read(control, 1) != b"1": sys.exit(125)
+try: result = subprocess.call(sys.argv[3:], close_fds=True)
+except OSError: result = 2
+try: os.write(status, str(result).encode() + b"\\n")
+except BrokenPipeError: pass
+os.close(status)
+os.read(control, 1)
+"""
         deadline = time.monotonic() + timeout
-        child = subprocess.Popen([sys.executable, "-c", bootstrap, str(gate_read), *command], pass_fds=(gate_read,), start_new_session=True, close_fds=True, env={**os.environ,
+        child = subprocess.Popen([sys.executable, "-c", bootstrap, str(gate_read), str(status_write), *command],
+            pass_fds=(gate_read, status_write), start_new_session=True, close_fds=True, env={**os.environ,
             "GOLEMS_HEAVY_SUITE_HELD": str(os.getpid()), "GOLEMS_HEAVY_SUITE_ID": suite_id, "GOLEMS_HEAVY_RUN_ID": suite_id})
-        os.close(gate_read)
-        try:
-            leader = proc.identity(child.pid)
-            if leader is None: raise proc.ProcIdentityUnavailable("leader unavailable")
-            tree = SuiteTree(leader, suite_id, nested)
-            os.write(gate_write, b"1")
-        finally: os.close(gate_write)
+        os.close(gate_read); gate_read = None
+        os.close(status_write); status_write = None
+        leader = proc.identity(child.pid)
+        if leader is None: raise proc.ProcIdentityUnavailable("leader unavailable")
+        tree = SuiteTree(leader, suite_id, nested)
+        os.write(gate_write, b"1")
         record.update(leader_pid=child.pid, leader_birth=leader.start if leader else None, pgid=child.pid)
         if path: save_run(path, record)
         while True:
-            status = child.poll()
+            tree.scan(markers=False)  # Capture authority before reaping; marker inspection is cleanup-only.
+            try: message = os.read(status_read, 64)
+            except BlockingIOError: message = None
+            status = int(message) if message else None
             if pending: result, reason = 128 + pending[0], "cancelled"; break
             if status is not None: result, reason = status if status >= 0 else 128 - status, "child-exit"; break
+            if message == b"" or child.poll() is not None:
+                raise proc.ProcIdentityUnavailable("suite leader exited without command status")
             if time.monotonic() >= deadline:
                 result, reason = 124, "timeout"
                 if not nested: notice(f"TIMEOUT after {timeout:g}s; terminating suite process tree (suite_id={suite_id})")
                 break
-            tree.scan()
             runtime_wait(min(.02, max(0, deadline - time.monotonic())))
         ok, survivors = cleanup_tree(tree, child, grace, pending[0] if pending else None)
         if not ok:
@@ -276,7 +306,8 @@ def run_command(command, timeout=1800, grace=10, slot=None):
         if pending and reason != "timeout": result, reason = 128 + pending[0], "cancelled"
         if path:
             record.update(reason=reason, cleanup="ok" if ok else "failed", members_seen=[vars(row) for row in tree.known.values()],
-                signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete))
+                signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                unattributed_marker_processes=list(tree.unattributed.values()))
             save_run(path, record); save_run(path.with_suffix(".cleanup.json"), record)
             if ok: path.unlink()
         if not nested: notice(f"SUITE DONE pid={os.getpid()} slot={slot} suite_id={suite_id} exit={result} reason={reason} cleanup={'ok' if ok else 'failed'}")
@@ -288,11 +319,14 @@ def run_command(command, timeout=1800, grace=10, slot=None):
             ok, survivors = cleanup_tree(tree, child, grace)
             if path:
                 record.update(reason=reason, cleanup="failed", members_seen=[vars(row) for row in tree.known.values()],
-                    signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete))
+                    signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                    unattributed_marker_processes=list(tree.unattributed.values()))
                 try: save_run(path, record)
                 except OSError: pass
         elif path: path.unlink(missing_ok=True)
     finally:
+        for fd in (gate_read, gate_write, status_read, status_write):
+            if fd is not None: os.close(fd)
         mask = signal.pthread_sigmask(signal.SIG_BLOCK, signals)
         for sig in signal.sigpending().intersection(signals).difference(mask):
             pending.append(sig); signal.sigwait({sig})
