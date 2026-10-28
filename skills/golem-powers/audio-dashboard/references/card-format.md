@@ -16,13 +16,3 @@ belong to the parent decision, preserving exactly-one-decision scene ownership.
 its **Listen deeper** button; parent audio stays paused until explicitly resumed.
 This is authoring guidance; the renderer does not supply this interaction.
 
-## Rendered HTML evidence gate
-
-Run `bun scripts/validate-evidence.mjs --spec <job.json> --published "<sync command>"`
-after rendering and publishing, as in the canonical pipeline. The gate inspects
-`.df-card`, `.dbx-card`, `.card`, and `[data-card]` surfaces, including nested
-markup. A card without `svg`, `canvas`, `img`, or `figure` rejects as
-`TEXT_ONLY_VIEW_DETAILS` if it contains `<details>` or a View details control.
-Control icons do not count as visualizations. The teleprompter outside cards is
-unaffected. Hand-built cards must use one of these card markers.
-Replay the RED/GREEN HTML fixtures with `bun test evals/card-html.test.mjs`.

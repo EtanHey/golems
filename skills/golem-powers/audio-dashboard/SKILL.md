@@ -86,7 +86,6 @@ must not repeat their text in a View details expander. Either offer no secondary
 action, or offer a **Listen deeper** button that opens an inline narrated section
 with real-word-timed read-along and word-click seek. Cards with a visualization
 may keep a View details expander that shows the visualization's underlying data.
-The normal `scripts/validate-evidence.mjs` HTML gate enforces the expander rule.
 
 ## Vendored Engine (what makes it portable)
 
