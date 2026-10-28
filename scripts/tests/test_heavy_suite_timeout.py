@@ -1,5 +1,6 @@
 """Owned synthetic processes only; native observations never parse ps text."""
 import fcntl
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -140,20 +141,35 @@ def test_cancellation_during_final_notice(monkeypatch, tmp_path, signum):
     assert m.main(['--', sys.executable, '-c', 'pass']) == 128 + signum
 
 
+@pytest.mark.parametrize('reload_dependency', [False, True], ids=['cached', 'reloaded'])
 @pytest.mark.parametrize('case', ['reused-group', 'old-marker', 'same-birth-marker', 'foreign', 'hidden'])
-def test_identity_authority_is_not_numeric_or_env_only(monkeypatch, case):
-    m = load_module(); leader = proc.ProcIdentity(2222, os.getpid(), 2222, os.geteuid(), os.getuid(), (100, 1))
-    other = proc.ProcIdentity(3333, 1, 2222, os.geteuid(), os.getuid(), leader.start if case == 'same-birth-marker' else (99, 0) if case == 'old-marker' else (101, 0))
-    if case == 'foreign': other = proc.ProcIdentity(3333, 2222, 2222, os.geteuid()+1, os.getuid()+1, (101, 0))
+def test_identity_authority_is_not_numeric_or_env_only(monkeypatch, case, reload_dependency):
+    if reload_dependency:
+        spec = importlib.util.spec_from_file_location('proc_identity', SCRIPT.with_name('proc_identity.py'))
+        replacement = importlib.util.module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, spec.name, replacement)
+        spec.loader.exec_module(replacement)
+    m = load_module()
+    native = m.proc  # Collection may have replaced the canonical proc_identity module.
+    leader_pid = max(os.getpid(), os.getppid(), os.getpgrp()) + 1
+    other_pid = leader_pid + 1
+    leader = native.ProcIdentity(leader_pid, os.getpid(), leader_pid, os.geteuid(), os.getuid(), (100, 1))
+    other = native.ProcIdentity(other_pid, 1, leader_pid, os.geteuid(), os.getuid(), leader.start if case == 'same-birth-marker' else (99, 0) if case == 'old-marker' else (101, 0))
+    if case == 'foreign': other = native.ProcIdentity(other_pid, leader_pid, leader_pid, os.geteuid()+1, os.getuid()+1, (101, 0))
     tracker = m.SuiteTree(leader, 'a'*32, False)
-    snapshot = proc.ChildrenSnapshot()
+    snapshot = native.ChildrenSnapshot()
     snapshot[other.pid] = (other.ppid, other.pgid, other.start, other.uid, other.ruid)
     if case == 'foreign': snapshot[leader.pid] = (leader.ppid, leader.pgid, leader.start, leader.uid, leader.ruid)
-    if case == 'hidden': tracker.known[(other.pid, other.start)] = other; snapshot.pop(other.pid); snapshot.unavailable[other.pid] = proc.ProcIdentityUnavailable('hidden', uid=os.geteuid())
-    monkeypatch.setattr(proc, 'children_snapshot', lambda: snapshot)
-    monkeypatch.setattr(proc, 'identity', lambda pid: leader if case == 'foreign' and pid == leader.pid else other if case == 'same-birth-marker' and pid == other.pid else None)
-    monkeypatch.setattr(proc, 'owned', lambda *args: case in ('old-marker', 'same-birth-marker'))
+    if case == 'hidden': tracker.known[(other.pid, other.start)] = other; snapshot.pop(other.pid); snapshot.unavailable[other.pid] = native.ProcIdentityUnavailable('hidden', uid=os.geteuid())
+    snapshot_reads = []
+    def read_snapshot():
+        snapshot_reads.append(True)
+        return snapshot
+    monkeypatch.setattr(native, 'children_snapshot', read_snapshot)
+    monkeypatch.setattr(native, 'identity', lambda pid: leader if case == 'foreign' and pid == leader.pid else other if case == 'same-birth-marker' and pid == other.pid else None)
+    monkeypatch.setattr(native, 'owned', lambda *args: case in ('old-marker', 'same-birth-marker'))
     found = tracker.scan()
+    assert snapshot_reads == [True], "authority fixture did not reach the consumer dependency"
     if case in ('reused-group', 'old-marker', 'same-birth-marker'): assert not found
     else: assert tracker.incomplete
 
