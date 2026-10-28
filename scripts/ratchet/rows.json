@@ -96,8 +96,8 @@
       "runner": "mac",
       "direction": "pass",
       "ceiling": true,
-      "bug_sha": "060286d35e8f60635b87f34d6c0c73c997aafc4b",
-      "fix_sha": "5e7a366d530391968d13d7a9ab9abdeec3712f46",
+      "bug_sha": "0095ecdddc2dbab124523d1c09431673bb760a9a",
+      "fix_sha": "bd8cd20b9924217bf9f2523592bdbe46fc7fbd7e",
       "command": "HOME=\"${RATCHET_HOME:?}\" CODEX_HOME=\"${RATCHET_HOME:?}/.codex\" GOLEMS_REQUIRE_CODEX=1 python3 \"${RATCHET_CLONE:?}/scripts/tests/test_codex_hooks_native.py\"",
       "timeout_s": 90
     },
