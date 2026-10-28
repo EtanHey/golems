@@ -8,6 +8,9 @@ allowlist or --archive-manifest: a JSON object with archive_root and entries of
 may be absolute or relative to archive_root. Archives and the manifest must
 survive outside the original/quarantine paths; archive_root cannot be ephemeral.
 Directories require file-by-file coverage. This primitive never writes archives.
+Regenerable directories are scanned without following symlinks; any .git entry
+or incomplete scan retains the worktree. Each inventory's scan is capped at
+30 seconds or 100,000 entries, with duration/count/budget evidence in the receipt.
 Callers must hold the W2 lease with all consumers released before calling; W4
 must enforce that precondition. Handle scans and repeated inventories reduce
 the race window but cannot exclude a brand-new writer in the milliseconds
@@ -27,6 +30,10 @@ import stat
 import subprocess
 import tempfile
 import time
+
+
+REGENERABLE_WALK_SECONDS = 30.0
+REGENERABLE_WALK_ENTRIES = 100_000
 
 
 def git(repo, *args):
@@ -195,6 +202,85 @@ def archived_entry(path, name, verified):
                 for child in entry.iterdir()])
 
 
+def inspect_regenerable(receipt, path, names, patterns):
+    started = time.monotonic()
+    walk = dict(phase="before_move" if path == Path(receipt["path"]) else "after_move",
+                duration_seconds=0.0, entry_count=0, budget_hit=None, nested_repositories=[])
+    receipt["regenerable_walks"].append(walk)
+    directories = {pattern[:-1] for pattern in patterns if pattern.endswith("/")}
+    roots = set()
+    for name in names:
+        parts = Path(name).parts
+        for index, part in enumerate(parts if name.endswith("/") else parts[:-1]):
+            if part in directories:
+                roots.add(Path(*parts[:index + 1]))
+                break
+    def nested_reason():
+        return "nested repository in regenerable dir: " + ", ".join(walk["nested_repositories"])
+    def incomplete(detail):
+        reason = "regenerable walk evidence incomplete: " + detail
+        return ValueError(nested_reason() + "; " + reason if walk["nested_repositories"] else reason)
+    def budget():
+        if time.monotonic() - started >= REGENERABLE_WALK_SECONDS:
+            walk["budget_hit"] = "time"
+            raise incomplete("time budget exceeded")
+        if walk["entry_count"] >= REGENERABLE_WALK_ENTRIES:
+            walk["budget_hit"] = "entries"
+            raise incomplete("entries budget exceeded")
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    def visit(parent, name, relative):
+        budget()
+        descriptor = os.open(name, flags, dir_fd=parent)
+        try:
+            info = os.fstat(descriptor)
+            if not info.st_mode & 0o444 or not info.st_mode & 0o111:
+                raise PermissionError("unreadable directory: " + str(relative))
+            with os.scandir(descriptor) as entries:
+                for entry in entries:
+                    budget()
+                    walk["entry_count"] += 1
+                    child = relative / entry.name
+                    if entry.name == ".git":
+                        walk["nested_repositories"].append(child.as_posix())
+                        if len(walk["nested_repositories"]) == 20:
+                            raise ValueError(nested_reason())
+                        continue
+                    # Always stat, including files: stale dirents are incomplete evidence.
+                    mode = entry.stat(follow_symlinks=False).st_mode
+                    if stat.S_ISDIR(mode):
+                        visit(descriptor, entry.name, child)
+            after = os.stat(name, dir_fd=parent, follow_symlinks=False)
+            if (after.st_dev, after.st_ino) != (info.st_dev, info.st_ino):
+                raise OSError("directory changed while walking: " + str(relative))
+        finally:
+            os.close(descriptor)
+    try:
+        budget()
+        worktree = os.open(path, flags)
+        try:
+            for root in sorted(roots):
+                parent = os.dup(worktree)
+                try:
+                    # Open each component separately so O_NOFOLLOW covers ancestors too.
+                    for part in root.parts[:-1]:
+                        budget()
+                        child = os.open(part, flags, dir_fd=parent)
+                        os.close(parent)
+                        parent = child
+                    visit(parent, root.name, root)
+                finally:
+                    os.close(parent)
+        finally:
+            os.close(worktree)
+        budget()
+        if walk["nested_repositories"]:
+            raise ValueError(nested_reason())
+    except (OSError, RuntimeError) as error:
+        raise incomplete(str(error)) from error
+    finally:
+        walk["duration_seconds"] = time.monotonic() - started
+
+
 def inventory(receipt, path):
     entries, status = local_files(path)
     patterns = Path(__file__).with_name("regenerable-paths.txt").read_text().splitlines()
@@ -210,6 +296,8 @@ def inventory(receipt, path):
             continue
         else:
             files.append(name)
+    if regenerable:
+        inspect_regenerable(receipt, path, regenerable, patterns)
     receipt["regenerable_entries_count"] = len(regenerable)
     receipt["regenerable_entries"] = regenerable[:20]
     receipt["local_files_count"], receipt["local_files"] = len(files), files[:20]
@@ -404,7 +492,7 @@ def retire(args):
                    remove_stderr="", registered_after=None, physical_after=None,
                    branch_retained=True)
     manifest = getattr(args, "archive_manifest", None)
-    receipt.update(regenerable_entries_count=0, regenerable_entries=[],
+    receipt.update(regenerable_entries_count=0, regenerable_entries=[], regenerable_walks=[],
                    receipt_out=args.receipt_out,
                    archive_manifest=str(Path(manifest).absolute()) if manifest is not None else None,
                    archive_manifest_sha256=None, archive_verified_count=0)
