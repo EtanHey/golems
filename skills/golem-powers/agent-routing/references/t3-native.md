@@ -184,6 +184,7 @@ dispatches this one-shot check to read-only children and only reads their report
 
 ## 9. Owned elsewhere
 
+- Dispatch to a linked environment (the other Mac): [cross-machine.md](cross-machine.md).
 - Fresh implementer per PR, reviewer freshness, the Codex concurrency cap and settle timing:
   SKILL.md § Lead Topology #5. Not restated here.
 - Vendors per work type and inner-loop order: SKILL.md § Routing rules (SSOT).
