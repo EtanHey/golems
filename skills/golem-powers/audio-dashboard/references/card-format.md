@@ -68,13 +68,21 @@ frame, and a late event from an earlier attempt is ignored.
 Browsers fire `load` for 404s and network failures, so a load alone is not
 success. The page must be readable and same-origin, and show a 2xx/3xx
 `responseStatus`, or, where the browser reports no status (WebKit), carry the
-ready marker. Every comparison page, hand-built or generated, must include this
-line in its head:
+ready marker. Every comparison page, hand-built or generated, must start in the
+canonical form: optional doctype, `<html …>`, `<head …>`, and then, with only
+whitespace between, this exact line as the first child of `<head>`:
 
 ```html
-<meta name="adash-comparison" content="ready">
+<!doctype html><html><head><meta name="adash-comparison" content="ready">
 ```
 
-`data-adash-comparison="ready"` on `<html>` also works. An error page never has
-the marker. `build-dashboard` fails when a local comparison page lacks it. From a
+`data-adash-comparison="ready"` on the leading `<html>` start tag also works. A
+meta that is the first child of an explicit `<head>` is in `document.head` in
+every browser, so a page the build accepts is a page the runtime accepts. Any
+other placement is rejected at build time, including ones a browser would
+accept: a comment, text, `<title>` or `<template>` before the meta, a different
+attribute order or letter case, or a meta outside the head. Run the page through
+`markComparisonReady(html)` (from `src/decision-flow.mjs`). It inserts the
+canonical marker right after the `<head>` start tag, creating `<head>` or
+`<html>` if missing, and never removes anything. From a
 `file:` dashboard the frame is unreadable and the dialog reports failure.
