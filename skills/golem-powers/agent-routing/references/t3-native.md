@@ -171,6 +171,8 @@ dispatches this one-shot check to read-only children and only reads their report
 - `t3_thread_launch` and `create_threads` create ordinary top-level conversations. Use them only
   when a separate or new thread is explicitly asked for. "Dispatch a worker/subagent" is
   `delegate_task`, never a thread launch.
+  Exception: cross-project and linked-environment (other Mac) code writers are launched with
+  `t3_thread_launch`; the procedure lives only in [cross-machine.md](cross-machine.md).
 - `t3_thread_launch` has no idempotency key: after a lost response, check `t3_thread_list` before
   retrying.
 

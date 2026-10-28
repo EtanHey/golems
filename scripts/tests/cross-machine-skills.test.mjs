@@ -15,10 +15,12 @@ test("reference carries the proven facts", () => {
   expect(ref).toContain("delegate_task");
   expect(ref).toContain("target.environmentId");
   expect(ref).toContain("remoteChild.threadId");
+  expect(ref).toContain("runs in that machine's project ROOT checkout");
   expect(ref).toContain("REFUSED");
   expect(ref).toContain("NEVER use this route for code writes");
   // 2. code writes via t3_thread_launch worktree, report back, owner settles
   expect(ref).toContain("t3_thread_launch(environmentId");
+  expect(ref).toContain('workspaceStrategy: {type: "worktree", baseRef: <verified ref>}');
   expect(ref).toContain("does NOT wake the launcher");
   expect(ref).toContain("t3_thread_send(environmentId=<origin env>");
   expect(ref).toContain("settle");
@@ -30,6 +32,11 @@ test("reference carries the proven facts", () => {
   for (const s of ["≤3 heavy lanes", "≥10 GiB", "sync window", "PHX admission", "admission ledger"]) {
     expect(ref).toContain(s);
   }
+});
+
+test("reference leaks no private path and claims no unproven nightly parity", () => {
+  expect(ref).not.toContain("docs.local");
+  expect(ref).not.toContain("same T3 nightly");
 });
 
 test("reference restates no model names", () => {

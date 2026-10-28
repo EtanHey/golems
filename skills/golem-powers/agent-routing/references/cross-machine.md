@@ -1,11 +1,11 @@
 # Cross-machine (linked environments)
 
 > Canonical text for delegating to the other Mac (M4 Max ↔ M1 Pro) through a linked T3
-> environment. Every other skill points here; none restates it. Evidence: live trial, 2026-10-28
-> (orchestrator `docs.local/research/2026-10-28-xm-deleg/TRIAL-LOG.md`). The trial replaced the
+> environment. Every other skill points here; none restates it. Provenance: XM-DELEG live trial,
+> 2026-10-28. The trial replaced the
 > m1-router thread as the launch transport; admission policy is unchanged (§ 5).
 
-Environment ids come from `t3_environment_links`. Both machines run the same T3 nightly.
+Environment ids come from `t3_environment_links`.
 
 ## 1. Short or read-only work: `delegate_task` with `target.environmentId`
 
