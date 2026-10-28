@@ -1,0 +1,7 @@
+[
+  "packages/golems-tui/src/**",
+  "packages/content/src/remotion/**",
+  "packages/content/remotion/src/**",
+  "skills/golem-powers/html-dashboard/templates/**",
+  "skills/golem-powers/audio-dashboard/templates/**"
+]

@@ -1,0 +1,54 @@
+bun test v1.4.2 (744846f84)
+
+skills/golem-powers/audio-dashboard/evals/decision-flow-word-seek.test.mjs:
+1280 {"events":[{"type":"pointerdown","word":"9"},{"type":"mouseup","word":"7.4"},{"type":"click","word":null}],"time":0}
+49 |     }, start);
+50 |     await page.evaluate(() => document.querySelector('audio').pause());
+51 |     const result = await page.evaluate(() => ({ events: window.events, time: document.querySelector('audio').currentTime }));
+52 |     console.info(width, JSON.stringify(result));
+53 |     await capture(page, `${width}-after-click.png`);
+54 |     expect(result.events.map(e => e.word)).toEqual([String(start), String(start), String(start)]);
+                                                ^
+error: expect(received).toEqual(expected)
+
+  [
+    "9",
+-   "9",
+-   "9",
++   "7.4",
++   null,
+  ]
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (skills/golem-powers/audio-dashboard/evals/decision-flow-word-seek.test.mjs:54:44)
+(fail) real pointer word seek and keyboard visibility at 1280px [357.78ms]
+390 {"events":[{"type":"pointerdown","word":"3.6"},{"type":"mouseup","word":null},{"type":"click","word":null}],"time":0}
+49 |     }, start);
+50 |     await page.evaluate(() => document.querySelector('audio').pause());
+51 |     const result = await page.evaluate(() => ({ events: window.events, time: document.querySelector('audio').currentTime }));
+52 |     console.info(width, JSON.stringify(result));
+53 |     await capture(page, `${width}-after-click.png`);
+54 |     expect(result.events.map(e => e.word)).toEqual([String(start), String(start), String(start)]);
+                                                ^
+error: expect(received).toEqual(expected)
+
+  [
+    "3.6",
+-   "3.6",
+-   "3.6",
++   null,
++   null,
+  ]
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (skills/golem-powers/audio-dashboard/evals/decision-flow-word-seek.test.mjs:54:44)
+(fail) real pointer word seek and keyboard visibility at 390px [282.46ms]
+
+ 0 pass
+ 2 fail
+ 6 expect() calls
+Ran 2 tests across 1 file. [769.00ms]

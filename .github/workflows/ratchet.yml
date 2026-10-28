@@ -12,7 +12,7 @@ on:
     - cron: "17 * * * *"
   workflow_dispatch:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   push:
     branches: [master]
 
@@ -35,19 +35,32 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24.22.1'
 
       - name: Test Loop-record validator
-        run: node --test scripts/tests/pr-loop-record.test.mjs
+        run: node --test scripts/tests/pr-loop-record.test.mjs scripts/tests/visual-proof-check.test.mjs
 
       - name: Validate PR Loop-record
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: node scripts/ci/pr-loop-record.mjs
+
+      - name: Validate visual proof
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          PR_CHANGED_FILES=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          export PR_CHANGED_FILES
+          node skills/golem-powers/pr-loop/scripts/visual-proof-check.mjs
 
   ratchet:
     name: ratchet

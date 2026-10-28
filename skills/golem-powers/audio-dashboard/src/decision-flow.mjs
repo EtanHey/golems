@@ -263,7 +263,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{TITLE}}", escapeHtml(title || "Decision flow")],
     ["{{KICKER}}", escapeHtml(kicker || "Decision flow")],
     ["{{HEADING}}", escapeHtml(heading || title || "Decisions")],
-    ["{{SUBTITLE}}", escapeHtml(subtitle || "Listen, decide, and keep moving.")],
+    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers save only for this dashboard on this device.</p></details>`],
     ["{{DECISION_COUNT}}", decisions.length],
     ["{{SCENE_COUNT}}", scenes.length],
     ["{{STORAGE_KEY}}", escapeHtml(storageKey || "dbx:decision-flow")],
