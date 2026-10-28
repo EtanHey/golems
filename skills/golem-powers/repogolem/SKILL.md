@@ -219,9 +219,12 @@ or --last selector was provided.` If matching rollouts exist but none carries us
 `Cannot honor Codex resume: no usable model/effort state found for selector --last.`
 
 ### Launch in a worktree
+
+Follow the [canonical worktree launch guard](../agent-routing/references/worktree-launch.md)
+before creation; it owns exact-base verification and the T3 one-read preparation rule.
 ```bash
-# Create the worktree FIRST — bare names fail silently. IN-REPO convention (ratified 2026-08-09):
-git -C $HOME/Gits/golems worktree add $HOME/Gits/golems/.worktrees/my-task -b feat/my-task origin/master
+# Outside T3: create the authorized worktree from the preflight receipt commit OID.
+# T3: use managed isolation instead; never shell-create its checkout.
 golemsCodex -s -w $HOME/Gits/golems/.worktrees/my-task
 
 # (legacy sibling $HOME/Gits/<repo>.wt/ paths resolve read-only until 2026-09-30, then die)

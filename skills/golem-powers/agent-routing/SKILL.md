@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Invoke before any git/gh/grep, even for context, to dispatch a worker/reviewer, hand off to Codex, delegate_task, fan out in parallel; who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, batch classify/audit. NOT for fanning out one edit or dependent steps."
+description: "Invoke before any git/gh/grep, even for context, to dispatch a worker/reviewer, hand off to Codex, delegate_task, worktree launch/baseRef, fan out in parallel; who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, batch classify/audit. NOT for fanning out one edit or dependent steps."
 ---
 
 # Agent Routing
@@ -230,7 +230,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
    Remember: the role picks the model, the work type picks the instance. Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
    Otherwise each Codex worker thread starts codex-security, computer-history, node_repl and cua_repl (~24.5 MiB, 4 processes), which T3 keeps until settle/idle release.
    Recreate, upgrade verification and missing-instance fallback: [Codex instances](references/t3-native.md#codex-instances).
-2. **Dispatch:** `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
+2. **Dispatch:** follow the [worktree launch guard](references/worktree-launch.md) for exact-base preflight and preparation checks; `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
 3. **Wait:** completion wakes the parent. End the turn; never poll or spawn a watcher for it.
 4. **Settle:** at the PR's terminal state (merged or handed off; never at the first DONE — a PR in review rounds keeps its implementer) (a child with no PR, such as a reviewer or recon: as soon as its report is verified), read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child, `task_cancel` its `taskId`, `unwatch_pull_request` its PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. See § Goal Contract for provider release timing and the worktree caveat.
 5. **Review rounds:** every round is a new `delegate_task` carrying prior findings; never `t3_thread_send` to the `childThreadId`.
