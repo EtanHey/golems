@@ -55,7 +55,7 @@ describe("compareParity", () => {
 
   test("an absolute home path is drift even when it resolves the same", () => {
     const b = settings();
-    b.providerInstances.codex.config.binaryPath = "/Users/someone/.local/bin/codex";
+    b.providerInstances.codex.config.binaryPath = "/home/example/.local/bin/codex";
     expect(compareParity(settings(), b).map((d) => d.path)).toEqual(["providerInstances.codex.config.binaryPath"]);
   });
 
