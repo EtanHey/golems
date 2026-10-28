@@ -10,6 +10,13 @@ Receipts use workspace-lifecycle/receipt/v1 with path, repo_common_dir and
 disposition. REMOVED requires registered_after=false, physical_after=false and
 remove_rc present as the integer zero. RETAINED requires reason.
 Receipt validation trusts the supplied observations; it performs no retirement.
+
+Before retirement, begin-close atomically excludes new consumers and binding.
+Use its close_token for close or abort-close (which restores the prior state).
+Closing leases never expire; audit reports their closing_age_seconds. Retry an
+interrupted close with the original receipt; identical closed receipts are no-ops.
+Close attempts are journaled before updating terminal state. If the ledger is
+already unwritable, no attempt can be recorded; the CLI fails without retiring.
 """
 
 import argparse
@@ -20,6 +27,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import socket
 import sys
 import tempfile
@@ -80,6 +88,8 @@ def writer_lock(directory):
 
 
 def persist(target, record, *, rollback_new=False):
+    if target.parent.stat().st_mode & 0o222 == 0:
+        raise PermissionError("ledger directory is not writable")
     record["last_observed_at"] = utc_now()
     temporary = None
     published = False
@@ -126,10 +136,20 @@ def matching_resource(record, evidence):
             raise ValueError("receipt " + field + " does not match lease")
 
 
-def close_lease(record, args):
-    attempt = {"at": utc_now(), "success": False}
+def require_no_consumers(record):
+    if record["consumers"]:
+        raise ValueError("outstanding consumers: " + ", ".join(record["consumers"]))
+
+
+def require_close_token(record, args):
+    if not args.close_token or args.close_token != record.get("close_token"):
+        raise ValueError("matching close token required")
+
+
+def close_lease(record, args, attempt):
     try:
-        require_open(record)
+        if record["state"] == "closing":
+            require_close_token(record, args)
         if args.receipt:
             attempt["receipt_file"] = canonical(args.receipt)
             receipt = read_json(args.receipt)
@@ -168,18 +188,24 @@ def close_lease(record, args):
                 raise ValueError("acknowledgment must name the same path and successor owner")
             terminal = {"disposition": "TRANSFERRED", "owner": args.transferred_to,
                         "acknowledgment": ack}
-        if record["consumers"]:
-            raise ValueError("outstanding consumers: " + ", ".join(record["consumers"]))
+        if record["state"] == "closed":
+            if (not args.receipt or json.dumps(terminal, sort_keys=True) !=
+                    json.dumps(record["terminal_receipt"], sort_keys=True)):
+                raise ValueError("lease is already closed with a different receipt")
+            attempt.update(success=True, disposition=terminal["disposition"],
+                           message="already closed")
+            attempt.pop("error", None)
+            return
+        require_no_consumers(record)
         record.update(state="closed", disposition=terminal["disposition"],
                       terminal_receipt=terminal, closed_at=utc_now())
         if terminal["disposition"] == "TRANSFERRED":
             record["owner"] = args.transferred_to
         attempt.update(success=True, disposition=terminal["disposition"])
+        attempt.pop("error", None)
     except (ValueError, OSError) as error:
         attempt["error"] = str(error)
         raise
-    finally:
-        record["history"].append(attempt)
 
 
 def mutate(directory, args):
@@ -203,13 +229,46 @@ def mutate(directory, args):
             if record.get("schema") != SCHEMA or record.get("lease_id") != args.lease_id:
                 raise ValueError("invalid lease record identity/schema")
             if args.command == "close":
+                attempt = {"at": utc_now(), "success": False,
+                           "error": "close interrupted before completion"}
+                if args.receipt:
+                    attempt["receipt_file"] = canonical(args.receipt)
+                record["history"].append(attempt)
+                # Preserve an interrupted attempt even if the terminal write
+                # cannot replace the still-closing record. No retirement here.
+                persist(target, record)
                 try:
-                    close_lease(record, args)
+                    close_lease(record, args, attempt)
                 finally:
-                    persist(target, record)  # Keep failed close attempts as well.
+                    try:
+                        persist(target, record)
+                    except OSError as error:
+                        # A post-rename sync failure may have published terminal
+                        # state. Preserve the error there when writes still work;
+                        # otherwise the prewritten interruption entry survives.
+                        attempt.update(success=False, error=str(error))
+                        try:
+                            persist(target, record)
+                        except OSError:
+                            pass
+                        raise
                 return record
             require_open(record)
-            if args.command == "bind":
+            if args.command == "begin-close":
+                if record["state"] not in ("bound", "retained"):
+                    raise ValueError("begin-close requires a bound or retained lease")
+                require_no_consumers(record)
+                record.update(closing_previous_state=record["state"], state="closing",
+                              closing_since=utc_now(), close_token=secrets.token_hex(32))
+            elif args.command == "abort-close":
+                if record["state"] != "closing":
+                    raise ValueError("lease is not closing")
+                require_close_token(record, args)
+                record["state"] = record.pop("closing_previous_state")
+                del record["closing_since"], record["close_token"]
+            elif record["state"] == "closing":
+                raise ValueError("lease is closing")
+            elif args.command == "bind":
                 path = str(Path(args.path).expanduser().resolve(strict=True))
                 if record["path"] is not None and record["path"] != path:
                     raise ValueError("rebinding to a different path refused")
@@ -240,7 +299,11 @@ def audit(directory):
             raise ValueError("invalid lease schema: " + path.name)
         if record["state"] != "closed":
             created = datetime.fromisoformat(record["created_at"].replace("Z", "+00:00"))
-            observations.append(dict(record, age_seconds=max(0, (now - created).total_seconds())))
+            observation = dict(record, age_seconds=max(0, (now - created).total_seconds()))
+            if record["state"] == "closing":
+                since = datetime.fromisoformat(record["closing_since"].replace("Z", "+00:00"))
+                observation["closing_age_seconds"] = max(0, (now - since).total_seconds())
+            observations.append(observation)
     return observations
 
 
@@ -263,13 +326,17 @@ def parser():
     consumer = commands.add_parser("consumer")
     consumer.add_argument("action", choices=("add", "release"))
     consumer.add_argument("--who", required=True)
+    begin_close = commands.add_parser("begin-close", help="exclude consumers before retirement")
+    abort_close = commands.add_parser("abort-close", help="restore the state before begin-close")
+    abort_close.add_argument("--close-token")
     close = commands.add_parser("close")
+    close.add_argument("--close-token")
     disposition = close.add_mutually_exclusive_group(required=True)
     disposition.add_argument("--receipt")
     disposition.add_argument("--retained")
     disposition.add_argument("--transferred-to")
     close.add_argument("--ack-file")
-    for command in (reserve, bind, consumer, close):
+    for command in (reserve, bind, consumer, begin_close, abort_close, close):
         command.add_argument("--lease-id", required=True)
     audit_parser = commands.add_parser("audit")
     audit_parser.add_argument("--json", action="store_true")
@@ -286,9 +353,14 @@ def main():
                 print(json.dumps(records, sort_keys=True))
             else:
                 for record in records:
-                    print("{lease_id}\t{state}\t{age_seconds:.0f}s\t{owner}\t{path}".format(**record))
+                    line = "{lease_id}\t{state}\t{age_seconds:.0f}s\t{owner}\t{path}".format(**record)
+                    if record["state"] == "closing":
+                        line += "\tclosing_age={closing_age_seconds:.0f}s".format(**record)
+                    print(line)
         else:
-            print(json.dumps(mutate(directory, args), sort_keys=True))
+            record = mutate(directory, args)
+            result = {"close_token": record["close_token"]} if args.command == "begin-close" else record
+            print(json.dumps(result, sort_keys=True))
         return 0
     except (ValueError, OSError, KeyError, TypeError) as error:
         prefix = "do not allocate: " if args.command == "reserve" else "lease refused: "

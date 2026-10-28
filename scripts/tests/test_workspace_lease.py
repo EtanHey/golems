@@ -76,6 +76,10 @@ def lease(tmp_path, monkeypatch, durable_ledger):
         def close(self, *args, ok=True):
             return self.run("close", "--lease-id", "sample", *args, ok=ok)
 
+        def begin_close(self):
+            result = self.run("begin-close", "--lease-id", "sample")
+            return json.loads(result.stdout)["close_token"]
+
     return Lease()
 
 
@@ -379,3 +383,211 @@ def test_inherited_old_override_cannot_enable_ephemeral_cli_ledger(lease):
                            "--kind", "worktree", "--ownership", "created", env=env, ok=False)
         assert "do not allocate: ephemeral ledger directory refused" in result.stderr
         assert not target.exists()
+
+
+def test_begin_close_blocks_concurrent_consumers_and_bind(lease):
+    lease.reserve()
+    lease.bind()
+    token = lease.begin_close()
+    record = lease.read()
+    assert record["state"] == "closing"
+    assert record["close_token"] == token and len(token) >= 32
+    assert record["closing_since"].endswith("Z")
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(lambda who: lease.run(
+            "consumer", "--lease-id", "sample", "add", "--who", who, ok=False,
+        ), ["reviewer", "test", "handoff", "creator"]))
+    assert all("lease is closing" in result.stderr for result in results)
+    result = lease.run("bind", "--lease-id", "sample", "--path", lease.path, ok=False)
+    assert "lease is closing" in result.stderr
+    lease.run("begin-close", "--lease-id", "sample", ok=False)
+    assert lease.read() == record
+
+
+def test_begin_close_refuses_registered_consumer(lease):
+    lease.reserve()
+    lease.bind()
+    lease.run("consumer", "--lease-id", "sample", "add", "--who", "reviewer")
+    before = lease.read()
+    result = lease.run("begin-close", "--lease-id", "sample", ok=False)
+    assert "outstanding consumers" in result.stderr
+    assert lease.read() == before
+
+
+@pytest.mark.parametrize("state", ["reserved", "closed"])
+def test_begin_close_refuses_other_states(lease, state):
+    lease.reserve()
+    if state == "closed":
+        lease.close("--retained", "allocation cancelled")
+    before = lease.read()
+    lease.run("begin-close", "--lease-id", "sample", ok=False)
+    assert lease.read() == before
+
+
+@pytest.mark.parametrize("disposition", ["removed", "retained", "transferred"])
+def test_closing_requires_token_and_preserves_each_refusal(lease, disposition, tmp_path):
+    lease.reserve()
+    lease.bind()
+    token = lease.begin_close()
+    if disposition == "removed":
+        args = ["--receipt", lease.receipt()]
+    elif disposition == "retained":
+        args = ["--retained", "dirty workspace"]
+    else:
+        ack = tmp_path / "ack.json"
+        ack.write_text(json.dumps({"path": str(lease.path), "owner": "successor"}))
+        args = ["--transferred-to", "successor", "--ack-file", ack]
+    for flags in [[], ["--close-token", "wrong"]]:
+        result = lease.close(*args, *flags, ok=False)
+        assert "close token" in result.stderr.lower()
+        assert lease.read()["state"] == "closing"
+    history = lease.read()["history"]
+    assert len(history) == 2 and all(not attempt["success"] for attempt in history)
+    lease.close(*args, "--close-token", token)
+    assert lease.read()["state"] == "closed"
+    assert lease.read()["history"][:2] == history
+
+
+@pytest.mark.parametrize("failure", ["unwritable", "postrename-fsync"])
+def test_closing_recovers_after_terminal_write_failure(lease, monkeypatch, capsys, failure):
+    lease.reserve()
+    lease.bind()
+    token = lease.begin_close()
+    receipt = lease.receipt()
+    spec = importlib.util.spec_from_file_location("workspace_lease", CLI)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    original_persist = module.persist
+
+    def fail_terminal_write(target, record, **kwargs):
+        if record["state"] == "closed":
+            if failure == "unwritable":
+                lease.ledger.chmod(0o500)
+            else:
+                def fail_directory_fsync(fd):
+                    if stat.S_ISDIR(module.os.fstat(fd).st_mode):
+                        raise OSError("injected terminal directory fsync failure")
+                    return original_fsync(fd)
+                injection.setattr(module.os, "fsync", fail_directory_fsync)
+        return original_persist(target, record, **kwargs)
+
+    original_fsync = module.os.fsync
+    with monkeypatch.context() as injection:
+        injection.setattr(module, "persist", fail_terminal_write)
+        injection.setattr(sys, "argv", [str(CLI), "close", "--lease-id", "sample",
+                                        "--close-token", token, "--receipt", str(receipt)])
+        try:
+            assert module.main() == 1
+        finally:
+            lease.ledger.chmod(0o700)
+    assert capsys.readouterr().err
+    before = lease.read()
+    assert len(before["history"]) == 1  # Failure/interruption evidence survives retry.
+    if failure == "unwritable":
+        assert before["state"] == "closing"
+        assert before["history"][0]["success"] is False
+    else:
+        assert before["history"][0]["success"] is False
+        assert "fsync failure" in before["history"][0]["error"]
+    lease.close("--receipt", receipt, "--close-token", token)
+    record = lease.read()
+    assert record["state"] == "closed"
+    assert record["history"][:-1] == before["history"]
+    assert record["history"][-1]["success"] is True
+
+
+def test_close_retry_after_ledger_was_unwritable(lease):
+    lease.reserve()
+    lease.bind()
+    token = lease.begin_close()
+    receipt = lease.receipt()
+    lease.ledger.chmod(0o500)
+    try:
+        result = lease.close("--receipt", receipt, "--close-token", token, ok=False)
+        assert "not writable" in result.stderr
+    finally:
+        lease.ledger.chmod(0o700)
+    assert lease.read()["state"] == "closing"
+    lease.close("--receipt", receipt, "--close-token", token)
+    assert lease.read()["state"] == "closed"
+
+
+def test_same_receipt_is_idempotent_but_different_receipt_is_refused(lease, tmp_path):
+    lease.reserve()
+    lease.bind()
+    token = lease.begin_close()
+    receipt = lease.receipt()
+    lease.close("--receipt", receipt, "--close-token", token)
+    closed_at = lease.read()["closed_at"]
+    copy = tmp_path / "receipt-copy.json"
+    copy.write_bytes(receipt.read_bytes())
+    result = lease.close("--receipt", copy, "--close-token", token)
+    assert "already closed" in result.stdout
+    assert lease.read()["closed_at"] == closed_at
+    lease.close("--receipt", lease.receipt(reason="different receipt"),
+                "--close-token", token, ok=False)
+    record = lease.read()
+    assert record["terminal_receipt"]["reason"] == "retirement completed"
+    assert [attempt["success"] for attempt in record["history"]] == [True, True, False]
+
+
+@pytest.mark.parametrize("prior_state", ["bound", "retained"])
+def test_abort_close_restores_state_and_reopens_consumers(lease, prior_state):
+    lease.reserve()
+    lease.bind()
+    if prior_state == "retained":
+        target = lease.ledger / "sample.json"
+        record = lease.read()
+        record["state"] = prior_state
+        target.write_text(json.dumps(record))
+    token = lease.begin_close()
+    for flags in [[], ["--close-token", "wrong"]]:
+        lease.run("abort-close", "--lease-id", "sample", *flags, ok=False)
+        assert lease.read()["state"] == "closing"
+    lease.run("abort-close", "--lease-id", "sample", "--close-token", token)
+    record = lease.read()
+    assert record["state"] == prior_state
+    assert not {"close_token", "closing_since", "closing_previous_state"} & record.keys()
+    lease.run("consumer", "--lease-id", "sample", "add", "--who", "reviewer")
+    assert lease.read()["consumers"] == ["reviewer"]
+
+
+def test_audit_reports_stale_closing_without_releasing_it(lease):
+    lease.reserve()
+    lease.bind()
+    lease.begin_close()
+    target = lease.ledger / "sample.json"
+    record = lease.read()
+    record["closing_since"] = "2000-01-01T00:00:00Z"
+    target.write_text(json.dumps(record))
+    before = target.read_bytes()
+    audit = json.loads(lease.run("audit", "--json").stdout)
+    assert audit[0]["state"] == "closing"
+    assert audit[0]["closing_age_seconds"] > 86400
+    assert "closing_age=" in lease.run("audit").stdout
+    assert target.read_bytes() == before
+
+
+def test_aborted_token_cannot_close_a_new_closing_generation(lease):
+    lease.reserve()
+    lease.bind()
+    old_token = lease.begin_close()
+    lease.run("abort-close", "--lease-id", "sample", "--close-token", old_token)
+    token = lease.begin_close()
+    assert token != old_token
+    receipt = lease.receipt()
+    lease.close("--receipt", receipt, "--close-token", old_token, ok=False)
+    assert lease.read()["state"] == "closing"
+    lease.close("--receipt", receipt, "--close-token", token)
+
+
+def test_invalid_receipt_does_not_release_closing_lease(lease):
+    lease.reserve()
+    lease.bind()
+    token = lease.begin_close()
+    lease.close("--receipt", lease.receipt(physical_after=True),
+                "--close-token", token, ok=False)
+    assert lease.read()["state"] == "closing"
+    result = lease.run("consumer", "--lease-id", "sample", "add", "--who", "late", ok=False)
+    assert "lease is closing" in result.stderr
+    lease.close("--receipt", lease.receipt(), "--close-token", token)
