@@ -25,7 +25,8 @@ def workflow(tmp_path):
         git('config', 'user.email', 'fixture@example.com', cwd=source)
         git('config', 'user.name', 'Fixture', cwd=source)
         (source / 'README').write_text('fixture\n')
-        git('add', 'README', cwd=source)
+        (source / '.gitignore').write_text('.worktrees/\n')
+        git('add', 'README', '.gitignore', cwd=source)
         git('commit', '-m', 'fixture', cwd=source)
         git('clone', '--bare', source, origin)
         git('clone', origin, repo)
@@ -84,8 +85,10 @@ def test_cleanup_records_disposition_and_closes_lease(workflow, dirty):
     receipt = json.loads((workflow.manifest.parent / 'worker.retire.json').read_text())
     lease = json.loads((workflow.ledger / (worker['lease_id'] + '.json')).read_text())
     disposition = 'RETAINED' if dirty else 'REMOVED'
-    assert receipt['disposition'] == worker['retirement_disposition'] == lease['disposition'] == disposition
-    assert lease['state'] == 'closed'
+    assert receipt['disposition'] == worker['retirement_disposition'] == disposition
+    assert lease['state'] == ('bound' if dirty else 'closed')
+    if not dirty:
+        assert lease['disposition'] == disposition
     assert path.exists() is dirty
     if dirty:
         assert worker['retirement_reason'] == receipt['reason']
@@ -94,7 +97,6 @@ def test_cleanup_records_disposition_and_closes_lease(workflow, dirty):
 @pytest.mark.parametrize('invalid', [None, 'schema', 'path', 'repo_common_dir', 'physical_after', 'recreated'])
 def test_close_failure_recovers_without_repeating_retirement(workflow, monkeypatch, invalid):
     import importlib.util
-    from types import SimpleNamespace
 
     result = workflow.launch()
     assert result.returncode == 0, result.stderr
@@ -110,16 +112,7 @@ def test_close_failure_recovers_without_repeating_retirement(workflow, monkeypat
 
     def interrupted(tool, *args, **kwargs):
         calls.append((tool, args[0]))
-        if not w2b_available() and tool == 'lease.py' and args[0] == 'audit' and ('lease.py', 'begin-close') in calls:
-            result = real_tool(tool, *args, **kwargs)
-            records = json.loads(result.stdout)
-            records[0].update(state='closing', close_token='fixture-token')
-            return SimpleNamespace(stdout=json.dumps(records))
-        if not w2b_available() and tool == 'lease.py' and args[0] == 'begin-close':
-            return SimpleNamespace(stdout=json.dumps({'close_token': 'fixture-token'}))
         if tool == 'lease.py' and args[0] == 'close':
-            if not w2b_available():
-                args = tuple(x for i, x in enumerate(args) if x != '--close-token' and (i == 0 or args[i-1] != '--close-token'))
             if sum(call == ('lease.py', 'close') for call in calls) == 1:
                 workflow.ledger.chmod(0o500)
                 try:
@@ -134,6 +127,9 @@ def test_close_failure_recovers_without_repeating_retirement(workflow, monkeypat
     receipt_path = workflow.manifest.parent / 'worker.retire.json'
     original = receipt_path.read_bytes()
     worker = json.loads(workflow.manifest.read_text())['workers']['worker']
+    token_path = workflow.manifest.parent / '.worker.close-token'
+    assert token_path.stat().st_mode & 0o077 == 0
+    assert token_path.read_text() not in workflow.manifest.read_text()
     assert not Path(worker['worktree']).exists()
     assert json.loads((workflow.ledger / (worker['lease_id'] + '.json')).read_text())['state'] != 'closed'
     if invalid:
@@ -153,14 +149,9 @@ def test_close_failure_recovers_without_repeating_retirement(workflow, monkeypat
     assert sum(call == ('retire.py', '--repo') for call in calls) == 1
     assert json.loads((workflow.ledger / (worker['lease_id'] + '.json')).read_text())['state'] == 'closed'
     assert json.loads(workflow.manifest.read_text())['workers']['worker']['cleaned_at']
+    assert not token_path.exists()
 
 
-def w2b_available():
-    result = subprocess.run([os.sys.executable, str(ROOT / 'scripts/workspace/lease.py'), '--help'], capture_output=True, text=True)
-    return 'begin-close' in result.stdout and 'abort-close' in result.stdout
-
-
-@pytest.mark.skipif(not w2b_available(), reason='requires W2b lease closing interface')
 def test_consumer_add_after_begin_close_is_refused(workflow, monkeypatch):
     import importlib.util
     result = workflow.launch()
@@ -194,7 +185,6 @@ def test_consumer_add_after_begin_close_is_refused(workflow, monkeypatch):
     assert not Path(worker['worktree']).exists()
 
 
-@pytest.mark.skipif(not w2b_available(), reason='requires W2b lease closing interface')
 def test_outstanding_consumer_retains_worktree(workflow):
     assert workflow.launch().returncode == 0
     assert workflow.cli('watch', '--manifest', workflow.manifest, '--timeout', '5', '--interval', '0.05').returncode == 0
@@ -210,3 +200,16 @@ def test_outstanding_consumer_retains_worktree(workflow):
     assert 'consumer' in worker['retirement_reason'].lower()
     assert Path(worker['worktree']).exists()
     assert not (workflow.manifest.parent / 'worker.retire.json').exists()
+
+
+def test_cleanup_refuses_unignored_token_path(workflow):
+    assert workflow.launch().returncode == 0
+    assert workflow.cli('watch', '--manifest', workflow.manifest, '--timeout', '5', '--interval', '0.05').returncode == 0
+    assert workflow.cli('harvest', '--manifest', workflow.manifest).returncode == 0
+    (workflow.repo / '.gitignore').write_text('')
+    result = workflow.cli('cleanup', '--manifest', workflow.manifest)
+    worker = json.loads(workflow.manifest.read_text())['workers']['worker']
+    lease = json.loads((workflow.ledger / (worker['lease_id'] + '.json')).read_text())
+    assert result.returncode != 0 and 'not verified gitignored' in result.stderr
+    assert lease['state'] == 'bound' and Path(worker['worktree']).exists()
+    assert not (workflow.manifest.parent / '.worker.close-token').exists()

@@ -331,15 +331,27 @@ def cleanup_worker(
     except (ValueError, KeyError, TypeError, StopIteration) as exc:
         raise CodexWorkflowError(f"cannot verify lease before retirement: {exc}") from exc
 
-    token = worker.get("close_token")
+    token_path = Path(manifest_path).resolve().parent / f".{worker_name}.close-token"
+    token = None
+    if token_path.is_symlink():
+        raise CodexWorkflowError("close token symlink refused")
+    if token_path.exists():
+        if token_path.stat().st_mode & 0o077:
+            raise CodexWorkflowError("close token file permissions are not private")
+        token = token_path.read_text(encoding="utf-8")
     if lease["state"] == "closing":
-        ledger_token = lease.get("close_token")
-        if not ledger_token or (token and token != ledger_token):
-            raise CodexWorkflowError("closing lease token mismatch")
-        token = ledger_token
+        if not token:
+            raise CodexWorkflowError("closing lease token unavailable; reconciliation required")
     else:
         if token:
             raise CodexWorkflowError("close token exists but lease is not closing")
+        git_root = _run_git(token_path.parent, "rev-parse", "--show-toplevel", check=False)
+        if git_root.returncode == 0:
+            ignored = _run_git(token_path.parent, "check-ignore", "-q", "--no-index", "--", str(token_path), check=False)
+            if ignored.returncode != 0:
+                raise CodexWorkflowError("close token path is not verified gitignored")
+        elif "not a git repository" not in git_root.stderr.lower():
+            raise CodexWorkflowError("cannot verify close token path")
         try:
             result = lifecycle_tool("lease.py", "begin-close", "--lease-id", worker["lease_id"])
             token = json.loads(result.stdout)["close_token"]
@@ -351,7 +363,14 @@ def cleanup_worker(
             raise
         except (ValueError, KeyError, TypeError) as exc:
             raise CodexWorkflowError(f"invalid begin-close response: {exc}") from exc
-        update_worker(manifest_path, worker_name, {"close_token": token})
+        try:
+            fd = os.open(token_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(token)
+                handle.flush()
+                os.fsync(handle.fileno())
+        except OSError as exc:
+            raise CodexWorkflowError(f"cannot preserve close token; reconciliation required: {exc}") from exc
 
     if receipt_path.is_symlink():
         raise CodexWorkflowError("retirement receipt symlink refused")
@@ -391,10 +410,11 @@ def cleanup_worker(
                   "worktree_removed": disposition == "REMOVED"})
     if disposition == "RETAINED":
         lifecycle_tool("lease.py", "abort-close", "--lease-id", worker["lease_id"], "--close-token", token)
-        update_worker(manifest_path, worker_name, {"close_token": None})
+        token_path.unlink()
         raise CodexWorkflowError(f"worktree retained: {reason}")
     lifecycle_tool("lease.py", "close", "--lease-id", worker["lease_id"],
                    "--close-token", token, "--receipt", str(receipt_path))
+    token_path.unlink()
     if delete_branch:
         _run_git(repo, "branch", "-D" if force_unmerged else "-d", branch)
     update_worker(
