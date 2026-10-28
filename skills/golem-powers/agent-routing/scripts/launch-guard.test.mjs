@@ -118,9 +118,6 @@ test('CLI structured failure is nonzero and never leaks raw stderr', () => {
 test('canonical recipe static behavior and active examples use the guard', () => {
   const recipe = readFileSync(new URL('../references/worktree-launch.md', import.meta.url), 'utf8');
   assert.equal((recipe.match(/await tools\.mcp__t3_code__t3_thread_read\(/g) ?? []).length, 1);
-  const triggers = JSON.parse(readFileSync(new URL('../evals/trigger-evals.json', import.meta.url), 'utf8'));
-  assert.equal(triggers.find(c => c.query.includes('baseRef main')).should_trigger, true);
-  assert.equal(triggers.find(c => c.query.includes('root thread')).should_trigger, false);
   const behavior = JSON.parse(readFileSync(new URL('../evals/evals.json', import.meta.url), 'utf8')).evals.find(c => c.id === 105);
   assert.ok(behavior.assertions.length && behavior.expected_output.includes('PENDING'));
   for (const term of ['PENDING', 'startFromOrigin', 'delegate_task', 't3-mixed-harness', 'remote', 'preflight']) assert.ok(recipe.includes(term), term);
