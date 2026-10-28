@@ -10,6 +10,9 @@ export const CANONICAL = {
   "html attribute": `<!doctype html><html lang="en" data-adash-comparison="ready"><head></head><body>${chart}</body></html>`,
   "html attribute, single quotes, no head": `<html data-adash-comparison='ready'><body>${chart}</body></html>`,
   "linked chart": `<!doctype html><html><head>${META}</head><body><a href="details.html"><figure>${chart}</figure></a></body></html>`,
+  // ADX-2d review r2: the browser strips exactly one leading BOM, and a newline inside a start tag is a separator.
+  "one leading BOM": `\uFEFF<!doctype html><html><head>${META}</head><body>Chart</body></html>`,
+  "newline inside the head start tag": `<!doctype html><html><head\n>${META}</head><body>Chart</body></html>`,
 };
 
 // Everything else is rejected, including valid pages that the browser would accept but that are not canonical.
@@ -38,4 +41,19 @@ export const REJECTED = {
   "duplicate html attribute, first wins": '<html data-adash-comparison="no" data-adash-comparison="ready"><body>404</body></html>',
   "html attribute with spaces": '<html data-adash-comparison=" ready"><body>404</body></html>',
   "plain 404": "<h1>404: missing comparison</h1>",
+  // ADX-2d review r2 (B3): JS \s is not HTML whitespace. Each of these built and then failed in both runtimes.
+  "two leading BOMs": `\uFEFF\uFEFF<!doctype html><html><head>${META}</head><body>Chart</body></html>`,
+  "BOM after the doctype": `<!doctype html>\uFEFF<html><head>${META}</head><body>Chart</body></html>`,
+  "NBSP after head": `<!doctype html><html><head>\u00a0${META}</head><body>Chart</body></html>`,
+  "vertical tab after head": `<!doctype html><html><head>\u000b${META}</head><body>Chart</body></html>`,
+  "em space after head": `<!doctype html><html><head>\u2003${META}</head><body>Chart</body></html>`,
+  "NBSP before head": `<!doctype html><html>\u00a0<head>${META}</head><body>Chart</body></html>`,
+  "NBSP before html": `\u00a0<!doctype html><html><head>${META}</head><body>Chart</body></html>`,
+  "NBSP as the html attribute separator": '<html\u00a0data-adash-comparison="ready"><body>Chart</body></html>',
+  "NBSP before the html attribute": '<html \u00a0data-adash-comparison="ready"><body>Chart</body></html>',
+  "NBSP inside the head start tag": `<!doctype html><html><head\u00a0>${META}</head><body>Chart</body></html>`,
+  // ADX-2d review r2 (B4): the helper must stay build-accepted when the page prefix is longer than the scan window.
+  "17,000-space preamble": " ".repeat(17000) + "<h1>Chart</h1>",
+  "html start tag longer than the scan window": `<html data-padding="${"x".repeat(17000)}"><body>Chart</body></html>`,
+  "head start tag longer than the scan window": `<!doctype html><html><head data-padding="${"x".repeat(17000)}">${META}</head><body>Chart</body></html>`,
 };

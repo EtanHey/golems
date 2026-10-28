@@ -317,11 +317,16 @@ export const COMPARISON_READY_META = '<meta name="adash-comparison" content="rea
 // tag followed (whitespace only) by exactly <meta name="adash-comparison" content="ready">. A meta that is the
 // first child of an explicit <head> is in document.head in every browser, so build-accept implies the runtime
 // check accepts. Valid but non-canonical pages are rejected on purpose: producers use markComparisonReady.
+// Separators are HTML whitespace only (tab, LF, FF, CR, space); JS \s would also take U+00A0, U+2003, VT and
+// U+FEFF, which the browser treats as text. One U+FEFF is allowed at byte 0 only, as the browser strips it.
 const ci = (word) => [...word].map((letter) => `[${letter.toLowerCase()}${letter.toUpperCase()}]`).join("");
+const WS = "[\\t\\n\\f\\r ]";
+const NOT_WS = "\\t\\n\\f\\r ";
 // Quote-aware start-tag attributes, so a ">" inside a quoted value cannot end the tag early.
-const TAG_ATTRIBUTES = String.raw`(?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>` + "`" + String.raw`]+))?)*\s*/?`;
-const CANONICAL_PREFIX = new RegExp(String.raw`^﻿?\s*(?:<!${ci("doctype")}(?:\s[^>]*)?>\s*)?<${ci("html")}(${TAG_ATTRIBUTES})>(\s*<${ci("head")}${TAG_ATTRIBUTES}>)?(\s*<meta name="adash-comparison" content="ready"\s*/?>)?`);
-const ATTRIBUTE = /\s+([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+const TAG_ATTRIBUTES = `(?:${WS}+[^${NOT_WS}"'>/=]+(?:${WS}*=${WS}*(?:"[^"]*"|'[^']*'|[^${NOT_WS}"'=<>\`]+))?)*${WS}*/?`;
+const DOCTYPE = `^\\uFEFF?${WS}*(?:<!${ci("doctype")}(?:${WS}[^>]*)?>)?`;
+const CANONICAL_PREFIX = new RegExp(`${DOCTYPE}${WS}*<${ci("html")}(${TAG_ATTRIBUTES})>(${WS}*<${ci("head")}${TAG_ATTRIBUTES}>)?(${WS}*<meta name="adash-comparison" content="ready"${WS}*/?>)?`);
+const ATTRIBUTE = new RegExp(`${WS}+([^${NOT_WS}"'>/=]+)(?:${WS}*=${WS}*(?:"([^"]*)"|'([^']*)'|([^${NOT_WS}"'=<>\`]+)))?`, "g");
 const SCAN_LIMIT = 16384;
 
 function canonicalMarker(page) {
@@ -337,16 +342,23 @@ export function hasComparisonReadyMarker(html) {
   return canonicalMarker(String(html ?? "")).ready;
 }
 
-// For producers: return the page with the canonical marker, never removing a tag. It goes right after the
-// leading <head> start tag; a missing <head> (or <html>) is created in front of the existing content.
+// For producers: return the page with the canonical marker, never removing a tag, and always build-accepted.
+// Try the marker right after the leading <head> start tag, then a new <head> after the leading <html> start
+// tag, then a new <html><head> after the doctype; keep the first result the scan accepts. The last candidate,
+// directly after an optional leading BOM, always passes, even when the page's own prefix is longer than the
+// scan window.
 export function markComparisonReady(html) {
   const page = String(html ?? "");
   const { html: htmlEnd, head: headEnd, ready } = canonicalMarker(page);
   if (ready) return page;
-  if (headEnd !== null) return page.slice(0, headEnd) + COMPARISON_READY_META + page.slice(headEnd);
-  if (htmlEnd !== null) return `${page.slice(0, htmlEnd)}<head>${COMPARISON_READY_META}</head>${page.slice(htmlEnd)}`;
-  const doctype = page.match(new RegExp(String.raw`^﻿?\s*(?:<!${ci("doctype")}(?:\s[^>]*)?>)?`))[0];
-  return `${doctype}<html><head>${COMPARISON_READY_META}</head>${page.slice(doctype.length)}`;
+  const insert = (at, text) => page.slice(0, at) + text + page.slice(at);
+  const wrapper = `<html><head>${COMPARISON_READY_META}</head>`;
+  const candidates = [
+    headEnd !== null && insert(headEnd, COMPARISON_READY_META),
+    htmlEnd !== null && insert(htmlEnd, `<head>${COMPARISON_READY_META}</head>`),
+    insert(page.match(new RegExp(DOCTYPE))[0].length, wrapper),
+  ].filter(Boolean);
+  return candidates.find(hasComparisonReadyMarker) ?? insert(page.startsWith("﻿") ? 1 : 0, wrapper);
 }
 
 // Each card's comparison target, as the dashboard-relative URL the renderer emits.
