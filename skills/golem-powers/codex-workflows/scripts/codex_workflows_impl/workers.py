@@ -320,32 +320,81 @@ def cleanup_worker(
     try:
         records = json.loads(lifecycle_tool("lease.py", "audit", "--json").stdout)
         lease = next(record for record in records if record["lease_id"] == worker["lease_id"])
-        if (lease["state"] != "bound" or lease["path"] != str(worktree.resolve())
+        if (lease["state"] not in {"bound", "closing", "retained"}
+                or lease["path"] != str(worktree.resolve())
                 or lease["repo_common_dir"] != str(git_common_dir(repo))
-                or lease.get("head") != worker["head"] or lease["consumers"]
-                or lease["ownership"] != "created"):
-            raise ValueError("lease identity, state or consumers do not permit retirement")
+                or lease.get("head") != worker["head"]
+                or lease["ownership"] != "created" or lease["resource_kind"] != "worktree"
+                or lease["allocator"] != "codex-workflows"
+                or lease["owner"] != f"{data['run_id']}/{worker_name}"):
+            raise ValueError("lease identity or state does not permit retirement")
     except (ValueError, KeyError, TypeError, StopIteration) as exc:
         raise CodexWorkflowError(f"cannot verify lease before retirement: {exc}") from exc
+
+    token = worker.get("close_token")
+    if lease["state"] == "closing":
+        ledger_token = lease.get("close_token")
+        if not ledger_token or (token and token != ledger_token):
+            raise CodexWorkflowError("closing lease token mismatch")
+        token = ledger_token
+    else:
+        if token:
+            raise CodexWorkflowError("close token exists but lease is not closing")
+        try:
+            result = lifecycle_tool("lease.py", "begin-close", "--lease-id", worker["lease_id"])
+            token = json.loads(result.stdout)["close_token"]
+            if not isinstance(token, str) or not token:
+                raise ValueError("empty close token")
+        except CodexWorkflowError as exc:
+            update_worker(manifest_path, worker_name, {"retirement_disposition": "RETAINED",
+                          "retirement_reason": str(exc), "worktree_removed": False})
+            raise
+        except (ValueError, KeyError, TypeError) as exc:
+            raise CodexWorkflowError(f"invalid begin-close response: {exc}") from exc
+        update_worker(manifest_path, worker_name, {"close_token": token})
+
+    if receipt_path.is_symlink():
+        raise CodexWorkflowError("retirement receipt symlink refused")
     if receipt_path.exists():
-        raise CodexWorkflowError(f"retirement receipt already exists: {receipt_path}")
-    result = lifecycle_tool("retire.py", "--repo", str(repo), "--path", str(worktree),
-                            "--expect-head", worker["head"], "--receipt-out", str(receipt_path), check=False)
-    try:
-        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-        disposition = receipt["disposition"]
-        reason = receipt["reason"]
-        if disposition not in {"REMOVED", "RETAINED"} or (disposition == "REMOVED" and result.returncode != 0):
-            raise ValueError("invalid retirement outcome")
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        raise CodexWorkflowError(f"retirement receipt unavailable or invalid: {exc}; {result.stderr.strip()}") from exc
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            if (receipt.get("schema") != "workspace-lifecycle/receipt/v1"
+                    or receipt.get("path") != lease["path"]
+                    or receipt.get("repo_common_dir") != lease["repo_common_dir"]
+                    or receipt.get("disposition") != "REMOVED"
+                    or receipt.get("registered_after") is not False
+                    or receipt.get("physical_after") is not False
+                    or type(receipt.get("remove_rc")) is not int or receipt["remove_rc"] != 0):
+                raise ValueError("receipt identity or removal proof mismatch")
+            try:
+                os.lstat(worktree)
+            except FileNotFoundError:
+                pass
+            else:
+                raise ValueError("retired path exists again")
+        except (OSError, ValueError, TypeError) as exc:
+            raise CodexWorkflowError(f"cannot resume retirement receipt: {exc}") from exc
+    else:
+        result = lifecycle_tool("retire.py", "--repo", str(repo), "--path", str(worktree),
+                                "--expect-head", worker["head"], "--receipt-out", str(receipt_path), check=False)
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            if receipt["disposition"] not in {"REMOVED", "RETAINED"} or (receipt["disposition"] == "REMOVED" and result.returncode != 0):
+                raise ValueError("invalid retirement outcome")
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise CodexWorkflowError(f"retirement receipt unavailable or invalid: {exc}; {result.stderr.strip()}") from exc
+
+    disposition = receipt["disposition"]
+    reason = receipt["reason"]
     update_worker(manifest_path, worker_name, {"retirement_disposition": disposition,
                   "retirement_reason": reason, "retirement_receipt": str(receipt_path),
                   "worktree_removed": disposition == "REMOVED"})
-    close_args = ["--receipt", str(receipt_path)] if disposition == "REMOVED" else ["--retained", reason]
-    lifecycle_tool("lease.py", "close", "--lease-id", worker["lease_id"], *close_args)
     if disposition == "RETAINED":
+        lifecycle_tool("lease.py", "abort-close", "--lease-id", worker["lease_id"], "--close-token", token)
+        update_worker(manifest_path, worker_name, {"close_token": None})
         raise CodexWorkflowError(f"worktree retained: {reason}")
+    lifecycle_tool("lease.py", "close", "--lease-id", worker["lease_id"],
+                   "--close-token", token, "--receipt", str(receipt_path))
     if delete_branch:
         _run_git(repo, "branch", "-D" if force_unmerged else "-d", branch)
     update_worker(
