@@ -119,11 +119,11 @@ def test_missing_unknown_duplicate_and_uncertain_coverage():
                                {'path': '/a.png', 'finding': 'b'}]), ['/a.png'])
 
 
-def test_output_overflow_is_disclosed():
+def test_long_output_is_preserved():
     paths = [f'/{i}.png' for i in range(12)]
     text = v.gather(paths, lambda ps: result([{'path': p, 'finding': 'x' * 1000} for p in ps]))
-    assert len(text) <= 2500
-    assert 'omitted' in text and 'partial' in text
+    assert len(text) > 12000
+    assert 'Coverage: 12/12; complete; 0 image findings omitted' in text
 
 
 def test_model_id_is_resolved_from_available_models():

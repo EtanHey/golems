@@ -63,7 +63,7 @@ def parse(result, paths):
         return {}
     try:
         envelope = json.loads(result.stdout)
-        if envelope['status'] != 'SUCCESS' or len(envelope['response']) > 2000:
+        if envelope['status'] != 'SUCCESS':
             return {}
         body = envelope['response'].strip()
         if body.startswith('```'):
@@ -103,12 +103,9 @@ def gather(paths, run):
         if path not in found:
             found.update(parse(run([path]), [path]))
     lines, covered, tiles_unclear = [], 0, 0
-    budget = 2300  # reserve room for coverage and omitted-count footer
     for path in paths:
         finding = found.get(path, 'NOT DETERMINED (call failed or missing response)')
         line = f'{path}: {finding}'
-        if len('\n'.join(lines + [line])) > budget:
-            break
         lines.append(line)
         if finding_is_read(finding):
             covered += 1

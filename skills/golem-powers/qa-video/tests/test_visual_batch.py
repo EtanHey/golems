@@ -103,7 +103,9 @@ def test_budget_partial_and_unread(setup):
     assert code != 0 and result['status'] == 'BUDGET_EXCEEDED'
     assert 0 < result['completed'] < 8
     assert len(result['unread']) == 8 - result['completed']
-    assert all(10 <= float(p.read_text()) < 30.12 for p in work.glob('*.timeout'))
+    assert sum(result['counts'].values()) == result['total']
+    assert result['counts']['NOT_READ'] == len(result['unread'])
+    assert all(0 < float(p.read_text()) <= .12 for p in work.glob('*.timeout'))
     assert all(x['finding'].startswith('NOT DETERMINED') for x in result['unread'])
     assert len((work / 'visual/findings.jsonl').read_text().splitlines()) == result['completed']
 
@@ -238,10 +240,11 @@ print(json.dumps({'status': 'SUCCESS', 'response': json.dumps({'images': items})
     monkeypatch.setenv('SHEET_RESPONSE', json.dumps(fixture))
     image = tmp_path / 'moment-00.jpg'
     image.write_bytes(b'provider fixture input')
+    (tmp_path/'index.tsv').write_text('moment-00.jpg\t0\t10\t20\ttest\n')
     result = subprocess.run([sys.executable, str(DRIVER), '--model', 'fixture-model',
                              '--question', 'facts', '--workdir', str(tmp_path), str(image)],
                             capture_output=True, text=True, timeout=10)
-    item, = [json.loads(row) for row in (tmp_path / 'visual/findings.jsonl').read_text().splitlines()]
+    item = json.loads((tmp_path / 'visual/findings.jsonl').read_text().splitlines()[-1])
     spec = importlib.util.spec_from_file_location('debrief', SKILL / 'scripts/debrief.py')
     debrief = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(debrief)

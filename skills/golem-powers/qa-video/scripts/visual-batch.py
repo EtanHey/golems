@@ -6,6 +6,8 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import json
 import math
 import os
+import random
+import re
 from pathlib import Path
 import signal
 import subprocess
@@ -28,18 +30,84 @@ def read_sheet(helper, question, timeout, sheet, model=None, workdir=None):
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                text=True, start_new_session=True)
     try:
-        out, err = process.communicate(timeout=2 * (timeout + 15) + 50)
+        out, err = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         os.killpg(process.pid, signal.SIGKILL)
         out, err = process.communicate()
         return {'sheet': sheet, 'finding': 'NOT DETERMINED (helper timeout)', 'fatal': '', 'ok': False,
                 'cause': 'helper timeout', 'setup_failure': False}
     fatal = next((s for s in err.splitlines() if s.startswith('DISPATCH_STOPPED:')), '')
-    complete = process.returncode == 0 and 'Coverage: 1/1; complete;' in out
+    complete = (process.returncode == 0 and 'Coverage: 1/1; complete;' in out
+                and len(out.strip().splitlines()) > 1
+                and not any(token in out.lower() for token in ('<truncated', 'stream was interrupted')))
     return {'sheet': sheet, 'finding': out.strip() if complete else
             'NOT DETERMINED (helper failed or partial)\n' + out.strip(), 'fatal': fatal, 'ok': complete and not fatal,
-            'cause': visual.safe_cause(err, workdir or '.') if not complete or fatal else '',
+            'cause': ('exit ' + str(process.returncode) + ': ' if process.returncode else 'empty or truncated output: ') + visual.safe_cause(err, workdir or '.') if not complete or fatal else '',
             'setup_failure': not complete and not fatal and 'NOT DETERMINED: setup failed' in out, 'attempt': 1}
+
+
+def validate(item, tile_count):
+    indexes = []
+    # Accept singular references, lists and inclusive ranges, including negatives.
+    for match in re.finditer(r"\btiles?\s+(-?\d+(?:\s*(?:-|–|to|,|and)\s*-?\d+)*)", item['finding'], re.I):
+        indexes.extend(int(n) for n in re.findall(r"-?\d+", re.sub(r"(?<=\d)-(?=\d)", " ", match[1])))
+    if indexes and tile_count is None:
+        return dict(item, state='FAILED', ok=False, offending_indexes=[], cause='tile count unavailable')
+    bad = sorted({n for n in indexes if tile_count is not None and (n < 0 or n >= tile_count)})
+    conflict = bool(re.search(r"\bCONFLICT\b", item['finding']))
+    state = 'INVALID' if bad or conflict else ('READ' if item['ok'] else 'FAILED')
+    return dict(item, state=state, ok=state == 'READ', offending_indexes=bad,
+                cause=('out-of-bounds tiles: ' + str(bad) if bad else 'conflicting read')
+                if state == 'INVALID' else item.get('cause', ''))
+
+
+def retry_read(read, question, tile_count, deadline, timeout, *, clock=time.monotonic,
+               sleep=time.sleep, jitter=random.random):
+    history = []
+    for attempt in range(1, 3):
+        remaining = deadline - clock()
+        if remaining <= 0:
+            break
+        bound = f' Tile indexes are zero-based; valid range 0..{tile_count-1}.' if tile_count else ''
+        item = validate(read(question + bound, min(timeout, remaining)), tile_count)
+        history.append({'attempt': attempt, 'state': item['state'], 'cause': item.get('cause', '')})
+        if item['ok'] or item.get('fatal') or attempt == 2:
+            break
+        delay = .25 * 2 ** (attempt - 1) + jitter() * .1
+        if clock() + delay >= deadline:
+            break
+        sleep(delay)
+    if not history:
+        return dict(state='NOT_READ', ok=False, finding='NOT DETERMINED (budget)', fatal='',
+                    cause='budget', attempts=0, history=[])
+    return dict(item, attempts=len(history), attempt=len(history), history=history)
+
+
+def tile_counts(index, sheets):
+    counts = {}
+    sources = {Path(s).parent / 'index.tsv' for s in sheets}
+    if index:
+        sources.add(index)
+    for source in sources:
+        if not source.is_file():
+            continue
+        for row in source.read_text().splitlines():
+            cols = row.split('\t')
+            if len(cols) >= 4 and cols[3].isdigit():
+                counts[str((source.parent / cols[0]).resolve())] = int(cols[3])
+    for directory in {Path(s).parent for s in sheets}:
+        frames = directory / 'frames.tsv'
+        if not frames.is_file():
+            continue
+        grouped = {}
+        for row in frames.read_text().splitlines():
+            cols = row.split('\t')
+            if len(cols) >= 2 and cols[1].isdigit():
+                grouped.setdefault(str((directory / cols[0]).resolve()), set()).add(int(cols[1]))
+        for sheet, tiles in grouped.items():
+            if tiles == set(range(len(tiles))):
+                counts[sheet] = len(tiles)
+    return counts
 
 
 def run(args, sheets):
@@ -51,6 +119,7 @@ def run(args, sheets):
     status, cause, eta = 'RUNNING', '', None
     findings, active = [], {}
     model, retrying = getattr(args, 'model', None), False
+    counts = tile_counts(getattr(args, 'index', None), sheets)
 
     def progress():
         nonlocal eta
@@ -63,7 +132,7 @@ def run(args, sheets):
         remaining = '~%ss' % math.ceil(eta) if eta is not None else 'unknown'
         atomic(work / 'progress.txt', getattr(args, 'progress_prefix', '') + f'visual {completed}/{total} sheets · elapsed '
                f'{int(elapsed)//60}m{int(elapsed)%60:02d}s · ETA {remaining} · '
-               f'budget {args.budget_seconds/60:g}m · {status}' + (' · serial setup retry' if retrying else '') + '\n')
+               f'budget {args.budget_seconds/60:g}m · {status}' + (' · serial retry' if retrying else '') + '\n')
 
     progress()
     if args.helper.resolve() == Path(__file__).resolve().with_name('visual-gather.py') and not model:
@@ -82,8 +151,8 @@ def run(args, sheets):
                         status = 'BUDGET_EXCEEDED'
                         break
                     sheet = sheets[launched]
-                    timeout = max(10, min(args.timeout, deadline - time.monotonic() + 30))
-                    active[pool.submit(read_sheet, args.helper, args.question, timeout, sheet, model, work)] = sheet
+                    timeout = min(args.timeout, deadline - time.monotonic())
+                    active[pool.submit(read_sheet, args.helper, args.question + (f' Valid zero-based tiles: 0..{counts[sheet]-1}.' if sheet in counts else ''), timeout, sheet, model, work)] = sheet
                     launched += 1
                 if not active:
                     break
@@ -97,26 +166,35 @@ def run(args, sheets):
                     except OSError as error:
                         item = {'sheet': sheet, 'finding': 'NOT DETERMINED (helper launch failed)', 'fatal': '', 'ok': False,
                                 'cause': visual.safe_cause(str(error), work), 'setup_failure': True}
+                    item = validate(item, counts.get(sheet))
+                    item['attempts'] = 1
+                    item['history'] = [{'attempt': 1, 'state': item['state'], 'cause': item.get('cause', '')}]
                     findings.append(item)
                     log.write(json.dumps(item) + '\n')
                     completed += 1
                     if item['fatal']:
                         status, cause = 'DISPATCH_STOPPED', item['fatal']
                     progress()
-        # Drain concurrent calls first; retry only setup failures, once, serially.
+        # Drain concurrent calls, then retry failures once with bounded backoff.
         for i, item in enumerate(findings):
             if status != 'RUNNING' or time.monotonic() >= deadline:
                 break
-            if not item.get('setup_failure'):
+            if item['ok']:
                 continue
             retrying = True
             progress()
-            timeout = max(10, min(args.timeout, deadline-time.monotonic()+30))
-            try:
-                item = read_sheet(args.helper, args.question, timeout, item['sheet'], model, work)
-            except OSError as error:
-                item = dict(item, cause=visual.safe_cause(str(error), work))
-            item['attempt'] = 2
+            previous = dict(item)
+            first = True
+            def read(question, timeout):
+                nonlocal first
+                if first:
+                    first = False
+                    return previous
+                try:
+                    return read_sheet(args.helper, question, timeout, previous['sheet'], model, work)
+                except OSError as error:
+                    return dict(previous, ok=False, cause=visual.safe_cause(str(error), work))
+            item = retry_read(read, args.question, counts.get(item['sheet']), deadline, args.timeout)
             findings[i] = item
             log.write(json.dumps(item)+'\n')
             if item['fatal']:
@@ -127,8 +205,9 @@ def run(args, sheets):
         status = 'BUDGET_EXCEEDED'
     if status == 'RUNNING':
         status = 'PARTIAL' if any(not f['ok'] for f in findings) else 'COMPLETE'
-    unread = [{'sheet': s, 'finding': 'NOT DETERMINED (not read: ' + status + ')', 'cause': cause} for s in sheets[launched:]]
-    summary = {'status': status, 'cause': cause, 'completed': completed,
+    unread = [{'sheet': s, 'finding': 'NOT DETERMINED (not read: ' + status + ')', 'cause': cause, 'state': 'NOT_READ', 'attempts': 0, 'ok': False} for s in sheets[launched:]]
+    states = {state: sum(f['state'] == state for f in findings + unread) for state in ('READ', 'INVALID', 'FAILED', 'NOT_READ')}
+    summary = {'counts': states, 'covered': f"{states['READ']}/{total}", 'sheets': findings + unread, 'status': status, 'cause': cause, 'completed': completed,
                'total': total, 'concurrency': args.concurrency, 'unread': unread,
                'unresolved': [f for f in findings if not f['ok']]}
     atomic(work / 'visual/summary.json', json.dumps(summary, indent=2) + '\n')
