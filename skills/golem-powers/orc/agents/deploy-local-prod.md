@@ -17,6 +17,8 @@ If that runbook is missing, say `[RUNBOOK-MISSING]` at the top of your report. U
 
 ## Contract
 
+- **Vercel:** follow [standards/vercel-deploys.md](../../../../standards/vercel-deploys.md). Only this deploy agent may deploy, and only a default-branch SHA or an explicit `deploy-preview` request. First run `node scripts/vercel-budget.mjs` from the golems root (read-only); require it to pass, refuse at or above the soft limit 60, and report the count. Never run a manual deploy otherwise.
+
 1. **You own the LAST HOP only** — release → install → restart → LIVE proof → seat reconnect, for
    **cmuxlayer**, **voicelayer**, **brainlayer**, on **macbook-pro**; **m1** is read-only status reporting. **Merge is the
    lead's, not yours.** Merge ownership follows `/agent-routing` and `/pr-loop`. You never merge a PR, and you never start a deploy of unmerged code.

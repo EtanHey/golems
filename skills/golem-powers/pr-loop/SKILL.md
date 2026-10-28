@@ -78,6 +78,8 @@ Who reviews, how many, and the panel: `/agent-routing` § Routing rules (SSOT), 
 
 ## Hard Gates
 
+- Never run `vercel deploy`/`vercel --prod`/`npx vercel`; Vercel deploys follow golems [standards/vercel-deploys.md](../../../standards/vercel-deploys.md) — only the deploy agent deploys, after `node scripts/vercel-budget.mjs` passes.
+
 - **Local Docker / CI (Etan, 2026-10-27):** "don't replay GitHub CI with local Docker by default; push and let GitHub run it. CI running locally first may just make sense if it's faster iterations."
   A local Docker run must go through the golems repo's `scripts/docker/container-teardown.mjs` so containers are torn down (usage: the golems repo's `scripts/docker/README.md`).
 
