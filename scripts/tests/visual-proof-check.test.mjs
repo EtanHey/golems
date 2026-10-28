@@ -48,3 +48,12 @@ test('required job supplies event inputs safely and reacts to labels', () => {
     'node skills/golem-powers/pr-loop/scripts/visual-proof-check.mjs']) assert.ok(job.includes(expected), expected);
   assert.ok(!job.split('        run: |')[1].includes('${{'));
 });
+
+test('label-only events run Loop-record and successfully skip the heavy ratchet job', () => {
+  const workflow = readFileSync('.github/workflows/ratchet.yml', 'utf8');
+  const loop = workflow.split('  loop-record:\n')[1].split('  ratchet:\n')[0];
+  const ratchet = workflow.split('  ratchet:\n')[1];
+  assert.ok(loop.includes("if: github.event_name == 'pull_request'"));
+  assert.ok(!loop.includes("github.event.action != 'labeled'"));
+  assert.ok(ratchet.includes("if: github.event.action != 'labeled' && github.event.action != 'unlabeled'"));
+});

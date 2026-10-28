@@ -163,10 +163,11 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
     '"**Models:** Codex = gpt-6.1-sol and gpt-6-luna ONLY."', '"**Never gpt-5.6-\\*** (luna, sol, terra)"', '"gpt-6-astra only when Etan asks for it."',
     '`codex.implement`', '`codex.subagent.mechanical`', 'refused',
   ]) assert.ok(pins.includes(rule), rule);
-  // Ratified UI precedence keeps recorder/reviewer ownership explicit next to the UI bullet.
-  const uiLine = sizing.split('\n').find(l => l.startsWith('- UI precedence (ratified'));
-  assert.ok(uiLine, 'ratified UI precedence line is required');
-  for (const rule of ['2026-10-28', 'red-team Claude', 'emil-design-eng', 'takes precedence over the table', 'evidence', 'functional defect', 'not "the reviewer"', 'ONE reviewer', 'fresh Opus', 'never the implementer', 'XS/S', 'M UI PRs: up to 2 rounds', 'full panel']) assert.ok(uiLine.includes(rule), rule);
+  // The frontend flow adds taste review while preserving cross-vendor review.
+  const uiLine = sizing.split('\n').find(l => l.startsWith('- UI flow (Etan FRONTEND RULE'));
+  assert.ok(uiLine, 'frontend UI flow line is required');
+  for (const rule of ['2026-10-28', 'red-team Claude', 'BOTH skills', "the table's Codex reviewer (cross-vendor, canon #1)", 'Codex plumbing', 'already the other vendor', 'Both reviews cite the Visual proof']) assert.ok(uiLine.includes(rule), rule);
+  for (const rule of ['never the implementer', 'frontend-design:frontend-design', 'emil-design-eng', 'round caps', 'full panel']) assert.ok(sizing.includes(rule), rule);
   const matrix = skill.split('## Role Matrix')[1].split('### Evidence')[0];
   assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*dated trial/);
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));

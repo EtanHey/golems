@@ -64,6 +64,8 @@ jobs:
 
   ratchet:
     name: ratchet
+    # Keep the required check present as a successful skipped job on label-only events.
+    if: github.event.action != 'labeled' && github.event.action != 'unlabeled'
     runs-on: ubuntu-latest
     permissions:
       contents: read

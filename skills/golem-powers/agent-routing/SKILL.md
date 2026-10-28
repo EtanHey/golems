@@ -83,11 +83,12 @@ This inner-loop pair review happens before the PR. `/pr-loop` bot and PR reviewe
 
 Review is sized to risk; the PR's `size:*` label sets the tier.
 
-- "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs count by the UI precedence line below.
+- "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs follow the UI flow below.
 - M: up to 2 rounds, and round 2 only for BLOCKING findings (canon #9).
 - "Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab) The panel is a fresh `claude.judgment` reviewer plus a read-only Cursor diff pass, giving one shared verdict. When the implementer is `claude.judgment` (UX/UI, or the dated trial above), the table's Codex reviewer stays on, so cross-vendor review still holds. No Gemini model ever reviews, at any size.
 - UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement` and reports functional defects; proof requirements now follow [pr-loop Visual proof](../pr-loop/SKILL.md#visual-proof).
-- UI precedence (ratified, 2026-10-28): takes precedence over the table for visual PRs and explicitly overrides the other-vendor reviewer requirement; the independent Claude review counts toward merge review. Codex recording is evidence and reports any functional defect; the recorder is not "the reviewer". The ONE reviewer for XS/S is a fresh Opus red-team Claude (`claude.judgment`, never the implementer), loading BOTH `frontend-design:frontend-design` and `emil-design-eng`; M UI PRs: up to 2 rounds; L/data/security retain the full panel. Reviews must cite the proof required by `/pr-loop` § Visual proof.
+- UI flow (Etan FRONTEND RULE, 2026-10-28): A Claude-implemented visual slice gets the red-team Claude (taste, BOTH skills) plus the table's Codex reviewer (cross-vendor, canon #1); Codex plumbing gets the red-team Claude, which is already the other vendor. Both reviews cite the Visual proof.
+  The red-team Claude is a fresh `claude.judgment`, never the implementer, loading `frontend-design:frontend-design` and `emil-design-eng`; normal size-based round caps and the full panel remain.
 
 Claude keeps the official auto-updating `frontend-design:frontend-design` plugin;
 Codex/Cursor use the pinned `frontend-design` skill. These names each denote one
@@ -343,7 +344,7 @@ These fleet constraints apply independently of the usage proposal below:
 - `animate` must use the repo's existing dependencies. `pick-ui-library` is not
   installed: never fetch it or a replacement library to satisfy that reference.
 
-## Design skills usage — ratified 2026-10-28
+## Design skills usage — FRONTEND RULE, 2026-10-28
 
 Etan: "Split: Claude for visual slices" (2026-10-28, via orc/PHX).
 Claude (`claude-opus-5-5`, `fastMode:false`), loaded with BOTH
@@ -356,7 +357,7 @@ Codex computer-use recorders may produce the artifacts and functional checks.
 Claude uses the official plugin; Codex/Cursor use vendored `frontend-design`.
 Plugin namespacing denotes one route, not a duplicate.
 
-Ratified sequence: `frontend-design` sets the holistic direction before planning
+Sequence (lead guidance): `frontend-design` sets the holistic direction before planning
 and reviews the assembled full page at the end. `emil-design-eng` handles each
 interactive component/section inside that direction: feedback, keyboard/focus,
 loading/empty/error states, gestures, interruption and reduced motion. Holistic
