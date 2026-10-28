@@ -31,7 +31,7 @@ def test_deploy_requires_written_live_receipt():
     assert re.search(r"DONE requires a written receipt with `verdict: LIVE`", text)
     assert "Never copy any target.* value" in text
     assert "into installed.* or activation.*" in text
-    assert "Write no receipt on the M1" in text
+    assert "M1 Pro receipt requirements follow Contract 1" in text
 
 
 def test_deploy_points_to_closed_schema():
@@ -45,7 +45,7 @@ def test_install_finished_at_has_a_session_source():
 
 
 def test_host_alias_uses_schema_enum():
-    assert "`host.alias`: `mbp` on the MacBook Pro (the schema accepts only `mbp` or `m1`)" in AGENT.read_text()
+    assert "`host.alias`: `mbp` on the M4 Max (the schema accepts only `mbp` or `m1`)" in AGENT.read_text()
 
 
 def test_all_times_are_converted_to_utc():
@@ -141,7 +141,7 @@ def test_tap_gate_checks_product_row_before_brew_upgrade():
         "**TAP-STALE: STOP**", "report to that product's lead", "Do not run the upgrade",
         "**TAP-UNKNOWN: proceed**", "report the tap as **[UNVERIFIED]**",
         "never key on the exit code", "exits 1 for any non-CURRENT row",
-        "M1 UNREACHABLE row does not block a MacBook Pro deploy",
+        "M1 Pro UNREACHABLE row does not block an M4 Max deploy",
     ):
         assert required in text
 
