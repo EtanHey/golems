@@ -41,7 +41,7 @@ function setup(renderOptions, cards = decisions, { ownLoads = true, engine = "ch
       performance: { getEntriesByType: () => entries ?? [{ responseStatus: status }] },
       // The page's ready marker: a <meta name="adash-comparison" content="ready">, the <html> attribute, or none.
       document: {
-        querySelector: selector => (marker === "meta" && selector === 'meta[name="adash-comparison"]' ? { getAttribute: name => (name === "content" ? "ready" : null) } : null),
+        head: { querySelector: selector => (marker === "meta" && selector === 'meta[name="adash-comparison"]' ? { getAttribute: name => (name === "content" ? "ready" : null) } : null) },
         documentElement: { getAttribute: name => (marker === "html" && name === "data-adash-comparison" ? "ready" : null) },
       },
     } : { get location() { throw new run.window.DOMException("Blocked a frame", "SecurityError"); } };

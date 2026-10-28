@@ -239,19 +239,51 @@ function normalizeComparison(decision, timeoutMs) {
 // A comparison page declares itself ready with this marker. An error or 404 page never carries it, so where the
 // browser reports no navigation status (WebKit) the marker is the success evidence.
 export const COMPARISON_READY_META = '<meta name="adash-comparison" content="ready">';
-const READY_META = /<meta\b(?=[^>]*\bname\s*=\s*["']?adash-comparison["'\s>/])(?=[^>]*\bcontent\s*=\s*["']?ready["'\s>/])[^>]*>/i;
-const READY_HTML = /<html\b[^>]*\bdata-adash-comparison\s*=\s*["']?ready["'\s>/]/i;
+// Elements a browser keeps in <head>. Any other element starts the body, so a meta after it is body content.
+const HEAD_ELEMENTS = new Set(["html", "head", "title", "base", "link", "meta", "style", "script", "noscript", "template"]);
 
-export function hasComparisonReadyMarker(html) {
-  return READY_META.test(String(html ?? "")) || READY_HTML.test(String(html ?? ""));
+// Parse the page (Bun's HTMLRewriter, as the View details gate does) so that comments, raw text such as textarea
+// content, attribute values and look-alike attributes never count. Mirrors the runtime check: the first
+// meta[name="adash-comparison"] in the head says "ready", or <html> carries data-adash-comparison="ready".
+function readyMarker(page) {
+  let inBody = false, metaContent = null, htmlReady = false;
+  new HTMLRewriter().on("*", {
+    element(element) {
+      const tag = element.tagName.toLowerCase();
+      if (tag === "html" && element.getAttribute("data-adash-comparison") === "ready") htmlReady = true;
+      if (!HEAD_ELEMENTS.has(tag)) inBody = true;
+      if (tag === "meta" && !inBody && metaContent === null && element.getAttribute("name") === "adash-comparison") {
+        metaContent = element.getAttribute("content") ?? "";
+      }
+    },
+  }).transform(page);
+  return htmlReady || metaContent === "ready";
 }
 
-// For producers that generate comparison pages: add the ready marker to the page head.
+export function hasComparisonReadyMarker(html) {
+  return readyMarker(String(html ?? ""));
+}
+
+// For producers that generate comparison pages: add a real ready marker to the page head. Placement uses parsed
+// elements too, so a commented-out <head> or marker cannot absorb it.
 export function markComparisonReady(html) {
   const page = String(html ?? "");
-  if (hasComparisonReadyMarker(page)) return page;
-  if (/<head\b[^>]*>/i.test(page)) return page.replace(/<head\b[^>]*>/i, (head) => `${head}${COMPARISON_READY_META}`);
-  return page.replace(/^(\s*<!doctype[^>]*>)?/i, (doctype) => `${doctype}${COMPARISON_READY_META}`);
+  if (readyMarker(page)) return page;
+  let hasHead = false;
+  new HTMLRewriter().on("head", { element() { hasHead = true; } }).transform(page);
+  let placed = false;
+  const marked = new HTMLRewriter().on("*", {
+    element(element) {
+      if (placed) return;
+      const tag = element.tagName.toLowerCase();
+      if (hasHead ? tag === "head" : tag !== "html") {
+        placed = true;
+        if (tag === "head") element.prepend(COMPARISON_READY_META, { html: true });
+        else element.before(COMPARISON_READY_META, { html: true });
+      }
+    },
+  }).transform(page);
+  return placed ? marked : page.replace(/^(\s*<!doctype[^>]*>)?/i, (doctype) => `${doctype}${COMPARISON_READY_META}`);
 }
 
 // Each card's comparison target, as the dashboard-relative URL the renderer emits.

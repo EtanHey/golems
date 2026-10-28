@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { COMPARISON_READY_META, renderDecisionFlow } from '../src/decision-flow.mjs';
+import { COMPARISON_READY_META, markComparisonReady, renderDecisionFlow } from '../src/decision-flow.mjs';
 
 // ADX-2c review r1: without responseStatus (WebKit), success is an explicit ready marker on the comparison page,
 // not a guess about which marks are charts. An error or 404 page never carries the marker.
@@ -31,6 +31,10 @@ const pages = {
   'markerless real chart': [200, '<figure>' + chart + '</figure>', 'failed'],
   'chart inside a link, marked': [200, COMPARISON_READY_META + '<a href="details.html"><figure>' + chart + '<figcaption>Revenue comparison, open details</figcaption></figure></a>', 'loaded'],
   'html attribute marker': [200, '<html data-adash-comparison="ready"><body><canvas width="320" height="160"></canvas></body></html>', 'loaded'],
+  // ADX-2c review r2: a marker after body content lands in <body>, which the head-only check ignores.
+  'meta in body after content 404': [404, '<h1>404</h1>' + COMPARISON_READY_META, 'failed'],
+  // End-to-end producer case: the helper repairs a page whose only "marker" is commented out.
+  'helper-marked page with a commented marker': [200, markComparisonReady('<!doctype html><html><head><!-- ' + COMPARISON_READY_META + ' --></head><body><a href="details.html"><figure>' + chart + '</figure></a></body></html>'), 'loaded'],
 };
 
 async function settle(browser, { status, body, noStatus }) {

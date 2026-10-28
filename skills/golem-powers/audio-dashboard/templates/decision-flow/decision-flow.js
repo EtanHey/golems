@@ -266,9 +266,9 @@
   // Browsers fire load, not error, for network failures and HTTP errors, so a load proves nothing alone.
   // Success needs positive evidence from a readable same-origin frame: a 2xx/3xx navigation responseStatus where
   // the browser reports one, or, where it does not (WebKit), the page's explicit ready marker
-  // (<meta name="adash-comparison" content="ready"> or data-adash-comparison="ready" on <html>), which an
+  // (<meta name="adash-comparison" content="ready"> in <head>, or data-adash-comparison="ready" on <html>), which an
   // error page never carries. Anything else, including an unreadable file: frame, is a failure.
-  function comparisonReady(doc){var meta=doc.querySelector('meta[name="adash-comparison"]');return Boolean(meta&&meta.getAttribute("content")==="ready")||doc.documentElement.getAttribute("data-adash-comparison")==="ready";}
+  function comparisonReady(doc){var meta=doc.head&&doc.head.querySelector('meta[name="adash-comparison"]');return Boolean(meta&&meta.getAttribute("content")==="ready")||doc.documentElement.getAttribute("data-adash-comparison")==="ready";}
   function frameProblem(frame){
     var failed=document.location.protocol==="file:"?"This comparison can't be checked from a file. Open the dashboard over http(s), or go back to the card.":"The comparison couldn't load. Retry, or go back to the card.";
     var timing=document.defaultView&&document.defaultView.PerformanceResourceTiming,reportsStatus=Boolean(timing&&"responseStatus" in timing.prototype);

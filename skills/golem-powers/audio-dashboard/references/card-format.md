@@ -64,5 +64,7 @@ line in its head:
 ```
 
 `data-adash-comparison="ready"` on `<html>` also works. An error page never has
-the marker. `build-dashboard` fails when a local comparison page lacks it. From a
+the marker. `build-dashboard` parses the page and fails when a local comparison
+page lacks a real marker; a commented-out marker, marker text in a textarea or
+attribute value, or a meta placed after body content does not count. From a
 `file:` dashboard the frame is unreadable and the dialog reports failure.

@@ -520,6 +520,23 @@ test("decision-flow build rejects a local comparison page without the ready mark
 
   writeFileSync(page, '<!doctype html><html><head><meta name="adash-comparison" content="ready"></head><figure><svg width="320" height="120"></svg></figure></html>');
   expect(buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result.status).toBe(0);
+
+  writeFileSync(page, '<!doctype html><html lang="en" data-adash-comparison="ready"><figure><svg width="320" height="120"></svg></figure></html>');
+  expect(buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result.status).toBe(0);
+
+  // ADX-2c review r2 (B3): marker-shaped text is not a marker.
+  for (const fake of [
+    '<!doctype html><html><head>\n<!-- <meta name="adash-comparison" content="ready"> -->\n</head><body><h1>404</h1></body></html>',
+    '<!doctype html><!-- <html data-adash-comparison="ready"> --><html><head></head><body><h1>404</h1></body></html>',
+    '<!doctype html><html><head></head><body><textarea><meta name="adash-comparison" content="ready"></textarea></body></html>',
+    `<!doctype html><html><head></head><body><div title='<meta name="adash-comparison" content="ready">'>404</div></body></html>`,
+    '<!doctype html><html><head><meta data-name="adash-comparison" data-content="ready"></head><body>404</body></html>',
+  ]) {
+    writeFileSync(page, fake);
+    const faked = buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result;
+    expect([fake, faked.status === 0]).toEqual([fake, false]);
+    expect(faked.stderr).toContain("comparison page lacks the ready marker");
+  }
 });
 
 test("decision-flow rejects duplicate decision ids before render", () => {
