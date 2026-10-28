@@ -79,6 +79,16 @@ Decision-flow fails closed unless every scene is owned by exactly one decision.
 This keeps audio and questions woven together and prevents a cinema-style global
 audio strip / separate question list from reappearing.
 
+## Card detail format
+
+Follow [Card detail affordances](references/card-format.md): text-only cards
+must not repeat their text in a View details expander. Offer no secondary action
+or Listen deeper into a more detailed inner narrated sub-dashboard with the same
+read-along and word-click seek mechanics. Comparisons are the canonical use;
+cards with a visualization keep their existing detail affordance.
+Check the separate authoring spec before rendering with
+`bun scripts/lint-card-format.mjs <cards.json>` (paths relative to this skill).
+
 ## Vendored Engine (what makes it portable)
 
 Everything the pipeline needs is inside the skill:
