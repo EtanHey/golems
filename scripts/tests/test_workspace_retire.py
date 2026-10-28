@@ -332,7 +332,7 @@ def test_child_cwd_is_retained(tree, monkeypatch, name):
         assert child.stdout.readline().strip() == "ready"
         result, receipt = run(tree)
         assert result.returncode != 0 and receipt["disposition"] == "RETAINED"
-        assert receipt["reason"].startswith("open handles: ")
+        assert receipt["reason"].startswith(("open handles: ", "ambiguous handle name: "))
         assert str(child.pid) in receipt["reason"]
         assert tree[1].is_dir() and receipt["remove_rc"] is None
         assert not any("remove" in json.loads(row) for row in log.read_text().splitlines())
@@ -392,7 +392,7 @@ def test_quarantine_receipt_and_original_path_write_during_delete(tree, monkeypa
     assert (log.parent / "write-blocked").exists(), "late ignored write lost"
     assert result.returncode == 0 and receipt["disposition"] == "REMOVED"
     quarantine = Path(receipt["quarantine_path"])
-    assert quarantine.parent == tree[1].parent and quarantine != tree[1]
+    assert quarantine.parent.parent == tree[1].parent and quarantine.name == tree[1].name
     assert receipt["move_rc"] == 0 and receipt["move_back_rc"] is None
     assert receipt["quarantine_registered_after"] is False
     assert receipt["quarantine_physical_after"] is False
@@ -417,7 +417,7 @@ def test_quarantine_findings_and_move_failures_preserve(tree, monkeypatch, mode)
     elif mode == "move-back-fail":
         assert receipt["move_back_rc"] == 9
         assert str(tree[1]) in receipt["reason"]
-        assert "quarantined at " + str(quarantine) in receipt["reason"]
+        assert "worktree registered at " + str(quarantine) in receipt["reason"]
         assert (quarantine / "ignored").read_text() == "valuable concurrent content\n"
         assert not tree[1].exists()
         assert str(quarantine) in git(tree[0], "worktree", "list", "--porcelain")
@@ -524,7 +524,7 @@ def test_real_retire_receipt_closes_lease(tree, lease_ledger):
 def test_incomplete_scan_after_move_rolls_back(tree, monkeypatch, failure):
     module = load_retire()
     scans = 0
-    def scan(path):
+    def scan(path, **kwargs):
         nonlocal scans
         scans += 1
         if scans == 2:
@@ -539,3 +539,223 @@ def test_incomplete_scan_after_move_rolls_back(tree, monkeypatch, failure):
     assert failure in receipt["reason"]
     assert receipt["registered_after"] is True and receipt["physical_after"] is True
     assert set(receipt["scan_durations_seconds"]) == {"before_move", "after_move"}
+
+
+def retire_args(tree):
+    return load_retire().argparse.Namespace(repo=str(tree[0]), path=str(tree[1]),
+        receipt_out=str(tree[2]), expect_branch=None, expect_head=None)
+
+
+@pytest.mark.parametrize("positive", [False, True, "malformed"])
+def test_review_partial_lsof_never_authorizes_delete(tree, monkeypatch, positive):
+    log = shim(tree, monkeypatch, "pass")
+    executable = log.parent / "bin/lsof"
+    name = str(tree[1]) if positive else "/"
+    output = f"p123\ncpartial\nfcwd\nn{name}\n" + ("invalid\n" if positive == "malformed" else "")
+    executable.write_text(f"#!{sys.executable}\nimport sys\nsys.stdout.write({output!r})\nsys.exit(1)\n")
+    executable.chmod(0o755)
+    result, receipt = run(tree)
+    assert result.returncode != 0 and receipt["disposition"] == "RETAINED"
+    assert "lsof exited 1" in receipt["reason"]
+    if positive:
+        assert "123/partial" in receipt["reason"]
+    assert receipt["remove_rc"] is None and tree[1].is_dir()
+    assert not any("remove" in json.loads(row) for row in log.read_text().splitlines())
+
+
+def test_review_mixed_literal_and_control_cwd_is_retained(tree):
+    repo, target, receipt_path = tree
+    mixed = target.with_name("mixed^A\nname")
+    git(repo, "worktree", "move", str(target), str(mixed))
+    child = subprocess.Popen([sys.executable, "-c",
+        "import sys; print('ready', flush=True); sys.stdin.read()"],
+        cwd=mixed, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    try:
+        assert child.stdout.readline().strip() == "ready"
+        result, receipt = run((repo, mixed, receipt_path))
+        assert result.returncode != 0 and receipt["disposition"] == "RETAINED"
+        assert "ambiguous handle name" in receipt["reason"]
+        assert str(child.pid) in receipt["reason"]
+        assert receipt["remove_rc"] is None and mixed.is_dir()
+    finally:
+        child.communicate("", timeout=5)
+
+
+@pytest.mark.parametrize("race", ["symlink-race", "rollback-collision", "rollback-race"])
+def test_review_custody_reports_actual_registered_location(tree, monkeypatch, race):
+    module = load_retire()
+    real_git = module.git
+    calls = []
+    outside = tree[1].with_name("outside")
+    outside.mkdir()
+    quarantine = None
+    def injected(repo, *words):
+        nonlocal quarantine
+        calls.append(words)
+        if words[:2] == ("worktree", "move"):
+            if Path(words[2]) == tree[1]:
+                quarantine = Path(words[3])
+                if race == "symlink-race":
+                    quarantine.symlink_to(outside, target_is_directory=True)
+                result = real_git(repo, *words)
+                if race != "symlink-race" and result.returncode == 0:
+                    (quarantine / "ignored").write_text("valuable\n")
+                    if race == "rollback-collision":
+                        tree[1].mkdir()
+                return result
+            if race == "rollback-race":
+                tree[1].mkdir()  # Recreated after the rollback's absent-path check.
+        return real_git(repo, *words)
+    monkeypatch.setattr(module, "git", injected)
+    monkeypatch.setattr(module, "open_handles", lambda path, **kwargs: [])
+    receipt, code = module.retire(retire_args(tree))
+    assert code != 0 and receipt["disposition"] == "RETAINED"
+    actual = next(Path(row["worktree"]) for row in module.worktrees(tree[0])
+                  if row.get("branch") == "refs/heads/retire-me")
+    assert receipt["actual_registered_path"] == str(actual)
+    assert str(actual) in receipt["reason"]
+    assert (actual / "tracked").read_text() == "original\n"
+    assert not any(words[:2] == ("worktree", "remove") for words in calls)
+    moves = [words for words in calls if words[:2] == ("worktree", "move")]
+    if race == "rollback-collision":
+        assert len(moves) == 1 and receipt["move_back_rc"] is None
+        assert actual == quarantine and (actual / "ignored").read_text() == "valuable\n"
+    elif race == "rollback-race":
+        assert len(moves) == 2 and receipt["move_back_rc"] == 0
+        assert actual != tree[1] and (actual / "ignored").read_text() == "valuable\n"
+    else:
+        assert len(moves) == 1 and actual == outside / tree[1].name
+
+
+def test_review_quarantine_uses_private_fresh_container(tree, monkeypatch):
+    module = load_retire()
+    real_git = module.git
+    def inspect(repo, *words):
+        if words[:2] == ("worktree", "move"):
+            destination = Path(words[3])
+            assert destination.name == tree[1].name
+            assert destination.parent.parent == tree[1].parent
+            assert destination.parent.lstat().st_mode & 0o777 == 0o700
+            assert not destination.parent.is_symlink() and not destination.exists()
+        return real_git(repo, *words)
+    monkeypatch.setattr(module, "git", inspect)
+    monkeypatch.setattr(module, "open_handles", lambda path, **kwargs: [])
+    receipt, code = module.retire(retire_args(tree))
+    assert code == 0 and receipt["disposition"] == "REMOVED"
+    assert receipt["actual_registered_path"] is None
+    assert not Path(receipt["quarantine_container"]).exists()
+
+
+def test_review_container_symlink_is_refused_before_move(tree, monkeypatch):
+    module = load_retire()
+    outside = tree[1].with_name("outside")
+    outside.mkdir()
+    alias = tree[1].with_name("container-alias")
+    alias.symlink_to(outside, target_is_directory=True)
+    monkeypatch.setattr(module.tempfile, "mkdtemp", lambda **kwargs: str(alias))
+    monkeypatch.setattr(module, "open_handles", lambda path, **kwargs: [])
+    receipt, code = module.retire(retire_args(tree))
+    assert code != 0 and receipt["disposition"] == "RETAINED"
+    assert receipt["move_rc"] is None and receipt["remove_rc"] is None
+    assert receipt["actual_registered_path"] == str(tree[1])
+    assert (tree[1] / "tracked").read_text() == "original\n"
+
+
+def test_review_container_cleanup_failure_is_only_a_note(tree, monkeypatch):
+    module = load_retire()
+    real_rmdir = module.os.rmdir
+    def refuse_container(path, *args, **kwargs):
+        if Path(path).name.startswith(".retiring-"):
+            raise OSError("injected container rmdir failure")
+        return real_rmdir(path, *args, **kwargs)
+    monkeypatch.setattr(module.os, "rmdir", refuse_container)
+    monkeypatch.setattr(module, "open_handles", lambda path, **kwargs: [])
+    receipt, code = module.retire(retire_args(tree))
+    assert code == 0 and receipt["disposition"] == "REMOVED"
+    assert "injected container rmdir failure" in receipt["container_cleanup_note"]
+    assert Path(receipt["quarantine_container"]).is_dir()
+
+
+def test_review_postmove_scan_checks_original_path_too(tree, monkeypatch):
+    module = load_retire()
+    real_git = module.git
+    child = None
+    def recreate(repo, *words):
+        nonlocal child
+        result = real_git(repo, *words)
+        if words[:2] == ("worktree", "move") and Path(words[2]) == tree[1]:
+            tree[1].mkdir()
+            child = subprocess.Popen([sys.executable, "-c",
+                "import sys; print('ready', flush=True); sys.stdin.read()"],
+                cwd=tree[1], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+            assert child.stdout.readline().strip() == "ready"
+        return result
+    monkeypatch.setattr(module, "git", recreate)
+    try:
+        receipt, code = module.retire(retire_args(tree))
+        assert code != 0 and receipt["disposition"] == "RETAINED"
+        assert receipt["remove_rc"] is None
+        assert child is not None and str(child.pid) in receipt["reason"]
+        assert Path(receipt["actual_registered_path"]).joinpath("tracked").is_file()
+    finally:
+        if child is not None:
+            child.communicate("", timeout=5)
+
+
+def test_review_custody_is_rechecked_immediately_before_remove(tree, monkeypatch):
+    module = load_retire()
+    real_inventory = module.inventory
+    relocated = tree[1].with_name("relocated")
+    def redirect(receipt, path):
+        before = real_inventory(receipt, path)
+        if path != tree[1]:
+            git(tree[0], "worktree", "move", str(path), str(relocated))
+            path.symlink_to(relocated, target_is_directory=True)
+        return before
+    monkeypatch.setattr(module, "inventory", redirect)
+    monkeypatch.setattr(module, "open_handles", lambda path, **kwargs: [])
+    receipt, code = module.retire(retire_args(tree))
+    assert code != 0 and receipt["disposition"] == "RETAINED"
+    assert receipt["remove_rc"] is None
+    assert receipt["actual_registered_path"] == str(relocated)
+    assert (relocated / "tracked").read_text() == "original\n"
+
+
+def test_review_success_rc_cannot_hide_relocated_registration(tree, monkeypatch):
+    module = load_retire()
+    real_git = module.git
+    relocated = tree[1].with_name("relocated")
+    def relocate(repo, *words):
+        if words[:2] == ("worktree", "remove"):
+            return real_git(repo, "worktree", "move", words[-1], str(relocated))
+        return real_git(repo, *words)
+    monkeypatch.setattr(module, "git", relocate)
+    monkeypatch.setattr(module, "open_handles", lambda path, **kwargs: [])
+    receipt, code = module.retire(retire_args(tree))
+    assert code != 0 and receipt["disposition"] == "RETAINED"
+    assert receipt["remove_rc"] == 0
+    assert receipt["actual_registered_path"] == str(relocated)
+    assert (relocated / "tracked").read_text() == "original\n"
+
+
+def test_review_changed_custody_prevents_rollback(tree, monkeypatch):
+    module = load_retire()
+    real_git = module.git
+    calls = []
+    relocated = tree[1].with_name("relocated")
+    def record(repo, *words):
+        calls.append(words)
+        return real_git(repo, *words)
+    def redirect(path, **kwargs):
+        if path != tree[1]:
+            real_git(tree[0], "worktree", "move", str(path), str(relocated))
+            path.symlink_to(relocated, target_is_directory=True)
+            return [dict(pid=123, command="writer")]
+        return []
+    monkeypatch.setattr(module, "git", record)
+    monkeypatch.setattr(module, "open_handles", redirect)
+    receipt, code = module.retire(retire_args(tree))
+    assert code != 0 and receipt["disposition"] == "RETAINED"
+    assert len([words for words in calls if words[:2] == ("worktree", "move")]) == 1
+    assert receipt["actual_registered_path"] == str(relocated)
+    assert (relocated / "tracked").read_text() == "original\n"
