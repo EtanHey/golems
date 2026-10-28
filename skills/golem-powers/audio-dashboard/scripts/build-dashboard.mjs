@@ -466,6 +466,7 @@ function main() {
         decisions: spec.decisions,
         storageKey: spec.decisionSurface?.storageKey || spec.decisionStorageKey || `dbx:${jobId}`,
         cinemaUrl: spec.cinemaUrl || spec.decisionCinemaUrl,
+        comparisonTimeoutMs: spec.comparisonTimeoutMs,
       });
     } catch (error) {
       fail(error?.message || error);
