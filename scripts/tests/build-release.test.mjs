@@ -153,19 +153,44 @@ test('publication remains serialized and both jobs use the pinned Node version',
 });
 
 function runsNode(script) {
+  script = script.replace(/\\\r?\n/g, '');
   const hasNodeCommand = code => /\b(?:node|npm|npx)(?:\s|$)/.test(code) ||
     (/\bbun\s+run(?:\s|$)/.test(code) && !/(?:^|\s)--bun(?:\s|$)/.test(code));
   const legacy = script.split(/\n|&&|\|\||;/).some(command => hasNodeCommand(command.replace(/#.*/, '')));
   const uncommented = script.replace(/\$'(?:\\.|[^'\\])*'|'[^']*'|"(?:\\.|[^"\\])*"|\\.|(?<![^\s;&|(<>])#[^\n]*/g,
     token => token.startsWith('#') ? '' : token);
   // AIDEV-NOTE: Full heredoc parsing is out of scope; union with the legacy detector is the safety net.
-  return legacy || uncommented.split(/\n|&&|\|\||;/).some(hasNodeCommand);
+  const commands = uncommented.replace(/(<<-?['"]?(\w+)['"]?[^\n]*\n)[\s\S]*?^\s*\2\s*$/gm, '$1');
+  return legacy || commands.split(/\n|&&|\|\||\||;/).some(command => {
+    const words = command.match(/(?:[^\s'"]|'[^']*'|"[^"]*")+/g)?.map(word => word.replace(/['"]/g, '')) ?? [];
+    while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0] ?? '')) words.shift();
+    if (words.length === 0) return false;
+    const program = words[0].split('/').at(-1);
+    const expansion = /[$`*?\[\]{}]/;
+    if (expansion.test(program) || program === 'eval') return true;
+    if (program === 'exec' && words.slice(1).some(word => expansion.test(word))) return true;
+    const shellCommand = ['sh', 'bash'].includes(program) ? words.indexOf('-c') : -1;
+    if (shellCommand !== -1 && expansion.test(words[shellCommand + 1] ?? '')) return true;
+    if (['node', 'npm', 'npx'].includes(program)) return true;
+    if (hasNodeCommand(words.join(' '))) return true;
+    const bun = words.indexOf('bun');
+    return bun !== -1 && words.slice(bun + 1).includes('run') && !words.slice(bun + 1).includes('--bun');
+  });
 }
 
-test('Node command detection includes Bun fallback but excludes forced Bun execution', () => {
-  for (const command of ['node script.mjs', 'npm ci', 'npx vitest', 'bun run test', 'bun run typecheck', 'echo ok && bun run test']) {
-    expect(runsNode(command), command).toBe(true);
-  }
+test.each(['node script.mjs', 'npm ci', 'npx vitest', 'bun run test', 'bun run typecheck', 'echo ok && bun run test', 'bun \\\n  run test', "n''ode script.mjs", '"node" script.mjs', 'echo --bun | bun run test', '$VAR script.mjs', '$(command) script.mjs', 'eval something'])('detects Node execution: %s', command => {
+  expect(runsNode(command)).toBe(true);
+});
+
+test.each(['"$dir/node" x.mjs', '"$BIN" x', '$CMD run', '"$dir/$tool" x', '$(which node) x', 'eval "$X"', '$X/npx x', './node_modules/.bin/npm ci', 'sh -c "$X"', 'bash -c "$X"', 'exec "$X"'])('detects dynamic or Node program: %s', command => {
+  expect(runsNode(command)).toBe(true);
+});
+
+test.each(['"$dir/trufflehog" --version', '"$RUNNER_TEMP/x/trufflehog" scan'])('accepts literal non-Node program: %s', command => {
+  expect(runsNode(command)).toBe(false);
+});
+
+test('Node command detection excludes forced Bun execution', () => {
   for (const command of ['bun test ./packages', 'bun run --bun test', 'bun --bun run test', '# node ignored.mjs', 'echo ok # npm ci']) {
     expect(runsNode(command), command).toBe(false);
   }
