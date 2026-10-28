@@ -4,7 +4,7 @@
 
 import { spawnSync } from "node:child_process";
 
-import { compareParity, formatReport, VERSION_BINARIES } from "./t3-provider-parity-lib.mjs";
+import { compareParity, formatReport, validateSettings, VERSION_BINARIES } from "./t3-provider-parity-lib.mjs";
 
 const SETTINGS = "~/.t3/userdata/settings.json";
 
@@ -21,7 +21,7 @@ function run(host, command) {
 
 function snapshot(host) {
   return {
-    settings: JSON.parse(run(host, `cat ${SETTINGS}`)),
+    settings: validateSettings(JSON.parse(run(host, `cat ${SETTINGS}`)), host),
     versions: Object.fromEntries(VERSION_BINARIES.map((bin) => [bin, run(host, `${bin} --version`)])),
   };
 }
