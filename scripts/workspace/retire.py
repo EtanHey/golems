@@ -116,6 +116,13 @@ def regular_hash(path):
     return digest.hexdigest(), size
 
 
+def require_persistent_archive(candidate):
+    temporary = ["/tmp", "/private/tmp", "/var/tmp", "/var/folders", "/dev/shm", tempfile.gettempdir()]
+    temporary.extend(os.environ[key] for key in ("TMPDIR", "TMP", "TEMP") if os.environ.get(key))
+    if any(candidate.resolve().is_relative_to(Path(value).resolve()) for value in temporary):
+        raise ValueError("archive_root or archived_to is under an ephemeral directory")
+
+
 def verified_archive(receipt, path, manifest):
     if manifest is None:
         return set()
@@ -154,12 +161,7 @@ def verified_archive(receipt, path, manifest):
             raise ValueError("archive_root must be absolute")
         root = root.resolve()
         surviving(root, "archive_root")
-        temporary = ["/tmp", "/private/tmp", "/var/tmp", "/var/folders", "/dev/shm", tempfile.gettempdir()]
-        temporary.extend(os.environ[key] for key in ("TMPDIR", "TMP", "TEMP") if os.environ.get(key))
-        def durable(candidate):
-            if any(candidate.resolve().is_relative_to(Path(value).resolve()) for value in temporary):
-                raise ValueError("archive_root or archived_to is under an ephemeral directory")
-        durable(root)
+        require_persistent_archive(root)
         if not root.is_dir():
             raise ValueError("archive_root unavailable")
         verified = set()
@@ -176,7 +178,7 @@ def verified_archive(receipt, path, manifest):
             if not archived.resolve().is_relative_to(root):
                 raise ValueError("archived_to escapes archive_root: " + name)
             surviving(archived)
-            durable(archived)
+            require_persistent_archive(archived)
             if (not isinstance(entry.get("sha256"), str)
                     or re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]) is None
                     or type(entry.get("size")) is not int or entry["size"] < 0):
@@ -300,16 +302,23 @@ def inspect_regenerable(receipt, path, names, patterns):
         walk["duration_seconds"] = time.monotonic() - started
 
 
+def is_regenerable(name, patterns):
+    return any(("/" + pattern in "/" + name if pattern.endswith("/") else
+                not name.endswith("/") and Path(name).name == pattern)
+               for pattern in patterns if pattern)
+
+
+def regenerable_patterns():
+    return Path(__file__).with_name("regenerable-paths.txt").read_text().splitlines()
+
+
 def inventory(receipt, path):
     entries, status = local_files(path)
-    patterns = Path(__file__).with_name("regenerable-paths.txt").read_text().splitlines()
+    patterns = regenerable_patterns()
     verified = verified_archive(receipt, path, receipt["archive_manifest"])
     files, regenerable = [], []
     for kind, name in entries:
-        if kind == "!!" and any(
-                ("/" + pattern in "/" + name if pattern.endswith("/") else
-                 not name.endswith("/") and Path(name).name == pattern)
-                for pattern in patterns if pattern):
+        if kind == "!!" and is_regenerable(name, patterns):
             regenerable.append(name)
         elif kind == "!!" and verified and archived_entry(path, name, verified):
             continue
