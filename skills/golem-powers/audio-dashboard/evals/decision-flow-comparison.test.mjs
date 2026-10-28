@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { renderDecisionFlow } from "../src/decision-flow.mjs";
+import { COMPARISON_READY_META, hasComparisonReadyMarker, markComparisonReady, renderDecisionFlow } from "../src/decision-flow.mjs";
 import { boot, scene } from "./decision-flow-harness.mjs";
 
 // AD-15 (Etan, 2026-10-28 dashboard feedback): a comparison that never loads must not sit on "Loading…".
@@ -35,11 +35,15 @@ function setup(renderOptions, cards = decisions, { ownLoads = true, engine = "ch
   };
   const fire = (frame, type) => { const event = new run.window.Event(type); event.fromTest = true; frame.dispatchEvent(event); };
   // A load with explicit evidence: the child window the runtime may read, or a cross-origin one that throws.
-  const loadWith = (frame, { status = 200, entries, visual = true, readable = true } = {}) => {
+  const loadWith = (frame, { status = 200, entries, marker = "meta", readable = true } = {}) => {
     const child = readable ? {
       location: { href: frame.src },
       performance: { getEntriesByType: () => entries ?? [{ responseStatus: status }] },
-      document: { querySelector: () => (visual ? {} : null) },
+      // The page's ready marker: a <meta name="adash-comparison" content="ready">, the <html> attribute, or none.
+      document: {
+        querySelector: selector => (marker === "meta" && selector === 'meta[name="adash-comparison"]' ? { getAttribute: name => (name === "content" ? "ready" : null) } : null),
+        documentElement: { getAttribute: name => (marker === "html" && name === "data-adash-comparison" ? "ready" : null) },
+      },
     } : { get location() { throw new run.window.DOMException("Blocked a frame", "SecurityError"); } };
     Object.defineProperty(frame, "contentWindow", { configurable: true, value: child });
     fire(frame, "load");
@@ -231,12 +235,13 @@ test("a frame with no window, or still on about:blank, is not a success", () => 
   }
 });
 
-test("without responseStatus (WebKit), success needs a visual in the readable page", () => {
-  for (const [evidence, expected] of [[{ visual: true }, "loaded"], [{ visual: false }, "failed"], [{ readable: false }, "failed"]]) {
+test("without responseStatus (WebKit), success needs the page's explicit ready marker", () => {
+  for (const [evidence, expected] of [[{ marker: "meta" }, "loaded"], [{ marker: "html" }, "loaded"], [{ marker: null }, "failed"], [{ readable: false }, "failed"]]) {
     const run = setup(undefined, decisions, { engine: "webkit" });
     run.opener.click();
     run.loadWith(run.frame(), evidence);
-    expect(run.state()).toBe(expected);
+    expect([evidence, run.state()]).toEqual([evidence, expected]);
+    if (evidence.marker === null) expect(run.message()).toContain("isn't marked ready");
     run.window.close();
   }
 });
@@ -250,4 +255,17 @@ test("a file: dashboard cannot verify its comparison and says how to fix that", 
   expect(run.message()).toContain("over http(s)");
   expect(run.retry.hidden).toBe(false);
   run.window.close();
+});
+
+test("the ready marker is recognised in either form and added by markComparisonReady", () => {
+  expect(hasComparisonReadyMarker(`<head>${COMPARISON_READY_META}</head>`)).toBe(true);
+  expect(hasComparisonReadyMarker("<meta content='ready' name=adash-comparison>")).toBe(true);
+  expect(hasComparisonReadyMarker('<html lang="en" data-adash-comparison="ready">')).toBe(true);
+  expect(hasComparisonReadyMarker('<meta name="adash-comparison" content="pending">')).toBe(false);
+  expect(hasComparisonReadyMarker('<meta name="adash-comparison-x" content="ready">')).toBe(false);
+  expect(hasComparisonReadyMarker("<h1>404</h1>")).toBe(false);
+  expect(markComparisonReady("<!doctype html><html><head><title>x</title></head></html>")).toBe(`<!doctype html><html><head>${COMPARISON_READY_META}<title>x</title></head></html>`);
+  expect(markComparisonReady("<!doctype html><svg></svg>")).toBe(`<!doctype html>${COMPARISON_READY_META}<svg></svg>`);
+  const marked = markComparisonReady("<svg></svg>");
+  expect(markComparisonReady(marked)).toBe(marked);
 });

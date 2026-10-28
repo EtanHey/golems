@@ -492,6 +492,34 @@ test("decision-flow build passes a comparison and its timeout into the rendered 
   expect(html).toContain('data-compare-url="visuals/gate.html"');
   expect(html).toContain('data-compare-timeout="4000"');
   expect(html).toContain('id="df-compare"');
+  expect(result.stderr).toContain("comparison page for gate is not on disk yet");
+});
+
+test("decision-flow build rejects a local comparison page without the ready marker", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-comparison-ready-"));
+  const jobDir = path.join(root, "job");
+  writeSegment(jobDir, "only", [
+    { word: "alpha", start: 0.05, end: 0.42 },
+    { word: "beta", start: 0.45, end: 0.80 }
+  ]);
+  const outputPath = path.join(root, "repo", "docs.local", "dashboards", "comparison-ready.html");
+  const page = path.join(path.dirname(outputPath), "visuals", "gate.html");
+  mkdirSync(path.dirname(page), { recursive: true });
+  const spec = {
+    type: "decision-flow",
+    id: "decision-flow-comparison-ready",
+    outputPath,
+    scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
+    decisions: [{ id: "gate", title: "Gate", body: "Compare the takes.", sceneIds: ["only"], comparison: { url: "visuals/gate.html#chart" } }]
+  };
+
+  writeFileSync(page, '<!doctype html><figure><svg width="320" height="120"></svg></figure>');
+  const unmarked = buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result;
+  expect(unmarked.status).not.toBe(0);
+  expect(unmarked.stderr).toContain("comparison page lacks the ready marker: gate visuals/gate.html#chart");
+
+  writeFileSync(page, '<!doctype html><html><head><meta name="adash-comparison" content="ready"></head><figure><svg width="320" height="120"></svg></figure></html>');
+  expect(buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result.status).toBe(0);
 });
 
 test("decision-flow rejects duplicate decision ids before render", () => {

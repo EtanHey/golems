@@ -42,7 +42,7 @@ const ADX2_SPEC = {
 };
 const html = renderDecisionFlow(ADX2_SPEC);
 if (output) writeFileSync(path.join(output, 'dashboard.html'), html);
-const visual = '<!doctype html><body style="margin:0;font:16px system-ui;background:#fff"><figure style="margin:24px"><figcaption>Voice A vs Voice B, listener preference</figcaption><svg width="320" height="120" role="img" aria-label="A 64 percent, B 36 percent"><rect x="0" y="20" width="205" height="32" fill="#2a7a6e"/><rect x="0" y="68" width="115" height="32" fill="#c98a12"/><text x="214" y="42">A 64%</text><text x="124" y="90">B 36%</text></svg></figure></body>';
+const visual = '<!doctype html><meta name="adash-comparison" content="ready"><body style="margin:0;font:16px system-ui;background:#fff"><figure style="margin:24px"><figcaption>Voice A vs Voice B, listener preference</figcaption><svg width="320" height="120" role="img" aria-label="A 64 percent, B 36 percent"><rect x="0" y="20" width="205" height="32" fill="#2a7a6e"/><rect x="0" y="68" width="115" height="32" fill="#c98a12"/><text x="214" y="42">A 64%</text><text x="124" y="90">B 36%</text></svg></figure></body>';
 
 // Review r1 probes: pages that hide their navigation telemetry must not read as loaded.
 const hideEntries = '<script>performance.getEntriesByType=()=>[]</script>';
@@ -92,9 +92,10 @@ for (const [engine, width, run] of runs) run(`comparison settles in ${engine} at
     for (const id of ['missing', 'down', 'blind', 'nostatus']) {
       await opener(id).click();
       await page.waitForFunction(() => document.getElementById('df-compare').dataset.state === 'failed');
-      // WebKit fires neither load nor error for an aborted frame navigation; the bound settles it instead.
+      // WebKit reports no status, so an unmarked error page fails as "not marked ready"; it fires neither load nor
+      // error for an aborted frame navigation, so the bound settles that one.
       const message = await page.locator('#df-compare-message').textContent();
-      expect(message).toMatch(engine === 'webkit' ? /couldn't load|didn't load within 3 seconds/ : /couldn't load/);
+      expect(message).toMatch(engine === 'webkit' ? /couldn't load|isn't marked ready|didn't load within 3 seconds/ : /couldn't load/);
       expect(await page.evaluate(() => document.activeElement.id)).toBe('df-compare-retry');
       if (id === 'down') {
         await shot('error');
