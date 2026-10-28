@@ -7,7 +7,7 @@ import subprocess
 import pytest
 
 AGENTS = Path(__file__).resolve().parents[1] / "agents"
-PIN = "d64b9400d1984cb353ca14f0b05aba00a81fc40e142787efa3e3015ab57bdc44"
+PIN = "cfd56cefdbb437f145ee9cd0c108ae7cca26846172ecb0189ef5403c8b477038"
 
 
 # Reviewed Contract 1 scope; changes require explicit review of the complete block.

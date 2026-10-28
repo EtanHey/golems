@@ -2,7 +2,7 @@
 
 ## 0. Scope and authority
 
-Status: **r4n procedure revision (B′)** — PHX's reviewed pre-step permits exactly the KNOWN_DRIFT unlink below, after durable snapshot custody and before strict presync. This is offline procedure work only; live execution still requires the existing authorization and shipping gates. Historical r4m STOP evidence remains retained below.
+Status: **r4s procedure revision** (r4n KNOWN_DRIFT pre-step; r4o §5 formatter; r4p stable protected-state comparator per PHX ruling (c), *_CHANGED diagnostics, pre-snapshot recovery mode and the free-space floor; r4q recovery parent-identity and legacy-lock fixes; r4r LaunchAgents plist byte prefilter; r4s `.brainlayer/logs|queue` as BrainLayer runtime). Offline re-checks: REVIEW-r4p-*, REVIEW-r4q/r4r/r4s in the release-custody lane. Live execution still requires the existing authorization and shipping gates.
 
 Retained B′ contract: The M1 Pro requirements manifest is derived deterministically from the SAME reviewed M4 Max manifest selected by its existing parity config: schema 2, identical canonical roots, exactly reversed identity pins, and no other keys. Both observed identities are checked by the Git-sourced library. The additional reviewed KNOWN_DRIFT unlink has separate durable snapshot/custody and rollback verification; it does not change the parity prerequisite contract. The two exact §2 files and their created-if-absent M1 parent have idempotent creation and snapshot/rollback custody; a new parent is owner-only mode `0700`. This research authorizes no live execution and performed no live writes. Bootstrap still requires PHX's actual go and §1b; all later runs require the full I5 gate and revalidation of shipped bytes. The historical r4j decision/trace is retained below; B′ explicitly revises B's byte-identity contract.
 
@@ -196,6 +196,37 @@ export RUN="$GOLEMS_ROOT/docs.local/ratchet-runs/m1-procedure-$MERGE_SHA-$UTC_TS
 test "$(gh api "repos/EtanHey/golems/releases/tags/v$VERSION" --jq .draft)" = false
 mkdir -p "$GOLEMS_ROOT/docs.local/ratchet-runs"
 mkdir "$RUN"
+python3 -I -B - "$RUN" "$VERSION" <<'PYDISK'
+import json, os, subprocess, sys
+from pathlib import Path
+run, version = Path(sys.argv[1]), sys.argv[2]
+release = json.loads(subprocess.check_output(['gh', 'api', 'repos/EtanHey/golems/releases/tags/v' + version]))
+names = {'golems-' + version + '.tar.gz', 'SHA256SUMS', 'MANIFEST.json'}
+assets = [a for a in release['assets'] if a['name'] in names]
+assert len(assets) == 3 and {a['name'] for a in assets} == names, 'STOP: missing/duplicate release assets'
+assert all(type(a['size']) is int and a['size'] >= 0 for a in assets), 'STOP: invalid release asset size'
+margin, reserve, evidence_allowance = 2, 10 * 1024**3, 256 * 1024**2
+required = (sum(a['size'] for a in assets) + evidence_allowance) * margin
+need_bytes = required + reserve
+volume = os.statvfs(run)
+free = volume.f_bavail * volume.f_frsize
+result = dict(host='M4 Max', assets={a['name']: a['size'] for a in assets},
+    evidence_allowance=evidence_allowance, margin=margin, required=required, reserve=reserve, need=need_bytes, free=free)
+if free < need_bytes:
+    result = dict(verdict='STOP', mode='preflight', disk=result,
+        error='STOP: INSUFFICIENT_DISK need=' + str(need_bytes) + ' free=' + str(free) + ' reserve=' + str(reserve))
+    destination = run / 'preflight.json'
+else:
+    result['verdict'] = 'M4_DISK_READY'
+    destination = run / 'm4-disk-preassets.json'
+with destination.open('x') as output:
+    json.dump(result, output, sort_keys=True); output.flush(); os.fsync(output.fileno())
+fd = os.open(run, os.O_RDONLY)
+try: os.fsync(fd)
+finally: os.close(fd)
+print(json.dumps(result, sort_keys=True))
+if result['verdict'] == 'STOP': raise SystemExit(1)
+PYDISK
 mkdir "$RUN/release-preflight"
 python3 -I -B - "$RUN/target-identity.json" <<'PY'
 import json, os, sys
@@ -543,6 +574,16 @@ The M4 Max initial known_hosts digest/absence is checked before and after every 
 
 Bootstrap evidence lives only in the M4 Max run directory: mode, master SHA, release version, all five pre/post frozen hashes, both hosts' protected-state digests, hook owner status, actual live parity, and `receipt: "deferred to run 2 (I5)"`. Append BOOTSTRAP only after finish succeeds. The live-row parity evidence and bootstrap record are the run-1 records; status remains NO-RECEIPT. Full run 2 writes the first M1 receipt after all I5 merges. Bootstrap run 1 is excluded from stability: compare the first two **full** runs, run 2 and run 3. Any command/step change between them is a stability failure; revise the procedure before proceeding.
 
+### Free-space floors (PHX r4p addendum)
+
+Both hosts use `os.statvfs()` on the target filesystem and available-to-this-user blocks (`f_bavail * f_frsize`). The hard reserve is **10 GiB on each host**; equality passes, and `free - required >= 10 GiB` is mandatory. A **2x margin** covers tar/PAX framing uncertainty, compression expansion and coexistence during staging/restoration.
+
+On the M1 Pro, `required = 2 * (snapshot_tar_estimate + extracted_release + retained_releases_growth + staging_transport)`. The snapshot estimate recursively sums lstat sizes/512-byte padding plus 2048 bytes per object and a 10240-byte trailer, over exactly the non-following archive path set; created B′ files are excluded using their receipts. Links are never followed. The verified archive supplies member sizes for an extracted staging copy and one full retained-release growth copy. Older retained releases already consume measured free space; they are never deleted or counted as future growth. Staging/transport adds the measured downloaded asset bytes, controller/frozen/I5 source lengths and 64 KiB for transport scaffolding. Components and the resulting explicit byte floor are retained in each returned disk record.
+
+On the M4 Max, §1 reads the selected release's three asset sizes from GitHub metadata before downloading. Its explicit floor is `10 GiB + 2 * (asset bytes + 256 MiB evidence allowance)`. Only the evidence RUN exists at this point. A low-space STOP writes its small `preflight.json` evidence and downloads nothing. The controller then uses actual local asset sizes and the same allowance before preflight, snapshot and presync; `m4-disk` rechecks immediately after remote presync, before the sync command.
+
+M1 preflight checks before capture and again immediately before the B′ pre-step, so an initial low-space STOP makes zero M1 writes and returns parseable STOP JSON for the M4's `preflight.json`. Checks also precede transport creation, snapshot lock creation, tar creation after the second capture, and the end of presync immediately before sync. Below any floor, the exact named error is `STOP: INSUFFICIENT_DISK need=<bytes> free=<bytes> reserve=<bytes>`. No deletion, reserve reduction or install retry is authorized to make the floor pass. Rollback/recovery remain available to restore/remove only their receipt-proven run footprint.
+
 ## 2. Define the snapshot, checks, and rollback
 
 This block writes a controller only into the run's **M4 Max evidence directory**. It sends its source through strict SSH. The public helper still supplies the verified release installer.
@@ -798,7 +839,7 @@ def require_hashable_capture(captured, home=None, policy=None, allow_known_drift
 
 def remove_known_drift(home, saved, expected):
     observed = known_drift_status(home)
-    need(observed == expected, 'STOP: known drift changed after snapshot')
+    state_equal(observed, expected, 'STOP: known drift changed after snapshot')
     record = dict(observed, removed_by_run=observed['status'] == 'matched')
     evidence(saved / 'known-drift-before.json', record)
     if record['removed_by_run']:
@@ -806,10 +847,10 @@ def remove_known_drift(home, saved, expected):
         fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try:
             info = os.fstat(fd)
-            need([info.st_dev, info.st_ino] == record['root_identity'], 'STOP: known drift root changed')
+            state_equal([info.st_dev, info.st_ino], record['root_identity'], 'STOP: known drift root changed')
             # Repeat all eligibility and identity checks after the durable intent,
             # immediately before unlink; bind the operation to the verified root.
-            need(known_drift_status(home) == observed, 'STOP: known drift changed before unlink')
+            state_equal(known_drift_status(home), observed, 'STOP: known drift changed before unlink')
             os.unlink(record['name'], dir_fd=fd)
             os.fsync(fd)
         finally: os.close(fd)
@@ -943,49 +984,523 @@ def json_diff_self_test():
     need(json_diff(pre, pre) == [], 'identical JSON self-test failed')
 json_diff_self_test()
 
+RUNTIME_ROOTS = ['.local/share/brainlayer', 'Library/Logs/brainlayer', '.brainlayer/logs', '.brainlayer/queue']
+# BrainLayer-written subtrees nested in the INSTALLED ~/.brainlayer (live M1 Pro probe, 2026-10-28: drain.log/queue);
+# compared like WAL/SHM (owner/mode only when present in both captures), never by content.
+RUNTIME_EPHEMERAL_ROOTS = ['.brainlayer/logs', '.brainlayer/queue']
+INSTALLED_PATHS = ['/Applications', '/Library/LaunchAgents', '/System/Library/LaunchAgents',
+    '/opt/homebrew', '/usr/local/Homebrew', 'Library/LaunchAgents', '.local/lib/brainlayer',
+    '.config/brainlayer', '.brainlayer', '.codex/config.toml', '.ssh/known_hosts']
+DISCOVERED_SOCKETS = set()
+DISCOVERED_INSTALLED = set()
+
+def protected_class(path, home):
+    path = Path(os.path.abspath(path))
+    if any(path == home / r or path.is_relative_to(home / r) for r in RUNTIME_ROOTS): return 'RUNTIME'
+    if path.parent in (Path('/tmp'), Path('/private/tmp')) and re.fullmatch(r'brainbar.*\.sock', path.name): return 'RUNTIME'
+    if str(path) in DISCOVERED_SOCKETS: return 'RUNTIME'
+    if any(path == home / r or path.is_relative_to(home / r) for r in INSTALLED_PATHS): return 'INSTALLED'
+    if any(path == Path(r) or path.is_relative_to(Path(r)) for r in DISCOVERED_INSTALLED): return 'INSTALLED'
+    return None
+
+def runtime_identity(path, inode=False):
+    try: info = path.lstat()
+    except FileNotFoundError: return dict(exists=False)
+    kind = ('directory' if stat.S_ISDIR(info.st_mode) else 'file' if stat.S_ISREG(info.st_mode)
+            else 'socket' if stat.S_ISSOCK(info.st_mode) else 'symlink' if stat.S_ISLNK(info.st_mode) else 'special')
+    result = dict(exists=True, kind=kind, uid=info.st_uid, gid=info.st_gid, mode=stat.S_IMODE(info.st_mode))
+    if inode: result.update(dev=info.st_dev, inode=info.st_ino)
+    return result
+
 def protected(home):
-    for relative in ('.codex/config.toml', '.ssh/known_hosts'):
-        p = home / relative
-        need(not p.is_symlink(), 'protected file is symlinked; re-audit: ' + str(p))
-    paths = ['/Applications', '/Library/LaunchAgents', '/System/Library/LaunchAgents',
-        '/opt/homebrew', '/usr/local/Homebrew', str(home / 'Library/LaunchAgents'),
-        str(home / '.local/share/brainlayer'), str(home / '.brainlayer'),
-        str(home / '.config/brainlayer'), str(home / '.codex/config.toml'), str(home / '.ssh/known_hosts')]
     import plistlib
+    home = home.absolute()
+    paths = {str(home / r) for r in INSTALLED_PATHS}
+    labels, sockets = {}, {str(home / '.local/share/brainlayer/supervisor/control.sock')}
+    sockets.update(str(p) for p in Path('/tmp').glob('brainbar*.sock'))
+    for relative in ('.codex/config.toml', '.ssh/known_hosts'):
+        need(not (home / relative).is_symlink(), 'protected file is symlinked; re-audit: ' + relative)
     for directory in ('/Library/LaunchAgents', '/System/Library/LaunchAgents', str(home / 'Library/LaunchAgents')):
-        root = Path(directory)
-        if not root.exists(): continue
-        for plist in sorted(root.glob('*.plist')):
+        for plist in sorted(Path(directory).glob('*.plist')):
             raw = plist.read_bytes()
+            # Byte prefilter (as before r4p): unrelated, possibly malformed plists are never parsed.
             if b'brainlayer' not in raw.lower() and b'brainbar' not in raw.lower(): continue
+            try: data = plistlib.loads(raw)
+            except Exception as error: raise ValueError('STOP: PROTECTED_PLIST_UNPARSEABLE ' + plist.name + ' ' + type(error).__name__)
+            if not re.search('brainlayer|brainbar', json.dumps(data, default=str), re.I): continue
+            label = data.get('Label')
+            need(isinstance(label, str) and label and '/' not in label, 'STOP: PROTECTED_LABEL_INVALID')
+            need(label not in labels, 'STOP: PROTECTED_LABEL_DUPLICATE ' + label)
+            labels[label] = data
             def collect(value):
                 if isinstance(value, dict):
                     for v in value.values(): collect(v)
                 elif isinstance(value, list):
                     for v in value: collect(v)
-                elif isinstance(value, str) and value.startswith('/') and value != str(home) and (
-                        re.search(r'brainlayer|brainbar|\.(db|sqlite|sqlite3|sock)$', value, re.I)):
-                    paths.append(value)
-            collect(plistlib.loads(raw))
+                elif isinstance(value, str) and value.startswith('/') and value != str(home) and re.search(
+                        r'brainlayer|brainbar|\.(db|sqlite|sqlite3|sock)$', value, re.I):
+                    if value.endswith('.sock'): sockets.add(value)
+                    elif protected_class(value, home) != 'RUNTIME': paths.add(value)
+            collect(data)
     domain = 'gui/' + str(os.getuid())
-    launchctl_state = {'domain': domain,
-        'print': command(['/bin/launchctl', 'print', domain]),
-        'print_disabled': command(['/bin/launchctl', 'print-disabled', domain])}
+    disabled = command(['/bin/launchctl', 'print-disabled', domain])
+    disabled_rows = dict(re.findall(r'"([^"\n]+)"\s*=>\s*(true|false)', disabled))
+    jobs = {}
+    for label in sorted(labels):
+        response = subprocess.run(['/bin/launchctl', 'print', domain + '/' + label], capture_output=True, text=True)
+        need(response.returncode in (0, 3, 113), 'STOP: PROTECTED_LAUNCHCTL_QUERY_FAILED ' + label)
+        text = response.stdout
+        program = re.search(r'^\s*program\s*=\s*(.*?)\s*$', text, re.M)
+        arguments = re.search(r'^\s*arguments\s*=\s*\{\n(.*?)^\s*\}', text, re.M | re.S)
+        args = [s.strip() for s in arguments[1].splitlines() if s.strip()] if arguments else []
+        if response.returncode == 0:
+            need(program is not None, 'STOP: PROTECTED_LAUNCHCTL_PROGRAM_UNPARSEABLE ' + label)
+        jobs[label] = dict(label=label, loaded=response.returncode == 0,
+            running=bool(re.search(r'^\s*state\s*=\s*running\s*$', text, re.M)),
+            program=program[1] if program else None, arguments=args)
     agents = home / 'Library/LaunchAgents'
-    agent_listing = command(['/bin/ls', '-la', str(agents)])
-    agent_hashes = {str(p): sha(p.read_bytes()) for p in sorted(agents.glob('*.plist'))}
-
     processes = command(['/bin/ps', '-axo', 'pid=,ppid=,command='])
-    selected_raw = [line.split(None, 2) for line in processes.splitlines() if re.search(r'brainlayer|brainbar', line, re.I)]
-    selected = sorted([{'pid': row[0], 'ppid': row[1], 'command_sha256': sha(row[2].encode())} for row in selected_raw], key=lambda row: int(row['pid']))
-    pids = [row['pid'] for row in selected]
-    sockets = command(['/usr/sbin/lsof', '-nP', '-a', '-p', ','.join(pids), '-U', '-Fpn'], (0, 1)) if pids else ''
-    for line in sockets.splitlines():
-        if line.startswith('n/'): paths.append(line[1:])
-    return {'paths': {p: tree(Path(p), False) for p in sorted(set(paths))},
-        'brainlayer_processes': selected,
-        'launchctl': launchctl_state, 'launchagents_ls_la': agent_listing, 'launchagents_plist_sha256': agent_hashes,
-        'brainlayer_sockets': sorted(sockets.splitlines())}
+    commands = []
+    for line in processes.splitlines():
+        row = line.split(None, 2)
+        if len(row) == 3 and row[1] == '1' and re.search(r'brainlayer|brainbar', row[2], re.I):
+            commands.append(sha(row[2].encode()))
+    database = home / '.local/share/brainlayer/brainlayer.db'
+    ephemeral = {str(database) + '-wal', str(database) + '-shm'} | sockets
+    # An INSTALLED tree containing a RUNTIME root is captured child by child without that root.
+    nested_parents = {}
+    def expand(path):
+        nested = [home / r for r in RUNTIME_ROOTS if (home / r).is_relative_to(path) and home / r != path]
+        if not nested or path.is_symlink() or not path.is_dir(): return [str(path)]
+        nested_parents[str(path)] = runtime_identity(path)
+        return [e for child in sorted(path.iterdir()) if child not in nested for e in expand(child)]
+    paths = {e for p in paths for e in expand(Path(p))}
+    ephemeral |= {str(home / r) for r in RUNTIME_EPHEMERAL_ROOTS}
+    DISCOVERED_SOCKETS.update(sockets)
+    DISCOVERED_INSTALLED.update(paths)
+    return dict(paths={p: tree(Path(p), False) for p in sorted(paths)},
+        runtime_roots={str(home / r): runtime_identity(home / r) for r in RUNTIME_ROOTS if r not in RUNTIME_EPHEMERAL_ROOTS}, nested_installed_parents=nested_parents,
+        database={str(database): runtime_identity(database, inode=True)},
+        ephemeral={p: runtime_identity(Path(p)) for p in sorted(ephemeral)},
+        brainlayer_processes=sorted(commands), launchctl=jobs,
+        disabled={label: disabled_rows.get(label) for label in sorted(labels)},
+        launchagents_ls_la=command(['/bin/ls', '-la', str(agents)]),
+        launchagents_plist_sha256={str(p): sha(p.read_bytes()) for p in sorted(agents.glob('*.plist'))})
+
+def protected_view(before, after):
+    # SQLite deletes WAL/SHM at last disconnect; daemon sockets are recreated on reconnect.
+    # Only endpoints present in BOTH captures have comparable historical owner/mode.
+    def stable(value): return {k: v for k, v in value.items() if k != 'ephemeral'}
+    left, right = stable(before), stable(after)
+    a, b = before.get('ephemeral', {}), after.get('ephemeral', {})
+    common = {p for p in a.keys() & b.keys() if a[p]['exists'] and b[p]['exists']}
+    left['ephemeral'] = {p: {k: a[p][k] for k in ('kind', 'uid', 'gid', 'mode')} for p in sorted(common)}
+    right['ephemeral'] = {p: {k: b[p][k] for k in ('kind', 'uid', 'gid', 'mode')} for p in sorted(common)}
+    return left, right
+
+def protected_equal(before, after, message):
+    left, right = protected_view(before, after)
+    state_equal(left, right, message, captures=(before, after))
+
+def capture_equal(before, after, message):
+    left, right = dict(before), dict(after)
+    left['protected'], right['protected'] = protected_view(before['protected'], after['protected'])
+    state_equal(left, right, message, captures=(before, after))
+
+def controller_write_guard(home):
+    # Audit hooks cover Python's open/os/shutil/tar mutations, including fd-relative unlink.
+    # Subprocesses are the unchanged reviewed installer; this guard is controller-only.
+    nofollow = set()
+    # Python's chmod/chown audit event omits follow_symlinks. Preserve that
+    # explicit caller choice so restoring an in-scope link never writes its target.
+    for name in ('chmod', 'chown', 'utime', 'lchmod', 'lchown'):
+        original = getattr(os, name, None)
+        if original is None: continue
+        def wrapped(path, *args, _fn=original, _name=name, **kwargs):
+            token = os.fsdecode(path) if not isinstance(path, int) else path
+            lexical = _name.startswith('l') or kwargs.get('follow_symlinks') is False
+            if lexical: nofollow.add(token)
+            try: return _fn(path, *args, **kwargs)
+            finally:
+                if lexical: nofollow.discard(token)
+        setattr(os, name, wrapped)
+    def check(path, dir_fd=None, follow=True):
+        if isinstance(path, int):
+            try:
+                if sys.platform == 'darwin':
+                    path = fcntl.fcntl(path, getattr(fcntl, 'F_GETPATH', 50), b'\0' * 1024).split(b'\0', 1)[0]
+                else: path = os.readlink('/proc/self/fd/' + str(path))
+            except OSError as error: raise ValueError('STOP: CONTROLLER_WRITE_FD_UNRESOLVED') from error
+        path = Path(os.fsdecode(path))
+        if not path.is_absolute():
+            if dir_fd is None or dir_fd == -1: path = Path.cwd() / path
+            elif sys.platform == 'darwin':
+                path = Path(os.fsdecode(fcntl.fcntl(dir_fd, getattr(fcntl, 'F_GETPATH', 50), b'\0' * 1024).split(b'\0', 1)[0])) / path
+            else: path = Path(os.readlink('/proc/self/fd/' + str(dir_fd))) / path
+        resolved = path.resolve(strict=False) if follow else path.parent.resolve(strict=False) / path.name
+        for candidate in (path.absolute(), resolved):
+            need(protected_class(candidate, home) is None, 'STOP: CONTROLLER_WRITE_PROTECTED ' + str(candidate))
+    def audit(event, args):
+        if event == 'open':
+            flags = args[2]
+            if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND): check(args[0])
+        elif event in ('os.remove', 'os.rmdir', 'os.mkdir', 'os.chmod', 'os.chown', 'os.utime', 'os.truncate'):
+            index = 1 if event in ('os.remove', 'os.rmdir') else 3 if event in ('os.chown', 'os.utime') else 2
+            token = os.fsdecode(args[0]) if not isinstance(args[0], int) else args[0]
+            check(args[0], args[index] if len(args) > index else None,
+                  follow=event not in ('os.remove', 'os.rmdir') and token not in nofollow)
+        elif event in ('os.rename', 'os.link'):
+            check(args[0], args[2] if len(args) > 2 else None, follow=False)
+            check(args[1], args[3] if len(args) > 3 else None, follow=False)
+        elif event == 'os.symlink': check(args[1], args[2] if len(args) > 2 else None, follow=False)
+    sys.addaudithook(audit)
+
+DIAGNOSTICS = {'home': None, 'directory': None}
+OWNERSHIP = {'path': None, 'data': None}
+
+def leaf_changes(a, b, path=()):
+    if isinstance(a, dict) and isinstance(b, dict):
+        result = []
+        for key in sorted(a.keys() | b.keys()):
+            if key in a and key in b: result += leaf_changes(a[key], b[key], path + (key,))
+            else:
+                value = a.get(key) if key in a else b[key]
+                result += leaf_changes(value, None, path + (key,)) if isinstance(value, (dict, list)) and value else [path + (key,)]
+        return result
+    if isinstance(a, list) and isinstance(b, list):
+        return [p for i in range(max(len(a), len(b))) for p in leaf_changes(
+            a[i] if i < len(a) else None, b[i] if i < len(b) else None, path + (i,))]
+    if isinstance(a, dict) or isinstance(b, dict):
+        value = a if isinstance(a, dict) else b
+        return [p for k, v in value.items() for p in leaf_changes(v, None, path + (k,))] or [path]
+    if isinstance(a, list) or isinstance(b, list):
+        value = a if isinstance(a, list) else b
+        return [p for i, v in enumerate(value) for p in leaf_changes(v, None, path + (i,))] or [path]
+    return [path] if type(a) != type(b) or a != b else []
+
+def ownership_flush():
+    path, data = OWNERSHIP['path'], OWNERSHIP['data']
+    if path is None: return
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'w') as stream:
+        json.dump(data, stream, sort_keys=True); stream.flush(); os.fsync(stream.fileno())
+    sync_directory(path.parent)
+
+def record_created(path):
+    data = OWNERSHIP['data']
+    if data is None or path == OWNERSHIP['path']: return
+    home = Path(data['home'])
+    need(path.is_relative_to(home), 'STOP: RECOVERY_RECORD_OUTSIDE_HOME')
+    need(any(path == home / root or path.is_relative_to(home / root) for root in data['roots']),
+         'STOP: RECOVERY_RECORD_OUTSIDE_RUN')
+    info = runtime_identity(path, inode=True)
+    need(info.get('kind') in ('file', 'directory') and info.get('uid') == os.getuid(), 'STOP: RECOVERY_RECORD_UNSAFE')
+    if info['kind'] == 'file': info['sha256'] = sha(path.read_bytes())
+    data['entries'][str(path.relative_to(home))] = info
+    ownership_flush()
+
+def ownership_start(home, stem, custody):
+    path = custody / 'recovery-ownership.json'
+    need(not present(path), 'STOP: RECOVERY_OWNERSHIP_ALREADY_EXISTS')
+    OWNERSHIP.update(path=path, data=dict(schema=1, stem=stem, home=str(home), uid=os.getuid(),
+        roots=[str(custody.relative_to(home)), '.golems/m1-sync/' + stem, '.golems/m1-procedure.lock'],
+        entries={}, removed=[]))
+    for item in [custody, *sorted(custody.iterdir())]: record_created(item)
+    ownership_flush()
+
+def ownership_load(custody):
+    path = custody / 'recovery-ownership.json'
+    if present(path):
+        need(path.is_file() and not path.is_symlink(), 'STOP: RECOVERY_OWNERSHIP_UNSAFE')
+        OWNERSHIP.update(path=path, data=json.loads(path.read_text()))
+
+def state_need(ok, before, after, message, captures=None):
+    if ok: return
+    def serial(value):
+        if isinstance(value, Path): return str(value)
+        if isinstance(value, dict): return {str(k): serial(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple, set)): return [serial(v) for v in value]
+        return value
+    before, after = serial(before), serial(after)
+    home, directory = DIAGNOSTICS['home'], DIAGNOSTICS['directory']
+    need(directory is not None, 'STOP: STATE_DIAGNOSTICS_CUSTODY_UNSET')
+    if not present(directory):
+        plain_parents(home, [str(directory.relative_to(home))])
+        directory.mkdir(mode=0o700)  # Evidence only, exclusively created for this stopped run.
+        sync_directory(directory.parent)
+    need(directory.is_dir() and not directory.is_symlink(), 'STOP: STATE_DIAGNOSTICS_CUSTODY_UNSAFE')
+    prefix = 'state-change-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%f') + '-' + str(os.getpid())
+    paths = leaf_changes(before, after)
+    values = serial(captures) if captures else (before, after)
+    files = [directory / (prefix + '-' + name + '.json') for name in ('before', 'after')]
+    for path, value in zip(files, values): evidence(path, value)
+    redacted = lambda value: str(value).replace(str(home), '<M1_HOME>')
+    error = ValueError(message if message.startswith('STOP: ') else 'STOP: ' + message)
+    error.details = dict(state_changed=dict(count=len(paths), paths=[
+        [redacted(part) for part in path] for path in paths[:50]],
+        captures=[redacted(path) for path in files]))
+    raise error
+
+def state_equal(before, after, message, captures=None):
+    state_need(before == after, before, after, message, captures)
+
+def recovery(home, params, initial, saved, lock, custody):
+    stem = params['head'] + '-' + params['stamp']
+    dry = params.get('dry_run', False)
+    receipt = dict(verdict='RECOVERY_PLAN' if dry else 'RECOVERY_COMPLETE_NOT_GREEN',
+        stem=stem, dry_run=dry, mutated=False, removals=[], plan=[])
+    try:
+        need(not present(saved), 'STOP: RECOVERY_SNAPSHOT_CUSTODY_PRESENT_USE_ROLLBACK')
+        plain_parents(home, [str(p.relative_to(home)) for p in (initial, lock, custody)])
+        active = command(['/bin/ps', '-axo', 'pid=,ppid=,command='])
+        need(not any(re.search(r'--remote (?:prepare|apply|receipt)\b|sync-m1\.py|/m1-sync/[^ ]*/install\.sh|repoint-skills\.mjs|install-hooks\.mjs.*--apply|skills-sync-receipt\.mjs.*emit', line)
+                     for line in active.splitlines()), 'STOP: RECOVERY_WRITER_ACTIVE')
+        ownership_load(custody)
+        data = OWNERSHIP['data']
+        legacy = data is None
+        if legacy:
+            need(stem == 'dc96fe7a56e5c9b670ef7cf63ac1a3ea7c309eec-20261028T040540580437', 'STOP: RECOVERY_PROVENANCE_MISSING')
+            proof = params.get('recovery_evidence', {})
+            need(proof.get('snapshot', {}).get('error') == 'STOP: PRE_SNAPSHOT_STATE_CHANGED', 'STOP: RECOVERY_LEGACY_STOP_EVIDENCE_MISSING')
+            preflight = proof.get('preflight', {})
+            need(preflight.get('verdict') == 'PREFLIGHT_READY', 'STOP: RECOVERY_LEGACY_PREFLIGHT_MISSING')
+            need(custody.is_dir() and not custody.is_symlink(), 'STOP: RECOVERY_LEGACY_CUSTODY_MISSING')
+            need({p.name for p in custody.iterdir()} == {'before.json', 'requirements-before.json', 'complete.json'},
+                 'STOP: RECOVERY_FOREIGN_CUSTODY_ENTRY')
+            need(all(p.is_file() and not p.is_symlink() and p.lstat().st_uid == os.getuid() for p in custody.iterdir()),
+                 'STOP: RECOVERY_UNSAFE_CUSTODY_ENTRY')
+            record = json.loads((custody / 'complete.json').read_text())
+            need(record == preflight.get('parity_config'), 'STOP: RECOVERY_LEGACY_RECEIPT_MISMATCH')
+            original = json.loads((custody / 'before.json').read_text())
+            required = json.loads((custody / 'requirements-before.json').read_text())
+            need(all(record.get(k) == v for k, v in original.items()) and
+                 all(record['requirements'].get(k) == v for k, v in required.items()), 'STOP: RECOVERY_LEGACY_CUSTODY_MISMATCH')
+            expected_before = {k: record[k] for k in ('created_by_run', 'before', 'template', 'parent_created_by_run')}
+            expected_required = {k: record['requirements'][k] for k in ('created_by_run', 'before', 'sha256')}
+            for name, value in (('before.json', expected_before), ('requirements-before.json', expected_required), ('complete.json', record)):
+                need((custody / name).read_bytes() == json.dumps(value, sort_keys=True).encode(),
+                     'STOP: RECOVERY_LEGACY_RECEIPT_BYTES_MISMATCH ' + name)
+            need(initial.is_dir() and not initial.is_symlink() and not list(initial.iterdir()), 'STOP: RECOVERY_LEGACY_STAGE_NOT_EMPTY')
+            need(lock.is_dir() and not lock.is_symlink() and not list(lock.iterdir()), 'STOP: RECOVERY_LEGACY_LOCK_NOT_EMPTY')
+            start, end = proof.get('preflight_mtime_ns'), proof.get('snapshot_mtime_ns')
+            need(type(start) is int and type(end) is int and start <= end, 'STOP: RECOVERY_LEGACY_TIMING_MISSING')
+            need((custody / 'complete.json').stat().st_mtime_ns <= start and
+                 all(start <= p.stat().st_mtime_ns <= end for p in (initial, lock)), 'STOP: RECOVERY_LEGACY_TIMING_MISMATCH')
+            # Completion must be owned, no-follow evidence for this exact stem and stage type.
+            def completed_stage(other, match):
+                def checked(path, directory=False):
+                    info = path.lstat()
+                    need((stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)) and
+                         info.st_uid == os.getuid() and not stat.S_IMODE(info.st_mode) & 0o022,
+                         'unsafe completion evidence')
+                    return info
+                def document(path):
+                    before = checked(path)
+                    pin = lambda info: (info.st_dev, info.st_ino, info.st_uid, info.st_mode, info.st_size, info.st_mtime_ns)
+                    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+                    with os.fdopen(fd) as stream:
+                        need(pin(os.fstat(stream.fileno())) == pin(before), 'completion evidence replaced')
+                        value = json.load(stream)
+                    need(pin(path.lstat()) == pin(before) and isinstance(value, dict), 'completion evidence changed')
+                    return value
+                try:
+                    checked(other, True)
+                    prefix, other_stem = match.groups()
+                    # A STOP, even alongside a completion marker, is ambiguous. Never follow it.
+                    for stop in other.iterdir():
+                        if re.search(r'stop', stop.name, re.I):
+                            document(stop)
+                            return False
+                    if not prefix:
+                        success = document(other / 'success.json')
+                        return (success.get('stem') == other_stem and
+                                success.get('commit') == other_stem[:40] and
+                                success.get('verdict') in ('SYNCED', 'SUCCESS', 'COMPLETE') and not success.get('error'))
+                    if prefix == '.parity-config-':
+                        controller = other.with_name('.procedure-' + other_stem)
+                        controller_match = re.fullmatch(r'(\.procedure-)([0-9a-f]{40}-\d{8}T\d{12})', controller.name)
+                        return (document(other / 'complete.json') == document(controller / 'state.json').get('parity_config') and
+                                completed_stage(controller, controller_match))
+                    if prefix != '.procedure-': return False
+                    # A helper success marker is never controller completion evidence.
+                    if os.path.lexists(other / 'success.json'): return False
+                    markers = [other / name for name in ('procedure-lock-completed', 'procedure-lock-after-rollback')
+                               if os.path.lexists(other / name)]
+                    if len(markers) != 1: return False
+                    marker = markers[0]
+                    checked(marker, True)
+                    owner = document(marker / 'owner.json')
+                    if owner != dict(stem=other_stem, uid=os.getuid()): return False
+                    if marker.name == 'procedure-lock-after-rollback':
+                        results = sorted(other.glob('rollback-result-attempt-*.json'))
+                        if not results: return False
+                        for result in results:
+                            value = document(result)
+                            if (value.get('verdict') != 'ROLLBACK_RESTORED_NOT_GREEN' or
+                                value.get('quarantine') != str(other / 'rollback-quarantine')): return False
+                    return True
+                except (OSError, ValueError, TypeError):
+                    return False
+            for other in (home / '.golems/m1-sync').iterdir():
+                if other in (initial, custody): continue
+                name = other.name
+                match = re.fullmatch(r'(\.parity-config-|\.procedure-)?([0-9a-f]{40}-\d{8}T\d{12})', name)
+                if match:
+                    need(completed_stage(other, match), 'STOP: RECOVERY_LOCK_AMBIGUOUS ' + name)
+            roots = [initial, lock, custody]
+            entries = {str(p.relative_to(home)): runtime_identity(p, inode=True) for p in
+                       [initial, lock, custody, *custody.iterdir()]}
+            for relative, info in entries.items():
+                if info['kind'] == 'file': info['sha256'] = sha((home / relative).read_bytes())
+        else:
+            need(data.get('schema') == 1 and data.get('stem') == stem and data.get('home') == str(home) and data.get('uid') == os.getuid(),
+                 'STOP: RECOVERY_OWNERSHIP_IDENTITY_MISMATCH')
+            need(data.get('roots') == [str(custody.relative_to(home)), str(initial.relative_to(home)), str(lock.relative_to(home))],
+                 'STOP: RECOVERY_OWNERSHIP_ROOTS_MISMATCH')
+            roots, entries = [initial, lock, custody], data['entries']
+            record = json.loads((custody / 'complete.json').read_text())
+            need(data.get('legacy_recovery') or not present(lock) or (lock / 'owner.json').is_file(), 'STOP: RECOVERY_LOCK_OWNER_MISSING')
+            if present(lock) and not data.get('legacy_recovery'):
+                need(not (lock / 'owner.json').is_symlink() and json.loads((lock / 'owner.json').read_text()) == dict(stem=stem, uid=os.getuid()),
+                     'STOP: RECOVERY_LOCK_OWNER_MISMATCH')
+        # Validate the entire plan before the first removal; never recurse through symlinks.
+        found = {}
+        def enumerate_owned(path):
+            need(not path.is_symlink(), 'STOP: RECOVERY_SYMLINK ' + str(path))
+            info = runtime_identity(path, inode=True)
+            need(info.get('kind') in ('file', 'directory') and info.get('uid') == os.getuid(), 'STOP: RECOVERY_UNSAFE_ENTRY ' + str(path))
+            relative = str(path.relative_to(home))
+            if not legacy and path == custody / 'recovery-ownership.json':
+                need(info['mode'] == 0o600, 'STOP: RECOVERY_OWNERSHIP_MODE')
+            else:
+                expected = entries.get(relative)
+                need(expected is not None, 'STOP: RECOVERY_FOREIGN_ENTRY ' + relative)
+                need(all(info[k] == expected[k] for k in info), 'STOP: RECOVERY_ENTRY_IDENTITY_MISMATCH ' + relative)
+                if info['kind'] == 'file':
+                    need(sha(path.read_bytes()) == expected.get('sha256'), 'STOP: RECOVERY_SHA_MISMATCH ' + relative)
+            found[relative] = info
+            if info['kind'] == 'directory':
+                for child in sorted(path.iterdir()): enumerate_owned(child)
+        for root in roots:
+            if present(root): enumerate_owned(root)
+        for relative in entries:
+            need(relative in found or (not legacy and relative in data['removed']), 'STOP: RECOVERY_RECORDED_ENTRY_MISSING ' + relative)
+            need(any(home / relative == root or (home / relative).is_relative_to(root) for root in roots), 'STOP: RECOVERY_ENTRY_OUTSIDE_RUN')
+        files = []
+        for relative, row in ((PARITY_CONFIG, record), (PARITY_REQUIREMENTS, record['requirements'])):
+            if not row['created_by_run']: continue
+            need(not row['before']['exists'], 'STOP: RECOVERY_CREATED_FILE_WAS_PRESENT')
+            path = home / relative
+            need(path.is_file() and not path.is_symlink(), 'STOP: RECOVERY_BPRIME_MISSING_OR_UNSAFE ' + relative)
+            need(tree(path, False) == row['after'], 'STOP: RECOVERY_BPRIME_SHA_OR_METADATA_MISMATCH ' + relative)
+            files.append(path)
+        parent = home / PARITY_PARENT
+        remove_parent = record['parent_created_by_run']
+        parent_identity = None
+        if remove_parent:
+            need(not record['before']['exists'] and not record['requirements']['before']['exists'], 'STOP: RECOVERY_PARENT_CUSTODY_INVALID')
+            parent_identity = runtime_identity(parent, inode=True)  # No-follow plan-time pin, including legacy.
+            need(parent_identity.get('kind') == 'directory' and parent_identity.get('uid') == os.getuid() and
+                 not parent_identity['mode'] & 0o022, 'STOP: RECOVERY_PARENT_UNSAFE')
+            if not legacy:
+                expected_parent = data.get('parent_identity') if data.get('legacy_recovery') else record.get('parent_identity')
+                need(parent_identity == expected_parent, 'STOP: RECOVERY_PARENT_IDENTITY_MISMATCH')
+            need(set(parent.iterdir()) == set(files), 'STOP: RECOVERY_PARENT_NOT_EMPTY_AFTER_PLAN')
+        order = files + ([parent] if remove_parent else [])
+        # The ownership journal is the last file removed, so partial progress stays durable.
+        order += sorted((home / r for r in found if home / r != custody / 'recovery-ownership.json'),
+                        key=lambda p: (-len(p.parts), p == custody, str(p)))
+        order.remove(custody)
+        order += [custody / 'recovery-ownership.json', custody]
+        receipt['plan'] = [dict(path=str(p.relative_to(home)), operation='rmdir' if p.is_dir() else 'unlink') for p in order]
+        receipt['journal_writes'] = [str((custody / 'recovery-ownership.json').relative_to(home))]
+        if params.get('expected_recovery_plan') is not None:
+            need(receipt['plan'] == params['expected_recovery_plan'], 'STOP: RECOVERY_DRY_RUN_PLAN_MISMATCH')
+        if dry: return receipt
+        # Legacy proof is recorded before mutation; future resumes have the same ownership format.
+        if legacy:
+            OWNERSHIP.update(path=custody / 'recovery-ownership.json', data=dict(schema=1, stem=stem, home=str(home), uid=os.getuid(),
+                roots=[str(custody.relative_to(home)), str(initial.relative_to(home)), str(lock.relative_to(home))],
+                entries=entries, removed=[], legacy_recovery=True, parent_identity=parent_identity))
+            ownership_flush()
+        for path in order:
+            relative = str(path.relative_to(home))
+            plain_parents(home, [relative])
+            if path == parent:
+                need(runtime_identity(path, inode=True) == parent_identity, 'STOP: RECOVERY_PARENT_REPLACED')
+            need(not path.is_symlink(), 'STOP: RECOVERY_SYMLINK ' + relative)
+            if path in files:
+                row = record if relative == PARITY_CONFIG else record['requirements']
+                need(tree(path, False) == row['after'], 'STOP: RECOVERY_BPRIME_SHA_OR_METADATA_MISMATCH ' + relative)
+            elif relative in found:
+                need(runtime_identity(path, inode=True) == found[relative], 'STOP: RECOVERY_ENTRY_IDENTITY_MISMATCH ' + relative)
+                if path.is_file() and path != OWNERSHIP['path']:
+                    need(sha(path.read_bytes()) == entries[relative]['sha256'], 'STOP: RECOVERY_SHA_MISMATCH ' + relative)
+            if path.is_dir():
+                need(not list(path.iterdir()), 'STOP: RECOVERY_DIRECTORY_NOT_EMPTY ' + relative)
+                # Residual TOCTOU: a pathname replacement between this final lstat and rmdir remains possible.
+                if path == parent:
+                    need(runtime_identity(path, inode=True) == parent_identity, 'STOP: RECOVERY_PARENT_REPLACED')
+                path.rmdir()
+            else: path.unlink()
+            receipt['mutated'] = ROLLBACK['mutated'] = True
+            sync_directory(path.parent)
+            need(not present(path), 'STOP: RECOVERY_REMOVAL_NOT_ABSENT ' + relative)
+            receipt['removals'].append(dict(path=relative, absent_verified=True))
+            if present(OWNERSHIP['path']):
+                OWNERSHIP['data']['removed'].append(relative); ownership_flush()
+        OWNERSHIP.update(path=None, data=None)
+        return receipt
+    except Exception as error:
+        error.details = dict(getattr(error, 'details', {}), recovery_receipt=receipt)
+        raise
+
+DISK_RESERVE = 10 * 1024**3
+DISK_MARGIN = 2  # Tar framing, compression expansion and restore/staging coexistence.
+M4_EVIDENCE_ALLOWANCE = 256 * 1024**2
+
+def disk_space(path, components, host):
+    required = sum(components.values()) * DISK_MARGIN
+    need_bytes = required + DISK_RESERVE
+    filesystem = path
+    while not filesystem.exists(): filesystem = filesystem.parent
+    volume = os.statvfs(filesystem)
+    free = volume.f_bavail * volume.f_frsize
+    result = dict(host=host, filesystem=str(filesystem), components=components, margin=DISK_MARGIN,
+        required=required, reserve=DISK_RESERVE, need=need_bytes, free=free)
+    if free < need_bytes:
+        error = ValueError('STOP: INSUFFICIENT_DISK need=' + str(need_bytes) + ' free=' + str(free) + ' reserve=' + str(DISK_RESERVE))
+        error.details = dict(disk=result)
+        raise error
+    return result
+
+def archive_estimate(path):
+    # Exactly tar's non-following objects; directory/link lstat sizes deliberately
+    # overestimate their payload and 2048 bytes/object cover tar/PAX framing.
+    if not present(path): return 0
+    info = path.lstat()
+    size = ((info.st_size + 511) // 512) * 512 + 2048
+    if stat.S_ISDIR(info.st_mode):
+        size += sum(archive_estimate(child) for child in sorted(path.iterdir()))
+    return size
+
+def m1_disk_space(home, params, record=None, paths=None):
+    archived = paths if paths is not None else mutable(home)
+    excluded = set()
+    if record:
+        if record['created_by_run']: excluded.add(PARITY_CONFIG)
+        if record['requirements']['created_by_run']: excluded.add(PARITY_REQUIREMENTS)
+    snapshot = 10240 + sum(archive_estimate(home / p) for p in archived if p not in excluded)
+    inputs = params['disk_inputs']
+    components = dict(snapshot_tar=snapshot, extracted_release=inputs['extracted_release'],
+        retained_releases_growth=inputs['extracted_release'],
+        staging_transport=inputs['assets'] + inputs['transport'])
+    return disk_space(home / '.golems', components, 'M1 Pro')
+
+def m4_disk_space(run):
+    assets = run / 'release-preflight'
+    size = sum(p.lstat().st_size for p in assets.iterdir()) if assets.is_dir() else 0
+    return disk_space(run, dict(run_assets=size, evidence_allowance=M4_EVIDENCE_ALLOWANCE), 'M4 Max')
 
 # Evidence-only writes do not count as restoration mutations in attempt reports.
 ROLLBACK = {'mutated': False, 'phase': 'validation', 'saved': None}
@@ -999,6 +1514,7 @@ def evidence(path, value):
         output.flush()
         os.fsync(output.fileno())
     sync_directory(path.parent)
+    record_created(path)
 def parity_template(home):
     # M1 peer alias/key were inspected read-only; absolute paths use this host's HOME.
     return dict(schema=1, host='macbook-pro', identity=str(home / '.ssh/id_ed25519'),
@@ -1198,7 +1714,7 @@ def create_requirements(home, expected, record_before):
         sync_directory(path.parent)
     verify_requirements(path, expected)
     record['after'] = tree(path, False)
-    need(record['created_by_run'] or record['after'] == before, 'STOP: existing requirements changed')
+    state_need(record['created_by_run'] or record['after'] == before, before, record['after'], 'STOP: existing requirements changed')
     return record
 
 def requirements_self_test(base, ns, required, m1, m4):
@@ -1282,7 +1798,7 @@ def reviewed_parity_schema(source):
             need(node.name not in found, 'STOP: duplicate parity schema function')
             raw = '\n'.join(source.splitlines()[node.lineno-1:node.end_lineno]) + '\n'
             found[node.name] = sha(raw.encode())
-    need(found == expected, 'STOP: parity schema/identity source changed at MERGE_SHA; review template first')
+    state_equal(found, expected, 'STOP: parity schema/identity source changed at MERGE_SHA; review template first')
 
 def parity_config_pre_step(home, ns, params, custody):
     reviewed_parity_schema(params['i5_source'])
@@ -1306,14 +1822,17 @@ def parity_config_pre_step(home, ns, params, custody):
     create_parity_parent(home, parent_before)
     requirements_record = create_requirements(home, expected, lambda row: evidence(custody / 'requirements-before.json', row))
     def config_before(row):
-        need(all(record[k] == v for k, v in row.items()), 'STOP: parity config changed since parent custody')
+        state_need(all((record[k] == v for k, v in row.items())), {k: record[k] for k in row}, row, 'STOP: parity config changed since parent custody')
     record.update(create_parity_config(home, template, config_before))
     ns['load_config'](str(home / PARITY_CONFIG))
     record['after'] = tree(home / PARITY_CONFIG, False)
-    need(record['created_by_run'] or record['after'] == record['before'], 'STOP: existing parity config changed during pre-step')
+    state_need(record['created_by_run'] or record['after'] == record['before'], record['before'], record['after'], 'STOP: existing parity config changed during pre-step')
     record['requirements'] = requirements_record
     record['requirements_source'] = {k: params['m4_requirements'][k] for k in ('path', 'sha256')}
+    record['parent_identity'] = runtime_identity(home / PARITY_PARENT, inode=True)
     evidence(custody / 'complete.json', record)
+    stem = params['head'] + '-' + params['stamp']
+    ownership_start(home, stem, custody)
     return record
 
 def restore_member_metadata(staging, members):
@@ -1389,20 +1908,20 @@ def verify_roots(before, after, home, params, restore=False, known_drift=None):
         if restore:
             need(a == b, 'rollback root mismatch: ' + root)
             continue
-        need(a['complete']['rows'][0] == b['complete']['rows'][0], 'root metadata changed: ' + root)
+        state_equal(a['complete']['rows'][0], b['complete']['rows'][0], 'root metadata changed: ' + root)
         need(allowed[root] <= b['entries'].keys(), 'required catalog/vendor entry missing: ' + root)
         for name in sorted(a['entries'].keys() | b['entries'].keys()):
             old, new = a['entries'].get(name), b['entries'].get(name)
             path = home / root / name
             if (known_drift and known_drift['removed_by_run'] and known_drift.get('complete') and
                     root == known_drift['root'] and name == known_drift['name']):
-                need(old and new is None, 'STOP: known drift removal changed after pre-step')
+                state_need(old and new is None, old, new, 'STOP: known drift removal changed after pre-step')
                 link = old['state']['rows'][0]
                 need(link['link_text'] == known_drift['link_text'] and
                      all(link[k] == known_drift[k] for k in ('mode', 'uid', 'gid')), 'STOP: known drift custody mismatch')
                 continue
             if old and not old['owned']:
-                need(new == old, 'M1-only entry changed: ' + str(path))
+                state_equal(new, old, 'M1-only entry changed: ' + str(path))
                 unchanged.append(str(path))
                 continue
             if old == new and name not in allowed[root] and root != ROOTS[4]: continue
@@ -1413,8 +1932,8 @@ def verify_roots(before, after, home, params, restore=False, known_drift=None):
                 need(root in ROOTS[:3] and old and old['owned'] and name not in allowed[root], 'unexpected removal')
                 continue
             else:
-                need(name in allowed[root], 'unrecognized added/changed entry: ' + str(path))
-            need(path.is_symlink() and owned(path, home), 'changed entry is not a managed link: ' + str(path))
+                state_need(name in allowed[root], sorted(allowed[root]), name, 'unrecognized added/changed entry: ' + str(path))
+            state_need(path.is_symlink() and owned(path, home), {'kind': 'managed-link'}, new, 'changed entry is not a managed link: ' + str(path))
             target = path.resolve(strict=True)
             if (root, name) in vendor:
                 need(target.is_relative_to(home / '.golems/vendor/design-skills'), 'wrong vendor destination')
@@ -1422,15 +1941,23 @@ def verify_roots(before, after, home, params, restore=False, known_drift=None):
                 expected = {k[len(prefix):]: v for k, v in params['vendor']['files'].items() if k.startswith(prefix)}
             else:
                 expected_root = (home / '.golems/current/skills/golem-powers' / name).resolve(strict=True)
-                need(target == expected_root, 'changed link selects wrong release: ' + str(path))
+                state_equal(target, expected_root, 'changed link selects wrong release: ' + str(path))
                 prefix = 'skills/golem-powers/' + name + '/'
                 expected = {f['path'][len(prefix):]: f['sha256'] for f in params['manifest']['files'] if f['path'].startswith(prefix)}
             actual = {r['path']: r['sha256'] for r in tree(target, True)['rows'] if 'sha256' in r}
-            need(actual == expected and 'SKILL.md' in actual, 'changed skill bytes mismatch: ' + str(path))
+            state_need(actual == expected and 'SKILL.md' in actual, expected, actual, 'changed skill bytes mismatch: ' + str(path))
     return unchanged
 
 def remote(params, mode):
     home = Path.home()
+    controller_write_guard(home)
+    stem = params['head'] + '-' + params['stamp']
+    initial = home / '.golems/m1-sync' / stem
+    saved = initial.with_name('.procedure-' + stem)
+    lock = home / '.golems/m1-procedure.lock'
+    config_custody = home / '.golems/m1-sync' / ('.parity-config-' + stem)
+    DIAGNOSTICS.update(home=home, directory=saved if saved.is_dir() else initial if initial.is_dir() else config_custody)
+    if not present(saved): ownership_load(config_custody)
     for key in ('CODEX_HOME', 'NODE_OPTIONS', 'PYTHONPATH', 'PYTHONHOME', 'RATCHET_SKILL_CONFIG'):
         need(not os.environ.get(key), 'unexpected remote override: ' + key)
     source = home / '.golems/current'
@@ -1441,15 +1968,21 @@ def remote(params, mode):
     need(ns['observed_identity']() == params['expected_m1_identity'], 'wrong remote machine/hostname/HOME identity')
     # The verified source runs through stdin, including after restoring an older release.
     ns['remote_inventory_script'] = lambda: 'RELEASE_SHIPPING_POLICY = ' + repr(params['policy']) + '\n' + params['i5_source']
+    if mode == 'recover' or (mode == 'rollback' and not present(saved)):
+        ROLLBACK['phase'] = 'pre-snapshot-recovery'
+        result = recovery(home, params, initial, saved, lock, config_custody)
+        ROLLBACK['phase'] = 'recovery-complete'
+        return result
     if params.get('bootstrap'):
         trust = trust_file(home)
         if mode != 'preflight' and mode != 'rollback':
-            need(trust == params['m1_trust_before'], 'STOP: M1 Pro known_hosts changed')
+            state_equal(trust, params['m1_trust_before'], 'STOP: M1 Pro known_hosts changed')
         if mode == 'transport':
             config = ns['load_config'](str(home / '.golems/ratchet/installed-skills.json'))
             stage = home / params['bootstrap']['transport_dir']
             plain_parents(home, [str(stage.relative_to(home)) + '/bin/ssh'])
             need(not present(stage), 'STOP: transport stage already exists')
+            m1_disk_space(home, params, json.loads((config_custody / 'complete.json').read_text()))
             stage.mkdir(mode=0o700, parents=True)
             bin_dir = stage / 'bin'; bin_dir.mkdir(mode=0o700)
             for binary in ('ssh', 'scp'):
@@ -1460,12 +1993,12 @@ def remote(params, mode):
                 need(shutil.which(binary) == str(script), 'STOP: M1 Pro shim resolution mismatch')
             output = command(['ssh', '-G', config['host']])
             require_strict_ssh_config(output)
-            need(trust_file(home) == trust, 'STOP: M1 Pro known_hosts changed during transport proof')
+            state_equal(trust_file(home), trust, 'STOP: M1 Pro known_hosts changed during transport proof')
             return {'verdict': 'STRICT_M1_TRANSPORT_VERIFIED', 'host': config['host'], 'effective': output, 'known_hosts': trust}
         if mode != 'preflight':
             bin_dir = home / params['bootstrap']['transport_dir'] / 'bin'
             for binary in ('ssh', 'scp'):
-                need(shutil.which(binary) == str(bin_dir / binary), 'STOP: M1 Pro shim missing or PATH changed')
+                state_equal(shutil.which(binary), str(bin_dir / binary), 'STOP: M1 Pro shim missing or PATH changed')
             config = parity_template(home) if mode == 'rollback' else ns['load_config'](str(home / PARITY_CONFIG))
             require_strict_ssh_config(command(['ssh', '-G', config['host']]))
     stem = params['head'] + '-' + params['stamp']
@@ -1477,6 +2010,8 @@ def remote(params, mode):
     need(not present(home / '.golems/m1-sync') or not (home / '.golems/m1-sync').is_symlink(), 'symlinked staging parent')
     if mode in ('preflight', 'snapshot', 'presync'):
         real_directories(home, params)
+        entry_record = json.loads((config_custody / 'complete.json').read_text()) if mode != 'preflight' else None
+        m1_disk_space(home, params, entry_record)  # Early low-space STOP has zero remote writes.
     if mode == 'preflight':
         for binary in ('python3', 'node', 'bun', 'sh', 'tar', 'shasum'):
             need(shutil.which(binary), 'missing runtime: ' + binary)
@@ -1492,30 +2027,37 @@ def remote(params, mode):
         need(not (home / '.golems/release.json').is_symlink(), 'release.json must not be a symlink')
         before = capture(home, ns)
         drift = require_hashable_capture(before, home, params['policy'], allow_known_drift=True)
+        disk = m1_disk_space(home, params)  # Immediately before the first remote write.
         # Before any parent/config/custody write; only the exact recorded drift may wait for snapshot.
         config_record = parity_config_pre_step(home, ns, params, config_custody)
-        return {'verdict': 'PREFLIGHT_READY', 'before': before, 'parity_config': config_record, 'known_drift': drift, 'known_hosts': trust_file(home)}
+        return {'verdict': 'PREFLIGHT_READY', 'disk': disk, 'before': before, 'parity_config': config_record, 'known_drift': drift, 'known_hosts': trust_file(home)}
     if mode == 'snapshot':
         captured = capture(home, ns)
         drift = require_hashable_capture(captured, home, params['policy'], allow_known_drift=True)
         # Before lock/stage/archive creation; every unknown dangling entry still STOPs.
         need(not present(lock) and not present(initial) and not present(saved), 'concurrent/reused run')
+        disk = m1_disk_space(home, params, json.loads((config_custody / 'complete.json').read_text()))
         lock.mkdir(mode=0o700)
+        record_created(lock)
+        evidence(lock / 'owner.json', dict(stem=stem, uid=os.getuid()))
         initial.mkdir(mode=0o700, parents=True)
+        record_created(initial)
+        DIAGNOSTICS['directory'] = initial
         config_record = json.loads((config_custody / 'complete.json').read_text())
         verify_parity_config(home / PARITY_CONFIG, parity_template(home))
         verify_requirements(home / PARITY_REQUIREMENTS, derived_requirements(params['m4_requirements'], ns,
                             params['expected_m1_identity'], params['expected_m4_identity']))
-        need(capture(home, ns) == captured, 'STOP: PRE_SNAPSHOT_STATE_CHANGED')
-        need(captured['mutable'][PARITY_CONFIG] == config_record['after'], 'STOP: parity config changed after pre-step')
+        capture_equal(captured, capture(home, ns), 'STOP: PRE_SNAPSHOT_STATE_CHANGED')
+        state_equal(captured['mutable'][PARITY_CONFIG], config_record['after'], 'STOP: parity config changed after pre-step')
         before = json.loads(json.dumps(captured))
-        need(captured['mutable'][PARITY_REQUIREMENTS] == config_record['requirements']['after'], 'STOP: requirements changed after pre-step')
+        state_equal(captured['mutable'][PARITY_REQUIREMENTS], config_record['requirements']['after'], 'STOP: requirements changed after pre-step')
         before['mutable'][PARITY_CONFIG] = config_record['before']
         before['mutable'][PARITY_REQUIREMENTS] = config_record['requirements']['before']
         state = {'started': utc(), 'before': before, 'parity_config': config_record, 'known_drift': drift, 'paths': mutable(home),
             'receipt_parents': {p: present(home / p) for p in ('.local/state/golems', '.local/state/golems/install-receipts')},
             'existing_skill_backups': sorted(str(p) for p in (home / '.claude').glob('skills.bak-*'))}
         archive_path = initial / 'pre-snapshot.tgz'
+        disk = m1_disk_space(home, params, config_record, state['paths'])
         with tarfile.open(archive_path, 'x:gz', dereference=False) as archive:
             for relative in state['paths']:
                 if relative == PARITY_CONFIG and config_record['created_by_run']: continue
@@ -1525,43 +2067,47 @@ def remote(params, mode):
             for member in archive.getmembers():
                 need(member.uid == os.getuid() and member.gid in set(os.getgroups()) | {os.getgid()}, 'snapshot ownership cannot be restored without privilege: ' + member.name)
         state['archive_sha256'] = sha(archive_path.read_bytes())
+        record_created(archive_path)
         (initial / 'current-target.txt').write_text(before['current'] + '\n')
         (initial / 'pre-snapshot.sha256').write_text(state['archive_sha256'] + '  pre-snapshot.tgz\n')
+        record_created(initial / 'current-target.txt')
+        record_created(initial / 'pre-snapshot.sha256')
         with archive_path.open('rb') as archive_file: os.fsync(archive_file.fileno())
         evidence(initial / 'state.json', state)
-        need(capture(home, ns) == captured, 'pre-state changed while snapshot was written')
+        capture_equal(captured, capture(home, ns), 'STOP: SNAPSHOT_WRITE_STATE_CHANGED')
         # Never impersonate a successful sync attempt with a fabricated success.json.
         initial.rename(saved)
+        OWNERSHIP.update(path=None, data=None)  # Complete-snapshot rollback owns custody from here.
+        DIAGNOSTICS['directory'] = saved
         sync_directory(saved.parent)
         record = remove_known_drift(home, saved, drift)
         after_removal = capture(home, ns)
         require_hashable_capture(after_removal)  # STRICT after the one reviewed unlink.
-        return {'snapshot': str(saved / 'pre-snapshot.tgz'), 'original_path': str(archive_path),
+        return {'disk': disk, 'snapshot': str(saved / 'pre-snapshot.tgz'), 'original_path': str(archive_path),
                 'sha256': state['archive_sha256'], 'before': before, 'parity_config': config_record,
                 'known_drift': record, 'root_hashes': {r: v['tree_sha256'] for r, v in after_removal['roots'].items()}}
     need(saved.is_dir() and not saved.is_symlink(), 'complete snapshot custody directory missing')
     state = json.loads((saved / 'state.json').read_text())
     before = state['before']
     if mode in ('presync', 'post'):
-        verify_requirements(home / PARITY_REQUIREMENTS, derived_requirements(params['m4_requirements'], ns,
-                            params['expected_m1_identity'], params['expected_m4_identity']))
-        need(tree(home / PARITY_REQUIREMENTS, False) == state['parity_config']['requirements']['after'], 'STOP: requirements changed after pre-step')
+        state_equal(tree(home / PARITY_REQUIREMENTS, False), state['parity_config']['requirements']['after'], 'STOP: requirements changed after pre-step')
     if mode == 'presync':
         strict_capture = capture(home, ns)
         require_hashable_capture(strict_capture)
-        need(tree(home / PARITY_CONFIG, False) == state['parity_config']['after'], 'STOP: parity config changed before sync')
-        return {'verdict': 'REAL_DIRECTORIES_VERIFIED_BEFORE_SYNC',
+        protected_equal(before['protected'], strict_capture['protected'], 'STOP: PRESYNC_PROTECTED_STATE_CHANGED')
+        state_equal(tree(home / PARITY_CONFIG, False), state['parity_config']['after'], 'STOP: parity config changed before sync')
+        disk = m1_disk_space(home, params, state['parity_config'], state['paths'])
+        return {'verdict': 'REAL_DIRECTORIES_VERIFIED_BEFORE_SYNC', 'disk': disk,
                 'known_drift': json.loads((saved / 'known-drift-complete.json').read_text()),
                 'root_hashes': {r: v['tree_sha256'] for r, v in strict_capture['roots'].items()}}
     if mode == 'receipt':
         return json.loads((home / '.local/state/golems/install-receipts/golems/latest-skills-sync-release-channel.json').read_text())
     if mode == 'post':
-        verify_parity_config(home / PARITY_CONFIG, parity_template(home))
-        need(tree(home / PARITY_CONFIG, False) == state['parity_config']['after'], 'STOP: parity config changed during sync')
+        state_equal(tree(home / PARITY_CONFIG, False), state['parity_config']['after'], 'STOP: parity config changed during sync')
         after = capture(home, ns)
         require_hashable_capture(after)
-        need(after['protected'] == before['protected'], 'OUTSIDE SCOPE: STOP; protected state changed')
-        need(after['config_sha256'] == before['config_sha256'], 'config.toml changed')
+        protected_equal(before['protected'], after['protected'], 'STOP: POST_PROTECTED_STATE_CHANGED')
+        state_equal(after['config_sha256'], before['config_sha256'], 'config.toml changed')
         diffs = {}
         for path, old in before['configs'].items():
             new = after['configs'][path]
@@ -1588,7 +2134,7 @@ def remote(params, mode):
             owner = subprocess.run(['node', str(source / 'scripts/hooks/install-hooks.mjs'), '--host', 'client', '--source', str(source), '--status'], capture_output=True, text=True)
             need(owner.returncode == 0, 'STOP: hook owner status failed: ' + owner.stderr)
             need(re.search(r'^release=.* drift=0$', owner.stdout, re.M), 'STOP: missing clean release hook status')
-            need(trust_file(home) == params['m1_trust_before'], 'STOP: M1 Pro known_hosts changed')
+            state_equal(trust_file(home), params['m1_trust_before'], 'STOP: M1 Pro known_hosts changed')
             return {'verdict': 'BOOTSTRAP_WITH_FIVE_ROOT_CHECKS', 'after': after, 'json_diff': diffs,
                 'm1_only_unchanged': unchanged, 'receipt_path': 'none', 'receipt_id': None,
                 'owner_status': {'exit': owner.returncode, 'stdout': owner.stdout, 'stderr': owner.stderr},
@@ -1671,7 +2217,7 @@ def remote(params, mode):
                 if original_id is None:
                     need(not present(path) and not present(dest), 'originally absent move path appeared: ' + relative)
                 elif present(path) and not present(dest):
-                    need(identity(path) == original_id, 'move source changed: ' + relative)
+                    state_equal(identity(path), original_id, 'move source changed: ' + relative)
                     dest.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
                     move_restore(path, dest)
                 else:
@@ -1720,7 +2266,7 @@ def remote(params, mode):
                     need(not present(path) and not present(extracted), 'absent restore path appeared: ' + relative)
                 elif present(extracted):
                     need(not present(path), 'restore destination appeared: ' + relative)
-                    need(tree(extracted, False) == expected, 'extracted path changed: ' + relative)
+                    state_equal(tree(extracted, False), expected, 'extracted path changed: ' + relative)
                     need(path.parent.is_dir() and not path.parent.is_symlink(), 'restore parent missing/unsafe')
                     move_restore(extracted, path)
                 else:
@@ -1745,7 +2291,7 @@ def remote(params, mode):
             verify_roots(before, restored, home, params, restore=True)
             need(restored['current'] == old_target, 'rollback current mismatch')
             need(restored['configs'] == before['configs'] and restored['mutable'] == before['mutable'], 'rollback footprint mismatch')
-            need(restored['protected'] == before['protected'], 'OUTSIDE SCOPE: STOP; rollback cannot repair protected state')
+            protected_equal(before['protected'], restored['protected'], 'STOP: ROLLBACK_PROTECTED_STATE_CHANGED')
             owner = subprocess.run(['node', str(source / 'scripts/hooks/install-hooks.mjs'), '--host', 'client', '--source', str(source), '--status'], capture_output=True, text=True)
             out, err, previous_argv = io.StringIO(), io.StringIO(), sys.argv
             try:
@@ -1767,7 +2313,7 @@ def remote(params, mode):
     if mode == 'finish':
         final_checks = remote(params, 'post')
         if not params.get('bootstrap'):
-            need(final_checks['receipt_id'] == params['accepted_receipt_id'], 'receipt changed after acceptance')
+            state_equal(final_checks['receipt_id'], params['accepted_receipt_id'], 'receipt changed after acceptance')
         need(lock.is_dir() and not lock.is_symlink(), 'procedure lock missing')
         lock.rename(saved / 'procedure-lock-completed')
         return {'verdict': 'COMPLETE', 'snapshot': str(saved / 'pre-snapshot.tgz'), 'final_checks': final_checks}
@@ -1776,7 +2322,7 @@ def remote(params, mode):
 if 'PARAMS' in globals():
     try:
         result = remote(PARAMS, MODE)
-        if MODE == 'rollback':
+        if MODE == 'rollback' and ROLLBACK['saved'] is not None:
             evidence(ROLLBACK['saved'] / ('rollback-attempt-' + str(PARAMS['rollback_attempt']) + '.json'), result)
         print(json.dumps(result, sort_keys=True))
     except Exception as error:
@@ -1784,7 +2330,8 @@ if 'PARAMS' in globals():
         print(result['error'], file=sys.stderr)
         if MODE == 'rollback':
             result = {'verdict': 'ROLLBACK_PARTIAL_NOT_GREEN', 'mutated': ROLLBACK['mutated'],
-                      'phase': ROLLBACK['phase'], 'error': result['error']}
+                      'phase': ROLLBACK['phase'], 'error': result['error'],
+                      **{k: v for k, v in result.items() if k not in ('verdict', 'mutated', 'phase', 'error')}}
             if ROLLBACK['saved'] is not None:
                 try: evidence(ROLLBACK['saved'] / ('rollback-attempt-' + str(PARAMS['rollback_attempt']) + '.json'), result)
                 except Exception as evidence_error:
@@ -1796,14 +2343,31 @@ else:
     try:
         run = Path(os.environ['RUN'])
         params = {'head': os.environ['MERGE_SHA'], 'stamp': os.environ['UTC_TS'], 'version': os.environ['VERSION']}
+        requested_mode = sys.argv[1]
+        if requested_mode == 'm4-disk':
+            result = m4_disk_space(run)
+            evidence(run / 'm4-disk-before-sync.json', result)
+            print(json.dumps(result, sort_keys=True)); sys.exit(0)
+        if requested_mode in ('preflight', 'snapshot', 'presync'): params['m4_disk'] = m4_disk_space(run)
+        params['dry_run'] = '--dry-run' in sys.argv[2:]
+        if requested_mode == 'recover':
+            need(len(sys.argv) in (3, 4) and sys.argv[2] == params['head'] + '-' + params['stamp'] and
+                 (len(sys.argv) == 3 or sys.argv[3] == '--dry-run'), 'STOP: RECOVERY_REQUIRES_EXACT_PAST_STEM')
+        params['recovery_evidence'] = {}
+        for name in ('preflight', 'snapshot'):
+            old = run / (name + '.json')
+            if old.is_file():
+                params['recovery_evidence'][name] = json.loads(old.read_text())
+                params['recovery_evidence'][name + '_mtime_ns'] = old.stat().st_mtime_ns
+        DIAGNOSTICS.update(home=Path.home(), directory=run)
         params['frozen_source'] = (run / 'frozen-i5.py').read_text()
         params['bootstrap'] = json.loads((run / 'bootstrap-config.json').read_text()) if (run / 'bootstrap-config.json').exists() else None
         if params['bootstrap']:
             os.environ['M1_TRANSPORT_DIR'] = params['bootstrap']['transport_dir']
             os.environ['PATH'] = str(run / 'bin') + os.pathsep + os.environ['PATH']
             require_strict_ssh_config((run / 'm4-ssh-effective.txt').read_text())
-            if sys.argv[1] != 'rollback':
-                need(trust_file(Path.home()) == json.loads((run / 'm4-trust-initial.json').read_text()), 'STOP: M4 Max known_hosts changed')
+            if sys.argv[1] not in ('rollback', 'recover'):
+                state_equal(trust_file(Path.home()), json.loads((run / 'm4-trust-initial.json').read_text()), 'STOP: M4 Max known_hosts changed')
             if sys.argv[1] != 'preflight':
                 params['m1_trust_before'] = json.loads((run / 'preflight.json').read_text())['known_hosts']
         release = run / 'release-preflight' / ('golems-' + params['version'] + '.tar.gz')
@@ -1811,6 +2375,10 @@ else:
             def document(name): return json.loads(archive.extractfile(name).read())
             params.update(catalog=document('skills/catalog.json'), vendor=document('skills/vendor/manifest.json'),
                 manifest=document('MANIFEST.json'))
+            extracted_bytes = sum(((m.size + 511) // 512) * 512 + 2048 for m in archive.getmembers())
+        params['disk_inputs'] = dict(extracted_release=extracted_bytes,
+            assets=sum(p.lstat().st_size for p in (run / 'release-preflight').iterdir()),
+            transport=len(Path(__file__).read_bytes()) + len(params['frozen_source'].encode()) + 65536)
         git_command = ['git', '-C', os.environ['GOLEMS_ROOT']]
         need(subprocess.run([*git_command, 'cat-file', '-e', params['head'] + '^{commit}'],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, 'STOP: M4 Max checkout lacks MERGE_SHA')
@@ -1828,6 +2396,7 @@ else:
         i5_identity = dict(merge_sha=params['head'], path=i5_path, blob_id=oid, sha256=sha(i5_bytes))
         need(i5_identity == json.loads((run / 'i5-source.json').read_text()), 'STOP: I5 source identity differs from preflight')
         params['i5_source'] = i5_bytes.decode()
+        params['disk_inputs']['transport'] += len(i5_bytes)
         mode = sys.argv[1]
         if mode == 'rollback':
             numbers = [int(p.name.split('-')[2].split('.')[0]) for p in run.glob('rollback-attempt-*.*')]
@@ -1838,19 +2407,24 @@ else:
             evidence(run / (evidence_stem + '.json'), {'verdict': 'TRANSPORT_PENDING_OR_INTERRUPTED', 'mutated': None,
                 'note': 'Restoration mutation unknown until a complete remote result is received.'})
         else:
-            evidence_stem = mode
-            need(not present(run / (mode + '.json')) and not present(run / (mode + '.stderr')), 'mode already attempted; retain its evidence and STOP')
+            evidence_stem = ('recover-dry-run' if params['dry_run'] else 'recover') if mode == 'recover' else mode
+            need(not present(run / (evidence_stem + '.json')) and not present(run / (evidence_stem + '.stderr')), 'mode already attempted; retain its evidence and STOP')
+        if mode == 'recover' and not params['dry_run']:
+            reviewed_plan = json.loads((run / 'recover-dry-run.json').read_text())
+            need(reviewed_plan.get('verdict') == 'RECOVERY_PLAN' and reviewed_plan.get('stem') == params['head'] + '-' + params['stamp'],
+                 'STOP: RECOVERY_DRY_RUN_REQUIRED')
+            params['expected_recovery_plan'] = reviewed_plan['plan']
         # The M4 Max is also an SSH initiator; retain and compare its trust/config bytes.
         m4_paths = [Path.home() / '.ssh/known_hosts', Path.home() / '.codex/config.toml',
                     Path.home() / '.golems/ratchet/installed-skills.json']
-        need(mode == 'rollback' or not any(p.is_symlink() for p in m4_paths), 'protected M4 Max file is symlinked; re-audit')
+        need(mode in ('rollback', 'recover') or not any(p.is_symlink() for p in m4_paths), 'protected M4 Max file is symlinked; re-audit')
         m4_now = {str(p): tree(p, False) for p in m4_paths}
         m4_file = run / 'm4-protected-before.json'
         if mode == 'preflight':
             with m4_file.open('x') as output: json.dump(m4_now, output, sort_keys=True)
-        elif mode != 'rollback':
-            need(m4_now == json.loads(m4_file.read_text()), 'OUTSIDE SCOPE: STOP; M4 Max trust/config changed')
-        need(mode in ('preflight', 'transport', 'snapshot', 'presync', 'receipt', 'post', 'rollback', 'finish'), 'invalid mode')
+        elif mode not in ('rollback', 'recover'):
+            state_equal(m4_now, json.loads(m4_file.read_text()), 'OUTSIDE SCOPE: STOP; M4 Max trust/config changed')
+        need(mode in ('preflight', 'transport', 'snapshot', 'presync', 'receipt', 'post', 'rollback', 'recover', 'finish'), 'invalid mode')
         identity_file = run / 'expected-m1-identity.json'
         if mode == 'preflight':
             identity_ns = {'__name__': 'procedure_identity', '__file__': str(release),
@@ -1869,8 +2443,7 @@ else:
         params['m4_requirements'] = json.loads((run / 'm4-requirements.json').read_text())
         origin = params['m4_requirements']
         origin_path = Path(origin['path'])
-        need(not origin_path.is_symlink() and origin_path.is_file() and
-             sha(origin_path.read_bytes()) == origin['sha256'], 'STOP: reviewed M4 requirements changed')
+        state_need(not origin_path.is_symlink() and origin_path.is_file() and (sha(origin_path.read_bytes()) == origin['sha256']), {'sha256': origin['sha256']}, {'sha256': sha(origin_path.read_bytes()) if origin_path.is_file() else None}, 'STOP: reviewed M4 requirements changed')
         params['expected_m1_identity'] = json.loads(identity_file.read_text())
         params['expected_m4_identity'] = json.loads((run / 'expected-m4-identity.json').read_text())
         if mode == 'finish' and not params['bootstrap']: params['accepted_receipt_id'] = json.loads((run / 'post.json').read_text())['receipt_id']
@@ -1894,16 +2467,16 @@ else:
             final_path.rename(run / (evidence_stem + '.json'))
             sync_directory(run)
         else:
-            (run / (mode + '.stderr')).write_text(result.stderr)
+            (run / (evidence_stem + '.stderr')).write_text(result.stderr)
             try: remote_result = json.loads(result.stdout)
             except ValueError:
                 error = ValueError('STOP: CONTROLLER_TRANSPORT exit=' + str(result.returncode))
                 error.details = {'stdout': result.stdout, 'stderr': result.stderr}
                 remote_result = controller_error(error, mode)
-            evidence(run / (mode + '.json'), remote_result)
+            evidence(run / (evidence_stem + '.json'), remote_result)
         if params['bootstrap']:
-            need(trust_file(Path.home()) == json.loads((run / 'm4-trust-initial.json').read_text()), 'STOP: M4 Max known_hosts changed')
-        need(m4_after == json.loads(m4_file.read_text()), 'OUTSIDE SCOPE: STOP; M4 Max trust/config changed')
+            state_equal(trust_file(Path.home()), json.loads((run / 'm4-trust-initial.json').read_text()), 'STOP: M4 Max known_hosts changed')
+        state_equal(m4_now if mode == 'recover' else json.loads(m4_file.read_text()), m4_after, 'OUTSIDE SCOPE: STOP; M4 Max trust/config changed')
         need(result.returncode == 0, (remote_result.get('error') if mode != 'rollback' else None) or
              'STOP: CONTROLLER_COMMAND_FAILED ' + mode + '; retain ' + str(run / (evidence_stem + '.stderr')))
         json.loads(result.stdout)
@@ -1981,13 +2554,27 @@ The r4i config template remains:
 
 The exact source schema/identity function bytes remain checked by `reviewed_parity_schema()`; changed bytes STOP for review. The key and peer trust remain existing read-only prerequisites. On the M1 Pro only, the pre-step creates exactly `.golems/ratchet` if absent, mode `0700`, after checking that `.golems` already exists as a real, non-symlink directory owned by the running user. An existing `ratchet` must be real, non-symlink, owned by that user, and not group/world writable; otherwise STOP. Never chmod an existing directory. Both files are checked before any write: present config must match the exact four keys/types/values (existing whitespace is preserved); present requirements must equal the exact derived bytes. Each must be a regular non-symlink file, running uid, mode `0600`. Any mismatch, roots drift, `0644` or symlink STOPs without rewriting. Absent files are exclusively created as `0600` only after strict peer option proof; identical files retain their bytes and inode. No other manifest, config, key, skill root, grant or trust entry is created. Parent creation follows the existing key and strict peer checks; no missing key or trust entry is provisioned.
 
-Pre-step custody remains `.golems/m1-sync/.parity-config-<MERGE_SHA>-<UTC_TS>/`. `before.json` records `parent_created_by_run` and the config's original state before the exclusive parent `mkdir`; `requirements-before.json` is fsynced before requirements creation, and the config's original state is rechecked before its creation. `complete.json` retains `parent_created_by_run`, both file `created_by_run` flags, original and resulting listings, source path and SHA256. Snapshot state replaces both active pre-step files with their original bytes/absence. Pre-existing files are archived; files created by this run are excluded from tar and rollback moves them into retained quarantine, restoring original absence. Snapshot state retains the parent creation flag separately from the two file paths, avoiding overlapping archive/rollback paths. After restoring both files to absence, rollback removes `.golems/ratchet` only when `parent_created_by_run=true` and it is empty, using `rmdir`; unexpected contents STOP and remain intact. Pre-existing directories remain untouched, and retry accepts an already removed created parent. Snapshot, presync, post and finish check requirements bytes/metadata against the source derivation and custody. Interrupted creation or pre-snapshot failure retains evidence and STOPs without claiming complete rollback; no automatic retry or cleanup.
+Pre-step custody remains `.golems/m1-sync/.parity-config-<MERGE_SHA>-<UTC_TS>/`. `before.json` records `parent_created_by_run` and the config's original state before the exclusive parent `mkdir`; `requirements-before.json` is fsynced before requirements creation, and the config's original state is rechecked before its creation. `complete.json` retains `parent_created_by_run`, both file `created_by_run` flags, original and resulting listings, source path and SHA256. Snapshot state replaces both active pre-step files with their original bytes/absence. Pre-existing files are archived; files created by this run are excluded from tar and rollback moves them into retained quarantine, restoring original absence. Snapshot state retains the parent creation flag separately from the two file paths, avoiding overlapping archive/rollback paths. After restoring both files to absence, rollback removes `.golems/ratchet` only when `parent_created_by_run=true` and it is empty, using `rmdir`; unexpected contents STOP and remain intact. Pre-existing directories remain untouched, and retry accepts an already removed created parent. Snapshot, presync, post and finish check requirements bytes/metadata against the source derivation and custody. Interrupted creation or pre-snapshot failure retains evidence and STOPs. The reviewed r4p recovery below is the only pre-snapshot residue removal; it never authorizes an install retry.
 
 Inline local tests exercise exact derivation, an M1-first parity pass, swapped-back identity errors through the existing compare, roots drift, absent/create, identical/no-op, differing bytes, `0644` and symlink refusal. Parent tests also cover absent → `0700` plus custody flag, existing-safe no-op, symlink/group-writable/world-writable refusal, missing/symlink `.golems` refusal, empty-created rollback and retry, nonempty-created refusal, and pre-existing-directory preservation. These tests run only in the M4 Max run evidence directory. Prior r4i read-only observations and the historical r4j source trace below do not prove current machine prerequisites or live parity.
 
 Before preflight, snapshot, and immediately before sync, `real_directories()` requires every existing footprint directory and its ancestors through HOME to be real directories. This includes `.golems`, `.golems/ratchet` (also owner and writable-mode checks; absence permitted until the pre-step), `vendor`, `vendor/design-skills`, existing vendor descendants, target release parents, bin, client roots/hooks, staging, and receipt parents. Any symlink stops before snapshot/sync mutation.
 
-The protected scan reads full file contents under `/Applications`, LaunchAgents, Homebrew, and known/discovered BrainLayer paths. It also records the complete `launchctl print gui/$(id -u)` output (including the full service list), `launchctl print-disabled gui/$(id -u)`, `ls -la "$HOME/Library/LaunchAgents"`, SHA256 of each user plist, and BrainLayer process/socket state. These outputs are compared exactly before/after, including finish and rollback; ANY difference triggers rollback and STOP, including a non-BrainLayer job or disabled override. No changing fields are normalized away. Read errors, unsupported entries, or concurrent changes STOP. These scans can be slow. Do not truncate them, exclude a changing DB/log, or stop a daemon to obtain a pass. The scan cannot attribute a difference to this install; even an unrelated change conservatively stops acceptance.
+Protected-state classification (PHX r4p): the same `protected_view()` comparator is used by both snapshot captures, presync, post/finish and rollback. These are read-only observations; never stop BrainLayer or write its runtime/config/installed paths.
+
+| Class / surface | Comparison |
+|---|---|
+| RUNTIME: `.local/share/brainlayer/**`, `Library/Logs/brainlayer/**` | Each tree root only: existence, kind, uid, gid, mode. No child listing, content, size, mtime or child presence comparison. This includes rows, backups, locks, calendar and supervisor/jobs.json. |
+| RUNTIME: `.local/share/brainlayer/brainlayer.db` | Existence, kind, uid, gid, mode, device and inode. Never hash the live database. |
+| RUNTIME (ephemeral): `.brainlayer/logs/**`, `.brainlayer/queue/**` | BrainLayer drain writes (live M1 Pro probe 2026-10-28). Owner/mode only when present in both captures, like WAL/SHM; no content, size, mtime or children. The rest of `.brainlayer` stays INSTALLED, captured child by child. |
+| RUNTIME: DB `-wal`/`-shm`, `supervisor/control.sock`, `/tmp/brainbar*.sock` and discovered BrainLayer/BrainBar sockets | When present in both captures, compare kind, owner and mode. Existence may flap: SQLite removes WAL/SHM at the last disconnect and daemon sockets are recreated across connections. A one-sided endpoint has no historical owner/mode to compare; its absence/presence alone is not drift. |
+| INSTALLED/CONFIG: `/Applications` including BrainBar binaries; `/opt/homebrew`; `/usr/local/Homebrew`; `.local/lib/brainlayer`; `.config/brainlayer`; `.brainlayer` (except its two RUNTIME subtrees above); system/user LaunchAgents; `.codex/config.toml`; `.ssh/known_hosts` | Full non-following content/metadata trees. LaunchAgents additionally retain plist byte hashes and user `ls -la`. Discovered installed program/config paths retain full comparison. |
+| launchctl | Only labels found in BrainLayer/BrainBar LaunchAgent plists: label, program, argument vector, loaded and running booleans. `print-disabled` is filtered to those labels. No domain-wide print, PID or service count. |
+| Processes | Only launchd-managed BrainLayer/BrainBar commands (`ppid=1`), sorted command SHA256s, preserving multiplicity. No PIDs or client-spawned MCP bridges. |
+
+`controller_write_guard()` installs a Python audit hook before any remote controller mutation. It rejects runtime/installed destinations and resolved aliases, including fd-relative operations; the offline boundary test exercises actual refused writes and all controller mutation families. The installed-file scans can still be slow; read errors and stable-field differences STOP. Do not weaken the installed/config check to obtain a pass.
+
+Every remote changed-state assertion uses `state_equal()`/`state_need()`: exclusive, fsynced before/after captures go into this run's initial stage, complete snapshot custody or parity-config custody. STOP JSON carries the total leaf-difference count, at most 50 field paths and capture paths, with HOME replaced by `<M1_HOME>`. Capture files remain unredacted inside custody. The pre-SSH M4 trust/source guards persist their pairs locally and never initiate SSH after a local trust refusal. M4 result envelopes retain the remote STOP details even on rollback failure.
 
 The full tar includes the five roots, wrappers, vendor tree, hooks, shared hook configs, activation/history files, receipts, hook-config sidecars, and both pre-existing M1 parity files. Each file's `created_by_run=true` instead preserves its original absence in the snapshot; rollback quarantines each new file. Links are stored without dereference. Old release bytes remain retained by `--preserve-releases`. Existing skills backups are immutable; the helper exclusively creates a new archive. The previous `current` target is also recorded as text.
 
@@ -2039,6 +2626,7 @@ SNAPSHOT_MAY_EXIST=1
 python3 -I -B "$RUN/m1-control.py" snapshot
 PHASE=presync
 python3 -I -B "$RUN/m1-control.py" presync
+python3 -I -B "$RUN/m1-control.py" m4-disk
 PHASE=sync
 python3 -I -B "$RUN/m4-live-effects.py" before
 if [ "$PROC_MODE" = bootstrap-run-1 ]; then
@@ -2185,9 +2773,9 @@ Keep stderr and disclosed-invalid counts, including allowlisted entries. Report 
 
 ## 6. Stop and restore on failure
 
-Triggers: **any nonzero step after snapshot starts; any failed post-check; any §7b change; missing/stale/invalid/unavailable/non-LIVE receipt; failed real parity; or any deviation from the written commands.** Before snapshot, stop without installing. If snapshot capture fails, no sync runs; retain partial snapshot/lock and report unavailable complete rollback custody.
+Triggers: **any nonzero step after snapshot starts; any failed post-check; any §7b change; missing/stale/invalid/unavailable/non-LIVE receipt; failed real parity; or any deviation from the written commands.** Before snapshot, stop without installing. If snapshot capture fails, no sync runs. With no complete snapshot custody, the same rollback command enters receipt-based RECOVERY instead of attempting tar restoration; unexpected provenance or residue STOPs in place.
 
-The ERR/INT/TERM handlers invoke the exact controller `rollback` command once. Each invocation reserves `rollback-attempt-<N>.json/.stderr` on the M4 Max and retains a numbered remote result. `mutated=false` means no restoration mutation, including a writer-active refusal; evidence writes are excluded. `mutated=true` conservatively means restoration may have mutated paths. A transport failure without a complete remote result records `mutated=null` (unknown), never false. It verifies snapshot SHA256, refuses an active remote writer, and acquires a process-scoped rollback guard. It persists a move plan before creating quarantine, checkpoints each completed quarantine move, extracts into a fresh numbered staging tree, checkpoints completed extraction, then checkpoints each move from staging to its original path, including the recorded `current` link. Interrupted extractions remain retained; the next attempt uses a fresh staging tree. Rename/checkpoint gaps are reconciled using the planned inode identity or exact restored tree; ambiguous state stops. Original absence is restored: newly introduced root children and sidecars remain quarantined instead of surviving a tar overlay. New receipt events, backups, vendor copies, and failed hook/temp objects are preserved in quarantine. Old/new releases and helper stages remain retained. Nothing is deleted by the rollback commands. The parity config and derived requirements are in the same checkpointed plan: each file created by §2 is removed from its active path into quarantine (`created_by_run=true`); each existing file regains its exact pre-step bytes/mode/uid from the snapshot. Original absence is verified, including on rollback retry.
+The ERR/INT/TERM handlers invoke the exact controller `rollback` command once. Each invocation reserves `rollback-attempt-<N>.json/.stderr` on the M4 Max and retains a numbered remote result. `mutated=false` means no restoration mutation, including a writer-active refusal; evidence writes are excluded. `mutated=true` conservatively means restoration may have mutated paths. A transport failure without a complete remote result records `mutated=null` (unknown), never false. It verifies snapshot SHA256, refuses an active remote writer, and acquires a process-scoped rollback guard. It persists a move plan before creating quarantine, checkpoints each completed quarantine move, extracts into a fresh numbered staging tree, checkpoints completed extraction, then checkpoints each move from staging to its original path, including the recorded `current` link. Interrupted extractions remain retained; the next attempt uses a fresh staging tree. Rename/checkpoint gaps are reconciled using the planned inode identity or exact restored tree; ambiguous state stops. Original absence is restored: newly introduced root children and sidecars remain quarantined instead of surviving a tar overlay. New receipt events, backups, vendor copies, and failed hook/temp objects are preserved in quarantine. Old/new releases and helper stages remain retained. Complete-snapshot rollback retains the quarantined material. Only the reviewed pre-snapshot RECOVERY below removes receipt-proven run-created residue. The parity config and derived requirements are in the same checkpointed plan: each file created by §2 is removed from its active path into quarantine (`created_by_run=true`); each existing file regains its exact pre-step bytes/mode/uid from the snapshot. Original absence is verified, including on rollback retry.
 
 Rollback rechecks all five complete listings and I5 hashes, shared configs, wrappers/hooks/activation/history/receipt state, and protected state against **pre-state**. It reruns hook status and real parity. Parity uses the verified I5 source sent through stdin, so restoring an older release cannot reintroduce its non-strict SSH argv. Target-release receipt assertions cannot pass after restoring the old release; the failed candidate remains failed. The returned verdict is always `ROLLBACK_RESTORED_NOT_GREEN`; retain hook/parity output and exits, including pre-existing failures.
 
@@ -2235,6 +2823,14 @@ exit "$recovery_exit"
 
 Snapshot mismatch, ambiguous checkpoint reconciliation, failed move/extraction, changed external M1-only target bytes, or protected-state differences mean `ROLLBACK_PARTIAL_NOT_GREEN`. Retry only a resolved no-mutation refusal or an interrupted operation whose checkpoint reconciliation succeeds; do not repair, bypass, or edit an integrity failure. Retain quarantine and locks. Never restore §7b from a hash, write config.toml, update known_hosts, stop a daemon, or repair Homebrew as rollback.
 
+### Reviewed pre-snapshot recovery (r4p)
+
+`recover <past-run-stem> --dry-run` returns a plan with zero remote writes. `recover <past-run-stem>` applies that exact receipt-based validation afresh. Local evidence is reserved separately as `recover-dry-run.json/.stderr` and `recover.json/.stderr`; never overwrite the old stopped run. The lead's supplied recovery block copies its prerequisites into a fresh M4 evidence RUN with timestamps preserved, then uses this revision's controller over the existing strict transport.
+
+Recovery first refuses complete snapshot custody and an active installer/sync writer. It checks the entire removal plan before mutation: each created B′ file must retain its recorded after-bytes and metadata, a created ratchet parent must contain exactly those files, and every custody/stage/lock entry must be a recorded regular file/directory with the same identity, owner, mode and file SHA256. Symlinks, foreign entries, nonempty directories, missing provenance or mismatches STOP and remain in place. It removes created B′ files, then uses empty-only `rmdir` for a created parent. Pre-existing B′ files and parents remain intact. It unlinks only individually verified run-created custody files, removes each empty directory and checks absence after every operation. No recursive delete is used. Receipt plans and verified removals return in stdout JSON; a fsynced ownership journal retains partial progress until the last custody removal. Recovery never touches skills, `current` or the Gemini link and never upgrades the failed attempt to green.
+
+New runs record a lock `owner.json` containing the exact stem/uid, and a parity-custody `recovery-ownership.json` enumerates created stage/custody entries with identities and hashes. For only the named legacy retry-4 stem, an empty unmarked lock can be attributed by identical remote/M4 preflight receipts, the PRE_SNAPSHOT_STATE_CHANGED result, original preflight/snapshot evidence times bracketing the lock/stage creation, and no other unfinished stem. The legacy custody must contain exactly its three recorded files and the stage must be empty. Missing or ambiguous evidence STOPs. Dry-run leaves even the journal absent; apply writes a journal inside that same custody, removes it last, and returns its removal receipt to the M4.
+
 ## 7. Footprint (all writes, in scope under ruling 3)
 
 M1 Pro paths below are relative to that machine's `Path.home()`. O01–O12 are the same path families as the inventory, all **IN-SCOPE** under ruling 3. O13/O14/O15 retain the reviewed parity prerequisite footprint. O16 is the one reviewed KNOWN_DRIFT unlink after snapshot; no other dangling repair or parity-config/requirements write is authorized.
@@ -2242,7 +2838,7 @@ M1 Pro paths below are relative to that machine's `Path.home()`. O01–O12 are t
 | ID | Write family | Purpose |
 |---|---|---|
 | O01 | `.claude/skills.bak-HEAD-UTC.tgz` | Built-in five-root backup. |
-| O02 | `.golems/m1-sync/**`, `.golems/m1-procedure.lock` | Stages, snapshot, custody rename, quarantine, numbered rollback attempts/extraction trees/checkpoints, and lock evidence. |
+| O02 | `.golems/m1-sync/**`, `.golems/m1-procedure.lock` | Stages, snapshot, custody rename, quarantine, numbered rollback attempts/extraction trees/checkpoints, lock owner evidence, changed-state captures, recovery ownership/progress and verified residue removal. |
 | O03 | `.golems/{releases,bin,.install-lock,.install-*}/**` and client parents | Installer scaffolding, extraction, intermediates, cleanup. Existing client roots/parents required. |
 | O04 | `.golems/releases/VERSION/**` | Verified payload; retain old releases. |
 | O05 | `.golems/{current,release.json,release-history}` | Activation, history, restoration. |
@@ -2542,3 +3138,13 @@ The one-row KNOWN_DRIFT exception supersedes r4m's proposed link-repoint ruling 
 Offline real-listing replay through §§1/1b/2, snapshot/removal and presync exits 0 with frozen I5 hashes over all five roots. The snapshot tar retains the original Gemini link; two full rollback attempts restore its byte-exact text, mode `0755`, uid and gid. The absent/present parity prerequisite controls, raw-failure reproduction, exception envelopes, parent/config/requirements cases, syntax and immutable frozen-source/Bash contracts remain required checks in the r4n report. The restored fixture parity remains `ROLLBACK_RESTORED_NOT_GREEN`; these offline results establish no M1 install, runtime parity, producer or native acceptance. §7b and §7c are unchanged: the O16 unlink changes no protected path or M4 producer footprint.
 
 Evidence is under `docs.local/scratch/m1proc-r4n/`, including the retained failed first harness replay (its extra inventory rejects synthetic release metadata), corrected required replay, exact-link behavior cases and final verification. No M1 contact or live execution occurred. Only this procedure and that scratch directory were edited.
+
+## r4p protected-state, recovery and free-space validation
+
+The PHX r4p rulings supersede the historical full-content runtime scan and unavailable pre-snapshot recovery. Runtime identities and stable launchd fields use the classification table above in snapshot, presync, post/finish and rollback; installed/config bytes remain fully compared. Changed-state STOPs retain exclusive/fsynced capture pairs and bounded field diffs. Receipt-based recovery removes only proven run-created residue; full-snapshot restoration retains its existing NOT_GREEN semantics. The addendum's measured disk budgets apply a 2x margin above a hard 10 GiB reserve on each host, with pre-mutation and pre-snapshot/pre-sync rechecks.
+
+Offline evidence is under `docs.local/scratch/m1proc-r4p/`. `verified-replay/results.json` records the real-listing fixture replay through §2 and the §3 failure handler, a separate simulated daemon writer, six planted protected-state changes, recovery with newly created and pre-existing parity prerequisites, legacy retry-4 dry-run/apply, low-space refusals and just-above-floor controls. The snapshot passes normal runtime writes; planted plist/DB mode/DB owner/DB absence/daemon-running/binary changes STOP with saved captures and diffs. Recovery preserves skills/current/Gemini and permits a fresh preflight. Full rollback remains ROLLBACK_RESTORED_NOT_GREEN because fixture peer parity is deliberately unavailable. The final legacy-specific replay additionally verifies exact reconstructed r4o custody bytes and refuses a tampered receipt before mutation.
+
+`verified-refusals/results.json` records nine zero-write refusals plus a zero-write dry-run. `final-artifact-checks/results.json` records eight Bash blocks, twenty-four Python heredocs, unchanged frozen I5 SHA256 `1f3a74455bab12cd1ecc478e8a20cd5e9868f17cbe659b5693597b81772725b3`, prior inline/formatter/exception regressions, empty boundary scans, seventeen refused protected-write attempts and the 80-count/50-path diagnostic bound. Earlier failed source/fixture rounds remain retained. The initial guard's rejection of symlink-object metadata restoration was corrected and verified with the guard enabled.
+
+Lead-only deliverables: `live-probe.py` (stdin-piped; 10-second and 200-second intervals), `live-probe-command.sh`, and `live-recover-retry-4.sh` (strict transport; copied evidence preserves the original timestamps). The probe's offline schedule check uses a simulated clock; no actual M1 comparator stability or runtime is claimed. The live probe and recovery are both UNRUN by this implementer. No M1 contact, installer, producer, daemon stop or live residue deletion occurred. PROCEDURE_READY means written-procedure/offline readiness only.
