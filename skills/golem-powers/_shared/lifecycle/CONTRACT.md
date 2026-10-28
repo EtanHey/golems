@@ -17,6 +17,8 @@ Track implementer, reviewer, provider session, active/streaming task, terminal, 
 
 The owning lead harvests and verifies deliverables, records consumer releases, then transfers acknowledged custody or records a retained obligation, and only THEN settles when these gates permit. Settling is deletion-relevant: T3's hourly cleanup removes eligible settled worktrees. Releasing a provider and removing its checkout are separate outcomes. If supported official cleanup cannot honor preservation, record RETAINED with owner and the runtime limitation; do not settle to tidy a list. This text proves no guard coverage for unwrapped UI, shell or remote paths; never alter a live app database to bypass it.
 
+T3-managed worktrees (`~/.t3/worktrees/**`) retire through T3's official adapter: once every gate in this contract passes, settle the child, and T3's cleanup policy removes the worktree. Never run `git worktree remove`, retire tooling or the interim block below on a T3-managed root (golems #858 keeps golems tooling off T3 roots).
+
 Etan's rule is verbatim: "the implementer removes its worktree at DONE" (Etan 2026-10-18, via orc collab). **PHX reading, consistent with canon #2/#9:** DONE = the merged PR; retirement follows after the merge, once its last consumer releases, and the worktree is never left behind. The parent/authorized collector performs removal for the implementer. A RETAINED receipt keeps that owner's obligation open until every gate passes; a merged PR alone grants no deletion authority.
 
 ## Preservation and races
@@ -24,6 +26,8 @@ Etan's rule is verbatim: "the implementer removes its worktree at DONE" (Etan 20
 For a worktree or clone, require fresh exact remote Git coverage and a clean tree before retirement. A non-Git lane directory uses its host/filesystem identity and artifact-preservation proofs. Use the verified PR base remote (registered project remote for a non-PR lane). Verify HEAD against that remote's branch; if auto-deletion removed it, use that remote's actual default branch: for an origin-backed base, **HEAD is an ancestor of origin/<default>, plus a clean tree**; an upstream-backed base uses `upstream/<default>`. Never substitute fork-origin coverage for upstream proof. Squash merges require separately verified content coverage; never invent ancestry from a merged PR at another head.
 
 Inventory tracked changes, untracked and ignored files at every relevant level, nested repositories/submodules, refs and local-only history. Ignored status does not establish regenerability: ignored `docs.local` is always preserved until its applicable harvest, preservation and exact local-copy retirement gates pass. Preserve live symlink consumers, active-thread paths and hook/skill sources; retain existing managed-root and GC protections.
+
+Ignored caches named on the committed regenerable-paths allowlist are not preservation holds; `docs.local/` always is.
 
 Archives, manifests, custody ledgers and recovery receipts must survive outside the whole retiring scope. `<persistent-root>/docs.local/worktree-archive/<lease-id>/` is LOCAL preservation staging, not a permanent store. Require a per-file SHA manifest (host/resource/lease, paths, sizes/hashes, held/omitted material), container size/hash readback, membership/readability checks and Git-ref preservation. A manifest alone grants no deletion. Verify full uploaded object bytes, membership and a restore drill before deleting an artifact's local original; metadata/sample checks are insufficient. Cloud bytes never substitute for Git coverage.
 
@@ -55,9 +59,9 @@ Existing CLEANUP RECEIPT field lines remain valid; these dispositions define the
 
 At the next bounded dispatch/close pass, reconcile unresolved leases against exact creation provenance and fresh state. An unreachable host is RETAINED, not absent; ambiguous ownership stays unknown. Recovery after interrupted removal still needs the original remover result and both fresh absence checks. No age-only eligibility, recurring destructive job, HOME-wide prune or retries to erase adverse evidence.
 
-## Parent retirement path (both harnesses, interim)
+## Parent retirement path (direct-git worktrees, interim)
 
-For a T3 child or cmux worker, run this only in the parent from outside the worktree, after merge and the last consumer's release. The parent must first verify this contract's exact ownership/authority, complete inventory/preservation, managed-root policy and consumer gates; record that preflight outside the retiring scope. Hold the exact resource lock across the final preflight and this block; an uncontrolled writer means RETAINED. A file's mere presence is not authority. This is an interim final-action procedure, not a replacement lifecycle guard or permission to bypass an official adapter's refusal.
+For repo `<repo>/.worktrees/` and other direct-git worktrees, such as cmux workers, run this only in the parent from outside the worktree, after merge and the last consumer's release. The parent must first verify this contract's exact ownership/authority, complete inventory/preservation, managed-root policy and consumer gates; record that preflight outside the retiring scope. Hold the exact resource lock across the final preflight and this block; an uncontrolled writer means RETAINED. A file's mere presence is not authority. This is an interim final-action procedure, not a replacement lifecycle guard or permission to bypass an official adapter's refusal.
 
 Supply canonical `MAIN` (persistent checkout), `WT`, `EXPECTED_HEAD`, verified `BASE_REMOTE`/`DEFAULT`, and `PREFLIGHT_RECEIPT` (the parent-verified preflight record). No child runs this block, even after changing cwd. Until the guard's machine receipt is adopted, use the interim receipt below; keep failed attempts and the preflight outside the retiring scope.
 
