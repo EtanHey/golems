@@ -25,3 +25,15 @@ as visualizations. Inline SVG/canvas/images/figures and View details controls
 that open a visual or visual dialog count. Narrated details sections with audio
 and timed words or a Listen deeper audio block pass; a separate plain text
 expander still fails. This runs at render time, without sweeping published files.
+
+`data-open-visual` alone is not evidence of a visualization. The gate resolves an
+explicit relative URL (a value containing `/` or ending in `.html`) against
+`evidence.outputPath` and inspects that local page. Otherwise it resolves the
+value as an in-document id of a dialog, `role="dialog"`, figure or section.
+For opaque ids, the documented PHX producer convention is `visuals/<id>.html`
+under the dashboard directory; the gate reads and inspects that file too.
+New producers should declare explicit relative URLs. `aria-controls` can also
+identify an in-document visual target. Targets need a non-control-icon SVG,
+canvas, image, figure or video. Missing/unreadable files, unresolved ids,
+external URLs, paths outside the dashboard directory and uninspected iframes
+fail closed. No scripts execute and no external pages are fetched.
