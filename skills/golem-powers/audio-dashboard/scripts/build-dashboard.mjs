@@ -63,7 +63,7 @@ import {
 } from "../src/build-receipts.mjs";
 import { analyzeTeleprompterDrift, formatTeleprompterDriftReport } from "../src/teleprompter-drift-gate.mjs";
 import { injectDecisionSurfaceIntoHtml } from "../src/decision-surface.mjs";
-import { renderDecisionFlow } from "../src/decision-flow.mjs";
+import { comparisonPages, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -465,6 +465,15 @@ function main() {
       });
     } catch (error) {
       fail(error?.message || error);
+    }
+    // A local comparison page must carry the ready marker; WebKit has no other success evidence.
+    for (const { decision, url } of comparisonPages(spec.decisions)) {
+      const pagePath = path.resolve(path.dirname(outPath), decodeURIComponent(url.split(/[?#]/)[0]));
+      if (!existsSync(pagePath)) {
+        console.error(`[build-dashboard] WARN: comparison page for ${decision} is not on disk yet, so its ready marker was not checked: ${url}`);
+      } else if (!hasComparisonReadyMarker(readFileSync(pagePath, "utf8"))) {
+        fail(`decision-flow comparison page lacks the ready marker: ${decision} ${url}. Add <meta name="adash-comparison" content="ready"> to its <head>.`);
+      }
     }
   } else {
     html = renderV4({

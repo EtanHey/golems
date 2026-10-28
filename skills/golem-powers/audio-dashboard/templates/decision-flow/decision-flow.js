@@ -264,26 +264,18 @@
     return /[\u0000-\u001f\u007f]/.test(value)||/^\s*[\\/]/.test(value)||!inside?"":url.href;
   }
   // Browsers fire load, not error, for network failures and HTTP errors, so a load proves nothing alone.
-  // Success needs positive evidence from a readable same-origin frame: a navigation entry with a 2xx/3xx
-  // responseStatus where the browser reports one, or (WebKit has no responseStatus) a visual in the page.
-  // Anything else, including an unreadable file: frame, is a failure with Retry and Back.
-  // WebKit evidence must be a chart, not an icon. Mirrors the ADX-1 evidence gate's isControlIcon (a Node-side
-  // HTMLRewriter check that cannot run here): marks inside controls, hidden or presentational marks, icon/glyph
-  // classes, and anything rendered at 24x24 px or smaller do not count.
-  function chartVisual(doc){
-    return Array.prototype.some.call(doc.querySelectorAll("svg, canvas, img, figure, video"),function(node){
-      if(node.closest('[aria-hidden="true"], [role="presentation"], [role="none"], button, a, summary, [role="button"]'))return false;
-      for(var n=node;n&&n.nodeType===1;n=n.parentElement){if((n.getAttribute("class")||"").split(/\s+/).some(function(token){return /^(icon|glyph)([-_]|$)|[-_](icon|glyph)$/i.test(token);}))return false;}
-      var box=node.getBoundingClientRect();return box.width>24||box.height>24;
-    });
-  }
+  // Success needs positive evidence from a readable same-origin frame: a 2xx/3xx navigation responseStatus where
+  // the browser reports one, or, where it does not (WebKit), the page's explicit ready marker
+  // (<meta name="adash-comparison" content="ready"> or data-adash-comparison="ready" on <html>), which an
+  // error page never carries. Anything else, including an unreadable file: frame, is a failure.
+  function comparisonReady(doc){var meta=doc.querySelector('meta[name="adash-comparison"]');return Boolean(meta&&meta.getAttribute("content")==="ready")||doc.documentElement.getAttribute("data-adash-comparison")==="ready";}
   function frameProblem(frame){
     var failed=document.location.protocol==="file:"?"This comparison can't be checked from a file. Open the dashboard over http(s), or go back to the card.":"The comparison couldn't load. Retry, or go back to the card.";
     var timing=document.defaultView&&document.defaultView.PerformanceResourceTiming,reportsStatus=Boolean(timing&&"responseStatus" in timing.prototype);
     try{
       var child=frame.contentWindow;if(!child||child.location.href==="about:blank")return failed;
       if(reportsStatus){var nav=child.performance.getEntriesByType("navigation")[0],status=nav&&nav.responseStatus;return typeof status==="number"&&status>=200&&status<400?"":failed;}
-      return chartVisual(child.document)?"":failed;
+      return comparisonReady(child.document)?"":"This comparison page isn't marked ready, so it can't be confirmed. Retry, or go back to the card.";
     }catch(error){return failed;}
   }
   function loadCompare(){
