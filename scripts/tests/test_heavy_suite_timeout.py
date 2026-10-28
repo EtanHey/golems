@@ -1,0 +1,178 @@
+"""Owned synthetic processes only; native observations never parse ps text."""
+import fcntl
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+import uuid
+
+import pytest
+from test_heavy_suite_lock import SCRIPT, env, load_module, wait_for
+
+sys.path.insert(0, str(SCRIPT.parent))
+import proc_identity as proc
+
+
+@pytest.fixture(autouse=True)
+def isolated_resources(monkeypatch, tmp_path):
+    for key in list(os.environ):
+        if key.startswith('GOLEMS_HEAVY_'): monkeypatch.delenv(key)
+    for key, value in env(tmp_path).items():
+        if key == 'HOME' or key.startswith('GOLEMS_HEAVY_'): monkeypatch.setenv(key, value)
+
+
+@pytest.fixture
+def tree(tmp_path):
+    marker = uuid.uuid4().hex
+    children = []
+    def spawn(code, environment=None):
+        p = subprocess.Popen([sys.executable, '-c', code, '', '\udcff\u2028\u2029'], env={**env(tmp_path), 'LIFECYCLE_FIXTURE_ID': marker, 'ODD': 'a\udcff\u2028\u2029', **(environment or {})}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        children.append((p, proc.identity(p.pid)))
+        return p
+    control = spawn('import time; time.sleep(60)', {'LIFECYCLE_FIXTURE_ID': uuid.uuid4().hex})
+    yield tmp_path, marker, spawn
+    assert control.poll() is None, 'unrelated control was signalled'
+    for pid in proc.list_pids():
+        try: snapshot = proc.identity(pid)
+        except proc.ProcIdentityUnavailable: continue
+        if snapshot is not None and snapshot.uid == os.geteuid():
+            try:
+                if proc.has_env(pid, b'LIFECYCLE_FIXTURE_ID', marker.encode()) is True: children.append((None, snapshot))
+            except proc.ProcIdentityUnavailable: pass
+    for p, snapshot in children:
+        if snapshot is not None and proc.same_process(snapshot):
+            with proc.pinned_process(snapshot) as fd:
+                if fd is None: os.kill(snapshot.pid, signal.SIGKILL)
+                else: signal.pidfd_send_signal(fd, signal.SIGKILL)
+        if p is not None: p.wait(timeout=5)
+
+
+def survivors(marker):
+    result = []
+    for pid in proc.list_pids():
+        try: snapshot = proc.identity(pid)
+        except proc.ProcIdentityUnavailable: continue
+        if snapshot is not None and snapshot.uid == os.geteuid():
+            try:
+                if proc.has_env(pid, b'LIFECYCLE_FIXTURE_ID', marker.encode()) is True: result.append(pid)
+            except proc.ProcIdentityUnavailable: pass
+    return result
+
+
+@pytest.mark.parametrize('mode', ['ordinary', 'force', 'held', 'expiry', 'setup', 'invalid', 'nested'])
+@pytest.mark.parametrize('busy', [False, True])
+def test_hard_deadline_cleans_tree(tree, mode, busy):
+    home, marker, _ = tree
+    e = {**env(home), 'LIFECYCLE_FIXTURE_ID': marker, 'ODD': '\udcff\u2028\u2029'}
+    if mode == 'force': e['GOLEMS_HEAVY_FORCE'] = '1'
+    if mode == 'held': e['GOLEMS_HEAVY_SUITE_HELD'] = 'fixture'
+    if mode == 'invalid': e['GOLEMS_HEAVY_MAX_LOAD'] = 'nan'
+    holder = (home / 'base.slot0.lock').open('w')
+    if mode == 'expiry':
+        fcntl.flock(holder, fcntl.LOCK_EX); e.update(GOLEMS_HEAVY_LOCK=str(home / 'base.lock'), GOLEMS_HEAVY_MAX_WAIT_SECONDS='0')
+    if mode == 'setup': e['GOLEMS_HEAVY_LOCK'] = str(home / 'base.slot0.lock' / 'bad')
+    leaf = "import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); time.sleep(60)"
+    code = f"import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',{leaf!r},'', {('a' + chr(0xdcff) + chr(0x2028) + chr(0x2029))!r}],start_new_session=True);\nwhile True: " + ('sum(range(1000))' if busy else 'time.sleep(.01)')
+    command = [sys.executable, '-c', code]
+    if mode == 'nested': command = [sys.executable, str(SCRIPT), '--', *command]
+    try:
+        r = subprocess.run([sys.executable, str(SCRIPT), '--timeout-seconds', '.5', '--kill-grace-seconds', '.1', '--', *command], env=e, capture_output=True, text=True, timeout=10)
+        assert r.returncode == 124, r.stderr
+        lines = [line for line in r.stderr.split('\n') if 'TIMEOUT' in line]
+        assert len(lines) == 1 and lines[0].startswith('heavy-suite: TIMEOUT after 0.5s; terminating suite process tree (suite_id=')
+        assert not survivors(marker)
+        receipt = json.loads(next((home / '.local/state/golems/runs').glob('*.cleanup.json')).read_text())
+        assert receipt['cleanup'] == 'ok' and not receipt['survivors'] and not receipt['incomplete']
+        assert receipt['members_seen'] and receipt['signalled']
+    finally: holder.close()
+
+
+@pytest.mark.parametrize('signum', [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, None])
+def test_reparented_child_and_cancellation(tree, signum):
+    home, marker, spawn = tree
+    ready = home / 'ready'
+    leaf = f"import signal,time; from pathlib import Path; signal.signal(signal.SIGTERM,signal.SIG_IGN); Path({str(ready)!r}).touch(); time.sleep(60)"
+    code = f"import subprocess,sys,time,signal; from pathlib import Path; subprocess.Popen([sys.executable,'-c',{leaf!r}],start_new_session=True);\nwhile not Path({str(ready)!r}).exists(): time.sleep(.01)\n" + ("time.sleep(.1)" if signum is None else "signal.signal(signal.SIGTERM,lambda *a:sys.exit(0)); time.sleep(60)")
+    wrapper = subprocess.Popen([sys.executable, str(SCRIPT), '--kill-grace-seconds', '.1', '--', sys.executable, '-c', code], env={**env(home), 'LIFECYCLE_FIXTURE_ID': marker}, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    try:
+        wait_for(ready)
+        if signum is not None: wrapper.send_signal(signum)
+        _, err = wrapper.communicate(timeout=10)
+        assert wrapper.returncode == (0 if signum is None else 128 + signum), err
+        assert not survivors(marker)
+    finally:
+        if wrapper.poll() is None: wrapper.kill()
+        wrapper.communicate(timeout=5)
+
+
+@pytest.mark.parametrize('flag', ['timeout-seconds', 'kill-grace-seconds'])
+@pytest.mark.parametrize('value', ['nan', 'inf', '-1', 'nonsense'])
+@pytest.mark.parametrize('mode', ['force', 'held'])
+def test_invalid_controls_never_launch(tmp_path, flag, value, mode):
+    e = {**env(tmp_path), 'GOLEMS_HEAVY_' + ('FORCE' if mode == 'force' else 'SUITE_HELD'): '1'}
+    r = subprocess.run([sys.executable, str(SCRIPT), f'--{flag}={value}', '--', sys.executable, '-c', 'raise SystemExit(99)'], env=e, capture_output=True, text=True, timeout=5)
+    assert r.returncode == 2 and f'invalid {flag}; expected a finite number' in r.stderr
+
+
+@pytest.mark.parametrize('status', [0, 7, 75, 124])
+def test_completed_status_beats_late_bookkeeping(monkeypatch, tmp_path, status):
+    m = load_module(); monkeypatch.setenv('HOME', str(tmp_path))
+    old = m.save_run
+    def slow(path, record):
+        old(path, record)
+        if record.get('leader_pid'): time.sleep(.15)
+    monkeypatch.setattr(m, 'save_run', slow)
+    assert m.main(['--timeout-seconds', '.1', '--', sys.executable, '-c', f'raise SystemExit({status})']) == status
+
+
+@pytest.mark.parametrize('signum', [signal.SIGINT, signal.SIGTERM])
+def test_cancellation_during_final_notice(monkeypatch, tmp_path, signum):
+    m = load_module(); monkeypatch.setenv('HOME', str(tmp_path))
+    assert hasattr(m, 'SuiteTree')
+    original = m.notice
+    def notice(message):
+        if 'SUITE DONE' in message: os.kill(os.getpid(), signum)
+        original(message)
+    monkeypatch.setattr(m, 'notice', notice)
+    assert m.main(['--', sys.executable, '-c', 'pass']) == 128 + signum
+
+
+@pytest.mark.parametrize('case', ['reused-group', 'old-marker', 'same-birth-marker', 'foreign', 'hidden'])
+def test_identity_authority_is_not_numeric_or_env_only(monkeypatch, case):
+    m = load_module(); leader = proc.ProcIdentity(2222, os.getpid(), 2222, os.geteuid(), os.getuid(), (100, 1))
+    other = proc.ProcIdentity(3333, 1, 2222, os.geteuid(), os.getuid(), leader.start if case == 'same-birth-marker' else (99, 0) if case == 'old-marker' else (101, 0))
+    if case == 'foreign': other = proc.ProcIdentity(3333, 2222, 2222, os.geteuid()+1, os.getuid()+1, (101, 0))
+    tracker = m.SuiteTree(leader, 'a'*32, False)
+    snapshot = proc.ChildrenSnapshot()
+    snapshot[other.pid] = (other.ppid, other.pgid, other.start, other.uid, other.ruid)
+    if case == 'foreign': snapshot[leader.pid] = (leader.ppid, leader.pgid, leader.start, leader.uid, leader.ruid)
+    if case == 'hidden': tracker.known[(other.pid, other.start)] = other; snapshot.pop(other.pid); snapshot.unavailable[other.pid] = proc.ProcIdentityUnavailable('hidden', uid=os.geteuid())
+    monkeypatch.setattr(proc, 'children_snapshot', lambda: snapshot)
+    monkeypatch.setattr(proc, 'identity', lambda pid: leader if case == 'foreign' and pid == leader.pid else other if case == 'same-birth-marker' and pid == other.pid else None)
+    monkeypatch.setattr(proc, 'owned', lambda *args: case in ('old-marker', 'same-birth-marker'))
+    found = tracker.scan()
+    if case in ('reused-group', 'old-marker', 'same-birth-marker'): assert not found
+    else: assert tracker.incomplete
+
+
+@pytest.mark.parametrize('cli,expected', [([], 3), (['--timeout-seconds', '4'], 4)])
+def test_live_receipt_and_configuration_precedence(tree, cli, expected):
+    home, marker, _ = tree; ready = home / 'ready'; release = home / 'release'
+    code = f"import time; from pathlib import Path; Path({str(ready)!r}).touch();\nwhile not Path({str(release)!r}).exists(): time.sleep(.01)"
+    p = subprocess.Popen([sys.executable, str(SCRIPT), *cli, '--', sys.executable, '-c', code], env={**env(home), 'GOLEMS_HEAVY_TIMEOUT_SECONDS': '3', 'LIFECYCLE_FIXTURE_ID': marker}, stderr=subprocess.PIPE, text=True)
+    try:
+        wait_for(ready)
+        path = next((home / '.local/state/golems/runs').glob('*.json')); record = json.loads(path.read_text())
+        assert record['leader_pid'] and record['leader_birth'] and record['owner_birth'] and record['wrapper_birth']
+        assert record['wall_limit_s'] == expected and len(record['cmd_sha256']) == 64
+        assert path.stat().st_mode & 0o777 == 0o600 and path.parent.stat().st_mode & 0o777 == 0o700
+        release.touch(); _, err = p.communicate(timeout=5)
+        assert p.returncode == 0 and not path.exists(), err
+        assert not survivors(marker)
+    finally:
+        release.touch()
+        if p.poll() is None: p.terminate()
+        p.communicate(timeout=5)

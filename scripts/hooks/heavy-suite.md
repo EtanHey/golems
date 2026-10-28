@@ -56,8 +56,8 @@ command or failing suite still fails the hook.
 Slot and legacy descriptors are O_CLOEXEC and non-inheritable; only the wrapper
 holds them.
 Children and detached descendants receive no slot fd. SIGKILL of the wrapper
-releases its slot even if its child survives. INT/TERM/HUP are forwarded to the
-child's process group. An inherited `GOLEMS_HEAVY_SUITE_HELD` marker makes nested
+releases its slot even if its child survives. INT/TERM/HUP trigger verified
+tree cleanup. An inherited `GOLEMS_HEAVY_SUITE_HELD` marker makes nested
 wrappers re-entrant. QUEUED / SUITE START / SUITE DONE log tokens and exit status
 are preserved; START/DONE include the slot index. Keep fleet START/DONE posts
 until all callers opt in; commands outside the wrapper, forced runs and expired
@@ -72,3 +72,31 @@ their stdin. Missing helper/Python retains the existing full-suite fallback.
 Older installed helpers ignore the variable and keep running the full suite,
 so source and caller PRs can land independently. The deletion skip becomes active
 after the owner updates the installed pin; these source PRs do not install it.
+
+Every launched command has an absolute execution budget: `--timeout-seconds` /
+`GOLEMS_HEAVY_TIMEOUT_SECONDS` (1800 by default, finite and > 0), followed by
+`--kill-grace-seconds` / `GOLEMS_HEAVY_KILL_GRACE_SECONDS` (10 by default,
+finite and >= 0). CLI overrides environment. Invalid values return 2 before
+launch, including FORCE, HELD and unqueued paths. Timeout returns 124; caught
+INT/TERM/HUP return 130/143/129. Child errors retain their status. Cleanup failure
+changes a successful command to 70; other failures remain primary.
+
+The wrapper captures the leader's native birth identity before releasing its
+exec gate. Cleanup discovers group members while that leader incarnation lives,
+observed descendant edges, and exact byte environment markers born after the
+leader. A bare marker or reused PGID cannot authorize a signal. Every recipient
+is checked again immediately before TERM/KILL (Linux retains a pidfd). UID
+exclusions and unresolved identity evidence prevent successful cleanup. Nested
+wrappers retain the root ID but clean only their observed inner tree. Two empty
+observations and a reaped child are required for successful cleanup. The slot is
+also released after a bounded failed attempt; cleanup failure returns 70 only
+when the command would otherwise succeed.
+
+Private, atomic run records live in `~/.local/state/golems/runs/<suite_id>.json`;
+terminal `<suite_id>.cleanup.json` receipts retain identities seen, signals,
+survivors and incomplete evidence, without command/environment contents. The
+active record is removed only after verified cleanup. Unreadable processes
+outside the observed tree do not become members or signal targets. Known members
+with unavailable identity or changed UIDs prevent successful cleanup. A detached
+branch hiding its marker before any lineage observation cannot be recovered safely. Wrapper SIGKILL, owner-exit supervision and inherited
+root deadlines need A2; this change does not install a guardian or update hooks-live.
