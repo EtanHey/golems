@@ -90,6 +90,18 @@
       "command": "HOME=\"$RATCHET_HOME\" python3 scripts/ratchet/mac/hc-probe.py --repo \"$RATCHET_PUSH_REPO\" --branch \"$RATCHET_BRANCH\" --sha \"$RATCHET_PR_HEAD\" --issuer \"$RATCHET_CLONE/.worktrees/hooks-live/scripts/golems-lead-confirm\""
     },
     {
+      "id": "codex-native-hooks",
+      "metric": "REAL installed Codex CLI: native pre-execution hook denials and allowed executions in scratch HOME (synthetic local Responses server)",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "060286d35e8f60635b87f34d6c0c73c997aafc4b",
+      "fix_sha": "5e7a366d530391968d13d7a9ab9abdeec3712f46",
+      "command": "HOME=\"${RATCHET_HOME:?}\" CODEX_HOME=\"${RATCHET_HOME:?}/.codex\" GOLEMS_REQUIRE_CODEX=1 python3 \"${RATCHET_CLONE:?}/scripts/tests/test_codex_hooks_native.py\"",
+      "timeout_s": 90
+    },
+    {
       "id": "hooks-status",
       "metric": "installer --status problems on the scratch install after a lead-token issuance (codex trust excluded)",
       "kind": "real",
