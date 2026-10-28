@@ -24,12 +24,25 @@ Run the harness through `scripts/codex-workflows.sh`. Detailed interfaces are in
 - `status` and `harvest` inspect and collect a completed run. The dispatching lead owns
   harvesting and retiring its nested `.codex-workflows` lanes. Nightly GC deliberately
   excludes `.worktrees/.codex-workflows/` and `$HOME/Gits/worktrees/.codex-workflows/`;
-  it is not their backstop. The current `cleanup` engine can delete ignored personal
-  artifacts without archiving them. Hold these lanes until the lead has inventoried,
-  copied and verified every ignored `docs.local/` or personal artifact outside the
-  retiring tree, preserved local history, and explicitly authorized manual retirement.
-  Accepted harvest alone is insufficient. Until that engine is repaired, do not
-  recommend `cleanup` as automatic post-harvest deletion.
+  it is not their backstop. Cleanup uses the workspace retirement guard and records
+  its receipt in the lease ledger. The lead must inventory and preserve artifacts,
+  local history and consumer obligations before authorizing retirement. Harvest alone
+  is insufficient; cleanup is not automatic. Untracked files retain the worktree.
+
+### Interrupted cleanup token recovery
+
+Cleanup publishes its private close token atomically in the run directory, outside
+the worker worktree. A crash after `begin-close` returns but before token publication
+can leave a lease in `closing` without a usable token file. Run `lease.py audit
+--json` and inspect that lease's `closing_since` and `closing_age_seconds`; it never
+expires or releases itself. If the token from the `begin-close` stdout log was securely
+preserved, the operator can run `lease.py abort-close --lease-id <id> --close-token
+<token>` and then reconcile any stale token file before another cleanup attempt.
+Treat that token as a secret. The workflow normally captures stdout in memory and
+does not create a token log, so it may be unavailable after a crash. If it cannot be
+recovered, leave the lease reported as closing; do not auto-release it or delete the
+worktree. Inspect and preserve any stale or partial token file before reconciliation;
+its presence alone does not prove a complete token was published.
 
 ## Non-Negotiable Guards
 

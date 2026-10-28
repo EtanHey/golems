@@ -400,7 +400,7 @@ for i in range(40):
             module.cleanup_worker(manifest_path, "worker-a")
 
 
-    def test_cleanup_removes_worktree_with_byte_identical_harvested_artifact(self):
+    def test_cleanup_refuses_legacy_worktree_without_lease(self):
         module = load_module()
         repo = self.make_remote_repo()
         worktree = self.temp_dir / "worker-artifact"
@@ -427,10 +427,11 @@ for i in range(40):
         )
         module.harvest_manifest(manifest_path, self.temp_dir / "harvest")
 
-        module.cleanup_worker(manifest_path, "worker-a", delete_branch=True)
+        with self.assertRaisesRegex(module.CodexWorkflowError, "bound lease"):
+            module.cleanup_worker(manifest_path, "worker-a", delete_branch=True)
 
-        self.assertFalse(worktree.exists())
-        self.assertNotIn(branch, run("git", "branch", "--list", branch, cwd=repo).stdout)
+        self.assertTrue(worktree.exists())
+        self.assertIn(branch, run("git", "branch", "--list", branch, cwd=repo).stdout)
 
 
     def test_cleanup_refuses_dirty_path_that_was_not_harvested(self):
@@ -461,7 +462,7 @@ for i in range(40):
         module.harvest_manifest(manifest_path, self.temp_dir / "harvest-unharvested")
         (worktree / "scratch.txt").write_text("not harvested\n", encoding="utf-8")
 
-        with self.assertRaisesRegex(module.CodexWorkflowError, "unharvested dirty path"):
+        with self.assertRaisesRegex(module.CodexWorkflowError, "bound lease"):
             module.cleanup_worker(manifest_path, "worker-a", delete_branch=True)
 
         self.assertTrue(worktree.exists())
