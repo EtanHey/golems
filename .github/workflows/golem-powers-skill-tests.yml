@@ -184,6 +184,7 @@ jobs:
 
       - name: node suites
         run: |
+          node --test scripts/tests/pr-wait-hygiene.test.mjs
           node --test scripts/tests/install-receipt.test.mjs \
                       scripts/tests/t3-mcp-holders.test.mjs \
                       scripts/tests/container-teardown.test.mjs \
