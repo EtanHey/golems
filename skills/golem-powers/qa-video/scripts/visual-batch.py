@@ -29,7 +29,9 @@ def read_sheet(helper, question, timeout, sheet, model=None, workdir=None):
                                     *(['--model', model] if model else []), sheet], timeout)
     except (subprocess.TimeoutExpired, OverflowError) as error:
         cause = 'helper timeout' if isinstance(error, subprocess.TimeoutExpired) else str(error)
-        return failed(sheet, cause)
+        context = visual.decoded(getattr(error, 'stderr', ''))
+        fatal = visual.dispatch_stop(context)
+        return dict(failed(sheet, fatal or cause), fatal=fatal)
     out, err = result.stdout, result.stderr
     fatal = next((s for s in err.splitlines() if s.startswith('DISPATCH_STOPPED:')), '')
     complete = (result.returncode == 0 and 'Coverage: 1/1; complete;' in out
@@ -53,6 +55,8 @@ def citation_number(token):
 
 
 def validate(item, tile_count):
+    if item.get('fatal'):
+        return dict(item, state='FAILED', ok=False, cause=item['fatal'], offending_indexes=[])
     try:
         return validate_citations(item, tile_count)
     except (ValueError, TypeError, KeyError, OverflowError) as error:
@@ -70,6 +74,10 @@ def validate_citations(item, tile_count):
     finding = '\n'.join(line for line in item['finding'].splitlines()
                         if not line.startswith('Coverage:'))
     for citation in label.finditer(finding):
+        prefix = finding[:citation.start()]
+        if re.search(r'\b(?:\d+(?:st|nd|rd|th)|first|last|next|previous|second|third|final)\s*$', prefix, re.I):
+            malformed = True
+            continue
         tail = finding[citation.end():].lstrip()
         # Bare nouns at the end of a sentence are not indexed citations.
         if not tail or (tail.startswith((';', '.')) and not re.match(r'[;.]\s*\d', tail)):

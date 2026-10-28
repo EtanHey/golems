@@ -5,6 +5,8 @@ import json
 import os
 import selectors
 import signal
+import threading
+import select
 import time
 import re
 import subprocess
@@ -28,7 +30,22 @@ def model_id(tier, listing):
     raise ValueError('configured visual tier unavailable in agy models')
 
 
+def decoded(text):
+    return text.decode('utf-8', errors='replace') if isinstance(text, bytes) else (text or '')
+
+
+def dispatch_stop(text):
+    text = decoded(text)
+    marker = next((line for line in text.splitlines() if line.startswith('DISPATCH_STOPPED:')), '')
+    if marker:
+        return marker
+    match = re.search(r'quota|\b429\b|rate.?limit|resource_exhausted|unauthenticated|'
+                      r'authentication|invalid.?credential|auth.?error|permission denied|\b401\b|\b403\b', text, re.I)
+    return 'DISPATCH_STOPPED: our own visual dispatch hit ' + match[0] if match else ''
+
+
 def safe_cause(text, workdir):
+    text = decoded(text)
     text = re.sub(r'\x1b\[[\d;]*[A-Za-z]', '', text)
     text = re.sub(r'(?i)Bearer\s+\S+|(?:api[-_]?key|token|secret|password|credential)\s*[:=]\s*[^\s,;]+|'
                   r'(?:sk-|AIza)[\w-]{10,}|[A-Za-z0-9_-]{40,}', '[REDACTED]', text)
@@ -41,12 +58,32 @@ def safe_cause(text, workdir):
 OUTPUT_BYTE_LIMIT = 1024 * 1024
 
 
+class OutputLimitError(OverflowError):
+    """An explicit failure retaining bounded diagnostics, never a clipped read."""
+
+
 def bounded_run(command, timeout, limit=OUTPUT_BYTE_LIMIT):
     deadline = time.monotonic() + timeout
+    inherited = os.environ.get('QA_VISUAL_DEADLINE')
+    owns_group = inherited is None
+    if inherited is not None:
+        deadline = min(deadline, float(inherited))
+    if time.monotonic() >= deadline:
+        raise subprocess.TimeoutExpired(command, timeout)
+    env = dict(os.environ, QA_VISUAL_DEADLINE=str(deadline))
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               start_new_session=True)
+                               start_new_session=owns_group, env=env)
     chunks = {process.stdout: [], process.stderr: []}
     size = 0
+    previous_handler = None
+
+    def interrupted(signum, frame):
+        raise subprocess.TimeoutExpired(command, timeout)
+
+    # The helper must survive cancellation long enough to reap its provider.
+    # Provider descendants inherit the batch-owned helper group, never a new one.
+    if not owns_group and threading.current_thread() is threading.main_thread():
+        previous_handler = signal.signal(signal.SIGTERM, interrupted)
     try:
         with selectors.DefaultSelector() as selector:
             for pipe in chunks:
@@ -55,28 +92,49 @@ def bounded_run(command, timeout, limit=OUTPUT_BYTE_LIMIT):
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise subprocess.TimeoutExpired(command, timeout)
-                for key, _ in selector.select(remaining):
+                events = selector.select(remaining)
+                # Retain diagnostics before processing a simultaneously ready flood.
+                events.sort(key=lambda event: event[0].fileobj is not process.stderr)
+                for key, _ in events:
                     data = os.read(key.fileobj.fileno(), 65536)
                     if not data:
                         selector.unregister(key.fileobj)
                         continue
                     size += len(data)
                     if size > limit:
-                        raise OverflowError('output byte limit exceeded')
+                        if key.fileobj is process.stderr:
+                            chunks[process.stderr].append(data[:65536])
+                        elif select.select([process.stderr], [], [], 0)[0]:
+                            chunks[process.stderr].append(os.read(process.stderr.fileno(), 65536))
+                        raise OutputLimitError('output byte limit exceeded')
                     chunks[key.fileobj].append(data)
         process.wait(timeout=max(0, deadline - time.monotonic()))
         return subprocess.CompletedProcess(command, process.returncode,
-                    b''.join(chunks[process.stdout]).decode('utf-8', errors='replace'),
-                    b''.join(chunks[process.stderr]).decode('utf-8', errors='replace'))
+                    decoded(b''.join(chunks[process.stdout])),
+                    decoded(b''.join(chunks[process.stderr])))
+    except (subprocess.TimeoutExpired, OutputLimitError) as error:
+        error.stdout = decoded(b''.join(chunks[process.stdout]))
+        error.stderr = decoded(b''.join(chunks[process.stderr]))[:65536]
+        raise
     finally:
-        # Also reap descendants that may still own a pipe after their parent exits.
         try:
-            os.killpg(process.pid, signal.SIGKILL)
+            if owns_group:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGTERM)
+                    try:
+                        process.wait(timeout=.15)  # bounded cleanup, not extra work budget
+                    except subprocess.TimeoutExpired:
+                        pass
+                os.killpg(process.pid, signal.SIGKILL)
+            elif process.poll() is None:
+                process.kill()
         except ProcessLookupError:
             pass
         process.wait()
         process.stdout.close()
         process.stderr.close()
+        if previous_handler is not None:
+            signal.signal(signal.SIGTERM, previous_handler)
 
 
 def resolve_model(deadline=None):
@@ -201,7 +259,8 @@ def main():
                                        '--print-timeout', f'{args.timeout}s', *access],
                                       timeout=args.timeout + 15)
             except (subprocess.TimeoutExpired, OverflowError) as error:
-                return subprocess.CompletedProcess([], 1, '', str(error))
+                return subprocess.CompletedProcess([], 1, decoded(getattr(error, 'stdout', '')),
+                        decoded(getattr(error, 'stderr', '')) + '\n' + str(error))
         print(gather(paths, run))
     except DispatchError as error:
         print(str(error), file=sys.stderr)
