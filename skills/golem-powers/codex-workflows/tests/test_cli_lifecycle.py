@@ -67,7 +67,9 @@ print(json.dumps({'type': 'turn.completed', 'usage': {'output_tokens': 7}}))
     artifact = manifest.parent / "harvest" / "worker" / "artifacts" / "result.md"
     assert artifact.read_bytes() == b"fixture artifact\n"
     cleanup = cli("cleanup", "--manifest", manifest, "--delete-branches")
-    assert cleanup.returncode == 0, cleanup.stdout + cleanup.stderr
-    assert not Path(worker["worktree"]).exists()
-    assert not git("branch", "--list", worker["branch"], cwd=repo).stdout.strip()
+    assert cleanup.returncode != 0 and "worktree retained" in cleanup.stderr
+    assert Path(worker["worktree"]).exists()
+    assert git("branch", "--list", worker["branch"], cwd=repo).stdout.strip()
+    worker = json.loads(manifest.read_text())["workers"]["worker"]
+    assert worker["retirement_disposition"] == "RETAINED"
     assert artifact.read_bytes() == b"fixture artifact\n"

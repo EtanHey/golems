@@ -5,10 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
-import filecmp
+import json
 import os
 import subprocess
+import sys
 import time
+import uuid
 
 from .config import (
     CodexWorkflowError,
@@ -22,11 +24,25 @@ from .worktrees import (
     _run_git,
     discover_default_branch,
     git_common_dir,
-    resolve_artifacts,
 )
 from .manifest import load_manifest, update_worker
 from .process import _ProcessNotObservable, capture_process_identity, process_identity_alive, verify_launch
 from .logs import _terminal_status, parse_finished_log, write_log_header
+
+
+def lifecycle_tool(tool: str, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    root = next((p for p in Path(__file__).resolve().parents
+                 if (p / "scripts/workspace/lease.py").is_file()), None)
+    if root is None:
+        raise CodexWorkflowError("golems lifecycle tools not found")
+    try:
+        result = subprocess.run([sys.executable, str(root / "scripts/workspace" / tool), *args],
+                                text=True, capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise CodexWorkflowError(f"{tool} failed: {exc}") from exc
+    if check and result.returncode:
+        raise CodexWorkflowError(f"{tool} failed: {result.stderr.strip() or result.stdout.strip()}")
+    return result
 
 
 @dataclass(frozen=True)
@@ -169,11 +185,21 @@ def launch_worker(
     process = None
     try:
         dependencies.preflight(repo=repo, brief=brief)
+        lease_id = "codex-workflows-" + uuid.uuid4().hex
+        lifecycle_tool("lease.py", "reserve", "--lease-id", lease_id,
+                       "--allocator", "codex-workflows", "--owner", f"{manifest['run_id']}/{name}",
+                       "--repo", str(git_common_dir(repo)), "--kind", "worktree",
+                       "--ownership", "created", "--branch", branch)
+        update_worker(manifest_path, name, {"lease_id": lease_id})
         default_branch = dependencies.create_worktree(
             repo=repo,
             branch=branch,
             worktree=worktree,
         )
+        head = _run_git(worktree, "rev-parse", "HEAD").stdout.strip()
+        update_worker(manifest_path, name, {"head": head})
+        lifecycle_tool("lease.py", "bind", "--lease-id", lease_id, "--path", str(worktree),
+                       "--head", head, "--branch", branch)
         argv, prompt = dependencies.build_argv(
             repo=repo,
             worktree=worktree,
@@ -287,45 +313,39 @@ def cleanup_worker(
         if ancestor.returncode != 0:
             raise CodexWorkflowError(f"refusing to delete unmerged branch: {branch}")
 
+    if not worker.get("lease_id") or not worker.get("head"):
+        raise CodexWorkflowError("cleanup requires a bound lease and allocation head")
     worktree = Path(worker["worktree"])
-    if worktree.exists():
-        status = _run_git(
-            worktree,
-            "status",
-            "--porcelain=v1",
-            "-z",
-            "--untracked-files=all",
-        ).stdout
-        dirty_entries = [entry for entry in status.split("\0") if entry]
-        force_remove = False
-        if dirty_entries:
-            declared = {
-                artifact.relative_to(worktree.resolve()): artifact
-                for artifact in resolve_artifacts(worktree, list(worker.get("artifacts", [])))
-            }
-            harvest_root = Path(worker["harvest_output"]) / "artifacts"
-            for entry in dirty_entries:
-                if len(entry) < 4 or "R" in entry[:2] or "C" in entry[:2]:
-                    raise CodexWorkflowError(
-                        f"refusing cleanup with unsupported dirty entry: {entry!r}"
-                    )
-                relative = Path(entry[3:])
-                source = declared.get(relative)
-                harvested = harvest_root / relative
-                if (
-                    source is None
-                    or not harvested.is_file()
-                    or not filecmp.cmp(source, harvested, shallow=False)
-                ):
-                    raise CodexWorkflowError(
-                        f"refusing cleanup with unharvested dirty path: {relative}"
-                    )
-            force_remove = True
-        remove_args = ["worktree", "remove"]
-        if force_remove:
-            remove_args.append("--force")
-        remove_args.append(str(worktree))
-        _run_git(repo, *remove_args, timeout=60.0)
+    receipt_path = Path(manifest_path).resolve().parent / f"{worker_name}.retire.json"
+    try:
+        records = json.loads(lifecycle_tool("lease.py", "audit", "--json").stdout)
+        lease = next(record for record in records if record["lease_id"] == worker["lease_id"])
+        if (lease["state"] != "bound" or lease["path"] != str(worktree.resolve())
+                or lease["repo_common_dir"] != str(git_common_dir(repo))
+                or lease.get("head") != worker["head"] or lease["consumers"]
+                or lease["ownership"] != "created"):
+            raise ValueError("lease identity, state or consumers do not permit retirement")
+    except (ValueError, KeyError, TypeError, StopIteration) as exc:
+        raise CodexWorkflowError(f"cannot verify lease before retirement: {exc}") from exc
+    if receipt_path.exists():
+        raise CodexWorkflowError(f"retirement receipt already exists: {receipt_path}")
+    result = lifecycle_tool("retire.py", "--repo", str(repo), "--path", str(worktree),
+                            "--expect-head", worker["head"], "--receipt-out", str(receipt_path), check=False)
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        disposition = receipt["disposition"]
+        reason = receipt["reason"]
+        if disposition not in {"REMOVED", "RETAINED"} or (disposition == "REMOVED" and result.returncode != 0):
+            raise ValueError("invalid retirement outcome")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise CodexWorkflowError(f"retirement receipt unavailable or invalid: {exc}; {result.stderr.strip()}") from exc
+    update_worker(manifest_path, worker_name, {"retirement_disposition": disposition,
+                  "retirement_reason": reason, "retirement_receipt": str(receipt_path),
+                  "worktree_removed": disposition == "REMOVED"})
+    close_args = ["--receipt", str(receipt_path)] if disposition == "REMOVED" else ["--retained", reason]
+    lifecycle_tool("lease.py", "close", "--lease-id", worker["lease_id"], *close_args)
+    if disposition == "RETAINED":
+        raise CodexWorkflowError(f"worktree retained: {reason}")
     if delete_branch:
         _run_git(repo, "branch", "-D" if force_unmerged else "-d", branch)
     update_worker(
