@@ -79,6 +79,14 @@ Decision-flow fails closed unless every scene is owned by exactly one decision.
 This keeps audio and questions woven together and prevents a cinema-style global
 audio strip / separate question list from reappearing.
 
+## Card detail format
+
+Follow [Card detail affordances](references/card-format.md): text-only cards
+must not repeat their text in a View details expander. Either offer no secondary
+action, or offer a **Listen deeper** button that opens an inline narrated section
+with real-word-timed read-along and word-click seek. Cards with a visualization
+may keep a View details expander that shows the visualization's underlying data.
+
 ## Vendored Engine (what makes it portable)
 
 Everything the pipeline needs is inside the skill:
