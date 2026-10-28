@@ -645,3 +645,27 @@ test("BYO acoustic rejection preserves a stale TTS take and requires source repl
   expect(acousticRow.runbook).not.toContain("--no-cache");
   expect(receipts.purges).toEqual([]);
 });
+
+test("decision-flow build rejects a bare #number until the card links a repository-qualified URL", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-bare-ref-"));
+  const jobDir = path.join(root, "job");
+  writeSegment(jobDir, "only", [
+    { word: "alpha", start: 0.05, end: 0.42 },
+    { word: "beta", start: 0.45, end: 0.80 }
+  ]);
+  const spec = rail => ({
+    type: "decision-flow",
+    id: "decision-flow-bare-ref",
+    scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
+    decisions: [{ id: "gate", title: "Gate", body: "Merged in #39.", sceneIds: ["only"], rail }]
+  });
+
+  const bare = buildDashboard(spec([{ label: "PR", value: "#39" }]), jobDir, "decision-flow-bare-ref").result;
+  expect(bare.status).not.toBe(0);
+  expect(bare.stderr).toContain("bare issue/PR reference");
+  expect(bare.stderr).toContain("gate body #39");
+
+  const { result, outputPath } = buildDashboard(spec([{ label: "PR", value: "#39", href: "https://github.com/EtanHey/golems/pull/39" }]), jobDir, "decision-flow-bare-ref");
+  expect(result.status).toBe(0);
+  expect(readFileSync(outputPath, "utf8")).toContain('href="https://github.com/EtanHey/golems/pull/39"');
+});

@@ -16,6 +16,16 @@ belong to the parent decision, preserving exactly-one-decision scene ownership.
 its **Listen deeper** button; parent audio stays paused until explicitly resumed.
 This is authoring guidance; the renderer does not supply this interaction.
 
+## Issue and PR references
+
+Attribution: Etan, 2026-10-28 dashboard feedback (AD-16).
+
+A card that names an issue or PR links it. Supply the repository-qualified URL
+as a rail `href`: `{ "label": "PR", "value": "#39", "href":
+"https://github.com/OWNER/REPO/pull/39" }`. The producer must already know the
+repository; never infer one from a bare number. `build-dashboard` rejects any
+`#N` on a card that has no matching linked rail row.
+
 Run `bun scripts/validate-evidence.mjs --spec <job.json>` from the skill directory
 after rendering (include `--published "<sync command>"` for publish evidence).
 The HTML evidence gate inspects decision-flow, cinema and hand-built cards

@@ -87,6 +87,18 @@ action, or offer a **Listen deeper** button that opens an inline narrated sectio
 with real-word-timed read-along and word-click seek. Cards with a visualization
 may keep a View details expander that shows the visualization's underlying data.
 
+## Issue and PR references
+
+Attribution: Etan, 2026-10-28 dashboard feedback (AD-16).
+
+Any `#N` a card shows must be a link. Add a rail row on that card whose `href`
+is the repository-qualified PR/issue URL the producer already has:
+`{ "label": "PR", "value": "#39", "href": "https://github.com/OWNER/REPO/pull/39" }`.
+Never infer a repository from a bare number. The build fails on an unlinked
+`#N` and rejects a value whose number contradicts its GitHub `href`. GitHub links
+render as `repo#N`. Only `http(s)` hrefs become anchors; anything else,
+including `javascript:` and `data:`, stays plain text.
+
 ## Vendored Engine (what makes it portable)
 
 Everything the pipeline needs is inside the skill:
