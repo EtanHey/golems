@@ -82,12 +82,11 @@ audio strip / separate question list from reappearing.
 ## Card detail format
 
 Follow [Card detail affordances](references/card-format.md): text-only cards
-must not repeat their text in a View details expander. Offer no secondary action
-or Listen deeper into a more detailed inner narrated sub-dashboard with the same
-read-along and word-click seek mechanics. Comparisons are the canonical use;
-cards with a visualization keep their existing detail affordance.
-Check the separate authoring spec before rendering with
-`bun scripts/lint-card-format.mjs <cards.json>` (paths relative to this skill).
+must not repeat their text in a View details expander. Either offer no secondary
+action, or offer a **Listen deeper** button that opens an inline narrated section
+with real-word-timed read-along and word-click seek. Cards with a visualization
+may keep a View details expander that shows the visualization's underlying data.
+The normal `scripts/validate-evidence.mjs` HTML gate enforces the expander rule.
 
 ## Vendored Engine (what makes it portable)
 
