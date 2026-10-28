@@ -17,7 +17,7 @@ export const DEFAULT_DECISIONS = [
   { id: "b", title: "B", options: ["One", "Two"], sceneIds: ["b1"] },
 ];
 
-export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard, storageError = () => false, touch = false, clock = Date, schedule = setTimeout, runtimeTransform = source => source, renderOptions = {} } = {}) {
+export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard, storageError = () => false, touch = false, clock = Date, schedule = setTimeout, runtimeTransform = source => source, renderOptions = {}, url } = {}) {
   const html = renderDecisionFlow({
     title: "Audio decision dashboard",
     kicker: "Audio decision dashboard",
@@ -29,7 +29,7 @@ export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), sce
     decisions,
     ...renderOptions,
   });
-  const window = new Window();
+  const window = new Window(url ? { url } : undefined);
   const nativeMatchMedia = window.matchMedia.bind(window);
   window.matchMedia = query => query === "(pointer: coarse)" ? { matches: touch } : nativeMatchMedia(query);
   if (seed) window.localStorage.setItem("dbx:interaction-test", JSON.stringify(seed));

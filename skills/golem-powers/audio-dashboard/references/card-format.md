@@ -52,3 +52,10 @@ title?, timeoutMs? }`. The renderer supplies the dialog. It shows Loading, then
 the page, or a failure message with Retry and Back once the frame errors or
 `timeoutMs` passes (default 10 s). It never waits forever. Retry loads a fresh
 frame, and a late event from an earlier attempt is ignored.
+
+Browsers fire `load` for 404s and network failures, so a load alone is not
+success. The page must be readable and same-origin, and show a 2xx/3xx
+`responseStatus`, or contain a visual where the browser reports no status
+(WebKit). A comparison page should therefore carry its chart as svg, canvas,
+img, figure or video, as the View details gate already requires. From a
+`file:` dashboard the frame is unreadable and the dialog reports failure.

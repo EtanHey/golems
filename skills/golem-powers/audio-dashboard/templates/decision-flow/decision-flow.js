@@ -255,23 +255,37 @@
   // Comparison: closed -> loading -> loaded | failed (frame error, or no load within the card's bound) -> loading on Retry.
   // Each attempt gets a fresh frame and token, so a late event or timer from an earlier attempt cannot settle the current one.
   var compare=document.getElementById("df-compare"),compareView=null,compareAttempt=0;
-  function compareStatus(state,message){compare.dataset.state=state;document.getElementById("df-compare-message").textContent=message;["df-compare-retry","df-compare-close"].forEach(function(id){document.getElementById(id).hidden=state!=="failed";});}
+  function compareStatus(state,message,final){compare.dataset.state=state;document.getElementById("df-compare-message").textContent=message;document.getElementById("df-compare-retry").hidden=state!=="failed"||Boolean(final);document.getElementById("df-compare-close").hidden=state!=="failed";}
   function settleCompare(token,state,message){if(!compareView||token!==compareAttempt||compare.dataset.state!=="loading")return;compareStatus(state,message);if(state==="failed"&&compare.contains(document.activeElement))document.getElementById("df-compare-retry").focus();}
+  // Click-time twin of the render guard: the browser-parsed URL must stay on this page's origin and inside its directory.
+  function compareTarget(value){
+    var base,dir,url;try{base=new URL(document.location.href);dir=new URL("./",base);url=new URL(value,base);}catch(error){return "";}
+    var inside=["http:","https:","file:"].indexOf(url.protocol)>=0&&url.protocol===base.protocol&&url.origin===base.origin&&url.pathname.indexOf(dir.pathname)===0&&!/%2f|%5c/i.test(url.pathname);
+    return /[\u0000-\u001f\u007f]/.test(value)||/^\s*[\\/]/.test(value)||!inside?"":url.href;
+  }
   // Browsers fire load, not error, for network failures and HTTP errors, so a load proves nothing alone.
-  // The target is same-origin by contract: an unreadable frame is a browser error page; a 4xx/5xx is a failed page.
+  // Success needs positive evidence from a readable same-origin frame: a navigation entry with a 2xx/3xx
+  // responseStatus where the browser reports one, or (WebKit has no responseStatus) a visual in the page.
+  // Anything else, including an unreadable file: frame, is a failure with Retry and Back.
   function frameProblem(frame){
-    var failed="The comparison couldn't load. Retry, or go back to the card.";
-    if(document.location.protocol==="file:"||!frame.contentWindow)return "";
-    try{var nav=frame.contentWindow.performance.getEntriesByType("navigation")[0];return nav&&nav.responseStatus>=400?failed:"";}catch(error){return failed;}
+    var failed=document.location.protocol==="file:"?"This comparison can't be checked from a file. Open the dashboard over http(s), or go back to the card.":"The comparison couldn't load. Retry, or go back to the card.";
+    var timing=document.defaultView&&document.defaultView.PerformanceResourceTiming,reportsStatus=Boolean(timing&&"responseStatus" in timing.prototype);
+    try{
+      var child=frame.contentWindow;if(!child||child.location.href==="about:blank")return failed;
+      if(reportsStatus){var nav=child.performance.getEntriesByType("navigation")[0],status=nav&&nav.responseStatus;return typeof status==="number"&&status>=200&&status<400?"":failed;}
+      return child.document.querySelector("svg, canvas, img, figure, video")?"":failed;
+    }catch(error){return failed;}
   }
   function loadCompare(){
     var token=++compareAttempt,view=compareView,frame=document.createElement("iframe"),seconds=String(Math.round(view.timeout/100)/10);
     frame.className="df-compare-frame";frame.title=view.title;
     frame.addEventListener("load",function(){var problem=frameProblem(frame);settleCompare(token,problem?"failed":"loaded",problem);});
     frame.addEventListener("error",function(){settleCompare(token,"failed","The comparison couldn't load. Retry, or go back to the card.");});
+    var target=compareTarget(view.url);
+    if(!target){document.getElementById("df-compare-stage").replaceChildren();compareStatus("failed","This comparison points outside the dashboard, so it was not opened. Go back to the card.",true);if(compare.contains(document.activeElement))document.getElementById("df-compare-close").focus();return;}
     compareStatus("loading","Loading comparison…");
     // src before insertion: an empty frame fires an about:blank load that would read as success.
-    frame.src=view.url;document.getElementById("df-compare-stage").replaceChildren(frame);
+    frame.src=target;document.getElementById("df-compare-stage").replaceChildren(frame);
     setTimeout(function(){settleCompare(token,"failed","The comparison didn't load within "+seconds+" seconds. Retry, or go back to the card.");},view.timeout);
   }
   function openCompare(card,button){if(compareView)return;if(isPlaying(card))pauseCard(card);compareView={opener:button,url:button.dataset.compareUrl,title:button.dataset.compareTitle,timeout:Number(button.dataset.compareTimeout)||10000};document.getElementById("df-compare-title").textContent=compareView.title;compare.showModal();document.getElementById("df-compare-back").focus();loadCompare();}

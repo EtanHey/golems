@@ -201,16 +201,35 @@ function comparisonTimeout(value, where) {
   return value;
 }
 
+// Judge the URL the browser will load, not the raw string: the WHATWG parser drops tab/LF/CR and resolves
+// "../" and "%2e%2e/", so "java\nscript:" and directory escapes only show up after parsing.
+const COMPARISON_BASE = new URL("https://dashboard.invalid/dashboard/index.html");
+const COMPARISON_DIR = new URL("./", COMPARISON_BASE);
+
+function comparisonUrl(value, decisionId) {
+  const raw = String(value ?? "");
+  let url = null;
+  try {
+    // A leading "/" or "\\" leaves the directory; a leading "#" or "?" points back at the dashboard itself.
+    url = /^\s*[\\/#?]|[\u0000-\u001f\u007f]/.test(raw) || !raw.trim() ? null : new URL(raw, COMPARISON_BASE);
+  } catch {
+    url = null;
+  }
+  const relative = url && url.origin === COMPARISON_BASE.origin && url.pathname.startsWith(COMPARISON_DIR.pathname) && !/%2f|%5c/i.test(url.pathname)
+    ? url.pathname.slice(COMPARISON_DIR.pathname.length) + url.search + url.hash
+    : "";
+  if (!relative) {
+    throw new Error(`decision-flow: ${decisionId} comparison.url must be a relative URL inside the dashboard directory`);
+  }
+  return relative;
+}
+
 // An explicit comparison target: a page inside the dashboard directory, opened in the shared dialog.
 function normalizeComparison(decision, timeoutMs) {
   if (decision.comparison === undefined) return null;
   const spec = typeof decision.comparison === "string" ? { url: decision.comparison } : decision.comparison || {};
-  const url = String(spec.url ?? "").trim();
-  if (!url || /^[A-Za-z][A-Za-z0-9+.-]*:|^[\\/]/.test(url)) {
-    throw new Error(`decision-flow: ${decision.id} comparison.url must be a relative URL inside the dashboard directory`);
-  }
   return {
-    url,
+    url: comparisonUrl(spec.url, decision.id),
     label: String(spec.label ?? "").trim() || "View comparison",
     title: String(spec.title ?? "").trim() || `Comparison · ${decision.title}`,
     timeoutMs: spec.timeoutMs === undefined ? timeoutMs : comparisonTimeout(spec.timeoutMs, `${decision.id} comparison.timeoutMs`),

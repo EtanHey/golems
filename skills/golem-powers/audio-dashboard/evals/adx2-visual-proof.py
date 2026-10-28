@@ -15,7 +15,7 @@ for width in (1280, 390):
         image.save(out / f'{width}-{phase}.png', optimize=True)
         images.append(image)
     ImageChops.difference(*images).save(out / f'{width}-pixel-diff.png', optimize=True)
-    for state in ('loading', 'loaded', 'error', 'timeout', 'retry-loaded'):
+    for state in ('loading', 'loaded', 'error', 'error-back', 'timeout', 'retry-loaded'):
         Image.open(source / 'after' / f'{width}-{state}.png').convert('RGB').save(out / f'{width}-{state}.png', optimize=True)
 
 def frame(width, name, label, phase='after'):
@@ -30,7 +30,7 @@ def gif(name, frames):
 
 gif('comparison-load.gif', [frame(390, 'card', '1. View comparison'), frame(390, 'loading', '2. Loading, bounded'), frame(390, 'loaded', '3. Loaded')])
 gif('comparison-timeout-retry.gif', [frame(390, 'slow-loading', '1. Server stalls'), frame(390, 'timeout', '2. Times out at the bound'), frame(390, 'retry-loaded', '3. Retry (Enter) loads')])
-gif('comparison-error-back.gif', [frame(1280, 'error', '1. Network error: message, Retry, Back'), frame(1280, 'card', '2. Back returns focus to the card')])
+gif('comparison-error-back.gif', [frame(1280, 'error', '1. Network error: message, Retry, Back'), frame(1280, 'error-back', '2. Right after keyboard Back: focus ring on the opener')])
 for file in sorted(out.iterdir()):
     assert file.stat().st_size < 400_000, file
     print(file.name, file.stat().st_size)

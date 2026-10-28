@@ -325,10 +325,16 @@ decision's non-empty `sceneIds` array.
 ```
 
 **Comparisons settle.** `comparison.url` is a relative page inside the dashboard
-directory (no scheme, no leading `/`). It opens in a shared dialog that shows
-Loading, then the page, or a failure message with **Retry** and **Back** after a
-frame error or after `timeoutMs` (default 10000; per card, or the spec-level
-`comparisonTimeoutMs`). Back and Esc return focus to the card's opener.
+directory. The renderer and the click handler both check the URL the browser
+will load, so a scheme, `../`, `%2e%2e/`, control characters or another origin
+are rejected. It opens in a shared dialog that shows Loading, then the page, or
+a failure message with **Retry** and **Back** after a frame error or after
+`timeoutMs` (default 10000; per card, or the spec-level `comparisonTimeoutMs`).
+A load counts only with positive evidence from a readable same-origin frame: a
+2xx/3xx navigation `responseStatus`, or, where the browser has no such field
+(Safari/WebKit), a visual (svg, canvas, img, figure or video) in the page.
+Serve the dashboard over http(s): from `file:` the frame cannot be checked, so
+the dialog shows the failure state. Back and Esc return focus to the opener.
 
 ## Bootstrap
 
