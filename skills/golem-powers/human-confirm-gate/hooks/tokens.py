@@ -5,6 +5,7 @@ import os
 import re
 import stat
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -15,6 +16,9 @@ SSH = '/usr/bin/ssh-keygen'
 # shipped payload stays portable, and pass trusted_binary's ownership checks.
 GH_CANDIDATES = tuple(os.path.join(prefix, 'bin', 'gh') for prefix in
                       (os.path.join('/', 'opt', 'homebrew'), os.path.join('/', 'usr', 'local')))
+# Allow GitHub latency without letting each metadata probe block indefinitely:
+# two attempts at 15 s each; local reads retain their 2 s deadline.
+GH_READ_TIMEOUT = 15
 
 
 def trusted_binary(candidates):
@@ -164,7 +168,15 @@ def private_read(path):
 
 
 def read_command(argv):
-    return subprocess.run(argv, capture_output=True, text=True, check=True, timeout=2).stdout.strip()
+    metadata = argv[0] in GH_CANDIDATES and tuple(argv[1:3]) in (('repo', 'view'), ('pr', 'view'))
+    timeout = GH_READ_TIMEOUT if metadata else 2
+    for attempt in range(2 if metadata else 1):
+        try:
+            return subprocess.run(argv, capture_output=True, text=True, check=True, timeout=timeout).stdout.strip()
+        except subprocess.TimeoutExpired:
+            if not metadata or attempt == 1:
+                raise
+            print(f'human-confirm: gh {argv[1]} view timed out after {timeout}s; retrying once', file=sys.stderr)
 
 
 def lead_metadata(op):
