@@ -4,7 +4,7 @@ Status: upstream bytes copied without edits; usage policy is a separate DRAFT.
 
 | Owner | Source | Pinned commit | License |
 | --- | --- | --- | --- |
-| Anthropic | https://github.com/anthropics/skills | dbd4588f9e1033efb41dad4bef2f7947c8993d44 | Apache-2.0, frontend-design/LICENSE.txt |
+| Anthropic | https://github.com/anthropics/claude-plugins-official | f8c5e7a1dcb71b10cb74586224b5401f3de5db28 | Apache-2.0, frontend-design/LICENSE.txt |
 | Emil Kowalski | https://github.com/emilkowalski/skills | 2d228630ba1446365f614a108cb8252f1feda202 | MIT, LICENSE in each skill |
 
 Only the five named Emil skills are included. `animate` references `pick-ui-library`,
@@ -22,7 +22,7 @@ auto-trigger suppression there is UNPROVEN. Invoke this skill explicitly in brie
 Install: use golem-install's `repoint-skills.mjs --source <golem-powers> --vendor-skills`
 (dry-run), then `--apply`. It verifies manifest hashes, copies a durable pinned payload
 under ~/.golems/vendor/design-skills/, and links the providers selected in manifest.json (with per-skill overrides).
-Claude keeps its official auto-updating frontend-design plugin and gets only Emil.
+Claude uses the official plugin; Codex and Cursor use the vendored pin, with hash and version drift checked against `plugins/frontend-design` in the official marketplace (version from `.claude-plugin/plugin.json`).
 See `/agent-routing` for the roles and usage constraints of every installed provider.
 Gemini/agy get none. Add providers only after authorization.
 Do not use ~/.agents/skills because Gemini/agy exposure is forbidden.
@@ -30,7 +30,7 @@ Do not use ~/.agents/skills because Gemini/agy exposure is forbidden.
 Refresh: `.github/workflows/design-skill-updates.yml` checks both upstreams daily
 at 06:43 UTC when `vars.DESIGN_SKILL_UPDATES == 'true'`; explicit manual dispatch
 on master can run regardless of that variable. It copies only the six selected skill payloads
-as inert data; only changed payload hashes update manifest/VENDOR pins and open a PR.
+as inert data; changed payload hashes or official plugin versions update manifest/VENDOR pins and open a PR.
 It never installs, runs upstream code, or merges. Immutable upstream-pair branches
 and all-state PR lookup avoid force-pushes, duplicate proposals and reopening rejects.
 Read every changed instruction/reference before merge; normal CI and independent

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.golems.design-skill-updates</string>
+  <key>Comment</key><string>golems design skill updater installer</string>
+  <key>ProgramArguments</key><array><string>@NODE_BIN@</string><string>@RUNNER@</string></array>
+  <key>EnvironmentVariables</key><dict>
+    <key>HOME</key><string>@HOME@</string>
+    <key>PATH</key><string>@PATH@</string>
+    <key>GOLEMS_GH</key><string>@GH_BIN@</string>
+    <key>GOLEMS_GIT</key><string>@GIT_BIN@</string>
+    <key>GH_PROMPT_DISABLED</key><string>1</string>
+    <key>GIT_TERMINAL_PROMPT</key><string>0</string>
+    <key>GH_NO_UPDATE_NOTIFIER</key><string>1</string>
+  </dict>
+  <key>StartCalendarInterval</key><dict>
+    <key>Hour</key><integer>10</integer>
+    <key>Minute</key><integer>43</integer>
+  </dict>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardOutPath</key><string>@STATE@/launchd.stdout.log</string>
+  <key>StandardErrorPath</key><string>@STATE@/launchd.stderr.log</string>
+</dict></plist>

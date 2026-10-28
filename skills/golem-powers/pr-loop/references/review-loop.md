@@ -416,3 +416,13 @@ gh pr view <N> --json reviewDecision,comments
 gh pr merge <N> --merge --delete-branch
 git checkout main && git pull
 ```
+
+### Visual review validity and round counting
+
+Every visual PR reviewer must inspect and cite desktop before/after, 390 px
+before/after, one GIF per animation/interaction (or the exact no-change exemption),
+and e2e screenshot diffs from the PR's Visual proof section. A review that
+cites only code is INVALID and does not count as a round, including Loop-record
+inner/remote counts. Obtain a valid artifact-citing review before counting a
+clean round or merging. Missing proof is a pre-merge stop at every PR size.
+Routing: see `/agent-routing` § Routing rules (SSOT).

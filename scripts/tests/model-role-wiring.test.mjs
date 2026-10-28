@@ -105,6 +105,9 @@ test('packaged helper role matches config and caller-selected brain-worker stays
   assert.match(helper, /role: claude.subagent.cheap/);
   assert.ok(helper.includes(`model: ${config.roles['claude.subagent.cheap'].alias}`));
   assert.match(helper, /^effort: medium$/m); // benched agent-level override
+  const deploy = read('skills/golem-powers/orc/agents/deploy-local-prod.md').split('---')[1];
+  assert.match(deploy, /^role: claude.subagent.cheap$/m);
+  assert.ok(deploy.includes(`model: ${config.roles['claude.subagent.cheap'].alias}`));
   for (const role of Object.values(config.roles)) {
     assert.ok(!Object.hasOwn(role, 'effort'));
     assert.ok(!Object.hasOwn(role, 'effort_note'));
@@ -160,15 +163,16 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
     '"**Models:** Codex = gpt-6.1-sol and gpt-6-luna ONLY."', '"**Never gpt-5.6-\\*** (luna, sol, terra)"', '"gpt-6-astra only when Etan asks for it."',
     '`codex.implement`', '`codex.subagent.mechanical`', 'refused',
   ]) assert.ok(pins.includes(rule), rule);
-  // Review r1 BLOCKING: explicit interim UI precedence (lead decision) next to the UI bullet.
-  const uiLine = sizing.split('\n').find(l => l.startsWith('- UI precedence (interim'));
-  assert.ok(uiLine, 'dated interim UI precedence line is required');
-  for (const rule of ['skill-lead interim', 'pending Etan', 'takes precedence over the table', 'evidence', 'functional defect', 'not "the reviewer"', 'ONE reviewer', 'fresh Opus', 'never the implementer', 'XS/S', 'M UI PRs: up to 2 rounds', 'full panel']) assert.ok(uiLine.includes(rule), rule);
+  // The frontend flow adds taste review while preserving cross-vendor review.
+  const uiLine = sizing.split('\n').find(l => l.startsWith('- UI flow (Etan FRONTEND RULE'));
+  assert.ok(uiLine, 'frontend UI flow line is required');
+  for (const rule of ['2026-10-28', 'red-team Claude', 'BOTH skills', "the table's Codex reviewer (cross-vendor, canon #1)", 'Codex plumbing', 'already the other vendor', 'Both reviews cite the Visual proof']) assert.ok(uiLine.includes(rule), rule);
+  for (const rule of ['never the implementer', 'frontend-design:frontend-design', 'emil-design-eng', 'round caps', 'full panel']) assert.ok(sizing.includes(rule), rule);
   const matrix = skill.split('## Role Matrix')[1].split('### Evidence')[0];
   assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*dated trial/);
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
   assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
-  for (const [id, name] of [[90, 'trial-refactor-opus-implements-sol-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only'], [96, 'xs-ui-pr-one-opus-reviewer-codex-records'], [97, 'astra-on-etan-explicit-ask']]) {
+  for (const [id, name] of [[90, 'trial-refactor-opus-implements-sol-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only'], [96, 'xs-ui-pr-claude-taste-plus-codex-review'], [97, 'astra-on-etan-explicit-ask']]) {
     const e = suite.evals.find(e => e.id === id);
     assert.equal(e?.name, name);
     assert.ok(e.prompt && e.expected_output, name);
@@ -493,12 +497,13 @@ test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk
   // Every pinned row still matches a real mention, so the table cannot keep stale exemptions.
   const live = new Set(codexModelMentions(suite).map(m => JSON.stringify(m)));
   for (const [id, field, sentence] of PINNED_CODEX_MODEL_MENTIONS) assert.ok(live.has(JSON.stringify([id, field, sentence])), `stale pin: eval ${id} ${field}: ${sentence}`);
-  // Eval 46: UI review is sized; a Codex reviewer only in the L/data/security full panel.
-  const e46 = JSON.stringify(byId(46));
-  assert.match(e46, /size:\*/);
-  assert.match(e46, /frontend-design:frontend-design/);
-  assert.match(e46, /full panel/);
-  assert.doesNotMatch(e46, /Codex with the codex\.implement model to review/);
+  // Reject the old same-vendor-only route, including XS Claude visual slices.
+  for (const id of [46, 94, 96]) assertVisualEval(byId(id));
+  assert.match(byId(46).prompt, /Codex plumbing/);
+  for (const output of [
+    'Exactly one fresh claude.judgment reviewer; no second Codex reviewer.',
+    'A Codex reviewer only in the L/data/security full panel.',
+  ]) assert.throws(() => assertVisualEval({ ...byId(96), expected_output: output }));
   // Eval 14: Spark is no longer allowed for internal children.
   assert.doesNotMatch(JSON.stringify(byId(14)), /Allows Spark/);
   // Codex-implements answers for "everything else" are explicitly dated after the trial.
@@ -510,3 +515,12 @@ test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk
   assert.doesNotMatch(JSON.stringify(byId(55)), /cmux/);
   assert.match(JSON.stringify(byId(56)), /authorizes the rig/);
 });
+
+function assertVisualEval(evaluation) {
+  const output = evaluation.expected_output;
+  for (const required of ['fresh claude.judgment', 'never the implementer', 'Codex plumbing', 'already the other vendor', 'frontend-design:frontend-design', 'emil-design-eng',
+    'PLUS the Codex reviewer', 'Both reviews cite the Visual proof', '1 round for XS/S',
+    'up to 2 rounds for M', 'full panel', 'only after the implementer reports DONE'])
+    assert.ok(output.includes(required), `eval ${evaluation.id}: ${required}`);
+  assert.doesNotMatch(JSON.stringify(evaluation), /Exactly one fresh|Codex reviewer only in|does NOT require a Codex reviewer|Does NOT add a second \(Codex\) reviewer/i);
+}

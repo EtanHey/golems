@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { readFileSync, realpathSync } from "node:fs";
+import { appendFileSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 
 const canonicalPath = (candidate) => { try { return realpathSync(candidate); } catch { return resolve(candidate); } };
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const maxClockSkewMs = 5 * 60_000;
 const defaultIgnores = ["docs.local/**", "**/*.md", "collab/**"];
 const defaultTagPattern = "^v?\\d+\\.\\d+\\.\\d+(?:[-+].*)?$";
 
@@ -23,10 +24,11 @@ function checked(program, args, options = {}) {
 }
 
 function parseArgs(argv) {
-  const options = { repo: null, manifest: resolve(scriptRoot, "release-gate.json"), json: false, releaseOnly: false, sha: null };
+  const options = { repo: null, manifest: resolve(scriptRoot, "release-gate.json"), json: false, releaseOnly: false, callback: false, sha: null };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--json") options.json = true;
+    else if (argument === "--callback") options.callback = true;
     else if (argument === "--release-only") options.releaseOnly = true;
     else if (argument === "--sha") {
       const value = argv[++index];
@@ -49,6 +51,7 @@ function parseArgs(argv) {
     else options.repo = resolve(argument);
   }
   options.repo ??= process.cwd();
+  if (options.callback && !options.releaseOnly) throw new Error("--callback requires --release-only");
   if (options.sha && options.releaseOnly) throw new Error("--sha and --release-only are mutually exclusive");
   return options;
 }
@@ -96,7 +99,7 @@ function latestTag(repo, remoteRef, pattern, runCommand, kind) {
   return tag;
 }
 
-function commitCounts(repo, tag, remoteRef, ignorePaths, runCommand) {
+function commitCounts(repo, tag, remoteRef, ignorePaths, runCommand, includeAge = false) {
   const shas = checked("git", ["-C", repo, "rev-list", "--reverse", `${tag}..${remoteRef}`], { runCommand }).split(/\s+/).filter(Boolean);
   const raw = Number.parseInt(checked("git", ["-C", repo, "rev-list", "--count", `${tag}..${remoteRef}`], { runCommand }), 10);
   const ignoredBy = ignorePaths.map((pattern) => globRegex(pattern));
@@ -104,7 +107,17 @@ function commitCounts(repo, tag, remoteRef, ignorePaths, runCommand) {
     const paths = checked("git", ["-C", repo, "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "-m", sha], { runCommand });
     return [...new Set(paths.split(/\r?\n/).filter(Boolean))].some((path) => !ignoredBy.some((matcher) => matcher.test(path)));
   });
-  return { raw, shippable: shippable.length };
+  const counts = { raw, shippable: shippable.length };
+  if (includeAge && shippable.length) {
+    // Integration time on the default branch, not the age of a topic commit.
+    const integrations = checked("git", ["-C", repo, "log", "--first-parent", "--reverse", "--format=%H:%ct", `${tag}..${remoteRef}`], { runCommand });
+    const oldest = integrations.split(/\r?\n/).map(line => line.split(":"))
+      .find(([sha]) => shippable.includes(sha));
+    const timestamp = Number(oldest?.[1]) * 1000;
+    if (!Number.isFinite(timestamp) || timestamp > Date.now() + maxClockSkewMs) throw new Error("cannot determine oldest unreleased integration time");
+    counts.oldestShippableAt = new Date(timestamp).toISOString();
+  }
+  return counts;
 }
 
 function cleanVersion(value) {
@@ -292,7 +305,7 @@ export function inspectRelease(options, runCommand = execute) {
   }
   const tag = latestTag(repo, remoteRef, config.tagPattern ?? manifest.tagPattern, runCommand, config.artifact.kind);
   const ignorePaths = config.ignorePaths ?? manifest.ignorePaths ?? defaultIgnores;
-  const commits = commitCounts(repo, tag, remoteRef, ignorePaths, runCommand);
+  const commits = commitCounts(repo, tag, remoteRef, ignorePaths, runCommand, options.callback);
   if (config.artifact.kind === 'github-release') {
     const error = publishedReleaseError(identity.slug, tag, config.channel, runCommand);
     if (error) return { verdict: 'UNKNOWN', repo, repository: identity.slug, latestTag: tag, artifact: config.artifact, error };
@@ -358,13 +371,43 @@ export function releaseExitCode(verdict) {
   return verdict === "UNKNOWN" ? 2 : 1;
 }
 
+// Callback grace is deliberately separate from the strict local batch gate.
+export function callbackResult(report, now = Date.now()) {
+  if (report.verdict !== "MERGED_UNRELEASED") return { code: releaseExitCode(report.verdict) };
+  const age = now - Date.parse(report.commits?.oldestShippableAt);
+  if (!Number.isFinite(age) || age < -maxClockSkewMs) throw new Error("invalid unreleased integration time");
+  // Observed merge-to-release cadence is 1–7 minutes (d5d3a289: 6m49s);
+  // transient failed-gate runs cleared about 2 minutes later. Two hours allows
+  // queue delays without hiding a stalled backlog for a full daily cron cycle.
+  const overdue = Math.max(0, age) >= 2 * 3600_000;
+  return {
+    code: overdue ? 1 : 0,
+    annotation: overdue ? "error" : "warning",
+    message: `MERGED_UNRELEASED: oldest shippable integration ${report.commits.oldestShippableAt}; grace period 2 hours; ${overdue ? "overdue, repair publication" : "publication pending"}`,
+  };
+}
+
+function callbackOutput(report) {
+  const result = callbackResult(report);
+  if (result.message) console.error(`::${result.annotation}::${result.message}`);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+      `## Release gate: ${report.verdict}\n\n${result.message ?? report.error ?? "Release inspection completed."}\n`);
+  }
+  return result.code;
+}
+
 if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLToPath(import.meta.url))) {
   let options;
   try {
     options = parseArgs(process.argv.slice(2));
+    if (options.callback && process.env.RELEASE_WORKFLOW_CONCLUSION &&
+        !["success", "cancelled", "skipped"].includes(process.env.RELEASE_WORKFLOW_CONCLUSION)) {
+      throw new Error(`release publisher concluded ${process.env.RELEASE_WORKFLOW_CONCLUSION}; inspect Golems release logs`);
+    }
     const report = inspectRelease(options);
     console.log(options.json ? JSON.stringify(report, null, 2) : formatHuman(report));
-    process.exitCode = releaseExitCode(report.verdict);
+    process.exitCode = options.callback ? callbackOutput(report) : releaseExitCode(report.verdict);
   } catch (error) {
     const argv = process.argv.slice(2);
     const shaIndex = argv.indexOf("--sha");
@@ -372,6 +415,7 @@ if (process.argv[1] && canonicalPath(process.argv[1]) === canonicalPath(fileURLT
     options ??= { repo: process.cwd(), json: process.argv.includes("--json"), sha: requestedSha || null };
     const report = unknownReport(options, error);
     console.log(options.json ? JSON.stringify(report, null, 2) : `RELEASE GATE: UNKNOWN\n${report.error}`);
+    if (options.callback) callbackOutput(report);
     process.exitCode = 2;
   }
 }

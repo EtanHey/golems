@@ -64,6 +64,11 @@ Interim route (Etan 2026-09-30/10-01): Daybreak Blue requires a hardware securit
 
 Security effort is `high` on the interim route (Etan 2026-09-30: "6.1 Sol high implements"); a security phase records it like any other phase effort.
 Deep scans run from `<repo>Codex --scan -E high` (workspace-write, no approvals, computer use off, Locals T3code on by default, Drive read-only and other connectors off, the `codex.security` model, a per-launch Deep Scan cost cap); a bypass seat cannot start one. XS/S security PRs get a diff-scoped Standard scan, M/L or anything touching auth/guards a full Deep scan; the PR body records the scan's reported token use, and cost is never a reason to skip it.
+
+Proven T3 Deep-scan route (try it before the interim below): from the lead, `delegate_task` with `runtimeMode: "auto"` on the `codex` instance, gpt-6.1-sol at high effort, serviceTier `default`, scope `.` (Deep scans the whole target). `auto` gives the managed workspace-write profile Deep needs; `full-access` disables it. The child's completion wakes the lead, so no `t3_thread_send` is needed. The start call blocks until the scan aggregates, so don't wait for an early scan id. Also proven end to end: a top-level T3 Codex thread with runtimeMode `auto`. It can't `t3_thread_send` to a `full-access` lead (`runtime_mode_escalation_denied`), so its brief names a report path and the lead reads that report. Proven 2026-10-27 on etanheyman.com #127 and a delegated start probe.
+
+**T3 seats (interim):** If the Deep scan can't start from a T3 seat ("the parent must provide a managed filesystem permission profile"), run a Standard scan with its scope widened to every touched auth/guard path, plus one full-repo Standard pass. Record in the PR body: "Deep scan unavailable from T3 (interim)", both scans' scope, and their reported token use. Tell the Claude security reviewer, before its round, that Deep was unavailable and which Standard scopes ran. Cost is never a reason to skip either pass.
+
 When Daybreak Blue returns, evaluate its first security PRs: if they show more review rounds or more defects than the prior route, flip the pair (`claude.judgment` implements, Daybreak Blue reviews) and record the evidence in the PR bodies (carried from canon #1, 2026-09-29).
 
 ### Inner loop (sequential)
@@ -78,11 +83,12 @@ This inner-loop pair review happens before the PR. `/pr-loop` bot and PR reviewe
 
 Review is sized to risk; the PR's `size:*` label sets the tier.
 
-- "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs count by the UI precedence line below.
+- "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs follow the UI flow below.
 - M: up to 2 rounds, and round 2 only for BLOCKING findings (canon #9).
 - "Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab) The panel is a fresh `claude.judgment` reviewer plus a read-only Cursor diff pass, giving one shared verdict. When the implementer is `claude.judgment` (UX/UI, or the dated trial above), the table's Codex reviewer stays on, so cross-vendor review still holds. No Gemini model ever reviews, at any size.
-- UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement`. The UX/UI judge is a fresh `claude.judgment`, never the implementer, and judges from the recording.
-- UI precedence (interim, 2026-10-19; skill-lead interim pending Etan): for UI/style PRs the UI flow above takes precedence over the table's UX/UI reviewer. The Codex recording is evidence: the recorder also reports any functional defect it observes, so the other vendor has eyes on the change, but it is not "the reviewer". The ONE reviewer for an XS/S UI PR is a fresh Opus (`claude.judgment`, never the implementer instance) that loads `frontend-design:frontend-design` and judges the recording, 1 round. M UI PRs: up to 2 rounds of that reviewer. L, data or security UI PRs get the full panel above, which keeps a Codex reviewer.
+- UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement` and reports functional defects; proof requirements now follow [pr-loop Visual proof](../pr-loop/SKILL.md#visual-proof).
+- UI flow (Etan FRONTEND RULE, 2026-10-28): A Claude-implemented visual slice gets the red-team Claude (taste, BOTH skills) plus the table's Codex reviewer (cross-vendor, canon #1); Codex plumbing gets the red-team Claude, which is already the other vendor. Both reviews cite the Visual proof.
+  The red-team Claude is a fresh `claude.judgment`, never the implementer, loading `frontend-design:frontend-design` and `emil-design-eng`; normal size-based round caps and the full panel remain.
 
 Claude keeps the official auto-updating `frontend-design:frontend-design` plugin;
 Codex/Cursor use the pinned `frontend-design` skill. These names each denote one
@@ -217,9 +223,15 @@ Visible cmux fleets: § Dispatch Boundaries › cmux adapter.
 A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The lifecycle, as rules: [references/t3-native.md](references/t3-native.md).
 
 1. **Discover:** call `orchestrator_capabilities` first; pin provider, model and effort in `target` from its live catalog (canon #5).
+   For ordinary Codex implementers, recon and reviewers, explicitly name `target.providerInstanceId: "codex-worker"` every time.
+   `codex` stays for: security (implementers + scans), UI / computer-use recorders, browser / web-QA workers, leads and Etan.
+   A Codex child inherits its parent's Codex instance. A Claude lead naming only the codex driver gets whichever codex instance T3 lists first; always name the instance.
+   Remember: the role picks the model, the work type picks the instance. Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
+   Otherwise each Codex worker thread starts codex-security, computer-history, node_repl and cua_repl (~24.5 MiB, 4 processes), which T3 keeps until settle/idle release.
+   Recreate, upgrade verification and missing-instance fallback: [Codex instances](references/t3-native.md#codex-instances).
 2. **Dispatch:** `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
 3. **Wait:** completion wakes the parent. End the turn; never poll or spawn a watcher for it.
-4. **Settle:** read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child.
+4. **Settle:** at the PR's terminal state (merged or handed off; never at the first DONE — a PR in review rounds keeps its implementer) (a child with no PR, such as a reviewer or recon: as soon as its report is verified), read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child, `task_cancel` its `taskId`, `unwatch_pull_request` its PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. See § Goal Contract for provider release timing and the worktree caveat.
 5. **Review rounds:** every round is a new `delegate_task` carrying prior findings; never `t3_thread_send` to the `childThreadId`.
 6. **Questions:** a child's pending question is answered by the lead, never forwarded to Etan as a routing question.
 7. **Top-level threads:** `t3_thread_launch` / `create_threads` only when a separate conversation is explicitly asked for.
@@ -297,7 +309,10 @@ data/creds/accounts, money, messaging people); a tag, release, install, deploy o
 
 **Settle at the terminal state:** "settle idle workers" (Etan 2026-10-18, via orc collab). When a lane closes (verified
 `DONE`, filed `BLOCKED`/`NOT_GREEN`, or `TRANSFERRED`), the lead settles its worker. T3: conclude the task (no new
-sends), `task_cancel` its `taskId` so queued runs stop, and `unwatch_pull_request` the lane's PR. cmux adapter: harvest,
+sends), `task_cancel` its `taskId` so queued runs stop, and `unwatch_pull_request` the lane's PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread.
+This releases its provider session (Claude: MCP children exit at once; shared Codex: the thread unloads and its MCPs close after Codex's unload delay); `task_cancel` alone does not detach.
+Settle once nothing still needs the child's worktree (a pending reviewer or fix round): T3's hourly cleanup removes settled threads' worktree checkouts (it keeps the branch).
+Source: T3 `storageCleanup.ts:85-90,1017-1029,1236-1261`. cmux adapter: harvest,
 then close the pane through the cmuxlayer MCP (`close_surface`). Idle with no artifact pending = settle now, not later.
 A PR still in its review rounds is not idle; its implementer stays for those fixes (§ Lead Topology #5). The implementer
 removes its own worktree at DONE (`/pr-loop` § Cleanup Receipt): `git worktree remove` (no `--force`),
@@ -329,14 +344,20 @@ These fleet constraints apply independently of the usage proposal below:
 - `animate` must use the repo's existing dependencies. `pick-ui-library` is not
   installed: never fetch it or a replacement library to satisfy that reference.
 
-## Design skills usage — DRAFT, pending Etan ratification
+## Design skills usage — FRONTEND RULE, 2026-10-28
 
-This proposal does not change the current UX/UI implementer, Codex pair/recorder,
-independent UI reviewer, or UI precedence above. Claude uses the official
-`frontend-design:frontend-design` plugin route; Codex/Cursor use vendored
-`frontend-design`. Plugin namespacing denotes one route, not a duplicate.
+Etan: "Split: Claude for visual slices" (2026-10-28, via orc/PHX).
+Claude (`claude-opus-5-5`, `fastMode:false`), loaded with BOTH
+`frontend-design:frontend-design` and `emil-design-eng`, implements taste-heavy
+visual slices; Codex does the plumbing. This is the taste-critical exception to
+the Claude budget hold; keep visual slices small. A fresh red-team Claude
+(`claude.judgment`, never the implementer) with BOTH skills reviews every visual
+PR and cites [pr-loop's required proof](../pr-loop/SKILL.md#visual-proof).
+Codex computer-use recorders may produce the artifacts and functional checks.
+Claude uses the official plugin; Codex/Cursor use vendored `frontend-design`.
+Plugin namespacing denotes one route, not a duplicate.
 
-Proposed sequence: `frontend-design` sets the holistic direction before planning
+Sequence (lead guidance): `frontend-design` sets the holistic direction before planning
 and reviews the assembled full page at the end. `emil-design-eng` handles each
 interactive component/section inside that direction: feedback, keyboard/focus,
 loading/empty/error states, gestures, interruption and reduced motion. Holistic
@@ -355,15 +376,7 @@ layout/tokens win on visual cohesion; Emil governs local interaction craft.
   `pick-ui-library`; use existing repo dependencies and never fetch it. The
   audit-only, docs.local output and never-execute constraints above always apply.
 
-Options for Etan, with A recommended:
-
-| Option | Implementation and review | Tradeoff |
-| --- | --- | --- |
-| A (recommended) | Claude implements UI with both skills on interactive rows; Codex records real states/checks function; fresh Claude judges UI under existing precedence | Preserves current ownership and adds consistent interaction criteria |
-| B | Claude sets holistic direction; Codex may implement constrained interaction rows with both skills; fresh Claude judges the result | More throughput, more risk of visual drift |
-| C | Claude owns all design and interaction work; Codex only functional QA; fresh Claude judges UI | Simple ownership, less implementation flexibility |
-
-Installation is not policy ratification. Claude keeps the official auto-updating
+Claude keeps the official auto-updating
 frontend-design plugin and the five vendored Emil skills. Codex uses all six
 vendored skills plus the upstream drift/updater path. Cursor has the six skills
 for routed read-only review only, never implementation. Gemini/agy receive none.

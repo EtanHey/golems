@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TEMPLATE_ROOT = path.join(ROOT, "templates", "decision-flow");
 const NOTE_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 11V4H4v16l4-4h7M8 8h8M8 12h4M19 14v8m-4-4h8"/></svg>';
-const ANSWER_MARK = '<span class="df-answer-status" role="img" aria-label="Awaiting answer" title="Awaiting answer">☐</span>';
+const ANSWER_MARK = '<span class="df-answer-status" role="img" aria-label="Awaiting answer" title="Awaiting answer" data-answered="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><circle class="df-answer-progress" cx="12" cy="12" r="9" pathLength="1"/><path d="m7.5 12 3 3 6-6"/></svg></span>';
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -172,6 +172,7 @@ function renderController(decisions) {
         <button type="button" class="df-tbtn" id="df-transport-prev" aria-label="Previous card" disabled>⏮</button>
         <button type="button" class="df-tplay" id="df-transport-play" aria-label="Play the current card"><span class="df-tplay-icon" aria-hidden="true">▶</span><span class="df-tplay-text">Play</span></button>
         <button type="button" class="df-tbtn" id="df-transport-next" aria-label="Next card">⏭</button>
+        <button type="button" class="df-tbtn" id="df-controller-cite" hidden aria-label="Cite selected text" aria-haspopup="dialog" aria-controls="df-note-dialog" title="Cite selected text">❞</button>
         <button type="button" class="df-tbtn df-tstop" id="df-transport-stop" aria-label="Stop and return to the start of the card">■</button>
         <p class="df-now" id="df-now" aria-live="polite"></p>
         <label class="df-speed"><span class="df-sr-only">Playback speed</span><select id="df-speed">${rates}</select></label>
@@ -214,7 +215,7 @@ function renderCard(decision, index, sceneById) {
   return `<article class="df-card${index === 0 ? " is-active" : ""}" id="decision-${escapeHtml(decision.id)}" data-decision="${escapeHtml(decision.id)}" data-title="${escapeHtml(decision.title)}" data-index="${index}">
     <header class="df-card-head">
       <span class="df-rank" aria-hidden="true">${escapeHtml(rankLabel(decision, index))}</span>
-      <h2>${escapeHtml(decision.title)}</h2>
+      <div class="df-title">${ANSWER_MARK}<h2>${escapeHtml(decision.title)}</h2></div>
       <span class="df-status" data-status="${escapeHtml(status.toLowerCase())}">${escapeHtml(sentenceCase(status))}</span>
       <button type="button" class="df-card-note" aria-label="Add or review notes for ${escapeHtml(decision.title)}" title="Cite &amp; note">${NOTE_ICON}<span class="df-note-count" hidden></span></button>
     </header>
@@ -262,7 +263,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{TITLE}}", escapeHtml(title || "Decision flow")],
     ["{{KICKER}}", escapeHtml(kicker || "Decision flow")],
     ["{{HEADING}}", escapeHtml(heading || title || "Decisions")],
-    ["{{SUBTITLE}}", escapeHtml(subtitle || "Listen, decide, and keep moving.")],
+    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers save only for this dashboard on this device.</p></details>`],
     ["{{DECISION_COUNT}}", decisions.length],
     ["{{SCENE_COUNT}}", scenes.length],
     ["{{STORAGE_KEY}}", escapeHtml(storageKey || "dbx:decision-flow")],

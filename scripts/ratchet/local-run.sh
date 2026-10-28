@@ -47,6 +47,15 @@ MAIN="$(cd "$(git -C "$HERE" rev-parse --git-common-dir)/.." && pwd)"
 REPO_SLUG="EtanHey/golems"
 REAL_HOME="$HOME"
 
+# Resolve inside Node before changing HOME: runtime shims can prepend their own
+# runtime directory. Match install-hooks.mjs pathNode(), not process.execPath.
+NODE="$(node -e 'const r = require("node:child_process").spawnSync("sh", ["-c", "command -v node"], {stdio: "inherit"}); process.exit(r.status ?? 1);')" \
+  || die "cannot resolve node"
+case "$NODE" in /*) ;; *) die "no absolute node on PATH" ;; esac
+[ -x "$NODE" ] || die "node is not executable: $NODE"
+export PATH="$(dirname "$NODE"):$PATH"
+NODE_VERSION="$("$NODE" --version)" || die "cannot read node version: $NODE"
+
 read -r HEAD BRANCH STATE BASE < <(gh pr view "$PR" --repo "$REPO_SLUG" --json headRefOid,headRefName,state,baseRefOid -q '"\(.headRefOid) \(.headRefName) \(.state) \(.baseRefOid)"')
 [ "$STATE" = "OPEN" ] || die "PR #$PR is $STATE; the lease probe needs an open PR"
 INSTALL="${INSTALL:-$HEAD}"
@@ -73,6 +82,7 @@ mkdir -p "$RUN" "$SH/.claude" "$SH/.codex" "$SH/Gits/orchestrator/collab" "$SCRA
 echo '{}' > "$SH/.claude/settings.json"
 : > "$SH/Gits/orchestrator/collab/2026-09-24-oss-consolidation.md"
 echo "local-run: run dir $RUN"
+printf 'local-run: node %s (%s)\n' "$NODE" "$NODE_VERSION" | tee "$RUN/node.log"
 
 cleanup() {
   # The anchor is locked immutable (uchg) like the owner's; unlock it so the scratch can go.
@@ -150,7 +160,7 @@ PY
 export GOLEMS_HEAVY_LOCK="$REAL_HOME/.local/state/golems/heavy-suite.lock"
 export GH_TOKEN="${GH_TOKEN:-$(gh auth token)}"
 set +e
-(cd "$CLONE" && HOME="$SH" CODEX_HOME="$SH/.codex" node scripts/hooks/install-hooks.mjs \
+(cd "$CLONE" && HOME="$SH" CODEX_HOME="$SH/.codex" "$NODE" scripts/hooks/install-hooks.mjs \
   --host mbp --repo "$CLONE" --update "$INSTALLED" --apply) > "$RUN/install.log" 2>&1
 echo "$?" > "$RUN/install.rc"
 set -e
@@ -163,7 +173,7 @@ git -C "$CLONE" worktree add -q -B "$BRANCH" "$SCRATCH/pushwt" "$HEAD"
 
 export RATCHET_RUN="$RUN" RATCHET_HOME="$SH" RATCHET_CLONE="$CLONE" RATCHET_INSTALLED="$INSTALLED"
 export RATCHET_PR_HEAD="$HEAD" RATCHET_BRANCH="$BRANCH" RATCHET_PUSH_REPO="$SCRATCH/pushwt"
-node "$HERE/run-rows.mjs" --rows "$HERE/rows.json" --runner mac --head "$INSTALL" --cwd "$(cd "$HERE/../.." && pwd)" --out "$RUN/results.json"
+"$NODE" "$HERE/run-rows.mjs" --rows "$HERE/rows.json" --runner mac --head "$INSTALL" --cwd "$(cd "$HERE/../.." && pwd)" --out "$RUN/results.json"
 
 # The receipt binds the posted verdict to this run's measured outputs.
 RECEIPT="$(cat "$HERE/rows.json" "$RUN/results.json" "$RUN/install.log" | shasum -a 256 | cut -c1-64)"
@@ -176,7 +186,7 @@ args+=(--base-ref "$BASE")
 [ -n "$PR_BODY_FILE" ] && args+=(--pr-body-file "$PR_BODY_FILE")
 [ "$POST" = 1 ] && args+=(--repo "$REPO_SLUG" --pr "$PR" --author "$(gh api user -q .login)")
 status=0
-node "$HERE/table.mjs" "${args[@]}" || status=$?
+"$NODE" "$HERE/table.mjs" "${args[@]}" || status=$?
 if [ "$POST" = 1 ]; then
   # A comment does not re-trigger pull_request; re-run this head's ratchet check so it reads it.
   run_id="$(gh run list --repo "$REPO_SLUG" --workflow ratchet.yml --commit "$HEAD" --json databaseId -q '.[0].databaseId' || true)"

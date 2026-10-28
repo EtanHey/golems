@@ -16,11 +16,11 @@ PR_LOOP = SKILLS / "pr-loop"
 LARGE_PLAN = SKILLS / "large-plan"
 RECEIPT_LINES = (
     "CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):",
-    "- worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune",
+    "- worktree: removed: <path>; proof: git worktree remove rc 0; absent from git worktree list --porcelain; path absent (lstat)",
     "OR worktree: <path> kept because <reason>; escalated to <lead>",
     "- branch: <name> deleted local+remote | kept because <reason>",
     "- files this PR added outside src/tests: <list or none>",
-    "- docs.local this lane created: <paths>; rolled into <day>/README or deleted",
+    "- docs.local this lane created: <paths>; preservation/disposition and linked receipts under the contract and /drive-filing",
 )
 
 
@@ -34,10 +34,12 @@ def eval_text(skill):
 
 def test_merge_reference_carries_receipt_after_worktree_removal():
     text = read(PR_LOOP / "references/merge-and-verification.md")
-    # Lane close removes the worktree through the guarded GC (disk lane 2026-10-06).
-    removal = text.index("worktree-gc.sh --apply --idle-hours 0 --path <worktree-path>")
+    # PR1 delegates eligibility and the parent-run executable path to one contract.
+    lifecycle = text.index("**Worktree cleanup (lane close):**")
     heading = text.index("### Cleanup Receipt")
-    assert heading > removal
+    assert heading > lifecycle
+    assert "../../_shared/lifecycle/CONTRACT.md" in text
+    assert "git worktree prune" not in text
     for line in RECEIPT_LINES:
         assert line in text[heading:], line
 
