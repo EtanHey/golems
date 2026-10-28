@@ -171,7 +171,14 @@ test('poll protects a running child; teardown protects all, stops, then checks s
   const result = await run(); assert.equal(result.code, 0, result.stderr);
   const c = calls(), done = index(c, 'child', 'done');
   assert.ok(c.some((c, i) => i < done && c[1] === 'docker' && c[2] === 'update' && c.includes('created')));
-  assert.deepEqual(c.slice(done + 1).filter(c => c[1] !== 'stub').map(c => c.slice(1)), [
+  const afterDone = c.slice(done + 1).filter(c => c[1] !== 'stub').map(c => c.slice(1));
+  const pollUpdate = ['docker', 'update', '--restart=no', 'created'];
+  const pollList = ['docker', 'ps', '--all', '--filter', `label=${compose}`, '--format', '{{.ID}}'];
+  // One in-flight poll may finish after the child logs done, before teardown begins.
+  const trailingPoll = afterDone.slice(0, -4);
+  assert.ok([[], [pollUpdate], [pollList, pollUpdate]].some(expected =>
+    JSON.stringify(trailingPoll) === JSON.stringify(expected)), 'unexpected calls before teardown');
+  assert.deepEqual(afterDone.slice(-4), [
     ['docker', 'ps', '--all', '--filter', `label=${compose}`, '--format', '{{.ID}}'],
     ['docker', 'update', '--restart=no', 'created'],
     ['docker', 'compose', '--project-name', 'fixture', 'stop'],
