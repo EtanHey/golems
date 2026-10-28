@@ -267,13 +267,23 @@
   // Success needs positive evidence from a readable same-origin frame: a navigation entry with a 2xx/3xx
   // responseStatus where the browser reports one, or (WebKit has no responseStatus) a visual in the page.
   // Anything else, including an unreadable file: frame, is a failure with Retry and Back.
+  // WebKit evidence must be a chart, not an icon. Mirrors the ADX-1 evidence gate's isControlIcon (a Node-side
+  // HTMLRewriter check that cannot run here): marks inside controls, hidden or presentational marks, icon/glyph
+  // classes, and anything rendered at 24x24 px or smaller do not count.
+  function chartVisual(doc){
+    return Array.prototype.some.call(doc.querySelectorAll("svg, canvas, img, figure, video"),function(node){
+      if(node.closest('[aria-hidden="true"], [role="presentation"], [role="none"], button, a, summary, [role="button"]'))return false;
+      for(var n=node;n&&n.nodeType===1;n=n.parentElement){if((n.getAttribute("class")||"").split(/\s+/).some(function(token){return /^(icon|glyph)([-_]|$)|[-_](icon|glyph)$/i.test(token);}))return false;}
+      var box=node.getBoundingClientRect();return box.width>24||box.height>24;
+    });
+  }
   function frameProblem(frame){
     var failed=document.location.protocol==="file:"?"This comparison can't be checked from a file. Open the dashboard over http(s), or go back to the card.":"The comparison couldn't load. Retry, or go back to the card.";
     var timing=document.defaultView&&document.defaultView.PerformanceResourceTiming,reportsStatus=Boolean(timing&&"responseStatus" in timing.prototype);
     try{
       var child=frame.contentWindow;if(!child||child.location.href==="about:blank")return failed;
       if(reportsStatus){var nav=child.performance.getEntriesByType("navigation")[0],status=nav&&nav.responseStatus;return typeof status==="number"&&status>=200&&status<400?"":failed;}
-      return child.document.querySelector("svg, canvas, img, figure, video")?"":failed;
+      return chartVisual(child.document)?"":failed;
     }catch(error){return failed;}
   }
   function loadCompare(){

@@ -55,7 +55,9 @@ frame, and a late event from an earlier attempt is ignored.
 
 Browsers fire `load` for 404s and network failures, so a load alone is not
 success. The page must be readable and same-origin, and show a 2xx/3xx
-`responseStatus`, or contain a visual where the browser reports no status
+`responseStatus`, or contain a chart where the browser reports no status
 (WebKit). A comparison page should therefore carry its chart as svg, canvas,
-img, figure or video, as the View details gate already requires. From a
+img, figure or video, as the View details gate already requires. Icons do not
+count: aria-hidden or presentational marks, marks inside buttons or links,
+icon/glyph classes, and anything 24x24 px or smaller. From a
 `file:` dashboard the frame is unreadable and the dialog reports failure.

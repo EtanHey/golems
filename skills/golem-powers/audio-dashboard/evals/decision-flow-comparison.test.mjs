@@ -39,7 +39,8 @@ function setup(renderOptions, cards = decisions, { ownLoads = true, engine = "ch
     const child = readable ? {
       location: { href: frame.src },
       performance: { getEntriesByType: () => entries ?? [{ responseStatus: status }] },
-      document: { querySelector: () => (visual ? {} : null) },
+      // One chart-sized, named, uncontained mark when visual; none otherwise.
+      document: { querySelectorAll: () => (visual ? [{ nodeType: 1, parentElement: null, closest: () => null, getAttribute: () => null, getBoundingClientRect: () => ({ width: 320, height: 120 }) }] : []) },
     } : { get location() { throw new run.window.DOMException("Blocked a frame", "SecurityError"); } };
     Object.defineProperty(frame, "contentWindow", { configurable: true, value: child });
     fire(frame, "load");

@@ -332,7 +332,9 @@ a failure message with **Retry** and **Back** after a frame error or after
 `timeoutMs` (default 10000; per card, or the spec-level `comparisonTimeoutMs`).
 A load counts only with positive evidence from a readable same-origin frame: a
 2xx/3xx navigation `responseStatus`, or, where the browser has no such field
-(Safari/WebKit), a visual (svg, canvas, img, figure or video) in the page.
+(Safari/WebKit), a chart in the page: an svg, canvas, img, figure or video that
+is not an icon (aria-hidden, presentational, inside a control, an icon/glyph
+class, or 24x24 px or smaller).
 Serve the dashboard over http(s): from `file:` the frame cannot be checked, so
 the dialog shows the failure state. Back and Esc return focus to the opener.
 
