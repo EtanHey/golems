@@ -6,6 +6,9 @@ its actual project root. Local refs on one Mac never prove refs on another.
 
 ## Preflight
 
+The relative script path below is from the Golems checkout. From another working
+directory, invoke that script by its absolute path; `root` still names the target repo.
+
 Run `node skills/golem-powers/agent-routing/scripts/launch-guard.mjs preflight`
 with a JSON object on stdin: `{root,cwd?,baseRef?,startFromOrigin?}`. Check exit 0
 and `ok:true` before launching. Preserve the secret-free receipt outside the checkout.

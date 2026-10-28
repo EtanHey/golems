@@ -38,6 +38,16 @@ test('explicit commit and ref resolve exactly; ambiguity fails', async t => {
   for (const baseRef of [f.oid, 'refs/heads/trunk']) assert.equal(preflight({ root: f.root, baseRef }).commit, f.oid);
   git(f.root, 'tag', 'trunk'); assert.equal(preflight({ root: f.root, baseRef: 'trunk' }).ok, false);
 });
+test('ambiguous shorthand fails even when repository warnings are disabled', async t => {
+  const f = fixture(t), { preflight } = await load();
+  git(f.root, 'tag', 'trunk');
+  git(f.root, 'config', 'core.warnAmbiguousRefs', 'false');
+  const r = preflight({ root: f.root, baseRef: 'trunk' });
+  assert.equal(r.ok, false); assert.equal(r.reason, 'REF_NOT_FOUND_OR_AMBIGUOUS');
+  assert.equal(git(f.root, 'config', '--get', 'core.warnAmbiguousRefs'), 'false');
+  for (const baseRef of [f.oid, 'refs/heads/trunk', 'refs/tags/trunk'])
+    assert.equal(preflight({ root: f.root, baseRef }).commit, f.oid);
+});
 for (const mode of ['missing-default', 'dangling-default', 'detached', 'non-git', 'subdirectory']) test(`reject ${mode}`, async t => {
   const f = fixture(t), { preflight } = await load(); let root = f.root;
   if (mode === 'missing-default') git(root, 'symbolic-ref', '--delete', 'refs/remotes/origin/HEAD');
