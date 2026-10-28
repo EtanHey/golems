@@ -88,6 +88,10 @@ dispatches this one-shot check to read-only children and only reads their report
 
 ## 2. Dispatch
 
+Worktree bases and the single post-launch preparation read follow the canonical
+[worktree launch guard](worktree-launch.md). Keep default-ref intent distinct from
+`delegate_task` isolation, which uses the parent committed HEAD.
+
 - `delegate_task` with `mode: "async"`. Use `mode: "wait"` only when this turn cannot continue
   without the result; its `timeoutMs` is the parent's wait budget and never cancels the child.
 - Retain the returned `taskId` (STATUS file or lane notes). `task_status` is for a result needed
@@ -175,6 +179,8 @@ dispatches this one-shot check to read-only children and only reads their report
   `t3_thread_launch`; the procedure lives only in [cross-machine.md](cross-machine.md).
 - `t3_thread_launch` has no idempotency key: after a lost response, check `t3_thread_list` before
   retrying.
+- After a worktree launch, perform the [single preparation read](worktree-launch.md#exactly-one-read-after-a-worktree-t3_thread_launch).
+  Acceptance alone is not success; PENDING never starts a polling or model-retry loop.
 
 ## 8. PRs
 
