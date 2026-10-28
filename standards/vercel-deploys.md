@@ -12,7 +12,7 @@ Etan, verbatim: "we also need to see how we make sure work doesn't deploy endles
    default-branch SHA or an explicit `deploy-preview` request, after a read-only budget check (point 4). brainlayer (no Git link, CLI only) is governed by this rule.
 3. The policy text lives in ONE place: golems `standards/vercel-deploys.md`. skill-creator points /pr-loop and the deploy-local-prod agent at it.
 4. A budget check: `scripts/vercel-budget.mjs` (golems) reads the team's deployments in the last 24 h (read-only GET, existing CLI auth on the M4 Max) and prints
-   count / soft limit 60 / hard cap 100. The deploy agent and any preview request must run it first, and refuse above 60 (production merges still deploy via Git).
+   count / soft limit 60 / hard cap 100. The deploy agent and any preview request must run it first, and refuse at or above 60 (production merges still deploy via Git).
 
 
 ## Phase 2
