@@ -17,10 +17,14 @@ const canonical = (value) =>
 
 const same = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 
-function diff(a, b, path, out) {
-  if (isObject(a) && isObject(b)) {
+// Paths stop at T3's schema depth (key.instance.config.field); keys below it are
+// user data such as environment names, so a deeper difference reports its schema field.
+const MAX_PATH_DEPTH = 4;
+
+function diff(a, b, path, depth, out) {
+  if (isObject(a) && isObject(b) && depth < MAX_PATH_DEPTH) {
     for (const key of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
-      diff(a[key], b[key], path ? `${path}.${key}` : key, out);
+      diff(a[key], b[key], `${path}.${key}`, depth + 1, out);
     }
     return out;
   }
@@ -30,7 +34,7 @@ function diff(a, b, path, out) {
 
 export function compareParity(a, b) {
   const out = [];
-  for (const key of PARITY_KEYS) diff(a?.[key], b?.[key], key, out);
+  for (const key of PARITY_KEYS) diff(a?.[key], b?.[key], key, 1, out);
   return out;
 }
 
@@ -47,11 +51,19 @@ export function validateSettings(settings, host) {
 // Provider configs can hold inline secrets, so a report names shapes, never values.
 export function redact(value) {
   if (value === undefined) return "<absent>";
-  if (isObject(value)) return `object{${Object.keys(value).sort().join(",")}}`;
   const json = JSON.stringify(canonical(value));
-  const kind = Array.isArray(value) ? `array[${value.length}]` : value === null ? "null" : typeof value;
+  const kind = isObject(value)
+    ? `object(${Object.keys(value).length} keys)`
+    : Array.isArray(value)
+      ? `array[${value.length}]`
+      : value === null
+        ? "null"
+        : typeof value;
   return `${kind} #${createHash("sha256").update(json).digest("hex").slice(0, 8)}`;
 }
+
+const PLAIN_VERSION = /^[\w .()+[\]-]{1,80}$/;
+const showVersion = (text) => (PLAIN_VERSION.test(text) && /\d+\.\d+/.test(text) ? text : redact(text));
 
 export function formatReport({ hosts, settingsDrift, versionDrift }) {
   const [left, right] = hosts;
@@ -63,7 +75,7 @@ export function formatReport({ hosts, settingsDrift, versionDrift }) {
     lines.push(`  ${d.path}\n    ${left}: ${redact(d.a)}\n    ${right}: ${redact(d.b)}`);
   }
   for (const d of versionDrift) {
-    lines.push(`  ${d.path}\n    ${left}: ${d.a}\n    ${right}: ${d.b}`);
+    lines.push(`  ${d.path}\n    ${left}: ${showVersion(d.a)}\n    ${right}: ${showVersion(d.b)}`);
   }
   lines.push("Fix: apply the same change to both Macs' ~/.t3/userdata/settings.json, then rerun.");
   return lines.join("\n");

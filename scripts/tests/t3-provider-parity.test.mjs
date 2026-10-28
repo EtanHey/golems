@@ -95,3 +95,27 @@ describe("validateSettings", () => {
   });
 });
 
+describe("redaction of keys and versions", () => {
+  test("a secret used as a key never reaches the report", () => {
+    const secret = "SYNTHETIC_PARITY_KEY_42";
+    const a = settings();
+    const b = settings();
+    a.providerInstances.codex.config.environment = { [secret]: "x" };
+    b.providerInstances.codex.config.environment = { [secret]: "y" };
+    a.providerInstances.extra = { config: { [secret]: "z" } };
+    const report = formatReport({ hosts: ["local", "m1"], settingsDrift: compareParity(a, b), versionDrift: [] });
+    expect(report).toContain("providerInstances.codex.config.environment");
+    expect(report).not.toContain(secret);
+  });
+
+  test("only plain version strings print verbatim", () => {
+    const report = formatReport({
+      hosts: ["local", "m1"],
+      settingsDrift: [],
+      versionDrift: [{ path: "version codex", a: "codex-cli 0.165.0", b: "SYNTHETIC_PARITY_VERSION_42" }],
+    });
+    expect(report).toContain("codex-cli 0.165.0");
+    expect(report).not.toContain("SYNTHETIC_PARITY_VERSION_42");
+  });
+});
+

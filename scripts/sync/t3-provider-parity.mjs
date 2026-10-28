@@ -14,14 +14,23 @@ function run(host, command) {
       ? spawnSync("/bin/zsh", ["-c", command], { encoding: "utf8" })
       : spawnSync("ssh", ["-o", "ConnectTimeout=8", host, command], { encoding: "utf8" });
   if (result.status !== 0) {
-    throw new Error(`${host}: \`${command}\` failed (${result.status}): ${result.stderr.trim()}`);
+    throw new Error(`${host}: \`${command}\` exited ${result.status}`);
   }
   return result.stdout.trim();
 }
 
+function parseSettings(host) {
+  try {
+    return JSON.parse(run(host, `cat ${SETTINGS}`));
+  } catch (error) {
+    // JSON.parse quotes the input, and settings can hold secrets.
+    throw error instanceof SyntaxError ? new Error(`${host}: settings are not valid JSON`) : error;
+  }
+}
+
 function snapshot(host) {
   return {
-    settings: validateSettings(JSON.parse(run(host, `cat ${SETTINGS}`)), host),
+    settings: validateSettings(parseSettings(host), host),
     versions: Object.fromEntries(VERSION_BINARIES.map((bin) => [bin, run(host, `${bin} --version`)])),
   };
 }
