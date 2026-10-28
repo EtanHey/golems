@@ -139,7 +139,7 @@ def test_partial_visuals_keep_transcript_note(failure_pipeline, setup, monkeypat
                                     '--budget-seconds', '300', '--helper', str(helper)])
     assert module.main() == 2
     assert json.loads((work/'timing.json').read_text())['status'] == 'PARTIAL'
-    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 2
+    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 4
     note = (work/'debrief.md').read_text()
     assert '42 percent' in note and '99 percent' in note and 'Status: PARTIAL' in note
     assert note.count('visual: NOT DETERMINED (budget/failed)') == 2

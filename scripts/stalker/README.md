@@ -54,3 +54,43 @@ STALKER_MONITOR_ONCE=1 STALKER_RUN_DIR=path/to/run scripts/stalker/stream-overni
 The optional morning command enumerates each eligible run and invokes the same completion contract. Its date summary cannot replace per-run validation, and skip-sync/skip-live-verify cannot certify completion. `--skip-notify` is retired and rejected. Legacy v3 `notified`/`complete` receipts have an explicit migration path: preserve artifact, publication and retention evidence, revalidate live and custody checks, and atomically write v4 only after success. Partial retention resumes from existing custody evidence; a live or custody failure preserves the original receipt. A processing marker or old message ID alone cannot certify completion.
 
 The September 8 regression test is `September 8 ratchet: processing markers and gems cannot make a run COMPLETE` in `scripts/tests/stalker-run-contract.test.mjs`. The focused CI workflow runs this contract alongside each integrated delivery slice.
+
+## Source-only admission API (P2a)
+
+`python3 scripts/stalker/stalker-admission.py admit --db PATH --request JSONFILE`,
+`finish --db PATH --claim TOKEN --outcome complete|failed`, and `inspect --db PATH --job-key KEY`
+provide a stdlib SQLite ledger; watcher, processing and delivery entrypoints remain unwired.
+Requests use `schemaVersion:1`, `kind:capture|ingest`, `jobKey`, canonical existing `spool`,
+integer `expectedBytes`, `temporaryBytes`, `derivedBytes`, and optional `reserveBytes` (20 GiB).
+Capture requires `platform`, `channel`, `broadcastId`; ingest requires lowercase `sourceSha256`, `configSha256`.
+Only new admission authorizes work. Replay/completed work is refused; abandoned active claims require recovery.
+`finish` trusts its caller to stop all children first. Reservations include the full budget on the spool device.
+Capture coverage stays `unknown` (`capture_not_observed`); unrelated disk writers remain outside the guarantee.
+JSON v1 goes to stdout on success, stderr on failure; exits: 0 success, 75 refusal, 64 invalid, 73 storage.
+Importable `admit`, `finish`, `inspect` return `(exit_code, receipt)`; tests inject observations only via `admit`.
+No raw source bytes are changed. P2b runtime ownership/recovery and P2c interval repair remain separate gates.
+
+## Source-only runtime context (P2b1, unwired)
+
+`python3 scripts/stalker/stalker-runtime-context.py prepare-capture --platform twitch|youtube --channel CHANNEL --metadata JSONFILE`
+projects supplied single-video live metadata into a closed identity. Success returns
+`contextVersion:1`, `authorized:false`, `reason:CONTEXT_ONLY`, `canonicalDb`, `identity`,
+and `coverageStatus:unknown`. Exit 0 prepares context only; it never permits recording.
+Invalid arguments/JSON/identity return sanitized JSON stderr and exit 64; metadata IO
+or account lookup failures return exit 73. Input metadata and signed URLs are never echoed.
+
+Importable `canonical_db()` returns the current UID account home's canonical absolute
+path plus `.local/state/golems/stalker/admission.sqlite3`, ignoring cwd, HOME, XDG,
+spool, checkout/release roots and caller DB overrides. It creates/opens no state.
+Safe account-owned state ancestors/sidecars must be validated before future mutation;
+there is no storage migration or fallback database in this slice.
+
+`capture_identity(platform, channel, metadata)` accepts TwitchStream/Youtube current-live
+metadata with matching normalized alphanumeric/underscore channels and strict string IDs.
+Twitch channel-name fallback (including numeric collisions) is refused. YouTube uses
+the pinned 11-character video watch URL. Caller metadata is unauthenticated; Twitch's
+mutable recorder URL still requires extractor-to-recorder binding before media writes.
+No admission, budgets, capture, subprocess, network, finish or recovery occurs here.
+Finite enforced allocation/overshoot, writer lifetime/safe finish, partial retry policy,
+ingest source/config seals/output exclusion, provenance/PTS/interval repair, installed
+wrappers and native capture/digest/delivery remain open. Source fixtures prove none of these.

@@ -1,4 +1,4 @@
-// Real-layout checks in headless Chromium. Skips (loudly) where Playwright/Chromium is unavailable.
+// Real-layout checks in headless Chromium. CI requires a browser; local runs may skip loudly.
 import { expect, test } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,6 +12,9 @@ try {
   const probe = await chromium.launch();
   await probe.close();
 } catch (error) {
+  if (process.env.ADASH_LAYOUT_REQUIRED === "1") {
+    throw new Error(`decision-flow layout tests require Playwright/Chromium (ADASH_LAYOUT_REQUIRED=1): ${error?.message}`, { cause: error });
+  }
   console.warn(`decision-flow layout tests skipped: ${error?.message?.split("\n")[0]}`);
   chromium = null;
 }
@@ -25,8 +28,9 @@ function scene(id) {
   };
 }
 
-function fixture(ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"]) {
+function fixture(ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"], extra = {}) {
   const html = renderDecisionFlow({
+    ...extra,
     storageKey: "dbx:layout-test",
     heading: "Check the new VoiceBar first, then 25 calls to make.",
     scenes: ids.map(scene),
@@ -47,6 +51,60 @@ async function waitForScrollSettle(page) {
   await page.evaluate(() => new Promise(resolve => { let y = scrollY, since = performance.now(); function poll(now) { if (scrollY !== y) { y = scrollY; since = now; } if (now - since >= 200) resolve(); else requestAnimationFrame(poll); } requestAnimationFrame(poll); }));
 }
 
+layoutTest("header Details summary is a 44px target that never overlaps the heading or mode label", async () => {
+  const browser = await chromium.launch(), failures = [];
+  try { for (const width of [360, 390, 1280]) for (const cinemaUrl of [undefined, "./layout-test-audio.html"]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, reducedMotion: "reduce" });
+    await page.goto(fixture(undefined, { subtitle: "Status: 3 merged, 2 waiting on review, storage healthy.", cinemaUrl }));
+    const box = selector => page.locator(selector).first().boundingBox();
+    const summary = await box(".df-context > summary");
+    if (summary.width < 44 || summary.height < 44) failures.push({ width, summary });
+    if (cinemaUrl) {
+      expect(await page.locator(".df-cinema-link").isVisible()).toBe(true);
+      // The link wraps as one unit, never split across lines.
+      if ((await page.locator(".df-cinema-link").evaluate(node => node.getClientRects().length)) !== 1) failures.push({ width, split: ".df-cinema-link" });
+    }
+    for (const selector of [".df-top h1", ".df-mode-label", ".df-kicker", ...(cinemaUrl ? [".df-cinema-link"] : [])]) {
+      // Rendered text rects, not element boxes: the header text reserves room for the summary with padding.
+      const lines = await page.locator(selector).first().evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); return [...range.getClientRects()].map(r => ({ x: r.x, y: r.y, width: r.width, height: r.height })); });
+      for (const other of lines) if (summary.x < other.x + other.width && other.x < summary.x + summary.width && summary.y < other.y + other.height && other.y < summary.y + summary.height) failures.push({ width, selector, summary, other });
+    }
+    expect(await page.locator(".df-subtitle").isVisible()).toBe(false);
+    await page.locator(".df-context > summary").focus(); await page.keyboard.press("Enter");
+    expect(await page.locator(".df-subtitle").isVisible()).toBe(true);
+    expect(await page.locator(".df-scope").isVisible()).toBe(true);
+    await page.close();
+  } } finally { await browser.close(); }
+  expect(failures).toEqual([]);
+}, 30000);
+
+layoutTest("page heading outranks card titles and, on desktop, shares the sidebar's top line", async () => {
+  const browser = await chromium.launch(), failures = [];
+  try { for (const width of [390, 1280]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, reducedMotion: "reduce" }); await page.goto(fixture());
+    const size = selector => page.locator(selector).first().evaluate(node => parseFloat(getComputedStyle(node).fontSize));
+    const h1 = await size(".df-top h1"), card = await size(".df-card .df-title");
+    if (h1 < card * 1.12) failures.push({ width, h1, card });
+    if (width === 1280) {
+      const kicker = await page.locator(".df-kicker").boundingBox(), first = await page.locator(".df-index a, .df-index li").first().boundingBox();
+      if (Math.abs(kicker.y - first.y) > 1) failures.push({ width, kickerTop: kicker.y, sidebarTop: first.y });
+    }
+    await page.close();
+  } } finally { await browser.close(); }
+  expect(failures).toEqual([]);
+}, 30000);
+
+layoutTest("storage state is visually hidden until it reports an error", async () => {
+  const browser = await chromium.launch();
+  try { const page = await browser.newPage({ viewport: { width: 390, height: 844 } }); await page.goto(fixture());
+    const size = () => page.locator("#df-storage-state").evaluate(node => { const r = node.getBoundingClientRect(); return r.width * r.height; });
+    expect(await size()).toBeLessThanOrEqual(1);
+    await page.evaluate(() => { const node = document.getElementById("df-storage-state"); node.textContent = "Storage unavailable · use Copy answers"; node.classList.add("is-error"); });
+    expect(await size()).toBeGreaterThan(100);
+    expect(await page.locator("#df-storage-state").isVisible()).toBe(true);
+  } finally { await browser.close(); }
+});
+
 const TRANSPORT_LABELS = [["▶", "Play"], ["⏸", "Pause"], ["▶", "Resume"], ["↻", "Again"]];
 
 layoutTest("review: a real mouse drag between interior words offers Cite without seeking", async () => {
@@ -54,13 +112,18 @@ layoutTest("review: a real mouse drag between interior words offers Cite without
   try { for (const width of [390, 1280]) for (const view of ["list", "story"]) {
     const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: "reduce" }); await page.goto(fixture()); await page.click("#df-view-toggle");
     if (view === "list") { await page.click("#df-story-exit"); await page.locator('[data-chip-for="d00"]').click(); await page.locator('[data-decision="d00"] .df-play').click(); await page.locator('[data-decision="d00"] .df-teleprompter').evaluate(node => node.scrollIntoView({ block: "center" })); }
-    const words = page.locator(".df-card.is-active .df-words").first().locator(".df-word");
+    // Scrolling can change the active navigation card; drag the transcript we opened.
+    const card = page.locator(`[data-decision="${view === "list" ? "d00" : "v00"}"]`);
+    const words = card.locator(".df-words").first().locator(".df-word");
+    const audio = card.locator("audio").first();
+    const beforeTime = await audio.evaluate(node => node.currentTime);
     const start = await words.nth(4).boundingBox(), end = await words.nth(7).boundingBox();
     await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2); await page.mouse.down();
     await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 12 }); await page.mouse.up();
     const selected = await page.evaluate(() => getSelection().toString()); expect(selected).toContain("six seven");
     expect(await page.locator("#df-cite").isVisible()).toBe(true);
-    expect(await page.evaluate(() => document.querySelector("audio").paused)).toBe(true);
+    expect(await audio.evaluate(node => node.paused)).toBe(true);
+    expect(await audio.evaluate(node => node.currentTime)).toBe(beforeTime);
     await page.click("#df-cite"); expect(await page.textContent("#df-note-quote")).toBe(selected.trim()); await page.close();
   } } finally { await browser.close(); }
 }, 60000);

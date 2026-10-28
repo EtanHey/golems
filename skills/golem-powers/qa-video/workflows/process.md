@@ -156,7 +156,10 @@ For coverage frames, supply their absolute paths instead of `--index`.
 NEVER hand-roll a shell loop over sheets. Helper shells must be Bash 3.2 safe.
 Read `progress.txt`, `progress.json`, `visual/findings.jsonl` as calls finish and
 `visual/summary.json` at the end. Exit 0 requires complete observations; inspect
-findings and match tile indexes to `frames.tsv`. Budget expiry stops new calls,
+the READ/INVALID/FAILED/NOT_READ counts and `covered=READ/total`. Tile bounds
+come from the index or `frames.tsv`; out-of-bounds and conflicting reads are
+INVALID. Failed or invalid reads retry once with backoff within the budget.
+Budget expiry stops new calls,
 allows bounded in-flight calls to finish, and returns `BUDGET_EXCEEDED` with
 unread sheets marked NOT DETERMINED. Quota/auth errors stop dispatch with a
 nonzero exit and the cause: our own visual dispatch. Do not relaunch blindly.
