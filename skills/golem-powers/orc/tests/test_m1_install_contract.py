@@ -6,7 +6,7 @@ import re
 import pytest
 
 AGENTS = Path(__file__).resolve().parents[1] / "agents"
-PIN = "1558e91ec5cef1e1b1c73c5f84c4b9042e5d31fce1ee7b70c7e7eda8baf675aa"
+PIN = "a00bdae44a1a85b4d2124397411c18a9713c9abe9e560b9cc727af5636bc4e17"
 
 
 # Reviewed Contract 1 scope; changes require explicit review of the complete block.

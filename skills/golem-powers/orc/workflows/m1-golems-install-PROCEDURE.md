@@ -2,7 +2,7 @@
 
 ## 0. Scope and authority
 
-Status: **PROCEDURE_READY r4e; execution has not occurred.** Bootstrap run 1 requires PHX's explicit go to CI-hygiene and the executable §1b refusal gate. Only PHX gives that go. All later runs use the full I5 gate. Readiness here means the written procedure and local static/fake-output checks, not an M1 Pro install or rollback pass.
+Status: **PROCEDURE_READY r4h; execution has not occurred.** r4h = r4g plus one lead edit: §2 reads builder policy `scripts/release/shipped-paths.json` from Git at MERGE_SHA (as §1 does) instead of from the release archive, which does not ship it. The revised §1 offline bootstrap replay passes all 653 release members and the Git-source check. The required archive-read audit finds a different blocker: §2 still reads `scripts/release/shipped-paths.json` from the archive, but that path is also excluded from the recorded release. Its exact local read raises `KeyError`; the requested PROCEDURE_READY r4g status is withheld pending a separate release-custody decision on that dependency. `scripts/ratchet/installed-skills.py` is now separately loaded as source code from `MERGE_SHA`, with its blob ID and SHA256 retained in evidence; it need not be shipped or installed on the M1 Pro. Bootstrap run 1 still requires PHX's explicit go to CI-hygiene and the executable §1b refusal gate. Only PHX gives that go. All later runs use the full I5 gate. Local static/fake-output checks do not establish an M1 Pro install or rollback pass.
 
 Etan's three rulings, supplied verbatim in BRIEF-M1-PROCEDURE-r2.md:
 
@@ -203,24 +203,187 @@ PY
 gh release download "v$VERSION" --repo EtanHey/golems --dir "$RUN/release-preflight" --pattern "golems-$VERSION.tar.gz" --pattern SHA256SUMS --pattern MANIFEST.json
 python3 -B - "$GOLEMS_ROOT" "$MERGE_SHA" "$VERSION" "$RUN/release-preflight" <<'PY'
 from pathlib import Path
-import runpy, subprocess, sys, tarfile
+import copy, hashlib, json, os, runpy, subprocess, sys, tarfile
 root, head, version, work = Path(sys.argv[1]), sys.argv[2], sys.argv[3], Path(sys.argv[4])
+
+def git(*args):
+    return subprocess.check_output(['git', '-C', str(root), *args])
+
+def same(actual, expected, label):
+    assert actual == expected, 'STOP: ' + label
+
+assert subprocess.run(['git', '-C', str(root), 'cat-file', '-e', head + '^{commit}'],
+    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, 'STOP: M4 Max checkout lacks MERGE_SHA'
+
+# These hashes freeze the transform audit below. Changed builder or policy bytes
+# require a fresh audit, even when MERGE_SHA advances for unrelated changes.
+for name, digest in (
+    ('build-release.mjs', 'fba9fe1d2635ec52f3210e1d65c9421f33c1345156536bc09050896c95d05e7c'),
+    ('shipped-paths.json', 'b2f4a95599930e9b6f86ed054d1382e0ac671216840a7d429cb135e236b34def'),
+):
+    same(hashlib.sha256(git('show', head + ':scripts/release/' + name)).hexdigest(), digest,
+         'release transform audit changed: ' + name)
+policy = json.loads(git('show', head + ':scripts/release/shipped-paths.json'))
+# Use Node for the builder's JavaScript RegExp, field order and JSON.stringify.
+# No builder code is executed and no release is built or extracted to disk.
+derivation = r"""
+const fs = require('node:fs');
+const { records, policy, source } = JSON.parse(fs.readFileSync(0, 'utf8'));
+const roots = policy.roots, support = new Set(policy.support);
+const excludedParts = new Set(policy.excluded_parts), excludedFiles = new RegExp(policy.excluded_files);
+function shipped(path) {
+  if (!support.has(path) && !roots.some(root => path.startsWith(root))) return false;
+  return !path.split('/').some(part => excludedParts.has(part)) && !excludedFiles.test(path);
+}
+const selected = records.filter(record => shipped(record.path) || record.path === 'package.json')
+  .sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+for (const file of selected) if (file.type !== 'blob' || !['100644', '100755'].includes(file.mode))
+  throw new Error(`unsupported git mode ${file.mode}: ${file.path}`);
+const dependencies = Object.fromEntries(['ajv', 'yaml', 'varlock'].map(name => {
+  if (!source.dependencies?.[name]) throw new Error(`missing runtime dependency: ${name}`);
+  return [name, source.dependencies[name]];
+}));
+const pkg = JSON.stringify({ name: 'golems-release', private: true, type: 'module', dependencies }, null, 2) + '\n';
+process.stdout.write(JSON.stringify({ records: selected, package: pkg }));
+"""
+
+def derive(records, source):
+    return json.loads(subprocess.check_output(['node', '-e', derivation],
+        input=json.dumps(dict(records=records, policy=policy, source=source)).encode(), stderr=subprocess.PIPE))
+
+def json_bytes(value):
+    return subprocess.check_output(['node', '-e',
+        "process.stdout.write(JSON.stringify(JSON.parse(require('node:fs').readFileSync(0, 'utf8')), null, 2) + '\\n')"],
+        input=json.dumps(value).encode())
+
+def inventory(actual, expected):
+    same(actual, expected, 'release path selection/order')
+
+def metadata(member, mode):
+    same((member.mode, member.uid, member.gid, member.mtime, member.uname, member.gname,
+          member.type, member.linkname, member.pax_headers),
+         (int(mode, 8), 0, 0, 0, '', '', tarfile.REGTYPE, '', {}), 'release metadata: ' + member.name)
+
+def gzip_header(data):
+    same(data[:10], bytes.fromhex('1f8b08000000000002ff'), 'normalized gzip header')
+
+def must_stop(label, check):
+    try: check()
+    except (AssertionError, subprocess.CalledProcessError): pass
+    else: raise AssertionError('self-test did not STOP: ' + label)
+
+source_package = json.loads(git('show', head + ':package.json'))
+records = []
+for record in git('ls-tree', '-rz', '--full-tree', head).decode().split('\0'):
+    if not record: continue
+    info, path = record.split('\t')
+    mode, kind, oid = info.split(' ')
+    records.append(dict(path=path, mode=mode, type=kind, oid=oid))
+i5_path = 'scripts/ratchet/installed-skills.py'
+i5_records = [r for r in records if r['path'] == i5_path]
+assert len(i5_records) == 1 and i5_records[0]['type'] == 'blob' and i5_records[0]['mode'] in ('100644', '100755'), 'STOP: missing/unsafe I5 Git source'
+i5_bytes = git('show', head + ':' + i5_path)
+same(i5_bytes, git('cat-file', 'blob', i5_records[0]['oid']), 'I5 source/ls-tree blob bytes')
+same(subprocess.check_output(['git', '-C', str(root), 'hash-object', '--stdin'], input=i5_bytes).decode().strip(),
+     i5_records[0]['oid'], 'I5 source blob ID')
+i5_identity = dict(merge_sha=head, path=i5_path, blob_id=i5_records[0]['oid'], sha256=hashlib.sha256(i5_bytes).hexdigest())
+derived = derive(records, source_package)
+package_bytes = derived['package'].encode()
+# Inline transform tests run before checking the downloaded release.
+same(package_bytes, json_bytes(dict(name='golems-release', private=True, type='module',
+    dependencies={name: source_package['dependencies'][name] for name in ('ajv', 'yaml', 'varlock')})),
+    'derived package positive self-test')
+for field in ('dependency', 'field'):
+    changed = json.loads(package_bytes)
+    if field == 'dependency': changed['dependencies']['ajv'] += '-changed'
+    else: changed['private'] = False
+    must_stop('changed package ' + field, lambda: same(json_bytes(changed), package_bytes, 'derived package'))
+fixture_paths = list(policy['support']) + [p + 'kept.txt' for p in policy['roots']] + ['package.json']
+omitted = ['README.md'] + [policy['roots'][0] + p + '/x.txt' for p in policy['excluded_parts']]
+omitted += [policy['roots'][0] + p for p in ('.env', '.env.local', 'secrets.json', 'x.test.js', 'x.pem', 'x.key', 'x.pyc')]
+fixture = [dict(path=p, mode='100644', type='blob', oid='a'*40) for p in fixture_paths + omitted]
+selected = [r['path'] for r in derive(fixture, source_package)['records']]
+inventory(selected, sorted(fixture_paths, key=lambda p: p.encode()))
+for changed in (selected[:-1], sorted(selected + [omitted[0]], key=lambda p: p.encode())):
+    must_stop('missing/extra shipped path', lambda: inventory(changed, selected))
+for mode, kind in (('120000', 'blob'), ('160000', 'commit')):
+    must_stop('unsupported git mode', lambda: derive([dict(path='package.json', mode=mode, type=kind)], source_package))
+for mode in ('0644', '0755'):
+    member = tarfile.TarInfo('fixture'); member.mode = int(mode, 8)
+    metadata(member, mode)
+    for attribute, value in (('mode', 0o600), ('uid', 1), ('gid', 1), ('mtime', 1),
+                             ('uname', 'changed'), ('gname', 'changed'), ('type', tarfile.SYMTYPE),
+                             ('linkname', 'changed'), ('pax_headers', {'path': 'changed'})):
+        changed = copy.deepcopy(member); setattr(changed, attribute, value)
+        must_stop('changed archive ' + attribute, lambda: metadata(changed, mode))
+gzip_header(bytes.fromhex('1f8b08000000000002ff'))
+must_stop('changed gzip OS', lambda: gzip_header(bytes.fromhex('1f8b0800000000000203')))
+same(b'line\r\n', b'line\r\n', 'raw blob positive self-test')
+must_stop('normalized line endings', lambda: same(b'line\n', b'line\r\n', 'raw blob'))
 module = runpy.run_path(str(root / 'scripts/ratchet/sync-m1.py'), run_name='procedure_verify')
 module['verify'](work, head, version)
-with tarfile.open(work / ('golems-' + version + '.tar.gz')) as archive:
+expected_data, expected_modes = {}, {}
+# Read raw Git blobs, without checkout filters or line-ending conversion.
+blobs = subprocess.check_output(['git', '-C', str(root), 'cat-file', '--batch'],
+    input=''.join(r['oid'] + '\n' for r in derived['records']).encode())
+offset = 0
+for record in derived['records']:
+    end = blobs.index(b'\n', offset)
+    oid, kind, size = blobs[offset:end].decode().split(' ')
+    same((oid, kind), (record['oid'], 'blob'), 'Git blob identity')
+    length = int(size)
+    data = blobs[end + 1:end + 1 + length]; offset = end + 2 + length
+    name = record['path']
+    expected_data[name] = package_bytes if name == 'package.json' else data
+    expected_modes[name] = '0755' if record['mode'] == '100755' else '0644'
+same(offset, len(blobs), 'Git batch framing')
+assert 'package.json' in expected_data, 'STOP: missing derived package.json'
+manifest = dict(version=version, commit=head, files=[dict(path=name,
+    sha256=hashlib.sha256(data).hexdigest(), mode=expected_modes[name]) for name, data in expected_data.items()])
+manifest_bytes = json_bytes(manifest)
+same((work / 'MANIFEST.json').read_bytes(), manifest_bytes, 'derived external MANIFEST.json')
+for field in ('version', 'commit', 'sha256', 'mode'):
+    changed = copy.deepcopy(manifest)
+    if field in ('version', 'commit'): changed[field] = 'changed'
+    else: changed['files'][0][field] = 'changed'
+    must_stop('changed manifest ' + field, lambda: same(json_bytes(changed), manifest_bytes, 'generated manifest'))
+expected_data['MANIFEST.json'], expected_modes['MANIFEST.json'] = manifest_bytes, '0644'
+filename = 'golems-' + version + '.tar.gz'
+compressed = (work / filename).read_bytes()
+gzip_header(compressed)
+sums = (hashlib.sha256(compressed).hexdigest() + '  ' + filename + '\n' +
+        hashlib.sha256(manifest_bytes).hexdigest() + '  MANIFEST.json\n').encode()
+same((work / 'SHA256SUMS').read_bytes(), sums, 'derived SHA256SUMS')
+must_stop('changed checksums', lambda: same(b'changed\n' + sums, sums, 'generated SHA256SUMS'))
+with tarfile.open(work / filename) as archive:
+    inventory([m.name for m in archive.getmembers()], sorted(expected_data, key=lambda p: p.encode()))
     for member in archive.getmembers():
-        if member.name == 'MANIFEST.json': continue
-        source = subprocess.check_output(['git', '-C', str(root), 'show', head + ':' + member.name])
-        assert archive.extractfile(member).read() == source, 'shipped/source mismatch: ' + member.name
-    import os
-    required = ('scripts/release/install.sh', 'scripts/ratchet/installed-skills.py')
+        same(archive.extractfile(member).read(), expected_data[member.name], 'shipped/derived content: ' + member.name)
+        metadata(member, expected_modes[member.name])
+    print('RELEASE_TRANSFORM_SELF_TEST_PASS; RELEASE_TRANSFORMS_VERIFIED', head, version, len(expected_data))
+    required = ('scripts/release/install.sh',)
     if os.environ['PROC_MODE'] == 'full':
         required += ('scripts/skills-sync-receipt.mjs', 'scripts/ratchet/skills-receipt.py')
     for name in required:
-        assert archive.getmember(name).isfile(), 'missing shipped I5 member: ' + name
+        assert name in archive.getnames() and archive.getmember(name).isfile(), 'STOP: missing shipped I5 member: ' + name
+with (Path(os.environ['RUN']) / 'i5-source.json').open('x') as output:
+    json.dump(i5_identity, output, sort_keys=True)
+print('I5_GIT_SOURCE_VERIFIED', i5_identity['blob_id'], i5_identity['sha256'])
 print('RELEASE_BYTES_AND_SOURCE_VERIFIED', head, version)
 PY
 ```
+
+Release transform audit at `MERGE_SHA=218a5a50111819cf8efd146890e0ed0b5341d372` (run 1's recorded target). `build-release.mjs` imports only Node built-ins and the shipping policy. Its SHA256 and the policy SHA256 are checked above on every run. Changed bytes STOP for re-audit. The verifier never runs the builder.
+
+| Builder source at that SHA | Transform | Required verification |
+| --- | --- | --- |
+| `scripts/release/build-release.mjs:12–18,52–57`; `scripts/release/shipped-paths.json:3–6` | Select policy roots and support paths, exclude named parts and file patterns, always include `package.json`; reject symlinks and submodules. All other source paths are omitted. No paths are renamed. | Recompute the exact path set with JavaScript's own predicate and compare the complete ordered archive inventory. Test included, excluded, missing and extra paths, and rejected Git modes. |
+| `scripts/release/build-release.mjs:58–66,69–76` | Copy Git blobs verbatim, except `package.json`. Derive its name, private flag, module type and exactly `ajv`, `yaml`, `varlock` in that order from source dependencies. Serialize with `JSON.stringify(obj, null, 2) + "\n"`. | Compare raw blobs byte for byte. Compare `package.json` to the exact derived bytes. Dependency, field and line-ending mutations STOP. No checkout or line-ending filter runs. |
+| `scripts/release/build-release.mjs:24–25,49–51,78–80,86` | Derive version from commit time and short SHA. Generate sorted `MANIFEST.json` containing target identity, transformed content hashes and normalized modes; embed the same bytes in the archive. | Existing §1 version derivation and `verify()` check target identity. Recreate canonical manifest bytes from the expected source content and modes; compare external and embedded copies. A changed manifest hash STOPs. |
+| `scripts/release/build-release.mjs:28–45,65,80–82` | Normalize Git `100755` to `0755`, otherwise accepted `100644` to `0644`; generated manifest is `0644`. Encode sorted regular USTAR entries, split long names into USTAR prefix/name, zero owner/time metadata, pad blocks and gzip at level 9 with OS byte 255. | Compare every decoded path and mode, regular-file type, zero uid/gid/mtime, empty user/group/link names and absent PAX overrides. USTAR encoding preserves decoded names and content; tar parsing plus release SHA256 checks cover framing/padding. Check the normalized ten-byte gzip header. Mode and metadata mutations and a changed gzip OS STOP. No compressed-byte equivalence across zlib versions is assumed. |
+| `scripts/release/build-release.mjs:83–87` | Write `golems-<version>.tar.gz`, external `MANIFEST.json`, and generated `SHA256SUMS`; these last two release assets are not source copies. | Existing `verify()` checks asset hashes, safe unique member inventory and every payload hash (`scripts/ratchet/sync-m1.py:125–142`). Also compare canonical checksum-file bytes derived from the actual compressed bytes and expected manifest. Changed checksums STOP. |
+
+Offline r4f validation used the retained run-1 `release-preflight` assets with this exact target and `PROC_MODE=bootstrap-run-1`. The r4e comparison reproduced `shipped/source mismatch: package.json`; r4f verified all 653 archive members, then STOPPED because its required-member gate incorrectly required `scripts/ratchet/installed-skills.py`. The shipping policy deliberately omits that source file. Release custody's r4g decision separates the shipped payload from this Git source dependency. Section 1 now checks the commit exists locally, loads the source using `git -C "$GOLEMS_ROOT" show "$MERGE_SHA:scripts/ratchet/installed-skills.py"`, verifies its bytes and blob ID against `git ls-tree` at that commit, and records `merge_sha`, `path`, `blob_id`, and `sha256` in `$RUN/i5-source.json`. Each controller invocation repeats the Git-source verification and requires equality with that evidence before executing or sending the source. No working-tree or archive copy supplies `i5_source`. Installer membership remains mandatory in both modes; full mode also requires both receipt members. An offline replay does not rerun §1's live preconditions, contact the M1 Pro, authorize a retry, or change run 1's STOPPED result.
 
 The guarded-path definition and selection command above reuse `scripts/ratchet/live-freshness.mjs:39–43` at master `5fcd6773b7d58d3a823a6a2e9694317e9eebcdf9` (using verified local `master` instead of its `origin/master`); its lines 47–49 resolve the guarded commit's merged master PR. `MERGE_SHA` is current master HEAD, whose matching release is installed. `LATEST_GUARDED` must be its first-parent ancestor, including equality; an unrelated commit or an ancestor reachable only through a second parent STOPs. `MERGED_PR` belongs to `LATEST_GUARDED`, and §3 passes that PR to `live-rows.sh --merged-pr`; non-guarded merges above it do not change the publication target. `$RUN/target-identity.json` records all three identities and the release version in both modes.
 
@@ -230,7 +393,7 @@ The existing owner-only `$HOME/.golems/ratchet/m1-sync-authorized.json` is an ex
 
 Run §1 in both modes. The executable refusal inside §1 runs before evidence creation or any SSH: **any** MERGED I5 PR disables bootstrap, even while other I5 PRs remain OPEN. A successful §8 row also disables it. Unknown API state, incomplete/unreadable/malformed history, missing PHX go, or changed W10 source STOP. PHX alone gives CI-hygiene the run-1 go; a worker cannot issue or manufacture that go. The pre-existing, owner-only `PHX_GO_FILE` contains `approved_by: "PHX"`, `go: "bootstrap-run-1"`, the exact `merge_sha` and `utc_ts`, `history_complete: true`, `no_prior_success: true`, `approval_evidence`, `lease_pr`, and absolute `lease_repo`. These fields record PHX's actual reviewed decision, not a replacement for it. A missing run log is accepted only with PHX's complete-history attestation; failed attempts never authorize automatic retry.
 
-**Reviewed receipt-only EXCEPTION (bootstrap run 1 only):** skip archive membership requirements for exactly `scripts/skills-sync-receipt.mjs` and `scripts/ratchet/skills-receipt.py`; skip the `m1-receipt: LIVE` log requirement, M1 receipt reads/validation in §§3–5, and the finish receipt identity check. Installer membership/bytes/modes, parity source membership/bytes, authorization, all five roots, snapshot, hook status, hook-key-only diff, protected state, symlink guards, and rollback remain required. No `install-receipt/v1` is fabricated. Keep NO-RECEIPT until full run 2.
+**Reviewed receipt-only EXCEPTION (bootstrap run 1 only):** skip archive membership requirements for exactly `scripts/skills-sync-receipt.mjs` and `scripts/ratchet/skills-receipt.py`; skip the `m1-receipt: LIVE` log requirement, M1 receipt reads/validation in §§3–5, and the finish receipt identity check. Installer membership/bytes/modes, parity source Git identity/bytes, authorization, all five roots, snapshot, hook status, hook-key-only diff, protected state, symlink guards, and rollback remain required. No `install-receipt/v1` is fabricated. Keep NO-RECEIPT until full run 2.
 
 W10 source pinned at `f168a2d884a4b0c49b0467089eba81ef0c9a0bb4`: `scripts/ratchet/live-rows.sh:29` checks `sync-m1.py --check-authorization` before other probes; lines 50–58 invoke the public positional sync. `sync-m1.py:150–177` checks the existing owner-only `~/.golems/ratchet/m1-sync-authorized.json` for Etan #32 (`schema=1`, `item=32`, `scope=m1-skills-install`, nonempty words, valid date). Do not create/edit the grant. Its `after_m1_sync` is the reserved no-op; it writes no M1 receipt and performs no M1 receipt probe. The live-row route issues its normal live evidence and GitHub table; PHX's go covers that existing route. §5's separate parity measurement still runs directly, without repeating live rows.
 
@@ -1132,8 +1295,24 @@ else:
         with tarfile.open(release) as archive:
             def document(name): return json.loads(archive.extractfile(name).read())
             params.update(catalog=document('skills/catalog.json'), vendor=document('skills/vendor/manifest.json'),
-                manifest=document('MANIFEST.json'), policy=document('scripts/release/shipped-paths.json'),
-                i5_source=archive.extractfile('scripts/ratchet/installed-skills.py').read().decode())
+                manifest=document('MANIFEST.json'))
+        git_command = ['git', '-C', os.environ['GOLEMS_ROOT']]
+        need(subprocess.run([*git_command, 'cat-file', '-e', params['head'] + '^{commit}'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, 'STOP: M4 Max checkout lacks MERGE_SHA')
+        # shipped-paths.json is builder policy, not a shipped member: read it from Git at MERGE_SHA (as §1 does).
+        params['policy'] = json.loads(subprocess.check_output([*git_command, 'show', params['head'] + ':scripts/release/shipped-paths.json']))
+        i5_path = 'scripts/ratchet/installed-skills.py'
+        entries = subprocess.check_output([*git_command, 'ls-tree', '-z', '--full-tree', params['head'], '--', i5_path]).decode().split('\0')
+        need(len(entries) == 2 and not entries[1], 'STOP: missing/ambiguous I5 Git source')
+        info, path = entries[0].split('\t')
+        mode, kind, oid = info.split(' ')
+        need(path == i5_path and kind == 'blob' and mode in ('100644', '100755'), 'STOP: unsafe I5 Git source')
+        i5_bytes = subprocess.check_output([*git_command, 'show', params['head'] + ':' + i5_path])
+        need(i5_bytes == subprocess.check_output([*git_command, 'cat-file', 'blob', oid]), 'STOP: I5 source/ls-tree blob bytes differ')
+        need(subprocess.check_output([*git_command, 'hash-object', '--stdin'], input=i5_bytes).decode().strip() == oid, 'STOP: I5 source blob ID differs')
+        i5_identity = dict(merge_sha=params['head'], path=i5_path, blob_id=oid, sha256=sha(i5_bytes))
+        need(i5_identity == json.loads((run / 'i5-source.json').read_text()), 'STOP: I5 source identity differs from preflight')
+        params['i5_source'] = i5_bytes.decode()
         mode = sys.argv[1]
         if mode == 'rollback':
             numbers = [int(p.name.split('-')[2].split('.')[0]) for p in run.glob('rollback-attempt-*.*')]
@@ -1643,4 +1822,6 @@ Research validation (r4b): seven extracted Bash blocks pass `bash -n`; nineteen 
 
 Research validation (r4c): eight extracted Bash blocks pass `bash -n`; twenty Python heredocs and the generated M4 Max shim pass `py_compile`. The embedded positive fixture is byte-identical to this worker's connection-free `/usr/bin/ssh -G -F /dev/null -o BatchMode=yes -o StrictHostKeyChecking=yes -o UpdateHostKeys=no review.invalid` capture. For each host's shared parser, the real fixture and all four safe serialization combinations pass; all 22 negative fixtures STOP (13 unsafe-value cases plus 3 missing, 3 duplicate and 3 malformed cases). Across both host paths: 10 positive passes and 44 negative STOPs. Ten scratch-HOME side-effect cases pass their expected verdicts: direct/no-change and the enumerated producer control PASS; eight cases STOP for unexpected config/collab paths, existing config byte/mode changes, collab overwrite, wrong publication, effects during direct sync, or a symlink. GitHub replies are mocked in those tests; no comment was published. The initial extraction caught an escaped-newline syntax error in the new post-check; it was corrected and the failed extraction is retained separately from the passing round. Evidence: `docs.local/scratch/m1proc-r4c/` (real capture, r4b baseline, extracted copies, validation harness and JSON). The restricted diff check confirms all other r4b bytes unchanged, including §6, §7b and all three quoted rulings. Only the dummy-host `ssh -G` was executed; no connection, producer, real policy/collab write, M1 Pro action, installer or rollback was run. PROCEDURE_READY r4c remains written-procedure readiness only.
 
-PROCEDURE_READY
+Research validation (r4g): eight Bash blocks pass `bash -n`; twenty-two Python heredocs and the generated M4 Max shim pass `py_compile`. The five existing inline self-tests pass (ancestry, bootstrap refusal, strict SSH configuration, recursive JSON diff, and side-effect metadata). The frozen source hash remains unchanged; bootstrap hashing, full-mode equal hashes, and refusal on differing full-mode hashes pass their local cases. The retained run-1 asset hashes are unchanged. At `218a5a50111819cf8efd146890e0ed0b5341d372`, bootstrap's §1 offline replay exits 0 after the transform self-tests, exact derived `package.json`, transform audit, and all 653 archive members. Its I5 source blob is `d4ccdc422de57a05b870ecff6c398b4da3d9dfe8`, SHA256 `99fb600db0a10738f8ce7f097ab188d6a714f9286ec8e1d35ab8f83636b250be`. The extracted controller source-loader passes the real Git-source control and STOPs on a missing commit, altered `git show` bytes, or altered preflight evidence. The historical full-mode replay correctly STOPs on missing `scripts/skills-sync-receipt.mjs`; neither receipt script ships in that pre-I5 release. The complete three-site `extractfile(`/`getmember(` audit finds an additional unconditional non-shipped dependency: §2's `document('scripts/release/shipped-paths.json')`. Replaying only those exact archive-read statements locally raises `KeyError: "filename 'scripts/release/shipped-paths.json' not found"` before any controller mode or SSH. The installer, catalog, and vendor manifest are shipped; `MANIFEST.json` is generated and verified. Evidence and the validation harness are under `docs.local/scratch/m1proc-r4g/`, with the completed report in `round-2/validation.json`. The first audit harness incorrectly assumed every intended member was shipped; its failed round is retained, and round 2 records the actual policy result. Boundary greps remain empty. Sections 3–8's prior content, the frozen functions, all three quoted rulings, and all unrelated r4f bytes are unchanged. No M1 contact, live-row/producer, installer, or rollback run occurred. A separate decision on the policy source is required before readiness; run 1 remains STOPPED.
+
+PROCEDURE_READY r4h (pending the Codex delta re-check)
