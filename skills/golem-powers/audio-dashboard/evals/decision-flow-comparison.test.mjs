@@ -242,9 +242,9 @@ test("without responseStatus (WebKit), success needs a visual in the readable pa
 });
 
 test("a file: dashboard cannot verify its comparison and says how to fix that", () => {
-  const run = setup(undefined, decisions, { url: "file:///Users/me/dash/index.html" });
+  const run = setup(undefined, decisions, { url: "file:///srv/dash/index.html" });
   run.opener.click();
-  expect(run.frame().src).toBe("file:///Users/me/dash/visuals/a.html");
+  expect(run.frame().src).toBe("file:///srv/dash/visuals/a.html");
   run.loadWith(run.frame(), { readable: false });
   expect(run.state()).toBe("failed");
   expect(run.message()).toContain("over http(s)");
