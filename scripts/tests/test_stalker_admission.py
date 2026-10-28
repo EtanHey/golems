@@ -127,10 +127,11 @@ class AdmissionTests(unittest.TestCase):
         self.assertEqual(self.admit(default, free=0)[1]['requiredBytes'], 20 * 1024**3 + 15)
 
     def test_finish_tokens_failed_retry_and_successor(self):
-        _, first = self.admit(self.request())
+        with mock.patch.object(self.api.secrets, 'token_urlsafe', return_value='-' + 'x' * 42):
+            _, first = self.admit(self.request())
         self.assertEqual(self.api.finish(self.db, 'wrong', 'complete')[0], 75)
         self.assertEqual(self.admit(self.request('busy', broadcastId='b2'))[1]['reason'], 'BUSY')
-        self.assertEqual(self.api.finish(self.db, first['claim'], 'failed')[0], 0)
+        self.assertEqual(self.cli('finish', '--claim', first['claim'], '--outcome', 'failed')[0], 0)
         _, second = self.admit(self.request('retry'))
         self.assertTrue(second['authorized'])
         self.assertEqual(self.api.finish(self.db, first['claim'], 'complete')[0], 75)
@@ -163,6 +164,9 @@ class AdmissionTests(unittest.TestCase):
             code, result = self.admit(self.request() | changes)
             self.assertEqual(code, 64)
             self.assertFalse(result['authorized'])
+        oversized = self.write_request(self.request())
+        oversized.write_text(oversized.read_text().replace('"expectedBytes": 10', '"expectedBytes": ' + '9' * 5000))
+        self.assertEqual(self.cli('admit', '--request', str(oversized))[0], 64)
         self.assertEqual(self.api.admit(self.spool, self.request())[0], 73)
         for content, expected in ((b'corrupt database', 73), (b'', 64)):
             self.db.write_bytes(content)

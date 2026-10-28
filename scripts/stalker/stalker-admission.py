@@ -119,7 +119,7 @@ def transact(path, action, data, observe=observe_spool):
                                  freeBytes=free, outstandingBytes=outstanding, requiredBytes=required)
                 if r['kind'] == 'capture':
                     receipt.update(coverageStatus='unknown', coverageReason='capture_not_observed')
-                claim = secrets.token_urlsafe(32) if allowed else None
+                claim = 'c_' + secrets.token_urlsafe(32) if allowed else None
                 receipt.update(authorized=allowed, claim=claim)
                 db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?)',
                            (r['jobKey'], digest, resource, work, receipt['state'], device,
@@ -187,7 +187,7 @@ def main():
             code, receipt = finish(args.db, args.claim, args.outcome)
         else:
             code, receipt = inspect(args.db, args.job_key)
-    except (Invalid, json.JSONDecodeError, UnicodeError) as error:
+    except (ValueError, UnicodeError) as error:
         code, receipt = 64, result(str(error) if isinstance(error, Invalid) else 'INVALID_JSON')
     except OSError:
         code, receipt = 73, result('STORAGE_ERROR')
