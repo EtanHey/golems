@@ -79,6 +79,29 @@ Decision-flow fails closed unless every scene is owned by exactly one decision.
 This keeps audio and questions woven together and prevents a cinema-style global
 audio strip / separate question list from reappearing.
 
+## Card detail format
+
+Follow [Card detail affordances](references/card-format.md): text-only cards
+must not repeat their text in a View details expander. Either offer no secondary
+action, or offer a **Listen deeper** button that opens an inline narrated section
+with real-word-timed read-along and word-click seek. Cards with a visualization
+may keep a View details expander that shows the visualization's underlying data.
+
+## Issue and PR references
+
+Attribution: Etan, 2026-10-28 dashboard feedback (AD-16).
+
+Any `#N` a card shows must be a link. Add a rail row on that card whose `href`
+is the repository-qualified PR/issue URL the producer already has:
+`{ "label": "PR", "value": "#39", "href": "https://github.com/OWNER/REPO/pull/39" }`.
+Never infer a repository from a bare number. The build fails on an unlinked
+`#N`, on a `#N` row whose own `href` is not that PR/issue (a generic URL does not
+count), and on a value whose number contradicts its GitHub `href`. GitHub links
+render as `repo#N`. A `#N` inside a `code span` or right after a colour word
+(`color #123`, `background: #123456`, `fill=#333`) is a CSS colour, not a
+reference; everywhere else it is one. Only `http(s)` hrefs become anchors; anything else,
+including `javascript:` and `data:`, stays plain text.
+
 ## Vendored Engine (what makes it portable)
 
 Everything the pipeline needs is inside the skill:
@@ -179,7 +202,8 @@ this skill dir):
    cinema/global Play-All surface.
 5. **Evidence gate** — `bun scripts/validate-evidence.mjs --spec <job.json>
    [--published "<sync cmd>"]` runs `src/audio-dashboard-evidence.mjs` against the
-   real rendered dashboard + job dir. Note: the gate only returns **PASS** once
+   real rendered dashboard + job dir. `validate-evidence` also enforces the
+   text-only card rule in [card-format.md](references/card-format.md). Note: the gate only returns **PASS** once
    publish evidence is supplied via `--published` (the tailnet-sync invariant);
    without it the gate correctly reports `REJECTED: MISSING_TAILNET_SYNC` with
    every other invariant passing. Run it after step 6, or pass `--published`

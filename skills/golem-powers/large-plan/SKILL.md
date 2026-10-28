@@ -100,6 +100,7 @@ When a round has parallel phases, the orchestrator dispatches through its harnes
 "No polling turns. No collab-monitor wakes in Codex, and no "watch #410" loops. Use T3 completion notifications or a single bounded check. Mechanical polling or rebases go to [`codex.subagent.mechanical`]." (Etan 2026-10-18, via orc collab)
 
 1. **Dispatch:** each phase or PR is its own `delegate_task` child. Lifecycle (discover, dispatch, review rounds, PR linking): [agent-routing/references/t3-native.md](../agent-routing/references/t3-native.md). Who does which role: `/agent-routing` § Routing rules (SSOT). Pass the plan and `collab.md` by absolute path, and retain each `taskId`.
+   Work for the other Mac (M1) dispatches directly with `environmentId`: [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md).
 2. **Guard:** the completion notification is the liveness guard (canon #7). Arm no collab monitor, no process/registry liveness watcher, no `ScheduleWakeup` / `CronCreate` / `/loop` polling turn. After dispatch, end the turn.
 3. **On wake:** verify the artifact (PR exists, head SHA, file scope) before relaying or advancing. After a merge, fast-forward the root checkout first (**Branch Lifecycle** below). **Phase exit** below still applies.
 4. **PR waiting:** the parent calls `watch_pull_request` and ends the turn. A wake is news, not a merge decision.

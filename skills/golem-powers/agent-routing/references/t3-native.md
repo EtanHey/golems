@@ -25,7 +25,7 @@ A Codex child inherits its parent's Codex instance. A Claude lead naming only th
 codex instance T3 lists first (OrchestratorMcpService.ts:1337-1386); always name the instance.
 Remember: the role picks the model, the work type picks the instance.
 Keep `codex` for security (implementers + scans), UI / computer-use recorders, browser / web-QA workers,
-leads and Etan. Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
+Etan (Codex has no lead seats). Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
 
 If `codex-worker` is missing from `orchestrator_capabilities`, fall back to `codex` per dispatch and
 report to the lead. This is not a BLOCKED condition: an instance isn't a model; keep the role's model pin.
@@ -175,6 +175,10 @@ Worktree bases and the single post-launch preparation read follow the canonical
 - `t3_thread_launch` and `create_threads` create ordinary top-level conversations. Use them only
   when a separate or new thread is explicitly asked for. "Dispatch a worker/subagent" is
   `delegate_task`, never a thread launch.
+  Exception: cross-project and linked-environment (other Mac) code writers are launched with
+  `t3_thread_launch`; the procedure lives only in [cross-machine.md](cross-machine.md).
+- `t3_thread_launch` has no idempotency key: after a lost response, check `t3_thread_list` before
+  retrying.
 - After a worktree launch, perform the [single preparation read](worktree-launch.md#exactly-one-read-after-a-worktree-t3_thread_launch).
   Acceptance alone is not success; PENDING never starts a polling or model-retry loop.
 
@@ -188,6 +192,7 @@ Worktree bases and the single post-launch preparation read follow the canonical
 
 ## 9. Owned elsewhere
 
+- Dispatch to a linked environment (the other Mac): [cross-machine.md](cross-machine.md).
 - Fresh implementer per PR, reviewer freshness, the Codex concurrency cap and settle timing:
   SKILL.md § Lead Topology #5. Not restated here.
 - Vendors per work type and inner-loop order: SKILL.md § Routing rules (SSOT).

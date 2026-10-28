@@ -227,12 +227,14 @@ def test_broad_archive_root_cannot_hide_ephemeral_copies(tree, archive_root):
     path = manifest(tree, archive_root)
     data = json.loads(path.read_text())
     data["archive_root"] = "/"
-    for row in data["entries"]:
-        archived = tree[2].parent / "archive" / row["path"]
-        archived.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(tree[1] / row["path"], archived)
-        row["archived_to"] = str(archived)
-    path.write_text(json.dumps(data))
-    result, receipt = run(tree, "--archive-manifest", path)
-    assert result.returncode == 2 and receipt["disposition"] == "RETAINED"
-    assert receipt["remove_rc"] is None
+    with tempfile.TemporaryDirectory(prefix="w1c-ephemeral-", dir=Path("/tmp").resolve()) as directory:
+        for row in data["entries"]:
+            archived = Path(directory) / row["path"]
+            archived.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(tree[1] / row["path"], archived)
+            row["archived_to"] = str(archived)
+        path.write_text(json.dumps(data))
+        result, receipt = run(tree, "--archive-manifest", path)
+        assert result.returncode == 2 and receipt["disposition"] == "RETAINED"
+        assert "ephemeral directory" in receipt["reason"]
+        assert receipt["remove_rc"] is None
