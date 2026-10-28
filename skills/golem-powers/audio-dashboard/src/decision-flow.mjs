@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TEMPLATE_ROOT = path.join(ROOT, "templates", "decision-flow");
 const NOTE_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 11V4H4v16l4-4h7M8 8h8M8 12h4M19 14v8m-4-4h8"/></svg>';
+const COMPARE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>';
 const ANSWER_MARK = '<span class="df-answer-status" role="img" aria-label="Awaiting answer" title="Awaiting answer" data-answered="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><circle class="df-answer-progress" cx="12" cy="12" r="9" pathLength="1"/><path d="m7.5 12 3 3 6-6"/></svg></span>';
 
 function escapeHtml(value) {
@@ -90,11 +91,65 @@ function renderWords(scene) {
   ).join(" ");
 }
 
-function renderRail(rows = []) {
+// A bare "#39" names no repository; only an explicit repository-qualified href may link it.
+const BARE_REFERENCE = /(?<![\w&#/])#(\d+)\b/g;
+const GITHUB_REFERENCE = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/(pull|issues)\/(\d+)(?:[/?#]|$)/;
+
+function safeHref(value) {
+  let url;
+  try {
+    url = new URL(String(value ?? "").trim());
+  } catch {
+    return "";
+  }
+  return (url.protocol === "https:" || url.protocol === "http:") && url.hostname ? url.href : "";
+}
+
+function renderRailValue(row, decisionId) {
+  const value = String(row.value ?? "").trim();
+  const href = safeHref(row.href);
+  if (!href) return escapeHtml(row.value);
+  const reference = href.match(GITHUB_REFERENCE);
+  if (!reference) return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(value || href)}</a>`;
+  const [, owner, repo, kind, number] = reference;
+  const stated = [...value.matchAll(BARE_REFERENCE)].map((match) => match[1]);
+  if (stated.some((statedNumber) => statedNumber !== number)) {
+    throw new Error(`decision-flow: ${decisionId} rail "${row.label}" says ${value} but links ${owner}/${repo}#${number}`);
+  }
+  const label = `${repo}#${number}`;
+  const text = !value || /^#\d+$/.test(value) ? escapeHtml(label) : `${escapeHtml(value)} <span class="df-rail-ref">${escapeHtml(label)}</span>`;
+  return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer" title="${kind === "pull" ? "Pull request" : "Issue"} ${escapeHtml(`${owner}/${repo}#${number}`)}">${text}</a>`;
+}
+
+function renderRail(rows = [], decisionId = "") {
   if (!rows.length) return "";
   return `<dl class="df-rail">${rows.map((row) =>
-    `<div><dt>${escapeHtml(row.label)}</dt><dd>${escapeHtml(row.value)}</dd></div>`,
+    `<div><dt>${escapeHtml(row.label)}</dt><dd>${renderRailValue(row, decisionId)}</dd></div>`,
   ).join("")}</dl>`;
+}
+
+// Producer check: every "#N" a card shows must be linked on that card by a repository-qualified href.
+export function findBareReferences(decisions = []) {
+  const found = [];
+  for (const decision of decisions) {
+    const rail = Array.isArray(decision.rail) ? decision.rail : [];
+    const linked = new Set(rail.map((row) => safeHref(row.href).match(GITHUB_REFERENCE)?.[4]).filter(Boolean));
+    const fields = [
+      ["title", decision.title],
+      ["summary", decision.summary],
+      ["body", decision.body],
+      ...(decision.options || []).flatMap((option, index) => typeof option === "string"
+        ? [[`option ${index}`, option]]
+        : [[`option ${index}`, option?.label ?? option?.title], [`option ${index} summary`, option?.summary]]),
+      ...rail.filter((row) => !safeHref(row.href)).map((row) => [`rail ${row.label}`, row.value]),
+    ];
+    for (const [field, text] of fields) {
+      for (const match of String(text ?? "").matchAll(BARE_REFERENCE)) {
+        if (!linked.has(match[1])) found.push({ decision: decision.id, field, ref: match[0] });
+      }
+    }
+  }
+  return found;
 }
 
 function renderParagraphs(text) {
@@ -191,8 +246,46 @@ function speakerLabel(scene, role) {
   return name.charAt(0).toUpperCase() + name.slice(1) + verb;
 }
 
-function renderCard(decision, index, sceneById) {
+export const DEFAULT_COMPARISON_TIMEOUT_MS = 10000;
+
+function comparisonTimeout(value, where) {
+  if (!Number.isInteger(value) || value < 1000 || value > 120000) {
+    throw new Error(`decision-flow: ${where} must be an integer from 1000 to 120000`);
+  }
+  return value;
+}
+
+// An explicit comparison target: a page inside the dashboard directory, opened in the shared dialog.
+function normalizeComparison(decision, timeoutMs) {
+  if (decision.comparison === undefined) return null;
+  const spec = typeof decision.comparison === "string" ? { url: decision.comparison } : decision.comparison || {};
+  const url = String(spec.url ?? "").trim();
+  if (!url || /^[A-Za-z][A-Za-z0-9+.-]*:|^[\\/]/.test(url)) {
+    throw new Error(`decision-flow: ${decision.id} comparison.url must be a relative URL inside the dashboard directory`);
+  }
+  return {
+    url,
+    label: String(spec.label ?? "").trim() || "View comparison",
+    title: String(spec.title ?? "").trim() || `Comparison · ${decision.title}`,
+    timeoutMs: spec.timeoutMs === undefined ? timeoutMs : comparisonTimeout(spec.timeoutMs, `${decision.id} comparison.timeoutMs`),
+  };
+}
+
+function renderComparisonOpener(comparison) {
+  if (!comparison) return "";
+  return `<button type="button" class="df-compare-open" aria-haspopup="dialog" aria-controls="df-compare" data-compare-url="${escapeHtml(comparison.url)}" data-compare-title="${escapeHtml(comparison.title)}" data-compare-timeout="${comparison.timeoutMs}">${COMPARE_ICON}<span>${escapeHtml(comparison.label)}</span></button>`;
+}
+
+// One shared dialog: loading -> loaded | failed (error or timeout) -> loading on Retry; Back closes.
+const COMPARE_DIALOG = `<dialog class="df-compare" id="df-compare" aria-labelledby="df-compare-title" aria-modal="true" data-state="idle">
+    <div class="df-compare-head"><button type="button" class="df-compare-back" id="df-compare-back"><span aria-hidden="true">←</span> Back</button><h2 id="df-compare-title"></h2></div>
+    <div class="df-compare-stage" id="df-compare-stage"></div>
+    <div class="df-compare-status" role="status" aria-live="polite"><span class="df-compare-spinner" aria-hidden="true"></span><p id="df-compare-message"></p><div class="df-compare-actions"><button type="button" id="df-compare-retry" hidden>Retry</button><button type="button" id="df-compare-close" hidden>Back to the card</button></div></div>
+  </dialog>`;
+
+function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
   const options = (decision.options || []).map(normalizeOption);
+  const comparison = normalizeComparison(decision, comparisonTimeoutMs);
   const audio = decision.sceneIds.map((sceneId) => {
     const scene = sceneById.get(sceneId);
     return `<audio preload="metadata" data-audio-scene="${escapeHtml(scene.id)}" src="${escapeHtml(scene.audioUrl)}"></audio>`;
@@ -226,11 +319,12 @@ function renderCard(decision, index, sceneById) {
     </div>
     <div class="df-teleprompter" hidden aria-live="off">${transcript}</div>
     <button type="button" class="df-answer-open" aria-haspopup="dialog" aria-controls="sheet-${escapeHtml(decision.id)}"><span class="df-ao-todo">Answer this card</span><span class="df-ao-offer">Your turn: answer this card</span><span class="df-ao-done">Answered, review</span></button>
+    ${renderComparisonOpener(comparison)}
     <div class="df-sheet" id="sheet-${escapeHtml(decision.id)}">
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
     <div class="df-question">${renderParagraphs(decision.body)}</div>
-    ${renderRail(decision.rail)}
+    ${renderRail(decision.rail, decision.id)}
     <div class="df-answer">
       ${renderChecklist(decision)}
       ${optionBlocks ? `<fieldset class="df-options"><legend class="df-sr-only">${escapeHtml(decision.title)} options</legend>${optionBlocks}</fieldset>` : ""}
@@ -242,10 +336,11 @@ function renderCard(decision, index, sceneById) {
   </article>`;
 }
 
-export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, decisions, storageKey, cinemaUrl }) {
+export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, decisions, storageKey, cinemaUrl, comparisonTimeoutMs = DEFAULT_COMPARISON_TIMEOUT_MS }) {
   if (!Array.isArray(scenes) || scenes.length === 0) throw new Error("decision-flow: scenes must be non-empty");
   if (!Array.isArray(decisions) || decisions.length === 0) throw new Error("decision-flow: decisions must be non-empty");
   assertSceneOwnership(decisions, scenes);
+  const timeoutMs = comparisonTimeout(comparisonTimeoutMs, "comparisonTimeoutMs");
 
   const sceneById = new Map(scenes.map((scene) => [scene.id, scene]));
   const tpdata = Object.fromEntries(scenes.map((scene) => [scene.id, {
@@ -256,7 +351,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
   const shell = readFileSync(path.join(TEMPLATE_ROOT, "shell.html"), "utf8");
   const styles = readFileSync(path.join(TEMPLATE_ROOT, "decision-flow.css"), "utf8");
   const script = readFileSync(path.join(TEMPLATE_ROOT, "decision-flow.js"), "utf8");
-  const cards = decisions.map((decision, index) => renderCard(decision, index, sceneById)).join("\n");
+  const cards = decisions.map((decision, index) => renderCard(decision, index, sceneById, timeoutMs)).join("\n");
   const safeModeUrl = safeCinemaUrl(cinemaUrl);
 
   return [
@@ -271,6 +366,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{STYLES}}", styles],
     ["{{CONTROLLER}}", renderController(decisions)],
     ["{{CARDS}}", cards],
+    ["{{COMPARE_DIALOG}}", decisions.some((decision) => decision.comparison !== undefined) ? COMPARE_DIALOG : ""],
     ["{{INDEX}}", renderIndex(decisions)],
     ["{{TPDATA}}", safeJson(tpdata)],
     ["{{SCRIPT}}", script],

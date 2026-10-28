@@ -5,7 +5,9 @@
                     and a move while audio plays hands playback to the new card (nothing plays hidden).
      preferences    rate (one of RATES) and view (list|story), persisted in the dashboard's own store.
      answer sheet   closed -> open (Answer, story view only) -> closed (Done, Esc, backdrop, Next/Skip,
-                    another card, list view). Open: dialog role, rest inert, focus trapped; close returns focus. */
+                    another card, list view). Open: dialog role, rest inert, focus trapped; close returns focus.
+     comparison     closed -> loading -> loaded | failed (error or timeout) -> loading (Retry); Back/Esc close
+                    and return focus to the card's opener. */
   var root=document.documentElement;
   var cards=Array.from(document.querySelectorAll(".df-card"));
   var KEY=document.body.getAttribute("data-storage-key")||"dbx:decision-flow";
@@ -168,6 +170,7 @@
     card.querySelectorAll('input[type="radio"], .df-check-input').forEach(function(input){input.checked=false;});card.querySelector(".df-free").value="";closeClear(card);
   }
   document.addEventListener("keydown",function(event){
+    if(compareView){if(event.key==="Escape"){event.preventDefault();closeCompare();}return;}
     if(event.key==="Escape"&&!(noteDialog&&noteDialog.open)){var focusedCard=document.activeElement&&document.activeElement.closest(".df-card"),pending=focusedCard&&focusedCard.querySelector(".df-clear-confirm:not([hidden])");if(pending){event.preventDefault();closeClear(focusedCard);return;}}
     var modal=noteDialog&&noteDialog.open?noteDialog:sheet&&sheet.node;if(!modal)return;
     if(event.key==="Escape"){event.preventDefault();if(modal===noteDialog)closeNote(true);else closeSheet(true);return;}
@@ -249,6 +252,36 @@
     function fallbackDraft(){if(noteEditor!==editor)return;var area=document.createElement("textarea");area.value=text;noteDialog.appendChild(area);area.select();var ok=false;try{ok=document.execCommand("copy");}catch(error){}area.remove();noteText.focus();if(ok)copiedDraft();else noteError.textContent="Copy unavailable. Select your quote and note to copy them.";}
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(copiedDraft,fallbackDraft);else fallbackDraft();
   });
+  // Comparison: closed -> loading -> loaded | failed (frame error, or no load within the card's bound) -> loading on Retry.
+  // Each attempt gets a fresh frame and token, so a late event or timer from an earlier attempt cannot settle the current one.
+  var compare=document.getElementById("df-compare"),compareView=null,compareAttempt=0;
+  function compareStatus(state,message){compare.dataset.state=state;document.getElementById("df-compare-message").textContent=message;["df-compare-retry","df-compare-close"].forEach(function(id){document.getElementById(id).hidden=state!=="failed";});}
+  function settleCompare(token,state,message){if(!compareView||token!==compareAttempt||compare.dataset.state!=="loading")return;compareStatus(state,message);if(state==="failed"&&compare.contains(document.activeElement))document.getElementById("df-compare-retry").focus();}
+  // Browsers fire load, not error, for network failures and HTTP errors, so a load proves nothing alone.
+  // The target is same-origin by contract: an unreadable frame is a browser error page; a 4xx/5xx is a failed page.
+  function frameProblem(frame){
+    var failed="The comparison couldn't load. Retry, or go back to the card.";
+    if(document.location.protocol==="file:"||!frame.contentWindow)return "";
+    try{var nav=frame.contentWindow.performance.getEntriesByType("navigation")[0];return nav&&nav.responseStatus>=400?failed:"";}catch(error){return failed;}
+  }
+  function loadCompare(){
+    var token=++compareAttempt,view=compareView,frame=document.createElement("iframe"),seconds=String(Math.round(view.timeout/100)/10);
+    frame.className="df-compare-frame";frame.title=view.title;
+    frame.addEventListener("load",function(){var problem=frameProblem(frame);settleCompare(token,problem?"failed":"loaded",problem);});
+    frame.addEventListener("error",function(){settleCompare(token,"failed","The comparison couldn't load. Retry, or go back to the card.");});
+    compareStatus("loading","Loading comparison…");
+    // src before insertion: an empty frame fires an about:blank load that would read as success.
+    frame.src=view.url;document.getElementById("df-compare-stage").replaceChildren(frame);
+    setTimeout(function(){settleCompare(token,"failed","The comparison didn't load within "+seconds+" seconds. Retry, or go back to the card.");},view.timeout);
+  }
+  function openCompare(card,button){if(compareView)return;if(isPlaying(card))pauseCard(card);compareView={opener:button,url:button.dataset.compareUrl,title:button.dataset.compareTitle,timeout:Number(button.dataset.compareTimeout)||10000};document.getElementById("df-compare-title").textContent=compareView.title;compare.showModal();document.getElementById("df-compare-back").focus();loadCompare();}
+  function closeCompare(){if(!compareView)return;var opener=compareView.opener;compareView=null;compareAttempt++;document.getElementById("df-compare-stage").replaceChildren();compareStatus("idle","");compare.close();if(opener&&opener.isConnected)opener.focus({preventScroll:true});}
+  if(compare){
+    cards.forEach(function(card){var button=card.querySelector(".df-compare-open");if(button)button.addEventListener("click",function(){openCompare(card,button);});});
+    document.getElementById("df-compare-retry").addEventListener("click",function(){if(!compareView)return;document.getElementById("df-compare-back").focus();loadCompare();});
+    ["df-compare-back","df-compare-close"].forEach(function(id){document.getElementById(id).addEventListener("click",closeCompare);});
+    compare.addEventListener("cancel",function(event){event.preventDefault();closeCompare();});
+  }
   // Keep focused controls clear of the fixed phone dock and the sticky controller.
   document.addEventListener("focusin",function(event){var dock=document.querySelector(".df-dock");var bar=document.querySelector(".df-controller");var view=document.defaultView;var el=event.target;if(!dock||!view||!el||!el.getBoundingClientRect||el.closest(".df-words")||el.closest(".df-note-dialog")||dock.contains(el)||(bar&&bar.contains(el))||document.body.dataset.view==="story")return;var box=el.getBoundingClientRect();var underDock=view.getComputedStyle(dock).position==="fixed"&&box.bottom>dock.getBoundingClientRect().top;var underBar=bar&&view.getComputedStyle(bar).position==="sticky"&&box.top<bar.getBoundingClientRect().bottom;if(underDock||underBar)el.scrollIntoView({block:"nearest"});});
   applyRate();applyView();updateCounts();updateTransport();root.dataset.ready="true";
