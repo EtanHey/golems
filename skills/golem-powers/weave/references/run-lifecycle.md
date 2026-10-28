@@ -332,8 +332,8 @@ Pin **per-node-role AND per-effort**, not just per-model:
 | Plan-mode | Claude | **xhigh** |
 | Completion-AUDIT of Codex output | Claude only | — never trust Codex self-reported "done" (100%-claimed / 5%-real specimen) |
 
-Codex fan-out is a **separate rate bucket** from the ≤2-3 concurrent Claude-
-dispatch law. [g3:66-75 → skills-audit-notes.md:180-181]
+Codex fan-out is a **separate rate bucket** from canon #5's Claude
+concurrency rule. [g3:66-75 → skills-audit-notes.md:180-181]
 
 ### Mine-context line cites — `jsonl_line=N` NOT digest §N
 
