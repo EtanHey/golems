@@ -244,7 +244,12 @@ HTML pages, menu-bar apps (BrainBar/VoiceBar), TUI surfaces.
 
 **When:** at the [feature-batch gate](#feature-batch-gate), before the batch is released, installed or
 declared done; a single-PR batch runs it before that PR ships. Mid-batch, the PR merges on the size
-cadence and the visual pass is queued for the batch.
+cadence only after per-PR visual proof passes; builder self-QA is queued for the batch.
+
+**Per-PR stop:** attach desktop and 390 px before/after screenshots, one GIF per
+animation/interaction, and e2e screenshot diffs using the PR-body Visual proof
+template. Reviewers must inspect and cite those artifacts before merge. This
+artifact gate does not replace the builder running-session batch gate below.
 
 **The rule:** the BUILDER clicks INTO a real running session and screenshots it. Mechanical checks (PID running, commit-matches, server responds)
 are NOT a functional pass — "generated" ≠ "verified."

@@ -42,7 +42,7 @@ Run the loop in this order:
 
 1. Confirm expected branch/worktree and sanitize repository state.
 2. Implement under repository law and run the relevant tests.
-3. Invoke `/never-fabricate`. Real-client or visual proof, when triggered, runs at the feature-batch gate (now, for a single-PR batch).
+3. Invoke `/never-fabricate`. Per-PR visual proof is required below; builder self-QA and real-client runs remain at the feature-batch gate.
 4. Run the bounded local CodeRabbit pre-commit pass when available, then commit with the ratified identity trailer.
 5. Push, create a non-draft PR with a signed body, and apply exactly one `size:*` label.
 6. Apply the target repo's bot policy, invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 watch wake, one bounded check, or one cheap watcher, never a polling turn.
@@ -76,6 +76,24 @@ Who reviews, how many, and the panel: `/agent-routing` § Routing rules (SSOT), 
 - **Bots** run after the inner loop and are advisory. A silent or rate-limited bot is recorded as unavailable in the PR body, never awaited. When a bot flags something important, answer it like any finding before merge. A real bot finding still gets fixed, in a NEW PR (canon #9) if it lands after merge.
 - **Parallel-safe:** tests and builds take their own ports and temp dirs per run; no global one-at-a-time locks.
 
+## Visual proof
+
+Etan, 2026-10-28, via orc/PHX: "the cloud reviewers get actual proof of changes when codexes are done so they can approve it on actual proof and not just hope that the code is correct ... spacing ... GIFs for each animation and stuff in PRs for verification."
+
+Every visual PR requires before/after screenshots at desktop AND 390 px width,
+one GIF per animation/interaction, and e2e screenshot diffs before merge.
+Use the [PR-body template](references/pr-creation.md#visual-proof-template).
+Links must be reviewable GitHub attachments or committed files; ignored paths
+alone are insufficient. Reviewers inspect and cite the artifacts; a review that
+cites only code is INVALID and does not count as a round. Builder-driven real
+running-session self-QA remains required at the feature-batch gate.
+Routing: see `/agent-routing` § Routing rules (SSOT).
+
+Enforcement: `visual` label OR changed paths in `scripts/visual-proof-globs.json`
+triggers `scripts/visual-proof-check.mjs`. No skip label or env bypass exists.
+Other repos wire the same validator in one line: `PR_BODY="$PR_BODY" PR_LABELS="$PR_LABELS" PR_CHANGED_FILES="$PR_CHANGED_FILES" node <pr-loop>/scripts/visual-proof-check.mjs` (labels are a JSON string array; files newline/NUL separated; adapt the committed glob list to the repo's surfaces).
+Rollout to other repos is a follow-up; this change wires golems only.
+
 ## Hard Gates
 
 - **Local Docker / CI (Etan, 2026-10-27):** "don't replay GitHub CI with local Docker by default; push and let GitHub run it. CI running locally first may just make sense if it's faster iterations."
@@ -100,7 +118,7 @@ Who reviews, how many, and the panel: `/agent-routing` § Routing rules (SSOT), 
 - R-010 keeps merge commits as the default until the commit-traceability condition is discharged in the canonical registry.
 - Daemon/socket/MCP/protocol changes require a real client session at the feature-batch gate; unit tests, `socat`, and `curl` are insufficient. A live repo hook that enforces it per merge is never bypassed.
 - Human-visible changes require builder-driven visual QA in a real running state at the feature-batch gate, or an explicit not-performed caveat.
-- Heavy/e2e tests, real-client runs, visual QA and the release gate are never a per-PR pre-merge stop, except for a single-PR batch.
+- Heavy/e2e suites, real-client runs, builder visual self-QA and the release gate remain batch gates, except for a single-PR batch. Required visual proof artifacts and their e2e screenshot diffs are per-PR pre-merge stops.
 - Before a done/deployed/green claim, run the applicable false-green/deploy/QA gates and make the required live probe.
 - Never place real client data in public PR text, fixtures, comments, or commit messages.
 - Never delete a stacked PR's base branch before its children are retargeted and mergeable.
@@ -116,7 +134,7 @@ Who reviews, how many, and the panel: `/agent-routing` § Routing rules (SSOT), 
 | Review conflicts with design | Read the cited design and investigate; dismiss only with explicit evidence |
 | XS/S PR, fast CI green at head, one clean routed review | Merge now (seat with merge authority); no wait for bots or heavy gates |
 | PR touches daemon/socket/MCP/protocol | Merge on the size cadence; queue the real-client run for the feature-batch gate (run it now for a single-PR batch) |
-| PR changes a visible surface | Merge on the size cadence; queue visual self-QA for the feature-batch gate (run it now for a single-PR batch) |
+| PR changes a visible surface | Require per-PR visual proof before merge; queue builder visual self-QA for the feature-batch gate (run it now for a single-PR batch) |
 | Bot silent or rate-limited | Don't wait; record it unavailable in the PR body and proceed on the routed review |
 | Release gate says `MERGED_UNRELEASED` mid-batch | Expected; keep merging the batch |
 | PR merged; release + install pending; Etan away | Ship: tag, release, install now; route the hop to `deploy-local-prod` and verify its artifact. Never ask Etan |
