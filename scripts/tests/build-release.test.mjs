@@ -163,8 +163,16 @@ function runsNode(script) {
   // Shell quote removal: unquoted backslashes, '…', $'…' and "…" (where only \$ \` \" \\ are escapes).
   // marked() turns quoted or escaped expansion characters into U+FFFD, so only active ones count as expansions.
   const literal = text => text.replace(/[$`*?\[\]{}]/g, '\uFFFD');
+  // $'…' bodies decode ANSI-C escapes; an escape without an established result (NUL, \c, unknown) becomes an active `$`.
+  const ansiEscapes = { a: '\x07', b: '\b', e: '\x1b', E: '\x1b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v', '\\': '\\', "'": "'", '"': '"', '?': '?' };
+  const ansiC = (body, mark) => body.replace(/([^\\]+)|\\(?:x([\da-fA-F]{1,2})|u([\da-fA-F]{1,4})|U([\da-fA-F]{1,8})|([0-7]{1,3})|(.))/gs,
+    (_, text, hex, short, long, octal, other) => {
+      const code = parseInt(hex ?? short ?? long ?? octal, octal ? 8 : 16);
+      const decoded = text ?? (other !== undefined ? ansiEscapes[other] : code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : undefined);
+      return decoded === undefined ? '$' : mark(decoded);
+    });
   const unquote = (word, mark) => word.replace(/\\(.)|\$'((?:\\.|[^'\\])*)'|'([^']*)'|"((?:\\.|[^"\\])*)"/gs,
-    (_, escaped, ansi, single, double) => double === undefined ? mark(escaped ?? ansi ?? single) :
+    (_, escaped, ansi, single, double) => ansi !== undefined ? ansiC(ansi, mark) : double === undefined ? mark(escaped ?? single) :
       double.replace(/\\([$`"\\])|[*?\[\]{}]/g, (token, escapedInDouble) => mark(escapedInDouble ?? token)));
   const plain = word => unquote(word, text => text);
   const marked = word => unquote(word, literal);
@@ -194,9 +202,10 @@ function runsNode(script) {
     const program = marked(words[0]).split('/').at(-1);
     if (expansion.test(program) || program === 'eval') return true;
     const args = words.map(plain);
-    // The -c argument is shell code, so classify it as its own script.
+    // The -c argument is shell code, so classify it as its own script. The outer shell expands it first,
+    // so an active `$` or backtick there fails closed; only quoted or escaped ones are literal script text.
     const shellCommand = ['sh', 'bash', 'dash', 'zsh'].includes(program) ? args.findIndex(word => /^-[A-Za-z]*c[A-Za-z]*$/.test(word)) : -1;
-    if (shellCommand !== -1 && runsNode(args[shellCommand + 1] ?? '')) return true;
+    if (shellCommand !== -1 && (/[$`]/.test(marked(words[shellCommand + 1] ?? '')) || runsNode(args[shellCommand + 1] ?? ''))) return true;
     if (['node', 'npm', 'npx'].includes(program)) return true;
     if (hasNodeCommand(args.join(' '))) return true;
     const bun = args.indexOf('bun');
@@ -225,7 +234,16 @@ test.each([
   expect(runsNode(command)).toBe(true);
 });
 
-test.each(['"$dir/trufflehog" --version', '"$RUNNER_TEMP/x/trufflehog" scan', String.raw`'n\ode' x.mjs`, 'env FOO=1 "$dir/trufflehog" --version', 'timeout 5m "$dir/trufflehog" scan'])('accepts literal non-Node program: %s', command => {
+// Round 3 (golems#969 re-review): R2-R1 outer-expanded -c arguments, R2-R2 ANSI-C escapes decoded or failed closed.
+test.each([
+  'bash -c "echo $X"', 'bash -c "$X/anything"', 'sh -ec "echo $X"', 'env bash -c "echo $X"', 'bash -c "$(cat f)"', 'bash -c "echo `cat f`"',
+  "sh -c '$X'", String.raw`bash -c 'n\ode x'`, String.raw`$'n\x6fde' x.mjs`, String.raw`$'n\157de' x.mjs`, String.raw`$'node' x.mjs`, String.raw`$'node\0x' x.mjs`,
+])('job without setup-node flags round-2 regression: %s', run => {
+  expect(nodeSetupViolations({ jobs: { demo: { steps: [{ run }] } } }, 'fixture.yml')).toHaveLength(1);
+});
+
+test.each(['"$dir/trufflehog" --version', '"$RUNNER_TEMP/x/trufflehog" scan', String.raw`'n\ode' x.mjs`, 'env FOO=1 "$dir/trufflehog" --version', 'timeout 5m "$dir/trufflehog" scan',
+  "bash -c 'echo $X'", String.raw`bash -c "echo \$X"`, String.raw`$'\x24dir/trufflehog' --version`, String.raw`$'tr\165fflehog' --version`])('accepts literal non-Node program: %s', command => {
   expect(runsNode(command)).toBe(false);
 });
 
