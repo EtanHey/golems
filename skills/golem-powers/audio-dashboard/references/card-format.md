@@ -70,7 +70,9 @@ success. The page must be readable and same-origin, and show a 2xx/3xx
 `responseStatus`, or, where the browser reports no status (WebKit), carry the
 ready marker. Every comparison page, hand-built or generated, must start in the
 canonical form: optional doctype, `<html …>`, `<head …>`, and then, with only
-whitespace between, this exact line as the first child of `<head>`:
+HTML whitespace between (space, tab, LF, CR, FF; not a non-breaking space or
+other Unicode space), this exact line as the first child of `<head>`. One BOM
+is allowed at the very start:
 
 ```html
 <!doctype html><html><head><meta name="adash-comparison" content="ready">
