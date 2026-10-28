@@ -118,6 +118,40 @@ def test_required_external_source_and_environment_option(tmp_path):
     assert (home / ".codex/AGENTS.md").read_bytes() == BODY
 
 
+@pytest.mark.parametrize("mode", ["--apply", "--check", "--dry-run"])
+@pytest.mark.parametrize("body,lead,offending", [
+    (b"", LEAD, "AGENTS.md"),
+    (BODY, b"", "LEAD.md"),
+    (b"", b"", "AGENTS.md"),
+    (b" \t\r\n", LEAD, "AGENTS.md"),
+    (BODY, b" \t\r\n", "LEAD.md"),
+    (b" \t\r\n", b"\n ", "AGENTS.md"),
+    ("\u2003\n".encode("utf-8"), LEAD, "AGENTS.md"),
+])
+def test_blank_bodies_leave_home_bytes_and_entries_unchanged(tmp_path, mode, body, lead, offending):
+    home = tmp_path / "target"
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "AGENTS.md").write_bytes(body)
+    (source / "LEAD.md").write_bytes(lead)
+    for rel in (".codex/AGENTS.md", ".codex/LEAD.md", ".claude/CLAUDE.md"):
+        path = home / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"valid existing instructions\r\n")
+    (home / ".golems/backups/keep-empty").mkdir(parents=True)
+
+    def snapshot():
+        return {str(path.relative_to(home)): None if path.is_dir() else path.read_bytes()
+                for path in home.rglob("*")}
+
+    before = snapshot()
+    result = run(home, mode)
+    assert snapshot() == before
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert str(source / offending) in result.stderr
+    assert result.stdout == ""
+
+
 def test_partial_replace_failure_restores_original_bytes(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location("global_installer", SCRIPT)
     module = importlib.util.module_from_spec(spec)

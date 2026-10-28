@@ -83,9 +83,13 @@ def main():
         parser.error("--source-dir or GOLEMS_GLOBAL_SOURCE_DIR is required")
     home = Path(os.path.abspath(args.home))
     source = Path(args.source_dir)
+    bodies = {name: (source / name).read_bytes() for name in ("AGENTS.md", "LEAD.md")}
+    for name, data in bodies.items():
+        if not data.decode("utf-8").strip():
+            raise ValueError(f"empty or whitespace-only instruction body: {source / name}")
     payloads = {
-        home / ".codex/AGENTS.md": (source / "AGENTS.md").read_bytes(),
-        home / ".codex/LEAD.md": (source / "LEAD.md").read_bytes(),
+        home / ".codex/AGENTS.md": bodies["AGENTS.md"],
+        home / ".codex/LEAD.md": bodies["LEAD.md"],
         home / ".claude/CLAUDE.md": b"@~/.codex/AGENTS.md\n",
     }
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
