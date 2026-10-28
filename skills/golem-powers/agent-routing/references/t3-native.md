@@ -25,7 +25,7 @@ A Codex child inherits its parent's Codex instance. A Claude lead naming only th
 codex instance T3 lists first (OrchestratorMcpService.ts:1337-1386); always name the instance.
 Remember: the role picks the model, the work type picks the instance.
 Keep `codex` for security (implementers + scans), UI / computer-use recorders, browser / web-QA workers,
-leads and Etan. Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
+Etan (Codex has no lead seats). Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
 
 If `codex-worker` is missing from `orchestrator_capabilities`, fall back to `codex` per dispatch and
 report to the lead. This is not a BLOCKED condition: an instance isn't a model; keep the role's model pin.
