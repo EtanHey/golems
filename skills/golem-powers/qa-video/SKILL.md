@@ -76,8 +76,9 @@ never read images in the lead or pipeline sub-agent. Read text with Read;
 call `scripts/visual-batch.py` from your own shell for every sheet/frame.
 The driver invokes visual-gather.py concurrently and returns text only.
 NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
-The budget stops new launches; in-flight helpers may drain past it. Each helper
-timeout is clamped to remaining budget +30s (10s floor).
+One absolute deadline bounds setup probes, helper calls and retry backoff. Each
+subprocess timeout is clamped to the remaining budget; expiry stops launches
+and terminates in-flight helpers. Output overflow is an explicit failed read.
 A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
 inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
 screenshot questions outside this pipeline.
@@ -148,6 +149,8 @@ judgement; an optional convenience index never gates the loop.
 ---
 
 ## Prerequisites
+
+Running QA on the M1? Dispatch with `environmentId` per [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md); admission (§ 5) applies.
 
 | Tool | Check | Install |
 |------|-------|---------|

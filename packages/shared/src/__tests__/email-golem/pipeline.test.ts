@@ -1,3 +1,4 @@
+import { testBun } from "../../test-bun";
 import { describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -7,9 +8,9 @@ function runPipeline(mode: string) {
   const home = mkdtempSync(join(tmpdir(), "email-pipeline-fixture-"));
   try {
     const result = Bun.spawnSync(
-      [process.execPath, join(import.meta.dir, "pipeline.fixture.ts"), mode],
+      [...testBun, join(import.meta.dir, "pipeline.fixture.ts"), mode],
       {
-        env: { PATH: process.env.PATH ?? "/usr/bin:/bin", HOME: home, STATE_BACKEND: "supabase" },
+        env: { TMPDIR: process.env.TMPDIR, PATH: process.env.PATH ?? "/usr/bin:/bin", HOME: home, STATE_BACKEND: "supabase" },
         stdout: "pipe",
         stderr: "pipe",
       },

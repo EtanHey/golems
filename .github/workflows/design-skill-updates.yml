@@ -7,6 +7,8 @@ on:
     paths:
       - '.github/workflows/design-skill-updates.yml'
       - 'skills/vendor/**'
+      - 'scripts/design-skill-updates.mjs'
+      - 'scripts/tests/design-skill-updates.test.mjs'
       - 'skills/golem-powers/golem-install/scripts/*vendor*'
       - 'skills/golem-powers/golem-install/scripts/repoint-skills*'
 permissions:
@@ -18,11 +20,15 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version-file: .bun-version
       - run: bun test ./skills/golem-powers/golem-install/scripts/repoint-skills.test.mjs
       - run: node skills/golem-powers/golem-install/scripts/vendor-skills.mjs --check
+      - run: bun test scripts/tests/design-skill-updates.test.mjs
   propose:
     needs: verify
     concurrency:
@@ -42,12 +48,15 @@ jobs:
         with:
           ref: master
           persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
       - name: Copy upstream data and open review-before-merge PR
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p docs.local/design-upstream
-          git clone --depth 1 https://github.com/anthropics/skills.git docs.local/design-upstream/anthropic
+          git clone --depth 1 https://github.com/anthropics/claude-plugins-official.git docs.local/design-upstream/anthropic
           git clone --depth 1 https://github.com/emilkowalski/skills.git docs.local/design-upstream/emil
           sha_a=$(git -C docs.local/design-upstream/anthropic rev-parse HEAD)
           sha_e=$(git -C docs.local/design-upstream/emil rev-parse HEAD)

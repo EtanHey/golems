@@ -1,3 +1,4 @@
+import { testBun } from "../test-bun";
 import { describe, test, expect, beforeEach, afterEach, setDefaultTimeout } from "bun:test";
 import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
 import { spawnSync } from "child_process";
@@ -89,7 +90,7 @@ features:
     const configModule = join(import.meta.dir, "../lib/config.ts");
     const result = spawnSync(
       process.execPath,
-      ["-e", `const { loadConfig } = await import(${JSON.stringify(configModule)}); console.log(Object.keys(loadConfig().seatRegistry).length);`],
+      [...testBun.slice(1), "-e", `const { loadConfig } = await import(${JSON.stringify(configModule)}); console.log(Object.keys(loadConfig().seatRegistry).length);`],
       { encoding: "utf8", env: { ...process.env, HOME: testDir } },
     );
     expect(result.stderr).not.toContain("does not include");
@@ -101,7 +102,7 @@ features:
     const configModule = join(import.meta.dir, "../lib/config.ts");
     return spawnSync(
       process.execPath,
-      ["-e", `const { loadConfig } = await import(${JSON.stringify(configModule)}); console.log(JSON.stringify(Object.keys(loadConfig().seatRegistry)));`],
+      [...testBun.slice(1), "-e", `const { loadConfig } = await import(${JSON.stringify(configModule)}); console.log(JSON.stringify(Object.keys(loadConfig().seatRegistry)));`],
       { encoding: "utf8", env: { ...process.env, HOME: testDir } },
     );
   }
@@ -157,7 +158,7 @@ features:
     const configModule = join(import.meta.dir, "../lib/config.ts");
     return spawnSync(
       process.execPath,
-      ["-e", `const config = await import(${JSON.stringify(configModule)}); ${body}`],
+      [...testBun.slice(1), "-e", `const config = await import(${JSON.stringify(configModule)}); ${body}`],
       { encoding: "utf8", env: { ...process.env, HOME: testDir } },
     );
   }

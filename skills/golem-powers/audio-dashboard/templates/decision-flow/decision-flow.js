@@ -5,7 +5,9 @@
                     and a move while audio plays hands playback to the new card (nothing plays hidden).
      preferences    rate (one of RATES) and view (list|story), persisted in the dashboard's own store.
      answer sheet   closed -> open (Answer, story view only) -> closed (Done, Esc, backdrop, Next/Skip,
-                    another card, list view). Open: dialog role, rest inert, focus trapped; close returns focus. */
+                    another card, list view). Open: dialog role, rest inert, focus trapped; close returns focus.
+     comparison     closed -> loading -> loaded | failed (error or timeout) -> loading (Retry); Back/Esc close
+                    and return focus to the card's opener. */
   var root=document.documentElement;
   var cards=Array.from(document.querySelectorAll(".df-card"));
   var KEY=document.body.getAttribute("data-storage-key")||"dbx:decision-flow";
@@ -85,8 +87,20 @@
   function playCard(card,forcePlay){var audios=audiosFor(card);var playing=audios.find(function(audio){return !audio.paused;});if(playing){if(forcePlay)return;pauseCard(card);return;}var index=Number(card.dataset.audioIndex||0);if(index>=audios.length){audios.forEach(function(audio){audio.currentTime=0;});resetHighlights(card);index=0;}playAt(card,index);}
   function restartCard(card){audiosFor(card).forEach(function(audio){audio.pause();audio.currentTime=0;});resetHighlights(card);card.dataset.audioIndex="0";playAt(card,0);}
   function setActive(active){if(sheet&&sheet.card!==active)closeSheet(false);cards.forEach(function(card){card.classList.toggle("is-active",card===active);markIndex(card,"is-active",card===active);});updateTransport();}
-  var followLock=0;
-  function activate(index,autoplay,keepFocus){if(index<0||index>=cards.length)return;followLock=Date.now()+1000;setActive(cards[index]);cards[index].scrollIntoView({behavior:"smooth",block:"start"});if(!keepFocus)cards[index].querySelector(".df-play").focus({preventScroll:true});if(autoplay)playCard(cards[index],true);}
+  var followLock=0,jumpToken=0;
+  function holdFollow(){
+    var token=++jumpToken,win=document.defaultView,lastY=win.scrollY,stillSince=0;
+    followLock=Date.now()+5000;
+    function settle(){
+      if(token!==jumpToken)return;
+      var now=Date.now(),y=win.scrollY;
+      if(y!==lastY||!stillSince){lastY=y;stillSince=now;}
+      if(now>=followLock||now-stillSince>=160){followLock=0;follow();return;}
+      frame(settle);
+    }
+    if(frame)frame(settle);
+  }
+  function activate(index,autoplay,keepFocus){if(index<0||index>=cards.length)return;holdFollow();setActive(cards[index]);if(!keepFocus)cards[index].querySelector(".df-play").focus({preventScroll:true});cards[index].scrollIntoView({behavior:"smooth",block:"start"});if(autoplay)playCard(cards[index],true);}
   function goTo(index,keepFocus){activate(index,allAudios().some(function(audio){return !audio.paused;}),keepFocus);}
   cards.forEach(function(card,index){
     var audios=audiosFor(card);
@@ -112,7 +126,7 @@
     card.querySelector(".df-clear-cancel").addEventListener("click",function(){closeClear(card);});
     card.querySelector(".df-clear-apply").addEventListener("click",function(){clearCard(card);});
     card.querySelector(".df-next").addEventListener("click",function(){var button=this;if(cards[index+1]){activate(index+1,true);return;}if(view==="story"){closeSheet(false);button.classList.add("is-acknowledged");button.textContent="All decisions reviewed → Copy answers";var storyCopy=document.querySelector(".df-story-copy");if(storyCopy){storyCopy.classList.add("is-ready");storyCopy.focus({preventScroll:true});}return;}var copy=document.getElementById("df-copy");button.classList.add("is-acknowledged");button.textContent="All decisions reviewed → Copy answers";copy.scrollIntoView({behavior:"smooth",block:"center"});copy.focus({preventScroll:true});});
-    card.querySelector(".df-skip").addEventListener("click",function(){var button=this;var nextCard=cards[index+1];button.classList.add("is-acknowledged");button.textContent=nextCard?"Skipped · moving on…":"Skipped";if(!nextCard)return;playCard(nextCard,true);setTimeout(function(){activate(index+1,false);},220);});
+    card.querySelector(".df-skip").addEventListener("click",function(){var button=this;var nextCard=cards[index+1];button.classList.add("is-acknowledged");button.textContent=nextCard?"Skipped · moving on…":"Skipped";if(nextCard)activate(index+1,true);});
     var chip=chipFor(card);if(chip)chip.addEventListener("click",function(){goTo(index);});
     var opener=card.querySelector(".df-answer-open");if(opener)opener.addEventListener("click",function(){openSheet(card,opener);});
     var done=card.querySelector(".df-sheet-done");if(done)done.addEventListener("click",function(){closeSheet(true);});
@@ -137,6 +151,7 @@
     node.setAttribute("role","dialog");node.setAttribute("aria-modal","true");node.setAttribute("aria-labelledby","sheet-title-"+card.dataset.decision);node.classList.add("is-open");
     if(backdrop)backdrop.hidden=false;document.body.classList.add("df-sheet-open");
     sheet={card:card,node:node,opener:opener,outside:outside};
+    offerCitation();
     var first=node.querySelector("input, textarea")||focusables(node)[0];if(first)first.focus({preventScroll:true});
   }
   function closeSheet(returnFocus){
@@ -144,6 +159,7 @@
     open.outside.forEach(function(el){el.removeAttribute("inert");});
     ["role","aria-modal","aria-labelledby"].forEach(function(name){open.node.removeAttribute(name);});open.node.classList.remove("is-open");
     if(backdrop)backdrop.hidden=true;document.body.classList.remove("df-sheet-open");
+    offerCitation();
     if(returnFocus&&open.opener&&open.opener.isConnected)open.opener.focus({preventScroll:true});
   }
   if(backdrop)backdrop.addEventListener("click",function(){closeSheet(true);});
@@ -154,6 +170,7 @@
     card.querySelectorAll('input[type="radio"], .df-check-input').forEach(function(input){input.checked=false;});card.querySelector(".df-free").value="";closeClear(card);
   }
   document.addEventListener("keydown",function(event){
+    if(compareView){if(event.key==="Escape"){event.preventDefault();closeCompare();}return;}
     if(event.key==="Escape"&&!(noteDialog&&noteDialog.open)){var focusedCard=document.activeElement&&document.activeElement.closest(".df-card"),pending=focusedCard&&focusedCard.querySelector(".df-clear-confirm:not([hidden])");if(pending){event.preventDefault();closeClear(focusedCard);return;}}
     var modal=noteDialog&&noteDialog.open?noteDialog:sheet&&sheet.node;if(!modal)return;
     if(event.key==="Escape"){event.preventDefault();if(modal===noteDialog)closeNote(true);else closeSheet(true);return;}
@@ -185,7 +202,7 @@
   document.querySelectorAll(".df-story-copy").forEach(function(button){button.addEventListener("click",copyAnswers);});
   function fallback(text){var area=document.createElement("textarea");area.value=text;document.body.appendChild(area);area.select();document.execCommand("copy");area.remove();copied();}
   // Citation: no selection -> Cite offered -> modal draft -> saved, cancelled, or retryable storage error.
-  var noteDialog=document.getElementById("df-note-dialog"),noteText=document.getElementById("df-note-text"),noteQuote=document.getElementById("df-note-quote"),noteError=document.getElementById("df-note-error"),noteDelete=document.getElementById("df-note-delete"),draftCopy=document.getElementById("df-note-copy-draft"),cite=document.getElementById("df-cite"),noteEditor=null;
+  var noteDialog=document.getElementById("df-note-dialog"),noteText=document.getElementById("df-note-text"),noteQuote=document.getElementById("df-note-quote"),noteError=document.getElementById("df-note-error"),noteDelete=document.getElementById("df-note-delete"),draftCopy=document.getElementById("df-note-copy-draft"),cite=document.getElementById("df-cite"),touchCite=document.getElementById("df-controller-cite"),armedCitation=null,noteEditor=null;
   function selectionQuote(){
     var selection=document.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return null;
     var range=selection.getRangeAt(0),start=range.startContainer.nodeType===1?range.startContainer:range.startContainer.parentElement;
@@ -194,15 +211,18 @@
     var contents=range.cloneContents();if(contents.querySelector(".df-scene-label")){
       contents.querySelectorAll(".df-scene-label").forEach(function(node){node.remove();});contents.querySelectorAll("p,section,div,label,small").forEach(function(node){node.appendChild(document.createTextNode("\n"));});quote=contents.textContent.replace(/\n{3,}/g,"\n\n").trim();
     }
-    return card&&card.contains(range.endContainer)&&quote&&!start.closest("input,textarea")?{card:card,quote:quote,range:range,opener:start.closest(".df-words")||start.closest("button")||card.querySelector(".df-card-note")}:null;
+    return card&&card.contains(range.endContainer)&&quote&&!start.closest("input,textarea")?{card:card,quote:quote,range:range,opener:start.closest(".df-words")||start.closest("button")||(sheet&&sheet.node.contains(start)?sheet.node.querySelector(".df-sheet-done"):card.querySelector(".df-card-note"))}:null;
   }
   function offerCitation(){
-    var selected=selectionQuote();cite.hidden=!selected||noteDialog.open;if(cite.hidden)return;
-    var rect=selected.range.getBoundingClientRect(),win=document.defaultView;
-    cite.style.left=Math.max(8,Math.min(rect.left,win.innerWidth-cite.offsetWidth-8))+"px";var below=win.matchMedia("(pointer: coarse)").matches||rect.top<56;cite.style.top=Math.max(8,Math.min(below?rect.bottom+8:rect.top-50,win.innerHeight-cite.offsetHeight-8))+"px";
+    var selected=selectionQuote()||armedCitation,win=document.defaultView,touch=win.matchMedia("(pointer: coarse)").matches;
+    var home=sheet?sheet.node.querySelector(".df-sheet-head"):transportNext.parentNode;
+    if(touchCite.parentNode!==home){if(sheet)home.insertBefore(touchCite,home.querySelector(".df-sheet-done"));else transportNext.insertAdjacentElement("afterend",touchCite);}
+    cite.hidden=!selected||noteDialog.open||touch;touchCite.hidden=!selected||noteDialog.open||!touch;if(cite.hidden)return;
+    var rect=selected.range.getBoundingClientRect();
+    cite.style.left=Math.max(8,Math.min(rect.left,win.innerWidth-cite.offsetWidth-8))+"px";cite.style.top=Math.max(8,Math.min(rect.top<56?rect.bottom+8:rect.top-50,win.innerHeight-cite.offsetHeight-8))+"px";
   }
   function openNote(card,quote,opener){
-    if(noteDialog.open)return;if(isPlaying(card))pauseCard(card);cite.hidden=true;
+    if(noteDialog.open)return;if(isPlaying(card))pauseCard(card);cite.hidden=true;touchCite.hidden=true;armedCitation=null;
     noteEditor={card:card,quote:quote,opener:opener,editing:null,sheetModal:sheet&&sheet.node.getAttribute("aria-modal")};noteQuote.textContent=quote;noteText.value="";noteError.textContent="";noteDelete.hidden=true;draftCopy.hidden=true;
     document.getElementById("df-note-card").textContent=card.dataset.title;
     var list=document.getElementById("df-note-list");list.replaceChildren();
@@ -222,7 +242,8 @@
   }
   cards.forEach(function(card){card.querySelector(".df-card-note").addEventListener("click",function(){openNote(card,card.dataset.title,this);});card.querySelectorAll(".df-item-note").forEach(function(button){button.addEventListener("click",function(){openNote(card,button.previousElementSibling.querySelector("span").textContent,button);});});});
   document.addEventListener("selectionchange",offerCitation);document.addEventListener("scroll",offerCitation,true);
-  cite.addEventListener("pointerdown",function(event){event.preventDefault();});cite.addEventListener("click",function(){var selected=selectionQuote();if(selected)openNote(selected.card,selected.quote,selected.opener);});
+  [cite,touchCite].forEach(function(button){button.addEventListener("pointerdown",function(event){armedCitation=selectionQuote();event.preventDefault();});button.addEventListener("pointercancel",function(){armedCitation=null;offerCitation();});button.addEventListener("click",function(){var selected=armedCitation||selectionQuote();armedCitation=null;if(selected)openNote(selected.card,selected.quote,selected.opener);});});
+  document.addEventListener("pointerdown",function(event){if(!event.target.closest("#df-cite,#df-controller-cite")){armedCitation=null;offerCitation();}});
   document.getElementById("df-note-save").addEventListener("click",function(){saveNote(false);});noteDelete.addEventListener("click",function(){saveNote(true);});
   document.getElementById("df-note-cancel").addEventListener("click",function(){closeNote(true);});noteDialog.addEventListener("cancel",function(event){event.preventDefault();closeNote(true);});
   draftCopy.addEventListener("click",function(){
@@ -231,7 +252,53 @@
     function fallbackDraft(){if(noteEditor!==editor)return;var area=document.createElement("textarea");area.value=text;noteDialog.appendChild(area);area.select();var ok=false;try{ok=document.execCommand("copy");}catch(error){}area.remove();noteText.focus();if(ok)copiedDraft();else noteError.textContent="Copy unavailable. Select your quote and note to copy them.";}
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(copiedDraft,fallbackDraft);else fallbackDraft();
   });
+  // Comparison: closed -> loading -> loaded | failed (frame error, or no load within the card's bound) -> loading on Retry.
+  // Each attempt gets a fresh frame and token, so a late event or timer from an earlier attempt cannot settle the current one.
+  var compare=document.getElementById("df-compare"),compareView=null,compareAttempt=0;
+  function compareStatus(state,message,final){compare.dataset.state=state;document.getElementById("df-compare-message").textContent=message;document.getElementById("df-compare-retry").hidden=state!=="failed"||Boolean(final);document.getElementById("df-compare-close").hidden=state!=="failed";}
+  function settleCompare(token,state,message){if(!compareView||token!==compareAttempt||compare.dataset.state!=="loading")return;compareStatus(state,message);if(state==="failed"&&compare.contains(document.activeElement))document.getElementById("df-compare-retry").focus();}
+  // Click-time twin of the render guard: the browser-parsed URL must stay on this page's origin and inside its directory.
+  function compareTarget(value){
+    var base,dir,url;try{base=new URL(document.location.href);dir=new URL("./",base);url=new URL(value,base);}catch(error){return "";}
+    var inside=["http:","https:","file:"].indexOf(url.protocol)>=0&&url.protocol===base.protocol&&url.origin===base.origin&&url.pathname.indexOf(dir.pathname)===0&&!/%2f|%5c/i.test(url.pathname);
+    return /[\u0000-\u001f\u007f]/.test(value)||/^\s*[\\/]/.test(value)||!inside?"":url.href;
+  }
+  // Browsers fire load, not error, for network failures and HTTP errors, so a load proves nothing alone.
+  // Success needs positive evidence from a readable same-origin frame: a 2xx/3xx navigation responseStatus where
+  // the browser reports one, or, where it does not (WebKit), the page's explicit ready marker
+  // (<meta name="adash-comparison" content="ready"> in <head>, or data-adash-comparison="ready" on <html>), which an
+  // error page never carries. Anything else, including an unreadable file: frame, is a failure.
+  function comparisonReady(doc){var meta=doc.head&&doc.head.querySelector('meta[name="adash-comparison"]');return Boolean(meta&&meta.getAttribute("content")==="ready")||doc.documentElement.getAttribute("data-adash-comparison")==="ready";}
+  function frameProblem(frame){
+    var failed=document.location.protocol==="file:"?"This comparison can't be checked from a file. Open the dashboard over http(s), or go back to the card.":"The comparison couldn't load. Retry, or go back to the card.";
+    var timing=document.defaultView&&document.defaultView.PerformanceResourceTiming,reportsStatus=Boolean(timing&&"responseStatus" in timing.prototype);
+    try{
+      var child=frame.contentWindow;if(!child||child.location.href==="about:blank")return failed;
+      if(reportsStatus){var nav=child.performance.getEntriesByType("navigation")[0],status=nav&&nav.responseStatus;return typeof status==="number"&&status>=200&&status<400?"":failed;}
+      return comparisonReady(child.document)?"":"This comparison page isn't marked ready, so it can't be confirmed. Retry, or go back to the card.";
+    }catch(error){return failed;}
+  }
+  function loadCompare(){
+    var token=++compareAttempt,view=compareView,frame=document.createElement("iframe"),seconds=String(Math.round(view.timeout/100)/10);
+    frame.className="df-compare-frame";frame.title=view.title;
+    frame.addEventListener("load",function(){var problem=frameProblem(frame);settleCompare(token,problem?"failed":"loaded",problem);});
+    frame.addEventListener("error",function(){settleCompare(token,"failed","The comparison couldn't load. Retry, or go back to the card.");});
+    var target=compareTarget(view.url);
+    if(!target){document.getElementById("df-compare-stage").replaceChildren();compareStatus("failed","This comparison points outside the dashboard, so it was not opened. Go back to the card.",true);if(compare.contains(document.activeElement))document.getElementById("df-compare-close").focus();return;}
+    compareStatus("loading","Loading comparison…");
+    // src before insertion: an empty frame fires an about:blank load that would read as success.
+    frame.src=target;document.getElementById("df-compare-stage").replaceChildren(frame);
+    setTimeout(function(){settleCompare(token,"failed","The comparison didn't load within "+seconds+" seconds. Retry, or go back to the card.");},view.timeout);
+  }
+  function openCompare(card,button){if(compareView)return;if(isPlaying(card))pauseCard(card);compareView={opener:button,url:button.dataset.compareUrl,title:button.dataset.compareTitle,timeout:Number(button.dataset.compareTimeout)||10000};document.getElementById("df-compare-title").textContent=compareView.title;compare.showModal();document.getElementById("df-compare-back").focus();loadCompare();}
+  function closeCompare(){if(!compareView)return;var opener=compareView.opener;compareView=null;compareAttempt++;document.getElementById("df-compare-stage").replaceChildren();compareStatus("idle","");compare.close();if(opener&&opener.isConnected)opener.focus({preventScroll:true});}
+  if(compare){
+    cards.forEach(function(card){var button=card.querySelector(".df-compare-open");if(button)button.addEventListener("click",function(){openCompare(card,button);});});
+    document.getElementById("df-compare-retry").addEventListener("click",function(){if(!compareView)return;document.getElementById("df-compare-back").focus();loadCompare();});
+    ["df-compare-back","df-compare-close"].forEach(function(id){document.getElementById(id).addEventListener("click",closeCompare);});
+    compare.addEventListener("cancel",function(event){event.preventDefault();closeCompare();});
+  }
   // Keep focused controls clear of the fixed phone dock and the sticky controller.
-  document.addEventListener("focusin",function(event){var dock=document.querySelector(".df-dock");var bar=document.querySelector(".df-controller");var view=document.defaultView;var el=event.target;if(!dock||!view||!el||!el.getBoundingClientRect||el.closest(".df-note-dialog")||dock.contains(el)||(bar&&bar.contains(el))||document.body.dataset.view==="story")return;var box=el.getBoundingClientRect();var underDock=view.getComputedStyle(dock).position==="fixed"&&box.bottom>dock.getBoundingClientRect().top;var underBar=bar&&view.getComputedStyle(bar).position==="sticky"&&box.top<bar.getBoundingClientRect().bottom;if(underDock||underBar)el.scrollIntoView({block:"nearest"});});
+  document.addEventListener("focusin",function(event){var dock=document.querySelector(".df-dock");var bar=document.querySelector(".df-controller");var view=document.defaultView;var el=event.target;if(!dock||!view||!el||!el.getBoundingClientRect||el.closest(".df-words")||el.closest(".df-note-dialog")||dock.contains(el)||(bar&&bar.contains(el))||document.body.dataset.view==="story")return;var box=el.getBoundingClientRect();var underDock=view.getComputedStyle(dock).position==="fixed"&&box.bottom>dock.getBoundingClientRect().top;var underBar=bar&&view.getComputedStyle(bar).position==="sticky"&&box.top<bar.getBoundingClientRect().bottom;if(underDock||underBar)el.scrollIntoView({block:"nearest"});});
   applyRate();applyView();updateCounts();updateTransport();root.dataset.ready="true";
 })();

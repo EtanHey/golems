@@ -36,12 +36,15 @@ On Codex panes, **`submit_verified` and `token_count` are untrusted** — scroll
 
 ## Worktree Capabilities
 
-**Codex has NO native worktree support.** Manual setup required:
+In T3 use managed `delegate_task` isolation. Outside T3, follow the
+[worktree launch guard](../../agent-routing/references/worktree-launch.md) first;
+`VERIFIED_BASE_OID` below must come from its successful target-repo preflight.
 
 ```bash
 # Before spawning Codex agents on same repo:
 cd $HOME/Gits/TARGET_REPO
-git worktree add -b feat/agent-1 ../wt-agent-1 main
+: "${VERIFIED_BASE_OID:?target-repo preflight commit required}"
+git worktree add -b feat/agent-1 ../wt-agent-1 "$VERIFIED_BASE_OID"
 
 # Install dependencies in the worktree from the lockfile. Never symlink
 # node_modules: in a workspace monorepo, cross-package imports would then run

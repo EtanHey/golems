@@ -15,6 +15,7 @@ SKILLS = REPO / "skills/golem-powers"
 LARGE_PLAN = SKILLS / "large-plan"
 AGENT_ROUTING = SKILLS / "agent-routing"
 PR_LOOP = SKILLS / "pr-loop"
+CONTRACT = SKILLS / "_shared/lifecycle/CONTRACT.md"
 ATTRIBUTION = "(Etan 2026-10-18, via orc collab)"
 
 # 21:40 protocol and 22:00 #5, verbatim (RULES-VERBATIM.md).
@@ -100,16 +101,18 @@ def test_goal_contract_routes_worker_questions_to_the_lead_and_settles():
     assert ATTRIBUTION in text
 
 
-def test_cleanup_receipt_has_the_implementer_remove_its_worktree_at_done():
-    text = section(read(PR_LOOP / "references/merge-and-verification.md"), "### Cleanup Receipt")
-    assert "the implementer removes its worktree at DONE" in text
-    assert "regenerable caches need no OK" in text
-    for cache in ("node_modules", "__pycache__"):
-        assert cache in text, cache
-    # A pushed branch preserves the artifact, so an unmerged handoff no longer keeps the tree.
-    assert "kept because PR #N awaits lead merge" not in text
-    assert "The lead verifies the receipt" in text
+def test_cleanup_receipt_preserves_the_done_quote_with_merged_consumer_boundary():
+    text = read(CONTRACT)
+    assert '"the implementer removes its worktree at DONE"' in text
+    assert "DONE = the merged PR" in text
+    assert "after the merge, once its last consumer releases" in text
+    assert "never left behind" in text
+    assert "PHX reading, consistent with canon #2/#9" in text
     assert ATTRIBUTION in text
+    receipt = section(read(PR_LOOP / "references/merge-and-verification.md"), "### Cleanup Receipt")
+    assert "The lead verifies the receipt" in receipt
+    assert "A pushed unmerged handoff alone never releases consumers" in receipt
+    assert "regenerable caches need no OK" not in receipt
 
 
 TOUCHED_SKILL_FILES = (
@@ -132,36 +135,22 @@ def test_no_private_tailnet_url_in_public_skills():
         assert ".ts.net" not in read(path), path
 
 
-def test_cleanup_receipt_documents_an_executable_retirement_path_for_both_harnesses():
-    # Review round 1 BLOCKING on #801: worktree-gc.sh refuses .t3/worktrees (KEEP-out-of-scope)
-    # and a live cmux pane (KEEP-live), so the implementer retires its own tree directly.
-    text = section(read(PR_LOOP / "references/merge-and-verification.md"), "### Cleanup Receipt")
-    for token in (
-        "git status --porcelain",
-        "git ls-remote origin <branch>",
-        "git rev-parse HEAD",
-        'git -C "$MAIN" worktree remove "$WT"',
-        "never `--force`",
-        "T3 child",
-        "LAST tool call",
-        "cmux worker",
-        "BEFORE writing DONE",
-        "the lead closes the pane afterwards",
-        "exited 0",
-        "KEEP-out-of-scope",
-        "<main>/.worktrees",
-    ):
+def test_cleanup_receipt_documents_an_executable_parent_path_for_direct_git():
+    text = read(CONTRACT)
+    for token in ("direct-git worktrees", "cmux worker", "parent from outside", "PREFLIGHT_RECEIPT",
+                  "git worktree remove rc 0", "path absent (lstat)", "REMOVE_RC=$?",
+                  "git worktree list --porcelain"):
         assert token in text, token
-    assert "removed` only after" in text
-    # The old routes are gone: GC for the implementer's own tree, pane close before removal.
-    assert "merged lane: the guarded GC above" not in text
+    recipe = retirement_recipe()
+    assert "worktree prune" not in recipe and "--force" not in recipe
+    assert "LAST tool call" not in text
 
 
 def test_lane_close_gc_is_the_leads_leftover_sweep():
     text = read(PR_LOOP / "references/merge-and-verification.md")
     lane_close = text[text.index("**Worktree cleanup (lane close):**"):text.index("### Cleanup Receipt")]
-    assert "leftovers" in lane_close
-    assert "after the worker's pane is closed:" not in lane_close
+    for token in ("lead's leftover sweep", "<main>/.worktrees", "KEEP-out-of-scope", "contract", "consumers"):
+        assert token in lane_close, token
 
 
 def _rules_block(text, start_marker, end_marker):
@@ -219,15 +208,15 @@ import os
 import re
 import subprocess
 
-RECIPE_HEADING = "**How (retirement path, implementer-owned, both harnesses):**"
+RECIPE_HEADING = "## Parent retirement path (direct-git worktrees, interim)"
 
 
 def retirement_recipe():
-    text = section(read(PR_LOOP / "references/merge-and-verification.md"), "### Cleanup Receipt")
+    text = read(CONTRACT)
     how = text[text.index(RECIPE_HEADING):]
     match = re.search(r"```bash\n(.*?)\n\s*```", how, re.S)
     assert match, "the Cleanup Receipt How path carries one copy-pasteable bash block"
-    return "\n".join(line.strip() for line in match.group(1).splitlines())
+    return match.group(1)
 
 
 GIT_ENV = {
@@ -244,7 +233,7 @@ def git(cwd, *args):
                           capture_output=True, text=True).stdout
 
 
-def lane(tmp_path):
+def lane(tmp_path, merged=True):
     """A main checkout with a bare origin and a pushed, clean linked worktree."""
     remote, main, wt = tmp_path / "origin.git", tmp_path / "main", tmp_path / "wt" / "lane"
     git(tmp_path, "init", "-q", "--bare", str(remote))
@@ -259,28 +248,37 @@ def lane(tmp_path):
     git(wt, "add", "f.txt")
     git(wt, "commit", "-q", "-m", "work")
     git(wt, "push", "-q", "origin", "lane")
+    if merged:
+        git(main, "merge", "-q", "--ff-only", "lane")
+        git(main, "push", "-q", "origin", "master")
     return main, wt
 
 
-def retire(wt):
-    env = {**os.environ, **GIT_ENV}
-    return subprocess.run(["bash", "-c", retirement_recipe()], cwd=wt, env=env,
+def retire(wt, caller=None, extra_env=None):
+    main = Path(git(wt, "rev-parse", "--path-format=absolute", "--git-common-dir").strip()).parent
+    preflight = main.parent / "preflight.json"
+    # Fixture parent attests the prose preconditions; this is not guard acceptance.
+    preflight.write_text(json.dumps({"path": str(wt), "owner": "fixture-parent", "consumers": []}))
+    env = {**os.environ, **GIT_ENV, "MAIN": str(main), "WT": str(wt),
+           "EXPECTED_HEAD": git(wt, "rev-parse", "HEAD").strip(), "BASE_REMOTE": "origin",
+           "DEFAULT": "master", "PREFLIGHT_RECEIPT": str(preflight), **(extra_env or {})}
+    return subprocess.run(["bash", "-c", retirement_recipe()], cwd=caller or main, env=env,
                           capture_output=True, text=True)
 
 
 def removal_receipt(wt):
-    return (f"worktree: removed: {wt}; proof: absent from git worktree list --porcelain "
-            "after git worktree prune")
+    return (f"worktree: removed: {wt}; proof: git worktree remove rc 0; "
+            "absent from git worktree list --porcelain; path absent (lstat)")
 
 
-def test_recipe_removes_a_pushed_clean_worktree(tmp_path):
+def test_recipe_parent_removes_a_merged_clean_worktree(tmp_path):
     main, wt = lane(tmp_path)
     out = retire(wt)
     assert out.returncode == 0, out.stderr
     assert not wt.exists()
     assert f"removed: {wt}" in out.stdout
     assert removal_receipt(wt) in out.stdout.splitlines()
-    assert "proof: absent from git worktree list --porcelain after git worktree prune" in out.stdout
+    assert "path absent (lstat)" in out.stdout
     assert str(wt) not in git(main, "worktree", "list")
 
 
@@ -299,7 +297,7 @@ def test_recipe_keeps_ignored_docs_local(tmp_path):
     (wt / "docs.local" / "report.md").write_text("unarchived\n")
     out = retire(wt)
     assert (wt / "docs.local" / "report.md").exists()
-    assert "kept because docs.local unarchived" in out.stdout
+    assert "kept because unpreserved tracked, untracked or ignored content" in out.stdout
 
 
 def test_recipe_keeps_nested_docs_local_without_a_tracked_sibling(tmp_path):
@@ -310,7 +308,7 @@ def test_recipe_keeps_nested_docs_local_without_a_tracked_sibling(tmp_path):
     (wt / "scratch" / "docs.local" / "REPORT.md").write_text("unarchived\n")
     out = retire(wt)
     assert (wt / "scratch" / "docs.local" / "REPORT.md").exists()
-    assert "kept because docs.local unarchived" in out.stdout and "removed" not in out.stdout
+    assert "kept because unpreserved tracked, untracked or ignored content" in out.stdout and "removed" not in out.stdout
 
 
 def test_recipe_removes_when_docs_local_holds_only_empty_dirs(tmp_path):
@@ -324,22 +322,49 @@ def test_recipe_removes_when_docs_local_holds_only_empty_dirs(tmp_path):
     assert removal_receipt(wt) in out.stdout.splitlines()
 
 
-def test_recipe_removes_when_only_regenerable_caches_are_ignored(tmp_path):
+def test_recipe_keeps_ignored_caches_without_preservation_proof(tmp_path):
     _, wt = lane(tmp_path)
     (wt / "node_modules" / "pkg").mkdir(parents=True)
-    (wt / "node_modules" / "pkg" / "index.js").write_text("cache\n")
+    (wt / "node_modules" / "pkg" / "index.js").write_text("unique content\n")
     out = retire(wt)
-    assert out.returncode == 0, out.stderr
-    assert not wt.exists() and f"removed: {wt}" in out.stdout
-    assert removal_receipt(wt) in out.stdout.splitlines()
+    assert wt.exists() and "kept because" in out.stdout and "removed:" not in out.stdout
 
 
-def test_recipe_pins_main_discovery_and_ls_remote_sha():
+def test_recipe_rechecks_identity_and_fresh_merged_coverage():
     recipe = retirement_recipe()
-    assert 'MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")' in recipe
-    assert "| cut -f1" in recipe and "git rev-parse HEAD" in recipe
-    assert "-path '*/docs.local/*' ! -type d" in recipe and "-prune" in recipe
-    assert "--force" not in recipe
+    for token in ("EXPECTED_HEAD", "fetch", "merge-base --is-ancestor", "--ignored", "PREFLIGHT_RECEIPT"):
+        assert token in recipe, token
+    assert "--force" not in recipe and "worktree prune" not in recipe
+
+
+def test_recipe_keeps_a_pushed_unmerged_handoff(tmp_path):
+    _, wt = lane(tmp_path, merged=False)
+    out = retire(wt)
+    assert wt.exists() and "kept because HEAD is not on the verified default branch" in out.stdout
+
+
+def test_recipe_refuses_child_self_removal_even_after_merge(tmp_path):
+    _, wt = lane(tmp_path)
+    out = retire(wt, caller=wt)
+    assert out.returncode != 0 and wt.exists()
+    assert "kept because caller is inside retiring worktree" in out.stdout
+
+
+def test_recipe_preserves_remover_failure_and_both_observations(tmp_path):
+    import shutil
+    real_git = shutil.which("git")
+    main, wt = lane(tmp_path)
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    stub = tools / "git"
+    stub.write_text("#!/usr/bin/env python3\nimport os, sys\n"
+                    "if sys.argv[3:5] == ['worktree', 'remove']: sys.exit(17)\n"
+                    f"os.execv({real_git!r}, [{real_git!r}, *sys.argv[1:]])\n")
+    stub.chmod(0o755)
+    out = retire(wt, extra_env={"PATH": str(tools) + os.pathsep + os.environ["PATH"]})
+    assert out.returncode == 17 and wt.exists()
+    assert "remove_rc=17" in out.stdout and "list_rc=0" in out.stdout and "physical_absence_rc=1" in out.stdout
+    assert "worktree: removed:" not in out.stdout
 
 
 def test_t3_completion_lead_overwrites_status_without_a_second_line():
@@ -372,7 +397,27 @@ def test_recipe_uses_the_upstream_branch_when_the_local_name_differs(tmp_path):
     git(wt, "add", "h.txt")
     git(wt, "commit", "-q", "-m", "fix")
     git(wt, "push", "-q", "origin", "HEAD:lane")
+    git(main, "fetch", "-q", "origin")
+    git(main, "merge", "-q", "--ff-only", "origin/lane")
+    git(main, "push", "-q", "origin", "master")
     out = retire(wt)
     assert out.returncode == 0, out.stderr
     assert not wt.exists() and f"removed: {wt}" in out.stdout
     assert removal_receipt(wt) in out.stdout.splitlines()
+
+
+def test_t3_managed_retirement_uses_official_adapter():
+    text = read(CONTRACT)
+    assert "T3-managed worktrees (`~/.t3/worktrees/**`) retire through T3's official adapter" in text
+    assert "once every gate in this contract passes, settle the child" in text
+    assert "Never run `git worktree remove`, retire tooling or the interim block below on a T3-managed root" in text
+
+
+def test_interim_parent_block_is_only_for_direct_git_worktrees():
+    text = section(read(CONTRACT), "## Parent retirement path")
+    assert "For a T3 child" not in text
+    assert "`<repo>/.worktrees/` and other direct-git worktrees, such as cmux workers" in text
+
+
+def test_allowlisted_caches_do_not_release_docs_local_hold():
+    assert "Ignored caches named on the committed regenerable-paths allowlist are not preservation holds; `docs.local/` always is." in read(CONTRACT)

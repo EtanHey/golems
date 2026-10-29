@@ -37,7 +37,7 @@ def test_pre_push_wraps_suite_and_preserves_fallback_status(tmp_path, availabili
     result = subprocess.run([shutil.which("bash"), str(HOOK)], cwd=ROOT,
                             env=env, capture_output=True, text=True, timeout=5)
     assert result.returncode == status, result.stderr
-    assert record.read_text().strip() == "run test"
+    assert record.read_text().strip() == "--no-env-file run test"
     if availability == "installed":
         assert "QUEUED" in result.stderr and "SUITE START" in result.stderr
         assert "SUITE DONE" in result.stderr

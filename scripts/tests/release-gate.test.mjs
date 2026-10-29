@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { detectInstalledVersion, fetchTags, inspectRelease, releaseExitCode } from "../ci/release-gate.mjs";
+import { callbackResult, detectInstalledVersion, fetchTags, inspectRelease, releaseExitCode } from "../ci/release-gate.mjs";
 
 // These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
 setDefaultTimeout(15_000);
@@ -32,6 +32,11 @@ function fixture({
   removeRemoteTag = false,
   unrelatedTagConflict = false,
   viaSymlink = false,
+  callback = false,
+  postTagDate = null,
+  mergeTopic = false,
+  recentCommit = false,
+  releaseConclusion = "success",
 } = {}) {
   const root = mkdtempSync(join(repoRoot, ".release-gate-test-"));
   scratch.push(root);
@@ -53,13 +58,25 @@ function fixture({
   run("git", ["push", "-u", "origin", "main", "--tags"], repo);
   run("git", ["--git-dir", remote, "symbolic-ref", "HEAD", "refs/heads/main"], root);
   run("git", ["remote", "set-head", "origin", "main"], repo);
+  if (mergeTopic) run("git", ["switch", "-c", "topic"], repo);
   if (postTagPath) {
     const target = join(repo, postTagPath);
     mkdirSync(resolve(target, ".."), { recursive: true });
     writeFileSync(target, "changed\n");
     run("git", ["add", postTagPath], repo);
-    run("git", ["commit", "-m", `change ${postTagPath}`], repo);
-    run("git", ["push"], repo);
+    execFileSync("git", ["commit", "-m", `change ${postTagPath}`], { cwd: repo, stdio: "pipe",
+      env: { ...process.env, ...(postTagDate ? { GIT_AUTHOR_DATE: postTagDate, GIT_COMMITTER_DATE: postTagDate } : {}) } });
+    if (mergeTopic) {
+      run("git", ["switch", "main"], repo);
+      run("git", ["merge", "--no-ff", "topic", "-m", "integrate old topic"], repo);
+    }
+    run("git", ["push", "origin", "main"], repo);
+  }
+  if (recentCommit) {
+    writeFileSync(join(repo, "src/recent.js"), "recent\n");
+    run("git", ["add", "src/recent.js"], repo);
+    run("git", ["commit", "-m", "recent integration"], repo);
+    run("git", ["push", "origin", "main"], repo);
   }
   const postTagSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
   if (removeRemoteTag) run("git", ["push", "origin", `:refs/tags/${releaseTag}`], repo);
@@ -84,13 +101,17 @@ function fixture({
   if (viaSymlink) symlinkSync(join(repoRoot, "scripts/ci/release-gate.mjs"), script);
   const args = [script, repo, "--manifest", manifest, "--json"];
   if (releaseOnly) args.push("--release-only");
+  if (callback) args.push("--callback");
+  const summary = join(root, "summary.md");
   if (sha) args.push("--sha", sha === "released" ? releasedSha : sha === "post-tag" ? postTagSha : sha);
   const result = spawnSync(viaSymlink ? "node" : "bun", args, {
     cwd: repoRoot,
     encoding: "utf8",
-    env: { ...process.env, NPM_CONFIG_PREFIX: prefix },
+    env: { ...process.env, NPM_CONFIG_PREFIX: prefix, GITHUB_STEP_SUMMARY: summary, RELEASE_WORKFLOW_CONCLUSION: releaseConclusion },
   });
   return {
+    stderr: result.stderr,
+    summary: callback && result.status === 0 ? readFileSync(summary, "utf8") : null,
     status: result.status,
     stdout: result.stdout,
     report: result.stdout.trim() ? JSON.parse(result.stdout) : null,
@@ -398,4 +419,96 @@ for (const shaMode of [false, true]) test(`github-release nightly prereleases wo
   channel = undefined; expect(inspect().verdict).toBe('UNKNOWN');
   channel = 'stable'; expect(inspect().verdict).toBe('UNKNOWN');
   prerelease = false; expect(inspect().verdict).toBe(shaMode ? 'CONTAINED' : 'CLEAN');
+});
+
+describe("release gate callback grace period", () => {
+  test("transient shippable lag exits zero with a warning and summary", () => {
+    const result = fixture({ postTagPath: "src/new.js", releaseOnly: true, callback: true, viaSymlink: true });
+    expect(result.status).toBe(0);
+    expect(result.report.verdict).toBe("MERGED_UNRELEASED");
+    expect(result.stderr).toContain("::warning::");
+    expect(result.summary).toContain("MERGED_UNRELEASED");
+    expect(result.summary).toContain("2 hours");
+  });
+
+  test("overdue shippable lag remains non-zero despite a recent commit", () => {
+    const result = fixture({ postTagPath: "src/new.js", releaseOnly: true, callback: true, recentCommit: true,
+      postTagDate: new Date(Date.now() - 3 * 3600_000).toISOString() });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("::error::");
+    expect(result.report.verdict).toBe("MERGED_UNRELEASED");
+  });
+
+  test("broken release metadata is never softened", () => {
+    const result = fixture({ tagRelease: false, releaseOnly: true, callback: true });
+    expect(result.status).toBe(2);
+    expect(result.report.verdict).toBe("UNKNOWN");
+  });
+
+  test.each(["success", "cancelled", "skipped"])("publisher conclusion %s passes through", (releaseConclusion) => {
+    const result = fixture({ releaseOnly: true, callback: true, releaseConclusion });
+    expect(result.status).toBe(0);
+    expect(result.report.verdict).toBe("CLEAN");
+  });
+
+  test.each(["failure", "timed_out", "startup_failure", "action_required"])("publisher conclusion %s stays red", (releaseConclusion) => {
+    const result = fixture({ releaseOnly: true, callback: true, releaseConclusion });
+    expect(result.status).toBe(2);
+    expect(result.report.verdict).toBe("UNKNOWN");
+    expect(result.report.error).toContain(releaseConclusion);
+  });
+
+  test("a future integration within five minutes receives grace", () => {
+    const result = fixture({ postTagPath: "src/new.js", releaseOnly: true, callback: true,
+      postTagDate: new Date(Date.now() + 4 * 60_000).toISOString() });
+    expect(result.status).toBe(0);
+    expect(result.report.verdict).toBe("MERGED_UNRELEASED");
+    expect(result.stderr).toContain("::warning::");
+  });
+
+  test("an integration beyond five minutes in the future fails closed", () => {
+    const result = fixture({ postTagPath: "src/new.js", releaseOnly: true, callback: true,
+      postTagDate: new Date(Date.now() + 6 * 60_000).toISOString() });
+    expect(result.status).toBe(2);
+    expect(result.report.verdict).toBe("UNKNOWN");
+  });
+
+  test("callback requires release-only mode", () => {
+    const result = fixture({ callback: true });
+    expect(result.status).toBe(2);
+  });
+});
+
+test("callback threshold includes exactly 2 hours; missing age fails closed", () => {
+  const now = Date.now();
+  const report = { verdict: "MERGED_UNRELEASED", commits: { oldestShippableAt: new Date(now - 2 * 3600_000).toISOString() } };
+  expect(callbackResult(report, now).code).toBe(1);
+  expect(callbackResult(report, now - 1).code).toBe(0);
+  expect(callbackResult(report, now + 1).code).toBe(1);
+  expect(() => callbackResult({ verdict: "MERGED_UNRELEASED" }, now)).toThrow();
+  expect(callbackResult({ verdict: "UNKNOWN" }, now).code).toBe(2);
+});
+
+test("an old topic merged now gets a fresh integration grace period", () => {
+  const result = fixture({ postTagPath: "src/new.js", releaseOnly: true, callback: true, mergeTopic: true,
+    postTagDate: new Date(Date.now() - 72 * 3600_000).toISOString() });
+  expect(result.status).toBe(0);
+  expect(result.stderr).toContain("::warning::");
+});
+
+
+test("old docs-only lag stays clean in callback mode", () => {
+  const result = fixture({ postTagPath: "README.md", releaseOnly: true, callback: true,
+    postTagDate: new Date(Date.now() - 72 * 3600_000).toISOString() });
+  expect(result.status).toBe(0);
+  expect(result.report.verdict).toBe("CLEAN");
+});
+
+
+test("callback tolerates five minutes of clock skew, treating future timestamps as age zero", () => {
+  const now = Date.now();
+  const report = { verdict: "MERGED_UNRELEASED", commits: { oldestShippableAt: new Date(now + 5 * 60_000).toISOString() } };
+  expect(callbackResult(report, now)).toMatchObject({ code: 0, annotation: "warning" });
+  expect(callbackResult(report, now + 1).code).toBe(0);
+  expect(() => callbackResult(report, now - 1)).toThrow("invalid unreleased integration time");
 });

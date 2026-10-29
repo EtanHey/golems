@@ -10,6 +10,8 @@
  * Optional: GREEN_INVOICE_SANDBOX=true for sandbox environment
  */
 
+import "@golems/shared/lib/load-env";
+
 import type {
   CreateDocumentRequest,
   DocumentSearchRequest,

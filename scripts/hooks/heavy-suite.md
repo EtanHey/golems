@@ -14,6 +14,8 @@ Already opted-in repositories must update their hook line to use this path;
 updating golems alone does not rewrite their hooks. `install-hooks.mjs --status`
 reports helper availability without installing it.
 
+Nightly worktree GC also runs the pinned hooks-live copy and refuses an unverified pin, logging its SHA.
+
 Replace `bun run test` in both branches with that repository's existing suite.
 For the skill suite, use `bash scripts/ci/run-skill-tests.sh`, retaining its environment requirements
 (including isolated TMP_BLOCK_LEDGER). This wrapper installs no hooks itself.
