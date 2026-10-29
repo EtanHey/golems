@@ -39,7 +39,10 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(text, /\| Holistic\/product work \(.*\| `claude.judgment` \(Opus; Sonnet\/Haiku only as sub-agents for trivial wording edits\), 2026-10-29 \| Codex Sol \(`codex.implement`\) \|/);
   assert.match(text, /\| Narrow technical work \(.*\| Codex Sol \(hard\) \/ Terra \(bounded\), 2026-10-29 \| `claude.judgment` \|/);
   // Ratchets and TLC/TLA+ specs are Opus-designed and Opus-built unless tiny; this row beats "CI script" above.
-  assert.match(text, /\| Ratchets and TLC\/TLA\+ specs \(.*\| `claude.judgment` \(Opus\) designs, and builds unless the change is tiny.*\| Codex Sol \(`codex.implement`\) \|/);
+  const ratchet = text.split('\n').find(line => line.startsWith('| Ratchets and TLC/TLA+ specs ('));
+  assert.ok(ratchet, 'ratchet/TLA+ row is required');
+  for (const clause of [/`claude.judgment` \(Opus\) designs and builds/, /mechanical edit to an existing Opus-designed threshold or row/, /no new runner, attestation, model or invariant design/,
+    /Codex Sol \(`codex.implement`\) reviews an Opus build; a fresh `claude.judgment` reviews a tiny Codex build, including design conformance/, /wins over "CI script"/, /design-conformance review and rework before merge/, /Lead Topology cap/]) assert.match(ratchet, clause);
   assert.doesNotMatch(text, /\| Everything else/);
   assert.doesNotMatch(text, /only Sol reviews a Claude implementation/);
   // RT-3: the reviewer is always the other vendor; no same-vendor review exception survives.
