@@ -29,7 +29,7 @@ This procedure is for **putting things INTO Drive**. To **query Drive content** 
 │  • Local cache — only the LATEST versions                    │
 │  • Lightweight markdown only (no >100KB media)               │
 │  • Per-dir `_DRIVE-LEDGER.md` lists every Drive copy + URL   │
-│  • Safe to delete: contents are recoverable from Drive       │
+│  • Delete only after the archiving-convention rule 2 check   │
 └──────────────────────────────────────────────────────────────┘
                          ▲
                          │  brain_digest extracts entities/relations
@@ -146,8 +146,10 @@ The ledger is what lets a future agent answer **"where is the original?"** witho
 ### 7. (Optional) Delete the local heavy copy
 
 Only after:
-- `mcp__google-drive__listFolder` confirms the file is present and sized correctly.
-- Ledger entry is written.
+- The unit's `MANIFEST.json` is uploaded with it and the ledger entry points at it.
+- The pre-delete check in [archiving-convention.md](archiving-convention.md#before-deleting-a-local-copy-rule-2)
+  passes: `listFolder` shows every manifest file at its byte count, the manifest hashes match the
+  local copy, and one file restored from Drive hashes to its manifest value. A name match is not proof.
 
 Markdown notes <100KB stay in `docs.local/` (they're the latest cache). Heavy media (>10MB audio/video) can be deleted locally — Drive is the canonical copy.
 

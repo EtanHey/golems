@@ -17,6 +17,7 @@ description: "Brain Drive filing, archival, and docs.local lifecycle. Triggers: 
 | Which folder, what name | § Brain Drive folder model, § Decision tree, § Naming convention (below) |
 | Put a heavy (>100KB / media / transcript) artifact into Drive, with ledger + brain_digest | § Archive a heavy artifact → [references/archive-procedure.md](references/archive-procedure.md) |
 | Keep `docs.local/` legible over time (daily → monthly → Drive) | § docs.local lifecycle |
+| Where any kind of file lives, MANIFEST.json, before deleting a local copy, measuring free disk (Drive or iCloud) | § Archiving convention → [references/archiving-convention.md](references/archiving-convention.md) |
 
 Not this skill: `/braindrive` *queries* Drive via Gemini; `/gemini-research` does web research with Drive sources.
 
@@ -39,6 +40,8 @@ Legacy `Brain Drive/Research/<project>/` folders are being moved under 03_RESEAR
 
 ## Decision tree (where does THIS artifact go?)
 
+0. **Code, a harness, a test kit or a fixture you would rerun?** → a repo, committed. Not Drive, not
+   `~/`. Other kinds outside Brain Drive (iCloud, caches, worktrees): § Archiving convention.
 1. **A research prompt or its results?** → `03_RESEARCH/Active/<topic>/` (e.g. `skills-eval/`). Drive-ground prompts by uploading the real artifacts beside them.
 2. **A finished heavy artifact (>100KB / media / raw transcript / big audit)?** → § Archive a heavy artifact → lands in `06_ARCHIVE/<area>/<topic>/<date>/`, leaves a `_DRIVE-LEDGER.md` pointer in `docs.local/`.
 3. **A canonical standard / spec / locked schema?** → `01_STANDARDS/`.
@@ -47,7 +50,7 @@ Legacy `Brain Drive/Research/<project>/` folders are being moved under 03_RESEAR
 6. **Lightweight, session-scoped scratch?** → fine to leave in `docs.local/` — but if anyone else (or future-you) needs it, FILE it per 1–5.
 
 ## Naming convention
-`YYYY-MM-DD-<topic>[-<surface/agent>].<ext>` — date-prefixed, kebab-case, topic-first. Folders: `<topic>-<domain>/` (e.g. `weave-eval/`). Keep the local mirror name identical to the Drive name so the ledger maps 1:1.
+`YYYY-MM-DD-<topic>[-<surface/agent>].<ext>` — date-prefixed, lowercase kebab-case, topic-first. Folders: `<topic>-<domain>/` (e.g. `weave-eval/`); an archive unit that sits flat is `<YYYY-MM-DD>-<topic>/` (§ Archiving convention). No machine prefixes (`m1-…`) and no retired names. Keep the local mirror name identical to the Drive name so the ledger maps 1:1.
 
 ## The discipline (the one rule)
 **Before you finish a task that produced a durable artifact: did you FILE it in the right Brain Drive folder, or leave it scattered in `docs.local/`?** If durable and still only local → file it now (the decision tree above, or § Archive a heavy artifact) and drop a one-line `_DRIVE-LEDGER.md` pointer. "It's in docs.local" is not "it's saved."
@@ -71,11 +74,46 @@ or a `/tmp` cleanup that may hold forever-knowledge. The eight steps, in short:
 3. `createFolder` per level, keeping every ID. 4. `uploadFile`; keep `id`, `link`, `size`.
 5. `brain_digest` every text file (a background agent for >150KB).
 6. Write `docs.local/<area>/<topic>/_DRIVE-LEDGER.md` (never committed).
-7. Delete the local heavy copy only after `listFolder` confirms it and the ledger is written.
+7. Delete the local heavy copy only after the ledger is written and the § Archiving convention
+   rule 2 check passes (manifest hashes plus a one-file restore).
 8. `brain_store` unusual archive decisions only.
 
 Never: commit a 1.5GB transcript, `rm -rf /tmp/…` before the forever check, digest without
 uploading, upload without a ledger row, re-upload what Drive already has.
+
+## Archiving convention (Brain Drive and iCloud, both Macs)
+
+One standard for every agent, from now on. Detail, the MANIFEST.json schema and the reconciliation
+table: [references/archiving-convention.md](references/archiving-convention.md).
+
+| Kind | Lives in | Never in |
+|---|---|---|
+| Source, harnesses, test kits, eval scripts, fixtures you would rerun | a repo, committed (generated fixtures under its `docs.local/` or a `fixtures/` dir with a regen recipe) | `~/`, `~/Desktop`, `~/temp`, ad-hoc repo copies |
+| Agent lane output (reports, receipts, logs) while work is live | the owning repo's `docs.local/<lane>/` on the machine that ran it | `~/m1-*`, `~/m1-lanes`, Desktop handoff folders |
+| Finished heavy artifacts (transcripts, audio/video, big audits, benchmark runs) | `06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>/` via § Archive a heavy artifact, `_DRIVE-LEDGER.md` left in `docs.local/` | local disk "for later" |
+| Personal or client documents the operator keeps | iCloud Drive `Archive/<YYYY>/<YYYY-MM-DD>-<topic>/` | Desktop root |
+| Models and caches (Whisper, HF, npm/bun) | the tool's own cache dir, one copy, recorded in the app's config | `~/Documents`, duplicates |
+| Worktrees | `~/.t3/worktrees` or `<repo>/.worktrees`, removed after merge or settle | anywhere else |
+
+**Naming.** Archive units are `<YYYY-MM-DD>-<topic>`, lowercase kebab case (§ Naming convention).
+Every unit carries a `MANIFEST.json`: source path, host, byte counts, SHA-256 per file, producer
+(lead thread or plan) and a restore command.
+
+**Rules.**
+1. Agents make no new folders in `~/` or `~/Desktop`. Scratch goes to T3 scratch or
+   `<repo>/docs.local/`, and the lead reaps it at settle.
+2. Before a local copy is deleted, verify its archive: every manifest file is present at its byte
+   count, the manifest hashes match, and one file has been restored and re-hashed. A file with the
+   same name on Drive or in iCloud proves nothing.
+3. Measure free disk with `diskutil` (container free, APFS allocation), never Finder's free figure
+   (it counts purgeable space) or logical `du` sums.
+4. Each lead reaps its own lane leftovers at settle. Unowned leftovers go to the local-files lead's
+   per-Mac ledger, never to silent deletion.
+5. Deleting data is a one-way door. An empty dir may be removed with `rmdir` after review; anything
+   nonempty needs an owner, an archive proof (rule 2) or Etan's explicit go-ahead.
+
+Enforcement (an inventory check for agent-made `~/` and `~/Desktop` folders, a link to the per-Mac
+ledger) is a follow-up row; nothing enforces this section mechanically yet.
 
 ## docs.local lifecycle
 
