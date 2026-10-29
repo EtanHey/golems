@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-// Local measurement only: caller supplies the checkout and head. No network, signing,
-// hardware authentication or checkout verification; CI consumes this evidence separately.
+// Runs the m1 perf rows in this checkout, which must be exactly --head with no uncommitted changes.
+// No network, signing or hardware authentication yet: the M1-lane PR adds signing and upload.
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { hostname, platform, arch } from "node:os";
-import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseRows } from "./table.mjs";
 import { runPerfRow } from "./run-rows.mjs";
@@ -19,8 +18,12 @@ export function main(argv) {
     }
     if (!options.rows || !options.head || !options.out) throw new Error("--rows, --head and --out are required");
     const rows = parseRows(JSON.parse(readFileSync(options.rows, "utf8"))).rows;
-    const remote = spawnSync("git", ["config", "--get", "remote.origin.url"], { encoding: "utf8" });
-    const repo = remote.stdout?.trim().match(/[:/]([^/:]+\/[^/]+?)(?:\.git)?$/)?.[1] ?? basename(process.cwd());
+    const git = (...args) => spawnSync("git", args, { encoding: "utf8" }).stdout?.trim() ?? "";
+    const checkout = git("rev-parse", "HEAD");
+    if (checkout !== options.head) throw new Error(`--head ${options.head} is not this checkout's HEAD (${checkout || "no git checkout"})`);
+    if (git("status", "--porcelain")) throw new Error("the checkout has uncommitted changes, so it is not --head");
+    const repo = git("config", "--get", "remote.origin.url").match(/[:/]([^/:]+\/[^/]+?)(?:\.git)?$/)?.[1];
+    if (!repo) throw new Error("no origin remote: an attestation must name its repo");
     const machine = `${hostname()} (${platform()}/${arch()})`;
     const attestation = { repo, head_sha: options.head, rows: {} };
     let failed = false;

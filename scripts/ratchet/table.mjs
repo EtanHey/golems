@@ -13,8 +13,12 @@ import { fileURLToPath } from "node:url";
 
 const KINDS = new Set(["real", "unit", "perf"]);
 const PERF_METRICS = new Set(["latency_p50_ms", "latency_p95_ms", "startup_ms", "payload_bytes", "rss_mb", "idle_cpu_pct", "throughput_mbps", "db_bytes"]);
+const BYTES_METRICS = new Set(["payload_bytes", "db_bytes"]);
+// Higher is better only for throughput; every other perf metric is a ceiling, so its direction is fixed.
+const MIN_METRICS = new Set(["throughput_mbps"]);
+const MAX_REPEATS = 25; // bounds a row's wall time to repeats × timeout_s
 export const perfRepeats = (row) => row.repeats ?? 7;
-const perfTolerance = (row) => row.tolerance ?? (["payload_bytes", "db_bytes"].includes(row.metric) ? 0 : row.metric === "latency_p50_ms" ? 0.05 : 0.10);
+const perfTolerance = (row) => row.tolerance ?? (BYTES_METRICS.has(row.metric) ? 0 : row.metric === "latency_p50_ms" ? 0.05 : 0.10);
 const perfReporting = (row) => row.kind === "perf" && (row.status ?? "report-only") === "report-only";
 
 export function median(samples) {
@@ -61,12 +65,18 @@ export function parseRows(doc) {
     if (!KINDS.has(row.kind)) throw new Error(`${where}: kind must be real, unit or perf`);
     if (row.kind === "perf") {
       if (!PERF_METRICS.has(row.metric)) throw new Error(`${where}: unknown perf metric ${row.metric}`);
-      if (row.direction === "pass" || !Number.isFinite(row.ceiling) || row.ceiling < 0) throw new Error(`${where}: perf needs max/min and a finite nonnegative ceiling`);
-      if (row.repeats !== undefined && (!Number.isSafeInteger(row.repeats) || row.repeats <= 0)) throw new Error(`${where}: repeats must be a positive integer`);
+      const direction = MIN_METRICS.has(row.metric) ? "min" : "max";
+      if (row.direction !== direction || !Number.isFinite(row.ceiling) || row.ceiling < 0) throw new Error(`${where}: ${row.metric} needs direction ${direction} and a finite nonnegative ceiling`);
+      if (row.repeats !== undefined && (!Number.isSafeInteger(row.repeats) || row.repeats < 1 || row.repeats > MAX_REPEATS)) throw new Error(`${where}: repeats must be an integer from 1 to ${MAX_REPEATS}`);
       if (row.tolerance !== undefined && (!Number.isFinite(row.tolerance) || row.tolerance < 0 || row.tolerance > 1)) throw new Error(`${where}: tolerance must be between 0 and 1`);
+      if (BYTES_METRICS.has(row.metric) && row.tolerance) throw new Error(`${where}: bytes rows are exact (tolerance 0)`);
       if (row.status !== undefined && !["report-only", "enforced"].includes(row.status)) throw new Error(`${where}: status must be report-only or enforced`);
+      // AIDEV-NOTE: an unsigned attestation is anyone's JSON. The M1-lane PR that signs attestations lifts this.
+      if (row.runner === "m1" && row.status === "enforced") throw new Error(`${where}: m1 rows stay report-only until attestations are signed`);
     } else if (["repeats", "tolerance", "status"].some(key => row[key] !== undefined)) {
       throw new Error(`${where}: repeats, tolerance and status are only for perf rows`);
+    } else if (row.runner === "m1") {
+      throw new Error(`${where}: runner m1 is measured by attestation, so only perf rows may use it`);
     }
     if (!DIRECTIONS.has(row.direction)) throw new Error(`${where}: direction must be max, min or pass`);
     if (row.direction === "pass" ? row.ceiling !== true : typeof row.ceiling !== "number") {
@@ -121,7 +131,7 @@ function loosening(before, after) {
   }
   if (before.kind === "unit" && after.kind === "perf") return "unit → perf";
   if (!before.report_only && after.report_only) return "health enforcement → temporary report-only";
-  if (before.kind === "real" && after.kind !== "real") return "demoted real → unit";
+  if (before.kind === "real" && after.kind !== "real") return `demoted real → ${after.kind}`;
   // Moving a row to another producer drops it from the one that measured it.
   if ((before.runner ?? null) !== (after.runner ?? null)) return `runner ${before.runner ?? "(any)"} → ${after.runner ?? "(any)"}`;
   if (before.direction !== after.direction) return `direction ${before.direction} → ${after.direction}`;
@@ -142,29 +152,48 @@ function rulings(prBody) {
   return ids;
 }
 
+// A perf measurement is exactly `repeats` samples, judged by their median; a producer's `value` is ignored.
+const sampled = (row, entry) => (entry?.samples?.length === perfRepeats(row) ? median(entry.samples) : undefined);
+// An attestation counts only when it names the repo the caller says this is.
+const attested = (doc, repo) => (typeof repo === "string" && repo && doc?.repo === repo ? doc.rows ?? {} : {});
+
+// Fail if median > baseline × (1 + tol) (mirrored for min) or past the ceiling. M1 rows read the
+// head's attestation and band against main's; every other perf row reads results and the baseline.
+function evaluatePerf(row, { values, base, head, attestation, attestationBaseline, attestationRepo, isNew }) {
+  const m1 = row.runner === "m1";
+  const reporting = perfReporting(row);
+  const entry = m1 ? (attestation?.head_sha === head ? attested(attestation, attestationRepo)[row.id] : undefined) : values[row.id];
+  let value = sampled(row, entry);
+  if (m1 && (entry?.median !== value || typeof entry?.machine !== "string" || !entry.machine)) value = undefined;
+  const before = median((m1 ? attested(attestationBaseline, attestationRepo) : base)[row.id]?.samples);
+  const tol = perfTolerance(row);
+  let status = "PASS", detail;
+  if (value === undefined) {
+    status = m1 ? "FAIL" : "MISSING";
+    detail = m1 ? (reporting ? "no attestation" : "missing/stale M1 attestation") : "missing/invalid samples";
+  } else if (!reporting && isNew) {
+    [status, detail] = ["FAIL", "new perf rows start report-only"];
+  } else if (before === undefined) {
+    // The band is half the gate: an enforced row with nothing to band against fails closed.
+    detail = "no baseline";
+    if (!reporting || !judge(row, value)) status = "FAIL";
+  } else if (!judge(row, value) || (row.direction === "max" ? value > before * (1 + tol) : value < before * (1 - tol))) {
+    status = "FAIL";
+  }
+  return { ...row, value, baseline: before, delta: value !== undefined && before !== undefined ? value - before : null, status, detail, perfReportOnly: reporting };
+}
+
 // `baseRows: null` is accepted only with `bootstrap: true` (the base has no row file yet).
-export function evaluate({ rows, results, head, baseRows, bootstrap = false, baseline = null, prBody = "", runner = null, attestation = null, repo = null }) {
+export function evaluate({ rows, results, head, baseRows, bootstrap = false, baseline = null, prBody = "", runner = null, attestation = null, attestationBaseline = null, attestationRepo = null }) {
   if (!head) throw new Error("head is required: results are checked against the SHA under test");
   if (!baseRows && !bootstrap) throw new Error("base rows are required (or bootstrap for a base without a row file)");
   const selected = rows.rows.filter((row) => !runner || row.runner === runner);
   const stale = results?.head_sha !== head;
   const values = stale ? {} : (results?.results ?? {});
-  const base = baseline?.results ?? baseline?.rows ?? {};
+  const base = baseline?.results ?? {};
+  const basePerf = new Set((baseRows?.rows ?? []).filter((row) => row.kind === "perf").map((row) => row.id));
   const out = selected.map((row) => {
-    if (row.kind === "perf") {
-      const reporting = perfReporting(row);
-      const attested = attestation?.rows?.[row.id];
-      const matching = attestation?.head_sha === head && typeof attestation?.repo === "string" && attestation.repo.length > 0 && (!repo || attestation.repo === repo);
-      const entry = row.runner === "m1" ? (matching ? attested : undefined) : values[row.id];
-      let value = median(entry?.samples);
-      if (row.runner === "m1" && (entry?.median !== value || typeof entry?.machine !== "string" || !entry.machine)) value = undefined;
-      const before = median(base[row.id]?.samples);
-      const withinBand = before === undefined || (row.direction === "max"
-        ? value <= before * (1 + perfTolerance(row)) : value >= before * (1 - perfTolerance(row)));
-      const status = value === undefined ? (row.runner === "m1" ? "FAIL" : "MISSING") : judge(row, value) && withinBand ? "PASS" : "FAIL";
-      const detail = value === undefined ? (row.runner === "m1" ? (reporting ? "no attestation" : "missing/stale M1 attestation") : "missing/invalid samples") : undefined;
-      return { ...row, value, baseline: before, delta: value !== undefined && before !== undefined ? value - before : null, status, detail, perfReportOnly: reporting };
-    }
+    if (row.kind === "perf") return evaluatePerf(row, { values, base, head, attestation, attestationBaseline, attestationRepo, isNew: !basePerf.has(row.id) });
     const now = resultOf(values[row.id]);
     const before = resultOf(base[row.id]);
     const measured = row.report_only && validDiskMeasurement(now?.measurement) && now.value === now.measurement.health;
@@ -342,7 +371,7 @@ export function baseRowsAt(rowsPath, baseRef, git = spawnSync) {
 
 function parseArgs(argv) {
   const options = { marker: "ratchet" };
-  const keys = { "--attestation": "attestation", "--rows": "rows", "--results": "results", "--baseline": "baseline", "--base-ref": "baseRef", "--pr-body-file": "prBodyFile", "--head": "head", "--runner": "runner", "--marker": "marker", "--title": "title", "--repo": "repo", "--pr": "pr", "--author": "author", "--out": "out", "--producer": "producer", "--receipt": "receipt" };
+  const keys = { "--attestation": "attestation", "--attestation-baseline": "attestationBaseline", "--attestation-repo": "attestationRepo", "--rows": "rows", "--results": "results", "--baseline": "baseline", "--base-ref": "baseRef", "--pr-body-file": "prBodyFile", "--head": "head", "--runner": "runner", "--marker": "marker", "--title": "title", "--repo": "repo", "--pr": "pr", "--author": "author", "--out": "out", "--producer": "producer", "--receipt": "receipt" };
   for (let index = 0; index < argv.length; index += 1) {
     const key = keys[argv[index]];
     const value = argv[index + 1];
@@ -353,6 +382,8 @@ function parseArgs(argv) {
   for (const key of ["rows", "results", "head", "baseRef"]) if (!options[key]) throw new Error(`--${key === "baseRef" ? "base-ref" : key} is required`);
   if (Boolean(options.repo) !== Boolean(options.pr)) throw new Error("--repo and --pr go together");
   if (options.repo && !options.author) throw new Error("--author is required to post (the login the producer posts as)");
+  // Separate from --repo, which posts the comment: consuming an attestation must never require posting.
+  if ((options.attestation || options.attestationBaseline) && !/^[\w.-]+\/[\w.-]+$/.test(options.attestationRepo ?? "")) throw new Error("--attestation-repo <owner/name> is required with --attestation");
   if (options.producer && !/^[0-9a-f]{40}$/.test(options.producer)) throw new Error("--producer must be a full commit SHA");
   if (options.receipt && !/^[0-9a-f]{64}$/.test(options.receipt)) throw new Error("--receipt must be a sha256");
   return options;
@@ -376,7 +407,7 @@ function readResults(path) {
 
 export function main(argv) {
   if (argv.length === 1 && argv[0] === "--help") {
-    process.stdout.write("Usage: table.mjs --rows <file> --results <file> --head <sha> --base-ref <sha> [--baseline <file>] [--runner <name>] [--attestation <file>]\n--attestation: local M1 perf JSON {repo, head_sha, rows: {id: {samples, median, machine}}}; unsigned, no network verification.\n");
+    process.stdout.write("Usage: table.mjs --rows <file> --results <file> --head <sha> --base-ref <sha> [--baseline <file>] [--runner <name>] [--attestation <file> --attestation-repo <owner/name> [--attestation-baseline <file>]]\n--attestation: M1 perf JSON {repo, head_sha, rows: {id: {samples, median, machine}}} for this head; --attestation-baseline: main's. Both must name --attestation-repo. Unsigned, so m1 rows stay report-only.\n");
     return 0;
   }
   let options;
@@ -386,6 +417,7 @@ export function main(argv) {
   let results;
   let baseline = null;
   let attestation = null;
+  let attestationBaseline = null;
   try {
     options = parseArgs(argv);
     rows = parseRows(readJson(options.rows));
@@ -394,6 +426,7 @@ export function main(argv) {
     results = readResults(options.results);
     if (options.baseline) baseline = readResults(options.baseline);
     if (options.attestation) attestation = readResults(options.attestation);
+    if (options.attestationBaseline) attestationBaseline = readResults(options.attestationBaseline);
   } catch (error) {
     process.stderr.write(`ratchet: ${error.message}\n`);
     return 2;
@@ -408,7 +441,8 @@ export function main(argv) {
     head: options.head,
     runner: options.runner ?? null,
     attestation,
-    repo: options.repo ?? null,
+    attestationBaseline,
+    attestationRepo: options.attestationRepo ?? null,
   });
   const body = renderTable(evaluation, { marker: options.marker, title: options.title, producer: options.producer, receipt: options.receipt });
   process.stdout.write(`${body}\n`);
