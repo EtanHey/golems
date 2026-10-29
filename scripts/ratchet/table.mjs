@@ -11,7 +11,18 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const KINDS = new Set(["real", "unit"]);
+const KINDS = new Set(["real", "unit", "perf"]);
+const PERF_METRICS = new Set(["latency_p50_ms", "latency_p95_ms", "startup_ms", "payload_bytes", "rss_mb", "idle_cpu_pct", "throughput_mbps", "db_bytes"]);
+export const perfRepeats = (row) => row.repeats ?? 7;
+const perfTolerance = (row) => row.tolerance ?? (["payload_bytes", "db_bytes"].includes(row.metric) ? 0 : row.metric === "latency_p50_ms" ? 0.05 : 0.10);
+const perfReporting = (row) => row.kind === "perf" && (row.status ?? "report-only") === "report-only";
+
+export function median(samples) {
+  if (!Array.isArray(samples) || !samples.length || !samples.every(n => Number.isFinite(n) && n >= 0)) return undefined;
+  const sorted = [...samples].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : sorted[middle - 1] + (sorted[middle] - sorted[middle - 1]) / 2;
+}
 const DIRECTIONS = new Set(["max", "min", "pass"]);
 const REF_KINDS = new Set(["commit", "fixture-hash"]);
 const ROW_ID = /^[A-Za-z0-9_.:-]+$/;
@@ -19,7 +30,7 @@ const SHA = /^[0-9a-f]{7,40}$/;
 const FIXTURE_HASH = /^[0-9a-f]{8,64}$/;
 // Strict schema: a key nobody validates is a key a producer could later read unchecked.
 const FILE_KEYS = new Set(["schema", "rows"]);
-const ROW_KEYS = new Set(["id", "metric", "kind", "runner", "direction", "ceiling", "command", "timeout_s", "bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture", "report_only"]);
+const ROW_KEYS = new Set(["id", "metric", "kind", "runner", "direction", "ceiling", "command", "timeout_s", "bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture", "report_only", "repeats", "tolerance", "status"]);
 // Evidence, not measurement: editing these is allowed but always listed in the table.
 const METADATA_KEYS = ["bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture", "report_only"];
 const short = (sha) => (typeof sha === "string" && sha ? escapeCell(sha.slice(0, 8)) : "none");
@@ -47,7 +58,16 @@ export function parseRows(doc) {
     if (seen.has(row.id)) throw new Error(`duplicate row id ${row.id}`);
     seen.add(row.id);
     if (typeof row.metric !== "string" || !row.metric) throw new Error(`${where}: metric is required`);
-    if (!KINDS.has(row.kind)) throw new Error(`${where}: kind must be real or unit`);
+    if (!KINDS.has(row.kind)) throw new Error(`${where}: kind must be real, unit or perf`);
+    if (row.kind === "perf") {
+      if (!PERF_METRICS.has(row.metric)) throw new Error(`${where}: unknown perf metric ${row.metric}`);
+      if (row.direction === "pass" || !Number.isFinite(row.ceiling) || row.ceiling < 0) throw new Error(`${where}: perf needs max/min and a finite nonnegative ceiling`);
+      if (row.repeats !== undefined && (!Number.isSafeInteger(row.repeats) || row.repeats <= 0)) throw new Error(`${where}: repeats must be a positive integer`);
+      if (row.tolerance !== undefined && (!Number.isFinite(row.tolerance) || row.tolerance < 0 || row.tolerance > 1)) throw new Error(`${where}: tolerance must be between 0 and 1`);
+      if (row.status !== undefined && !["report-only", "enforced"].includes(row.status)) throw new Error(`${where}: status must be report-only or enforced`);
+    } else if (["repeats", "tolerance", "status"].some(key => row[key] !== undefined)) {
+      throw new Error(`${where}: repeats, tolerance and status are only for perf rows`);
+    }
     if (!DIRECTIONS.has(row.direction)) throw new Error(`${where}: direction must be max, min or pass`);
     if (row.direction === "pass" ? row.ceiling !== true : typeof row.ceiling !== "number") {
       throw new Error(`${where}: ceiling must be ${row.direction === "pass" ? "true" : "a number"}`);
@@ -93,6 +113,13 @@ function judge(row, value) {
 // ceiling, or promoting unit -> real. A swapped `command` could otherwise pass trivially.
 function loosening(before, after) {
   if (!after) return "row removed";
+  if (before.kind === "perf") {
+    if (after.kind !== "perf") return "perf kind changed";
+    if (!perfReporting(before) && perfReporting(after)) return "enforced → report-only";
+    if (perfTolerance(after) > perfTolerance(before)) return "tolerance increased";
+    if (perfRepeats(after) < perfRepeats(before)) return "repeats decreased";
+  }
+  if (before.kind === "unit" && after.kind === "perf") return "unit → perf";
   if (!before.report_only && after.report_only) return "health enforcement → temporary report-only";
   if (before.kind === "real" && after.kind !== "real") return "demoted real → unit";
   // Moving a row to another producer drops it from the one that measured it.
@@ -116,14 +143,28 @@ function rulings(prBody) {
 }
 
 // `baseRows: null` is accepted only with `bootstrap: true` (the base has no row file yet).
-export function evaluate({ rows, results, head, baseRows, bootstrap = false, baseline = null, prBody = "", runner = null }) {
+export function evaluate({ rows, results, head, baseRows, bootstrap = false, baseline = null, prBody = "", runner = null, attestation = null, repo = null }) {
   if (!head) throw new Error("head is required: results are checked against the SHA under test");
   if (!baseRows && !bootstrap) throw new Error("base rows are required (or bootstrap for a base without a row file)");
   const selected = rows.rows.filter((row) => !runner || row.runner === runner);
   const stale = results?.head_sha !== head;
   const values = stale ? {} : (results?.results ?? {});
-  const base = baseline?.results ?? {};
+  const base = baseline?.results ?? baseline?.rows ?? {};
   const out = selected.map((row) => {
+    if (row.kind === "perf") {
+      const reporting = perfReporting(row);
+      const attested = attestation?.rows?.[row.id];
+      const matching = attestation?.head_sha === head && typeof attestation?.repo === "string" && attestation.repo.length > 0 && (!repo || attestation.repo === repo);
+      const entry = row.runner === "m1" ? (matching ? attested : undefined) : values[row.id];
+      let value = median(entry?.samples);
+      if (row.runner === "m1" && (entry?.median !== value || typeof entry?.machine !== "string" || !entry.machine)) value = undefined;
+      const before = median(base[row.id]?.samples);
+      const withinBand = before === undefined || (row.direction === "max"
+        ? value <= before * (1 + perfTolerance(row)) : value >= before * (1 - perfTolerance(row)));
+      const status = value === undefined ? (row.runner === "m1" ? "FAIL" : "MISSING") : judge(row, value) && withinBand ? "PASS" : "FAIL";
+      const detail = value === undefined ? (row.runner === "m1" ? (reporting ? "no attestation" : "missing/stale M1 attestation") : "missing/invalid samples") : undefined;
+      return { ...row, value, baseline: before, delta: value !== undefined && before !== undefined ? value - before : null, status, detail, perfReportOnly: reporting };
+    }
     const now = resultOf(values[row.id]);
     const before = resultOf(base[row.id]);
     const measured = row.report_only && validDiskMeasurement(now?.measurement) && now.value === now.measurement.health;
@@ -165,7 +206,7 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
     realTotal: real.length,
     // No selected row is every row missing (a runner typo, `rows: []`), never a pass. A failing
     // unit row still fails the job (it is a test), but it never counts as ratchet evidence.
-    ok: out.length > 0 && out.every((row) => row.status === "PASS" || row.status === "WARN") && loosened.every((entry) => entry.ruled),
+    ok: out.length > 0 && out.every((row) => row.perfReportOnly || row.status === "PASS" || row.status === "WARN") && loosened.every((entry) => entry.ruled),
   };
 }
 
@@ -221,12 +262,12 @@ export function renderTable(evaluation, { marker, title = "Ratchet table", produ
       ? `free_gb=${m.free_gb} floor=${m.floor} merged_worktrees=${m.merged_worktrees} ceiling=${m.ceiling}; measured health ${m.health ? "PASS" : "FAIL"}`
       : row.detail;
     const value = detail ? `${cell(row, row.value)} (${escapeCell(detail)})` : cell(row, row.value);
-    lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status}${row.report_only ? " (report-only)" : ""} |`);
+    lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status}${row.report_only || row.perfReportOnly ? " (report-only)" : ""} |`);
   }
   lines.push("");
   if (evaluation.rows.some(row => row.report_only)) lines.push("Temporary disk report-only: health remains visible; enforcement resumes after durable proof of one successful GC on BOTH Macs. Measurement errors still FAIL.", "");
   if (!evaluation.rows.length) lines.push(`**No rows selected${evaluation.runner ? ` for runner \`${escapeCell(evaluation.runner)}\`` : ""}:** every row is missing → FAIL.`, "");
-  if (evaluation.stale) lines.push(`**Stale results:** recorded for ${short(evaluation.resultsSha)}, this PR is at ${short(evaluation.head)}. Every row is MISSING until the table is re-run on this head.`, "");
+  if (evaluation.stale) lines.push(`**Stale results:** recorded for ${short(evaluation.resultsSha)}, this PR is at ${short(evaluation.head)}. Rows supplied by results are MISSING until re-run on this head; M1 rows use their separate attestation.`, "");
   if (evaluation.bootstrap) lines.push("**Direction unchecked:** the base commit has no row file yet (bootstrap).", "");
   for (const entry of evaluation.loosened) {
     lines.push(`- Loosened \`${entry.id}\` (${escapeCell(entry.reason)}): ${entry.ruled ? "ruled in the PR body" : "**no `ratchet-loosen:` ruling in the PR body → FAIL**"}`);
@@ -301,7 +342,7 @@ export function baseRowsAt(rowsPath, baseRef, git = spawnSync) {
 
 function parseArgs(argv) {
   const options = { marker: "ratchet" };
-  const keys = { "--rows": "rows", "--results": "results", "--baseline": "baseline", "--base-ref": "baseRef", "--pr-body-file": "prBodyFile", "--head": "head", "--runner": "runner", "--marker": "marker", "--title": "title", "--repo": "repo", "--pr": "pr", "--author": "author", "--out": "out", "--producer": "producer", "--receipt": "receipt" };
+  const keys = { "--attestation": "attestation", "--rows": "rows", "--results": "results", "--baseline": "baseline", "--base-ref": "baseRef", "--pr-body-file": "prBodyFile", "--head": "head", "--runner": "runner", "--marker": "marker", "--title": "title", "--repo": "repo", "--pr": "pr", "--author": "author", "--out": "out", "--producer": "producer", "--receipt": "receipt" };
   for (let index = 0; index < argv.length; index += 1) {
     const key = keys[argv[index]];
     const value = argv[index + 1];
@@ -334,12 +375,17 @@ function readResults(path) {
 }
 
 export function main(argv) {
+  if (argv.length === 1 && argv[0] === "--help") {
+    process.stdout.write("Usage: table.mjs --rows <file> --results <file> --head <sha> --base-ref <sha> [--baseline <file>] [--runner <name>] [--attestation <file>]\n--attestation: local M1 perf JSON {repo, head_sha, rows: {id: {samples, median, machine}}}; unsigned, no network verification.\n");
+    return 0;
+  }
   let options;
   let rows;
   let baseRows = null;
   let prBody = "";
   let results;
   let baseline = null;
+  let attestation = null;
   try {
     options = parseArgs(argv);
     rows = parseRows(readJson(options.rows));
@@ -347,6 +393,7 @@ export function main(argv) {
     if (options.prBodyFile) prBody = readFileSync(options.prBodyFile, "utf8");
     results = readResults(options.results);
     if (options.baseline) baseline = readResults(options.baseline);
+    if (options.attestation) attestation = readResults(options.attestation);
   } catch (error) {
     process.stderr.write(`ratchet: ${error.message}\n`);
     return 2;
@@ -360,6 +407,8 @@ export function main(argv) {
     prBody,
     head: options.head,
     runner: options.runner ?? null,
+    attestation,
+    repo: options.repo ?? null,
   });
   const body = renderTable(evaluation, { marker: options.marker, title: options.title, producer: options.producer, receipt: options.receipt });
   process.stdout.write(`${body}\n`);
