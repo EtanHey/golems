@@ -28,6 +28,22 @@ Environment ids come from `t3_environment_links`.
 
 Resolve with `t3_project_list(environmentId)`. Never reuse the other Mac's project id.
 
+## 3a. Putting a repo on the other Mac: one project per repo per Mac
+
+T3 shows a repo's projects on both Macs as ONE project, joined by the GitHub remote. A second
+registration of the same repo on one Mac shows up as an extra project; icon, favicon, title and
+scripts are per machine and never follow on their own. Duplicate registrations are a recurring
+defect Etan flagged on 2026-10-29.
+
+1. `node scripts/sync/t3-project-parity.mjs --precheck <remote-url> --on <host>`. A REFUSE names
+   the existing project: reuse it. Never register a second.
+2. On OK: `t3_project_clone` to `~/Gits/<repo>` with the same GitHub remote, then
+   `t3_project_create` with the same title as the other Mac's project.
+3. Copy `projectIcon`/`faviconPath` and `scripts` from the other Mac's project with
+   `t3_project_update`.
+4. Parallel lanes use T3 worktrees of that one project, never extra clones registered as projects.
+5. `node scripts/sync/t3-project-parity.mjs` must exit 0 afterwards.
+
 ## 4. PR watch across machines
 
 Unverified; test on the first real remote PR. `watch_pull_request` accepts an `environmentId`,
