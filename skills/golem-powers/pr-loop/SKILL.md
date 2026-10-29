@@ -50,6 +50,8 @@ Run the loop in this order:
 8. Confirm required checks and reviews are green on `headRefOid`, then either hand off unmerged or merge.
 9. After an authorized merge, verify the remote merge/content, fast-forward the root checkout ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory)), and update tracking; release/install/live-probe at the feature-batch gate, the deploy hop routed to `deploy-local-prod`. Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](../_shared/lifecycle/CONTRACT.md); record REMOVED, RETAINED or acknowledged TRANSFERRED. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
 
+Every wait and PR-watch wake follows the [waiting policy and hygiene check](references/review-loop.md#waiting-policy-no-polling-turns).
+
 ## Merge Cadence (risk-sized)
 
 The rules this section lands, verbatim (Etan 2026-10-18, via orc collab):
