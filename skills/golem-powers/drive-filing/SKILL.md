@@ -136,8 +136,10 @@ bytes=… · monthly-moves=… · to-drive months=… files=… bytes=… · mti
 `YYYY-MM` (`examplechannel-2026-09-19-015034/`, `probe-2026-03/`); an exact `YYYY-MM/` folder is the month itself.
 An undated folder with a dated name somewhere below it is an *area* and is descended. An undated folder
 with none is **one mtime unit** (the highest such folder), dated by the newest file inside; it joins the
-upload plan once old but is **never moved**; its Drive target keeps its own path
-(`…/<repo>/<area>/<unitName>`, no month segment: it mirrors the unmoved local path), so no two units share a target. `--json` lists the 5 largest under
+upload plan once old but is **never moved**; its planned Drive target keeps its own path
+(`…/<repo>/<area>/<unitName>`, no month segment: it mirrors the unmoved local path), so no two units share a target.
+At upload, an mtime unit always gets a date level: upload it to `…/<repo>/<area>/<unitName>/<YYYY-MM-DD>/`,
+dated by its newest file (the date the plan used), and record that dated path in the ledger and its `MANIFEST.json`. `--json` lists the 5 largest under
 `mtimeUnits`. A unit with no files or only empty ones is counted (`empty-units=`) and never planned.
 Undated files are counted and left alone. **Regenerable dirs** (`__pycache__`, `node_modules`, `.venv`,
 `venv`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.build`, `.next`, `.turbo`, `.probe`) are never
