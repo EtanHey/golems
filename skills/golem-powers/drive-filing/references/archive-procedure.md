@@ -16,7 +16,7 @@ This procedure is for **putting things INTO Drive**. To **query Drive content** 
 │  ────────────                                                │
 │  • Forever storage (free up to 15GB; user has the quota)     │
 │  • All versions, heavy assets, raw research outputs          │
-│  • Path: Brain Drive/06_ARCHIVE/<area>/<topic>/<date>/...    │
+│  • Path: Brain Drive/06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>/ │
 │  • Source of truth — if it's only in docs.local/, it isn't   │
 │    durable                                                   │
 └──────────────────────────────────────────────────────────────┘
@@ -54,12 +54,15 @@ Run this procedure when:
 1. **Pre-write hint:** about to save anything >100KB to `docs.local/research/`, `docs.local/audits/`, or `docs.local/plans/` — especially if it contains transcripts, audio, video, or large logs.
 2. **Explicit user request:** "save this to Drive", "archive this", "this should be in Brain Drive", "put this in the archive".
 3. **Post-digest:** a research output has been `brain_digest`'d into BrainLayer and the raw file is a candidate for archival (BrainLayer indexes it; Drive holds the original).
-4. **/tmp cleanup:** about to `rm -rf /tmp/<heavy-stuff>` — if any of it is forever-knowledge, route it through this procedure first.
+4. **/tmp cleanup:** about to `rm -rf /tmp/<heavy-stuff>` — if any of it is forever-knowledge, route it through this procedure first; removing the rest follows step 1's rule-5 row.
 
 **Skip this procedure** when:
 - The artifact is genuinely ephemeral (CLI test output, throwaway diff, audit prompt that's already digested).
 - The content is already covered by another archive flow (e.g. PR merges live in git, not Drive).
 - File is <100KB markdown that's the canonical doc kept in `docs.local/` (no need to upload markdown notes).
+
+Skipping the archive is never permission to delete. Removal follows step 1's rule-5 row below or the
+step 7 gate.
 
 ---
 
@@ -72,15 +75,16 @@ Ask: **"Will future-Etan or another agent want to re-read this raw artifact a mo
 | Answer | Action |
 |---|---|
 | Yes (transcripts, audits, plans, research outputs, media) | Forever → continue to step 2. |
-| No (intermediate processing files, throwaway logs, regeneratable derivatives) | Skip. Just delete after use. Note the choice in commit message or BrainLayer. |
+| No (intermediate processing files, throwaway logs, regeneratable derivatives) | Not archived. You may remove it only if you made it yourself in the current lane, under rule 5 of [../SKILL.md § Archiving convention](../SKILL.md#archiving-convention-brain-drive-and-icloud-both-macs) (you own it; deleting is a one-way door, so record what you removed and how to regenerate it in the ledger or CLEANUP RECEIPT). Anything else goes to its owner or through the step 7 rule 2 gate. |
 | Mixed (e.g. `audio.wav` keep, `audio-16k.wav` derivative skip) | Upload only the originals. Document which derivatives are regeneratable + how. |
 
 ### 2. Resolve the Drive archive path
 
-Default convention (matches `Brain Drive/06_ARCHIVE/repos/union-2026-04/` precedent):
+Default convention (the date level is always `YYYY-MM-DD`, a tag only as its suffix; older folders such as
+`repos/union-2026-04/` predate this, so match their topic, not their shape):
 
 ```
-Brain Drive/06_ARCHIVE/<area>/<topic>/<date-or-tag>/<artifact-folder>/
+Brain Drive/06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>[-<tag>]/<artifact-folder>/
 ```
 
 | `<area>` | When |
@@ -135,7 +139,7 @@ Path: `docs.local/<area>/<topic>/_DRIVE-LEDGER.md`
 | File | Local path | Drive folder | Drive ID | Drive URL | Size | BrainLayer chunk | Uploaded |
 |---|---|---|---|---|---|---|---|
 | transcript.txt | docs.local/.../transcript.txt | <folder-id> | <file-id> | <link> | 30KB | brainbar-... | 2026-04-25 13:01 |
-| audio.wav | (deleted from /tmp after upload) | <folder-id> | <file-id> | <link> | 312MB | n/a | 2026-04-25 13:08 |
+| audio.wav | (local copy deleted after the step 7 check: manifest hashes + restore) | <folder-id> | <file-id> | <link> | 312MB | n/a | 2026-04-25 13:08 |
 
 ## Skipped (regeneratable derivatives)
 - `audio-16k.wav` — 16kHz mono downsample of `audio.wav` for whisper-cli. Regenerate via `ffmpeg -i audio.wav -ar 16000 -ac 1 audio-16k.wav`.
@@ -148,10 +152,12 @@ The ledger is what lets a future agent answer **"where is the original?"** witho
 Only after:
 - The unit's `MANIFEST.json` is uploaded with it and the ledger entry points at it.
 - The pre-delete check in [archiving-convention.md](archiving-convention.md#before-deleting-a-local-copy-rule-2)
-  passes: `listFolder` shows every manifest file at its byte count, the manifest hashes match the
-  local copy, and one file restored from Drive hashes to its manifest value. A name match is not proof.
+  passes: `listFolder` shows every manifest file at its byte count, every local file being deleted
+  hashes to its manifest value, and one file restored from Drive hashes to its manifest value. A name
+  match is not proof.
+- You own the data (rule 5).
 
-Markdown notes <100KB stay in `docs.local/` (they're the latest cache). Heavy media (>10MB audio/video) can be deleted locally — Drive is the canonical copy.
+Markdown notes <100KB stay in `docs.local/` (they're the latest cache). Heavy media (>10MB audio/video) can be deleted locally once every condition above holds — Drive is then the canonical copy.
 
 ### 8. brain_store the decision (optional, for non-trivial archives)
 
@@ -184,7 +190,7 @@ Skip for routine archives (one transcript, one report). Store for unusual decisi
 
 - **`/research-lifecycle`** — when condensing/archiving stale research files, use this procedure to push originals to Drive before deleting locally.
 - **`/qa-video`** — video gems and QA processing produce transcripts, frames, and heavy media; this procedure is where they land long-term. The qa-video gems output is in `/tmp/` by default; route to Drive on completion.
-- **`/large-plan`** — when a plan completes, archive the full plan folder to `Brain Drive/06_ARCHIVE/plans/<name>-<date>/`.
+- **`/large-plan`** — when a plan completes, archive the full plan folder to `Brain Drive/06_ARCHIVE/plans/<name>/<YYYY-MM-DD>/` (step 7 gate before any local delete).
 - **Nightly sweep** — scan `docs.local/` for >100KB files lacking ledger entries and prompt to archive.
 
 ---
@@ -206,7 +212,7 @@ Skip for routine archives (one transcript, one report). Store for unusual decisi
 - Files: N text + M media (X MB / Y GB total)
 - BrainLayer chunks: <chunk_id_1>, <chunk_id_2>
 - Ledger: docs.local/<area>/<topic>/_DRIVE-LEDGER.md
-- Local cleanup: deleted /tmp/<...> (X GB freed) | retained markdown (<size>)
+- Local cleanup: deleted <path> after the step 7 check or under rule 5 (X GB freed, diskutil container free) | retained markdown (<size>)
 - Skipped derivatives: <list> (regenerate via <command>)
 ```
 

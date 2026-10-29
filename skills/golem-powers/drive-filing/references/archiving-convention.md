@@ -25,7 +25,10 @@ Write it before the upload, upload it inside the unit, and point the `_DRIVE-LED
 - `files[].bytes` is the real byte count (`stat -f%z <file>`); `sha256` comes from `shasum -a 256 <file>`.
 - `host` is the machine that produced the unit (`hostname -s`), so a restore knows where the source lived.
 - Every file in the unit is listed. A file that is skipped as a regenerable derivative is named in the
-  ledger's Skipped section with its rebuild command, not in `files`.
+  ledger's Skipped section with its rebuild command, not in `files`. Removing it locally is a rule 5
+  decision (you made it in this lane), never something the archive implies.
+- Every archive unit has one, including docs.local rollup units: `rollup.mjs` does not emit it yet, so
+  the agent writes it by hand before the upload. The rollup plan is not a substitute.
 
 ## Before deleting a local copy (rule 2)
 
@@ -53,11 +56,12 @@ inflate them), so neither proves that a cleanup freed anything. Report the befor
 
 | Point | Convention draft | Skill before | Decision |
 |---|---|---|---|
-| Drive path | `06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>/` | `…/<date-or-tag>/` | The skill's layout wins. The date level is now always `YYYY-MM-DD`; a tag becomes a suffix (`2026-10-29-pre-refactor`). |
+| Drive path | `06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>/` | `…/<date-or-tag>/` | The skill's layout wins. The date level is now always `YYYY-MM-DD`; a tag becomes a suffix (`2026-10-29-pre-refactor`). Applied in SKILL.md step 2 and archive-procedure step 2 and `/large-plan`. The one named exception is the rollup month unit below. |
 | Unit folder name | `<YYYY-MM-DD>-<topic>` | topic folders `<topic>-<domain>/` | Both. Topic folders stay undated containers. A unit that sits flat (a docs.local lane, iCloud, local staging) is `<YYYY-MM-DD>-<topic>`. On Drive the date is its own level, so the path carries it. |
 | iCloud path | `Archive/<YYYY>/<topic>/` | none | `Archive/<YYYY>/<YYYY-MM-DD>-<topic>/`: the year folder from the table, the unit name from the naming rule. |
-| docs.local rollup | none | `06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>` | Unchanged. `rollup.mjs` owns month units; its plan files are the manifest-equivalent for that flow until it emits MANIFEST.json (follow-up). |
-| Local delete gate | manifest hashes + one-file restore | `listFolder` + ledger row | The convention wins: archive procedure step 7 now requires both. |
+| docs.local rollup | none | `06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>` | Month layout kept as a named exception to the date level. No manifest exemption: the plan has paths and sizes only, so the agent writes each unit's MANIFEST.json by hand before upload until `rollup.mjs` emits it (follow-up). |
+| Local delete gate | manifest hashes + one-file restore | `listFolder` + ledger row | The convention wins: archive procedure step 7 now requires the manifest, every local file's hash, presence and a one-file restore. |
+| Not-archived files | rule 5 | "Skip. Just delete after use." | The convention wins: only your own files from the current lane, under rule 5; anything else goes to its owner or the rule 2 gate. |
 | docs.local deletability | n/a | "safe to delete, recoverable from Drive" | Only after the rule 2 check and with ownership (rule 5). |
 
 ## Follow-up rows (not built here)

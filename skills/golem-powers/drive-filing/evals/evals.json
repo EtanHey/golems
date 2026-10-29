@@ -5,7 +5,7 @@
     {
       "id": 1,
       "prompt": "I just finished a 40-page audit and three research prompts in docs.local/. Where should each go in Brain Drive, and what should they be named?",
-      "expected_output": "Uses the Brain Drive folder model and decision tree: research prompts/results to 03_RESEARCH/Active/<topic>/, the finished heavy audit through the archive procedure to 06_ARCHIVE/audits/<topic>/<date>/, date-prefixed kebab-case names, and a _DRIVE-LEDGER.md pointer left in docs.local/.",
+      "expected_output": "Uses the Brain Drive folder model and decision tree: research prompts/results to 03_RESEARCH/Active/<topic>/, the finished heavy audit through the archive procedure to 06_ARCHIVE/audits/<topic>/<YYYY-MM-DD>/, date-prefixed kebab-case names, and a _DRIVE-LEDGER.md pointer left in docs.local/.",
       "files": [],
       "assertions": [
         {"name": "routes-research-to-03", "description": "Research prompts/results go to 03_RESEARCH/Active/<topic>/"},
@@ -16,12 +16,12 @@
     {
       "id": 2,
       "prompt": "Archive this: a 300MB interview recording, its transcript, and a 16kHz downsample I made for whisper.",
-      "expected_output": "Runs the archive procedure: uploads the original recording and the transcript (not the regeneratable downsample, which is listed with its ffmpeg command), brain_digests the transcript, writes the _DRIVE-LEDGER.md row, and deletes the local heavy copy only after the ledger is written and the archiving-convention rule 2 check passes (MANIFEST.json hashes match and one file restored).",
+      "expected_output": "Runs the archive procedure: uploads the original recording and the transcript (not the regeneratable downsample, which is listed with its ffmpeg command), brain_digests the transcript, writes the _DRIVE-LEDGER.md row, and deletes the local heavy copy only after the ledger is written, MANIFEST.json is uploaded with the unit, listFolder shows every manifest file at its byte count, every local file being deleted hashes to its manifest value, and one file restored from Drive hashes to its manifest value.",
       "files": [],
       "assertions": [
         {"name": "originals-only", "description": "Uploads originals; lists the downsample as regeneratable instead of uploading it"},
         {"name": "digests-transcript", "description": "brain_digest runs on the transcript"},
-        {"name": "delete-after-verify", "description": "Local deletion only after the ledger is written, listFolder shows every manifest file at its byte count, and a one-file restore hashes to its manifest value"}
+        {"name": "delete-after-verify", "description": "Local deletion only after the ledger is written, MANIFEST.json is uploaded, listFolder shows every manifest file at its byte count, EVERY local file being deleted (recording and transcript alike) is re-hashed and matches its manifest SHA-256, and a one-file restore hashes to its manifest value; restoring or hashing only one file is not enough"}
       ]
     },
     {
@@ -53,8 +53,10 @@
       "files": [],
       "assertions": [
         {"name": "name-match-is-not-proof", "description": "States that a same-named folder on Drive proves nothing"},
-        {"name": "manifest-hash-check", "description": "Requires MANIFEST.json SHA-256 hashes to match before deleting"},
-        {"name": "one-file-restore", "description": "Requires restoring one file from the archive and re-hashing it before deleting"}
+        {"name": "manifest-hash-check", "description": "Requires every local file being deleted to be re-hashed and match its MANIFEST.json SHA-256 before deleting"},
+        {"name": "every-file-present", "description": "Requires listFolder to show every manifest file at its manifest byte count"},
+        {"name": "one-file-restore", "description": "Requires restoring one file from the archive and re-hashing it before deleting"},
+        {"name": "rule-5-ownership", "description": "Deleting the nonempty local copy also needs an owner (or an archive proof / operator go-ahead) under rule 5; it is a one-way door"}
       ]
     },
     {
