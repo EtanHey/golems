@@ -411,7 +411,7 @@ test("routing check covers model names, assignments, clause boundaries and gener
     writeFileSync(canonPath, `${CANON_START}\n${text}\n${CANON_END}`);
     expect(lintCanonDrift({ canonPath, installedPath, check: true }).exitCode, text).toBe(1);
   }
-  for (const text of ["A gatherer never implements, reviews or decides.", "The reviewer is always the other vendor.", "The reviewer starts only after the implementer reports done.", "Cursor, including cursor-agent, is Auto-only: never pass a model flag or field.", "Keep to at most 10 active Claude leads fleet-wide, staggered.", "Blue sky; reviewers record defects.", "Codex gathers; the reviewer is the other vendor.", "Claude orchestrates. The implementer reports done.", "Codex gathers\n\nThe reviewer reports done.", "Solution, lunar, terrestrial, blueprints."]) {
+  for (const text of ["A gatherer never implements, reviews or decides.", "The reviewer is always the other vendor.", "The reviewer starts only after the implementer reports done.", "Cursor, including cursor-agent, is Auto-only: never pass a model flag or field.", "Keep to at most 5 parallel Claude lead tracks fleet-wide, staggered.", "Blue sky; reviewers record defects.", "Codex gathers; the reviewer is the other vendor.", "Claude orchestrates. The implementer reports done.", "Codex gathers\n\nThe reviewer reports done.", "Solution, lunar, terrestrial, blueprints."]) {
     writeFileSync(canonPath, `${CANON_START}\n${text}\n${CANON_END}`);
     expect(lintCanonDrift({ canonPath, installedPath, check: true }).exitCode, text).toBe(0);
   }
