@@ -115,8 +115,14 @@ describe("local-run.sh PR body forwarding", () => {
     stub("python3", ":");
     stub("node", `
       case "$1" in
-        */install-hooks.mjs) echo 'fixture installer' ;;
+        -e) exec "$REAL_NODE" "$@" ;;
+        --version) echo 'v22.0.0-fixture' ;;
+        */install-hooks.mjs)
+          sh -c 'command -v node' > "$FIXTURE/install-node"
+          echo 'fixture installer' ;;
         */run-rows.mjs)
+          sh -c 'command -v node' > "$FIXTURE/rows-node"
+          printf '%s' "$PATH" > "$FIXTURE/rows-path"
           while [ "$1" != --out ]; do shift; done
           echo '{}' > "$2" ;;
         */table.mjs) printf '%s\\n' "$@" > "$FIXTURE/table-args" ;;
@@ -126,11 +132,35 @@ describe("local-run.sh PR body forwarding", () => {
     writeFileSync(join(path, "fetched-body.md"), body);
     const invoke = (args = [], env = {}) => spawnSync("bash", [join(here, "local-run.sh"), "--pr", "763", ...args], {
       encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, HOME: join(path, "home"),
-        GH_TOKEN: "fixture-token", FIXTURE: path, FIXTURE_HEAD: H, BODY_FETCH_FAIL: "0", ...env },
+        GH_TOKEN: "fixture-token", FIXTURE: path, FIXTURE_HEAD: H, BODY_FETCH_FAIL: "0",
+        REAL_NODE: execFileSync("sh", ["-c", "command -v node"], { encoding: "utf8" }).trim(), ...env },
     });
     const tableArgs = () => readFileSync(join(path, "table-args"), "utf8").trim().split("\n");
     return { path, body, invoke, tableArgs };
   }
+
+  test("HOME-sensitive shim cannot split install and row Node resolution or truncate PATH", () => {
+    const f = fixture();
+    const shim = join(f.path, "shim"), native = join(f.path, "native node");
+    mkdirSync(shim); mkdirSync(native);
+    copyFileSync(join(f.path, "bin/node"), join(native, "node"));
+    // Model Vite+: launching under real HOME prepends its native runtime; scratch
+    // HOME leaves the shim first. The initial resolution must happen before HOME changes.
+    writeFileSync(join(shim, "node"), `#!/usr/bin/env bash
+if [ "$HOME" = "$FIXTURE/home" ]; then export PATH="$FIXTURE/native node:$PATH"; fi
+exec "$FIXTURE/native node/node" "$@"
+`, { mode: 0o755 });
+    const callerPath = `${shim}:${join(f.path, "bin")}:${process.env.PATH}`;
+    const out = f.invoke(["--no-post"], { PATH: callerPath });
+    expect(out.status).toBe(0);
+    const selected = join(native, "node");
+    expect(readFileSync(join(f.path, "install-node"), "utf8").trim()).toBe(selected);
+    expect(readFileSync(join(f.path, "rows-node"), "utf8").trim()).toBe(selected);
+    expect(readFileSync(join(f.path, "rows-path"), "utf8")).toBe(`${native}:${callerPath}`);
+    const log = out.stdout.match(/local-run: run dir (.+)/)[1];
+    expect(readFileSync(join(log, "node.log"), "utf8")).toContain(selected);
+    expect(readFileSync(join(log, "node.log"), "utf8")).toContain("v22.0.0-fixture");
+  });
 
   test("post mode fetches the exact PR body and forwards its run file, overriding a supplied body", () => {
     const f = fixture();

@@ -7,9 +7,12 @@
   ],
   "upstreams": [
     {
-      "url": "https://github.com/anthropics/skills.git",
+      "url": "https://github.com/anthropics/claude-plugins-official.git",
       "ref": "refs/heads/main",
-      "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44"
+      "commit": "f8c5e7a1dcb71b10cb74586224b5401f3de5db28",
+      "skillsRoot": "plugins/frontend-design/skills",
+      "pluginMetadata": "plugins/frontend-design/.claude-plugin/plugin.json",
+      "version": "1.1.1"
     },
     {
       "url": "https://github.com/emilkowalski/skills.git",

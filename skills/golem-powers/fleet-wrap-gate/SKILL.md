@@ -66,7 +66,7 @@ the turn's text; live cron/loop truth comes from durable state (`state`, `state_
 hook). A prose claim such as "all crons deleted" or "cron-count=0" is NEVER trusted over
 durable live state. DETERMINISTIC: same transcript/state in → same verdict out.
 
-**Cleanup receipt (cleanliness standard Mechanism 1, 2026-09-28).** Cleanup is part of done:
+**Cleanup receipt (cleanliness standard Mechanism 1, 2026-09-28).** Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](../_shared/lifecycle/CONTRACT.md); record REMOVED, RETAINED or acknowledged TRANSFERRED. It owns receipt meaning and eligibility; this gate checks existing field presence, not retirement proof. Cleanup is part of done:
 every lane DONE ends with a `CLEANUP RECEIPT` (worktree / branch / files outside src+tests /
 docs.local this lane created). `FLEETWRAP_CLEANUP_RECEIPT_MISSING` is an advisory like the cron
 codes, never a Stop block (GO-5 E2), and it is independent of the terminal-state test: a worker's

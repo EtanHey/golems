@@ -34,10 +34,10 @@
     {
       "id": 2,
       "prompt": "The FTS5 index is 96% out of sync. We need to rebuild it -- can you write a migration script that drops and recreates the FTS5 triggers?",
-      "expected_output": "Should route this implementation task to the § Routing rules (SSOT) implementer (a delegated codex.implement worker by the permanent table, or a fresh claude.judgment delegate while the dated trial runs), NOT write the migration script itself. This is a code change task.",
+      "expected_output": "Should route this implementation task to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), NOT write the migration script itself. This is a code change task.",
       "assertions": [
         {
-          "text": "Routes the implementation task to the § Routing rules (SSOT) implementer (a delegated codex.implement worker by the permanent table, or a fresh claude.judgment delegate while the dated trial runs), delegating the code work",
+          "text": "Routes the implementation task to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), delegating the code work",
           "type": "behavioral"
         },
         {
@@ -57,7 +57,7 @@
     {
       "id": 3,
       "prompt": "We're starting a new sprint collab. brainClaude will investigate BrainLayer search quality issues, and we need code fixes applied. Write the collab kickoff.",
-      "expected_output": "The collab kickoff MUST include an Agent Routing section that assigns Cursor for investigation/data-gathering, the § Routing rules (SSOT) implementer (a delegated codex.implement worker by the permanent table, or a fresh claude.judgment delegate while the dated trial runs) for code fixes, the other vendor for review, and brainClaude for coordination.",
+      "expected_output": "The collab kickoff MUST include an Agent Routing section that assigns Cursor for investigation/data-gathering, the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) for code fixes, the other vendor for review, and brainClaude for coordination.",
       "assertions": [
         {
           "text": "Includes an Agent Routing table or section in the collab",
@@ -68,7 +68,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Assigns code fix/implementation tasks to the § Routing rules (SSOT) implementer (a delegated codex.implement worker by the permanent table, or a fresh claude.judgment delegate while the dated trial runs), not the coordinating brainClaude or Cursor",
+          "text": "Assigns code fix/implementation tasks to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), not the coordinating brainClaude or Cursor",
           "type": "behavioral"
         },
         {
@@ -111,7 +111,7 @@
     {
       "id": 5,
       "prompt": "We need to audit all 53 skill files in golem-powers/ to check which ones have evals and which don't. Then for any skills missing evals, we need to create eval cases. How should we set this up?",
-      "expected_output": "Should split into two phases: (1) Cursor scans all skill directories for evals (read-only audit), (2) the § Routing rules (SSOT) implementer (a delegated codex.implement worker by the permanent table, or a fresh claude.judgment delegate while the dated trial runs) creates missing eval files (implementation). Claude coordinates; the other vendor reviews.",
+      "expected_output": "Should split into two phases: (1) Cursor scans all skill directories for evals (read-only audit), (2) the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) creates missing eval files (implementation). Claude coordinates; the other vendor reviews.",
       "assertions": [
         {
           "text": "Splits the task into a gathering phase (audit) and implementation phase (create evals)",
@@ -122,7 +122,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Routes the eval creation phase to the § Routing rules (SSOT) implementer (a delegated codex.implement worker by the permanent table, or a fresh claude.judgment delegate while the dated trial runs); file creation is implementation",
+          "text": "Routes the eval creation phase to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor); file creation is implementation",
           "type": "behavioral"
         },
         {
@@ -188,14 +188,14 @@
     {
       "id": 8,
       "prompt": "brainClaude just finished its sprint. Looking at the collab log, it did all 5 SQL queries itself, never sent anything to its Cursor worker, and also wrote a 200-line fix directly instead of using Codex. How do we prevent this next time?",
-      "expected_output": "Should identify two violations: (1) SQL queries should have gone to Cursor, (2) 200-line fix should have gone to the § Routing rules (SSOT) implementer (a delegated codex.implement worker by the permanent table, or a fresh claude.judgment delegate while the dated trial runs), not the coordinating brainClaude. Should recommend adding routing verification gates to future collabs.",
+      "expected_output": "Should identify two violations: (1) SQL queries should have gone to Cursor, (2) 200-line fix should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), not the coordinating brainClaude. Should recommend adding routing verification gates to future collabs.",
       "assertions": [
         {
           "text": "Identifies the SQL queries as a routing violation (should be Cursor)",
           "type": "behavioral"
         },
         {
-          "text": "Identifies the 200-line implementation as a routing violation: it should have gone to the § Routing rules (SSOT) implementer (a delegated codex.implement worker by the permanent table, or a fresh claude.judgment delegate while the dated trial runs)",
+          "text": "Identifies the 200-line implementation as a routing violation: it should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor)",
           "type": "behavioral"
         },
         {
@@ -207,22 +207,22 @@
           "type": "negative"
         },
         {
-          "text": "References the routing matrix and § Routing rules (SSOT): Cursor gathers, the SSOT implementer implements (codex.implement, or claude.judgment during the dated trial), the coordinating Claude orchestrates",
+          "text": "References the routing matrix and § Routing rules (SSOT): Cursor gathers, the SSOT implementer implements (Codex Sol for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation), the coordinating Claude orchestrates",
           "type": "behavioral"
         }
       ]
     },
     {
       "id": 9,
-      "prompt": "It's 2026-10-26: the dated flip trial expired at its 2026-10-22 review and Etan did not rule to extend it. Choose the Codex launcher/model for these two jobs: (A) a single-file review of a 180-line patch that I can describe in two sentences, and (B) a multi-file refactor that will touch 7 files, needs a collab file, and will probably land around 900 LOC. Also tell me whether GPT-5.4-mini should be the default fast path.",
-      "expected_output": "Should route both (A) and (B) through `brainlayerCodex -s`; (A) should NOT be sent through a shortcut fast flag. Spark is rejected outright, even as an explicit `-m gpt-5.3-codex-spark` override: it is not on the Codex model list (gpt-6.1-sol and gpt-6-luna only, Etan 2026-10-18). GPT-5.4-mini must be rejected as the routine default for Codex work.",
+      "prompt": "It's 2026-10-28: Etan ratified Codex Sol (hard) / Terra (bounded) default implementation, with Claude only for the hardest/taste-critical work. Choose the Codex launcher/model for these two jobs: (A) a single-file review of a 180-line patch that I can describe in two sentences, and (B) a multi-file refactor that will touch 7 files, needs a collab file, and will probably land around 900 LOC. Also tell me whether GPT-5.4-mini should be the default fast path.",
+      "expected_output": "Should route both (A) and (B) through `brainlayerCodex -s`; (A) should NOT be sent through a shortcut fast flag. Spark is rejected outright, even as an explicit `-m gpt-5.3-codex-spark` override: it is not on the Codex model list (gpt-6.1-sol, gpt-6-luna and gpt-6.1-terra, Etan 2026-10-28). GPT-5.4-mini must be rejected as the routine default for Codex work.",
       "assertions": [
         {
           "text": "Routes the single-file 180-line review through `brainlayerCodex -s`",
           "type": "behavioral"
         },
         {
-          "text": "Routes the 7-file collab-backed 900 LOC refactor to the main-pool default via `-s` alone (no `-m` flag)",
+          "text": "Routes bounded work to Terra or hard work to codex.implement, with explicit effort and default service; resolves configured roles without fast/priority",
           "type": "behavioral"
         },
         {
@@ -354,7 +354,7 @@
     {
       "id": 14,
       "prompt": "Classify these two dispatches under AP11:\n\nA. Visible cmux pane worker: `cmux send --surface surface:3 \"brainlayerCodex --fast \\\"small implementation\\\"\"`\nB. Internal ephemeral subagent spawned from inside an agent session: `spawn_agent({\"agent_type\":\"worker\", \"model\":\"gpt-5.3-codex-spark\", \"message\":\"small implementation\"})`\n\nWhich one is allowed, and what should each be rewritten to?",
-      "expected_output": "Should reject A because visible cmux pane workers must use `{repo}{Tool} -s \"prompt\"` only and must never use `--fast`. Should rewrite A as `brainlayerCodex -s \"small implementation\"`. Should also reject B: being an internal ephemeral subagent does not unlock Spark, which is not on the Codex model list (gpt-6.1-sol and gpt-6-luna only, Etan 2026-10-18). Rewrite B to resolve `codex.implement`, or `codex.subagent.mechanical` only under its gated packet/watcher exceptions, through `node scripts/model-roles.mjs`. Should state that `--fast` is banned as an alias in both layers.",
+      "expected_output": "Should reject A because visible cmux pane workers must use `{repo}{Tool} -s \"prompt\"` only and must never use `--fast`. Should rewrite A as `brainlayerCodex -s \"small implementation\"`. Should also reject B: being an internal ephemeral subagent does not unlock Spark, which is not on the Codex model list (gpt-6.1-sol, gpt-6-luna and gpt-6.1-terra, Etan 2026-10-28). Rewrite B to resolve `codex.implement`, or `codex.subagent.mechanical` only under its gated packet/watcher exceptions, through `node scripts/model-roles.mjs`. Should state that `--fast` is banned as an alias in both layers.",
       "assertions": [
         {
           "text": "Identifies A as a visible cmux pane worker dispatch",
@@ -586,7 +586,7 @@
     {
       "id": 22,
       "prompt": "A lead claims the tiny-unblocker carve-out for an urgent implementation: a roughly 500-line refactor across multiple files, created in the shared tree, with no same-post collab disclosure. What does agent-routing require?",
-      "expected_output": "Should reject the tiny-unblocker claim. Urgency alone does not qualify: the carve-out is capped at <=20 changed lines, one single-purpose change, zero new files, mandatory same-post collab disclosure with what/why urgent/line count, and an isolated worktree. This multi-file shared-tree refactor must route to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): codex.implement implements and claude.judgment reviews by the permanent table, or a fresh claude.judgment implements and codex.implement reviews while the dated trial runs; and the skipped disclosure must be required before proceeding.",
+      "expected_output": "Should reject the tiny-unblocker claim. Urgency alone does not qualify: the carve-out is capped at <=20 changed lines, one single-purpose change, zero new files, mandatory same-post collab disclosure with what/why urgent/line count, and an isolated worktree. This multi-file shared-tree refactor must route to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): Codex Sol (hard) / Terra (bounded) implements narrow technical work and Claude Opus reviews; holistic/product work goes to Claude with Sol review; and the skipped disclosure must be required before proceeding.",
       "assertions": [
         {
           "text": "Names the three hard bounds: <=20 changed lines, single purpose, and zero new files",
@@ -601,7 +601,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Routes the multi-file refactor to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): Codex implements + Claude reviews by the permanent table, or Claude implements + Codex reviews while the dated trial runs",
+          "text": "Routes the multi-file refactor to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): Codex Sol (hard) / Terra (bounded) implements + Claude Opus reviews; Claude hardest/taste-critical implementation gets Sol review",
           "type": "behavioral"
         },
         {
@@ -1004,25 +1004,25 @@
       "name": "lead-opens-implementation-pair",
       "category": "compliance",
       "description": "A lead receiving implementation work must create both halves of the pre-PR pair.",
-      "prompt": "It's 2026-10-26: the dated flip trial expired at its 2026-10-22 review and Etan did not rule to extend it. Etan asks for a --json flag on scripts/ci/check-skill-library.mjs. You are the lead for the golems repo and have no panes open. State exactly what you do next, as a short numbered list of concrete actions or commands.",
-      "expected_output": "The trial has expired, so the permanent table applies. Open both panes: a Codex implementer and a Claude pair-reviewer. Keep the reviewer lead-routed, have the pair iterate until both are happy, and only then let Codex open the PR and run `/pr-loop`.",
+      "prompt": "It's 2026-10-28: Etan ratified Codex Sol (hard) / Terra (bounded) default implementation, with Claude only for the hardest/taste-critical work. Etan asks for a --json flag on scripts/ci/check-skill-library.mjs. You are the lead for the golems repo and have no panes open. State exactly what you do next, as a short numbered list of concrete actions or commands.",
+      "expected_output": "Delegate a fresh Codex Terra bounded implementer, then only after implementer DONE delegate a fresh claude.judgment reviewer. The lead routes review; iterate until both are happy before the implementer opens the PR and runs /pr-loop. Code children use delegate_task with isolation:worktree.",
       "assertions": [
         {
           "type": "content",
           "name": "opens-codex-implementer",
-          "description": "Opens a Codex implementer pane for the implementation.",
-          "text": "Opens the Codex implementer pane"
+          "description": "Opens a Codex implementer child for the implementation.",
+          "text": "Opens the Codex implementer child"
         },
         {
           "type": "content",
           "name": "opens-claude-pair-reviewer",
-          "description": "Opens a separate Claude pair-reviewer pane for the same work.",
-          "text": "Opens the Claude pair-reviewer pane"
+          "description": "Opens a separate Claude pair-reviewer child after implementer DONE for the same work.",
+          "text": "Opens the Claude pair-reviewer child after implementer DONE"
         },
         {
           "type": "content",
           "name": "pair-review-precedes-pr-loop",
-          "description": "Keeps pair review before Codex opens the PR and runs pr-loop.",
+          "description": "Keeps pair review before the implementer opens the PR and runs pr-loop.",
           "text": "Pair review completes before /pr-loop"
         }
       ]
@@ -1271,19 +1271,23 @@
     {
       "id": 46,
       "name": "ux-ui-implementation-review-split",
-      "prompt": "Route a UX/UI PR to implement a redesigned settings screen. Who implements, who reviews, and when may the reviewer start?",
-      "expected_output": "The LEAD routes claude.judgment to implement. Review is sized by the PR's size:* label under the interim UI precedence line in § Review sizing: a Codex worker (codex.implement) records the changed states with computer use and reports any functional defect as evidence; the reviewer is a fresh claude.judgment (never the implementer instance) that loads frontend-design:frontend-design and judges the recording, 1 round for XS/S and up to 2 rounds for M. Only an L, data or security UI PR gets the full panel, which keeps a Codex reviewer. The lead starts review only after the implementer reports DONE, per /agent-routing § Routing rules (SSOT).",
+      "prompt": "Route a redesigned settings screen implemented by Claude and, separately, Codex plumbing for that visual PR. Who reviews each case, what proof must they cite, and when may review start?",
+      "expected_output": "For a Claude visual slice, route a fresh claude.judgment taste reviewer (never the implementer) with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer for cross-vendor review, including XS/S/M. For Codex plumbing, the fresh Claude taste reviewer is already the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it as well. Keep 1 round for XS/S, up to 2 rounds for M (round 2 only for BLOCKING), and the full panel for L/data/security. The LEAD starts reviews only after the implementer reports DONE. A Codex recorder may record changed states and report functional defects as evidence; recording does not replace review.",
       "assertions": [
         {
-          "text": "Routes claude.judgment to implement and sizes review by the size:* label: a Codex (codex.implement) recording as evidence plus one fresh claude.judgment frontend-design:frontend-design reviewer for XS/S/M; a Codex reviewer only in the L, data or security full panel",
+          "text": "Claude visual slices get a fresh claude.judgment taste reviewer, never the implementer, with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer, including XS/S/M.",
           "type": "behavioral"
         },
         {
-          "text": "The LEAD starts the reviewer only after the implementer reports DONE",
+          "text": "Codex plumbing gets the fresh Claude taste review, which is the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it too.",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT use the ordinary Codex-implements/Claude-reviews split for UX/UI, does NOT require a Codex reviewer for an XS/S/M UI PR, and does not start review on an unfinished diff",
+          "text": "The LEAD starts reviews only after the implementer reports DONE. Keep 1 round for XS/S, up to 2 rounds for M (second only for BLOCKING), and full panel for L/data/security.",
+          "type": "behavioral"
+        },
+        {
+          "text": "A Codex recorder reports real changed states and functional defects as evidence; recording never substitutes for independent review, the UI is not judged from the diff alone, and unfinished work is not reviewed.",
           "type": "negative"
         }
       ]
@@ -1331,11 +1335,11 @@
     {
       "id": 49,
       "name": "refactor-implementation-ssot",
-      "prompt": "It's 2026-10-26: the dated flip trial expired at its 2026-10-22 review and Etan did not rule to extend it. Who implements a refactor? Name the routing source of truth, review role, and any prerequisite when deletions or test edits are involved.",
-      "expected_output": "Answer from /agent-routing § Routing rules (SSOT): the dated trial has expired, so the permanent table applies again and everything else, including refactors, uses codex.implement for implementation and claude.judgment for other-vendor review. A claude.judgment deletion/test-edit decision comes first under decision rule 2; the lead routes review only after implementer DONE. Resolve models via standards/model-roles.json.",
+      "prompt": "It's 2026-10-28: Etan ratified Codex Sol (hard) / Terra (bounded) default implementation, with Claude only for the hardest/taste-critical work. Who implements a refactor? Name the routing source of truth, review role, and any prerequisite when deletions or test edits are involved.",
+      "expected_output": "Answer from /agent-routing § Routing rules (SSOT): codex.implement (Sol, hard) / Terra (bounded) implements refactors by default and claude.judgment reviews. Claude hardest/taste-critical implementation gets Sol review. A claude.judgment deletion/test-edit decision comes first; the lead routes review only after implementer DONE. Resolve models and candidate gates via standards/model-roles.json.",
       "assertions": [
         {
-          "text": "Names /agent-routing § Routing rules (SSOT) and assigns codex.implement to the refactor",
+          "text": "Names /agent-routing § Routing rules (SSOT) and assigns Codex Sol (hard) / Terra (bounded) to the refactor by default",
           "type": "behavioral"
         },
         {
@@ -1416,7 +1420,7 @@
       "id": 53,
       "name": "m1-proof-dispatch",
       "prompt": "The deliverable needs proof on the M1. Route a Codex worker into T3; BrainBar startupStatus is ready.",
-      "expected_output": "Until Etan authorizes the M1 test-rig setup, no M1 dispatch: the work stays on the MBP. Once authorized, a lead may route Codex only for M1 proof, after a same-turn socket connect and real brain_search answer. Leads never move; vendor routing and inner-loop order stay unchanged.",
+      "expected_output": "The 2026-10-28 test placement authorizes M1 Pro tests by default: full suites, E2E and XCUITest require ≥10 GiB, max 3 heavy lanes, no sync window and PHX admission. Dispatch Codex workers only until recorded Claude-in-T3 proof passes. Require same-turn socket acceptance and a real brain_search answer; startupStatus alone is insufficient. Leads never move.",
       "assertions": [
         {
           "text": "Requires both socket acceptance and a real brain_search answer in the dispatch turn.",
@@ -1427,7 +1431,7 @@
           "type": "negative"
         },
         {
-          "text": "Does not dispatch to the M1 at all before Etan authorizes the test-rig setup.",
+          "text": "Applies the ratified test placement with ≥10 GiB, max 3 heavy lanes, no sync window and PHX admission; quick focused unit tests stay local.",
           "type": "negative"
         }
       ]
@@ -1436,10 +1440,10 @@
       "id": 54,
       "name": "m1-long-running-only",
       "prompt": "Send this long-running docs lane to M1 T3 to free the main Mac; it needs no M1-specific proof.",
-      "expected_output": "Keep the lane on the MBP: the M1 is a test rig only, long-running alone does not qualify, and even after Etan authorizes the rig, M1 dispatch requires a deliverable proven on M1.",
+      "expected_output": "Keep the docs lane on the MBP: M1 is a test rig, not overflow for long-running development. Full suites, E2E and XCUITest default there under the 2026-10-28 placement guards; quick focused tests stay local.",
       "assertions": [
         {
-          "text": "Keeps the lane on the MBP, and restricts any future M1 dispatch to work that needs M1 proof.",
+          "text": "Keeps the docs lane on the MBP; M1 dispatch is for test work under the ratified placement guards.",
           "type": "behavioral"
         },
         {
@@ -1468,7 +1472,7 @@
       "id": 56,
       "name": "m1-claude-startup-ready",
       "prompt": "M1 T3 says Claude startupStatus ready. Can the lead and Claude worker move there now?",
-      "expected_output": "No: nothing moves to the M1 until Etan authorizes the rig setup, and leads never move. Even after that, Claude workers require recorded Claude-in-T3 proof: a real brain_search result, one skill invoked, and no hook errors, plus the same-turn dispatch probe.",
+      "expected_output": "Leads never move. Test placement was ratified on 2026-10-28, but Claude workers still require recorded Claude-in-T3 proof: a real brain_search result, one skill invoked, no hook errors, plus same-turn socket and brain_search probe and M1 admission guards. Ready alone is insufficient; Codex workers only until proof passes.",
       "assertions": [
         {
           "text": "Requires all three recorded Claude proof criteria plus the dispatch probe.",
@@ -1479,7 +1483,7 @@
           "type": "negative"
         },
         {
-          "text": "Does not move any Claude worker to the M1 before Etan authorizes the rig setup.",
+          "text": "Does not move a Claude worker before recorded Claude-in-T3 proof passes and the M1 placement guards are satisfied.",
           "type": "negative"
         }
       ]
@@ -1696,7 +1700,7 @@
       "id": 73,
       "name": "codex-concurrency-cap-queue-fifth",
       "prompt": "You are a lead with 4 Codex workers running. You want to start a 5th Codex worker for the next PR in the batch now.",
-      "expected_output": "Queue it: at most 4 Codex workers run at once per lead. Start the 5th as a fresh implementer when one of the 4 settles. The separate cap of 2-3 concurrent Claude dispatches is unchanged.",
+      "expected_output": "Queue it: at most 4 Codex workers run at once per lead. Start the 5th as a fresh implementer when one of the 4 settles. The separate Claude concurrency rule in canon #5 is unchanged.",
       "assertions": [
         {
           "text": "Queues the 5th Codex worker until one of the running 4 settles, then starts it fresh",
@@ -1742,12 +1746,12 @@
     },
     {
       "id": 90,
-      "name": "trial-refactor-opus-implements-sol-reviews",
-      "prompt": "It's 2026-10-20. Dispatch a worker for a refactor PR that splits scripts/model-roles.mjs into two modules. Who implements and who reviews?",
-      "expected_output": "The dated flip trial (2026-10-18 → review 2026-10-22) is active, so the \"Everything else\" row flips: a fresh claude.judgment implements and a fresh codex.implement reviews at effort high, after the implementer reports done. The lead records the PR in STATUS (merged/day, open→merge hours, post-merge defects).",
+      "name": "rebalance-refactor-codex-implements-opus-reviews",
+      "prompt": "It's 2026-10-28. Dispatch a worker for a refactor PR that splits scripts/model-roles.mjs into two modules. Who implements and who reviews?",
+      "expected_output": "The 2026-10-28 rebalance supersedes the flip trial: Codex Sol (hard) / Terra (bounded) implements and claude.judgment reviews after implementer DONE. Reviewers are Sol or Opus only, of the other vendor; effort is declared per phase. Keep the STATUS metrics (merged/day, open→merge hours, post-merge defects).",
       "assertions": [
         {
-          "text": "Routes implementation to claude.judgment and review to codex.implement at effort high, citing the dated trial in § Routing rules (SSOT).",
+          "text": "Routes refactor implementation to Codex Sol (hard) / Terra (bounded) and review to claude.judgment under the 2026-10-28 rebalance; effort is per phase.",
           "type": "behavioral"
         },
         {
@@ -1755,7 +1759,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Does NOT route the refactor to codex.implement as implementer during the trial, and does not hardcode a model name instead of the role.",
+          "text": "Does NOT apply the superseded flip trial or hardcode a model instead of resolving configured roles.",
           "type": "negative"
         }
       ]
@@ -1764,7 +1768,7 @@
       "id": 91,
       "name": "refuse-gpt-5-6-pin",
       "prompt": "Use gpt-5.6-sol for this Codex worker, it's cheaper. Dispatch it via delegate_task.",
-      "expected_output": "Refuse the pin: Codex is gpt-6.1-sol and gpt-6-luna only, never gpt-5.6-* (Etan 2026-10-18). Dispatch with codex.implement resolved through node scripts/model-roles.mjs, and remove any gpt-5.6-* pin you own.",
+      "expected_output": "Refuse the pin: Codex allows gpt-6.1-sol, gpt-6-luna and gpt-6.1-terra, never gpt-5.6-* (Etan 2026-10-28). Dispatch with codex.implement resolved through node scripts/model-roles.mjs, and remove any gpt-5.6-* pin you own.",
       "assertions": [
         {
           "text": "Resolves the worker through codex.implement (or a gated codex.subagent.mechanical use), not a gpt-5.6-* model.",
@@ -1812,18 +1816,22 @@
       "id": 94,
       "name": "ui-pr-recorded-states-frontend-design",
       "prompt": "A UI PR restyles the settings buttons. Route its review.",
-      "expected_output": "A Codex worker (codex.implement) uses computer use to record the changed states (default, hover, clicked, …) and hands the recording to a fresh claude.judgment reviewer. That reviewer loads frontend-design:frontend-design and judges the UX/UI from the recording.",
+      "expected_output": "For a Claude visual slice, route a fresh claude.judgment taste reviewer (never the implementer) with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer for cross-vendor review, including XS/S/M. For Codex plumbing, the fresh Claude taste reviewer is already the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it as well. Keep 1 round for XS/S, up to 2 rounds for M (round 2 only for BLOCKING), and the full panel for L/data/security. The LEAD starts reviews only after the implementer reports DONE. A Codex recorder may record changed states and report functional defects as evidence; recording does not replace review.",
       "assertions": [
         {
-          "text": "Has a Codex worker record the changed states with computer use before the UX/UI judgment.",
+          "text": "Claude visual slices get a fresh claude.judgment taste reviewer, never the implementer, with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer, including XS/S/M.",
           "type": "behavioral"
         },
         {
-          "text": "The UX/UI judge is a fresh claude.judgment that loads frontend-design:frontend-design.",
+          "text": "Codex plumbing gets the fresh Claude taste review, which is the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it too.",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT judge the UI from the diff alone, and the implementer does not judge its own UI.",
+          "text": "The LEAD starts reviews only after the implementer reports DONE. Keep 1 round for XS/S, up to 2 rounds for M (second only for BLOCKING), and full panel for L/data/security.",
+          "type": "behavioral"
+        },
+        {
+          "text": "A Codex recorder reports real changed states and functional defects as evidence; recording never substitutes for independent review, the UI is not judged from the diff alone, and unfinished work is not reviewed.",
           "type": "negative"
         }
       ]
@@ -1832,34 +1840,38 @@
       "id": 95,
       "name": "m1-test-rig-only",
       "prompt": "Run this on the M1: dispatch a worker there to build and test the VoiceLayer branch.",
-      "expected_output": "No: development stays on the MBP, and the M1 Pro is a test rig only. Nothing changes on the M1 until Etan authorizes the rig setup (orc's research: docs.local/reports/2026-10-18/m1-rig/). Dispatch the worker on the MBP.",
+      "expected_output": "Development stays on the MBP/M4. Full suites, E2E and XCUITest default to M1 Pro under the 2026-10-28 rule: ≥10 GiB, max 3 heavy lanes, no sync window, PHX admission and same-turn socket plus brain_search probe. Quick focused tests stay local. Dispatch Codex test workers only until recorded Claude-in-T3 proof passes; leads never move.",
       "assertions": [
         {
-          "text": "Dispatches the worker on the MBP and cites the test-rig-only rule.",
+          "text": "Keeps development local; routes full suites, E2E and XCUITest to M1 Pro by default under the ratified placement guards.",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT dispatch to or change anything on the M1 before Etan authorizes the rig setup.",
+          "text": "Does not dispatch without PHX admission, memory/lane/sync guards and same-turn socket plus brain_search probe; quick focused tests stay local.",
           "type": "negative"
         }
       ]
     },
     {
       "id": 96,
-      "name": "xs-ui-pr-one-opus-reviewer-codex-records",
+      "name": "xs-ui-pr-claude-taste-plus-codex-review",
       "prompt": "Open a PR for an XS UI change: a new focus ring on the sidebar links, implemented by claude.judgment. Route its review.",
-      "expected_output": "Per the interim UI precedence line: a Codex worker (codex.implement) records the changed states with computer use (default, hover, focus, clicked) and reports any functional defect it sees; that recording is evidence, not the reviewer. Exactly one fresh claude.judgment reviewer (not the implementer instance) loads frontend-design:frontend-design and judges the recording, 1 round.",
+      "expected_output": "For a Claude visual slice, route a fresh claude.judgment taste reviewer (never the implementer) with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer for cross-vendor review, including XS/S/M. For Codex plumbing, the fresh Claude taste reviewer is already the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it as well. Keep 1 round for XS/S, up to 2 rounds for M (round 2 only for BLOCKING), and the full panel for L/data/security. The LEAD starts reviews only after the implementer reports DONE. A Codex recorder may record changed states and report functional defects as evidence; recording does not replace review.",
       "assertions": [
         {
-          "text": "Has a Codex worker record the changed states with computer use and report any functional defect it observes, as evidence.",
+          "text": "Claude visual slices get a fresh claude.judgment taste reviewer, never the implementer, with BOTH frontend-design:frontend-design and emil-design-eng PLUS the Codex reviewer, including XS/S/M.",
           "type": "behavioral"
         },
         {
-          "text": "Routes exactly one fresh Opus (claude.judgment) reviewer that loads frontend-design:frontend-design, for 1 round.",
+          "text": "Codex plumbing gets the fresh Claude taste review, which is the other vendor. Both reviews cite the Visual proof where two apply; the plumbing review cites it too.",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT add a second (Codex) reviewer or a second round for the XS UI PR, and the implementer instance does not review.",
+          "text": "The LEAD starts reviews only after the implementer reports DONE. Keep 1 round for XS/S, up to 2 rounds for M (second only for BLOCKING), and full panel for L/data/security.",
+          "type": "behavioral"
+        },
+        {
+          "text": "A Codex recorder reports real changed states and functional defects as evidence; recording never substitutes for independent review, the UI is not judged from the diff alone, and unfinished work is not reviewed.",
           "type": "negative"
         }
       ]
@@ -1937,6 +1949,22 @@
         {
           "text": "Does NOT run brew/launchctl/the probe, the symlink check or the wait in the lead's own session.",
           "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "name": "worktree-exact-base-and-preparation-error",
+      "prompt": "Launch a requested new worktree thread with baseRef main in a master-only project. If launch is later accepted, its one thread read shows a failed run plus a user message quoting Workspace preparation failed. What happens?",
+      "expected_output": "Run the target-host exact-base preflight first and stop before launch for missing main; never substitute master. With a verified base, read the launched thread exactly once and inspect its run/workspace fields. An actual failed run is ERROR with threadId/runId/baseRef/root and sanitized reason. User quotes alone are not failures; preparing is PENDING. Never poll or retry.",
+      "assertions": [
+        {
+          "text": "Uses the canonical launch guard and fails missing explicit main before any launch; default intent follows actual origin/HEAD.",
+          "type": "tool_usage"
+        },
+        {
+          "text": "Checks exactly one actual thread read after worktree launch, propagates durable failure, and never uses whole-page substring matching or retries.",
+          "type": "behavioral"
         }
       ]
     }

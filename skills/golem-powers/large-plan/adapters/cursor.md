@@ -20,23 +20,19 @@ Include: current state, patterns found, gaps, recommendations, file:line referen
 ```bash
 # Text output mode — read-only, no file edits
 cursor agent --output-format text "
-@codebase Audit files changed in phase N (git diff master..HEAD).
+@codebase Audit files changed in phase N (diff the preflight receipt commit against HEAD).
 Report: file path, line number, severity (HIGH/MEDIUM/LOW), issue description.
-" > /tmp/phase-<N>-audit.md
+" > <plan-dir>/phase-<N>-audit.md
 ```
 
 Cursor model selection is owned by fleet canon #1.
 
 ## Worktree Setup (Manual)
 
-Same as Codex — no native worktree support:
-
-```bash
-git worktree add -b feature/phase-<N>-<name> ../wt-phase-<N> master
-cd ../wt-phase-<N>
-bun install --frozen-lockfile   # never symlink node_modules; or npm ci / pnpm install --frozen-lockfile
-cursor agent "phase prompt"
-```
+Use the [canonical worktree launch guard](../../agent-routing/references/worktree-launch.md)
+to verify the actual project root and base commit. In T3 use managed isolation;
+outside T3 pass the receipt's commit OID to authorized manual worktree creation.
+Install dependencies from its lockfile, then launch Cursor in that checkout (Auto).
 
 ## PR Review (Bugbot)
 

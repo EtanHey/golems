@@ -591,7 +591,7 @@ load lib/worktree-gc-fixtures
   holder=$!
   for _ in $(seq 50); do [ -e "$ready" ] && break; sleep 0.1; done
 
-  run env GOLEMS_HEAVY_LOCK="$lock" "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+  run env GOLEMS_HEAVY_LOCK="$lock" "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
   kill "$holder" 2>/dev/null || true
 
   [ -e "$ready" ] &&
@@ -618,7 +618,7 @@ load lib/worktree-gc-fixtures
 
   run env GOLEMS_HEAVY_LOCK="$lock" PROBE_LOCK="$lock" PROBE_OUT="$TEST_ROOT/probe" \
     REAL_GIT="$(command -v git)" PATH="$wrapper_dir:$PATH" \
-    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+    "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · nightly-free-branch · "*"REMOVED"* ]] &&
@@ -782,7 +782,7 @@ make_github_origin() {
   other="$(add_branch_worktree "$repo" no-pr-branch)"
   stub="$TEST_ROOT/gh-stub"
   mkdir -p "$stub"
-  printf '#!/usr/bin/env bash\n[[ " $* " == *" pr list "* && " $* " == *" --repo fixture/open-pr "* ]] || exit 9\necho open-pr-branch\n' > "$stub/gh"
+  printf '#!/usr/bin/env bash\n[[ " $* " == *" pr list "* && " $* " == *" --repo fixture/open-pr "* ]] || exit 9\ncase " $* " in *" --state merged "*) echo "[]";; *) echo open-pr-branch;; esac\n' > "$stub/gh"
   chmod +x "$stub/gh"
 
   run env PATH="$stub:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
@@ -867,7 +867,7 @@ make_github_origin() {
 
   run env GOLEMS_HEAVY_LOCK="$lock" PROBE_LOCK="$lock" PROBE_OUT="$TEST_ROOT/fd" \
     REAL_GIT="$(command -v git)" PATH="$wrapper_dir:$PATH" \
-    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+    "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · "*"REMOVED"* ]] &&
@@ -882,7 +882,7 @@ make_github_origin() {
   [ -w "$TEST_ROOT/ro" ] && skip "running as a user who can write a mode-500 dir"
 
   run env GOLEMS_HEAVY_LOCK="$TEST_ROOT/ro/heavy-suite.lock" \
-    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+    "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
   chmod 700 "$TEST_ROOT/ro"
 
   [ "$status" -eq 0 ] &&
@@ -901,7 +901,7 @@ make_github_origin() {
   SECONDS=0
   run env GOLEMS_HEAVY_LOCK="$TEST_ROOT/heavy-suite.lock" WORKTREE_GC_NIGHTLY_TIMEOUT=2 \
     REAL_GIT="$(command -v git)" PATH="$wrapper_dir:$PATH" \
-    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+    "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 124 ] &&
     [[ "$output" == *"TIMEOUT after 2s"* ]] &&
@@ -915,7 +915,7 @@ make_github_origin() {
   commit_fixture_file "$worktree" local-only.txt
 
   run env GOLEMS_HEAVY_LOCK="$TEST_ROOT/heavy-suite.lock" \
-    "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$repo"
+    "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 0 ] &&
     [[ "$output" == *" · $worktree · "*"KEEP-unpushed"* ]] &&

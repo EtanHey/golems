@@ -18,7 +18,79 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
   spawn pins its model explicitly."). An inherited model is not a pin.
 - The role's model is missing from the catalog → report `BLOCKED` to the lead. Never substitute.
 
+### Codex instances
+
+For ordinary Codex implementers, recon and reviewers, explicitly select `target.providerInstanceId: "codex-worker"`.
+A Codex child inherits its parent's Codex instance. A Claude lead naming only the codex driver gets whichever
+codex instance T3 lists first (OrchestratorMcpService.ts:1337-1386); always name the instance.
+Remember: the role picks the model, the work type picks the instance.
+Keep `codex` for security (implementers + scans), UI / computer-use recorders, browser / web-QA workers,
+Etan (Codex has no lead seats). Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
+
+If `codex-worker` is missing from `orchestrator_capabilities`, fall back to `codex` per dispatch and
+report to the lead. This is not a BLOCKED condition: an instance isn't a model; keep the role's model pin.
+Recreating the instance is a lead action.
+Leads note in their STATUS how many of their Codex dispatches named `codex-worker`.
+
+Recreate the worker instance in `~/.t3/userdata/settings.json` under `providerInstances` (hot-reloaded).
+Merge this entry into the existing map:
+
+```json
+{
+  "providerInstances": {
+    "codex-worker": {
+      "driver": "codex",
+      "displayName": "Codex worker (lean MCP)",
+      "config": {
+        "binaryPath": "~/.local/bin/codex",
+        "launchArgs": "-c plugins._default.enabled=true -c plugins.'codex-security@openai-curated-remote'.enabled=false -c plugins.'computer-history@openai-bundled'.enabled=false -c plugins.'computer-use@openai-bundled'.enabled=false -c plugins.'unified-computer-use@openai-bundled'.enabled=false -c mcp_servers.node_repl.enabled=false -c thread_unload_delay_secs=60"
+      }
+    }
+  }
+}
+```
+
+T3 needs an absolute path: expand `~` to your home directory when pasting. The single quotes delimit plugin IDs in `launchArgs`; argument splitting removes them
+before Codex receives the dotted configuration keys.
+
+`binaryPath` must be the `~/.local/bin/codex` link, which follows Codex upgrades, never a versioned release path.
+`CODEX_HOME` defaults to the shared `~/.codex`; no credential copy. To undo, remove the entry.
+
+Precondition: `T3CODE_CODEX_LAUNCH_ARGS` must stay unset in the T3 server env. If set, it REPLACES
+every Codex instance's launchArgs (codexLaunchArgs.ts:5-8), so the worker loses its trim.
+Check `launchctl getenv T3CODE_CODEX_LAUNCH_ARGS` (empty), then inspect the running T3 server env:
+identify its PID from `ps -axo pid,ppid,args` and check `ps eww -p <server-pid> -o command=` locally
+for that variable. Do not paste the whole environment; report only whether this variable is absent.
+
+#### C5: live one-shot after an upgrade
+
+After every Codex CLI upgrade (noticed by `whats-new` or a `codex --version` check), the lead
+dispatches this one-shot check to read-only children and only reads their reports.
+`plugins._default` behaviour needs fresh evidence after each upgrade:
+
+1. Dispatch a read-only child on the running `codex` instance to collect a current baseline of its
+   app-server's MCP children by family using the same ancestry/count method below. The child returns
+   family names and counts, not raw process environments; supply its report to the child in step 2.
+2. Dispatch one trivial read-only delegate with `target.providerInstanceId: "codex-worker"`, the role's
+   model and default service tier. Give it this task: "Walk your own ancestry from the shell/Python PID
+   through PPIDs (`ps -axo pid=,ppid=,args=`) until your `codex app-server`. Record that app-server PID
+   and count its children by family, including MCP descendants behind launcher wrappers. Use this
+   app-server's process tree, never a machine-wide count. Report codex-security, computer-history,
+   node_repl, cua_repl, BrainLayer, VoiceLayer, and every other running MCP server/plugin family;
+   missing families count as zero. Compare with the supplied current baseline from the `codex` instance.
+   Return counts and added family IDs only; change nothing."
+3. **PASS (accepted C1 rule):** codex-security, computer-history, node_repl and cua_repl all 0,
+   BrainLayer and VoiceLayer present, and no other new MCP family versus the `codex` instance.
+   Disabled entries are allowed; compare running families. Missing ancestry or baseline evidence cannot pass.
+4. **FAIL:** dispatch ordinary work on `codex` and report to the lead that owns the instance
+   (lifecycle lead, else skill-creator), with the counts and any added families. Use `codex` for
+   ordinary dispatches until the owner restores the trim and a fresh check passes.
+
 ## 2. Dispatch
+
+Worktree bases and the single post-launch preparation read follow the canonical
+[worktree launch guard](worktree-launch.md). Keep default-ref intent distinct from
+`delegate_task` isolation, which uses the parent committed HEAD.
 
 - `delegate_task` with `mode: "async"`. Use `mode: "wait"` only when this turn cannot continue
   without the result; its `timeoutMs` is the parent's wait budget and never cancels the child.
@@ -103,8 +175,12 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
 - `t3_thread_launch` and `create_threads` create ordinary top-level conversations. Use them only
   when a separate or new thread is explicitly asked for. "Dispatch a worker/subagent" is
   `delegate_task`, never a thread launch.
+  Exception: cross-project and linked-environment (other Mac) code writers are launched with
+  `t3_thread_launch`; the procedure lives only in [cross-machine.md](cross-machine.md).
 - `t3_thread_launch` has no idempotency key: after a lost response, check `t3_thread_list` before
   retrying.
+- After a worktree launch, perform the [single preparation read](worktree-launch.md#exactly-one-read-after-a-worktree-t3_thread_launch).
+  Acceptance alone is not success; PENDING never starts a polling or model-retry loop.
 
 ## 8. PRs
 
@@ -116,6 +192,7 @@ Why this exists: "Codex seats must not poll collabs; T3 delegate completions alr
 
 ## 9. Owned elsewhere
 
+- Dispatch to a linked environment (the other Mac): [cross-machine.md](cross-machine.md).
 - Fresh implementer per PR, reviewer freshness, the Codex concurrency cap and settle timing:
   SKILL.md § Lead Topology #5. Not restated here.
 - Vendors per work type and inner-loop order: SKILL.md § Routing rules (SSOT).

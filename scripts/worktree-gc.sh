@@ -12,6 +12,8 @@ source "$SCRIPT_DIR/lib/worktree-git-env.sh"
 # T3 Code reaps its own worktrees (storageCleanup.ts); this script covers non-T3 checkouts and merged branches.
 # Pins: ~/.config/golems/worktree-gc-pins.txt (one absolute path or branch per line).
 # Owner queue: docs.local/worktree-gc/latest.{json,md}; age is reporting only.
+# Every scan, including scoped/partial failures, rewrites latest and last-run atomically.
+# PR/fetch failures retain exit 0 (KEEP); processing errors exit 2, unpushed exits 3.
 # Test adapters: WORKTREE_GC_T3_DB, WORKTREE_GC_REPORT_DIR, WORKTREE_GC_PINS_FILE.
 # WORKTREE_GC_T3_ROOTS adds newline-separated managed roots (canonicalized).
 
@@ -402,6 +404,13 @@ process_worktree_block() {
     branch_display="(detached)"
   fi
 
+  # A failed repository is never eligible, including detached/tool-managed trees.
+  if [[ -n "$repo_failure" ]]; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" not-checked undetermined \
+      KEEP-undetermined "$repo_stage: $repo_failure"
+    return 0
+  fi
+
   while IFS= read -r t3_root; do
     if [[ "$canonical_worktree" == "$t3_root" || "$canonical_worktree" == "$t3_root/"* ]]; then
       t3_skip_count=$((t3_skip_count + 1))
@@ -646,6 +655,8 @@ process_worktree_block() {
 process_repo() {
   local requested_repo="$1"
   local census
+  local repo_failure=""
+  local repo_stage=""
   local t3_skip_count=0
   local line
 
@@ -664,8 +675,19 @@ process_repo() {
   repo_name="$(basename "$repo_root")"
   census_paths="$(sed -n 's/^worktree //p' <<< "$census")"
   load_open_prs
-
+  if [[ -n "$open_pr_failed$merged_pr_failed" ]]; then
+    repo_failure="${open_pr_failed:-$merged_pr_failed}"
+    repo_stage=pr-lookup
+  fi
   refresh_remote_base
+  if [[ -z "$base_ref" && -z "$repo_failure" ]]; then
+    repo_failure="$base_reason"
+    repo_stage=fetch
+  fi
+  if [[ -n "$repo_failure" ]]; then
+    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
+      "$repo_name" "$repo_root" "-" ERROR "$repo_failure" "$repo_stage"
+  fi
 
   block_worktree=""
   block_branch=""
@@ -775,8 +797,20 @@ REPORT_JOURNAL="$LOG_FILE.rows.jsonl"
 : > "$REPORT_JOURNAL"
 REPORT_DIR="${WORKTREE_GC_REPORT_DIR:-$LOG_DIR/worktree-gc}"
 publish_report=0
-[[ -z "$explicit_repo" && -z "$only_worktree" && "$prune_plan" -eq 0 ]] && publish_report=1
-trap 'rc=$?; python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report" || printf "report finish failed\n" >> "$LOG_FILE"' EXIT
+if [[ -z "$explicit_repo" && -z "$only_worktree" && "$prune_plan" -eq 0 ]]; then
+  publish_report=1
+fi
+finish_run() {
+  local rc=$?
+  rm -f "$LOG_FILE.repo-state" "$LOG_FILE.repo-stderr" ||
+    printf 'scratch cleanup failed\n' >> "$LOG_FILE"
+  if ! python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report"; then
+    printf 'report publish failed\n' | tee -a "$LOG_FILE" >&2
+    [[ "$rc" -ne 0 ]] || rc=2
+  fi
+  exit "$rc"
+}
+trap finish_run EXIT
 
 # A path-only lane close discovers its main root read-only, then validates it.
 # An explicit --repo is never replaced by --path, regardless of argument order.
@@ -805,9 +839,35 @@ fi
 
 t3_roots="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" roots)"
 found_unpushed=0
+repo_error=0
 for repo in "${repos[@]}"; do
-  process_repo "$repo"
+  repo_name="$(basename "$repo")"
+  # Do not put process_repo in an if/||: Bash would disable errexit inside
+  # every removal gate. A subshell keeps it enabled and isolates repo state.
+  repo_state="$LOG_FILE.repo-state"
+  repo_stderr="$LOG_FILE.repo-stderr"
+  set +e
+  (
+    set -e
+    trap 'printf "%s %s\n" "$found_unpushed" "$only_seen" > "$repo_state"' EXIT
+    process_repo "$repo"
+  ) 2> "$repo_stderr"
+  repo_rc=$?
+  set -e
+  read -r found_unpushed only_seen < "$repo_state"
+  cat "$repo_stderr" >&2
+  if [[ "$repo_rc" -ne 0 ]]; then
+    repo_error=2
+    reason="$(normalize_reason "$(cat "$repo_stderr")")"
+    reason="exit $repo_rc: ${reason:-repository processing failed}"
+    printf 'ERROR %s %s\n' "$repo" "$reason" | tee -a "$LOG_FILE" >&2
+    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
+      "$(basename "$repo")" "$repo" "-" ERROR "$reason" ||
+      printf 'ERROR report row failed: %s\n' "$repo" | tee -a "$LOG_FILE" >&2
+  fi
 done
+
+[[ "$repo_error" -eq 0 ]] || exit "$repo_error"
 
 # A lane close pastes this row into its receipt; a silent no-op would hide a wrong path.
 if [[ -n "$only_worktree" && "$only_seen" -eq 0 ]]; then
@@ -817,6 +877,6 @@ if [[ -n "$only_worktree" && "$only_seen" -eq 0 ]]; then
 fi
 
 if [[ "$found_unpushed" -ne 0 ]]; then
-  # 3 means a completed scan with KEEP-unpushed; 1 is reserved for runtime errors.
+  # 3 means a completed scan with KEEP-unpushed; any repo error exits 2 above.
   exit 3
 fi

@@ -4,12 +4,11 @@ import { join, resolve } from "node:path";
 import { assertExactBatchCoverage, runDigestMaps } from "./stalker-digest-batches.mjs";
 
 import { OUTPUT_SCHEMA, MAP_SCHEMA, cleanTranscript, assertText, validateSummary } from "./stalker-digest-evidence.mjs";
-export { cleanTranscript } from "./stalker-digest-evidence.mjs";
-
 import { readableSummary } from "./stalker-digest-text.mjs";
 import { curateDigest } from "./stalker-digest-curation.mjs";
+import { resolveStalkerModel } from "./stalker-model.mjs";
+export { cleanTranscript } from "./stalker-digest-evidence.mjs";
 
-const MODEL = "gpt-5.6-sol";
 const REASONING_EFFORT = "medium";
 const TIMEOUT_MS = 180_000;
 const MAP_BATCH_BYTES = 10_000;
@@ -92,6 +91,7 @@ export function renderMarkdown({ date, channel, dashboardUrl, summary }) {
   return `# Human Digest — ${channel} — ${date}\n\n${dashboardUrl ? `Dashboard: ${dashboardUrl}\n\n` : ""}## What was discussed\n\n${topics}\n\n## Top highlights\n\n${highlights}\n\n## Claims worth checking\n\n${claims}\n`;
 }
 export async function generateHumanDigest({ runDir, date, channel, dashboardUrl, generateImpl, curateImpl }) {
+  const model = resolveStalkerModel();
   const absoluteRunDir = resolve(runDir ?? "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) throw new Error("date must be YYYY-MM-DD");
   assertText(channel, "channel", 100);
@@ -127,7 +127,7 @@ export async function generateHumanDigest({ runDir, date, channel, dashboardUrl,
     },
     validateResult: validateMap,
     runImpl: generateImpl,
-    model: MODEL,
+    model,
     reasoningEffort: REASONING_EFFORT,
     timeoutMs: TIMEOUT_MS,
   });

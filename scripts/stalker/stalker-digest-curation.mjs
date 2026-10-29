@@ -1,8 +1,8 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { runDigestCodex } from "./stalker-digest-runner.mjs";
+import { resolveStalkerModel } from "./stalker-model.mjs";
 
-const MODEL = "gpt-5.6-sol";
 const REASONING_EFFORT = "medium";
 const TIMEOUT_MS = 180_000;
 const MAX_INPUT_BYTES = 96 * 1024;
@@ -134,14 +134,14 @@ function chronologicalHalves(candidates) {
   return halves;
 }
 
-async function singleCuration({ candidates, workDir, generateImpl, timeline, label, input }) {
+async function singleCuration({ candidates, workDir, generateImpl, timeline, label, input, model }) {
   const schemaPath = join(workDir, `${label}-schema.json`);
   const outputPath = join(workDir, `${label}.json`);
   await writeFile(schemaPath, `${JSON.stringify(selectionSchema(candidates), null, 2)}\n`);
   await rm(outputPath, { force: true });
   await generateImpl({
     input, outputPath, schemaPath, cwd: workDir,
-    model: MODEL, reasoningEffort: REASONING_EFFORT, timeoutMs: TIMEOUT_MS,
+    model, reasoningEffort: REASONING_EFFORT, timeoutMs: TIMEOUT_MS,
     diagnosticLabel: label,
   });
   const raw = await readFile(outputPath, "utf8").catch((error) => {
@@ -156,35 +156,36 @@ async function singleCuration({ candidates, workDir, generateImpl, timeline, lab
   return selectedCandidates(selection, candidates, timeline);
 }
 
-async function curateCandidates({ candidates, workDir, generateImpl, timeline, label }) {
+async function curateCandidates({ candidates, workDir, generateImpl, timeline, label, model }) {
   const input = buildInput(candidates);
   if (Buffer.byteLength(input) <= MAX_INPUT_BYTES) {
-    return singleCuration({ candidates, workDir, generateImpl, timeline, label, input });
+    return singleCuration({ candidates, workDir, generateImpl, timeline, label, input, model });
   }
   const total = Object.values(candidates).reduce((sum, items) => sum + items.length, 0);
   if (total < 2) throw new Error(`curation projection exceeds ${MAX_INPUT_BYTES} bytes for one candidate`);
   const [left, right] = chronologicalHalves(candidates);
   const leftSelected = await curateCandidates({
-    candidates: left, workDir, generateImpl, timeline: timelineFor(left), label: `${label}-l`,
+    candidates: left, workDir, generateImpl, timeline: timelineFor(left), label: `${label}-l`, model,
   });
   const rightSelected = await curateCandidates({
-    candidates: right, workDir, generateImpl, timeline: timelineFor(right), label: `${label}-r`,
+    candidates: right, workDir, generateImpl, timeline: timelineFor(right), label: `${label}-r`, model,
   });
   const combined = {
     topics: [...leftSelected.topics, ...rightSelected.topics],
     highlights: [...leftSelected.highlights, ...rightSelected.highlights],
     claims: [...leftSelected.claims, ...rightSelected.claims],
   };
-  return curateCandidates({ candidates: combined, workDir, generateImpl, timeline, label: `${label}-final` });
+  return curateCandidates({ candidates: combined, workDir, generateImpl, timeline, label: `${label}-final`, model });
 }
 
 export async function curateDigest({ candidates, workDir, generateImpl = runDigestCodex, timeline }) {
   if (!candidates || !Array.isArray(candidates.topics) || !Array.isArray(candidates.highlights) || !Array.isArray(candidates.claims)) {
     throw new Error("curation candidates must contain topics, highlights, and claims arrays");
   }
+  const model = resolveStalkerModel();
   await mkdir(workDir, { recursive: true });
   const selected = await curateCandidates({
-    candidates, workDir, generateImpl, timeline: timelineFor(candidates, timeline), label: "human-digest-curation",
+    candidates, workDir, generateImpl, timeline: timelineFor(candidates, timeline), label: "human-digest-curation", model,
   });
   return {
     topics: selected.topics,

@@ -25,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
@@ -65,6 +68,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
@@ -84,13 +90,35 @@ jobs:
       - name: Regression gate contracts
         run: python -m pytest scripts/tests/test_private_regression_gate.py -q
 
+      - name: Workspace lifecycle guards and lane helper
+        run: >-
+          python -m pytest -q scripts/tests/test_workspace_lease.py
+          scripts/tests/test_workspace_lane.py scripts/tests/test_workspace_retire.py
+          scripts/tests/test_workspace_preservation.py scripts/tests/test_workspace_regenerable_walk.py
+
+      - name: Global instruction installer (synthetic HOME only)
+        run: python -m pytest scripts/tests/test_global_instructions.py -q
+
+      - name: M1 sync offline guards (fake SSH only)
+        run: |
+          python -B -m unittest discover -s scripts/tests -p test_m1_sync.py
+          python3.9 -B -m unittest discover -s scripts/tests -p test_m1_sync.py
+
       - run: bun install --frozen-lockfile
 
       # reconcile-to-mac: the retire-law tests spawn zsh, and the CLI dry run
       # resolves its profile's sourceRef (origin/master), which a PR checkout lacks.
+      - name: Cache apt downloads (zsh)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          # Exclude root-owned locks and incomplete downloads.
+          path: ${{ runner.temp }}/apt-archives/*.deb
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-script-zsh-v1
+
       - name: reconcile-to-mac prerequisites
+        timeout-minutes: 10
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+          sudo CI_APT_ARCHIVES_DIR="${{ runner.temp }}/apt-archives" bash scripts/ci/apt-install.sh zsh
           git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
 
       - name: bun suites
@@ -103,8 +131,10 @@ jobs:
           bun --no-install test ./scripts/tests/worktree-census-shape.test.ts
           bun test ./scripts/tests/claude-rules-frontmatter.test.mjs \
                    ./scripts/tests/canon-drift-lint.test.mjs \
+                   ./scripts/tests/design-skill-updates.test.mjs \
                    ./scripts/tests/deploy-drift-check.test.mjs \
                    ./scripts/tests/launchd-portability.test.mjs \
+                   ./scripts/tests/launchd-install.test.mjs \
                    ./scripts/tests/reconcile-to-mac.test.mjs \
                    ./scripts/tests/release-gate.test.mjs \
                    ./scripts/tests/ratchet-table.test.mjs \
@@ -128,6 +158,7 @@ jobs:
                    ./scripts/tests/repogolem-env-classifier.test.ts \
                    ./scripts/tests/skill-description-cap.test.mjs \
                    ./scripts/tests/skill-kickoff-contract.test.mjs \
+                   ./scripts/tests/cross-machine-skills.test.mjs \
                    ./scripts/tests/lead-skill-etan-rules-contract.test.mjs \
                    ./scripts/tests/pr-loop-root-ff.test.mjs \
                    ./scripts/tests/hooks-fail-open.test.mjs \
@@ -153,11 +184,18 @@ jobs:
 
       - name: node suites
         run: |
-          node --test scripts/tests/pr-chain-span.test.mjs \
+          node --test scripts/tests/pr-wait-hygiene.test.mjs
+          node --test scripts/tests/install-receipt.test.mjs \
+                      scripts/tests/t3-mcp-holders.test.mjs \
+                      scripts/tests/container-teardown.test.mjs \
+                      scripts/tests/pr-chain-span.test.mjs \
                       scripts/tests/bats-coverage.test.mjs \
                       scripts/tests/codex-internal-role.test.mjs \
                       scripts/tests/google-drive-oauth-guard.test.mjs \
                       scripts/tests/stalker-morning-launchd.test.mjs \
+                      scripts/tests/stalker-model-roles.test.mjs \
+                      scripts/tests/stalker-human-digest.test.mjs \
+                      scripts/tests/stalker-digest-curation.test.mjs \
                       scripts/tests/check-telegram-retirement.test.mjs
 
       - name: shell suites
@@ -173,6 +211,9 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0 # pristine harness reads immutable base blobs
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
 
       - name: Detect mutation-proof inputs
         id: mutant-paths
@@ -191,8 +232,16 @@ jobs:
       - name: Install config parser for Python skill suites
         run: python -m pip install PyYAML
 
+      - name: Cache apt downloads (zsh jq lsof)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          # Exclude root-owned locks and incomplete downloads.
+          path: ${{ runner.temp }}/apt-archives/*.deb
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-python-zsh-jq-lsof-v1
+
       - name: Install launcher harness tools
-        run: sudo apt-get update && sudo apt-get install -y zsh jq
+        timeout-minutes: 10
+        run: sudo CI_APT_ARCHIVES_DIR="${{ runner.temp }}/apt-archives" bash scripts/ci/apt-install.sh zsh jq lsof
 
       - name: Run golem-powers Python skill suites
         run: scripts/ci/run-skill-tests.sh
@@ -220,6 +269,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
 
       # zsh, ripgrep and bun are what the suites in scripts/tests/ actually shell
       # out to, and the runner image ships none of them. Measured in run
@@ -230,8 +282,20 @@ jobs:
       # found`. jq, timeout, python3, npm and shellcheck are used by the suites
       # too, but the runner already has them, so they are not installed here.
       # ffmpeg: the qa-video dense-windows suite renders synthetic video.
+      # Keep its required libraries (including libpocketsphinx), but omit
+      # recommended packages such as the unused pocketsphinx-en-us model.
+      - name: Cache apt downloads (bats zsh ripgrep ffmpeg)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          # Exclude root-owned locks and incomplete downloads.
+          path: ${{ runner.temp }}/apt-archives/*.deb
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ env.ImageVersion }}-apt-bats-bats-zsh-ripgrep-ffmpeg-v1
+
       - name: Install bats, zsh, ripgrep and ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y bats zsh ripgrep ffmpeg
+        # Three stalled updates can take 450s, plus the install. Keep a hard
+        # outer cap even if repeated update/install failures exhaust that budget.
+        timeout-minutes: 10
+        run: sudo CI_APT_ARCHIVES_DIR="${{ runner.temp }}/apt-archives" bash scripts/ci/apt-install.sh bats zsh ripgrep ffmpeg
 
       # .bun-version is the repo's single bun pin; every workflow reads it
       # through bun-version-file rather than carrying a literal. The stalker

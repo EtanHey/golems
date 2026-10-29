@@ -181,7 +181,7 @@ PY
   [ -s "$WORKTREE_GC_REPORT_DIR/receipts.jsonl" ]
 }
 
-@test "FIX1 partial and scan-error runs preserve the full owner report" {
+@test "FIX1 scoped runs preserve the full owner report" {
   t3_fixture
   printf dirty > "$worktree/local.txt"
   age_worktrees
@@ -190,15 +190,14 @@ PY
   cp "$WORKTREE_GC_REPORT_DIR/latest.json" "$TEST_ROOT/full.json"
   cp "$WORKTREE_GC_REPORT_DIR/latest.md" "$TEST_ROOT/full.md"
   other="$(add_branch_worktree "$repo" clean)"
-  for args in path repo prune error scan-error; do
+  for args in path repo prune error; do
     case "$args" in
       path) run "$WORKTREE_GC" --path "$other" ;;
       repo) run "$WORKTREE_GC" --repo "$repo" ;;
       prune) run "$WORKTREE_GC" --prune-plan --repo "$repo" ;;
       error) run "$WORKTREE_GC" --repo "$HOME" ;;
-      scan-error) mkdir -p "$HOME/Gits/broken/.git"; run "$WORKTREE_GC" ;;
     esac
-    case "$args" in *error) [ "$status" -eq 2 ] ;; *) [ "$status" -eq 0 ] ;; esac
+    case "$args" in error) [ "$status" -eq 2 ] ;; *) [ "$status" -eq 0 ] ;; esac
     cmp "$TEST_ROOT/full.json" "$WORKTREE_GC_REPORT_DIR/latest.json"
     cmp "$TEST_ROOT/full.md" "$WORKTREE_GC_REPORT_DIR/latest.md"
   done
@@ -304,4 +303,79 @@ CHECK
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [ -d "$worktree" ]; [ ! -e "$other" ]
   [[ "$output" == *live-symlink-target* ]]
+}
+
+@test "H1b refused middle repo is reported and later repos are still processed" {
+  mkdir -p "$HOME/Gits"
+  for name in a-first b-refused c-last; do
+    repo="$(make_fixture_repo "$name")"
+    mv "$repo" "$HOME/Gits/"
+    repo="$HOME/Gits/$name"
+    add_branch_worktree "$repo" topic >/dev/null
+  done
+  git -C "$HOME/Gits/b-refused" config core.bare true
+  run "$WORKTREE_GC" --dry-run
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"a-first · "*"REMOVE"* ]] || return 1
+  [[ "$output" == *"ERROR $HOME/Gits/b-refused exit 2: Refusing --repo"* ]] || return 1
+  [[ "$output" == *"c-last · "*"REMOVE"* ]] || return 1
+  python3 - "$WORKTREE_GC_REPORT_DIR/last-run.json" "$HOME/Gits/b-refused" <<'PY'
+import json, sys
+report = json.load(open(sys.argv[1]))
+assert report['exit_status'] == 2
+row, = report['owners']['b-refused']
+assert row['path'] == sys.argv[2] and row['reason'] == 'ERROR'
+assert 'exit 2: Refusing --repo' in row['detail']
+PY
+  [ -d "$HOME/Gits/a-first/.worktrees/topic-worktree" ]
+  [ -d "$HOME/Gits/c-last/.worktrees/topic-worktree" ]
+}
+
+@test "H1b unexpected repo failure retains errexit and continues safely" {
+  mkdir -p "$HOME/Gits" "$TEST_ROOT/bin"
+  for name in a-first c-last; do
+    repo="$(make_fixture_repo "$name")"
+    mv "$repo" "$HOME/Gits/"
+    add_branch_worktree "$HOME/Gits/$name" topic >/dev/null
+  done
+  export REAL_SED="$(command -v sed)"
+  cat > "$TEST_ROOT/bin/sed" <<'STUB'
+#!/usr/bin/env bash
+input="$(cat)"
+if [[ "$*" == '-n s/^worktree //p' && "$input" == *'/a-first'* ]]; then
+  echo 'fixture census parser failed' >&2
+  exit 7
+fi
+exec "$REAL_SED" "$@" <<< "$input"
+STUB
+  chmod +x "$TEST_ROOT/bin/sed"
+  run env PATH="$TEST_ROOT/bin:$PATH" "$WORKTREE_GC" --apply --idle-hours 0
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"ERROR $HOME/Gits/a-first exit 7: fixture census parser failed"* ]] || return 1
+  [ -d "$HOME/Gits/a-first/.worktrees/topic-worktree" ]
+  [ ! -e "$HOME/Gits/c-last/.worktrees/topic-worktree" ]
+}
+
+@test "H1b repo error outranks KEEP-unpushed and cleans per-run scratch files" {
+  mkdir -p "$HOME/Gits"
+  for name in a-unpushed b-refused; do
+    repo="$(make_fixture_repo "$name")"
+    mv "$repo" "$HOME/Gits/"
+  done
+  worktree="$(add_branch_worktree "$HOME/Gits/a-unpushed" topic)"
+  commit_fixture_file "$worktree" local.txt
+  git -C "$HOME/Gits/b-refused" config core.bare true
+  run "$WORKTREE_GC" --dry-run
+  [ "$status" -eq 2 ]
+  [[ "$output" == *KEEP-unpushed* ]] || return 1
+  [[ "$output" == *"ERROR $HOME/Gits/b-refused exit 2:"* ]] || return 1
+  python3 - "$WORKTREE_GC_REPORT_DIR/receipts.jsonl" <<'PY'
+import json, sys
+from pathlib import Path
+receipt = json.loads(Path(sys.argv[1]).read_text().splitlines()[-1])
+assert receipt['exit_status'] == 2
+log = receipt['journal'].removesuffix('.rows.jsonl')
+assert not Path(log + '.repo-state').exists()
+assert not Path(log + '.repo-stderr').exists()
+PY
 }

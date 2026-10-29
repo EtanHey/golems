@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // install-hooks — wire Claude Code hooks from ONE pinned golems tree (GO-5 S14).
-//   scripts/hooks/install-hooks.sh --host mbp|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--restore-live]
+//   scripts/hooks/install-hooks.sh --host mbp|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--node <abs path>] [--restore-live]
 //   scripts/hooks/install-hooks.sh --host mbp --status [--python <abs path>]
 //   node scripts/hooks/install-hooks.mjs --host client --source <release dir> --migrate-owner-install [--apply]
 // Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
@@ -31,6 +31,10 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { planCodexHooks, applyCodexHooks, codexStatus, CODEX_TRUST_HINT } from "./codex-hooks-install.mjs";
+
+import { MIN_HOOK_PYTHON, HOOK_PYTHON_CANDIDATES, pathPython, pythonProblem, resolveHookPython,
+  resolveHookNode, recordHookNode } from "./hook-interpreters.mjs";
+export { MIN_HOOK_PYTHON, HOOK_PYTHON_CANDIDATES, pathPython, pythonVersion, resolveHookPython } from "./hook-interpreters.mjs";
 
 // Hooks deleted by E1 (hooks-audit.md, 2026-09-24). Matched as substrings of the
 // whole manifest, so no id, link, source or command can smuggle one back.
@@ -63,49 +67,6 @@ export function failClosedCommand(run, repair = REPAIR_REASON) {
 const commandPython = (command) => /(?:^|\s)(\S+)(?: -[A-Za-z]+)* \S*golems-fail-open\.py/
   .exec(String(command).replace(/'|\$\(/g, " "))?.[1] ?? String(command).split(" ")[0];
 
-// AIDEV-NOTE: every hook command carries an ABSOLUTE interpreter, never a bare
-// `python3`: launchd and minimal-PATH environments resolve that to macOS
-// /usr/bin/python3 (3.9). The floor is 3.11: this installer's Codex config check
-// needs tomllib, git-guardian's policy module needs 3.10+, and CI runs the hooks
-// on 3.11. Homebrew first (its bin/python3 link survives `brew upgrade`), then
-// the PATH python3; resolved on the machine at install time, so hosts may differ.
-export const MIN_HOOK_PYTHON = [3, 11];
-export const HOOK_PYTHON_CANDIDATES = ["/opt/homebrew/bin/python3", "/usr/local/bin/python3"];
-// Hook commands are unquoted strings: an interpreter path needs no shell quoting.
-const PLAIN_PATH = /^\/[A-Za-z0-9._+\/-]+$/;
-const pythonVersions = new Map();
-export function pythonVersion(python) {
-  if (!PLAIN_PATH.test(python) || !existsSync(python)) return null;
-  if (!pythonVersions.has(python)) {
-    const r = spawnSync(python, ["-I", "-c", "import sys; print('%d.%d.%d' % sys.version_info[:3])"],
-      { encoding: "utf8", timeout: 10_000 });
-    const m = r.status === 0 ? /^(\d+)\.(\d+)\.(\d+)$/.exec(r.stdout.trim()) : null;
-    pythonVersions.set(python, m ? m.slice(1).map(Number) : null);
-  }
-  return pythonVersions.get(python);
-}
-const [MIN_MAJOR, MIN_MINOR] = MIN_HOOK_PYTHON;
-const pythonOk = (v) => Boolean(v) && (v[0] > MIN_MAJOR || (v[0] === MIN_MAJOR && v[1] >= MIN_MINOR));
-export function resolveHookPython({ override, candidates = HOOK_PYTHON_CANDIDATES, pathPython } = {}) {
-  for (const python of override ? [override] : [...candidates, ...(pathPython ? [pathPython] : [])]) {
-    const version = pythonVersion(python);
-    if (pythonOk(version)) return { python, version: version.join(".") };
-  }
-  return null;
-}
-export function pathPython() {
-  const r = spawnSync("sh", ["-c", "command -v python3"], { encoding: "utf8" });
-  return r.status === 0 ? r.stdout.trim() : "";
-}
-// Why a registered interpreter is unacceptable, or null when it is fine.
-function pythonProblem(python) {
-  if (!path.isAbsolute(python)) return "not an absolute path";
-  if (!PLAIN_PATH.test(python)) return "path needs shell quoting";
-  if (!existsSync(python)) return "missing";
-  const v = pythonVersion(python);
-  if (!v) return "version unknown";
-  return pythonOk(v) ? null : `${v.join(".")} is below ${MIN_HOOK_PYTHON.join(".")}`;
-}
 
 function die(message, code = 1) {
   process.stderr.write(`install-hooks: ${message}\n`);
@@ -130,7 +91,7 @@ function mustGit(cwd, ...args) {
 
 function parseArgs(argv) {
   const o = { apply: false, status: false, update: null, host: null,
-    repo: path.join(homedir(), "Gits/golems"), manifest: null, python: null };
+    repo: path.join(homedir(), "Gits/golems"), manifest: null, python: null, node: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--apply") o.apply = true;
@@ -139,10 +100,11 @@ function parseArgs(argv) {
     else if (a === "--migrate-owner-install") o.migrateOwnerInstall = true;
     else if (a === "--restore-live") o.restoreLive = true;
     else if (a === "--update") o.update = argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : "origin/master";
-    else if (["--host", "--repo", "--manifest", "--python", "--source"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
+    else if (["--host", "--repo", "--manifest", "--python", "--node", "--source"].includes(a) && argv[i + 1]) o[a.slice(2)] = argv[++i];
     else die(`unknown or incomplete argument: ${a}`, 64);
   }
   if (!o.host) die("--host <mbp|client> is required", 64);
+  if (o.node && (o.status || o.source)) die("--node repairs owner installations; use it without --status or --source", 64);
   if (o.migrateOwnerInstall && (!o.source || o.host !== "client")) die("--migrate-owner-install requires --host client --source <release dir>", 64);
   return o;
 }
@@ -180,7 +142,10 @@ function context(o, sha) {
   if (!Array.isArray(entries)) die(`manifest ${o.manifest ?? sha} has no host "${o.host}"`);
   const hooksDir = path.join(homedir(), ".claude", "hooks");
   const live = path.join(o.repo, ".worktrees", "hooks-live");
-  const node = entries.some((e) => e.command?.includes("{node}")) ? pathNode() : "";
+  const settingsPath = path.join(homedir(), ".claude", "settings.json");
+  const hookNode = resolveHookNode(entries, hooksDir, settingsPath, o.status, o.node);
+  if (hookNode?.problem && !o.status) die(`hook-node BAD: ${hookNode.problem}; refusing installation; repair with --node <path> (absolute executable Node)`);
+  const node = hookNode?.path ?? "";
   // --python overrides the candidates for this run; it is validated the same way.
   const hookPython = resolveHookPython({ override: o.python, pathPython: pathPython() });
   // Refuse before anything (the Codex config check included) runs an interpreter.
@@ -204,16 +169,7 @@ function context(o, sha) {
   // run an unvetted python3 and could crash --status; report it unchecked instead.
   const codex = hookPython ? planCodexHooks({ manifest, host: o.host, live, python, refused: codexRefused,
     codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) }) : undefined;
-  return { entries, golems, wrapped, hooksDir, live, codex, hookPython, settingsPath: path.join(homedir(), ".claude", "settings.json") };
-}
-
-// The node on PATH (e.g. a version manager's stable shim), not process.execPath:
-// execPath is the versioned realpath, which a node upgrade deletes.
-function pathNode() {
-  const r = spawnSync("sh", ["-c", "command -v node"], { encoding: "utf8" });
-  const found = r.status === 0 ? r.stdout.trim() : "";
-  if (!found.startsWith("/")) die("no absolute `node` on PATH; node hooks need one");
-  return found;
+  return { entries, golems, wrapped, hooksDir, live, codex, hookPython, hookNode, settingsPath };
 }
 
 export function readSettings(settingsPath) {
@@ -709,6 +665,7 @@ function install(o) {
     chmodSync(tmp, settings.mode);
     renameSync(tmp, ctx.settingsPath);
   }
+  recordHookNode(ctx.hookNode);
   console.log("applied");
   if (ctx.codex) {
     ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py"));
@@ -737,7 +694,9 @@ function status(o) {
   const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
   const stray = !current && existsSync(ctx.live);
   console.log(`hooks-live=${current ?? (stray ? "NOT-A-WORKTREE" : "absent")} master=${master ?? "unknown"} drift=${drift}`);
-  let bad = stray;
+  let bad = stray || Boolean(ctx.hookNode?.problem);
+  if (ctx.hookNode) console.log(ctx.hookNode.problem ? `hook-node BAD: ${ctx.hookNode.problem}`
+    : `hook-node=${ctx.hookNode.path} (${ctx.hookNode.version})${ctx.hookNode.legacy ? " legacy registration; version baseline recorded on --apply" : ""}`);
   if (ctx.hookPython) console.log(`hook-python=${ctx.hookPython.python} (${ctx.hookPython.version})`);
   else {
     bad = true;

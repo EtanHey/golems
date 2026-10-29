@@ -12,7 +12,7 @@ on:
     - cron: "17 * * * *"
   workflow_dispatch:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   push:
     branches: [master]
 
@@ -21,8 +21,9 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ratchet-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
+  # A single scheduled state writer, independent of push/PR cancellation on the same SHA.
+  group: ratchet-${{ github.event_name == 'schedule' && 'schedule' || github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
 jobs:
   loop-record:
@@ -34,10 +35,14 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
 
       - name: Test Loop-record validator
-        run: node --test scripts/tests/pr-loop-record.test.mjs
+        run: node --test scripts/tests/pr-loop-record.test.mjs scripts/tests/visual-proof-check.test.mjs
 
       - name: Validate PR Loop-record
         env:
@@ -45,9 +50,25 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: node scripts/ci/pr-loop-record.mjs
 
+      - name: Validate visual proof
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          PR_CHANGED_FILES=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          export PR_CHANGED_FILES
+          node skills/golem-powers/pr-loop/scripts/visual-proof-check.mjs
+
   ratchet:
     name: ratchet
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     steps:
       # fetch-depth 0: the base commit must be present to read its row file and measure the
       # baseline. persist-credentials false: nothing here pushes, and the token can edit comments.
@@ -55,6 +76,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
+      - name: Test scheduled alert policy
+        run: node --test scripts/tests/ratchet-schedule.test.mjs
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
@@ -125,6 +152,11 @@ jobs:
           status=0
           node scripts/ratchet/table.mjs "${args[@]}" || status=$?
           cat "$RUNNER_TEMP/table.md" >> "$GITHUB_STEP_SUMMARY" || true
+          # Only schedules may soften a repeated row failure. API/state errors remain RED.
+          if [ "$GITHUB_EVENT_NAME" = schedule ]; then
+            node scripts/ratchet/schedule.mjs "$status" "$RUNNER_TEMP/results.json"
+            exit $?
+          fi
           exit "$status"
 
       # Real rows run only on Etan's MBP (scripts/ratchet/local-run.sh: real installer, gate, hook

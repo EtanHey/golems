@@ -1,3 +1,4 @@
+import { testBun } from "@golems/shared/test-bun";
 import { describe, test, expect } from "bun:test";
 import { getPendingWork } from "../status-aggregator";
 import type { EcosystemStatus } from "../status-aggregator";
@@ -26,7 +27,7 @@ describe("Status Aggregator", () => {
       await registerAllGolems();
       console.log(JSON.stringify(await getEcosystemStatus()));
     `;
-    const result = Bun.spawnSync([process.execPath, "-e", source]);
+    const result = Bun.spawnSync([...testBun, "-e", source]);
     expect(result.exitCode).toBe(0);
     const status = JSON.parse(result.stdout.toString());
     expect(status.golems.map((g: { name: string }) => g.name).sort()).toEqual(["email", "teller"]);

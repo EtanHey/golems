@@ -1,3 +1,7 @@
+import { readFileSync, realpathSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
 const CANONICAL_GENERATOR_RE =
   /(build-aftercode-tonight\.mjs|render-v4\.mjs|narrationlayer\/src\/dashboard\.ts|narrationlayer\/src\/teleprompter\.ts|scripts\/build-narrated-qa\.ts)/i;
 const WRONG_GENERATOR_RE =
@@ -174,12 +178,157 @@ function collectTimingRecords(evidence, html) {
   return flatten([tpdata, dashboardData, fromEvidence]);
 }
 
+// Inspect rendered cards, including hand-built .card surfaces. Parse HTML rather
+// than matching whole elements so nested markup and quoted attributes stay scoped.
+function hasTextOnlyDetails(html, outputPath) {
+  const pageCache = new Map();
+  const attrCache = new WeakMap();
+  const narratedCache = new WeakMap();
+  const attrs = node => {
+    if (!attrCache.has(node)) attrCache.set(node, Object.fromEntries((node.attrs || []).map(a => [a.name, a.value])));
+    return attrCache.get(node);
+  };
+  const isCard = node => /(?:^|\s)(?:df-card|dbx-card|card)(?:\s|$)/.test(attrs(node).class || "") ||
+    Object.hasOwn(attrs(node), "data-card");
+  const children = node => (node.childNodes || []).filter(n => !["script", "style", "template"].includes(n.tagName));
+  const text = node => node.nodeName === "#text" ? node.value : children(node).map(text).join("");
+  const normalize = value => String(value || "").replace(/&(?:nbsp|#160|#xa0);/gi, " ").replace(/\s+/g, " ");
+  const isDetailsControl = node => ["button", "a", "summary"].includes(node.tagName) ||
+    attrs(node).role === "button" || (node.tagName === "input" && /^(button|submit|reset)$/i.test(attrs(node).type || ""));
+  const detailsLabel = node => /view\s+details/i.test(normalize(text(node)) + " " +
+    normalize(attrs(node)["aria-label"]) + " " + (node.tagName === "input" ? normalize(attrs(node).value) : ""));
+  const cardName = node => {
+    const a = attrs(node);
+    const heading = descendants(node).find(n => /^h[1-6]$/.test(n.tagName));
+    return [a.id || a["data-card"], a["data-title"] || (heading && normalize(text(heading)))].filter(Boolean).join(" / ") || "unnamed card";
+  };
+  const descendants = node => children(node).flatMap(n => isCard(n) ? [] : [n, ...descendants(n)]);
+  function visit(node) {
+    if (isCard(node)) {
+      const nodes = descendants(node);
+      // Decorative control icons do not make a card a visualization.
+      const visual = nodes.some(n => ["svg", "canvas", "img", "figure", "video"].includes(n.tagName) &&
+        !isControlIcon(n, node)) || nodes.some(opensVisual);
+      const details = nodes.filter(n => !inNarratedDetails(n, node)).some(n => n.tagName === "details" ||
+        (isDetailsControl(n) && detailsLabel(n)) ||
+        /view\s+details/i.test(normalize(attrs(n)["aria-label"])));
+      if (!visual && details) return cardName(node);
+    }
+    for (const child of children(node)) {
+      const name = visit(child);
+      if (name) return name;
+    }
+    return null;
+  }
+  function isNarratedDetails(details) {
+    if (narratedCache.has(details)) return narratedCache.get(details);
+    // Nested details own their narration; they cannot exempt the outer expander.
+    const localContent = node => children(node).flatMap(child =>
+      child.tagName === "details" || isCard(child) ? [] : [child, ...localContent(child)]);
+    const content = localContent(details);
+    const audio = content.some(child => child.tagName === "audio" &&
+      (attrs(child).src || children(child).some(source => source.tagName === "source" && attrs(source).src)));
+    const timed = content.some(child => Object.hasOwn(attrs(child), "data-word-start"));
+    const labelled = content.some(child =>
+      (child.tagName === "summary" || /(?:^|\s)(?:plabel|player-label)(?:\s|$)/.test(attrs(child).class || "")) &&
+      /(?:listen|explains)\s*\(?deeper/i.test(normalize(text(child))));
+    const narrated = Boolean(audio && (timed || labelled));
+    narratedCache.set(details, narrated);
+    return narrated;
+  }
+  function inNarratedDetails(node, card) {
+    for (let n = node; n && n !== card; n = n.parentNode) {
+      if (n.tagName === "details") return isNarratedDetails(n);
+    }
+    return false;
+  }
+  const targetHasVisual = target => target && target.tagName !== "iframe" &&
+    (["dialog", "figure", "section"].includes(target.tagName) || attrs(target).role === "dialog") &&
+    [target, ...descendants(target)].some(n =>
+      ["svg", "canvas", "img", "figure", "video"].includes(n.tagName) && !isControlIcon(n, target));
+  function opensVisual(node) {
+    const a = attrs(node);
+    if (!isDetailsControl(node) || !detailsLabel(node)) return false;
+    const marker = (a["data-open-visual"] || "").trim();
+    if (marker && /[\/\\]|\.html(?:[?#]|$)|^[a-z][a-z0-9+.-]*:/i.test(marker)) return Boolean(localPageHasVisual(marker));
+    const target = byId.get(marker.replace(/^#/, ""));
+    if (target) return Boolean(targetHasVisual(target));
+    // PHX's documented producer convention; explicit relative URLs are preferred.
+    if (/^[\w-]+$/.test(marker)) {
+      const visual = localPageHasVisual(`visuals/${marker}.html`);
+      if (visual !== null) return visual;
+    }
+    return (a["aria-controls"] || "").split(/\s+/).some(id => targetHasVisual(byId.get(id)));
+  }
+  function localPageHasVisual(marker) {
+    if (!outputPath || /^(?:[a-z][a-z0-9+.-]*:|[\\/#])/i.test(marker)) return null;
+    if (pageCache.has(marker)) return pageCache.get(marker);
+    let visual = null;
+    try {
+      const base = realpathSync(path.dirname(path.resolve(outputPath)));
+      const url = new URL(marker, pathToFileURL(path.resolve(outputPath)));
+      const target = realpathSync(fileURLToPath(url));
+      // Only inspect pages within this dashboard's directory, including subdirectories.
+      if (target.startsWith(base + path.sep)) {
+        const fragment = decodeURIComponent(url.hash.slice(1));
+        if (target === realpathSync(outputPath)) return Boolean(fragment && targetHasVisual(byId.get(fragment)));
+        const ids = new Map();
+        const root = parseMarkup(readFileSync(target, "utf8"), ids);
+        const containsVisual = node =>
+          (["svg", "canvas", "img", "figure", "video"].includes(node.tagName) && !isControlIcon(node, root)) ||
+          children(node).some(containsVisual);
+        visual = url.href.includes("#") ? Boolean(targetHasVisual(ids.get(fragment))) : containsVisual(root);
+      }
+    } catch {
+      // Missing/unreadable files and malformed local URLs cannot prove a visual.
+    }
+    pageCache.set(marker, visual);
+    return visual;
+  }
+
+  function isControlIcon(node, card) {
+    for (let n = node; n && n !== card; n = n.parentNode) {
+      if (isDetailsControl(n) ||
+          /(?:^|\s)(?:df-answer-status|df-title)(?:\s|$)/.test(attrs(n).class || "")) return true;
+    }
+    return false;
+  }
+  // Requires Bun's HTMLRewriter; run this module and its callers with Bun.
+  function parseMarkup(markup, ids = new Map()) {
+    const root = { childNodes: [] };
+    let parent = root;
+    new HTMLRewriter().on("*", {
+      element(element) {
+        const node = { tagName: element.tagName, attrs: [...element.attributes].map(([name, value]) => ({ name, value })),
+          childNodes: [], parentNode: parent };
+        parent.childNodes.push(node);
+        const a = attrs(node);
+        if (a.id) ids.set(a.id, node);
+        if (element.canHaveContent) {
+          parent = node;
+          element.onEndTag(() => { parent = node.parentNode; });
+        }
+      },
+      text(chunk) { parent.childNodes.push({ nodeName: "#text", value: chunk.text }); },
+    }).transform(markup);
+    return root;
+  }
+  const byId = new Map();
+  const root = parseMarkup(html, byId);
+  return visit(root);
+}
+
 export function validateAudioDashboardEvidence(evidence = {}) {
   const html = textOf(evidence.html);
   const generator = textOf(evidence.generator);
   const outputPath = textOf(evidence.outputPath);
   const wordsJson = Array.isArray(evidence.wordsJson) ? evidence.wordsJson : [];
   const violations = [];
+  const textOnlyCard = hasTextOnlyDetails(html, outputPath);
+  if (textOnlyCard) {
+    addViolation(violations, "TEXT_ONLY_VIEW_DETAILS",
+      `${textOnlyCard}: text-only cards must omit details expanders; offer Listen deeper or no secondary action`);
+  }
 
   if (WRONG_GENERATOR_RE.test(generator)) {
     addViolation(

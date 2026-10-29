@@ -55,7 +55,17 @@ WRONG: gh pr review --request-changes on your own PR
 RIGHT: Post structured verdict as a PR comment after a clean bot-reviewed loop
 ```
 
-Then follow [Merge Authority](pr-creation.md#merge-authority).
+Merge authority: [Merge Authority](pr-creation.md#merge-authority) (Etan's ruling; SSOT).
+
+After a clean other-vendor review at `headRefOid` and green required checks, leads merge now
+with `gh pr merge <N> --merge --admin` on EtanHey repos; `--admin` is the default. Never ask
+Etan to approve or merge a PR; only true one-way doors wait for him. Workers follow the
+merge authority in their brief.
+
+Self-approval is structurally blocked on EtanHey repos. A ruleset-only BLOCKED state or empty
+`reviewDecision` is not a reason to wait for Etan. The real blockers are failing/pending
+checks, conflicts and unresolved findings; do not bypass them. Omit `--delete-branch`;
+branch retirement follows the workspace lifecycle contract and any stacked-PR holds.
 
 ### Worktree-Locked Local Merge
 
@@ -244,7 +254,12 @@ HTML pages, menu-bar apps (BrainBar/VoiceBar), TUI surfaces.
 
 **When:** at the [feature-batch gate](#feature-batch-gate), before the batch is released, installed or
 declared done; a single-PR batch runs it before that PR ships. Mid-batch, the PR merges on the size
-cadence and the visual pass is queued for the batch.
+cadence only after per-PR visual proof passes; builder self-QA is queued for the batch.
+
+**Per-PR stop:** attach desktop and 390 px before/after screenshots, one GIF per
+animation/interaction, and e2e screenshot diffs using the PR-body Visual proof
+template. Reviewers must inspect and cite those artifacts before merge. This
+artifact gate does not replace the builder running-session batch gate below.
 
 **The rule:** the BUILDER clicks INTO a real running session and screenshots it. Mechanical checks (PID running, commit-matches, server responds)
 are NOT a functional pass — "generated" ≠ "verified."
@@ -285,133 +300,31 @@ Not every branch goes through the full PR flow. When implementation is done:
 | **Keep as-is** | Need to park work | Just stop. Worktree preserved. |
 | **Discard** | Wrong approach, start over | Requires typed "discard" confirmation. `git branch -D <branch>` |
 
-**Worktree cleanup (lane close):** the implementer retires its own worktree at DONE
-with `git worktree remove` (no `--force`), then `git worktree prune` and removal proof
-([Cleanup Receipt](#cleanup-receipt)); dirty files or local-only commits are kept and escalated to the lead.
-This GC is the lead's sweep for leftovers of settled or
-merged lanes under `<main>/.worktrees/` only. For options 1 (after merge), 3 (never), and 4
-(after discard), sweep a leftover from the original checkout once its pane is closed:
-```bash
-# Check if in worktree
-git worktree list | grep $(git branch --show-current)
-# If yes, after merging/discarding (<golems> = the golems checkout; works for any repo):
-<golems>/scripts/worktree-gc.sh --apply --idle-hours 0 --path <worktree-path>
-```
-It removes only a clean worktree whose HEAD is on the fresh default branch and that no running
-process uses (a live pane keeps it: `KEEP-live`). An ignored `docs.local/` is archived to
-`<repo>/docs.local/worktree-archive/<name>/` first. Paste its row into the cleanup receipt. A
-discarded, never-merged branch stays `KEEP-unpushed`. Before any manual removal, inventory,
-copy outside the retiring tree, and verify all ignored `docs.local/` and personal artifacts;
-`git worktree remove` does not archive them. Preserve any local-only history and obtain the
-lead's explicit discard/retirement decision first. Hold the lane when preservation is uncertain.
-Nightly `com.golems.worktree-gc` considers only direct `<main>/.worktrees/<name>` lanes after
-6 idle hours; nested `.codex-workflows` lanes remain their dispatching lead's responsibility.
-Exit 3 means a completed scan with KEEP-unpushed; exit 2 means refused/invalid scope.
-An open PR yields `KEEP-open-pr` even when its head is remotely represented.
-The 2026-10-06 disk lane found ~1,400 merged worktrees (433 GB) left behind by lanes.
+**Worktree cleanup (lane close):** The lead's leftover sweep covers settled or merged lanes under `<main>/.worktrees` only, after all consumers release and the contract permits retirement. Use the existing scoped `worktree-gc.sh` protections; live consumers and unpreserved data stay retained. T3-managed paths remain `KEEP-out-of-scope` for that sweep: never bypass managed-root ownership with a direct-removal fallback. For both harnesses, the authorized parent follows the contract's [interim retirement path](../../_shared/lifecycle/CONTRACT.md#parent-retirement-path-both-harnesses-interim) from outside the resource.
 
-After `git worktree add`, read the file from the worktree path before editing.
-Reads from the primary checkout or another worktree do not carry over.
+Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](../../_shared/lifecycle/CONTRACT.md); record REMOVED, RETAINED or acknowledged TRANSFERRED.
 
-When operating from a linked worktree, do not merge or cleanup from that
-worktree. Move to the original checkout, run `gh pr merge`, verify the remote
-merge SHA, delete the remote branch, then remove the worktree. This avoids the
-local failure when `main` is checked out elsewhere and keeps cleanup from
-deleting the session underneath you. If even the original checkout cannot hold
-the default branch (bare-mirror-style hubs like brainlayer), use the
-"Worktree-Locked Local Merge" remote fallback above.
+After allocation, read files from the assigned worktree before editing; another checkout's reads do not carry over. For a linked-worktree merge, use the [remote fallback](#worktree-locked-local-merge) and [root update](#after-merge-update-tracking-mandatory) as applicable. These PR mechanics do not authorize workspace retirement.
 
 ### Cleanup Receipt
 
-Cleanup is part of done: "the implementer removes its worktree at DONE" and
-"regenerable caches need no OK" (Etan 2026-10-18, via orc collab). After the
-branch/worktree removal, end the merge comment (lead) or the DONE report
-(worker) with this block. A merge or DONE without it is not done.
+End the merge comment or lane report with this block. The contract owns preservation, consumers, collector authority and proof; there is no child-run removal recipe. The lead verifies the receipt against the direct remover result, fresh successful registration read and physical observation. Keep local-only history, dirty files and unresolved review consumers with a named owner; escalate holds to the lead.
 
-- **Who removes:** the implementer removes its own worktree at DONE, once its
-  artifact is preserved: branch pushed (local HEAD equals `origin/<branch>`),
-  PR merged, or report committed. That is the preservation the lane-close rule
-  above asks for, so it needs no lead decision; local-only history or an
-  unarchived `docs.local/` still does. A worker handing off an unmerged PR has
-  a pushed branch, so it removes the tree too:
-  `worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune`.
-  This canonical line keeps the `removed: <path>` token for settle consumers and
-  the `worktree:` field for the fleet-wrap receipt parser; append proof on the same line.
-- **How (retirement path, implementer-owned, both harnesses):** run this from
-  inside your own worktree, unchanged; it prints the receipt's worktree line.
-  ```bash
-  WT=$(git rev-parse --show-toplevel)
-  UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)
-  BRANCH=${UPSTREAM#origin/}; [ -n "$UPSTREAM" ] || BRANCH=$(git branch --show-current)
-  MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
-  if [ -n "$(git status --porcelain)" ]; then
-    echo "worktree: $WT kept because uncommitted or untracked changes; escalate to lead"
-  elif [ -z "$BRANCH" ] || [ "$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)" != "$(git rev-parse HEAD)" ]; then
-    echo "worktree: $WT kept because HEAD is not pushed to origin/$BRANCH; escalate to lead"
-  elif [ -n "$(find "$WT" -path "$WT/.git" -prune -o -path '*/node_modules' -prune -o -path '*/docs.local/*' ! -type d -print -quit)" ]; then
-    echo "worktree: $WT kept because docs.local unarchived; escalate to lead"
-  elif git -C "$MAIN" worktree remove "$WT"; then
-    if git -C "$MAIN" worktree prune &&
-       WORKTREES=$(git -C "$MAIN" worktree list --porcelain) &&
-       ! printf '%s\n' "$WORKTREES" | grep -Fx "worktree $WT"; then
-      echo "worktree: removed: $WT; proof: absent from git worktree list --porcelain after git worktree prune"
-    else
-      echo "WORKTREE-CLEANUP STOP: $WT removal proof failed; escalate to lead" >&2
-      exit 1
-    fi
-  else
-    echo "worktree: $WT kept because git worktree remove exited non-zero; escalate to lead"
-  fi
-  ```
-  1. **Preserve first:** `git status --porcelain` is empty, the remote branch SHA
-     (`git ls-remote origin refs/heads/<branch> | cut -f1`) equals `git rev-parse HEAD`
-     (artifact pushed; `<branch>` is the upstream when one is set, so a review-fix
-     checkout `-B <local> origin/<pr-branch>` pushed with `HEAD:<pr-branch>` still
-     matches, else the current branch), and no file sits under a `docs.local/` at any depth
-     (a `find` walk that skips `.git` and `node_modules`; an empty `docs.local/` holds nothing
-     to archive; `git status --porcelain --ignored`
-     collapses a directory holding only ignored files to `!! scratch/`, so it misses
-     `scratch/docs.local/`). `git worktree remove` deletes ignored files too, so an unarchived
-     `docs.local/` keeps the tree until it is archived or the lead decides. Any other
-     ignored path is a regenerable cache (`node_modules/`, `__pycache__/`, build dirs)
-     and goes with the tree without asking. If a check fails, the receipt says
-     `kept because <reason>`.
-  2. **Main discovery:** `MAIN` is the main checkout, from the shared git dir
-     (`git rev-parse --path-format=absolute --git-common-dir` is `<main>/.git` for T3
-     `.t3/worktrees/...` and cmux `<main>/.worktrees/...` alike). `git -C "$MAIN"` runs
-     the removal from there, not from inside the tree; never `--force`.
-  3. **T3 child:** run the block as its LAST tool call. Copy its removal proof into
-     the receipt only after remove and prune exited 0 and list readback succeeds.
-     Review-fix rounds get a fresh `delegate_task` worktree
-     from the pushed branch, so nothing needs the old tree.
-  4. **cmux worker:** the same block BEFORE writing DONE;
-     the lead closes the pane afterwards (pane close no longer precedes removal).
-  `worktree-gc.sh` is not the implementer's path: it answers `KEEP-out-of-scope` for
-  `.t3/worktrees/...` and `KEEP-live` while the worker's pane runs. It stays the lead's
-  sweep for leftovers under `<main>/.worktrees/` only.
-- **Receipt:** lane close and settle require removal proof after remove and prune.
-  The worktree line says `removed` only after those commands exited 0 and list readback confirms absence.
-  A receipt without removal proof or an escalated preservation exception is invalid.
-  Preserve local-only commits and dirty files; name the path and reason and escalate to the lead.
-  Unarchived `docs.local/` or a failed removal also requires a named exception, never forced deletion.
-- **Regenerable caches:** delete `node_modules`, build output (`dist/`,
-  `build/`, `.next/`, `target/`), `__pycache__` and `.pytest_cache` without
-  asking.
-- **The lead verifies the receipt** (`git worktree list`,
-  `git ls-remote origin <branch>`) and never removes a worker's worktree itself,
-  except leftovers of settled or merged lanes.
+Keep the existing field lines for parser compatibility. REMOVED requires the contract's direct remover result, fresh successful registration read and physical absence. RETAINED uses `kept because`; acknowledged TRANSFERRED records the successor/custody evidence on that same field with the retained path. A pushed unmerged handoff alone never releases consumers. Append proof or custody references without changing the `worktree:` and `branch:` tokens; historical receipts remain readable, but their shape does not establish valid removal.
 
 ```
 CLEANUP RECEIPT (mandatory in the merge comment or the DONE report):
 - root: <path> HEAD=<sha> <base-remote>/<default>=<sha> ahead/behind=0/0
   OR ROOT-FF STOP: <reason>
-- worktree: removed: <path>; proof: absent from git worktree list --porcelain after git worktree prune
+- worktree: removed: <path>; proof: git worktree remove rc 0; absent from git worktree list --porcelain; path absent (lstat)
   OR worktree: <path> kept because <reason>; escalated to <lead>
 - branch: <name> deleted local+remote | kept because <reason>
 - files this PR added outside src/tests: <list or none>; each is: committed reference (docs/reference|docs/rationale|README) |
-  stored to BrainLayer <chunk-id> and deleted | moved to docs.local/<day>/ | deleted
-- docs.local this lane created: <paths>; rolled into <day>/README or deleted
+  stored to BrainLayer <chunk-id> and deleted | moved to docs.local/<day>/ | deleted with an authorized disposition receipt
+- docs.local this lane created: <paths>; preservation/disposition and linked receipts under the contract and /drive-filing
 ```
+
+File dispositions record completed authorized actions; BrainLayer storage, moving or rollup alone grants no deletion authority. Workspace retirement follows Etan's DONE quote and PHX's merged-PR/last-consumer reading in the contract.
 
 The required root field has exactly two forms (strip the Markdown bullet/indent before matching this regex):
 ```regex
@@ -425,8 +338,7 @@ ROOT-FF STOP: not merged
 Unmerged handoffs must use `ROOT-FF STOP: not merged`. The lead rejects a DONE whose receipt lacks a valid root field. A STOP records a blocker; it is never a silent pass.
 
 The lead's phase close (`/large-plan` exit criteria) checks for one receipt per
-worker, including a valid root field (OK readback or explicit STOP blocker) and worktree removal proof
-or a named, escalated preservation exception. A bare `removed` line is invalid.
+worker, including a valid root field (OK readback or explicit STOP blocker) and a contract-backed disposition. A bare `removed` line is invalid; a valid RETAINED or acknowledged TRANSFERRED records the continuing owner obligation.
 
 ---
 
