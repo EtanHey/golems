@@ -107,6 +107,8 @@ From real incidents:
 - Reporting on test results
 - Reporting on agent output
 - Claiming anything is "done", "green", "clean", "complete"
+- Claiming a PR is "watched" or "monitored": cite a same-turn `list_thread_pull_requests` readback
+  showing `watching:true` ([waiting policy](../pr-loop/references/review-loop.md#waiting-policy-no-polling-turns))
 - Moving to the next task based on prior task results
 - Relaying information from one agent to another
 - Answering "is it safe to merge/ship/deploy?"

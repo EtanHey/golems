@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 const lead = { threadId: 'lead', role: 'lead', status: 'WAITING', snoozed: true, snoozedUntil: null };
 const watch = { threadId: 'lead', watchId: 'watch-1', status: 'active' };
@@ -93,6 +94,64 @@ test('only waiting leads are checked; all unsafe leads are reported', () => {
 test('invalid snapshots fail with a distinct input error', () => {
   for (const invalid of [{}, { threads: 'bad' }, { threads: [{ status: 'waiting' }] }, { threads: [lead], watches: {} }]) {
     assert.equal(check(invalid).status, 2);
+  }
+});
+
+// Watch-truth text: a "watched" claim needs a same-turn `watching:true` readback, and every open
+// lead-owned PR sits in one of two states. Policy lives once in review-loop.md; pointers link it.
+const doc = (path) => readFileSync(path, 'utf8');
+const policyLink = 'pr-loop/references/review-loop.md#waiting-policy-no-polling-turns';
+const rawWaitingPolicy = () => doc('skills/golem-powers/pr-loop/references/review-loop.md')
+  .split('### Waiting policy (no polling turns)')[1].split('\n### ')[0];
+const waitingPolicy = () => rawWaitingPolicy().replace(/\s+/g, ' ');
+// One paragraph only, so tokens elsewhere in the section cannot satisfy its assertions.
+const policyParagraph = (lead) => {
+  const paragraph = rawWaitingPolicy().split(/\n\s*\n/).find((block) => block.trimStart().startsWith(lead));
+  assert.ok(paragraph, `paragraph ${lead} exists`);
+  return paragraph.replace(/\s+/g, ' ').trim();
+};
+test('waiting policy: a watch claim requires a same-turn watching:true readback', () => {
+  const paragraph = policyParagraph('**Watch claims need a readback.**');
+  for (const sentence of [
+    'Say "watched" only after `list_thread_pull_requests` shows `watching:true` for that PR in the same turn, and cite that readback.',
+    'A remembered or intended watch is not evidence',
+  ]) assert.ok(paragraph.includes(sentence), sentence);
+});
+test('waiting policy: the owning lead arms the watch on accepting a worker READY', () => {
+  const policy = waitingPolicy();
+  for (const text of [
+    '**The owning lead holds the watch.**', 'never the worker', 'A worker arms no watch',
+    'In the same turn it accepts that READY, the lead arms the PR watch (step 1 below) and reads back `watching:true`',
+  ]) assert.ok(policy.includes(text), text);
+});
+test('waiting policy: every open lead-owned PR is watched-with-action or blocked', () => {
+  const policy = waitingPolicy();
+  for (const text of [
+    '**Two states only', 'WATCHED-WITH-ACTION', 'BLOCKED', 'named blocker', 'owner', '`schedule_task`',
+    'No third state',
+  ]) assert.ok(policy.includes(text), text);
+});
+test('never-fabricate lists the watched claim and links the waiting policy', () => {
+  const apply = doc('skills/golem-powers/never-fabricate/SKILL.md').split('## When To Apply')[1].split('\n## ')[0];
+  assert.match(apply, /"watched" or "monitored"/);
+  assert.ok(apply.includes('`watching:true`'), 'names the readback');
+  assert.ok(apply.includes(`../${policyLink}`), 'links the waiting policy');
+});
+test('large-plan PR waiting points at the readback rule in the waiting policy', () => {
+  const skill = doc('skills/golem-powers/large-plan/SKILL.md');
+  const row = skill.split('\n').find((line) => line.startsWith('| **PR waiting** |'));
+  assert.ok(row, 'PR waiting row exists');
+  assert.ok(row.includes(`../${policyLink}`), 'row links the waiting policy');
+  assert.ok(row.includes('`watching:true`'), 'row names the readback');
+});
+test('PR-watch wake steps defer to the waiting policy instead of contradicting it', () => {
+  for (const [path, prefix] of [
+    ['skills/golem-powers/large-plan/SKILL.md', '../'],
+    ['skills/golem-powers/agent-routing/references/t3-native.md', '../../'],
+  ]) {
+    const text = doc(path).replace(/\s+/g, ' ');
+    assert.ok(!text.includes('A wake is news'), `${path}: no "A wake is news" rule`);
+    assert.ok(text.includes(`On a PR-watch wake, follow the [waiting policy](${prefix}${policyLink}).`), `${path}: links the policy`);
   }
 });
 

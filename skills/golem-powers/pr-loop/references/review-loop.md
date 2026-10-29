@@ -153,6 +153,22 @@ reviewed at the latest head means the authorized lead merges now; a worker hands
 If merging cannot proceed, hand off with the reason and next owner. A green wake is never
 news only. Do not leave ready work idle behind another PR's red checks.
 
+**The owning lead holds the watch.** The lead that owns a PR owns its watch, never the worker.
+A worker arms no watch; its READY hands the PR to the lead. In the same turn it accepts that
+READY, the lead arms the PR watch (step 1 below) and reads back `watching:true`.
+
+**Watch claims need a readback.** Say "watched" only after `list_thread_pull_requests` shows
+`watching:true` for that PR in the same turn, and cite that readback. A remembered or intended
+watch is not evidence: a watch call can silently not stick, and an unwatch can drop it.
+
+**Two states only, for every open PR a lead owns:**
+- WATCHED-WITH-ACTION: `watching:true` read back; red → fix or route the fix now; green and
+  reviewed at the latest head → merge now.
+- BLOCKED: a named blocker, its owner, and a one-shot `schedule_task` wake, with the scheduled
+  task id and next run recorded.
+
+No third state: "open, nothing pending" is invalid.
+
 Offline hygiene check: `node scripts/ci/pr-wait-hygiene.mjs <snapshot.json|->` flags WAITING
 leads with no live event or future scheduled wake (exit 1; invalid input 2; pass 0).
 Input is one thread or `{ "threads": [...] }`; status is case-insensitive. Explicit workers
