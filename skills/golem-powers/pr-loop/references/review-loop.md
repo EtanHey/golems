@@ -173,6 +173,7 @@ The checker accepts `weave-t3-fleet/v1` snapshots unchanged in structure: add th
 evidence arrays, and keep the existing threads/tasks. It checks wait hygiene only, not weave
 convergence, capture freshness or whether a supplied event is actually live; capture that
 evidence from T3 before running it.
+Every open PR on a lead requires `watching: true` or a top-level/thread-local `blocked` row (`threadId`, `pr` URL or number, nonempty `reason`, nonempty `owner`) plus an enabled future schedule bound to that thread (`boundThreadId`, `enabled`, `nextRunAt`).
 
 The rules this section lands, verbatim (Etan 2026-10-18, via orc collab):
 

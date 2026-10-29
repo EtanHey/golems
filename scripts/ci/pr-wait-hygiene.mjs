@@ -21,6 +21,7 @@ try {
   const tasks = rows(snapshot, 'tasks');
   const watches = rows(snapshot, 'watches');
   const schedules = rows(snapshot, 'schedules');
+  const blocked = rows(snapshot, 'blocked');
   const ids = new Set();
   for (const thread of threads) {
     if (!nonempty(thread.threadId) || !nonempty(thread.status) || ids.has(thread.threadId)) {
@@ -30,16 +31,31 @@ try {
     rows(thread, 'watches');
     rows(thread, 'schedules');
     rows(thread, 'pullRequests');
+    rows(thread, 'blocked');
   }
   const now = Date.now();
   const violations = [];
   for (const thread of threads) {
-    if (thread.status.toLowerCase() !== 'waiting' || thread.role === 'worker' || nonempty(thread.parentThreadId)) continue;
+    if (thread.role === 'worker' || nonempty(thread.parentThreadId)) continue;
     const owned = event => event.threadId === thread.threadId;
+    const threadSchedules = [...schedules, ...rows(thread, 'schedules')];
+    const blockedWake = threadSchedules.some(event => event.boundThreadId === thread.threadId &&
+      event.enabled === true && typeof event.nextRunAt === 'string' && Date.parse(event.nextRunAt) > now);
+    for (const pr of rows(thread, 'pullRequests')) {
+      if (pr.state !== 'open') continue;
+      if (!nonempty(pr.url)) throw new Error('each open PR needs a url');
+      const isBlocked = [...blocked, ...rows(thread, 'blocked')].some(event => owned(event) &&
+        (event.pr === pr.url || (typeof event.pr === 'number' && event.pr === pr.number)) &&
+        nonempty(event.reason) && nonempty(event.owner));
+      if (pr.watching !== true && !(isBlocked && blockedWake)) {
+        violations.push(`${thread.threadId} ${pr.url}: open PR neither watched nor BLOCKED-with-wake`);
+      }
+    }
+    if (thread.status.toLowerCase() !== 'waiting') continue;
     const watch = [...watches, ...rows(thread, 'watches')].some(event =>
       owned(event) && nonempty(event.watchId) && event.status === 'active') ||
       rows(thread, 'pullRequests').some(pr => nonempty(pr.url) && pr.watching === true && pr.state === 'open');
-    const schedule = [...schedules, ...rows(thread, 'schedules')].some(event => {
+    const schedule = threadSchedules.some(event => {
       if (nonempty(event.scheduledTaskId)) {
         return event.boundThreadId === thread.threadId && event.enabled === true &&
           typeof event.nextRunAt === 'string' && Date.parse(event.nextRunAt) > now;
@@ -60,7 +76,7 @@ try {
     console.log(violations.join('\n'));
     process.exitCode = 1;
   } else {
-    console.log('PASS: no waiting leads without a wake source');
+    console.log('PASS: no waiting leads without a wake source or open PRs without watch/BLOCKED-with-wake');
   }
 } catch (error) {
   console.error(`pr-wait-hygiene: ${error.message}`);
