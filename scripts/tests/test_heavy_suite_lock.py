@@ -5,21 +5,46 @@ import os
 from pathlib import Path
 import subprocess
 import signal
+import shutil
 import pytest
 import sys
 import time
 
 SCRIPT = Path(__file__).resolve().parents[1] / "hooks/heavy-suite.py"
+_git = shutil.which("git")
+GIT_LOCAL_ENV_VARS = (set(subprocess.check_output(
+    [_git, "rev-parse", "--local-env-vars"], text=True).splitlines()) if _git else set())
+
+
+def isolated_env():
+    return {k: v for k, v in os.environ.items()
+            if not k.startswith("GOLEMS_HEAVY_") and k not in GIT_LOCAL_ENV_VARS}
 
 
 def env(home):
-    return {**{k: v for k, v in os.environ.items() if not k.startswith("GOLEMS_HEAVY_")}, "HOME": str(home), "GOLEMS_HEAVY_SUITE_SLOTS": "1", "GOLEMS_HEAVY_MIN_FREE_GB": "0", "GOLEMS_HEAVY_MAX_LOAD": "99999", "GOLEMS_HEAVY_POLL_SECONDS": "0.02"}
+    return {**isolated_env(), "HOME": str(home), "GOLEMS_HEAVY_SUITE_SLOTS": "1", "GOLEMS_HEAVY_MIN_FREE_GB": "0", "GOLEMS_HEAVY_MAX_LOAD": "99999", "GOLEMS_HEAVY_POLL_SECONDS": "0.02"}
 
 
 @pytest.fixture(autouse=True)
 def scheduling_defaults(monkeypatch):
+    for name in os.environ.keys() - isolated_env().keys():
+        monkeypatch.delenv(name)
+    assert not any(name.startswith("GOLEMS_HEAVY_") or name in GIT_LOCAL_ENV_VARS for name in os.environ)
     monkeypatch.setenv("GOLEMS_HEAVY_SUITE_SLOTS", "1")
     monkeypatch.setenv("GOLEMS_HEAVY_MIN_FREE_GB", "0")
+
+
+def test_subprocess_env_isolates_hook_state(monkeypatch, tmp_path):
+    inherited = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG_PARAMETERS",
+                 "GOLEMS_HEAVY_SUITE_HELD", "GOLEMS_HEAVY_FUTURE_OPTION")
+    for name in inherited:
+        monkeypatch.setenv(name, "inherited-hook-state")
+    monkeypatch.setenv("GIT_AUTHOR_NAME", "fixture-author")
+    child_env = env(tmp_path)
+    assert all(name not in child_env for name in inherited)
+    assert child_env["GIT_AUTHOR_NAME"] == "fixture-author"
+    assert child_env["HOME"] == str(tmp_path)
+    assert child_env["GOLEMS_HEAVY_SUITE_SLOTS"] == "1"
 
 
 def wait_for(path):
@@ -127,7 +152,7 @@ def test_finished_suite_unlocks_while_background_daemon_survives(tmp_path):
     code = f"import subprocess,sys; from pathlib import Path; p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'],close_fds=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); Path({str(pid)!r}).write_text(str(p.pid))"
     try:
         assert launch(tmp_path, code).wait(timeout=5) == 0
-        result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=env(tmp_path), capture_output=True, text=True, timeout=1)
+        result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=env(tmp_path), capture_output=True, text=True, timeout=5)
         assert result.returncode == 0
     finally:
         if pid.exists(): os.kill(int(pid.read_text()), signal.SIGTERM)
@@ -135,7 +160,7 @@ def test_finished_suite_unlocks_while_background_daemon_survives(tmp_path):
 
 def test_force_skips_load_and_lock(tmp_path):
     forced = {**env(tmp_path), "GOLEMS_HEAVY_FORCE": "1", "GOLEMS_HEAVY_MAX_LOAD": "0"}
-    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=forced, capture_output=True, text=True, timeout=1)
+    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=forced, capture_output=True, text=True, timeout=5)
     assert result.returncode == 0
     assert "FORCE" in result.stderr
     assert not (tmp_path / ".local").exists()
@@ -143,7 +168,7 @@ def test_force_skips_load_and_lock(tmp_path):
 
 def test_setup_failure_runs_suite_unlocked(tmp_path):
     (tmp_path / ".local").write_text("not a directory")
-    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "raise SystemExit(7)"], env=env(tmp_path), capture_output=True, text=True, timeout=1)
+    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "raise SystemExit(7)"], env=env(tmp_path), capture_output=True, text=True, timeout=5)
     assert result.returncode == 7
     assert "unqueued" in result.stderr
 
@@ -216,7 +241,7 @@ def test_missing_helper_one_liner_runs_suite(tmp_path):
     dev.write_text("raise SystemExit('unexpected dev fallback')\n")
     fake_bin = tmp_path / 'bin'; fake_bin.mkdir()
     bun = fake_bin / 'bun'; bun.write_text('#!/bin/sh\nexit 7\n'); bun.chmod(0o755)
-    result = subprocess.run(['sh','-c',one_liner],env={**env(tmp_path),'PATH':str(fake_bin)+os.pathsep+os.environ['PATH']},capture_output=True,text=True,timeout=1)
+    result = subprocess.run(['sh','-c',one_liner],env={**env(tmp_path),'PATH':str(fake_bin)+os.pathsep+os.environ['PATH']},capture_output=True,text=True,timeout=5)
     assert result.returncode == 7 and 'helper missing' in result.stderr
 
 

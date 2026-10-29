@@ -13,8 +13,8 @@
       <p class="df-kicker">{{KICKER}}</p>
       {{MODE_SWITCH}}
       <h1>{{HEADING}}</h1>
-      <p class="df-subtitle">{{SUBTITLE}}</p>
-      <p class="df-storage-state" id="df-storage-state" aria-live="polite">Answers save only for this dashboard on this device.</p>
+      {{CONTEXT}}
+      <p class="df-storage-state" id="df-storage-state" aria-live="polite"></p>
     </header>
     {{CONTROLLER}}
     <aside class="df-side">
@@ -41,6 +41,7 @@
     <div class="df-note-actions"><button type="button" id="df-note-delete" hidden>Delete note</button><button type="button" id="df-note-copy-draft" hidden>Copy draft</button><button type="button" id="df-note-cancel">Cancel</button><button type="button" id="df-note-save">Save note</button></div>
     <div id="df-note-list" aria-label="Saved notes"></div>
   </dialog>
+  {{COMPARE_DIALOG}}
   <script id="tpdata" type="application/json">{{TPDATA}}</script>
   <script>{{SCRIPT}}</script>
 </body>

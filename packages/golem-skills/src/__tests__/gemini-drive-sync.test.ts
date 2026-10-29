@@ -22,12 +22,13 @@ const SCRIPT = join(
 describe("gemini drive sync", () => {
   test("documents Drive-sync as the default workflow", async () => {
     const content = await readFile(SKILL, "utf8");
+    expect(content).not.toMatch(/Brain Drive\/Research\//);
 
     expect(content).toContain("Default Workflow: Drive-Sync Research");
     expect(content).toContain("_shared/research/verify-account.sh");
     expect(content).toContain("_shared/research/drive-paths.py ensure-project-folders");
     expect(content).toContain("~/.golems/research-state.json");
-    expect(content).toContain("Drive/Research/<project>/results/R{NN}-gemini-result.md");
+    expect(content).toContain("Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-gemini-result.md");
     expect(content).toContain("source=\"drive\"");
   });
 

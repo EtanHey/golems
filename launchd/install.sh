@@ -14,6 +14,28 @@ PLISTS=(
     "com.golems.worktree-gc.plist"
 )
 
+domain="gui/$(id -u)"
+
+unload_label() {
+    local label="$1"
+    local attempt
+    if launchctl print "$domain/$label" >/dev/null 2>&1; then
+        echo "  Unloading existing $label..."
+        launchctl bootout "$domain/$label" 2>/dev/null || true
+        # bootout can return before launchd finishes removing the service.
+        for ((attempt = 0; attempt < 25; attempt++)); do
+            if ! launchctl print "$domain/$label" >/dev/null 2>&1; then
+                break
+            fi
+            sleep 0.2
+        done
+        if launchctl print "$domain/$label" >/dev/null 2>&1; then
+            echo "ERROR: $label still loaded after bootout" >&2
+            exit 1
+        fi
+    fi
+}
+
 if [[ "${1:-}" == "--uninstall" ]]; then
     echo "🗑️  Uninstalling golems launchd agents..."
 
@@ -21,10 +43,7 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 
     for plist in "${PLISTS[@]}"; do
         label="${plist%.plist}"
-        if launchctl list | grep -q "$label"; then
-            echo "  Unloading $label..."
-            launchctl unload "$LAUNCH_AGENTS/$plist" 2>/dev/null || true
-        fi
+        unload_label "$label"
         if [[ -f "$LAUNCH_AGENTS/$plist" ]]; then
             echo "  Removing $plist..."
             rm "$LAUNCH_AGENTS/$plist"
@@ -45,19 +64,19 @@ mkdir -p "$LAUNCH_AGENTS"
 for plist in "${PLISTS[@]}"; do
     label="${plist%.plist}"
 
-    # Unload if already loaded
-    if launchctl list | grep -q "$label"; then
-        echo "  Unloading existing $label..."
-        launchctl unload "$LAUNCH_AGENTS/$plist" 2>/dev/null || true
-    fi
+    # Remove the loaded definition so bootstrap picks up the rendered plist.
+    unload_label "$label"
 
     # Render host-specific paths into the installed plist.
     echo "  Installing $plist..."
     "$SCRIPT_DIR/render-plist.sh" "$SCRIPT_DIR/$plist" "$LAUNCH_AGENTS/$plist"
 
-    # Load
+    # Bootstrap failures must stop installation before the success message.
     echo "  Loading $label..."
-    launchctl load "$LAUNCH_AGENTS/$plist"
+    if ! launchctl bootstrap "$domain" "$LAUNCH_AGENTS/$plist"; then
+        echo "ERROR: Failed to bootstrap $label in $domain" >&2
+        exit 1
+    fi
 done
 
 echo ""

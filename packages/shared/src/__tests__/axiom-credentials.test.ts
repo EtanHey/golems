@@ -1,3 +1,4 @@
+import { testBun } from "../test-bun";
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -177,7 +178,7 @@ describe("malformed quoted values in the env file", () => {
     const axiom = join(import.meta.dir, "../lib/axiom.ts");
     const result = spawnSync(
       process.execPath,
-      ["-e", `const { getAxiom } = await import(${JSON.stringify(axiom)}); console.log("client:" + (getAxiom() === null ? "null" : "built"));`],
+      [...testBun.slice(1), "-e", `const { getAxiom } = await import(${JSON.stringify(axiom)}); console.log("client:" + (getAxiom() === null ? "null" : "built"));`],
       { encoding: "utf8", env },
     );
     expect(result.stdout).toContain("client:null");

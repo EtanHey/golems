@@ -10,7 +10,18 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-import { detectRenderDone, REGISTERED_CLONES } from "../src/render-done-gate.mjs";
+// These fixtures use the neutral expert; the gates capture env at import time.
+const gate = await (async () => {
+  const original = process.env.GOLEMS_EXPERT_VOICE;
+  try {
+    delete process.env.GOLEMS_EXPERT_VOICE;
+    return await import("../src/render-done-gate.mjs");
+  } finally {
+    if (original === undefined) delete process.env.GOLEMS_EXPERT_VOICE;
+    else process.env.GOLEMS_EXPERT_VOICE = original;
+  }
+})();
+const { detectRenderDone, REGISTERED_CLONES } = gate;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const redDir = path.join(here, "fixtures", "render-done-gate", "red");

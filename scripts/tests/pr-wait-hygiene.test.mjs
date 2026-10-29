@@ -1,0 +1,97 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+
+const lead = { threadId: 'lead', role: 'lead', status: 'WAITING', snoozed: true, snoozedUntil: null };
+const watch = { threadId: 'lead', watchId: 'watch-1', status: 'active' };
+const schedule = { threadId: 'lead', scheduleId: 'wake-1', status: 'scheduled', runAt: '2099-01-01T12:00:00Z' };
+function check(snapshot) {
+  return spawnSync(process.execPath, ['scripts/ci/pr-wait-hygiene.mjs', '-'], {
+    input: JSON.stringify(snapshot), encoding: 'utf8',
+  });
+}
+
+test('RED: snooze without a wake flags the waiting lead', () => {
+  const result = check({ threads: [lead] });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /lead: WAITING without a live event or scheduled wake/);
+});
+test('RED: snoozedUntil alone is not an owned scheduled wake', () => {
+  assert.equal(check({ threads: [{ ...lead, snoozedUntil: schedule.runAt }] }).status, 1);
+});
+test('GREEN: a live linked PR watch is a wake source', () => {
+  assert.equal(check({ threads: [lead], watches: [watch] }).status, 0);
+});
+test('GREEN: an owned future schedule is a wake source', () => {
+  assert.equal(check({ threads: [lead], schedules: [schedule] }).status, 0);
+});
+test('list_thread_pull_requests: preserve native PR rows on the owning thread', () => {
+  const pr = { host: 'github.com', repository: 'example/repo', number: 1, url: 'https://github.com/example/repo/pull/1', watching: true, state: 'open' };
+  const snapshot = { threads: [{ ...lead, pullRequests: [pr] }] };
+  assert.equal(check(snapshot).status, 0);
+  pr.watching = false;
+  assert.equal(check(snapshot).status, 1);
+  pr.watching = true;
+  pr.state = 'merged';
+  assert.equal(check(snapshot).status, 1);
+});
+test('list_scheduled_tasks: preserve native enabled, bound owner and next-run fields', () => {
+  const wake = { scheduledTaskId: 'wake-1', boundThreadId: 'lead', enabled: true, nextRunAt: schedule.runAt };
+  const snapshot = { threads: [lead], schedules: [wake] };
+  assert.equal(check(snapshot).status, 0);
+  wake.enabled = false;
+  assert.equal(check(snapshot).status, 1);
+  wake.enabled = true;
+  wake.boundThreadId = null;
+  assert.equal(check(snapshot).status, 1);
+});
+test('task_status and t3_thread_list: native task/child rows associate the waiting owner', () => {
+  assert.equal(check({ threads: [
+    { threadId: 'lead', status: 'waiting', parentThreadId: null, snoozed: true, snoozedUntil: null },
+    { threadId: 'child', parentThreadId: 'lead', status: 'running' },
+  ], tasks: [{ taskId: 't', childThreadId: 'child', status: 'running', workState: 'working', hasPendingChildRuns: false, hasPendingQuestion: false }] }).status, 0);
+});
+test('GREEN: thread-local watch and schedule evidence is accepted', () => {
+  assert.equal(check({ ...lead, watches: [watch] }).status, 0);
+  assert.equal(check({ ...lead, schedules: [schedule] }).status, 0);
+});
+test('RED: terminal watches, unrelated watches and placeholders do not wake the lead', () => {
+  for (const invalid of [{ ...watch, status: 'closed' }, { ...watch, threadId: 'other' }, { status: 'active' }]) {
+    assert.equal(check({ threads: [lead], watches: [invalid] }).status, 1);
+  }
+});
+test('RED: expired, cancelled, unowned and undated schedules do not count', () => {
+  for (const invalid of [
+    { ...schedule, runAt: '2000-01-01T00:00:00Z' }, { ...schedule, status: 'cancelled' },
+    { ...schedule, threadId: 'other' }, { ...schedule, runAt: null },
+  ]) assert.equal(check({ threads: [lead], schedules: [invalid] }).status, 1);
+});
+test('GREEN: weave shape accepts a live delegate whose child identifies its parent', () => {
+  const snapshot = {
+    schema: 'weave-t3-fleet/v1',
+    threads: [{ ...lead, role: undefined, parentThreadId: null }, { threadId: 'child', parentThreadId: 'lead', status: 'running' }],
+    tasks: [{ taskId: 'task-1', childThreadId: 'child', status: 'running', workState: 'working' }],
+  };
+  assert.equal(check(snapshot).status, 0);
+  snapshot.tasks[0].status = 'completed';
+  snapshot.tasks[0].workState = 'result_available';
+  assert.equal(check(snapshot).status, 1);
+});
+test('RED: a delegate belonging to another lead cannot cover the wait', () => {
+  assert.equal(check({ threads: [lead], tasks: [{ taskId: 't', parentThreadId: 'other', status: 'running' }] }).status, 1);
+});
+test('only waiting leads are checked; all unsafe leads are reported', () => {
+  const result = check({ threads: [
+    lead, { ...lead, threadId: 'second', snoozed: false },
+    { ...lead, threadId: 'worker', role: 'worker' },
+    { ...lead, threadId: 'child', role: undefined, parentThreadId: 'lead' },
+    { ...lead, threadId: 'running', status: 'running' },
+  ] });
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout.trim().split('\n').length, 2);
+});
+test('invalid snapshots fail with a distinct input error', () => {
+  for (const invalid of [{}, { threads: 'bad' }, { threads: [{ status: 'waiting' }] }, { threads: [lead], watches: {} }]) {
+    assert.equal(check(invalid).status, 2);
+  }
+});

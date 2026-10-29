@@ -15,8 +15,8 @@ beforeAll(() => {
   // Snapshot the current payload into a scratch Git repo: P1 builds committed objects only.
   const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repo, encoding: 'utf8' }).split('\0').filter(Boolean);
   paths.push('scripts/release/install.sh', 'skills/catalog.json');
-  paths.push('scripts/hooks/client-install-transaction.mjs');
-  for (const path of new Set(paths.filter(p => /^(skills\/(golem-powers\/|catalog.json$)|scripts\/(pr-watch|repogolem\/|hooks\/|model-roles.mjs|ci\/check-model-role-drift.mjs)|packages\/golem-skills\/|standards\/model-roles|\.claude\/hooks\/block-dangerous-commands.py|hooks\/daemon-gate-precheck.py|\.bun-version$|LICENSE$|package.json$|release-gate.json$|scripts\/release\/install.sh$)/.test(p)))) {
+  paths.push('scripts/hooks/client-install-transaction.mjs', 'standards/vercel-deploys.md', 'scripts/vercel-budget.mjs');
+  for (const path of new Set(paths.filter(p => /^(skills\/(golem-powers\/|catalog.json$)|scripts\/(pr-watch|repogolem\/|hooks\/|model-roles.mjs|ci\/check-model-role-drift.mjs)|packages\/golem-skills\/|standards\/(model-roles|vercel-deploys\.md$)|scripts\/vercel-budget\.mjs$|\.claude\/hooks\/block-dangerous-commands.py|hooks\/daemon-gate-precheck.py|\.bun-version$|LICENSE$|package.json$|release-gate.json$|scripts\/release\/install.sh$)/.test(p)))) {
     if (!existsSync(join(repo, path))) continue;
     mkdirSync(dirname(join(source, path)), { recursive: true });
     copyFileSync(join(repo, path), join(source, path));
@@ -544,4 +544,11 @@ test('a release without rollback support cannot update an existing client hook i
   const result = spawnSync('/bin/sh', [installer, '--prefix', join(dir, 'other-prefix'), '--from-file', tarball, '--sums', sums], { env, encoding: 'utf8' });
   expect(result.status).not.toBe(0); expect(result.stderr).toContain('rollback protocol');
   expect(hookState(dir)).toEqual(before);
+});
+
+test('release tarball ships Vercel policy and budget helper with original bytes', () => {
+  for (const path of ['standards/vercel-deploys.md', 'scripts/vercel-budget.mjs']) {
+    const contents = execFileSync('tar', ['-xOzf', release.tarball, path]);
+    expect(contents).toEqual(readFileSync(join(repo, path)));
+  }
 });

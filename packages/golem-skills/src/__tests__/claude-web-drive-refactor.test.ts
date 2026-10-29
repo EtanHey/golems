@@ -30,13 +30,14 @@ const MIGRATE_WORKFLOW = join(
 describe("claude web drive refactor", () => {
   test("documents Drive as the primary storage location", async () => {
     const content = await readFile(SKILL, "utf8");
+    expect(content).not.toMatch(/Brain Drive\/Research\//);
 
-    expect(content).toContain("Brain Drive/Research/<project>/");
+    expect(content).toContain("Brain Drive/03_RESEARCH/Active/<project>/");
     expect(content).toContain("Local cache");
     expect(content).toContain("Step 0 — Verify active account");
     expect(content).toContain("_shared/research/verify-account.sh");
-    expect(content).toContain("Drive/Research/<project>/prompts/");
-    expect(content).toContain("Drive/Research/<project>/context/");
+    expect(content).toContain("Brain Drive/03_RESEARCH/Active/<project>/prompts/");
+    expect(content).toContain("Brain Drive/03_RESEARCH/Active/<project>/context/");
     expect(content).not.toContain("Primary (Obsidian");
     expect(content).not.toContain("cp \"$HOME/Library/Mobile Documents");
   });

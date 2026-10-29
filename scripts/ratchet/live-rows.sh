@@ -5,24 +5,28 @@
 # Requires owner-only ~/.golems/ratchet/installed-skills.json (or RATCHET_SKILL_CONFIG).
 #
 # Runs the `live` rows of scripts/ratchet/rows.json against the REAL install and posts the table on
-# the merged PR. Nothing is installed or pushed. The human-confirm row issues ONE real lead token
+# the merged PR. Only --sync-m1 installs skills (requires Etan's authorization). Nothing is pushed.
+# The human-confirm row issues ONE real lead token
 # through the live golems-lead-confirm (lead key, logged to the collab) and feeds lease payloads
 # scoped to --lease-pr, an open PR whose branch --lease-repo has checked out at its head.
 set -euo pipefail
 
 die() { echo "live-rows: $*" >&2; exit 2; }
-MERGED="" LEASE_PR="" LEASE_REPO=""
+MERGED="" LEASE_PR="" LEASE_REPO="" SYNC_M1=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --merged-pr) MERGED="${2:?}"; shift 2 ;;
     --lease-pr) LEASE_PR="${2:?}"; shift 2 ;;
     --lease-repo) LEASE_REPO="${2:?}"; shift 2 ;;
+    --sync-m1) SYNC_M1=true; shift ;;
+    --no-sync-m1) SYNC_M1=false; shift ;;
     *) die "unknown argument $1" ;;
   esac
 done
 [ -n "$MERGED" ] && [ -n "$LEASE_PR" ] && [ -n "$LEASE_REPO" ] || die "--merged-pr, --lease-pr and --lease-repo are required"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[ "$SYNC_M1" = false ] || python3 -B "$HERE/sync-m1.py" --check-authorization
 COMMON_DIR="$(git -C "$HERE" rev-parse --git-common-dir)"
 case "$COMMON_DIR" in
   /*) MAIN="$(cd "$COMMON_DIR/.." && pwd)" ;;
@@ -41,6 +45,15 @@ mkdir -p "$RUN"
 PR_BODY_FILE="$RUN/pr-body.md"
 if ! gh api "repos/$REPO_SLUG/pulls/$MERGED" --jq .body > "$PR_BODY_FILE"; then
   die "cannot fetch body for PR #$MERGED; refusing to post a table without its rulings"
+fi
+
+if [ "$SYNC_M1" = true ]; then
+  VERSION="$(python3 -c 'from datetime import datetime, timezone; import sys; print(datetime.fromtimestamp(int(sys.argv[1]), timezone.utc).strftime("%Y.%m.%d") + "-" + sys.argv[2][:7])' "$(git -C "$MAIN" show -s --format=%ct "$LIVE_HEAD")" "$LIVE_HEAD")"
+  if python3 -B "$HERE/sync-m1.py" "$LIVE_HEAD" "$VERSION" "$RUN/m1-sync" > "$RUN/m1-sync.log" 2>&1; then
+    cat "$RUN/m1-sync.log"
+  else
+    status=$?; cat "$RUN/m1-sync.log" >&2; exit "$status"
+  fi
 fi
 
 # The probe must not dirty the live tree it measures (the issuer's bytecode was the 10-06 specimen).

@@ -92,7 +92,7 @@ If the relevant MCP is missing from BOTH paths, the prompt will hit a silent mis
 ### Primary (Drive — works for BOTH desktop AND web)
 
 ```
-Brain Drive/Research/<project>/
+Brain Drive/03_RESEARCH/Active/<project>/
   description.md
   instructions.md
   context/
@@ -257,8 +257,8 @@ If the project's context has changed since the last prompt:
 
 ### Step 4 — Upload prompt + context to Drive (and optional local cache)
 
-1. Upload `R{NN}-{topic}.md` to `Brain Drive/Research/<project>/prompts/`
-2. Keep `description.md`, `instructions.md`, and `context/` current in `Brain Drive/Research/<project>/context/`
+1. Upload `R{NN}-{topic}.md` to `Brain Drive/03_RESEARCH/Active/<project>/prompts/`
+2. Keep `description.md`, `instructions.md`, and `context/` current in `Brain Drive/03_RESEARCH/Active/<project>/context/`
 3. Optionally mirror to `$ORCHESTRATOR_ROOT/docs.local/claude-desktop/projects/<project>/` for local review
 
 ### Step 5 — Tell the user
@@ -266,7 +266,7 @@ If the project's context has changed since the last prompt:
 ```
 Research prompt ready: R{NN}-{topic}.md
 Mode: [desktop / web]   ← desktop if MCP needed, web if not
-Primary: Brain Drive/Research/<project>/prompts/
+Primary: Brain Drive/03_RESEARCH/Active/<project>/prompts/
 Local cache: docs.local/claude-desktop/projects/<project>/ (optional)
 
 Open Claude Desktop and paste the prompt. Your Drive workspace is connected, so
@@ -283,7 +283,7 @@ before clicking Start Research.
 
 When the user downloads `compass_artifact` or copies the result:
 
-1. Save to `Brain Drive/Research/<project>/results/R{NN}-claude-desktop-result.md`
+1. Save to `Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-claude-desktop-result.md`
 2. Optionally mirror to `$ORCHESTRATOR_ROOT/docs.local/claude-desktop/projects/<project>/results/`
 3. `brain_digest` the raw content (extracts entities/relations)
 4. `brain_store` conclusions with tags `["research", "conclusions", "{project}", "{topic}"]`

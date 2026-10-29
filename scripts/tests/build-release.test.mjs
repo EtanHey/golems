@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildRelease, createManifest } from '../release/build-release.mjs';
@@ -149,5 +149,66 @@ test('published asset mismatch fails before changing release metadata', () => {
 
 test('publication remains serialized and both jobs use the pinned Node version', () => {
   expect(workflow).toContain('group: golems-release\n      cancel-in-progress: false');
-  expect(workflow.match(/node-version: '22\.22\.0'/g)).toHaveLength(2);
+  expect(workflow.match(/node-version: '24\.22\.1'/g)).toHaveLength(2);
+});
+
+function runsNode(script) {
+  const hasNodeCommand = code => /\b(?:node|npm|npx)(?:\s|$)/.test(code) ||
+    (/\bbun\s+run(?:\s|$)/.test(code) && !/(?:^|\s)--bun(?:\s|$)/.test(code));
+  const legacy = script.split(/\n|&&|\|\||;/).some(command => hasNodeCommand(command.replace(/#.*/, '')));
+  const uncommented = script.replace(/\$'(?:\\.|[^'\\])*'|'[^']*'|"(?:\\.|[^"\\])*"|\\.|(?<![^\s;&|(<>])#[^\n]*/g,
+    token => token.startsWith('#') ? '' : token);
+  // AIDEV-NOTE: Full heredoc parsing is out of scope; union with the legacy detector is the safety net.
+  return legacy || uncommented.split(/\n|&&|\|\||;/).some(hasNodeCommand);
+}
+
+test('Node command detection includes Bun fallback but excludes forced Bun execution', () => {
+  for (const command of ['node script.mjs', 'npm ci', 'npx vitest', 'bun run test', 'bun run typecheck', 'echo ok && bun run test']) {
+    expect(runsNode(command), command).toBe(true);
+  }
+  for (const command of ['bun test ./packages', 'bun run --bun test', 'bun --bun run test', '# node ignored.mjs', 'echo ok # npm ci']) {
+    expect(runsNode(command), command).toBe(false);
+  }
+});
+
+function nodeSetupViolations(parsed, file) {
+  const violations = [];
+  for (const [jobName, job] of Object.entries(parsed.jobs ?? {})) {
+    let setup;
+    for (const step of job.steps ?? []) {
+      if (step.uses?.startsWith('actions/setup-node@')) setup = step;
+      if (typeof step.run !== 'string' || !runsNode(step.run)) continue;
+      if (setup?.uses !== 'actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38' ||
+          setup.with?.['node-version'] !== '24.22.1' || setup.if !== undefined || setup['continue-on-error']) {
+        violations.push(`${file}:${jobName}: ${step.name ?? step.run.split('\n')[0]}`);
+      }
+    }
+  }
+  return violations;
+}
+
+test.each([
+  ["printf '#' | node x.js", 1],
+  ['echo "a # b" | npx tsc', 1],
+  [String.raw`printf '\"#' | node x.js`, 1],
+  [String.raw`echo "a \" # b" | npx tsc`, 1],
+  [String.raw`printf \# | node x.js`, 1],
+  ['echo ${#value} | node x.js', 1],
+  ['echo a#b | node x.js', 1],
+  ['echo $(echo a)#b | node x.js', 1],
+  [String.raw`echo $'x\'y #' | node x.js`, 1],
+  [String.raw`echo $'\' #' | node x.js`, 1],
+  ["cat <<EOF\nit's\nEOF\necho ' #'; node x.js", 1],
+  ['echo hi # node', 0],
+  ['echo hi # "node"', 0],
+  ['echo hi # comment; node ignored.js', 1], // Fail-safe union retains the legacy over-detection.
+])('workflow job without setup-node: %s', (run, count) => {
+  expect(nodeSetupViolations({ jobs: { demo: { steps: [{ run }] } } }, 'fixture.yml')).toHaveLength(count);
+});
+
+test('every workflow job running Node has the SHA-pinned setup before execution', () => {
+  const directory = new URL('../../.github/workflows/', import.meta.url);
+  const violations = readdirSync(directory).filter(file => /\.ya?ml$/.test(file)).sort().flatMap(file =>
+    nodeSetupViolations(Bun.YAML.parse(readFileSync(new URL(file, directory), 'utf8')), file));
+  expect(violations).toEqual([]);
 });

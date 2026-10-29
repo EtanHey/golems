@@ -142,6 +142,38 @@ recorded as unavailable, never awaited.
 
 ### Waiting policy (no polling turns)
 
+**Every wait needs an owned wake source.** Before ending a turn as WAITING, name the real
+event (a live PR watch, delegate completion, or M1 lane event) and its owner. If no event can
+wake that owner, arm a T3 `schedule_task` one-shot wake bound to the owner and record its time.
+Snooze alone, including `snoozedUntil`, is invalid: without an event or scheduled wake the work
+is lost. A one-shot wake resumes an owned wait; it is not a recurring CI/review polling turn.
+
+**Act on both PR-watch outcomes.** Red means fix now or route the fix now. All-green and
+reviewed at the latest head means the authorized lead merges now; a worker hands off unmerged.
+If merging cannot proceed, hand off with the reason and next owner. A green wake is never
+news only. Do not leave ready work idle behind another PR's red checks.
+
+Offline hygiene check: `node scripts/ci/pr-wait-hygiene.mjs <snapshot.json|->` flags WAITING
+leads with no live event or future scheduled wake (exit 1; invalid input 2; pass 0).
+Input is one thread or `{ "threads": [...] }`; status is case-insensitive. Explicit workers
+(`role: "worker"` or non-null `parentThreadId`) are skipped; rows without either are treated
+as leads. Each row needs `threadId` and `status`; snooze fields never count as wake evidence.
+Capture: threads from T3 `t3_thread_list`; watches from `list_thread_pull_requests` (each PR's watching state); schedules from `list_scheduled_tasks` (enabled + next run); tasks from `task_status`. Snooze state from the thread row is ignored.
+Copy the PR response's `pullRequests` onto its owning thread row, and the schedule response's
+`tasks` into snapshot `schedules`: native `watching` + `state: "open"`, and `scheduledTaskId`,
+`boundThreadId`, `enabled`, `nextRunAt` are accepted directly. Keep each `task_status` result
+in snapshot `tasks` and include its child thread row to identify the parent. Capture task state
+only when allowed by T3's completion policy; this offline check never authorizes polling.
+Supply top-level or thread-local `watches` (`threadId`, `watchId`, `status: "active"`) and
+`schedules` (`threadId`, `scheduleId`, `status: "scheduled"`, future ISO `runAt`). Both must
+name the waiting owner. `tasks` use `taskId`, a live `status`, and `parentThreadId`, or a child
+thread whose `parentThreadId` names the owner. Completed results do not count. An M1 lane
+without linked evidence needs an owned one-shot schedule for this check.
+The checker accepts `weave-t3-fleet/v1` snapshots unchanged in structure: add the watch/schedule
+evidence arrays, and keep the existing threads/tasks. It checks wait hygiene only, not weave
+convergence, capture freshness or whether a supplied event is actually live; capture that
+evidence from T3 before running it.
+
 The rules this section lands, verbatim (Etan 2026-10-18, via orc collab):
 
 > **No polling turns.** No collab-monitor wakes in Codex, and no "watch #410" loops. Use T3 completion notifications or a single bounded check. Mechanical polling or rebases go to gpt-6-luna.
@@ -416,3 +448,13 @@ gh pr view <N> --json reviewDecision,comments
 gh pr merge <N> --merge --delete-branch
 git checkout main && git pull
 ```
+
+### Visual review validity and round counting
+
+Every visual PR reviewer must inspect and cite desktop before/after, 390 px
+before/after, one GIF per animation/interaction (or the exact no-change exemption),
+and e2e screenshot diffs from the PR's Visual proof section. A review that
+cites only code is INVALID and does not count as a round, including Loop-record
+inner/remote counts. Obtain a valid artifact-citing review before counting a
+clean round or merging. Missing proof is a pre-merge stop at every PR size.
+Routing: see `/agent-routing` § Routing rules (SSOT).
