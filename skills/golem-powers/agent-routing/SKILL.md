@@ -67,6 +67,7 @@ Etan (2026-10-28, via orc/PHX): use Sol/Terra/Luna for more of the work so the C
 | Security | `codex.security` at effort `high` | `claude.judgment` | a `codex-security` deep scan per security PR |
 | Holistic/product work (skill and doc text, product behaviour, multi-file features, anything where judgment and coherence matter) | `claude.judgment` (Opus; Sonnet/Haiku only as sub-agents for trivial wording edits), 2026-10-29 | Codex Sol (`codex.implement`) | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
 | Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump, tests, deletions) | Codex Sol (hard) / Terra (bounded), 2026-10-29 | `claude.judgment` | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
+| Ratchets and TLC/TLA+ specs (ratchet rows, budgets, runners and attestation; formal models and their invariants) | `claude.judgment` (Opus) designs, and builds unless the change is tiny (one threshold or one row), 2026-10-29 (Etan, via orc: highest quality, thought through) | Codex Sol (`codex.implement`) | this row wins over "CI script" above; a Codex-built ratchet or model gets an Opus design-conformance review and rework before merge |
 
 The reviewer is always the other vendor.
 
