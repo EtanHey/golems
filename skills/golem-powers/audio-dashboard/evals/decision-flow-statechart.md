@@ -1,8 +1,14 @@
 # Decision-flow control statechart
 
 The test oracle in `decision-flow-controls.test.mjs` models three cards with two
-clips each. It generates 12 seeded paths of 100 enabled transitions, checks the
-DOM after every transition, and requires every event type to run. A failed path
+clips each. It generates 12 seeded paths of 100 enabled transitions (six mouse,
+six coarse-touch), checks both Cite buttons against selection, Armed, modal and
+pointer state after every step, and requires all 35 event types in each pointer
+mode. Pointerdown captures a quote, selection dismissal retains it, and cancel
+or an outside press disarms it. Four runtime mutation controls must fail in the
+generator: missing touch Cite, missing floating Cite, ignored armed quotes, and
+Cite offered over an open note. A transient browser-restored background range
+probes the dialog guard before the range clears. A failed path
 prints its seed and event sequence. Happy DOM replaces media playback and the
 clock; this checks control logic, not codecs, audible output, native iOS callouts,
 or an exhaustive product of all states. Chromium covers layout and touch taps.
@@ -48,7 +54,8 @@ stateDiagram-v2
         NoSelection --> Offered: valid selection on one card
         Offered --> Armed: pointer down [retain quote]
         Armed --> Draft: click Cite
-        Armed --> NoSelection: pointer cancel / outside pointer down
+        Armed --> NoSelection: pointer cancel / outside pointer down [selection collapsed]
+        Armed --> Offered: pointer cancel / outside pointer down [selection valid]
         Offered --> NoSelection: selection collapsed or invalid
         Offered --> Draft: click Cite
         NoSelection --> Draft: card or checklist note

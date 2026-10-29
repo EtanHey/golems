@@ -123,9 +123,9 @@ a{color:inherit}
 /* Controller: sticky transport plus a scrollable strip of card chips. */
 .df-controller{position:sticky;top:0;z-index:15;margin:0 -16px 14px;padding:calc(8px + env(safe-area-inset-top)) 16px 8px;background:rgba(16,26,44,.95);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .df-transport{display:flex;align-items:center;gap:6px}
-.df-tbtn{flex:none;width:40px;height:42px;border:1px solid var(--line-strong);border-radius:50%;background:transparent;color:var(--moon);font-size:15px;cursor:pointer}
+.df-tbtn{flex:none;width:44px;height:44px;border:1px solid var(--line-strong);border-radius:50%;background:transparent;color:var(--moon);font-size:15px;cursor:pointer}
 .df-tbtn:disabled{opacity:.35;cursor:default}
-/* Phone budget (360px): 40 + 48 + 40 + 84 + 76 + 4 gaps = 312px, so the row never wraps or scrolls; the play word joins at 440px. */
+/* Touch phone budget (360px): 44 + 48 + 44 + 44 Cite slot + 68 + 56 + 5 gaps = 324px. */
 .df-tplay{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:48px;height:42px;padding:0;border:0;border-radius:999px;background:var(--amber);color:var(--ink);font-weight:650;cursor:pointer}
 .df-tplay-icon{font-size:15px;line-height:1}
 .df-tplay-text{display:none}
@@ -311,14 +311,14 @@ body[data-view="story"] .df-sheet.is-open .df-sheet-head{position:sticky;top:0;z
 .df-note-count[hidden],#df-cite[hidden],#df-controller-cite[hidden],#df-note-delete[hidden]{display:none}
 #df-controller-cite{width:44px;height:44px;border-color:var(--glass);background:var(--moon);color:var(--ink);font-size:22px;transition:transform 160ms ease-out}
 #df-controller-cite:active{transform:scale(.97)}
-@media(hover:hover){#df-controller-cite:hover{background:var(--glass)}}
+@media(pointer:coarse){#df-controller-cite[hidden]{display:block;visibility:hidden}}
+@media(hover:hover) and (pointer:fine){#df-controller-cite:hover{background:var(--glass)}}
 @media(max-width:600px){
-  .df-controller:has(#df-controller-cite:not([hidden])) .df-transport{gap:4px}
-  .df-controller:has(#df-controller-cite:not([hidden])) .df-tbtn{width:44px;height:44px}
-  .df-controller:has(#df-controller-cite:not([hidden])) .df-tplay{width:48px;min-width:48px;padding:0}
-  .df-controller:has(#df-controller-cite:not([hidden])) .df-tplay-text{display:none}
-  .df-controller:has(#df-controller-cite:not([hidden])) .df-speed select{width:68px;padding:0 18px 0 8px;background-position:right 7px center;font-size:16px}
-  .df-controller:has(#df-controller-cite:not([hidden])) .df-view-toggle{min-width:56px;padding:0 8px;font-size:14px}
+  body .df-controller .df-transport{gap:4px}
+  body .df-controller .df-tplay{width:48px;min-width:48px;padding:0}
+  .df-controller .df-tplay-text{display:none}
+  .df-controller .df-speed select{width:68px;padding:0 18px 0 8px;background-position:right 7px center;font-size:16px}
+  .df-controller .df-view-toggle{min-width:56px;padding:0 8px;font-size:14px}
 }
 .df-card-note,.df-item-note{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:44px;min-height:44px;padding:6px;border:1px solid var(--line-strong);border-radius:10px;background:transparent;color:var(--muted);cursor:pointer}
 .df-card-note{grid-area:note}@media(hover:hover) and (pointer:fine){.df-card-note:hover,.df-item-note:hover{color:var(--moon);border-color:var(--glass)}}

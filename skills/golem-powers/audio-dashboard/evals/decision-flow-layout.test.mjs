@@ -61,6 +61,25 @@ layoutTest("review: a real mouse drag between interior words offers Cite without
   } } finally { await browser.close(); }
 }, 60000);
 
+layoutTest("touch Cite reserves its space without moving controls and transport targets stay 44px", async () => {
+  const browser = await chromium.launch({ args: ["--mute-audio"] }), failures = [];
+  try { for (const width of [360, 390, 1280]) for (const view of ["list", "story"]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" }); await page.goto(fixture());
+    if (view === "story") await page.locator("#df-view-toggle").tap();
+    const geometry = () => page.evaluate(() => Object.fromEntries(["df-transport-prev", "df-transport-play", "df-transport-next", "df-transport-stop", "df-speed", "df-view-toggle"].map(id => document.getElementById(id)).filter(node => node.getClientRects().length).map(node => { const r = node.getBoundingClientRect(); return [node.id, { x: r.x, y: r.y, width: r.width, height: r.height }]; })));
+    const before = await geometry();
+    await page.locator(view === "story" ? ".df-card.is-active .df-words" : ".df-card.is-active .df-question p").first().evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); getSelection().removeAllRanges(); getSelection().addRange(range); });
+    await page.locator("#df-controller-cite").waitFor({ state: "visible" }); const selected = await geometry();
+    await page.evaluate(() => getSelection().removeAllRanges()); await page.locator("#df-controller-cite").waitFor({ state: "hidden" }); const cleared = await geometry();
+    for (const [id, rect] of Object.entries(before)) {
+      if (["df-transport-prev", "df-transport-next"].includes(id) && (rect.width < 44 || rect.height < 44)) failures.push({ width, view, id, target: rect });
+      for (const [phase, boxes] of [["selected", selected], ["cleared", cleared]]) if (Object.keys(rect).some(key => Math.abs(rect[key] - boxes[id][key]) > 0.25)) failures.push({ width, view, id, phase, before: rect, after: boxes[id] });
+    }
+    await page.close();
+  } } finally { await browser.close(); }
+  expect(failures).toEqual([]);
+}, 30000);
+
 layoutTest("review: transcript accessibility text preserves spaces between words", async () => {
   const browser = await chromium.launch();
   try { const page = await browser.newPage(); await page.goto(fixture()); await page.click("#df-view-toggle");
