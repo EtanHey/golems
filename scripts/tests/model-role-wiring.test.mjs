@@ -35,7 +35,13 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(text, /\| Security \| `codex.security` at effort `high` \| `claude.judgment` \|.*`codex-security` deep scan per security PR/);
   assert.match(text, /Security effort is `high` on the interim route/); // MF-2: canon-only rule carried into the SSOT
   assert.match(text, /When Daybreak Blue returns, evaluate its first security PRs: if they show more review rounds or more defects than the prior route, flip the pair/); // MF-1
-  assert.match(text, /\| Everything else.*\| Codex Sol \(hard\) \/ Terra \(bounded\), 2026-10-28 \| `claude.judgment`; only Sol reviews a Claude implementation \(2026-10-28\) \|/);
+  assert.match(text, /\| Holistic\/product work \(.*\| `claude.judgment` \(Opus hardest\/taste-critical, Sonnet 5\.5 otherwise\), 2026-10-29 \| Codex Sol \(`codex.implement`\) \|/);
+  assert.match(text, /\| Narrow technical work \(.*\| Codex Sol \(hard\) \/ Terra \(bounded\), 2026-10-29 \| `claude.judgment` \|/);
+  assert.doesNotMatch(text, /\| Everything else/);
+  assert.doesNotMatch(text, /only Sol reviews a Claude implementation/);
+  // RT-3: the reviewer is always the other vendor; no same-vendor review exception survives.
+  assert.match(text, /The reviewer is always the other vendor\./);
+  assert.doesNotMatch(text, /same-vendor (review )?exception|Sol or Opus only, whichever|Claude reviews Claude|Codex reviews Codex/i);
   assert.match(text, /only after.*implementer reports done/);
   assert.match(text, /DONE marker or report line/);
   assert.match(text, /PR head stable.*10 min.*checks finished/);
@@ -166,7 +172,7 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
   for (const rule of [
     '"**EXPERIMENT, starting now for a few days: FLIP the roles.** Claude Opus 5.5 IMPLEMENTS and Codex gpt-6.1-sol REVIEWS." (Etan 2026-10-18, via orc collab)',
     '"Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)',
-    'Codex Sol for hard work and Terra for bounded work', 'Reviewers (2026-10-28) are Sol or Opus only', 'Gemini/Antigravity gather and never review', 'Sonnet 5.5 is a valid worker tier', 'Never fast/priority', 'fresh context', 'bounded lifetime', 'explicit effort', 'serviceTier:"default"', 'Claude only', 'does not revert at a window reset',
+    'Default implementers (2026-10-29,', 'holistic/product work', 'Claude implements (Opus for the hardest/taste-critical, Sonnet 5.5 otherwise)', 'Narrow technical work', 'Codex implements (Sol hard, Terra bounded)', 'Reviewers (2026-10-29) are always the other vendor', 'Gemini/Antigravity gather and never review', 'Sonnet 5.5 is a valid worker tier', 'Never fast/priority', 'fresh context', 'bounded lifetime', 'explicit effort', 'serviceTier:"default"', 'Claude only', 'does not revert at a window reset',
   ]) assert.ok(block.includes(rule), rule);
   const sizing = ssot.split('### Review sizing')[1]?.split('\n### ')[0];
   assert.ok(sizing, 'review sizing section is required');

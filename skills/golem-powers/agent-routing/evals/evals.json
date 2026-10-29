@@ -34,10 +34,10 @@
     {
       "id": 2,
       "prompt": "The FTS5 index is 96% out of sync. We need to rebuild it -- can you write a migration script that drops and recreates the FTS5 triggers?",
-      "expected_output": "Should route this implementation task to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation), NOT write the migration script itself. This is a code change task.",
+      "expected_output": "Should route this implementation task to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), NOT write the migration script itself. This is a code change task.",
       "assertions": [
         {
-          "text": "Routes the implementation task to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation), delegating the code work",
+          "text": "Routes the implementation task to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), delegating the code work",
           "type": "behavioral"
         },
         {
@@ -57,7 +57,7 @@
     {
       "id": 3,
       "prompt": "We're starting a new sprint collab. brainClaude will investigate BrainLayer search quality issues, and we need code fixes applied. Write the collab kickoff.",
-      "expected_output": "The collab kickoff MUST include an Agent Routing section that assigns Cursor for investigation/data-gathering, the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation) for code fixes, the other vendor for review, and brainClaude for coordination.",
+      "expected_output": "The collab kickoff MUST include an Agent Routing section that assigns Cursor for investigation/data-gathering, the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) for code fixes, the other vendor for review, and brainClaude for coordination.",
       "assertions": [
         {
           "text": "Includes an Agent Routing table or section in the collab",
@@ -68,7 +68,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Assigns code fix/implementation tasks to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation), not the coordinating brainClaude or Cursor",
+          "text": "Assigns code fix/implementation tasks to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), not the coordinating brainClaude or Cursor",
           "type": "behavioral"
         },
         {
@@ -111,7 +111,7 @@
     {
       "id": 5,
       "prompt": "We need to audit all 53 skill files in golem-powers/ to check which ones have evals and which don't. Then for any skills missing evals, we need to create eval cases. How should we set this up?",
-      "expected_output": "Should split into two phases: (1) Cursor scans all skill directories for evals (read-only audit), (2) the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation) creates missing eval files (implementation). Claude coordinates; the other vendor reviews.",
+      "expected_output": "Should split into two phases: (1) Cursor scans all skill directories for evals (read-only audit), (2) the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) creates missing eval files (implementation). Claude coordinates; the other vendor reviews.",
       "assertions": [
         {
           "text": "Splits the task into a gathering phase (audit) and implementation phase (create evals)",
@@ -122,7 +122,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Routes the eval creation phase to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation); file creation is implementation",
+          "text": "Routes the eval creation phase to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor); file creation is implementation",
           "type": "behavioral"
         },
         {
@@ -188,14 +188,14 @@
     {
       "id": 8,
       "prompt": "brainClaude just finished its sprint. Looking at the collab log, it did all 5 SQL queries itself, never sent anything to its Cursor worker, and also wrote a 200-line fix directly instead of using Codex. How do we prevent this next time?",
-      "expected_output": "Should identify two violations: (1) SQL queries should have gone to Cursor, (2) 200-line fix should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation), not the coordinating brainClaude. Should recommend adding routing verification gates to future collabs.",
+      "expected_output": "Should identify two violations: (1) SQL queries should have gone to Cursor, (2) 200-line fix should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), not the coordinating brainClaude. Should recommend adding routing verification gates to future collabs.",
       "assertions": [
         {
           "text": "Identifies the SQL queries as a routing violation (should be Cursor)",
           "type": "behavioral"
         },
         {
-          "text": "Identifies the 200-line implementation as a routing violation: it should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation)",
+          "text": "Identifies the 200-line implementation as a routing violation: it should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor)",
           "type": "behavioral"
         },
         {
@@ -586,7 +586,7 @@
     {
       "id": 22,
       "prompt": "A lead claims the tiny-unblocker carve-out for an urgent implementation: a roughly 500-line refactor across multiple files, created in the shared tree, with no same-post collab disclosure. What does agent-routing require?",
-      "expected_output": "Should reject the tiny-unblocker claim. Urgency alone does not qualify: the carve-out is capped at <=20 changed lines, one single-purpose change, zero new files, mandatory same-post collab disclosure with what/why urgent/line count, and an isolated worktree. This multi-file shared-tree refactor must route to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): Codex Sol (hard) / Terra (bounded) implements and Claude Opus reviews; only hardest/taste-critical work goes to Claude with Sol review; and the skipped disclosure must be required before proceeding.",
+      "expected_output": "Should reject the tiny-unblocker claim. Urgency alone does not qualify: the carve-out is capped at <=20 changed lines, one single-purpose change, zero new files, mandatory same-post collab disclosure with what/why urgent/line count, and an isolated worktree. This multi-file shared-tree refactor must route to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): Codex Sol (hard) / Terra (bounded) implements narrow technical work and Claude Opus reviews; holistic/product work goes to Claude with Sol review; and the skipped disclosure must be required before proceeding.",
       "assertions": [
         {
           "text": "Names the three hard bounds: <=20 changed lines, single purpose, and zero new files",
