@@ -155,11 +155,11 @@ news only. Do not leave ready work idle behind another PR's red checks.
 
 **The owning lead holds the watch.** The lead that owns a PR owns its watch, never the worker.
 A worker arms no watch; its READY hands the PR to the lead. In the same turn it accepts that
-READY, the lead arms `watch_pull_request` and reads back `watching:true`.
+READY, the lead arms the PR watch (step 1 below) and reads back `watching:true`.
 
 **Watch claims need a readback.** Say "watched" only after `list_thread_pull_requests` shows
 `watching:true` for that PR in the same turn, and cite that readback. A remembered or intended
-watch is not evidence: `watch_pull_request` can silently not stick, and an unwatch can drop it.
+watch is not evidence: a watch call can silently not stick, and an unwatch can drop it.
 
 **Two states only, for every open PR a lead owns:**
 - WATCHED-WITH-ACTION: `watching:true` read back; red → fix or route the fix now; green and

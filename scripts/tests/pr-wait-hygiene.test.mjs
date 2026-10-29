@@ -121,7 +121,7 @@ test('waiting policy: the owning lead arms the watch on accepting a worker READY
   const policy = waitingPolicy();
   for (const text of [
     '**The owning lead holds the watch.**', 'never the worker', 'A worker arms no watch',
-    'In the same turn it accepts that READY, the lead arms `watch_pull_request` and reads back `watching:true`',
+    'In the same turn it accepts that READY, the lead arms the PR watch (step 1 below) and reads back `watching:true`',
   ]) assert.ok(policy.includes(text), text);
 });
 test('waiting policy: every open lead-owned PR is watched-with-action or blocked', () => {
