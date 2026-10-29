@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { auditProjects, canonicalRepoKey, precheckRegistration } from "../sync/t3-project-parity-lib.mjs";
+import {
+  auditProjects,
+  canonicalRepoKey,
+  groupingKeyFromRemotes,
+  precheckRegistration,
+} from "../sync/t3-project-parity-lib.mjs";
 
 const project = (host, id, root, key, extra = {}) => ({
   host,
@@ -26,9 +31,35 @@ describe("canonicalRepoKey", () => {
     }
   });
 
+  test("ports drop, subgroups stay and single-label hosts work, as in T3", () => {
+    expect(canonicalRepoKey("ssh://git@github.com:22/EtanHey/repo.git")).toBe("github.com/etanhey/repo");
+    expect(canonicalRepoKey("https://gitlab.com/group/sub/repo.git")).toBe("gitlab.com/group/sub/repo");
+    expect(canonicalRepoKey("git@gitbox:team/repo")).toBe("gitbox/team/repo");
+  });
+
   test("a folder without a parsable remote has no key", () => {
     expect(canonicalRepoKey("")).toBeNull();
     expect(canonicalRepoKey("not a url")).toBeNull();
+  });
+});
+
+describe("groupingKeyFromRemotes", () => {
+  const remotes = (...pairs) => pairs.map(([name, url]) => `${name}\t${url} (fetch)\n${name}\t${url} (push)`).join("\n");
+
+  test("T3 groups by the origin remote when a fork also has upstream", () => {
+    const text = remotes(["origin", "https://github.com/EtanHey/t3code.git"], ["upstream", "https://github.com/pingdotgg/t3code.git"]);
+    expect(groupingKeyFromRemotes(text)).toBe("github.com/etanhey/t3code");
+  });
+
+  test("without origin, upstream and then the first remote by name decide", () => {
+    expect(groupingKeyFromRemotes(remotes(["upstream", "https://github.com/a/b"], ["zeta", "https://github.com/z/z"]))).toBe("github.com/a/b");
+    expect(groupingKeyFromRemotes(remotes(["zeta", "https://github.com/z/z"], ["beta", "https://github.com/b/b"]))).toBe("github.com/b/b");
+  });
+
+  test("local remotes are ignored and partial-clone filters still parse", () => {
+    expect(groupingKeyFromRemotes(remotes(["origin", "/home/example/repo"]))).toBeNull();
+    expect(groupingKeyFromRemotes("origin\thttps://github.com/a/b (fetch) [blob:none]\n")).toBe("github.com/a/b");
+    expect(groupingKeyFromRemotes("")).toBeNull();
   });
 });
 
