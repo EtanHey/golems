@@ -934,6 +934,7 @@ function pinnedManifestFixture() {
   cpSync(wrapper, path.join(directory, 'fail-open.py'));
   cpSync(path.join(here, '../hooks/private-regression-gate.py'), path.join(directory, 'private-regression-gate.py'));
   cpSync(path.join(here, '../hooks/heavy-suite.py'), path.join(directory, 'heavy-suite.py'));
+  cpSync(path.join(here, '../hooks/proc_identity.py'), path.join(directory, 'proc_identity.py'));
   writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifestFor()));
   fx.defaultInstaller = path.join(directory, 'install-hooks.mjs');
   fx.pinnedManifest = path.join(fx.repo, 'scripts/hooks/manifest.json');
@@ -1379,7 +1380,7 @@ function policyFixture() {
       filter: (s) => !/\/(tests|evals|__pycache__)(\/|$)|\.pyc$/.test(s.slice(sourceRepo.length)) });
   }
   for (const name of ["install-hooks.mjs", "install-hooks.sh", "hook-interpreters.mjs", "codex-hooks-install.mjs", "fail-open.py",
-    "private-regression-gate.py", "heavy-suite.py", "codex-policy-hook.py"]) {
+    "private-regression-gate.py", "heavy-suite.py", "proc_identity.py", "codex-policy-hook.py"]) {
     cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
   }
   mkdirSync(path.join(fx.repo, "scripts/repogolem"), { recursive: true });
