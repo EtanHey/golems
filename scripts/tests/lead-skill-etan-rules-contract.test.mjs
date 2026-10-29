@@ -150,6 +150,17 @@ function behaviorEvals({ evals }) {
 }
 
 const CHECKS = { rule1, rule2, rule3, behaviorEvals };
+test("PR merge law forbids asking Etan to approve or merge", () => {
+  const { docs } = loadCorpus();
+  for (const rel of ["pr-loop/SKILL.md", "pr-loop/references/merge-and-verification.md"]) {
+    expect(flat(docs[rel])).toContain("Never ask Etan to approve or merge a PR");
+  }
+  const merge = flat(section(docs["pr-loop/references/merge-and-verification.md"], "## Single-Account Review Verdicts"));
+  expect(merge).toContain("[Merge Authority](pr-creation.md#merge-authority)");
+  expect(merge).toContain("`gh pr merge <N> --merge --admin`");
+  expect(merge).toContain("BLOCKED");
+});
+
 test("agent-routing states service tier and placement near the top", () => {
   const text = loadCorpus().docs["agent-routing/SKILL.md"];
   const rule = section(text, "## Service tier and placement");
