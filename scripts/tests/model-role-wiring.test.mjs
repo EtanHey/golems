@@ -51,7 +51,8 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(text, /Claude concurrency .*fleet canon #5 owns the numbers/);
   assert.doesNotMatch(text, /2–3 concurrent Claude dispatches/);
   const canon = read('standards/fleet-canon.md');
-  assert.match(canon, /at most 10 active Claude leads fleet-wide, normally 5-7/);
+  assert.match(canon, /at most 5 parallel Claude lead tracks fleet-wide, normally 3-4/);
+  assert.ok(canon.includes('maybe 3-5 leads parallel at a time might have to be the max? since they also use claudes for review and implementations?'));
   const roleMap = config.roles;
   for (const id of ['claude.judgment', 'claude.subagent.cheap', 'claude.subagent.mechanical']) {
     assert.ok(id in roleMap, `${id} must exist in model-roles.json`);
