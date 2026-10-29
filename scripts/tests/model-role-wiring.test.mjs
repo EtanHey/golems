@@ -59,8 +59,11 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
     assert.ok(canon.includes('`' + id + '`'), `canon #5 must name ${id}`);
   }
   assert.match(canon, /<=2 `claude\.judgment`.*<=2 `claude\.subagent\.cheap`, <=4 `claude\.subagent\.mechanical`.*<=20% of the rolling 5h/s);
-  assert.match(canon, />=60% no new Claude workers and <=5 active leads/);
-  assert.match(canon, />=80% no Claude workers and <=3 essential lead turns/);
+  assert.match(canon, /7-slot `claude\.judgment` ceiling with leads/);
+  assert.match(canon, />=60% no new Claude workers and <=2 active leads/);
+  assert.match(canon, />=80% no Claude workers and <=1 essential lead turn/);
+  assert.match(canon, /<=6 weekly points per 5h window until the weekly reset/);
+  assert.ok(canon.includes('(provisional until the first fresh-session window shows a non-zero 1h-cache write share; then re-derive)'));
   assert.match(canon, /every account actually serving/);
   assert.match(canon, /Stale, unknown or\s+rejected telemetry counts as NO headroom/);
   assert.match(canon, /weekly rejection overrides five-hour\s+headroom/);
