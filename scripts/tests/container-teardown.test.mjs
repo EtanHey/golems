@@ -174,10 +174,12 @@ test('poll protects a running child; teardown protects all, stops, then checks s
   const afterDone = c.slice(done + 1).filter(c => c[1] !== 'stub').map(c => c.slice(1));
   const pollUpdate = ['docker', 'update', '--restart=no', 'created'];
   const pollList = ['docker', 'ps', '--all', '--filter', `label=${compose}`, '--format', '{{.ID}}'];
-  // One in-flight poll may finish after the child logs done, before teardown begins.
+  // Polls may continue after the child logs done until its exit is observed.
   const trailingPoll = afterDone.slice(0, -4);
-  assert.ok([[], [pollUpdate], [pollList, pollUpdate]].some(expected =>
-    JSON.stringify(trailingPoll) === JSON.stringify(expected)), 'unexpected calls before teardown');
+  if (JSON.stringify(trailingPoll[0]) === JSON.stringify(pollUpdate)) trailingPoll.shift();
+  assert.equal(trailingPoll.length % 2, 0, 'unexpected calls before teardown');
+  for (let i = 0; i < trailingPoll.length; i += 2)
+    assert.deepEqual(trailingPoll.slice(i, i + 2), [pollList, pollUpdate], 'unexpected calls before teardown');
   assert.deepEqual(afterDone.slice(-4), [
     ['docker', 'ps', '--all', '--filter', `label=${compose}`, '--format', '{{.ID}}'],
     ['docker', 'update', '--restart=no', 'created'],
