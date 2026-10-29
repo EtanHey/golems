@@ -112,7 +112,7 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - Draft PRs silently skip bot reviews. Mark the PR ready before invoking reviewers.
 - A green run on an older SHA is not green. Verify the PR head matches the latest pushed commit.
 - Never merge with an unreplied CRITICAL, MAJOR, or HIGH finding.
-- One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; round 3 only by a lead exception written in the PR body (canon #9).
+- After a clean other-vendor review at `headRefOid` and green required checks, leads merge now with `gh pr merge <N> --merge --admin` on EtanHey repos, per [Merge Authority](references/pr-creation.md#merge-authority); omit `--delete-branch`. Workers follow their brief's merge authority. Never ask Etan to approve or merge a PR; only true one-way doors wait for him. Failing/pending checks, conflicts and unresolved findings block merge. Round 2 is only for BLOCKING findings; round 3 requires a lead exception written in the PR body (canon #9).
 - On EtanHey repos, bot verdicts are comments, not formal self-reviews.
 - Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for daemon/engine/transport diffs.
 - Cursor diff passes are read-only: findings only, never edit the PR branch. Routing: see `/agent-routing` § Routing rules (SSOT).
