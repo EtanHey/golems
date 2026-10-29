@@ -45,7 +45,7 @@ Gemini spawns select the agy profile by task: command execution uses the shell-c
 
 ### Implementation and review
 
-#### Implementation default (Etan, 2026-10-28)
+#### Implementation default (Etan, 2026-10-29)
 
 Historical quote (superseded by the 2026-10-28 default):
 
@@ -54,7 +54,7 @@ Historical quote (superseded by the 2026-10-28 default):
 - Historical metrics remain: "Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)
 Etan (2026-10-28, via orc/PHX): use Sol/Terra/Luna for more of the work so the Claude 5-hour window survives; not all work needs Claude.
 
-- Default implementers (2026-10-29, replaces the 2026-10-28 Sol/Terra default; Etan, via fleet control: Claude quality is generally higher on holistic work, Codex stays heavy on recon): holistic/product work (skill and doc text, UX/UI, product behaviour, multi-file feature work, anything where judgment and coherence matter) → Claude implements (Opus for the hardest/taste-critical, Sonnet 5.5 otherwise). Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump) → Codex implements (Sol hard, Terra bounded). Claude also holds the leads. Codex workers keep fresh context, bounded lifetime (one PR or ~100 turns), explicit effort and `serviceTier:"default"`.
+- Default implementers (2026-10-29, replaces the 2026-10-28 Sol/Terra default; Etan, via fleet control: Claude quality is generally higher on holistic work, Codex stays heavy on recon): holistic/product work (skill and doc text, UX/UI, product behaviour, multi-file feature work, anything where judgment and coherence matter) → Claude Opus implements. Sonnet/Haiku never implement; they are sub-agents only for trivial edits (changing some words). Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump) → Codex implements (Sol hard, Terra bounded). Claude also holds the leads. Codex workers keep fresh context, bounded lifetime (one PR or ~100 turns), explicit effort and `serviceTier:"default"`.
 - Reviewers (2026-10-29) are always the other vendor: Sol reviews a Claude implementation, `claude.judgment` reviews a Codex implementation, with no exception. Gemini/Antigravity gather and never review.
 - UI/UX (2026-10-28): Claude Opus implements and reviews taste; Codex handles only mechanical parts. A fresh taste reviewer and the other-vendor reviewer remain required.
 - Leads are Claude only; Codex never holds a lead seat or long context. "I think codexes should just be workers and not leads and not hold long context." (Etan, 2026-10-28)
@@ -65,7 +65,7 @@ Etan (2026-10-28, via orc/PHX): use Sol/Terra/Luna for more of the work so the C
 |---|---|---|---|
 | UX/UI | `claude.judgment` | Codex (`codex.implement`) | — |
 | Security | `codex.security` at effort `high` | `claude.judgment` | a `codex-security` deep scan per security PR |
-| Holistic/product work (skill and doc text, product behaviour, multi-file features, anything where judgment and coherence matter) | `claude.judgment` (Opus hardest/taste-critical, Sonnet 5.5 otherwise), 2026-10-29 | Codex Sol (`codex.implement`) | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
+| Holistic/product work (skill and doc text, product behaviour, multi-file features, anything where judgment and coherence matter) | `claude.judgment` (Opus; Sonnet/Haiku only as sub-agents for trivial wording edits), 2026-10-29 | Codex Sol (`codex.implement`) | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
 | Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump, tests, deletions) | Codex Sol (hard) / Terra (bounded), 2026-10-29 | `claude.judgment` | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
 
 The reviewer is always the other vendor.
@@ -163,7 +163,7 @@ Decision rules:
 
 1. Read-only query, scan, search, audit, or lookup -> the fan-out/gather models permitted by the 2026-10-28 SSOT rule or Cursor; for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
 2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
-3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; holistic/product work (skill and doc text, product behaviour, multi-file features) -> Claude (Opus hardest/taste-critical, Sonnet 5.5 otherwise); narrow technical work (bounded fix, parser/guard/CI script, mechanical refactor, dependency bump) -> Codex Sol (hard) / Terra (bounded); the reviewer is always the other vendor (2026-10-29).
+3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; holistic/product work (skill and doc text, product behaviour, multi-file features) -> Claude Opus (Sonnet/Haiku only as sub-agents for trivial wording edits); narrow technical work (bounded fix, parser/guard/CI script, mechanical refactor, dependency bump) -> Codex Sol (hard) / Terra (bounded); the reviewer is always the other vendor (2026-10-29).
 4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
 5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
 6. Independent parallel units -> § Fan-out engine chooses the engine; Routing rules (SSOT) owns Cursor model selection.
