@@ -154,3 +154,63 @@ test('PR-watch wake steps defer to the waiting policy instead of contradicting i
     assert.ok(text.includes(`On a PR-watch wake, follow the [waiting policy](${prefix}${policyLink}).`), `${path}: links the policy`);
   }
 });
+
+const openPr = { url: 'https://github.com/example/repo/pull/1', number: 1, state: 'open', watching: false };
+const blocked = { threadId: 'lead', pr: openPr.url, reason: 'Needs maintainer input', owner: 'maintainer' };
+const wake = { scheduledTaskId: 'wake-1', boundThreadId: 'lead', enabled: true, nextRunAt: schedule.runAt };
+const prLead = { ...lead, status: 'running', pullRequests: [openPr] };
+const prViolation = `lead ${openPr.url}: open PR neither watched nor BLOCKED-with-wake`;
+
+test('RED: each unwatched open PR is reported even when another PR is watched', () => {
+  const result = check({ threads: [{ ...prLead, pullRequests: [
+    openPr, { ...openPr, number: 2, url: `${openPr.url}2` }, { ...openPr, watching: true },
+  ] }] });
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout.trim(), `${prViolation}\nlead ${openPr.url}2: open PR neither watched nor BLOCKED-with-wake`);
+});
+test('RED: BLOCKED without a future enabled schedule bound to the lead is insufficient', () => {
+  for (const schedules of [[], [{ ...wake, enabled: false }], [{ ...wake, nextRunAt: '2000-01-01T00:00:00Z' }],
+    [{ ...wake, boundThreadId: 'other' }], [{ ...wake, nextRunAt: 'invalid' }], [schedule]]) {
+    const result = check({ threads: [prLead], blocked: [blocked], schedules });
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout.trim(), prViolation);
+  }
+});
+test('RED: BLOCKED requires a nonempty reason and owner for this thread and PR', () => {
+  for (const row of [{ ...blocked, reason: '' }, { ...blocked, reason: '  ' }, { ...blocked, owner: '' },
+    { ...blocked, owner: null }, { ...blocked, threadId: 'other' }, { ...blocked, pr: 2 }]) {
+    assert.equal(check({ threads: [prLead], blocked: [row], schedules: [wake] }).status, 1);
+  }
+});
+test('RED: unrelated watches, live delegates and schedules do not cover an open PR', () => {
+  const result = check({ threads: [prLead], watches: [watch], schedules: [wake],
+    tasks: [{ taskId: 't', parentThreadId: 'lead', status: 'running' }] });
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout.trim(), prViolation);
+});
+test('GREEN: native watching:true covers an open PR on any lead status', () => {
+  for (const status of ['waiting', 'running', 'completed']) {
+    assert.equal(check({ threads: [{ ...prLead, status, pullRequests: [{ ...openPr, watching: true }] }] }).status, 0);
+  }
+});
+test('GREEN: BLOCKED by PR URL or number plus an enabled future bound schedule', () => {
+  for (const pr of [openPr.url, openPr.number]) {
+    assert.equal(check({ threads: [prLead], blocked: [{ ...blocked, pr }], schedules: [wake] }).status, 0);
+  }
+  assert.equal(check({ ...lead, pullRequests: [openPr], blocked: [blocked], schedules: [wake] }).status, 0);
+});
+test('GREEN: closed and merged unwatched PRs are ignored', () => {
+  assert.equal(check({ threads: [{ ...prLead, pullRequests: [
+    { ...openPr, state: 'closed' }, { ...openPr, state: 'merged' },
+  ] }] }).status, 0);
+});
+test('GREEN: workers and child threads remain excluded from open-PR checks', () => {
+  assert.equal(check({ threads: [{ ...prLead, role: 'worker' },
+    { ...prLead, threadId: 'child', role: undefined, parentThreadId: 'lead' }] }).status, 0);
+});
+test('invalid BLOCKED containers and open PRs without a URL are input errors', () => {
+  for (const invalid of [{ threads: [prLead], blocked: {} }, { threads: [{ ...prLead, blocked: [null] }] },
+    { threads: [{ ...prLead, pullRequests: [{ ...openPr, url: '' }] }] }]) {
+    assert.equal(check(invalid).status, 2);
+  }
+});
