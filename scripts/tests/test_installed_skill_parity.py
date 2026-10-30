@@ -36,6 +36,35 @@ class Parity(unittest.TestCase):
     def check(self):
         return parity.compare(self.left, self.right, self.required)
 
+    def test_app_managed_skills_do_not_gate_parity(self):
+        for root, namespace in [('.codex/skills', '.system'), ('.claude/skills', 'synced')]:
+            with self.subTest(root=root):
+                self.setUp()
+                entry = copy.deepcopy(self.left['roots'][root]['entries']['class-a'])
+                self.left['roots'][root]['entries'][namespace] = entry
+                self.required['roots'][root]['readable'].append(namespace + '/class-app')
+                self.assertEqual(self.check()['errors'], [])
+                self.right['roots'][root]['entries'][namespace] = copy.deepcopy(entry)
+                entry['skill_sha256'] = 'b'*64
+                self.assertEqual(self.check()['errors'], [])
+                self.right['roots'][root]['entries']['class-a']['skill_sha256'] = 'c'*64
+                self.assertFalse(self.check()['name_content_parity'])
+
+    def test_scanner_skips_only_app_managed_roots(self):
+        with tempfile.TemporaryDirectory(prefix='class-managed-') as directory:
+            homes = self.skill_homes(Path(directory))
+            for root, namespace in [('.codex/skills', '.system'), ('.claude/skills', 'synced')]:
+                managed = homes[1] / root / namespace / 'class-app'
+                managed.mkdir(parents=True)
+                (managed / 'SKILL.md').write_text('# app version\n')
+                (managed / 'cycle').symlink_to(managed, target_is_directory=True)
+            left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
+            self.assertEqual(parity.compare(left, right, self.required)['errors'], [])
+            for root, namespace in [('.agents/skills', '.system'), ('.codex/skills', 'synced')]:
+                self.right['roots'][root]['entries'][namespace] = copy.deepcopy(
+                    self.right['roots'][root]['entries']['class-a'])
+            self.assertFalse(self.check()['name_content_parity'])
+
     def test_equal(self):
         self.assertEqual(self.check()['errors'], [])
 

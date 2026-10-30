@@ -74,6 +74,8 @@ Good pattern: 1 planner + 3 domain experts providing intel + 1 critic reviewing 
 
 ## Role Boundaries
 
+Other-Mac (M1) launches go direct with `environmentId`, no m1-router: [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md).
+
 | orcClaude DOES | orcClaude does NOT |
 |----------------|-------------------|
 | Coordinate, delegate, verify, checkpoint | Implement code (spawn agent instead) |

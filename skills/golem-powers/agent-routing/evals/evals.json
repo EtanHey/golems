@@ -34,10 +34,10 @@
     {
       "id": 2,
       "prompt": "The FTS5 index is 96% out of sync. We need to rebuild it -- can you write a migration script that drops and recreates the FTS5 triggers?",
-      "expected_output": "Should route this implementation task to the § Routing rules (SSOT) implementer (a fresh claude.judgment delegate by default, or a bounded codex.implement delegate by documented exception), NOT write the migration script itself. This is a code change task.",
+      "expected_output": "Should route this implementation task to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), NOT write the migration script itself. This is a code change task.",
       "assertions": [
         {
-          "text": "Routes the implementation task to the § Routing rules (SSOT) implementer (a fresh claude.judgment delegate by default, or a bounded codex.implement delegate by documented exception), delegating the code work",
+          "text": "Routes the implementation task to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), delegating the code work",
           "type": "behavioral"
         },
         {
@@ -57,7 +57,7 @@
     {
       "id": 3,
       "prompt": "We're starting a new sprint collab. brainClaude will investigate BrainLayer search quality issues, and we need code fixes applied. Write the collab kickoff.",
-      "expected_output": "The collab kickoff MUST include an Agent Routing section that assigns Cursor for investigation/data-gathering, the § Routing rules (SSOT) implementer (a fresh claude.judgment delegate by default, or a bounded codex.implement delegate by documented exception) for code fixes, the other vendor for review, and brainClaude for coordination.",
+      "expected_output": "The collab kickoff MUST include an Agent Routing section that assigns Cursor for investigation/data-gathering, the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) for code fixes, the other vendor for review, and brainClaude for coordination.",
       "assertions": [
         {
           "text": "Includes an Agent Routing table or section in the collab",
@@ -68,7 +68,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Assigns code fix/implementation tasks to the § Routing rules (SSOT) implementer (a fresh claude.judgment delegate by default, or a bounded codex.implement delegate by documented exception), not the coordinating brainClaude or Cursor",
+          "text": "Assigns code fix/implementation tasks to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), not the coordinating brainClaude or Cursor",
           "type": "behavioral"
         },
         {
@@ -111,7 +111,7 @@
     {
       "id": 5,
       "prompt": "We need to audit all 53 skill files in golem-powers/ to check which ones have evals and which don't. Then for any skills missing evals, we need to create eval cases. How should we set this up?",
-      "expected_output": "Should split into two phases: (1) Cursor scans all skill directories for evals (read-only audit), (2) the § Routing rules (SSOT) implementer (a fresh claude.judgment delegate by default, or a bounded codex.implement delegate by documented exception) creates missing eval files (implementation). Claude coordinates; the other vendor reviews.",
+      "expected_output": "Should split into two phases: (1) Cursor scans all skill directories for evals (read-only audit), (2) the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor) creates missing eval files (implementation). Claude coordinates; the other vendor reviews.",
       "assertions": [
         {
           "text": "Splits the task into a gathering phase (audit) and implementation phase (create evals)",
@@ -122,7 +122,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Routes the eval creation phase to the § Routing rules (SSOT) implementer (a fresh claude.judgment delegate by default, or a bounded codex.implement delegate by documented exception); file creation is implementation",
+          "text": "Routes the eval creation phase to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor); file creation is implementation",
           "type": "behavioral"
         },
         {
@@ -188,14 +188,14 @@
     {
       "id": 8,
       "prompt": "brainClaude just finished its sprint. Looking at the collab log, it did all 5 SQL queries itself, never sent anything to its Cursor worker, and also wrote a 200-line fix directly instead of using Codex. How do we prevent this next time?",
-      "expected_output": "Should identify two violations: (1) SQL queries should have gone to Cursor, (2) 200-line fix should have gone to the § Routing rules (SSOT) implementer (a fresh claude.judgment delegate by default, or a bounded codex.implement delegate by documented exception), not the coordinating brainClaude. Should recommend adding routing verification gates to future collabs.",
+      "expected_output": "Should identify two violations: (1) SQL queries should have gone to Cursor, (2) 200-line fix should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor), not the coordinating brainClaude. Should recommend adding routing verification gates to future collabs.",
       "assertions": [
         {
           "text": "Identifies the SQL queries as a routing violation (should be Cursor)",
           "type": "behavioral"
         },
         {
-          "text": "Identifies the 200-line implementation as a routing violation: it should have gone to the § Routing rules (SSOT) implementer (a fresh claude.judgment delegate by default, or a bounded codex.implement delegate by documented exception)",
+          "text": "Identifies the 200-line implementation as a routing violation: it should have gone to the § Routing rules (SSOT) implementer (a fresh Codex Sol delegate for hard narrow technical work or Terra for bounded work, with Claude for holistic/product work; the reviewer is the other vendor)",
           "type": "behavioral"
         },
         {
@@ -207,14 +207,14 @@
           "type": "negative"
         },
         {
-          "text": "References the routing matrix and § Routing rules (SSOT): Cursor gathers, the SSOT implementer implements (claude.judgment by default, or codex.implement by documented bounded exception), the coordinating Claude orchestrates",
+          "text": "References the routing matrix and § Routing rules (SSOT): Cursor gathers, the SSOT implementer implements (Codex Sol for hard work or Terra for bounded work, with Claude only for the hardest/taste-critical implementation), the coordinating Claude orchestrates",
           "type": "behavioral"
         }
       ]
     },
     {
       "id": 9,
-      "prompt": "It's 2026-10-28: Etan ratified Claude implementation by default, with bounded Codex exceptions. Choose the Codex launcher/model for these two jobs: (A) a single-file review of a 180-line patch that I can describe in two sentences, and (B) a multi-file refactor that will touch 7 files, needs a collab file, and will probably land around 900 LOC. Also tell me whether GPT-5.4-mini should be the default fast path.",
+      "prompt": "It's 2026-10-28: Etan ratified Codex Sol (hard) / Terra (bounded) default implementation, with Claude only for the hardest/taste-critical work. Choose the Codex launcher/model for these two jobs: (A) a single-file review of a 180-line patch that I can describe in two sentences, and (B) a multi-file refactor that will touch 7 files, needs a collab file, and will probably land around 900 LOC. Also tell me whether GPT-5.4-mini should be the default fast path.",
       "expected_output": "Should route both (A) and (B) through `brainlayerCodex -s`; (A) should NOT be sent through a shortcut fast flag. Spark is rejected outright, even as an explicit `-m gpt-5.3-codex-spark` override: it is not on the Codex model list (gpt-6.1-sol, gpt-6-luna and gpt-6.1-terra, Etan 2026-10-28). GPT-5.4-mini must be rejected as the routine default for Codex work.",
       "assertions": [
         {
@@ -222,7 +222,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Routes the 7-file collab-backed 900 LOC refactor to the main-pool default via `-s` alone (no `-m` flag)",
+          "text": "Routes bounded work to Terra or hard work to codex.implement, with explicit effort and default service; resolves configured roles without fast/priority",
           "type": "behavioral"
         },
         {
@@ -586,7 +586,7 @@
     {
       "id": 22,
       "prompt": "A lead claims the tiny-unblocker carve-out for an urgent implementation: a roughly 500-line refactor across multiple files, created in the shared tree, with no same-post collab disclosure. What does agent-routing require?",
-      "expected_output": "Should reject the tiny-unblocker claim. Urgency alone does not qualify: the carve-out is capped at <=20 changed lines, one single-purpose change, zero new files, mandatory same-post collab disclosure with what/why urgent/line count, and an isolated worktree. This multi-file shared-tree refactor must route to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): a fresh claude.judgment implements and codex.implement reviews by default, or a bounded codex.implement implements and claude.judgment reviews by documented exception; and the skipped disclosure must be required before proceeding.",
+      "expected_output": "Should reject the tiny-unblocker claim. Urgency alone does not qualify: the carve-out is capped at <=20 changed lines, one single-purpose change, zero new files, mandatory same-post collab disclosure with what/why urgent/line count, and an isolated worktree. This multi-file shared-tree refactor must route to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): Codex Sol (hard) / Terra (bounded) implements narrow technical work and Claude Opus reviews; holistic/product work goes to Claude with Sol review; and the skipped disclosure must be required before proceeding.",
       "assertions": [
         {
           "text": "Names the three hard bounds: <=20 changed lines, single purpose, and zero new files",
@@ -601,7 +601,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Routes the multi-file refactor to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): Claude implements + Codex reviews by default, or bounded Codex implements + Claude reviews by documented exception",
+          "text": "Routes the multi-file refactor to a visible implementer + other-vendor reviewer pair per § Routing rules (SSOT): Codex Sol (hard) / Terra (bounded) implements + Claude Opus reviews; Claude hardest/taste-critical implementation gets Sol review",
           "type": "behavioral"
         },
         {
@@ -1004,20 +1004,20 @@
       "name": "lead-opens-implementation-pair",
       "category": "compliance",
       "description": "A lead receiving implementation work must create both halves of the pre-PR pair.",
-      "prompt": "It's 2026-10-28: Etan ratified Claude implementation by default, with bounded Codex exceptions. Etan asks for a --json flag on scripts/ci/check-skill-library.mjs. You are the lead for the golems repo and have no panes open. State exactly what you do next, as a short numbered list of concrete actions or commands.",
-      "expected_output": "Delegate a fresh claude.judgment implementer, then only after implementer DONE delegate a fresh codex.implement reviewer. The lead routes review; iterate until both are happy before the implementer opens the PR and runs /pr-loop. Code children use delegate_task with isolation:worktree.",
+      "prompt": "It's 2026-10-28: Etan ratified Codex Sol (hard) / Terra (bounded) default implementation, with Claude only for the hardest/taste-critical work. Etan asks for a --json flag on scripts/ci/check-skill-library.mjs. You are the lead for the golems repo and have no panes open. State exactly what you do next, as a short numbered list of concrete actions or commands.",
+      "expected_output": "Delegate a fresh Codex Terra bounded implementer, then only after implementer DONE delegate a fresh claude.judgment reviewer. The lead routes review; iterate until both are happy before the implementer opens the PR and runs /pr-loop. Code children use delegate_task with isolation:worktree.",
       "assertions": [
         {
           "type": "content",
-          "name": "opens-claude-implementer",
-          "description": "Opens a Claude implementer child for the implementation.",
-          "text": "Opens the Claude implementer child"
+          "name": "opens-codex-implementer",
+          "description": "Opens a Codex implementer child for the implementation.",
+          "text": "Opens the Codex implementer child"
         },
         {
           "type": "content",
-          "name": "opens-codex-pair-reviewer",
-          "description": "Opens a separate Codex pair-reviewer child after implementer DONE for the same work.",
-          "text": "Opens the Codex pair-reviewer child after implementer DONE"
+          "name": "opens-claude-pair-reviewer",
+          "description": "Opens a separate Claude pair-reviewer child after implementer DONE for the same work.",
+          "text": "Opens the Claude pair-reviewer child after implementer DONE"
         },
         {
           "type": "content",
@@ -1335,15 +1335,15 @@
     {
       "id": 49,
       "name": "refactor-implementation-ssot",
-      "prompt": "It's 2026-10-28: Etan ratified Claude implementation by default, with bounded Codex exceptions. Who implements a refactor? Name the routing source of truth, review role, and any prerequisite when deletions or test edits are involved.",
-      "expected_output": "Answer from /agent-routing § Routing rules (SSOT): claude.judgment implements refactors by default and codex.implement reviews. A documented bounded Codex implementation exception gets Claude review. A claude.judgment deletion/test-edit decision comes first; the lead routes review only after implementer DONE. Resolve models and candidate gates via standards/model-roles.json.",
+      "prompt": "It's 2026-10-28: Etan ratified Codex Sol (hard) / Terra (bounded) default implementation, with Claude only for the hardest/taste-critical work. Who implements a refactor? Name the routing source of truth, review role, and any prerequisite when deletions or test edits are involved.",
+      "expected_output": "Answer from /agent-routing § Routing rules (SSOT): codex.implement (Sol, hard) / Terra (bounded) implements refactors by default and claude.judgment reviews. Claude hardest/taste-critical implementation gets Sol review. A claude.judgment deletion/test-edit decision comes first; the lead routes review only after implementer DONE. Resolve models and candidate gates via standards/model-roles.json.",
       "assertions": [
         {
-          "text": "Names /agent-routing § Routing rules (SSOT) and assigns claude.judgment to the refactor by default",
+          "text": "Names /agent-routing § Routing rules (SSOT) and assigns Codex Sol (hard) / Terra (bounded) to the refactor by default",
           "type": "behavioral"
         },
         {
-          "text": "Assigns codex.implement to review and claude.judgment to any deletion/test-edit decision before implementation",
+          "text": "Assigns claude.judgment to review and to any deletion/test-edit decision before implementation",
           "type": "behavioral"
         },
         {
@@ -1700,7 +1700,7 @@
       "id": 73,
       "name": "codex-concurrency-cap-queue-fifth",
       "prompt": "You are a lead with 4 Codex workers running. You want to start a 5th Codex worker for the next PR in the batch now.",
-      "expected_output": "Queue it: at most 4 Codex workers run at once per lead. Start the 5th as a fresh implementer when one of the 4 settles. The separate cap of 2-3 concurrent Claude dispatches is unchanged.",
+      "expected_output": "Queue it: at most 4 Codex workers run at once per lead. Start the 5th as a fresh implementer when one of the 4 settles. The separate Claude concurrency rule in canon #5 is unchanged.",
       "assertions": [
         {
           "text": "Queues the 5th Codex worker until one of the running 4 settles, then starts it fresh",
@@ -1746,12 +1746,12 @@
     },
     {
       "id": 90,
-      "name": "trial-refactor-opus-implements-sol-reviews",
-      "prompt": "It's 2026-10-20. Dispatch a worker for a refactor PR that splits scripts/model-roles.mjs into two modules. Who implements and who reviews?",
-      "expected_output": "The dated flip trial (2026-10-18 → review 2026-10-22) is active, so the \"Everything else\" row flips: a fresh claude.judgment implements and a fresh codex.implement reviews at effort high, after the implementer reports done. The lead records the PR in STATUS (merged/day, open→merge hours, post-merge defects).",
+      "name": "rebalance-refactor-codex-implements-opus-reviews",
+      "prompt": "It's 2026-10-28. Dispatch a worker for a refactor PR that splits scripts/model-roles.mjs into two modules. Who implements and who reviews?",
+      "expected_output": "The 2026-10-28 rebalance supersedes the flip trial: Codex Sol (hard) / Terra (bounded) implements and claude.judgment reviews after implementer DONE. Reviewers are Sol or Opus only, of the other vendor; effort is declared per phase. Keep the STATUS metrics (merged/day, open→merge hours, post-merge defects).",
       "assertions": [
         {
-          "text": "Routes implementation to claude.judgment and review to codex.implement at effort high, citing the historical 2026-10-20 flip experiment.",
+          "text": "Routes refactor implementation to Codex Sol (hard) / Terra (bounded) and review to claude.judgment under the 2026-10-28 rebalance; effort is per phase.",
           "type": "behavioral"
         },
         {
@@ -1759,7 +1759,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Does NOT route the refactor to codex.implement as implementer during the trial, and does not hardcode a model name instead of the role.",
+          "text": "Does NOT apply the superseded flip trial or hardcode a model instead of resolving configured roles.",
           "type": "negative"
         }
       ]
@@ -1949,6 +1949,22 @@
         {
           "text": "Does NOT run brew/launchctl/the probe, the symlink check or the wait in the lead's own session.",
           "type": "negative"
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "name": "worktree-exact-base-and-preparation-error",
+      "prompt": "Launch a requested new worktree thread with baseRef main in a master-only project. If launch is later accepted, its one thread read shows a failed run plus a user message quoting Workspace preparation failed. What happens?",
+      "expected_output": "Run the target-host exact-base preflight first and stop before launch for missing main; never substitute master. With a verified base, read the launched thread exactly once and inspect its run/workspace fields. An actual failed run is ERROR with threadId/runId/baseRef/root and sanitized reason. User quotes alone are not failures; preparing is PENDING. Never poll or retry.",
+      "assertions": [
+        {
+          "text": "Uses the canonical launch guard and fails missing explicit main before any launch; default intent follows actual origin/HEAD.",
+          "type": "tool_usage"
+        },
+        {
+          "text": "Checks exactly one actual thread read after worktree launch, propagates durable failure, and never uses whole-page substring matching or retries.",
+          "type": "behavioral"
         }
       ]
     }

@@ -1,3 +1,4 @@
+import { testBun } from "@golems/shared/test-bun";
 import { describe, test, expect, setDefaultTimeout } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,7 +11,7 @@ const REPO_ROOT = join(PKG_DIR, "..", "..");
 const CLI = join(PKG_DIR, "src", "index.ts");
 
 async function run(...args: string[]) {
-  const proc = Bun.spawn(["bun", CLI, ...args], { stdout: "pipe", stderr: "pipe" });
+  const proc = Bun.spawn([...testBun, CLI, ...args], { stdout: "pipe", stderr: "pipe" });
   const stdout = await new Response(proc.stdout).text();
   const stderr = await new Response(proc.stderr).text();
   return { stdout, stderr, exitCode: await proc.exited };

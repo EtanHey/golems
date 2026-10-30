@@ -45,23 +45,29 @@ Gemini spawns select the agy profile by task: command execution uses the shell-c
 
 ### Implementation and review
 
-#### Implementation default (Etan, 2026-10-28)
+#### Implementation default (Etan, 2026-10-29)
 
 Historical quote (superseded by the 2026-10-28 default):
 
 > "**EXPERIMENT, starting now for a few days: FLIP the roles.** Claude Opus 5.5 IMPLEMENTS and Codex gpt-6.1-sol REVIEWS." (Etan 2026-10-18, via orc collab)
 
 - Historical metrics remain: "Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)
-- Claude implements by default. Codex Sol implementation is a documented exception: fresh context, bounded lifetime (one PR or ~100 turns), explicit effort, `serviceTier:"default"`.
+Etan (2026-10-28, via orc/PHX): use Sol/Terra/Luna for more of the work so the Claude 5-hour window survives; not all work needs Claude.
+
+- Default implementers (2026-10-29, replaces the 2026-10-28 Sol/Terra default; Etan, via fleet control: Claude quality is generally higher on holistic work, Codex stays heavy on recon): holistic/product work (skill and doc text, UX/UI, product behaviour, multi-file feature work, anything where judgment and coherence matter) → Claude Opus implements. Sonnet/Haiku never implement; they are sub-agents only for trivial edits (changing some words). Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump) → Codex implements (Sol hard, Terra bounded). Claude also holds the leads. Codex workers keep fresh context, bounded lifetime (one PR or ~100 turns), explicit effort and `serviceTier:"default"`.
+- Reviewers (2026-10-29) are always the other vendor: Sol reviews a Claude implementation, `claude.judgment` reviews a Codex implementation, with no exception. Gemini/Antigravity gather and never review.
+- UI/UX (2026-10-28): Claude Opus implements and reviews taste; Codex handles only mechanical parts. A fresh taste reviewer and the other-vendor reviewer remain required.
 - Leads are Claude only; Codex never holds a lead seat or long context. "I think codexes should just be workers and not leads and not hold long context." (Etan, 2026-10-28)
-- Fan-out, gather and mechanical work may use Codex Luna or Terra, or Claude Haiku; harder workers and reviews use Codex Sol. Cross-vendor review remains required. "tara and soul and luna are great models they have different capabilities ... luna and tara are cheaper than soul soul is also pretty cheap yeah like fanning out luna's and tara's is acceptable, although we now have more Claude usage, so Haiku could probably also help there, because Haiku is a little smarter than Luna for now" (Etan, 2026-10-28)
-- Budget pacing (2026-10-28): while Claude 5h/weekly windows are tight, gathers, reviews and fan-outs move to Codex or Antigravity, subject to cross-vendor review and the no-Gemini-review rule. This reverts when the Claude windows reset.
+- Fan-outs, gathers and mechanical work (2026-10-28) use Luna/Terra/Haiku; Sonnet 5.5 is a valid worker tier between Haiku and Opus. Antigravity's pool is for research/gather.
+- Keep the Claude 5h window alive (2026-10-28). Never fast/priority: explicitly pass `fastMode:false` / `serviceTier:"default"`. This supersedes the dated budget-pacing note; it does not revert at a window reset.
 
 | Work | Implements | Reviews | Plus |
 |---|---|---|---|
 | UX/UI | `claude.judgment` | Codex (`codex.implement`) | — |
 | Security | `codex.security` at effort `high` | `claude.judgment` | a `codex-security` deep scan per security PR |
-| Everything else (refactors, splits, deletions, tests, fixes, mechanical, docs) | `claude.judgment` (Codex Sol by documented exception) | Codex Sol (Claude reviews a Codex exception) | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
+| Holistic/product work (skill and doc text, product behaviour, multi-file features, anything where judgment and coherence matter) | `claude.judgment` (Opus; Sonnet/Haiku only as sub-agents for trivial wording edits), 2026-10-29 | Codex Sol (`codex.implement`) | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
+| Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump, tests, deletions) | Codex Sol (hard) / Terra (bounded), 2026-10-29 | `claude.judgment` | a deletion/test-edit decision by `claude.judgment` first (decision rule 2) |
+| Ratchets and TLC/TLA+ specs (ratchet rows, budgets, runners and attestation; formal models and their invariants) | `claude.judgment` (Opus) designs and builds, 2026-10-29 (Etan, via orc: highest quality, thought through). Tiny exception: Codex may build a mechanical edit to an existing Opus-designed threshold or row (no new runner, attestation, model or invariant design) | Codex Sol (`codex.implement`) reviews an Opus build; a fresh `claude.judgment` reviews a tiny Codex build, including design conformance | this row wins over "CI script" above; any other Codex-built ratchet or model gets an Opus design-conformance review and rework before merge; a lead self-edit also stays inside the Lead Topology cap |
 
 The reviewer is always the other vendor.
 
@@ -90,7 +96,7 @@ Review is sized to risk; the PR's `size:*` label sets the tier.
 
 - "XS/S: 1 reviewer, 1 round." (Etan 2026-10-18, via orc collab) That reviewer is the other vendor, per the table above; UI/style PRs follow the UI flow below.
 - M: up to 2 rounds, and round 2 only for BLOCKING findings (canon #9).
-- "Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab) The panel is a fresh `claude.judgment` reviewer plus a read-only Cursor diff pass, giving one shared verdict. When the implementer is `claude.judgment` (UX/UI, or the default Everything-else row), the table's Codex reviewer stays on, so cross-vendor review still holds. No Gemini model ever reviews, at any size.
+- "Full panel only for L, data or security paths, and that panel = Opus + Cursor working as a team. **NO Gemini Argon as a reviewer** (it fabricates)." (Etan 2026-10-18, via orc collab) The panel is a fresh `claude.judgment` reviewer plus a read-only Cursor diff pass, giving one shared verdict; the Cursor pass is a read-only input to the Opus verdict, not a reviewer. When the implementer is `claude.judgment` (holistic/product or UX/UI work), the table's Codex reviewer stays on, so cross-vendor review still holds. No Gemini model ever reviews, at any size.
 - UI/style PRs: "a Codex worker uses computer use to record the changed states (default, hover, clicked, …), then hands the recording to an Opus reviewer." "That reviewer loads the frontend-design skill (`frontend-design:frontend-design`, the latest Anthropic one) and judges the UX/UI." (Etan 2026-10-18, via orc collab) The recorder resolves `codex.implement` and reports functional defects; proof requirements now follow [pr-loop Visual proof](../pr-loop/SKILL.md#visual-proof).
 - UI flow (Etan FRONTEND RULE, 2026-10-28): A Claude-implemented visual slice gets the red-team Claude (taste, BOTH skills) plus the table's Codex reviewer (cross-vendor, canon #1); Codex plumbing gets the red-team Claude, which is already the other vendor. Both reviews cite the Visual proof.
   The red-team Claude is a fresh `claude.judgment`, never the implementer, loading `frontend-design:frontend-design` and `emil-design-eng`; normal size-based round caps and the full panel remain.
@@ -114,7 +120,7 @@ Each PR body records its implementer, review rounds, and bot/reviewer defects. C
   - Astra needs Etan's own explicit ask; a lead's or worker's suggestion does not count (2026-10-18 ruling).
   - Daybreak Blue's return to `codex.security` is not on this list. It needs Etan's ruling against the list before the swap (open question, 2026-10-18).
 - Effort is per `/large-plan` phase; declare effort + why and pass it explicitly at dispatch.
-- Keep to ≤2–3 concurrent Claude dispatches, staggered.
+- Claude concurrency (lead/worker caps and the usage brake): fleet canon #5 owns the numbers.
 - Usage is managed by default-pinning and dispatch-counting, not by usage-blocking buckets.
 
 ## Model roles
@@ -148,17 +154,17 @@ Read every reference triggered by the mission before dispatch. The live referenc
 | Tool | Role | Does | Never does |
 |---|---|---|---|
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
-| **`codex.implement`** | Implement / review | Bounded Sol implementation exceptions and harder workers; cross-vendor review per SSOT | Research, data gathering, orchestration |
+| **`codex.implement`** | Implement / review | Narrow technical implementation (Sol hard, Terra bounded) and cross-vendor review per SSOT (2026-10-29) | Research, data gathering, orchestration |
 | **`codex.security`** | Implement (security) | Security implementation per SSOT | Gathering, orchestration, reviewing its own work |
 | **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Running commands, implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
 | **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Running commands, implementing, reviewing, deciding, UX/UI judgment |
-| **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; implementation outside UX/UI and the default Everything-else row |
+| **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; holistic/product and UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; narrow technical implementation (Codex's lane) |
 
 Decision rules:
 
 1. Read-only query, scan, search, audit, or lookup -> the fan-out/gather models permitted by the 2026-10-28 SSOT rule or Cursor; for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
 2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
-3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; everything else -> `claude.judgment`, with documented Codex Sol exceptions.
+3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; holistic/product work (skill and doc text, product behaviour, multi-file features) -> Claude Opus (Sonnet/Haiku only as sub-agents for trivial wording edits); narrow technical work (bounded fix, parser/guard/CI script, mechanical refactor, dependency bump) -> Codex Sol (hard) / Terra (bounded); ratchets and TLC/TLA+ specs -> Opus designs and builds (the table's ratchet row owns the tiny exception); the reviewer is always the other vendor (2026-10-29).
 4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
 5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
 6. Independent parallel units -> § Fan-out engine chooses the engine; Routing rules (SSOT) owns Cursor model selection.
@@ -235,7 +241,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
    Remember: the role picks the model, the work type picks the instance. Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
    Otherwise each Codex worker thread starts codex-security, computer-history, node_repl and cua_repl (~24.5 MiB, 4 processes), which T3 keeps until settle/idle release.
    Recreate, upgrade verification and missing-instance fallback: [Codex instances](references/t3-native.md#codex-instances).
-2. **Dispatch:** `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
+2. **Dispatch:** follow the [worktree launch guard](references/worktree-launch.md) for exact-base preflight and preparation checks; `delegate_task` with `mode: "async"`; keep the `taskId`; one stable `clientRequestId` per round. Edits get `isolation: "worktree"`, which starts from the parent's committed HEAD, so the brief names absolute paths.
 3. **Wait:** completion wakes the parent. End the turn; never poll or spawn a watcher for it.
 4. **Settle:** at the PR's terminal state (merged or handed off; never at the first DONE — a PR in review rounds keeps its implementer) (a child with no PR, such as a reviewer or recon: as soon as its report is verified), read the report, verify the artifact (PR URL and head, files) before relaying, then conclude the child, `task_cancel` its `taskId`, `unwatch_pull_request` its PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. See § Goal Contract for provider release timing and the worktree caveat.
 5. **Review rounds:** every round is a new `delegate_task` carrying prior findings; never `t3_thread_send` to the `childThreadId`.
@@ -255,6 +261,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 
 - Superseded placement: "**The M1 Pro becomes a TEST RIG only.** Development stays on the MBP. … Nothing changes on the M1 for this yet." (Etan 2026-10-18, via orc collab) The 2026-10-28 placement below now governs.
 - M1 placement (Etan, 2026-10-28): "I want the m1 pro to be used for tests." Full suites, E2E and XCUITest default to M1 Pro: ≥10 GiB guard, max 3 heavy lanes, never during a sync window, PHX admission required. Quick focused unit tests stay local.
+- Dispatching to the other Mac (linked T3 environment, remote code writes, project ids, admission ledger)? Read [references/cross-machine.md](references/cross-machine.md). It replaces the m1-router launch transport.
 
 ### cmux adapter
 

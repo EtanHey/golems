@@ -13,12 +13,10 @@ Read this when selecting PR-stage reviewers, waiting for them, classifying feedb
 gh pr view <N> --json reviewDecision,comments
 ```
 
-**Review Wait Timer (ENFORCED):**
-1. After invoking reviewers → wait per the [waiting policy](#waiting-policy-no-polling-turns): a T3
-   watch wake, or one bounded check no sooner than **120 seconds** after invoking. Never a timed polling turn.
-2. If that check shows no review → re-invoke reviewers explicitly once, then end the turn on the watch
-3. Fifteen minutes with no response does not waive the review gate: a lead may merge only after at
-   least one review and all required comment/review conditions pass; a worker hands off unmerged.
+**Review evidence:** follow the [waiting policy](#waiting-policy-no-polling-turns).
+Use the native T3 watch for pending CI/reviews; make bounded reads when a current decision needs them.
+Missing review evidence still blocks merge, regardless of elapsed time. Do not send another bot
+request when an eligible automatic review already covers the current head.
 
 CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
 
@@ -32,7 +30,9 @@ CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
 
 ### Step 8a: Invoke Reviewers
 
-Always explicitly request reviews. Don't wait for auto-detection.
+Finish the other-vendor inner review before opening a ready PR, then apply the permitted bot policy.
+Request a bot manually only when required evidence is missing or stale and no eligible automatic
+review already covers the current head; do not duplicate that review.
 
 #### 8a.0 — Read the target repo's bot policy BEFORE summoning anything
 
@@ -66,7 +66,7 @@ worker followed this skill verbatim and summoned Bugbot into the repo that bans 
 ```bash
 # Bot tiering (canon #9): full panel on core diffs only. Reviewer selection and counts:
 # /agent-routing § Routing rules (SSOT).
-# Full core panel (right after PR creation, filtered by 8a.0)
+# Eligible core panel only (8a.0); omit bots already reviewing the current head
 gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@greptileai review"
 gh pr comment <N> --body "@codex review"
@@ -142,7 +142,48 @@ recorded as unavailable, never awaited.
 
 ### Waiting policy (no polling turns)
 
-The rules this section lands, verbatim (Etan 2026-10-18, via orc collab):
+**The owning lead holds the watch.** In T3, the parent lead owns its PR watch, never the worker.
+A worker arms no watch; its READY hands the PR to the lead. On accepting READY or a monitoring
+request, handle existing feedback and finish branch fixes and pushes before arming the watch;
+inspect its `watching:true` receipt and end the turn. An existing watch persists.
+
+**Watch claims need evidence.** Cite the same-turn `watch_pull_request` receipt with
+`watching:true` to establish stored registration at that instant, not polling liveness, wake delivery, current CI or merge readiness.
+A remembered or intended watch is not evidence. Never call `list_thread_pull_requests` solely to reprove a watch or end work.
+Use it only for actual inventory, diagnosis, an ambiguous receipt or an audit; its snapshots are not fresh host readiness.
+If the receipt is false or ambiguous, report that state and diagnose it; do not claim the watch stuck.
+
+**Wakes and pushes preserve the watch.** On ordinary wakes, no routine rewatch, relink, list or rearm.
+A push still requires immediate linking under the harness contract, but does not require another watch.
+A documented stop is distinct: close/merge, User Stop, settle/archive, repeated read failures or the
+comment-only wake limit can stop monitoring. A new monitoring request after a documented stop can
+rearm an eligible parent; never automatically undo User Stop or settle/archive. A normal wake is not a stop.
+
+**Act on both PR-watch outcomes.** Red checks or conflicts mean fix now or route the fix now.
+For green, verify current required checks and the routed review at the exact latest head before an
+authorized merge; a completed notification is not approval. If blocked, report BLOCKED with a named blocker
+and next owner, then hand off when appropriate. Always unwatch before handback or terminal completion.
+Do not leave ready work idle behind another PR's red checks.
+
+**Every wait needs an owned wake source.** Name the event and its owner before ending as WAITING.
+The T3 parent-owned native watch takes precedence over cheap watcher and timer prescriptions:
+no timer wake, Monitor, scheduled PR poll or watcher child for T3 PR waiting. A blocker handoff is a
+valid endpoint without scheduling another PR check. For non-PR owned waits, retain a real completion
+or lane event; if none covers the wait, use one owned one-shot wake with its id/time recorded.
+Snooze alone, including `snoozedUntil`, is not wake evidence. Do not promise delivery from registration.
+
+**Offline hygiene check (diagnostic only).** `node scripts/ci/pr-wait-hygiene.mjs <snapshot.json|->`
+is a diagnostic snapshot tool (pass 0, violations 1, invalid input 2), not a live watch verifier.
+It retains its older open-PR contract: watching or BLOCKED-with-wake. A correctly handed-off blocked
+PR can therefore fail it; report that contract mismatch. A checker failure never authorizes a timer, duplicate watcher or runtime override.
+Only capture lists/task state for an actual audit or diagnosis allowed by T3's completion policy,
+never as a routine end-of-turn ritual. The checker accepts one thread, `{ "threads": [...] }` or
+`weave-t3-fleet/v1`; explicit workers/children are skipped. Preserve native `pullRequests` rows on their
+owner, schedules in `schedules`, and task/child parent associations. Snooze does not count.
+Snapshot fields, freshness and supplied events do not establish reactor liveness or wake delivery.
+
+Historical fallback rules, verbatim (Etan 2026-10-18, via orc collab); the T3 native watch above
+takes precedence for T3 PRs. The cheap-watcher prescription applies outside T3:
 
 > **No polling turns.** No collab-monitor wakes in Codex, and no "watch #410" loops. Use T3 completion notifications or a single bounded check. Mechanical polling or rebases go to gpt-6-luna.
 
@@ -156,11 +197,12 @@ Every wake is a full-context model turn. A watcher process waiting on GitHub is 
 
 Wait in this order. Take the first option that fits:
 
-1. **T3 seat: parent-owned PR watch.** Once the PR exists, call `link_pull_request` with its URL, then
-   `watch_pull_request`, and end the turn. T3 wakes you when checks finish, someone else comments, or
-   the branch conflicts. The watch belongs to the seat that owns this PR loop. A delegated child never
-   owns its parent's PR watch. Call `unwatch_pull_request` at a terminal state (merged, handed off,
-   closed) before handing the thread back.
+1. **T3 seat: parent-owned PR watch.** Immediately `link_pull_request` each PR created, taken over
+   or pushed, including every stack layer. Finish existing feedback and branch updates/pushes, then
+   `watch_pull_request`; inspect the receipt and end the turn. On ordinary wakes act on the news,
+   make only the bounded current-host/head reads needed for a decision, then end the turn if waiting
+   continues. No routine rearm or extra watcher; the parent retains ownership.
+   Call `unwatch_pull_request` at terminal state or before handoff. A child reports its artifact and ends its turn; it never watches.
 2. **Single bounded check.** When you need the state now (after a wake, or right before a merge
    decision), make one read: `gh pr checks <N>` or
    `gh pr view <N> --json state,mergeStateStatus,reviewDecision,headRefOid`. Act on it or end the turn.
@@ -173,9 +215,10 @@ Wait in this order. Take the first option that fits:
      `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`). Give it a deadline and
      the pinned head. It reports once, at a terminal state, and is settled after. It never merges.
 
-   One watcher per PR head, whichever you pick.
+   Reuse one existing watcher per PR with its current deadline and pinned head; never add a second.
+   Replace only on the documented exit/expiry path below, cancelling the old watcher first.
 4. **Banned:**
-   - `ScheduleWakeup`, `CronCreate` or `/loop` polling turns for CI or reviews.
+   - `schedule_task`, `ScheduleWakeup`, `CronCreate` or `/loop` polling turns for CI or reviews.
    - Codex collab-monitor wakes: a Codex seat never arms `/collab-monitor` or its packaged fallback.
    - `sleep N; gh pr view` loops and "watch #N" loops in a big-context lead session.
    - A duplicate watcher on the same PR: a T3 watch plus a `pr-watch`, or two `pr-watch` processes.
@@ -185,7 +228,7 @@ Wait in this order. Take the first option that fits:
 
 #### Watcher process: pr-watch
 
-Arm exactly one GitHub watch:
+Outside T3 only, arm exactly one GitHub watch:
 `Monitor(command="pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`.
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
 Codex runs the same command and reads its exit code, with `--deadline 25m` so the blocked turn stays
@@ -259,7 +302,7 @@ collection path does not reply to a thread; use `/replies` or the documented
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | DeepSource findings: use `deepsource-issues <owner/repo> <pr>`, or the `deepsource-io[bot]` inline comments via `gh api`. The token comes from `DEEPSOURCE_TOKEN` or the 0600 file `~/.config/deepsource/deepsource.env` (override: `DEEPSOURCE_TOKEN_FILE`). Never a browser, never op |
 
-**After fixing review feedback, trigger re-review on every reviewer:**
+**After fixing review feedback, obtain current-head re-review without duplicate requests:**
 
 ```bash
 gh pr comment <N> --body "@coderabbitai review"
@@ -267,7 +310,8 @@ gh pr comment <N> --body "@codex review"
 gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed round 1
 ```
 
-Re-review the reviewers you actually invoked. A bot that was correctly left off the panel — by repo
+Request re-review only for reviewers actually invoked whose current-head automatic review is
+missing or stale. A bot that was correctly left off the panel — by repo
 policy (8a.0) or by non-core tiering (8a.1) — does not get summoned at round 2 either.
 
 **Codex Cloud is enabled on:** EtanHey/voicelayer, EtanHey/orchestrator, EtanHey/golems, EtanHey/brainlayer.
@@ -386,7 +430,8 @@ Round 1: Read review at headRefOid; required checks green + clean review may mer
 Round 2: Only for BLOCKING findings; push fixes and request re-review
 ```
 
-CodeRabbit auto-re-reviews on new pushes. For others, comment `@bot re-review` explicitly.
+Automatic re-review depends on effective bot settings; manually request only missing/stale
+current-head coverage from eligible reviewers.
 Round 3 requires a lead exception written in the PR body (canon #9). Never merge with open blocking issues.
 
 ### Sanitize Before PR (CRITICAL)
@@ -403,8 +448,8 @@ Sanitize in PR description, code comments, test fixtures, and commit messages.
 ```bash
 git add <files> && git commit -m "fix: address review feedback"
 git push
-# Wait on the routed re-review (waiting policy); bots re-run as advisory — CodeRabbit
-# auto-triggers, others need a manual @mention
+# Routed re-review follows the waiting policy; bots are advisory.
+# Effective settings determine automatic coverage; request manually only if missing/stale
 ```
 
 ### Only THEN merge (clean review and required checks green at headRefOid):
