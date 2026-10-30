@@ -9,20 +9,41 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { parseRows, validDiskMeasurement } from "./table.mjs";
+import { median, parseRows, perfRepeats, validDiskMeasurement } from "./table.mjs";
 
 const DEFAULT_TIMEOUT_S = 900;
+
+function runCommand(row, cwd, log) {
+  const started = Date.now();
+  const run = spawnSync("bash", ["-c", row.command], {
+    cwd, encoding: "utf8", timeout: (row.timeout_s ?? DEFAULT_TIMEOUT_S) * 1000, maxBuffer: 256 * 1024 * 1024,
+  });
+  const code = run.status ?? (run.signal ? `killed by ${run.signal}` : "spawn error");
+  log(`ratchet row ${row.id}: exit ${code} in ${((Date.now() - started) / 1000).toFixed(1)}s`, run);
+  return { run, code };
+}
+
+export function runPerfRow(row, cwd, log = () => {}) {
+  const samples = [];
+  for (let i = 0; i < perfRepeats(row); i++) {
+    const { run } = runCommand(row, cwd, log);
+    const last = String(run.stdout ?? "").trim().split("\n").pop()?.trim() ?? "";
+    if (run.status !== 0 || !/^\d+(\.\d+)?$/.test(last) || !Number.isFinite(Number(last))) return undefined;
+    samples.push(Number(last));
+  }
+  return { samples, value: median(samples) };
+}
 
 export function runRows({ rows, head, cwd = process.cwd(), runner = null, log = () => {} }) {
   const results = {};
   for (const row of parseRows(rows).rows) {
-    if (runner && row.runner !== runner) continue;
-    const started = Date.now();
-    const run = spawnSync("bash", ["-c", row.command], {
-      cwd, encoding: "utf8", timeout: (row.timeout_s ?? DEFAULT_TIMEOUT_S) * 1000, maxBuffer: 256 * 1024 * 1024,
-    });
-    const code = run.status ?? (run.signal ? `killed by ${run.signal}` : "spawn error");
-    log(`ratchet row ${row.id}: exit ${code} in ${((Date.now() - started) / 1000).toFixed(1)}s`, run);
+    if (row.runner === "m1" || (runner && row.runner !== runner)) continue;
+    if (row.kind === "perf") {
+      const measured = runPerfRow(row, cwd, log);
+      if (measured) results[row.id] = measured;
+      continue;
+    }
+    const { run, code } = runCommand(row, cwd, log);
     if (row.report_only) {
       try {
         const measurement = JSON.parse(String(run.stdout ?? "").trim().split("\n").pop());
@@ -59,7 +80,7 @@ export function main(argv) {
   let rows;
   try {
     options = parseArgs(argv);
-    rows = JSON.parse(readFileSync(options.rows, "utf8"));
+    rows = parseRows(JSON.parse(readFileSync(options.rows, "utf8")));
   } catch (error) {
     process.stderr.write(`ratchet: ${error.message}\n`);
     return 2;
