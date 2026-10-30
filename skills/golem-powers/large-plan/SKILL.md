@@ -107,7 +107,7 @@ When a round has parallel phases, the orchestrator dispatches through its harnes
    `watch_pull_request`, inspects its `watching:true` receipt, and ends the turn. Immediately link
    created/taken-over/pushed PRs; ordinary wakes/pushes retain the watch. No routine list or rearm,
    timer, Monitor or child for PR waiting. On a PR-watch wake, follow the [waiting policy](../pr-loop/references/review-loop.md#waiting-policy-no-polling-turns).
-5. **Uncovered non-PR waits / non-T3 fallback:** a deploy, install, restart or reconnect hop remains a
+5. **Leads never do ops themselves** (Etan 2026-10-19, via orc). **Uncovered non-PR waits / non-T3 fallback:** a deploy, install, restart or reconnect hop remains a
    `deploy-local-prod` dispatch (`/agent-routing` § Lead Topology #7). Native T3 PR monitoring above
    takes precedence over the historical cheap-watcher rule. For a file/job no completion event covers,
    use one bounded mechanical child with a deadline and one terminal report; resolve it with
