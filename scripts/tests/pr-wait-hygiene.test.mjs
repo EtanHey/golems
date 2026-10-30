@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 const lead = { threadId: 'lead', role: 'lead', status: 'WAITING', snoozed: true, snoozedUntil: null };
 const watch = { threadId: 'lead', watchId: 'watch-1', status: 'active' };
@@ -93,6 +94,85 @@ test('only waiting leads are checked; all unsafe leads are reported', () => {
 test('invalid snapshots fail with a distinct input error', () => {
   for (const invalid of [{}, { threads: 'bad' }, { threads: [{ status: 'waiting' }] }, { threads: [lead], watches: {} }]) {
     assert.equal(check(invalid).status, 2);
+  }
+});
+
+// Source audit 2026-10-30: watch returns its own readback; list is diagnostic, never mandatory.
+const doc = (path) => readFileSync(path, 'utf8');
+const policyLink = 'pr-loop/references/review-loop.md#waiting-policy-no-polling-turns';
+const rawWaitingPolicy = () => doc('skills/golem-powers/pr-loop/references/review-loop.md')
+  .split('### Waiting policy (no polling turns)')[1].split('\n### ')[0];
+const waitingPolicy = () => rawWaitingPolicy().replace(/\s+/g, ' ');
+// One paragraph only, so tokens elsewhere in the section cannot satisfy its assertions.
+const policyParagraph = (lead) => {
+  const paragraph = rawWaitingPolicy().split(/\n\s*\n/).find((block) => block.trimStart().startsWith(lead));
+  assert.ok(paragraph, `paragraph ${lead} exists`);
+  return paragraph.replace(/\s+/g, ' ').trim();
+};
+test('waiting policy: watch receipt proves registration without a routine list', () => {
+  const paragraph = policyParagraph('**Watch claims need evidence.**');
+  for (const text of ['`watch_pull_request` receipt', '`watching:true`', 'registration',
+    'not polling liveness, wake delivery, current CI or merge readiness']) assert.ok(paragraph.includes(text), text);
+  const policy = waitingPolicy();
+  assert.ok(policy.includes('Never call `list_thread_pull_requests` solely to reprove a watch or end work'));
+  assert.ok(policy.includes('inventory, diagnosis, an ambiguous receipt or an audit'));
+});
+test('waiting policy: parent owns watch and finishes existing work before arming', () => {
+  const paragraph = policyParagraph('**The owning lead holds the watch.**');
+  for (const text of ['never the worker', 'A worker arms no watch', 'existing feedback',
+    'branch fixes and pushes', 'inspect its `watching:true` receipt', 'end the turn']) assert.ok(paragraph.includes(text), text);
+});
+test('waiting policy: ordinary wakes and pushes preserve watch; stop is distinct', () => {
+  const paragraph = policyParagraph('**Wakes and pushes preserve the watch.**');
+  for (const text of ['no routine rewatch, relink, list or rearm', 'documented stop',
+    'new monitoring request', 'eligible parent', 'User Stop', 'read failures', 'comment-only']) assert.ok(paragraph.includes(text), text);
+});
+test('waiting policy: native T3 overrides timers and cheap watcher prescriptions', () => {
+  const policy = waitingPolicy();
+  for (const text of ['T3 parent-owned native watch takes precedence',
+    'no timer wake, Monitor, scheduled PR poll or watcher child', 'unwatch before handback',
+    'BLOCKED', 'named blocker', 'next owner']) assert.ok(policy.includes(text), text);
+  assert.ok(!policy.includes('**Two states only'));
+});
+test('waiting policy: offline checker is diagnostic and cannot override runtime', () => {
+  const policy = waitingPolicy();
+  for (const text of ['diagnostic snapshot tool', 'BLOCKED-with-wake',
+    'checker failure never authorizes a timer, duplicate watcher or runtime override',
+    'For non-PR owned waits']) assert.ok(policy.includes(text), text);
+});
+test('bot policy: configuration-aware drafts and no duplicate current-head requests', () => {
+  const skill = doc('skills/golem-powers/pr-loop/SKILL.md');
+  for (const text of ['Draft handling depends on effective bot settings',
+    'never merge a draft', 'current-head automatic review already exists']) assert.ok(skill.includes(text), text);
+  for (const path of ['skills/golem-powers/pr-loop/SKILL.md',
+    'skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md']) {
+    assert.ok(!doc(path).replaceAll('**', '').includes('Draft PRs silently skip bot reviews'), path);
+  }
+});
+test('never-fabricate lists the watched claim and links the waiting policy', () => {
+  const apply = doc('skills/golem-powers/never-fabricate/SKILL.md').split('## When To Apply')[1].split('\n## ')[0];
+  assert.match(apply, /"watched" or "monitored"/);
+  assert.ok(apply.includes('`watching:true`'), 'names the receipt');
+  assert.ok(apply.includes('`watch_pull_request` receipt'), 'watch supplies registration evidence');
+  assert.ok(!apply.includes('`list_thread_pull_requests` readback'), 'no mandatory list');
+  assert.ok(apply.includes(`../${policyLink}`), 'links the waiting policy');
+});
+test('large-plan PR waiting points at the readback rule in the waiting policy', () => {
+  const skill = doc('skills/golem-powers/large-plan/SKILL.md');
+  const row = skill.split('\n').find((line) => line.startsWith('| **PR waiting** |'));
+  assert.ok(row, 'PR waiting row exists');
+  assert.ok(row.includes(`../${policyLink}`), 'row links the waiting policy');
+  assert.ok(row.includes('`watching:true` receipt'), 'row names the watch receipt');
+  assert.ok(row.includes('no routine list or rearm'), 'no redundant readback or rearm');
+});
+test('PR-watch wake steps defer to the waiting policy instead of contradicting it', () => {
+  for (const [path, prefix] of [
+    ['skills/golem-powers/large-plan/SKILL.md', '../'],
+    ['skills/golem-powers/agent-routing/references/t3-native.md', '../../'],
+  ]) {
+    const text = doc(path).replace(/\s+/g, ' ');
+    assert.ok(!text.includes('A wake is news'), `${path}: no "A wake is news" rule`);
+    assert.ok(text.includes(`On a PR-watch wake, follow the [waiting policy](${prefix}${policyLink}).`), `${path}: links the policy`);
   }
 });
 
