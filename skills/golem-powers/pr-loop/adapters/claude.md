@@ -33,14 +33,16 @@ pr-watch <owner/repo> <N> --head <sha> --deadline 2h
 
 Wait per the [waiting policy](../references/review-loop.md#waiting-policy-no-polling-turns), in order:
 
-1. **T3 seat:** call `link_pull_request`, then `watch_pull_request`, and end the turn. T3 wakes you on
-   checks finished, a new comment, or a conflict. Call `unwatch_pull_request` at a terminal state.
+1. **T3 seat:** owning parent links created/taken-over/pushed PRs immediately, handles existing
+   feedback and branch fixes/pushes, then calls `watch_pull_request`, inspects `watching:true` and ends.
+   Ordinary wakes/pushes preserve the watch; no routine list/rearm. Unwatch before terminal/handoff.
+   A delegated child reports its artifact and ends; it never watches.
 2. **State needed now:** one bounded `gh pr checks <N>` read.
 3. **Must sit and watch outside T3:** one watcher process, below.
 
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
 
-Arm exactly one `Monitor(command="pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`
+Outside T3 only, arm exactly one `Monitor(command="pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`
 for GitHub CI. Monitor runs a command; it spends no model turns while it waits. pr-watch never merges;
 an empty rollup is never READY. Use the
 [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits)

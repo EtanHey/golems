@@ -69,3 +69,28 @@ Capture coverage stays `unknown` (`capture_not_observed`); unrelated disk writer
 JSON v1 goes to stdout on success, stderr on failure; exits: 0 success, 75 refusal, 64 invalid, 73 storage.
 Importable `admit`, `finish`, `inspect` return `(exit_code, receipt)`; tests inject observations only via `admit`.
 No raw source bytes are changed. P2b runtime ownership/recovery and P2c interval repair remain separate gates.
+
+## Source-only runtime context (P2b1, unwired)
+
+`python3 scripts/stalker/stalker-runtime-context.py prepare-capture --platform twitch|youtube --channel CHANNEL --metadata JSONFILE`
+projects supplied single-video live metadata into a closed identity. Success returns
+`contextVersion:1`, `authorized:false`, `reason:CONTEXT_ONLY`, `canonicalDb`, `identity`,
+and `coverageStatus:unknown`. Exit 0 prepares context only; it never permits recording.
+Invalid arguments/JSON/identity return sanitized JSON stderr and exit 64; metadata IO
+or account lookup failures return exit 73. Input metadata and signed URLs are never echoed.
+
+Importable `canonical_db()` returns the current UID account home's canonical absolute
+path plus `.local/state/golems/stalker/admission.sqlite3`, ignoring cwd, HOME, XDG,
+spool, checkout/release roots and caller DB overrides. It creates/opens no state.
+Safe account-owned state ancestors/sidecars must be validated before future mutation;
+there is no storage migration or fallback database in this slice.
+
+`capture_identity(platform, channel, metadata)` accepts TwitchStream/Youtube current-live
+metadata with matching normalized alphanumeric/underscore channels and strict string IDs.
+Twitch channel-name fallback (including numeric collisions) is refused. YouTube uses
+the pinned 11-character video watch URL. Caller metadata is unauthenticated; Twitch's
+mutable recorder URL still requires extractor-to-recorder binding before media writes.
+No admission, budgets, capture, subprocess, network, finish or recovery occurs here.
+Finite enforced allocation/overshoot, writer lifetime/safe finish, partial retry policy,
+ingest source/config seals/output exclusion, provenance/PTS/interval repair, installed
+wrappers and native capture/digest/delivery remain open. Source fixtures prove none of these.

@@ -1,4 +1,4 @@
-// Real-layout checks in headless Chromium. Skips (loudly) where Playwright/Chromium is unavailable.
+// Real-layout checks in headless Chromium. CI requires a browser; local runs may skip loudly.
 import { expect, test } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,6 +12,9 @@ try {
   const probe = await chromium.launch();
   await probe.close();
 } catch (error) {
+  if (process.env.ADASH_LAYOUT_REQUIRED === "1") {
+    throw new Error(`decision-flow layout tests require Playwright/Chromium (ADASH_LAYOUT_REQUIRED=1): ${error?.message}`, { cause: error });
+  }
   console.warn(`decision-flow layout tests skipped: ${error?.message?.split("\n")[0]}`);
   chromium = null;
 }

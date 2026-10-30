@@ -503,7 +503,8 @@ def lease_ledger(monkeypatch):
         yield
 
 
-def test_real_retire_receipt_closes_lease(tree, lease_ledger):
+@pytest.mark.parametrize("closing", [False, True])
+def test_real_retire_receipt_closes_lease(tree, lease_ledger, closing):
     lease = SCRIPT.with_name("lease.py")
     assert lease.is_file(), "W2 lease.py must be merged before W1b READY"
     def invoke(*args):
@@ -514,10 +515,23 @@ def test_real_retire_receipt_closes_lease(tree, lease_ledger):
            "--owner", "fixture", "--repo", str(tree[0] / ".git"), "--kind", "worktree",
            "--ownership", "created")
     invoke("bind", "--lease-id", "retire-fixture", "--path", str(tree[1]))
+    flags = []
+    if closing:
+        token = invoke("begin-close", "--lease-id", "retire-fixture")["close_token"]
+        flags = ["--close-token", token]
+        late = subprocess.run([sys.executable, str(lease), "consumer", "--lease-id",
+                               "retire-fixture", "add", "--who", "reviewer"],
+                              capture_output=True, text=True)
+        assert late.returncode != 0 and "lease is closing" in late.stderr
+        assert tree[1].is_dir()
     result, receipt = run(tree)
     assert result.returncode == 0 and receipt["disposition"] == "REMOVED"
-    closed = invoke("close", "--lease-id", "retire-fixture", "--receipt", str(tree[2]))
+    closed = invoke("close", "--lease-id", "retire-fixture", "--receipt", str(tree[2]), *flags)
     assert closed["state"] == "closed" and closed["terminal_receipt"] == receipt
+    if closing:
+        retried = invoke("close", "--lease-id", "retire-fixture", "--receipt", str(tree[2]), *flags)
+        assert retried["closed_at"] == closed["closed_at"]
+        assert retried["history"][-1]["message"] == "already closed"
 
 
 @pytest.mark.parametrize("failure", ["timeout", "unparseable output"])
