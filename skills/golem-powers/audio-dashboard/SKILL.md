@@ -423,19 +423,20 @@ Before calling a dashboard done, verify these conditions (enforced by
   `dashboards-serve`.
 
 ## Preserve the published design
-Preserve the design unless the brief explicitly requests a redesign: top-pinned
-player, auto-visible read-along with segment speakers, expanded full transcript,
-main max-width/centering, native radio/checkbox answers, code-only copy, clean focus,
-working seek, per-question clear and overall reset (answer/note exports stay).
-Use stable `spec.series` (default `spec.id`) and output directory. The publish probe
-(`--spec`, served bytes verified) saves `.adash-design/<series>/`; migrate via
-`designPreservation: { previousPublished: "previous.html" }`.
-No history records BASELINE; unavailable referenced history fails closed.
-Only `redesign: { reason: "One-line reason from the brief" }` waives regressions.
-BUILD/evidence validation enforce this; before DONE run (Playwright/Chromium required)
-`bun scripts/render-done-gate-cli.mjs --spec job.json`. For desktop/390 px PNGs:
+Preserve the template unless the brief requests a specific redesign: top-pinned
+controls, auto-visible labelled read-along, transcript visible after playback ends,
+primary width/centering, native answers, code-only copy, clean focus, seek and resets.
+Require a stable explicit `spec.series`; history is independent of output/id under
+`~/.local/share/audio-dashboard/design-history/<series>/`. For a first build only,
+set `designPreservation: { baseline: { reason: "New series" } }`; missing history
+otherwise rejects. Migrate old publications with `previousPublished` in that object.
+A waiver needs `redesign: { reason, invariants: ["LAYOUT"], from: "previous sha256" }`;
+it expires when the published predecessor changes and never waives unlisted codes.
+BUILD and evidence are preventive gates; the publish probe is a post-publication
+ledger guard and requires `--spec` (`--out` alone no longer succeeds).
+Run `bun scripts/render-done-gate-cli.mjs --spec job.json` before DONE, or
 `bun scripts/check-design-preservation.mjs --spec job.json --screenshots proof/`.
-Pixel ratios in the `.design.json` sidecar are report-only; DOM invariants gate.
+The library requires a matching PASS `.design.json` for the final HTML bytes.
 
 ## Transcript Fidelity and Teleprompter Drift BUILD Gates
 

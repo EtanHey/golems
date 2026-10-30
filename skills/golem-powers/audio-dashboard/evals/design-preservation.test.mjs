@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
 import { checkDesignPreservation, loadPublishedDesign, recordPublishedDesign } from '../src/design-preservation.mjs';
 
@@ -8,6 +9,7 @@ const fixture = name => readFileSync(new URL(`./fixtures/design-preservation/${n
 let browser;
 beforeAll(async () => { browser = await chromium.launch(); });
 afterAll(async () => { await browser?.close(); });
+const waiver = invariants => ({ reason: 'New transport requested.', invariants, from: createHash('sha256').update(fixture('previous')).digest('hex') });
 const check = (html, extra = {}) => checkDesignPreservation({ browser, html, previousHtml: fixture('previous'), ...extra });
 for (const code of ['STICKY_PLAYER', 'READ_ALONG', 'SPEAKER_LABELS', 'FULL_TRANSCRIPT', 'LAYOUT', 'ANSWER_CONTROLS', 'COPY_BUTTONS']) {
   test(`removed invariant rejects by name: ${code}`, async () => {
@@ -23,7 +25,7 @@ test('preserved copy edit passes and reports pixel ratios at both widths', async
   expect(result.screenshots.every(s => s.pixelDiffRatio > 0 && s.pixelDiffRatio < 1)).toBe(true);
 });
 test('explicit redesign reason permits regressions but retains evidence', async () => {
-  const result = await check(fixture('sticky_player'), { redesign: { reason: 'New transport requested.' } });
+  const result = await check(fixture('sticky_player'), { redesign: waiver(['STICKY_PLAYER']) });
   expect(result.verdict).toBe('PASS');
   expect(result.status).toBe('REDESIGN');
   expect(result.violations[0].code).toBe('STICKY_PLAYER');
@@ -52,11 +54,11 @@ test('computed cascade, toggles, segment labels and input types cannot fake pres
 test('published history is series-specific, immutable on rebuild, and fails closed on loss', () => {
   const dir = path.resolve('docs.local/adp/history-' + crypto.randomUUID());
   mkdirSync(dir, { recursive: true });
-  const output = path.join(dir, 'v1.html'), spec = { id: 'v1', series: 'weekly' };
-  expect(loadPublishedDesign(spec, output).previousHtml).toBeNull();
+  const output = path.join(dir, 'v1.html'), spec = { id: 'v1', series: 'adp-fixture-' + crypto.randomUUID() };
+  expect(() => loadPublishedDesign(spec, output)).toThrow('previous build missing');
   recordPublishedDesign(spec, output, fixture('previous'));
-  expect(loadPublishedDesign({ id: 'v2', series: 'weekly' }, output).previousHtml).toBe(fixture('previous'));
-  expect(loadPublishedDesign({ id: 'v2', series: 'other' }, output).previousHtml).toBeNull();
+  expect(loadPublishedDesign({ id: 'v2', series: spec.series }, output).previousHtml).toBe(fixture('previous'));
+  expect(() => loadPublishedDesign({ id: 'v2', series: spec.series + '-other' }, output)).toThrow('previous build missing');
   const previous = loadPublishedDesign(spec, output);
   writeFileSync(previous.previousPath, 'corrupt');
   expect(() => loadPublishedDesign(spec, output)).toThrow('previous build missing');
@@ -67,7 +69,7 @@ test('real CLI and render-done gate reject every regression and allow an explici
   const dir = path.resolve('docs.local/adp/cli-' + crypto.randomUUID());
   mkdirSync(dir, { recursive: true });
   const outputPath = path.join(dir, 'new.html'), specPath = path.join(dir, 'job.json');
-  const spec = { id: 'weekly', outputPath, designPreservation: { previousPublished: path.resolve(new URL('./fixtures/design-preservation/previous.html', import.meta.url).pathname) } };
+  const spec = { series: 'adp-cli-' + crypto.randomUUID(), id: 'weekly', outputPath, designPreservation: { previousPublished: path.resolve(new URL('./fixtures/design-preservation/previous.html', import.meta.url).pathname) } };
   const run = script => Bun.spawnSync([process.execPath, new URL(`../scripts/${script}.mjs`, import.meta.url).pathname, '--spec', specPath]);
   for (const code of ['STICKY_PLAYER', 'READ_ALONG', 'SPEAKER_LABELS', 'FULL_TRANSCRIPT', 'LAYOUT', 'ANSWER_CONTROLS', 'COPY_BUTTONS']) {
     writeFileSync(outputPath, fixture(code.toLowerCase())); writeFileSync(specPath, JSON.stringify(spec));
@@ -75,7 +77,7 @@ test('real CLI and render-done gate reject every regression and allow an explici
     expect(result.exitCode).toBe(3); expect(result.stdout.toString()).toContain(code);
   }
   expect(run('render-done-gate-cli').exitCode).toBe(3);
-  writeFileSync(specPath, JSON.stringify({ ...spec, redesign: { reason: 'Requested new design.' } }));
+  writeFileSync(specPath, JSON.stringify({ ...spec, redesign: waiver(['COPY_BUTTONS']) }));
   expect(run('render-done-gate-cli').exitCode).toBe(0);
   writeFileSync(specPath, JSON.stringify({ ...spec, designPreservation: { previousPublished: 'absent.html' } }));
   expect(run('check-design-preservation').stdout.toString()).toContain('PREVIOUS_BUILD_MISSING');
@@ -84,7 +86,7 @@ test('real CLI and render-done gate reject every regression and allow an explici
 test('publish probe advances history only after byte equality and preservation pass', async () => {
   const dir = path.resolve('docs.local/adp/publish-' + crypto.randomUUID());
   mkdirSync(dir, { recursive: true });
-  const outputPath = path.join(dir, 'new.html'), specPath = path.join(dir, 'job.json'), spec = { id: 'weekly', outputPath };
+  const outputPath = path.join(dir, 'new.html'), specPath = path.join(dir, 'job.json'), spec = { id: 'weekly', series: 'adp-publish-' + crypto.randomUUID(), outputPath, designPreservation: { baseline: { reason: 'New fixture series.' } } };
   let served = fixture('previous');
   const server = Bun.serve({ port: 0, fetch: () => new Response(served, { headers: { 'content-type': 'text/html' } }) });
   const probe = async () => {
