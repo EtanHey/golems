@@ -120,7 +120,8 @@ class WaitingPolicy(unittest.TestCase):
     def test_review_loop_orders_t3_watch_bounded_check_cheap_watcher_then_bans(self):
         content = flat("references/review-loop.md")
         self.assertIn("### Waiting policy (no polling turns)", content)
-        content = content.split("### Waiting policy (no polling turns)", 1)[1]
+        # The source-backed receipt preamble now precedes the ordered procedure.
+        content = content.split("Wait in this order. Take the first option that fits:", 1)[1]
         order = ["`link_pull_request`", "`watch_pull_request`", "end the turn",
                  "Single bounded check", "cheap watcher", "`codex.subagent.mechanical`", "Banned"]
         positions = [content.find(token) for token in order]
@@ -205,6 +206,16 @@ class WaitingPolicy(unittest.TestCase):
                 if "model-roles.mjs codex.subagent.mechanical" in line:
                     with self.subTest(surface=relative, line=line.strip()[:60]):
                         self.assertIn("--use watcher", line)
+
+    def test_behavioral_cases_cover_receipt_persistence_stop_and_fallback(self):
+        cases = {case.get("name"): case for case in json.loads(text("evals/evals.json"))["evals"]}
+        for name in ["t3-watch-receipt-no-list", "t3-ordinary-wake-and-push-persist",
+                     "t3-documented-stop-new-request", "t3-child-no-extra-waiter",
+                     "non-t3-reuse-pinned-watcher", "bot-draft-config-no-duplicate"]:
+            with self.subTest(case=name):
+                case = cases[name]
+                self.assertTrue(case["prompt"] and case["expected_output"])
+                self.assertTrue(any(row.get("type") == "negative" for row in case["assertions"]))
 
     def test_behavioral_cases_cover_the_waiting_policy(self):
         cases = {case["id"]: case for case in json.loads(text("evals/evals.json"))["evals"]}

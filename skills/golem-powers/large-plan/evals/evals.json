@@ -240,13 +240,13 @@
     },
     {
       "id": 31,
-      "name": "t3-ci-watch-parent-or-bounded-child",
+      "name": "t3-ci-watch-parent-native-only",
       "prompt": "You are a lead in a T3 thread. PR #412 is open and CI will take 20 min, watch it and merge when green.",
-      "expected_output": "Calls watch_pull_request on PR #412 from the parent thread and ends the turn; a wake is news, re-checked before any merge. If something must sit and watch beyond what the PR watch covers, dispatches exactly one bounded codex.subagent.mechanical child with a deadline and a single terminal report that never owns the parent's PR watch. Calls unwatch_pull_request at terminal state.",
+      "expected_output": "Handles existing feedback and finishes branch fixes/pushes, calls the owning parent watch_pull_request, inspects watching:true receipt and ends the turn. Ordinary wakes and pushes preserve the watch: no routine rewatch/list/rearm or child/timer/Monitor PR waiter. On red/conflicts acts now; before merge verifies current required checks and routed review at the exact head. Unwatch before terminal/handoff.",
       "assertions": [
-        {"name": "t3-ci-watch-parent-or-bounded-child-1", "description": "Uses the parent's watch_pull_request, or one bounded codex.subagent.mechanical child with a deadline and single terminal report."},
-        {"name": "t3-ci-watch-parent-or-bounded-child-2", "description": "Re-verifies the latest head's checks on wake before merging, then unwatch_pull_request."},
-        {"name": "t3-ci-watch-parent-or-bounded-child-negative", "description": "Does not use ScheduleWakeup, CronCreate, /loop or a sleep loop in the lead seat."}
+        {"name": "t3-ci-watch-parent-native-only-1", "description": "Uses the parent's native watch and watching:true receipt; no watcher child for T3 PR waiting."},
+        {"name": "t3-ci-watch-parent-native-only-2", "description": "Re-verifies the latest head's checks on wake before merging, then unwatch_pull_request."},
+        {"name": "t3-ci-watch-parent-native-only-negative", "description": "Does not use ScheduleWakeup, CronCreate, /loop or a sleep loop in the lead seat."}
       ]
     },
     {

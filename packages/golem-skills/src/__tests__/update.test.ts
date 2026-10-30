@@ -1,3 +1,4 @@
+import { testBun } from "@golems/shared/test-bun";
 import { describe, test, expect, beforeEach, afterEach, setDefaultTimeout } from "bun:test";
 import { join } from "node:path";
 import {
@@ -16,7 +17,7 @@ setDefaultTimeout(15_000);
 const CLI = join(import.meta.dir, "..", "index.ts");
 
 async function run(...args: string[]) {
-  const proc = Bun.spawn(["bun", CLI, ...args], {
+  const proc = Bun.spawn([...testBun, CLI, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -57,7 +58,7 @@ describe("golems-cli update — routing", () => {
       // Create empty commands dir
       await mkdir(join(tmpHome, ".claude", "commands"), { recursive: true });
 
-      const proc = Bun.spawn(["bun", CLI, "wizard", "--update", "--dry-run"], {
+      const proc = Bun.spawn([...testBun, CLI, "wizard", "--update", "--dry-run"], {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...process.env, HOME: tmpHome },
@@ -206,7 +207,7 @@ describe("runUpdate — dry-run mode", () => {
     const originalConfig = { reposPath: tmpHome, tools: {} };
     await writeFile(configPath, JSON.stringify(originalConfig, null, 2));
 
-    const proc = Bun.spawn(["bun", CLI, "update", "--dry-run"], {
+    const proc = Bun.spawn([...testBun, CLI, "update", "--dry-run"], {
       stdout: "pipe",
       stderr: "pipe",
       env: { ...process.env, HOME: tmpHome },
@@ -226,7 +227,7 @@ describe("runUpdate — dry-run mode", () => {
     // No config file — should tell user to run wizard first
     const noConfigHome = await mkdtemp(join(tmpdir(), "update-noconfig-"));
     try {
-      const proc = Bun.spawn(["bun", CLI, "update"], {
+      const proc = Bun.spawn([...testBun, CLI, "update"], {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...process.env, HOME: noConfigHome },
@@ -251,7 +252,7 @@ describe("runUpdate — dry-run mode", () => {
     };
     await writeFile(configPath, JSON.stringify(config, null, 2));
 
-    const proc = Bun.spawn(["bun", CLI, "update", "--dry-run", "--verbose"], {
+    const proc = Bun.spawn([...testBun, CLI, "update", "--dry-run", "--verbose"], {
       stdout: "pipe",
       stderr: "pipe",
       env: { ...process.env, HOME: tmpHome },
@@ -271,7 +272,7 @@ describe("runUpdate — dry-run mode", () => {
       JSON.stringify({ reposPath: tmpHome, tools: {} }, null, 2),
     );
 
-    const proc = Bun.spawn(["bun", CLI, "update", "--dry-run"], {
+    const proc = Bun.spawn([...testBun, CLI, "update", "--dry-run"], {
       stdout: "pipe",
       stderr: "pipe",
       env: { ...process.env, HOME: tmpHome },
@@ -375,7 +376,7 @@ describe("runUpdate — flags", () => {
       );
       await mkdir(join(tmpHome, ".claude", "commands"), { recursive: true });
 
-      const proc = Bun.spawn(["bun", CLI, "update", "--yes", "--dry-run"], {
+      const proc = Bun.spawn([...testBun, CLI, "update", "--yes", "--dry-run"], {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...process.env, HOME: tmpHome },
@@ -401,7 +402,7 @@ describe("runUpdate — flags", () => {
       );
       await mkdir(join(tmpHome, ".claude", "commands"), { recursive: true });
 
-      const proc = Bun.spawn(["bun", CLI, "update", "-y", "--dry-run"], {
+      const proc = Bun.spawn([...testBun, CLI, "update", "-y", "--dry-run"], {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...process.env, HOME: tmpHome },

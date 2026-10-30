@@ -25,7 +25,7 @@ an early stop legible instead of a stall.
 If you are running autonomously (no human in the loop), these rules are mandatory:
 
 1. **Never merge with 0 reviews.** Wait or invoke bots. No exceptions.
-2. **Waiting for reviews:** after invoking reviewers, wait per the [waiting policy](review-loop.md#waiting-policy-no-polling-turns): a T3 watch wake, one bounded check, or one cheap watcher, never a timed polling turn. Fifteen minutes with no response does not waive the review gate: a lead may merge only after at least one review and all required comment/review conditions pass; a worker hands off unmerged.
+2. **Waiting for reviews:** after invoking reviewers, wait per the [waiting policy](review-loop.md#waiting-policy-no-polling-turns): the T3 parent watch first, bounded reads for a decision, or one cheap watcher only outside T3, never a timed polling turn. Fifteen minutes with no response does not waive the review gate: a lead may merge only after at least one review and all required comment/review conditions pass; a worker hands off unmerged.
 3. **Post to collab** with PR number immediately after creation and after worker handoff or lead merge (with test counts).
 4. **CRITICAL/HIGH comments require reply** before handoff or merge — fix, or explicit "won't fix because X." Zero replies = cannot advance.
 5. **Max 2 review rounds.** One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings. Round 3 requires a lead exception written in the PR body (canon #9). A worker hands off unmerged.
@@ -74,12 +74,13 @@ at dispatch. The gate (`model-pin-gate`) is the backstop, not the decision.
 
 ## Review-Without-Merge ≠ Draft
 
-Draft PRs **silently skip bot reviews**.
+Draft handling depends on effective bot settings; it does not guarantee usage suppression.
+Keep the other-vendor inner review before opening a ready PR; never merge a draft.
 
 ```
-WRONG: gh pr create --draft … then wait for @coderabbitai
-RIGHT: Create ready-for-review PRs; if draft was used, `gh pr ready <N>` BEFORE
-       invoking reviewers. Never merge while still draft.
+WRONG: gh pr create --draft … assuming bots cannot run
+RIGHT: Finish inner review, open ready; if draft exists, `gh pr ready <N>`.
+       Request only missing/stale current-head bot coverage under the permitted policy.
 ```
 
 "Review without merge" means mark ready-for-review and run the review loop — NOT
