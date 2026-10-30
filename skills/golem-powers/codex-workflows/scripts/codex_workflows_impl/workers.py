@@ -345,6 +345,12 @@ def cleanup_worker(
     if lease["state"] == "closing":
         if not token:
             raise CodexWorkflowError("closing lease token unavailable; reconciliation required")
+        try:
+            lifecycle_tool("lease.py", "check-close", "--lease-id", worker["lease_id"], "--close-token", token)
+        except CodexWorkflowError as exc:
+            update_worker(manifest_path, worker_name, {"retirement_disposition": "RETAINED",
+                          "retirement_reason": str(exc), "worktree_removed": False})
+            raise
     else:
         if token:
             raise CodexWorkflowError("close token exists but lease is not closing")
