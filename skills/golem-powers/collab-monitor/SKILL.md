@@ -16,6 +16,8 @@ detached producer alone does not wake an agent.
 
 ## Codex and T3 seats
 
+The m1-launch-queue collab is now an admission ledger, not a request queue: [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md) § 5.
+
 > "Codex seats must not poll collabs; T3 delegate completions already wake you."
 > "No polling turns. No collab-monitor wakes in Codex"
 > (Etan 2026-10-18, via orc collab)

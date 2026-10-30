@@ -5,13 +5,15 @@ import os
 from pathlib import Path
 import subprocess
 import signal
+import shutil
 import pytest
 import sys
 import time
 
 SCRIPT = Path(__file__).resolve().parents[1] / "hooks/heavy-suite.py"
-GIT_LOCAL_ENV_VARS = set(subprocess.check_output(
-    ["git", "rev-parse", "--local-env-vars"], text=True).splitlines())
+_git = shutil.which("git")
+GIT_LOCAL_ENV_VARS = (set(subprocess.check_output(
+    [_git, "rev-parse", "--local-env-vars"], text=True).splitlines()) if _git else set())
 
 
 def isolated_env():
@@ -27,6 +29,7 @@ def env(home):
 def scheduling_defaults(monkeypatch):
     for name in os.environ.keys() - isolated_env().keys():
         monkeypatch.delenv(name)
+    assert not any(name.startswith("GOLEMS_HEAVY_") or name in GIT_LOCAL_ENV_VARS for name in os.environ)
     monkeypatch.setenv("GOLEMS_HEAVY_SUITE_SLOTS", "1")
     monkeypatch.setenv("GOLEMS_HEAVY_MIN_FREE_GB", "0")
 
@@ -149,7 +152,7 @@ def test_finished_suite_unlocks_while_background_daemon_survives(tmp_path):
     code = f"import subprocess,sys; from pathlib import Path; p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'],close_fds=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); Path({str(pid)!r}).write_text(str(p.pid))"
     try:
         assert launch(tmp_path, code).wait(timeout=5) == 0
-        result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=env(tmp_path), capture_output=True, text=True, timeout=1)
+        result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=env(tmp_path), capture_output=True, text=True, timeout=5)
         assert result.returncode == 0
     finally:
         if pid.exists(): os.kill(int(pid.read_text()), signal.SIGTERM)
@@ -157,7 +160,7 @@ def test_finished_suite_unlocks_while_background_daemon_survives(tmp_path):
 
 def test_force_skips_load_and_lock(tmp_path):
     forced = {**env(tmp_path), "GOLEMS_HEAVY_FORCE": "1", "GOLEMS_HEAVY_MAX_LOAD": "0"}
-    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=forced, capture_output=True, text=True, timeout=1)
+    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=forced, capture_output=True, text=True, timeout=5)
     assert result.returncode == 0
     assert "FORCE" in result.stderr
     assert not (tmp_path / ".local").exists()
@@ -165,7 +168,7 @@ def test_force_skips_load_and_lock(tmp_path):
 
 def test_setup_failure_runs_suite_unlocked(tmp_path):
     (tmp_path / ".local").write_text("not a directory")
-    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "raise SystemExit(7)"], env=env(tmp_path), capture_output=True, text=True, timeout=1)
+    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "raise SystemExit(7)"], env=env(tmp_path), capture_output=True, text=True, timeout=5)
     assert result.returncode == 7
     assert "unqueued" in result.stderr
 

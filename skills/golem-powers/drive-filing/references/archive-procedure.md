@@ -145,11 +145,20 @@ The ledger is what lets a future agent answer **"where is the original?"** witho
 
 ### 7. (Optional) Delete the local heavy copy
 
-Only after:
-- `mcp__google-drive__listFolder` confirms the file is present and sized correctly.
-- Ledger entry is written.
+Apply [§ Machine hygiene rules 2 and 5](../SKILL.md#machine-hygiene-no-ad-hoc-home-folders)
+as the single deletion gate. Write the ledger first, then require all of:
 
-Markdown notes <100KB stay in `docs.local/` (they're the latest cache). Heavy media (>10MB audio/video) can be deleted locally — Drive is the canonical copy.
+- Manifest hashes match verified Drive or iCloud archive bytes.
+- A one-file restore test passes.
+- Etan explicitly instructs the deletion, or already opened that door for this
+  work (quote his authorization). A lead's own call is insufficient.
+
+A folder listing, matching size/name or ledger entry alone is insufficient;
+archive proof alone grants no deletion authority. Keep preservation proof outside
+any retiring scope and follow the linked lifecycle contract's additional gates.
+Reviewed empty directories may be removed with `rmdir` under rule 5.
+Markdown notes <100KB stay in `docs.local/` as the latest cache. Heavy media
+(>10MB audio/video) is eligible for local removal only through this same gate.
 
 ### 8. brain_store the decision (optional, for non-trivial archives)
 

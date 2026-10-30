@@ -1,5 +1,6 @@
 """Real Codex CLI, synthetic local Responses server, scratch home; no paid calls."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import hashlib
 import importlib.util
 import json
 import os
@@ -24,6 +25,15 @@ desynced_patch_cases = _cases.desynced_patch_cases
                      "Codex CLI not installed")
 class NativeHooksTests(unittest.TestCase):
     def test_native_preexecution_denial_and_allow(self):
+        self.run_native_fixture("trusted")
+
+    def test_missing_trust_does_not_run_hooks(self):
+        self.run_native_fixture("missing")
+
+    def test_changed_definition_does_not_run_hooks(self):
+        self.run_native_fixture("modified")
+
+    def run_native_fixture(self, trust):
         self.assertIsNotNone(shutil.which("codex"), "Codex CLI not installed (GOLEMS_REQUIRE_CODEX=1)")
         (ROOT / "docs.local").mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
@@ -75,6 +85,10 @@ class NativeHooksTests(unittest.TestCase):
                 "*** Begin Patch\n\t*** Add File: credentials.json\n+{}\n*** End Patch\n",
                 "*** Begin Patch\n \t *** Add File: allowed-note.md\n+allowed\n*** End Patch\n",
             ]
+            if trust != "trusted":
+                # Only harmless marker writes and fake git are needed here.
+                commands = commands[:4]
+                patches = []
             requests = []
 
             class Handler(BaseHTTPRequestHandler):
@@ -141,11 +155,30 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                     module.as_uri(), sys.executable, str(ADAPTER), gate],
                     capture_output=True, text=True, check=True)
                 return r.stdout.strip()
-            (home / "hooks.json").write_text(json.dumps({"hooks": {"PreToolUse": [
+            groups = [
                 {"matcher": "^(Bash|apply_patch)$", "hooks": [{"type": "command",
                  "command": hook_command(gate), "timeout": 10}]}
                 for gate in ("tmp-block", "git-guardian")
-            ]}}))
+            ]
+            hooks_path = home / "hooks.json"
+            hooks_path.write_text(json.dumps({"hooks": {"PreToolUse": groups}}))
+            if trust != "missing":
+                # Codex rust-v0.166.0: hooks/src/engine/discovery.rs hook_hash
+                # and config/src/fingerprint.rs version_for_toml. TOML omits
+                # absent optional fields; async=false remains in the identity.
+                # /hooks persists these exact per-handler approval records.
+                for index, group in enumerate(groups):
+                    handler = dict(group["hooks"][0], **{"async": False})
+                    if trust == "modified":
+                        handler["command"] += " stale-definition"
+                    identity = dict(event_name="pre_tool_use", matcher=group["matcher"],
+                                    hooks=[handler])
+                    payload = json.dumps(identity, sort_keys=True, separators=(",", ":"),
+                                         ensure_ascii=False).encode()
+                    digest = "sha256:" + hashlib.sha256(payload).hexdigest()
+                    key = f"{hooks_path}:pre_tool_use:{index}:0"
+                    config += f"\n[hooks.state.{json.dumps(key)}]\ntrusted_hash = {json.dumps(digest)}\n"
+                (home / "config.toml").write_text(config)
             env = os.environ.copy()
             for key in ("CLAUDE_WORKER", "WEAVE_ALLOW_TMP", "WEAVE_ALLOW_WT_MIGRATION", "GIT_GUARDIAN_LIB"):
                 env.pop(key, None)
@@ -153,7 +186,7 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                        TMP_BLOCK_LEDGER=str(base / "ledger.jsonl"))
             try:
                 result = subprocess.run([shutil.which("codex"), "exec", "--json",
-                    "--skip-git-repo-check", "--dangerously-bypass-hook-trust",
+                    "--skip-git-repo-check",
                     "Run the synthetic fixture commands."], cwd=workspace, env=env,
                     capture_output=True, text=True, timeout=45)
             finally:
@@ -166,6 +199,17 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                 for item in request.get("input", []):
                     if item.get("type") in ("function_call_output", "custom_tool_call_output"):
                         outputs[item["call_id"]] = str(item["output"])
+            if trust != "trusted":
+                self.assertEqual((workspace / "blocked-temp-executed.txt").read_text(), "x")
+                self.assertIn("FAKE_GIT_EXECUTED", outputs["call-1"])
+                self.assertNotIn("TMP-BLOCK", outputs["call-0"])
+                self.assertNotIn("BLOCKED", outputs["call-1"])
+                self.assertFalse((base / "ledger.jsonl").exists())
+                self.assertEqual((workspace / "allowed.txt").read_text(), "allowed")
+                self.assertIn("FAKE_GIT_EXECUTED", outputs["call-3"])
+                self.assertIn("NATIVE_FIXTURE_DONE", result.stdout)
+                print(f"Native trust={trust}: hooks not executed; paid tokens=0")
+                return
             self.assertIn("TMP-BLOCK", outputs["call-0"])
             self.assertFalse((workspace / "blocked-temp-executed.txt").exists())
             self.assertIn("BLOCKED", outputs["call-1"])
@@ -186,7 +230,7 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                 self.assertIn("BLOCKED", outputs[f"call-{index}"])
             self.assertEqual((workspace / "allowed-note.md").read_text().strip(), "allowed")
             self.assertIn("NATIVE_FIXTURE_DONE", result.stdout)
-            print(f"Native 0.160 fixture: {len(commands) + len(patches) - 4} pre-execution denials, 4 real allowed executions; paid tokens=0")
+            print(f"Native trusted fixture: {len(commands) + len(patches) - 4} pre-execution denials, 4 real allowed executions; paid tokens=0")
 
 
 if __name__ == "__main__":

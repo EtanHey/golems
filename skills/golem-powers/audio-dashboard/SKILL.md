@@ -79,6 +79,29 @@ Decision-flow fails closed unless every scene is owned by exactly one decision.
 This keeps audio and questions woven together and prevents a cinema-style global
 audio strip / separate question list from reappearing.
 
+## Card detail format
+
+Follow [Card detail affordances](references/card-format.md): text-only cards
+must not repeat their text in a View details expander. Either offer no secondary
+action, or offer a **Listen deeper** button that opens an inline narrated section
+with real-word-timed read-along and word-click seek. Cards with a visualization
+may keep a View details expander that shows the visualization's underlying data.
+
+## Issue and PR references
+
+Attribution: Etan, 2026-10-28 dashboard feedback (AD-16).
+
+Any `#N` a card shows must be a link. Add a rail row on that card whose `href`
+is the repository-qualified PR/issue URL the producer already has:
+`{ "label": "PR", "value": "#39", "href": "https://github.com/OWNER/REPO/pull/39" }`.
+Never infer a repository from a bare number. The build fails on an unlinked
+`#N`, on a `#N` row whose own `href` is not that PR/issue (a generic URL does not
+count), and on a value whose number contradicts its GitHub `href`. GitHub links
+render as `repo#N`. A `#N` inside a `code span` or right after a colour word
+(`color #123`, `background: #123456`, `fill=#333`) is a CSS colour, not a
+reference; everywhere else it is one. Only `http(s)` hrefs become anchors; anything else,
+including `javascript:` and `data:`, stays plain text.
+
 ## Vendored Engine (what makes it portable)
 
 Everything the pipeline needs is inside the skill:
@@ -179,7 +202,8 @@ this skill dir):
    cinema/global Play-All surface.
 5. **Evidence gate** — `bun scripts/validate-evidence.mjs --spec <job.json>
    [--published "<sync cmd>"]` runs `src/audio-dashboard-evidence.mjs` against the
-   real rendered dashboard + job dir. Note: the gate only returns **PASS** once
+   real rendered dashboard + job dir. `validate-evidence` also enforces the
+   text-only card rule in [card-format.md](references/card-format.md). Note: the gate only returns **PASS** once
    publish evidence is supplied via `--published` (the tailnet-sync invariant);
    without it the gate correctly reports `REJECTED: MISSING_TAILNET_SYNC` with
    every other invariant passing. Run it after step 6, or pass `--published`
@@ -309,10 +333,31 @@ decision's non-empty `sceneIds` array.
     { "id": "d1", "rank": 1, "title": "Decision one", "status": "OPEN",
       "body": "Choose the path.", "options": ["Option A", "Option B"],
       "sceneIds": ["d1q", "d1a"],
-      "rail": [{ "label": "Owner", "value": "Operator" }] }
+      "rail": [{ "label": "Owner", "value": "Operator" }],
+      "comparison": { "url": "visuals/d1.html", "label": "View comparison", "timeoutMs": 10000 } }
   ]
 }
 ```
+
+**Comparisons settle.** `comparison.url` is a relative page inside the dashboard
+directory. The renderer and the click handler both check the URL the browser
+will load, so a scheme, `../`, `%2e%2e/`, control characters or another origin
+are rejected. It opens in a shared dialog that shows Loading, then the page, or
+a failure message with **Retry** and **Back** after a frame error or after
+`timeoutMs` (default 10000; per card, or the spec-level `comparisonTimeoutMs`).
+A load counts only with positive evidence from a readable same-origin frame: a
+2xx/3xx navigation `responseStatus`, or, where the browser has no such field
+(Safari/WebKit), the page's ready marker. **Every comparison page must carry the
+canonical marker:** the page starts with an optional doctype, `<html …>`,
+`<head …>`, then (HTML whitespace only; one leading BOM allowed) exactly
+`<meta name="adash-comparison" content="ready">`, the first child of `<head>`.
+`data-adash-comparison="ready"` on that leading `<html>` start tag also works.
+Error pages never carry it. The build accepts only this form and fails otherwise,
+even for pages a browser would accept: run hand-built or generated pages through
+`markComparisonReady(html)` from `src/decision-flow.mjs`, which inserts it
+without removing anything.
+Serve the dashboard over http(s): from `file:` the frame cannot be checked, so
+the dialog shows the failure state. Back and Esc return focus to the opener.
 
 ## Bootstrap
 

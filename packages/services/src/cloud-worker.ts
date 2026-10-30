@@ -26,6 +26,8 @@
  *   bun run src/cloud-worker.ts --email-only   # Just email golem
  */
 
+import "@golems/shared/lib/load-env";
+
 // Default cloud env vars (can be overridden)
 if (!process.env.LLM_BACKEND) process.env.LLM_BACKEND = "haiku";
 if (!process.env.STATE_BACKEND) process.env.STATE_BACKEND = "supabase";

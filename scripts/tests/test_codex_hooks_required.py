@@ -26,7 +26,7 @@ class RequiredCodexTests(unittest.TestCase):
     def test_optional_missing_codex_skips(self):
         result = self.run_native_without_codex(False)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('skipped=1', result.stderr)
+        self.assertIn('skipped=3', result.stderr)
 
 
 if __name__ == '__main__':
