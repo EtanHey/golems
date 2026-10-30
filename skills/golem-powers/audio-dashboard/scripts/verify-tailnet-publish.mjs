@@ -12,6 +12,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
+import { checkPublishedDesign, recordPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
+
 function expandHome(value) {
   if (value === "~") return os.homedir();
   if (value?.startsWith?.("~/")) return path.join(os.homedir(), value.slice(2));
@@ -28,6 +30,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--spec") args.spec = argv[++i];
+    else if (arg === "--first-build") args.firstBuild = argv[++i];
     else if (arg === "--out") args.out = argv[++i];
     else if (arg === "--url") args.url = argv[++i];
     else if (arg === "--base-url") args.baseUrl = argv[++i];
@@ -84,7 +87,7 @@ async function fetchWithTimeout(url, timeoutMs) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("usage: bun scripts/verify-tailnet-publish.mjs --spec <job.json> [--out <html>] [--url <tailnet-url>|--base-url <hub/dashboards>] [--timeout-ms <ms>]");
+    console.log("usage: bun scripts/verify-tailnet-publish.mjs --spec <job.json> [--first-build <reason>] [--out <html>] [--url <tailnet-url>|--base-url <hub/dashboards>] [--timeout-ms <ms>]");
     process.exit(0);
   }
   const outPath = outputPathFromArgs(args);
@@ -110,6 +113,13 @@ async function main() {
     fail(`tailnet artifact hash mismatch for ${tailnetUrl}: local=${localHash} remote=${remoteHash}`);
   }
 
+  if (args.spec) {
+    const spec = JSON.parse(readFileSync(path.resolve(expandHome(args.spec)), "utf8"));
+    const preservation = await checkPublishedDesign(spec, outPath, localBytes.toString("utf8"), { firstBuild: args.firstBuild });
+    writeDesignReport(outPath, localBytes.toString("utf8"), preservation);
+    if (preservation.verdict !== "PASS") fail("design-preservation: " + preservation.violations.map(v => v.code).join(", "));
+    recordPublishedDesign(spec, outPath, localBytes.toString("utf8"));
+  } else fail("--spec is required to record series publication history");
   console.log(`[verify-tailnet-publish] TAILNET_OK ${tailnetUrl} HTTP 200 sha256=${localHash}`);
 }
 
