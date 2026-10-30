@@ -57,7 +57,23 @@ describe("performance verdicts", () => {
       expect(out.ok).toBe(false);
       expect(out.rows[0].status).toBe("MISSING");
     }
-    expect(verdict(perf({ repeats: undefined }), samples(...Array(7).fill(100))).ok).toBe(true);
+    expect(verdict(perf({ repeats: undefined }), samples(...Array(7).fill(100)), {
+      baseline: baseline(samples(...Array(7).fill(100))),
+    }).ok).toBe(true);
+  });
+  test("invalid baseline sample counts cannot make an enforced CI row pass", () => {
+    for (const entry of [samples(1000), samples(1000, 1000, 1000, 1000)]) {
+      const out = verdict(perf({ repeats: 3 }), samples(107, 107, 107), { baseline: baseline(entry) });
+      expect(out.ok).toBe(false);
+      expect(out.rows[0].detail).toBe("no baseline");
+    }
+  });
+  test("baseline counts use the base row so increasing repeats remains valid", () => {
+    const out = verdict(perf({ repeats: 3 }), samples(100, 100, 100), {
+      baseRows: parseRows(doc(perf({ repeats: 1 }))), baseline: baseline(samples(100)),
+    });
+    expect(out.ok).toBe(true);
+    expect(out.rows[0].baseline).toBe(100);
   });
   test("ceiling still applies inside the band; min mirrors the baseline band", () => {
     expect(verdict(perf({ ceiling: 102 }), samples(103)).ok).toBe(false);
@@ -186,6 +202,27 @@ describe("M1 attestations", () => {
     expect(m1(enforced, { attestation: bad }).ok).toBe(false);
     const short = { ...attestation, rows: { perf: { samples: [100], median: 100, machine: "fixture-m1" } } };
     expect(m1(enforced, { attestation: short }).ok).toBe(false);
+  });
+  test("baseline attestations require exact samples, matching median and a machine", () => {
+    for (const entry of [
+      { samples: [1000], median: 1000, machine: "fixture-m1" },
+      { samples: [1000, 1000, 1000, 1000], median: 1000, machine: "fixture-m1" },
+      { samples: [100, 100, 100], median: 1000, machine: "fixture-m1" },
+      { samples: [100, 100, 100], median: 100 },
+      { samples: [100, 100, 100], median: 100, machine: "" },
+    ]) {
+      const out = m1(enforced, { attestation, attestationBaseline: { ...mainAttestation, rows: { perf: entry } } });
+      expect(out.ok).toBe(false);
+      expect(out.rows[0].detail).toBe("no baseline");
+    }
+  });
+  test("baseline attestations use the base row repeat count", () => {
+    const out = m1(enforced, { attestation,
+      baseRows: { schema: 1, rows: [{ ...enforced.rows[0], repeats: 1 }] },
+      attestationBaseline: { ...mainAttestation, rows: { perf: { samples: [100], median: 100, machine: "fixture-m1" } } },
+    });
+    expect(out.ok).toBe(true);
+    expect(out.rows[0].baseline).toBe(100);
   });
   test("m1 rows band against main's attestation, never the CI results baseline", () => {
     const fast = { ...mainAttestation, rows: { perf: { ...mainAttestation.rows.perf, samples: [80, 90, 90], median: 90 } } };

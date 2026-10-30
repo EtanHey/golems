@@ -153,25 +153,27 @@ function rulings(prBody) {
 }
 
 // A perf measurement is exactly `repeats` samples, judged by their median; a producer's `value` is ignored.
-const sampled = (row, entry) => (entry?.samples?.length === perfRepeats(row) ? median(entry.samples) : undefined);
+const sampled = (row, entry, attestation = false) => {
+  const value = entry?.samples?.length === perfRepeats(row) ? median(entry.samples) : undefined;
+  return attestation && (entry?.median !== value || typeof entry?.machine !== "string" || !entry.machine) ? undefined : value;
+};
 // An attestation counts only when it names the repo the caller says this is.
 const attested = (doc, repo) => (typeof repo === "string" && repo && doc?.repo === repo ? doc.rows ?? {} : {});
 
 // Fail if median > baseline × (1 + tol) (mirrored for min) or past the ceiling. M1 rows read the
 // head's attestation and band against main's; every other perf row reads results and the baseline.
-function evaluatePerf(row, { values, base, head, attestation, attestationBaseline, attestationRepo, isNew }) {
+function evaluatePerf(row, { values, base, baseRow, head, attestation, attestationBaseline, attestationRepo }) {
   const m1 = row.runner === "m1";
   const reporting = perfReporting(row);
   const entry = m1 ? (attestation?.head_sha === head ? attested(attestation, attestationRepo)[row.id] : undefined) : values[row.id];
-  let value = sampled(row, entry);
-  if (m1 && (entry?.median !== value || typeof entry?.machine !== "string" || !entry.machine)) value = undefined;
-  const before = median((m1 ? attested(attestationBaseline, attestationRepo) : base)[row.id]?.samples);
+  const value = sampled(row, entry, m1);
+  const before = sampled(baseRow ?? row, (m1 ? attested(attestationBaseline, attestationRepo) : base)[row.id], m1);
   const tol = perfTolerance(row);
   let status = "PASS", detail;
   if (value === undefined) {
     status = m1 ? "FAIL" : "MISSING";
     detail = m1 ? (reporting ? "no attestation" : "missing/stale M1 attestation") : "missing/invalid samples";
-  } else if (!reporting && isNew) {
+  } else if (!reporting && !baseRow) {
     [status, detail] = ["FAIL", "new perf rows start report-only"];
   } else if (before === undefined) {
     // The band is half the gate: an enforced row with nothing to band against fails closed.
@@ -191,9 +193,9 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
   const stale = results?.head_sha !== head;
   const values = stale ? {} : (results?.results ?? {});
   const base = baseline?.results ?? {};
-  const basePerf = new Set((baseRows?.rows ?? []).filter((row) => row.kind === "perf").map((row) => row.id));
+  const basePerf = new Map((baseRows?.rows ?? []).filter((row) => row.kind === "perf").map((row) => [row.id, row]));
   const out = selected.map((row) => {
-    if (row.kind === "perf") return evaluatePerf(row, { values, base, head, attestation, attestationBaseline, attestationRepo, isNew: !basePerf.has(row.id) });
+    if (row.kind === "perf") return evaluatePerf(row, { values, base, baseRow: basePerf.get(row.id), head, attestation, attestationBaseline, attestationRepo });
     const now = resultOf(values[row.id]);
     const before = resultOf(base[row.id]);
     const measured = row.report_only && validDiskMeasurement(now?.measurement) && now.value === now.measurement.health;
