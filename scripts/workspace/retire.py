@@ -32,6 +32,8 @@ import subprocess
 import tempfile
 import time
 
+import generation
+
 
 REGENERABLE_WALK_SECONDS = 30.0
 REGENERABLE_WALK_ENTRIES = 100_000
@@ -544,6 +546,10 @@ def retire(args):
                    receipt_out=args.receipt_out,
                    archive_manifest=str(Path(manifest).absolute()) if manifest is not None else None,
                    archive_manifest_sha256=None, archive_verified_count=0)
+    expected_generation = getattr(args, "expect_generation", None)
+    generation_recorded = hasattr(args, "expect_generation")
+    receipt.update(resource_generation=expected_generation,
+                   generation_check="unverified" if generation_recorded else generation.LEGACY)
     repo = Path(args.repo).resolve()
     refused = True
     custody_verified = False
@@ -554,6 +560,9 @@ def retire(args):
             raise ValueError("repo identity unavailable: " + common.stderr)
         repo = Path(common.stdout.rstrip("\n")).resolve()
         receipt["repo_common_dir"] = str(repo)
+        if generation_recorded:
+            generation.verify(path, expected_generation)
+            receipt["generation_check"] = "verified"
         if any(p.is_symlink() for p in (lexical, *lexical.parents)):
             raise ValueError("path or parent is a symlink")
         if args.receipt_out and Path(args.receipt_out).resolve().is_relative_to(path):
@@ -582,6 +591,8 @@ def retire(args):
         scan_handles(receipt, path, "before_move")
         if inventory(receipt, path) != before:
             raise ValueError("worktree inventory changed since first read")
+        if generation_recorded:
+            generation.verify(path, expected_generation)
         container = Path(tempfile.mkdtemp(prefix=".retiring-", dir=path.parent))
         receipt["quarantine_container"] = str(container)
         identity = directory_identity(container)
@@ -591,6 +602,8 @@ def retire(args):
         receipt["quarantine_path"] = str(quarantine)
         if os.path.lexists(quarantine):
             raise ValueError("quarantine destination already exists")
+        if generation_recorded:
+            generation.verify(path, expected_generation)
         move = git(repo, "worktree", "move", str(path), str(quarantine))
         receipt["move_rc"], receipt["move_stderr"] = move.returncode, move.stderr
         if move.returncode:
@@ -603,6 +616,8 @@ def retire(args):
         custody_verified = False
         verify_quarantine(receipt, repo, administrative, container, identity, quarantine, path.parent)
         custody_verified = True
+        if generation_recorded:
+            generation.verify(quarantine, expected_generation)
         refused = False
         removed = git(repo, "worktree", "remove", str(quarantine))
         receipt["remove_rc"], receipt["remove_stderr"] = removed.returncode, removed.stderr
@@ -676,6 +691,8 @@ def main():
     parser.add_argument("--path", required=True)
     parser.add_argument("--expect-branch")
     parser.add_argument("--expect-head")
+    parser.add_argument("--expect-generation", type=json.loads, default=argparse.SUPPRESS,
+                        help="bind-time resource generation JSON; omission preserves legacy behavior")
     parser.add_argument("--receipt-out")
     parser.add_argument("--archive-manifest", metavar="FILE")
     args = parser.parse_args()

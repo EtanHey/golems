@@ -425,8 +425,11 @@ def cleanup_worker(
         except (OSError, ValueError, TypeError) as exc:
             raise CodexWorkflowError(f"cannot resume retirement receipt: {exc}") from exc
     else:
+        generation_args = (["--expect-generation", json.dumps(lease["resource_generation"])]
+                           if "resource_generation" in lease else [])
         result = lifecycle_tool("retire.py", "--repo", str(repo), "--path", str(worktree),
-                                "--expect-head", worker["head"], "--receipt-out", str(receipt_path), check=False)
+                                "--expect-head", worker["head"], "--receipt-out", str(receipt_path),
+                                *generation_args, check=False)
         try:
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
             if receipt["disposition"] not in {"REMOVED", "RETAINED"} or (receipt["disposition"] == "REMOVED" and result.returncode != 0):

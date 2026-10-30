@@ -22,6 +22,7 @@ import uuid
 
 import lease
 import retire
+import generation
 
 
 def direct_path(value):
@@ -113,7 +114,7 @@ def write_close_state(destination, state):
 
 
 def close_identity(record):
-    return dict(schema="workspace-lifecycle/close/v1", **{
+    return dict(schema="workspace-lifecycle/close/v1", resource_generation=record.get("resource_generation"), **{
         key: record[key] for key in ("lease_id", "path", "repo_common_dir", "head", "host_environment")})
 
 
@@ -203,6 +204,7 @@ def close_lane(args):
             raise ValueError("archive root or parent is a symlink")
         root = root.resolve()
         summary = dict(lease_id=args.lease_id, path=str(path), disposition="RETAINED")
+        summary["generation_check"] = generation.LEGACY if "resource_generation" not in record else "unverified"
         if record["state"] == "closed" and record["disposition"] != "REMOVED":
             summary["reason"] = record["terminal_receipt"]["reason"]
             return summary, 1
@@ -231,6 +233,9 @@ def close_lane(args):
                 state["close_token"] = token
             if not receipt.exists():
                 lease.require_open(record)
+                if "resource_generation" in record:
+                    generation.verify(path, record["resource_generation"])
+                    summary["generation_check"] = "verified"
                 entries, status = retire.local_files(path)
                 if any(line and not line.startswith("!! ") for line in status.split("\0")):
                     raise ValueError("uncommitted tracked changes or untracked files; worktree retained")
@@ -249,9 +254,11 @@ def close_lane(args):
                 verify_close_archive(record, path, destination, state, source_present=True)
                 state["stage"] = "archived"
                 write_close_state(destination, state)
+                generation_args = (["--expect-generation", json.dumps(record["resource_generation"])]
+                                   if "resource_generation" in record else [])
                 result = subprocess.run([sys.executable, str(Path(retire.__file__)),
                     "--repo", str(repo), "--path", str(path), "--expect-head", record["head"],
-                    "--archive-manifest", str(manifest), "--receipt-out", str(receipt)],
+                    "--archive-manifest", str(manifest), "--receipt-out", str(receipt), *generation_args],
                     capture_output=True, text=True)
                 retire_code = result.returncode
                 if result.returncode == 0 and not receipt.exists():
@@ -265,6 +272,7 @@ def close_lane(args):
                 verify_removed(record, repo, path, evidence)
                 verify_close_archive(record, path, destination, state, source_present=False)
             summary.update(disposition=evidence["disposition"], reason=evidence["reason"],
+                           generation_check=evidence.get("generation_check", generation.LEGACY),
                            archive_manifest=str(manifest), receipt=str(receipt))
             state.update(stage="retired", summary=summary)
             write_close_state(destination, state)

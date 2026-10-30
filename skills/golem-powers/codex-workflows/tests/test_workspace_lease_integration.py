@@ -16,6 +16,7 @@ def workflow(tmp_path):
     scratch = ROOT / 'docs.local'
     scratch.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='workflow-lease-test-', dir=scratch) as directory:
+        tmp_path = Path(directory)
         ledger = Path(directory) / 'ledger'
         env = {**os.environ, 'GOLEMS_WORKSPACE_LEASES': str(ledger), 'GOLEMS_WORKTREE_MIN_FREE_GB': '0', 'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1'}
         def git(*args, cwd=None):
@@ -53,6 +54,13 @@ def test_bound_lease_matches_worker(workflow):
     assert lease['path'] == worker['worktree']
     assert lease['head'] == workflow.git('rev-parse', 'HEAD', cwd=worker['worktree']).stdout.strip() == worker['head']
     assert lease['allocator'] == 'codex-workflows'
+    generation = lease['resource_generation']
+    path = Path(worker['worktree'])
+    assert generation['root_identity'] == [path.stat().st_dev, path.stat().st_ino]
+    admin = Path(workflow.git('rev-parse', '--absolute-git-dir', cwd=path).stdout.strip())
+    assert generation['git_dir'] == str(admin)
+    assert generation['git_dir_identity'] == [admin.stat().st_dev, admin.stat().st_ino]
+    assert generation['branch'] == 'refs/heads/' + worker['branch']
 
 
 def test_reserve_failure_does_not_allocate(workflow):
@@ -65,6 +73,25 @@ def test_reserve_failure_does_not_allocate(workflow):
         assert not Path(worker['worktree']).exists()
     finally:
         workflow.ledger.chmod(0o700)
+
+
+def test_cleanup_retains_replacement_at_same_path_and_head(workflow):
+    assert workflow.launch().returncode == 0
+    assert workflow.cli('watch', '--manifest', workflow.manifest, '--timeout', '5', '--interval', '0.05').returncode == 0
+    assert workflow.cli('harvest', '--manifest', workflow.manifest).returncode == 0
+    worker = json.loads(workflow.manifest.read_text())['workers']['worker']
+    path = Path(worker['worktree'])
+    original = workflow.repo.parent / 'original-generation'
+    workflow.git('worktree', 'move', path, original, cwd=workflow.repo)
+    workflow.git('worktree', 'add', '-qb', 'other-owner', path, worker['head'], cwd=workflow.repo)
+    tracked = (path / 'README').read_bytes()
+    result = workflow.cli('cleanup', '--manifest', workflow.manifest)
+    receipt = json.loads((workflow.manifest.parent / 'worker.retire.json').read_text())
+    assert result.returncode and receipt['disposition'] == 'RETAINED'
+    assert 'resource replaced since bind' in receipt['reason']
+    assert receipt['move_rc'] is None and receipt['remove_rc'] is None
+    assert (path / 'README').read_bytes() == tracked and original.exists()
+    assert workflow.git('branch', '--show-current', cwd=path).stdout.strip() == 'other-owner'
 
 
 @pytest.mark.parametrize('dirty', [False, True])

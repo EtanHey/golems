@@ -35,6 +35,8 @@ import socket
 import sys
 import tempfile
 
+import generation
+
 
 SCHEMA = "workspace-lifecycle/v1"
 RECEIPT_SCHEMA = "workspace-lifecycle/receipt/v1"
@@ -291,6 +293,11 @@ def mutate(directory, args):
                 path = str(Path(args.path).expanduser().resolve(strict=True))
                 if record["path"] is not None and record["path"] != path:
                     raise ValueError("rebinding to a different path refused")
+                if record["resource_kind"] == "worktree":
+                    if record["path"] is None:
+                        record["resource_generation"] = generation.capture(path)
+                    elif "resource_generation" in record:
+                        generation.verify(path, record["resource_generation"])
                 record.update(path=path, state="bound")
                 for key in ("branch", "head", "task_id", "thread_id"):
                     value = getattr(args, key)
