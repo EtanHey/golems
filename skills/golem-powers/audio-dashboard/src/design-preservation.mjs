@@ -99,7 +99,7 @@ export async function checkDesignPreservation({ html, previousHtml, redesign, br
             captures.push(capture.toString('base64'));
             if (screenshotDir) { mkdirSync(screenshotDir, { recursive: true }); writeFileSync(path.join(screenshotDir, `${width}-${leg}.png`), capture); }
           } catch { captures.push(null); }
-          states.at(-1).behavior = await probeDesignBehavior(page);
+          states.at(-1).behavior = await probeDesignBehavior(page, { seek: !baseline });
           states.at(-1).endTranscript = await inspectTranscriptEnd(page);
         } finally { await context.close(); }
       }
