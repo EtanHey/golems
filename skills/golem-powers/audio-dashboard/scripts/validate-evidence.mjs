@@ -91,9 +91,9 @@ const evidence = {
   ...(args.published ? { publishCommand: args.published } : {}),
 };
 
-const result = validateAudioDashboardEvidence(evidence);
 const preservation = await checkPublishedDesign(spec, outPath, html);
 writeDesignReport(outPath, html, preservation);
+const result = validateAudioDashboardEvidence(evidence);
 result.designPreservation = preservation;
 if (preservation.verdict !== "PASS") { result.verdict = "REJECTED"; result.violations.push(...preservation.violations); }
 if (args.json) console.log(JSON.stringify(result, null, 2));
