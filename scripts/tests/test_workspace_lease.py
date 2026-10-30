@@ -380,9 +380,10 @@ def test_missing_remove_rc_is_refused_and_recorded(lease):
 
 
 def test_inherited_old_override_cannot_enable_ephemeral_cli_ledger(lease):
-    with tempfile.TemporaryDirectory(prefix="workspace-lease-guard-", dir="/tmp") as directory:
+    with tempfile.TemporaryDirectory(prefix="workspace-lease-guard-", dir=lease.ledger.parent) as directory:
         target = Path(directory) / "ledger"
         env = os.environ.copy()
+        env["TMPDIR"] = directory
         env.pop("PYTEST_CURRENT_TEST", None)
         env["GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP"] = "1"
         env["GOLEMS_WORKSPACE_LEASES"] = str(target)

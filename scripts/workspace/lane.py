@@ -163,6 +163,8 @@ def verify_removed(record, repo, path, evidence):
 def lease_command(*args):
     result = subprocess.run([sys.executable, str(Path(lease.__file__)), *args],
                             capture_output=True, text=True)
+    if result.returncode == 2:
+        raise lease.SharedHold(json.loads(result.stdout))
     if result.returncode:
         raise ValueError("W2b lease " + args[0] + " refused: " + result.stderr.strip())
     return json.loads(result.stdout)
@@ -220,6 +222,8 @@ def close_lane(args):
                 raise ValueError("lease identity changed during begin-close; no archival or retirement")
         if record["state"] == "closing" and (not isinstance(token, str) or not token):
             raise ValueError("closing lease has no recovery token")
+        if record["state"] == "closing":
+            lease_command("check-close", "--lease-id", args.lease_id, "--close-token", token)
         destination = root / args.lease_id
         receipt, manifest = destination / "receipt.json", destination / "manifest.json"
         state = None
@@ -314,6 +318,10 @@ def main():
         summary, code = open_lane(args) if args.command == "open" else close_lane(args)
         print(json.dumps(summary, sort_keys=True))
         return code
+    except lease.SharedHold as error:
+        print(json.dumps(error.receipt, sort_keys=True))
+        print("lane refused: " + str(error), file=sys.stderr)
+        return 2
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
         print("lane refused: " + str(error), file=sys.stderr)
         return 1

@@ -25,8 +25,7 @@ def lane(tree, monkeypatch):
     (repo / ".gitignore").write_text(".worktrees/\nnode_modules/\n__pycache__/\ndocs.local/\n")
     git(repo, "add", ".gitignore")
     git(repo, "commit", "-qm", "fixture ignores")
-    common = Path(git(CLI.parents[2], "rev-parse", "--path-format=absolute", "--git-common-dir"))
-    scratch = common.parent / "docs.local"
+    scratch = CLI.parents[2] / "docs.local"
     scratch.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="workspace-lane-test-", dir=scratch) as directory:
         root = Path(directory).resolve()

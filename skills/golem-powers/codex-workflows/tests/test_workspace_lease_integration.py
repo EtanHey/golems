@@ -322,3 +322,31 @@ def test_token_is_complete_and_private_before_atomic_rename(workflow, monkeypatc
     module.cleanup_worker(workflow.manifest, 'worker')
     assert observed == [True]
     assert not token_path.exists()
+
+
+def test_cleanup_retains_consumer_on_another_lease_for_same_path(workflow):
+    assert workflow.launch().returncode == 0
+    assert workflow.cli('watch', '--manifest', workflow.manifest, '--timeout', '5', '--interval', '0.05').returncode == 0
+    assert workflow.cli('harvest', '--manifest', workflow.manifest).returncode == 0
+    worker = json.loads(workflow.manifest.read_text())['workers']['worker']
+    lease_cli = ROOT / 'scripts/workspace/lease.py'
+    for args in [
+        ('reserve', '--lease-id', 'external-review', '--allocator', 'direct-git', '--owner', 'review',
+         '--repo', workflow.repo / '.git', '--kind', 'worktree', '--ownership', 'reused'),
+        ('bind', '--lease-id', 'external-review', '--path', worker['worktree']),
+        ('consumer', 'add', '--lease-id', 'external-review', '--who', 'reviewer'),
+    ]:
+        result = subprocess.run([os.sys.executable, str(lease_cli), *map(str, args)],
+                                env=workflow.env, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+    result = workflow.cli('cleanup', '--manifest', workflow.manifest)
+    assert result.returncode != 0
+    worker = json.loads(workflow.manifest.read_text())['workers']['worker']
+    assert worker['retirement_disposition'] == 'RETAINED'
+    assert 'external-review' in worker['retirement_reason'] and 'reviewer' in worker['retirement_reason']
+    assert Path(worker['worktree']).is_dir()
+    record = json.loads((workflow.ledger / (worker['lease_id'] + '.json')).read_text())
+    assert record['state'] == 'bound'
+    assert record['history'][-1]['receipt']['disposition'] == 'RETAINED'
+    assert not (workflow.manifest.parent / '.worker.close-token').exists()
+    assert not (workflow.manifest.parent / 'worker.retire.json').exists()
