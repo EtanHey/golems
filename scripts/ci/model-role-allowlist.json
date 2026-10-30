@@ -1,6 +1,7 @@
 {
   "_comment": "Durable content-marker exemptions preserve historical evidence, fixtures, functional tokens and canon. No PR2-wiring rows remain.",
   "exclusions": [
+    {"file":"skills/golem-powers/pr-loop/references/github-identity.md","marker":"Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>","reason":"PERMANENT: illustrative co-author attribution, not model dispatch selection"},
     {"file":"skills/golem-powers/pr-loop/references/review-loop.md","marker":"> **No polling turns.** No collab-monitor wakes in Codex, and no \"watch #410\" loops. Use T3 completion notifications or a single bounded check. Mechanical polling or rebases go to gpt-6-luna.","reason":"PERMANENT: Etan 2026-10-18 ruling quoted verbatim (via orc collab); surrounding policy resolves the role codex.subagent.mechanical"},
     {"file":"skills/golem-powers/pr-loop/references/review-loop.md","marker":"> **Watching:** anything that must sit and watch (a PR, CI, a file) uses a cheap **gpt-6-luna sub-agent**, never a big-context Sol or lead session.","reason":"PERMANENT: Etan 2026-10-18 ruling quoted verbatim (via orc collab); surrounding policy resolves the role codex.subagent.mechanical"},
     {"file":"skills/golem-powers/agada-bench/SKILL.md","marker":"| `--pending-rt-cascade` | `opus-4-7` | Functional queue-routing token accepted by the parser; v1 queues rows without dispatching a model. |","reason":"PERMANENT: functional queue-routing token accepted by route-pending-rt.py; resolve actual adjudicator separately"},

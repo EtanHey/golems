@@ -1,6 +1,6 @@
 ---
 name: pr-loop
-description: "Invoke before any git/gh call to open a PR, merge, ship, fix red CI, handle reviews/PR comments, finish work. Signs GitHub writes: golem-id, Co-Authored-By."
+description: "Invoke before any git/gh: open a PR, merge, ship, fix CI, handle reviews/comments, finish work. Signs: 🤖 model + harness line, Co-Authored-By."
 ---
 
 # PR Loop

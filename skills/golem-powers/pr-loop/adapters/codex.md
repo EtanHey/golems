@@ -149,22 +149,14 @@ SESSION=$(basename "$ROLL" | sed -E 's/.*-([0-9a-f-]{36})\.jsonl/\1/' | cut -c1-
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 ```
 
-- `model_source` for this path is `session-jsonl`.
-- **Take the LAST `turn_context`, not the first.** The first one is boot-time; a model switch mid
-  session writes a new `turn_context`, and the whole point of the ratified rule is that boot-time
-  values lie.
-- `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification applies hardest here: Codex self-identifies incorrectly. Never write the model you believe
-  you are — write the one in the file.
-- `turn_context` also carries `effort` (verified: `effort: medium` alongside `model`). Observed effort is allowed only on the Loop-record line — not in the blob, visible signature, or trailer. It is captured at
-  the BrainLayer checkpoint instead (today `ingest/codex.py:159-162` reads `model` and discards
-  `effort` from that same payload — brainlayer lane owns the fix).
-- Unreadable rollout → `"model":"unknown","model_source":"unavailable"`.
+- Take the LAST `turn_context`, not the first: a model switch writes a new record.
+- Never substitute model self-report or spawn settings.
+- Unreadable rollout: use `unknown`.
+- No effort in the signature or commit trailer; observed effort belongs only in Loop-record.
 
-Codex has no BrainLayer MCP, so a Codex seat signs the GitHub artifact and a Claude session
-registers the checkpoint metadata — the signature's `session` field is what joins the two.
+Sign with `--body-file` or stdin to preserve literal body text.
 
-Sign with `--body-file` / heredoc, never inline `--body "…"`: the blob is JSON with quotes and
-braces, and command substitution mangles it silently.
+Observed effort is allowed only on the Loop-record line.
 
 ## Hierarchical Worker Mode
 

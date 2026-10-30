@@ -64,30 +64,18 @@ brain_store your progress at each milestone:
 - After PR → store PR number, files changed
 ```
 
-**GitHub Identity Signature** (ratified 2026-08-08 — MANDATORY until the `gh()` wrapper ships):
+**GitHub Identity Signature:**
 ```
-Every PR body, PR comment, review, and issue comment you post ends with:
-
-— <seat> (<role>) · <harness>/<model>
-<!-- golem-id v1 {"seat":"…","role":"…","harness":"…","model":"…","model_source":"…","session":"…","ts":"…"} -->
-
-Read `model` from your LIVE session metadata at write time — never self-report, never the
-cmux spawn registry, never cached at spawn. Cannot read it → "model":"unknown". No effort
-field anywhere on GitHub. Commits use the trailer form instead:
-Co-Authored-By: <seat> running <model> <noreply@anthropic.com>
-Full spec + per-harness read paths: /pr-loop → references/github-identity.md
+End every PR body, PR comment, review and issue you write with ONE plain line:
+🤖 Generated with <model> in <harness>
+Name both models when both did work, implementer's model first. No leading em dash,
+seat or role names, or hidden metadata. Read the model from live session metadata.
+Use unknown if unavailable; never infer it from spawn settings or self-report.
+Keep Co-Authored-By commit trailers; no effort in the signature or trailer.
+Full spec: /pr-loop → references/github-identity.md
 ```
 
-**Why this is in the prompt at all:** the design's zero-hassle path is a `gh()` wrapper exported by
-the repoGolem launcher env, which injects the signature with no worker involvement. That wrapper is
-**designed but NOT built** (golems / repoGolem lane). Until it lands, an unsigned worker comment is
-an unattributable comment — so kickoff prompts propagate the requirement by hand. **Once the wrapper
-ships, delete this block from dispatch prompts** rather than leaving a stale hand-rolled instruction
-that can drift from the wrapper's output.
-
-Note the seat/role/harness values are the worker's own (from its launcher env), not yours. Do not
-hardcode your seat into a worker's prompt — a signature naming the dispatcher instead of the author
-is worse than no signature.
+Include this requirement in worker prompts; each worker reads its own live model.
 
 ### 4. Monitoring Instructions
 
@@ -182,8 +170,7 @@ Not every agent needs the full checklist. For quick one-off tasks (research, aud
 
 - [ ] Prior work check (brain_search)
 - [ ] TDD mandate (if building anything)
-- [ ] GitHub identity signature (if the worker will post anything to GitHub — until the `gh()`
-      wrapper ships)
+- [ ] GitHub identity signature (if the worker will post anything to GitHub)
 - [ ] brain_store when done
 
 ## Anti-Patterns
