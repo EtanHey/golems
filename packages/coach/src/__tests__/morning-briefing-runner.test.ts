@@ -1,3 +1,4 @@
+import { testBun } from "@golems/shared/test-bun";
 /**
  * Morning Briefing Runner — Tests
  *
@@ -134,9 +135,9 @@ describe("runMorningBriefing", () => {
   test("CLI requires an explicit voice request", async () => {
     const scratchHome = mkdtempSync(join(import.meta.dir, "cli-home-"));
     try {
-      const proc = Bun.spawn([process.execPath, join(import.meta.dir, "../morning-briefing-cli.ts")], {
+      const proc = Bun.spawn([...testBun, join(import.meta.dir, "../morning-briefing-cli.ts")], {
         stdout: "pipe", stderr: "pipe",
-        env: { PATH: process.env.PATH, HOME: scratchHome, STATE_BACKEND: "file" },
+        env: { TMPDIR: process.env.TMPDIR, PATH: process.env.PATH, HOME: scratchHome, STATE_BACKEND: "file" },
       });
       const stderr = await new Response(proc.stderr).text();
       expect(await proc.exited).toBe(1);

@@ -14,8 +14,9 @@
 
 import { existsSync, readFileSync } from "fs";
 import { join, dirname } from "path";
+import { isTestMode } from "./test-mode";
 
-// Find .env by walking up from startPath, checking each directory
+// Find .env within this checkout, never in a worktree's parent repository.
 // In a Bun workspace, .env lives in individual packages or the workspace root
 function findEnvFile(startPath: string): string | null {
   let dir = startPath;
@@ -24,6 +25,8 @@ function findEnvFile(startPath: string): string | null {
     if (existsSync(envPath)) {
       return envPath;
     }
+    // Both normal checkouts (.git directory) and worktrees (.git file) stop here.
+    if (existsSync(join(dir, ".git"))) break;
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
@@ -35,6 +38,7 @@ let _loaded = false;
 
 /** Load .env from package root, returns true if loaded successfully */
 export function loadEnv(): boolean {
+  if (isTestMode()) return false;
   if (_loaded) return true;
 
   // Try CWD first (launchd sets WorkingDirectory), then walk up from this file

@@ -85,7 +85,7 @@ def test_n2_work_type_selects_instance_and_reviewer_exceptions():
     for text in (discover, instances):
         for required in ("ordinary Codex implementers, recon and reviewers",
                          "security (implementers + scans)", "UI / computer-use recorders",
-                         "browser / web-QA workers", "leads and Etan",
+                         "browser / web-QA workers", "Codex has no lead seats",
                          "the role picks the model, the work type picks the instance",
                          "Codex reviewers on security or full-panel PRs stay on `codex`"):
             assert required in text, required

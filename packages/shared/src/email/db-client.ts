@@ -8,9 +8,8 @@
 // IMPORTANT: Load env FIRST - fixes launchd cwd issues
 import "../lib/load-env";
 
-import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getSupabase } from "../lib/supabase-factory";
+import { createSupabaseClient, getSupabase } from "../lib/supabase-factory";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { dirname } from "path";
 import type {
@@ -36,7 +35,7 @@ export function createDbClient(config?: {
   key: string;
 }): SupabaseClient {
   if (config) {
-    return createClient(config.url, config.key);
+    return createSupabaseClient(config.url, config.key);
   }
   const client = getSupabase();
   if (!client) {

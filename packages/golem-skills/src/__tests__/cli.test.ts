@@ -1,3 +1,4 @@
+import { testBun } from "@golems/shared/test-bun";
 import { describe, test, expect, setDefaultTimeout } from "bun:test";
 import { join } from "node:path";
 
@@ -7,7 +8,7 @@ setDefaultTimeout(15_000);
 const CLI = join(import.meta.dir, "..", "index.ts");
 
 async function run(...args: string[]) {
-  const proc = Bun.spawn(["bun", CLI, ...args], {
+  const proc = Bun.spawn([...testBun, CLI, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -78,7 +79,7 @@ describe("golems-cli routing", () => {
     const { tmpdir } = await import("node:os");
     const tmpHome = await mkdtemp(join(tmpdir(), "wizard-cli-"));
     try {
-      const proc = Bun.spawn(["bun", CLI, "wizard"], {
+      const proc = Bun.spawn([...testBun, CLI, "wizard"], {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...process.env, HOME: tmpHome },

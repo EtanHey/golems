@@ -1,3 +1,4 @@
+import { testBun } from "@golems/shared/test-bun";
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { mkdirSync, rmSync, existsSync } from "fs";
 import { join } from "path";
@@ -57,7 +58,7 @@ describe("Tracker", () => {
 
   test("child tracker run leaves no Bun cache in the repo", () => {
     // Preload a cacheable (>4 KB) coach module to exercise Bun's cache writer.
-    const child = Bun.spawnSync([process.execPath, 'test', '--preload', join(import.meta.dir, '../schedule-engine.ts'), import.meta.path,
+    const child = Bun.spawnSync([...testBun, 'test', '--preload', join(import.meta.dir, '../schedule-engine.ts'), import.meta.path,
       '--test-name-pattern', 'returns empty summary|formats summary text'], {
       env: { ...process.env }, stdout: 'pipe', stderr: 'pipe',
     });

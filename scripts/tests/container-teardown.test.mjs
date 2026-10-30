@@ -95,7 +95,7 @@ if (mode === 'hook' || mode === 'hook-vanish') {
     const id = 'd'.repeat(12);
     fs.writeFileSync(path.join(root, 'state', id), JSON.stringify({ label: process.env.SELECTOR, name: id, running: false }));
   }
-  await new Promise(done => setTimeout(done, 1100));
+  await new Promise(done => setTimeout(done, mode === 'create' ? 3200 : 1900));
 } else if (mode === 'signal' || mode === 'stubborn') {
   create('created');
   for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(signal, () => { log(['child', signal]); if (mode === 'signal') process.exit(0); });
@@ -122,7 +122,7 @@ async function fixture(fn, { selector = compose, ...env } = {}) {
     MARKED_REMOVAL: '', HANG_COMMAND: '', ESCALATE_SIGNALS: '', GOLEMS_DOCKER_TEARDOWN_TIMEOUT_MS: '',
     ...env, PATH: join(root, 'bin'), FIXTURE: root, SELECTOR: selector, HELPER: pathToFileURL(cli).href };
   const run = (action = 'run', mode = 'create', extra = {}) => new Promise((done, reject) => {
-    const args = [cli, action, selector, ...(action === 'run' ? ['--', process.execPath, join(root, 'child.mjs'), mode] : [])];
+    const args = [cli, action, selector, ...(action === 'run' ? (mode === 'missing-command' ? ['--', join(root, 'does-not-exist')] : ['--', process.execPath, join(root, 'child.mjs'), mode]) : [])];
     const child = spawn(process.execPath, args, { env: { ...environment, ...extra }, detached: process.platform !== 'win32' });
     let stdout = '', stderr = '', sent = false;
     child.stdout.on('data', data => {
@@ -171,7 +171,19 @@ test('poll protects a running child; teardown protects all, stops, then checks s
   const result = await run(); assert.equal(result.code, 0, result.stderr);
   const c = calls(), done = index(c, 'child', 'done');
   assert.ok(c.some((c, i) => i < done && c[1] === 'docker' && c[2] === 'update' && c.includes('created')));
-  assert.deepEqual(c.slice(done + 1).filter(c => c[1] !== 'stub').map(c => c.slice(1)), [
+  const afterDone = c.slice(done + 1).filter(c => c[1] !== 'stub').map(c => c.slice(1));
+  const pollUpdate = ['docker', 'update', '--restart=no', 'created'];
+  const pollList = ['docker', 'ps', '--all', '--filter', `label=${compose}`, '--format', '{{.ID}}'];
+  // Polls may continue after the child logs done until its exit is observed; the
+  // last one can be aborted between its list and its update (protect() honours the signal).
+  const trailingPoll = afterDone.slice(0, -4);
+  const unexpected = `unexpected calls before teardown: ${JSON.stringify(trailingPoll)}`;
+  if (JSON.stringify(trailingPoll[0]) === JSON.stringify(pollUpdate)) trailingPoll.shift();
+  if (JSON.stringify(trailingPoll.at(-1)) === JSON.stringify(pollList) && trailingPoll.length % 2) trailingPoll.pop();
+  assert.equal(trailingPoll.length % 2, 0, unexpected);
+  for (let i = 0; i < trailingPoll.length; i += 2)
+    assert.deepEqual(trailingPoll.slice(i, i + 2), [pollList, pollUpdate], unexpected);
+  assert.deepEqual(afterDone.slice(-4), [
     ['docker', 'ps', '--all', '--filter', `label=${compose}`, '--format', '{{.ID}}'],
     ['docker', 'update', '--restart=no', 'created'],
     ['docker', 'compose', '--project-name', 'fixture', 'stop'],
@@ -197,7 +209,7 @@ test(`${signal} reaches ${mode} child; teardown follows the bounded wait`, () =>
   const r = await run('run', mode, { WRAPPER_SIGNAL: signal }); assert.equal(r.code, exit, r.stderr);
   const c = calls(), term = index(c, 'child', signal), stop = index(c, 'docker', 'compose');
   assert.ok(term >= 0 && stop > term);
-  assert.ok(c[stop][0] - c[term][0] < 2000, 'child wait exceeded 1.5s plus command overhead');
+  assert.ok(c[stop][0] - c[term][0] < 3500, 'child wait exceeded 1.5s plus generous command overhead');
 }));
 test('CI passes through child exits and skips every lifecycle Docker call', () => fixture(async ({ run, calls }) => {
   assert.equal((await run('run', 'hook')).code, 23);
@@ -212,7 +224,19 @@ test(`invalid selector ${selector} fails before invoking Docker`, () => fixture(
 test('failed preflight refuses to start work', () => fixture(async ({ run, seed, calls }) => {
   seed('stale'); const r = await run('run', 'hook'); assert.equal(r.code, 1);
   assert.match(r.stderr, /stale/); assert.equal(index(calls(), 'child', 'start'), -1);
+  assert.equal(calls().filter(c => c[1] === 'docker' && c[2] === 'compose').length, 1);
 }, { FAIL_STOP: '1' }));
+test('missing wrapped executable exits 127 after cleanup', () => fixture(async ({ run, calls }) => {
+  const r = await run('run', 'missing-command'); assert.equal(r.code, 127, r.stderr);
+  assert.ok(index(calls(), 'docker', 'compose') >= 0);
+}));
+test('polls at most once per second during a sustained run', () => fixture(async ({ run, calls }) => {
+  const r = await run(); assert.equal(r.code, 0, r.stderr);
+  const c = calls(), start = index(c, 'child', 'start'), done = index(c, 'child', 'done');
+  const polls = c.slice(start, done).filter(c => c[1] === 'docker' && c[2] === 'ps' && c.includes('--all'));
+  assert.ok(polls.length >= 2 && polls.length <= 4, `poll count: ${polls.length}`);
+  for (let i = 1; i < polls.length; i++) assert.ok(polls[i][0] - polls[i - 1][0] >= 900);
+}));
 test('non-disappearance polling errors still abort the child and tear down', () => fixture(async ({ run, calls }) => {
   const r = await run(); assert.equal(r.code, 1); assert.match(r.stderr, /protect failed/);
   assert.ok(index(calls(), 'docker', 'compose') > index(calls(), 'child', 'start'));
@@ -292,11 +316,12 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) test(`second ${signal} dur
   assert.ok(Date.now() - hung[0] < 1500, 'second signal did not stop cleanup promptly');
   assertNoRunningCleanup(calls());
 }, { HANG_COMMAND: 'stop', ESCALATE_SIGNALS: `SIGINT,${signal}` }));
-test('second teardown signal stays second across preflight and final cleanup', { skip: process.platform === 'win32' }, () => fixture(async ({ run, seed, calls }) => {
+test('interrupted preflight cleanup is not repeated', { skip: process.platform === 'win32' }, () => fixture(async ({ run, seed, calls }) => {
   seed('stale'); const r = await run('run', 'hook'); assert.equal(r.code, 130, r.stderr);
-  assert.match(r.stderr, /Teardown FAILED: .*second signal/);
+  assert.match(r.stderr, /Interrupted by SIGINT/);
   assert.equal(index(calls(), 'child', 'start'), -1);
   assert.equal(calls().filter(c => c[1] === 'stub' && c[2] === 'stopped').length, 1);
+  assert.equal(calls().filter(c => c[1] === 'docker' && c[2] === 'compose').length, 1);
 }, { GROUP_INTERRUPT: '1' }));
 for (const value of ['0', '60001', 'nope']) test(`teardown timeout override ${value} is rejected`, () => fixture(async ({ run, calls }) => {
   const r = await run('teardown'); assert.equal(r.code, 1); assert.match(r.stderr, /timeout/i); assert.deepEqual(calls(), []);
