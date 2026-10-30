@@ -1407,6 +1407,20 @@
       "class": "FALSE POSITIVE",
       "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
       "count": 1
+    },
+    {
+      "file": "skills/golem-powers/orc/workflows/m1-golems-install-PROCEDURE.md",
+      "marker": "2. \u00a72 records the Gemini dangling link and STOPs before the reviewed parity pre-step, transport staging, snapshot or install; its listing is retained in `preflight.json`, not an empty file.",
+      "class": "DATA",
+      "reason": "Verbatim reviewed M1 Pro install procedure (release-custody pin); byte-identical copy, no edits allowed.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/orc/workflows/m1-golems-install-PROCEDURE.md",
+      "marker": "Proposed ruling only, not an executable procedure step: replace the existing `.gemini/config/skills/tmp-block` symlink's text `../../../.agents/skills/tmp-block` with `../../../.claude/skills/tmp-block`, leaving its mode/owner intact. Claude's catalog contains `tmp-block`; Agents' catalog does not. Creating an Agents link instead would invite the installer's noncatalog release-link pruning. Replacing this pre-existing Gemini object requires a separate ruling and separately authorized implementation; do not execute it from this procedure. After such a ruling, revalidate real listing, frozen hashes, preservation and parity before any retry.",
+      "class": "DATA",
+      "reason": "Verbatim reviewed M1 Pro install procedure (release-custody pin); byte-identical copy, no edits allowed.",
+      "count": 1
     }
   ]
 }

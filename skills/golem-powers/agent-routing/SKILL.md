@@ -192,6 +192,7 @@ Every `claude.judgment` seat (leads and workers) delegates parity tasks to
   `deploy-local-prod` sub-agent (Agent tool `subagent_type: "deploy-local-prod"`, model pinned to the
   resolved `claude.subagent.cheap` alias). The lead routes the hop and verifies the artifact it reports.
   Deploy hops stay on the MBP/M4; the M1 is status-only for deploys. Test placement follows the M1 test-rig adapter (§ Dispatch Boundaries).
+  M1 Pro golems installs follow the deploy-local-prod agent's Contract 1 (Etan's #32 standing grant); everything else on the M1 stays untouched until the M1 test-rig adapter is active (§ Dispatch Boundaries).
 
 Anything that sits, polls or waits (CI, a PR, a file appearing, a sleep-then-check) is the mechanical
 tier, never the lead; a one-shot check stays a cheap verifier above. From a Claude seat, pass
