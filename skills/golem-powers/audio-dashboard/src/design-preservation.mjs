@@ -29,10 +29,19 @@ function inspectDom() {
     key: key(el, index), visible: visible(el), labels: [...el.querySelectorAll('.df-speaker,.who-name,.speaker,.speaker-label,[data-speaker]')]
       .filter(visible).map(label => label.textContent.trim()).filter(Boolean),
   }));
-  const layout = all('.df-layout,main,.wrap:not(#golem-single-transport-wrap),[data-preserve-layout]').map((el, index) => {
-    const css = getComputedStyle(el), box = el.getBoundingClientRect();
-    return { key: key(el, index), maxWidth: css.maxWidth, centered: Math.abs(box.left + box.right - innerWidth) < 2 };
-  });
+  const geometry = (el, index = 0) => {
+    const css = getComputedStyle(el), box = el.getBoundingClientRect(), parent = el.parentElement;
+    const pc = getComputedStyle(parent), pb = parent.getBoundingClientRect(), n = value => parseFloat(value) || 0;
+    let left = pb.left + n(pc.borderLeftWidth) + n(pc.paddingLeft), right = pb.right - n(pc.borderRightWidth) - n(pc.paddingRight);
+    if (pc.display.includes('grid')) {
+      const columns = (pc.gridTemplateColumns.match(/[\d.]+px/g) || []).map(n), gap = n(pc.columnGap);
+      let column = /^\d+$/.test(css.gridColumnStart) ? Number(css.gridColumnStart) - 1 : -1;
+      if (column < 0) for (const row of pc.gridTemplateAreas.matchAll(/"([^"]+)"/g)) { const i = row[1].split(/\s+/).indexOf(css.gridArea.split(' / ')[0]); if (i >= 0) { column = i; break; } }
+      if (column >= 0 && columns[column]) { left += columns.slice(0, column).reduce((sum, width) => sum + width, 0) + gap * column; right = left + columns[column]; }
+    }
+    return { key: key(el, index), maxWidth: css.maxWidth, width: box.width, parentWidth: right - left, centered: Math.abs(box.left + box.right - left - right) < 2 };
+  };
+  const layout = all('.df-layout,main,.wrap:not(#golem-single-transport-wrap),[data-preserve-layout],[data-preserve-column]').map(geometry);
   const answers = {};
   all('input[type="radio"],input[type="checkbox"]').forEach(el => {
     const group = `${el.type}:${el.name}`;
@@ -42,8 +51,10 @@ function inspectDom() {
     .filter(el => !el.matches('#df-copy,#dbx-copy,.df-story-copy,#df-note-copy-draft,#copy-all,#copy-answers,#nt-copy,[data-copy-answers]'))
     .filter(el => !el.closest('pre,[data-command],.code-block') && !(el.parentElement?.matches('div,figure') && el.parentElement.querySelector(':scope > pre,:scope > code') && !el.parentElement.querySelector('p'))).length;
   const main = document.querySelector('[data-preserve-layout],.df-layout') || document.querySelector('main')?.closest('.wrap') || document.querySelector('main,.wrap:not(#golem-single-transport-wrap)');
-  const primary = main && layout[all('.df-layout,main,.wrap:not(#golem-single-transport-wrap),[data-preserve-layout]').indexOf(main)];
-  return { players, readalong, speakers, fullTranscript, layout, primary, answers, proseCopy, copyControls: all('button').filter(el => /copy/i.test(el.textContent)).length, substitutes: all('[role=radio]:not(input),[role=checkbox]:not(input)').length };
+  const primary = main && geometry(main);
+  const reading = document.querySelector('[data-preserve-column]') || document.querySelector('.df-ledger') || document.querySelector('main');
+  const column = reading && geometry(reading);
+  return { players, readalong, speakers, fullTranscript, layout, primary, column, answers, proseCopy, copyControls: all('button').filter(el => /copy/i.test(el.textContent)).length, substitutes: all('[role=radio]:not(input),[role=checkbox]:not(input)').length };
 }
 
 export const DESIGN_CODES = ['STICKY_PLAYER', 'READ_ALONG', 'SPEAKER_LABELS', 'FULL_TRANSCRIPT', 'LAYOUT', 'ANSWER_CONTROLS', 'COPY_BUTTONS', 'STRAY_FOCUS', 'SCRUB', 'RESET_CONTROLS'];
@@ -57,7 +68,9 @@ function compareDom(before, after) {
   const labels = state => share(state.speakers.filter(p => p.visible), p => p.labels.length);
   item('SPEAKER_LABELS', labels(before) > 0, labels(after) > 0, !labels(before) || labels(after) >= labels(before));
   item('FULL_TRANSCRIPT', before.endTranscript.visible, after.endTranscript.visible);
-  item('LAYOUT', before.primary, after.primary, !before.primary || !!after.primary && before.primary.maxWidth === after.primary.maxWidth && before.primary.centered === after.primary.centered);
+  const layoutSignal = state => [state.primary, state.column].some(box => box && (box.maxWidth !== 'none' || box.width < box.parentWidth - 1));
+  const same = (old, now) => !old || !!now && old.maxWidth === now.maxWidth && old.centered === now.centered && Math.abs(old.width - now.width) <= 1;
+  item('LAYOUT', layoutSignal(before), layoutSignal(after), same(before.primary, after.primary) && same(before.column, after.column));
   const kinds = state => [...new Set(Object.keys(state.answers).map(group => group.split(':')[0]))];
   item('ANSWER_CONTROLS', kinds(before).length, kinds(after).length, kinds(before).every(kind => kinds(after).includes(kind)) && after.substitutes <= before.substitutes);
   item('COPY_BUTTONS', before.copyControls, after.copyControls, after.proseCopy <= before.proseCopy);
@@ -78,7 +91,7 @@ export async function checkDesignPreservation({ html, previousHtml, redesign, br
   const violations = [], screenshots = [], behavior = [], invariants = [], detail = [], baseline = previousHtml === null;
   const flag = (code, width) => violations.push({ code, metric: code, segment: 'dashboard', value: 0, threshold: 1, evidence: `${code} at ${width}px` });
   if (previousHtml === undefined) return { verdict: 'REJECTED', violations: [{ code: 'PREVIOUS_BUILD_MISSING', evidence: 'previous build missing' }], screenshots };
-  if (redesign !== undefined && (!redesign || typeof redesign.reason !== 'string' || !redesign.reason.trim() || /[\r\n]/.test(redesign.reason) || !Array.isArray(redesign.invariants) || !redesign.invariants.length || redesign.invariants.some(code => !DESIGN_CODES.includes(code)) || redesign.from !== hash(previousHtml || ''))) {
+  if (redesign !== undefined && (baseline || !redesign || typeof redesign.reason !== 'string' || !redesign.reason.trim() || /[\r\n]/.test(redesign.reason) || !Array.isArray(redesign.invariants) || !redesign.invariants.length || redesign.invariants.some(code => !DESIGN_CODES.includes(code)) || redesign.from !== hash(previousHtml || ''))) {
     return { verdict: 'REJECTED', violations: [{ code: 'REDESIGN_SCOPE_MISMATCH', evidence: 'redesign requires a one-line reason, named invariants and the current predecessor hash' }], screenshots };
   }
   const owned = !browser;
@@ -112,7 +125,7 @@ export async function checkDesignPreservation({ html, previousHtml, redesign, br
       invariants.push(...comparison.table.map(row => ({ width, ...row })));
       if (!baseline) {
         for (const code of comparison.codes) flag(code, width);
-        if (!comparison.table.some(row => row.detectedInPrevious)) flag('NO_DESIGN_SIGNAL', width);
+        if (!comparison.table.some(row => ['STICKY_PLAYER', 'READ_ALONG', 'LAYOUT'].includes(row.code) && row.detectedInPrevious)) flag('NO_DESIGN_SIGNAL', width);
       }
       const page = await browser.newPage();
       try {
@@ -136,12 +149,14 @@ export async function checkDesignPreservation({ html, previousHtml, redesign, br
       finally { await page.close(); }
     }
   } finally { if (owned) await browser.close(); }
+  const unused = redesign?.invariants.filter(code => !violations.some(v => v.code === code)) || [];
+  if (unused.length) violations.push({ code: 'REDESIGN_UNUSED_INVARIANT', metric: 'REDESIGN_UNUSED_INVARIANT', segment: 'dashboard', evidence: unused.join(', ') });
   return { verdict: violations.some(v => !redesign?.invariants.includes(v.code)) ? 'REJECTED' : 'PASS', status: baseline ? 'BASELINE' : redesign ? 'REDESIGN' : 'COMPARED', violations, screenshots, invariants, detail, behavior, ...(redesign ? { redesign } : {}) };
 }
 
 export async function checkPublishedDesign(spec, outputPath, html, options = {}) {
   let previous;
-  try { previous = loadPublishedDesign(spec, outputPath); }
+  try { previous = loadPublishedDesign(spec, outputPath, options); }
   catch { return { verdict: 'REJECTED', violations: [{ code: 'PREVIOUS_BUILD_MISSING', metric: 'PREVIOUS_BUILD_MISSING', segment: 'dashboard', evidence: 'previous build missing' }] }; }
   return { ...await checkDesignPreservation({ ...previous, html, redesign: spec.redesign, ...options }), series: previous.series, ...(previous.baseline ? { baseline: previous.baseline } : {}) };
 }

@@ -4,20 +4,20 @@ import os from 'node:os';
 import path from 'node:path';
 export const designHash = value => createHash('sha256').update(value).digest('hex');
 export const designReportPath = output => output.replace(/\.html$/i, '') + '.design.json';
-function location(spec) {
+function location(spec, { registryRoot = path.join(os.homedir(), ".local", "share", "audio-dashboard", "design-history") } = {}) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(spec.series || '')) throw new Error('previous build missing: explicit slug-safe series required');
-  const directory = path.join(os.homedir(), '.local', 'share', 'audio-dashboard', 'design-history', spec.series);
+  const directory = path.resolve(registryRoot, spec.series);
   return { directory, index: path.join(directory, 'published.json') };
 }
-export function recordPublishedDesign(spec, outputPath, html) {
-  const { directory, index } = location(spec), sha256 = designHash(html), filename = `${sha256}.html`;
+export function recordPublishedDesign(spec, outputPath, html, options = {}) {
+  const { directory, index } = location(spec, options), sha256 = designHash(html), filename = `${sha256}.html`;
   mkdirSync(directory, { recursive: true });
   writeFileSync(path.join(directory, filename), html);
   writeFileSync(`${index}.new-${process.pid}`, JSON.stringify({ series: spec.series, filename, sha256 }));
   renameSync(`${index}.new-${process.pid}`, index);
 }
-export function loadPublishedDesign(spec, outputPath) {
-  const { directory, index } = location(spec);
+export function loadPublishedDesign(spec, outputPath, options = {}) {
+  const { directory, index } = location(spec, options);
   try {
     if (existsSync(index)) {
       const record = JSON.parse(readFileSync(index, 'utf8'));
@@ -34,10 +34,10 @@ export function loadPublishedDesign(spec, outputPath) {
       if (!previousHtml.trim()) throw Error();
       return { series: spec.series, previousHtml, previousPath };
     }
-    const reason = spec.designPreservation?.baseline?.reason;
+    const reason = options.firstBuild;
     if (typeof reason !== 'string' || !reason.trim() || /[\r\n]/.test(reason)) throw Error();
     return { series: spec.series, previousHtml: null, baseline: { reason } };
-  } catch { throw new Error('previous build missing: declare first-build baseline or supply a published predecessor'); }
+  } catch { throw new Error('previous build missing: migrate the served predecessor with previousPublished; initial publication alone may use --first-build'); }
 }
 export function writeDesignReport(outputPath, html, result) {
   mkdirSync(path.dirname(outputPath), { recursive: true });

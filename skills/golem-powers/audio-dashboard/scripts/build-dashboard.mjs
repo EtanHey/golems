@@ -108,6 +108,7 @@ function parseArgs(argv) {
     const a = argv[i];
     if (a === "--spec") args.spec = argv[++i];
     else if (a === "--job-dir") args.jobDir = argv[++i];
+    else if (a === "--first-build") args.firstBuild = argv[++i];
     else if (a === "--out") args.out = argv[++i];
     else if (a === "-h" || a === "--help") args.help = true;
     else fail(`unknown argument: ${a}`);
@@ -237,7 +238,7 @@ function assertRenderedTiming(html, artifacts) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("usage: bun scripts/build-dashboard.mjs --spec <job.json> [--job-dir <dir>] [--out <html>]");
+    console.log("usage: bun scripts/build-dashboard.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>]");
     process.exit(0);
   }
   if (!args.spec) fail("--spec <job.json> is required");
@@ -628,7 +629,7 @@ async function main() {
   if (!hasRealFlag) fail("rendered HTML has no realWordTiming:true — words.json missing or empty for every scene");
   if (!hasNoteArea) fail("rendered HTML has no .note-area response boxes");
 
-  const preservation = await checkPublishedDesign(spec, outPath, html);
+  const preservation = await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
   buildReceipts.designPreservation = preservation;
   upsertBuildGate(buildReceipts, { gate: "design-preservation", result: preservation,
     config: {}, runbook: "Restore the previous design or declare redesign with a one-line reason." });

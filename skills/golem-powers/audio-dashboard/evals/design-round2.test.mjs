@@ -3,12 +3,15 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { checkDesignPreservation, loadPublishedDesign, recordPublishedDesign, writeDesignReport } from '../src/design-preservation.mjs';
+import { checkDesignPreservation, loadPublishedDesign as loadRegistry, recordPublishedDesign as recordRegistry, writeDesignReport } from '../src/design-preservation.mjs';
 import { validateAudioDashboardEvidence } from '../src/audio-dashboard-evidence.mjs';
+import { designTestCell } from './design-test-cell.mjs';
+const cell = designTestCell();
+const loadPublishedDesign = (spec, output, options) => loadRegistry(spec, output, { ...options, ...cell.options });
+const recordPublishedDesign = (spec, output, html) => recordRegistry(spec, output, html, cell.options);
 const html = readFileSync(new URL('./fixtures/design-preservation/previous.html', import.meta.url), 'utf8');
 const hash = value => createHash('sha256').update(value).digest('hex');
-const root = path.resolve('docs.local/adp/r2/tests-' + process.pid);
-mkdirSync(root, { recursive: true });
+const root = cell.root;
 let browser;
 beforeAll(async () => { browser = await chromium.launch(); });
 afterAll(async () => { await browser.close(); });
@@ -16,7 +19,7 @@ const check = (next, extra = {}) => checkDesignPreservation({ html: next, previo
 test('missing history is not a first-build declaration; series survives a directory and id change', () => {
   const spec = { series: 'adp-r2-' + crypto.randomUUID() }, first = path.join(root, 'one.html');
   expect(() => loadPublishedDesign(spec, first)).toThrow('previous build missing');
-  expect(loadPublishedDesign({ ...spec, designPreservation: { baseline: { reason: 'New series.' } } }, first).previousHtml).toBeNull();
+  expect(loadPublishedDesign(spec, first, { firstBuild: 'New series.' }).previousHtml).toBeNull();
   recordPublishedDesign(spec, first, html);
   expect(loadPublishedDesign({ ...spec, id: 'different' }, path.join(root, 'other', 'two.html')).previousHtml).toBe(html);
   expect(loadPublishedDesign({ ...spec, designPreservation: { baseline: { reason: 'Cannot reset history.' } } }, first).previousHtml).toBe(html);

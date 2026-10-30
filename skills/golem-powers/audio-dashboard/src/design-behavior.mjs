@@ -13,7 +13,7 @@ export async function probeDesignBehavior(page, { seek = true } = {}) {
   result.focusClean = await page.evaluate(focusState, true);
   for (const selector of ['time,.df-time,[data-time]', 'p,span,h1,h2,label']) {
     const text = page.locator(selector);
-    const index = await text.evaluateAll(elements => elements.findIndex(el => el.checkVisibility() && !el.closest('button,a,input,[role=button],[data-word-start],[data-ws]') && !el.querySelector('button,input,select,[data-word-start],[data-ws]') && el.textContent.trim() && el.getBoundingClientRect().height > 0));
+    const index = await text.evaluateAll(elements => elements.findIndex(el => el.checkVisibility() && !el.matches('label[for]') && !el.closest('button,a,input,[role=button],[data-word-start],[data-ws]') && !el.querySelector('button,input,select,[data-word-start],[data-ws]') && el.textContent.trim() && el.getBoundingClientRect().height > 0));
     if (index < 0) continue;
     const node = text.nth(index);
     await node.scrollIntoViewIfNeeded();

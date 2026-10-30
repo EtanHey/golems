@@ -1,3 +1,5 @@
+import { designTestCell } from "../design-test-cell.mjs";
+const designCell = designTestCell();
 // Deterministic two-sided eval for the canonical audio-dashboard skill.
 // The GREEN fixture is a minimal read-along dashboard evidence record:
 // real words.json, real transcript text, word-click seek, canonical generator,
@@ -199,7 +201,7 @@ function acousticFixtureSegments(fixture) {
 }
 
 function buildDashboard(spec, jobDir, name = spec.id, extraEnv = {}, options = {}) {
-  const root = mkdtempSync(path.join(tmpdir(), `audio-dashboard-${name}-`));
+  const root = mkdtempSync(path.join(designCell.root, `build-${name}-`));
   const fixtureBin = writeFixtureFfprobe(root);
   const invocationEnv = { ...process.env };
   delete invocationEnv.NARRATIONLAYER_PRONUNCIATION_FILE;
@@ -207,7 +209,7 @@ function buildDashboard(spec, jobDir, name = spec.id, extraEnv = {}, options = {
   const pronunciationRules = loadPronunciationRules({ env: invocationEnv });
   const specPath = path.join(root, "job.json");
   const outputPath = spec.outputPath ?? path.join(root, "repo", "docs.local", "dashboards", `${name}.html`);
-  const fullSpec = { series: `eval-${path.basename(root)}`, designPreservation: { baseline: { reason: "New isolated build fixture." } }, ...spec, outputPath };
+  const fullSpec = { series: `eval-${path.basename(root)}`, ...spec, outputPath };
   if (!options.omitSynthSidecars) {
     for (const scene of fullSpec.scenes ?? []) {
       if (scene.audioWav) continue;
@@ -224,7 +226,7 @@ function buildDashboard(spec, jobDir, name = spec.id, extraEnv = {}, options = {
   writeFileSync(specPath, `${JSON.stringify(fullSpec, null, 2)}\n`);
   const result = spawnSync(
     "bun",
-    ["scripts/build-dashboard.mjs", "--spec", specPath, "--job-dir", jobDir],
+    designCell.command("scripts/build-dashboard.mjs", ["--spec", specPath, "--job-dir", jobDir, "--first-build", "New isolated build fixture."]).slice(1),
     {
       cwd: skillRoot,
       encoding: "utf8",
@@ -241,7 +243,7 @@ export { test, expect, spawnSync, createHash, chmodSync, copyFileSync, existsSyn
 
 // Timing-only unit fixtures still supply the final-HTML design evidence contract.
 export function withDesignEvidence(evidence) {
-  const outputPath = path.resolve('docs.local/dashboards/adp-unit/' + createHash('sha256').update(evidence.html).digest('hex') + '.html');
+  const outputPath = path.join(designCell.root, 'docs.local/dashboards/adp-unit', createHash('sha256').update(evidence.html).digest('hex') + '.html');
   mkdirSync(path.dirname(outputPath), { recursive: true });
   writeFileSync(outputPath.replace(/\.html$/, '.design.json'), JSON.stringify({ verdict: 'PASS', artifactSha256: createHash('sha256').update(evidence.html).digest('hex') }));
   return { ...evidence, outputPath };

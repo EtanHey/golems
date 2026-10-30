@@ -423,20 +423,20 @@ Before calling a dashboard done, verify these conditions (enforced by
   `dashboards-serve`.
 
 ## Preserve the published design
-Preserve the template unless the brief requests a specific redesign: top-pinned
-controls, auto-visible labelled read-along, transcript visible after playback ends,
-primary width/centering, native answers, code-only copy, clean focus, seek and resets.
-Require a stable explicit `spec.series`; history is independent of output/id under
-`~/.local/share/audio-dashboard/design-history/<series>/`. For a first build only,
-set `designPreservation: { baseline: { reason: "New series" } }`; missing history
-otherwise rejects. Migrate old publications with `previousPublished` in that object.
+Preserve pinned controls, labelled read-along, transcript at playback end, native
+answers, code-only copy, focus, seeking and resets. Gate both outer and reading-column
+width/centering by role and parent geometry. Require stable explicit `spec.series`.
+History is per-machine: `~/.local/share/audio-dashboard/design-history/<series>/`.
+For the initial publication only, pass `--first-build <reason>` separately to BUILD,
+done-gate, evidence and publish CLIs; no persistent spec declaration is honored.
+On another machine or after registry loss, copy the served predecessor and set
+`designPreservation: { previousPublished: "served-copy.html" }`; absence rejects.
 A waiver needs `redesign: { reason, invariants: ["LAYOUT"], from: "previous sha256" }`;
-it expires when the published predecessor changes and never waives unlisted codes.
-BUILD and evidence are preventive gates; the publish probe is a post-publication
-ledger guard and requires `--spec` (`--out` alone no longer succeeds).
-Run `bun scripts/render-done-gate-cli.mjs --spec job.json` before DONE, or
-`bun scripts/check-design-preservation.mjs --spec job.json --screenshots proof/`.
-The library requires a matching PASS `.design.json` for the final HTML bytes.
+only fired codes may be listed, never on a baseline. It expires with its predecessor.
+Run `bun scripts/check-design-preservation.mjs --spec job.json --screenshots proof/`.
+BUILD/evidence prevent drift; the library checks the caller's HTML and PASS sidecar.
+Only the publish probe binds served bytes (`--spec` required); it cannot prevent
+exposure already published. A shared served-host registry is a follow-up, not built.
 
 ## Transcript Fidelity and Teleprompter Drift BUILD Gates
 

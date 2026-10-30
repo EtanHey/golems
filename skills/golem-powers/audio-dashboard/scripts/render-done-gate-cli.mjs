@@ -35,9 +35,10 @@ function readInput(arg) {
   return JSON.parse(trimmed);
 }
 
-const arg = process.argv[2];
+const argv = process.argv.slice(2), flags = ["--spec", "--first-build"];
+const arg = argv.find((value, index) => !flags.includes(value) && !flags.includes(argv[index - 1])) || (argv.includes("--spec") ? "--spec" : undefined);
 if (!arg) {
-  console.error("usage: render-done-gate-cli.mjs <transcript.jsonl|fixture.json|->");
+  console.error("usage: render-done-gate-cli.mjs <transcript|--spec job.json> [--first-build reason]");
   process.exit(2);
 }
 
@@ -46,7 +47,8 @@ if (specIndex !== -1) {
   const expand = value => path.resolve(value.replace(/^~(?=\/)/, os.homedir()));
   const spec = JSON.parse(readFileSync(expand(process.argv[specIndex + 1]), "utf8"));
   const output = expand(spec.outputPath), html = readFileSync(output, "utf8");
-  const preservation = await checkPublishedDesign(spec, output, html);
+  const firstBuildIndex = process.argv.indexOf("--first-build");
+  const preservation = await checkPublishedDesign(spec, output, html, { firstBuild: firstBuildIndex < 0 ? undefined : process.argv[firstBuildIndex + 1] });
   writeDesignReport(output, html, preservation);
   console.log(JSON.stringify(preservation));
   if (preservation.verdict !== "PASS") process.exit(3);

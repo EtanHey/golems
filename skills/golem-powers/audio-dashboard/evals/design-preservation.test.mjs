@@ -3,8 +3,12 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
-import { checkDesignPreservation, loadPublishedDesign, recordPublishedDesign } from '../src/design-preservation.mjs';
+import { checkDesignPreservation, loadPublishedDesign as loadRegistry, recordPublishedDesign as recordRegistry } from '../src/design-preservation.mjs';
 
+import { designTestCell } from './design-test-cell.mjs';
+const cell = designTestCell();
+const loadPublishedDesign = (spec, output, options) => loadRegistry(spec, output, { ...options, ...cell.options });
+const recordPublishedDesign = (spec, output, html) => recordRegistry(spec, output, html, cell.options);
 const fixture = name => readFileSync(new URL(`./fixtures/design-preservation/${name}.html`, import.meta.url), 'utf8');
 let browser;
 beforeAll(async () => { browser = await chromium.launch(); });
@@ -52,7 +56,7 @@ test('computed cascade, toggles, segment labels and input types cannot fake pres
   ]) expect((await check(changed)).violations.some(v => v.code === code)).toBe(true);
 });
 test('published history is series-specific, immutable on rebuild, and fails closed on loss', () => {
-  const dir = path.resolve('docs.local/adp/history-' + crypto.randomUUID());
+  const dir = path.join(cell.root, 'history');
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, 'v1.html'), spec = { id: 'v1', series: 'adp-fixture-' + crypto.randomUUID() };
   expect(() => loadPublishedDesign(spec, output)).toThrow('previous build missing');
@@ -66,11 +70,11 @@ test('published history is series-specific, immutable on rebuild, and fails clos
 });
 
 test('real CLI and render-done gate reject every regression and allow an explicit redesign', () => {
-  const dir = path.resolve('docs.local/adp/cli-' + crypto.randomUUID());
+  const dir = path.join(cell.root, 'cli');
   mkdirSync(dir, { recursive: true });
   const outputPath = path.join(dir, 'new.html'), specPath = path.join(dir, 'job.json');
   const spec = { series: 'adp-cli-' + crypto.randomUUID(), id: 'weekly', outputPath, designPreservation: { previousPublished: path.resolve(new URL('./fixtures/design-preservation/previous.html', import.meta.url).pathname) } };
-  const run = script => Bun.spawnSync([process.execPath, new URL(`../scripts/${script}.mjs`, import.meta.url).pathname, '--spec', specPath]);
+  const run = script => Bun.spawnSync(cell.command(new URL(`../scripts/${script}.mjs`, import.meta.url).pathname, ['--spec', specPath]));
   for (const code of ['STICKY_PLAYER', 'READ_ALONG', 'SPEAKER_LABELS', 'FULL_TRANSCRIPT', 'LAYOUT', 'ANSWER_CONTROLS', 'COPY_BUTTONS']) {
     writeFileSync(outputPath, fixture(code.toLowerCase())); writeFileSync(specPath, JSON.stringify(spec));
     const result = run('check-design-preservation');
@@ -84,18 +88,18 @@ test('real CLI and render-done gate reject every regression and allow an explici
 }, 30000);
 
 test('publish probe advances history only after byte equality and preservation pass', async () => {
-  const dir = path.resolve('docs.local/adp/publish-' + crypto.randomUUID());
+  const dir = path.join(cell.root, 'publish');
   mkdirSync(dir, { recursive: true });
   const outputPath = path.join(dir, 'new.html'), specPath = path.join(dir, 'job.json'), spec = { id: 'weekly', series: 'adp-publish-' + crypto.randomUUID(), outputPath, designPreservation: { baseline: { reason: 'New fixture series.' } } };
   let served = fixture('previous');
   const server = Bun.serve({ port: 0, fetch: () => new Response(served, { headers: { 'content-type': 'text/html' } }) });
-  const probe = async () => {
-    const child = Bun.spawn([process.execPath, new URL('../scripts/verify-tailnet-publish.mjs', import.meta.url).pathname, '--spec', specPath, '--url', server.url.href], { stdout: 'pipe', stderr: 'pipe' });
+  const probe = async (firstBuild = false) => {
+    const child = Bun.spawn(cell.command(new URL('../scripts/verify-tailnet-publish.mjs', import.meta.url).pathname, ['--spec', specPath, '--url', server.url.href, ...(firstBuild ? ['--first-build', 'New fixture series.'] : [])]), { stdout: 'pipe', stderr: 'pipe' });
     return { code: await child.exited, stderr: await new Response(child.stderr).text() };
   };
   try {
     writeFileSync(specPath, JSON.stringify(spec)); writeFileSync(outputPath, served);
-    expect((await probe()).code).toBe(0);
+    expect((await probe(true)).code).toBe(0);
     writeFileSync(outputPath, fixture('preserved'));
     expect((await probe()).stderr).toContain('hash mismatch');
     served = fixture('sticky_player'); writeFileSync(outputPath, served);
