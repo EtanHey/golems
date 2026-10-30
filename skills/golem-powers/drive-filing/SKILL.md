@@ -49,6 +49,61 @@ Legacy `Brain Drive/Research/<project>/` folders are being moved under 03_RESEAR
 ## Naming convention
 `YYYY-MM-DD-<topic>[-<surface/agent>].<ext>` — date-prefixed, kebab-case, topic-first. Folders: `<topic>-<domain>/` (e.g. `weave-eval/`). Keep the local mirror name identical to the Drive name so the ledger maps 1:1.
 
+## Machine hygiene: no ad-hoc home folders
+
+Applies to both Macs. Each kind of artifact has one home:
+
+| Kind | Lives in | Never in |
+|---|---|---|
+| Rerunnable source, harnesses, test kits, eval scripts, fixtures | A repo, committed; generated fixtures in its `docs.local/` or `fixtures/` with a regeneration recipe | `~/`, `~/Desktop`, `~/temp`, ad-hoc repo copies |
+| Live lane reports, receipts, logs | Owning repo's `docs.local/<lane>/` on the machine that ran it | `~/m1-*`, `~/m1-lanes`, Desktop handoff folders |
+| Finished heavy artifacts, including benchmark runs | § Decision tree → § Archive a heavy artifact; leave `_DRIVE-LEDGER.md` | Local disk “for later” |
+| Personal or client documents Etan keeps | iCloud Drive `Archive/<YYYY>/<topic>/` | Desktop root |
+| Models and caches (Whisper, HF, npm/bun) | Tool's own cache directory, one copy recorded in app config | `~/Documents`, duplicate caches |
+| Worktrees | `~/.t3/worktrees/` or `<repo>/.worktrees/`; retire through the lifecycle contract | Other locations or ad-hoc repo copies |
+
+**Naming and manifests.** Keep the numbered Drive layout above; do not create
+another taxonomy. Within its existing date/topic structure, use lowercase
+kebab-case and the § Naming convention date prefix for archive-unit names
+(`YYYY-MM-DD-<topic>`). No machine prefixes (`m1-*`) or retired names (Ralph).
+Keep local and remote names identical.
+
+Every archive unit carries `MANIFEST.json` with:
+
+- Source path and host.
+- Byte count and SHA-256 for each file.
+- Producer (lead thread or plan).
+- Restore command.
+
+**Five rules:**
+
+1. Agents create no ad-hoc folders in `~/` or `~/Desktop`. Use sanctioned T3
+   scratch or repo `docs.local/` scratch under the
+   [workspace lifecycle contract](../_shared/lifecycle/CONTRACT.md).
+2. Delete a local archive copy only after the Drive or iCloud copy exists,
+   manifest hashes match verified remote bytes, and a one-file restore drill
+   succeeds. A matching name or folder listing is insufficient. Keep the ledger
+   and preservation proof outside any retiring scope; follow the archive
+   procedure and lifecycle contract for their additional verification gates.
+3. Measure disk recovery with `diskutil` container free space and APFS allocation.
+   Finder free space includes purgeable space; logical `du` sums do not prove
+   physical recovery. Record the host and before/after measurements.
+4. Leads reap their own lane leftovers at settle, after harvesting and releasing
+   consumers under the lifecycle contract. Unowned leftovers go to the
+   local-files lead's per-Mac ledger; never silently delete them.
+5. Deleting data remains a one-way door. Reviewed empty directories may be
+   removed with `rmdir`. Nonempty data needs an identified owner, verified
+   preservation and authorization for that exact deletion (or Etan's explicit
+   instruction); archive proof alone grants no deletion authority.
+
+**Enforcement follow-up (not implemented by this section):** add a report-only
+inventory check for new agent-created top-level `~/` and `~/Desktop` directories
+(uid 501, recent birthtime, known lane patterns). These are investigation signals,
+not ownership or deletion proof. The local-files lead must register and link the
+M4 Max and M1 Pro ledgers here once their canonical locations are confirmed;
+until then, report unowned leftovers to that lead. Never infer a ledger path or
+add a destructive home-wide reaper.
+
 ## The discipline (the one rule)
 **Before you finish a task that produced a durable artifact: did you FILE it in the right Brain Drive folder, or leave it scattered in `docs.local/`?** If durable and still only local → file it now (the decision tree above, or § Archive a heavy artifact) and drop a one-line `_DRIVE-LEDGER.md` pointer. "It's in docs.local" is not "it's saved."
 
