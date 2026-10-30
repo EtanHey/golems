@@ -56,7 +56,8 @@ assert ' start ' in TEXT[fallback:] and ' follow ' in TEXT[fallback:]
 assert 'node scripts/model-roles.mjs codex.subagent.mechanical --use watcher' in RULE
 # Lead rules §1 (2026-10-30): every T3 lead keeps one name waiter on the leads+orc collab.
 assert 'lead name waiter' in FRONT
-for needle in ('exactly one name waiter', 'orc-inbox.md', '@all-leads', 't3_background_wait', 're-arm it on every wake', 'no model turns', 'Workers and children never arm it'):
+assert 'never polls a collab file in a loop or on a schedule.' not in RULE, 'Codex loop ban must carve out the lead name waiter'
+for needle in ('the only exception', 'exactly one name waiter', 'orc-inbox.md', '@all-leads', 't3_background_wait', 're-arm it on every wake', 'no model turns', 'Workers and children never arm it'):
     assert needle in RULE, needle
 
 # References carry the same seat rule: any section that arms or follows the

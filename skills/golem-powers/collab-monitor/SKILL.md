@@ -27,7 +27,8 @@ Monitor" skill at 196 uses on Oct 18, and "Collab-monitor polling wakes cost
 another 201M across 729 turns." (Etan 2026-10-18, via orc collab)
 
 - A Codex seat never arms collab-monitor, never runs `start`/`follow`/`run`,
-  and never polls a collab file in a loop or on a schedule.
+  and never polls a collab file with model turns, in a loop or on a schedule
+  (a lead's one shell name waiter below is the only exception).
 - A T3 seat (any vendor) relies on its parent-owned wake signals: `delegate_task`
   completion notifications for child work and `watch_pull_request` for PRs. Do
   not add a second watcher on top of them, apart from the lead name waiter below.
