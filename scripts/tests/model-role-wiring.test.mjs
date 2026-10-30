@@ -287,8 +287,9 @@ test('large-plan defaults to T3-native execution and keeps cmux monitors as an a
   for (const rule of [
     'agent-routing/references/t3-native.md', '`delegate_task`', '`taskId`', 'completion notification is the liveness guard',
     'no collab monitor', '`ScheduleWakeup`', '`CronCreate`', 'end the turn', 'verify the artifact',
-    '`watch_pull_request`', '`codex.subagent.mechanical`', 'deadline', 'single terminal report',
-    'never owns the parent\'s PR watch', '`task_cancel`', '`unwatch_pull_request`', '(Etan 2026-10-18, via orc collab)',
+    '`watch_pull_request`', '`codex.subagent.mechanical`', 'deadline', 'one terminal report',
+    'No routine list or rearm', 'child for PR waiting', 'outside T3 only',
+    '`task_cancel`', '`unwatch_pull_request`', '(Etan 2026-10-18, via orc collab)',
   ]) assert.ok(t3.includes(rule), rule);
   const cmux = skill.split('### cmux adapter: parallel rounds')[1].split('### Plan Lifecycle')[0];
   assert.ok(cmux.includes('Arms the addressed monitor'), 'round monitor procedure lives under the cmux adapter');
@@ -306,7 +307,7 @@ test('large-plan defaults to T3-native execution and keeps cmux monitors as an a
   assert.ok(arm.includes('**T3 (default in T3):**') && arm.includes('**cmux adapter:**'), 'collab step 4 branches T3 vs cmux');
   const suite = JSON.parse(read(`${dir}/evals/evals.json`));
   assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
-  for (const [id, name] of [[30, 't3-next-batch-delegate-no-guards'], [31, 't3-ci-watch-parent-or-bounded-child'], [32, 'codex-lead-refuses-collab-monitor'], [33, 'cmux-fleet-keeps-monitor-adapter']]) {
+  for (const [id, name] of [[30, 't3-next-batch-delegate-no-guards'], [31, 't3-ci-watch-parent-native-only'], [32, 'codex-lead-refuses-collab-monitor'], [33, 'cmux-fleet-keeps-monitor-adapter']]) {
     const e = suite.evals.find(e => e.id === id);
     assert.equal(e?.name, name);
     assert.ok(e.prompt && e.expected_output && e.assertions.length >= 2, name);
