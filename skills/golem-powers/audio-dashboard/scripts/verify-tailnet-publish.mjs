@@ -12,6 +12,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
+import { checkPublishedDesign, recordPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
+
 function expandHome(value) {
   if (value === "~") return os.homedir();
   if (value?.startsWith?.("~/")) return path.join(os.homedir(), value.slice(2));
@@ -110,6 +112,13 @@ async function main() {
     fail(`tailnet artifact hash mismatch for ${tailnetUrl}: local=${localHash} remote=${remoteHash}`);
   }
 
+  if (args.spec) {
+    const spec = JSON.parse(readFileSync(path.resolve(expandHome(args.spec)), "utf8"));
+    const preservation = await checkPublishedDesign(spec, outPath, localBytes.toString("utf8"));
+    writeDesignReport(outPath, localBytes.toString("utf8"), preservation);
+    if (preservation.verdict !== "PASS") fail("design-preservation: " + preservation.violations.map(v => v.code).join(", "));
+    recordPublishedDesign(spec, outPath, localBytes.toString("utf8"));
+  } else fail("--spec is required to record series publication history");
   console.log(`[verify-tailnet-publish] TAILNET_OK ${tailnetUrl} HTTP 200 sha256=${localHash}`);
 }
 

@@ -422,6 +422,21 @@ Before calling a dashboard done, verify these conditions (enforced by
 - Tailnet publication happens through sync, not direct writes to
   `dashboards-serve`.
 
+## Preserve the published design
+Preserve the design unless the brief explicitly requests a redesign: top-pinned
+player, auto-visible read-along with segment speakers, expanded full transcript,
+main max-width/centering, native radio/checkbox answers, code-only copy buttons
+(answer/note exports remain available). Use stable `spec.series` (default `spec.id`)
+and output directory across versions. The byte-verified publish probe (`--spec`)
+saves `.adash-design/<series>/`; migrate older series via the spec field
+`designPreservation: { previousPublished: "previous.html" }`.
+No history records BASELINE; unavailable referenced history fails closed.
+Only `redesign: { reason: "One-line reason from the brief" }` waives regressions.
+BUILD/evidence validation enforce this; before DONE run (Playwright/Chromium required)
+`bun scripts/render-done-gate-cli.mjs --spec job.json`. For desktop/390 px PNGs:
+`bun scripts/check-design-preservation.mjs --spec job.json --screenshots proof/`.
+Pixel ratios in the `.design.json` sidecar are report-only; DOM invariants gate.
+
 ## Transcript Fidelity and Teleprompter Drift BUILD Gates
 
 `src/transcript-fidelity-gate.mjs` compares the raw Whisper transcript with the

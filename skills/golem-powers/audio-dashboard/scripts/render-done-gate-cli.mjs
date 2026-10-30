@@ -12,6 +12,9 @@
 // "render done / give it a play" leaves the seat without ls+ffprobe(size>0,
 // duration>0) of the claimed path + a reachable surface + a registered clone.
 
+import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
+import path from "node:path";
+import os from "node:os";
 import { readFileSync } from "node:fs";
 import { detectRenderDone, formatReport } from "../src/render-done-gate.mjs";
 
@@ -38,6 +41,17 @@ if (!arg) {
   process.exit(2);
 }
 
+const specIndex = process.argv.indexOf("--spec");
+if (specIndex !== -1) {
+  const expand = value => path.resolve(value.replace(/^~(?=\/)/, os.homedir()));
+  const spec = JSON.parse(readFileSync(expand(process.argv[specIndex + 1]), "utf8"));
+  const output = expand(spec.outputPath), html = readFileSync(output, "utf8");
+  const preservation = await checkPublishedDesign(spec, output, html);
+  writeDesignReport(output, html, preservation);
+  console.log(JSON.stringify(preservation));
+  if (preservation.verdict !== "PASS") process.exit(3);
+  if (arg === "--spec") process.exit(0);
+}
 const result = detectRenderDone(readInput(arg));
 console.log(formatReport(result));
 process.exit(result.verdict === "FLAG" ? 3 : 0);

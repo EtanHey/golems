@@ -24,6 +24,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 
+import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 import { validateAudioDashboardEvidence, formatReport } from "../src/audio-dashboard-evidence.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -91,6 +92,10 @@ const evidence = {
 };
 
 const result = validateAudioDashboardEvidence(evidence);
+const preservation = await checkPublishedDesign(spec, outPath, html);
+writeDesignReport(outPath, html, preservation);
+result.designPreservation = preservation;
+if (preservation.verdict !== "PASS") { result.verdict = "REJECTED"; result.violations.push(...preservation.violations); }
 if (args.json) console.log(JSON.stringify(result, null, 2));
 else {
   console.log(formatReport(result));
