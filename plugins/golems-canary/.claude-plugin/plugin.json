@@ -1,0 +1,5 @@
+{
+  "name": "golems-canary",
+  "description": "A no-op skill for testing plugin distribution.",
+  "author": { "name": "EtanHey" }
+}

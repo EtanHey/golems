@@ -12,6 +12,7 @@ setup() {
     CODEX_ARGS_FILE="$TMPDIR_/codex-args.txt"
     CODEX_TIMEOUT_FILE="$TMPDIR_/codex-timeout.txt"
     mkdir -p "$FAKE_BIN"
+    node "$REPO_ROOT/scripts/model-roles.mjs" gemini.gather.text --field model > "$FAKE_BIN/expected-agy-model"
     mkdir -p "$TMPDIR_/home/Gits/golems"
     : > "$TMPDIR_/home/Gits/golems/.env"
     export AGY_ARGS_FILE CODEX_ARGS_FILE CODEX_TIMEOUT_FILE
@@ -30,9 +31,10 @@ if read -r -t 0.1 inherited_stdin; then
     exit 44
 fi
 printf '%s\n' "$*" >> "$AGY_ARGS_FILE"
+expected_model="$(cat "$(dirname "$0")/expected-agy-model")"
 case " $* " in
-    *" --model Gemini 3.1 Pro (High) "*) ;;
-    *) printf 'expected Gemini 3.1 Pro (High) model\n' >&2; exit 41 ;;
+    *" --model $expected_model "*) ;;
+    *) printf 'expected role-resolved agy model\n' >&2; exit 41 ;;
 esac
 case " $* " in
     *load_backend*|*whisper_print_timings*) printf 'diagnostic noise leaked into scoring prompt\n' >&2; exit 46 ;;

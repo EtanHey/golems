@@ -15,9 +15,43 @@ and every non-cache ignored ancestor protects all descendants. RECEIPT.tsv escap
 backslash, tab, newline and carriage return. Special files are skipped and recorded
 as `special`; FIFOs are never opened. A durable REMOVING row precedes deletion.
 
-Exit codes: 0 = completed; 3 = completed with KEEP-unpushed; 2 = invalid input;
-other nonzero codes = runtime failure. Nightly maps only 3 to success. Shutdown
-signals and timeout kill the prune process group before releasing the suite lock.
+Exit codes: 0 = completed; 3 = completed with KEEP-unpushed; 2 = invalid input
+or any per-repository failure. Each per-repo failure, including crashes with exit
+1 or 7, is logged as an ERROR row with its original exit code and reason, and the
+sweep continues with the next repository. The final exit is 2 if any repo failed;
+2 outranks 3 even when another repo has KEEP-unpushed. The nightly wrapper maps
+only 3 to success and preserves other failures. Shutdown signals and timeout kill
+the prune process group before releasing the suite lock.
+
+Every scan writes `docs.local/worktree-gc/last-run.{json,md}`, including ERROR
+rows for failed repositories. `latest.{json,md}` is the last FULL scan, complete
+or partial, including scans that exit with an error. Scoped runs (`--repo`,
+`--path`, or `--prune-plan`) never change `latest.*`. Reports include `status`,
+`error_count`, and an error `stage` on ERROR rows. Lookup failures remain exit 0
+with `status=partial`; processing failures exit 2. Markdown is replaced first,
+then authoritative JSON, each via a temporary file and rename. Compare the shared
+`generated_at` to detect reads across publication. A publish failure exits nonzero
+with `report publish failed` and cleans temporary files. EXIT reporting cannot
+cover SIGKILL. Per-run `.repo-state` and `.repo-stderr` scratch files are removed
+on exit.
+
+Nightly GC runs the pinned `$HOME/Gits/golems/.worktrees/hooks-live` copy and refuses
+an unverified pin, logging its SHA. Verified means an unmodified published master
+commit at or after `GC_MIN_SAFE_SHA`, not necessarily the latest commit. Raise the floor with every GC safety fix.
+Every run logs how many commits the pin is behind the fetched origin/master
+(or that lag is unavailable); there is no hard freshness limit. The full remote
+ref is authoritative, even if a local branch has the same short name.
+An outside wrapper re-execs the verified pinned wrapper so its library and GC
+come from the pin. A `GOLEMS_WORKTREE_GC_PIN_ROOT` override emits a WARNING with
+its path, including on refusal.
+
+The default completed-run reports now live in the pin's `docs.local/worktree-gc/latest.{json,md}`
+(unless `WORKTREE_GC_REPORT_DIR` overrides that location).
+Refused nights are visible only in the launchd log (`StandardErrorPath`),
+rendered as `@GOLEMS_ROOT@/docs.local/worktree-gc-launchd.log`; they do not update
+`latest.*`. Inspect that log to detect a pin that keeps refusing.
+Verification can still race a concurrent `install-hooks --update`; the installer
+does not take the nightly lock.
 
 Tests build repositories outside any Git tree and guard every GC invocation against
 leaving the fixture root. Never probe `--apply` on a real repository. Installation

@@ -107,6 +107,9 @@ From real incidents:
 - Reporting on test results
 - Reporting on agent output
 - Claiming anything is "done", "green", "clean", "complete"
+- Claiming a PR is "watched" or "monitored": cite the same-turn `watch_pull_request` receipt
+  showing `watching:true` for stored registration; this proves neither reactor liveness, wake delivery
+  nor current CI/readiness. No mandatory list readback; use lists only for inventory or diagnosis ([waiting policy](../pr-loop/references/review-loop.md#waiting-policy-no-polling-turns))
 - Moving to the next task based on prior task results
 - Relaying information from one agent to another
 - Answering "is it safe to merge/ship/deploy?"

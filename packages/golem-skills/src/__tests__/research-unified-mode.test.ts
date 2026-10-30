@@ -28,7 +28,7 @@ describe("research unified mode", () => {
     const content = await readFile(CLAUDE_DESKTOP_SKILL, "utf8");
 
     expect(content).toContain("Run this skill plus `/gemini-research`");
-    expect(content).toContain("Drive/Research/<project>/context/");
+    expect(content).toContain("Brain Drive/03_RESEARCH/Active/<project>/context/");
     expect(content).toContain("R{NN}-claude-desktop-result.md");
   });
 });

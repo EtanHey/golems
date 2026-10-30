@@ -48,7 +48,7 @@ PY
     [ "$(clean_git -C "$a" rev-parse --show-toplevel)" = "$a" ]
     before="$(snapshot "$b")"
     args=("$WORKTREE_GC" --apply --idle-hours 0 --repo "$a")
-    [[ "$mode" == nightly ]] && args=("$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$a")
+    [[ "$mode" == nightly ]] && args=("$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$a")
     [[ "$mode" == plan ]] && args=("$GC_SOURCE" --prune-plan --idle-hours 0 --repo "$a")
     run timeout -k 3 30 env GIT_DIR="$b/.git" GIT_WORK_TREE="$b" GIT_COMMON_DIR="$b/.git" \
       GIT_INDEX_FILE="$b/.git/index" GIT_OBJECT_DIRECTORY="$b/.git/objects" \
@@ -75,7 +75,7 @@ SH
     for mode in gc nightly path; do
       rm -f "$TEST_ROOT/trace"
       args=("$GC_SOURCE" --prune-plan --repo "$bad")
-      [[ "$mode" == nightly ]] && args=("$REPO_ROOT/scripts/worktree-gc-nightly.sh" --repo "$bad")
+      [[ "$mode" == nightly ]] && args=("$WORKTREE_GC_NIGHTLY" --repo "$bad")
       [[ "$mode" == path ]] && args=("$GC_SOURCE" --apply --repo "$bad" --path "$target")
       run timeout -k 3 30 env PATH="$stub:$PATH" REAL_GIT="$(command -v git)" TRACE="$TEST_ROOT/trace" "${args[@]}"
       [ "$status" -eq 2 ]
@@ -102,15 +102,14 @@ SH
   done
 }
 
-@test "D5 required registry missing directory malformed partial or renamed fields keeps tree" {
+@test "D5 required registry missing directory malformed or renamed fields keeps tree" {
   prepare_private
-  for state in missing directory malformed partial renamed; do
+  for state in missing directory malformed renamed; do
     a="$(make_fixture_repo "registry-$state")"; target="$(add_branch_worktree "$a" target)"
     reg="$TEST_ROOT/$state.jsonl"
     case "$state" in
       directory) mkdir "$reg" ;;
       malformed) printf '{bad\n' > "$reg" ;;
-      partial) printf '{"pid":%s,"cwd":"%s"}\n{bad\n' "$$" "$TEST_ROOT" > "$reg" ;;
       renamed) printf '{"process_id":%s,"working_directory":"%s"}\n' "$$" "$target" > "$reg" ;;
     esac
     run env WORKTREE_GC_CMUX_REGISTRY="$reg" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$a"
@@ -149,14 +148,15 @@ SH
   run env -u WORKTREE_GC_CMUX_REGISTRY "$WORKTREE_GC" --apply --idle-hours 0 --repo "$a"
   [ "$status" -eq 0 ]; [ ! -d "$target" ]
   a="$(make_fixture_repo required)"; target="$(add_branch_worktree "$a" target)"
-  run env -u WORKTREE_GC_CMUX_REGISTRY "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$a"
+  run env -u WORKTREE_GC_CMUX_REGISTRY "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$a"
   [ "$status" -eq 0 ]; [ -d "$target" ]
   [[ "$output" == *"KEEP-undetermined"*"registry"* ]] || false
 }
 
 @test "D5 invalid pid cwd or duplicate fields cannot masquerade as a dead empty registry" {
   a="$(make_fixture_repo schema)"; target="$(add_branch_worktree "$a" target)"
-  for row in '{"pid":true,"cwd":"/"}' '{"pid":1,"cwd":"relative"}' '{"pid":1,"pid":2,"cwd":"/"}' '{"pid":1,"cwd":"/","launch_cwd":null}'; do
+  # Invalid PIDs with valid absolute paths are retained per row (R2d N1).
+  for row in '{"pid":true,"cwd":"relative"}' '{"pid":1,"cwd":"relative"}' '{"pid":1,"pid":2,"cwd":"/"}' '{"pid":1,"cwd":"/","launch_cwd":null}'; do
     printf '%s\n' "$row" > "$WORKTREE_GC_CMUX_REGISTRY"
     run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$a"
     [ "$status" -eq 0 ]; [ -d "$target" ]
@@ -186,13 +186,13 @@ SH
       [ -d "$HOME/Gits/$name/.worktrees/lane-worktree" ]
     done
   done
-  run timeout -k 3 30 "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0
+  run timeout -k 3 30 "$WORKTREE_GC_NIGHTLY" --idle-hours 0
   [ "$status" -eq 0 ]
   for name in aaa ccc; do
     [ "$(printf '%s\n' "$output" | grep -c "^$name · .* · REMOVED · ")" -eq 1 ]
     [ ! -d "$HOME/Gits/$name/.worktrees/lane-worktree" ]
   done
-  for entry in "$WORKTREE_GC" "$REPO_ROOT/scripts/worktree-gc-nightly.sh"; do
+  for entry in "$WORKTREE_GC" "$WORKTREE_GC_NIGHTLY"; do
     run timeout -k 3 30 "$entry" --repo "$HOME/Gits/bbb-link"
     [ "$status" -eq 2 ]
     [[ "$output" == *"Refusing --repo"* || "$output" == *"--repo must be"* ]] || false

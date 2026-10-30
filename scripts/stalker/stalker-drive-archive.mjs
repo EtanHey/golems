@@ -7,6 +7,9 @@ const API = 'https://www.googleapis.com/drive/v3/files';
 const FIELDS = 'id,name,mimeType,parents,size,md5Checksum,sha256Checksum,trashed,webViewLink';
 const folderType = 'application/vnd.google-apps.folder';
 const escaped = value => String(value).replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+class DriveAuthError extends Error {
+  constructor() { super('Drive auth failed'); }
+}
 
 // Reuse the installed MCP's locked OAuth refresh; credentials never leave memory.
 export async function driveAccessToken() {
@@ -30,10 +33,21 @@ export function createDriveArchive({ parentId, tokenImpl = driveAccessToken, fet
   async function request(url, init = {}) {
     const u = new URL(url);
     if (u.origin !== 'https://www.googleapis.com' || u.username || u.password) throw new Error('invalid Drive endpoint');
+    let token;
+    try { token = await tokenImpl(); }
+    catch { throw new DriveAuthError(); }
+    // Start the request deadline after OAuth, so auth latency cannot consume it.
+    const signal = AbortSignal.timeout(120000);
+    let response;
     try {
-      return await fetchImpl(url, { ...init, redirect: 'manual', signal: AbortSignal.timeout(120000),
-        headers: { ...init.headers, Authorization: `Bearer ${await tokenImpl()}` } });
-    } catch { throw new Error('Drive transport failed'); } // Never surface token/request objects.
+      response = await fetchImpl(url, { ...init, redirect: 'manual', signal,
+        headers: { ...init.headers, Authorization: `Bearer ${token}` } });
+    } catch (error) {
+      // Never surface token/request objects, including an upstream error's cause.
+      throw new Error(signal.aborted || error?.name === 'TimeoutError' ? 'Drive request timed out' : 'Drive network error');
+    }
+    if (response.status === 401) throw new DriveAuthError();
+    return response;
   }
   async function data(url, init) {
     const response = await request(url, init);
@@ -115,9 +129,9 @@ export function createDriveArchive({ parentId, tokenImpl = driveAccessToken, fet
         try {
           response = await request(session.href, { method: 'PUT', headers: { 'Content-Length': String(bytes.length),
             'Content-Range': `bytes ${position}-${position + bytes.length - 1}/${expected.size}` }, body: bytes });
-          if (response.status >= 500 || response.status === 429) throw new Error('retry upload');
-        } catch {
-          if (++retries > 3) throw new Error('Drive upload interrupted repeatedly');
+          if (response.status >= 500 || response.status === 429) throw new Error(`Drive upload HTTP ${response.status}`);
+        } catch (error) {
+          if (error instanceof DriveAuthError || ++retries > 3) throw error;
           await delayImpl(Math.min(32000, 1000 * 2 ** (retries - 1)) + Math.floor(Math.random() * 1000));
           response = await request(session.href, { method: 'PUT', headers: { 'Content-Length': '0', 'Content-Range': `bytes */${expected.size}` } });
         }

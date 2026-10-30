@@ -3,7 +3,18 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-import {
+// These fixtures use the neutral expert; the gates capture env at import time.
+const gate = await (async () => {
+  const original = process.env.GOLEMS_EXPERT_VOICE;
+  try {
+    delete process.env.GOLEMS_EXPERT_VOICE;
+    return await import("../src/voice-role-gate.mjs");
+  } finally {
+    if (original === undefined) delete process.env.GOLEMS_EXPERT_VOICE;
+    else process.env.GOLEMS_EXPERT_VOICE = original;
+  }
+})();
+const {
   HOST_VOICE,
   EXPERT_VOICE,
   VOICE_PERSON_BY_ROLE,
@@ -11,7 +22,7 @@ import {
   expertVoiceFromEnv,
   voicePersonFromProfile,
   formatVoiceRoleReport,
-} from "../src/voice-role-gate.mjs";
+} = gate;
 
 describe("Etan's ruling is encoded as constants, not prose", () => {
   test("Ben is the HOST, the stream author is the EXPERT", () => {

@@ -14,6 +14,7 @@ description: "Invoke before any git/gh/grep, even for context: make a plan, plan
 
 ## Kickoff contract
 
+- Lead launch instructions live in `/agent-routing` § Service tier and placement: "Read and follow <repo>/LEAD.md and the global LEAD.md" (`~/.codex/LEAD.md`).
 - **Claude seats:** invoke `/large-plan` with the Skill tool before the first plan action of a lane: making a plan, planning a feature batch or next steps, or kicking off a lead. Make it the first tool call, before any git/gh/grep orientation: live misses open with `git status`/`gh pr` and never load the skill (PR15 trigger eval, 2026-10-19).
 - **Codex seats:** read this SKILL.md body (a file read) before that action; Codex has no Skill tool.
 - **A lead's kickoff brief** to a worker names the skills the worker invokes (`/large-plan`, `/agent-routing`, `/pr-loop`).
@@ -99,11 +100,21 @@ When a round has parallel phases, the orchestrator dispatches through its harnes
 "No polling turns. No collab-monitor wakes in Codex, and no "watch #410" loops. Use T3 completion notifications or a single bounded check. Mechanical polling or rebases go to [`codex.subagent.mechanical`]." (Etan 2026-10-18, via orc collab)
 
 1. **Dispatch:** each phase or PR is its own `delegate_task` child. Lifecycle (discover, dispatch, review rounds, PR linking): [agent-routing/references/t3-native.md](../agent-routing/references/t3-native.md). Who does which role: `/agent-routing` § Routing rules (SSOT). Pass the plan and `collab.md` by absolute path, and retain each `taskId`.
+   Work for the other Mac (M1) dispatches directly with `environmentId`: [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md).
 2. **Guard:** the completion notification is the liveness guard (canon #7). Arm no collab monitor, no process/registry liveness watcher, no `ScheduleWakeup` / `CronCreate` / `/loop` polling turn. After dispatch, end the turn.
 3. **On wake:** verify the artifact (PR exists, head SHA, file scope) before relaying or advancing. After a merge, fast-forward the root checkout first (**Branch Lifecycle** below). **Phase exit** below still applies.
-4. **PR waiting:** the parent calls `watch_pull_request` and ends the turn. A wake is news, not a merge decision.
-5. **Leads never do ops themselves** (Etan 2026-10-19, via orc): a deploy, install, restart or reconnect hop is a `deploy-local-prod` dispatch; a check or wait is a mechanical-tier child, both resolved through `scripts/model-roles.mjs` (`/agent-routing` § Lead Topology #7). The lead verifies the artifact they report. **Something must sit and watch** (CI, a file, a job no notification covers): "anything that must sit and watch (a PR, CI, a file) uses a cheap [`codex.subagent.mechanical`] sub-agent, never a big-context [`codex.implement`] or lead session." (Etan 2026-10-18, via orc collab) Exactly one bounded child with a deadline and a single terminal report. It never owns the parent's PR watch. Settle it at its terminal state; no re-arm loops. Resolve its model through the supported watcher path: `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher` (add `--field model` for the bare id). A bare call without `--use watcher` still refuses the `candidate` role.
-6. **Settle** each lane at its terminal state (PR merged or handed off, artifact verified), not only when the plan closes: conclude the child (no new sends), `task_cancel` its `taskId` to stop queued runs, `unwatch_pull_request` its PR, then overwrite STATUS.md (no second collab line: the worker's line already recorded the change; append one only if none landed). Idle with no artifact pending = settle now, not later: "settle idle workers" (Etan 2026-10-18, via orc collab). Mechanics: `/agent-routing` § Goal Contract.
+4. **PR waiting:** the owning parent finishes existing feedback and branch fixes/pushes, calls
+   `watch_pull_request`, inspects its `watching:true` receipt, and ends the turn. Immediately link
+   created/taken-over/pushed PRs; ordinary wakes/pushes retain the watch. No routine list or rearm,
+   timer, Monitor or child for PR waiting. On a PR-watch wake, follow the [waiting policy](../pr-loop/references/review-loop.md#waiting-policy-no-polling-turns).
+5. **Leads never do ops themselves** (Etan 2026-10-19, via orc). **Uncovered non-PR waits / non-T3 fallback:** a deploy, install, restart or reconnect hop remains a
+   `deploy-local-prod` dispatch (`/agent-routing` § Lead Topology #7). Native T3 PR monitoring above
+   takes precedence over the historical cheap-watcher rule. For a file/job no completion event covers,
+   use one bounded mechanical child with a deadline and one terminal report; resolve it with
+   `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher` (`--field model` for the id).
+   For PRs outside T3 only, reuse one existing pinned-head `pr-watch` process or bounded cheap watcher
+   with its current deadline, following the PR-loop exit semantics. Never duplicate it or poll in the lead.
+6. **Settle** each lane at its terminal state (PR merged or handed off, artifact verified) (a child with no PR, such as a reviewer or recon: as soon as its report is verified), not only when the plan closes: conclude the child (no new sends), `task_cancel` its `taskId` to stop queued runs, `unwatch_pull_request` its PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. Then overwrite STATUS.md (no second collab line: the worker's line already recorded the change; append one only if none landed). Idle with no artifact pending = settle now, not later: "settle idle workers" (Etan 2026-10-18, via orc collab). Provider release timing and the worktree caveat: `/agent-routing` § Goal Contract.
 
 ### cmux adapter: parallel rounds
 
@@ -289,11 +300,11 @@ Fleet law for claim/guard/DONE/harvest-close lives in canon #7; this workflow ke
 | Feature | T3 (default in T3) | cmux adapter: Claude Code | cmux adapter: universal fallback |
 |---------|--------------------|---------------------------|----------------------------------|
 | **Parallel phase agents** | `delegate_task` per phase, `isolation: "worktree"`; retain each `taskId` | `Agent(isolation="worktree", run_in_background=true)` | Pre-create worktrees, then launch repoGolem workers with `-w <abs-path>` |
-| **Phase worktree isolation** | `delegate_task` `isolation: "worktree"`, from the parent's committed HEAD | `Agent(isolation="worktree")` — auto-creates + cleans up | `git worktree add -b feature/phase-N ../<dir> master`, then pass the absolute path |
+| **Phase worktree isolation** | `delegate_task` `isolation: "worktree"`, from the parent's committed HEAD | `Agent(isolation="worktree")` — auto-creates + cleans up | Use the [worktree launch guard](../agent-routing/references/worktree-launch.md); create from its verified commit, then pass the absolute path |
 | **Collab file monitoring** | None armed; read `collab.md` on a completion wake | Native Monitor per `/collab-monitor`; re-arm after expiry and compaction | None for Codex seats ("Codex seats must not poll collabs"); read `collab.md` once on the process-exit wake |
 | **Worker liveness** | Completion notification wakes the parent | Process-exit notification or a scheduled process/registry check | `skills/golem-powers/codex-workflows/scripts/codex-workflows.sh watch --run-id <run-id>`; read the finished log once, never poll `read_screen` |
-| **PR waiting** | Parent `watch_pull_request`, end the turn; a sit-and-watch need gets one bounded `codex.subagent.mechanical` child | `/pr-loop` review loop | `/pr-loop` review loop |
-| **Watch cleanup (plan done)** | `unwatch_pull_request`; `task_cancel` any child still running | `TaskStop` the returned Monitor task ID | End the process-exit watch; there is no collab watch to stop |
+| **PR waiting** | T3 owning parent uses the `watch_pull_request` `watching:true` receipt; no routine list or rearm, timer or child. Unwatch before handback; see `/pr-loop`'s [waiting policy](../pr-loop/references/review-loop.md#waiting-policy-no-polling-turns) | `/pr-loop` review loop | `/pr-loop` review loop |
+| **Watch cleanup (plan done)** | At each child's terminal state (PR merged or handed off), `task_cancel` its taskId; `unwatch_pull_request` its PR; then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. See /agent-routing § Goal Contract for provider release timing and the worktree caveat. | `TaskStop` the returned Monitor task ID | End the process-exit watch; there is no collab watch to stop |
 | **Plan mode (spec first)** | The seat's harness plan mode, else the plan file | `EnterPlanMode → ExitPlanMode` | Write plan to `docs.local/plan/<name>/README.md` manually |
 | **Memory persistence** | `brain_store()` / `brain_search()` via BrainLayer | `brain_store()` / `brain_search()` via BrainLayer | Append to `<plan-dir>/findings.md` |
 | **Session resume** | Thread history persists; a fresh child gets `<plan-dir>/README.md` by absolute path | `claude --resume` | Not available — pass `<plan-dir>/README.md` in next session's context |

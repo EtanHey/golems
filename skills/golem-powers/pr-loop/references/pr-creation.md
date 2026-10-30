@@ -184,3 +184,24 @@ evidence you meant to preserve — including the `golem-id` blob.
 - **Custom base branch**: `gh pr create --base dev`
 
 ---
+
+## Visual proof template
+
+Include this section for every visual PR. Replace each placeholder with reviewable
+GitHub attachment or committed-file Markdown links pinned to the PR head.
+Replace OWNER, REPO and HEAD_SHA below with the repository and full PR-head SHA. Include one GIF link per
+changed animation/interaction and label each. Only the exact GIF exemption below
+is accepted when none changed. A gitignored path alone is not reviewable.
+
+```markdown
+## Visual proof
+Desktop before: [desktop before](https://github.com/OWNER/REPO/blob/HEAD_SHA/artifacts/desktop-before.png)
+Desktop after: [desktop after](https://github.com/OWNER/REPO/blob/HEAD_SHA/artifacts/desktop-after.png)
+390 px before: [390 before](https://github.com/OWNER/REPO/blob/HEAD_SHA/artifacts/390-before.png)
+390 px after: [390 after](https://github.com/OWNER/REPO/blob/HEAD_SHA/artifacts/390-after.png)
+GIF: [interaction name](https://github.com/OWNER/REPO/blob/HEAD_SHA/artifacts/interaction.gif)
+E2E screenshot diffs: [diffs](https://github.com/OWNER/REPO/blob/HEAD_SHA/artifacts/e2e-diff.png)
+```
+
+If applicable, replace the GIF line with exactly:
+`GIF: none: no animation or interaction changed`.

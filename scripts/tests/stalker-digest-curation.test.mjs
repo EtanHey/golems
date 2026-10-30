@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolveModelRole } from "../model-roles.mjs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
@@ -48,7 +49,7 @@ const validSelection = {
 
 test("selects only original objects, orders them chronologically, and uses the fixed model contract", async () => {
   const { summary, request, values } = await runSelection("valid", validSelection);
-  assert.equal(request.model, "gpt-5.6-sol");
+  assert.equal(request.model, process.env.STALKER_CODEX_MODEL || resolveModelRole("codex.implement"));
   assert.equal(request.reasoningEffort, "medium");
   assert.equal(request.timeoutMs, 180_000);
   assert.match(request.diagnosticLabel, /^human-digest-curation$/);
@@ -95,7 +96,13 @@ test("uses explicit whole-recording bounds when topic anchors sit inward from bo
   }, values, { startSeconds: 0, endSeconds: 600 * 60 }), /topics must cover every available temporal quarter/);
 });
 
-test("recursively curates oversized chronological halves sequentially with unique bounded calls", async () => {
+test("recursively curates oversized chronological halves with one model per run", async (t) => {
+  const originalOverride = process.env.STALKER_CODEX_MODEL;
+  t.after(() => {
+    if (originalOverride === undefined) delete process.env.STALKER_CODEX_MODEL;
+    else process.env.STALKER_CODEX_MODEL = originalOverride;
+  });
+  const expectedModel = originalOverride || resolveModelRole("codex.implement");
   const total = 600;
   const values = {
     topics: Array.from({ length: total }, (_, index) => ({
@@ -124,7 +131,10 @@ test("recursively curates oversized chronological halves sequentially with uniqu
     candidates: values,
     workDir: root,
     timeline: { startSeconds: 0, endSeconds: (total - 1) * 60 },
-    generateImpl: async ({ input, outputPath, diagnosticLabel }) => {
+    generateImpl: async ({ input, outputPath, diagnosticLabel, model }) => {
+      assert.equal(model, expectedModel);
+      // Later recursive calls must keep this run's resolved model.
+      process.env.STALKER_CODEX_MODEL = "invalid-mid-run-override";
       active += 1;
       maxActive = Math.max(maxActive, active);
       calls.push({ diagnosticLabel, bytes: Buffer.byteLength(input) });

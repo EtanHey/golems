@@ -1,7 +1,7 @@
 {
   "run": [
     "test-agy-mcp-sync.bats",
-    "test-archive-stream.bats",
+    "test-apt-install.bats",
     "test-bun-version-pin.bats",
     "test-check-instruction-shape.bats",
     "test-cleanup-legacy-commands.bats",
@@ -9,6 +9,7 @@
     "test-golem-install-validate.bats",
     "test-golems-sync.bats",
     "test-grill-me-upstream-port.bats",
+    "test-guard-no-docslocal.bats",
     "test-install-wired-hook.bats",
     "test-never-fabricate-r20.bats",
     "test-pkill-guard.bats",
@@ -32,6 +33,10 @@
     "test-worktree-gc-astra.bats",
     "test-worktree-gc-nightly-r2.bats",
     "test-worktree-gc-r2.bats",
+    "test-worktree-gc-r2b.bats",
+    "test-worktree-gc-r2d.bats",
+    "test-worktree-gc-r2f.bats",
+    "test-worktree-gc-report.bats",
     "test-worktree-gc.bats"
   ],
   "skip": {}

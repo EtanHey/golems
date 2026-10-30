@@ -27,6 +27,7 @@ Default concurrency 3, cap 4, budget 480s; in-flight calls may drain past it.
 Helper timeout is clamped to remaining budget +30s (10s floor). Read progress.txt and incremental
 visual/findings.jsonl. A budget/quota stop is partial, never complete coverage.
 Read text only; retry unresolved sheets within the remaining session budget. Match tile indexes to frames.tsv.
+`unresolved` lists unread sheets only; an ok finding with inline NOT DETERMINED tiles is a refinement candidate for those tiles.
 Re-densify unclear moments up to 20 fps and/or tighter windows in fresh output
 directories, then call the helper again until resolved or NOT DETERMINED.
 Never infer visual evidence from transcript claims or an exit code alone.

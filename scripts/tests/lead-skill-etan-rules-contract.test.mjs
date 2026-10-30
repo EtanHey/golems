@@ -150,6 +150,31 @@ function behaviorEvals({ evals }) {
 }
 
 const CHECKS = { rule1, rule2, rule3, behaviorEvals };
+test("PR merge law forbids asking Etan to approve or merge", () => {
+  const { docs } = loadCorpus();
+  for (const rel of ["pr-loop/SKILL.md", "pr-loop/references/merge-and-verification.md"]) {
+    expect(flat(docs[rel])).toContain("Never ask Etan to approve or merge a PR");
+  }
+  const merge = flat(section(docs["pr-loop/references/merge-and-verification.md"], "## Single-Account Review Verdicts"));
+  expect(merge).toContain("[Merge Authority](pr-creation.md#merge-authority)");
+  expect(merge).toContain("`gh pr merge <N> --merge --admin`");
+  expect(merge).toContain("BLOCKED");
+});
+
+test("agent-routing states service tier and placement near the top", () => {
+  const text = loadCorpus().docs["agent-routing/SKILL.md"];
+  const rule = section(text, "## Service tier and placement");
+  expect(rule.trim()).not.toBe("");
+  expect(text.indexOf("## Service tier and placement")).toBeLessThan(text.indexOf("## Routing rules (SSOT)"));
+  for (const instruction of [
+    'Claude `fastMode:false`', 'Codex `serviceTier:"default"`',
+    "Elevated service requires Etan's explicit request for that task.",
+    "Harness examples do not authorize elevated service.", 'workspaceStrategy:{type:"root"}',
+    "only worker threads bind worktrees", "Theo's official T3 Code nightly",
+    "never build or install T3 from our fork", "Etan, 2026-10-26",
+  ]) expect(rule).toContain(instruction);
+});
+
 for (const [name, check] of Object.entries(CHECKS)) {
   test(`contract ${name} holds on this tree`, () => expect(check(loadCorpus())).toEqual([]));
 }

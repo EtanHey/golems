@@ -1,0 +1,7 @@
+{
+  "name": "golems",
+  "owner": { "name": "EtanHey" },
+  "plugins": [
+    { "name": "golems-canary", "source": "./plugins/golems-canary" }
+  ]
+}

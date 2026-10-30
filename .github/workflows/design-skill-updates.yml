@@ -1,0 +1,98 @@
+name: Design skill upstream updates
+on:
+  schedule:
+    - cron: '43 6 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/design-skill-updates.yml'
+      - 'skills/vendor/**'
+      - 'scripts/design-skill-updates.mjs'
+      - 'scripts/tests/design-skill-updates.test.mjs'
+      - 'skills/golem-powers/golem-install/scripts/*vendor*'
+      - 'skills/golem-powers/golem-install/scripts/repoint-skills*'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun test ./skills/golem-powers/golem-install/scripts/repoint-skills.test.mjs
+      - run: node skills/golem-powers/golem-install/scripts/vendor-skills.mjs --check
+      - run: bun test scripts/tests/design-skill-updates.test.mjs
+  propose:
+    needs: verify
+    concurrency:
+      group: design-skill-updates
+      cancel-in-progress: false
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.DESIGN_SKILL_UPDATES == 'true'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: master
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+      - name: Copy upstream data and open review-before-merge PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs.local/design-upstream
+          git clone --depth 1 https://github.com/anthropics/claude-plugins-official.git docs.local/design-upstream/anthropic
+          git clone --depth 1 https://github.com/emilkowalski/skills.git docs.local/design-upstream/emil
+          sha_a=$(git -C docs.local/design-upstream/anthropic rev-parse HEAD)
+          sha_e=$(git -C docs.local/design-upstream/emil rev-parse HEAD)
+          node skills/golem-powers/golem-install/scripts/refresh-vendor.mjs \
+            docs.local/design-upstream/anthropic docs.local/design-upstream/emil "$sha_a" "$sha_e" --apply
+          git diff --quiet -- skills/vendor && exit 0
+          branch="auto/design-skills-${sha_a:0:12}-${sha_e:0:12}"
+          # An existing open, rejected or merged PR settles this immutable pair.
+          existing=$(gh pr list --head "$branch" --state all --json number --jq 'length')
+          [ "$existing" = 0 ] || exit 0
+          found=0
+          git ls-remote --exit-code --heads origin "$branch" >/dev/null || found=$?
+          [ "$found" = 0 ] || [ "$found" = 2 ] || exit "$found"
+          if [ "$found" = 2 ]; then
+            git switch -c "$branch"
+            git add -- skills/vendor
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'chore(skills): propose pinned design upstream refresh'
+            gh auth setup-git
+            git push origin "HEAD:refs/heads/$branch"
+          fi
+          cat > docs.local/design-upstream/PR.md <<'BODY'
+          Proposes refreshed upstream design skill bytes, licenses and provenance pins.
+          Upstream content was copied as inert data; no upstream code was run or installed.
+          Read every changed SKILL.md, reference and script before merging. Run native
+          skill discovery after installation. Preserve the five-skill Emil scope and
+          provider boundaries: Claude official frontend plugin + Emil; Codex/Cursor
+          vendor copies (Cursor review-only); no Gemini/agy. Never merge automatically.
+          GITHUB_TOKEN-opened PRs do not trigger pull_request CI. Required checks must
+          be started by a maintainer push or close/reopen, or a suitable App/user token
+          route. Require normal CI plus independent review before merge.
+          size:L because the exact upstream skill payload can exceed 400 copied lines.
+          Loop-record: implementer=automation/upstream-sync/default reviewer=none rounds=0/0 defects=0 role=worker
+          — designSkillsUpdater (automation) · GitHub Actions
+          BODY
+          gh pr create --base master --head "$branch" --label size:L \
+            --title 'chore(skills): refresh pinned design upstreams' \
+            --body-file docs.local/design-upstream/PR.md

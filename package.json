@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "bun test ./packages",
+    "test": "bun test --no-env-file ./packages",
     "test:stalker-chat": "bats scripts/tests/test-stalker-durable-failures.bats",
     "test:skill-symlinks": "bats scripts/tests/test-cleanup-legacy-commands.bats scripts/tests/test-golem-install-validate.bats",
     "test:pr-size-labels": "bats scripts/tests/test-pr-size-labels.bats",
@@ -24,13 +24,14 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
-    "happy-dom": "20.10.6"
+    "happy-dom": "21.0.4",
+    "playwright": "1.64.1"
   },
   "overrides": {
     "@hono/node-server": "1.19.17",
     "@modelcontextprotocol/sdk": "1.32.1",
     "axios": "1.19.0",
-    "body-parser": "2.3.0",
+    "body-parser": "2.4.0",
     "brace-expansion": "2.1.7",
     "express-rate-limit": "8.6.2",
     "fast-uri": "3.1.7",
@@ -40,6 +41,7 @@
     "minimatch": "9.0.7",
     "path-to-regexp": "8.4.2",
     "qs": "6.15.2",
-    "ws": "8.21.3"
+    "ws": "8.21.3",
+    "zod": "4.6.6"
   }
 }

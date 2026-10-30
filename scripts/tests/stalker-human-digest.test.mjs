@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolveModelRole } from "../model-roles.mjs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
@@ -89,7 +90,7 @@ test("cleans every transcript segment, labels repetitive ASR, and renders exact 
   });
 
   const payload = JSON.parse(request.input.slice(request.input.indexOf("{\n")));
-  assert.equal(request.model, "gpt-5.6-sol");
+  assert.equal(request.model, process.env.STALKER_CODEX_MODEL || resolveModelRole("codex.implement"));
   assert.equal(request.reasoningEffort, "medium");
   assert.equal(request.timeoutMs, 180_000);
   assert.equal(await readFile(join(runDir, ".digest-work/human-digest-summary.json"), "utf8").then(JSON.parse).then(({ topics }) => topics.length), 3);
