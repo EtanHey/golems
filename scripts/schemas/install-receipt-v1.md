@@ -8,7 +8,10 @@ Regenerate the standalone validator and dependency licenses with
 The `golems` family has independent `skills-sync` and `hooks-sync` artifacts.
 Skills use checkout/release-channel roots and whole-root hashes (sorted
 `relpath\tfile-sha256\n` lines, then sorted `path\ttree_sha256\n` lines).
-Symlinks resolve; receipt-only exclusions leave ratchet `IGNORED` unchanged.
+Symlinks resolve. Receipt hashes retain the `.system` exclusion and omit each
+root's top-level app-managed namespaces (`.codex/skills/.system` and
+`.claude/skills/synced`). Owned nested `synced` directories remain hashed.
+Receipt-only exclusions leave ratchet `IGNORED` unchanged.
 Only W10 `managed_link` checkout-class entries contribute checkout Git identity;
 release-class/vendor symlinks remain hashed and appear with kind `vendor` in
 `install_source.excluded[]` with their absolute `resolved_target`. Other entries carry

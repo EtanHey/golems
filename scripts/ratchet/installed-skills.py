@@ -29,9 +29,12 @@ INSTALLER_MARKERS = {'.golems-source-commit', '.golems-install.json'}
 def tree_sha256(root):
     """Receipt tree: sorted relative-name TAB file-digest lines, following links."""
     policy, lines = release_policy(), []
+    root = Path(root)
+    root_name = next((name for name in ROOTS if root.parts[-2:] == Path(name).parts), None)
 
     def walk(item, relative='', ancestors=frozenset()):
         if (item.name in set(policy['excluded_parts']) | RECEIPT_IGNORED or
+                (len(Path(relative).parts) == 1 and app_managed(root_name, item.name)) or
                 re.search(policy['excluded_files'], relative) or item.name == '.DS_Store' or
                 (len(Path(relative).parts) <= 2 and item.name in INSTALLER_MARKERS)):
             return
@@ -46,7 +49,7 @@ def tree_sha256(root):
             lines.append(relative + '\t' + hashlib.sha256(item.read_bytes()).hexdigest() + '\n')
         else: raise ValueError('unsupported receipt tree entry')
 
-    walk(Path(root))
+    walk(root)
     return hashlib.sha256(''.join(sorted(lines)).encode()).hexdigest()
 
 
