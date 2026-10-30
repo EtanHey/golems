@@ -44,13 +44,15 @@ Run the loop in this order:
 2. Implement under repository law and run the relevant tests.
 3. Invoke `/never-fabricate`. Per-PR visual proof is required below; builder self-QA and real-client runs remain at the feature-batch gate.
 4. Run the bounded local CodeRabbit pre-commit pass when available, then commit with the ratified identity trailer.
-5. Push, create a non-draft PR with a signed body, and apply exactly one `size:*` label.
-6. Apply the target repo's bot policy, invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 watch wake, one bounded check, or one cheap watcher, never a polling turn.
+5. After the lead-routed other-vendor inner review is complete, push, create a non-draft PR with a
+   signed body, and apply exactly one `size:*` label. In T3, immediately link every created/taken-over/
+   pushed PR and every stack layer; linking does not arm a watch.
+6. Apply the target repo's bot policy, invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 parent watch and its receipt first; bounded reads for a decision, one cheap watcher only outside T3, never a polling turn.
 7. Classify every finding; fix real bugs, reply to every CRITICAL/MAJOR/HIGH finding, push, and request re-review.
 8. Confirm required checks and reviews are green on `headRefOid`, then either hand off unmerged or merge.
 9. After an authorized merge, verify the remote merge/content, fast-forward the root checkout ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory)), and update tracking; release/install/live-probe at the feature-batch gate, the deploy hop routed to `deploy-local-prod`. Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](../_shared/lifecycle/CONTRACT.md); record REMOVED, RETAINED or acknowledged TRANSFERRED. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
 
-Every wait and PR-watch wake follows the [waiting policy and hygiene check](references/review-loop.md#waiting-policy-no-polling-turns).
+Every wait and PR-watch wake follows the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns).
 
 ## Merge Cadence (risk-sized)
 
@@ -104,12 +106,15 @@ Rollout to other repos is a follow-up; this change wires golems only.
   A local Docker run must go through the golems repo's `scripts/docker/container-teardown.mjs` so containers are torn down (usage: the golems repo's `scripts/docker/README.md`).
 
 - **One-way doors only:** "Nothing waits on Etan except true one-way doors: deleting data/creds/accounts, money, messaging people. Tags, releases, installs, deploys, upgrades ship without asking." (Etan 2026-10-19, via orc) A lead never stops for Etan before a tag, release, install, deploy or upgrade: it ships. Remote branch deletes and force pushes still need the `human-confirm-gate` token, because they delete data; that is a one-way door, so the two rules agree.
-- **Leads never do ops themselves** (Etan 2026-10-19, via orc): the deploy hop goes to the `deploy-local-prod` sub-agent and mechanical checks and waits go to the mechanical tier; the lead routes them and verifies the artifact. Tiers and quote: `/agent-routing` § Lead Topology #7.
+- **Leads never do ops themselves** (Etan 2026-10-19, via orc): the deploy hop goes to the `deploy-local-prod` sub-agent and mechanical checks and waits go to the mechanical tier outside native T3 PR waiting; the lead routes them and verifies the artifact. Tiers and quote: `/agent-routing` § Lead Topology #7.
 - **Root checkout current:** "Leads keep the root checkout ff-only current after each merge." (Etan 2026-10-19, via orc) Why: root brainlayer sat 1,017 commits behind and its lead read stale instructions (bl-lead collab, 2026-10-19 21:06 IDT). Steps: [Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory).
 - Missing Loop-record = not ready. Use the PR-body template; a same-vendor review states its reason.
 
 - Never merge with zero reviews. Waiting 15 minutes does not waive the review gate; merge only after at least one review and the required review conditions pass.
-- Draft PRs silently skip bot reviews. Mark the PR ready before invoking reviewers.
+- Draft handling depends on effective bot settings; do not rely on draft state to suppress usage and
+  never merge a draft. Keep the other-vendor inner review before opening the ready PR.
+- Avoid a duplicate manual bot request when an eligible current-head automatic review already exists;
+  request only missing/stale evidence under the permitted bot policy.
 - A green run on an older SHA is not green. Verify the PR head matches the latest pushed commit.
 - Never merge with an unreplied CRITICAL, MAJOR, or HIGH finding.
 - One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; round 3 only by a lead exception written in the PR body (canon #9).
@@ -135,7 +140,7 @@ Rollout to other repos is a follow-up; this change wires golems only.
 |---|---|
 | Brief says lead owns merge | Worker stops at reviewed PR handoff; lead verifies latest head before merge |
 | Brief grants this seat merge authority | Complete review loop, merge with the required method, then verify and clean up |
-| PR is draft | Run `gh pr ready <N>` before bot invocation |
+| PR is draft | Finish the inner review, mark ready; bot behavior depends on effective settings, never merge a draft |
 | Review conflicts with design | Read the cited design and investigate; dismiss only with explicit evidence |
 | XS/S PR, fast CI green at head, one clean routed review | Merge now (seat with merge authority); no wait for bots or heavy gates |
 | PR touches daemon/socket/MCP/protocol | Merge on the size cadence; queue the real-client run for the feature-batch gate (run it now for a single-PR batch) |
