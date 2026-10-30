@@ -1,3 +1,4 @@
+import { testBun } from "@golems/shared/test-bun";
 import { describe, test, expect, beforeEach, afterEach, mock, setDefaultTimeout } from "bun:test";
 import {
   mkdtemp,
@@ -347,7 +348,7 @@ await installSkill("cmux", { commandsDir: process.env.TARGET_DIR });
     );
 
     const target = join(home, ".claude", "skills");
-    const proc = Bun.spawn(["bun", runner], {
+    const proc = Bun.spawn([...testBun, runner], {
       stdout: "pipe",
       stderr: "pipe",
       env: { ...process.env, HOME: home, TARGET_DIR: target },

@@ -1,3 +1,4 @@
+import { testBun } from "@golems/shared/test-bun";
 import { describe, test, expect, beforeEach, afterEach, setDefaultTimeout } from "bun:test";
 import { mkdtemp, rm, writeFile, readFile, mkdir } from "node:fs/promises";
 import { existsSync, readdirSync } from "node:fs";
@@ -10,7 +11,7 @@ setDefaultTimeout(15_000);
 const CLI = join(import.meta.dir, "..", "index.ts");
 
 async function run(...args: string[]) {
-  const proc = Bun.spawn(["bun", CLI, ...args], {
+  const proc = Bun.spawn([...testBun, CLI, ...args], {
     stdout: "pipe",
     stderr: "pipe",
   });

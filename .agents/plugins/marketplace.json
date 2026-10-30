@@ -1,0 +1,11 @@
+{
+  "name": "golems",
+  "plugins": [
+    {
+      "name": "golems-canary",
+      "source": { "source": "local", "path": "./plugins/golems-canary" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}

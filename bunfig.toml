@@ -1,0 +1,6 @@
+# Runtime entry points load their checkout's .env explicitly via load-env.
+# Disable startup loading too: `bun run test` must not pass root secrets to tests.
+env = false
+
+[test]
+preload = ["./packages/shared/src/test-preload.ts"]

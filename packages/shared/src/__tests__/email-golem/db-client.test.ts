@@ -56,22 +56,15 @@ describe('db-client', () => {
   });
 
   describe('createDbClient', () => {
-    it('creates client with env credentials', () => {
-      if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-        // No env vars — verify it throws the expected error
-        expect(() => createDbClient()).toThrow('Missing SUPABASE_URL');
-        return;
-      }
-      const client = createDbClient();
-      expect(client).toBeDefined();
+    it('refuses env credentials in tests', () => {
+      expect(() => createDbClient()).toThrow('Missing SUPABASE_URL');
     });
 
-    it('creates client with custom credentials', () => {
-      const client = createDbClient({
+    it('refuses custom credentials in tests', () => {
+      expect(() => createDbClient({
         url: 'https://test.supabase.co',
         key: 'test-key'
-      });
-      expect(client).toBeDefined();
+      })).toThrow('Supabase is disabled in tests');
     });
   });
 

@@ -91,7 +91,7 @@ does not inject registry agent front-matter or boot-store instructions. Short
 `~/.codex/config.toml` is never edited; `*Codex` launchers pass `-c` overrides (codex-cli 0.160.1):
 
 - **Computer use stays on** for every launch, workers included ("that's how they can properly test").
-- **Locals T3code defaults on in ALL Codex launches:** leads, workers, bare, aliases, prompts,
+- **Locals T3code defaults on in ALL Codex launches:** workers, leads, bare, aliases, prompts,
   fresh/resume/continue and scan. Its normalized `locals_t3code` name resolves from Codex's normal
   cache; no opt-in, special flags or F2 binding is required. Missing cache/name does not block launch.
 - **Other connectors are fail-safe stripped.** Every agent-shaped launch loses the other `codex_apps` cloud
@@ -219,9 +219,12 @@ or --last selector was provided.` If matching rollouts exist but none carries us
 `Cannot honor Codex resume: no usable model/effort state found for selector --last.`
 
 ### Launch in a worktree
+
+Follow the [canonical worktree launch guard](../agent-routing/references/worktree-launch.md)
+before creation; it owns exact-base verification and the T3 one-read preparation rule.
 ```bash
-# Create the worktree FIRST — bare names fail silently. IN-REPO convention (ratified 2026-08-09):
-git -C $HOME/Gits/golems worktree add $HOME/Gits/golems/.worktrees/my-task -b feat/my-task origin/master
+# Outside T3: create the authorized worktree from the preflight receipt commit OID.
+# T3: use managed isolation instead; never shell-create its checkout.
 golemsCodex -s -w $HOME/Gits/golems/.worktrees/my-task
 
 # (legacy sibling $HOME/Gits/<repo>.wt/ paths resolve read-only until 2026-09-30, then die)
