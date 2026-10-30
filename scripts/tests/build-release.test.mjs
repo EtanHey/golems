@@ -153,19 +153,101 @@ test('publication remains serialized and both jobs use the pinned Node version',
 });
 
 function runsNode(script) {
+  script = script.replace(/\\\r?\n/g, '');
   const hasNodeCommand = code => /\b(?:node|npm|npx)(?:\s|$)/.test(code) ||
     (/\bbun\s+run(?:\s|$)/.test(code) && !/(?:^|\s)--bun(?:\s|$)/.test(code));
   const legacy = script.split(/\n|&&|\|\||;/).some(command => hasNodeCommand(command.replace(/#.*/, '')));
-  const uncommented = script.replace(/\$'(?:\\.|[^'\\])*'|'[^']*'|"(?:\\.|[^"\\])*"|\\.|(?<![^\s;&|(<>])#[^\n]*/g,
+  const commands = script.replace(/\$'(?:\\.|[^'\\])*'|'[^']*'|"(?:\\.|[^"\\])*"|\\.|(?<![^\s;&|(<>])#[^\n]*/g,
     token => token.startsWith('#') ? '' : token);
-  // AIDEV-NOTE: Full heredoc parsing is out of scope; union with the legacy detector is the safety net.
-  return legacy || uncommented.split(/\n|&&|\|\||;/).some(hasNodeCommand);
+  // AIDEV-NOTE: Heredoc bodies are classified like any other line (fail closed); the legacy union stays as a safety net.
+  // Shell quote removal: unquoted backslashes, '…', $'…' and "…" (where only \$ \` \" \\ are escapes).
+  // marked() turns quoted or escaped expansion characters into U+FFFD, so only active ones count as expansions.
+  const literal = text => text.replace(/[$`*?\[\]{}]/g, '\uFFFD');
+  // $'…' bodies decode ANSI-C escapes; an escape without an established result (NUL, \c, unknown) becomes an active `$`.
+  const ansiEscapes = { a: '\x07', b: '\b', e: '\x1b', E: '\x1b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v', '\\': '\\', "'": "'", '"': '"', '?': '?' };
+  const ansiC = (body, mark) => body.replace(/([^\\]+)|\\(?:x([\da-fA-F]{1,2})|u([\da-fA-F]{1,4})|U([\da-fA-F]{1,8})|([0-7]{1,3})|(.))/gs,
+    (_, text, hex, short, long, octal, other) => {
+      const code = parseInt(hex ?? short ?? long ?? octal, octal ? 8 : 16);
+      const decoded = text ?? (other !== undefined ? ansiEscapes[other] : code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : undefined);
+      return decoded === undefined ? '$' : mark(decoded);
+    });
+  const unquote = (word, mark) => word.replace(/\\(.)|\$'((?:\\.|[^'\\])*)'|'([^']*)'|"((?:\\.|[^"\\])*)"/gs,
+    (_, escaped, ansi, single, double) => ansi !== undefined ? ansiC(ansi, mark) : double === undefined ? mark(escaped ?? single) :
+      double.replace(/\\([$`"\\])|[*?\[\]{}]/g, (token, escapedInDouble) => mark(escapedInDouble ?? token)));
+  const plain = word => unquote(word, text => text);
+  const marked = word => unquote(word, literal);
+  // Leading wrappers run their command word; the listed options consume the next word.
+  const wrapperValues = {
+    builtin: [], command: [], exec: ['-a'], env: ['-u', '-C', '--unset', '--chdir'], nice: ['-n', '--adjustment'], nohup: [],
+    time: ['-f', '-o', '--format', '--output'], timeout: ['-s', '-k', '--signal', '--kill-after'],
+    xargs: ['-a', '-d', '-E', '-I', '-L', '-n', '-P', '-s', '--arg-file', '--delimiter', '--max-args', '--max-procs', '--max-chars'],
+  };
+  const expansion = /[$`*?\[\]{}]/;
+  return legacy || commands.split(/\n|&&|\|\||\||;/).some(command => {
+    const words = command.match(/(?:\\.|\$'(?:\\.|[^'\\])*'|'[^']*'|"(?:\\.|[^"\\])*"|[^\s'"\\])+/g) ?? [];
+    for (;;) {
+      while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0] ?? '')) words.shift();
+      const wrapper = plain(words[0] ?? '').split('/').at(-1);
+      if (!Object.hasOwn(wrapperValues, wrapper)) break;
+      if (wrapper === 'exec' && words.slice(1).some(word => expansion.test(marked(word)))) return true;
+      words.shift();
+      for (let option; (option = plain(words[0] ?? '')).startsWith('-');) {
+        words.shift();
+        if (option === '--') break;
+        if (wrapperValues[wrapper].includes(option)) words.shift();
+      }
+      if (wrapper === 'timeout') words.shift();
+    }
+    if (words.length === 0) return false;
+    const program = marked(words[0]).split('/').at(-1);
+    if (expansion.test(program) || program === 'eval') return true;
+    const args = words.map(plain);
+    // The -c argument is shell code, so classify it as its own script. The outer shell expands it first,
+    // so an active `$` or backtick there fails closed; only quoted or escaped ones are literal script text.
+    const shellCommand = ['sh', 'bash', 'dash', 'zsh'].includes(program) ? args.findIndex(word => /^-[A-Za-z]*c[A-Za-z]*$/.test(word)) : -1;
+    if (shellCommand !== -1 && (/[$`]/.test(marked(words[shellCommand + 1] ?? '')) || runsNode(args[shellCommand + 1] ?? ''))) return true;
+    if (['node', 'npm', 'npx'].includes(program)) return true;
+    if (hasNodeCommand(args.join(' '))) return true;
+    const bun = args.indexOf('bun');
+    return bun !== -1 && args.slice(bun + 1).includes('run') && !args.slice(bun + 1).includes('--bun');
+  });
 }
 
-test('Node command detection includes Bun fallback but excludes forced Bun execution', () => {
-  for (const command of ['node script.mjs', 'npm ci', 'npx vitest', 'bun run test', 'bun run typecheck', 'echo ok && bun run test']) {
-    expect(runsNode(command), command).toBe(true);
-  }
+test.each(['node script.mjs', 'npm ci', 'npx vitest', 'bun run test', 'bun run typecheck', 'echo ok && bun run test', 'bun \\\n  run test', "n''ode script.mjs", '"node" script.mjs', 'echo --bun | bun run test', '$VAR script.mjs', '$(command) script.mjs', 'eval something'])('detects Node execution: %s', command => {
+  expect(runsNode(command)).toBe(true);
+});
+
+test.each(['"$dir/node" x.mjs', '"$BIN" x', '$CMD run', '"$dir/$tool" x', '$(which node) x', 'eval "$X"', '$X/npx x', './node_modules/.bin/npm ci', 'sh -c "$X"', 'bash -c "$X"', 'exec "$X"'])('detects dynamic or Node program: %s', command => {
+  expect(runsNode(command)).toBe(true);
+});
+
+// Reviewer reproductions from golems#969 (B1 heredoc bodies, B2 backslash quoting, B3 -c bundles, B4/F1 wrappers).
+// F2 (`node& wait`, `(node)`) is FOLLOWUP-969-SEPARATORS: splitting on `&`/`(`/`)` flags a committed Python heredoc.
+test.each([
+  "bash <<'EOF'\necho '#' | node x.mjs\nEOF", "bash <<'EOF'\n\"node\" x.mjs\nEOF", "bash <<'EOF'\nn''ode x.mjs\nEOF",
+  "bash <<'EOF'\n\"$Y\" x.mjs\nEOF", "bash <<'EOF'\n\"bun\" \"run\" probe\nEOF", "cat <<'EOF'\nit's\nEOF\n\"node\" x.mjs",
+  String.raw`n\ode x.mjs`, String.raw`n\pm --version`, String.raw`n\px --version`, String.raw`b\un r\un probe`,
+  'sh -ec "$X"', 'bash -ec "$X"', 'bash -ce "$X"', 'bash -xec "$X"', 'zsh -ec "$X"', "sh -c '$X'", "bash -c '\"node\" x'",
+  'command sh -c "$X"', 'env bash -c "$X"', 'command eval "$X"', 'command exec "$Y" x.mjs', 'env "$Y" x.mjs', 'nice "$Y" x.mjs',
+  'env node x', 'env -i FOO=1 node x', 'nice -n 5 "$Y" x', 'nohup node x', 'timeout -s KILL 5m "$Y" x', 'xargs -n 1 node', 'builtin eval "$X"', 'time -p "$Y" x',
+])('detects reviewer bypass: %s', command => {
+  expect(runsNode(command)).toBe(true);
+});
+
+// Round 3 (golems#969 re-review): R2-R1 outer-expanded -c arguments, R2-R2 ANSI-C escapes decoded or failed closed.
+test.each([
+  'bash -c "echo $X"', 'bash -c "$X/anything"', 'sh -ec "echo $X"', 'env bash -c "echo $X"', 'bash -c "$(cat f)"', 'bash -c "echo `cat f`"',
+  "sh -c '$X'", String.raw`bash -c 'n\ode x'`, String.raw`$'n\x6fde' x.mjs`, String.raw`$'n\157de' x.mjs`, String.raw`$'node' x.mjs`, String.raw`$'node\0x' x.mjs`,
+])('job without setup-node flags round-2 regression: %s', run => {
+  expect(nodeSetupViolations({ jobs: { demo: { steps: [{ run }] } } }, 'fixture.yml')).toHaveLength(1);
+});
+
+test.each(['"$dir/trufflehog" --version', '"$RUNNER_TEMP/x/trufflehog" scan', String.raw`'n\ode' x.mjs`, 'env FOO=1 "$dir/trufflehog" --version', 'timeout 5m "$dir/trufflehog" scan',
+  "bash -c 'echo $X'", String.raw`bash -c "echo \$X"`, String.raw`$'\x24dir/trufflehog' --version`, String.raw`$'tr\165fflehog' --version`])('accepts literal non-Node program: %s', command => {
+  expect(runsNode(command)).toBe(false);
+});
+
+test('Node command detection excludes forced Bun execution', () => {
   for (const command of ['bun test ./packages', 'bun run --bun test', 'bun --bun run test', '# node ignored.mjs', 'echo ok # npm ci']) {
     expect(runsNode(command), command).toBe(false);
   }
