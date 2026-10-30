@@ -56,17 +56,17 @@ Applies to both Macs. Each kind of artifact has one home:
 | Kind | Lives in | Never in |
 |---|---|---|
 | Rerunnable source, harnesses, test kits, eval scripts, fixtures | A repo, committed; generated fixtures in its `docs.local/` or `fixtures/` with a regeneration recipe | `~/`, `~/Desktop`, `~/temp`, ad-hoc repo copies |
-| Live lane reports, receipts, logs | Owning repo's `docs.local/<lane>/` on the machine that ran it | `~/m1-*`, `~/m1-lanes`, Desktop handoff folders |
+| Live lane reports, receipts, logs | Owning repo's `docs.local/<lane>/` on the machine that ran it | `~/m1-*`, `~/vlv*` / `~/.vl*`, `~/vl-harness*` copies, `~/BrainLayer-*`, Desktop handoff folders |
 | Finished heavy artifacts, including benchmark runs | § Decision tree → § Archive a heavy artifact; leave `_DRIVE-LEDGER.md` | Local disk “for later” |
 | Personal or client documents Etan keeps | iCloud Drive `Archive/<YYYY>/<topic>/` | Desktop root |
 | Models and caches (Whisper, HF, npm/bun) | Tool's own cache directory, one copy recorded in app config | `~/Documents`, duplicate caches |
 | Worktrees | `~/.t3/worktrees/` or `<repo>/.worktrees/`; retire through the lifecycle contract | Other locations or ad-hoc repo copies |
 
-**Naming and manifests.** Keep the numbered Drive layout above; do not create
-another taxonomy. Within its existing date/topic structure, use lowercase
-kebab-case and the § Naming convention date prefix for archive-unit names
-(`YYYY-MM-DD-<topic>`). No machine prefixes (`m1-*`) or retired names (Ralph).
-Keep local and remote names identical.
+**Naming and manifests.** Local scratch/lane folder names use
+`YYYY-MM-DD-<topic>` in lowercase kebab-case, without machine prefixes (`m1-*`)
+or retired names (Ralph). Drive placement follows the existing layout above
+and the rollup targets below, including their `<YYYY-MM>` units; this local
+folder rule does not rename Drive archive units.
 
 Every archive unit carries `MANIFEST.json` with:
 
@@ -93,12 +93,14 @@ Every archive unit carries `MANIFEST.json` with:
    local-files lead's per-Mac ledger; never silently delete them.
 5. Deleting data remains a one-way door. Reviewed empty directories may be
    removed with `rmdir`. Nonempty data needs an identified owner, verified
-   preservation and authorization for that exact deletion (or Etan's explicit
-   instruction); archive proof alone grants no deletion authority.
+   preservation and Etan's explicit instruction for that deletion, or a door he
+   already opened for that work (quote his authorization). A lead's own call
+   is insufficient; archive proof alone grants no deletion authority.
 
 **Enforcement follow-up (not implemented by this section):** add a report-only
 inventory check for new agent-created top-level `~/` and `~/Desktop` directories
-(uid 501, recent birthtime, known lane patterns). These are investigation signals,
+(uid 501, recent birthtime, patterns such as `m1-*`, `vlv*` / `.vl*`,
+`vl-harness*` copies and `BrainLayer-*`). These are investigation signals,
 not ownership or deletion proof. The local-files lead must register and link the
 M4 Max and M1 Pro ledgers here once their canonical locations are confirmed;
 until then, report unowned leftovers to that lead. Never infer a ledger path or
@@ -126,7 +128,10 @@ or a `/tmp` cleanup that may hold forever-knowledge. The eight steps, in short:
 3. `createFolder` per level, keeping every ID. 4. `uploadFile`; keep `id`, `link`, `size`.
 5. `brain_digest` every text file (a background agent for >150KB).
 6. Write `docs.local/<area>/<topic>/_DRIVE-LEDGER.md` (never committed).
-7. Delete the local heavy copy only after `listFolder` confirms it and the ledger is written.
+7. Write the ledger, then apply § Machine hygiene rules 2 and 5 as the single deletion gate:
+   manifest hashes must match verified archive bytes, a one-file restore test must pass,
+   and Etan must authorize deletion (or have already opened that door for this work, quoted).
+   A `listFolder` result and ledger alone never authorize deletion.
 8. `brain_store` unusual archive decisions only.
 
 Never: commit a 1.5GB transcript, `rm -rf /tmp/…` before the forever check, digest without
