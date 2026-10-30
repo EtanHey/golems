@@ -420,9 +420,29 @@ test("decision-flow defaults omitted options to a free-text-only answer", () => 
 
   expect(result.status).toBe(0);
   const html = readFileSync(outputPath, "utf8");
-  expect(html).toContain('<fieldset class="df-options">');
+  expect(html).not.toContain('<fieldset class="df-options">');
   expect(html).toContain('class="note-area df-free"');
   expect((html.match(/<input type="radio"/g) || []).length).toBe(0);
+});
+
+test("decision-flow build passes each scene's speaker and role into the read-along", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-speakers-"));
+  const jobDir = path.join(root, "job");
+  writeSegment(jobDir, "ask", [{ word: "why", start: 0.05, end: 0.4 }, { word: "now", start: 0.45, end: 0.8 }]);
+  writeSegment(jobDir, "answer", [{ word: "because", start: 0.05, end: 0.4 }, { word: "proof", start: 0.45, end: 0.8 }]);
+  const { result, outputPath } = buildDashboard({
+    type: "decision-flow",
+    id: "two-voices",
+    scenes: [
+      { id: "ask", title: "The question", role: "host", reference: "ben-c1", script: "why now" },
+      { id: "answer", title: "The answer", role: "expert", speaker: "Theo", script: "because proof" },
+    ],
+    decisions: [{ id: "d1", title: "Two voices", options: ["Yes"], sceneIds: ["ask", "answer"] }],
+  }, jobDir, "two-voices");
+  expect(result.status).toBe(0);
+  const html = readFileSync(outputPath, "utf8");
+  expect(html).toContain('<span class="df-speaker" data-role="host">Ben asks</span>');
+  expect(html).toContain('<span class="df-speaker" data-role="expert">Theo explains</span>');
 });
 
 test("decision-flow fails closed when a scene is not owned by exactly one decision", () => {
@@ -452,6 +472,57 @@ test("decision-flow fails closed when a scene is not owned by exactly one decisi
   expect(result.stderr).toContain("decision-flow scene ownership");
   expect(result.stderr).toContain("orphan");
 });
+
+test("decision-flow build passes a comparison and its timeout into the rendered card", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-comparison-"));
+  const jobDir = path.join(root, "job");
+  writeSegment(jobDir, "only", [
+    { word: "alpha", start: 0.05, end: 0.42 },
+    { word: "beta", start: 0.45, end: 0.80 }
+  ]);
+  const { result, outputPath } = buildDashboard({
+    type: "decision-flow",
+    id: "decision-flow-comparison",
+    scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
+    comparisonTimeoutMs: 4000,
+    decisions: [{ id: "gate", title: "Gate", body: "Compare the takes.", sceneIds: ["only"], comparison: { url: "visuals/gate.html" } }]
+  }, jobDir, "decision-flow-comparison");
+  expect(result.status).toBe(0);
+  const html = readFileSync(outputPath, "utf8");
+  expect(html).toContain('data-compare-url="visuals/gate.html"');
+  expect(html).toContain('data-compare-timeout="4000"');
+  expect(html).toContain('id="df-compare"');
+  expect(result.stderr).toContain("comparison page for gate is not on disk yet");
+});
+
+test("decision-flow build accepts only the canonical comparison ready marker", async () => {
+  const { CANONICAL, REJECTED } = await import("../fixtures/comparison-markers/specimens.mjs");
+  const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-comparison-ready-"));
+  const jobDir = path.join(root, "job");
+  writeSegment(jobDir, "only", [
+    { word: "alpha", start: 0.05, end: 0.42 },
+    { word: "beta", start: 0.45, end: 0.80 }
+  ]);
+  const outputPath = path.join(root, "repo", "docs.local", "dashboards", "comparison-ready.html");
+  const page = path.join(path.dirname(outputPath), "visuals", "gate.html");
+  mkdirSync(path.dirname(page), { recursive: true });
+  const spec = {
+    type: "decision-flow",
+    id: "decision-flow-comparison-ready",
+    outputPath,
+    scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
+    decisions: [{ id: "gate", title: "Gate", body: "Compare the takes.", sceneIds: ["only"], comparison: { url: "visuals/gate.html#chart" } }]
+  };
+  const build = html => { writeFileSync(page, html); return buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result; };
+
+  for (const [name, html] of Object.entries(CANONICAL)) expect([name, build(html).status]).toEqual([name, 0]);
+  for (const [name, html] of Object.entries(REJECTED)) {
+    const rejected = build(html);
+    expect([name, rejected.status === 0]).toEqual([name, false]);
+    expect(rejected.stderr).toContain("comparison page lacks the canonical ready marker: gate visuals/gate.html#chart");
+    expect(rejected.stderr).toContain("markComparisonReady");
+  }
+}, 120000);
 
 test("decision-flow rejects duplicate decision ids before render", () => {
   const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-duplicate-"));
@@ -624,4 +695,33 @@ test("BYO acoustic rejection preserves a stale TTS take and requires source repl
   expect(acousticRow.runbook).toContain("Replace or edit the scene audioWav source for host-byo-glitch");
   expect(acousticRow.runbook).not.toContain("--no-cache");
   expect(receipts.purges).toEqual([]);
+});
+
+test("decision-flow build rejects a bare #number until the card links a repository-qualified URL", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-bare-ref-"));
+  const jobDir = path.join(root, "job");
+  writeSegment(jobDir, "only", [
+    { word: "alpha", start: 0.05, end: 0.42 },
+    { word: "beta", start: 0.45, end: 0.80 }
+  ]);
+  const spec = rail => ({
+    type: "decision-flow",
+    id: "decision-flow-bare-ref",
+    scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
+    decisions: [{ id: "gate", title: "Gate", body: "Merged in #39.", sceneIds: ["only"], rail }]
+  });
+
+  const bare = buildDashboard(spec([{ label: "PR", value: "#39" }]), jobDir, "decision-flow-bare-ref").result;
+  expect(bare.status).not.toBe(0);
+  expect(bare.stderr).toContain("bare issue/PR reference");
+  expect(bare.stderr).toContain("gate body #39");
+
+  // Review r1 B1: a safe but generic URL on "#39" is not a repository-qualified target.
+  const generic = buildDashboard(spec([{ label: "PR", value: "#39", href: "https://example.com/" }]), jobDir, "decision-flow-bare-ref").result;
+  expect(generic.status).not.toBe(0);
+  expect(generic.stderr).toContain("gate rail PR #39");
+
+  const { result, outputPath } = buildDashboard(spec([{ label: "PR", value: "#39", href: "https://github.com/EtanHey/golems/pull/39" }, { label: "Doc", value: "Design note", href: "https://example.com/design" }]), jobDir, "decision-flow-bare-ref");
+  expect(result.status).toBe(0);
+  expect(readFileSync(outputPath, "utf8")).toContain('href="https://github.com/EtanHey/golems/pull/39"');
 });

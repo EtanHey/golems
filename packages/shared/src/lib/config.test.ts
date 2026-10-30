@@ -1,3 +1,4 @@
+import { testBun } from "../test-bun";
 import { describe, expect, test, setDefaultTimeout } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
@@ -77,7 +78,7 @@ function runConfigModuleWithHome(options: {
   }
 
   const result = Bun.spawnSync({
-    cmd: ["bun", "-e", options.code],
+    cmd: [...testBun, "-e", options.code],
     env: { ...process.env, HOME: home },
   });
 

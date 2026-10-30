@@ -9,9 +9,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source "$SCRIPT_DIR/lib/worktree-git-env.sh"
+# T3 Code reaps its own worktrees (storageCleanup.ts); this script covers non-T3 checkouts and merged branches.
 # Pins: ~/.config/golems/worktree-gc-pins.txt (one absolute path or branch per line).
 # Owner queue: docs.local/worktree-gc/latest.{json,md}; age is reporting only.
+# Every scan, including scoped/partial failures, rewrites latest and last-run atomically.
+# PR/fetch failures retain exit 0 (KEEP); processing errors exit 2, unpushed exits 3.
 # Test adapters: WORKTREE_GC_T3_DB, WORKTREE_GC_REPORT_DIR, WORKTREE_GC_PINS_FILE.
+# WORKTREE_GC_T3_ROOTS adds newline-separated managed roots (canonicalized).
 
 usage() {
   printf 'Usage: %s [--dry-run | --prune-plan | --apply] [--idle-hours <n>] [--repo <path> | --path <worktree>]\n' \
@@ -229,6 +233,13 @@ head_is_merged() {
 check_owner_guards() {
   local path="$1" branch="$2" pins detail rc=0
   local pin_file="${WORKTREE_GC_PINS_FILE:-$HOME/.config/golems/worktree-gc-pins.txt}"
+  detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" live-symlink "$path" 2>&1)" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    local verdict=KEEP-undetermined
+    [[ "$rc" -eq 3 ]] && verdict=KEEP-live
+    emit_row "$repo_name" "$path" "$branch" not-checked not-checked "$verdict" "${detail:-live symlink scan failed}"
+    return 1
+  fi
   if [[ -e "$pin_file" || -L "$pin_file" ]]; then
     if ! pins="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" pins "$pin_file")"; then
       emit_row "$repo_name" "$path" "$branch" not-checked undetermined KEEP-undetermined "cannot read pins"
@@ -239,13 +250,9 @@ check_owner_guards() {
       return 1
     fi
   fi
-  # Repo-local registrations can also be bound to T3 threads. DB errors fail
-  # closed for the T3 root; existing repo-local scopes still work without T3.
   detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3 "$path" 2>/dev/null)" || rc=$?
-  if [[ "$rc" -eq 3 || ( "$rc" -ne 0 && "$is_t3" -eq 1 ) ]]; then
-    local verdict=KEEP-undetermined
-    [[ "$rc" -eq 3 ]] && verdict=KEEP-live
-    emit_row "$repo_name" "$path" "$branch" not-checked undetermined "$verdict" "${detail:-T3 binding unreadable}"
+  if [[ "$rc" -eq 3 ]]; then
+    emit_row "$repo_name" "$path" "$branch" not-checked undetermined KEEP-live "$detail"
     return 1
   fi
 }
@@ -325,6 +332,12 @@ apply_removal() {
       "KEEP-undetermined" "nested git repository or unscannable tree: ${nested:-scan failed}"
     return 0
   fi
+  local protection_detail
+  if ! protection_detail="$(python3 "$SCRIPT_DIR/lib/worktree-delete-check.py" "$worktree_path")"; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
+      "KEEP-undetermined" "${protection_detail:-deletion permission scan failed}"
+    return 0
+  fi
   if [[ "$apply" -eq 0 ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
       "REMOVE" "eligible prune plan; archive verification required before removal"
@@ -372,7 +385,7 @@ process_worktree_block() {
   local index_flags
   local remote_contains
   local ahead
-  local is_t3=0
+  local t3_root
 
   [[ -n "$worktree_path" ]] || return 0
 
@@ -385,19 +398,36 @@ process_worktree_block() {
   fi
   only_seen=1
 
-  if is_tool_managed_worktree "$repo_root" "$canonical_worktree"; then
-    return 0
-  fi
-
   if [[ -n "$branch_ref" ]]; then
     branch_display="${branch_ref#refs/heads/}"
   else
     branch_display="(detached)"
   fi
 
+  # A failed repository is never eligible, including detached/tool-managed trees.
+  if [[ -n "$repo_failure" ]]; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" not-checked undetermined \
+      KEEP-undetermined "$repo_stage: $repo_failure"
+    return 0
+  fi
+
+  while IFS= read -r t3_root; do
+    if [[ "$canonical_worktree" == "$t3_root" || "$canonical_worktree" == "$t3_root/"* ]]; then
+      t3_skip_count=$((t3_skip_count + 1))
+      emit_row "$repo_name" "$worktree_path" "$branch_display" not-checked not-checked \
+        skip "t3-managed (T3 storageCleanup owns it)" >/dev/null
+      return 0
+    fi
+  done <<< "$t3_roots"
+
+  if is_tool_managed_worktree "$repo_root" "$canonical_worktree"; then
+    return 0
+  fi
+
   # AIDEV-NOTE: hooks-live is the pinned source of every wired hook; removing it
   # dangles them all. Kept even if someone unlocked it.
   if [[ "$canonical_worktree" == "$repo_root/.worktrees/hooks-live" ]]; then
+    check_owner_guards "$worktree_path" "$branch_display" || return 0
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
       "not-checked" "KEEP-pinned" "hook source pinned by scripts/hooks/install-hooks.sh"
     return 0
@@ -409,14 +439,8 @@ process_worktree_block() {
     return 0
   fi
 
-  # Only direct children of <main>/.worktrees or ~/.t3/worktrees/<repo>:
-  # runtime checkouts (~/.local/share/...), Cursor and superpowers worktrees
-  # and trees inside docs.local live elsewhere and are never touched.
   local scope_name="${canonical_worktree#"$main_root/.worktrees/"}"
-  local t3_prefix="$(canonical_path "$HOME")/.t3/worktrees/$repo_name/"
-  local t3_name="${canonical_worktree#"$t3_prefix"}"
-  [[ "$canonical_worktree" == "$t3_prefix"?* && "$t3_name" != */* ]] && is_t3=1
-  if [[ "$is_t3" -eq 0 && ( "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ) ]]; then
+  if [[ "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
       "not-checked" "KEEP-out-of-scope" "not under $main_root/.worktrees/"
     return 0
@@ -534,7 +558,6 @@ process_worktree_block() {
     return 0
   fi
 
-
   if ! index_entries="$(git -C "$worktree_path" ls-files --stage)"; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "undetermined" \
       "undetermined" "KEEP-undetermined" "git index scan failed during final verdict recheck"
@@ -632,6 +655,9 @@ process_worktree_block() {
 process_repo() {
   local requested_repo="$1"
   local census
+  local repo_failure=""
+  local repo_stage=""
+  local t3_skip_count=0
   local line
 
   if ! repo_root="$(golems_main_repo "$requested_repo")"; then
@@ -649,8 +675,19 @@ process_repo() {
   repo_name="$(basename "$repo_root")"
   census_paths="$(sed -n 's/^worktree //p' <<< "$census")"
   load_open_prs
-
+  if [[ -n "$open_pr_failed$merged_pr_failed" ]]; then
+    repo_failure="${open_pr_failed:-$merged_pr_failed}"
+    repo_stage=pr-lookup
+  fi
   refresh_remote_base
+  if [[ -z "$base_ref" && -z "$repo_failure" ]]; then
+    repo_failure="$base_reason"
+    repo_stage=fetch
+  fi
+  if [[ -n "$repo_failure" ]]; then
+    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
+      "$repo_name" "$repo_root" "-" ERROR "$repo_failure" "$repo_stage"
+  fi
 
   block_worktree=""
   block_branch=""
@@ -672,6 +709,10 @@ process_repo() {
     esac
   done <<< "$census"
   process_worktree_block
+  if (( t3_skip_count > 0 )); then
+    printf '%s · t3-managed (T3 storageCleanup owns it): %s skip\n' "$repo_name" "$t3_skip_count" | tee -a "$LOG_FILE"
+    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3-summary "$REPORT_JOURNAL" "$repo_name" "$t3_skip_count"
+  fi
   # AIDEV-NOTE: never `git worktree prune` here (#703 R1 M1): it drops the
   # registration of a KEEP worktree that is only temporarily away, orphaning
   # its commits. `git worktree remove` already deletes its own admin entry.
@@ -756,8 +797,20 @@ REPORT_JOURNAL="$LOG_FILE.rows.jsonl"
 : > "$REPORT_JOURNAL"
 REPORT_DIR="${WORKTREE_GC_REPORT_DIR:-$LOG_DIR/worktree-gc}"
 publish_report=0
-[[ -z "$explicit_repo" && -z "$only_worktree" && "$prune_plan" -eq 0 ]] && publish_report=1
-trap 'rc=$?; python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report" || printf "report finish failed\n" >> "$LOG_FILE"' EXIT
+if [[ -z "$explicit_repo" && -z "$only_worktree" && "$prune_plan" -eq 0 ]]; then
+  publish_report=1
+fi
+finish_run() {
+  local rc=$?
+  rm -f "$LOG_FILE.repo-state" "$LOG_FILE.repo-stderr" ||
+    printf 'scratch cleanup failed\n' >> "$LOG_FILE"
+  if ! python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report"; then
+    printf 'report publish failed\n' | tee -a "$LOG_FILE" >&2
+    [[ "$rc" -ne 0 ]] || rc=2
+  fi
+  exit "$rc"
+}
+trap finish_run EXIT
 
 # A path-only lane close discovers its main root read-only, then validates it.
 # An explicit --repo is never replaced by --path, regardless of argument order.
@@ -784,10 +837,37 @@ if [[ "${#repos[@]}" -eq 0 ]]; then
   exit 2
 fi
 
+t3_roots="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" roots)"
 found_unpushed=0
+repo_error=0
 for repo in "${repos[@]}"; do
-  process_repo "$repo"
+  repo_name="$(basename "$repo")"
+  # Do not put process_repo in an if/||: Bash would disable errexit inside
+  # every removal gate. A subshell keeps it enabled and isolates repo state.
+  repo_state="$LOG_FILE.repo-state"
+  repo_stderr="$LOG_FILE.repo-stderr"
+  set +e
+  (
+    set -e
+    trap 'printf "%s %s\n" "$found_unpushed" "$only_seen" > "$repo_state"' EXIT
+    process_repo "$repo"
+  ) 2> "$repo_stderr"
+  repo_rc=$?
+  set -e
+  read -r found_unpushed only_seen < "$repo_state"
+  cat "$repo_stderr" >&2
+  if [[ "$repo_rc" -ne 0 ]]; then
+    repo_error=2
+    reason="$(normalize_reason "$(cat "$repo_stderr")")"
+    reason="exit $repo_rc: ${reason:-repository processing failed}"
+    printf 'ERROR %s %s\n' "$repo" "$reason" | tee -a "$LOG_FILE" >&2
+    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
+      "$(basename "$repo")" "$repo" "-" ERROR "$reason" ||
+      printf 'ERROR report row failed: %s\n' "$repo" | tee -a "$LOG_FILE" >&2
+  fi
 done
+
+[[ "$repo_error" -eq 0 ]] || exit "$repo_error"
 
 # A lane close pastes this row into its receipt; a silent no-op would hide a wrong path.
 if [[ -n "$only_worktree" && "$only_seen" -eq 0 ]]; then
@@ -797,6 +877,6 @@ if [[ -n "$only_worktree" && "$only_seen" -eq 0 ]]; then
 fi
 
 if [[ "$found_unpushed" -ne 0 ]]; then
-  # 3 means a completed scan with KEEP-unpushed; 1 is reserved for runtime errors.
+  # 3 means a completed scan with KEEP-unpushed; any repo error exits 2 above.
   exit 3
 fi

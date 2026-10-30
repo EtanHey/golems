@@ -20,6 +20,7 @@
 // ~/.gemini/config/skills/<name> -> ../../../.agents/skills/<name>. Never overwrites an
 // existing entry; skipped when ~/.gemini/config is missing. Reports linked=N.
 import { existsSync, lstatSync, mkdirSync, readdirSync, readlinkSync, realpathSync, symlinkSync, unlinkSync } from "node:fs";
+import { installVendorSkills } from "./vendor-skills.mjs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -29,9 +30,10 @@ export const GEMINI_SKILLS_ROOT = ".gemini/config/skills";
 export const SKILL_ROOTS = [".claude/skills", ".agents/skills", ".codex/skills", GEMINI_SKILLS_ROOT];
 
 function parseArgs(argv) {
-  const options = { apply: false, linkMissing: false, source: null };
+  const options = { apply: false, linkMissing: false, vendorSkills: false, source: null };
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--apply") options.apply = true;
+    if (argv[i] === "--vendor-skills") options.vendorSkills = true;
+    else if (argv[i] === "--apply") options.apply = true;
     else if (argv[i] === "--link-missing") options.linkMissing = true;
     else if (argv[i] === "--source" && argv[i + 1]) options.source = argv[++i];
     else throw new Error(`unknown or incomplete argument: ${argv[i]}`);
@@ -125,6 +127,10 @@ if (import.meta.main) {
   try {
     const options = parseArgs(process.argv.slice(2));
     const home = homedir();
+    if (options.vendorSkills) {
+      for (const line of installVendorSkills({ ...options, home })) console.log(line);
+      process.exit(0);
+    }
     for (const row of repointSkills({ ...options, home })) {
       if (row.missing) {
         console.log(`~/${row.root}: skipped (missing)`);

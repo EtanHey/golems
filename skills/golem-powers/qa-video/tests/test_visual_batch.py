@@ -1,6 +1,7 @@
 """Offline scheduler checks using a subprocess helper; no provider requests."""
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -102,7 +103,9 @@ def test_budget_partial_and_unread(setup):
     assert code != 0 and result['status'] == 'BUDGET_EXCEEDED'
     assert 0 < result['completed'] < 8
     assert len(result['unread']) == 8 - result['completed']
-    assert all(10 <= float(p.read_text()) < 30.12 for p in work.glob('*.timeout'))
+    assert sum(result['counts'].values()) == result['total']
+    assert result['counts']['NOT_READ'] == len(result['unread'])
+    assert all(0 < float(p.read_text()) <= .12 for p in work.glob('*.timeout'))
     assert all(x['finding'].startswith('NOT DETERMINED') for x in result['unread'])
     assert len((work / 'visual/findings.jsonl').read_text().splitlines()) == result['completed']
 
@@ -212,6 +215,56 @@ def test_unknown_detail_is_successful_coverage(setup):
     assert 'NOT DETERMINED' in (work / 'visual/findings.jsonl').read_text()
 
 
+@pytest.mark.parametrize('response', ['partial-sheet', 'missing', 'whole-unknown', 'all-tiles-unknown'])
+def test_real_gather_coverage_survives_batch_and_debrief(tmp_path, monkeypatch, response):
+    # Replace the provider boundary only; the production CLI computes coverage.
+    provider = tmp_path / 'agy'
+    provider.write_text('''#!/usr/bin/env python3
+import json, os, sys
+prompt = sys.argv[sys.argv.index('--print') + 1]
+paths = json.loads(prompt.splitlines()[-1])['image_paths']
+fixture = json.loads(os.environ['SHEET_RESPONSE'])
+items = [{'path': p, 'finding': fixture['finding']} for p in paths] if fixture else []
+print(json.dumps({'status': 'SUCCESS', 'response': json.dumps({'images': items})}))
+''')
+    provider.chmod(0o755)
+    fixture = json.loads((Path(__file__).parent / 'fixtures/partial-sheet.json').read_text())
+    expected = fixture['finding']
+    if response == 'missing':
+        fixture = {}
+    elif response == 'whole-unknown':
+        fixture = {'finding': 'NOT DETERMINED (entire sheet unreadable)'}
+    elif response == 'all-tiles-unknown':
+        fixture = {'finding': 'tile 1: NOT DETERMINED; tile 2: NOT DETERMINED'}
+    monkeypatch.setenv('PATH', str(tmp_path) + os.pathsep + os.environ['PATH'])
+    monkeypatch.setenv('SHEET_RESPONSE', json.dumps(fixture))
+    image = tmp_path / 'moment-00.jpg'
+    image.write_bytes(b'provider fixture input')
+    (tmp_path/'index.tsv').write_text('moment-00.jpg\t0\t10\t20\ttest\n')
+    result = subprocess.run([sys.executable, str(DRIVER), '--model', 'fixture-model',
+                             '--question', 'facts', '--workdir', str(tmp_path), str(image)],
+                            capture_output=True, text=True, timeout=10)
+    item = json.loads((tmp_path / 'visual/findings.jsonl').read_text().splitlines()[-1])
+    spec = importlib.util.spec_from_file_location('debrief', SKILL / 'scripts/debrief.py')
+    debrief = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(debrief)
+    debrief.evidence_note(tmp_path, 'debrief', json.loads(result.stdout)['status'],
+                          {'moments': [{'start': 0, 'text': 'Read this slide.'}]},
+                          ['moment-00.jpg\t0\t0'])
+    note = (tmp_path / 'debrief.md').read_text()
+    if response == 'partial-sheet':
+        assert result.returncode == 0 and item['ok'] is True
+        assert 'Coverage: 1/1; complete;' in item['finding']
+        assert '; 1 with unclear tiles' in item['finding'].splitlines()[0]
+        assert expected in item['finding'] and expected in note
+        assert item['finding'].count('NOT DETERMINED') == note.count('NOT DETERMINED') == 1
+    else:
+        assert result.returncode == 2 and item['ok'] is False
+        assert 'Coverage: 0/1; partial;' in item['finding']
+        assert '; 0 with unclear tiles' in item['finding']
+        assert 'visual: NOT DETERMINED (budget/failed)' in note
+
+
 @pytest.mark.parametrize('persistent', [False, True])
 def test_setup_retry_once_and_sanitized_cause(setup, persistent):
     work, launch = setup
@@ -238,7 +291,7 @@ def test_cached_model_avoids_concurrent_setup(setup, monkeypatch):
     spec = importlib.util.spec_from_file_location('batch', DRIVER)
     batch = importlib.util.module_from_spec(spec); spec.loader.exec_module(batch)
     lookups, models = [], []
-    monkeypatch.setattr(batch.visual, 'resolve_model', lambda: lookups.append(1) or ('tier', 'fixture-model'))
+    monkeypatch.setattr(batch.visual, 'resolve_model', lambda **kwargs: lookups.append(1) or ('tier', 'fixture-model'))
     def read(helper, question, timeout, sheet, model, work):
         models.append(model)
         return {'sheet': sheet, 'finding': 'fixture', 'fatal': '', 'ok': True}

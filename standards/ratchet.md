@@ -40,6 +40,10 @@ install to measure a candidate. Two tiers:
   - **Where it runs:** the producer installs the PR head into a SCRATCH HOME (and a scratch
     `CODEX_HOME`), outside every repository. It uses the real installer, the real interpreter
     and the real binaries (git, ssh-keygen, gh, codex).
+  - **Mac Node PATH:** `local-run.sh` resolves Node once before changing HOME, using the
+    installer's `sh -c 'command -v node'` resolution inside Node. It prepends that directory
+    to the caller's full PATH for both scratch installation and row execution, and records
+    the selected absolute path and version in the run's `node.log`.
   - **Trusted keys:** keys a gate trusts are fixtures generated in that scratch HOME. Their pin
     is committed in the scratch tree only, never pushed. A token issuer such as
     `golems-lead-confirm` is called only against that fixture anchor.
@@ -151,6 +155,31 @@ node scripts/ratchet/table.mjs --rows <rows.json> --results <results.json> --hea
   - `scripts/ratchet/local-run.sh` produces the per-PR candidate tier, in a scratch HOME;
   - `scripts/ratchet/live-rows.sh` produces the post-merge live tier, and the lead runs it.
 
+Owner hook installs retain their canonical Node path in
+`~/.claude/hooks/golems-hook-node.json` with the version observed at `--apply`.
+Later installs and `install-hooks.sh --status` use that path regardless of caller PATH;
+the shell entry point may run under another Node without changing the hook runtime.
+Missing/non-executable binaries, changed versions, invalid records and registration
+changes fail status. Re-run `--apply` to acknowledge an upgrade at the same path.
+If the recorded runtime vanished, lost executable permission, or its record is
+malformed, explicitly choose a replacement with `--node <path>`, for example:
+`bash scripts/hooks/install-hooks.sh --host mbp --update --apply --node /absolute/path/to/node`.
+The replacement must be an absolute, shell-safe plain path, executable, and report
+a `vX.Y.Z` version. It overrides broken recorded state, rewires managed hooks, and
+records the replacement path/version only at apply; dry-run writes nothing.
+`--node` repairs owner installs and cannot accompany `--status` or release `--source`.
+Status continues to report a damaged recorded runtime until it is repaired.
+Legacy installs without a record use the single absolute path already registered by
+their managed Node hooks; status is read-only and reports the missing version baseline.
+Only absolute Node-like executable first tokens count for adoption; bare commands
+and shell/Python wrappers do not conflict with an existing absolute Node path.
+The next apply records it without switching runtimes. Conflicting legacy paths refuse
+adoption. A fresh install (or migration of an old bare `node` command) chooses the
+stable absolute PATH spelling once, rather than
+the versioned realpath. Neither the live status row nor the candidate receipt needs
+a PATH workaround for hook registration comparisons; the lead still owns the live
+post-merge receipt.
+
 ## Convergence close: baseline and open targets (Etan, 2026-10-06)
 
 The ratchet is the starting point of the §12 pristine sprint. At convergence close, each repo's
@@ -161,6 +190,22 @@ lead records two short artifacts:
 - **Open targets:** every known failure or improvement that has no row yet, each with its issue
   or PR link and the row it would become. This list is the §12 sprint backlog, which starts by
   turning targets into rows and tightening ceilings.
+
+## Scheduled alert deduplication
+
+Push, pull_request and manual runs keep the raw table verdict. Only hourly scheduled
+runs use `scripts/ratchet/schedule.mjs`: a new `(latest guarded master SHA, sorted failing
+row IDs)` cause fails once. Identical repeats pass with a `master still RED` warning
+and summary linking the first run; their table still shows the actual failing rows.
+One bot-owned `ratchet-red` issue stores the cause and first-run URL. Repeats edit its
+body without posting comments or changing issue state. Recovery closes it; recurrence
+reopens it and fails again. Serialized schedules prevent competing state writers.
+Re-running a failed scheduled run without fixing its cause also finishes green with
+the unchanged-cause warning. Malformed tables/state and API failures stay RED. A corrupt
+stored state body blocks every scheduled run with exit 2, even after the table recovers;
+remove the issue's `ratchet-red` label or its `<!-- golems-ratchet-schedule -->` marker
+to reset tracking before the next run. A green scheduled conclusion with
+this warning is alert deduplication, not evidence that master or its receipts passed.
 
 ## CI debt ceilings and live-tier freshness
 
@@ -184,8 +229,9 @@ install's status and token probe; this CI row checks the receipt, never uses lea
 installs hooks. It is labeled `unit` so receipt checks cannot be mistaken for a live replay.
 
 The existing required `ratchet` job enforces this row only on guarded-path PRs, and on master
-pushes, plus hourly and on
-manual dispatch. Non-guarded PRs are exempt before any live API request, so the lead install
+pushes and manual dispatch. Hourly scheduled runs evaluate this row under the
+[scheduled alert deduplication](#scheduled-alert-deduplication) policy above.
+Non-guarded PRs are exempt before any live API request, so the lead install
 cannot block unrelated work. Failure output prints the exact `live-rows.sh` command; run it from
 the open lease PR checkout after the lead installs current master. After the lead publishes the receipt, rerun the failed master/PR ratchet jobs
 (or dispatch the workflow); posting a comment alone does not rerun CI. This prevents a green CI
@@ -237,6 +283,48 @@ selects the default path. Missing, insecure or malformed configuration fails wit
 actionable error before GitHub, lease or issuer probes. Creating the file only supplies this row's
 inputs; it does not install hooks, deploy the checker or prove the whole live tier. The lead runs
 that post-install tier, including real issuers and publication, after review.
+
+M1 sync is **off by default**. `--sync-m1` requires Etan's standing authorization for M1
+installs (pending, #32); without it the parity row stays red after a guarded merge until he
+authorizes a sync. `--no-sync-m1` explicitly retains the default after a manual sync. Both
+paths keep parity read-only and blocking, with no sync-helper invocation.
+Authorization is `~/.golems/ratchet/m1-sync-authorized.json`: a regular, current-user-owned file
+with no group/other permissions, opened with O_NOFOLLOW and checked with fstat; its parent must
+not be group/world-writable. This is a policy gate: anything that can set HOME can forge it;
+nothing cryptographically ties `words` to Etan. Fields: schema version 1 (`schema`), item 32 (`item`), scope
+`m1-skills-install` (`scope`), Etan's verbatim answer (`words`), YYYY-MM-DD answer date (`date`).
+Only Etan's own answer to #32 may create it; no enabling sample is shipped. Missing/invalid
+authorization prints exactly `M1 sync not authorized (Etan #32)` before release lookup/SSH/SCP.
+
+Authorized `--sync-m1` requires published `v<UTC commit date>-<short LIVE_HEAD>` assets and
+verifies SHA256SUMS, MANIFEST identity and every payload file before SSH. Missing/draft release
+exits 2 with a re-run instruction; gh auth/network errors exit 1 with the actual error.
+An M1 is current only when release.json and a post-guard success marker both report X, with
+no unfinished stage for X. Only then is there no copy or backup. An incomplete stage or an
+installed X without a marker fails with `needs attention`; investigate the original failure,
+never infer success from release.json alone. A successful apply atomically writes success.json
+in its head-prefixed stage only after every guard and repoint passes. Otherwise:
+back up skill roots (log path/size), record release/config/skill inventories, copy verified
+assets via BatchMode SSH/SCP, `install.sh --from-file --sums --preserve-releases`, then vendor
+repoint dry-run/apply. Preserve M1-only entries and Codex `Keeping existing path` messages;
+release/vendor links may be replaced. Managed checkout links may repoint to the installed
+same-name skill, but must remain present. Compare config.toml hashes even after install failure.
+No /Applications, BrainLayer, audio,
+restarts or signals. Failures stop before parity. Local run logs/assets: `m1-sync.log`,
+`m1-sync/`; remote stage retains before.json/install.log. `after_m1_sync` reserves RC-I5's future
+skills-sync receipt hook without issuing one. Offline tests (fake gh/ssh/scp via PATH):
+`WEAVE_ALLOW_TMP=1 python3 -B -m unittest discover -s scripts/tests -p test_m1_sync.py`.
+
+Recover a stuck stage or missing marker only as part of an M1 sync authorized under Etan #32;
+the default read-only live-row path never performs recovery. The authorized lead first retains
+the failed stage's before.json/install.log, then restores the affected skill roots from the
+matching known-good `~/.claude/skills.bak-*.tgz`. Return `~/.golems/current` to the corresponding
+retained pre-sync release, and restore config.toml from a trusted pre-sync backup if its guard
+failed. Then reset `~/.golems/release.json` to the recorded pre-sync release (or remove it if
+there was none), and remove the exact failed stage directory under `~/.golems/m1-sync/` after
+retaining its evidence. Re-run the authorized `--sync-m1` flow to create a fresh completion
+marker only after all guards pass. Never hand-write `success.json` or clear state to claim
+success without restoring the affected state first.
 
 Name/content parity and required readability are separate output fields. Explicitly approved
 source-invalid entries remain in `disclosed_invalid`; they cannot satisfy a required-readable

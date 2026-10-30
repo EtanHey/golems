@@ -18,7 +18,7 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/bash</string>
-		<string>@GOLEMS_ROOT@/scripts/worktree-gc-nightly.sh</string>
+		<string>@HOME@/Gits/golems/.worktrees/hooks-live/scripts/worktree-gc-nightly.sh</string>
 	</array>
 	<key>StartCalendarInterval</key>
 	<dict>
@@ -32,6 +32,6 @@
 	<key>StandardOutPath</key>
 	<string>@GOLEMS_ROOT@/docs.local/worktree-gc-launchd.log</string>
 	<key>WorkingDirectory</key>
-	<string>@GOLEMS_ROOT@</string>
+	<string>@HOME@/Gits/golems/.worktrees/hooks-live</string>
 </dict>
 </plist>

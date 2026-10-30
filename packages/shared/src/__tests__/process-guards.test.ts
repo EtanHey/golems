@@ -1,13 +1,8 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, spyOn, beforeEach, afterEach, type Mock } from "bun:test";
+import * as axiom from "@golems/shared/lib/axiom";
 
-// Mock axiom before importing
-const mockLogError = mock(() => {});
-const mockFlushAxiom = mock(() => Promise.resolve());
-
-mock.module("@golems/shared/lib/axiom", () => ({
-  logError: mockLogError,
-  flushAxiom: mockFlushAxiom,
-}));
+let mockLogError: Mock<typeof axiom.logError>;
+let mockFlushAxiom: Mock<typeof axiom.flushAxiom>;
 
 import {
   installProcessGuards,
@@ -22,8 +17,8 @@ describe("process-guards", () => {
   };
 
   beforeEach(() => {
-    mockLogError.mockClear();
-    mockFlushAxiom.mockClear();
+    mockLogError = spyOn(axiom, "logError").mockImplementation(() => {});
+    mockFlushAxiom = spyOn(axiom, "flushAxiom").mockImplementation(() => Promise.resolve());
     _resetGuards();
     // Save original listeners
     originalListeners = {
@@ -33,6 +28,8 @@ describe("process-guards", () => {
   });
 
   afterEach(() => {
+    mockLogError.mockRestore();
+    mockFlushAxiom.mockRestore();
     // Restore original listeners
     process.removeAllListeners("unhandledRejection");
     process.removeAllListeners("uncaughtException");

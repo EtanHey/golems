@@ -167,6 +167,9 @@ def test_launch_retains_uncertain_pid_and_blocks_sweep(workflow, live_pid, tmp_p
     manifest = tmp_path / "manifest.json"
     workflow.create_manifest(manifest, "fixture", str(tmp_path), "lead")
     monkeypatch.setattr(workflow, "preflight_launch_inputs", lambda **_: None)
+    monkeypatch.setattr(workflow._workers, "git_common_dir", lambda _: tmp_path)
+    monkeypatch.setattr(workflow._workers, "lifecycle_tool", lambda *a, **kw: None)
+    monkeypatch.setattr(workflow._workers, "_run_git", lambda *a, **kw: SimpleNamespace(stdout="fixture-head\n"))
     def create(**kwargs):
         Path(kwargs["worktree"]).mkdir(parents=True)
         return "master"

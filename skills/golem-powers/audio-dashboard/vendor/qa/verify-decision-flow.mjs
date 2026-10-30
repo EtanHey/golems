@@ -32,6 +32,12 @@ const cards = [...html.matchAll(/<article class="df-card[^>]*>[\s\S]*?<\/article
 const decisionIds = cards.map((match) => match[0].match(/data-decision="([^"]+)"/)?.[1]).filter(Boolean);
 const ownedScenes = cards.flatMap((match) => [...match[0].matchAll(/data-audio-scene="([^"]+)"/g)].map((scene) => scene[1]));
 const tpdataIds = Object.keys(tpdata);
+const chipIds = [...html.matchAll(/<button type="button" class="df-chip" data-chip-for="([^"]+)"/g)].map((match) => match[1]);
+const checklists = cards.flatMap((match) => [...match[0].matchAll(/<fieldset class="df-checklist" data-checklist-for="([^"]+)"/g)]
+  .map((list) => ({ owner: match[0].match(/data-decision="([^"]+)"/)?.[1], claimed: list[1] })));
+const checklistsOutsideCards = (html.match(/class="df-checklist"/g) || []).length - checklists.length;
+const cardsWithSheets = cards.filter((match) => /<div class="df-sheet" id="sheet-[^"]+">/.test(match[0]) && match[0].includes('class="df-answer-open"')).length;
+const checklistItems = cards.reduce((sum, match) => sum + (match[0].match(/class="df-check-input"/g) || []).length, 0);
 const scenesWithWords = tpdataIds.filter((sceneId) => {
   const timing = tpdata[sceneId];
   const words = timing?.cues?.[0]?.words;
@@ -62,6 +68,18 @@ const report = {
   wordClickSeek: /currentTime\s*=\s*Number\(word\.dataset\.wordStart\)/.test(html),
   copyAnswers: html.includes('id="df-copy"') && html.includes("localStorage.setItem"),
   nextAndSkip: html.includes('class="df-next"') && html.includes('class="df-skip"'),
+  controllerChips: chipIds.length,
+  chipsMatchCards: chipIds.length === decisionIds.length && chipIds.every((id, index) => id === decisionIds[index]),
+  cardTransport: ['id="df-transport-prev"', 'id="df-transport-play"', 'id="df-transport-next"'].every((marker) => html.includes(marker)),
+  speedSelector: /<select id="df-speed">[\s\S]*?<option value="1"[\s>]/.test(html) && /\.playbackRate\s*=\s*rate/.test(html),
+  viewToggle: html.includes('id="df-view-toggle"') && html.includes("aria-pressed"),
+  checklistItems,
+  answerSheets: cardsWithSheets,
+  sheetsMatchCards: cardsWithSheets === cards.length,
+  storyStage: ['id="df-story-top"', 'id="df-story-exit"', 'id="df-transport-stop"', 'id="df-progress-fill"', 'id="df-sheet-backdrop"'].every((marker) => html.includes(marker)),
+  sheetAccessibility: html.includes('setAttribute("role","dialog")') && html.includes('setAttribute("aria-modal","true")') && /event\.key==="Escape"/.test(html) && /event\.key!=="Tab"/.test(html),
+  checklistsOwnedByCards: checklistsOutsideCards === 0 && checklists.every((list) => list.owner === list.claimed),
+  checklistPersistence: checklistItems === 0 || /\+"-checks"\]/.test(html),
   noCinemaOrGlobalPlayAll: !html.includes('id="cinema"')
     && !html.includes('id="pa-bar"')
     && !html.includes('id="golem-playall-bar"')
@@ -83,6 +101,15 @@ report.pass = report.metaCharsetUtf8
   && report.wordClickSeek
   && report.copyAnswers
   && report.nextAndSkip
+  && report.chipsMatchCards
+  && report.cardTransport
+  && report.speedSelector
+  && report.viewToggle
+  && report.checklistsOwnedByCards
+  && report.sheetsMatchCards
+  && report.storyStage
+  && report.sheetAccessibility
+  && report.checklistPersistence
   && report.noCinemaOrGlobalPlayAll
   && report.mojibakeMatches === 0;
 

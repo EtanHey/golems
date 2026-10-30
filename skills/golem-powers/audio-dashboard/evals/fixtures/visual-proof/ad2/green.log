@@ -1,0 +1,12 @@
+bun test v1.4.2 (744846f84)
+
+skills/golem-powers/audio-dashboard/evals/decision-flow-word-seek.test.mjs:
+1280 {"events":[{"type":"pointerdown","word":"9"},{"type":"mouseup","word":"9"},{"type":"click","word":"9"}],"time":9.000522}
+(pass) real pointer word seek and keyboard visibility at 1280px [447.77ms]
+390 {"events":[{"type":"pointerdown","word":"3.6"},{"type":"mouseup","word":"3.6"},{"type":"click","word":"3.6"}],"time":3.601182}
+(pass) real pointer word seek and keyboard visibility at 390px [380.47ms]
+
+ 2 pass
+ 0 fail
+ 22 expect() calls
+Ran 2 tests across 1 file. [951.00ms]

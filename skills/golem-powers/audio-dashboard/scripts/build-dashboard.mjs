@@ -44,6 +44,7 @@ import {
   analyzeVoiceRoles,
   formatVoiceRoleReport,
   voiceRoleRunbook,
+  voicePersonFromProfile,
 } from "../src/voice-role-gate.mjs";
 import {
   analyzeTranscriptFidelity,
@@ -62,7 +63,7 @@ import {
 } from "../src/build-receipts.mjs";
 import { analyzeTeleprompterDrift, formatTeleprompterDriftReport } from "../src/teleprompter-drift-gate.mjs";
 import { injectDecisionSurfaceIntoHtml } from "../src/decision-surface.mjs";
-import { renderDecisionFlow } from "../src/decision-flow.mjs";
+import { comparisonPages, findBareReferences, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -384,12 +385,15 @@ function main() {
     else missing.push(`audio:${sceneId}`);
     if (!existsSync(wav)) missing.push(`wav:${sceneId}`);
 
+    const speaker = s.speaker || voicePersonFromProfile(s.reference ?? s.profile);
     scenes.push({
       id: sceneId,
       domain: s.domain || "overview",
       ...(s.domainLabel ? { domainLabel: s.domainLabel } : {}),
       title: s.title || sceneId,
       script: s.script,
+      ...(s.role ? { role: s.role } : {}),
+      ...(speaker ? { speaker } : {}),
       words,
       ...(existsSync(mp3) ? { duration: ffprobeDurationSeconds(mp3) } : {}),
       ...(audioUrl ? { audioUrl } : {}),
@@ -447,6 +451,11 @@ function main() {
 
   let html;
   if (dashboardType === "decision-flow") {
+    // A bare "#39" names no repository; the producer must link a repository-qualified URL on the card.
+    const bareReferences = findBareReferences(Array.isArray(spec.decisions) ? spec.decisions : []);
+    if (bareReferences.length) {
+      fail(`decision-flow bare issue/PR reference: ${bareReferences.map(({ decision, field, ref }) => `${decision} ${field} ${ref}`).join("; ")}. Add a rail row with href set to the repository-qualified PR/issue URL; never infer the repository from the number.`);
+    }
     try {
       html = renderDecisionFlow({
         title: spec.title || "Decision flow",
@@ -457,9 +466,19 @@ function main() {
         decisions: spec.decisions,
         storageKey: spec.decisionSurface?.storageKey || spec.decisionStorageKey || `dbx:${jobId}`,
         cinemaUrl: spec.cinemaUrl || spec.decisionCinemaUrl,
+        comparisonTimeoutMs: spec.comparisonTimeoutMs,
       });
     } catch (error) {
       fail(error?.message || error);
+    }
+    // A local comparison page must carry the ready marker; WebKit has no other success evidence.
+    for (const { decision, url } of comparisonPages(spec.decisions)) {
+      const pagePath = path.resolve(path.dirname(outPath), decodeURIComponent(url.split(/[?#]/)[0]));
+      if (!existsSync(pagePath)) {
+        console.error(`[build-dashboard] WARN: comparison page for ${decision} is not on disk yet, so its ready marker was not checked: ${url}`);
+      } else if (!hasComparisonReadyMarker(readFileSync(pagePath, "utf8"))) {
+        fail(`decision-flow comparison page lacks the canonical ready marker: ${decision} ${url}. Use the canonical marker (markComparisonReady): <meta name="adash-comparison" content="ready"> as the first child of <head>, or data-adash-comparison="ready" on <html>.`);
+      }
     }
   } else {
     html = renderV4({

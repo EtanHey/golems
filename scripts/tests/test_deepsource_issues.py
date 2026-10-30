@@ -6,6 +6,7 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -634,6 +635,7 @@ def test_token_file_read_errors_exit_2_with_one_line(tmp_path, monkeypatch, caps
     path = token_file(tmp_path, f"DEEPSOURCE_TOKEN={SECRET_PART}\n")
     monkeypatch.delenv("DEEPSOURCE_TOKEN", raising=False)
     monkeypatch.setenv("DEEPSOURCE_TOKEN_FILE", str(path))
+    monkeypatch.setattr(helper, "os", SimpleNamespace(**vars(os)))
     real = getattr(helper.os, call)
 
     def broken(fd, *args):
@@ -642,6 +644,12 @@ def test_token_file_read_errors_exit_2_with_one_line(tmp_path, monkeypatch, caps
         return real(fd, *args)
 
     monkeypatch.setattr(helper.os, call, broken)
+    # Other users of os (including pytest) must keep working during injection.
+    with path.open("rb") as unrelated:
+        if call == "fstat":
+            assert os.fstat(unrelated.fileno()).st_size == path.stat().st_size
+        else:
+            assert os.read(unrelated.fileno(), 0) == b""
     assert helper.main(["EtanHey/app", "7"]) == 2
     out, err = capsys.readouterr()
     assert out == "" and err.count("\n") == 1 and str(path) in err and "Traceback" not in err

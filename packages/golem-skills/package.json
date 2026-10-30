@@ -12,6 +12,7 @@
     "test": "bun test src/__tests__/"
   },
   "devDependencies": {
+    "@golems/shared": "workspace:*",
     "@types/bun": "latest"
   },
   "keywords": [

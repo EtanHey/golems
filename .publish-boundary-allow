@@ -14,6 +14,10 @@ skills/golem-powers/cyber/scripts/launchd-secret-linter/fixtures/red-plist.plist
 skills/golem-powers/launchd-secret-linter/tests/test_plist_secret_lint.py
 
 # Public vendor names, synthetic people, and authored email/categorization fixtures.
+# Authored Supabase safety fixture: actual production ref must be refused;
+# all credentials are synthetic and fetch is intercepted before network I/O.
+packages/shared/src/__tests__/supabase-test-guard.test.ts
+packages/services/src/__tests__/doctor-seat-registry.test.ts
 packages/coach/src/__tests__/morning-briefing-runner.test.ts
 packages/coach/src/__tests__/morning-briefing.test.ts
 packages/golems-tui/src/data.ts
@@ -132,8 +136,16 @@ scripts/tests/lib/worktree-gc-fixtures.bash
 # Authored synthetic Git commit identity and private bystander-preservation fixtures.
 scripts/tests/test-worktree-gc-astra.bats
 
+# Authored synthetic Git identity used by the installer fixture repositories.
+# Classes: identity-pii
+scripts/tests/install-hooks.test.mjs
+
 # History-only: #811 commits 9055532c..9848a190 carried the synthetic Git fixture
 # identity fixture@example.invalid at this path. The live test moved to
 # scripts/tests/pr-loop-root-ff.test.mjs with an allowed example.com identity;
 # no live file has this path. Kept for the history ratchet (no force-push).
 scripts/tests/pr-loop-root-ff-block.test.mjs
+
+# Authored synthetic Git identity in the docs.local guard fixtures; covers history too.
+# Classes: identity-pii
+scripts/tests/test-guard-no-docslocal.bats

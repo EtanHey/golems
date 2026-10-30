@@ -48,7 +48,7 @@ PY
     [ "$(clean_git -C "$a" rev-parse --show-toplevel)" = "$a" ]
     before="$(snapshot "$b")"
     args=("$WORKTREE_GC" --apply --idle-hours 0 --repo "$a")
-    [[ "$mode" == nightly ]] && args=("$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$a")
+    [[ "$mode" == nightly ]] && args=("$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$a")
     [[ "$mode" == plan ]] && args=("$GC_SOURCE" --prune-plan --idle-hours 0 --repo "$a")
     run timeout -k 3 30 env GIT_DIR="$b/.git" GIT_WORK_TREE="$b" GIT_COMMON_DIR="$b/.git" \
       GIT_INDEX_FILE="$b/.git/index" GIT_OBJECT_DIRECTORY="$b/.git/objects" \
@@ -75,7 +75,7 @@ SH
     for mode in gc nightly path; do
       rm -f "$TEST_ROOT/trace"
       args=("$GC_SOURCE" --prune-plan --repo "$bad")
-      [[ "$mode" == nightly ]] && args=("$REPO_ROOT/scripts/worktree-gc-nightly.sh" --repo "$bad")
+      [[ "$mode" == nightly ]] && args=("$WORKTREE_GC_NIGHTLY" --repo "$bad")
       [[ "$mode" == path ]] && args=("$GC_SOURCE" --apply --repo "$bad" --path "$target")
       run timeout -k 3 30 env PATH="$stub:$PATH" REAL_GIT="$(command -v git)" TRACE="$TEST_ROOT/trace" "${args[@]}"
       [ "$status" -eq 2 ]
@@ -148,7 +148,7 @@ SH
   run env -u WORKTREE_GC_CMUX_REGISTRY "$WORKTREE_GC" --apply --idle-hours 0 --repo "$a"
   [ "$status" -eq 0 ]; [ ! -d "$target" ]
   a="$(make_fixture_repo required)"; target="$(add_branch_worktree "$a" target)"
-  run env -u WORKTREE_GC_CMUX_REGISTRY "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0 --repo "$a"
+  run env -u WORKTREE_GC_CMUX_REGISTRY "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$a"
   [ "$status" -eq 0 ]; [ -d "$target" ]
   [[ "$output" == *"KEEP-undetermined"*"registry"* ]] || false
 }
@@ -186,13 +186,13 @@ SH
       [ -d "$HOME/Gits/$name/.worktrees/lane-worktree" ]
     done
   done
-  run timeout -k 3 30 "$REPO_ROOT/scripts/worktree-gc-nightly.sh" --idle-hours 0
+  run timeout -k 3 30 "$WORKTREE_GC_NIGHTLY" --idle-hours 0
   [ "$status" -eq 0 ]
   for name in aaa ccc; do
     [ "$(printf '%s\n' "$output" | grep -c "^$name · .* · REMOVED · ")" -eq 1 ]
     [ ! -d "$HOME/Gits/$name/.worktrees/lane-worktree" ]
   done
-  for entry in "$WORKTREE_GC" "$REPO_ROOT/scripts/worktree-gc-nightly.sh"; do
+  for entry in "$WORKTREE_GC" "$WORKTREE_GC_NIGHTLY"; do
     run timeout -k 3 30 "$entry" --repo "$HOME/Gits/bbb-link"
     [ "$status" -eq 2 ]
     [[ "$output" == *"Refusing --repo"* || "$output" == *"--repo must be"* ]] || false
