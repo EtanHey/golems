@@ -138,13 +138,14 @@ def test_add_failure_keeps_reservation_in_audit(lane, tree):
     assert (target / "existing").read_text() == "keep\n"
 
 
-def test_t3_managed_path_refused(lane, tmp_path, monkeypatch):
+def test_t3_managed_path_refused(lane, tree, tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     target = tmp_path / ".t3/worktrees/repo/managed"
-    target.mkdir(parents=True)
+    git(tree[0], "worktree", "add", "-qb", "managed", str(target))
     lane.run("reserve", "--lease-id", "managed", "--allocator", "direct-git", "--owner", "parent",
-             "--repo", target, "--kind", "worktree", "--ownership", "created", script=LEASE)
-    lane.run("bind", "--lease-id", "managed", "--path", target, "--head", "abc", script=LEASE)
+             "--repo", tree[0] / ".git", "--kind", "worktree", "--ownership", "created", script=LEASE)
+    lane.run("bind", "--lease-id", "managed", "--path", target,
+             "--head", git(target, "rev-parse", "HEAD"), script=LEASE)
     before = lane.record({"lease_id": "managed"})
     result = lane.close({"lease_id": "managed"}, ok=False)
     assert "settle" in result.stderr and "T3" in result.stderr
