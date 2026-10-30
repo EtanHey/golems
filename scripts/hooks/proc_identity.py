@@ -59,9 +59,10 @@ class ProcIdentityUnavailable(RuntimeError):
     """Inspection failed or changed mid-read; absence has not been established."""
 
     def __init__(self, message: str, *, reason: str = "other", uid: int | None = None,
-                 ruid: int | None = None):
+                 ruid: int | None = None, ppid: int | None = None, pgid: int | None = None):
         super().__init__(message)
         self.reason, self.uid, self.ruid = reason, uid, ruid
+        self.ppid, self.pgid = ppid, pgid
 
 
 class EnvHidden(ProcIdentityUnavailable):
@@ -196,19 +197,21 @@ def _linux_uids(pid: int) -> tuple[int, int]:
     return int(uids[1]), int(uids[0])
 
 
-def _uid_hint(pid: int) -> tuple[int | None, int | None]:
-    """Best-effort owner observation, without claiming a birth key or identity."""
+def _scope_hint(pid: int) -> dict[str, int]:
+    """Best-effort owner/group observation, never a birth key or signal authority."""
     try:
         if sys.platform == "linux":
-            return _linux_uids(pid)
+            uid, ruid = _linux_uids(pid)
+            return dict(uid=uid, ruid=ruid)
         if sys.platform == "darwin":
             info = _ProcBsdShortInfo()
             count = _libproc.proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, ctypes.byref(info), ctypes.sizeof(info))
             if count == ctypes.sizeof(info) and info.pbsi_pid == pid:
-                return info.pbsi_uid, info.pbsi_ruid
+                return dict(uid=info.pbsi_uid, ruid=info.pbsi_ruid,
+                            ppid=info.pbsi_ppid, pgid=info.pbsi_pgid)
     except (OSError, ValueError, IndexError, StopIteration):
         pass
-    return None, None
+    return {}
 
 
 def identity(pid: int) -> ProcIdentity | None:
@@ -232,10 +235,9 @@ def identity(pid: int) -> ProcIdentity | None:
     except (FileNotFoundError, ProcessLookupError):
         return None
     except (OSError, ValueError, IndexError, StopIteration) as error:
-        uid, ruid = _uid_hint(pid)
         reason = "permission" if isinstance(error, PermissionError) else "other"
         raise ProcIdentityUnavailable(f"cannot inspect PID {pid}", reason=reason,
-                                      uid=uid, ruid=ruid) from error
+                                      **_scope_hint(pid)) from error
 
 
 def _parse_procargs2(data: bytes) -> tuple[list[bytes], list[bytes]]:
@@ -511,8 +513,8 @@ class ChildrenSnapshot(dict[int, tuple[int, int, StartKey, int, int]]):
 def children_snapshot() -> ChildrenSnapshot:
     """One enumeration, one identity per PID; each PID is in exactly one map.
 
-    Unavailable records carry reason (permission/gone/other), uid and ruid. UID
-    hints are independent observations, without a verified birth key. Callers
+    Unavailable records carry reason, owner and optional parent/group hints.
+    Hints are independent observations, without a verified birth key. Callers
     must inspect unavailable explicitly; truth-value testing always raises.
     Entries are (ppid, pgid, start, uid, ruid).
     """
@@ -521,12 +523,9 @@ def children_snapshot() -> ChildrenSnapshot:
         try:
             observed = identity(pid)
         except ProcIdentityUnavailable as error:
-            if error.uid is None or error.ruid is None:
-                uid, ruid = _uid_hint(pid)
-                if error.uid is None:
-                    error.uid = uid
-                if error.ruid is None:
-                    error.ruid = ruid
+            if any(getattr(error, field) is None for field in ('uid', 'ruid', 'ppid', 'pgid')):
+                for field, value in _scope_hint(pid).items():
+                    if getattr(error, field) is None: setattr(error, field, value)
             result.unavailable[pid] = error
         else:
             if observed is None:

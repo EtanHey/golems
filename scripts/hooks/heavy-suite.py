@@ -165,13 +165,15 @@ class SuiteTree:
         self.known = {} if leader is None else {(leader.pid, leader.start): leader}
         self.incomplete, self.signalled, self.unattributed = set(), [], {}
 
-    def scan(self, markers=True):
+    def scan(self, markers=True, cleanup=False):
         snapshot = proc.children_snapshot()
         rows = {pid: proc.ProcIdentity(pid, *row[:2], row[3], row[4], row[2]) for pid, row in snapshot.items()}
         leader = rows.get(self.leader.pid) if self.leader else None
         group_live = leader is not None and leader.key == self.leader.key and proc.same_process(leader)
         for pid, error in snapshot.unavailable.items():
-            if error.reason != "gone" and any(key[0] == pid for key in self.known):
+            scoped_unknown = cleanup and ((group_live and error.pgid == leader.pgid) or
+                any(key[0] == error.ppid for key in self.known))
+            if error.reason != "gone" and (scoped_unknown or any(key[0] == pid for key in self.known)):
                 self.incomplete.add(f"identity-unavailable:{pid}")
         found = {}
         for _ in range(len(rows) + 1):
@@ -215,13 +217,35 @@ class SuiteTree:
 
 def cleanup_tree(tree, child, grace, signum=None):
     start, empty = time.monotonic(), 0
+    initial_group_signal = signum if signum is not None else signal.SIGTERM
+    group_sent = None
+    group_error = False
     rows = {}
     while time.monotonic() <= start + grace + 2:
         try:
-            rows = tree.scan()
+            rows = tree.scan(cleanup=True)
+            # This direct child anchors the new session's group until poll() reaps it.
+            # Never send to a numeric group after releasing that anchor.
+            group_signal = signal.SIGKILL if time.monotonic() >= start + grace else initial_group_signal
+            if (group_sent != group_signal and child.returncode is None and
+                    tree.leader is not None and tree.leader.pid == child.pid):
+                try:
+                    os.killpg(child.pid, group_signal)
+                    group_sent = group_signal
+                    tree.signalled.append({"pid": child.pid, "start": tree.leader.start, "signal": int(group_signal), "group": True})
+                except ProcessLookupError: pass
+                except OSError: group_error = True
             child.poll()
             empty = empty + 1 if not rows and child.returncode is not None else 0
-            if empty >= 2: return not tree.incomplete, []
+            if empty >= 2:
+                if group_error:
+                    # A delivered TERM can leave only an unreaped zombie (Darwin EPERM).
+                    # After reaping, signal zero only observes existence; never kill a reused group.
+                    try: os.killpg(child.pid, 0)
+                    except ProcessLookupError: pass
+                    except OSError: tree.incomplete.add("group-signal-unverified")
+                    else: tree.incomplete.add("group-signal-unverified")
+                return not tree.incomplete, []
             if signum is not None: tree.send(rows, signum); signum = None
             tree.send(rows, signal.SIGKILL if time.monotonic() >= start + grace else signal.SIGTERM)
         except proc.ProcIdentityUnavailable: tree.incomplete.add("scan-unavailable")

@@ -214,6 +214,7 @@ def test_native_permission_and_short_reads_are_not_absence(spawn, monkeypatch):
         if flavor == 13:
             short = proc.ctypes.cast(buffer, proc.ctypes.POINTER(proc._ProcBsdShortInfo)).contents
             short.pbsi_pid, short.pbsi_uid, short.pbsi_ruid = pid, os.geteuid(), os.getuid()
+            short.pbsi_ppid, short.pbsi_pgid = os.getpid(), os.getpgrp()
             return size
         proc.ctypes.set_errno(1)
         return 0
@@ -221,6 +222,8 @@ def test_native_permission_and_short_reads_are_not_absence(spawn, monkeypatch):
     with pytest.raises(proc.ProcIdentityUnavailable) as caught:
         proc.identity(child.pid)
     assert caught.value.reason == "permission" and caught.value.uid == os.geteuid()
+    assert getattr(caught.value, "ppid", None) == os.getpid()
+    assert getattr(caught.value, "pgid", None) == os.getpgrp()
     monkeypatch.setattr(proc._libproc, "proc_pidinfo", lambda *_: 12)
     with pytest.raises(proc.ProcIdentityUnavailable):
         proc.identity(child.pid)
@@ -287,6 +290,7 @@ def test_linux_permission_keeps_uid_and_missing_boot_id_is_not_gone(spawn, monke
     with pytest.raises(proc.ProcIdentityUnavailable) as caught:
         proc.identity(child.pid)
     assert caught.value.reason == "permission" and caught.value.uid == os.geteuid()
+    assert caught.value.ppid is None and caught.value.pgid is None
     def missing_boot(path):
         if path == "/proc/sys/kernel/random/boot_id":
             raise FileNotFoundError(2, "fixture missing boot identity")

@@ -63,6 +63,49 @@ def survivors(marker):
     return result
 
 
+@pytest.mark.skipif(sys.platform != 'darwin' or not Path('/usr/bin/top').stat().st_mode & 0o4000,
+                    reason='Darwin setuid child fixture')
+@pytest.mark.parametrize('cancel', [False, True], ids=['timeout', 'cancel'])
+def test_setuid_group_child_is_cleaned_without_false_ok(tree, cancel):
+    home, marker, _ = tree
+    ready = home / 'setuid.pid'
+    code = ("import subprocess; from pathlib import Path; "
+            "p=subprocess.Popen(['/usr/bin/top','-l','6','-s','1','-n','1'], "
+            "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); "
+            f"Path({str(ready)!r}).write_text(str(p.pid)); p.wait()")
+    wrapper = subprocess.Popen([sys.executable, str(SCRIPT), '--timeout-seconds',
+        '8' if cancel else '1', '--kill-grace-seconds', '.1', '--', sys.executable, '-c', code],
+        env={**env(home), 'LIFECYCLE_FIXTURE_ID': marker}, stderr=subprocess.PIPE, text=True)
+    top_pid = group = None
+    def member_alive():
+        try: return os.getpgid(top_pid) == group
+        except ProcessLookupError: return False
+    try:
+        wait_for(ready)
+        top_pid = int(ready.read_text())
+        group = os.getpgid(top_pid)
+        time.sleep(.2)
+        try: observed = proc.identity(top_pid)
+        except proc.ProcIdentityUnavailable as error:
+            assert error.reason == 'permission' and error.ruid == os.getuid()
+        else: pytest.skip(f'kernel permits setuid inspection: {observed}')
+        if cancel: wrapper.send_signal(signal.SIGTERM)
+        _, err = wrapper.communicate(timeout=10)
+        assert wrapper.returncode == (143 if cancel else 124), err
+        deadline = time.monotonic() + .5
+        while member_alive() and time.monotonic() < deadline: time.sleep(.01)
+        assert not member_alive(), err
+    finally:
+        if wrapper.poll() is None: wrapper.terminate()
+        wrapper.communicate(timeout=10)
+        # The red fixture may survive the old wrapper; let its bounded six samples end.
+        # Never signal a protected PID whose incarnation cannot be inspected.
+        if top_pid is not None:
+            deadline = time.monotonic() + 8
+            while member_alive() and time.monotonic() < deadline: time.sleep(.02)
+            assert not member_alive(), 'bounded fixture did not exit'
+
+
 @pytest.mark.parametrize('mode', ['ordinary', 'force', 'held', 'expiry', 'setup', 'invalid', 'nested'])
 @pytest.mark.parametrize('busy', [False, True])
 def test_hard_deadline_cleans_tree(tree, mode, busy):

@@ -94,6 +94,12 @@ from either:
 - An observed lineage edge: a parent chain to the suite leader recorded by
   `proc_identity` while the parent incarnations were alive.
 
+Cleanup also forwards to the new session's group before reaping its direct
+child, whose unreaped PID prevents group-ID reuse. After reaping, only the
+per-process identity checks may authorize signals. Darwin short-info hints can
+mark unreadable same-group or observed-parent children incomplete during
+cleanup; those hints never authorize an individual PID signal.
+
 The environment marker may only narrow candidates; it never authorizes a
 signal, even for a process born after suite start. A matching marker without
 either authority is listed in `unattributed_marker_processes` as
