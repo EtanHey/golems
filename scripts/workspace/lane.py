@@ -278,6 +278,8 @@ def close_lane(args):
             write_close_state(destination, state)
         except (OSError, ValueError) as error:
             summary.update(disposition="RETAINED", reason=str(error))
+            if isinstance(error, generation.Mismatch):
+                summary["generation_check"] = "mismatch"
         if record["state"] != "closed":
             if summary["disposition"] == "REMOVED":
                 lease_command("close", "--lease-id", args.lease_id, "--close-token", token,

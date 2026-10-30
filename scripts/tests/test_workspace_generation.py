@@ -8,7 +8,7 @@ import tempfile
 import pytest
 
 from test_workspace_lane import CLI, LEASE, lane
-from test_workspace_retire import git, tree
+from test_workspace_retire import git, load_retire, retire_args, tree
 
 
 @pytest.fixture
@@ -34,6 +34,7 @@ def test_replacement_at_same_path_and_head_is_retained(lane, tree):
     summary = json.loads(lane.close(opened, ok=False).stdout)
     assert summary["disposition"] == "RETAINED"
     assert "resource replaced since bind" in summary["reason"]
+    assert summary["generation_check"] == "mismatch"
     assert precious.read_bytes() == b"replacement owner's bytes\x00\n"
     assert git(path, "branch", "--show-current") == "other-owner"
     assert git(path, "rev-parse", "HEAD") == opened["head"]
@@ -86,3 +87,31 @@ def test_bind_retry_refuses_to_replace_recorded_generation(lane, tree):
                       script=LEASE, ok=False)
     assert "resource replaced since bind" in result.stderr
     assert lane.record(opened)["resource_generation"] == before
+
+
+def test_swap_after_last_check_names_stranded_quarantine(lane, tree, monkeypatch):
+    opened = json.loads(lane.open().stdout)
+    path = Path(opened["path"])
+    original = tree[0].parent / "original-generation"
+    module = load_retire()
+    real_git = module.git
+
+    def swap(repo, *args):
+        if args[:3] == ("worktree", "move", str(path)):
+            git(tree[0], "worktree", "move", str(path), str(original))
+            git(tree[0], "worktree", "add", "-qb", "other-owner", str(path), opened["head"])
+        return real_git(repo, *args)
+
+    monkeypatch.setattr(module, "git", swap)
+    args = retire_args((tree[0], path, tree[2]))
+    args.expect_generation = lane.record(opened)["resource_generation"]
+    receipt, code = module.retire(args)
+    quarantine = Path(receipt["quarantine_path"])
+    assert code and receipt["disposition"] == "RETAINED"
+    assert receipt["quarantine_generation_check"] == "mismatch"
+    assert receipt["quarantine_resource_generation"] != args.expect_generation
+    assert "stranded quarantine" in receipt["reason"] and str(quarantine) in receipt["reason"]
+    assert "different generation" in receipt["reason"]
+    assert (quarantine / "tracked").read_text() == "original\n"
+    assert git(quarantine, "branch", "--show-current") == "other-owner"
+    assert original.exists() and receipt["remove_rc"] is None

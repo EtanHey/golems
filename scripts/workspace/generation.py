@@ -8,10 +8,15 @@ import subprocess
 LEGACY = "legacy: no generation recorded at bind"
 
 
+class Mismatch(ValueError):
+    """The resource no longer matches its recorded allocation generation."""
+
+
 def directory_identity(path):
     info = Path(path).lstat()
     if not stat.S_ISDIR(info.st_mode):
         raise ValueError("generation requires a directory: " + str(path))
+    # st_dev may change after a remount; that mismatch fails safe as RETAINED.
     return [info.st_dev, info.st_ino]
 
 
@@ -38,7 +43,7 @@ def verify(path, expected):
     try:
         observed = capture(path)
     except (OSError, ValueError) as error:
-        raise ValueError("resource replaced since bind: " + str(error)) from error
+        raise Mismatch("resource replaced since bind: " + str(error)) from error
     if observed != expected:
-        raise ValueError("resource replaced since bind: filesystem, gitdir or branch differs")
+        raise Mismatch("resource replaced since bind: filesystem, gitdir or branch differs")
     return observed

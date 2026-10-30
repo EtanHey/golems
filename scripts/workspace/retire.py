@@ -604,6 +604,8 @@ def retire(args):
             raise ValueError("quarantine destination already exists")
         if generation_recorded:
             generation.verify(path, expected_generation)
+        # AIDEV-NOTE: This check and Git's move are not atomic. A raced swap
+        # may strand a replacement in quarantine; retain it and report its generation.
         move = git(repo, "worktree", "move", str(path), str(quarantine))
         receipt["move_rc"], receipt["move_stderr"] = move.returncode, move.stderr
         if move.returncode:
@@ -623,6 +625,8 @@ def retire(args):
         receipt["remove_rc"], receipt["remove_stderr"] = removed.returncode, removed.stderr
     except (OSError, ValueError, RuntimeError) as error:
         receipt["reason"] = str(error)
+        if isinstance(error, generation.Mismatch):
+            receipt["generation_check"] = "mismatch"
 
     if custody_verified and (refused or receipt["remove_rc"] != 0):
         receipt.setdefault("reason", "remove failed: " + receipt["remove_stderr"])
@@ -644,6 +648,17 @@ def retire(args):
     errors.extend(observe(receipt, repo, path))
     if quarantine is not None:
         errors.extend(observe(receipt, repo, quarantine, "quarantine_"))
+        if generation_recorded and receipt["quarantine_physical_after"] is True:
+            try:
+                observed_generation = generation.capture(quarantine)
+                receipt["quarantine_resource_generation"] = observed_generation
+                mismatch = observed_generation != expected_generation
+                receipt["quarantine_generation_check"] = "mismatch" if mismatch else "verified"
+                if mismatch:
+                    receipt["generation_check"] = "mismatch"
+                    errors.append(f"stranded quarantine {quarantine} contains a different generation")
+            except (OSError, ValueError) as error:
+                errors.append("quarantine generation unavailable: " + str(error))
     if errors:
         receipt["reason"] = "; ".join(filter(None, [receipt.get("reason"), *errors]))
     if (not refused and not errors and receipt["remove_rc"] == 0
