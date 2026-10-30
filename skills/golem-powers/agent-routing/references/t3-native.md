@@ -187,7 +187,8 @@ Worktree bases and the single post-launch preparation read follow the canonical
 - `link_pull_request` for every PR opened in the lane, each stack layer included. The parent links
   it after verifying and checks `list_thread_pull_requests` before closing the lane.
 - `watch_pull_request` is parent-owned: a child cannot watch, because its parent thread owns the PR.
-  Handle existing comments first, then end the turn. A wake is news, not a merge decision.
+  Handle existing comments first, then end the turn. On a PR-watch wake, follow the
+  [waiting policy](../../pr-loop/references/review-loop.md#waiting-policy-no-polling-turns).
   `unwatch_pull_request` before handing the work back.
 
 ## 9. Owned elsewhere

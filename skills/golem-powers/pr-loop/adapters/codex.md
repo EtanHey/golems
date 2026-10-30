@@ -72,10 +72,10 @@ Diff-pass procedure: [review loop § 8a.2](../references/review-loop.md#8a2--the
 
 Wait per the [waiting policy](../references/review-loop.md#waiting-policy-no-polling-turns), in order:
 
-1. **T3 seat:** the PR-loop owner calls `link_pull_request` then `watch_pull_request` and ends the
-   turn; a delegated Codex child ends its turn and its parent's `delegate_task` completion wakes the
-   parent. T3 wakes on checks finished, a new comment, or a conflict. `unwatch_pull_request` at a
-   terminal state.
+1. **T3 seat:** owning parent links created/taken-over/pushed PRs immediately, handles existing
+   feedback and branch fixes/pushes, then calls `watch_pull_request`, inspects `watching:true` and ends.
+   Ordinary wakes/pushes preserve the watch; no routine list/rearm. Unwatch before terminal/handoff.
+   A delegated child reports its artifact and ends; it never watches or substitutes a process/child.
 2. **State needed now:** one bounded slim read (below), then act or end the turn.
 3. **Must sit and watch outside T3:** one pinned-head `pr-watch` process, or one bounded
    `codex.subagent.mechanical` child that reports once at a terminal state. Never this session
@@ -90,7 +90,7 @@ entire comment/review payload into context.
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
 
 ```bash
-# CI: ONE blocking call — read its exit code. 25m, not Claude's 2h: Codex has no shorter Monitor
+# Outside T3 only, CI: ONE blocking call — read its exit code. 25m, not Claude's 2h: Codex has no shorter Monitor
 # expiry, so the deadline itself keeps the wake inside Codex's ~30-min cache window
 pr-watch <owner/repo> <N> --head <sha> --deadline 25m
 
@@ -104,7 +104,7 @@ gh pr view <N> --json comments,reviews,latestReviews
 ```
 
 Rules:
-- CI waiting is one pinned-head pr-watch command. Read the
+- Outside T3 only, CI waiting is one pinned-head pr-watch command. Read the
   [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits):
   0 READY is a CI fact, 12 MERGED is an observed merge, 10 FAILED needs action,
   11 HEAD_MOVED needs a new head pin, 20 DEADLINE needs re-arming if waiting
@@ -126,7 +126,7 @@ Review handoffs reach this seat as T3 wakes: a `delegate_task` completion, or th
 `watch_pull_request` wake. Never arm `/collab-monitor` or its packaged fallback for a review handoff,
 in T3 or in cmux. The rule, verbatim (Etan 2026-10-18, via orc collab): "No polling turns. No
 collab-monitor wakes in Codex, and no "watch #410" loops. Use T3 completion notifications or a single
-bounded check." Mechanical watching goes to one bounded `codex.subagent.mechanical` child (policy
+bounded check." Outside T3 only, mechanical PR watching goes to one bounded `codex.subagent.mechanical` child (policy
 item 3). No `ScheduleWakeup`/cron wakes for CI or reviews, and never wait on a rate-limited bot: bots
 are advisory.
 
