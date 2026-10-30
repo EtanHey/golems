@@ -380,20 +380,20 @@
     },
     {
       "id": 14,
-      "name": "commit-trailer-is-seat-aware-not-model-only",
-      "prompt": "Write the commit command for a docs fix. You are cmuxlayerClaude (worker) in Claude Code. Include the co-author trailer exactly as fleet law requires.",
-      "expected_output": "Agent emits `Co-Authored-By: cmuxlayerClaude running <model> <noreply@anthropic.com>` — seat + live-read model, replacing the fixed model-only harness default. Exactly one Co-Authored-By line. No effort clause. No visible signature line or hidden identity metadata in the commit message (that block is for GitHub comment/PR/review/issue bodies only).",
-      "root_cause_tested": "commit trailer was model-only and seat-blind; the harness auto-appends its own fixed string, which can produce a duplicate or a seat-less trailer",
+      "name": "commit-trailers-name-co-authoring-models",
+      "prompt": "Write the commit command for a docs fix co-authored by Claude and Codex. You are cmuxlayerClaude (worker) in Claude Code. Read the live model for each contributor and include the required trailers.",
+      "expected_output": "One model-only Co-Authored-By trailer per co-authoring model, read from the live session. Claude uses <Model> <noreply@anthropic.com>; Codex uses <Model> <noreply@openai.com>. No seat or role names, effort clause, GitHub attribution line or hidden metadata. Avoid duplicate harness trailers.",
+      "root_cause_tested": "Retired seat-based trailers and duplicate harness trailers must not leak into model-only attribution",
       "assertions": [
         {
-          "name": "seat-aware-trailer-form",
+          "name": "model-only-trailer-form",
           "type": "outcome",
-          "description": "Trailer reads `Co-Authored-By: cmuxlayerClaude running <model> <noreply@anthropic.com>`"
+          "description": "Each trailer names a live-read model only, with the vendor-appropriate noreply email and no seat or role name"
         },
         {
-          "name": "single-trailer-line",
+          "name": "one-trailer-per-model",
           "type": "negative",
-          "description": "Response does not also emit the fixed model-only harness default trailer alongside it"
+          "description": "Both co-authoring models get a trailer; no duplicate trailer for either model"
         },
         {
           "name": "no-effort-clause",

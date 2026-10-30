@@ -21,7 +21,7 @@ naming the model(s) that did the work and the harness:
 - Outside T3: `🤖 Generated with GPT-6.1 Sol in Codex` / `… in Claude Code`
 - Read the model from the live session, never from memory. No effort level, seat or role names in
   the visible line.
-- Use this line only on every repo; never append hidden identity metadata.
+- Use only this line, on every repo. Never append hidden identity metadata.
 
 Read the model at write time from live session records or the harness's runtime metadata.
 Never use self-report, a spawn registry or a value cached at boot. If unavailable, use `unknown`.
@@ -33,27 +33,25 @@ backticks and literal text; see [PR creation](pr-creation.md#step-7-creating-the
 
 ## Commit trailer
 
-Today's fleet habit is a fixed, model-only, seat-blind string (`Co-Authored-By: Claude <model>
-<noreply@anthropic.com>` — the Claude Code harness injects this wording by default). Ratified
-replacement:
+Use model-only co-author trailers:
 
 ```
-Co-Authored-By: <seat> running <model> <noreply@anthropic.com>
+Co-Authored-By: <Model> <noreply@anthropic.com>
 ```
 
-Example:
+Claude example:
 
 ```
-Co-Authored-By: brainlayerClaude running claude-opus-4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ```
 
-- `<model>` obeys the live-session provenance rule above — live session metadata, read at commit time.
-- **No effort in the trailer.** The ratification record's Q3 line quotes an earlier draft with
-  `at high effort`; the v1.1 header amendment (later, same session) drops effort from the trailer
-  along with everything else public. v1.1 wins. Do not "restore" the effort clause.
-- The harness default trailer names only the model, so **this rule overrides the harness default**
-  string. If a harness auto-appends its own trailer, the seat-aware form replaces it — one
-  `Co-Authored-By` line, not two.
-- Canon touch: canon #2 (PR-loop) owns branch→merge but does **not** carry the trailer string —
-  as of 2026-08-08 `standards/fleet-canon.md` contains no `Co-Authored-By` text. Canon edits are
-  Etan's ratification; this skill documents the form.
+Codex uses the repo's existing convention:
+
+```
+Co-Authored-By: GPT-6.1 Sol <noreply@openai.com>
+```
+
+- One trailer per co-authoring model. Read each model from the live session at commit time.
+- No seat or role names. Avoid duplicate trailers if the harness adds one automatically.
+- **No effort in the trailer.**
+- Commit messages use these trailers, without the GitHub attribution line or hidden metadata.

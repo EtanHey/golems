@@ -26,7 +26,7 @@ Thanks for your interest in contributing!
 
 This project uses AI coding tools extensively. When AI agents contribute code:
 
-- Credit them with a `Co-Authored-By:` trailer. The maintainer's agents use `Co-Authored-By: <agent> running <model> <noreply@anthropic.com>`; your tool's standard trailer is fine
+- Credit them with a `Co-Authored-By:` trailer. Use one model-only trailer per co-authoring model: `Co-Authored-By: <Model> <noreply@anthropic.com>` for Claude, or `Co-Authored-By: <Model> <noreply@openai.com>` for Codex; your tool's standard trailer is fine
 - AI-generated code goes through the same review process as human code
 - No distinction in quality standards: all code must pass the required checks and review
 

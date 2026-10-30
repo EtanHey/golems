@@ -101,3 +101,13 @@ test("GitHub identity uses one plain model and harness line", () => {
   expect(text).not.toContain("<!-- golem-id");
   expect(text).not.toMatch(/^— .* · /m);
 });
+
+test("commit trailers name each co-authoring model without seats", () => {
+  const text = read(skill("pr-loop", "references/github-identity.md")).split("## Commit trailer")[1];
+  expect(text).toContain("Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>");
+  expect(text).toContain("Co-Authored-By: GPT-6.1 Sol <noreply@openai.com>");
+  expect(text).toContain("One trailer per co-authoring model");
+  expect(text).toContain("live session");
+  expect(text).toContain("No effort in the trailer");
+  expect(text).not.toMatch(/<seat>|running <model>|seat-aware|brainlayerClaude/);
+});

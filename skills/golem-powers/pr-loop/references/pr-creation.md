@@ -24,7 +24,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
                are advisory: wait on one only when it flags something important.
                If CRITICAL issues found → fix first. If minor → proceed.
                Ralph mode: `--story=ID --message=MSG` for atomic commit + criterion.
-             ↳ Commit trailer = `Co-Authored-By: <seat> running <model>
+             ↳ Commit trailer = `Co-Authored-By: <Model>
                <noreply@anthropic.com>` ([Agent Identity Signature](github-identity.md)).
 6. PUSH      git push -u origin feat/name
 7. PR        Create PR (see "Creating the PR" below) — body ends with the signature line
@@ -169,7 +169,7 @@ why. The check does not parse the PR body or judge rationale prose.
 
 The signature line goes **last** in the body, and the same line ends every PR
 comment, review, and issue comment ([Agent Identity Signature](github-identity.md)). Commits use
-the `Co-Authored-By: <seat> running <model>` trailer instead — never the signature line.
+the `Co-Authored-By: <Model>` trailer instead — never the signature line.
 
 If the PR body or comment contains backticks, use `--body-file` (or stdin).
 Shell command substitution will mangle inline code and can silently rewrite the
