@@ -55,8 +55,12 @@ test('all four entry points require a per-invocation --first-build, and publishe
   copyFileSync(new URL('../vendor/agent-html/templates/v4-story-mode/_placeholder.mp3', import.meta.url), path.join(segment, 'sample.mp3'));
   for (const file of ['words.json', 'words.raw.json']) writeFileSync(path.join(segment, file), JSON.stringify([{ word: 'alpha', start: 0.05, end: 0.42 }, { word: 'beta', start: 0.45, end: 0.8 }]));
   writeFileSync(specPath, JSON.stringify({ id: 'first', series: 'first-cli', outputPath, designPreservation: { baseline: { reason: 'Carried from an old spec.' } }, scenes: [{ id: 'sample', audioWav: 'fixture.wav', role: 'host', script: 'alpha beta' }] }));
+  // Match the suite's ffprobe convention for this known one-second fixture.
+  const bin = path.join(cell.root, 'bin'); mkdirSync(bin, { recursive: true });
+  writeFileSync(path.join(bin, 'ffprobe'), "#!/usr/bin/env sh\nprintf '1.000000\\n'\n", { mode: 0o755 });
+  const env = { ...process.env, PATH: bin + path.delimiter + (process.env.PATH || '') };
   const run = async (script, flags = []) => {
-    const child = Bun.spawn(cell.command(new URL(`../scripts/${script}.mjs`, import.meta.url).pathname, ['--spec', specPath, ...flags]), { env: process.env, stdout: 'pipe', stderr: 'pipe' });
+    const child = Bun.spawn(cell.command(new URL(`../scripts/${script}.mjs`, import.meta.url).pathname, ['--spec', specPath, ...flags]), { env, stdout: 'pipe', stderr: 'pipe' });
     const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
     return { code, text: stdout + stderr };
   };
