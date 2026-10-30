@@ -55,7 +55,17 @@ WRONG: gh pr review --request-changes on your own PR
 RIGHT: Post structured verdict as a PR comment after a clean bot-reviewed loop
 ```
 
-Then follow [Merge Authority](pr-creation.md#merge-authority).
+Merge authority: [Merge Authority](pr-creation.md#merge-authority) (Etan's ruling; SSOT).
+
+After a clean other-vendor review at `headRefOid` and green required checks, leads merge now
+with `gh pr merge <N> --merge --admin` on EtanHey repos; `--admin` is the default. Never ask
+Etan to approve or merge a PR; only true one-way doors wait for him. Workers follow the
+merge authority in their brief.
+
+Self-approval is structurally blocked on EtanHey repos. A ruleset-only BLOCKED state or empty
+`reviewDecision` is not a reason to wait for Etan. The real blockers are failing/pending
+checks, conflicts and unresolved findings; do not bypass them. Omit `--delete-branch`;
+branch retirement follows the workspace lifecycle contract and any stacked-PR holds.
 
 ### Worktree-Locked Local Merge
 
@@ -244,7 +254,12 @@ HTML pages, menu-bar apps (BrainBar/VoiceBar), TUI surfaces.
 
 **When:** at the [feature-batch gate](#feature-batch-gate), before the batch is released, installed or
 declared done; a single-PR batch runs it before that PR ships. Mid-batch, the PR merges on the size
-cadence and the visual pass is queued for the batch.
+cadence only after per-PR visual proof passes; builder self-QA is queued for the batch.
+
+**Per-PR stop:** attach desktop and 390 px before/after screenshots, one GIF per
+animation/interaction, and e2e screenshot diffs using the PR-body Visual proof
+template. Reviewers must inspect and cite those artifacts before merge. This
+artifact gate does not replace the builder running-session batch gate below.
 
 **The rule:** the BUILDER clicks INTO a real running session and screenshots it. Mechanical checks (PID running, commit-matches, server responds)
 are NOT a functional pass — "generated" ≠ "verified."

@@ -95,6 +95,8 @@ elif name == "codex":
 elif name == "stalker-brainlayer.sh":
     trace()
 elif name == "node":
+    if args[0].endswith("stalker-model.mjs"):
+        sys.exit(subprocess.run([os.environ["STALKER_MODEL_NODE"], *args]).returncode)
     trace()
     if args[0].endswith("stalker-run-contract.mjs"): sys.exit(0)
     with (data / "completion-calls").open("a") as f: f.write("called\n")
@@ -158,6 +160,10 @@ def capture(root, case):
         tree = sandbox / "tree"
         shutil.copytree(root / "scripts/stalker", tree / "scripts/stalker")
         shutil.copytree(root / "scripts/lib", tree / "scripts/lib")
+        shutil.copytree(root / "standards", tree / "standards")
+        (tree / "scripts/ci").mkdir()
+        for file in ("model-roles.mjs", "ci/check-model-role-drift.mjs"):
+            shutil.copy(root / "scripts" / file, tree / "scripts" / file)
         annotate = tree / "scripts/stalker/annotate-clip.sh"
         annotate.write_text(f"#!{sys.executable}\n" + STUB)
         annotate.chmod(0o755)
@@ -181,6 +187,7 @@ def capture(root, case):
             override = os.environ.get(f"PROCESS_STREAM_CONTRACT_{name.upper()}")
             if override: (bin_dir / name).symlink_to(Path(override).resolve())
         env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home),
+               "STALKER_MODEL_NODE": shutil.which("node"),
                "STALKER_CONTRACT_SCRIPT": str(bin_dir / "stalker-brainlayer.sh"), "CONTRACT_DATA": str(data), "LC_ALL": "C", "TZ": "UTC",
                "STALKER_DASHBOARD_ENABLED": "1", "STALKER_TRANSCRIBE_ATTEMPTS": "1", "STALKER_RETRY_SLEEP_BASE": "0",
                "STALKER_SCORE_PARALLEL": "2" if case == "parallel-order" else "1",
@@ -235,6 +242,9 @@ def main():
             path.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + "\n")
         else:
             expected = with_background_policy(json.loads(path.read_text()))
+            roles = json.loads((root / "standards/model-roles.json").read_text())["roles"]
+            expected = json.loads(json.dumps(expected).replace("<CODEX_MODEL>", roles["codex.implement"]["model"])
+                                  .replace("<AGY_MODEL>", roles["gemini.gather.text"]["model"]))
             # Completion now ingests and verifies the current digest in both modes.
             for step in expected:
                 commands = step["commands"]

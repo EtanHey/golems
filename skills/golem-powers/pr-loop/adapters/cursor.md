@@ -28,13 +28,15 @@
 ## CI and Review Waiting
 
 Wait per the [waiting policy](../references/review-loop.md#waiting-policy-no-polling-turns), in order:
-on a T3 seat, `link_pull_request` then `watch_pull_request` and end the turn (`unwatch_pull_request`
-at a terminal state); when state is needed now, one bounded `gh pr checks <N>` read; only when
+on a T3 seat, the owning parent links created/taken-over/pushed PRs immediately, handles feedback
+and branch fixes/pushes, then calls `watch_pull_request`, inspects `watching:true` and ends.
+Ordinary wakes/pushes preserve the watch; no routine list/rearm. Unwatch before terminal/handoff.
+A child reports its artifact and ends. When state is needed now, one bounded read; only when
 something must sit and watch outside T3, the single watcher process below.
 
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
 
-Run exactly one `pr-watch <owner/repo> <N> --head <sha> --deadline 2h`
+Outside T3 only, run exactly one `pr-watch <owner/repo> <N> --head <sha> --deadline 2h`
 for GitHub CI and read its exit code. pr-watch never merges; an empty rollup is
 never READY. Use the [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits)
 and [shared arming rules](../references/review-loop.md#watcher-process-pr-watch).

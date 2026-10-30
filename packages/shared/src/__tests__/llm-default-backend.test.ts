@@ -1,3 +1,4 @@
+import { testBun } from "../test-bun";
 /**
  * PR-10b (lead ruling 2026-09-25): the dead Ollama paths go, the live one stays.
  * Direct Ollama is still the default backend, because it is what the email
@@ -20,7 +21,7 @@ afterEach(() => {
 });
 
 /** Run runLLM in a child bun with a stub `ollama` first on PATH. */
-function runLLMWith(env: Record<string, string>): string {
+function runLLMWith(env: Record<string, string>, cwd?: string): string {
   const dir = mkdtempSync(join(tmpdir(), "llm-default-"));
   dirs.push(dir);
   const stub = join(dir, "ollama");
@@ -29,18 +30,33 @@ function runLLMWith(env: Record<string, string>): string {
   const childEnv: Record<string, string> = {
     PATH: `${dir}:${process.env.PATH}`,
     HOME: dir,
+    TMPDIR: dir,
     GOLEMS_STATE_DIR: dir,
     ...env,
   };
   const proc = Bun.spawnSync(
-    ["bun", "-e", `const { runLLM } = await import(${JSON.stringify(LLM)}); console.log("RESULT=" + (await runLLM("hi", "test")));`],
-    { env: childEnv },
+    [...testBun, "-e", `
+      let requests = 0;
+      globalThis.fetch = async () => { requests++; return new Response("[]", { status: 201 }); };
+      const { runLLM } = await import(${JSON.stringify(LLM)});
+      const result = await runLLM("hi", "test");
+      process.on("exit", () => console.log("RESULT=" + ${cwd ? 'JSON.stringify({ requests, envLoaded: !!process.env.GOLEMS_ENV_SENTINEL })' : 'result'}));
+    `],
+    { env: childEnv, cwd },
   );
   const out = proc.stdout.toString();
   return out.split("\n").find((l) => l.startsWith("RESULT=")) ?? `NO RESULT: ${out}${proc.stderr.toString()}`;
 }
 
 describe("LLM default backend after the Ollama cleanup", () => {
+  it("eval children neither load checkout dotenv nor send provider requests", () => {
+    const dir = mkdtempSync(join(tmpdir(), "llm-checkout-"));
+    dirs.push(dir);
+    writeFileSync(join(dir, ".git"), "gitdir: synthetic\n");
+    writeFileSync(join(dir, ".env"), "GOLEMS_ENV_SENTINEL=synthetic\nSUPABASE_URL=http://127.0.0.1:9\nSUPABASE_SERVICE_KEY=synthetic-key\n");
+    expect(runLLMWith({}, dir)).toBe('RESULT={"requests":0,"envLoaded":false}');
+  });
+
   it("with LLM_BACKEND unset, runLLM still runs the local `ollama` CLI (same as master)", () => {
     expect(runLLMWith({})).toMatch(/^RESULT=OLLAMA_STUB:run:/);
   });

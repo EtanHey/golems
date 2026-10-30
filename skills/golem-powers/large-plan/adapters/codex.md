@@ -25,21 +25,17 @@ After completing this phase:
 </output_contract>
 ```
 
-## Worktree Setup (Manual — No Native Support)
+## Worktree Setup
 
-```bash
-# Set up before spawning phase agents
-git worktree add -b feature/phase-<N>-<name> ../wt-phase-<N> master
-# Install dependencies in the worktree from the lockfile. Never symlink
-# node_modules: in a workspace monorepo, cross-package imports would then run
-# the main checkout's code instead of the branch's.
-(cd ../wt-phase-<N> && bun install --frozen-lockfile)   # or npm ci / pnpm install --frozen-lockfile
-cp .env ../wt-phase-<N>/.env
-
-# Spawn
-cd ../wt-phase-<N>
-codex --full-auto "Execute phase N. Plan: $(cat ../plan/README.md)"
-```
+In T3 use `delegate_task` with `isolation:"worktree"` for this thread's own project;
+local cross-project delegation is refused. For another project, use an existing
+lead in that project, or the canonical top-level launch path only when the user
+asked for a new thread. Do not create a shell worktree.
+Follow the [canonical worktree launch guard](../../agent-routing/references/worktree-launch.md)
+for the explicit parent-OID preflight and one-read rule for top-level worktree launches.
+Outside T3, preflight the actual project root first and pass its verified commit
+OID to the authorized manual worktree creation. Install dependencies from the
+lockfile inside that worktree; never symlink `node_modules` across checkouts.
 
 For cleanup after merge or pushed-branch handoff, follow the
 [/pr-loop Cleanup Receipt SSOT](../../pr-loop/references/merge-and-verification.md#cleanup-receipt),

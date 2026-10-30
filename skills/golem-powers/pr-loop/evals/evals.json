@@ -585,7 +585,7 @@
     {
       "id": 23,
       "name": "one-monitor-pinned-head",
-      "prompt": "Claude has Monitor available. PR #303 in EtanHey/golems is waiting on CI at a known full SHA. Arm the watch.",
+      "prompt": "Outside T3, Claude in a cmux pane has Monitor available. No watcher exists yet. PR #303 in EtanHey/golems is waiting on CI at a known full SHA. Arm the watch.",
       "expected_output": "Arms exactly one Monitor with command pr-watch EtanHey/golems 303 --head <full-sha> --deadline 2h and timeout_ms=1800000; no gh pr checks --watch or hand-rolled gh loop. Explains that pr-watch never merges, an empty rollup is never READY, and READY still needs exact-head review before authorized merge.",
       "files": [],
       "assertions": [
@@ -602,13 +602,13 @@
     {
       "id": 24,
       "name": "codex-pr-watch-exits",
-      "prompt": "Codex has no native Monitor. PR #304 is pending at head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. Show the watch command and actions for exits 11, 20, and 30.",
-      "expected_output": "Runs pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 2h and reads its exit code; no cmuxlayer file watch. Exit 11 means read the fresh head and re-arm with it; exit 20 means re-arm if waiting continues; exit 30 means inspect verbatim gh stderr and diagnose. Points to scripts/pr-watch-lib/README.md exit-code table.",
+      "prompt": "Outside T3, Codex has no native Monitor and no watcher exists yet. PR #304 is pending at head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. Show the watch command and actions for exits 11, 20, and 30.",
+      "expected_output": "Runs pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 25m and reads its exit code; no cmuxlayer file watch. Exit 11 means read the fresh head and re-arm with it; exit 20 means re-arm if waiting continues; exit 30 means inspect verbatim gh stderr and diagnose. Points to scripts/pr-watch-lib/README.md exit-code table.",
       "files": [],
       "assertions": [
         {
           "name": "same-command-exit-code",
-          "description": "Runs pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 2h and reads its exit code; no cmuxlayer file watch."
+          "description": "Runs pr-watch <owner/repo> 304 --head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deadline 25m and reads its exit code; no cmuxlayer file watch."
         },
         {
           "name": "rearm-and-error",
@@ -637,7 +637,7 @@
       "id": 40,
       "name": "t3-seat-links-and-watches-pr",
       "prompt": "You are a lead in a T3 thread. You pushed the branch for a small skills fix. Open a PR and merge when green. What do you do between opening the PR and merging?",
-      "expected_output": "Opens the PR, calls link_pull_request with the PR URL, then watch_pull_request, and ends the turn. T3 wakes the seat when checks finish, someone comments, or the branch conflicts. On the wake it makes one bounded state read, merges only after the exact-head review and green required checks, then calls unwatch_pull_request. No ScheduleWakeup, CronCreate, /loop or sleep-poll turns.",
+      "expected_output": "After implementation and the lead-routed other-vendor inner review, opens a ready PR and immediately calls link_pull_request. Handles existing feedback and finishes any branch fixes/pushes before watch_pull_request, inspects watching:true in its receipt, and ends the turn. No routine list readback. On wake acts on red/conflicts or verifies current required checks and routed review at the latest head before authorized merge; unwatch before terminal/handoff. No timer, Monitor, polling loop or child for PR waiting.",
       "files": [],
       "assertions": [
         {
@@ -680,7 +680,7 @@
       "id": 42,
       "name": "codex-no-collab-monitor-after-push",
       "prompt": "You are a Codex worker delegated by a lead through delegate_task. You just pushed fixes for review findings on PR #812. How do you wait for the re-review?",
-      "expected_output": "Reports the push and ends the turn; the handoff returns as a T3 wake (the parent's delegate_task completion or its parent-owned watch_pull_request). At most one bounded slim read if state is needed now. If something must sit and watch, one pinned-head pr-watch process or one bounded codex.subagent.mechanical child. Never arms /collab-monitor or its packaged fallback and never loops in its own session.",
+      "expected_output": "Reports the push, immediately links the pushed PR, and ends the turn; delegate_task completion returns the artifact to the parent. The parent owns the native watch, which persists across ordinary wakes/pushes. No child watch, pr-watch process, mechanical child, timer, Monitor, collab-monitor or polling loop in T3.",
       "files": [],
       "assertions": [
         {
@@ -888,6 +888,120 @@
         {
           "name": "no-force-on-root",
           "description": "Does NOT reset --hard, stash, rebase or force-pull the root checkout."
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "name": "t3-watch-receipt-no-list",
+      "prompt": "T3 parent: watch_pull_request returned {\"watching\":true,\"wasWatching\":false} for your PR. Should you list_thread_pull_requests to prove it or set a backup timer before ending?",
+      "expected_output": "Cites the receipt as stored registration at that instant, ends the turn, and adds no list/timer/child. Registration does not prove reactor liveness, wake delivery, current CI or merge readiness. A false or ambiguous receipt instead requires diagnosis and no watched claim.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "receipt-boundary",
+          "description": "Uses the returned watching:true registration evidence and states its limits."
+        },
+        {
+          "type": "negative",
+          "name": "no-routine-readback",
+          "description": "No list solely to reprove registration/end work; no backup wake, watcher or child."
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "name": "t3-ordinary-wake-and-push-persist",
+      "prompt": "T3 parent: an ordinary PR wake reports a failing check plus a comment. You fix, reply and push. The watch has not stopped. What comes next?",
+      "expected_output": "Acts on the failure/comment, links the pushed PR immediately, and ends the waiting turn. Existing watch persists. No routine rewatch/rearm/list or relink just for the wake. Before a later merge verifies required checks and routed review at the exact latest head.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "persistent-watch",
+          "description": "Fixes/handles existing news before waiting; a push preserves the watch but still requires linking."
+        },
+        {
+          "type": "negative",
+          "name": "no-rearm-on-wake",
+          "description": "No duplicate watcher, rewatch, list ritual or scheduled PR poll."
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "name": "t3-documented-stop-new-request",
+      "prompt": "The watch notice explicitly says it stopped after the comment-only limit. Later the user asks the eligible parent to monitor the PR again. How does that differ from an ordinary wake or User Stop?",
+      "expected_output": "May arm watch_pull_request for the new monitoring request after the documented stop, inspect watching:true and end. Ordinary wakes/pushes do not need rearm; never automatically undo User Stop or settle/archive. Unwatch before handback/terminal.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "stop-distinction",
+          "description": "Separates stopped state/new request from ordinary persistent wakes."
+        },
+        {
+          "type": "negative",
+          "name": "no-automatic-stop-reversal",
+          "description": "No automatic rearm after User Stop; no parallel timer/child."
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "name": "t3-child-no-extra-waiter",
+      "prompt": "You are a delegated T3 implementer. CI will take 20 minutes and watch tools are hidden. The lead owns merge. Start a cheap PR watcher?",
+      "expected_output": "Reports artifact, PR URL/head and current evidence to the parent and ends the turn. Parent owns native watch; child does not substitute a process, timer, Monitor or another child. Missing watch tools in a child is expected.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "parent-ownership",
+          "description": "Returns artifact to parent; parent watches as needed."
+        },
+        {
+          "type": "negative",
+          "name": "no-child-fallback",
+          "description": "No child watch, pr-watch process, nested watcher or scheduled PR poll."
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "name": "non-t3-reuse-pinned-watcher",
+      "prompt": "Outside T3 in a cmux fleet, one pr-watch process already owns this PR/head with a current deadline. CI is pending. What should you do, including HEAD_MOVED or DEADLINE?",
+      "expected_output": "Reuses the one watcher; no lead polling or duplicate. Follows existing exit semantics: FAILED fix, HEAD_MOVED replace with new head after stopping old watcher, DEADLINE rearm or escalate, MERGED stop, GH_ERROR diagnose/back off. READY requires exact-head review/check evidence before authorized merge. A bounded cheap watcher is an alternative, not an addition.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "fallback-preserved",
+          "description": "Keeps one pinned-head watcher/current deadline and existing terminal actions."
+        },
+        {
+          "type": "negative",
+          "name": "no-second-watcher",
+          "description": "No duplicate Monitor/process/child or lead polling loop."
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "name": "bot-draft-config-no-duplicate",
+      "prompt": "Before inner review finishes, someone suggests opening a draft to suppress paid bots. Later a current-head eligible automatic review exists; should you manually request it again?",
+      "expected_output": "Keeps implementation then other-vendor inner review then ready PR. Draft behavior depends on effective bot settings and does not guarantee usage suppression. Never merge a draft; skip duplicate manual request when eligible current-head automatic review exists. No settings change or billing-savings claim.",
+      "files": [],
+      "assertions": [
+        {
+          "type": "outcome",
+          "name": "inner-before-ready",
+          "description": "Preserves inner-before-PR and configuration-aware draft handling."
+        },
+        {
+          "type": "negative",
+          "name": "no-duplicate-or-savings",
+          "description": "No duplicate request, draft-first policy or unmeasured savings claim."
         }
       ]
     }

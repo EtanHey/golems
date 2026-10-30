@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execSync } from 'node:child_process';
 import { lint } from '../ci/check-model-role-drift.mjs';
 const root = new URL('../../', import.meta.url).pathname;
 const read = p => readFileSync(join(root, p), 'utf8');
@@ -35,7 +35,19 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(text, /\| Security \| `codex.security` at effort `high` \| `claude.judgment` \|.*`codex-security` deep scan per security PR/);
   assert.match(text, /Security effort is `high` on the interim route/); // MF-2: canon-only rule carried into the SSOT
   assert.match(text, /When Daybreak Blue returns, evaluate its first security PRs: if they show more review rounds or more defects than the prior route, flip the pair/); // MF-1
-  assert.match(text, /\| Everything else.*\| `codex.implement` \| `claude.judgment` \|/);
+  assert.doesNotMatch(text, /Sonnet 5\.5 otherwise/);
+  assert.match(text, /\| Holistic\/product work \(.*\| `claude.judgment` \(Opus; Sonnet\/Haiku only as sub-agents for trivial wording edits\), 2026-10-29 \| Codex Sol \(`codex.implement`\) \|/);
+  assert.match(text, /\| Narrow technical work \(.*\| Codex Sol \(hard\) \/ Terra \(bounded\), 2026-10-29 \| `claude.judgment` \|/);
+  // Ratchets and TLC/TLA+ specs are Opus-designed and Opus-built unless tiny; this row beats "CI script" above.
+  const ratchet = text.split('\n').find(line => line.startsWith('| Ratchets and TLC/TLA+ specs ('));
+  assert.ok(ratchet, 'ratchet/TLA+ row is required');
+  for (const clause of [/`claude.judgment` \(Opus\) designs and builds/, /mechanical edit to an existing Opus-designed threshold or row/, /no new runner, attestation, model or invariant design/,
+    /Codex Sol \(`codex.implement`\) reviews an Opus build; a fresh `claude.judgment` reviews a tiny Codex build, including design conformance/, /wins over "CI script"/, /design-conformance review and rework before merge/, /Lead Topology cap/]) assert.match(ratchet, clause);
+  assert.doesNotMatch(text, /\| Everything else/);
+  assert.doesNotMatch(text, /only Sol reviews a Claude implementation/);
+  // RT-3: the reviewer is always the other vendor; no same-vendor review exception survives.
+  assert.match(text, /The reviewer is always the other vendor\./);
+  assert.doesNotMatch(text, /same-vendor (review )?exception|Sol or Opus only, whichever|Claude reviews Claude|Codex reviews Codex/i);
   assert.match(text, /only after.*implementer reports done/);
   assert.match(text, /DONE marker or report line/);
   assert.match(text, /PR head stable.*10 min.*checks finished/);
@@ -48,7 +60,31 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(text, /Every non-Cursor Agent\/Workflow\/Task spawn pins its model explicitly/);
   assert.match(text, /claude.judgment.*1M/);
   assert.match(text, /pin is never removed/);
-  assert.match(text, /≤2–3 concurrent Claude dispatches, staggered/);
+  assert.match(text, /Claude concurrency .*fleet canon #5 owns the numbers/);
+  assert.doesNotMatch(text, /2–3 concurrent Claude dispatches/);
+  const canon = read('standards/fleet-canon.md');
+  assert.match(canon, /at most 5 parallel Claude lead tracks fleet-wide, normally 3-4/);
+  assert.ok(canon.includes('maybe 3-5 leads parallel at a time might have to be the max? since they also use claudes for review and implementations?'));
+  const roleMap = config.roles;
+  for (const id of ['claude.judgment', 'claude.subagent.cheap', 'claude.subagent.mechanical']) {
+    assert.ok(id in roleMap, `${id} must exist in model-roles.json`);
+    assert.ok(canon.includes('`' + id + '`'), `canon #5 must name ${id}`);
+  }
+  assert.match(canon, /<=2 `claude\.judgment`.*<=2 `claude\.subagent\.cheap`, <=4 `claude\.subagent\.mechanical`.*<=20% of the rolling 5h/s);
+  assert.match(canon, /7-slot `claude\.judgment` ceiling with leads/);
+  assert.match(canon, />=60% no new Claude workers and <=2 active leads/);
+  assert.match(canon, />=80% no Claude workers and <=1 essential lead turn/);
+  assert.match(canon, /<=6 weekly points per 5h window until the weekly reset/);
+  assert.ok(canon.includes('(provisional until the first fresh-session window shows a non-zero 1h-cache write share; then re-derive)'));
+  assert.match(canon, /every account actually serving/);
+  assert.match(canon, /Stale, unknown or\s+rejected telemetry counts as NO headroom/);
+  assert.match(canon, /weekly rejection overrides five-hour\s+headroom/);
+  assert.match(canon, /used% x 300 \/ elapsed-minutes > 80/);
+  assert.doesNotMatch(canon, /tier->model/);
+  for (const f of execSync("git ls-files 'skills/**/*.md'", { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean)) {
+    assert.doesNotMatch(read(f), /canon #5[^\n]{0,80}2[-–]3|2[-–]3[^\n]{0,80}canon #5/i, `${f} restates the old 2-3 cap`);
+  }
+  assert.doesNotMatch(canon, /2-3 concurrent Claude dispatches/);
   assert.doesNotMatch(text, /flip back to/);
   const evals = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json')).evals;
   for (const [id, role] of [[46, 'claude.judgment'], [47, 'codex.security'], [48, 'lead'], [49, 'codex.implement']]) {
@@ -123,31 +159,30 @@ test('packaged helper role matches config and caller-selected brain-worker stays
 });
 
 
-test('M1 is a test rig only; the proof gate is a dormant adapter until Etan authorizes the rig', () => {
+test('M1 test placement keeps admission and vendor proof gates', () => {
   const text = read('skills/golem-powers/agent-routing/SKILL.md').split('## Dispatch Boundaries')[1].split('## Lead Topology')[0];
   for (const rule of [
     '"**The M1 Pro becomes a TEST RIG only.** Development stays on the MBP. … Nothing changes on the M1 for this yet." (Etan 2026-10-18, via orc collab)',
-    'until Etan authorizes the rig setup', 'docs.local/reports/2026-10-18/m1-rig/', 'stays on the MBP',
+    '2026-10-28', '≥10 GiB guard', 'max 3 heavy lanes', 'never during a sync window', 'PHX admission required', 'Quick focused unit tests stay local', 'stays on the MBP',
   ]) assert.ok(text.includes(rule), rule);
   assert.doesNotMatch(text, /^- M1 \(T3\): a lead routes a worker to the M1/m);
   const rig = text.split('### M1 test-rig adapter')[1];
   assert.ok(rig, 'M1 test-rig adapter sub-heading is required');
-  for (const rule of ['only when the deliverable must be proven on the M1', 'Codex workers only', 'recorded Claude-in-T3 proof passes', 'one real `brain_search` result, one skill invoked, no hook errors', 'same-turn BrainBar probe: the socket accepts and `brain_search` answers', 'failed probe is reported to the lead and the work stays on the MBP', 'Leads never move']) assert.ok(rig.includes(rule), rule);
+  for (const rule of ['Codex workers only', 'recorded Claude-in-T3 proof passes', 'real `brain_search`, one skill invoked, no hook errors', 'same-turn BrainBar probe: the socket accepts and `brain_search` answers', 'failed probe is reported to the lead; the work stays on the MBP', 'Leads never move']) assert.ok(rig.includes(rule), rule);
 });
 
 test('routing SSOT carries the dated flip trial, risk-sized review and the Codex model list', () => {
   const skill = read('skills/golem-powers/agent-routing/SKILL.md');
   const ssot = skill.split('## Routing rules (SSOT)')[1].split('## Model roles')[0];
   const impl = ssot.split('### Implementation and review')[1].split('\n### ')[0];
-  const trial = impl.split('#### Trial: flipped implement/review (2026-10-18 → review 2026-10-22)')[1];
+  const trial = impl.split('#### Implementation default (Etan, 2026-10-29)')[1];
   assert.ok(trial, 'dated trial block is required');
   assert.ok(trial.indexOf('| Work | Implements | Reviews | Plus |') > 0, 'trial block sits directly above the permanent table');
   const block = trial.split('| Work | Implements | Reviews | Plus |')[0];
   for (const rule of [
     '"**EXPERIMENT, starting now for a few days: FLIP the roles.** Claude Opus 5.5 IMPLEMENTS and Codex gpt-6.1-sol REVIEWS." (Etan 2026-10-18, via orc collab)',
     '"Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)',
-    '`claude.judgment` implements', '`codex.implement` reviews at effort `high`', 'UX/UI and Security rows are unchanged',
-    'merged/day', 'open→merge hours', 'post-merge defects', 'expires', 'permanent table',
+    'Default implementers (2026-10-29,', 'holistic/product work', 'Claude Opus implements. Sonnet/Haiku never implement', 'Narrow technical work', 'Codex implements (Sol hard, Terra bounded)', 'Reviewers (2026-10-29) are always the other vendor', 'Gemini/Antigravity gather and never review', 'Sonnet 5.5 is a valid worker tier', 'Never fast/priority', 'fresh context', 'bounded lifetime', 'explicit effort', 'serviceTier:"default"', 'Claude only', 'does not revert at a window reset',
   ]) assert.ok(block.includes(rule), rule);
   const sizing = ssot.split('### Review sizing')[1]?.split('\n### ')[0];
   assert.ok(sizing, 'review sizing section is required');
@@ -160,18 +195,19 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
   ]) assert.ok(sizing.includes(rule), rule);
   const pins = ssot.split('### Model pins and dispatch')[1];
   for (const rule of [
-    '"**Models:** Codex = gpt-6.1-sol and gpt-6-luna ONLY."', '"**Never gpt-5.6-\\*** (luna, sol, terra)"', '"gpt-6-astra only when Etan asks for it."',
-    '`codex.implement`', '`codex.subagent.mechanical`', 'refused',
+    'gpt-6.1-sol, gpt-6-luna and gpt-6.1-terra are allowed', '"**Never gpt-5.6-\\*** (luna, sol, terra)"', '"gpt-6-astra only when Etan asks for it."',
+    'configured candidate gates', 'RT-2', 'refused',
   ]) assert.ok(pins.includes(rule), rule);
-  // Review r1 BLOCKING: explicit interim UI precedence (lead decision) next to the UI bullet.
-  const uiLine = sizing.split('\n').find(l => l.startsWith('- UI precedence (interim'));
-  assert.ok(uiLine, 'dated interim UI precedence line is required');
-  for (const rule of ['skill-lead interim', 'pending Etan', 'takes precedence over the table', 'evidence', 'functional defect', 'not "the reviewer"', 'ONE reviewer', 'fresh Opus', 'never the implementer', 'XS/S', 'M UI PRs: up to 2 rounds', 'full panel']) assert.ok(uiLine.includes(rule), rule);
+  // The frontend flow adds taste review while preserving cross-vendor review.
+  const uiLine = sizing.split('\n').find(l => l.startsWith('- UI flow (Etan FRONTEND RULE'));
+  assert.ok(uiLine, 'frontend UI flow line is required');
+  for (const rule of ['2026-10-28', 'red-team Claude', 'BOTH skills', "the table's Codex reviewer (cross-vendor, canon #1)", 'Codex plumbing', 'already the other vendor', 'Both reviews cite the Visual proof']) assert.ok(uiLine.includes(rule), rule);
+  for (const rule of ['never the implementer', 'frontend-design:frontend-design', 'emil-design-eng', 'round caps', 'full panel']) assert.ok(sizing.includes(rule), rule);
   const matrix = skill.split('## Role Matrix')[1].split('### Evidence')[0];
-  assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*dated trial/);
+  assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*Codex Sol.*Terra/);
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
   assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
-  for (const [id, name] of [[90, 'trial-refactor-opus-implements-sol-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only'], [96, 'xs-ui-pr-one-opus-reviewer-codex-records'], [97, 'astra-on-etan-explicit-ask']]) {
+  for (const [id, name] of [[90, 'rebalance-refactor-codex-implements-opus-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only'], [96, 'xs-ui-pr-claude-taste-plus-codex-review'], [97, 'astra-on-etan-explicit-ask']]) {
     const e = suite.evals.find(e => e.id === id);
     assert.equal(e?.name, name);
     assert.ok(e.prompt && e.expected_output, name);
@@ -182,7 +218,7 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
   assert.match(e92.prompt, /lead/i);
   assert.match(e92.prompt, /Etan has not/);
   const e54 = suite.evals.find(e => e.id === 54);
-  assert.ok(e54.assertions.some(a => /MBP/.test(a.text) && /M1 proof/.test(a.text)), 'eval 54 asserts MBP with the M1-proof restriction');
+  assert.ok(e54.assertions.some(a => /MBP/.test(a.text) && /test work/.test(a.text)), 'eval 54 asserts MBP with the M1-proof restriction');
   assert.ok(!e54.assertions.some(a => /cmux/.test(a.text)), 'eval 54 no longer requires cmux');
 });
 
@@ -217,7 +253,8 @@ test('one PR = one fresh implementer replaces lane-wide worker reuse', () => {
   assert.doesNotMatch(topology, /follow-ups on its own diff/);
   assert.doesNotMatch(goal, /continue the same lane/);
   assert.match(goal, /a new PR gets a fresh implementer/);
-  assert.ok(skill.includes('Keep to ≤2–3 concurrent Claude dispatches, staggered.'));
+  assert.ok(skill.includes('fleet canon #5 owns the numbers'));
+  assert.ok(!skill.includes('2–3 concurrent Claude dispatches'));
   const ops = read('skills/golem-powers/agent-routing/references/delegation-operations.md');
   assert.doesNotMatch(ops, /Reuse before spawn|do not fork the lane/);
   assert.match(ops, /\*\*One PR = one fresh implementer\.\*\*/);
@@ -250,8 +287,9 @@ test('large-plan defaults to T3-native execution and keeps cmux monitors as an a
   for (const rule of [
     'agent-routing/references/t3-native.md', '`delegate_task`', '`taskId`', 'completion notification is the liveness guard',
     'no collab monitor', '`ScheduleWakeup`', '`CronCreate`', 'end the turn', 'verify the artifact',
-    '`watch_pull_request`', '`codex.subagent.mechanical`', 'deadline', 'single terminal report',
-    'never owns the parent\'s PR watch', '`task_cancel`', '`unwatch_pull_request`', '(Etan 2026-10-18, via orc collab)',
+    '`watch_pull_request`', '`codex.subagent.mechanical`', 'deadline', 'one terminal report',
+    'No routine list or rearm', 'child for PR waiting', 'outside T3 only',
+    '`task_cancel`', '`unwatch_pull_request`', '(Etan 2026-10-18, via orc collab)',
   ]) assert.ok(t3.includes(rule), rule);
   const cmux = skill.split('### cmux adapter: parallel rounds')[1].split('### Plan Lifecycle')[0];
   assert.ok(cmux.includes('Arms the addressed monitor'), 'round monitor procedure lives under the cmux adapter');
@@ -269,7 +307,7 @@ test('large-plan defaults to T3-native execution and keeps cmux monitors as an a
   assert.ok(arm.includes('**T3 (default in T3):**') && arm.includes('**cmux adapter:**'), 'collab step 4 branches T3 vs cmux');
   const suite = JSON.parse(read(`${dir}/evals/evals.json`));
   assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
-  for (const [id, name] of [[30, 't3-next-batch-delegate-no-guards'], [31, 't3-ci-watch-parent-or-bounded-child'], [32, 'codex-lead-refuses-collab-monitor'], [33, 'cmux-fleet-keeps-monitor-adapter']]) {
+  for (const [id, name] of [[30, 't3-next-batch-delegate-no-guards'], [31, 't3-ci-watch-parent-native-only'], [32, 'codex-lead-refuses-collab-monitor'], [33, 'cmux-fleet-keeps-monitor-adapter']]) {
     const e = suite.evals.find(e => e.id === id);
     assert.equal(e?.name, name);
     assert.ok(e.prompt && e.expected_output && e.assertions.length >= 2, name);
@@ -348,7 +386,7 @@ test('agent-routing has a first-class T3-native child lifecycle and keeps cmux a
   const boundaries = skill.split('## Dispatch Boundaries')[1].split('## Lead Topology')[0];
   const cmux = boundaries.split('### cmux adapter')[1];
   assert.ok(cmux, 'cmux adapter sub-heading is required');
-  for (const kept of ['cmux fleet (`/cmux-agents`)', 'Visible-worker launch law lives in fleet canon #6', 'Codex children may edit only inside their visible Codex parent\'s worktree']) assert.ok(cmux.includes(kept), kept);
+  for (const kept of ['cmux fleet (`/cmux-agents`)', 'Visible-worker launch law lives in fleet canon #6', 'Codex workers edit only their delegated worktree; their Claude lead owns acceptance']) assert.ok(cmux.includes(kept), kept);
   const owners = skill.split('## Cross-Skill Ownership')[1];
   assert.match(owners, /`\/collab-monitor`: cmux\/collab-mail only.*T3 children.*completion notifications/);
 
@@ -401,18 +439,18 @@ test('agent-routing has a first-class T3-native child lifecycle and keeps cmux a
 // a new mention needs a deliberate, reviewable edit to this table (#803 review r1, lead decision).
 const PINNED_CODEX_MODEL_MENTIONS = [
   [9, 'prompt', 'Also tell me whether GPT-5.4-mini should be the default fast path.', 'user asks about an off-list model; eval checks it is refused'],
-  [9, 'expected_output', 'Spark is rejected outright, even as an explicit `-m gpt-5.3-codex-spark` override: it is not on the Codex model list (gpt-6.1-sol and gpt-6-luna only, Etan 2026-10-18).', 'rejects Spark'],
+  [9, 'expected_output', 'Spark is rejected outright, even as an explicit `-m gpt-5.3-codex-spark` override: it is not on the Codex model list (gpt-6.1-sol, gpt-6-luna and gpt-6.1-terra, Etan 2026-10-28).', 'rejects Spark'],
   [9, 'expected_output', 'GPT-5.4-mini must be rejected as the routine default for Codex work.', 'rejects GPT-5.4-mini'],
   [9, 'assertions[2].text', 'If Spark comes up, rejects it even as an explicit `-m gpt-5.3-codex-spark` override, because it is not on the Codex model list', 'rejects Spark'],
   [9, 'assertions[3].text', 'Rejects GPT-5.4-mini as the routine default path for Codex work', 'rejects GPT-5.4-mini'],
   [9, 'assertions[5].text', 'Does NOT route either job to Spark or any model off the Codex model list', 'negative assertion against Spark'],
   [14, 'prompt', 'Internal ephemeral subagent spawned from inside an agent session: `spawn_agent({"agent_type":"worker", "model":"gpt-5.3-codex-spark", "message":"small implementation"})`\n\nWhich one is allowed, and what should each be rewritten to?', 'user shows a Spark spawn; eval checks it is rejected'],
-  [14, 'expected_output', 'Should also reject B: being an internal ephemeral subagent does not unlock Spark, which is not on the Codex model list (gpt-6.1-sol and gpt-6-luna only, Etan 2026-10-18).', 'rejects Spark'],
+  [14, 'expected_output', 'Should also reject B: being an internal ephemeral subagent does not unlock Spark, which is not on the Codex model list (gpt-6.1-sol, gpt-6-luna and gpt-6.1-terra, Etan 2026-10-28).', 'rejects Spark'],
   [14, 'assertions[4].text', "Rejects B's `gpt-5.3-codex-spark` model too, and rewrites B to a role resolved through `node scripts/model-roles.mjs` (codex.implement, or codex.subagent.mechanical under its gated exceptions)", 'rejects Spark'],
   [14, 'assertions[5].text', 'Does NOT allow Spark (or any model off the Codex model list) for the internal subagent, even by explicit model selection', 'negative assertion against Spark'],
   [91, 'name', 'refuse-gpt-5-6-pin', 'eval name for the gpt-5.6 refusal'],
   [91, 'prompt', "Use gpt-5.6-sol for this Codex worker, it's cheaper.", 'user asks for a forbidden pin; eval checks it is refused'],
-  [91, 'expected_output', 'Refuse the pin: Codex is gpt-6.1-sol and gpt-6-luna only, never gpt-5.6-* (Etan 2026-10-18).', 'refuses gpt-5.6-*'],
+  [91, 'expected_output', 'Refuse the pin: Codex allows gpt-6.1-sol, gpt-6-luna and gpt-6.1-terra, never gpt-5.6-* (Etan 2026-10-28).', 'refuses gpt-5.6-*'],
   [91, 'expected_output', 'Dispatch with codex.implement resolved through node scripts/model-roles.mjs, and remove any gpt-5.6-* pin you own.', 'removes gpt-5.6-* pins'],
   [91, 'assertions[0].text', 'Resolves the worker through codex.implement (or a gated codex.subagent.mechanical use), not a gpt-5.6-* model.', 'rejects gpt-5.6-*'],
   [91, 'assertions[1].text', 'Does NOT dispatch with any gpt-5.6-* model, even when a T3 catalog lists it or cost is the reason.', 'negative assertion against gpt-5.6-*'],
@@ -496,20 +534,30 @@ test('legacy agent-routing evals agree with the SSOT: allowed Codex models, risk
   // Every pinned row still matches a real mention, so the table cannot keep stale exemptions.
   const live = new Set(codexModelMentions(suite).map(m => JSON.stringify(m)));
   for (const [id, field, sentence] of PINNED_CODEX_MODEL_MENTIONS) assert.ok(live.has(JSON.stringify([id, field, sentence])), `stale pin: eval ${id} ${field}: ${sentence}`);
-  // Eval 46: UI review is sized; a Codex reviewer only in the L/data/security full panel.
-  const e46 = JSON.stringify(byId(46));
-  assert.match(e46, /size:\*/);
-  assert.match(e46, /frontend-design:frontend-design/);
-  assert.match(e46, /full panel/);
-  assert.doesNotMatch(e46, /Codex with the codex\.implement model to review/);
+  // Reject the old same-vendor-only route, including XS Claude visual slices.
+  for (const id of [46, 94, 96]) assertVisualEval(byId(id));
+  assert.match(byId(46).prompt, /Codex plumbing/);
+  for (const output of [
+    'Exactly one fresh claude.judgment reviewer; no second Codex reviewer.',
+    'A Codex reviewer only in the L/data/security full panel.',
+  ]) assert.throws(() => assertVisualEval({ ...byId(96), expected_output: output }));
   // Eval 14: Spark is no longer allowed for internal children.
   assert.doesNotMatch(JSON.stringify(byId(14)), /Allows Spark/);
   // Codex-implements answers for "everything else" are explicitly dated after the trial.
-  for (const id of [9, 34, 49]) assert.match(byId(id).prompt, /2026-10-26.*trial.*expired/s, `eval ${id} is dated post-trial`);
+  for (const id of [9, 34, 49]) assert.match(byId(id).prompt, /2026-10-28.*Codex Sol.*Terra.*default implementation/s, `eval ${id} is dated post-trial`);
   // Trial-agnostic implementer wording where the point is "not the lead, not Cursor".
-  for (const id of [2, 3, 5, 8, 22]) assert.match(JSON.stringify(byId(id)), /dated trial/, `eval ${id} names the trial implementer`);
+  for (const id of [2, 3, 5, 8, 22]) assert.match(JSON.stringify(byId(id)), /Codex Sol.*Terra/, `eval ${id} names the default implementers`);
   // M1: failed probe stays on the MBP; nothing moves before Etan authorizes the rig.
   assert.match(JSON.stringify(byId(55)), /MBP/);
   assert.doesNotMatch(JSON.stringify(byId(55)), /cmux/);
-  assert.match(JSON.stringify(byId(56)), /authorizes the rig/);
+  assert.match(JSON.stringify(byId(56)), /recorded Claude-in-T3 proof/);
 });
+
+function assertVisualEval(evaluation) {
+  const output = evaluation.expected_output;
+  for (const required of ['fresh claude.judgment', 'never the implementer', 'Codex plumbing', 'already the other vendor', 'frontend-design:frontend-design', 'emil-design-eng',
+    'PLUS the Codex reviewer', 'Both reviews cite the Visual proof', '1 round for XS/S',
+    'up to 2 rounds for M', 'full panel', 'only after the implementer reports DONE'])
+    assert.ok(output.includes(required), `eval ${evaluation.id}: ${required}`);
+  assert.doesNotMatch(JSON.stringify(evaluation), /Exactly one fresh|Codex reviewer only in|does NOT require a Codex reviewer|Does NOT add a second \(Codex\) reviewer/i);
+}

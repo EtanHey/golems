@@ -11,11 +11,25 @@ Distinguish created, borrowed/reused and unknown resources. Only an exactly attr
 
 Scope authority to the exact operation, paths and containment plan; reuse existing authorization for that same scope. Inventory, upload, local-copy removal and workspace retirement are separate operations. Creation does not confer ownership of later personal or unknown contents. Link parent/child resources and artifact pins; holds propagate to the parent, and each affected local-copy disposition needs a linked receipt. Keep M4 Max and M1 Pro host identities and evidence separate.
 
+## No temporary source clones
+
+Etan's rule, verbatim (via PHX, 2026-10-27): "I hope that when we put the rule of not making those and doing everything much more. Safely, basically. would be better. Um, Like actually the leading work trees and making work trees the way to do the copies of repos and run them and deb and all that."
+
+**PHX reading:** NO full temp clones of a repo. Every source working copy for release, verify, test or dev runs must be a registered worktree with an owner and a terminal state: `<repo>/.worktrees/<short>` or a T3 `isolation:"worktree"` child. The owner remains responsible for cleanup under this contract's consumer and terminal-boundary gates.
+
+Banned substitutes: `git clone`, `git init` + bundle import, a directory copy, archive-extract, and any hidden `~/.<name>` copy of a repo. Existing clones remain subject to preservation and disposition gates; this law does not authorize their deletion.
+
+Runtime and scratch directories (sockets, HOME, state, caches) are NOT worktrees. They need their own owned lane directory and their own disposition under the scratch rules below.
+
+[Tmp-block](../../tmp-block/SKILL.md) covers worktree paths but not independently initialized repos; the no-clone law is text-enforced until a guard exists.
+
 ## Consumers and terminal boundary
 
 Track implementer, reviewer, provider session, active/streaming task, terminal, test process, durable handoff and live reference consumers. DONE, cancel, settle and pane close release only their own consumer; they never release another consumer or an artifact pin. Open review keeps its consumers until released or acknowledged by the successor.
 
 The owning lead harvests and verifies deliverables, records consumer releases, then transfers acknowledged custody or records a retained obligation, and only THEN settles when these gates permit. Settling is deletion-relevant: T3's hourly cleanup removes eligible settled worktrees. Releasing a provider and removing its checkout are separate outcomes. If supported official cleanup cannot honor preservation, record RETAINED with owner and the runtime limitation; do not settle to tidy a list. This text proves no guard coverage for unwrapped UI, shell or remote paths; never alter a live app database to bypass it.
+
+T3-managed worktrees (`~/.t3/worktrees/**`) retire through T3's official adapter: once every gate in this contract passes, settle the child, and T3's cleanup policy removes the worktree. Never run `git worktree remove`, retire tooling or the interim block below on a T3-managed root (golems #858 keeps golems tooling off T3 roots).
 
 Etan's rule is verbatim: "the implementer removes its worktree at DONE" (Etan 2026-10-18, via orc collab). **PHX reading, consistent with canon #2/#9:** DONE = the merged PR; retirement follows after the merge, once its last consumer releases, and the worktree is never left behind. The parent/authorized collector performs removal for the implementer. A RETAINED receipt keeps that owner's obligation open until every gate passes; a merged PR alone grants no deletion authority.
 
@@ -24,6 +38,8 @@ Etan's rule is verbatim: "the implementer removes its worktree at DONE" (Etan 20
 For a worktree or clone, require fresh exact remote Git coverage and a clean tree before retirement. A non-Git lane directory uses its host/filesystem identity and artifact-preservation proofs. Use the verified PR base remote (registered project remote for a non-PR lane). Verify HEAD against that remote's branch; if auto-deletion removed it, use that remote's actual default branch: for an origin-backed base, **HEAD is an ancestor of origin/<default>, plus a clean tree**; an upstream-backed base uses `upstream/<default>`. Never substitute fork-origin coverage for upstream proof. Squash merges require separately verified content coverage; never invent ancestry from a merged PR at another head.
 
 Inventory tracked changes, untracked and ignored files at every relevant level, nested repositories/submodules, refs and local-only history. Ignored status does not establish regenerability: ignored `docs.local` is always preserved until its applicable harvest, preservation and exact local-copy retirement gates pass. Preserve live symlink consumers, active-thread paths and hook/skill sources; retain existing managed-root and GC protections.
+
+Ignored caches named on the committed regenerable-paths allowlist are not preservation holds; `docs.local/` always is.
 
 Archives, manifests, custody ledgers and recovery receipts must survive outside the whole retiring scope. `<persistent-root>/docs.local/worktree-archive/<lease-id>/` is LOCAL preservation staging, not a permanent store. Require a per-file SHA manifest (host/resource/lease, paths, sizes/hashes, held/omitted material), container size/hash readback, membership/readability checks and Git-ref preservation. A manifest alone grants no deletion. Verify full uploaded object bytes, membership and a restore drill before deleting an artifact's local original; metadata/sample checks are insufficient. Cloud bytes never substitute for Git coverage.
 
@@ -41,6 +57,8 @@ Direct checkout scratch goes in `<repo>/.worktrees/<name>`; official managed all
 
 Ordinary scratch never goes in `/tmp`. [Tmp-block](../../tmp-block/SKILL.md) enforces placement where its guard is installed and verified. Its narrow session-scoped harness scratchpad exception is separate: only the exact sanctioned harness scratchpad shape, nothing durable, no permission for ordinary temp writes. Do not claim Codex enforcement from wiring alone.
 
+Test runners' own ephemeral OS-tmpdir fixtures (`mkdtemp`) are not agent scratch. Never redirect a test run's TMPDIR into a persistent tree; hermetic tests assume no .env or other ancestors there.
+
 Never generically reap active/pinned/adverse/recovery evidence, latest, partial, unharvested or timeless research, custody ledgers/manifests/receipts that are the only preservation proof or have dependent references, credentials, private/unknown/unscanned contents, runtime/DB/app/release/hook/skill state or originals lacking verified preservation. Keep a lightweight local ledger pointer after archival; relocation or compaction must preserve its reference chain outside the retiring scope. Exact owner-authorized local-copy retirement still needs every applicable gate; remote durable originals are outside generic cleanup scope.
 
 ## Receipt and recovery
@@ -55,9 +73,9 @@ Existing CLEANUP RECEIPT field lines remain valid; these dispositions define the
 
 At the next bounded dispatch/close pass, reconcile unresolved leases against exact creation provenance and fresh state. An unreachable host is RETAINED, not absent; ambiguous ownership stays unknown. Recovery after interrupted removal still needs the original remover result and both fresh absence checks. No age-only eligibility, recurring destructive job, HOME-wide prune or retries to erase adverse evidence.
 
-## Parent retirement path (both harnesses, interim)
+## Parent retirement path (direct-git worktrees, interim)
 
-For a T3 child or cmux worker, run this only in the parent from outside the worktree, after merge and the last consumer's release. The parent must first verify this contract's exact ownership/authority, complete inventory/preservation, managed-root policy and consumer gates; record that preflight outside the retiring scope. Hold the exact resource lock across the final preflight and this block; an uncontrolled writer means RETAINED. A file's mere presence is not authority. This is an interim final-action procedure, not a replacement lifecycle guard or permission to bypass an official adapter's refusal.
+For repo `<repo>/.worktrees/` and other direct-git worktrees, such as cmux workers, run this only in the parent from outside the worktree, after merge and the last consumer's release. The parent must first verify this contract's exact ownership/authority, complete inventory/preservation, managed-root policy and consumer gates; record that preflight outside the retiring scope. Hold the exact resource lock across the final preflight and this block; an uncontrolled writer means RETAINED. A file's mere presence is not authority. This is an interim final-action procedure, not a replacement lifecycle guard or permission to bypass an official adapter's refusal.
 
 Supply canonical `MAIN` (persistent checkout), `WT`, `EXPECTED_HEAD`, verified `BASE_REMOTE`/`DEFAULT`, and `PREFLIGHT_RECEIPT` (the parent-verified preflight record). No child runs this block, even after changing cwd. Until the guard's machine receipt is adopted, use the interim receipt below; keep failed attempts and the preflight outside the retiring scope.
 

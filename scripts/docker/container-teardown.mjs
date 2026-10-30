@@ -116,14 +116,18 @@ export function createLifecycle(selector, { env = process.env, cwd = process.cwd
     if (interruption && interruption !== priorInterruption) errors.unshift(interruption);
     if (errors.length) throw Object.assign(combined(errors), { exitCode: interruption?.exitCode ?? 1 });
   }
-  async function preflight(signal) {
-    if (local && (await containers(true, false, signal)).length) await teardown();
+  async function preflight(signal, onTeardown = () => {}) {
+    if (local && (await containers(true, false, signal)).length) {
+      onTeardown(true);
+      await teardown();
+      onTeardown(false);
+    }
   }
   async function run(argv) {
     if (!Array.isArray(argv) || !argv.length) throw new Error('run requires a command after --');
     inRun = true; cleanupAbort = undefined; firstRunSignal = undefined;
     const controller = new AbortController();
-    let child, closed, exited = false, timer, inflight, finishing = false, failure, interruption;
+    let child, closed, exited = false, timer, inflight, finishing = false, failure, interruption, failedPreflightTeardown = false;
     let interrupt;
     const interrupted = new Promise((_, reject) => { interrupt = reject; });
     // A signal during preflight must not create an unhandled rejection.
@@ -138,7 +142,7 @@ export function createLifecycle(selector, { env = process.env, cwd = process.cwd
     const onInt = () => stop('SIGINT'), onTerm = () => stop('SIGTERM'), onHup = () => stop('SIGHUP');
     process.on('SIGINT', onInt); process.on('SIGTERM', onTerm); process.on('SIGHUP', onHup);
     try {
-      await preflight(controller.signal);
+      await preflight(controller.signal, active => { failedPreflightTeardown = active; });
       controller.signal.throwIfAborted();
       child = spawn(argv[0], argv.slice(1), { env, cwd, stdio: 'inherit' });
       closed = new Promise((done, reject) => {
@@ -146,7 +150,7 @@ export function createLifecycle(selector, { env = process.env, cwd = process.cwd
         child.on('error', error => { spawnError = error; });
         child.on('close', (code, signal) => {
           exited = true;
-          if (spawnError) reject(spawnError);
+          if (spawnError) reject(Object.assign(spawnError, { exitCode: spawnError.code === 'ENOENT' ? 127 : 1 }));
           else if (code !== 0) reject(Object.assign(new Error(`Wrapped command failed (${code ?? signal})`), {
             exitCode: code ?? 128 + constants.signals[signal],
           }));
@@ -155,7 +159,7 @@ export function createLifecycle(selector, { env = process.env, cwd = process.cwd
       });
       const poll = () => {
         inflight = protect(controller.signal).catch(error => { if (!finishing) interrupt(error); });
-        inflight.then(() => { if (!finishing) timer = setTimeout(poll, 250); });
+        inflight.then(() => { if (!finishing) timer = setTimeout(poll, 1000); });
       };
       if (local) poll();
       await Promise.race([closed, interrupted]);
@@ -173,7 +177,7 @@ export function createLifecycle(selector, { env = process.env, cwd = process.cwd
         if (!exited) child.kill('SIGKILL');
       }
       await inflight;
-      try { await teardown(interruption); }
+      try { if (!failedPreflightTeardown) await teardown(interruption); }
       catch (error) {
         failure = failure ? Object.assign(combined([failure, error]), { exitCode: failure.exitCode ?? 1 }) : error;
       } finally { inRun = false; process.off('SIGINT', onInt); process.off('SIGTERM', onTerm); process.off('SIGHUP', onHup); }

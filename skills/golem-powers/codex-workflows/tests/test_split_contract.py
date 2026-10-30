@@ -145,6 +145,8 @@ def test_facade_worktree_override_reaches_launch(tmp_path):
     manifest = tmp_path / "manifest.json"
     module.create_manifest(manifest, "fixture", str(tmp_path), "lead")
     with mock.patch.object(module, "preflight_launch_inputs"), mock.patch.object(
+        module._workers, "git_common_dir", return_value=tmp_path
+    ), mock.patch.object(module._workers, "lifecycle_tool"), mock.patch.object(
         module, "create_worker_worktree", side_effect=module.CodexWorkflowError("fixture worktree refusal")
     ) as create:
         result = module.launch_worker(

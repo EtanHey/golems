@@ -14,6 +14,15 @@ from pathlib import Path
 ROOTS = ('.claude/skills', '.agents/skills', '.codex/skills')
 IGNORED = {'.pytest_cache'}
 RECEIPT_IGNORED = IGNORED | {'.system'}
+# Codex owns .system (CLI-version dependent); Claude app sync owns synced
+# (account/machine dependent). Neither namespace is shipped by golems.
+APP_MANAGED = {'.codex/skills': {'.system'}, '.claude/skills': {'synced'}}
+
+
+def app_managed(root, name):
+    return name.split('/')[0] in APP_MANAGED.get(root, set())
+
+
 INSTALLER_MARKERS = {'.golems-source-commit', '.golems-install.json'}
 
 
@@ -258,6 +267,7 @@ def inventory():
         entries = {}
         if directory.is_dir():
             for entry in sorted(directory.iterdir()):
+                if app_managed(root, entry.name): continue
                 if entry.name == '.DS_Store' and entry.is_file() and not entry.is_symlink(): continue
                 row = dict(kind='symlink' if entry.is_symlink() else 'dir' if entry.is_dir() else 'file',
                            exists=entry.exists(), normalized_target=normalize(str(entry.resolve()), home),
@@ -332,7 +342,7 @@ def compare(left, right, requirements):
             errors.append(root + ': missing root'); parity = valid = False
             continue
         catalogs = [{n: e for n, e in host['entries'].items()
-                     if not (n == '.DS_Store' and e['kind'] == 'file' and e['exists'])}
+                     if not app_managed(root, n) and not (n == '.DS_Store' and e['kind'] == 'file' and e['exists'])}
                     for host in hosts]
         for number in (0, 1):
             for missing in sorted(set(catalogs[1-number]) - set(catalogs[number])):
@@ -350,7 +360,7 @@ def compare(left, right, requirements):
                     invalid.append(root + '/' + name + ': host ' + str(number) + ' empty/non-skill')
                     if name not in required.get('allow_empty', []):
                         errors.append(root + '/' + name + ': host ' + str(number) + ' unreadable entry'); valid = False
-            for missing in sorted(set(required['readable']) - readable):
+            for missing in sorted({n for n in required['readable'] if not app_managed(root, n)} - readable):
                 errors.append(root + '/' + missing + ': host ' + str(number) + ' required readable skill missing'); valid = False
         for name in sorted(set(catalogs[0]) & set(catalogs[1])):
             a, b = (catalog[name] for catalog in catalogs)
