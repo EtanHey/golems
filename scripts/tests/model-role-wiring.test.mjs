@@ -233,7 +233,7 @@ test('large-plan staffing lines resolve through the SSOT including any dated tri
 
 test('lead topology records model and tier-change reason', () => {
   const text = read('skills/golem-powers/agent-routing/SKILL.md').split('## Lead Topology')[1].split('## Goal Contract')[0];
-  assert.ok(text.includes("6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall)."));
+  assert.ok(text.includes("6. A lead's model is written in its lane brief, signature line and claim post; a mid-sprint tier change names its reason (budget | quality | stall)."));
 });
 
 test('one PR = one fresh implementer replaces lane-wide worker reuse', () => {
