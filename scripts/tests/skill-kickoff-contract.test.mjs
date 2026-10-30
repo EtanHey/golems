@@ -23,7 +23,7 @@ const PHRASES = {
   "agent-routing": ["dispatch a worker", "delegate_task", "hand off", "Invoke before",
     // literal triggers carried from the pinned description
     "who gathers", "gemini gatherer", "Codex model/effort", "/multitask", "fan out", "in parallel"],
-  "pr-loop": ["Open a PR", "merge", "ship", "CI", "Invoke before", "golem-id", "Co-Authored-By"],
+  "pr-loop": ["Open a PR", "merge", "ship", "CI", "Invoke before", "🤖 model + harness line", "Co-Authored-By"],
 };
 
 for (const [name, phrases] of Object.entries(PHRASES)) {
@@ -94,3 +94,10 @@ for (const name of ["large-plan", "agent-routing", "pr-loop"]) {
     expect(description(name).toLowerCase()).toContain(FIRST_ACTION);
   });
 }
+
+test("GitHub identity uses one plain model and harness line", () => {
+  const text = read(skill("pr-loop", "references/github-identity.md"));
+  expect(text).toContain("🤖 Generated with");
+  expect(text).not.toContain("<!-- golem-id");
+  expect(text).not.toMatch(/^— .* · /m);
+});

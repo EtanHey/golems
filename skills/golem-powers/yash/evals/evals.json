@@ -165,6 +165,35 @@
           "description": "Does NOT suggest 'wait for the maintainer to respond' as the primary action"
         }
       ]
+    },
+    {
+      "id": 7,
+      "name": "small-upstream-pr-shape",
+      "category": "upstream_first",
+      "prompt": "A dependency has an obvious bug. The fix is 18 non-test lines in 2 files. Prepare the upstream PR; CONTRIBUTING permits small obvious fixes without an issue.",
+      "expected_output": "Regression test first, focused fix, outcome title, Problem / Change / Scope and approval / Verification body, optional Prior PRs, plain /pr-loop attribution last.",
+      "assertions": [
+        {
+          "name": "test-first",
+          "type": "outcome",
+          "description": "Adds a failing-first regression test"
+        },
+        {
+          "name": "scope-and-approval",
+          "type": "outcome",
+          "description": "Explains the small obvious fix exception from CONTRIBUTING"
+        },
+        {
+          "name": "body-shape",
+          "type": "outcome",
+          "description": "Uses Problem, Change, Scope and approval, Verification sections"
+        },
+        {
+          "name": "signature-last",
+          "type": "outcome",
+          "description": "Ends with plain model and harness attribution, no hidden metadata"
+        }
+      ]
     }
   ],
   "with_skill_vs_without_skill": {

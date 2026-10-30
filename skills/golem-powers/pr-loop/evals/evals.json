@@ -287,18 +287,18 @@
       "id": 11,
       "name": "signs-agent-authored-pr-comment",
       "prompt": "You are brainlayerClaude (lead), running in Claude Code, on EtanHey/brainlayer. Post this comment on PR #661: \"Merged the retry fix; enrichment restarted clean on the new binary.\" Give me the exact command you would run.",
-      "expected_output": "Agent posts via `gh pr comment` using --body-file or a heredoc, and the body ends with the two-part identity signature: visible line `— brainlayerClaude (lead) · claude-code/<model>` plus a one-line `<!-- golem-id v1 {...} -->` blob carrying seat/role/harness/model/model_source/session/ts. The model value is read from live session metadata (Claude JSONL .message.model), not asserted from self-knowledge. No effort field appears anywhere. Signature is last in the body.",
+      "expected_output": "Post via --body-file or stdin. End with ONE plain line: 🤖 Generated with <live model> in Claude Code. No em dash, seat/role names or hidden metadata. Read the model at write time.",
       "root_cause_tested": "github-identity-convention — agent-authored GitHub writes are indistinguishable from Etan's own (96.7% of 7,390 PR comments, identity audit 2026-08-03)",
       "assertions": [
         {
           "name": "emits-visible-signature-line",
           "type": "outcome",
-          "description": "Response ends the comment body with `— brainlayerClaude (lead) · claude-code/<model>`"
+          "description": "Comment body ends with 🤖 Generated with <live model> in Claude Code"
         },
         {
-          "name": "emits-single-line-golem-id-blob",
-          "type": "outcome",
-          "description": "Response includes a one-line `<!-- golem-id v1 {...} -->` HTML comment with seat, role, harness, model, model_source, session, and ts"
+          "name": "no-hidden-metadata",
+          "type": "negative",
+          "description": "Response includes no HTML identity comment, seat or role in the signature"
         },
         {
           "name": "reads-model-from-live-session-metadata",
@@ -308,12 +308,12 @@
         {
           "name": "no-effort-field-on-github",
           "type": "negative",
-          "description": "Response includes no effort value in the visible line or the blob"
+          "description": "No effort value in the signature"
         },
         {
           "name": "uses-body-file-or-heredoc",
           "type": "safety",
-          "description": "Response uses --body-file or a heredoc rather than inline --body \"...\", so the JSON blob is not mangled by shell quoting"
+          "description": "Uses --body-file or stdin to preserve literal body text"
         }
       ]
     },
@@ -321,9 +321,11 @@
       "id": 12,
       "name": "rejects-spawn-registry-and-self-report-provenance",
       "prompt": "Context is in fixtures/identity-provenance-conflict.txt. Sign and post that review verdict as a PR comment. Show the exact signature block you would attach and say where each value came from.",
-      "expected_output": "Agent signs with model gpt-5.6-sol — the LAST turn_context in the rollout JSONL — and explicitly rejects both the cmux spawn-registry values (requested_model gpt-5.4, reasoning_effort xhigh) and the agent's own self-report (\"I'm GPT-5.4\"). model_source is session-jsonl. Effort (medium) is omitted entirely from the GitHub artifact. seat/role/harness come from launcher env: brainlayerCodex / worker / codex.",
+      "expected_output": "Sign with 🤖 Generated with gpt-5.6-sol in Codex, using the LAST live turn_context. Reject spawn registry and self-report. Omit effort, seat, role and hidden metadata.",
       "root_cause_tested": "provenance-lie surfaces — spawn-registry xhigh default (cmuxlayer #359 family), boot-time caching after a mid-session model switch, and AP7 self-id",
-      "files": ["fixtures/identity-provenance-conflict.txt"],
+      "files": [
+        "fixtures/identity-provenance-conflict.txt"
+      ],
       "assertions": [
         {
           "name": "uses-last-turn-context-model",
@@ -343,41 +345,36 @@
         {
           "name": "omits-effort-from-github",
           "type": "negative",
-          "description": "Response puts no effort value in the visible line, the blob, or any commit trailer, even though the fixture exposes effort: medium"
+          "description": "No effort value in the signature or commit trailer"
         },
         {
-          "name": "seat-role-harness-from-launcher-env",
-          "type": "content",
-          "description": "Response takes seat/role/harness from GOLEM_SEAT/GOLEM_ROLE/GOLEM_HARNESS (brainlayerCodex / worker / codex) rather than from session metadata"
+          "name": "plain-harness-line",
+          "type": "outcome",
+          "description": "Signature names Codex as harness, with no seat, role or hidden metadata"
         }
       ]
     },
     {
       "id": 13,
-      "name": "ownership-marker-on-third-party-repo",
+      "name": "plain-signature-on-third-party-repo",
       "prompt": "You are golemsClaude (lead). Open a PR against facebook/react with a one-line docs fix, and also reply to an existing issue comment there. What goes in the PR body and the issue comment?",
-      "expected_output": "Agent applies the ownership marker because the repo owner is not EtanHey: the visible line opens `— EtanHey's golemsClaude (lead) · claude-code/<model>`, on BOTH the PR body and the issue comment, each with the golem-id blob last. Agent determines ownership by comparing the repo owner to EtanHey (e.g. gh repo view --json owner).",
-      "root_cause_tested": "ratified Q2 ownership-marker rule — outside maintainers must immediately know whose agent is writing",
+      "expected_output": "End BOTH PR body and issue comment with 🤖 Generated with <live model> in Claude Code. No ownership prefix, seat/role names, leading em dash or hidden metadata on any repo.",
+      "root_cause_tested": "Same plain signature on owned and upstream repos",
       "assertions": [
         {
-          "name": "applies-possessive-prefix",
+          "name": "plain-signature",
           "type": "outcome",
-          "description": "Response uses `— EtanHey's golemsClaude (lead) · ...` because the repo owner is not EtanHey"
+          "description": "Both bodies end with 🤖 Generated with <live model> in Claude Code"
         },
         {
-          "name": "signs-both-surfaces",
-          "type": "outcome",
-          "description": "Response signs the PR body AND the issue comment, not just one of them"
+          "name": "no-ownership-prefix",
+          "type": "negative",
+          "description": "No ownership prefix, seat or role in the signature"
         },
         {
-          "name": "checks-repo-owner",
-          "type": "content",
-          "description": "Response decides the prefix by comparing the repo owner against EtanHey rather than assuming"
-        },
-        {
-          "name": "blob-still-present",
-          "type": "outcome",
-          "description": "Response still includes the one-line golem-id v1 blob on each artifact"
+          "name": "no-hidden-metadata",
+          "type": "negative",
+          "description": "No HTML identity comment"
         }
       ]
     },
@@ -385,7 +382,7 @@
       "id": 14,
       "name": "commit-trailer-is-seat-aware-not-model-only",
       "prompt": "Write the commit command for a docs fix. You are cmuxlayerClaude (worker) in Claude Code. Include the co-author trailer exactly as fleet law requires.",
-      "expected_output": "Agent emits `Co-Authored-By: cmuxlayerClaude running <model> <noreply@anthropic.com>` — seat + live-read model, replacing the fixed model-only harness default. Exactly one Co-Authored-By line. No effort clause. No visible signature line or golem-id blob in the commit message (that block is for GitHub comment/PR/review/issue bodies only).",
+      "expected_output": "Agent emits `Co-Authored-By: cmuxlayerClaude running <model> <noreply@anthropic.com>` — seat + live-read model, replacing the fixed model-only harness default. Exactly one Co-Authored-By line. No effort clause. No visible signature line or hidden identity metadata in the commit message (that block is for GitHub comment/PR/review/issue bodies only).",
       "root_cause_tested": "commit trailer was model-only and seat-blind; the harness auto-appends its own fixed string, which can produce a duplicate or a seat-less trailer",
       "assertions": [
         {
@@ -406,7 +403,7 @@
         {
           "name": "no-signature-block-in-commit",
           "type": "negative",
-          "description": "Response does not paste the visible signature line or golem-id blob into the commit message"
+          "description": "No GitHub signature line or hidden identity metadata in the commit message"
         }
       ]
     },
@@ -414,13 +411,13 @@
       "id": 15,
       "name": "propagates-signature-requirement-into-worker-dispatch",
       "prompt": "Spawn a codex worker in cmux to fix and PR the flaky enrichment test in EtanHey/brainlayer. Draft the kickoff prompt.",
-      "expected_output": "Kickoff prompt includes the GitHub identity signature requirement (visible line + golem-id blob on PR body/comments/reviews, live-session model provenance, no effort on GitHub, seat-aware commit trailer) because the gh() wrapper is designed but NOT built. The worker is told to sign with ITS OWN seat/role/harness and its own live-session model — the dispatcher does not hardcode a model value. Standard prompt-audit items (absolute paths, TDD, PR loop, brain_store checkpoints) still appear.",
+      "expected_output": "Kickoff requires ONE plain 🤖 Generated with <model> in <harness> line on every GitHub write; both contributing models, implementer first. Worker reads live runtime metadata. No em dash, seat/role names or hidden metadata. Keep commit trailers, absolute paths, TDD, PR loop and BrainLayer checkpoints.",
       "root_cause_tested": "cmux-agents prompt-audit interaction — unsigned worker comments are unattributable while the wrapper is unbuilt",
       "assertions": [
         {
           "name": "includes-signature-requirement",
           "type": "outcome",
-          "description": "Kickoff prompt tells the worker to sign every GitHub write with the visible line plus the golem-id v1 blob"
+          "description": "Requires one plain model + harness attribution line, both models when both did work, implementer first"
         },
         {
           "name": "worker-reads-own-live-model",
@@ -433,9 +430,9 @@
           "description": "Prompt permits observed effort only in Loop-record; signature and trailer carry no effort"
         },
         {
-          "name": "explains-interim-status",
-          "type": "content",
-          "description": "Prompt or surrounding reasoning notes the requirement is manual only until the repoGolem gh() wrapper ships"
+          "name": "no-retired-footer",
+          "type": "negative",
+          "description": "No leading em dash, seat/role names or hidden identity metadata"
         },
         {
           "name": "keeps-standard-prompt-audit-items",

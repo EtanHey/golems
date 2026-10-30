@@ -27,9 +27,9 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
              ↳ Commit trailer = `Co-Authored-By: <seat> running <model>
                <noreply@anthropic.com>` ([Agent Identity Signature](github-identity.md)).
 6. PUSH      git push -u origin feat/name
-7. PR        Create PR (see "Creating the PR" below) — body ends with the signature block
+7. PR        Create PR (see "Creating the PR" below) — body ends with the signature line
 8. REVIEW    Fetch + read review comments (see [Reading Review Comments](review-loop.md#reading-review-comments))
-             ↳ Every comment/reply you POST ends with the signature block
+             ↳ Every comment/reply you POST ends with the signature line
 9. FIX       Address real bugs from review
 10. MERGE    gh pr merge `<N>` --merge --admin --delete-branch
              ↳ Leads are ADMINS on Etan's repos: `--admin` is the DEFAULT.
@@ -122,8 +122,7 @@ Loop-record: implementer=<vendor/model/effort> reviewer=<vendor/model|none> roun
 ## Bot policy
 - Read `<repo>/AGENTS.md` → panel applied: <bots summoned> (<bots excluded, and why>)
 
-— golemsClaude (lead) · claude-code/opus-4.6
-<!-- golem-id v1 {"seat":"golemsClaude","role":"lead","harness":"claude-code","model":"claude-opus-4.6","model_source":"session-jsonl","session":"db7f3bb9","ts":"2026-08-08T18:40:00Z"} -->
+🤖 Generated with <live model> in <harness>
 EOF
 ```
 
@@ -168,13 +167,13 @@ label. It **warns** on a missing label and emits a non-fatal reminder on every
 measured diff over 400 hand-written lines to cover a large PR with no stated
 why. The check does not parse the PR body or judge rationale prose.
 
-The signature block goes **last** in the body, and the same block ends every PR
+The signature line goes **last** in the body, and the same line ends every PR
 comment, review, and issue comment ([Agent Identity Signature](github-identity.md)). Commits use
-the `Co-Authored-By: <seat> running <model>` trailer instead — never the block.
+the `Co-Authored-By: <seat> running <model>` trailer instead — never the signature line.
 
 If the PR body or comment contains backticks, use `--body-file` (or stdin).
 Shell command substitution will mangle inline code and can silently rewrite the
-evidence you meant to preserve — including the `golem-id` blob.
+evidence you meant to preserve — including the attribution line.
 
 ### Edge Cases
 

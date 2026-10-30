@@ -1032,58 +1032,9 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "\u2014 brainlayerClaude (lead) \u00b7 claude-code/opus-4.6",
-      "class": "DATA",
-      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "<!-- golem-id v1 {\"seat\":\"brainlayerClaude\",\"role\":\"lead\",\"harness\":\"claude-code\",\"model\":\"claude-opus-4.6\",\"model_source\":\"session-jsonl\",\"session\":\"db7f3bb9\",\"ts\":\"2026-08-08T18:40:00Z\"} -->",
-      "class": "DATA",
-      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "> boot a maintenance Claude or orc Claude with a model of fable without me changing the model \u2014 I",
-      "class": "DATA",
-      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "orchestrator session JSONL (`08d077d1`) carries `claude-fable-5`, `claude-opus-4-8`, and",
-      "class": "DATA",
-      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "`claude-opus-5` turns in the same file. A boot-time read would have mis-signed most of it.",
-      "class": "DATA",
-      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
       "marker": "Co-Authored-By: brainlayerClaude running claude-opus-4.6 <noreply@anthropic.com>",
       "class": "DATA",
       "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "| 1 | Self-reported model | `\"model\":\"gpt-5.4\"` because the agent believes it is GPT-5.4 | Read the session record; `/agent-routing` `references/model-and-effort.md` \u00a7 Dispatch and Verification owns runtime proof |",
-      "class": "DATA",
-      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "| 3 | Cached-at-spawn model | signature says `fable` all session after Etan switched to Opus | Re-read per invocation |",
-      "class": "DATA",
-      "reason": "Preserve historical quote, incident or measured evidence; not a current model assignment.",
       "count": 1
     },
     {
@@ -1091,20 +1042,6 @@
       "marker": "\u21b3 Codex env: run `coderabbit review --agent` with a ~3 minute",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/pr-creation.md",
-      "marker": "\u2014 golemsClaude (lead) \u00b7 claude-code/opus-4.6",
-      "class": "DATA",
-      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/pr-creation.md",
-      "marker": "<!-- golem-id v1 {\"seat\":\"golemsClaude\",\"role\":\"lead\",\"harness\":\"claude-code\",\"model\":\"claude-opus-4.6\",\"model_source\":\"session-jsonl\",\"session\":\"db7f3bb9\",\"ts\":\"2026-08-08T18:40:00Z\"} -->",
-      "class": "DATA",
-      "reason": "Preserve illustrative identity/provenance example; not dispatch selection.",
       "count": 1
     },
     {
@@ -1406,6 +1343,27 @@
       "marker": "- **Agent mode** -- `cursor agent` for background tasks, `--trust` for auto-approval",
       "class": "FALSE POSITIVE",
       "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "- One model: `🤖 Generated with Claude Opus 5.5 in T3 Code Nightly`",
+      "class": "DATA",
+      "reason": "Illustrative model and harness attribution; not dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "- Both families did work: `🤖 Generated with Claude Opus 5.5 and GPT-6.1 Sol in T3 Code Nightly`",
+      "class": "DATA",
+      "reason": "Illustrative model and harness attribution; not dispatch selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/github-identity.md",
+      "marker": "- Outside T3: `🤖 Generated with GPT-6.1 Sol in Codex` / `… in Claude Code`",
+      "class": "DATA",
+      "reason": "Illustrative model and harness attribution; not dispatch selection.",
       "count": 1
     }
   ]
