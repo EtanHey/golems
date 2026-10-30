@@ -425,10 +425,10 @@ Before calling a dashboard done, verify these conditions (enforced by
 ## Preserve the published design
 Preserve the design unless the brief explicitly requests a redesign: top-pinned
 player, auto-visible read-along with segment speakers, expanded full transcript,
-main max-width/centering, native radio/checkbox answers, code-only copy buttons
-(answer/note exports remain available). Use stable `spec.series` (default `spec.id`)
-and output directory across versions. The byte-verified publish probe (`--spec`)
-saves `.adash-design/<series>/`; migrate older series via the spec field
+main max-width/centering, native radio/checkbox answers, code-only copy, clean focus,
+working seek, per-question clear and overall reset (answer/note exports stay).
+Use stable `spec.series` (default `spec.id`) and output directory. The publish probe
+(`--spec`, served bytes verified) saves `.adash-design/<series>/`; migrate via
 `designPreservation: { previousPublished: "previous.html" }`.
 No history records BASELINE; unavailable referenced history fails closed.
 Only `redesign: { reason: "One-line reason from the brief" }` waives regressions.

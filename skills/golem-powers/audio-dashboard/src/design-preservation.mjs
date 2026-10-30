@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { compareDesignBehavior, probeDesignBehavior } from './design-behavior.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 function historyLocation(spec, outputPath) {
@@ -81,13 +82,13 @@ function inspectDom() {
     answers[group] = (answers[group] || 0) + 1;
   });
   const proseCopy = all('button,[role="button"]').filter(el => /copy/i.test(`${el.textContent} ${el.id} ${el.className} ${el.getAttribute('aria-label') || ''}`))
-    .filter(el => !el.matches('#df-copy,.df-story-copy,#df-note-copy-draft,#copy-all,#copy-answers,#nt-copy,[data-copy-answers]'))
+    .filter(el => !el.matches('#df-copy,#dbx-copy,.df-story-copy,#df-note-copy-draft,#copy-all,#copy-answers,#nt-copy,[data-copy-answers]'))
     .filter(el => !el.closest('pre,[data-command],.code-block') && !(el.parentElement?.matches('div,figure') && el.parentElement.querySelector(':scope > pre,:scope > code') && !el.parentElement.querySelector('p'))).length;
   return { players, readalong, speakers, fullTranscript, layout, answers, proseCopy };
 }
 
 export async function checkDesignPreservation({ html, previousHtml, redesign, browser, screenshotDir }) {
-  const violations = [], screenshots = [], baseline = previousHtml === null;
+  const violations = [], screenshots = [], behavior = [], baseline = previousHtml === null;
   const flag = (code, width) => violations.push({ code, metric: code, segment: 'dashboard', value: 0, threshold: 1, evidence: `${code} at ${width}px` });
   if (previousHtml === undefined) return { verdict: 'REJECTED', violations: [{ code: 'PREVIOUS_BUILD_MISSING', evidence: 'previous build missing' }], screenshots };
   if (redesign !== undefined && (!redesign || typeof redesign !== 'object' || typeof redesign.reason !== 'string' || !redesign.reason.trim() || /[\r\n]/.test(redesign.reason))) {
@@ -110,17 +111,20 @@ export async function checkDesignPreservation({ html, previousHtml, redesign, br
             captures.push(capture.toString('base64'));
             if (screenshotDir) { mkdirSync(screenshotDir, { recursive: true }); writeFileSync(path.join(screenshotDir, `${width}-${leg}.png`), capture); }
           } catch { captures.push(null); }
+          states.at(-1).behavior = await probeDesignBehavior(page);
         } finally { await context.close(); }
       }
       const [before, after] = states;
+      behavior.push({ width, previous: before.behavior, new: after.behavior });
       if (!baseline) {
+        for (const code of compareDesignBehavior(before.behavior, after.behavior)) flag(code, width);
         if (before.players.some(old => old.pinned && !after.players.some(now => now.key === old.key && now.pinned))) flag('STICKY_PLAYER', width);
         if (before.readalong.some(old => old.visible && !after.readalong.some(now => now.key === old.key && now.visible))) flag('READ_ALONG', width);
         if (before.fullTranscript.some(old => old.expanded && !after.fullTranscript.some(now => now.key === old.key && now.expanded))) flag('FULL_TRANSCRIPT', width);
         if (before.speakers.some(old => old.labels.length && !after.speakers.some(now => now.key === old.key && old.labels.every(label => now.labels.includes(label))))) flag('SPEAKER_LABELS', width);
         if (before.layout.some(old => !after.layout.some(now => now.key === old.key && now.maxWidth === old.maxWidth && now.centered === old.centered))) flag('LAYOUT', width);
         if (Object.entries(before.answers).some(([group, count]) => (after.answers[group] || 0) < count)) flag('ANSWER_CONTROLS', width);
-        if (before.proseCopy === 0 && after.proseCopy > 0) flag('COPY_BUTTONS', width);
+        if (after.proseCopy > before.proseCopy) flag('COPY_BUTTONS', width);
       }
       const page = await browser.newPage();
       try {
@@ -144,7 +148,7 @@ export async function checkDesignPreservation({ html, previousHtml, redesign, br
       finally { await page.close(); }
     }
   } finally { if (owned) await browser.close(); }
-  return { verdict: violations.length && !redesign ? 'REJECTED' : 'PASS', status: baseline ? 'BASELINE' : redesign ? 'REDESIGN' : 'COMPARED', violations, screenshots, ...(redesign ? { redesign } : {}) };
+  return { verdict: violations.length && !redesign ? 'REJECTED' : 'PASS', status: baseline ? 'BASELINE' : redesign ? 'REDESIGN' : 'COMPARED', violations, screenshots, behavior, ...(redesign ? { redesign } : {}) };
 }
 
 export async function checkPublishedDesign(spec, outputPath, html, options = {}) {
