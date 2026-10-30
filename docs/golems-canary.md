@@ -16,9 +16,10 @@ claude plugin list
 claude plugin details golems-canary
 
 codex plugin marketplace add EtanHey/golems
+codex plugin add golems-canary@golems
 ```
 
-For Codex, the documented local testing flow uses the plugin browser to install the plugin from the marketplace. The exact install and list steps for T3 Codex are **to be confirmed in the stage-1 probe**; do not assume marketplace registration installs or enables it. Verify the actual provider home and its overlays rather than assuming the CLI and T3 share a home.
+For Codex, verify the plugin is installed and enabled with `codex plugin list --marketplace golems --available --json`. Verify the actual provider home and its overlays rather than assuming the CLI and T3 share a home.
 
 In a fresh official T3 Claude session, verify the catalog lists `golems-canary:golems-canary`, invoke it explicitly, and capture the skill expansion and exact payload response. In a fresh official T3 Codex session, verify the catalog lists the skill, invoke it explicitly, and capture its actual skill file read and exact payload response. Record session identifiers and cache paths. Listing alone is not a pass.
 

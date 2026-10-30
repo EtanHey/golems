@@ -150,6 +150,8 @@ judgement; an optional convenience index never gates the loop.
 
 ## Prerequisites
 
+Running QA on the M1? Dispatch with `environmentId` per [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md); admission (§ 5) applies.
+
 | Tool | Check | Install |
 |------|-------|---------|
 | ffmpeg + ffprobe | `which ffmpeg ffprobe` | `brew install ffmpeg` |

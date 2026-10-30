@@ -96,3 +96,7 @@ def test_schema_rejects_invalid_manifests(target, mutation):
     mutation(data)
     with pytest.raises(AssertionError):
         validate(target, data)
+
+
+def test_docs_include_codex_cli_install():
+    assert 'codex plugin add golems-canary@golems' in (ROOT / 'docs/golems-canary.md').read_text()
