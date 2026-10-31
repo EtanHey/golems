@@ -153,15 +153,20 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
    - Exit 0 prints the changed AGENTS.md and CLAUDE.md paths, then the root receipt readback. Re-read those files before your
      next action.
    - `scripts/tests/pr-loop-root-ff.test.mjs` executes this exact block against Git fixtures.
-1b. **Guarded golems merge: post the live receipt.** If the merged golems PR touched a guarded path
-   (`scripts/ratchet/guarded-paths.sh <base> <merge>` exits 0, printing "Mac rows required"), the lead runs
-   this from the golems root checkout, right after step 1:
+1b. **Guarded golems merge: post the live receipt.** Right after step 1, check what actually landed, using
+   the verified remote merge SHA `<merge>` and its first parent:
+   `scripts/ratchet/guarded-paths.sh "<merge>^1" "<merge>"`.
+   - Exit 1 means no guarded path: skip this step.
+   - Exit 2 means it cannot tell: STOP and report it. Never treat it as unguarded.
+   - Exit 0 means guarded ("Mac rows required"): the lead dispatches this exact command, from the golems root
+     checkout, to `deploy-local-prod` and verifies what it reports:
    ```bash
    scripts/ratchet/post-merge-live.sh --merged-pr <N>
    ```
-   It updates the mbp hooks-live install, picks a clean exact-head open-PR worktree as the lease, runs the
-   live rows, posts the `golems-ratchet-live` receipt and prints the live-tier freshness result. Optional
-   `--lease-pr N --lease-repo <path>` constrains the lease. A FAIL is a stop: report it rather than re-running
+   It updates the mbp hooks-live install, picks a clean exact-head open-PR worktree as the lease, runs the live
+   rows, posts the `golems-ratchet-live` receipt on #N, and prints the comment URL and the live-tier freshness
+   line. Optional `--lease-pr N --lease-repo <path>` constrains the lease. Done means a zero exit, a printed
+   receipt URL and a freshness PASS. Any nonzero exit or FAIL is a stop: report it rather than re-running
    blindly. After the receipt posts, re-run any failed master/PR `ratchet` jobs. A posted comment alone does
    not re-run CI. Rules and the 120-minute grace: `standards/ratchet.md`.
 2. **Collab file** — If this PR is part of a collab, update the task board status to ✅ Done with PR number
