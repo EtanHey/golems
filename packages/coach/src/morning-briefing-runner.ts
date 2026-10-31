@@ -10,7 +10,6 @@
 
 import { getTodayEvents } from "./calendar-client";
 import { getEcosystemStatus } from "./status-aggregator";
-import { reportServiceRun } from "@golems/shared/lib/state-store";
 import {
   createDbClient,
   getRecentEmails,
@@ -31,7 +30,6 @@ export interface BriefingDeps {
   getCalendarEvents: () => Promise<CalendarEvent[]>;
   getEmails: () => Promise<Email[]>;
   getEcosystem: () => Promise<EcosystemStatus>;
-  reportRun: (key: string) => Promise<void>;
 }
 
 export interface BriefingOptions {
@@ -57,7 +55,6 @@ function defaultDeps(): BriefingDeps {
       return getRecentEmails(db, 24, 5);
     },
     getEcosystem: getEcosystemStatus,
-    reportRun: (key) => reportServiceRun(key),
   };
 }
 
@@ -98,6 +95,5 @@ export async function runMorningBriefing(
   const briefing = synthesizeBriefing(data);
 
   const voiceText = formatForVoice(briefing);
-  await deps.reportRun("lastMorningBriefing");
   return { success: true, channel: "voice", briefing, voiceText };
 }

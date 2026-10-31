@@ -1,9 +1,7 @@
 /**
  * Unified Cost Tracker
  *
- * Dual-write: local JSONL + Supabase llm_usage table.
- * Reads from Supabase for persistent stats across hosted/runtime restarts.
- * Falls back to JSONL when Supabase is unavailable.
+ * Logs and reads usage from local JSONL.
  *
  * Tracks three tiers:
  * - "paid": Haiku API calls (cloud worker)
@@ -15,8 +13,7 @@
  */
 
 import { readFileSync, existsSync, appendFileSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
-import { getSupabase } from "./supabase-factory";
+import { dirname } from "path";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -66,138 +63,6 @@ export interface FullUsageStats {
   combined: { totalCalls: number };
 }
 
-// ─── Supabase (persistent storage) ────────────────────────────────
-
-/**
- * Fire-and-forget insert to Supabase llm_usage table.
- * Never throws — logging failures must not break the main flow.
- */
-function persistToSupabase(entry: CostEntry): void {
-  const sb = getSupabase();
-  if (!sb) return;
-
-  sb.from("llm_usage")
-    .insert({
-      model: entry.model,
-      source: entry.source,
-      input_tokens: entry.input_tokens,
-      output_tokens: entry.output_tokens,
-      cost_usd: entry.cost_usd,
-      tier: entry.tier || "paid",
-      duration_ms: entry.duration_ms || null,
-      metadata: {},
-      created_at: entry.timestamp,
-    })
-    .then(({ error }) => {
-      if (error)
-        console.error("[CostTracker] Supabase insert failed:", error.message);
-    })
-    .catch((err: unknown) => {
-      console.error(
-        "[CostTracker] Supabase network error:",
-        err instanceof Error ? err.message : err,
-      );
-    });
-}
-
-/**
- * Read cost entries from Supabase for a given period.
- * Returns empty array if Supabase is unavailable.
- */
-export async function readFromSupabase(
-  period: "today" | "week" | "month" | "all" = "all",
-): Promise<CostEntry[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-
-  let query = sb
-    .from("llm_usage")
-    .select(
-      "model, source, input_tokens, output_tokens, cost_usd, tier, duration_ms, created_at",
-    )
-    .order("created_at", { ascending: false });
-
-  if (period !== "all") {
-    const now = new Date();
-    let cutoff: Date;
-    switch (period) {
-      case "today":
-        cutoff = startOfDay(now);
-        break;
-      case "week":
-        cutoff = startOfWeek(now);
-        break;
-      case "month":
-        cutoff = startOfMonth(now);
-        break;
-    }
-    query = query.gte("created_at", cutoff.toISOString());
-  }
-
-  // Limit to 10K entries max
-  query = query.limit(10000);
-
-  const { data, error } = await query;
-  if (error || !data) return [];
-
-  return data.map((row: Record<string, unknown>) => ({
-    timestamp: String(row.created_at ?? ""),
-    model: String(row.model ?? ""),
-    source: String(row.source ?? ""),
-    input_tokens: Number(row.input_tokens ?? 0),
-    output_tokens: Number(row.output_tokens ?? 0),
-    cost_usd: Number(row.cost_usd ?? 0),
-    tier: String(row.tier ?? "free") as CostEntry["tier"],
-    duration_ms: row.duration_ms != null ? Number(row.duration_ms) : undefined,
-  }));
-}
-
-/**
- * Get full usage stats from Supabase (persistent, survives deploys).
- */
-export async function getSupabaseUsageStats(
-  period: "today" | "week" | "month" | "all" = "all",
-): Promise<FullUsageStats & { subscription: SubscriptionStats }> {
-  const entries = await readFromSupabase(period);
-
-  const paidEntries = entries.filter((e) => e.tier === "paid");
-  const freeEntries = entries.filter((e) => e.tier === "free");
-  const subEntries = entries.filter((e) => e.tier === "subscription");
-
-  const paidSummary = summarize(paidEntries, period);
-  const paidBySource = groupBySource(paidEntries);
-
-  const byHelper: Record<string, number> = {};
-  const freeBySource: Record<string, number> = {};
-  for (const e of freeEntries) {
-    byHelper[e.model] = (byHelper[e.model] || 0) + 1;
-    freeBySource[e.source] = (freeBySource[e.source] || 0) + 1;
-  }
-
-  // CC subscription stats
-  const subSummary = summarize(subEntries, period);
-
-  return {
-    paid: { ...paidSummary, bySource: paidBySource },
-    free: {
-      totalCalls: freeEntries.length,
-      byHelper,
-      bySource: freeBySource,
-      estimatedValueSaved: estimateValueSaved(paidEntries, freeEntries.length),
-    },
-    combined: { totalCalls: entries.length },
-    subscription: {
-      monthlyCost: CC_SUBSCRIPTION_MONTHLY,
-      actualValue: subSummary.totalCost,
-      sessions: subSummary.totalCalls,
-      totalTokens: subSummary.totalInputTokens + subSummary.totalOutputTokens,
-    },
-  };
-}
-
-/** Claude Code Max subscription cost (USD/month) */
-export const CC_SUBSCRIPTION_MONTHLY = 200;
-
 /** Haiku 4.5 pricing for value estimation */
 const HAIKU_INPUT_PER_MTOK = 0.8;
 const HAIKU_OUTPUT_PER_MTOK = 4.0;
@@ -230,13 +95,6 @@ export function estimateValueSaved(
   return Math.round(costPerCall * freeCallCount * 1_000_000) / 1_000_000;
 }
 
-export interface SubscriptionStats {
-  monthlyCost: number;
-  actualValue: number;
-  sessions: number;
-  totalTokens: number;
-}
-
 // ─── Reader ────────────────────────────────────────────────────────
 
 /**
@@ -262,8 +120,7 @@ export function readCostLog(costLogPath: string): CostEntry[] {
 }
 
 /**
- * Append a cost entry to the JSONL log AND persist to Supabase.
- * Dual-write ensures local backup + cloud persistence.
+ * Append a cost entry to the local JSONL log.
  */
 export function logCost(costLogPath: string, entry: CostEntry): void {
   // Local JSONL (always works, even offline)
@@ -272,9 +129,6 @@ export function logCost(costLogPath: string, entry: CostEntry): void {
     mkdirSync(dir, { recursive: true });
   }
   appendFileSync(costLogPath, JSON.stringify(entry) + "\n");
-
-  // Supabase (fire-and-forget, for dashboard + cross-deploy persistence)
-  persistToSupabase(entry);
 }
 
 // ─── Filters ───────────────────────────────────────────────────────
