@@ -23,7 +23,7 @@ export function runRows({ rows, head, cwd = process.cwd(), runner = null, log = 
     });
     const code = run.status ?? (run.signal ? `killed by ${run.signal}` : "spawn error");
     log(`ratchet row ${row.id}: exit ${code} in ${((Date.now() - started) / 1000).toFixed(1)}s`, run);
-    if (row.report_only) {
+    if (row.id === "disk-free-floor" && row.report_only) {
       try {
         const measurement = JSON.parse(String(run.stdout ?? "").trim().split("\n").pop());
         if (validDiskMeasurement(measurement) && run.status === (measurement.health ? 0 : 1))
