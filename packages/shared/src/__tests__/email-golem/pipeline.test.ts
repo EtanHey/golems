@@ -46,7 +46,7 @@ describe("email triage without delivery", () => {
     expect(effects.routed).toHaveLength(1);
     expect(effects.routed[0].type).toBe("email_routed");
     expect(effects.routed[0].data.targetGolem).toBe("recruitergolem");
-    expect(effects.senders).toHaveLength(2);
+    expect(effects.senders).toHaveLength(0);
     expect(effects.subscriptions[0].service_name).toBe("Fixture");
     expect(effects.payments[0].amount).toBe(12);
     expect(effects.syncs).toBe(1);

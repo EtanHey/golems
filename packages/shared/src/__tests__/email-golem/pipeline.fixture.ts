@@ -68,12 +68,6 @@ mock.module("../../email/router", () => ({
     reason: "Synthetic route",
   }),
 }));
-mock.module("../../email/sender-tracker", () => ({
-  parseListUnsubscribe: () => ({ email: "synthetic-unsubscribe-id" }),
-  trackSender: async (_db: any, sender: any) => {
-    effects.senders.push(sender);
-  },
-}));
 mock.module("../../lib/event-log", () => ({
   logEvent: async (type: string, data: any) => {
     effects.routed.push({ type, data });
