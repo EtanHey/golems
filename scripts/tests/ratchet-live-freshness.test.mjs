@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync, copyFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { parse } from 'yaml';
-import { checkLiveFreshness, recoveryCommand } from '../ratchet/live-freshness.mjs';
+import { checkLiveFreshness, recoveryCommand, postMergeCommand } from '../ratchet/live-freshness.mjs';
 import { evaluate } from '../ratchet/table.mjs';
 mkdirSync(resolve('docs.local/l3-tests'), { recursive: true });
 const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
@@ -40,7 +40,7 @@ test('live receipts require boolean success and numeric row counts', () => {
 });
 
 test('failure supplies the one-command recovery', () => {
-  expect(recoveryCommand(42)).toBe('scripts/ratchet/post-merge-live.sh --merged-pr 42');
+  expect(postMergeCommand(42)).toBe('scripts/ratchet/post-merge-live.sh --merged-pr 42');
 });
 test('grace accepts only a valid immediate predecessor within 120 minutes', () => {
   const priorHead = 'b'.repeat(40);
@@ -48,6 +48,8 @@ test('grace accepts only a valid immediate predecessor within 120 minutes', () =
     comments: [{ ...pass, body: pass.body.replace(sha, priorHead) }] };
   const now = Date.parse(pulls[0].merged_at) + 60 * 60000;
   expect(check([], { now, prior }).grace).toBe(true);
+  expect(check([], { now, prior }).reason).toContain('one command: ' + postMergeCommand(42));
+  expect(check([], { now, prior }).reason).toContain('or manually: ' + recoveryCommand(42));
   expect(check([], { now: now + 60 * 60000, prior }).grace).toBe(true);
   expect(check([], { now: now + 60 * 60000 + 1, prior }).ok).toBe(false);
   expect(check([], { now, prior: { ...prior, allowedHeads: ['c'.repeat(40)] } }).ok).toBe(false);
@@ -73,7 +75,10 @@ test('real CLI exempts unguarded PR before API access and fails closed on a guar
     const exempt = run(git('rev-parse', 'HEAD'));
     expect(exempt.status).toBe(0); expect(exempt.stdout).toContain('non-guarded PR exempt');
     mkdirSync(join(cwd, 'scripts/hooks'), { recursive: true }); writeFileSync(join(cwd, 'scripts/hooks/test.py'), 'pass'); git('add', '.'); git('commit', '-qm', 'guarded');
-    expect(run(git('rev-parse', 'HEAD')).status).toBe(1);
+    const failed = run(git('rev-parse', 'HEAD'));
+    expect(failed.status).toBe(1);
+    expect(failed.stderr).toContain('one command: ' + postMergeCommand('$RATCHET_GUARDED_MERGED_PR'));
+    expect(failed.stderr).toContain('or manually: ');
     expect(run('unknown').status).toBe(1);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

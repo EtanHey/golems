@@ -21,7 +21,7 @@ export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal,
   if (prior && age >= 0 && age <= GRACE_MINUTES
     && prior.pulls.some(p => p.merged_at && p.base?.ref === 'master' && p.merge_commit_sha === prior.guardedHead)) {
     const previous = validate(prior.comments, prior.allowedHeads ?? [prior.guardedHead]);
-    if (previous.ok) return { ok: true, grace: true, reason: `${guardedHead.slice(0, 8)} merged ${Math.floor(age)} min ago, no receipt yet; accepted ${prior.guardedHead.slice(0, 8)} receipt; post it with: ${recoveryCommand(pr.number)}` };
+    if (previous.ok) return { ok: true, grace: true, reason: `${guardedHead.slice(0, 8)} merged ${Math.floor(age)} min ago, no receipt yet; accepted ${prior.guardedHead.slice(0, 8)} receipt; one command: ${postMergeCommand(pr.number)}; or manually: ${recoveryCommand(pr.number)}` };
   }
   return result;
 }
@@ -30,12 +30,16 @@ function run(binary, args) {
   if (result.status !== 0) throw new Error(`${binary} ${args[0]} failed: ${result.stderr || result.error || result.signal}`);
   return result.stdout.trim();
 }
-export function recoveryCommand(mergedPR) {
+export function recoveryCommand(mergedPR, leasePR) {
+  const lease = /^\d+$/.test(String(leasePR ?? '')) ? leasePR : '"$(gh pr view --repo EtanHey/golems --json number -q .number)"';
+  return `RATCHET_SKILL_CONFIG="$HOME/.golems/ratchet/installed-skills.json" "$HOME/Gits/golems/scripts/ratchet/live-rows.sh" --merged-pr ${mergedPR} --lease-pr ${lease} --lease-repo "$PWD"`;
+}
+export function postMergeCommand(mergedPR) {
   return `scripts/ratchet/post-merge-live.sh --merged-pr ${mergedPR}`;
 }
 export function main() {
   let mergedPR;
-  const recovery = () => console.error(`Lead: post the live receipt with:\n${recoveryCommand(mergedPR ?? '$RATCHET_GUARDED_MERGED_PR')}`);
+  const recovery = () => console.error(`Lead: one command: ${postMergeCommand(mergedPR ?? '$RATCHET_GUARDED_MERGED_PR')}\nor manually: ${recoveryCommand(mergedPR ?? '$RATCHET_GUARDED_MERGED_PR', process.env.RATCHET_LEASE_PR)}`);
   try {
     if (process.env.RATCHET_PR_BASE || process.env.RATCHET_PR_HEAD) {
       if (!process.env.RATCHET_PR_BASE || !process.env.RATCHET_PR_HEAD) throw new Error('incomplete PR scope');
