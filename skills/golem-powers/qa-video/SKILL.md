@@ -16,10 +16,10 @@ execute: scripts/default.sh
 Local recording / YouTube video (downloaded in the agent's own shell)
   → extract.sh: ffmpeg audio + whisper-cli SRT/TXT
     → Agent selects transcript hotspots + scene-cues.sh visual changes
-      → dense-windows.sh: 10 fps contact sheets + 30s coverage
+      → coverage.sh: 30s coverage + run ledger; dense-windows.sh: 10 fps contact sheets
         → Runner views the sheets itself, linking before/after across cues and windows
           (optional: visual-batch.py pre-sorts bulk sheets; its text is a lead, not evidence)
-          → Unclear? Re-densify at up to 20 fps / tighter windows and view again
+          → Unclear? Re-densify at up to the source fps / tighter windows and view again
             → Resolved or NOT DETERMINED, citing full-size frames/crops before and after
               → QA findings, BrainLayer persistence, requested handoff
 ```
@@ -110,7 +110,7 @@ or delegation; return text to the parent for persistence and archival.
 
 **QA mode:** Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
 view every sheet yourself (helper pre-sort optional) → **re-densify** unclear moments at
-up to 20 fps / tighter windows → re-fetch and view again until resolved or **NOT
+up to the source fps / tighter windows → re-fetch and view again until resolved or **NOT
 DETERMINED**. Cite full-size frames or crops with `pts_s` from `frames.tsv`; the
 sheet + tile only locates them. Scripts support judgement; an optional
 convenience index never gates the loop.
@@ -126,7 +126,7 @@ If a provenance tool or column is missing, keep reading the frames directly, say
 
 - **Sheets are an index.** Use contact sheets to find moments. A finding cites the
   full-size frame (`frames.tsv` `frame`) or a crop from
-  `scripts/crop.sh <frame> <x> <y> <w> <h> <out>`, never a tile alone: small edge
+  `scripts/crop.sh <frame> <x> <y> <w> <h> <out>` (`<out>` must be `.png`), never a tile alone: small edge
   arrows, badges and focus rings get lost at tile size.
 - **Before and after.** Every finding cites ≥1 frame before the change and ≥1
   after it. A "no change" claim stands only after the window is re-checked at
@@ -159,11 +159,11 @@ If a provenance tool or column is missing, keep reading the frames directly, say
      - (a) every transcript segment whose text matches action language: click, clicking, press, tap, hover, drag, drop, scroll, open, close, select, toggle, switch, type, "when I", "now I", "this", "here", "look", "watch"
      - (b) `scripts/scene-cues.sh <video>` output — visual changes catch silent clicks and UI changes the narrator never mentions
      - (c) click logs, if `qa_click_logger` data exists for the session
-   - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (5–20 allowed; use 20 fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) plus a `frames.tsv` row per extracted frame (`frame`, `pts_s`, `source`, `sheet`, `tile`, `sha256`, `repeat_of`; crop.sh rows use `source=crop` and add an optional `crop_of` column naming the parent frame; see [references/provenance.md](references/provenance.md)). Times are the decoded pts, so `window_start_s` can be later than the padded cue start; take every timestamp from `frames.tsv`.
+   - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (1–120 accepted; it prints a WARN and repeats frames above `scripts/source-fps.sh`; use up to the source fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) plus a headerless `frames.tsv` row per extracted frame (`sheet_file`, `tile`, `t_s`, `frame`, `pts_s`, `source`, `sheet`, `sha256`, `repeat_of`, `crop_of`; crop.sh rows use `source=crop` and fill `crop_of` with the parent frame; see [references/provenance.md](references/provenance.md)). Full-size frames stay beside the sheets as `window_N-f_*.png`. Times are the decoded pts, so `window_start_s` can be later than the padded cue start; take every timestamp from `frames.tsv`.
    - **View every contact sheet yourself, in time order.** For each window, state: what the cursor targets, the before/after UI state, what carried over from the previous window or changed since it, and any visual defect. Work within the remaining wall-clock AND image-context budget: pick candidate windows before bulk image loading, keep the before/after and adjacent-window frames for each retained finding, append findings to the text ledger as you go, and stop with honest partial coverage before context runs out. If the budget forces a helper pre-sort, the sheets you did not view stay pre-sorted only, never confirmed.
    - **Cite or label.** A visual finding cites the full-size frames or crops you viewed yourself, before and after, with `pts_s` (e.g. before `<frame> @ 12.600s`, after `<frame> @ 12.800s`, both `frame` paths from `frames.tsv`, located via `sheet_004.jpg` tile 6–8). A finding with no frame citation is transcript-only and must be labelled **transcript-only**.
 
-3. **QA interval frames are a coverage pass only** — Still extract one frame every 30 seconds so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
+3. **QA interval frames are a coverage pass only** — Still extract one frame every 30 seconds (`scripts/coverage.sh <video> <workdir>` → `frames/interval-<t>s.png`; run it first, since it creates the run ledger that dense and refine passes in child directories append to) so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
 
 4. **Whisper model: `ggml-small`** — Fast on Apple Silicon (~14s for 7min video), accurate enough for English QA narration. The `ggml-large-v3` is better but 5x slower — not worth it for QA.
 
@@ -227,7 +227,9 @@ SCRIPTS="<qa-video skill dir>/scripts"
 # Run each command in YOUR OWN shell. After EACH launch, poll its logs/*.exit
 # and require 0 before continuing; read logs/*.log on failure.
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" extract -- bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"
-# Wait for extract.exit=0. Read SRT; write chosen transcript hotspots to cues.tsv, then add scene cues.
+# Wait for extract.exit=0. 30s coverage first: it creates the run ledger (frames.tsv).
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" coverage -- bash "$SCRIPTS/coverage.sh" "$VIDEO" "$WORKDIR"
+# Wait for coverage.exit=0. Read SRT; write chosen transcript hotspots to cues.tsv, then add scene cues.
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
 # After logs/scene.exit exists and is 0, append the scene TSV output:
 cat "$WORKDIR/logs/scene.log" >> "$WORKDIR/cues.tsv"
@@ -235,8 +237,8 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh"
 # Wait for dense.exit=0. View the sheets yourself (process.md Phase 4; visual-batch.py pre-sort optional). If a moment is unclear, re-densify a single tighter window:
 printf '1.0\t1.5\tunclear-target\n' > "$WORKDIR/refine-cues.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
-# Wait for refine-01.exit=0. View the new sheets; repeat as needed, or mark NOT DETERMINED. Full workflow includes
-# 30-second coverage and sheet + tile + timestamp findings.
+# Wait for refine-01.exit=0. View the new sheets; repeat as needed, or mark NOT DETERMINED. Full workflow:
+# inspected.sh per viewed frame, coverage-count.sh, full-size before/after findings.
 ```
 
 **For the full step-by-step, load [workflows/process.md](workflows/process.md).**

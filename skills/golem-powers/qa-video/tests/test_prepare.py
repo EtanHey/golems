@@ -169,5 +169,14 @@ def test_qa_pipeline_agent_contract():
     assert '≥1 full-size frame or crop before' in process and 're-check that window at full size' in process
     assert 'cite sheet + tile + timestamp' not in process.lower(), 'a tile is an index, not a citation'
     assert '"provenance unavailable"' in (root/'SKILL.md').read_text()
+    cols = '`sheet_file`, `tile`, `t_s`, `frame`, `pts_s`, `source`, `sheet`, `sha256`, `repeat_of`, `crop_of`'
     for text in [(root/f).read_text() for f in ('SKILL.md', 'workflows/process.md')]:
-        assert '`sha256`, `repeat_of`' in text and '`source=crop`' in text and '`crop_of`' in text
+        assert cols in text and '`source=crop`' in text and 'window_N-f_*.png' in text and 'interval-<t>s.png' in text
+        assert '5–20 allowed' not in text and 'up to 20 fps' not in text
+    import re
+    for f in ('SKILL.md', 'workflows/process.md', 'workflows/gems.md', 'agents/qa-video-runner.md'):
+        text = (root/f).read_text()
+        for name in set(re.findall(r'(?<![\w-]/)scripts/([\w.-]+\.(?:sh|py))', text)):
+            assert (root/'scripts'/name).is_file(), (f, name)
+        for name in set(re.findall(r'(?<![\w-]/)references/([\w.-]+\.md)', text)):
+            assert (root/'references'/name).is_file(), (f, name)
