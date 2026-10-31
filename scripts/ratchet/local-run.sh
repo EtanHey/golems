@@ -43,7 +43,7 @@ done
 [ -n "$PR" ] || die "--pr <number> is required (the lease probe is scoped to a real open PR)"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MAIN="$(cd "$(git -C "$HERE" rev-parse --git-common-dir)/.." && pwd)"
+MAIN="$(cd "$(git -C "$HERE" rev-parse --path-format=absolute --git-common-dir)/.." && pwd)"
 REPO_SLUG="EtanHey/golems"
 REAL_HOME="$HOME"
 
