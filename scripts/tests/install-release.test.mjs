@@ -190,6 +190,7 @@ for (const realCodex of [false, true]) test(`installed-skills fixture row passes
     mkdirSync(join(left, '.codex/skills'));
     for (const name of catalog().agents) symlinkSync(join(left, '.agents/skills', name), join(left, '.codex/skills', name));
   } else symlinkSync(join(left, '.agents/skills'), join(left, '.codex/skills'));
+  for (const dir of [left, right]) writeFileSync(join(dir, '.claude/settings.json'), '{"enabledPlugins":{}}');
   const result = spawnSync('python3', ['-c', `
 import hashlib, importlib.util, json, sys
 from unittest.mock import patch

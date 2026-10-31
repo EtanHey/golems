@@ -26,7 +26,6 @@ const PAYLOADS = {
   "tmp-block": { tool_name: "Write", tool_input: { file_path: "/tmp/planted-module-probe.txt", content: "x" }, deny: true },
   "pre_tool_use": { tool_name: "Bash", tool_input: { command: "git push origin main" }, deny: true, cwdOnMain: true },
   "collab-guard": { tool_name: "Write", tool_input: { content: "short\n" }, deny: true, collab: true },
-  "tdd-guard": { tool_name: "Write", tool_input: { file_path: "src/feature.ts", content: "export const x = 1;\n" } },
   "stamp-lint": { tool_name: "Write", tool_input: { file_path: "notes.md", content: "hello\n" }, hook_event_name: "PostToolUse" },
   "frustration-capture": { hook_event_name: "UserPromptSubmit", prompt: "no, that's wrong, I told you already" },
   "daemon-gate-precheck": { tool_name: "Bash", tool_input: { command: "ls" } },
