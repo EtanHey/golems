@@ -16,6 +16,9 @@ import subprocess
 import sys
 import time
 HERE = Path(__file__).resolve().parent
+_spec = importlib.util.spec_from_file_location('provenance', HERE/'provenance.py')
+provenance = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(provenance)
 def seconds(value):
     h, m, s = value.replace(',', '.').split(':')
     return int(h)*3600 + int(m)*60 + float(s)
@@ -144,6 +147,7 @@ def main():
         prefix = f'transcribed {int(duration)//60}:{int(duration)%60:02d} · picked {len(selected["moments"])} moments · total budget {args.budget_seconds:g}s · '
         progress(prefix+'extracting targeted stills · ETA unknown')
         sheets = []
+        (work/'frames.tsv').touch()
         for i, moment in enumerate(selected['moments']):
             image, log = work/f'moment-{i:02d}.jpg', work/f'logs/frame-{i:02d}.log'
             command(['ffmpeg', '-hide_banner', '-nostdin', '-y', '-ss', str(moment['start']), '-copyts',
@@ -151,10 +155,10 @@ def main():
             pts = re.search(r'pts_time:([\d.]+)', log.read_text())
             if not pts or not image.is_file():
                 raise ValueError('targeted frame lacks real PTS or image')
+            provenance.record(work, [(image, pts[1], 'refine', image.name, 0, '')])
             sheets.append(str(image))
             citations.append(f'{image.name}\t0\t{pts[1]}')
             progress(prefix+f'extracted {i+1}/{len(selected["moments"])} stills · ETA unknown')
-        (work/'frames.tsv').write_text('\n'.join(citations)+'\n')
         if sheets and not args.presort:
             status = 'STILLS_READY'  # the runner views them itself; no reserve, no helper
         elif sheets:
