@@ -12,6 +12,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'ratchet/installed-skills.py'
+PLUGIN = 'class-plugin@class-market'
 spec = importlib.util.spec_from_file_location('parity', SCRIPT)
 parity = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(parity)
@@ -20,7 +21,8 @@ spec.loader.exec_module(parity)
 class Parity(unittest.TestCase):
     def setUp(self):
         self.pins = [{k: hashlib.sha256((label+k).encode()).hexdigest() for k in ('machine', 'hostname', 'home')} for label in ('class-local', 'class-remote')]
-        self.left = {'schema': 2, 'identity': copy.deepcopy(self.pins[0]), 'roots': {}}
+        self.left = {'schema': 2, 'identity': copy.deepcopy(self.pins[0]), 'roots': {},
+                     'claude_plugins': {'.claude': {'enabled': [PLUGIN]}}}
         self.required = {'schema': 2, 'identities': copy.deepcopy(self.pins), 'roots': {}}
         for root in parity.ROOTS:
             entry = dict(kind='symlink', exists=True, skill_sha256='a'*64,
@@ -207,10 +209,10 @@ class Parity(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'installed version'):
                     self.check()
 
-    def scan(self, home, pin):
+    def scan(self, home, pin, dirs=parity.DEFAULT_CLAUDE_CONFIG_DIRS):
         with patch.object(parity.Path, 'home', return_value=home), \
                 patch.object(parity, 'observed_identity', return_value=pin):
-            return parity.inventory()
+            return parity.inventory(dirs)
 
     def test_real_release_tarball_matches_checkout_shipped_content(self):
         scratch = SCRIPT.parents[2] / 'docs.local/parity-fixtures'
@@ -253,6 +255,7 @@ class Parity(unittest.TestCase):
                 for home, target in [(local, source), (remote, installed)]:
                     (home / root).mkdir(parents=True)
                     (home / root / 'class-a').symlink_to(target, target_is_directory=True)
+            for home in (local, remote): self.settings(home)
             record = remote / '.golems/release.json'
             record.parent.mkdir()
             record.write_text(json.dumps(dict(version=built['version'], commit=built['commit'])))
@@ -290,6 +293,7 @@ class Parity(unittest.TestCase):
                 (local / root).mkdir(parents=True)
                 (local / root / 'class-a').symlink_to(source, target_is_directory=True)
                 shutil.copytree(source, remote / root / 'class-a')
+            for home in (local, remote): self.settings(home)
             for marker in ['.golems-source-commit', '.golems-install.json']:
                 (remote / self.root / 'class-a' / marker).write_text('installer metadata\n')
             left, right = self.scan(local, self.pins[0]), self.scan(remote, self.pins[1])
@@ -326,7 +330,104 @@ class Parity(unittest.TestCase):
                 skill = home / root / 'class-a'
                 skill.mkdir(parents=True)
                 (skill / 'SKILL.md').write_text('# class-a\n')
+            self.settings(home)
         return homes
+
+    def settings(self, home, directory='.claude', plugins=None):
+        path = home / directory / 'settings.json'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({'enabledPlugins': {PLUGIN: True} if plugins is None else plugins}))
+        return path
+
+    def test_plugin_enabled_mismatch_fails_by_name(self):
+        dirs = ('.claude', '.claude-secondary')
+        with tempfile.TemporaryDirectory(prefix='class-plugin-parity-') as directory:
+            homes = self.skill_homes(Path(directory))
+            for home in homes:
+                for config in dirs: self.settings(home, config, {PLUGIN: True, 'class-off@class-market': False})
+            other = 'class-design@class-market'
+            for config in dirs: self.settings(homes[0], config, {PLUGIN: True, other: True})
+            self.settings(homes[1], dirs[0], {PLUGIN: True, other: False})
+
+            def compare():
+                left, right = [self.scan(home, pin, dirs) for home, pin in zip(homes, self.pins)]
+                return parity.compare(left, right, self.required, dirs)
+
+            result = compare()
+            self.assertEqual(result['errors'], [
+                'plugin-enabled-mismatch ' + other + ': local=[.claude,.claude-secondary] remote=[]'])
+            self.assertFalse(result['plugin_enabled_parity'])
+            self.assertTrue(result['name_content_parity'])
+            self.settings(homes[1], dirs[1], {PLUGIN: True, other: True})
+            self.assertEqual(compare()['errors'], [
+                'plugin-enabled-mismatch ' + other + ': local=[.claude,.claude-secondary] remote=[.claude-secondary]'])
+            self.settings(homes[1], dirs[0], {PLUGIN: True, other: True})
+            result = compare()
+            self.assertEqual(result['errors'], [])
+            self.assertTrue(result['plugin_enabled_parity'])
+
+    def test_plugin_settings_missing_or_malformed_fail_closed(self):
+        cases = [('missing', None, 'settings.json missing'), ('not-json', '{', 'settings.json not JSON'),
+                 ('array', '[]', 'settings.json not a JSON object'),
+                 ('plugins-list', '{"enabledPlugins": ["' + PLUGIN + '"]}', 'enabledPlugins malformed'),
+                 ('plugins-string-value', '{"enabledPlugins": {"' + PLUGIN + '": "true"}}', 'enabledPlugins malformed')]
+        for label, text, reason in cases:
+            for both in (False, True):
+                with self.subTest(label=label, both=both), tempfile.TemporaryDirectory(prefix='class-plugin-settings-') as directory:
+                    homes = self.skill_homes(Path(directory))
+                    for home in homes if both else homes[1:]:
+                        path = home / '.claude/settings.json'
+                        if text is None: path.unlink()
+                        else: path.write_text(text)
+                    left, right = [self.scan(home, pin) for home, pin in zip(homes, self.pins)]
+                    result = parity.compare(left, right, self.required)
+                    expected = ['plugin-settings-invalid .claude: remote ' + reason]
+                    if both: expected.insert(0, 'plugin-settings-invalid .claude: local ' + reason)
+                    self.assertEqual(result['errors'], expected)
+                    self.assertFalse(result['plugin_enabled_parity'])
+
+    def test_plugin_inventory_absent_or_other_dirs_fails_closed(self):
+        self.right.pop('claude_plugins')
+        self.assertEqual(self.check()['errors'], ['plugin-inventory missing: remote reported no claude_plugins'])
+        self.setUp()
+        self.right['claude_plugins']['.claude-secondary'] = {'enabled': []}
+        self.assertIn('plugin-config-dirs mismatch: remote', self.check()['errors'][0])
+        self.setUp()
+        self.assertIn('plugin-config-dirs mismatch: local',
+                      parity.compare(self.left, self.right, self.required, ('.claude', '.claude-secondary'))['errors'][0])
+        for value in [{}, [], {'.claude': {}}, {'.claude': {'enabled': [1]}}, {'.claude': {'enabled': [PLUGIN, PLUGIN]}},
+                      {'../class': {'enabled': []}}, {'.claude': {'error': ''}}, {'.claude': {'enabled': [], 'error': 'x'}}]:
+            with self.subTest(value=value):
+                self.setUp(); self.right['claude_plugins'] = value
+                with self.assertRaises(ValueError): self.check()
+
+    def test_config_dirs_default_and_validate(self):
+        self.assertEqual(parity.config_dirs(['~/.claude', '~/.claude-secondary/']), ('.claude', '.claude-secondary'))
+        for value in [[], '~/.claude', ['.claude'], ['/abs/.claude'], ['~/../class'], ['~/.claude', '~/.claude'], [1]]:
+            with self.subTest(value=value), self.assertRaises(ValueError): parity.config_dirs(value)
+        with tempfile.TemporaryDirectory(prefix='class-config-dirs-') as directory:
+            base = Path(directory)
+            for name in ('identity', 'requirements'): (base / name).write_text('class\n')
+            config = base / 'config.json'
+            values = dict(schema=1, host='class-remote', identity=str(base / 'identity'), requirements=str(base / 'requirements'))
+            for extra, expected in [({}, ('.claude',)), ({'claude_config_dirs': ['~/.claude', '~/.claude-secondary']}, ('.claude', '.claude-secondary'))]:
+                config.write_text(json.dumps(dict(values, **extra))); config.chmod(0o600)
+                self.assertEqual(parity.load_config(config)['claude_config_dirs'], expected)
+            config.write_text(json.dumps(dict(values, claude_config_dirs=['.claude'])))
+            with self.assertRaisesRegex(ValueError, 'claude_config_dirs'): parity.load_config(config)
+
+    def test_remote_script_carries_config_dirs(self):
+        with tempfile.TemporaryDirectory(prefix='class-stdin-plugins-') as directory:
+            home = self.skill_homes(Path(directory))[1]
+            self.settings(home, '.claude-secondary', {})
+            source = "__name__ = 'class_fixture'\n" + parity.remote_inventory_script(('.claude', '.claude-secondary')) + '\n' + (
+                'Path.home = classmethod(lambda cls: Path(' + repr(str(home)) + '))\n'
+                'observed_identity = lambda: ' + repr(self.pins[1]) + '\n'
+                'sys.argv = ["-", "--inventory"]\nmain()\n')
+            run = subprocess.run([sys.executable, '-B', '-'], input=source, text=True, capture_output=True, cwd=directory)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(json.loads(run.stdout)['claude_plugins'],
+                             {'.claude': {'enabled': [PLUGIN]}, '.claude-secondary': {'enabled': []}})
 
     def test_real_schema_sync_records_on_both_hosts_are_ignored(self):
         with tempfile.TemporaryDirectory(prefix='class-sync-record-') as directory:
@@ -529,7 +630,7 @@ class Parity(unittest.TestCase):
 
     def test_ssh_unavailable_cannot_skip(self):
         with patch.object(sys, 'argv', [str(SCRIPT), '--config', 'class-config']), \
-                patch.object(parity, 'load_config', return_value=dict(host='class-host', identity='/class-identity', requirements='/class-manifest')), \
+                patch.object(parity, 'load_config', return_value=dict(host='class-host', identity='/class-identity', requirements='/class-manifest', claude_config_dirs=('.claude',))), \
                 patch.object(parity.Path, 'read_text', return_value=json.dumps(self.required)), \
                 patch.object(parity, 'remote_inventory_script', return_value='class scanner'), \
                 patch.object(parity.subprocess, 'run', side_effect=FileNotFoundError('SSH absent')) as ssh:

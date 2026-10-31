@@ -250,6 +250,18 @@ excluded dependencies/caches are not claimed byte-identical or runtime-equivalen
 nested skills are measured without writing their install. Missing SSH, Python, roots, content
 or the required-readable manifest fails; there is no capability skip.
 
+The row also compares enabled Claude plugins. For each configured Claude config dir, both hosts
+read `<dir>/settings.json` and collect the `enabledPlugins` keys whose value is `true`. A key
+enabled in a different set of config dirs on the two hosts fails by name, e.g.
+`plugin-enabled-mismatch class-plugin@class-market: local=[.claude,.claude-secondary] remote=[]`.
+A missing `settings.json`, a non-JSON or non-object file, or a malformed `enabledPlugins` (not an
+object, or a non-boolean value) fails closed as `plugin-settings-invalid <dir>: <host> <reason>`,
+never as "no plugins enabled". A settings object without `enabledPlugins` counts as none enabled.
+An inventory without a plugin section, or with other config dirs, fails. The output field
+`plugin_enabled_parity` reports this check separately from skill parity. Added 2026-10-31 after a
+plugin cached but not enabled on one Mac showed as "Unknown skill" there while skill parity
+stayed green.
+
 Supporting paths also follow `scripts/release/shipped-paths.json`, the builder's
 single shipping policy: checkout-only evals, tests, fixtures and other excluded
 paths do not affect parity against a release install. Shipped supporting bytes
@@ -262,7 +274,10 @@ Create an owner-only regular file at `~/.golems/ratchet/installed-skills.json`, 
 runner's user. Its JSON is `{"schema":1,"host":"class-remote",
 "identity":"/absolute/path/to/existing-identity","requirements":"/absolute/path/to/private-requirements.json"}`.
 Use actual private values locally; the identity and requirements paths must be absolute existing
-files. The checker only passes the existing identity path to SSH, with `IdentitiesOnly=yes` and
+files. The optional `"claude_config_dirs"` is a nonempty list of `~/`-relative Claude config dirs
+whose enabled plugins must match, default `["~/.claude"]` (for example
+`["~/.claude","~/.claude-secondary"]`). The same list applies to both hosts; it is sent inside the
+scanner over SSH, never as a shell argument. The checker only passes the existing identity path to SSH, with `IdentitiesOnly=yes` and
 `IdentityAgent=none`; it does not read credential bytes. No configuration is shell-evaluated.
 The private requirements JSON is
 `{"schema":2,"identities":["<local identity object>","<remote identity object>"],
