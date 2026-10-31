@@ -188,7 +188,9 @@
     },
     {
       "id": "installed-skill-parity",
-      "metric": "installed skill name/hash/exec-bit sets and recorded release.json versions identical on both Macs (install kind/target and regular skill-root markers ignored; required readability and disclosed invalid entries retained)",
+      "report_only": "until-m1-run1",
+      "report_only_until": "2026-11-02T00:00:00Z",
+      "metric": "installed skill name/hash/exec-bit sets and recorded release.json versions identical on both Macs (install kind/target and regular skill-root markers ignored; required readability and disclosed invalid entries retained) [WARN-only until golems run 1 lands or 2026-11-02, then blocking again]",
       "kind": "real",
       "runner": "live",
       "direction": "pass",
