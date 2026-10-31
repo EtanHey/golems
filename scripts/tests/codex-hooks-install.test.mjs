@@ -208,3 +208,14 @@ test("the Codex manifest pins the gate set: human-confirm needs its anchor pin, 
   expect(bad((e) => { e[2].gate = "other-gate"; })).toThrow("Invalid Codex policy entry");
   expect(bad((e) => { e.splice(0, 1); })).toThrow("Invalid Codex policy manifest");
 });
+
+test("M1 window is an owner-only Bash registration alongside the pinned gate set", () => {
+  const f = confirmFixture();
+  const entry = { gate: "m1-window-gate", source: "scripts/hooks/codex-policy-hook.py", matcher: "^Bash$", timeout: 10 };
+  f.manifest.codex_hosts.mbp = [...f.manifest.codex_hosts.mbp, entry];
+  expect(gatesIn(planCodexHooks(f))).toEqual(["git-guardian", "human-confirm", "m1-window-gate", "tmp-block"]);
+  applyCodexHooks(planCodexHooks(f));
+  expect(planCodexHooks(f).registered).toBe(true);
+  entry.matcher = "^(Bash|apply_patch)$";
+  expect(() => planCodexHooks(f)).toThrow("Invalid Codex policy entry");
+});

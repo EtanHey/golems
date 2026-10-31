@@ -1783,3 +1783,18 @@ test("creation floor refuses before any fixture worktree is added", () => {
   expect(git(fx.repo, "worktree", "list", "--porcelain")).toBe(before);
   expect(existsSync(live(fx))).toBe(false);
 });
+
+test("M1 window gate registers both T3 spellings and status reports absent config without writes", () => {
+  const e = realManifest.hosts.mbp.find((e) => e.id === "m1-window-gate");
+  expect(e.command).not.toContain("--fail-closed");
+  for (const name of ["Bash", "mcp__t3-code__delegate_task", "mcp__t3_code__delegate_task"]) expect(new RegExp(e.matcher).test(name)).toBe(true);
+  expect(realManifest.hosts.client.some((e) => e.id === "m1-window-gate")).toBe(false);
+  expect(realManifest.codex_hosts.mbp.find((e) => e.gate === "m1-window-gate").matcher).toBe("^Bash$");
+  const fx = fixture();
+  const manifest = manifestFor(); manifest.hosts.mbp.push(e);
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const before = readFileSync(fx.settingsPath, "utf8");
+  expect(run(fx, "--status").out).toContain("m1-window-gate unconfigured");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+  expect(existsSync(path.join(fx.home, ".golems/m1-window-gate.json"))).toBe(false);
+});
