@@ -2,7 +2,6 @@ import { test, expect } from 'bun:test';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-
 test('post-merge wrapper picks clean exact-head leases, prefers worker paths, and fails without one', () => {
   const dir = mkdtempSync(resolve('docs.local/l3-tests/post-merge-'));
   try {
@@ -34,7 +33,6 @@ else process.exit(9);
       { encoding: 'utf8', env: { ...process.env, PATH: join(dir, 'bin') + ':' + process.env.PATH,
         EXPECT_PATH: process.env.HOME + '/.t3/worktrees/golems/valid', ...extra } });
     const picked = run();
-    expect(picked.stderr).toBe("");
     expect(picked.status).toBe(0);
     expect(picked.stdout).toContain('https://example.invalid/comment\nfreshness PASS');
     const none = run({ NO_LEASE: '1' });

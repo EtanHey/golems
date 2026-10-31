@@ -4,9 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { checkVerdict } from './check-comment.mjs';
 import { parseRows, findSticky, readVerdict, expectedReporting } from './table.mjs';
-
 export const GRACE_MINUTES = 120;
-
 export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads = [guardedHead], expectedReportOnly = [], now = Date.now(), prior }) {
   const pr = pulls.find(p => p.merged_at && p.base?.ref === 'master' && p.merge_commit_sha === guardedHead);
   if (!pr) return { ok: false, reason: 'latest guarded commit has no merged master PR' };
@@ -27,17 +25,14 @@ export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal,
   }
   return result;
 }
-
 function run(binary, args) {
   const result = spawnSync(binary, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 60000 });
   if (result.status !== 0) throw new Error(`${binary} ${args[0]} failed: ${result.stderr || result.error || result.signal}`);
   return result.stdout.trim();
 }
-
 export function recoveryCommand(mergedPR) {
   return `scripts/ratchet/post-merge-live.sh --merged-pr ${mergedPR}`;
 }
-
 export function main() {
   let mergedPR;
   const recovery = () => console.error(`Lead: post the live receipt with:\n${recoveryCommand(mergedPR ?? '$RATCHET_GUARDED_MERGED_PR')}`);
@@ -49,9 +44,10 @@ export function main() {
       if (scope.status !== 0) throw new Error('cannot determine guarded PR paths');
     }
     // Same guarded directories as guarded-paths.sh. Candidate-only changes do not invalidate live.
-    const guardedHead = run('git', ['log', '--first-parent', '-1', '--format=%H', 'origin/master', '--',
+    const guardedAt = ref => run('git', ['log', '--first-parent', '-1', '--format=%H', ref, '--',
       'scripts/hooks/', 'skills/golem-powers/human-confirm-gate/', 'skills/golem-powers/git-guardian/',
       'skills/golem-powers/tmp-block/', 'scripts/repogolem/', 'scripts/ratchet/']);
+    const guardedHead = guardedAt('origin/master');
     if (!/^[0-9a-f]{40}$/.test(guardedHead)) throw new Error('no guarded master commit');
     const rows = parseRows(JSON.parse(run('git', ['show', 'origin/master:scripts/ratchet/rows.json'])));
     const expectedReal = rows.rows.filter(r => r.runner === 'live' && r.kind === 'real').length;
@@ -64,9 +60,7 @@ export function main() {
     let result = checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads, expectedReportOnly: expectedReporting(rows, 'live') });
     const age = (Date.now() - Date.parse(pr?.merged_at)) / 60000;
     if (!result.ok && age >= 0 && age <= GRACE_MINUTES) {
-      const previousHead = run('git', ['log', '--first-parent', '-1', '--format=%H', `${guardedHead}^1`, '--',
-        'scripts/hooks/', 'skills/golem-powers/human-confirm-gate/', 'skills/golem-powers/git-guardian/',
-        'skills/golem-powers/tmp-block/', 'scripts/repogolem/', 'scripts/ratchet/']);
+      const previousHead = guardedAt(`${guardedHead}^1`);
       if (previousHead) {
         const previousPulls = api(`commits/${previousHead}/pulls`);
         const previousPR = previousPulls.find(p => p.merged_at && p.base?.ref === 'master' && p.merge_commit_sha === previousHead);
