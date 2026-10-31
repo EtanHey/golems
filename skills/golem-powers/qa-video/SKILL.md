@@ -17,8 +17,9 @@ Local recording / YouTube video (downloaded in the agent's own shell)
   → extract.sh: ffmpeg audio + whisper-cli SRT/TXT
     → Agent selects transcript hotspots + scene-cues.sh visual changes
       → dense-windows.sh: 10 fps contact sheets + 30s coverage
-        → visual-batch.py reads EVERY sheet concurrently (default 3, cap 4)
-          → Unclear? Re-densify at up to 20 fps / tighter windows and re-read
+        → Runner views the sheets itself, linking before/after across cues and windows
+          (optional: visual-batch.py pre-sorts bulk sheets; its text is a lead, not evidence)
+          → Unclear? Re-densify at up to 20 fps / tighter windows and view again
             → Resolved or NOT DETERMINED, with sheet/tile/timestamp evidence
               → QA findings, BrainLayer persistence, requested handoff
 ```
@@ -57,9 +58,9 @@ Read the user's request and route to the right workflow:
 
 | Request | Execution owner | Image reader |
 |---|---|---|
-| QA a recording (default) | `Agent(qa-video-runner)` with video, project, artifact directory and round | `visual-batch.py` in its own shell |
-| Debrief/review (default) | `Agent(qa-video-runner)` with mode=debrief/review, source and artifact directory | `visual-batch.py` in its own shell |
-| Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `visual-batch.py` in its own shell |
+| QA a recording (default) | `Agent(qa-video-runner)` with video, project, artifact directory and round | The runner itself (Read on sheets/frames); `visual-batch.py` pre-sort optional |
+| Debrief/review (default) | `Agent(qa-video-runner)` with mode=debrief/review, source and artifact directory | The runner itself (Read on stills); `visual-batch.py` pre-sort optional |
+| Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `video-gems` itself (Read on stills); `visual-batch.py` pre-sort optional |
 | Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` and an explicit absolute `docs.local` workdir | That worker views sheets and runs the same iterative loop |
 
 **Subagent routing:** Dispatch the full pipeline once using this table. Do not
@@ -71,11 +72,16 @@ Claude's agent directory before dispatch using `orc/scripts/install.sh`
 If that local agent lacks the helper contract, include this workflow in its brief.
 
 Default pipeline: `Agent(qa-video-runner)` for QA/debrief/review, `Agent(video-gems)` for gems.
-The pipeline sub-agent owns the whole iterative loop in its **own shell**;
-never read images in the lead or pipeline sub-agent. Read text with Read;
-call `scripts/visual-batch.py` from your own shell for every sheet/frame.
-The driver invokes visual-gather.py concurrently and returns text only.
-NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
+The pipeline sub-agent owns the whole iterative loop in its **own shell**
+and **reads the images itself**: it opens the contact sheets and the frames
+behind every finding with Read, in its own context, and connects them over
+time: what changed between the before/after frames of a cue, and whether an
+element's state carries across windows. The lead stays text-only.
+`scripts/visual-batch.py` (driving visual-gather.py) is OPTIONAL bulk
+pre-sorting, e.g. flagging candidate windows across hundreds of samples. Its
+text is a lead, never evidence: view the frames before reporting a finding.
+State how many samples you viewed directly versus pre-sorted only, and never
+claim coverage you did not view. NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
 One absolute deadline bounds setup probes, helper calls and retry backoff. Each
 subprocess timeout is clamped to the remaining budget; expiry stops launches
 and terminates in-flight helpers. Output overflow is an explicit failed read.
@@ -85,7 +91,7 @@ screenshot questions outside this pipeline.
 
 Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
 Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
-same loop in its own shell and may view images itself. Its profile permits
+same loop in its own shell and views the images itself, like the runner. Its profile permits
 artifacts only in the assigned `docs.local` directory or engine report path;
 pass that absolute workdir explicitly. For QA, the parent persists the final note and
 cited evidence under the project `docs/` directory before BrainLayer storage.
@@ -103,8 +109,8 @@ Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
 **QA mode:** Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
-read every sheet through the visual helper → **re-densify** unclear moments at
-up to 20 fps / tighter windows → re-fetch and re-read until resolved or **NOT
+view every sheet yourself (helper pre-sort optional) → **re-densify** unclear moments at
+up to 20 fps / tighter windows → re-fetch and view again until resolved or **NOT
 DETERMINED**. Cite sheet + tile + timestamp from `frames.tsv`. Scripts support
 judgement; an optional convenience index never gates the loop.
 
@@ -122,8 +128,8 @@ judgement; an optional convenience index never gates the loop.
      - (b) `scripts/scene-cues.sh <video>` output — visual changes catch silent clicks and UI changes the narrator never mentions
      - (c) click logs, if `qa_click_logger` data exists for the session
    - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (5–20 allowed; use 20 fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) plus `frames.tsv` (`sheet_file<TAB>tile<TAB>t_s`). Times are the extracted frames' real PTS, so `window_start_s` can be later than the padded cue start; tile *i* (row-major, 0-based) is at `window_start_s + i/fps`, and `frames.tsv` is exact.
-   - **Have visual-batch.py read EVERY contact sheet.** For each window, state: what the cursor targets, the before/after UI state, and any visual defect.
-   - **Cite or label.** A visual finding must cite `sheet + tile index → timestamp` (e.g. `sheet_004.jpg tile 7 → 12.7s`). A finding with no sheet citation is transcript-only and must be labelled **transcript-only**.
+   - **View every contact sheet yourself, in time order.** For each window, state: what the cursor targets, the before/after UI state, what carried over from the previous window or changed since it, and any visual defect. Work within the remaining wall-clock AND image-context budget: pick candidate windows before bulk image loading, keep the before/after and adjacent-window frames for each retained finding, append findings to the text ledger as you go, and stop with honest partial coverage before context runs out. If the budget forces a helper pre-sort, the sheets you did not view stay pre-sorted only, never confirmed.
+   - **Cite or label.** A visual finding must cite the `sheet + tile index → timestamp` you viewed yourself (e.g. `sheet_004.jpg tile 7 → 12.7s`). A finding with no sheet citation is transcript-only and must be labelled **transcript-only**.
 
 3. **QA interval frames are a coverage pass only** — Still extract one frame every 30 seconds so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
 
@@ -140,9 +146,9 @@ judgement; an optional convenience index never gates the loop.
 9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
 10. **One pipeline route** — QA uses `qa-video-runner`, gems uses `video-gems`.
-    Each owns mode-appropriate extraction, hotspots and refinement in its own Bash and calls
-    `visual-batch.py` for images; lead/sub-agent contexts receive text
-    only. A cmux `video-qa` worker is allowed only on Etan's explicit visible-worker
+    Each owns mode-appropriate extraction, hotspots and refinement in its own Bash and
+    views the sheets/frames itself; `visual-batch.py` is optional pre-sorting and the
+    lead receives text only. A cmux `video-qa` worker is allowed only on Etan's explicit visible-worker
     request. This rule and the routing table are the same contract. Persistence
     and archival follow the evidence pass.
 
@@ -194,10 +200,10 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$
 # After logs/scene.exit exists and is 0, append the scene TSV output:
 cat "$WORKDIR/logs/scene.log" >> "$WORKDIR/cues.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
-# Wait for dense.exit=0. Run visual-batch.py on index.tsv (process.md Phase 4). If a moment is unclear, re-densify a single tighter window:
+# Wait for dense.exit=0. View the sheets yourself (process.md Phase 4; visual-batch.py pre-sort optional). If a moment is unclear, re-densify a single tighter window:
 printf '1.0\t1.5\tunclear-target\n' > "$WORKDIR/refine-cues.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
-# Wait for refine-01.exit=0. Call the visual helper again; repeat as needed, or mark NOT DETERMINED. Full workflow includes
+# Wait for refine-01.exit=0. View the new sheets; repeat as needed, or mark NOT DETERMINED. Full workflow includes
 # 30-second coverage and sheet + tile + timestamp findings.
 ```
 

@@ -130,7 +130,8 @@ def test_skill_owns_iterative_loop():
         assert 'qa-video-runner' in text and 'video-gems' in text
         assert 'visual-gather.py' in text
         assert 'explicitly' in text and 'visible worker' in text
-        assert 'never read images' in text.lower()
+        assert 'never read images' not in text.lower() and 'for every sheet/frame' not in text
+        assert 'reads the images itself' in text and 'a lead, never evidence' in text
         assert 'run-step.sh' in text and '.log' in text and '.pid' in text and '.exit' in text
         assert 'run_command' in text and 'view_file' in text
         assert 'pending confirmation' not in text
@@ -148,6 +149,14 @@ def test_qa_pipeline_agent_contract():
     assert '\nrole: claude.subagent.cheap\n' in agent
     assert '\nmodel: ' + roles['roles']['claude.subagent.cheap']['alias'] + '\n' in agent
     assert '\ntools: Bash, Write, Read\n' in agent
-    assert 'never read images' in agent.lower()
+    assert 'never read images' not in agent.lower()
+    assert 'Read the images yourself' in agent and 'a lead, never evidence' in agent
+    assert 'never claim coverage you did not view' in agent
+    for text in [agent] + [(root/f).read_text() for f in ('workflows/process.md', 'workflows/gems.md')]:
+        assert 'STILLS_READY' in text and '--presort' in text, 'debrief default is helper-free; pre-sort is opt-in'
+    for text in [agent] + [(root/f).read_text() for f in ('SKILL.md', 'workflows/process.md')]:
+        assert 'wall-clock AND image-context budget' in text
+    process = (root/'workflows/process.md').read_text()
+    assert 'stays a confirmed FAIL' in process and 'can never earn a full-coverage PASS' in process
     assert 'visual-gather.py' in agent and 'NOT DETERMINED' in agent
     assert 'Agent tool' in agent and 're-densify' in agent.lower()
