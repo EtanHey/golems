@@ -153,6 +153,17 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
    - Exit 0 prints the changed AGENTS.md and CLAUDE.md paths, then the root receipt readback. Re-read those files before your
      next action.
    - `scripts/tests/pr-loop-root-ff.test.mjs` executes this exact block against Git fixtures.
+1b. **Guarded golems merge: post the live receipt.** If the merged golems PR touched a guarded path
+   (`scripts/ratchet/guarded-paths.sh <base> <merge>` exits 0, printing "Mac rows required"), the lead runs
+   this from the golems root checkout, right after step 1:
+   ```bash
+   scripts/ratchet/post-merge-live.sh --merged-pr <N>
+   ```
+   It updates the mbp hooks-live install, picks a clean exact-head open-PR worktree as the lease, runs the
+   live rows, posts the `golems-ratchet-live` receipt and prints the live-tier freshness result. Optional
+   `--lease-pr N --lease-repo <path>` constrains the lease. A FAIL is a stop: report it rather than re-running
+   blindly. After the receipt posts, re-run any failed master/PR `ratchet` jobs. A posted comment alone does
+   not re-run CI. Rules and the 120-minute grace: `standards/ratchet.md`.
 2. **Collab file** — If this PR is part of a collab, update the task board status to ✅ Done with PR number
 3. **Roadmap** — If this PR completes a roadmap phase, update `$ORCHESTRATOR_REPO/roadmap/README.md`
 4. **BrainLayer** — `brain_store` what changed and why (tagged `pr-merged`, `<project>`)

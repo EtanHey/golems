@@ -217,3 +217,14 @@ for (const shell of shells) {
     assert.equal(run.stdout, "");
   });
 }
+
+// ci-hygiene (2026-10-31): a guarded golems merge publishes its live receipt with one command.
+test("Update Tracking names post-merge-live.sh as the guarded-merge step", () => {
+  const section = readFileSync(doc, "utf8").split("### After Merge: Update Tracking (MANDATORY)")[1].split("\n---\n")[0];
+  const step = section.split("1b. **Guarded golems merge")[1]?.split("\n2. ")[0];
+  assert.ok(step, "step 1b missing");
+  assert.match(step, /scripts\/ratchet\/guarded-paths\.sh/);
+  assert.match(step, /scripts\/ratchet\/post-merge-live\.sh --merged-pr <N>/);
+  const skill = readFileSync(path.resolve(here, "../../skills/golem-powers/pr-loop/SKILL.md"), "utf8");
+  assert.match(skill, /\| You just merged a guarded golems PR .*post-merge-live\.sh --merged-pr N/);
+});
