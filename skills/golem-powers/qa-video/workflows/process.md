@@ -47,8 +47,10 @@ or delegation; return text to the parent for persistence and archival.
 **QA mode:** Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
 view every sheet yourself (helper pre-sort optional) → **re-densify** unclear moments at
 up to 20 fps / tighter windows → re-fetch and view again until resolved or **NOT
-DETERMINED**. Cite sheet + tile + timestamp from `frames.tsv`. Scripts support
-judgement; an optional convenience index never gates the loop.
+DETERMINED**. Cite full-size frames or crops with `pts_s` from `frames.tsv`; the
+sheet + tile only locates them. Follow SKILL.md § Evidence Rules; column and
+helper details are in [provenance.md](../references/provenance.md). Scripts
+support judgement; an optional convenience index never gates the loop.
 
 ## Phase 1: Audio Extraction + Transcription
 
@@ -146,17 +148,23 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" "dense${SUFFIX}" -- bash "$SCRIPTS/dense-
 ```
 
 Outputs `sheet_NNN.jpg` (5x4 contact sheets), `index.tsv`
-(`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) and `frames.tsv`
-(`sheet_file<TAB>tile<TAB>t_s`, the real PTS of every tile). Take citation
-timestamps from `frames.tsv`.
+(`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) and one `frames.tsv`
+row per extracted frame: `frame`, `pts_s` (decoded pts), `source`, `sheet`,
+`tile`, `sha256`, `repeat_of`. Take citation timestamps from `pts_s`. Check
+`scripts/source-fps.sh "$VIDEO"` first: an fps above the source makes
+dense-windows.sh warn, and the extra frames are repeats (`repeat_of` set) that
+add no information.
 
 ## Phase 4: View the Sheets Yourself, Connect Them Over Time, Then Re-Densify
 
 **View every contact sheet yourself.** Open each `sheet_NNN.jpg` with Read, in
 time order from `index.tsv`, and connect what you see: the before/after state
 around each cue, and whether an element's state carries from one window to the
-next. Open the full-resolution frame behind any tile a finding rests on. The
-lead receives text only.
+next. The sheets are an index: open the full-size frame behind any tile a
+finding rests on, or cut a crop with `scripts/crop.sh <frame> <x> <y> <w> <h> <out>`
+for small details such as edge arrows. Log every frame you look at with
+`scripts/inspected.sh "$WORKDIR" <frame> <why> [finding-id]`. The lead receives
+text only.
 
 **Work within the remaining wall-clock AND image-context budget.** Images fill
 your context as well as the clock. Choose candidate windows (cues, transcript
@@ -192,6 +200,9 @@ nonzero exit and the cause: our own visual dispatch. Do not relaunch blindly.
 Retry/refine only unresolved sheets within the remaining session budget, using
 a fresh workdir. An unread/unresolved sheet never supports a visual finding; nor does a sheet the
 helper read but you did not view (it is pre-sorted only).
+**A helper, parser or validator failure is a TOOLING FAILURE.** Report
+`TOOLING FAILURE` with the raw output path (`logs/<step>.log`, the saved raw
+response); never report it as "no screenshots", and view the frames yourself.
 `unresolved` lists unread sheets only; an ok finding with inline NOT DETERMINED tiles is a refinement candidate for those tiles.
 An explicitly requested visible `video-qa` worker keeps the same evidence ledger.
 
@@ -200,17 +211,23 @@ For each window (sheet), state:
 1. What the cursor targets and which tile shows the action
 2. The before/after UI state across the tiles
 3. Any visual defect (error, wrong state, layout, alignment, contrast)
-4. Whether the screen matches what the user was describing at this timestamp
+4. What the user says (narration, described physical input) versus what the
+   screen shows at this timestamp; narration alone never proves a UI state
 5. What carried over from the previous window, or changed since it
 
-**Cite or label.** Every visual finding cites the `sheet + tile → timestamp` you viewed yourself, with the
-timestamp from `frames.tsv` (e.g. `sheet_004.jpg tile 7 → 12.700s`). A finding
-without a sheet citation is transcript-only and must be labelled
+**Cite or label.** Every visual finding cites ≥1 full-size frame or crop before
+the change and ≥1 after it, each one you viewed yourself, with `pts_s` from
+`frames.tsv` (e.g. before `<frame> @ 12.600s`, after `<frame> @ 12.800s`, found
+via `sheet_004.jpg` tile 6–8). A tile alone is never the citation. A "no change"
+claim stands only after you re-check that window at full size. A finding
+without a frame citation is transcript-only and must be labelled
 **transcript-only**.
 
-**Coverage honesty.** Count what you viewed directly versus what the helper
-pre-sorted only, e.g. "viewed 41 of 386 samples plus 4 stills; the rest
-pre-sorted only or unreviewed, so coverage is partial". Never claim full
+**Coverage honesty.** The coverage line is the pasted output of
+`scripts/coverage-count.sh "$WORKDIR"` (`extracted= unique= repeated= inspected=
+pre-sorted-only=`), counted from `frames.tsv` and `inspected.tsv`, never
+estimated. Extracted is not inspected, and a repeated frame is not a second
+observation. Never claim full
 coverage you did not view. Keep the two verdicts apart: a failure you viewed
 yourself stays a confirmed FAIL, whatever else went unviewed. The unviewed spans
 are INCONCLUSIVE and can never earn a full-coverage PASS.
@@ -237,7 +254,9 @@ window. View the new sheets yourself (optionally pre-sort the new `index.tsv` wi
 visual-batch.py in a fresh batch workdir); use that pass's `frames.tsv` for exact tile timestamps. Repeat at different bounds if needed.
 If 20 fps or source resolution cannot resolve the moment, mark it **NOT
 DETERMINED**, explain the limitation and request better evidence. Higher output
-fps cannot create detail absent from the original video. An unresolved moment
+fps cannot create detail absent from the original video. **When a gesture is
+ambiguous**, ask the user for a slowed, narrated repro of it, and sample that
+recording densely around the transition. An unresolved moment
 never becomes a confirmed visual failure. Record every refinement pass and the
 sheet/tile/timestamp that finally supports the finding.
 
@@ -254,8 +273,9 @@ text paths to the parent, which copies the final note and cited evidence into
 ## Summary
 - **Duration:** M:SS
 - **Hotspots found:** N
-- **Sheets viewed directly:** N / total across initial + refinement indexes (pre-sorted only: M; unreviewed: K)
+- **Coverage:** `extracted=… unique=… repeated=… inspected=… pre-sorted-only=…` (pasted from coverage-count.sh)
 - **Refinement passes:** [windows, fps, evidence, resolved / NOT DETERMINED]
+- **Tooling failures:** `TOOLING FAILURE <step>: <raw output path>`, or none
 - **Critical issues:** N
 - **Major issues:** N
 - **Minor/UX issues:** N
@@ -266,9 +286,9 @@ text paths to the parent, which copies the final note and cited evidence into
 ## Finding 1: [Short descriptive title]
 - **Timestamp:** M:SS–M:SS
 - **Severity:** Critical / Major / Minor / UX / Enhancement
-- **What was said:** "[exact transcript quote]"
-- **What's on screen:** [describe the frame — page, state, visible elements]
-- **Evidence:** dense/sheet_004.jpg tile 7 → 12.700s (sheet + tile + timestamp from `frames.tsv` that you viewed yourself; list every tile relied on), or **transcript-only** if no sheet shows it
+- **Narration / user says:** "[exact transcript quote]" plus any physical input the user describes (input is usually not visible)
+- **Screen shows:** [what the frames themselves prove: page, state, visible elements, what changed]
+- **Evidence:** before `<frame> @ 12.600s`, after `<frame> @ 12.800s` (full-size frames or crops you viewed, `pts_s` from `frames.tsv`; list every frame relied on), or **transcript-only** if no frame shows it
 - **Action needed:** [specific fix or investigation]
 - **Recurring?:** Yes/No (if seen in previous rounds, note which)
 

@@ -160,3 +160,11 @@ def test_qa_pipeline_agent_contract():
     assert 'stays a confirmed FAIL' in process and 'can never earn a full-coverage PASS' in process
     assert 'visual-gather.py' in agent and 'NOT DETERMINED' in agent
     assert 'Agent tool' in agent and 're-densify' in agent.lower()
+    for text in [agent] + [(root/f).read_text() for f in ('SKILL.md', 'workflows/process.md')]:
+        for term in ('crop.sh', 'inspected.sh', 'coverage-count.sh', 'source-fps.sh', 'pts_s',
+                     'TOOLING FAILURE', 'Narration / user says', 'Screen shows', 'slowed, narrated repro'):
+            assert term in text, term
+    for text in [agent] + [(root/f).read_text() for f in ('SKILL.md', 'workflows/process.md', 'workflows/gems.md')]:
+        assert 'references/provenance.md' in text or '(../references/provenance.md)' in text
+    assert '≥1 full-size frame or crop before' in process and 're-check that window at full size' in process
+    assert 'cite sheet + tile + timestamp' not in process.lower(), 'a tile is an index, not a citation'

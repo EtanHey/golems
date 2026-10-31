@@ -42,10 +42,19 @@ directories, then view the new sheets until resolved or NOT DETERMINED.
 Never infer visual evidence from transcript claims, helper text or an exit code alone.
 
 For debrief/review write debrief.md with takeaways, timestamps, unverified claims and limitations.
-For qa write qa-findings[-roundN].md and a coverage/refinement ledger. Every visual
-finding cites sheet + zero-based tile + exact timestamp from frames.tsv for
-frames you viewed yourself; unsupported claims are transcript-only. The ledger
-counts samples viewed directly versus pre-sorted only (e.g. "viewed 41 of 386
-samples plus 4 stills; partial"); never claim coverage you did not view.
+For qa write qa-findings[-roundN].md and a coverage/refinement ledger. Follow
+../SKILL.md § Evidence Rules (details: ../references/provenance.md). Sheets are an
+index: every visual finding cites ≥1 full-size frame or ../scripts/crop.sh crop
+before the change and ≥1 after it, each viewed yourself, with pts_s from
+frames.tsv (sheet + tile only locates them); unsupported claims are
+transcript-only. Re-check any "no change" claim at full size before it stands.
+Log every frame you look at with ../scripts/inspected.sh; the coverage line is
+the pasted output of ../scripts/coverage-count.sh, so extracted, inspected and
+repeated frames stay distinct; never claim coverage you did not view. Sampling
+above ../scripts/source-fps.sh only repeats frames. Separate
+"Narration / user says" (including described physical input) from "Screen shows"; narration alone
+never proves a UI state. A helper or parser failure is TOOLING FAILURE with the
+raw output path, never "no screenshots". If a gesture stays ambiguous, ask the
+parent for a slowed, narrated repro and sample densely around the transition.
 Return text paths, findings, unresolved moments and limitations to the parent
 for verdict gating, BrainLayer storage and archival. No images in the return. No implementation or code edits.
