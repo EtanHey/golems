@@ -173,5 +173,5 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - `/coderabbit` owns receiving-side review technique; this skill owns advancement through the PR loop.
 - `/never-fabricate` owns verification receipts and claim discipline.
 - `/deploy-verify` owns post-merge deployed/live proof.
-- `/tdd-guard` enforces the repository's failing-test-first edit limit.
+- Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
 - `/false-green-gate` and `/qa-verdict-gate` flag their respective stop conditions (advisory).

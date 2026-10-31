@@ -780,8 +780,8 @@
         },
         {
           "type": "content",
-          "name": "includes-tdd-mandate",
-          "description": "The collab setup includes TDD mandate (from the template's DO NOT REMOVE sections)"
+          "name": "includes-real-proof",
+          "description": "The collab setup requires the cheapest real proof: real-binary e2e, TLA+/TLC for event ordering, regression ratchets, and unit tests only when clearest; no test file required per edit and mock-green is not live-green"
         }
       ]
     },
@@ -1148,6 +1148,29 @@
           "type": "content",
           "name": "explains-cross-package-risk",
           "description": "Says why: a symlinked node_modules resolves workspace packages to the main checkout, so the branch's cross-package changes go untested"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "name": "cheapest-real-proof-no-mandatory-test-file",
+      "prompt": "Draft the implementation worker brief for a retry-order fix, a real-CLI regression and a wording correction. Include its proof requirements.",
+      "expected_output": "Chooses real-binary e2e for observable behavior, TLA+/TLC for order-of-events logic, and ratchet rows for regressions. Unit tests only when clearest; no test file required per edit. Mock-green is not live-green. Skill changes still need with_skill versus without_skill evals.",
+      "assertions": [
+        {
+          "name": "fits-proof-to-behavior",
+          "type": "content",
+          "description": "Selects real-binary e2e, an event-order TLA+/TLC spec, or a regression ratchet according to the behavior being proved."
+        },
+        {
+          "name": "no-per-edit-unit-test-law",
+          "type": "negative",
+          "description": "Does not require a new test file or failing unit test before every edit; uses unit tests only when they are the clearest proof."
+        },
+        {
+          "name": "keeps-evidence-boundaries",
+          "type": "content",
+          "description": "Keeps mock-green distinct from live-green and preserves baseline/with-skill evals for skill changes."
         }
       ]
     }

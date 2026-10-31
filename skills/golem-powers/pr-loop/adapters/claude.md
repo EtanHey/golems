@@ -9,7 +9,7 @@ Claude Code has everything needed for the complete loop:
 | Step | Tool / Command | Notes |
 |------|---------------|-------|
 | Branch | `git checkout -b feat/name` via Bash | Full git access |
-| Implement | Edit/Write tools + TDD skill | Native file editing |
+| Implement | Edit/Write tools + cheapest real proof | See the proof rule in `/pr-loop` |
 | Test | `bun test` via Bash | Full shell access |
 | Commit | `cr review --plain`, then `git commit` | CodeRabbit CLI available |
 | Push | `git push -u origin feat/name` | |

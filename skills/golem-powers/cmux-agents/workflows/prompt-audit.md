@@ -4,7 +4,7 @@
 
 ## Why This Exists
 
-Every time we skip this, agents miss something: no TDD mandate, no PR loop, no mention of prior work, wrong merge policy. We've stored this lesson in BrainLayer at importance 9 twice. This workflow turns "things we always forget" into a checklist.
+Every time we skip this, agents miss something: no proof requirement, no PR loop, no mention of prior work, wrong merge policy. We've stored this lesson in BrainLayer at importance 9 twice. This workflow turns "things we always forget" into a checklist.
 
 ## The Checklist
 
@@ -26,8 +26,8 @@ Scan the skill index for skills that fit the task. Common combos:
 
 | Task Type | Skills to Include |
 |-----------|------------------|
-| Building components | failing test first (AGENTS.md law) + the `/tdd-guard` hook, `/figma-loop`, project-scoped library docs when configured |
-| Full feature work | failing test first (AGENTS.md law) + the `/tdd-guard` hook, `/pr-loop`, `/coderabbit:review` |
+| Building components | Cheapest real proof (see below), `/figma-loop`, project-scoped library docs when configured |
+| Full feature work | Cheapest real proof (see below), `/pr-loop`, `/coderabbit:review` |
 | Figma decomposition | `/figma-swarm`, `/figma-loop` |
 | Research/audit | Claude Desktop/Gemini research path, `/coderabbit:review` |
 | Collab work | `/large-plan`, `/pr-loop` |
@@ -40,10 +40,9 @@ Add a "Skill Combos" table to the prompt listing which skills agents should invo
 
 Every agent prompt MUST include:
 
-**TDD Mandate:**
+**Proof:**
 ```
-When building anything, write the failing test FIRST, then implement, then green (repo AGENTS.md law). No code without a RED test.
-`/tdd-guard` is the PreToolUse hook that enforces the edit limit — it does not write the test for you.
+Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
 ```
 
 **PR Loop:**
@@ -110,7 +109,7 @@ If the task involves collab files or multiple agents coordinating:
 : "${ORCHESTRATOR_REPO:?ORCHESTRATOR_REPO must be set}"
 cat "$ORCHESTRATOR_REPO/collab/TEMPLATE.md"
 ```
-Copy it. Fill in the specifics. Never write a collab from scratch — the template has DO NOT REMOVE sections with PR loop, TDD, eval pack, and checkpoint protocol baked in.
+Copy it. Fill in the specifics. Never write a collab from scratch — the template has DO NOT REMOVE sections with PR loop, proof, eval pack, and checkpoint protocol baked in.
 
 **Sync protocol** — add to agent prompts:
 ```
@@ -169,7 +168,7 @@ List them explicitly with paths. Agents can't find files they don't know about.
 Not every agent needs the full checklist. For quick one-off tasks (research, audits, small fixes), at minimum include:
 
 - [ ] Prior work check (brain_search)
-- [ ] TDD mandate (if building anything)
+- [ ] Cheapest real proof (if building anything; no test file required per edit)
 - [ ] GitHub identity signature (if the worker will post anything to GitHub)
 - [ ] brain_store when done
 

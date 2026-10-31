@@ -5,8 +5,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 ## The Full Loop
 
 1. BRANCH    git checkout main && git pull && git checkout -b feat/name
-2. IMPLEMENT Write code — write the failing test FIRST (AGENTS.md law);
-             the /tdd-guard hook enforces the edit limit
+2. IMPLEMENT Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
 3. TEST      Run the relevant fast checks (the repo's required PR suites
              plus tests touching the diff) — ALL must pass. Heavy/e2e
              suites run at the [feature-batch gate](merge-and-verification.md#feature-batch-gate),
