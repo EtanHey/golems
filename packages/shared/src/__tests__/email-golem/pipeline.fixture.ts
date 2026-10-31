@@ -11,7 +11,6 @@ const effects = {
   requests: 0,
   syncs: 0,
   state: {} as Record<string, unknown>,
-  runs: 0,
 };
 const emails = ["urgent", "subscription"].map((id) => ({
   id,
@@ -84,9 +83,6 @@ mock.module("../../lib/state-store", () => ({
   getState: async () => null,
   setState: async (key: string, value: unknown) => {
     effects.state[key] = value;
-  },
-  reportServiceRun: async () => {
-    effects.runs++;
   },
 }));
 globalThis.fetch = (async () => {

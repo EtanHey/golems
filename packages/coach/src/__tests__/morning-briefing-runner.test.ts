@@ -66,7 +66,6 @@ function makeDeps(overrides?: Partial<BriefingDeps>): BriefingDeps {
     getCalendarEvents: mock(() => Promise.resolve(makeEvents())),
     getEmails: mock(() => Promise.resolve(makeEmails())),
     getEcosystem: mock(() => Promise.resolve(makeEcosystem())),
-    reportRun: mock(() => Promise.resolve()),
     ...overrides,
   };
 }
@@ -85,7 +84,6 @@ describe("runMorningBriefing", () => {
     expect(result.briefing!.calendarOverview.eventCount).toBe(1);
     expect(result.briefing!.emailTriage).not.toBeNull();
 
-    expect(deps.reportRun).toHaveBeenCalledTimes(1);
   });
 
   test("continues when calendar fails", async () => {
@@ -120,7 +118,6 @@ describe("runMorningBriefing", () => {
     expect(result.channel).toBe("voice");
     expect(result.voiceText).toBeDefined();
     expect(result.voiceText!.length).toBeGreaterThan(0);
-    expect(deps.reportRun).toHaveBeenCalledTimes(1);
   });
 
   test("rejects an unsupported mode before fetching any data", async () => {
@@ -129,7 +126,6 @@ describe("runMorningBriefing", () => {
       .rejects.toThrow("explicit voice mode");
     expect(deps.getCalendarEvents).not.toHaveBeenCalled();
     expect(deps.getEmails).not.toHaveBeenCalled();
-    expect(deps.reportRun).not.toHaveBeenCalled();
   });
 
   test("CLI requires an explicit voice request", async () => {

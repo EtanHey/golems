@@ -55,11 +55,6 @@ async function getUsage() {
   };
 }
 
-async function getCostTracker() {
-  const mod = await import("@golems/shared/lib/cost-tracker");
-  return { getSupabaseUsageStats: mod.getSupabaseUsageStats };
-}
-
 // Lazy imports to avoid loading everything at startup
 async function getEmailGolem() {
   const mod = await import("@golems/shared/email/index");
@@ -397,31 +392,13 @@ Bun.serve({
     }
 
     if (url.pathname === "/usage") {
-      const validPeriods = ["today", "week", "month", "all"] as const;
-      const rawPeriod = url.searchParams.get("period") || "today";
-      const period = validPeriods.includes(rawPeriod as any)
-        ? (rawPeriod as (typeof validPeriods)[number])
-        : "today";
-
-      // Try Supabase first (persistent, survives deploys)
-      try {
-        const { getSupabaseUsageStats } = await getCostTracker();
-        const stats = await getSupabaseUsageStats(period);
-        return Response.json({
-          source: "supabase",
-          period,
-          ...stats,
-        });
-      } catch {
-        // Fall back to in-memory stats
-        const { getUsageStats, getUsageBySource } = await getUsage();
-        return Response.json({
-          source: "memory",
-          period: "since-deploy",
-          ...getUsageStats(),
-          bySource: getUsageBySource(),
-        });
-      }
+      const { getUsageStats, getUsageBySource } = await getUsage();
+      return Response.json({
+        source: "memory",
+        period: "since-deploy",
+        ...getUsageStats(),
+        bySource: getUsageBySource(),
+      });
     }
 
     return new Response("Not Found", { status: 404 });

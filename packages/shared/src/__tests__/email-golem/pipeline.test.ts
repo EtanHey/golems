@@ -51,7 +51,6 @@ describe("email triage without delivery", () => {
     expect(effects.payments[0].amount).toBe(12);
     expect(effects.syncs).toBe(1);
     expect(effects.state.processedEmailIds).toEqual(["urgent", "subscription"]);
-    expect(effects.runs).toBe(1);
     expect([effects.requests, effects.marked]).toEqual([0, 0]);
   });
 
@@ -60,7 +59,6 @@ describe("email triage without delivery", () => {
     expect(effects.saved).toEqual([]);
     expect(effects.state).toEqual({});
     expect(effects.syncs).toBe(0);
-    expect(effects.runs).toBe(0);
     expect([effects.requests, effects.marked]).toEqual([0, 0]);
     expect(output).toContain("Urgent: 1");
     expect(output).not.toContain("Would notify");

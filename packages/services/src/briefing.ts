@@ -19,7 +19,6 @@ import {
 import type { Email, SubscriptionSummary } from "@golems/shared/email/types";
 
 import { generateMonthlyReport } from "@golems/teller/report";
-import { reportServiceRun } from "@golems/shared/lib/state-store";
 import {
   getTodayEvents,
   getEcosystemStatus,
@@ -241,8 +240,6 @@ async function sendBriefing() {
   console.log("[Briefing] Summary generated\n");
   console.log(msg);
 
-  // Report run to dashboard
-  await reportServiceRun("lastBriefing");
 
 }
 
