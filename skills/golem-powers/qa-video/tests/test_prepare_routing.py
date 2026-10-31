@@ -4,7 +4,8 @@ Run this file with <capture.json> to score parent AND pipeline traces.
 Schema: {case: qa|gems|visible, image_paths: [...], calls: [
  {actor: parent|pipeline, tool: Agent|Read|Bash|mcp__cmuxlayer__spawn_agent,
   arguments: {...}}]}. Visible spawn arguments use cli=gemini and a brief
-containing the exact `agy --agent video-qa` launcher contract.
+containing the exact `agy --agent video-qa` launcher contract. The pipeline
+must view at least one image itself; a visual-batch.py call is optional pre-sort.
 """
 import copy
 import json
@@ -24,7 +25,7 @@ PROMPTS = {'qa': 'QA this screen recording for bugs',
 def score(capture):
     case = capture['case']
     assert case in PROMPTS
-    agents, panes, helpers = [], [], []
+    agents, panes, viewed = [], [], []
     for call in capture['calls']:
         tool, args = call['tool'], call.get('arguments', {})
         actor = call.get('actor', 'parent')
@@ -40,20 +41,25 @@ def score(capture):
             assert args.get('cli') == 'gemini' and 'agy --agent video-qa' in args.get('prompt', '')
             panes.append(call)
         if tool in {'Read', 'view_image', 'mcp__cua_repl__js'}:
-            assert tool == 'Read', 'image tool in text-only context'
+            assert tool == 'Read', 'non-Read image tool'
             path = args.get('file_path', '')
-            assert path and path not in capture.get('image_paths', [])
-            assert Path(path).suffix.lower() not in IMAGE_SUFFIXES, 'direct image Read'
+            assert path, 'Read without an auditable path'
+            if path in capture.get('image_paths', []) or Path(path).suffix.lower() in IMAGE_SUFFIXES:
+                assert actor == 'pipeline', 'lead image Read'
+                viewed.append(path)
         if tool == 'Bash' and any(name in args.get('command', '') for name in ('visual-batch.py', 'debrief.py')):
             import re
             assert not re.search(r'(?:^|[;\n])\s*(?:for|while)\s|\b(?:mapfile|readarray)\b', args['command']), 'hand-rolled sheet loop'
             assert actor == 'pipeline', 'lead owns default visual work'
-            helpers.append(call)
     if case == 'visible':
         assert len(panes) == 1 and not agents, 'visible route missing or mixed'
     else:
         assert agents == [{'qa': 'qa-video-runner', 'debrief': 'qa-video-runner', 'gems': 'video-gems'}[case]]
-        assert helpers, 'pipeline must call visual helper from Bash'
+        assert viewed, 'pipeline never viewed a frame itself (helper text is not evidence)'
+
+
+HELPER = {'actor': 'pipeline', 'tool': 'Bash', 'arguments':
+          {'command': 'python3 /skill/scripts/visual-batch.py --workdir /run --question facts /frame.png'}}
 
 
 def accepted(case):
@@ -62,8 +68,7 @@ def accepted(case):
              if case == 'visible' else [
                  {'tool': 'Agent', 'arguments': {'subagent_type':
                   {'qa': 'qa-video-runner', 'debrief': 'qa-video-runner', 'gems': 'video-gems'}[case]}},
-                 {'actor': 'pipeline', 'tool': 'Bash', 'arguments':
-                  {'command': 'python3 /skill/scripts/visual-batch.py --workdir /run --question facts /frame.png'}}])
+                 {'actor': 'pipeline', 'tool': 'Read', 'arguments': {'file_path': '/frame.png'}}])
     if case == 'visible':
         calls.insert(0, {'tool': 'mcp__cmuxlayer__list_surfaces', 'arguments': {}})
     return {'case': case, 'prompt': PROMPTS[case], 'image_paths': ['/frame.png', '/extensionless'], 'calls': calls}
@@ -74,12 +79,28 @@ def test_accept_triggers(case):
     score(accepted(case))
 
 
-@pytest.mark.parametrize('actor', ['parent', 'pipeline'])
 @pytest.mark.parametrize('path', ['/frame.png', '/other.JPG', '/extensionless', ''])
-def test_reject_image_reads(actor, path):
+def test_reject_lead_image_reads(path):
     capture = accepted('qa')
-    capture['calls'].append({'actor': actor, 'tool': 'Read', 'arguments': {'file_path': path}})
+    capture['calls'].append({'actor': 'parent', 'tool': 'Read', 'arguments': {'file_path': path}})
     with pytest.raises(AssertionError):
+        score(capture)
+
+
+@pytest.mark.parametrize('case', ['qa', 'debrief', 'gems'])
+def test_pipeline_views_frames_itself_helper_optional(case):
+    capture = accepted(case)
+    capture['calls'] += [{'actor': 'pipeline', 'tool': 'Read', 'arguments': {'file_path': p}}
+                         for p in ('/other.JPG', '/extensionless')]
+    score(capture)
+    capture['calls'].insert(1, HELPER)
+    score(capture)
+    helper_only = accepted(case)
+    helper_only['calls'][-1] = HELPER
+    with pytest.raises(AssertionError, match='never viewed'):
+        score(helper_only)
+    capture['calls'].append({'actor': 'pipeline', 'tool': 'Read', 'arguments': {'file_path': ''}})
+    with pytest.raises(AssertionError, match='auditable'):
         score(capture)
 
 
@@ -108,6 +129,7 @@ if __name__ == '__main__':
 
 def test_reject_handrolled_visual_loop():
     capture = accepted('debrief')
-    capture['calls'][-1]['arguments']['command'] = 'for sheet in sheets; do python3 visual-batch.py; done'
+    capture['calls'].append({'actor': 'pipeline', 'tool': 'Bash', 'arguments':
+                             {'command': 'for sheet in sheets; do python3 visual-batch.py; done'}})
     with pytest.raises(AssertionError, match='hand-rolled'):
         score(capture)

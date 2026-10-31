@@ -34,8 +34,8 @@
           "description": "Response defines quality gates between phases (test coverage, review approval, etc.)"
         },
         {
-          "name": "references-tdd",
-          "description": "Response includes TDD (test-driven development) as part of the implementation approach"
+          "name": "chooses-real-proof",
+          "description": "Response chooses real-binary e2e, TLA+/TLC for event ordering, or a regression ratchet; unit tests only when clearest, with no test file required per edit and no mock-green claim of live proof"
         }
       ]
     },
@@ -352,6 +352,29 @@
         {
           "name": "no-ask-for-release-or-upgrade",
           "description": "Does NOT post an @etan ask or a 'Waiting on you' item for the tag/release or the upgrade."
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "name": "cheapest-real-proof-no-mandatory-test-file",
+      "prompt": "Plan a retry-order fix, a regression in the real CLI, and a wording correction. Do all three phases need new unit-test files?",
+      "expected_output": "Chooses real-binary e2e for observable behavior, TLA+/TLC for order-of-events logic, and ratchet rows for regressions. Unit tests only when clearest; no test file required per edit. Mock-green is not live-green. Skill changes still need with_skill versus without_skill evals.",
+      "assertions": [
+        {
+          "name": "fits-proof-to-behavior",
+          "type": "content",
+          "description": "Selects real-binary e2e, an event-order TLA+/TLC spec, or a regression ratchet according to the behavior being proved."
+        },
+        {
+          "name": "no-per-edit-unit-test-law",
+          "type": "negative",
+          "description": "Does not require a new test file or failing unit test before every edit; uses unit tests only when they are the clearest proof."
+        },
+        {
+          "name": "keeps-evidence-boundaries",
+          "type": "content",
+          "description": "Keeps mock-green distinct from live-green and preserves baseline/with-skill evals for skill changes."
         }
       ]
     }

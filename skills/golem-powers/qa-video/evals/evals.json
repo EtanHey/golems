@@ -16,6 +16,16 @@
     ]},
     {"id": 5, "name": "debrief-mode-density", "prompt": "Debrief a synthetic 25-minute transcript; preserve QA action density separately.", "assertions": [{"type": "content", "name": "bounded-transcript-first", "description": "test_debrief.py: ≤12 targeted stills, ≤ceil(12/concurrency) waves, estimated wall-clock <600s; no blanket 30s coverage or unreferenced scene sweep."}]},
     {"id": 6, "name": "parent-progress", "prompt": "Debrief in the background; the user asks what is taking so long.", "assertions": [{"type": "tool_usage", "name": "read-progress", "description": "Parent reads root progress.txt and reports current phase/count/ETA; runner writes each phase and findings.jsonl incrementally. Offline pipeline receipt plus ONE synthetic 25-min smoke timing <600s."}]},
-    {"id": 7, "name": "packaged-batch-only", "prompt": "Read targeted debrief frames concurrently in macOS Bash 3.2.", "assertions": [{"type": "negative", "name": "no-handrolled-loop", "description": "test_prepare_routing.py scores pipeline visual-batch.py/debrief.py calls and rejects shell for/while or mapfile/readarray; text-only parent, one route."}]}
+    {"id": 7, "name": "packaged-batch-only", "prompt": "Read targeted debrief frames concurrently in macOS Bash 3.2.", "assertions": [{"type": "negative", "name": "no-handrolled-loop", "description": "test_prepare_routing.py scores pipeline visual-batch.py/debrief.py calls and rejects shell for/while or mapfile/readarray; text-only parent, one route."}]},
+    {"id": 8, "name": "runner-views-frames-over-time", "prompt": "QA this recording; the narrator says 'now I click Save' at 12.4s and a dense pass produced 40 sheets.", "assertions": [
+      {"type": "tool_usage", "name": "runner-reads-frames", "description": "The pipeline Reads the sheets/frames behind its findings itself; test_prepare_routing.py rejects a helper-only trace and a lead image Read. A visual-batch.py pre-sort call is optional."},
+      {"type": "content", "name": "connects-across-cue", "description": "The Save finding contrasts a full-size before frame and after frame across the 12.4s cue (pts_s for both from frames.tsv; the sheet + tile only locates them) and says whether the state carries into the next window."},
+      {"type": "content", "name": "coverage-honesty", "description": "The coverage line is pasted coverage-count.sh output (inspected versus pre-sorted-only); no full-coverage claim beyond what was viewed."}
+    ]},
+    {"id": 9, "name": "before-after-and-narration-vs-screen", "prompt": "QA this recording; the narrator says 'I swipe two fingers left and it jumped back a thread' at 40.2s; the 10 fps sheet shows a small edge arrow in one tile, and the pre-sort helper's validator failed.", "assertions": [
+      {"type": "content", "name": "full-size-before-after", "description": "The finding cites >=1 full-size frame or crop.sh crop before the thread change and >=1 after it, with pts_s from frames.tsv; no tile-only citation."},
+      {"type": "content", "name": "narration-vs-screen", "description": "The report lists the swipe under Narration / user says and only what the frames prove under Screen shows; the gesture is not claimed as observed."},
+      {"type": "content", "name": "tooling-failure-and-coverage", "description": "The validator failure is reported as TOOLING FAILURE with the raw output path, not 'no screenshots'; the coverage line is pasted coverage-count.sh output."}
+    ]}
   ]
 }

@@ -1,3 +1,4 @@
+import { withDesignEvidence } from "./common.mjs";
 import { test, expect, spawnSync, createHash, chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, tmpdir, fileURLToPath, path, performance, validateAudioDashboardEvidence, analyzeAcousticArtifacts, analyzeOnsetEnergy, formatOnsetEnergyReport, ONSET_ENERGY_DEFAULTS, analyzeTeleprompterDrift, formatTeleprompterDriftReport, analyzeTranscriptFidelity, formatTranscriptFidelityReport, TRANSCRIPT_FIDELITY_DEFAULTS, createBuildReceipts, readNarrationVendorStamp, writeBuildReceipts, clearTakeCacheReceiptForByo, writeWordTimingArtifacts, formatCachePurgeReceipt, purgeRejectedTakeCaches, answersMarkdown, injectDecisionSurfaceIntoHtml, buildAfterCodeDashboardPlan, renderV4, clearTakeCacheReceipt, writeTakeCacheReceipt, loadPronunciationRules, normalizeForSpeech, here, redDir, greenDir, transcriptCalibrationPath, onsetEnergyCalibrationPath, skillPath, skillRoot, placeholderMp3, placeholderMp3Duration, loadFixtures, reds, greens, evidenceReds, evidenceGreens, driftReds, driftGreens, acousticReds, onsetEnergyReds, transcriptReds, publishDriftReds, tpdataFromHtml, writeFixtureFfprobe, writeSegment, writeToneWav, writeStereoToneWav, wordsForDuration, writeAcousticSegment, acousticFixtureSegments, buildDashboard } from "./common.mjs";
 
 
@@ -585,7 +586,7 @@ test("D6b BUILD receipt gives script-less BYO its distinct metric and runbook", 
 
 for (const fx of evidenceGreens) {
   test(`GREEN ${fx.file} (${fx.specimen}) -> PASS`, () => {
-    const result = validateAudioDashboardEvidence(fx.evidence);
+    const result = validateAudioDashboardEvidence(withDesignEvidence(fx.evidence));
     expect(result.verdict).toBe("PASS");
     expect(result.violations.length).toBe(0);
     expect(result.wordClickSeek).toBe(true);

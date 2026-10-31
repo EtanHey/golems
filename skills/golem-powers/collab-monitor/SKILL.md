@@ -1,6 +1,6 @@
 ---
 name: collab-monitor
-description: "Native Monitor for addressed collab mail on Claude/cmux seats, report DONE markers and installed-version watches. Codex/T3 seats: never arm it; completion notifications wake you. NOT for file-integrity auditing."
+description: "Native Monitor for addressed collab mail on Claude/cmux seats, report DONE markers and installed-version watches. Codex/T3 seats: no polling turns; completion notifications wake you; a T3 lead keeps one lead name waiter. NOT for file-integrity auditing."
 version: 1.4.0
 type: encoded-preference
 last-eval-date: 2026-10-12
@@ -11,7 +11,7 @@ compliance-score: "20/20 owner lifecycle and state hygiene regressions; 6/6 epis
 
 Use the native **Monitor** tool when the harness exposes it. Arm before dispatch,
 keep the returned watch identifier in the lane record, and stop it when its lane
-closes. Codex and T3 seats do not monitor collabs at all (next section). A
+closes. Codex and T3 seats never poll collabs with turns; a T3 lead keeps one name waiter (next section). A
 detached producer alone does not wake an agent.
 
 ## Codex and T3 seats
@@ -27,10 +27,17 @@ Monitor" skill at 196 uses on Oct 18, and "Collab-monitor polling wakes cost
 another 201M across 729 turns." (Etan 2026-10-18, via orc collab)
 
 - A Codex seat never arms collab-monitor, never runs `start`/`follow`/`run`,
-  and never polls a collab file in a loop or on a schedule.
+  and never polls a collab file with model turns, in a loop or on a schedule
+  (a lead's one shell name waiter below is the only exception).
 - A T3 seat (any vendor) relies on its parent-owned wake signals: `delegate_task`
   completion notifications for child work and `watch_pull_request` for PRs. Do
-  not add a second watcher on top of them.
+  not add a second watcher on top of them, apart from the lead name waiter below.
+- A T3 lead keeps exactly one name waiter armed at all times on the leads+orc
+  collab, `orchestrator/docs.local/collab/orc-inbox.md` (lead rules §1, 2026-10-30):
+  a background shell loop that exits on the first new `@<handle>` or `@all-leads`
+  line. Register it with `t3_background_wait` and re-arm it on every wake. It
+  costs no model turns until a line matches, so it is not a polling turn. Keep
+  your own handle out of your own posts, or it wakes you. Workers and children never arm it.
 - If something genuinely must sit and watch, dispatch one bounded
   `codex.subagent.mechanical` child per `/agent-routing` § Routing rules (SSOT);
   resolve its model with

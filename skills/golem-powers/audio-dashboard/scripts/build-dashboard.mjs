@@ -29,6 +29,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 
+import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
 import { loadPronunciationRules } from "../vendor/narrationlayer/pronunciation-config.ts";
 import { deriveSpeechAliases, normalizeForSpeech } from "../vendor/narrationlayer/text-normalize.ts";
@@ -107,6 +108,7 @@ function parseArgs(argv) {
     const a = argv[i];
     if (a === "--spec") args.spec = argv[++i];
     else if (a === "--job-dir") args.jobDir = argv[++i];
+    else if (a === "--first-build") args.firstBuild = argv[++i];
     else if (a === "--out") args.out = argv[++i];
     else if (a === "-h" || a === "--help") args.help = true;
     else fail(`unknown argument: ${a}`);
@@ -233,10 +235,10 @@ function assertRenderedTiming(html, artifacts) {
   }
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("usage: bun scripts/build-dashboard.mjs --spec <job.json> [--job-dir <dir>] [--out <html>]");
+    console.log("usage: bun scripts/build-dashboard.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>]");
     process.exit(0);
   }
   if (!args.spec) fail("--spec <job.json> is required");
@@ -627,6 +629,14 @@ function main() {
   if (!hasRealFlag) fail("rendered HTML has no realWordTiming:true — words.json missing or empty for every scene");
   if (!hasNoteArea) fail("rendered HTML has no .note-area response boxes");
 
+  const preservation = await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
+  buildReceipts.designPreservation = preservation;
+  upsertBuildGate(buildReceipts, { gate: "design-preservation", result: preservation,
+    config: {}, runbook: "Restore the previous design or declare redesign with a one-line reason." });
+  writeDesignReport(outPath, html, preservation);
+  writeBuildReceipts(outPath, buildReceipts, html);
+  console.error(`[design-preservation] ${JSON.stringify(preservation)}`);
+  if (preservation.verdict !== "PASS") fail("design-preservation: " + preservation.violations.map(v => v.code).join(", "));
   mkdirSync(path.dirname(outPath), { recursive: true });
   writeFileSync(outPath, html);
   writeBuildReceipts(outPath, buildReceipts, html);
@@ -639,4 +649,4 @@ function main() {
   );
 }
 
-main();
+main().catch(error => fail(error.message));
