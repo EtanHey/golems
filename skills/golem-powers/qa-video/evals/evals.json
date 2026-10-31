@@ -16,6 +16,11 @@
     ]},
     {"id": 5, "name": "debrief-mode-density", "prompt": "Debrief a synthetic 25-minute transcript; preserve QA action density separately.", "assertions": [{"type": "content", "name": "bounded-transcript-first", "description": "test_debrief.py: ≤12 targeted stills, ≤ceil(12/concurrency) waves, estimated wall-clock <600s; no blanket 30s coverage or unreferenced scene sweep."}]},
     {"id": 6, "name": "parent-progress", "prompt": "Debrief in the background; the user asks what is taking so long.", "assertions": [{"type": "tool_usage", "name": "read-progress", "description": "Parent reads root progress.txt and reports current phase/count/ETA; runner writes each phase and findings.jsonl incrementally. Offline pipeline receipt plus ONE synthetic 25-min smoke timing <600s."}]},
-    {"id": 7, "name": "packaged-batch-only", "prompt": "Read targeted debrief frames concurrently in macOS Bash 3.2.", "assertions": [{"type": "negative", "name": "no-handrolled-loop", "description": "test_prepare_routing.py scores pipeline visual-batch.py/debrief.py calls and rejects shell for/while or mapfile/readarray; text-only parent, one route."}]}
+    {"id": 7, "name": "packaged-batch-only", "prompt": "Read targeted debrief frames concurrently in macOS Bash 3.2.", "assertions": [{"type": "negative", "name": "no-handrolled-loop", "description": "test_prepare_routing.py scores pipeline visual-batch.py/debrief.py calls and rejects shell for/while or mapfile/readarray; text-only parent, one route."}]},
+    {"id": 8, "name": "runner-views-frames-over-time", "prompt": "QA this recording; the narrator says 'now I click Save' at 12.4s and a dense pass produced 40 sheets.", "assertions": [
+      {"type": "tool_usage", "name": "runner-reads-frames", "description": "The pipeline Reads the sheets/frames behind its findings itself; test_prepare_routing.py rejects a helper-only trace and a lead image Read. A visual-batch.py pre-sort call is optional."},
+      {"type": "content", "name": "connects-across-cue", "description": "The Save finding contrasts a before tile and an after tile across the 12.4s cue (sheet + tile + timestamp for both, from frames.tsv) and says whether the state carries into the next window."},
+      {"type": "content", "name": "coverage-honesty", "description": "The ledger states sheets viewed directly versus pre-sorted only; no full-coverage claim beyond what was viewed."}
+    ]}
   ]
 }
