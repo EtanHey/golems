@@ -39,9 +39,26 @@ test('live receipts require boolean success and numeric row counts', () => {
   expect(check([receipt({ real_pass: 1, real_total: 1 })], { expectedReal: 1 }).ok).toBe(true);
 });
 
-test('failure supplies a runnable lead command, scoped to the merged and lease PRs', () => {
-  expect(recoveryCommand(42, 77)).toBe('RATCHET_SKILL_CONFIG="$HOME/.golems/ratchet/installed-skills.json" "$HOME/Gits/golems/scripts/ratchet/live-rows.sh" --merged-pr 42 --lease-pr 77 --lease-repo "$PWD"');
+test('failure supplies the one-command recovery', () => {
+  expect(recoveryCommand(42)).toBe('scripts/ratchet/post-merge-live.sh --merged-pr 42');
 });
+test('grace accepts only a valid immediate predecessor within 120 minutes', () => {
+  const priorHead = 'b'.repeat(40);
+  const prior = { guardedHead: priorHead, pulls: [{ ...pulls[0], merge_commit_sha: priorHead }],
+    comments: [{ ...pass, body: pass.body.replace(sha, priorHead) }] };
+  const now = Date.parse(pulls[0].merged_at) + 60 * 60000;
+  expect(check([], { now, prior }).grace).toBe(true);
+  expect(check([], { now: now + 60 * 60000, prior }).grace).toBe(true);
+  expect(check([], { now: now + 60 * 60000 + 1, prior }).ok).toBe(false);
+  expect(check([], { now, prior: { ...prior, allowedHeads: ['c'.repeat(40)] } }).ok).toBe(false);
+  expect(check([], { now, expectedReal: 3, prior }).ok).toBe(false);
+  expect(check([], { now, prior: { ...prior, comments: [] } }).ok).toBe(false);
+  expect(check([], { now, prior: { ...prior, comments: [{ ...pass, body: pass.body.replace('"ok":true', '"ok":false') }] } }).ok).toBe(false);
+  expect(check([], { now: now + 61 * 60000, prior }).ok).toBe(false);
+  expect(check([pass], { now, prior }).grace).toBeUndefined();
+  expect(check([], { now, prior: { ...prior, comments: [], prior } }).ok).toBe(false);
+});
+
 
 
 test('real CLI exempts unguarded PR before API access and fails closed on a guarded PR', () => {
