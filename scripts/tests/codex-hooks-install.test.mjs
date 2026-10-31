@@ -182,7 +182,7 @@ function confirmFixture() {
     matcher: "^(Bash|apply_patch)$", timeout: 10, requiresPin: PIN }];
   return { ...f, manifest: { codex_hosts: { mbp: entries, m1: entries } } };
 }
-const gatesIn = (p) => JSON.parse(p.next).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command.match(/codex-policy-hook\.py'\\'' '\\''([a-z-]+)/)?.[1]).sort();
+const gatesIn = (p) => JSON.parse(p.next).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command.match(/codex-policy-hook\.py'\\'' '\\''([a-z0-9-]+)/)?.[1]).sort();
 
 test("human-confirm registers as a third Codex gate; refused while unpinned, and an existing registration is stripped", () => {
   const f = confirmFixture();
