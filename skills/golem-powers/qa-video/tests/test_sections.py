@@ -1,5 +1,6 @@
 """Exercise reconciliation through the CLI and real ffmpeg cut extraction."""
 import csv
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -84,6 +85,9 @@ def test_validation(tmp_path, draft, cuts, duration, error):
 
 
 def test_real_cut_source_cap_repeat_and_determinism(tmp_path):
+    for binary in ('ffmpeg', 'ffprobe'):
+        if not shutil.which(binary):
+            pytest.skip(f'{binary} missing: synthetic media prep requires {binary}')
     video = tmp_path/'hard cut.mp4'
     subprocess.run(['ffmpeg', '-v', 'error', '-n', '-f', 'lavfi', '-i', 'testsrc=s=96x64:r=2:d=2',
                     '-f', 'lavfi', '-i', 'color=white:s=96x64:r=2:d=2', '-filter_complex',
