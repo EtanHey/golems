@@ -14,14 +14,15 @@ bash scripts/coverage-count.sh "$WORKDIR"
 ```
 
 `source-fps.sh` reports ffprobe's video `avg_frame_rate`, evaluated as a rational,
-not the nominal `r_frame_rate`. Dense sampling permits 5–50 fps, warns above the
+not the nominal `r_frame_rate`. Dense sampling permits 1–120 fps, warns above the
 source average, and proceeds. An average does not describe every VFR interval.
 Coverage selects a full-resolution still at 0, 30, 60… seconds before duration;
 its PTS comes from decoded `showinfo` with `-copyts`, not the requested seek.
 Dense/refine keep their existing fps-filter/showinfo timestamps plus seek offset;
 these are sampled output presentation times, including duplicated samples.
-Full-resolution PNGs survive in `.frames/window_N/`; only sheets are scaled.
-Logs and decoded PTS remain beside the frames. Use fresh directories for retries.
+Full-resolution PNGs survive as `window_N-f_*.png` directly in the output
+directory; only sheets are scaled. Logs (`window_N-showinfo.log`) and decoded
+PTS (`window_N-pts.txt`) also stay flat beside them. Use fresh directories for retries.
 
 `frames.tsv` remains **headerless** for existing positional readers. Columns:
 

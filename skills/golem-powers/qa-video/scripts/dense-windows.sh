@@ -3,7 +3,7 @@
 #
 # A click's target, hover state and resulting animation all happen in under a
 # second, so interval/hotspot frames cannot show them. This extracts every
-# window around a cue at 5-50 fps and tiles the frames into 5x4 contact sheets.
+# window around a cue at 1-120 fps and tiles the frames into 5x4 contact sheets.
 #
 # usage: dense-windows.sh <video> <cues.tsv> <outdir> [fps=10] [pre=1.0] [post=2.0]
 #
@@ -34,7 +34,7 @@ ROWS=4
 PER_SHEET=$((COLS * ROWS))
 
 usage() {
-  echo "usage: dense-windows.sh <video> <cues.tsv> <outdir> [fps=10] [pre=1.0] [post=2.0]" >&2
+  echo "usage: dense-windows.sh <video> <cues.tsv> <outdir> [fps=10] [pre=1.0] [post=2.0] (fps: integer 1-120)" >&2
   exit 2
 }
 die() { echo "dense-windows: $*" >&2; exit 1; }
@@ -44,8 +44,8 @@ is_num() { printf '%s' "$1" | grep -Eq '^[0-9]+([.][0-9]+)?$'; }
 VIDEO="$1"; CUES="$2"; OUTDIR="$3"
 FPS="${4:-10}"; PRE="${5:-1.0}"; POST="${6:-2.0}"
 
-printf '%s' "$FPS" | grep -Eq '^[0-9]+$' || { echo "dense-windows: fps must be an integer 5-50: $FPS" >&2; exit 2; }
-[ "$FPS" -ge 5 ] && [ "$FPS" -le 50 ] || { echo "dense-windows: fps must be 5-50: $FPS" >&2; exit 2; }
+printf '%s' "$FPS" | grep -Eq '^[0-9]+$' || { echo "dense-windows: fps must be an integer 1-120: $FPS" >&2; exit 2; }
+[ "$FPS" -ge 1 ] && [ "$FPS" -le 120 ] || { echo "dense-windows: fps must be 1-120: $FPS" >&2; exit 2; }
 is_num "$PRE" || { echo "dense-windows: pre must be seconds >= 0: $PRE" >&2; exit 2; }
 is_num "$POST" || { echo "dense-windows: post must be seconds >= 0: $POST" >&2; exit 2; }
 
@@ -67,7 +67,7 @@ SCRIPTS="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 SOURCE_FPS="$(bash "$SCRIPTS/source-fps.sh" "$VIDEO")" || die "cannot probe source fps"
 awk -v n="$FPS" -v m="$SOURCE_FPS" 'BEGIN { exit !(n>m) }' &&
   echo "WARN: requested $FPS fps exceeds source $SOURCE_FPS fps; frames will repeat" >&2
-[ ! -e "$OUTDIR/frames.tsv" ] && [ ! -e "$OUTDIR/.frames" ] || die "use a fresh output directory"
+[ ! -e "$OUTDIR/frames.tsv" ] || die "use a fresh output directory"
 case "$(basename "$OUTDIR")" in refine*) DEFAULT_SOURCE=refine ;; *) DEFAULT_SOURCE=dense ;; esac
 SOURCE="${QA_FRAME_SOURCE:-$DEFAULT_SOURCE}"
 case "$SOURCE" in dense|refine) ;; *) die "QA_FRAME_SOURCE must be dense or refine" ;; esac
@@ -117,8 +117,7 @@ while IFS="$TAB" read -r ws we label; do
   [ "$frames" -gt 0 ] || continue
 
   window_no=$((window_no + 1))
-  SCRATCH="$OUTDIR/.frames/window_$window_no"
-  mkdir -p "$SCRATCH"
+  FRAME_PREFIX="$OUTDIR/window_$window_no"
   # showinfo logs each output frame's pts_time, relative to the seek point.
   # AIDEV-NOTE: never index from $ws + i/fps alone; the first frame's PTS can
   # be > 0 after input seeking (#279 review), shifting every tile's time.
@@ -128,17 +127,17 @@ while IFS="$TAB" read -r ws we label; do
   # so PNG n would no longer be showinfo row n. The fps filter already makes
   # the stream constant-rate; the muxer must not add or drop frames.
   ffmpeg -hide_banner -loglevel info -nostdin -ss "$ws" -i "$VIDEO" -t "$(awk -v s="$ws" -v e="$we" 'BEGIN { printf "%.3f", e - s }')" \
-    -vf "fps=$FPS,showinfo" -fps_mode passthrough -frames:v "$frames" "$SCRATCH/f_%05d.png" \
-    2> "$SCRATCH/showinfo.log" \
-    || { tail -5 "$SCRATCH/showinfo.log" >&2; die "frame extraction failed for window $ws-$we"; }
+    -vf "fps=$FPS,showinfo" -fps_mode passthrough -frames:v "$frames" "$FRAME_PREFIX-f_%05d.png" \
+    2> "$FRAME_PREFIX-showinfo.log" \
+    || { tail -5 "$FRAME_PREFIX-showinfo.log" >&2; die "frame extraction failed for window $ws-$we"; }
 
-  got="$(find "$SCRATCH" -name 'f_*.png' | wc -l | tr -d ' ')"
+  got="$(find "$OUTDIR" -maxdepth 1 -name "window_$window_no-f_*.png" | wc -l | tr -d ' ')"
   [ "$got" -gt 0 ] || die "no frames extracted for window $ws-$we"
 
   # Absolute time of each extracted frame, one per line, in output order.
-  sed -n 's/.*Parsed_showinfo.* n: *[0-9]* .*pts_time:\([-0-9.e+]*\).*/\1/p' "$SCRATCH/showinfo.log" \
-    | head -n "$got" | awk -v s="$ws" '{ printf "%.3f\n", s + $1 }' > "$SCRATCH/pts.txt"
-  [ "$(wc -l < "$SCRATCH/pts.txt" | tr -d ' ')" -eq "$got" ] \
+  sed -n 's/.*Parsed_showinfo.* n: *[0-9]* .*pts_time:\([-0-9.e+]*\).*/\1/p' "$FRAME_PREFIX-showinfo.log" \
+    | head -n "$got" | awk -v s="$ws" '{ printf "%.3f\n", s + $1 }' > "$FRAME_PREFIX-pts.txt"
+  [ "$(wc -l < "$FRAME_PREFIX-pts.txt" | tr -d ' ')" -eq "$got" ] \
     || die "cannot read frame timestamps for window $ws-$we"
 
   chunk=0
@@ -148,11 +147,11 @@ while IFS="$TAB" read -r ws we label; do
     sheet_no=$((sheet_no + 1))
     sheet="$(printf 'sheet_%03d.jpg' "$sheet_no")"
     ffmpeg -hide_banner -loglevel error -nostdin -y -start_number $((first + 1)) \
-      -i "$SCRATCH/f_%05d.png" -frames:v 1 -vf "scale=$TILE_W:-2,tile=${COLS}x${ROWS}" -q:v 3 "$OUTDIR/$sheet" \
+      -i "$FRAME_PREFIX-f_%05d.png" -frames:v 1 -vf "scale=$TILE_W:-2,tile=${COLS}x${ROWS}" -q:v 3 "$OUTDIR/$sheet" \
       || die "tiling failed for $sheet"
-    start="$(sed -n "$((first + 1))p" "$SCRATCH/pts.txt")"
+    start="$(sed -n "$((first + 1))p" "$FRAME_PREFIX-pts.txt")"
     printf '%s\t%s\t%s\t%s\t%s\n' "$sheet" "$start" "$FPS" "$tiles" "$label" >> "$INDEX.tmp"
-    python3 "$SCRIPTS/provenance.py" sheet "$OUTDIR" "$SCRATCH" "$SOURCE" "$sheet" "$first" "$tiles"
+    python3 "$SCRIPTS/provenance.py" sheet "$OUTDIR" "$FRAME_PREFIX" "$SOURCE" "$sheet" "$first" "$tiles"
     chunk=$((chunk + 1))
   done
 done < "$WINDOWS"

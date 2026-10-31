@@ -130,9 +130,10 @@ def counts(work):
 def main():
     action, *args = sys.argv[1:]
     if action == 'sheet':
-        work, scratch, source, sheet, first, n = args
-        frames = sorted(Path(scratch).glob('f_*.png'))
-        pts = (Path(scratch)/'pts.txt').read_text().splitlines()
+        work, prefix, source, sheet, first, n = args
+        prefix = Path(prefix)
+        frames = sorted(prefix.parent.glob(prefix.name+'-f_*.png'))
+        pts = prefix.with_name(prefix.name+'-pts.txt').read_text().splitlines()
         a, n = int(first), int(n)
         record(work, [(frames[i], pts[i], source, sheet, i-a, '') for i in range(a, a+n)])
     else:
