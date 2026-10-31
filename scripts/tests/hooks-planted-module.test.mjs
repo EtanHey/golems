@@ -22,6 +22,7 @@ const SHADOWED = ["json", "re", "ast", "fnmatch", "hashlib", "shlex", "subproces
 // Deny inputs where the hook has one; otherwise an ordinary event (the planted code must still never run).
 const PAYLOADS = {
   "m1-window-gate": { tool_name: "Bash", tool_input: { command: "bun test" }, deny: true },
+  "heredoc-guard": { tool_name: "Bash", tool_input: { command: "echo ok" } },
   "human-confirm-gate": { tool_name: "Bash", tool_input: { command: "git push -f origin main" }, deny: true },
   "block-dangerous-commands": { tool_name: "Bash", tool_input: { command: "open -a \"Google Chrome\"" }, deny: true },
   "tmp-block": { tool_name: "Write", tool_input: { file_path: "/tmp/planted-module-probe.txt", content: "x" }, deny: true },

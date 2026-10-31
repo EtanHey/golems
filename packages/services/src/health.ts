@@ -111,7 +111,7 @@ export async function checkDbConnectivity(): Promise<boolean> {
     const { getSupabase } = await import("@golems/shared/lib/supabase-factory");
     const sb = getSupabase();
     if (!sb) return false;
-    const { error } = await sb.from("golem_state").select("key").limit(1);
+    const { error } = await sb.from("projects").select("id").limit(1);
     return !error;
   } catch {
     return false;

@@ -31,7 +31,7 @@ function regular(p, directory = false) {
 
 // The adapter's gates. Only human-confirm carries an owner anchor pin; like its
 // Claude registration it is refused (never registered) while that pin is empty.
-const CODEX_GATES = { "m1-window-gate": undefined, "tmp-block": undefined, "git-guardian": undefined,
+const CODEX_GATES = { "m1-window-gate": undefined, "tmp-block": undefined, "git-guardian": undefined, "heredoc-guard": undefined,
   "human-confirm": "skills/golem-powers/human-confirm-gate/anchor.pins" };
 
 export function planCodexHooks({ manifest, host, live, source: releaseSource, codexHome, python = "python3", refused = [] }) {
@@ -41,7 +41,7 @@ export function planCodexHooks({ manifest, host, live, source: releaseSource, co
   for (const list of Object.values(manifest.codex_hosts)) {
     const gates = Array.isArray(list) ? list.map(e => e.gate) : [];
     if (!Array.isArray(list) || new Set(gates).size !== list.length || !gates.includes("tmp-block") ||
-        !gates.includes("git-guardian") || list.length > 4) throw new Error("Invalid Codex policy manifest");
+        !gates.includes("git-guardian") || list.length > 5) throw new Error("Invalid Codex policy manifest");
     for (const e of list) {
       if (!Object.hasOwn(CODEX_GATES, e.gate) || e.requiresPin !== CODEX_GATES[e.gate] ||
           (e.mode !== undefined && (e.gate !== "m1-window-gate" || e.mode !== "seat")) ||
