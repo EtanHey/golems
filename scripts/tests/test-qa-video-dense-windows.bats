@@ -51,7 +51,7 @@ setup() {
     [ "$width" -eq 2400 ]
   done < "$index"
 
-  # No frame scratch left behind.
+  # Keep output flat for existing callers; full-size frames/logs remain files.
   [ -z "$(find "$WORK/out" -mindepth 1 -type d)" ]
 }
 
@@ -79,10 +79,31 @@ setup() {
   [ ! -e "$WORK/out/index.tsv" ]
 }
 
-@test "dense-windows: rejects fps outside 5-20" {
-  run "$DENSE" "$VIDEO" "$CUES" "$WORK/out" 30
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"fps"* ]]
+@test "dense-windows: rejects fps outside integer 1-120" {
+  for fps in 0 -1 121 1.5 invalid; do
+    run "$DENSE" "$VIDEO" "$CUES" "$WORK/out" "$fps"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"1-120"* ]]
+    [ ! -e "$WORK/out/index.tsv" ]
+  done
+}
+
+@test "dense-windows: accepts both 1 and 120 fps bounds" {
+  printf '1\t2\tclick\n' > "$WORK/one.tsv"
+  for fps in 1 120; do
+    run "$DENSE" "$VIDEO" "$WORK/one.tsv" "$WORK/out-$fps" "$fps" 0 0
+    [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+    [ "$(wc -l < "$WORK/out-$fps/frames.tsv" | tr -d ' ')" -eq "$fps" ]
+  done
+}
+
+@test "dense-windows: warns above source fps and still extracts" {
+  printf '1\t2\tclick\n' > "$WORK/one.tsv"
+  run "$DENSE" "$VIDEO" "$WORK/one.tsv" "$WORK/out" 50 0 0
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+  [[ "$output" == *"WARN: requested 50 fps exceeds source 30.000 fps; frames will repeat"* ]]
+  [ "$(wc -l < "$WORK/out/frames.tsv" | tr -d ' ')" -eq 50 ]
+  [ "$(awk -F'\t' '$9 != "" { n++ } END { print n+0 }' "$WORK/out/frames.tsv")" -ge 19 ]
 }
 
 @test "scene-cues: prints a t<TAB>t<TAB>scene row at a visual cut" {
