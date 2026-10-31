@@ -222,9 +222,9 @@ requires the merged master PR for that commit to carry the lead's `golems-ratche
 comment. The fixed-line verdict must match that merge SHA or a later first-parent master commit, have `bootstrap: false`, and
 pass every real live row defined on master. Missing, stale, red, wrong-author receipts and API
 failures fail closed. Candidate PR changes and later unguarded merges do not invalidate a receipt.
-There is no grace window: a guarded merge becomes red until the lead installs and runs
-`live-rows.sh --merged-pr <latest guarded PR> ...` after installing current master. A later unguarded master SHA is accepted for the receipt;
-branch SHAs and receipts preceding the guarded merge are rejected. The receipt measures the live
+For 120 minutes from `merged_at`, the immediately preceding guarded merge's valid receipt may cover a missing/invalid latest receipt; all current row, report-only and head checks apply.
+Two consecutive unreceipted guarded merges fail; after 120 minutes the latest receipt is required. Run `scripts/ratchet/post-merge-live.sh --merged-pr N`: update mbp hooks-live, auto-select a clean exact-head open-PR worktree, run live rows with installed-skills.json, print comment URL and freshness.
+Optional `--lease-pr N --lease-repo <path>` constrain selection. Later unguarded master SHAs are accepted; branch SHAs and receipts preceding the guarded merge are rejected. The receipt measures the live
 install's status and token probe; this CI row checks the receipt, never uses lead tokens or
 installs hooks. It is labeled `unit` so receipt checks cannot be mistaken for a live replay.
 
@@ -232,8 +232,7 @@ The existing required `ratchet` job enforces this row only on guarded-path PRs, 
 pushes and manual dispatch. Hourly scheduled runs evaluate this row under the
 [scheduled alert deduplication](#scheduled-alert-deduplication) policy above.
 Non-guarded PRs are exempt before any live API request, so the lead install
-cannot block unrelated work. Failure output prints the exact `live-rows.sh` command; run it from
-the open lease PR checkout after the lead installs current master. After the lead publishes the receipt, rerun the failed master/PR ratchet jobs
+cannot block unrelated work. Failure output prints the exact `post-merge-live.sh --merged-pr N` command. After the lead publishes the receipt, rerun the failed master/PR ratchet jobs
 (or dispatch the workflow); posting a comment alone does not rerun CI. This prevents a green CI
 claim for merged-but-uninstalled guarded changes. It does not continuously inspect the machine:
 after a passing receipt, later local tampering still requires a fresh lead live run to detect.
