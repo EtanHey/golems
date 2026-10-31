@@ -8,7 +8,8 @@ from pathlib import Path
 import sys
 
 DRAFT = 'id start_s end_s topic why'.split()
-FINAL = DRAFT + 'boundary_source cut_pts_s cut_score'.split()
+BOUNDARY = 'boundary_source cut_pts_s cut_score'.split()
+FINAL = DRAFT + BOUNDARY + ['origin_id']
 
 
 def fail(name, detail):
@@ -64,6 +65,7 @@ def reconcile(rows, cuts, duration, window, maximum, minimum):
     validate(rows, duration)
     # Preserve the runner's topic boundaries for temporal merge decisions.
     for r in rows:
+        r['origin_id'] = r['id']
         r['topic_start'], r['topic_end'] = r['start_s'], r['end_s']
         mark(r)
     for left, right in zip(rows, rows[1:]):
@@ -88,10 +90,10 @@ def reconcile(rows, cuts, duration, window, maximum, minimum):
         target['start_s'], target['end_s'] = a['start_s'], b['end_s']
         target['topic_start'], target['topic_end'] = a['topic_start'], b['topic_end']
         if not left:
-            target.update({k: a[k] for k in FINAL[5:]})
+            target.update({k: a[k] for k in BOUNDARY})
         rows.pop(i)
     # Iterate rather than recurse: long recordings need no recursion-limit exception.
-    i, serial, used = 0, 2, {r['id'] for r in rows}
+    i = 0
     while i < len(rows):
         r = rows[i]
         if r['end_s']-r['start_s'] <= maximum:
@@ -102,14 +104,13 @@ def reconcile(rows, cuts, duration, window, maximum, minimum):
                         r['start_s'] < c[0] < r['end_s'])
         if not cut:
             fail('LONG_SECTION_NO_CUT', r['id'])
-        while f"{r['id']}.{serial}" in used:
-            serial += 1
-        ident = f"{r['id']}.{serial}"
-        used.add(ident)
-        tail = dict(r, id=ident, start_s=cut[0])
+        tail = dict(r, start_s=cut[0])
         mark(tail, cut)
         r['end_s'] = cut[0]
         rows.insert(i+1, tail)
+    width = max(2, len(str(len(rows))))
+    for i, row in enumerate(rows, 1):
+        row['id'] = f'S{i:0{width}d}'
     validate(rows, duration)
     return rows
 
@@ -130,7 +131,7 @@ def override(rows, changes, duration):
             if j in boundaries and boundaries[j] != value:
                 fail('OVERRIDE_CONFLICT', ident)
             boundaries[j] = value
-        log.append(f"{ident}\t{rows[i]['start_s']}\t{rows[i]['end_s']}\t{start}\t{end}\n")
+        log.append(f"{ident}\t{rows[i]['origin_id']}\t{rows[i]['start_s']}\t{rows[i]['end_s']}\t{start}\t{end}\n")
     for j, value in boundaries.items():
         if j:
             rows[j-1]['end_s'] = value

@@ -40,24 +40,27 @@ def test_recursive_split_and_merge_closer_original_topic_boundary(tmp_path):
     result, rows = run(tmp_path, 'A\t0\t250\tx\twhy\n', '80\t0.4\n150\t0.9\n220\t0.3\n', 250)
     assert result.returncode == 0, result.stderr
     assert [float(r['end_s']) for r in rows] == [80, 150, 220, 250]
-    assert len({r['id'] for r in rows}) == 4
+    assert [r['id'] for r in rows] == ['S01', 'S02', 'S03', 'S04']
+    assert [r['origin_id'] for r in rows] == ['A'] * 4
     # Snaps leave B=[9,11], closer to original right topic boundary=14 than left=5.
     result, rows = run(tmp_path, 'A\t0\t5\tx\tx\nB\t5\t14\ty\ty\nC\t14\t20\tz\tz\n',
                        '9\t0.9\n11\t0.8\n', 20, '--snap-window', '4')
     assert result.returncode == 0, result.stderr
-    assert [r['id'] for r in rows] == ['A', 'C'] and rows[1]['topic'] == 'y | z'
+    assert [r['id'] for r in rows] == ['S01', 'S02']
+    assert [r['origin_id'] for r in rows] == ['A', 'C']
+    assert rows[1]['topic'] == 'y | z'
     assert rows[1]['start_s'] == '9.0' and rows[1]['cut_pts_s'] == '9.0'
 
 
 def test_overrides_propagate_log_and_conflicts(tmp_path):
     draft = 'A\t0\t10\tx\twhy\nB\t10\t20\ty\twhy\n'
-    result, rows = run(tmp_path, draft, '11\t0.8\n', overrides='id\tstart_s\tend_s\nB\t12\t20\n')
+    result, rows = run(tmp_path, draft, '11\t0.8\n', overrides='id\tstart_s\tend_s\nS02\t12\t20\n')
     assert result.returncode == 0, result.stderr
     assert rows[0]['end_s'] == rows[1]['start_s'] == '12.0'
     assert rows[1]['boundary_source'] == 'transcript' and not rows[1]['cut_score']
-    assert (tmp_path/'sections-overrides.log').read_text() == 'B\t11.0\t20.0\t12.0\t20.0\n'
-    for changes, error in [('A\t0\t8\nB\t9\t20\n', 'OVERRIDE_CONFLICT'),
-                           ('missing\t0\t20\n', 'INVALID_OVERRIDE_ID'), ('B\t10\t21\n', 'INVALID_INTERVAL')]:
+    assert (tmp_path/'sections-overrides.log').read_text() == 'S02\tB\t11.0\t20.0\t12.0\t20.0\n'
+    for changes, error in [('S01\t0\t8\nS02\t9\t20\n', 'OVERRIDE_CONFLICT'),
+                           ('missing\t0\t20\n', 'INVALID_OVERRIDE_ID'), ('B\t10\t20\n', 'INVALID_OVERRIDE_ID'), ('S02\t10\t21\n', 'INVALID_INTERVAL')]:
         result, _ = run(tmp_path, draft, overrides=changes)
         assert result.returncode and error in result.stderr
         assert rows == list(csv.DictReader((tmp_path/'sections.tsv').open(), delimiter='\t'))
@@ -107,10 +110,22 @@ def test_real_cut_source_cap_repeat_and_determinism(tmp_path):
 def test_length_flags_endpoint_merge_and_invalid_threshold(tmp_path):
     result, rows = run(tmp_path, 'A\t0\t1\tx\tx\nB\t1\t20\ty\ty\n', '', 20,
                        '--max-section', '30', '--min-section', '2', '--snap-window', '0')
-    assert result.returncode == 0 and len(rows) == 1 and rows[0]['id'] == 'B'
+    assert result.returncode == 0 and len(rows) == 1 and rows[0]['id'] == 'S01' and rows[0]['origin_id'] == 'B'
     result, rows = run(tmp_path, 'A\t0\t20\tx\tx\n', '10\t1\n', 20, '--max-section', '10')
     assert result.returncode == 0 and len(rows) == 2
     for flag, value, error in [('--min-section', '90', 'INVALID_THRESHOLDS'),
                                ('--snap-window', 'nan', 'INVALID_NUMBER')]:
         result, _ = run(tmp_path, 'A\t0\t20\tx\tx\n', '', 20, flag, value)
         assert result.returncode and error in result.stderr
+
+
+@pytest.mark.parametrize('count', [1, 100])
+def test_final_ids_are_sequential_in_time_order(tmp_path, count):
+    origins = [f'draft-{count-i}' for i in range(count)]
+    draft = ''.join(f'{origin}\t{i*3}\t{(i+1)*3}\ttopic\twhy\n' for i, origin in enumerate(origins))
+    result, rows = run(tmp_path, draft, duration=count*3)
+    assert result.returncode == 0, result.stderr
+    width = max(2, len(str(count)))
+    assert [r['id'] for r in rows] == [f'S{i:0{width}d}' for i in range(1, count+1)]
+    assert [float(r['start_s']) for r in rows] == list(range(0, count*3, 3))
+    assert [r['origin_id'] for r in rows] == origins and list(rows[0])[-1] == 'origin_id'
