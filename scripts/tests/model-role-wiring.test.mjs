@@ -72,14 +72,19 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   }
   assert.match(canon, /<=2 `claude\.judgment`.*<=2 `claude\.subagent\.cheap`, <=4 `claude\.subagent\.mechanical`.*<=20% of the rolling 5h/s);
   assert.match(canon, /7-slot `claude\.judgment` ceiling with leads/);
-  assert.match(canon, />=60% no new Claude workers and <=2 active leads/);
-  assert.match(canon, />=80% no Claude workers and <=1 essential lead turn/);
-  assert.match(canon, /<=6 weekly points per 5h window until the weekly reset/);
+  // Per-account, per-window brake (admit v2, 2026-10-31): absent windows have no brake.
+  assert.match(canon, /per serving account and per limit window that account actually has/);
+  assert.match(canon, /no 5h window, has no brake/);
+  assert.match(canon, /SLOW when used% x window-minutes \/ elapsed-minutes > 100 \(after the first 10% of the window\):\s+no new Claude workers and <=2 active leads/);
+  assert.match(canon, /STOP at >=95% used: no Claude workers and <=1 essential lead turn/);
+  assert.match(canon, /An account takes its tightest window; the fleet takes its best serving account/);
+  assert.match(canon, /Stale, unknown or rejected telemetry counts as NO headroom for that account/);
+  for (const removed of [/<=6 weekly points per 5h window/, /five_hour\.used_pct/, />=60% no new Claude workers/,
+    />=80% no Claude workers/, /used% x 300 \/ elapsed-minutes > 80/, /weekly rejection overrides five-hour/]) {
+    assert.doesNotMatch(canon, removed, `canon #5 must not reintroduce ${removed}`);
+  }
+  assert.match(canon, /<=20% of the rolling 5h \(an accounting interval, not a provider limit window\)/);
   assert.ok(canon.includes('(provisional until the first fresh-session window shows a non-zero 1h-cache write share; then re-derive)'));
-  assert.match(canon, /every account actually serving/);
-  assert.match(canon, /Stale, unknown or\s+rejected telemetry counts as NO headroom/);
-  assert.match(canon, /weekly rejection overrides five-hour\s+headroom/);
-  assert.match(canon, /used% x 300 \/ elapsed-minutes > 80/);
   assert.doesNotMatch(canon, /tier->model/);
   for (const f of execSync("git ls-files 'skills/**/*.md'", { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean)) {
     assert.doesNotMatch(read(f), /canon #5[^\n]{0,80}2[-–]3|2[-–]3[^\n]{0,80}canon #5/i, `${f} restates the old 2-3 cap`);
@@ -233,7 +238,7 @@ test('large-plan staffing lines resolve through the SSOT including any dated tri
 
 test('lead topology records model and tier-change reason', () => {
   const text = read('skills/golem-powers/agent-routing/SKILL.md').split('## Lead Topology')[1].split('## Goal Contract')[0];
-  assert.ok(text.includes("6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall)."));
+  assert.ok(text.includes("6. A lead's model is written in its lane brief, signature line and claim post; a mid-sprint tier change names its reason (budget | quality | stall)."));
 });
 
 test('one PR = one fresh implementer replaces lane-wide worker reuse', () => {

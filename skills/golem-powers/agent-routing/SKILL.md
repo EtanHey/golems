@@ -157,7 +157,7 @@ Read every reference triggered by the mission before dispatch. The live referenc
 | **`codex.implement`** | Implement / review | Narrow technical implementation (Sol hard, Terra bounded) and cross-vendor review per SSOT (2026-10-29) | Research, data gathering, orchestration |
 | **`codex.security`** | Implement (security) | Security implementation per SSOT | Gathering, orchestration, reviewing its own work |
 | **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Running commands, implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
-| **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, `/qa-video` frame work | Running commands, implementing, reviewing, deciding, UX/UI judgment |
+| **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, optional bulk pre-sorting for `/qa-video` (its runner views the frames behind its findings itself) | Running commands, implementing, reviewing, deciding, UX/UI judgment |
 | **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; holistic/product and UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; narrow technical implementation (Codex's lane) |
 
 Decision rules:
@@ -168,7 +168,7 @@ Decision rules:
 4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
 5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
 6. Independent parallel units -> § Fan-out engine chooses the engine; Routing rules (SSOT) owns Cursor model selection.
-7. For video extraction/processing that runs commands, select the execution profile under § Execution capability first. Read-only video analysis, frame OCR, multi-screenshot critique, or any plan to make Claude read many frames -> a `gemini.gather.visual` gatherer through `/qa-video`; from an Agent-tool context, dispatch `visual-gatherer`; it runs `gemini.gather.visual` headless; use Pro-High only when explicitly requested.
+7. For video extraction/processing that runs commands, select the execution profile under § Execution capability first. Video QA, debrief or review -> `/qa-video`, whose runner views the contact sheets and the frames behind its findings itself and connects them over time; a `gemini.gather.visual` gatherer may pre-sort bulk frames, but its text is a lead, never evidence. Standalone frame OCR or bulk screenshot reads outside that pipeline -> a `gemini.gather.visual` gatherer; from an Agent-tool context, dispatch `visual-gatherer`; it runs `gemini.gather.visual` headless; use Pro-High only when explicitly requested.
 8. UX/UI and design judgment stays on `claude.judgment`. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
 
 **Evidence (skill-creator eval, 2026-09-25; visible cmux workers, mechanical answer keys, lead-scored):** 40 bounded text-gather tasks: Flash-Low 40/40 and Opus 5.5 40/40, 0 fabricated claims each; higher Gemini effort on text gave the same accuracy 2.8–4.7× slower. 20 mixed tasks (8 image reads, 4 video): Opus 20/20, Pro-High 20/20 (2:35), Flash-High 20/20 (6:17), Flash-Low 19/20 (missed counting distinct screens across a video). An open-ended Pro research draft had a dead citation, a stale "recent" item, and missed the key release. Limits: screening sample (n=60) on one Mac; not evidence for judgment, design, review, or code. 2026-09-25 ruling: Low tiers are not used for gathering. On a real narrated QA review Flash-Low found 15–16/22 vs Flash-High 21/22, with an invented quote.
@@ -297,7 +297,7 @@ Domain leads are orchestrators one tier below orc:
    - **Settle, then open new:** keep the implementer through its own PR's review rounds, not past them. At the PR's terminal state (merged or handed off, artifacts harvested) settle it, never at its first DONE; the next PR opens a new one.
    - **cmux adapter:** canon #7's "minimize pane churn" is cmux fd-leak hygiene. It means no needless pane open/close, never keeping one worker across PRs.
 
-6. A lead's model is written in its lane brief, golem-id and claim post; a mid-sprint tier change names its reason (budget | quality | stall).
+6. A lead's model is written in its lane brief, signature line and claim post; a mid-sprint tier change names its reason (budget | quality | stall).
 7. **Leads never do ops themselves:** "Leads never do ops themselves: deploy hops go to the `deploy-local-prod` sub-agent; mechanical checks and waits go to Haiku or gpt-6-luna." (Etan 2026-10-19, via orc) A deploy, install, restart or reconnect hop is a `deploy-local-prod` dispatch; a sit/poll/wait task is a `claude.subagent.mechanical` or `codex.subagent.mechanical --use watcher` dispatch (§ Cheap sub-agents). Resolve both through `scripts/model-roles.mjs`; never write the model names. The lead's part is routing the hop and verifying the artifact it reports; the lead never runs the hop, the probe or the wait in its own session.
 
 ## Goal Contract
@@ -342,7 +342,7 @@ explain the evidence-backed state, and store the correction separately.
 - `/repogolem`: launcher flags, defaults, resume behavior, and raw escape hatches.
 - `/pr-loop`: branch through ready-for-review PR; Routing rules (SSOT) above owns the pre-PR pair.
 - `/collab-monitor`: cmux/collab-mail only: pane worker monitoring and reviewer handoff mechanics. T3 children use completion notifications instead (§ T3-native dispatch).
-- `/qa-video`: Gemini visual workflow.
+- `/qa-video`: video QA/debrief pipeline; its runner reads the frames itself, and Gemini gathering is optional pre-sorting.
 - `/whats-new`: tool-surface changes; they do not revise Routing rules (SSOT) by implication.
 
 ## Installed design skill constraints

@@ -19,9 +19,9 @@ const SHA = /^[0-9a-f]{7,40}$/;
 const FIXTURE_HASH = /^[0-9a-f]{8,64}$/;
 // Strict schema: a key nobody validates is a key a producer could later read unchecked.
 const FILE_KEYS = new Set(["schema", "rows"]);
-const ROW_KEYS = new Set(["id", "metric", "kind", "runner", "direction", "ceiling", "command", "timeout_s", "bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture", "report_only"]);
+const ROW_KEYS = new Set(["id", "metric", "kind", "runner", "direction", "ceiling", "command", "timeout_s", "bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture", "report_only", "report_only_until"]);
 // Evidence, not measurement: editing these is allowed but always listed in the table.
-const METADATA_KEYS = ["bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture", "report_only"];
+const METADATA_KEYS = ["bug_sha", "fix_sha", "ref_kind", "bug_fixture", "fix_fixture", "report_only", "report_only_until"];
 const short = (sha) => (typeof sha === "string" && sha ? escapeCell(sha.slice(0, 8)) : "none");
 
 export function markerComment(marker) {
@@ -33,6 +33,15 @@ export const VERDICT_PREFIX = "<!-- ratchet-verdict: ";
 export function validDiskMeasurement(m) {
   return m && [m.free_gb, m.floor, m.merged_worktrees, m.ceiling].every(n => Number.isSafeInteger(n) && n >= 0)
     && typeof m.health === "boolean" && m.health === (m.free_gb >= m.floor && m.merged_worktrees <= m.ceiling);
+}
+
+export const PARITY_UNTIL = "2026-11-02T00:00:00Z";
+export function isReportOnly(row, now = Date.now()) {
+  return Boolean(row.report_only) && (row.report_only_until === undefined || now < Date.parse(row.report_only_until));
+}
+export function expectedReporting(rows, runner, now = Date.now()) {
+  return rows.rows.filter(r => r.runner === runner && isReportOnly(r, now)).map(r =>
+    r.id === "installed-skill-parity" ? { id: r.id, until: r.report_only_until } : r.id);
 }
 
 export function parseRows(doc) {
@@ -67,10 +76,12 @@ export function parseRows(doc) {
         if (typeof row[key] !== "string" || !FIXTURE_HASH.test(row[key])) throw new Error(`${where}: fixture-hash rows need ${key} (a content hash)`);
       }
     }
-    if (row.report_only !== undefined && !(row.id === "disk-free-floor" && row.kind === "real" && row.runner === "mac"
-      && row.direction === "pass" && row.report_only === "gc-success-on-both-macs")) {
-      throw new Error(`${where}: report-only is limited to disk-free-floor until successful GC on BOTH Macs`);
-    }
+    const diskPolicy = row.id === "disk-free-floor" && row.kind === "real" && row.runner === "mac"
+      && row.direction === "pass" && row.report_only === "gc-success-on-both-macs" && row.report_only_until === undefined;
+    const parityPolicy = row.id === "installed-skill-parity" && row.kind === "real" && row.runner === "live"
+      && row.direction === "pass" && row.report_only === "until-m1-run1" && row.report_only_until === PARITY_UNTIL;
+    if ((row.report_only !== undefined || row.report_only_until !== undefined) && !diskPolicy && !parityPolicy)
+      throw new Error(`${where}: invalid report-only policy or expiry`);
     if (row.runner !== undefined && typeof row.runner !== "string") throw new Error(`${where}: runner must be a string`);
     if (row.timeout_s !== undefined && !(Number.isInteger(row.timeout_s) && row.timeout_s > 0)) throw new Error(`${where}: timeout_s must be a positive integer`);
   }
@@ -116,7 +127,7 @@ function rulings(prBody) {
 }
 
 // `baseRows: null` is accepted only with `bootstrap: true` (the base has no row file yet).
-export function evaluate({ rows, results, head, baseRows, bootstrap = false, baseline = null, prBody = "", runner = null }) {
+export function evaluate({ rows, results, head, baseRows, bootstrap = false, baseline = null, prBody = "", runner = null, now: clock = Date.now() }) {
   if (!head) throw new Error("head is required: results are checked against the SHA under test");
   if (!baseRows && !bootstrap) throw new Error("base rows are required (or bootstrap for a base without a row file)");
   const selected = rows.rows.filter((row) => !runner || row.runner === runner);
@@ -126,12 +137,14 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
   const out = selected.map((row) => {
     const now = resultOf(values[row.id]);
     const before = resultOf(base[row.id]);
-    const measured = row.report_only && validDiskMeasurement(now?.measurement) && now.value === now.measurement.health;
-    const status = now === undefined ? "MISSING" : row.report_only
+    const activeReportOnly = isReportOnly(row, clock);
+    const measured = row.id === "installed-skill-parity" ? typeof now?.value === "boolean"
+      : validDiskMeasurement(now?.measurement) && now.value === now.measurement.health;
+    const status = now === undefined ? "MISSING" : activeReportOnly
       ? measured ? now.value ? "PASS" : "WARN" : "FAIL"
       : judge(row, now.value) ? "PASS" : "FAIL";
     const numeric = row.direction !== "pass" && typeof now?.value === "number" && typeof before?.value === "number";
-    return { ...row, value: now?.value, detail: now?.detail, measurement: now?.measurement, baseline: before?.value, delta: numeric ? now.value - before.value : null, status };
+    return { ...row, activeReportOnly, value: now?.value, detail: now?.detail, measurement: now?.measurement, baseline: before?.value, delta: numeric ? now.value - before.value : null, status };
   });
 
   // Direction is checked across EVERY base row, whatever --runner selects.
@@ -201,8 +214,8 @@ function deltaCell(delta) {
 export function renderTable(evaluation, { marker, title = "Ratchet table", producer, receipt } = {}) {
   // `bootstrap` lets a consumer FAIL a verdict that skipped the direction check on a base with rows.
   const verdict = { head: evaluation.head, ok: evaluation.ok, real_pass: evaluation.realPass, real_total: evaluation.realTotal, bootstrap: evaluation.bootstrap };
-  const reporting = evaluation.rows.filter(row => row.report_only && validDiskMeasurement(row.measurement));
-  if (reporting.length) verdict.report_only = reporting.map(row => ({ id: row.id, measurement: row.measurement }));
+  const reporting = evaluation.rows.filter(row => row.activeReportOnly && (row.id === "installed-skill-parity" || validDiskMeasurement(row.measurement)));
+  if (reporting.length) verdict.report_only = reporting.map(row => (row.id === "installed-skill-parity" ? { id: row.id, until: row.report_only_until } : { id: row.id, measurement: row.measurement }));
   // Which commit's row scripts produced it, and a hash of the producer's run receipt.
   if (producer) verdict.producer = producer;
   if (receipt) verdict.receipt = receipt;
@@ -217,14 +230,14 @@ export function renderTable(evaluation, { marker, title = "Ratchet table", produ
   ];
   for (const row of evaluation.rows) {
     const m = row.measurement;
-    const detail = row.report_only && validDiskMeasurement(m)
+    const detail = row.activeReportOnly && validDiskMeasurement(m)
       ? `free_gb=${m.free_gb} floor=${m.floor} merged_worktrees=${m.merged_worktrees} ceiling=${m.ceiling}; measured health ${m.health ? "PASS" : "FAIL"}`
       : row.detail;
     const value = detail ? `${cell(row, row.value)} (${escapeCell(detail)})` : cell(row, row.value);
-    lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status}${row.report_only ? " (report-only)" : ""} |`);
+    lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status}${row.activeReportOnly ? (row.report_only_until ? ` (report-only, until ${row.report_only_until.slice(0, 10)})` : " (report-only)") : ""} |`);
   }
   lines.push("");
-  if (evaluation.rows.some(row => row.report_only)) lines.push("Temporary disk report-only: health remains visible; enforcement resumes after durable proof of one successful GC on BOTH Macs. Measurement errors still FAIL.", "");
+  if (evaluation.rows.some(row => row.activeReportOnly && row.id === "disk-free-floor")) lines.push("Temporary disk report-only: health remains visible; enforcement resumes after durable proof of one successful GC on BOTH Macs. Measurement errors still FAIL.", "");
   if (!evaluation.rows.length) lines.push(`**No rows selected${evaluation.runner ? ` for runner \`${escapeCell(evaluation.runner)}\`` : ""}:** every row is missing → FAIL.`, "");
   if (evaluation.stale) lines.push(`**Stale results:** recorded for ${short(evaluation.resultsSha)}, this PR is at ${short(evaluation.head)}. Every row is MISSING until the table is re-run on this head.`, "");
   if (evaluation.bootstrap) lines.push("**Direction unchecked:** the base commit has no row file yet (bootstrap).", "");

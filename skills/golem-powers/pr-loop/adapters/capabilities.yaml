@@ -13,7 +13,7 @@ adapters:
     worktree_isolation: native       # claude --worktree feat/name
     cursor_bugbot_trigger: true      # gh pr comment "@cursor @bugbot review"
     live_model_provenance: session-jsonl  # .message.model in ~/.claude/projects/**.jsonl (verified 2026-08-08)
-    identity_signature: true         # can emit full golem-id v1 blob
+    identity_signature: true         # can emit plain model + harness line
     full_loop: true
 
   codex:
@@ -30,14 +30,14 @@ adapters:
     worktree_isolation: manual       # git worktree add required before spawning
     cursor_bugbot_trigger: conditional # Needs gh installed + authenticated; use gh pr comment "@cursor @bugbot review"
     live_model_provenance: session-jsonl  # LAST turn_context.model in ~/.codex/sessions/**/rollout-*.jsonl (verified 2026-08-08)
-    identity_signature: true         # can emit full golem-id v1 blob; effort in turn_context stays OFF GitHub
+    identity_signature: true         # can emit plain model + harness line; effort in turn_context stays OFF GitHub
     full_loop: partial               # Missing native review tooling + post-merge tracking
 
   cursor:
     gh_cli: conditional              # Needs gh installed + authenticated in env
     git_ops: true
-    live_model_provenance: unavailable   # No verified per-turn model record (checked 2026-08-08) → model_source: unavailable
-    identity_signature: partial      # seat/role/harness yes; model must be "unknown"
+    live_model_provenance: unavailable   # No verified per-turn model record (checked 2026-08-08) → model: unknown
+    identity_signature: partial      # harness known; model must be "unknown"
     full_loop: partial               # See adapters/cursor.md
 
 # Role/model ownership lives in one canonical skill section.

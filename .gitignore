@@ -83,3 +83,6 @@ skills/golem-powers/weave/retros/*
 scripts/stalker/dist/
 # The pre-GO-6 bundle location; a watcher started before the move still uses it.
 scripts/dist/
+
+# Agent build/review scratch (Xcode-style .noindex); never tracked
+.build.noindex/
