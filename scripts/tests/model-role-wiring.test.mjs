@@ -79,7 +79,11 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(canon, /STOP at >=95% used: no Claude workers and <=1 essential lead turn/);
   assert.match(canon, /An account takes its tightest window; the fleet takes its best serving account/);
   assert.match(canon, /Stale, unknown or rejected telemetry counts as NO headroom for that account/);
-  assert.doesNotMatch(canon, /<=6 weekly points per 5h window|five_hour\.used_pct|>=60% no new Claude workers/);
+  for (const removed of [/<=6 weekly points per 5h window/, /five_hour\.used_pct/, />=60% no new Claude workers/,
+    />=80% no Claude workers/, /used% x 300 \/ elapsed-minutes > 80/, /weekly rejection overrides five-hour/]) {
+    assert.doesNotMatch(canon, removed, `canon #5 must not reintroduce ${removed}`);
+  }
+  assert.match(canon, /<=20% of the rolling 5h \(an accounting interval, not a provider limit window\)/);
   assert.ok(canon.includes('(provisional until the first fresh-session window shows a non-zero 1h-cache write share; then re-derive)'));
   assert.doesNotMatch(canon, /tier->model/);
   for (const f of execSync("git ls-files 'skills/**/*.md'", { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean)) {

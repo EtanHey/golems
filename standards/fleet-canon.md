@@ -36,7 +36,7 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    Claude concurrency: at most 5 parallel Claude lead tracks fleet-wide, normally 3-4; a slot is an actually
    running turn (idle, snoozed or waiting threads don't count). Claude workers (role ids in model-roles.json): <=2 `claude.judgment` (inside the shared
    7-slot `claude.judgment` ceiling with leads), <=2 `claude.subagent.cheap`, <=4 `claude.subagent.mechanical`;
-   all Claude workers together <=20% of the rolling 5h.
+   all Claude workers together <=20% of the rolling 5h (an accounting interval, not a provider limit window).
    Brake on tokenlayer `usage.json`, per serving account and per limit window that account actually has
    (a window absent from its rate-limit headers, e.g. no 5h window, has no brake):
    a window is SLOW when used% x window-minutes / elapsed-minutes > 100 (after the first 10% of the window):
