@@ -3,16 +3,16 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { checkVerdict } from './check-comment.mjs';
-import { parseRows, findSticky, readVerdict } from './table.mjs';
+import { parseRows, findSticky, readVerdict, expectedReporting } from './table.mjs';
 
-export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads = [guardedHead] }) {
+export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads = [guardedHead], expectedReportOnly = [], now = Date.now() }) {
   const pr = pulls.find(p => p.merged_at && p.base?.ref === 'master' && p.merge_commit_sha === guardedHead);
   if (!pr) return { ok: false, reason: 'latest guarded commit has no merged master PR' };
   if (!Number.isSafeInteger(expectedReal) || expectedReal < 1) return { ok: false, reason: 'master has no real live rows' };
   const receipt = readVerdict(findSticky(comments, 'golems-ratchet-live', ['EtanHey'])?.body ?? '', 'golems-ratchet-live');
   if (!receipt || !allowedHeads.includes(receipt.head)) return { ok: false, reason: 'missing or stale live receipt for latest guarded master merge' };
   return checkVerdict({ comments, marker: 'golems-ratchet-live', head: receipt.head,
-    expectedReal, authors: ['EtanHey'], baseHasRows: true });
+    expectedReal, expectedReportOnly, now, authors: ['EtanHey'], baseHasRows: true });
 }
 
 function run(binary, args) {
@@ -49,7 +49,7 @@ export function main() {
     mergedPR = pr?.number;
     const comments = pr ? api(`issues/${pr.number}/comments`) : [];
     const allowedHeads = run('git', ['rev-list', '--first-parent', 'origin/master', `^${guardedHead}^`]).split('\n');
-    const result = checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads });
+    const result = checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads, expectedReportOnly: expectedReporting(rows, 'live') });
     console.log(`live-tier freshness ${guardedHead.slice(0, 8)}: ${result.ok ? 'PASS' : 'FAIL'}: ${result.reason}`);
     if (!result.ok) recovery();
     return result.ok ? 0 : 1;

@@ -25,7 +25,8 @@ helper only removes the optional pre-sort.
 
 Use run-step.sh for long jobs; poll logs/<step>.exit, require 0 and verify
 outputs. For qa: extract audio + ggml-small SRT/TXT, read narration, combine transcript
-hotspots with scene cues, extract dense windows at 10 fps and 30s coverage.
+hotspots with scene cues, run ../scripts/coverage.sh first (30s coverage + run
+ledger), then extract dense windows at 10 fps in a child directory.
 View every sheet and coverage frame yourself within the remaining
 wall-clock AND image-context budget. Pick candidate windows before bulk image
 loading; keep the before/after and adjacent-window frames for each retained
@@ -37,15 +38,24 @@ Helper timeout is clamped to remaining budget +30s (10s floor). Read progress.tx
 visual/findings.jsonl. A budget/quota stop is partial, never complete coverage.
 View unresolved sheets yourself within the remaining session budget. Match tile indexes to frames.tsv.
 `unresolved` lists unread sheets only; an ok finding with inline NOT DETERMINED tiles is a refinement candidate for those tiles.
-Re-densify unclear moments up to 20 fps and/or tighter windows in fresh output
+Re-densify unclear moments up to the source fps and/or tighter windows in fresh output
 directories, then view the new sheets until resolved or NOT DETERMINED.
 Never infer visual evidence from transcript claims, helper text or an exit code alone.
 
 For debrief/review write debrief.md with takeaways, timestamps, unverified claims and limitations.
-For qa write qa-findings[-roundN].md and a coverage/refinement ledger. Every visual
-finding cites sheet + zero-based tile + exact timestamp from frames.tsv for
-frames you viewed yourself; unsupported claims are transcript-only. The ledger
-counts samples viewed directly versus pre-sorted only (e.g. "viewed 41 of 386
-samples plus 4 stills; partial"); never claim coverage you did not view.
+For qa write qa-findings[-roundN].md and a coverage/refinement ledger. Follow
+../SKILL.md § Evidence Rules (details: ../references/provenance.md). Sheets are an
+index: every visual finding cites ≥1 full-size frame or ../scripts/crop.sh (.png) crop
+before the change and ≥1 after it, each viewed yourself, with pts_s from
+frames.tsv (sheet + tile only locates them); unsupported claims are
+transcript-only. Re-check any "no change" claim at full size before it stands.
+Log every frame you look at with ../scripts/inspected.sh on the run root; the
+coverage line is the pasted output of ../scripts/coverage-count.sh, so extracted, inspected and
+repeated frames stay distinct; never claim coverage you did not view. Sampling
+above ../scripts/source-fps.sh only repeats frames. Separate
+"Narration / user says" (including described physical input) from "Screen shows"; narration alone
+never proves a UI state. A helper or parser failure is TOOLING FAILURE with the
+raw output path, never "no screenshots". If a gesture stays ambiguous, ask the
+parent for a slowed, narrated repro and sample densely around the transition.
 Return text paths, findings, unresolved moments and limitations to the parent
 for verdict gating, BrainLayer storage and archival. No images in the return. No implementation or code edits.

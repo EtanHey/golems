@@ -68,12 +68,23 @@ or delegation; return text to the parent for persistence and archival.
    - top gems with timestamps
    - direct action items
    - claims that need later verification
-   - frame evidence references
+   - frame evidence references (full-size stills or crops with `pts_s` from frames.tsv)
 8. Return text to the parent to run `brain_digest` on the full transcript/note,
    then `brain_store` the
    structured gems with tags like `["video-gems", "<topic>", "<source>"]`.
 9. If heavy raw media or transcripts should be kept, route them through
    `/drive-filing` (§ Archive a heavy artifact) and record the Drive location in the note.
+
+## Evidence Rules
+
+SKILL.md § Evidence Rules applies here too; details in
+[provenance.md](../references/provenance.md). For gems that means: cite the
+full-size still or a `scripts/crop.sh` crop, never a tile alone; log each still
+you view with `scripts/inspected.sh` and paste `scripts/coverage-count.sh` as
+the coverage line; keep what the speaker says apart from what the screen shows
+(a spoken claim about a slide is not proof of the slide). A helper or parser
+failure is reported as `TOOLING FAILURE` with the raw output path, never as
+"no screenshots".
 
 ## Failure Handling
 
