@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "scripts/hooks/fail-open.py"
 ISOLATED = ("-I", "-B")
 TARGETS = {
+    "m1-window-gate": "skills/golem-powers/m1-window-gate/hooks/m1-window-pretooluse.py",
     "heredoc-guard": "skills/golem-powers/heredoc-guard/hooks/heredoc-guard-pretooluse.py",
     "tmp-block": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "git-guardian": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
@@ -508,7 +509,7 @@ def evaluate():
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
     # The heredoc policy judges shell expansion before Codex patch projection.
-    items = [p] if gate == "heredoc-guard" else transport_inputs(p)
+    items = [p] if gate in ("m1-window-gate", "heredoc-guard") else transport_inputs(p)
     if gate == "human-confirm":
         items = [projected for item in items for projected in confirm_inputs(item)]
     for item in items:

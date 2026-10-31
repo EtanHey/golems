@@ -7,7 +7,7 @@
       { "id": "reviewer-order-gate", "kind": "golems", "event": "PreToolUse", "matcher": "mcp__cmux(layer)?__spawn_agent", "link": "reviewer-order-gate", "source": "skills/golem-powers/reviewer-order-gate", "match": "reviewer-order-gate-hook.mjs", "timeout": 5, "command": "{node} {hooks}/reviewer-order-gate/scripts/reviewer-order-gate-hook.mjs" },
       { "id": "block-dangerous-commands", "kind": "golems", "event": "PreToolUse", "matcher": "Bash|Write|Edit|mcp__supabase__execute_sql", "link": "block-dangerous-commands.py", "source": ".claude/hooks/block-dangerous-commands.py", "match": "block-dangerous-commands.py", "timeout": 10, "command": "{python} -I -B {hooks}/golems-fail-open.py {hooks}/block-dangerous-commands.py" },
       { "id": "collab-guard", "kind": "golems", "event": "PreToolUse", "matcher": "Write|Edit", "link": "collab-guard", "source": "skills/golem-powers/collab-guard", "match": "collab-guard.py", "timeout": 5, "command": "{python} -I -B {hooks}/golems-fail-open.py {hooks}/collab-guard/hooks/collab-guard.py" },
-      { "id": "tdd-guard", "kind": "golems", "event": "PreToolUse", "matcher": "Write|Edit", "link": "tdd-guard", "source": "skills/golem-powers/tdd-guard", "match": "tdd-guard.py", "timeout": 3, "command": "{python} -I -B {hooks}/golems-fail-open.py {hooks}/tdd-guard/hooks/tdd-guard.py" },
+      {"id": "m1-window-gate", "kind": "golems", "event": "PreToolUse", "matcher": "^(Bash|mcp__t3[-_]code__(delegate_task|t3_thread_send|t3_thread_launch|create_threads|schedule_task|run_scheduled_task_now|t3_thread_send_attachments|t3_thread_configure))$", "link": "m1-window-gate", "source": "skills/golem-powers/m1-window-gate", "match": "m1-window-pretooluse.py", "timeout": 5, "command": "{python} -I -B {hooks}/golems-fail-open.py {hooks}/m1-window-gate/hooks/m1-window-pretooluse.py"},
       { "id": "tmp-block", "kind": "golems", "event": "PreToolUse", "matcher": "Write|Edit|NotebookEdit|Bash", "link": "tmp-block", "source": "skills/golem-powers/tmp-block", "match": "tmp-block-pretooluse.py", "timeout": 5, "command": "{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/tmp-block/hooks/tmp-block-pretooluse.py" },
       { "id": "heredoc-guard", "kind": "golems", "event": "PreToolUse", "matcher": "Bash", "link": "heredoc-guard", "source": "skills/golem-powers/heredoc-guard", "match": "heredoc-guard-pretooluse.py", "timeout": 5, "command": "{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/heredoc-guard/hooks/heredoc-guard-pretooluse.py" },
       { "id": "stamp-lint", "kind": "golems", "event": "PostToolUse", "matcher": "Write|Edit", "link": "never-fabricate", "source": "skills/golem-powers/never-fabricate", "match": "stamp-lint.py", "timeout": 3, "command": "{python} -I -B {hooks}/golems-fail-open.py {hooks}/never-fabricate/hooks/stamp-lint.py" },
@@ -45,6 +45,7 @@
       {"gate": "human-confirm", "source": "scripts/hooks/codex-policy-hook.py", "matcher": "^(Bash|apply_patch)$", "timeout": 10, "requiresPin": "skills/golem-powers/human-confirm-gate/anchor.pins"}
     ],
     "mbp": [
+      {"gate": "m1-window-gate", "source": "scripts/hooks/codex-policy-hook.py", "matcher": "^Bash$", "timeout": 10},
       {"gate": "heredoc-guard", "source": "scripts/hooks/codex-policy-hook.py", "matcher": "^(Bash|apply_patch)$", "timeout": 10},
       {
         "gate": "tmp-block",

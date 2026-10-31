@@ -217,3 +217,20 @@ for (const shell of shells) {
     assert.equal(run.stdout, "");
   });
 }
+
+// ci-hygiene (2026-10-31): a guarded golems merge publishes its live receipt with one command.
+test("Update Tracking names post-merge-live.sh as the guarded-merge step", () => {
+  const section = readFileSync(doc, "utf8").split("### After Merge: Update Tracking (MANDATORY)")[1].split("\n---\n")[0];
+  const step = section.split("1b. **Guarded golems merge")[1]?.split("\n2. ")[0];
+  assert.ok(step, "step 1b missing");
+  // The landed change is first parent -> merge; the root is already fast-forwarded, so a ref base could self-compare.
+  assert.ok(step.includes('scripts/ratchet/guarded-paths.sh "<merge>^1" "<merge>"'));
+  assert.match(step, /Exit 2 means it cannot tell: STOP/);
+  assert.match(step, /Exit 1 means no guarded path: skip/);
+  assert.match(step, /scripts\/ratchet\/post-merge-live\.sh --merged-pr <N>/);
+  // Leads never do ops themselves: the install/probe hop goes to deploy-local-prod.
+  assert.match(step, /dispatches this exact command[\s\S]*to `deploy-local-prod`/);
+  assert.doesNotMatch(step, /the lead runs/);
+  const skill = readFileSync(path.resolve(here, "../../skills/golem-powers/pr-loop/SKILL.md"), "utf8");
+  assert.match(skill, /\| You just merged a guarded golems PR .*dispatch `scripts\/ratchet\/post-merge-live\.sh --merged-pr N` to `deploy-local-prod`.*exit 2 is a stop/);
+});

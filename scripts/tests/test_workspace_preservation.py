@@ -223,11 +223,12 @@ def test_receipt_cannot_overwrite_archive_evidence(tree, archive_root, evidence)
     assert destination.read_bytes() == before
 
 
-def test_broad_archive_root_cannot_hide_ephemeral_copies(tree, archive_root):
+def test_broad_archive_root_cannot_hide_ephemeral_copies(tree, archive_root, monkeypatch):
     path = manifest(tree, archive_root)
     data = json.loads(path.read_text())
     data["archive_root"] = "/"
-    with tempfile.TemporaryDirectory(prefix="w1c-ephemeral-", dir=Path("/tmp").resolve()) as directory:
+    with tempfile.TemporaryDirectory(prefix="w1c-ephemeral-", dir=archive_root.parent) as directory:
+        monkeypatch.setenv("TMPDIR", directory)
         for row in data["entries"]:
             archived = Path(directory) / row["path"]
             archived.parent.mkdir(parents=True, exist_ok=True)

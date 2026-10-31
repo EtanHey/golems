@@ -70,21 +70,47 @@ def validate_citations(item, tile_count):
     # contain ranges, optional hashes and Oxford commas. Indexing stays zero-based.
     label = re.compile(r'\b(?:tiles?|frames?)\b', re.I)
     number = r'\#?\s*(-?\d+)'
-    span = re.compile(number + r'(?:\s*(?:-|–|to)\s*' + number + r')?', re.I)
+    word_number = (r'(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|'
+                   r'eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|'
+                   r'nineteen|twenty|thirty|forty|fifty|hundred|first|last|next|previous|'
+                   r'second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|final)\b')
+    span = re.compile(number + r'(?:\s*(?:\.\.|-|–|to)\s*' + number + r')?', re.I)
     finding = '\n'.join(line for line in item['finding'].splitlines()
                         if not line.startswith('Coverage:'))
+    # The helper echoes its input path, which can itself contain "frames".
+    # Remove that exact prefix (including spaces), then other path tokens.
+    sheet = item.get('sheet', '')
+    if sheet:
+        finding = '\n'.join(line.removeprefix(sheet + ':') for line in finding.splitlines())
+    finding = re.sub(r'''[^\s<>"'`]*[/\\][^\s<>"'`]*''',
+                     lambda m: ' ' if re.search(r'[a-zA-Z_]', m[0]) else m[0], finding)
+    finding = re.sub(r'\b[\w.-]+\.(?:jpe?g|png|gif|webp|bmp|heic|avif|tiff?)\b',
+                     ' ', finding, flags=re.I)
     for citation in label.finditer(finding):
         prefix = finding[:citation.start()]
-        if re.search(r'\b(?:\d+(?:st|nd|rd|th)|first|last|next|previous|second|third|final)\s*$', prefix, re.I):
+        if re.search(r'\b(?:\d+(?:st|nd|rd|th)|first|last|next|previous|second|third|fourth|'
+                     r'fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|'
+                     r'fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|'
+                     r'twentieth|final)\s*$', prefix, re.I):
             malformed = True
             continue
         tail = finding[citation.end():].lstrip()
+        # "20 tiles" describes a count, not index 20. A parenthesized range
+        # still supplies indexes and must be checked, including 0..19 notation.
+        if re.search(r'\b\d+\s*$', prefix):
+            if re.match(r'\(\s*[-#\d]', tail):
+                tail = tail[1:].lstrip()
+            elif not re.match(r'[-#\d\[:]', tail):
+                continue
         # Bare nouns at the end of a sentence are not indexed citations.
         if not tail or (tail.startswith((';', '.')) and not re.match(r'[;.]\s*\d', tail)):
             continue
         match = span.match(tail)
         if not match:
-            malformed = True
+            # Ordinary nouns (frame rate, frames per second, tile layout) are
+            # not citations. Number words and punctuated indexes remain invalid.
+            if re.match(r'[-#\d\[(:]|' + word_number, tail, re.I):
+                malformed = True
             continue
         while match:
             lo = citation_number(match[1])
@@ -97,13 +123,15 @@ def validate_citations(item, tile_count):
             separator = re.match(r'\s*(?:,\s*(?:and\s+)?|and\s+)', tail, re.I)
             if not separator:
                 # An unfinished range, decimal or malformed numeric token fails closed.
-                if re.match(r'\w|\s*(?:[-–/&+]|to\b|[.]\d|\d|\#)', tail, re.I):
+                if re.match(r'\w|\s*(?:[-–/&+]|to\b|\.\.|[.]\d|\d|\#)', tail, re.I):
                     malformed = True
                 break
             rest = tail[separator.end():]
             match = span.match(rest)
             if not match:
-                malformed = True
+                # A comma/conjunction may introduce prose rather than an index.
+                if re.match(r'[-#\d\[(:]|and\b|to\b|' + word_number, rest, re.I) or not rest.strip():
+                    malformed = True
                 break
             tail = rest
     if intervals and tile_count is None:

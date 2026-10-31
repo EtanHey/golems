@@ -31,7 +31,7 @@ for (const host of Object.keys(realManifest.codex_hosts)) {
     expect(plan.source).toBe(true);
     const groups = JSON.parse(plan.next).hooks.PreToolUse;
     expect(groups.length).toBe(realManifest.codex_hosts[host].length);
-    expect(groups.every(g => g.matcher === "^(Bash|apply_patch)$")).toBe(true);
+    expect(groups.map(g => g.matcher)).toEqual(realManifest.codex_hosts[host].map(e => e.matcher));
     expect(gatesIn(plan)).toContain("heredoc-guard");
     expect(readFileSync(path.join(f.codexHome, "config.toml"))).toEqual(config);
     expect(readdirSync(f.codexHome)).toEqual(["config.toml"]);
@@ -244,7 +244,7 @@ function confirmFixture() {
     matcher: "^(Bash|apply_patch)$", timeout: 10, requiresPin: PIN }];
   return { ...f, manifest: { codex_hosts: { mbp: entries, m1: entries } } };
 }
-const gatesIn = (p) => JSON.parse(p.next).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command.match(/codex-policy-hook\.py'\\'' '\\''([a-z-]+)/)?.[1]).sort();
+const gatesIn = (p) => JSON.parse(p.next).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command.match(/codex-policy-hook\.py'\\'' '\\''([a-z0-9-]+)/)?.[1]).sort();
 
 test("human-confirm registers as a third Codex gate; refused while unpinned, and an existing registration is stripped", () => {
   const f = confirmFixture();
@@ -269,4 +269,15 @@ test("the Codex manifest pins the gate set: human-confirm needs its anchor pin, 
   expect(bad((e) => { e[0].requiresPin = PIN; })).toThrow("Invalid Codex policy entry");
   expect(bad((e) => { e[2].gate = "other-gate"; })).toThrow("Invalid Codex policy entry");
   expect(bad((e) => { e.splice(0, 1); })).toThrow("Invalid Codex policy manifest");
+});
+
+test("M1 window is an owner-only Bash registration alongside the pinned gate set", () => {
+  const f = confirmFixture();
+  const entry = { gate: "m1-window-gate", source: "scripts/hooks/codex-policy-hook.py", matcher: "^Bash$", timeout: 10 };
+  f.manifest.codex_hosts.mbp = [...f.manifest.codex_hosts.mbp, entry];
+  expect(gatesIn(planCodexHooks(f))).toEqual(["git-guardian", "human-confirm", "m1-window-gate", "tmp-block"]);
+  applyCodexHooks(planCodexHooks(f));
+  expect(planCodexHooks(f).registered).toBe(true);
+  entry.matcher = "^(Bash|apply_patch)$";
+  expect(() => planCodexHooks(f)).toThrow("Invalid Codex policy entry");
 });

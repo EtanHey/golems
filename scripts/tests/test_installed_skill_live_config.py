@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ROOTS = ('.claude/skills', '.agents/skills', '.codex/skills')
+PLUGIN = 'class-plugin@class-market'
 
 
 class LiveConfig(unittest.TestCase):
@@ -29,7 +30,7 @@ class LiveConfig(unittest.TestCase):
         self.pins = [{k: hashlib.sha256((label+k).encode()).hexdigest()
                       for k in ['machine', 'home', 'hostname']} for label in ['class-local', 'class-remote']]
         required = dict(schema=2, identities=self.pins, roots={})
-        remote = dict(schema=2, identity=self.pins[1], roots={})
+        remote = dict(schema=2, identity=self.pins[1], roots={}, claude_plugins={'.claude': {'enabled': [PLUGIN]}})
         for root in ROOTS:
             skill = self.home / root / 'class-a'
             skill.mkdir(parents=True)
@@ -39,6 +40,7 @@ class LiveConfig(unittest.TestCase):
                 kind='dir', exists=True, normalized_target='$HOME/'+root+'/class-a',
                 skill_sha256=hashlib.sha256(data).hexdigest(), internal_skills={},
                 files={'SKILL.md': dict(kind='file', sha256=hashlib.sha256(data).hexdigest(), executable=False)})})
+        self.settings('.claude', {PLUGIN: True})
         self.required = self.home / 'class-requirements.json'
         self.required.write_text(json.dumps(required))
         self.remote = self.home / 'class-remote.json'; self.remote.write_text(json.dumps(remote))
@@ -57,7 +59,8 @@ class LiveConfig(unittest.TestCase):
         self.ssh_args = self.home / 'class-ssh-args.json'
         self.command('git', "print(%r if '--git-common-dir' in sys.argv else 'a'*40)" % str(self.main / '.git'))
         self.command('gh', "Path(%r).touch(); print('a'*40+' class-branch' if 'pr' in sys.argv else 'class-owner')" % str(self.gh_marker))
-        self.command('ssh', "Path(%r).write_text(json.dumps(sys.argv[1:])); print(Path(%r).read_text())" % (str(self.ssh_args), str(self.remote)))
+        self.ssh_stdin = self.home / 'class-ssh-stdin.py'
+        self.command('ssh', "Path(%r).write_text(json.dumps(sys.argv[1:])); Path(%r).write_text(sys.stdin.read()); print(Path(%r).read_text())" % (str(self.ssh_args), str(self.ssh_stdin), str(self.remote)))
         real_node = shutil.which('node')
         if not real_node: self.fail('node required; no capability skip')
         self.real_node = real_node
@@ -70,6 +73,11 @@ sys.argv=args
 sys.exit(module.main())''' % self.pins[0])
         self.env = {k: v for k, v in os.environ.items() if not k.startswith(('RATCHET_', 'GIT_'))}
         self.env.update(HOME=str(self.home), PATH=str(self.bin)+':'+os.environ['PATH'], PYTHONDONTWRITEBYTECODE='1')
+
+    def settings(self, directory, plugins):
+        path = self.home / directory / 'settings.json'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({'enabledPlugins': plugins}))
 
     def command(self, name, body):
         path = self.bin / name
@@ -126,6 +134,27 @@ sys.exit(module.main())''' % self.pins[0])
         result = json.loads(next((self.main / 'docs.local/ratchet-runs').glob('*/results.json')).read_text())
         self.assertFalse(result['results']['installed-skill-parity']['value'])
         self.assertIn('same machine', run.stderr)
+
+    def test_configured_claude_dirs_reach_remote_and_plugin_drift_fails_by_name(self):
+        config = json.loads(self.config.read_text())
+        config['claude_config_dirs'] = ['~/.claude', '~/.claude-secondary']
+        self.config.write_text(json.dumps(config))
+        self.settings('.claude-secondary', {PLUGIN: True})
+        remote = json.loads(self.remote.read_text())
+        remote['claude_plugins'] = {'.claude': {'enabled': [PLUGIN]}, '.claude-secondary': {'enabled': []}}
+        self.remote.write_text(json.dumps(remote))
+        run = self.run_recovery()
+        result = json.loads(next((self.main / 'docs.local/ratchet-runs').glob('*/results.json')).read_text())
+        self.assertFalse(result['results']['installed-skill-parity']['value'])
+        self.assertIn('plugin-enabled-mismatch ' + PLUGIN + ': local=[.claude,.claude-secondary] remote=[.claude]', run.stderr)
+        self.assertIn("INVENTORY_CLAUDE_CONFIG_DIRS = ('.claude', '.claude-secondary')", self.ssh_stdin.read_text())
+
+    def test_missing_local_settings_fails_closed(self):
+        (self.home / '.claude/settings.json').unlink()
+        run = self.run_recovery()
+        result = json.loads(next((self.main / 'docs.local/ratchet-runs').glob('*/results.json')).read_text())
+        self.assertFalse(result['results']['installed-skill-parity']['value'])
+        self.assertIn('plugin-settings-invalid .claude: local settings.json missing', run.stderr)
 
 
 if __name__ == '__main__': unittest.main()

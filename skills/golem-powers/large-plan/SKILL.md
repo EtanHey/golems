@@ -277,7 +277,7 @@ Fleet law for claim/guard/DONE/harvest-close lives in canon #7; this workflow ke
 | Skill | When | Why |
 |-------|------|-----|
 | `/pr-loop` | A bounded phase ends there | Procedural branch-to-merge checklist. |
-| Failing test first (AGENTS.md law) | All implementation | Red-green-refactor. No code without a failing test first; `/tdd-guard` is the hook that enforces the edit limit. |
+| Proof | All implementation | Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green. |
 | `/never-fabricate` | Before claiming "done" or reporting results | Evidence before assertions: Read() files before summarizing them, verify before claiming. Enforced by the false-green-gate hook. |
 | `/plan-council` | Review one authored plan/spec | Declared cross-family judges, live validation, measured bias, and lift round. |
 

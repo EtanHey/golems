@@ -13,7 +13,6 @@
  *   GET  /api/pipelines            → List available pipelines
  *   POST /api/pipeline/route       → AI-route an idea to best pipeline
  *   POST /api/pipeline/execute     → Route + execute in one call
- *   GET  /api/pipeline/stats       → Pipeline performance stats
  */
 
 import { readFile } from "fs/promises";
@@ -242,7 +241,6 @@ async function handlePipelineExecute(
   const result = await executePlan(plan, {
     project: body.project as string | undefined,
     serviceUrl: `http://localhost:${PORT}`,
-    trackRun: true,
   });
 
   return Response.json({
@@ -251,25 +249,14 @@ async function handlePipelineExecute(
   });
 }
 
-async function handlePipelineStats(): Promise<Response> {
-  const { getPerformanceStats } = await import("./pipeline/index");
-  const stats = await getPerformanceStats();
-  return Response.json({ stats });
-}
-
 async function handleDataVizRender(
   body: Record<string, unknown>,
 ): Promise<Response> {
-  const type = (body.type as string) ?? "jobs";
+  const type = (body.type as string) ?? "brain";
   const format = (body.format as string) ?? "linkedin";
 
   // Dynamic import to avoid loading dataviz deps at startup
-  const { fetchJobMarketData } = await import("./dataviz/fetchers/jobs");
-  const { fetchFinanceData } = await import("./dataviz/fetchers/finance");
   const { fetchBrainData } = await import("./dataviz/fetchers/brain");
-  const { fetchActivityData } = await import("./dataviz/fetchers/activity");
-  const { renderBarChart } = await import("./dataviz/charts/bar");
-  const { renderDonutChart } = await import("./dataviz/charts/donut");
   const { renderLineChart } = await import("./dataviz/charts/line");
   const { renderStatCards } = await import("./dataviz/charts/stat-card");
   const { renderLinkedInCard } =
@@ -281,37 +268,6 @@ async function handleDataVizRender(
   let statsSvg: string | undefined;
 
   switch (type) {
-    case "jobs": {
-      const data = await fetchJobMarketData();
-      title = "Job Market Overview";
-      chartSvg = renderBarChart({
-        title: "Top Tags",
-        data: data.topTags.map((t) => ({ label: t.tag, value: t.count })),
-        horizontal: true,
-        maxBars: 8,
-      });
-      statsSvg = renderStatCards({
-        stats: [
-          { label: "Total Jobs", value: data.totalJobs },
-          { label: "Sources", value: data.scrapeStats.length },
-        ],
-        columns: 2,
-        width: 600,
-      });
-      break;
-    }
-    case "finance": {
-      const data = await fetchFinanceData();
-      title = "Monthly Finance";
-      chartSvg = renderDonutChart({
-        data: data.llmCostsByModel
-          .filter((m) => m.totalCost > 0)
-          .map((m) => ({ label: m.model, value: m.totalCost })),
-        centerValue: `$${data.totalLLMCost.toFixed(2)}`,
-        centerLabel: "Total",
-      });
-      break;
-    }
     case "brain": {
       const data = await fetchBrainData();
       if (data.state !== "measured") {
@@ -332,17 +288,6 @@ async function handleDataVizRender(
         ],
         columns: 2,
         width: 600,
-      });
-      break;
-    }
-    case "activity": {
-      const data = await fetchActivityData();
-      title = "Golem Activity";
-      chartSvg = renderBarChart({
-        data: data.golemActivity
-          .slice(0, 6)
-          .map((g) => ({ label: g.actor, value: g.eventCount })),
-        horizontal: true,
       });
       break;
     }
@@ -426,9 +371,6 @@ export async function handleRequest(req: Request): Promise<Response> {
         response = await handlePipelineExecute(body);
         break;
       }
-      case method === "GET" && pathname === "/api/pipeline/stats":
-        response = await handlePipelineStats();
-        break;
       default:
         response = Response.json(
           { error: "Not found", path: pathname },
@@ -466,7 +408,6 @@ if (import.meta.main) {
   console.log("  POST /api/dataviz/render     — Data visualization");
   console.log("  POST /api/pipeline/route     — AI-route idea to pipeline");
   console.log("  POST /api/pipeline/execute   — Route + execute in one call");
-  console.log("  GET  /api/pipeline/stats     — Pipeline performance stats");
   console.log("  GET  /api/pipelines          — List pipelines");
   console.log("  GET  /api/health             — Health check");
 }

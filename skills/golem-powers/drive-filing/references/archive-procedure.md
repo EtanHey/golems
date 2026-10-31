@@ -16,7 +16,7 @@ This procedure is for **putting things INTO Drive**. To **query Drive content** 
 │  ────────────                                                │
 │  • Forever storage (free up to 15GB; user has the quota)     │
 │  • All versions, heavy assets, raw research outputs          │
-│  • Path: Brain Drive/06_ARCHIVE/<area>/<topic>/<date>/...    │
+│  • Path: Brain Drive/06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>/ │
 │  • Source of truth — if it's only in docs.local/, it isn't   │
 │    durable                                                   │
 └──────────────────────────────────────────────────────────────┘
@@ -29,7 +29,7 @@ This procedure is for **putting things INTO Drive**. To **query Drive content** 
 │  • Local cache — only the LATEST versions                    │
 │  • Lightweight markdown only (no >100KB media)               │
 │  • Per-dir `_DRIVE-LEDGER.md` lists every Drive copy + URL   │
-│  • Safe to delete: contents are recoverable from Drive       │
+│  • Local deletion requires Machine hygiene rules 2 and 5     │
 └──────────────────────────────────────────────────────────────┘
                          ▲
                          │  brain_digest extracts entities/relations
@@ -54,12 +54,14 @@ Run this procedure when:
 1. **Pre-write hint:** about to save anything >100KB to `docs.local/research/`, `docs.local/audits/`, or `docs.local/plans/` — especially if it contains transcripts, audio, video, or large logs.
 2. **Explicit user request:** "save this to Drive", "archive this", "this should be in Brain Drive", "put this in the archive".
 3. **Post-digest:** a research output has been `brain_digest`'d into BrainLayer and the raw file is a candidate for archival (BrainLayer indexes it; Drive holds the original).
-4. **/tmp cleanup:** about to `rm -rf /tmp/<heavy-stuff>` — if any of it is forever-knowledge, route it through this procedure first.
+4. **/tmp cleanup:** about to `rm -rf /tmp/<heavy-stuff>` — if any of it is forever-knowledge, route it through this procedure first; removing the rest still requires § Machine hygiene rule 5.
 
 **Skip this procedure** when:
 - The artifact is genuinely ephemeral (CLI test output, throwaway diff, audit prompt that's already digested).
 - The content is already covered by another archive flow (e.g. PR merges live in git, not Drive).
 - File is <100KB markdown that's the canonical doc kept in `docs.local/` (no need to upload markdown notes).
+
+Skipping the archive grants no deletion authority; § Machine hygiene rules 2 and 5 remain the gate.
 
 ---
 
@@ -72,15 +74,18 @@ Ask: **"Will future-Etan or another agent want to re-read this raw artifact a mo
 | Answer | Action |
 |---|---|
 | Yes (transcripts, audits, plans, research outputs, media) | Forever → continue to step 2. |
-| No (intermediate processing files, throwaway logs, regeneratable derivatives) | Skip. Just delete after use. Note the choice in commit message or BrainLayer. |
+| No (intermediate processing files, throwaway logs, regeneratable derivatives) | Not archived. Own current-lane ephemeral or regeneratable files remain subject to [§ Machine hygiene rule 5](../SKILL.md#machine-hygiene-no-ad-hoc-home-folders), including its authorization requirement; ownership alone grants no deletion authority. Record disposition and regeneration in the ledger or CLEANUP RECEIPT. Anything else goes to its owner or through the step 7 deletion gate. |
 | Mixed (e.g. `audio.wav` keep, `audio-16k.wav` derivative skip) | Upload only the originals. Document which derivatives are regeneratable + how. |
 
 ### 2. Resolve the Drive archive path
 
-Default convention (matches `Brain Drive/06_ARCHIVE/repos/union-2026-04/` precedent):
+Default convention: the date level is always `YYYY-MM-DD`, with a tag only as its suffix.
+Older layouts are precedent for topic placement, not date shape. The sole exception is the
+`YYYY-MM` month rollup in [§ docs.local lifecycle](../SKILL.md#docslocal-lifecycle); undated mtime
+units get `<unitName>/<YYYY-MM-DD>/` at upload, using the newest-file date in the ledger and manifest:
 
 ```
-Brain Drive/06_ARCHIVE/<area>/<topic>/<date-or-tag>/<artifact-folder>/
+Brain Drive/06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>[-<tag>]/<artifact-folder>/
 ```
 
 | `<area>` | When |
@@ -91,7 +96,7 @@ Brain Drive/06_ARCHIVE/<area>/<topic>/<date-or-tag>/<artifact-folder>/
 | `repos` | Whole-repo snapshots (e.g. before a destructive refactor) |
 | `voice` | Voice session transcripts + audio |
 
-Use `mcp__google-drive__search` to find existing parent folders before creating new ones — match precedent if one exists.
+Use `mcp__google-drive__search` to find existing parent folders before creating new ones — match existing topic placement while keeping the date convention above.
 
 ### 3. Create the folder tree
 
@@ -102,6 +107,10 @@ mcp__google-drive__createFolder(name=<level>, parent=<parent-id>)
 Capture the returned folder ID at every level. You will need them in the ledger.
 
 ### 4. Upload the artifacts
+
+Write the unit's `MANIFEST.json` before upload, upload it with the unit, and link it from the ledger.
+Use the [manifest schema](archiving-convention.md#manifestjson-one-per-archive-unit); a rollup plan
+is not a manifest.
 
 ```
 mcp__google-drive__uploadFile(localPath=<absolute>, parentFolderId=<id>)
@@ -135,7 +144,7 @@ Path: `docs.local/<area>/<topic>/_DRIVE-LEDGER.md`
 | File | Local path | Drive folder | Drive ID | Drive URL | Size | BrainLayer chunk | Uploaded |
 |---|---|---|---|---|---|---|---|
 | transcript.txt | docs.local/.../transcript.txt | <folder-id> | <file-id> | <link> | 30KB | brainbar-... | 2026-04-25 13:01 |
-| audio.wav | (deleted from /tmp after upload) | <folder-id> | <file-id> | <link> | 312MB | n/a | 2026-04-25 13:08 |
+| audio.wav | (local copy removed only after the step 7 gate) | <folder-id> | <file-id> | <link> | 312MB | n/a | 2026-04-25 13:08 |
 
 ## Skipped (regeneratable derivatives)
 - `audio-16k.wav` — 16kHz mono downsample of `audio.wav` for whisper-cli. Regenerate via `ffmpeg -i audio.wav -ar 16000 -ac 1 audio-16k.wav`.
@@ -148,6 +157,8 @@ The ledger is what lets a future agent answer **"where is the original?"** witho
 Apply [§ Machine hygiene rules 2 and 5](../SKILL.md#machine-hygiene-no-ad-hoc-home-folders)
 as the single deletion gate. Write the ledger first, then require all of:
 
+- The uploaded `MANIFEST.json` is linked from the ledger; every payload file is present at its
+  manifest byte count, and every local file being deleted hashes to its manifest SHA-256.
 - Manifest hashes match verified Drive or iCloud archive bytes.
 - A one-file restore test passes.
 - Etan explicitly instructs the deletion, or already opened that door for this
@@ -191,7 +202,7 @@ Skip for routine archives (one transcript, one report). Store for unusual decisi
 
 - **`/research-lifecycle`** — when condensing/archiving stale research files, use this procedure to push originals to Drive before deleting locally.
 - **`/qa-video`** — video gems and QA processing produce transcripts, frames, and heavy media; this procedure is where they land long-term. The qa-video gems output is in `/tmp/` by default; route to Drive on completion.
-- **`/large-plan`** — when a plan completes, archive the full plan folder to `Brain Drive/06_ARCHIVE/plans/<name>-<date>/`.
+- **`/large-plan`** — when a plan completes, archive the full plan folder to `Brain Drive/06_ARCHIVE/plans/<name>/<YYYY-MM-DD>/`.
 - **Nightly sweep** — scan `docs.local/` for >100KB files lacking ledger entries and prompt to archive.
 
 ---
@@ -213,7 +224,7 @@ Skip for routine archives (one transcript, one report). Store for unusual decisi
 - Files: N text + M media (X MB / Y GB total)
 - BrainLayer chunks: <chunk_id_1>, <chunk_id_2>
 - Ledger: docs.local/<area>/<topic>/_DRIVE-LEDGER.md
-- Local cleanup: deleted /tmp/<...> (X GB freed) | retained markdown (<size>)
+- Local cleanup: deleted <path> after the step 7 gate (X GB freed, diskutil container free) | retained markdown (<size>)
 - Skipped derivatives: <list> (regenerate via <command>)
 ```
 

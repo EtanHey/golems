@@ -15,7 +15,9 @@ MODEL="${WHISPER_MODEL:-$HOME/.cache/whisper/ggml-small.bin}"
 ffmpeg -hide_banner -loglevel error -nostdin -y -i "$VIDEO" -vn \
   -acodec pcm_s16le -ar 16000 -ac 1 "$WORKDIR/audio.wav"
 whisper-cli -m "$MODEL" -f "$WORKDIR/audio.wav" --output-srt --output-txt \
-  -of "$WORKDIR/transcript" -l auto
+  -of "$WORKDIR/transcript" -l "${WHISPER_LANGUAGE:-en}" \
+  --max-context 0 --suppress-nst --entropy-thold 2.4 --logprob-thold -1.0 \
+  --no-speech-thold 0.6 --temperature 0 --temperature-inc 0.2
 [[ -f "$WORKDIR/transcript.srt" && -f "$WORKDIR/transcript.txt" ]] \
   || { echo 'extract: whisper did not produce SRT and TXT' >&2; exit 1; }
 echo "extract: audio + SRT/TXT -> $WORKDIR"

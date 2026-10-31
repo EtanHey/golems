@@ -457,6 +457,7 @@ test("E1 exclusion: the installer REFUSES every E1 hook even when the manifest n
 test("the shipped manifest names no E1 hook and retires the M1 owner profiles", () => {
   const text = JSON.stringify(realManifest);
   for (const name of E1_DELETED) expect(text).not.toContain(name);
+  expect(text).not.toContain("tdd-guard");
   expect(Object.keys(realManifest.hosts).sort()).toEqual(["client", "mbp"]);
   expect(Object.keys(realManifest.codex_hosts).sort()).toEqual(["client", "mbp"]);
   expect(realManifest.hosts.client.some((h) => h.event === "Stop")).toBe(false);
@@ -953,6 +954,47 @@ function runDefault(fx, ...args) {
     { env: fixtureEnv(fx), encoding: 'utf8' });
   return { status: r.status, out: r.stdout + r.stderr };
 }
+test("tdd-guard retirement: selected manifest removes stale PreToolUse wiring on update and reapply", () => {
+  const fx = pinnedManifestFixture();
+  const manifest = manifestFor();
+  manifest.hosts.mbp.push({ id: "tdd-guard", kind: "golems", event: "PreToolUse", matcher: "Write|Edit",
+    link: "tdd-guard", source: "skills/golem-powers/tdd-guard", match: "tdd-guard.py", timeout: 3,
+    command: "{python} -I -B {hooks}/golems-fail-open.py {hooks}/tdd-guard/hooks/tdd-guard.py" });
+  const source = path.join(fx.repo, "skills/golem-powers/tdd-guard/hooks");
+  mkdirSync(source, { recursive: true });
+  writeFileSync(path.join(source, "tdd-guard.py"), "print('{}')\n");
+  writeFileSync(fx.pinnedManifest, JSON.stringify(manifest));
+  git(fx.repo, "add", "."); git(fx.repo, "commit", "-qm", "old hook manifest");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  expect(runDefault(fx, "--apply").status).toBe(0);
+  const before = readFileSync(fx.settingsPath, "utf8");
+  const stale = JSON.parse(before).hooks.PreToolUse.find((g) => g.matcher === "Write|Edit");
+  expect(stale.hooks[0].command).toContain("tdd-guard.py");
+  git(fx.repo, "rm", "-r", "skills/golem-powers/tdd-guard");
+  commitManifest(fx);
+  const dry = runDefault(fx, "--update");
+  expect(dry.out).toContain("would remove retired registration: tdd-guard/hooks/tdd-guard.py (PreToolUse)");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+  const update = runDefault(fx, "--update", "--apply");
+  expect(update.status).toBe(0);
+  expect(update.out).toContain("removing retired registration: tdd-guard/hooks/tdd-guard.py (PreToolUse)");
+  const link = path.join(fx.home, ".claude/hooks/tdd-guard");
+  expect(linkExists(link)).toBe(false);
+  expect(bakFiles(fx).some((f) => readFileSync(path.join(fx.home, ".claude", f), "utf8") === before)).toBe(true);
+  const settings = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  expect(settings.hooks.SessionStart).toEqual([{ hooks: [EXTERNAL] }]);
+  settings.hooks.PreToolUse.push(stale);
+  writeFileSync(fx.settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+  const status = runDefault(fx, "--status");
+  expect(status.status).toBe(1);
+  expect(status.out).toContain("retired-registered: tdd-guard/hooks/tdd-guard.py (PreToolUse)");
+  expect(runDefault(fx, "--apply").status).toBe(0);
+  const clean = readFileSync(fx.settingsPath, "utf8");
+  expect(clean).not.toContain("/tdd-guard/hooks/tdd-guard.py");
+  expect(runDefault(fx, "--apply").status).toBe(0);
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(clean);
+  expect(runDefault(fx, "--status").status).toBe(0);
+});
 test('default manifest comes from the selected pin despite an older invoking checkout', () => {
   const fx = pinnedManifestFixture(); const first = commitManifest(fx);
   expect(runDefault(fx, '--apply').status).toBe(0);
@@ -1740,4 +1782,19 @@ test("creation floor refuses before any fixture worktree is added", () => {
   expect(result.out).toContain("worktree creation refused");
   expect(git(fx.repo, "worktree", "list", "--porcelain")).toBe(before);
   expect(existsSync(live(fx))).toBe(false);
+});
+
+test("M1 window gate registers both T3 spellings and status reports absent config without writes", () => {
+  const e = realManifest.hosts.mbp.find((e) => e.id === "m1-window-gate");
+  expect(e.command).not.toContain("--fail-closed");
+  for (const name of ["Bash", "mcp__t3-code__delegate_task", "mcp__t3_code__delegate_task"]) expect(new RegExp(e.matcher).test(name)).toBe(true);
+  expect(realManifest.hosts.client.some((e) => e.id === "m1-window-gate")).toBe(false);
+  expect(realManifest.codex_hosts.mbp.find((e) => e.gate === "m1-window-gate").matcher).toBe("^Bash$");
+  const fx = fixture();
+  const manifest = manifestFor(); manifest.hosts.mbp.push(e);
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const before = readFileSync(fx.settingsPath, "utf8");
+  expect(run(fx, "--status").out).toContain("m1-window-gate unconfigured");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+  expect(existsSync(path.join(fx.home, ".golems/m1-window-gate.json"))).toBe(false);
 });

@@ -52,7 +52,7 @@ packages/shared/src/
 │   ├── llm.ts                   # Multi-backend LLM runner (Haiku, Ollama, MLX, Gemini, Groq)
 │   ├── cloud-llm.ts             # Haiku backend with token/cost tracking
 │   ├── ollama-helper.ts         # Local Ollama wrapper
-│   ├── state-store.ts           # File/Supabase state abstraction
+│   ├── state-store.ts           # Local file state storage
 │   ├── event-log.ts             # Golem action logging ("while you were down")
 │   ├── load-env.ts              # .env loader for launchd (import FIRST)
 │   ├── shared-types.ts          # GolemStatus, TopicStyle, GolemActor
@@ -111,7 +111,7 @@ import { runCloudFree, runCloudFreeJSON } from "@golems/shared/lib/vercel-llm";
 - Auto-fallback between providers on 429
 
 ### `lib/state-store`
-State abstraction. `STATE_BACKEND=file|supabase`.
+State abstraction backed by local JSON files.
 ```typescript
 import { getState, setState } from "@golems/shared/lib/state-store";
 ```

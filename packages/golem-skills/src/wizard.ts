@@ -40,7 +40,6 @@ const FALLBACK_SKILL_CATEGORIES: Record<string, string[]> = {
     "pr-loop",
     "coderabbit",
     "git-guardian",
-    "tdd-guard",
     "never-fabricate",
   ],
   Research: ["gemini-research", "github-research", "whats-new"],

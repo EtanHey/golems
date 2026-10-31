@@ -54,52 +54,6 @@ export interface PaymentFailure {
 }
 
 /**
- * Monthly spending report with aggregated expenses by category and vendor
- * @interface MonthlyReport
- */
-export interface MonthlyReport {
-  /** Month in YYYY-MM format */
-  month: string;
-  /** Total spending for the month */
-  totalSpend: number;
-  /** Spending broken down by tax category */
-  byCategory: Record<TaxCategory, number>;
-  /** Spending broken down by vendor */
-  byVendor: Record<string, number>;
-  /** Number of active subscriptions */
-  subscriptionCount: number;
-}
-
-/**
- * Annual tax report with deductible expenses broken down by IRS Schedule C categories
- * @interface TaxReport
- */
-export interface TaxReport {
-  /** Tax year */
-  year: number;
-  /** Total deductible amount */
-  totalDeductible: number;
-  /** Breakdown by category with individual line items */
-  byCategory: Record<
-    TaxCategory,
-    { total: number; items: Array<{ vendor: string; amount: number }> }
-  >;
-}
-
-/** Monthly subscription spending summary */
-export interface SubscriptionSummary {
-  totalMonthly: number;
-  services: Array<{
-    name: string;
-    amount: number;
-    currency: string;
-    status: string;
-  }>;
-  newThisMonth: string[];
-  cancelledThisMonth: string[];
-}
-
-/**
  * Inbound email from email-golem router.
  * Minimal interface — avoids importing email-golem types directly.
  */

@@ -11,7 +11,6 @@ const effects = {
   requests: 0,
   syncs: 0,
   state: {} as Record<string, unknown>,
-  runs: 0,
 };
 const emails = ["urgent", "subscription"].map((id) => ({
   id,
@@ -69,12 +68,6 @@ mock.module("../../email/router", () => ({
     reason: "Synthetic route",
   }),
 }));
-mock.module("../../email/sender-tracker", () => ({
-  parseListUnsubscribe: () => ({ email: "synthetic-unsubscribe-id" }),
-  trackSender: async (_db: any, sender: any) => {
-    effects.senders.push(sender);
-  },
-}));
 mock.module("../../lib/event-log", () => ({
   logEvent: async (type: string, data: any) => {
     effects.routed.push({ type, data });
@@ -84,9 +77,6 @@ mock.module("../../lib/state-store", () => ({
   getState: async () => null,
   setState: async (key: string, value: unknown) => {
     effects.state[key] = value;
-  },
-  reportServiceRun: async () => {
-    effects.runs++;
   },
 }));
 globalThis.fetch = (async () => {
