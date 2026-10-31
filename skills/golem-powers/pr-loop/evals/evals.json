@@ -411,7 +411,7 @@
       "id": 15,
       "name": "propagates-signature-requirement-into-worker-dispatch",
       "prompt": "Spawn a codex worker in cmux to fix and PR the flaky enrichment test in EtanHey/brainlayer. Draft the kickoff prompt.",
-      "expected_output": "Kickoff requires ONE plain 🤖 Generated with <model> in <harness> line on every GitHub write; both contributing models, implementer first. Worker reads live runtime metadata. No em dash, seat/role names or hidden metadata. Keep commit trailers, absolute paths, TDD, PR loop and BrainLayer checkpoints.",
+      "expected_output": "Kickoff requires ONE plain 🤖 Generated with <model> in <harness> line on every GitHub write; both contributing models, implementer first. Worker reads live runtime metadata. No em dash, seat/role names or hidden metadata. Keep commit trailers, absolute paths, cheapest real proof, PR loop and BrainLayer checkpoints.",
       "root_cause_tested": "cmux-agents prompt-audit interaction — unsigned worker comments are unattributable while the wrapper is unbuilt",
       "assertions": [
         {
@@ -437,7 +437,7 @@
         {
           "name": "keeps-standard-prompt-audit-items",
           "type": "outcome",
-          "description": "Kickoff prompt still carries absolute verified paths, TDD mandate, PR loop, and brain_store checkpoints"
+          "description": "Kickoff prompt still carries absolute verified paths, cheapest real proof (real-binary e2e, TLA+/TLC for event ordering, regression ratchets; unit tests only when clearest, no test file required per edit, mock-green is not live-green), PR loop, and brain_store checkpoints"
         }
       ]
     },
@@ -999,6 +999,29 @@
           "type": "negative",
           "name": "no-duplicate-or-savings",
           "description": "No duplicate request, draft-first policy or unmeasured savings claim."
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "name": "cheapest-real-proof-no-mandatory-test-file",
+      "prompt": "Fix a retry-order bug, update a README, and prove the changes before committing. Do you need a new unit-test file for each edit?",
+      "expected_output": "Chooses real-binary e2e for observable behavior, TLA+/TLC for order-of-events logic, and ratchet rows for regressions. Unit tests only when clearest; no test file required per edit. Mock-green is not live-green. Skill changes still need with_skill versus without_skill evals.",
+      "assertions": [
+        {
+          "name": "fits-proof-to-behavior",
+          "type": "content",
+          "description": "Selects real-binary e2e, an event-order TLA+/TLC spec, or a regression ratchet according to the behavior being proved."
+        },
+        {
+          "name": "no-per-edit-unit-test-law",
+          "type": "negative",
+          "description": "Does not require a new test file or failing unit test before every edit; uses unit tests only when they are the clearest proof."
+        },
+        {
+          "name": "keeps-evidence-boundaries",
+          "type": "content",
+          "description": "Keeps mock-green distinct from live-green and preserves baseline/with-skill evals for skill changes."
         }
       ]
     }

@@ -478,6 +478,29 @@
           "description": "Does NOT score, store, or cite the provenance-less result as eval evidence"
         }
       ]
+    },
+    {
+      "id": 17,
+      "name": "cheapest-real-proof-no-mandatory-test-file",
+      "prompt": "Repair the packaged skill-creator agent instructions. Must every code edit have a new failing unit-test file? What proof and skill evals are required?",
+      "expected_output": "Chooses real-binary e2e for observable behavior, TLA+/TLC for order-of-events logic, and ratchet rows for regressions. Unit tests only when clearest; no test file required per edit. Mock-green is not live-green. Skill changes still need with_skill versus without_skill evals.",
+      "assertions": [
+        {
+          "name": "fits-proof-to-behavior",
+          "type": "content",
+          "description": "Selects real-binary e2e, an event-order TLA+/TLC spec, or a regression ratchet according to the behavior being proved."
+        },
+        {
+          "name": "no-per-edit-unit-test-law",
+          "type": "negative",
+          "description": "Does not require a new test file or failing unit test before every edit; uses unit tests only when they are the clearest proof."
+        },
+        {
+          "name": "keeps-evidence-boundaries",
+          "type": "content",
+          "description": "Keeps mock-green distinct from live-green and preserves baseline/with-skill evals for skill changes."
+        }
+      ]
     }
   ],
   "with_skill_vs_without_skill": {
