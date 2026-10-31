@@ -67,6 +67,12 @@ mkdir -p "$WORKDIR/frames${SUFFIX}"
 After `$MEDIADIR/logs/extract.exit` exists and is `0`, read `$MEDIADIR/transcript.srt`; confirm timestamps/content are usable.
 `WHISPER_MODEL` overrides `~/.cache/whisper/ggml-small.bin`. If transcription
 fails, stop this pass and report the failure; do not read a previous transcript.
+Transcription defaults to English; set `WHISPER_LANGUAGE=auto` only when requested
+(or set an explicit language code). The helper disables carried text context
+(`--max-context 0`) to reduce repetition across segments and suppresses non-speech
+tokens. Entropy/logprob/no-speech thresholds stay at 2.4/-1.0/0.6, with temperature
+0 and fallback increments of 0.2 enabled. These supported whisper-cli settings
+reduce loop risk; inspect the SRT for repetition before choosing hotspots.
 
 ## Phase 2: Transcript Analysis (LLM Hotspot Detection)
 

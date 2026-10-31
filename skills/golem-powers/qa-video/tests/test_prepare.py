@@ -1,4 +1,5 @@
 """Real ffmpeg media preparation; whisper output is deterministic in tests."""
+import json
 import os
 from pathlib import Path
 import shutil
@@ -23,12 +24,14 @@ def media(tmp_path):
     bin_dir.mkdir()
     whisper = bin_dir / 'whisper-cli'
     whisper.write_text('''#!/usr/bin/env python3
-import os, sys
+import json, os, sys
 from pathlib import Path
 if '--version' in sys.argv:
     print('whisper test stub version 1.0'); sys.exit(0)
 if os.environ.get('WHISPER_TEST_FAIL'):
     sys.exit(7)
+if os.environ.get('WHISPER_TEST_ARGV'):
+    Path(os.environ['WHISPER_TEST_ARGV']).write_text(json.dumps(sys.argv[1:]))
 p = sys.argv[sys.argv.index('-of') + 1]
 Path(p + '.srt').write_text('1\\n00:00:00,500 --> 00:00:01,500\\nNow I click here.\\n\\n')
 Path(p + '.txt').write_text('Now I click here.\\n')
@@ -95,6 +98,26 @@ def test_missing_model(media):
                             env=env, capture_output=True, text=True)
     assert result.returncode != 0 and 'model' in result.stderr
     assert not (work/'transcript.srt').exists() and not (work/'transcript.txt').exists()
+
+
+@pytest.mark.parametrize('language', [None, 'auto'])
+def test_whisper_language_and_repetition_settings(media, language):
+    video, work, env = media
+    work.mkdir()
+    argv = work/'whisper-argv.json'
+    env.pop('WHISPER_LANGUAGE', None)
+    if language:
+        env['WHISPER_LANGUAGE'] = language
+    env['WHISPER_TEST_ARGV'] = str(argv)
+    subprocess.run(['bash', str(SCRIPT), str(video), str(work)], env=env,
+                   check=True, capture_output=True, text=True)
+    args = json.loads(argv.read_text())
+    for flag, value in [('-l', language or 'en'), ('--max-context', '0'),
+                        ('--entropy-thold', '2.4'), ('--logprob-thold', '-1.0'),
+                        ('--no-speech-thold', '0.6'), ('--temperature', '0'),
+                        ('--temperature-inc', '0.2')]:
+        assert args[args.index(flag)+1] == value
+    assert '--suppress-nst' in args and '--no-fallback' not in args
 
 
 def test_skill_owns_iterative_loop():
