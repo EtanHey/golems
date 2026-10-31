@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOTS = ('.claude/skills', '.agents/skills', '.codex/skills')
 IGNORED = {'.pytest_cache'}
+RECEIPT_IGNORED = IGNORED | {'.system'}
 # Codex owns .system (CLI-version dependent); Claude app sync owns synced
 # (account/machine dependent). Neither namespace is shipped by golems.
 APP_MANAGED = {'.codex/skills': {'.system'}, '.claude/skills': {'synced'}}
@@ -25,6 +26,33 @@ def app_managed(root, name):
 INSTALLER_MARKERS = {'.golems-source-commit', '.golems-install.json'}
 # Claude config dirs (relative to HOME) whose settings.json enabledPlugins must match.
 DEFAULT_CLAUDE_CONFIG_DIRS = ('.claude',)
+
+
+def tree_sha256(root):
+    """Receipt tree: sorted relative-name TAB file-digest lines, following links."""
+    policy, lines = release_policy(), []
+    root = Path(root)
+    root_name = next((name for name in ROOTS if root.parts[-2:] == Path(name).parts), None)
+
+    def walk(item, relative='', ancestors=frozenset()):
+        if (item.name in set(policy['excluded_parts']) | RECEIPT_IGNORED or
+                (len(Path(relative).parts) == 1 and app_managed(root_name, item.name)) or
+                re.search(policy['excluded_files'], relative) or item.name == '.DS_Store' or
+                (len(Path(relative).parts) <= 2 and item.name in INSTALLER_MARKERS)):
+            return
+        if item.is_symlink() and not item.exists(): raise ValueError('broken symlink in skills root: ' + str(item))
+        resolved = item.resolve(strict=True)
+        if resolved in ancestors: raise ValueError('receipt tree symlink cycle')
+        if item.is_dir():
+            for child in sorted(item.iterdir()):
+                walk(child, relative + ('/' if relative else '') + child.name, ancestors | {resolved})
+        elif item.is_file():
+            if any(c in relative for c in '\t\n\r'): raise ValueError('invalid receipt filename')
+            lines.append(relative + '\t' + hashlib.sha256(item.read_bytes()).hexdigest() + '\n')
+        else: raise ValueError('unsupported receipt tree entry')
+
+    walk(root)
+    return hashlib.sha256(''.join(sorted(lines)).encode()).hexdigest()
 
 
 def normalize(value, home):
@@ -492,7 +520,7 @@ def main():
             measurement = 'fixture'
         else:
             if not args.host or args.host.startswith('-'): raise ValueError('SSH host unavailable')
-            command = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10']
+            command = ['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', '-o', 'ConnectTimeout=10']
             if args.identity: command += ['-o', 'IdentitiesOnly=yes', '-o', 'IdentityAgent=none', '-i', args.identity]
             command += [args.host, 'python3 - --inventory']
             remote = subprocess.run(command, input=remote_inventory_script(dirs), text=True,
@@ -504,7 +532,7 @@ def main():
         return 1 if result['errors'] else 0
     except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError) as error:
         print('installed skill parity: FAIL (' + (str(error) if isinstance(error, ValueError) else type(error).__name__) + ')', file=sys.stderr)
-        return 1
+        return 255 if isinstance(error, subprocess.CalledProcessError) and error.returncode == 255 else 1
 
 
 if __name__ == '__main__': sys.exit(main())

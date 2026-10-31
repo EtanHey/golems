@@ -67,6 +67,35 @@ class Parity(unittest.TestCase):
                     self.right['roots'][root]['entries']['class-a'])
             self.assertFalse(self.check()['name_content_parity'])
 
+    def test_receipt_hash_tracks_owned_content_but_not_app_managed_roots(self):
+        with tempfile.TemporaryDirectory(prefix='class-receipt-managed-') as directory:
+            home = Path(directory)
+            for root in parity.ROOTS:
+                folder = home / root
+                owned = folder / 'class-owned'
+                owned.mkdir(parents=True)
+                (owned / 'SKILL.md').write_text('# owned\n')
+                before = parity.tree_sha256(folder)
+                for namespace in parity.APP_MANAGED.get(root, set()):
+                    managed = folder / namespace / 'class-app'
+                    managed.mkdir(parents=True)
+                    (managed / 'SKILL.md').write_text('# app version\n')
+                    self.assertEqual(parity.tree_sha256(folder), before)
+                    (managed / 'SKILL.md').write_text('# changed app version\n')
+                    self.assertEqual(parity.tree_sha256(folder), before)
+                (owned / 'SKILL.md').write_text('# changed owned\n')
+                self.assertNotEqual(parity.tree_sha256(folder), before)
+                nested = owned / 'synced'
+                nested.mkdir()
+                before = parity.tree_sha256(folder)
+                (nested / 'SKILL.md').write_text('# owned nested content\n')
+                self.assertNotEqual(parity.tree_sha256(folder), before)
+            codex = home / '.codex/skills'
+            before = parity.tree_sha256(codex)
+            (codex / 'synced').mkdir()
+            (codex / 'synced/SKILL.md').write_text('# owned codex namespace\n')
+            self.assertNotEqual(parity.tree_sha256(codex), before)
+
     def test_equal(self):
         self.assertEqual(self.check()['errors'], [])
 

@@ -47,6 +47,23 @@ def managed_link(entry, home):
 
 def remote(mode, head, version, stage):
     home = Path.home()
+    if mode == 'receipt':
+        source = home / '.golems/current'
+        writer = source / 'scripts/skills-sync-receipt.mjs'
+        try:
+            require(installed().get('commit') == head, 'receipt release identity mismatch')
+            require(writer.is_file(), 'receipt writer missing')
+            result = subprocess.run(['node', str(writer), 'emit', 'release-channel', 'm1', str(source),
+                                     str(home / '.golems')], capture_output=True, text=True)
+            print(result.stdout + result.stderr, end='')
+            result.check_returncode()
+            verdicts = re.findall(r'^skills-sync receipt: (LIVE|INSTALLED_NOT_ACTIVE|MISMATCH|FAILED)$', result.stdout, re.M)
+            require(len(verdicts) == 1, 'receipt verdict unavailable')
+            print('m1-receipt: ' + verdicts[0])
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            print('m1-receipt: unavailable')
+            print('M1 receipt unavailable: ' + str(error), file=sys.stderr)
+        return
     if mode == 'status':
         attempts = list((home / '.golems/m1-sync').glob(head + '-*'))
         for attempt in attempts:
@@ -143,8 +160,17 @@ def verify(work, head, version):
 
 
 def after_m1_sync(head, work):
-    # RC-I5 owns the future skills-sync install receipt at this hook point.
-    print('after_m1_sync: target ' + head + '; RC-I5 receipt hook reserved')
+    # Only called after sync() passed the standing authorization and verified apply.
+    command = shlex.join(['python3', '-B', '-', '--remote', 'receipt', head, '', ''])
+    try:
+        result = subprocess.run(['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', 'm1', command], input=Path(__file__).read_bytes(),
+                                capture_output=True, timeout=180)
+        text = (result.stdout + result.stderr).decode(errors='replace')
+        if result.returncode or not re.search(r'^m1-receipt: ', text, re.M): text += '\nm1-receipt: unavailable\n'
+    except (OSError, subprocess.SubprocessError) as error:
+        text = 'm1-receipt: unavailable\n' + str(error) + '\n'
+    (work / 'm1-receipt.log').write_text(text)
+    print(text, end='')
 
 
 def authorized():
@@ -198,16 +224,17 @@ def sync(head, version, work):
 
     def ssh(mode, capture=False):
         command = shlex.join(['python3', '-B', '-', '--remote', mode, head, version, stage])
-        return subprocess.run(['ssh', '-o', 'BatchMode=yes', 'm1', command], input=source,
+        return subprocess.run(['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', 'm1', command], input=source,
                               stdout=subprocess.PIPE if capture else None, check=True)
     before = ssh('status', capture=True).stdout
     (work / 'release-before.json').write_bytes(before)
     record = json.loads(before)
     if record.get('commit') == head and record.get('sync_verified') is True:
         print('M1 already at ' + head + '; no copy or backup')
+        after_m1_sync(head, work)
         return 0
     ssh('prepare')
-    subprocess.run(['scp', '-o', 'BatchMode=yes', *[str(work / n) for n in
+    subprocess.run(['scp', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', *[str(work / n) for n in
                    (f'golems-{version}.tar.gz', 'SHA256SUMS', 'MANIFEST.json')], 'm1:' + stage + '/'], check=True)
     ssh('apply')
     after_m1_sync(head, work)

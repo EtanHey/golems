@@ -102,6 +102,7 @@ jobs:
       - name: M1 sync offline guards (fake SSH only)
         run: |
           python -B -m unittest discover -s scripts/tests -p test_m1_sync.py
+          python -B -m unittest discover -s scripts/tests -p test_m1_receipt_real_writer.py
           python3.9 -B -m unittest discover -s scripts/tests -p test_m1_sync.py
 
       - run: bun install --frozen-lockfile
@@ -187,6 +188,8 @@ jobs:
           node --test scripts/tests/pr-wait-hygiene.test.mjs
           node --test scripts/tests/install-receipt.test.mjs \
                       scripts/tests/t3-mcp-holders.test.mjs \
+                      scripts/tests/golems-receipt-core.test.mjs \
+                      scripts/tests/receipt-validator-build.test.mjs \
                       scripts/tests/container-teardown.test.mjs \
                       scripts/tests/pr-chain-span.test.mjs \
                       scripts/tests/bats-coverage.test.mjs \

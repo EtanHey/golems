@@ -546,7 +546,7 @@ function purgeBytecode(live, dirs = []) {
   for (const rel of derived) rmSync(path.join(live, rel), { recursive: true, force: true });
 }
 
-function install(o) {
+async function install(o) {
   const machine = o.apply ? machineHost() : o.host;
   if (o.apply && machine !== o.host) die(`machine identity ${machine} does not match requested host ${o.host}; refusing installation`);
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
@@ -672,6 +672,14 @@ function install(o) {
     applyCodexHooks(ctx.codex);
     console.log(CODEX_TRUST_HINT);
   }
+  try {
+    const { emitSkillsReceipt, emitHooksReceipt, probeOwnerStatus } = await import('../lib/skills-sync-receipt.mjs');
+    const ownerArgs = ['--host', o.host, '--repo', o.repo, ...['manifest', 'python'].flatMap(key => o[key] ? ['--' + key, o[key]] : [])];
+    const args = { mode: 'checkout', source: o.repo, alias: o.host, ownerArgs, owner: probeOwnerStatus(ownerArgs) };
+    for (const [kind, emit] of [['hooks-sync', emitHooksReceipt], ['skills-sync', emitSkillsReceipt]]) {
+      try { emit(args); } catch (error) { console.error(`${kind.toUpperCase()} RECEIPT FAILED (install succeeded): ${error.message}`); }
+    }
+  } catch (error) { console.error(`SKILLS-SYNC RECEIPT FAILED (install succeeded): ${error.message}`); }
   return 0;
 }
 
@@ -808,5 +816,5 @@ function status(o) {
 // still match import.meta.url, which is the real path (#488-b N3).
 if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const o = parseArgs(process.argv.slice(2));
-  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? status(o) : install(o));
+  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? status(o) : await install(o));
 }
