@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "scripts/hooks/fail-open.py"
 ISOLATED = ("-I", "-B")
 TARGETS = {
+    "m1-window-gate": "skills/golem-powers/m1-window-gate/hooks/m1-window-pretooluse.py",
     "tmp-block": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "git-guardian": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
     "human-confirm": "skills/golem-powers/human-confirm-gate/hooks/human-confirm-pretooluse.py",
@@ -506,7 +507,7 @@ def evaluate():
     # exemption. Only the library source is fixed to hooks-live.
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
-    items = transport_inputs(p)
+    items = [p] if gate == "m1-window-gate" else transport_inputs(p)
     if gate == "human-confirm":
         items = [projected for item in items for projected in confirm_inputs(item)]
     for item in items:
