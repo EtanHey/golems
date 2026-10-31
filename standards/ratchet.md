@@ -224,6 +224,7 @@ pass every real live row defined on master. Missing, stale, red, wrong-author re
 failures fail closed. Candidate PR changes and later unguarded merges do not invalidate a receipt.
 For 120 minutes from `merged_at`, the immediately preceding guarded merge's valid receipt may cover a missing/invalid latest receipt; all current row, report-only and head checks apply.
 Two consecutive unreceipted guarded merges fail; after 120 minutes the latest receipt is required. Run `scripts/ratchet/post-merge-live.sh --merged-pr N`: update mbp hooks-live, auto-select a clean exact-head open-PR worktree, run live rows with installed-skills.json, print comment URL and freshness.
+Exit 3 means Codex hook trust is missing: the owner must open plain `codex` (no `--profile`), run `/hooks`, approve the changed definitions, then rerun; no live rows run or receipt is posted.
 Optional `--lease-pr N --lease-repo <path>` constrain selection. Later unguarded master SHAs are accepted; branch SHAs and receipts preceding the guarded merge are rejected. The receipt measures the live
 install's status and token probe; this CI row checks the receipt, never uses lead tokens or
 installs hooks. It is labeled `unit` so receipt checks cannot be mistaken for a live replay.

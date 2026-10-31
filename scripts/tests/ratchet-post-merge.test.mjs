@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 test('post-merge wrapper picks clean exact-head leases, prefers worker paths, and fails without one', () => {
@@ -13,6 +13,7 @@ const a = process.argv.slice(2), e = process.env;
 const name = require('path').basename(process.argv[1]);
 if (name === 'bash') {
   if (a[0].endsWith('install-hooks.sh') && a.slice(1).join(' ') === '--host mbp --update --apply') process.exit(0);
+  if (a[0].endsWith('install-hooks.sh') && a.includes('--status')) { console.log('codex wiring=ok trust=ok'); process.exit(0); }
   if (a[0].endsWith('live-rows.sh') && a.slice(1).join(' ') === '--merged-pr 42 --lease-pr 7 --lease-repo ' + e.EXPECT_PATH
     && e.RATCHET_SKILL_CONFIG === e.HOME + '/.golems/ratchet/installed-skills.json') process.exit(0);
   process.exit(8);
@@ -40,5 +41,49 @@ else process.exit(9);
     expect(none.stderr).toContain('no valid lease');
     expect(run({ EXPECT_PATH: '/ordinary' }, ['--lease-pr', '7', '--lease-repo', '/ordinary']).status).toBe(0);
     expect(run({}, ['--lease-pr', '8']).status).toBe(1);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test('post-merge wrapper blocks missing Codex trust before lease selection or receipts', () => {
+  const dir = mkdtempSync(resolve('docs.local/l3-tests/post-merge-trust-'));
+  try {
+    mkdirSync(join(dir, 'scripts/ratchet'), { recursive: true });
+    mkdirSync(join(dir, 'bin'));
+    copyFileSync(resolve('scripts/ratchet/post-merge-live.mjs'), join(dir, 'scripts/ratchet/post-merge-live.mjs'));
+    const fake = `#!/usr/bin/env node
+const fs = require('fs'), a = process.argv.slice(2), e = process.env;
+const name = require('path').basename(process.argv[1]);
+fs.appendFileSync(e.CALL_LOG, name + ' ' + a.join(' ') + '\\n');
+if (name === 'bash' && a[0].endsWith('install-hooks.sh')) {
+  if (a.includes('--status')) {
+    console.log('codex wiring=ok enabled=true registered=true source=true trust=' + e.HOOK_TRUST);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+process.exit(9);
+`;
+    for (const name of ['bash', 'gh', 'git']) writeFileSync(join(dir, 'bin', name), fake, { mode: 0o755 });
+    const log = join(dir, 'calls');
+    const run = trust => spawnSync('node', [join(dir, 'scripts/ratchet/post-merge-live.mjs'), '--merged-pr', '42'],
+      { encoding: 'utf8', env: { ...process.env, PATH: join(dir, 'bin') + ':' + process.env.PATH, CALL_LOG: log, HOOK_TRUST: trust } });
+    const missing = run('missing');
+    expect(missing.status).toBe(3);
+    expect(missing.stdout).toBe([
+      'post-merge-live: BLOCKED — Codex hook trust missing (new or changed hook definitions).',
+      'Owner step (Etan, on this Mac): open plain `codex` (no --profile), run /hooks, approve the changed definitions.',
+      'Then re-run: scripts/ratchet/post-merge-live.sh --merged-pr 42',
+      "No receipt posted, so live-freshness's grace window still applies.",
+      '',
+    ].join('\n'));
+    const calls = readFileSync(log, 'utf8').trim().split('\n');
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEndWith('--host mbp --update --apply');
+    expect(calls[1]).toEndWith('--host mbp --status');
+    // Even a failed status probe continues when it does not report missing trust.
+    writeFileSync(log, '');
+    expect(run('ok').status).toBe(1);
+    expect(readFileSync(log, 'utf8')).toContain('gh pr list');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
