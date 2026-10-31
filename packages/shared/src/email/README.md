@@ -1,6 +1,6 @@
 # EmailGolem
 
-Smart email triage for Gmail. Scores emails, alerts on urgent, tracks subscriptions.
+Smart email triage for Gmail. Scores and routes emails in memory.
 
 ---
 
@@ -8,9 +8,6 @@ Smart email triage for Gmail. Scores emails, alerts on urgent, tracks subscripti
 
 - **Polls Gmail** every 10 minutes
 - **Scores emails** 1-10 using Ollama AI
-- **Alerts immediately** on score 10 (interviews, payment failures)
-- **Morning digest** of job updates and payments
-- **Monthly report** of subscription spending
 
 ---
 
@@ -21,7 +18,6 @@ Smart email triage for Gmail. Scores emails, alerts on urgent, tracks subscripti
 - Bun runtime
 - Ollama running locally with `qwen2.5-coder:32b`
 - Gmail API credentials (OAuth2)
-- Supabase project with tables created
 
 ### 2. Environment Setup
 
@@ -32,9 +28,6 @@ GMAIL_CLIENT_ID=your-client-id
 GMAIL_CLIENT_SECRET=your-client-secret
 GMAIL_REFRESH_TOKEN=your-refresh-token
 
-# Supabase (from project settings)
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
 ```
 
 ### 3. Gmail OAuth Setup
@@ -48,13 +41,6 @@ SUPABASE_ANON_KEY=eyJ...
    bun run scripts/gmail-auth.ts
    ```
 6. Copy the refresh token to `.env`
-
-### 4. Database Setup
-
-Run the migration in Supabase SQL editor:
-```sql
--- See supabase/migrations/001_email_golem_tables.sql
-```
 
 ### 5. Test Run
 
@@ -86,7 +72,7 @@ cd packages/services && bun run cloud-worker
 bun packages/shared/src/email/index.ts [options]
 
 Options:
-  --dry-run, -n    Don't save to DB or send notifications
+  --dry-run, -n    Skip routing and state writes
   --max=N          Maximum emails to fetch (default: 20)
   --help, -h       Show help
 ```
@@ -117,55 +103,19 @@ tail -100 /tmp/golemszikaron-email-golem.log
 
 | Score | Category | Action | Examples |
 |-------|----------|--------|----------|
-| 10 | `interview`, `urgent` | Stored as urgent for query tools | Interview invite, payment failed |
-| 7-9 | `job` | Morning briefing | Application status, recruiter message |
-| 5-6 | `subscription` | Track for monthly | Netflix receipt, renewal notice |
+| 10 | `interview`, `urgent` | Route in memory | Interview invite, payment failed |
+| 7-9 | `job` | Route in memory | Application status, recruiter message |
+| 5-6 | `subscription` | Classify in memory | Netflix receipt, renewal notice |
 | 3-4 | `other` | Log only | Job digests, rejections |
 | 1-2 | `newsletter`, `promo` | Ignore | Marketing, spam |
 
 ---
 
-## Urgent triage
+## Storage retirement
 
-Urgent emails (score 10) remain stored and available through email query tools.
-The triage loop does not send messages or mark them as notified.
-
-## Morning Briefing Integration
-
-Services briefing reads these sections from EmailGolem:
-
-### 24-Hour Email Digest
-```
-📧 *Emails (24h)*
-
-🔴 *Urgent* (already notified):
-   → Microsoft Interview - tomorrow 2pm
-
-💼 *Job Updates:*
-   → Meta - Application received
-
-💳 *Payments:*
-   → Netflix charged $15.99
-
-_3 job updates • 1 alert • 2 payments_
-```
-
-### Monthly Subscription Report (1st of month)
-```
-💳 *Subscriptions Report - February 2026*
-
-*Active Services:*
-   → Netflix: $15.99
-   → Spotify: $10.99
-   → Claude Pro: $20.00
-
-*Total:* `$46.98/month`
-
-*Changes this month:*
-✅ Added: Cursor Pro
-```
-
----
+Scoring and routing use the current in-memory batch. Local state retains processed IDs.
+The dropped-table storage, retry queue, and email/subscription briefing sections are retired.
+MCP tools provide Gmail search and reply drafts. No notification delivery is configured.
 
 ## Troubleshooting
 
@@ -187,16 +137,6 @@ _3 job updates • 1 alert • 2 payments_
 - Ollama may be failing silently. Check logs for "Scoring unavailable"
 - Fallback uses score=5, category="unknown"
 
-### Supabase Errors
-
-**"Missing SUPABASE_URL"**
-- Check `.env` has `SUPABASE_URL` and `SUPABASE_ANON_KEY`
-
-**Items queuing but not syncing**
-- Check offline queue: `cat ~/.golems-zikaron/offline-queue.json`
-- Verify Supabase is accessible
-- Run manual sync: email-golem syncs on each startup
-
 ### Scheduler Issues
 
 **Not running**
@@ -213,7 +153,6 @@ email-golem/
 ├── index.ts           # Main entry point
 ├── gmail-client.ts    # Gmail API wrapper
 ├── scorer.ts          # Ollama scoring
-├── db-client.ts       # Supabase + offline queue
 ├── types.ts           # TypeScript interfaces
 ├── CONTEXT.md         # Agent documentation
 └── README.md          # This file
@@ -226,7 +165,6 @@ email-golem/
 | Path | Purpose |
 |------|---------|
 | `~/.golems-zikaron/state.json` | Last check time, processed IDs |
-| `~/.golems-zikaron/offline-queue.json` | Queued items when offline |
 
 ---
 
@@ -236,7 +174,6 @@ email-golem/
 # Disable: stop the cloud worker, or remove EmailGolem from its schedule
 
 # Clear state (start fresh)
-rm ~/.golems-zikaron/offline-queue.json
 # Edit state.json to remove lastEmailCheck and processedEmailIds
 ```
 
@@ -258,4 +195,3 @@ See `src/__tests__/email-golem/` for test fixtures covering:
 - Job updates (score 7)
 - Subscription receipts (score 5)
 - Newsletter/promo (score 1-2)
-- Offline queue resilience

@@ -9,9 +9,7 @@
 EmailGolem is an automated email triage system that:
 1. Polls Gmail hourly in the daytime, via the cloud worker (`packages/services/src/cloud-worker.ts`)
 2. Scores emails using Ollama (qwen2.5-coder:32b)
-3. Stores results in Supabase with offline resilience
-4. Provides 24h email digest in morning briefing
-5. Tracks subscriptions for monthly spend reports
+3. Routes scored emails in memory and saves local deduplication state
 
 ---
 
@@ -24,9 +22,8 @@ Gmail API (poll every 10 min)
            ↓
       scorer.ts      ← Ollama JSON scoring
            ↓
-    db-client.ts     ← Supabase with offline queue
-           ↓
-    Morning briefing and query tools
+    router.ts        ← In-memory routing
+
 ```
 
 ---
@@ -38,7 +35,6 @@ Gmail API (poll every 10 min)
 | `index.ts` | Main entry point, CLI | `processEmails()`, `processEmail()` |
 | `gmail-client.ts` | Gmail API wrapper | `fetchRecentEmails()`, `fetchEmailsSince()` |
 | `scorer.ts` | Ollama scoring + categories | `scoreEmail()`, `extractSubscriptionInfo()` |
-| `db-client.ts` | Supabase + offline queue | `saveEmail()`, `trackSubscription()`, `syncOfflineQueue()` |
 | `types.ts` | TypeScript interfaces | `Email`, `Subscription`, `Payment` |
 
 ---
@@ -47,57 +43,13 @@ Gmail API (poll every 10 min)
 
 | Score | Action | Examples |
 |-------|--------|----------|
-| **10** | Stored as urgent for query tools | Interview invite, payment failed, urgent deadline |
-| **7-9** | Morning briefing | Job status update, recruiter message |
-| **5-6** | Track for monthly | Subscription receipts, renewal confirmations |
+| **10** | Route in memory | Interview invite, payment failed, urgent deadline |
+| **7-9** | Route in memory | Job status update, recruiter message |
+| **5-6** | Classify in memory | Subscription receipts, renewal confirmations |
 | **3-4** | Log only | Job digests, rejections, confirmations |
 | **1-2** | Ignore | Newsletters, promos, spam |
 
 **Category enum:** `interview`, `urgent`, `job`, `subscription`, `newsletter`, `promo`, `other`
-
----
-
-## Database Schema (Supabase)
-
-```sql
--- emails: Scored emails with categories
-create table emails (
-  id uuid primary key default gen_random_uuid(),
-  gmail_id text unique not null,
-  subject text,
-  from_address text,
-  snippet text,
-  score int,
-  category text,
-  received_at timestamptz,
-  scored_at timestamptz default now(),
-  notified boolean default false
-);
-
--- subscriptions: Tracked services
-create table subscriptions (
-  id uuid primary key default gen_random_uuid(),
-  service_name text not null,
-  amount decimal(10,2),
-  currency text default 'USD',
-  frequency text,  -- 'monthly', 'yearly', 'one-time'
-  status text default 'active',
-  first_seen timestamptz default now(),
-  last_payment timestamptz,
-  created_at timestamptz default now()
-);
-
--- payments: Payment events
-create table payments (
-  id uuid primary key default gen_random_uuid(),
-  subscription_id uuid references subscriptions(id),
-  email_id uuid references emails(id),
-  amount decimal(10,2),
-  currency text default 'USD',
-  paid_at timestamptz,
-  created_at timestamptz default now()
-);
-```
 
 ---
 
@@ -117,24 +69,9 @@ State stored in `~/.golems-zikaron/state.json`:
 
 ---
 
-## Offline Resilience
+## MCP Tools
 
-All Supabase operations use `safeInsert()` / `safeUpsert()`:
-
-1. Try Supabase operation
-2. On failure → queue to `~/.golems-zikaron/offline-queue.json`
-3. On startup → `syncOfflineQueue()` retries queued items
-
-**Never lose data** - if Supabase is down, items are queued locally.
-
----
-
-## Integration Points
-
-### Morning Briefing
-`briefing.ts` imports from this module:
-- `getRecentEmails(client, 24, 5)` - 24h, score >= 5
-- `getSubscriptionSummary(client)` - monthly report
+Gmail search and reply drafting remain available. Database query tools and briefing sections are retired.
 
 ---
 
@@ -175,7 +112,7 @@ bun packages/shared/src/email/index.ts --dry-run
 bun packages/shared/src/email/index.ts --dry-run --max=5
 ```
 
-Tests mock `googleapis` and Supabase - no real API calls.
+Tests mock Gmail and scoring - no real API calls.
 
 ---
 
@@ -211,7 +148,6 @@ export const SCORE_THRESHOLDS = {
 2. **Ollama latency** - 300ms delay between emails (~25s for 50 emails)
 3. **Subscription detection** - Regex-based, may miss new services
 4. **Payment extraction** - Simple `$X.XX` regex, limited formats
-5. **Payment linkage** - `subscription_id` is null (manual lookup by service_name)
 
 ---
 
@@ -223,16 +159,11 @@ GMAIL_CLIENT_ID=...
 GMAIL_CLIENT_SECRET=...
 GMAIL_REFRESH_TOKEN=...
 
-# Supabase
-SUPABASE_URL=...
-SUPABASE_ANON_KEY=...
 ```
 
 ---
 
 ## Related Files
 
-- `packages/services/src/briefing.ts` - Morning briefing integration
 - `packages/shared/src/lib/llm.ts` (`@golems/shared/lib/llm`) - Unified LLM facade and JSON helper
 - `packages/services/src/cloud-worker.ts` - Scheduler
-- Schema: the Supabase migration for these tables is not tracked in this repo
