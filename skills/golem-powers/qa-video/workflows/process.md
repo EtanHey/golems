@@ -150,7 +150,8 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" "dense${SUFFIX}" -- bash "$SCRIPTS/dense-
 Outputs `sheet_NNN.jpg` (5x4 contact sheets), `index.tsv`
 (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) and one `frames.tsv`
 row per extracted frame: `frame`, `pts_s` (decoded pts), `source`, `sheet`,
-`tile`, `sha256`, `repeat_of`. Take citation timestamps from `pts_s`. Check
+`tile`, `sha256`, `repeat_of`. crop.sh rows use `source=crop` plus an optional
+`crop_of` column naming the parent frame. Take citation timestamps from `pts_s`. Check
 `scripts/source-fps.sh "$VIDEO"` first: an fps above the source makes
 dense-windows.sh warn, and the extra frames are repeats (`repeat_of` set) that
 add no information.

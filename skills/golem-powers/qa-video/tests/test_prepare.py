@@ -168,3 +168,6 @@ def test_qa_pipeline_agent_contract():
         assert 'references/provenance.md' in text or '(../references/provenance.md)' in text
     assert '≥1 full-size frame or crop before' in process and 're-check that window at full size' in process
     assert 'cite sheet + tile + timestamp' not in process.lower(), 'a tile is an index, not a citation'
+    assert '"provenance unavailable"' in (root/'SKILL.md').read_text()
+    for text in [(root/f).read_text() for f in ('SKILL.md', 'workflows/process.md')]:
+        assert '`sha256`, `repeat_of`' in text and '`source=crop`' in text and '`crop_of`' in text

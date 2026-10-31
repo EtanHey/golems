@@ -121,6 +121,8 @@ convenience index never gates the loop.
 
 The runner is the reader; the tooling records provenance. Column and helper
 details: [references/provenance.md](references/provenance.md).
+If a provenance tool or column is missing, keep reading the frames directly, say
+"provenance unavailable", and never synthesize counts or timestamps.
 
 - **Sheets are an index.** Use contact sheets to find moments. A finding cites the
   full-size frame (`frames.tsv` `frame`) or a crop from
@@ -157,7 +159,7 @@ details: [references/provenance.md](references/provenance.md).
      - (a) every transcript segment whose text matches action language: click, clicking, press, tap, hover, drag, drop, scroll, open, close, select, toggle, switch, type, "when I", "now I", "this", "here", "look", "watch"
      - (b) `scripts/scene-cues.sh <video>` output — visual changes catch silent clicks and UI changes the narrator never mentions
      - (c) click logs, if `qa_click_logger` data exists for the session
-   - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (5–20 allowed; use 20 fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) plus a `frames.tsv` row per extracted frame (`frame`, `pts_s`, `source`, `sheet`, `tile`, `sha256`, `repeat_of`; see [references/provenance.md](references/provenance.md)). Times are the decoded pts, so `window_start_s` can be later than the padded cue start; take every timestamp from `frames.tsv`.
+   - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (5–20 allowed; use 20 fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) plus a `frames.tsv` row per extracted frame (`frame`, `pts_s`, `source`, `sheet`, `tile`, `sha256`, `repeat_of`; crop.sh rows use `source=crop` and add an optional `crop_of` column naming the parent frame; see [references/provenance.md](references/provenance.md)). Times are the decoded pts, so `window_start_s` can be later than the padded cue start; take every timestamp from `frames.tsv`.
    - **View every contact sheet yourself, in time order.** For each window, state: what the cursor targets, the before/after UI state, what carried over from the previous window or changed since it, and any visual defect. Work within the remaining wall-clock AND image-context budget: pick candidate windows before bulk image loading, keep the before/after and adjacent-window frames for each retained finding, append findings to the text ledger as you go, and stop with honest partial coverage before context runs out. If the budget forces a helper pre-sort, the sheets you did not view stay pre-sorted only, never confirmed.
    - **Cite or label.** A visual finding cites the full-size frames or crops you viewed yourself, before and after, with `pts_s` (e.g. before `<frame> @ 12.600s`, after `<frame> @ 12.800s`, both `frame` paths from `frames.tsv`, located via `sheet_004.jpg` tile 6–8). A finding with no frame citation is transcript-only and must be labelled **transcript-only**.
 
