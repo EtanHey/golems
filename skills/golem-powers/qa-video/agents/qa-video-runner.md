@@ -6,7 +6,7 @@ model: sonnet
 tools: Bash, Write, Read
 ---
 
-Declare mode first: qa (default for UI bugs), debrief, or review. QA retains mandatory 10 fps action windows and scene cues. Debrief/review is TRANSCRIPT-FIRST: ≤12 transcript moments, one still or ≤2 fps short window each; no blanket 30s coverage and no scene sweep unless narration references slides/code/screen share. Total budget defaults to max(600, 24 × video minutes) seconds for debrief/review, including transcription and note. Explicit --budget-seconds wins; display the computed budget. Even on BUDGET_EXCEEDED/PARTIAL, read the preserved transcript-derived debrief.md; missing visual reads stay NOT DETERMINED. Use ../scripts/debrief.py with a fresh workdir (source input/logs only) for that mode; read the full SRT and evidence note, and view the stills behind any visual claim you keep, to synthesize takeaways without treating claims as facts. Pass only the remaining parent budget to debrief.py; finish synthesis before that deadline. Write root progress.txt at every phase (transcribing, picked moments, extracting, visual completed/total + ETA, compiling, done/blocker). The parent runs you in the background and reads progress.txt on delay questions. Append findings as they arrive.
+Declare mode first: qa (default for UI bugs), debrief, or review. QA retains mandatory 10 fps action windows and scene cues. Debrief/review is TRANSCRIPT-FIRST: ≤12 transcript moments, one still or ≤2 fps short window each; no blanket 30s coverage and no scene sweep unless narration references slides/code/screen share. Total budget defaults to max(600, 24 × video minutes) seconds for debrief/review, including transcription and note. Explicit --budget-seconds wins; display the computed budget. Even on BUDGET_EXCEEDED/PARTIAL, read the preserved transcript-derived debrief.md; missing visual reads stay NOT DETERMINED. Use ../scripts/debrief.py with a fresh workdir (source input/logs only) for that mode. By default it calls no helper: it extracts the targeted stills, writes frames.tsv and exits STILLS_READY for you to view them; pass --presort only to opt in to the visual-batch.py pre-sort. Then read the full SRT and evidence note, and view the stills behind any visual claim you keep, to synthesize takeaways without treating claims as facts. Pass only the remaining parent budget to debrief.py; finish synthesis before that deadline. Write root progress.txt at every phase (transcribing, picked moments, extracting, visual completed/total + ETA, compiling, done/blocker). The parent runs you in the background and reads progress.txt on delay questions. Append findings as they arrive.
 
 Own the complete QA/debrief loop using the parent's video, project, artifact directory
 and round. Locate the skill from the parent's absolute path or the resolved
@@ -26,8 +26,12 @@ helper only removes the optional pre-sort.
 Use run-step.sh for long jobs; poll logs/<step>.exit, require 0 and verify
 outputs. For qa: extract audio + ggml-small SRT/TXT, read narration, combine transcript
 hotspots with scene cues, extract dense windows at 10 fps and 30s coverage.
-View every sheet and coverage frame yourself when the budget allows. To pre-sort,
-use the packaged batch driver on an index.tsv or a list of coverage frames.
+View every sheet and coverage frame yourself within the remaining
+wall-clock AND image-context budget. Pick candidate windows before bulk image
+loading; keep the before/after and adjacent-window frames for each retained
+finding; append each finding to the text ledger as you go; stop with honest
+partial coverage before context runs out. To pre-sort, use the packaged batch driver on an index.tsv or
+a list of coverage frames.
 Default concurrency 3, cap 4, budget 480s; in-flight calls may drain past it.
 Helper timeout is clamped to remaining budget +30s (10s floor). Read progress.txt and incremental
 visual/findings.jsonl. A budget/quota stop is partial, never complete coverage.

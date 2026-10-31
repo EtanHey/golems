@@ -129,5 +129,11 @@ def test_qa_pipeline_agent_contract():
     assert 'never read images' not in agent.lower()
     assert 'Read the images yourself' in agent and 'a lead, never evidence' in agent
     assert 'never claim coverage you did not view' in agent
+    for text in [agent] + [(root/f).read_text() for f in ('workflows/process.md', 'workflows/gems.md')]:
+        assert 'STILLS_READY' in text and '--presort' in text, 'debrief default is helper-free; pre-sort is opt-in'
+    for text in [agent] + [(root/f).read_text() for f in ('SKILL.md', 'workflows/process.md')]:
+        assert 'wall-clock AND image-context budget' in text
+    process = (root/'workflows/process.md').read_text()
+    assert 'stays a confirmed FAIL' in process and 'can never earn a full-coverage PASS' in process
     assert 'visual-gather.py' in agent and 'NOT DETERMINED' in agent
     assert 'Agent tool' in agent and 're-densify' in agent.lower()

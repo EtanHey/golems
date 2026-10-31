@@ -1,6 +1,6 @@
 # Video Processing: QA or Transcript-First Debrief
 
-**qa** keeps the dense action pipeline below. **debrief / review / gems** uses TRANSCRIPT-FIRST: ≤12 transcript questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each, no blanket 30s coverage and no scene sweep unless narration references visuals. Default debrief budget is max(600, 24 × video minutes) seconds wall-clock; explicit --budget-seconds overrides it. Preserve/read debrief.md whenever transcript.srt exists, including BUDGET_EXCEEDED/PARTIAL; missing visual reads stay NOT DETERMINED. For these modes use `scripts/debrief.py VIDEO --workdir FRESH_DIR --mode debrief` through run-step.sh, then read the full SRT and debrief.md, and view the stills behind any visual claim you keep, for the final synthesis. Skip QA phases 3–5. Never infer visual coverage for unsampled parts of the video. The runner writes root progress.txt at every phase and incremental findings.jsonl; the parent dispatches in the background and reads progress.txt on delay questions. For manual qa steps, rewrite root progress.txt on every phase transition too.
+**qa** keeps the dense action pipeline below. **debrief / review / gems** uses TRANSCRIPT-FIRST: ≤12 transcript questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each, no blanket 30s coverage and no scene sweep unless narration references visuals. Default debrief budget is max(600, 24 × video minutes) seconds wall-clock; explicit --budget-seconds overrides it. Preserve/read debrief.md whenever transcript.srt exists, including BUDGET_EXCEEDED/PARTIAL; missing visual reads stay NOT DETERMINED. For these modes use `scripts/debrief.py VIDEO --workdir FRESH_DIR --mode debrief` through run-step.sh. By default debrief.py calls no helper: it extracts the targeted stills, writes frames.tsv and exits `STILLS_READY` for you to view them; `--presort` opts in to the visual-batch.py pre-sort. Then read the full SRT and debrief.md, and view the stills behind any visual claim you keep, for the final synthesis. Skip QA phases 3–5. Never infer visual coverage for unsampled parts of the video. The runner writes root progress.txt at every phase and incremental findings.jsonl; the parent dispatches in the background and reads progress.txt on delay questions. For manual qa steps, rewrite root progress.txt on every phase transition too.
 
 ## Inputs Required
 - `VIDEO` — path to the .mov screen recording
@@ -152,6 +152,14 @@ around each cue, and whether an element's state carries from one window to the
 next. Open the full-resolution frame behind any tile a finding rests on. The
 lead receives text only.
 
+**Work within the remaining wall-clock AND image-context budget.** Images fill
+your context as well as the clock. Choose candidate windows (cues, transcript
+hotspots, pre-sort flags) before loading images in bulk. For each finding you
+keep, keep its before/after frames and the adjacent window's frames. Append each
+finding to the text ledger as you go, so a context stop loses no evidence. Stop
+with honest partial coverage while there is still room to compare windows and
+write the findings.
+
 **Optional pre-sort.** When there are more sheets than you can view in budget,
 the packaged batch driver can flag candidate windows first (one sheet per call,
 default 3 concurrent, hard cap 4). Its output is a lead, not evidence: view the
@@ -197,7 +205,9 @@ without a sheet citation is transcript-only and must be labelled
 **Coverage honesty.** Count what you viewed directly versus what the helper
 pre-sorted only, e.g. "viewed 41 of 386 samples plus 4 stills; the rest
 pre-sorted only or unreviewed, so coverage is partial". Never claim full
-coverage you did not view; unviewed spans keep the QA verdict INCONCLUSIVE.
+coverage you did not view. Keep the two verdicts apart: a failure you viewed
+yourself stays a confirmed FAIL, whatever else went unviewed. The unviewed spans
+are INCONCLUSIVE and can never earn a full-coverage PASS.
 
 **Correlate** each frame with the corresponding SRT segment. The key advantage: you get BOTH what the user SAID and what they SAW, aligned by timestamp.
 
