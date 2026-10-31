@@ -16,6 +16,35 @@ def test_bounds(finding, state, bad):
     assert item['offending_indexes'] == bad
 
 
+@pytest.mark.parametrize('finding', [
+    '/evidence/frames/interval-001.jpg: Application visible.',
+    'See evidence/frames/interval-001.jpg and evidence/tile/sheet-003.png.',
+    'See frame-rate.png and tile-003.jpg.',
+    r'C:\evidence\frames\interval-001.jpg: Application visible.',
+    '20 tiles (0..19 in 4x5 grid). Before: tiles 0-14; after: tiles 15-19.',
+    '20 tiles. The frame rate is 10 frames per second; framework visible.',
+    'The tile layout is unchanged across frames.',
+    'tiles 0..19: visible; tile 7, then tile 8 shows the result.',
+    '/evidence with spaces/frames/interval-001.jpg: Application visible.',
+])
+def test_paths_counts_and_prose_are_not_bad_citations(finding):
+    item = batch.validate(dict(ok=True, sheet='/evidence with spaces/frames/interval-001.jpg',
+                               finding=finding), 20)
+    assert item['state'] == 'READ', item
+
+
+@pytest.mark.parametrize('finding', [
+    '/evidence/frames/interval-001.jpg: tile 25: visible.',
+    r'C:\evidence\frames\interval-001.jpg: tiles 18..25: visible.',
+    '20 tiles (0..25 in a grid).', '20 tiles (19..0 in a grid).',
+    'tiles 0..', 'tile 2.5', 'tiles 1/25', 'tile twenty-five',
+    'the fourth tile', 'tile 0 and 25',
+    '20 tiles 25: visible', 'tile 3 tile 25: visible',
+])
+def test_path_fix_keeps_bad_citations_invalid(finding):
+    assert batch.validate(dict(ok=True, finding=finding), 20)['state'] == 'INVALID'
+
+
 def test_retry_backoff_and_budget():
     now, sleeps = [0.], []
     def sleep(delay):
