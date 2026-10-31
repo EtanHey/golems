@@ -4,12 +4,7 @@
  *
  * Main entry point. Runs every 10 minutes via launchd.
  *
- * Flow:
- * 1. Sync offline queue (if any)
- * 2. Fetch new emails from Gmail
- * 3. Score each email with Ollama
- * 4. Save to Supabase
- * 5. Track subscriptions for monthly digest
+ * Flow: fetch Gmail → score → route in memory → save deduplication state.
  */
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
@@ -24,23 +19,12 @@ import {
 } from "./gmail-client";
 import {
   scoreEmail,
-  shouldTrackSubscription,
   type ScoredEmail,
   type EmailInput,
 } from "./scorer";
-import {
-  createDbClient,
-  saveEmail,
-  trackSubscription,
-  recordPayment,
-  syncOfflineQueue,
-  type Email,
-  type Subscription,
-} from "./db-client";
 import { determineTargetGolem } from "./router";
 import { logEvent } from "../lib/event-log";
 import { getState, setState } from "../lib/state-store";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Configuration
 const HOME = process.env.HOME || homedir();
@@ -137,29 +121,9 @@ function toEmailInput(gmail: GmailEmail, body?: string): EmailInput {
   };
 }
 
-/**
- * Convert ScoredEmail to DB Email format
- */
-function toDbEmail(scored: ScoredEmail): Email {
-  return {
-    gmail_id: scored.id,
-    subject: scored.subject,
-    from_address: scored.from,
-    snippet: scored.snippet,
-    score: scored.score,
-    category: scored.category,
-    received_at: new Date(scored.receivedAt),
-    scored_at: new Date(scored.scoredAt),
-    notified: false,
-  };
-}
-
-/**
- * Process a single email: score, save, route and track subscriptions
- */
+/** Score and route a single email without database storage. */
 async function processEmail(
   gmail: GmailEmail,
-  db: SupabaseClient | null,
   dryRun: boolean,
 ): Promise<ScoredEmail> {
   // Fetch email body for better scoring accuracy (catches rejection vs interview, etc.)
@@ -182,71 +146,24 @@ async function processEmail(
     `     Score: ${scored.score}/10 (${scored.category}) → ${routing.targetGolem}`,
   );
 
-  if (dryRun) {
-    console.log(`     [DRY-RUN] Would save to DB`);
-    if (shouldTrackSubscription(scored)) {
-      console.log(
-        `     [DRY-RUN] Would track subscription: ${scored.subscription?.serviceName}`,
+  if (dryRun) return scored;
+
+  // Log routing event (non-blocking, don't fail the pipeline)
+  if (routing.targetGolem !== "emailgolem") {
+    try {
+      await logEvent(
+        "email_routed",
+        {
+          subject: scored.subject,
+          category: scored.category,
+          score: scored.score,
+          targetGolem: routing.targetGolem,
+          reason: routing.reason,
+        },
+        "emailgolem",
       );
-    }
-    return scored;
-  }
-
-  // Save to database
-  if (db) {
-    const dbEmail = toDbEmail(scored);
-    const saveResult = await saveEmail(db, dbEmail);
-
-    if (!saveResult.success) {
-      console.log(`     Queued for later sync`);
-    }
-
-    // Log routing event (non-blocking, don't fail the pipeline)
-    if (routing.targetGolem !== "emailgolem") {
-      try {
-        await logEvent(
-          "email_routed",
-          {
-            subject: scored.subject,
-            category: scored.category,
-            score: scored.score,
-            targetGolem: routing.targetGolem,
-            reason: routing.reason,
-          },
-          "emailgolem",
-        );
-      } catch (err) {
-        console.error("[EventLog] Failed to log email routing:", err);
-      }
-    }
-
-    // Track subscription
-    if (shouldTrackSubscription(scored) && scored.subscription) {
-      const sub: Subscription = {
-        service_name: scored.subscription.serviceName,
-        amount: scored.subscription.amount,
-        currency: "USD",
-        frequency:
-          scored.subscription.frequency === "unknown"
-            ? null
-            : scored.subscription.frequency,
-        status: "active",
-        last_payment: new Date(),
-      };
-
-      await trackSubscription(db, sub);
-      console.log(`     💳 Subscription tracked: ${sub.service_name}`);
-
-      // Record payment if amount is known
-      if (scored.subscription.amount) {
-        await recordPayment(db, {
-          subscription_id: null, // Will be linked by service_name
-          email_id: null,
-          amount: scored.subscription.amount,
-          currency: "USD",
-          paid_at: new Date(),
-        });
-      }
+    } catch (err) {
+      console.error("[EventLog] Failed to log email routing:", err);
     }
   }
 
@@ -271,23 +188,6 @@ async function processEmails(
   // Load state (uses state-store: Supabase or local file)
   const state = await loadStateAsync();
   const processedIds = new Set(state.processedEmailIds || []);
-
-  // Initialize DB client (may fail if offline)
-  let db: SupabaseClient | null = null;
-  try {
-    db = createDbClient();
-    console.log("✓ Supabase connected");
-
-    // Sync any offline queue items first
-    if (!dryRun) {
-      const syncResult = await syncOfflineQueue(db);
-      if (syncResult.synced > 0) {
-        console.log(`✓ Synced ${syncResult.synced} queued items`);
-      }
-    }
-  } catch (err) {
-    console.log("⚠️  Supabase unavailable - will queue locally");
-  }
 
   // Fetch emails
   let emails: GmailEmail[] = [];
@@ -321,7 +221,7 @@ async function processEmails(
   // Process each email
   const results: ScoredEmail[] = [];
   for (const email of newEmails) {
-    const scored = await processEmail(email, db, dryRun);
+    const scored = await processEmail(email, dryRun);
     results.push(scored);
     processedIds.add(email.id);
 
@@ -453,7 +353,7 @@ Commands:
   search <query>   Search emails using Gmail query syntax
 
 Options:
-  --dry-run, -n    Don't save to DB
+  --dry-run, -n    Score only; skip routing and state writes
   --max=N          Maximum emails to fetch (default: 20)
   --help, -h       Show this help
 

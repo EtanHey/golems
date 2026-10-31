@@ -67,8 +67,7 @@ packages/shared/src/
 │   ├── router.ts                # Email → domain golem routing
 │   ├── draft-reply.ts           # Template reply drafts
 │   ├── followup.ts              # Follow-up tracking with due dates
-│   ├── db-client.ts             # Supabase email storage + offline queue
-│   ├── mcp-server.ts            # MCP tools (7 tools)
+│   ├── mcp-server.ts            # MCP tools (2 tools)
 │   └── types.ts                 # Email-specific types
 └── package.json                 # @golems/shared
 ```
@@ -132,12 +131,7 @@ import "@golems/shared/lib/load-env"; // FIRST import
 
 | Tool | Description |
 |------|-------------|
-| `email_getRecent` | Recent emails by hours + min score |
-| `email_search` | Keyword search in subject/sender |
-| `email_subscriptions` | Monthly subscription summary |
-| `email_urgent` | Unnotified urgent emails |
-| `email_stats` | 24h category breakdown |
-| `email_getByGolem` | Emails routed to a specific golem |
+| `email_search` | Gmail query search |
 | `email_draftReply` | Generate reply draft by intent |
 
 ## Dependencies

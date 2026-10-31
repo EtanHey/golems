@@ -42,26 +42,6 @@ mock.module("../../email/scorer", () => ({
   shouldNotifyImmediately: (scored: any) => scored.score === 10,
   shouldTrackSubscription: (scored: any) => scored.category === "subscription",
 }));
-mock.module("../../email/db-client", () => ({
-  createDbClient: () => ({}),
-  saveEmail: async (_db: any, email: any) => {
-    effects.saved.push(email);
-    return { success: true, data: { id: email.gmail_id } };
-  },
-  trackSubscription: async (_db: any, sub: any) => {
-    effects.subscriptions.push(sub);
-  },
-  recordPayment: async (_db: any, payment: any) => {
-    effects.payments.push(payment);
-  },
-  markNotified: async () => {
-    effects.marked++;
-  },
-  syncOfflineQueue: async () => {
-    effects.syncs++;
-    return { synced: 1 };
-  },
-}));
 mock.module("../../email/router", () => ({
   determineTargetGolem: (category: string) => ({
     targetGolem: category === "interview" ? "recruitergolem" : "emailgolem",

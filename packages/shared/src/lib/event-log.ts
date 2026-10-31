@@ -38,7 +38,6 @@ export type EventType =
   // Email pipeline
   | "email_alert"
   | "email_routed"
-  | "email_unsubscribe_attempt"
   // Job pipeline
   | "job_match"
   // Content pipeline
@@ -224,13 +223,6 @@ function formatAction(event: GolemEvent): string {
       const subject = data.subject || "(no subject)";
       const target = data.targetGolem || "unknown";
       return `routed email to ${target}: "${subject}"`;
-    }
-
-    case "email_unsubscribe_attempt": {
-      const sender = data.sender || "unknown";
-      const method = data.method || "unknown";
-      const success = data.success ? "successfully" : "failed";
-      return `unsubscribe ${success} from ${sender} via ${method}`;
     }
 
     default:

@@ -3,8 +3,6 @@
  * Morning Briefing - 8 AM summary of overnight work
  *
  * Compiles:
- * - 24h Email digest (urgent, job updates, payments)
- * - Monthly subscription summary (on 1st of month)
  * - Soltome activity (posts, credits)
  * - Draft posts ready for approval
  */
@@ -12,143 +10,11 @@
 import "@golems/shared/lib/load-env"; // MUST be first — loads .env for credentials
 
 import {
-  createDbClient,
-  getRecentEmails,
-  getSubscriptionSummary,
-} from "@golems/shared/email/db-client";
-import type { Email, SubscriptionSummary } from "@golems/shared/email/types";
-
-import {
   getTodayEvents,
   getEcosystemStatus,
   generateDailyPlan,
   formatPlanText,
 } from "@golems/coach/index";
-
-
-/**
- * Fetch 24h email digest from Supabase
- */
-async function getEmailDigest(): Promise<{
-  urgent: Email[];
-  job: Email[];
-  payments: Email[];
-  total: number;
-} | null> {
-  try {
-    const db = createDbClient();
-    const emails = await getRecentEmails(db, 24, 5); // Last 24h, score >= 5
-
-    const urgent = emails.filter((e) => (e.score ?? 0) >= 10);
-    const job = emails.filter(
-      (e) => e.category === "job" && (e.score ?? 0) >= 7 && (e.score ?? 0) < 10
-    );
-    const payments = emails.filter((e) => e.category === "subscription");
-
-    return {
-      urgent,
-      job,
-      payments,
-      total: emails.length,
-    };
-  } catch (err) {
-    console.log("[Briefing] Could not fetch email digest:", err);
-    return null;
-  }
-}
-
-/**
- * Format email digest section as text
- */
-function formatEmailDigest(digest: {
-  urgent: Email[];
-  job: Email[];
-  payments: Email[];
-  total: number;
-}): string {
-  let msg = "📧 *Emails (24h)*\n\n";
-
-  if (digest.urgent.length > 0) {
-    msg += "🔴 *Urgent*:\n";
-    for (const e of digest.urgent.slice(0, 3)) {
-      msg += `   → ${e.subject?.slice(0, 40) || "No subject"}...\n`;
-    }
-    msg += "\n";
-  }
-
-  if (digest.job.length > 0) {
-    msg += "💼 *Job Updates:*\n";
-    for (const e of digest.job.slice(0, 3)) {
-      msg += `   → ${e.subject?.slice(0, 40) || "No subject"}\n`;
-    }
-    msg += "\n";
-  }
-
-  if (digest.payments.length > 0) {
-    msg += "💳 *Payments:*\n";
-    for (const e of digest.payments.slice(0, 3)) {
-      msg += `   → ${e.subject?.slice(0, 40) || "No subject"}\n`;
-    }
-    msg += "\n";
-  }
-
-  // Summary line
-  const parts = [];
-  if (digest.job.length > 0) parts.push(`${digest.job.length} job updates`);
-  if (digest.urgent.length > 0) parts.push(`${digest.urgent.length} alerts`);
-  if (digest.payments.length > 0) parts.push(`${digest.payments.length} payments`);
-
-  if (parts.length > 0) {
-    msg += `_${parts.join(" • ")}_\n`;
-  } else {
-    msg += "_No notable emails_\n";
-  }
-
-  return msg;
-}
-
-/**
- * Format subscription summary as text (monthly)
- */
-function formatSubscriptionSummary(summary: SubscriptionSummary): string {
-  const now = new Date();
-  const monthName = now.toLocaleString("en-US", { month: "long", year: "numeric" });
-
-  let msg = `💳 *Subscriptions Report - ${monthName}*\n\n`;
-
-  if (summary.services.length > 0) {
-    msg += "*Active Services:*\n";
-    for (const svc of summary.services) {
-      const amount = svc.amount ? `$${svc.amount.toFixed(2)}` : "???";
-      msg += `   → ${svc.name}: ${amount}\n`;
-    }
-    msg += `\n*Total:* \`$${summary.totalMonthly.toFixed(2)}/month\`\n`;
-  } else {
-    msg += "No tracked subscriptions\n";
-  }
-
-  if (summary.newThisMonth.length > 0) {
-    msg += "\n*Changes this month:*\n";
-    for (const name of summary.newThisMonth) {
-      msg += `✅ Added: ${name}\n`;
-    }
-  }
-
-  if (summary.cancelledThisMonth.length > 0) {
-    for (const name of summary.cancelledThisMonth) {
-      msg += `❌ Cancelled: ${name}\n`;
-    }
-  }
-
-  return msg;
-}
-
-/**
- * Check if today is the 1st of the month
- */
-function isFirstOfMonth(): boolean {
-  return new Date().getDate() === 1;
-}
 
 async function sendBriefing() {
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
@@ -158,27 +24,6 @@ async function sendBriefing() {
   let msg = `☀️ *Morning Briefing*\n\n`;
 
   const separator = "━━━━━━━━━━━━━━━━━━━━━\n\n";
-
-  // Email Digest Section (24h)
-  const emailDigest = await getEmailDigest();
-  if (emailDigest && emailDigest.total > 0) {
-    msg += formatEmailDigest(emailDigest);
-    msg += "\n" + separator;
-  }
-
-  // Monthly Subscription Summary (on 1st of month)
-  if (isFirstOfMonth()) {
-    try {
-      const db = createDbClient();
-      const subSummary = await getSubscriptionSummary(db);
-      if (subSummary.services.length > 0) {
-        msg += formatSubscriptionSummary(subSummary);
-        msg += "\n" + separator;
-      }
-    } catch (err) {
-      console.log("[Briefing] Could not fetch subscription summary:", err);
-    }
-  }
 
   // CoachGolem Daily Plan Section
   try {
@@ -197,7 +42,6 @@ async function sendBriefing() {
 
   console.log("[Briefing] Summary generated\n");
   console.log(msg);
-
 
 }
 

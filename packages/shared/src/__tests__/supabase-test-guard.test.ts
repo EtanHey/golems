@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test";
 import { isTestMode } from "../lib/test-mode";
 
 const factory = new URL("../lib/supabase-factory.ts", import.meta.url).pathname;
-const db = new URL("../email/db-client.ts", import.meta.url).pathname;
 
 // Fresh processes avoid the suite's module mocks and singleton/env mutations.
 function probe(code: string, env: Record<string, string> = {}) {
@@ -113,16 +112,6 @@ describe("Supabase test boundary", () => {
       process.env.SUPABASE_URL = "http://127.0.0.1:9";
       console.log(getSupabase() === null && getSupabaseAnon() === null);
     `, { GOLEMS_ALLOW_LIVE_SUPABASE_IN_TESTS: "1" })).toBe("true");
-  });
-
-  it("guards custom email clients too", () => {
-    expect(probe(`
-      const { createDbClient } = await import(${JSON.stringify(db)});
-      let blocked = false;
-      try { createDbClient({url: "http://127.0.0.1:9", key: "synthetic"}); }
-      catch { blocked = true; }
-      console.log(blocked);
-    `)).toBe("true");
   });
 
   it("keeps ordinary runtime client creation working", () => {
