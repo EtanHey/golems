@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M4 dispatch guard. Configuration and registry are read-only inputs."""
+"""Dispatch and local-seat guards. All maintenance evidence is read-only."""
 import os
 import sys
 
@@ -154,6 +154,89 @@ def deny(reason):
                                   'permissionDecisionReason': 'M1-WINDOW: ' + reason}}
 
 
+def read_only_words(words):
+    if not words:
+        return True
+    name, *args = words
+    base = os.path.basename(name)
+    if name not in (base, '/bin/' + base, '/usr/bin/' + base):
+        return False
+    if base == 'git':
+        return (bool(args) and args[0] in {'status', 'log', 'diff', 'show', 'rev-parse'}
+                and not any(a.split('=', 1)[0] in {'--output', '--ext-diff', '--textconv'} for a in args))
+    if base == 'find':
+        return not any(a in {'-delete', '-exec', '-execdir', '-ok', '-okdir', '-fprint',
+                             '-fprint0', '-fprintf', '-fls'} for a in args)
+    if base == 'rg':
+        return not any(a.split('=', 1)[0] in {'--pre', '--hostname-bin'} for a in args)
+    if base == 'du':
+        return args[:1] == ['-s']
+    if base == 'date':
+        return all(a == '-u' or a.startswith('+') for a in args)
+    return base in {'ls', 'cat', 'head', 'tail', 'wc', 'stat', 'ps', 'pgrep',
+                    'uptime', 'df', 'grep', 'echo', 'pwd', 'whoami'}
+
+
+def read_only_bash(command):
+    if not isinstance(command, str):
+        return False
+    sys.path.append(str(Path(HERE).parents[1] / '_shared'))
+    import shell_parse as shell
+    try:
+        with shell.policy_evaluation_deadline():
+            if (shell.policy_command_size_reason(command)
+                    or shell.executable_shell_structure_has_open_state(command)
+                    or list(shell._executable_subcommands(command))):
+                return False
+            words = []
+            for word, operator in shell._shell_operator_words(command):
+                if not operator:
+                    if '$' in word or '`' in word:
+                        return False
+                    words.append(word)
+                elif word in {';', '|', '||', '&&', '&'} and read_only_words(words):
+                    words = []
+                else:  # Redirections, substitutions, functions and groups are not plain reads.
+                    return False
+            return read_only_words(words)
+    except (Exception, shell.PolicyEvaluationDeadlineExceeded):
+        return False
+
+
+def evaluate_seat(payload):
+    lock = Path.home() / '.golems/m1-procedure.lock'
+    stem = None
+    try:
+        info = lock.lstat()
+    except FileNotFoundError:
+        return {}  # The inactive path costs one lstat; no config, owner or parser reads.
+    except OSError:
+        info = None
+    try:
+        if info is None or not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid():
+            raise ValueError('unsafe lock')
+        owner = json.loads(read_file(lock / 'owner.json'))
+        if (not isinstance(owner, dict) or set(owner) != {'stem', 'uid'}
+                or type(owner['uid']) is not int or owner['uid'] != os.getuid()
+                or not isinstance(owner['stem'], str)
+                or not re.fullmatch(r'[a-f0-9]{40}-\d{8}T\d{12}', owner['stem'])):
+            raise ValueError('invalid owner')
+        stem = owner['stem']
+    except (OSError, ValueError):
+        pass
+    ti = payload.get('tool_input', {})
+    text = json.dumps(ti, ensure_ascii=False)
+    if stem and any(carries(text, token) for token in (stem, 'm1-golems-sync-run1-' + stem.rsplit('-', 1)[-1])):
+        return {}
+    name = payload.get('tool_name')
+    if name == 'Bash' and read_only_bash(ti.get('command', '')):
+        return {}
+    if name == 'Bash' or name in {'Write', 'Edit', 'MultiEdit', 'NotebookEdit'}:
+        return deny(f"procedure lock {stem or 'UNKNOWN (invalid or unreadable owner/lock)'} is active; "
+                    'use read-only tools, wait for lock release, or carry its exact stem/run-1 lane if you ARE that lane')
+    return {}
+
+
 def evaluate(payload):
     config, error = configuration()
     if config is None:
@@ -185,6 +268,9 @@ def evaluate(payload):
 
 
 if __name__ == '__main__':
-    result = evaluate(json.load(sys.stdin))
+    mode = sys.argv[1:]
+    payload = json.load(sys.stdin)
+    result = (evaluate_seat(payload) if mode == ['--mode', 'seat'] else evaluate(payload)
+              if mode in ([], ['--mode', 'dispatch']) else deny('invalid gate mode'))
     print(json.dumps(result))
     sys.exit(2 if result.get('hookSpecificOutput', {}).get('permissionDecision') == 'deny' else 0)
