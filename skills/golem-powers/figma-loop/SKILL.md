@@ -28,7 +28,7 @@ paths:
 | `mcp__figma__get_screenshot` | Figma desktop app is open |
 | `mcp__figma-remote__get_screenshot` | Always (uses API with fileKey) |
 
-**Plus browser automation for implementation screenshots:**
+**Plus browser automation for implementation screenshots** (close the tabs you opened when the loop ends; see the last step):
 
 | Tool | Purpose |
 |------|---------|
@@ -156,3 +156,7 @@ text-[28px] → text-3xl
 | Ignore RTL | Verify element order matches RTL expectations |
 | Guess colors | Use exact hex from Figma design context |
 | Stop after 1 passing check | Need 3 CONSECUTIVE passes |
+
+## When done
+
+**When you're done, close the browser you opened** (Etan, 2026-11-01: no background reaper; the skill closes it). Close your own tabs and quit any browser you started: agent browser → `page.close()` then `agent-browser release <lease>`; a headless or Playwright browser → `browser.close()`; T3 preview → `t3_preview_close`; a cmux browser pane → `close_surface`; a temporary browser profile → quit that instance. Never leave a window open on Etan's screen.

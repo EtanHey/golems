@@ -19,8 +19,8 @@
   },
   {
     "prompt": "A task crashes and leaves the browser running after its 30-minute lease expires.",
-    "expected_output": "Reap expired leases and SIGTERM only the verified Chrome Beta PID; corrupt lease data refuses all signals.",
-    "assertions": ["The launchd reaper runs every 600 seconds", "No force kill", "A failed start never proceeds to CDP attach"],
+    "expected_output": "The next agent or the task's cleanup runs `agent-browser reap`, which SIGTERMs only the verified Chrome Beta PID; corrupt lease data refuses all signals. No background reaper job exists.",
+    "assertions": ["Runs `agent-browser reap`; no launchd reaper exists", "No force kill", "A failed start never proceeds to CDP attach"],
     "category": "compliance"
   }
 ]
