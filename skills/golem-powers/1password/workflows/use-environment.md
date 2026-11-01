@@ -153,8 +153,8 @@ The `golems` config could use Environments:
 source ~/.config/golems/.env
 ralph 10
 
-# Or use op run if Environments not set up
-op run --env-file ~/.config/golems/.env.template -- ralph 10
+# If the mounted .env is missing, stop and ask the lead; don't fall back to op run
+# (each op call is a Touch ID prompt for Etan).
 ```
 
 ### Migration from Existing Config

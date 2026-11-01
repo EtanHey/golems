@@ -23,7 +23,7 @@ work, plus agents ssh-ing through the 1Password SSH agent, made him approve prom
 
 ## Prerequisites Check
 
-Run first:
+Only for a deliberate admin task with Etan present (it is itself an `op` call). Run first:
 ```bash
 op account list
 ```
@@ -119,7 +119,9 @@ The `songscript` project uses Environments with 9 variables mounted to `.env.loc
 
 **Problem:** Each MCP with `op://` refs triggers separate auth prompts.
 
-**Solution:** Centralize all secrets in one file, launch with `op run`.
+**Solution:** Centralize all secrets in one file. For agents, that file is a resolved
+`~/.config/golems/*.env`, loaded per command (see the rule at the top). An `op run` launcher prompts
+for Touch ID on every launch, so it is only for a session Etan starts himself.
 
 ```
 ~/.config/mcp-secrets/
@@ -127,7 +129,7 @@ The `songscript` project uses Environments with 9 variables mounted to `.env.loc
 └── secrets.env.example  # Template (safe to share)
 ```
 
-**Wrapper scripts:**
+**Wrapper scripts (Etan's own interactive sessions only; never for agent launches):**
 ```bash
 cursor-secure   # op run --env-file secrets.env -- cursor
 claude-secure   # op run --env-file secrets.env -- claude
@@ -146,14 +148,10 @@ The golems ecosystem uses Environments for sensitive settings:
 1. **Create Environment** in 1Password: `golems`
 2. **Add variables**: `NTFY_TOPIC`, `ANTHROPIC_API_KEY`, `LINEAR_API_KEY`
 3. **Mount to**: `~/.config/golems/.env`
-4. **Usage**: Scripts source the mounted file or use `op run`
+4. **Usage**: Scripts source the mounted file, per command, in a subshell
 
 ```bash
-# Option 1: Source mounted .env
-source ~/.config/golems/.env
-
-# Option 2: Use op run with template
-op run --env-file ~/.config/golems/.env.template -- bun run start
+( set -a; . ~/.config/golems/.env; set +a; bun run start )
 ```
 
 ### Important Limitations (Beta)

@@ -122,7 +122,7 @@ op run -- claude
 
 All `op://` references in env vars are resolved.
 
-### Option 2: Shell wrapper
+### Option 2: Shell wrapper (Etan's own shell only; never for agent launches, since every launch is a Touch ID prompt)
 
 Add to .zshrc:
 ```bash
