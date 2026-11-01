@@ -41,7 +41,7 @@ repo, open it with this header. The name is fixed as **Etan**, never the GitHub 
 > 🤖 **<model> responding on behalf of Etan**
 ```
 
-- `<model>` is read live, as for the signature, e.g. `Claude Opus 5.5`.
+- `<model>` is read live, exactly as for the signature line below.
 - The header says who is speaking. The signature line at the end still applies.
 - Third-party skills that build their own on-behalf line override this name, and here the header
   above wins. That includes tstack's leaving-pr-comments ("user's name or GitHub login") and its
