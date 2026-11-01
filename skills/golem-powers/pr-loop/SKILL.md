@@ -118,8 +118,8 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - Draft first, ready once: the inner loop runs on a draft and the PR flips to ready only after the
   inner reviewer APPROVEs and local checks pass. Bots are configured to skip drafts; a bot that still
   reviews drafts is a config bug to report to ci-hygiene, not a reason to skip the draft.
-  Draft handling depends on effective bot settings, so check the bot table before relying on it.
-  Never merge a draft.
+  Draft handling depends on effective bot settings, so check [Bots after the flip](#bots-after-the-flip)
+  before relying on it. Never merge a draft.
 - Avoid a duplicate manual bot request when an eligible current-head automatic review already exists;
   request only missing/stale evidence under the permitted bot policy.
 - A green run on an older SHA is not green. Verify the PR head matches the latest pushed commit.
@@ -140,6 +140,21 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - Never place real client data in public PR text, fixtures, comments, or commit messages.
 - Never delete a stacked PR's base branch before its children are retargeted and mergeable.
 - Never merge or clean up from the linked worktree holding the active session.
+
+## Bots after the flip
+
+ci-hygiene owns the bot config. This is what each bot does once a draft is marked ready
+(2026-11-01). Where it says unverified, the first draft→ready PRs will settle it.
+
+| Bot | After `gh pr ready` | What you do |
+|---|---|---|
+| CodeRabbit | Skips drafts. On only in core repos (brainlayer, voicelayer), with no re-review per push. Whether the flip triggers its review is unverified. | Wait up to 10 min after ready. If no review appears, comment `@coderabbitai review` once. Other repos: request it only for a core-risk change. |
+| Codex | Draft behavior unverified. | If it hasn't reviewed ~10 min after ready, comment `@codex review` once. |
+| Copilot | Reviews only on request; automatic review is not enabled. | Don't request it. |
+| Bugbot, Macroscope, Qodo, Greptile | Don't run automatically. | Request one only for a core-risk PR, per the repo's bot policy. |
+| DeepSource, CodeQL | CI-style checks on every push. | Nothing. |
+
+A bot that reviews a draft anyway is a config bug: tell ci-hygiene.
 
 ## Decision Table
 
