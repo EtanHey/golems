@@ -8,7 +8,8 @@ description: "Agent web testing: attach to shared Chrome Beta over CDP. Never la
 Choose the first option that works:
 
 1. An API or CLI when it gives the data: DeepSource → `deepsource-issues`; GitHub → `gh`.
-2. Pages needing no sign-in: T3's preview or a headless browser, leaving no window on Etan's screen.
+2. Pages needing no sign-in: a headless browser (or T3's browser tools when the task is browser
+   work), leaving no window on Etan's screen.
 3. The M1's agent browser when the sign-in exists there. Use the M1 T3 environment or a delegate;
    see `/agent-routing` for cross-machine delegation.
 4. M4 Chrome Beta only when the M4 signed-in session is needed.
@@ -16,7 +17,8 @@ Choose the first option that works:
 On the chosen Mac, run `agent-browser start --lease <unique-task-name>` before
 **every** CDP attach. If it fails, do not connect. The lease lasts 30 minutes;
 renew the same name with `start --lease <name> --ttl 1h` for longer work.
-Never touch another task's lease. `status` prints live leases; `reap` drops expired
+Always pass the same name to `release`: the default name is the calling shell's PID, which
+changes between commands. Never touch another task's lease. `status` prints live leases; `reap` drops expired
 ones. The last release, or reaping all expired leases, stops the verified browser
 with SIGTERM. A launchd job reaps every 10 minutes. Never leave it running for
 other workers without their own live leases.
