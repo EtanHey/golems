@@ -1,0 +1,8 @@
+{
+  "queries": ["is:pr is:open user:YOUR_LOGIN", "is:pr is:open author:YOUR_LOGIN -user:YOUR_LOGIN"],
+  "projects": ["/absolute/path/to/project"],
+  "escalate_thread": "YOUR_ORC_THREAD_ID",
+  "grace_minutes": 45,
+  "escalate_minutes": 120,
+  "held_stale_hours": 72
+}

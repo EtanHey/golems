@@ -130,7 +130,8 @@ jobs:
           bun --no-install test ./scripts/tests/worktree-census-esrch.test.ts
           bun --no-install test ./scripts/tests/worktree-census-jcs.test.ts
           bun --no-install test ./scripts/tests/worktree-census-shape.test.ts
-          bun test ./scripts/tests/claude-rules-frontmatter.test.mjs \
+          bun test ./scripts/tests/pr-sentinel.test.mjs \
+                   ./scripts/tests/claude-rules-frontmatter.test.mjs \
                    ./scripts/tests/canon-drift-lint.test.mjs \
                    ./scripts/tests/design-skill-updates.test.mjs \
                    ./scripts/tests/deploy-drift-check.test.mjs \
