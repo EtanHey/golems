@@ -7,7 +7,7 @@ import { join, resolve } from "node:path";
 const cli = resolve(import.meta.dir, "../pr-sentinel/pr-sentinel");
 const head = "a".repeat(40), old = "2020-01-01T00:00:00Z", newer = "2020-01-02T00:00:00Z";
 const url = n => `https://github.com/fixture/repo/pull/${n}`;
-const pr = (number, changes = {}) => ({ number, url: url(number), headRefOid: head, isDraft: false,
+const pr = (number, changes = {}) => ({ number, url: url(number), state: "OPEN", headRefOid: head, isDraft: false,
   mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", repository: { nameWithOwner: "fixture/repo", viewerPermission: "ADMIN" },
   author: { login: "fixture" }, comments: { nodes: [] }, commits: { nodes: [{ commit: {
     committedDate: old, statusCheckRollup: { contexts: { pageInfo: {}, nodes: [] } },
@@ -24,7 +24,18 @@ from pathlib import Path
 r=Path(os.environ['FIXTURE'])
 with (r/'calls.json').open('a') as f: f.write(json.dumps(sys.argv)+'\\n')
 if (r/'fail-${name}').exists(): sys.exit(1)
-if '${name}'=='gh' and sys.argv[1]=='pr': print('updated'); sys.exit(0)
+if '${name}'=='gh' and sys.argv[1]=='pr':
+ if (r/'fail-update').exists(): sys.exit(1)
+ print('updated'); sys.exit(0)
+if '${name}'=='gh' and not any(a.startswith('count=') for a in sys.argv):
+ import re
+ q=next(a.split('=',1)[1] for a in sys.argv if a.startswith('query='))
+ nodes={p['url'].lower(): p for p in json.loads((r/'prs.json').read_text())}
+ data={}
+ for alias,owner,name,num in re.findall(r'(p\\d+): repository\\(owner: "([^"]+)", name: "([^"]+)"\\) \\{ pullRequest\\(number: (\\d+)\\)',q):
+  u=f'https://github.com/{owner}/{name}/pull/{num}'.lower()
+  data[alias]={'pullRequest':nodes.get(u)}
+ print(json.dumps({'data':data})); sys.exit(0)
 if '${name}'=='gh':
  nodes=json.loads((r/'prs.json').read_text())
  count=int(next(a.split('=',1)[1] for a in sys.argv if a.startswith('count='))); start=int(next((a.split('=',1)[1] for a in sys.argv if a.startswith('cursor=')),0))
@@ -35,7 +46,7 @@ else:
  with (r/'sends.json').open('a') as f: f.write(json.dumps({'target':sys.argv[3],'message':sys.stdin.read()})+'\\n')
 `, { mode: 0o755 });
   const write = (key, data) => writeFileSync(files[key], JSON.stringify(data));
-  write("prs", []); write("threads", []); write("config", { queries: ["fixture"], projects: ["/fixture"], escalate_thread: "orc", grace_minutes: 45, escalate_minutes: 120, held_stale_hours: 72 }); chmodSync(files.config, 0o600);
+  write("prs", []); write("threads", []); write("config", { queries: ["fixture"], projects: ["/fixture"], escalate_thread: "orc", grace_minutes: 45, held_stale_hours: 72 }); chmodSync(files.config, 0o600);
   const run = (...extra) => Bun.spawnSync([cli, "scan", "--config", files.config, "--state", files.state, ...extra], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
   const age = seconds => { const s = JSON.parse(readFileSync(files.state)); for (const row of Object.values(s)) row.since -= seconds; write("state", s); };
   const lead = (...extra) => Bun.spawnSync([cli, "lead", "--thread", "lead-1", "--state", files.state, ...extra], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
@@ -111,7 +122,8 @@ test("lead check: updates BEHIND branches silently, messages the lead only for d
   const failure = { name: "build", status: "COMPLETED", conclusion: "FAILURE", completedAt: old };
   write("show", { thread: { threadId: "lead-1", pullRequests: [1, 2, 3, 4, 5, 6, 7].map(n => ({ url: url(n), state: "open" })).concat([{ url: url(8), state: "merged" }]) } });
   write("prs", [check(pr(1), [failure]), pr(2), pr(3, { mergeStateStatus: "BEHIND", viewerCanUpdateBranch: true }),
-    pr(4, { reviewDecision: "CHANGES_REQUESTED" }), pr(5, { isDraft: true }), pr(6, { viewerCanUpdateBranch: true }), pr(8), pr(9)]);
+    pr(4, { reviewDecision: "CHANGES_REQUESTED" }), pr(5, { isDraft: true }), pr(6, { viewerCanUpdateBranch: true }),
+    pr(7, { state: "MERGED" }), pr(8), pr(9)]);
   const dry = lead("--dry-run"); expect(dry.exitCode, dry.stderr.toString()).toBe(0); expect(calls()).not.toContain("update-branch");
   const first = lead(); expect(first.exitCode, first.stderr.toString()).toBe(0);
   expect(calls()).toContain(`update-branch", "${url(3)}`); expect(calls()).not.toContain(url(6) + '"]');
@@ -122,4 +134,22 @@ test("lead check: updates BEHIND branches silently, messages the lead only for d
   for (const text of ["#3 ", "#5 ", "#7 ", "#8 ", "#9 "]) expect(m.message).not.toContain(text);
   lead(); expect(sends()).toHaveLength(1);
   write("show", { thread: { threadId: "lead-1", pullRequests: [] } }); expect(lead().stdout.toString()).toContain("no open PRs");
+}));
+
+test("lead check: a rejected update-branch never holds back the other PRs; empty list prunes state", () => fixture(({ root, files, write, lead, sends }) => {
+  write("show", { thread: { threadId: "lead-1", pullRequests: [1, 2].map(n => ({ url: url(n), state: "open" })) } });
+  write("prs", [pr(1, { mergeStateStatus: "BEHIND", viewerCanUpdateBranch: true }), pr(2)]);
+  writeFileSync(join(root, "fail-update"), "");
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode).toBe(0); expect(out.stderr.toString()).toContain("update-branch failed");
+  expect(sends()).toHaveLength(1); expect(sends()[0].message).toContain("#2 is GREEN"); expect(sends()[0].message).not.toContain("#1 ");
+  expect(Object.keys(JSON.parse(readFileSync(files.state)))).toHaveLength(1);
+  write("show", { thread: { threadId: "lead-1", pullRequests: [] } }); lead();
+  expect(JSON.parse(readFileSync(files.state))).toEqual({});
+}));
+test("lead check fetches its PRs by number, so a capped repo search cannot hide one", () => fixture(({ write, lead, calls, sends }) => {
+  write("show", { thread: { threadId: "lead-1", pullRequests: [{ url: url(500), state: "open" }] } });
+  write("prs", Array.from({ length: 500 }, (_, i) => pr(i + 1)));
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode, out.stderr.toString()).toBe(0);
+  expect(sends()).toHaveLength(1); expect(sends()[0].message).toContain("#500 is GREEN");
+  expect(calls()).not.toContain("count=");
 }));

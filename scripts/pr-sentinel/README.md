@@ -25,12 +25,14 @@ the default model (Opus) and creates a new thread and git worktree per run: neve
 ```text
 delegate_task(
   title: "PR check for <lead name>",
-  target: { providerInstanceId: "claudeAgent", model: "claude-haiku-5-5" },   # or codex gpt-6-luna
+  target: { providerInstanceId: "claudeAgent", model: "claude-haiku-5-5",
+            options: { fastMode: false } },   # or codex gpt-6-luna with { serviceTier: "default" }
   task: "Load mcp__t3-code__schedule_task with ToolSearch and call it once: bindToCurrentThread
          true, schedule {type: interval, everyMs: 300000}, title 'PR check for <lead>', prompt:
          'Run: <golems>/scripts/pr-sentinel/pr-sentinel lead --thread <LEAD_THREAD_ID>. It
          updates branches and messages the lead itself. Reply with one line: the last line of
-         its output. No other tools.' Reply with the scheduledTaskId, then stop.")
+         its output. Use only the shell tool, for that one command.' Reply with the scheduledTaskId,
+         then stop.")
 ```
 
 Record the `scheduledTaskId` in your notes. **Before settling or retiring the lead thread**, delete
