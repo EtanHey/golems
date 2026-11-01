@@ -1492,7 +1492,7 @@
       "id": 57,
       "name": "lead-model-tier-change",
       "prompt": "The lead changes tier mid-sprint because budget is tight. Where do we record it?",
-      "expected_output": "Record the lead model in the lane brief, golem-id and claim post; name budget as the reason for the tier change (allowed reasons: budget | quality | stall).",
+      "expected_output": "Record the lead model in the lane brief, signature line and claim post; name budget as the reason for the tier change (allowed reasons: budget | quality | stall).",
       "assertions": [
         {
           "text": "Names all three model record locations and budget as the reason.",

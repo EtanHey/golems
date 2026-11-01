@@ -28,10 +28,18 @@ def durable_ledger():
 def lease(tmp_path, monkeypatch, durable_ledger):
     monkeypatch.setenv("GOLEMS_WORKSPACE_LEASES", str(durable_ledger))
     monkeypatch.delenv("GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP", raising=False)
-    repo = tmp_path / "repo.git"
-    repo.mkdir()
+    source = tmp_path / "repo"
+    def git(*args):
+        subprocess.run(["git", "-C", str(source), *map(str, args)], check=True,
+                       capture_output=True, text=True)
+    source.mkdir()
+    git("init", "-q")
+    git("config", "user.name", "Fixture")
+    git("config", "user.email", "fixture@example.com")
+    git("-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "-qm", "fixture")
+    repo = source / ".git"
     workspace = tmp_path / "workspace"
-    workspace.mkdir()
+    git("worktree", "add", "-qb", "task/sample", str(workspace))
 
     class Lease:
         ledger = durable_ledger
@@ -372,9 +380,10 @@ def test_missing_remove_rc_is_refused_and_recorded(lease):
 
 
 def test_inherited_old_override_cannot_enable_ephemeral_cli_ledger(lease):
-    with tempfile.TemporaryDirectory(prefix="workspace-lease-guard-", dir="/tmp") as directory:
+    with tempfile.TemporaryDirectory(prefix="workspace-lease-guard-", dir=lease.ledger.parent) as directory:
         target = Path(directory) / "ledger"
         env = os.environ.copy()
+        env["TMPDIR"] = directory
         env.pop("PYTEST_CURRENT_TEST", None)
         env["GOLEMS_WORKSPACE_LEASES_TEST_ALLOW_TMP"] = "1"
         env["GOLEMS_WORKSPACE_LEASES"] = str(target)

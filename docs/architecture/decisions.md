@@ -113,10 +113,10 @@ services/cloud-worker.ts → processEmails() from @golems/shared
 
 | Plist | Schedule | Process |
 |-------|----------|---------|
-| `com.golemszikaron.briefing.plist` | 8am daily | Morning Briefing |
+| `com.golemszikaron.briefing.plist` | 8am daily | Morning Briefing (retired 2026-10-31) |
 
 Night Shift, Bedtime Guardian, Health Check and Thread Compaction plists were
-retired. This table records the briefing wiring; see `launchd/` for other live plists.
+retired. This table records historical briefing wiring; see `launchd/` for live plists.
 
 ### SIGTERM Handling
 Any `Bun.serve()` managed by launchd MUST handle SIGTERM:

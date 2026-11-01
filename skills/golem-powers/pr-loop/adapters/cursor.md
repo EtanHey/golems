@@ -78,26 +78,12 @@ per-turn records on this machine, and no verified live-model source exists for t
 way Claude (`.message.model` in `~/.claude/projects/**.jsonl`) and Codex (`turn_context.model` in
 `~/.codex/sessions/**/rollout-*.jsonl`) do.
 
-Until a source is verified:
+Until a source is verified, use `🤖 Generated with unknown in Cursor`.
+Never substitute launch flags, spawn-registry values or self-report.
+Use the same plain line on every repo. Keep the commit trailer from the identity reference.
+Use `--body-file` or stdin to preserve literal text.
 
-```
-"model":"unknown","model_source":"unavailable"
-```
-
-- **Do NOT substitute the launcher's `-m` flag or spawn-registry value.** That is exactly the
-  boot-time/spawn-registry provenance the ratification banned ("the gh() wrapper must re-read model
-  per invocation, not cache at spawn"; cmux spawn metadata is the `xhigh`-lie surface).
-- **Do NOT substitute self-report.** Cursor routes to multiple upstream models; the model's belief
-  about itself is not evidence; see `/agent-routing` `references/model-and-effort.md` § Dispatch and Verification.
-- An honest `unknown` is the correct output. It tells a later audit "this row has no model", which
-  is true — rather than fabricating one, which is the failure the convention exists to prevent.
-- If you find a verified per-turn model record for the Cursor CLI, that is a real finding: report it
-  so this adapter and the `gh()` wrapper can be updated (golems / repoGolem lane owns the wrapper).
-
-Everything else in the convention applies unchanged: visible line + one-line blob last in the body,
-ownership marker on non-`EtanHey` repos; effort is allowed only on the Loop-record line. The commit trailer is
-`Co-Authored-By: <seat> running <model> <noreply@anthropic.com>` (with `unknown` where the model is
-genuinely unavailable). Use `--body-file`, not inline `--body`, so the blob survives shell quoting.
+Observed effort is allowed only on the Loop-record line.
 
 ## Hierarchical Worker Mode
 

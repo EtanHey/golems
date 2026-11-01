@@ -200,7 +200,9 @@
     },
     {
       "id": "installed-skill-parity",
-      "metric": "installed skill name/hash/exec-bit sets and recorded release.json versions identical on both Macs (install kind/target and regular skill-root markers ignored; required readability and disclosed invalid entries retained)",
+      "report_only": "until-i5-run2",
+      "report_only_until": "2026-11-09T00:00:00Z",
+      "metric": "installed skill name/hash/exec-bit sets and recorded release.json versions identical on both Macs (install kind/target and regular skill-root markers ignored; required readability and disclosed invalid entries retained), and per configured Claude config dir the enabledPlugins true-key sets identical (missing/malformed settings.json fails) [WARN-only until I5 merges and M1 run 2 succeeds, hard backstop 2026-11-09, then blocking again]",
       "kind": "real",
       "runner": "live",
       "direction": "pass",

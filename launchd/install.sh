@@ -10,9 +10,9 @@ LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 NODE_BIN="$(command -v node)"
 
 PLISTS=(
-    "com.golemszikaron.briefing.plist"
     "com.golems.worktree-gc.plist"
 )
+RETIRED=("com.golemszikaron.briefing.plist")
 
 domain="gui/$(id -u)"
 
@@ -36,12 +36,9 @@ unload_label() {
     fi
 }
 
-if [[ "${1:-}" == "--uninstall" ]]; then
-    echo "🗑️  Uninstalling golems launchd agents..."
-
-    "$NODE_BIN" "$SCRIPT_DIR/../scripts/install-google-drive-oauth-guard.mjs" uninstall
-
-    for plist in "${PLISTS[@]}"; do
+remove_plists() {
+    local plist label
+    for plist in "$@"; do
         label="${plist%.plist}"
         unload_label "$label"
         if [[ -f "$LAUNCH_AGENTS/$plist" ]]; then
@@ -49,6 +46,14 @@ if [[ "${1:-}" == "--uninstall" ]]; then
             rm "$LAUNCH_AGENTS/$plist"
         fi
     done
+}
+
+if [[ "${1:-}" == "--uninstall" ]]; then
+    echo "🗑️  Uninstalling golems launchd agents..."
+
+    "$NODE_BIN" "$SCRIPT_DIR/../scripts/install-google-drive-oauth-guard.mjs" uninstall
+
+    remove_plists "${RETIRED[@]}" "${PLISTS[@]}"
 
     echo "✅ Uninstalled!"
     exit 0
@@ -58,6 +63,8 @@ echo "🚀 Installing golems launchd agents..."
 
 # Ensure LaunchAgents directory exists
 mkdir -p "$LAUNCH_AGENTS"
+
+remove_plists "${RETIRED[@]}"
 
 "$NODE_BIN" "$SCRIPT_DIR/../scripts/install-google-drive-oauth-guard.mjs" install
 
@@ -81,11 +88,9 @@ done
 
 echo ""
 echo "✅ Installed! Schedules:"
-echo "  - Briefing: 8:00 AM daily"
 echo "  - Worktree prune (scripts/worktree-gc-nightly.sh, under the heavy-suite lock): 6:00 AM daily"
 echo "  - Google Drive OAuth guard: login + every 5 minutes"
 echo ""
 echo "📋 Commands:"
 echo "  View logs: tail -f /tmp/golemszikaron-*.log"
-echo "  Test briefing: bun packages/services/src/briefing.ts"
 echo "  Uninstall: $0 --uninstall"

@@ -34,7 +34,6 @@
     "dataviz:all": "bun run scripts/dataviz.ts all",
     "pipeline": "bun run scripts/pipeline.ts",
     "pipeline:route": "bun run scripts/pipeline.ts route",
-    "pipeline:stats": "bun run scripts/pipeline.ts stats",
     "pipeline:list": "bun run scripts/pipeline.ts list",
     "serve": "bun run src/http-service.ts",
     "workflows:backup": "bash scripts/backup-workflows.sh",

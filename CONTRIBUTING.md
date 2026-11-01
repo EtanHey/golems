@@ -5,7 +5,7 @@ Thanks for your interest in contributing!
 ## Development Workflow
 
 1. **Fork the repo** and create a branch from the default branch
-2. **Write tests first** when adding new functionality
+2. **Choose real proof.** Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
 3. **Run the test suite** before pushing (the repo-specific section below names the command)
 4. **Keep commits focused** — one logical change per commit, conventional format (`feat:`, `fix:`, `docs:`)
 5. **Open a PR** against the default branch
@@ -26,7 +26,7 @@ Thanks for your interest in contributing!
 
 This project uses AI coding tools extensively. When AI agents contribute code:
 
-- Credit them with a `Co-Authored-By:` trailer. The maintainer's agents use `Co-Authored-By: <agent> running <model> <noreply@anthropic.com>`; your tool's standard trailer is fine
+- Credit them with a `Co-Authored-By:` trailer. Use one model-only trailer per co-authoring model: `Co-Authored-By: <Model> <noreply@anthropic.com>` for Claude, or `Co-Authored-By: <Model> <noreply@example.com>` for Codex (replace the example address with the repo's actual co-author address); your tool's standard trailer is fine
 - AI-generated code goes through the same review process as human code
 - No distinction in quality standards: all code must pass the required checks and review
 

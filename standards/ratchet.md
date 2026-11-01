@@ -222,9 +222,10 @@ requires the merged master PR for that commit to carry the lead's `golems-ratche
 comment. The fixed-line verdict must match that merge SHA or a later first-parent master commit, have `bootstrap: false`, and
 pass every real live row defined on master. Missing, stale, red, wrong-author receipts and API
 failures fail closed. Candidate PR changes and later unguarded merges do not invalidate a receipt.
-There is no grace window: a guarded merge becomes red until the lead installs and runs
-`live-rows.sh --merged-pr <latest guarded PR> ...` after installing current master. A later unguarded master SHA is accepted for the receipt;
-branch SHAs and receipts preceding the guarded merge are rejected. The receipt measures the live
+For 120 minutes from `merged_at`, the immediately preceding guarded merge's valid receipt may cover a missing/invalid latest receipt; all current row, report-only and head checks apply.
+Two consecutive unreceipted guarded merges fail; after 120 minutes the latest receipt is required. Run `scripts/ratchet/post-merge-live.sh --merged-pr N`: update mbp hooks-live, auto-select a clean exact-head open-PR worktree, run live rows with installed-skills.json, print comment URL and freshness.
+Exit 3 means Codex hook trust is missing: the owner must open plain `codex` (no `--profile`), run `/hooks`, approve the changed definitions, then rerun; no live rows run or receipt is posted.
+Optional `--lease-pr N --lease-repo <path>` constrain selection. Later unguarded master SHAs are accepted; branch SHAs and receipts preceding the guarded merge are rejected. The receipt measures the live
 install's status and token probe; this CI row checks the receipt, never uses lead tokens or
 installs hooks. It is labeled `unit` so receipt checks cannot be mistaken for a live replay.
 
@@ -232,8 +233,7 @@ The existing required `ratchet` job enforces this row only on guarded-path PRs, 
 pushes and manual dispatch. Hourly scheduled runs evaluate this row under the
 [scheduled alert deduplication](#scheduled-alert-deduplication) policy above.
 Non-guarded PRs are exempt before any live API request, so the lead install
-cannot block unrelated work. Failure output prints the exact `live-rows.sh` command; run it from
-the open lease PR checkout after the lead installs current master. After the lead publishes the receipt, rerun the failed master/PR ratchet jobs
+cannot block unrelated work. Failure output prints the exact `post-merge-live.sh --merged-pr N` command. After the lead publishes the receipt, rerun the failed master/PR ratchet jobs
 (or dispatch the workflow); posting a comment alone does not rerun CI. This prevents a green CI
 claim for merged-but-uninstalled guarded changes. It does not continuously inspect the machine:
 after a passing receipt, later local tampering still requires a fresh lead live run to detect.
@@ -250,6 +250,18 @@ excluded dependencies/caches are not claimed byte-identical or runtime-equivalen
 nested skills are measured without writing their install. Missing SSH, Python, roots, content
 or the required-readable manifest fails; there is no capability skip.
 
+The row also compares enabled Claude plugins. For each configured Claude config dir, both hosts
+read `<dir>/settings.json` and collect the `enabledPlugins` keys whose value is `true`. A key
+enabled in a different set of config dirs on the two hosts fails by name, e.g.
+`plugin-enabled-mismatch class-plugin@class-market: local=[.claude,.claude-secondary] remote=[]`.
+A missing `settings.json`, a non-JSON or non-object file, or a malformed `enabledPlugins` (not an
+object, or a non-boolean value) fails closed as `plugin-settings-invalid <dir>: <host> <reason>`,
+never as "no plugins enabled". A settings object without `enabledPlugins` counts as none enabled.
+An inventory without a plugin section, or with other config dirs, fails. The output field
+`plugin_enabled_parity` reports this check separately from skill parity. Added 2026-10-31 after a
+plugin cached but not enabled on one Mac showed as "Unknown skill" there while skill parity
+stayed green.
+
 Supporting paths also follow `scripts/release/shipped-paths.json`, the builder's
 single shipping policy: checkout-only evals, tests, fixtures and other excluded
 paths do not affect parity against a release install. Shipped supporting bytes
@@ -262,7 +274,10 @@ Create an owner-only regular file at `~/.golems/ratchet/installed-skills.json`, 
 runner's user. Its JSON is `{"schema":1,"host":"class-remote",
 "identity":"/absolute/path/to/existing-identity","requirements":"/absolute/path/to/private-requirements.json"}`.
 Use actual private values locally; the identity and requirements paths must be absolute existing
-files. The checker only passes the existing identity path to SSH, with `IdentitiesOnly=yes` and
+files. The optional `"claude_config_dirs"` is a nonempty list of `~/`-relative Claude config dirs
+whose enabled plugins must match, default `["~/.claude"]` (for example
+`["~/.claude","~/.claude-secondary"]`). The same list applies to both hosts; it is sent inside the
+scanner over SSH, never as a shell argument. The checker only passes the existing identity path to SSH, with `IdentitiesOnly=yes` and
 `IdentityAgent=none`; it does not read credential bytes. No configuration is shell-evaluated.
 The private requirements JSON is
 `{"schema":2,"identities":["<local identity object>","<remote identity object>"],

@@ -1,6 +1,6 @@
 ---
 name: pr-loop
-description: "Invoke before any git/gh call to open a PR, merge, ship, fix red CI, handle reviews/PR comments, finish work. Signs GitHub writes: golem-id, Co-Authored-By."
+description: "Invoke before any git/gh: open a PR, merge, ship, fix CI, handle reviews/comments, finish work. Signs: 🤖 model + harness line, Co-Authored-By."
 ---
 
 # PR Loop
@@ -151,6 +151,7 @@ Rollout to other repos is a follow-up; this change wires golems only.
 | Remote branch delete or force push | `human-confirm-gate` token required (one-way door: deletes data) |
 | Lead must deploy and probe a Mac | Dispatch `deploy-local-prod`; checks and waits go to the mechanical tier, not the lead |
 | You just merged #N | Fast-forward the root checkout (`merge --ff-only`); report if it fails; re-read AGENTS.md/CLAUDE.md if they changed |
+| You just merged a guarded golems PR (`guarded-paths.sh "<merge>^1" "<merge>"` exit 0) | After the root fast-forward, dispatch `scripts/ratchet/post-merge-live.sh --merged-pr N` to `deploy-local-prod` and verify its receipt URL and freshness PASS; exit 2 is a stop ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory) step 1b) |
 | Last PR of the batch merged | Run the feature-batch gate (heavy/e2e, real-client, visual QA, release gate to `CLEAN`) before any done claim |
 | Linked-worktree merge cleanup fails | Verify whether the remote merge already succeeded before any retry |
 | PR is stacked | Preserve the base branch until children are retargeted |
@@ -173,5 +174,5 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - `/coderabbit` owns receiving-side review technique; this skill owns advancement through the PR loop.
 - `/never-fabricate` owns verification receipts and claim discipline.
 - `/deploy-verify` owns post-merge deployed/live proof.
-- `/tdd-guard` enforces the repository's failing-test-first edit limit.
+- Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
 - `/false-green-gate` and `/qa-verdict-gate` flag their respective stop conditions (advisory).

@@ -1,10 +1,10 @@
 # TellerGolem
 
-> Financial tracking — subscription management, payment categorization, tax preparation, and spending alerts.
+> Financial email processing — payment categorization and failure alerts.
 
 ## Role
 
-TellerGolem manages **all financial intelligence**: tracking subscriptions, categorizing payments, generating spending reports, alerting on anomalies, and preparing data for tax filing.
+TellerGolem categorizes inbound expenses and detects payment failures. Stored payment reports and subscription tracking were retired with their database tables. `getStatus()` retains its existing fallback for CoachGolem.
 
 ---
 
@@ -48,11 +48,9 @@ When compacting this session, follow these rules strictly:
 ```text
 packages/teller/
 ├── src/
-│   ├── index.ts                 # getStatus() + main orchestration
+│   ├── index.ts                 # getStatus() fallback + email orchestration
 │   ├── categorizer.ts           # Payment categorization (LLM-powered)
 │   ├── alerts.ts                # Spending anomaly alerts
-│   ├── report.ts                # Monthly/yearly spending reports
-│   ├── db.ts                    # Supabase queries (subscriptions, payments)
 │   └── types.ts                 # TellerGolem-specific types
 ├── .claude-plugin/plugin.json
 ├── CLAUDE.md                    # This file
@@ -65,28 +63,10 @@ packages/teller/
 
 ## Key Patterns
 
-### Subscription Tracking
-- Detects subscriptions from email receipts (Netflix, Spotify, iCloud, etc.)
-- Tracks: service name, amount, currency, frequency (monthly/yearly), status
-- Yearly subscriptions converted to monthly for unified reporting
-
 ### Payment Categorization
 - Uses LLM (Haiku) to categorize payments from bank statements
 - Categories: housing, transport, food, subscriptions, healthcare, etc.
 - Supports US tax deduction identification (Schedule C)
-
-### Spending Reports
-- Monthly summary: total spend, by category, subscription total
-- Yearly summary: tax-relevant deductions, subscription cost trends
-- Anomaly alerts: unusual charges, failed payments, price increases
-
-## Supabase Tables
-
-| Table | Purpose |
-|-------|---------|
-| `subscriptions` | Active service subscriptions |
-| `payments` | Payment events linked to subscriptions |
-| `emails` (filtered) | Subscription-category emails routed from EmailGolem |
 
 ## Email Routing
 

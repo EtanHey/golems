@@ -167,7 +167,10 @@ def read_command(argv):
     return subprocess.run(argv, capture_output=True, text=True, check=True, timeout=2).stdout.strip()
 
 
-def lead_metadata(op):
+def lead_metadata(op, *, gh_read=None):
+    # Hook default: two GitHub reads at 2 s each, no retries. The issuer CLI
+    # injects its own reader; it has no hook watchdog deadline.
+    gh_read = gh_read or read_command
     repo = op['repo']; branch = op['ref'].removeprefix('refs/heads/')
     if op['source'] not in ('HEAD', branch, op['ref']):
         raise ValueError('lead lease must use the current branch')
@@ -181,8 +184,8 @@ def lead_metadata(op):
     if not match:
         raise ValueError('lead scope needs the pushed remote to be one github.com push URL')
     target = match[1]
-    metadata = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'repo', 'view', target, '--json', 'defaultBranchRef']))
-    pr = json.loads(read_command([trusted_binary(GH_CANDIDATES), 'pr', 'view', branch, '--repo', target, '--json',
+    metadata = json.loads(gh_read([trusted_binary(GH_CANDIDATES), 'repo', 'view', target, '--json', 'defaultBranchRef']))
+    pr = json.loads(gh_read([trusted_binary(GH_CANDIDATES), 'pr', 'view', branch, '--repo', target, '--json',
                                  'number,state,mergedAt,headRefName,isCrossRepository,headRefOid']))
     return metadata['defaultBranchRef']['name'], dict(pr, github=target)
 

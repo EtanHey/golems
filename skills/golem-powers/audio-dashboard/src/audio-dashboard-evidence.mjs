@@ -1,5 +1,6 @@
 import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
+import { designReportFailure } from "./design-history.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const CANONICAL_GENERATOR_RE =
@@ -324,6 +325,8 @@ export function validateAudioDashboardEvidence(evidence = {}) {
   const outputPath = textOf(evidence.outputPath);
   const wordsJson = Array.isArray(evidence.wordsJson) ? evidence.wordsJson : [];
   const violations = [];
+  const designFailure = designReportFailure(outputPath, html);
+  if (designFailure) addViolation(violations, designFailure, "Final HTML requires a matching PASS design sidecar; rerun check-design-preservation after any post-processing.");
   const textOnlyCard = hasTextOnlyDetails(html, outputPath);
   if (textOnlyCard) {
     addViolation(violations, "TEXT_ONLY_VIEW_DETAILS",

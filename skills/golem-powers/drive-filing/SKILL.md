@@ -10,13 +10,14 @@ description: "Brain Drive filing, archival, and docs.local lifecycle. Triggers: 
 > Named `drive-filing`, not `brain-drive`, so it is not one hyphen away from `/braindrive` (the Gemini
 > Drive query command).
 >
-> Etan's pain: agents (except researchers) don't use Drive right and **leave artifacts scattered in `docs.local/`**. This skill makes filing automatic. **Rule of thumb: if an artifact should outlive this session, it goes to Brain Drive in the RIGHT folder — `docs.local/` is a cache, not a home.**
+> Etan's pain: agents (except researchers) don't use Drive right and **leave artifacts scattered in `docs.local/`**. This skill makes filing automatic. **Rule of thumb: if an artifact should outlive this session, file it by § Machine hygiene: code and harnesses in a repo, personal or client documents in iCloud, other durable artifacts in the RIGHT Brain Drive folder — `docs.local/` is a cache, not a home.**
 
 | Need | Go to |
 |---|---|
 | Which folder, what name | § Brain Drive folder model, § Decision tree, § Naming convention (below) |
 | Put a heavy (>100KB / media / transcript) artifact into Drive, with ledger + brain_digest | § Archive a heavy artifact → [references/archive-procedure.md](references/archive-procedure.md) |
 | Keep `docs.local/` legible over time (daily → monthly → Drive) | § docs.local lifecycle |
+| Manifest schema, disk measurement commands, path reconciliation | [references/archiving-convention.md](references/archiving-convention.md) |
 
 Not this skill: `/braindrive` *queries* Drive via Gemini; `/gemini-research` does web research with Drive sources.
 
@@ -40,7 +41,7 @@ Legacy `Brain Drive/Research/<project>/` folders are being moved under 03_RESEAR
 ## Decision tree (where does THIS artifact go?)
 
 1. **A research prompt or its results?** → `03_RESEARCH/Active/<topic>/` (e.g. `skills-eval/`). Drive-ground prompts by uploading the real artifacts beside them.
-2. **A finished heavy artifact (>100KB / media / raw transcript / big audit)?** → § Archive a heavy artifact → lands in `06_ARCHIVE/<area>/<topic>/<date>/`, leaves a `_DRIVE-LEDGER.md` pointer in `docs.local/`.
+2. **A finished heavy artifact (>100KB / media / raw transcript / big audit)?** → § Archive a heavy artifact → lands in `06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>/`, leaves a `_DRIVE-LEDGER.md` pointer in `docs.local/`.
 3. **A canonical standard / spec / locked schema?** → `01_STANDARDS/`.
 4. **Grounding corpus / reference data?** → `02_GROUNDING/`.
 5. **Raw, not-yet-digested inbound?** → `04_INGEST/`.
@@ -58,7 +59,7 @@ Applies to both Macs. Each kind of artifact has one home:
 | Rerunnable source, harnesses, test kits, eval scripts, fixtures | A repo, committed; generated fixtures in its `docs.local/` or `fixtures/` with a regeneration recipe | `~/`, `~/Desktop`, `~/temp`, ad-hoc repo copies |
 | Live lane reports, receipts, logs | Owning repo's `docs.local/<lane>/` on the machine that ran it | `~/m1-*`, `~/vlv*` / `~/.vl*`, `~/vl-harness*` copies, `~/BrainLayer-*`, Desktop handoff folders |
 | Finished heavy artifacts, including benchmark runs | § Decision tree → § Archive a heavy artifact; leave `_DRIVE-LEDGER.md` | Local disk “for later” |
-| Personal or client documents Etan keeps | iCloud Drive `Archive/<YYYY>/<topic>/` | Desktop root |
+| Personal or client documents Etan keeps | iCloud Drive `Archive/<YYYY>/<YYYY-MM-DD>-<topic>/` | Desktop root |
 | Models and caches (Whisper, HF, npm/bun) | Tool's own cache directory, one copy recorded in app config | `~/Documents`, duplicate caches |
 | Worktrees | `~/.t3/worktrees/` or `<repo>/.worktrees/`; retire through the lifecycle contract | Other locations or ad-hoc repo copies |
 
@@ -74,6 +75,8 @@ Every archive unit carries `MANIFEST.json` with:
 - Byte count and SHA-256 for each file.
 - Producer (lead thread or plan).
 - Restore command.
+
+Schema and measurement commands: [references/archiving-convention.md](references/archiving-convention.md).
 
 **Five rules:**
 
@@ -107,7 +110,7 @@ until then, report unowned leftovers to that lead. Never infer a ledger path or
 add a destructive home-wide reaper.
 
 ## The discipline (the one rule)
-**Before you finish a task that produced a durable artifact: did you FILE it in the right Brain Drive folder, or leave it scattered in `docs.local/`?** If durable and still only local → file it now (the decision tree above, or § Archive a heavy artifact) and drop a one-line `_DRIVE-LEDGER.md` pointer. "It's in docs.local" is not "it's saved."
+**Before you finish a task that produced a durable artifact: did you FILE it in its home, or leave it scattered in `docs.local/`?** Use the § Machine hygiene table: code and harnesses go to a repo, personal or client documents to iCloud, other durable artifacts to the right Brain Drive folder. If durable and still only local → file it now (the decision tree above, or § Archive a heavy artifact) and drop a one-line `_DRIVE-LEDGER.md` pointer. "It's in docs.local" is not "it's saved."
 
 ## Quick reference (MCP)
 - Upload: `mcp__google-drive__uploadFile(localPath, parentFolderId=<resolved private ID>)`.
@@ -123,7 +126,8 @@ archive", a >100KB write to `docs.local/{research,audits,plans}/`, a post-`brain
 or a `/tmp` cleanup that may hold forever-knowledge. The eight steps, in short:
 
 1. Ephemeral or forever? Only originals go up; list regeneratable derivatives and how to rebuild them.
-2. Resolve `Brain Drive/06_ARCHIVE/<area>/<topic>/<date-or-tag>/` (`research`, `audits`, `plans`,
+   Not archiving a file grants no deletion authority; apply § Machine hygiene rule 5.
+2. Resolve `Brain Drive/06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>[-<tag>]/` (`research`, `audits`, `plans`,
    `repos`, `voice`); `mcp__google-drive__search` for precedent first.
 3. `createFolder` per level, keeping every ID. 4. `uploadFile`; keep `id`, `link`, `size`.
 5. `brain_digest` every text file (a background agent for >150KB).
@@ -156,19 +160,24 @@ bytes=… · monthly-moves=… · to-drive months=… files=… bytes=… · mti
 `YYYY-MM` (`examplechannel-2026-09-19-015034/`, `probe-2026-03/`); an exact `YYYY-MM/` folder is the month itself.
 An undated folder with a dated name somewhere below it is an *area* and is descended. An undated folder
 with none is **one mtime unit** (the highest such folder), dated by the newest file inside; it joins the
-upload plan once old but is **never moved**; its Drive target keeps its own path
-(`…/<repo>/<area>/<unitName>`, no month segment: it mirrors the unmoved local path), so no two units share a target. `--json` lists the 5 largest under
+upload plan once old but is **never moved**; its planned Drive target keeps its own path
+(`…/<repo>/<area>/<unitName>`, no month segment: it mirrors the unmoved local path), so no two units share a target.
+At upload, an mtime unit gets a date level: `…/<repo>/<area>/<unitName>/<YYYY-MM-DD>/`,
+dated by its newest file (the date the plan used), recorded in the ledger and its `MANIFEST.json`. `--json` lists the 5 largest under
 `mtimeUnits`. A unit with no files or only empty ones is counted (`empty-units=`) and never planned.
 Undated files are counted and left alone. **Regenerable dirs** (`__pycache__`, `node_modules`, `.venv`,
 `venv`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.build`, `.next`, `.turbo`, `.probe`) are never
 planned, never an mtime unit and never deleted; each is reported once as `skipped: regenerable <path>/`
 with its size, and the summary adds `regenerable-skipped=N bytes=B`. A credential inside one still wins
 (the dir is held). A month rolls up once it is over; months more than N back form
-the upload plan, one unit per folder, targeting `Brain Drive/06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>`.
+the upload plan, one unit per folder, targeting `Brain Drive/06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>`
+(the one named exception to the `YYYY-MM-DD` date level: a rollup unit is a month).
 `--apply` moves items into their month folders (never overwriting; a clash is reported as `conflict:`)
 and writes `docs.local/_drive-filing/rollup-plan-<date>.json`. **The script never uploads or deletes.**
 Upload exactly the files in that plan through the [archive procedure](references/archive-procedure.md)
-(ledger + `brain_digest`), and nothing that is not in it.
+(ledger + `brain_digest`), and nothing that is not in it. The plan is **not** a manifest (it lists paths
+and sizes, with no hashes, host, producer or restore command): until `rollup.mjs` emits one, write each
+unit's `MANIFEST.json` by hand before its upload and upload it with the unit.
 
 **Credentials never move.** Nothing whose name contains `credential`, `secret`, `token` or `.env` (`.env*`,
 `deploy.env`, `.ENV.prod`, `.envrc`) or has `env` as a word (`prod-env.json`, `app-env.yml`,

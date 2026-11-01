@@ -9,7 +9,6 @@
 import { runLLMJSON } from "@golems/shared/lib/llm";
 import { getRegistry, getRegistryForPrompt } from "./registry";
 import type { PipelineCapability, OutputFormat } from "./registry";
-import { getPerformanceStats, type PipelineStats } from "./tracker";
 import { z } from "zod";
 
 const routingResultSchema = z.object({
@@ -64,30 +63,11 @@ export interface RoutingResult {
 }
 
 /** Build the system prompt for pipeline routing. */
-function buildRoutingPrompt(
-  registryJson: string,
-  stats: PipelineStats[],
-): string {
-  let statsContext = "";
-  if (stats.length > 0) {
-    statsContext = `\n\nPipeline performance history (from past runs):\n${JSON.stringify(
-      stats.map((s) => ({
-        pipeline: s.pipelineId,
-        runs: s.totalRuns,
-        avgQuality: s.avgQualityScore,
-        successRate: s.successRate,
-        topIdeaTypes: s.topIdeaTypes,
-      })),
-      null,
-      2,
-    )}`;
-  }
-
+function buildRoutingPrompt(registryJson: string): string {
   return `You are a content pipeline router. Given a creative idea, select the best pipeline(s) to produce the content.
 
 Available pipelines:
 ${registryJson}
-${statsContext}
 
 Rules:
 1. Choose the pipeline that best matches the idea's intent and output needs.
@@ -124,15 +104,7 @@ export async function routeIdea(
   const registry = getRegistry();
   const registryJson = getRegistryForPrompt();
 
-  // Get performance stats for learning loop context
-  let stats: PipelineStats[] = [];
-  try {
-    stats = await getPerformanceStats();
-  } catch {
-    // Stats not available — route without history
-  }
-
-  const systemPrompt = buildRoutingPrompt(registryJson, stats);
+  const systemPrompt = buildRoutingPrompt(registryJson);
 
   let userPrompt = `Route this creative idea to the best pipeline:\n\n"${request.idea}"`;
 

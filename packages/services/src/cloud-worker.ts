@@ -18,7 +18,6 @@
  *
  * ENV defaults (override as needed for the active host):
  *   LLM_BACKEND=haiku
- *   STATE_BACKEND=supabase
  *   TZ=Asia/Jerusalem
  *
  * Usage:
@@ -30,7 +29,6 @@ import "@golems/shared/lib/load-env";
 
 // Default cloud env vars (can be overridden)
 if (!process.env.LLM_BACKEND) process.env.LLM_BACKEND = "haiku";
-if (!process.env.STATE_BACKEND) process.env.STATE_BACKEND = "supabase";
 
 // Catch unhandled errors before they crash the worker silently
 import { installProcessGuards } from "@golems/shared/lib/process-guards";
@@ -55,11 +53,6 @@ async function getUsage() {
   };
 }
 
-async function getCostTracker() {
-  const mod = await import("@golems/shared/lib/cost-tracker");
-  return { getSupabaseUsageStats: mod.getSupabaseUsageStats };
-}
-
 // Lazy imports to avoid loading everything at startup
 async function getEmailGolem() {
   const mod = await import("@golems/shared/email/index");
@@ -71,25 +64,15 @@ async function getBriefing() {
   return mod.sendBriefing;
 }
 
-async function getCalendarSync() {
-  const mod = await import("@golems/coach/calendar-sync");
-  return mod.syncCalendarToSupabase;
-}
-
 // ═══════════════════════════════════════════════════════
 // Safe execution wrapper
 // ═══════════════════════════════════════════════════════
-
-async function getServiceRunReporter() {
-  return (await import("@golems/shared/lib/supabase-factory")).getSupabase();
-}
 
 async function safeRun(
   name: string,
   fn: () => Promise<unknown>,
 ): Promise<void> {
   const start = Date.now();
-  const startedAt = new Date().toISOString();
   console.log(`[CloudWorker] Starting ${name}...`);
 
   let status = "success";
@@ -132,98 +115,6 @@ async function safeRun(
     }
   } catch {
     // Non-critical
-  }
-
-  // Report service run to Supabase (fire-and-forget)
-  try {
-    const sb = await getServiceRunReporter();
-    if (sb) {
-      const durationMs = Date.now() - start;
-      const endedAt = new Date().toISOString();
-      sb.from("service_runs")
-        .insert({
-          service: name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
-          started_at: startedAt,
-          ended_at: endedAt,
-          duration_ms: durationMs,
-          status,
-          result,
-          error,
-        })
-        .then(({ error: dbErr }) => {
-          if (dbErr)
-            console.error(
-              "[CloudWorker] service_runs insert failed:",
-              dbErr.message,
-            );
-        })
-        .catch((err: unknown) => {
-          console.error(
-            "[CloudWorker] service_runs network error:",
-            err instanceof Error ? err.message : err,
-          );
-        });
-
-      // Update golem_state timestamps + status for dashboard service status
-      const stateKeyPrefixes: [string, string][] = [
-        ["EmailGolem", "lastEmailCheck"],
-        ["Briefing", "lastBriefing"],
-        ["CalendarSync", "lastCalendarSync"],
-      ];
-      const stateKey = stateKeyPrefixes.find(([prefix]) =>
-        name.startsWith(prefix),
-      )?.[1];
-      if (stateKey) {
-        // Write plain timestamp to original key (consumers expect ISO string)
-        sb.from("golem_state")
-          .upsert(
-            { key: stateKey, value: endedAt, updated_at: endedAt },
-            { onConflict: "key" },
-          )
-          .then(({ error: stateErr }) => {
-            if (stateErr)
-              console.error(
-                `[CloudWorker] golem_state ${stateKey} upsert failed:`,
-                stateErr.message,
-              );
-          })
-          .catch((err: unknown) => {
-            console.error(
-              `[CloudWorker] golem_state ${stateKey} network error:`,
-              err instanceof Error ? err.message : err,
-            );
-          });
-        // Write status metadata to separate key for dashboard health display
-        const metaValue = JSON.stringify({
-          time: endedAt,
-          status,
-          error: error?.slice(0, 200) ?? null,
-        });
-        sb.from("golem_state")
-          .upsert(
-            { key: `${stateKey}_meta`, value: metaValue, updated_at: endedAt },
-            { onConflict: "key" },
-          )
-          .then(({ error: stateErr }) => {
-            if (stateErr)
-              console.error(
-                `[CloudWorker] golem_state ${stateKey}_meta upsert failed:`,
-                stateErr.message,
-              );
-          })
-          .catch((err: unknown) => {
-            console.error(
-              `[CloudWorker] golem_state ${stateKey}_meta network error:`,
-              err instanceof Error ? err.message : err,
-            );
-          });
-      }
-    }
-  } catch (err) {
-    console.warn(
-      "[CloudWorker] Supabase reporting error:",
-      err instanceof Error ? err.message : err,
-    );
   }
 }
 
@@ -397,31 +288,13 @@ Bun.serve({
     }
 
     if (url.pathname === "/usage") {
-      const validPeriods = ["today", "week", "month", "all"] as const;
-      const rawPeriod = url.searchParams.get("period") || "today";
-      const period = validPeriods.includes(rawPeriod as any)
-        ? (rawPeriod as (typeof validPeriods)[number])
-        : "today";
-
-      // Try Supabase first (persistent, survives deploys)
-      try {
-        const { getSupabaseUsageStats } = await getCostTracker();
-        const stats = await getSupabaseUsageStats(period);
-        return Response.json({
-          source: "supabase",
-          period,
-          ...stats,
-        });
-      } catch {
-        // Fall back to in-memory stats
-        const { getUsageStats, getUsageBySource } = await getUsage();
-        return Response.json({
-          source: "memory",
-          period: "since-deploy",
-          ...getUsageStats(),
-          bySource: getUsageBySource(),
-        });
-      }
+      const { getUsageStats, getUsageBySource } = await getUsage();
+      return Response.json({
+        source: "memory",
+        period: "since-deploy",
+        ...getUsageStats(),
+        bySource: getUsageBySource(),
+      });
     }
 
     return new Response("Not Found", { status: 404 });
@@ -442,19 +315,11 @@ try {
     const sendBriefing = await getBriefing();
     scheduleDaily("Briefing", 8, sendBriefing);
 
-    // Calendar sync: 3 times/day to catch new events
-    // 7am (morning), 12pm (midday), 6pm (evening)
-    const syncCalendar = await getCalendarSync();
-    for (const hour of [7, 12, 18]) {
-      scheduleDaily("CalendarSync", hour, syncCalendar);
-    }
-
     console.log("[CloudWorker] All services scheduled:");
     console.log(
       "  - EmailGolem: hourly 6am-7pm (skip lunch), 10pm final, OFF overnight",
     );
     console.log("  - Briefing: 8am Israel");
-    console.log("  - CalendarSync: 7am, 12pm, 6pm Israel");
   } else if (emailOnly) {
     const processEmails = await getEmailGolem();
     scheduleEmail(processEmails);
