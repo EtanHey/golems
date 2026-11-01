@@ -90,7 +90,7 @@ def test_token_boundaries(cell, token):
 
 def test_closed_and_no_config(cell):
     cell[2].write_text(OPEN + CLOSED)
-    assert call(cell)[1]['systemMessage'].startswith('M1-WINDOW advisory:')
+    assert call(cell)[1] == {}  # silent: no advisory when every window is CLOSED
     assert not call(cell, 'ssh m1 true # lane=fixture')[1]
     cell[1].unlink()
     assert call(cell)[1] == {}
