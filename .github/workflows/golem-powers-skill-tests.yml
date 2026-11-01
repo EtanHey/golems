@@ -147,6 +147,7 @@ jobs:
                    ./scripts/tests/ratchet-mac.test.mjs \
                    ./scripts/tests/ratchet-debt.test.mjs \
                    ./scripts/tests/ratchet-live-freshness.test.mjs \
+                   ./scripts/tests/ratchet-perf.test.mjs \
                    ./scripts/tests/repogolem-agents.test.ts \
                    ./scripts/tests/repogolem-managed-agents.test.ts \
                    ./scripts/tests/repogolem-values.test.ts \
