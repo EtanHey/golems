@@ -66,12 +66,22 @@ for repo in "$GITS"/*; do
 done
 # Put the largest plans together instead of serializing them across batches.
 sort -nr "$scratch/order" > "$scratch/sorted"
+# A token is returned even on a failed plan, so the producer cannot deadlock.
+mkfifo "$scratch/slots"
+exec 9<> "$scratch/slots"
+printf '\n\n\n\n' >&9
 while read -r count index; do
-  collect_plan "${repos[$index]}" "$index" &
+  read -r <&9
+  (
+    rc=0
+    collect_plan "${repos[$index]}" "$index" || rc=$?
+    printf '\n' >&9
+    exit "$rc"
+  ) &
   pids+=("$!")
-  if [[ "${#pids[@]}" -eq 4 ]]; then wait_batch; fi
 done < "$scratch/sorted"
 wait_batch
+exec 9>&-
 for count_file in "$scratch"/*.count; do
   read -r count < "$count_file"
   merged=$((merged + count))

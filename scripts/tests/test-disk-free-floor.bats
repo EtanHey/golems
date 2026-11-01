@@ -120,4 +120,20 @@ STUB
     "$REPO_ROOT/scripts/ratchet/mac/disk-free-floor.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *'merged_worktrees=5 '* ]] || false
+  # Fail a child plan after its preflight census; queued work must still drain.
+  mkdir "$TEST_ROOT/bin"
+  cat > "$TEST_ROOT/bin/git" <<'STUB'
+#!/usr/bin/env bash
+if [[ " $* " == *"/measured1 worktree list "* ]]; then
+  if [[ -e "$FAIL_MARKER" ]]; then exit 2; fi
+  touch "$FAIL_MARKER"
+fi
+exec "$REAL_GIT" "$@"
+STUB
+  chmod +x "$TEST_ROOT/bin/git"
+  run timeout 60 env RATCHET_GITS_ROOT="$TEST_ROOT/gits" DISK_FREE_FLOOR_GB=0 WORKTREE_GC_IDLE_HOURS=0 \
+    PATH="$TEST_ROOT/bin:$PATH" REAL_GIT="$(command -v git)" FAIL_MARKER="$TEST_ROOT/census" \
+    "$REPO_ROOT/scripts/ratchet/mac/disk-free-floor.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" != *'"health"'* ]] || false
 }
