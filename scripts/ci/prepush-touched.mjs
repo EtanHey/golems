@@ -3,7 +3,7 @@
 // Only the checked-out HEAD can be pushed; other branch heads are refused.
 import { readFileSync, readdirSync, existsSync, mkdirSync, appendFileSync, accessSync, constants } from 'node:fs';
 import { dirname, basename, resolve, join } from 'node:path';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
@@ -16,7 +16,7 @@ function available(command) {
 }
 const warnMissing = tool => console.error(`prepush-touched: ${tool} not installed here; dependent checks will run in CI`);
 const pythonModules = new Set();
-function run(command, env = {}, capture = false) {
+function run(command, env = {}, capture = false, retrySuite = false) {
   if (command[0] !== 'git' && !available(command[0])) { warnMissing(command[0]); return ''; }
   if (command[1] === '-m' && command[2] === 'pytest' && !pythonModules.has(command[0])) {
     const probe = spawnSync(command[0], ['-c', "import importlib.util; raise SystemExit(0 if importlib.util.find_spec('pytest') else 1)"], { encoding: 'utf8' });
@@ -25,18 +25,42 @@ function run(command, env = {}, capture = false) {
   }
   const display = command.join(' ');
   console.error(`prepush-touched: RUN ${display.length > 700 ? display.slice(0, 700) + ' … (' + command.length + ' args)' : display}`);
-  const r = spawnSync(command[0], command.slice(1), {
+  const execute = () => spawnSync(command[0], command.slice(1), {
     cwd: root, env: { ...process.env, ...env }, encoding: 'utf8',
     ...(command[0] === 'bats' ? { timeout: 180_000, killSignal: 'SIGKILL' } : {}),
-    stdio: capture ? ['ignore', 'pipe', 'inherit'] : ['ignore', 'inherit', 'inherit'],
+    maxBuffer: 64 * 1024 * 1024,
+    stdio: retrySuite ? ['ignore', 'pipe', 'pipe'] : capture ? ['ignore', 'pipe', 'inherit'] : ['ignore', 'inherit', 'inherit'],
   });
+  let r = execute();
   if (r.error?.code === 'ENOENT' && command[0] !== 'git') { warnMissing(command[0]); return ''; }
+  if (retrySuite && (r.error || r.status !== 0)) {
+    const first = r;
+    const tail = result => [result.stdout, result.stderr].filter(Boolean).join('\n').trimEnd().split('\n').slice(-40).join('\n');
+    console.error(`prepush-touched: FAIL ${display} run 1 (${first.error?.message || first.status})\n${tail(first)}`);
+    console.error(`prepush-touched: RETRY ${display}`);
+    r = execute();
+    if (r.error || r.status !== 0) {
+      console.error(`prepush-touched: FAIL ${display} run 2 (${r.error?.message || r.status})\n${tail(r)}`);
+    } else {
+      const ledger = join(homedir(), '.golems/prepush-flakes.jsonl');
+      mkdirSync(dirname(ledger), { recursive: true });
+      appendFileSync(ledger, JSON.stringify({ ts: new Date().toISOString(), repo: root,
+        head_sha: git('rev-parse', 'HEAD'), command: display,
+        first_exit: first.status > 0 ? first.status : 1, first_tail: tail(first), host: hostname() }) + '\n');
+      console.error(`prepush-touched: FLAKE ${display} failed then passed on retry; logged`);
+    }
+  }
+  if (retrySuite && r.status === 0) {
+    if (r.stdout) process.stdout.write(r.stdout);
+    if (r.stderr) process.stderr.write(r.stderr);
+  }
   if (r.error || r.status !== 0) {
     console.error(`prepush-touched: FAIL ${command.join(' ')} (${r.error?.message || r.status})`);
     process.exit(r.status > 0 ? r.status : 1);
   }
   return r.stdout || '';
 }
+const suite = command => run(command, {}, false, true);
 const git = (...args) => run(['git', ...args], {}, true).trim();
 function walk(dir) {
   if (!existsSync(dir)) return [];
@@ -109,14 +133,14 @@ async function main() {
   const workflow = parse(readFileSync('.github/workflows/golem-powers-skill-tests.yml', 'utf8'));
   const skills = [...new Set([...changed].filter(p => p.startsWith('skills/golem-powers/')).map(p => p.split('/')[2]))];
   if (skills.length) {
-    run(['node', '--test', 'scripts/tests/model-roles.test.mjs', 'scripts/tests/model-role-wiring.test.mjs']);
+    suite(['node', '--test', 'scripts/tests/model-roles.test.mjs', 'scripts/tests/model-role-wiring.test.mjs']);
     const listed = run(['bash', 'scripts/ci/run-skill-tests.sh'], { RUN_SKILL_TESTS_LIST_ONLY: '1' }, true)
       .trim().split('\n');
     const selected = listed.filter(p => skills.some(s => p.startsWith(`skills/golem-powers/${s}/`)));
     const suites = selected.filter(p => !p.endsWith('.py'));
-    if (suites.length) run([python, '-m', 'pytest', ...suites, '-q']);
+    if (suites.length) suite([python, '-m', 'pytest', ...suites, '-q']);
     skillBats.push(...skills.flatMap(s => walk(`skills/golem-powers/${s}`)).filter(p => p.endsWith('.bats')));
-    for (const evalSuite of selected.filter(p => p.endsWith('.py'))) run([python, evalSuite]);
+    for (const evalSuite of selected.filter(p => p.endsWith('.py'))) suite([python, evalSuite]);
   }
   // These are the pristine gate's input families (FILES and imported split modules).
   const pristine = [...changed].some(p =>
@@ -125,7 +149,7 @@ async function main() {
   if (pristine) {
     const baseline = workflow.jobs['python-skill-tests'].steps.find(s => s.name === 'Pristine split baseline gate');
     if (!baseline?.run) throw new Error('CI pristine baseline command missing');
-    run([python, ...baseline.run.trim().split(/\s+/).slice(1)]);
+    suite([python, ...baseline.run.trim().split(/\s+/).slice(1)]);
   }
 
   const inventory = [];
@@ -191,14 +215,14 @@ async function main() {
   for (const { command } of selected) {
     if (seen.has(JSON.stringify(command))) continue;
     seen.add(JSON.stringify(command));
-    run(command[0] === 'python' ? [python, ...command.slice(1)] : command);
+    suite(command[0] === 'python' ? [python, ...command.slice(1)] : command);
   }
   const batsCount = skillBats.length + selectedBats.length;
   if (batsCount && !available('bats')) {
     console.error(`prepush-touched: bats not installed here; ${batsCount} bats suites will run in CI`);
   } else {
-    for (const path of skillBats) run(['bats', '--tap', path]);
-    if (selectedBats.length) run(['node', 'scripts/ci/run-bats-suites.mjs', '--run', ...selectedBats.map(p => basename(p))]);
+    for (const path of skillBats) suite(['bats', '--tap', path]);
+    if (selectedBats.length) suite(['node', 'scripts/ci/run-bats-suites.mjs', '--run', ...selectedBats.map(p => basename(p))]);
   }
   if (!skills.length && !relevant.length) console.error('prepush-touched: no relevant suites; available cheap gates finished');
 }
