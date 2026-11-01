@@ -11,11 +11,21 @@ ROOT = Path(__file__).resolve().parents[2]
 HOOK = ROOT / ".githooks/pre-push"
 
 
+def hook_runtime(bin_dir):
+    """Keep these queue/isolation tests independent of the ratchet rows."""
+    for program in ("cat", "bash"):
+        (bin_dir / program).symlink_to(shutil.which(program))
+    node = bin_dir / "node"
+    node.write_text("#!/bin/sh\nexit 0\n")
+    node.chmod(0o755)
+
+
 @pytest.mark.parametrize("availability", ["installed", "missing-helper", "missing-python"])
 @pytest.mark.parametrize("status", [0, 7])
 def test_pre_push_wraps_suite_and_preserves_fallback_status(tmp_path, availability, status):
     home, bin_dir = tmp_path / "home", tmp_path / "bin"
     home.mkdir(); bin_dir.mkdir()
+    hook_runtime(bin_dir)
     helper = home / "Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
     if availability != "missing-helper":
         helper.parent.mkdir(parents=True)
@@ -59,6 +69,7 @@ def git_env_hook(tmp_path, request):
     clean_env = {k: v for k, v in os.environ.items() if k not in local_names}
     home, bin_dir, decoy = (tmp_path / name for name in ("home", "bin", "decoy"))
     home.mkdir(); bin_dir.mkdir(); decoy.mkdir()
+    hook_runtime(bin_dir)
     if request.param == "installed":
         helper = home / "Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
         helper.parent.mkdir(parents=True)
@@ -164,6 +175,7 @@ def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
     shutil.copyfile(ROOT / "scripts/hooks/heavy-suite.py", helper)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
+    hook_runtime(bin_dir)
     marker = tmp_path / "suite-ran"
     bun = bin_dir / "bun"
     bun.write_text('#!/bin/sh\nprintf ran > "$SUITE_RECORD"\n')
