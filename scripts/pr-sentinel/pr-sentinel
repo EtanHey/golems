@@ -22,7 +22,7 @@ QUERY = '''query($q:String!,$cursor:String,$count:Int!) {
  search(query:$q,type:ISSUE,first:$count,after:$cursor) {
   pageInfo { hasNextPage endCursor } nodes { ... on PullRequest {
    url number isDraft headRefOid mergeable mergeStateStatus author { login }
-   repository { nameWithOwner } comments(last:20) { nodes { body createdAt } }
+   repository { nameWithOwner viewerPermission } comments(last:20) { nodes { body createdAt } }
    commits(last:1) { nodes { commit { committedDate statusCheckRollup {
     contexts(first:100) { pageInfo { hasNextPage } nodes {
      ... on CheckRun { name conclusion status completedAt startedAt databaseId }
@@ -121,7 +121,12 @@ def classify(pr):
             return 'RED', f'{" ".join(name.split())[:80]} failed'
     if pending:
         return 'PENDING', 'checks running'
-    return ('GREEN', 'ready to merge') if pr['mergeStateStatus'] == 'CLEAN' else ('OTHER', 'no action')
+    if pr['mergeStateStatus'] != 'CLEAN':
+        return 'OTHER', 'no action'
+    # A green PR we cannot merge (an upstream repo) waits on its maintainers, not on us.
+    if pr['repository'].get('viewerPermission') not in {'ADMIN', 'MAINTAIN', 'WRITE'}:
+        return 'OTHER', 'green; waiting on the maintainers'
+    return 'GREEN', 'ready to merge'
 
 
 def owners(cfg):

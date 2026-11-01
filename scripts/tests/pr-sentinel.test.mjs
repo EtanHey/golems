@@ -1,4 +1,6 @@
-import { test, expect } from "bun:test";
+import { test, expect, setDefaultTimeout } from "bun:test";
+// Each test runs the real CLI many times; a loaded Mac needs more than bun's 5 s default.
+setDefaultTimeout(60_000);
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -6,7 +8,7 @@ const cli = resolve(import.meta.dir, "../pr-sentinel/pr-sentinel");
 const head = "a".repeat(40), old = "2020-01-01T00:00:00Z", newer = "2020-01-02T00:00:00Z";
 const url = n => `https://github.com/fixture/repo/pull/${n}`;
 const pr = (number, changes = {}) => ({ number, url: url(number), headRefOid: head, isDraft: false,
-  mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", repository: { nameWithOwner: "fixture/repo" },
+  mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", repository: { nameWithOwner: "fixture/repo", viewerPermission: "ADMIN" },
   author: { login: "fixture" }, comments: { nodes: [] }, commits: { nodes: [{ commit: {
     committedDate: old, statusCheckRollup: { contexts: { pageInfo: {}, nodes: [] } },
   } }] }, ...changes });
@@ -89,4 +91,15 @@ test("lock excludes overlapping scans before any CLI calls", () => fixture(({ fi
   const code = "import fcntl,subprocess,sys; f=open(sys.argv[1],'w'); fcntl.flock(f,fcntl.LOCK_EX); r=subprocess.run(sys.argv[2:],capture_output=True,text=True); print(r.stderr); sys.exit(r.returncode)";
   const r = Bun.spawnSync(["python3", "-c", code, files.state.replace(/\.json$/, ".lock"), cli, "scan", "--config", files.config, "--state", files.state]);
   expect(r.exitCode).toBe(0); expect(r.stdout.toString()).toContain("another scan is running"); expect(existsSync(files.calls)).toBe(false);
+}));
+
+test("a green PR we cannot merge (upstream) is not actionable", () => fixture(({ write, run, age, sends }) => {
+  write("prs", [pr(1, { repository: { nameWithOwner: "upstream/repo", viewerPermission: "READ" } }),
+    pr(2, { repository: { nameWithOwner: "upstream/repo" } }), pr(3)]);
+  write("threads", []);
+  const out = run().stdout.toString();
+  expect(out).toContain("#1 UNLINKED OTHER"); expect(out).toContain("waiting on the maintainers");
+  expect(out).toContain("#2 UNLINKED OTHER"); expect(out).toContain("#3 UNLINKED GREEN");
+  age(46 * 60); run(); expect(sends()).toHaveLength(1);
+  expect(sends()[0].message).toContain("#3"); expect(sends()[0].message).not.toContain("upstream/repo");
 }));
