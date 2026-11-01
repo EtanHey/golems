@@ -24,6 +24,9 @@ for (const helper of [false, true]) {
         mkdirSync(dirname(target), { recursive: true });
         copyFileSync(join(root, "scripts", file), target);
       }
+      const touchedDir = join(cwd, "scripts/ci");
+      mkdirSync(touchedDir, { recursive: true });
+      writeFileSync(join(touchedDir, "prepush-touched.sh"), "exit 0\n");
       if (helper) {
         const dir = join(cwd, "Gits/golems/.worktrees/hooks-live/scripts/hooks");
         mkdirSync(dir, { recursive: true });

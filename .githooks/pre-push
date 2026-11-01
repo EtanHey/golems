@@ -9,7 +9,7 @@ if command -v git >/dev/null; then unset $(git rev-parse --local-env-vars); fi
 GOLEMS_PREPUSH_UPDATES="$(cat)"
 export GOLEMS_PREPUSH_UPDATES
 HS="$HOME/Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
-suite=(bash -c 'bun --no-env-file run test </dev/null && node scripts/ratchet/pre-push.mjs --ci')
+suite=(bash -c 'bun --no-env-file run test </dev/null && node scripts/ratchet/pre-push.mjs --ci && bash scripts/ci/prepush-touched.sh <<< "$GOLEMS_PREPUSH_UPDATES"')
 if [ -f "$HS" ] && command -v python3 >/dev/null; then
   printf '%s\n' "$GOLEMS_PREPUSH_UPDATES" | GOLEMS_HEAVY_PRE_PUSH=1 python3 "$HS" -- "${suite[@]}"
 else

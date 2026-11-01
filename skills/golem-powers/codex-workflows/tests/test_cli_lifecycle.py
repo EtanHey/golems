@@ -14,6 +14,9 @@ def test_cli_launch_watch_harvest_cleanup(tmp_path):
     source, origin, repo = (tmp_path / name for name in ("source", "origin.git", "repo"))
     env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
 
+    # Worktree lifecycle coverage must not depend on the host's free disk.
+    env["GOLEMS_WORKTREE_MIN_FREE_GB"] = "0"
+
     def git(*args, cwd=None):
         return subprocess.run(["git", *map(str, args)], cwd=cwd, env=env,
                               capture_output=True, text=True, check=True, timeout=10)

@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
 import sys
 import pytest
@@ -13,8 +14,12 @@ HOOK = ROOT / ".githooks/pre-push"
 
 def hook_runtime(bin_dir):
     """Keep these queue/isolation tests independent of the ratchet rows."""
-    for program in ("cat", "bash"):
-        (bin_dir / program).symlink_to(shutil.which(program))
+    (bin_dir / "cat").symlink_to(shutil.which("cat"))
+    bash = bin_dir / "bash"
+    # Run the real suite shell; isolate touched-suite behavior in its own harness.
+    bash.write_text('#!/bin/sh\nif [ "$1" = scripts/ci/prepush-touched.sh ]; then exit 0; fi\n'
+                    + 'exec ' + shlex.quote(shutil.which("bash")) + ' "$@"\n')
+    bash.chmod(0o755)
     node = bin_dir / "node"
     node.write_text("#!/bin/sh\nexit 0\n")
     node.chmod(0o755)
@@ -182,6 +187,8 @@ def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
     bun.chmod(0o755)
     scripts = repo / "scripts"
     scripts.mkdir()
+    (scripts / "ci").mkdir()
+    (scripts / "ci/prepush-touched.sh").write_text('exit 0\n')
     (scripts / "run_tests.sh").write_text(
         'printf ran > "$SUITE_RECORD"\n')
     env.update(PATH=str(bin_dir) + os.pathsep + env["PATH"], SUITE_RECORD=str(marker))

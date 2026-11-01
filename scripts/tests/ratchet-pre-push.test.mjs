@@ -1,14 +1,16 @@
-import { test, expect } from 'bun:test';
+import { test, expect, setDefaultTimeout } from 'bun:test';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const head = 'a'.repeat(40), base = 'b'.repeat(40), old = 'c'.repeat(40);
+// Each scenario runs several real shell/Node subprocesses, including on cold CI.
+setDefaultTimeout(30_000);
 function fixture(check) {
   mkdirSync(resolve('docs.local/n4-tests'), { recursive: true });
   const dir = mkdtempSync(resolve('docs.local/n4-tests/push-'));
   try {
-    for (const path of ['.githooks', 'scripts/ratchet', 'scripts/hooks', 'bin']) mkdirSync(join(dir, path), { recursive: true });
+    for (const path of ['.githooks', 'scripts/ratchet', 'scripts/hooks', 'scripts/ci', 'bin']) mkdirSync(join(dir, path), { recursive: true });
     for (const path of ['.githooks/pre-push', 'scripts/ratchet/pre-push.mjs', 'scripts/ratchet/run-rows.mjs',
       'scripts/ratchet/table.mjs', 'scripts/ratchet/guarded-paths.sh', 'scripts/hooks/machine-host.mjs']) {
       copyFileSync(resolve(path), join(dir, path));
@@ -18,6 +20,7 @@ function fixture(check) {
       { id: 'live-tier-freshness', metric: 'freshness', kind: 'unit', runner: 'ci', direction: 'pass', ceiling: true, command: 'false' },
     ] };
     writeFileSync(join(dir, 'scripts/ratchet/rows.json'), JSON.stringify(rows));
+    writeFileSync(join(dir, 'scripts/ci/prepush-touched.sh'), '#!/bin/bash\nrefs="$(cat)"\nprintf "touched held=%s refs=%s\\n" "${GOLEMS_HEAVY_SUITE_HELD:-}" "$refs" >> "$CALL_LOG"\nexit "${TOUCHED_FAIL:-0}"\n');
     writeFileSync(join(dir, 'scripts/ratchet/local-run.sh'), `#!/bin/bash
 set -e
 if [ "\${REQUIRE_MAC_OWN_LEASE:-0}" = 1 ]; then
@@ -63,7 +66,8 @@ if(name==='git') {
     const run = (extra = {}, input = `refs/heads/fixture ${head} refs/heads/fixture ${old}\n`) => {
       writeFileSync(log, '');
       const result = spawnSync('bash', ['.githooks/pre-push'], { cwd: dir, input, encoding: 'utf8',
-        env: { ...process.env, HOME: dir, PATH: join(dir, 'bin') + ':' + process.env.PATH,
+        // Model a fresh push; the fake coordinator supplies the fixture's lease.
+        env: { ...process.env, GOLEMS_HEAVY_SUITE_HELD: '', HOME: dir, PATH: join(dir, 'bin') + ':' + process.env.PATH,
           CALL_LOG: log, ROWS_FILE: join(dir, 'scripts/ratchet/rows.json'), SCRIPTS_ROOT: join(dir, 'scripts'), ...extra } });
       return { ...result, output: result.stdout + result.stderr, calls: readFileSync(log, 'utf8') };
     };
@@ -124,9 +128,13 @@ sys.exit(result)
   expect(r.status).toBe(0); expect(r.calls).toContain(`queue refs/heads/fixture ${head}`);
   expect(r.calls).toContain(`mac --pr 42 --head ${head}`);
   expect(r.calls).toContain('mac-lease-clear');
+  expect(r.calls).toContain(`touched held=fixture-queue refs=refs/heads/fixture ${head} refs/heads/fixture ${old}`);
+  expect(r.calls.indexOf('touched held=')).toBeLessThan(r.calls.indexOf('queue-done'));
   expect(r.calls.indexOf('queue-done')).toBeLessThan(r.calls.indexOf('mac --pr'));
   const failed = run({ ...env, ROW_FAIL: '1' });
-  expect(failed.status).toBe(1); expect(failed.calls).not.toContain('mac --pr');
+  expect(failed.status).toBe(1); expect(failed.calls).not.toContain('touched held='); expect(failed.calls).not.toContain('mac --pr');
+  const touchedFailed = run({ ...env, TOUCHED_FAIL: '7' });
+  expect(touchedFailed.status).toBe(7); expect(touchedFailed.calls).not.toContain('mac --pr');
   const bypass = run({ ...env, GOLEMS_PREPUSH_RATCHET: '0' });
   expect(bypass.status).toBe(0); expect(bypass.calls).not.toContain('mac --pr');
   expect(bypass.output).toContain('WARNING');

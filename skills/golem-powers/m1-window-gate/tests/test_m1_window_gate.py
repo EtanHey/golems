@@ -200,3 +200,52 @@ def test_seat_transport_and_no_lock(cell, codex):
     assert call(cell, 'bun test', codex=codex, mode='seat')[0]
     assert not call(cell, 'ls', codex=codex, mode='seat')[0]
     assert not call(cell, 'bun test # ' + LANE, codex=codex, mode='seat')[0]
+
+
+@pytest.mark.parametrize('prefix', ['mcp__t3-code__', 'mcp__t3_code__'])
+@pytest.mark.parametrize('mode', [None, 'auto', 'queue', 'steer'])
+def test_message_to_m1_lead_is_allowed_during_window(cell, prefix, mode):
+    # orc and leads can still talk to an M1 lead (a top-level thread) mid-run.
+    ti = {'environmentId': 'fixture-env', 'threadId': 'f51dafcd-5547-4317-8f8e-9fa754600af4', 'message': 'hi'}
+    if mode:
+        ti['mode'] = mode
+    assert not call(cell, name=prefix + 't3_thread_send', ti=ti)[0]
+
+
+@pytest.mark.parametrize('ti', [
+    {'environmentId': 'fixture-env', 'threadId': 'thread:delegated-task:command%3Ax', 'message': 'go'},
+    {'environmentId': 'fixture-env', 'threadId': 'thread:provider:codex:native-thread:01a116c8-d7e1-7011-ace4-c33ebadffed7', 'message': 'go'},
+    {'environmentId': 'fixture-env', 'threadId': 'thread:provider:claudeAgent:native-thread:x', 'message': 'go'},
+    {'environmentId': 'fixture-env', 'threadId': 'thread:project:mcp%3Ap:d2b16d65-96db-48f2-bcd7-e80c14aba21b', 'message': 'go'},
+    {'environmentId': 'fixture-env', 'threadId': 'not-a-thread-shape', 'message': 'go'},
+    {'environmentId': 'fixture-env', 'threadId': 'mcp:lead-thread', 'message': 'go', 'mode': 'restart'},
+    {'environmentId': 'fixture-env', 'message': 'no thread id'},
+    {'environmentId': 'fixture-env', 'threadId': '', 'message': 'empty thread id'}])
+def test_work_starting_sends_stay_blocked(cell, ti):
+    # A send to a finished child starts a fresh task; restart interrupts work: both are dispatch.
+    assert call(cell, name='mcp__t3-code__t3_thread_send', ti=ti)[0]
+
+
+@pytest.mark.parametrize('label', ['run2', 'run3'])
+def test_seat_own_lane_any_run_label(seat, label):
+    lane = LANE.replace('-run1-', '-' + label + '-')
+    assert not call(seat, 'bun test # lane=' + lane, mode='seat')[0]
+    assert call(seat, 'bun test # lane=' + lane + '-other', mode='seat')[0]
+    assert call(seat, 'bun test # lane=' + lane.replace(STEM.rsplit('-', 1)[-1], '20990101T000000000000'), mode='seat')[0]
+
+
+@pytest.mark.parametrize('label', ['run2.4', 'run_2', 'run-2', 'run:2'])
+def test_lane_label_grammar_matches_across_modes(cell, seat, label):
+    # Seat and dispatch accept the same labels; the stem's timestamp is what must match.
+    lane = LANE.replace('-run1-', '-' + label + '-')
+    assert not call(seat, 'bun test # lane=' + lane, mode='seat')[0]
+    cell[2].write_text(f'EVENT | opened-at | STARTED | lane={lane}\nEVENT | opened-at | WINDOW | OPEN | stem={STEM}\n')
+    assert not call(cell, 'ssh m1 true # lane=' + lane)[0]
+
+
+@pytest.mark.parametrize('thread', ['mcp:2d70c7ac-5124-4b11-a863-fa3c5b6327ed',
+    'mcp:launch:1cc19ea61442c8d53977d98ca0c03ac13bc3742c08a90712a0ad3056f1c8ce56',
+    'import:claudeAgent:697CED41-A173-4DF4-B9C7-C8EFFFD9D581', '5de712f0-a1fa-4985-87ca-bdcd7dc23db7'])
+def test_lead_thread_shapes_pass(cell, thread):
+    assert not call(cell, name='mcp__t3-code__t3_thread_send',
+                    ti={'environmentId': 'fixture-env', 'threadId': thread, 'message': 'hi'})[0]
