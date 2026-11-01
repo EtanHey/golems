@@ -20,8 +20,10 @@ renew the same name with `start --lease <name> --ttl 1h` for longer work.
 Always pass the same name to `release`: the default name is the calling shell's PID, which
 changes between commands. Never touch another task's lease. `status` prints live leases; `reap` drops expired
 ones. The last release, or reaping all expired leases, stops the verified browser
-with SIGTERM. A launchd job reaps every 10 minutes. Never leave it running for
-other workers without their own live leases.
+with SIGTERM. There is no background reaper (Etan, 2026-11-01): **you close it.** When your
+task ends, `page.close()` your tab and `release` your lease; if you are the last one, the browser
+quits. If you find a stale browser, run `agent-browser reap`. Never leave it running for other
+workers without their own live leases.
 
 Use the same name through cleanup, even if attach or tab creation fails:
 

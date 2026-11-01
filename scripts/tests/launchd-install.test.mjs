@@ -4,9 +4,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const repoRoot = resolve(import.meta.dir, "../..");
-const retired = "com.golemszikaron.briefing";
-const activeLabels = ["com.golems.worktree-gc", "com.golems.agent-browser-reap"];
-const labels = [retired, ...activeLabels];
+// Retired jobs are booted out and their plists removed on install and uninstall (the agent-browser
+// reaper was dropped on 2026-11-01, so Macs that installed it get it removed).
+const retiredLabels = ["com.golemszikaron.briefing", "com.golems.agent-browser-reap"];
+const activeLabels = ["com.golems.worktree-gc"];
+const labels = [...retiredLabels, ...activeLabels];
 const domain = `gui/${process.getuid()}`;
 
 function runInstaller({ loaded = false, failBootstrap = "", failBootout = false, uninstall = false, unloadDelay = 0, prefixOnly = false } = {}, check) {
@@ -91,7 +93,7 @@ describe("launchd installer lifecycle (stubbed launchctl)", () => {
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       expect(helperAction).toBe("install");
       expect(calls.filter((call) => !call.startsWith("print ") && call !== "list")).toEqual([
-        `bootout ${domain}/${retired}`, `rm ${join(agents, `${retired}.plist`)}`,
+        ...retiredLabels.flatMap((label) => [`bootout ${domain}/${label}`, `rm ${join(agents, `${label}.plist`)}`]),
         ...activeLabels.flatMap((label) => [`bootout ${domain}/${label}`, `bootstrap ${domain} ${join(agents, `${label}.plist`)}`]),
       ]);
       for (const label of activeLabels) {
@@ -114,7 +116,7 @@ describe("launchd installer lifecycle (stubbed launchctl)", () => {
     runInstaller({}, ({ result, agents, calls }) => {
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       expect(calls.filter((call) => !call.startsWith("print ") && call !== "list")).toEqual([
-        `rm ${join(agents, `${retired}.plist`)}`,
+        ...retiredLabels.map((label) => `rm ${join(agents, `${label}.plist`)}`),
         ...activeLabels.map((label) => `bootstrap ${domain} ${join(agents, `${label}.plist`)}`),
       ]);
     });
