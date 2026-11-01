@@ -35,7 +35,8 @@ export function validDiskMeasurement(m) {
     && typeof m.health === "boolean" && m.health === (m.free_gb >= m.floor && m.merged_worktrees <= m.ceiling);
 }
 
-export const PARITY_UNTIL = "2026-11-02T00:00:00Z";
+// orc 2026-11-01: report-only until I5 merges and M1 run 2 succeeds; hard backstop below.
+export const PARITY_UNTIL = "2026-11-09T00:00:00Z";
 export function isReportOnly(row, now = Date.now()) {
   return Boolean(row.report_only) && (row.report_only_until === undefined || now < Date.parse(row.report_only_until));
 }
@@ -79,7 +80,7 @@ export function parseRows(doc) {
     const diskPolicy = row.id === "disk-free-floor" && row.kind === "real" && row.runner === "mac"
       && row.direction === "pass" && row.report_only === "gc-success-on-both-macs" && row.report_only_until === undefined;
     const parityPolicy = row.id === "installed-skill-parity" && row.kind === "real" && row.runner === "live"
-      && row.direction === "pass" && row.report_only === "until-m1-run1" && row.report_only_until === PARITY_UNTIL;
+      && row.direction === "pass" && row.report_only === "until-i5-run2" && row.report_only_until === PARITY_UNTIL;
     if ((row.report_only !== undefined || row.report_only_until !== undefined) && !diskPolicy && !parityPolicy)
       throw new Error(`${where}: invalid report-only policy or expiry`);
     if (row.runner !== undefined && typeof row.runner !== "string") throw new Error(`${where}: runner must be a string`);
