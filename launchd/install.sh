@@ -12,7 +12,7 @@ NODE_BIN="$(command -v node)"
 PLISTS=(
     "com.golems.worktree-gc.plist"
 )
-RETIRED=("com.golemszikaron.briefing.plist")
+RETIRED=("com.golemszikaron.briefing.plist" "com.golems.agent-browser-reap.plist")
 
 domain="gui/$(id -u)"
 
