@@ -7,16 +7,12 @@ import { spawnSync } from "node:child_process";
 import { isDeepStrictEqual } from "node:util";
 
 const quote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
-const REPAIR = "BLOCKED: Codex policy hook unavailable. Repair with scripts/hooks/install-hooks.sh --host <host> --update --apply, then review /hooks from plain codex with no --profile.";
-export const CLIENT_REPAIR = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: rerun the release installer, then run node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client --source ~/.golems/current --apply; review /hooks from plain codex with no --profile.";
+export const CLIENT_REPAIR = "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.";
 export const CODEX_TRUST_HINT = "Review /hooks from plain codex with no --profile so trust persists in the base config.toml; repoGolem's per-launch profile is deleted on exit.";
 
-export function codexCommand(python, adapter, gate, repair = REPAIR, mode) {
-  // Codex exit 2 requires stderr. This fallback survives missing Python, a
-  // missing/broken adapter, and its unexpected exit. No policy lives here.
-  // -I -B: no PYTHONPATH/user site, no bytecode writes into hooks-live (see fail-open.py).
-  const run = [python, "-I", "-B", adapter, gate, ...(mode ? ["--mode", mode] : [])].map(quote).join(" ");
-  return `/bin/sh -c ${quote(`if output=$(${run} 2>/dev/null); then printf '%s\\n' "$output"; else printf '%s\\n' ${quote(repair)} >&2; exit 2; fi`)}`;
+export function codexCommand(python, adapter, gate, mode) {
+  return ["/bin/sh", path.join(path.dirname(adapter), "codex-gate.sh"), gate, python,
+    path.basename(adapter), ...(mode ? ["--mode", mode] : [])].map(quote).join(" ");
 }
 
 function regular(p, directory = false) {
@@ -33,6 +29,13 @@ function regular(p, directory = false) {
 // Claude registration it is refused (never registered) while that pin is empty.
 const CODEX_GATES = { "m1-window-gate": undefined, "tmp-block": undefined, "git-guardian": undefined, "heredoc-guard": undefined,
   "human-confirm": "skills/golem-powers/human-confirm-gate/anchor.pins" };
+const STATUS_MESSAGES = {
+  "tmp-block": "golems tmp-block: keeps work out of /tmp",
+  "git-guardian": "golems git-guardian: stops destructive git commands",
+  "human-confirm": "golems human-confirm: Etan approves actions that can't be undone",
+  "heredoc-guard": "golems heredoc-guard: stops hidden commands in here-documents",
+  "m1-window-gate": "golems m1-window-gate: waits while the M1 is installing",
+};
 
 export function planCodexHooks({ manifest, host, live, source: releaseSource, codexHome, python = "python3", refused = [] }) {
   live = releaseSource ? path.resolve(releaseSource) : live;
@@ -66,7 +69,8 @@ export function planCodexHooks({ manifest, host, live, source: releaseSource, co
   if (!current || typeof current !== "object" || Array.isArray(current) ||
       (current.hooks && (typeof current.hooks !== "object" || Array.isArray(current.hooks)))) throw new Error("Invalid Codex hook configuration");
   const desired = entries.map(e => ({ matcher: e.matcher, hooks: [{ type: "command",
-    command: codexCommand(python, path.join(live, e.source), e.gate, releaseSource ? CLIENT_REPAIR : REPAIR, e.mode), timeout: e.timeout }] }));
+    command: codexCommand(python, path.join(live, e.source), e.gate, e.mode),
+    statusMessage: STATUS_MESSAGES[e.gate], timeout: e.timeout }] }));
   const hooks = structuredClone(current.hooks ?? {});
   let matches = [];
   for (const [event, groups] of Object.entries(hooks)) {
@@ -74,7 +78,7 @@ export function planCodexHooks({ manifest, host, live, source: releaseSource, co
     hooks[event] = groups.map((group, groupIndex) => {
       if (!Array.isArray(group.hooks)) throw new Error("Invalid Codex hook handlers");
       return { ...group, hooks: group.hooks.filter((h, handlerIndex) => {
-        if (!String(h.command ?? "").includes("/scripts/hooks/codex-policy-hook.py")) return true;
+        if (!/\/scripts\/hooks\/(codex-policy-hook\.py|codex-gate\.sh)/.test(String(h.command ?? ""))) return true;
         matches.push({ event, groupIndex, handlerIndex, group: { matcher: group.matcher, hooks: [h] } });
         return false;
       }) };
@@ -84,7 +88,7 @@ export function planCodexHooks({ manifest, host, live, source: releaseSource, co
   const next = `${JSON.stringify({ ...current, hooks }, null, 2)}\n`;
   const registered = matches.length === desired.length && desired.every(want =>
     matches.filter(m => m.event === "PreToolUse" && isDeepStrictEqual(m.group, want)).length === 1);
-  const source = entries.every(e => existsSync(path.join(live, e.source)));
+  const source = entries.every(e => existsSync(path.join(live, e.source))) && existsSync(path.join(live, "scripts/hooks/codex-gate.sh"));
   // Native state keys are positional. Presence is evidence of persisted trust,
   // not proof that its hash still matches this definition (use native /hooks).
   const managedStates = matches.map(m => states[`${at}:pre_tool_use:${m.groupIndex}:${m.handlerIndex}`]);

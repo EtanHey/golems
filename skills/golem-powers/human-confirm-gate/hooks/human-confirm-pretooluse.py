@@ -39,6 +39,26 @@ sys.pycache_prefix = '/dev/null/golems-human-confirm'  # cannot exist: compile f
 sys.path += [HERE, SHARED]
 
 
+class ConfirmationRequired(ValueError):
+    pass
+
+
+def approval_reason(ops):
+    names = {'force': 'force-pushing', 'lease': 'force-pushing',
+             'delete': 'deleting a remote branch', 'rewrite': 'rewriting git history'}
+    op = ops[0]
+    action = names.get(op['class'], 'changing repo settings')
+    target = str(op.get('target', '')).casefold()
+    if op['class'] == 'settings':
+        if any(word in target for word in ('secret', 'ssh-key', 'gpg-key', '/keys')):
+            action = 'changing GitHub secrets or keys'
+        elif 'workflow' in target:
+            action = 'disabling a workflow'
+        elif 'variable' in target:
+            action = 'changing GitHub variables'
+    return f"Blocked: {action} can't be undone, so Etan has to approve it. Ask the lead to route it to him."
+
+
 def evaluate(payload, home):
     name, args = payload['tool_name'], payload['tool_input']
     protected = home / '.config/golems'
@@ -46,10 +66,10 @@ def evaluate(payload, home):
         from syntax import policy_path
         target = args.get('file_path', args.get('notebook_path', ''))
         if policy_path(target, payload.get('cwd', str(home)), home):
-            raise ValueError('agent writes to confirmation policy/tokens are forbidden')
+            raise ConfirmationRequired("Blocked: changing approval settings can't be undone, so Etan has to approve it. Ask the lead to route it to him.")
         from git_config import destructive_edit
         if destructive_edit(name, args, payload.get('cwd', str(home))):
-            raise ValueError('agent writes of destructive push configuration are forbidden')
+            raise ConfirmationRequired("Blocked: changing destructive push settings can't be undone, so Etan has to approve it. Ask the lead to route it to him.")
         return
     if not isinstance(args.get('command'), str):
         return
@@ -58,21 +78,24 @@ def evaluate(payload, home):
     with shell.policy_evaluation_deadline(8):
         ops = operations(args['command'], payload['cwd'])
         if ops and not authorize(payload, ops, home):
-            raise ValueError('requires a scoped, signed, unexpired one-use confirmation token; send_to text is never owner approval')
+            raise ConfirmationRequired(approval_reason(ops))
 
 
 def main():
     denied = False
+    reason = "Blocked: this command couldn't be checked safely. Rewrite it as a plain, literal command."
     try:
         with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
             if stray_importables():
                 raise ValueError('stray importable files beside the gate sources')
             payload = json.load(sys.stdin)
             evaluate(payload, Path(os.path.expanduser('~')).resolve())
+    except ConfirmationRequired as exc:
+        denied = True
+        reason = str(exc)
     except BaseException:
         denied = True
     if denied:
-        reason = 'HUMAN-CONFIRM: no verified approval or policy inspection failed. Use a literal command and an owner-issued token; flag unexpected denial to the lead.'
         json.dump(dict(hookSpecificOutput=dict(hookEventName='PreToolUse', permissionDecision='deny', permissionDecisionReason=reason)), sys.stdout)
         return 2
     json.dump({}, sys.stdout)

@@ -57,7 +57,7 @@ const supportsFailClosed = (bytes) => /^FAIL_CLOSED_PROTOCOL = 2\b/m.test(bytes.
 // guard passes the launcher's own 0/2 through and turns any other status into
 // the launcher's static denial (byte-identical to fail-open.py _block()).
 // Codex has the same shape in codex-hooks-install.mjs.
-export const REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.";
+export const REPAIR_REASON = "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.";
 const quote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
 export function failClosedCommand(run, repair = REPAIR_REASON) {
   const deny = JSON.stringify({ decision: "block", reason: repair, hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: repair } });
@@ -169,7 +169,7 @@ function context(o, sha) {
   // run an unvetted python3 and could crash --status; report it unchecked instead.
   const codex = hookPython ? planCodexHooks({ manifest, host: o.host, live, python, refused: codexRefused,
     codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) }) : undefined;
-  return { entries, golems, wrapped, hooksDir, live, codex, hookPython, hookNode, settingsPath };
+  return { entries, golems, wrapped, hooksDir, live, codex, hookPython, hookNode, settingsPath, driftPaths: hookDriftPaths(manifest) };
 }
 
 export function readSettings(settingsPath) {
@@ -562,6 +562,7 @@ async function install(o) {
   if (ctx.codex) {
     if (!ctx.codex.enabled) die("Codex hooks disabled by existing config; review that setting before installation");
     if (git(o.repo, "show", `${sha}:scripts/hooks/codex-policy-hook.py`) === null) die("Codex adapter absent from selected pin");
+    if (git(o.repo, "show", `${sha}:scripts/hooks/codex-gate.sh`) === null) die("Codex launcher absent from selected pin");
   }
   if (!settings.canonical) {
     const msg = `${ctx.settingsPath} is not canonical 2-space JSON; rewriting it would change unrelated bytes`;
@@ -668,7 +669,7 @@ async function install(o) {
   recordHookNode(ctx.hookNode);
   console.log("applied");
   if (ctx.codex) {
-    ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py"));
+    ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py")) && existsSync(path.join(ctx.live, "scripts/hooks/codex-gate.sh"));
     applyCodexHooks(ctx.codex);
     console.log(CODEX_TRUST_HINT);
   }
@@ -694,14 +695,37 @@ function registeredExactly(hooks, e) {
     && isDeepStrictEqual(matches[0].hook, hookSpec(e));
 }
 
+// Use the registry itself so newly registered hook sources join the drift check.
+export function hookDriftPaths(manifest) {
+  // The launcher and Codex adapter live in scripts/hooks; Python hooks and
+  // stop telemetry import shared modules whose paths aren't manifest entries.
+  const dirs = new Set(["scripts/hooks/", "skills/golem-powers/_shared/"]);
+  for (const entries of Object.values(manifest.hosts ?? {})) {
+    for (const e of entries) {
+      if (e.kind !== "golems" || !e.source) continue;
+      // Single-file hooks can import siblings from their skill root (for
+      // example git-guardian/hooks/pre_tool_use.py loads ../git_safety.py).
+      const skill = e.source.match(/^skills\/golem-powers\/[^/]+/);
+      dirs.add((skill?.[0] ?? (path.posix.extname(e.source) ? path.posix.dirname(e.source) : e.source)) + "/");
+    }
+  }
+  for (const entries of Object.values(manifest.codex_hosts ?? {})) {
+    for (const e of entries) {
+      if (e.source) dirs.add(path.posix.dirname(e.source) + "/");
+    }
+  }
+  return [...dirs];
+}
+
 function status(o) {
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
   const ctx = context(o, sha);
   const current = liveHead(ctx.live);
   const master = git(o.repo, "rev-parse", "--verify", "origin/master");
-  const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
+  const behind = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`) ?? "?" : "?";
+  const drift = current && master ? git(o.repo, "rev-list", "--count", `${current}..${master}`, "--", ...ctx.driftPaths) ?? "?" : "?";
   const stray = !current && existsSync(ctx.live);
-  console.log(`hooks-live=${current ?? (stray ? "NOT-A-WORKTREE" : "absent")} master=${master ?? "unknown"} drift=${drift}`);
+  console.log(`hooks-live=${current ?? (stray ? "NOT-A-WORKTREE" : "absent")} master=${master ?? "unknown"} drift=${drift} behind=${behind}`);
   let bad = stray || Boolean(ctx.hookNode?.problem);
   if (ctx.hookNode) console.log(ctx.hookNode.problem ? `hook-node BAD: ${ctx.hookNode.problem}`
     : `hook-node=${ctx.hookNode.path} (${ctx.hookNode.version})${ctx.hookNode.legacy ? " legacy registration; version baseline recorded on --apply" : ""}`);

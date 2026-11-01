@@ -327,14 +327,14 @@ def test_worktree_unresolvable_git_c_variable_is_refused():
     proc = run_hook(
         bash_payload("git -C $UNSET_VAR worktree add .worktrees/x")
     )
-    assert_refused(proc, must_mention=("UNSET_VAR",))
+    assert_refused(proc, must_mention=("WORKTREE-CONVENTION", "UNSET_VAR"))
 
 
 def test_worktree_git_c_command_substitution_is_refused():
     proc = run_hook(
         bash_payload('git -C "$(some cmd)" worktree add .worktrees/x')
     )
-    assert_refused(proc, must_mention=("command substitution",))
+    assert_refused(proc, must_mention=("WORKTREE-CONVENTION", "command substitution"))
 
 
 def test_worktree_glob_or_brace_anchor_and_target_are_refused():

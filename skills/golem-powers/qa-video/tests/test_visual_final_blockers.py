@@ -24,7 +24,7 @@ def run(tmp_path, body, *, production=True, count=1, budget=4, setup=False):
         command += ['--model', 'synthetic-model']
     if not production:
         command += ['--helper', str(helper)]
-    result = subprocess.run(command, env=dict(os.environ, PATH=str(tmp_path)+os.pathsep+os.environ['PATH']), capture_output=True, text=True, timeout=8)
+    result = subprocess.run(command, env=dict(os.environ, PATH=str(tmp_path)+os.pathsep+os.environ['PATH']), capture_output=True, text=True, timeout=30)
     return result, images
 
 
@@ -38,7 +38,8 @@ def test_real_gather_rejects_unsupported_prefix_citations(tmp_path, finding):
 
 
 def test_setup_timeout_with_stderr_keeps_every_identity(tmp_path):
-    result, images = run(tmp_path, "assert sys.argv[1:]==['models']\nos.write(2,b'loading models \\xff\\n')\ntime.sleep(.8)\n", count=3, budget=.3, setup=True)
+    # Allow child startup under four-worker load before testing budget expiry.
+    result, images = run(tmp_path, "assert sys.argv[1:]==['models']\nos.write(2,b'loading models \\xff\\n')\ntime.sleep(8)\n", count=3, budget=3, setup=True)
     assert 'Traceback' not in result.stderr
     assert len((tmp_path/'launches').read_text().splitlines()) == 1
     summary = json.loads(result.stdout)
@@ -51,7 +52,7 @@ def test_setup_timeout_with_stderr_keeps_every_identity(tmp_path):
 
 
 def test_provider_is_gone_when_batch_returns(tmp_path):
-    result, _ = run(tmp_path, "assert '--print' in sys.argv\n(work/'provider.pid').write_text(str(os.getpid()))\ntime.sleep(5)\n", budget=.3)
+    result, _ = run(tmp_path, "assert '--print' in sys.argv\n(work/'provider.pid').write_text(str(os.getpid()))\ntime.sleep(8)\n", budget=3)
     pid = int((tmp_path/'provider.pid').read_text())
     try:
         with pytest.raises(ProcessLookupError):
