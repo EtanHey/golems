@@ -179,3 +179,12 @@ Run the scratch-HOME suite with:
 ```sh
 bun test scripts/tests/install-release.test.mjs
 ```
+
+Each successful release install event emits a `golems` / `skills-sync` receipt via
+the shared builder and `scripts/install-receipt.mjs`. It snapshots the three
+Claude/Agents/Codex skills roots, optional Gemini root, and `<prefix>/bin` CLI
+wrappers. LIVE additionally requires clean client hook status and live parity.
+Missing node/writer or receipt failure is reported and preserves the successful
+install. The validator ships without requiring node_modules. An already-current
+no-op creates no install event; W10 retries its receipt separately after verified
+sync. W10 remains default-off behind `--sync-m1` and Etan's #32 authorization.

@@ -80,23 +80,28 @@ function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFi
 
 function releaseStatus(ctx, { readSettings, linkState, hookSpec, retiredRegistrations }) {
   const settings = readSettings(ctx.settingsPath), hooks = settings.json.hooks ?? {};
-  let drift = 0;
+  let drift = 0, settingsDrift = 0;
   const wrapper = path.join(ctx.hooksDir, 'golems-fail-open.py');
   if (!existsSync(wrapper) || !readFileSync(wrapper).equals(readFileSync(ctx.wrapper))) drift++;
   for (const e of ctx.golems) {
     const matches = Object.entries(hooks).flatMap(([event, groups]) => (Array.isArray(groups) ? groups : []).flatMap(g => (g?.hooks ?? [])
       .filter(h => String(h?.command ?? '').includes(e.match)).map(h => ({ event, matcher: g.matcher ?? null, hook: h }))));
-    const ok = linkState(e.at, e.to) === 'ok' && matches.length === 1 && matches[0].event === e.event && matches[0].matcher === (e.matcher ?? null) && isDeepStrictEqual(matches[0].hook, hookSpec(e));
+    const registered = matches.length === 1 && matches[0].event === e.event && matches[0].matcher === (e.matcher ?? null) && isDeepStrictEqual(matches[0].hook, hookSpec(e));
+    if (!registered) settingsDrift++;
+    const ok = linkState(e.at, e.to) === 'ok' && registered;
     if (!ok) drift++;
     console.log(`${e.id} ${ok ? 'ok' : 'drifted'}`);
   }
-  drift += retiredRegistrations(ctx, hooks).length;
-  for (const e of ctx.skipped.filter(e => e.kind === 'golems')) if ((hooks[e.event] ?? []).some(g => (g.hooks ?? []).some(h => String(h.command ?? '').includes(e.match)))) drift++;
+  const retired = retiredRegistrations(ctx, hooks).length;
+  drift += retired; settingsDrift += retired;
+  for (const e of ctx.skipped.filter(e => e.kind === 'golems')) if ((hooks[e.event] ?? []).some(g => (g.hooks ?? []).some(h => String(h.command ?? '').includes(e.match)))) { drift++; settingsDrift++; }
+  if (!ctx.codex.registered) settingsDrift++;
   if (!ctx.codex.registered || ctx.codex.trust === 'disabled') drift++;
   const receipt = path.join(ctx.hooksDir, 'golems-hooks-release.json');
   if (!existsSync(receipt) || readFileSync(receipt, 'utf8') !== receiptText(ctx)) drift++;
   console.log(`codex wiring=${ctx.codex.registered ? 'ok' : 'drifted'} trust=${ctx.codex.trust} (native /hooks review required; trust unverified)`);
   console.log(`release=${ctx.release.version} commit=${ctx.release.commit} source=${ctx.source} drift=${drift}`);
+  console.log(`settings-drift=${settingsDrift}`);
   return drift ? 1 : 0;
 }
 const receiptText = ctx => JSON.stringify({ version: ctx.release.version, commit: ctx.release.commit, source: ctx.source, private_gate: 'skipped (client host)' }, null, 2) + '\n';

@@ -39,7 +39,7 @@ try {
     writeFileSync(temp, bytes, { flag: 'wx', mode: 0o600 });
     try {
       linkSync(temp, file); // Atomic publication; EEXIST preserves an earlier install event.
-      renameSync(temp, join(dir, 'latest.json'));
+      renameSync(temp, join(dir, ['skills-sync', 'hooks-sync'].includes(r.artifact_kind) ? `latest-${r.artifact_kind}-${r.install_source.mode}.json` : 'latest.json'));
     } finally {
       try { unlinkSync(temp); } catch (error) { if (error.code !== 'ENOENT') throw error; }
     }

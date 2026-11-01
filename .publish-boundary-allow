@@ -140,6 +140,10 @@ scripts/tests/test-worktree-gc-astra.bats
 # Classes: identity-pii
 scripts/tests/install-hooks.test.mjs
 
+# Public upstream copyright contact retained verbatim in required dependency licenses.
+# Classes: identity-pii
+scripts/lib/vendor/receipt-ajv.generated.LICENSE
+
 # History-only: #811 commits 9055532c..9848a190 carried the synthetic Git fixture
 # identity fixture@example.invalid at this path. The live test moved to
 # scripts/tests/pr-loop-root-ff.test.mjs with an allowed example.com identity;
