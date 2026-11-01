@@ -98,6 +98,25 @@ def run_hook(payload=None, env_extra=None, raw_stdin=None, cwd=None):
     )
 
 
+TEMP_REASON = "Blocked: files in /tmp get wiped, so this work would be lost. Save it under the repo's docs.local/ or .worktrees/ instead."
+WORKTREE_REASON = "Blocked: worktrees belong in <repo>/.worktrees/<name>. Create it there instead."
+
+
+def assert_plain_reason(reason, expected_details):
+    # Historical detail tuples still identify the expected policy category;
+    # paths and parser diagnostics no longer belong in the user-facing line.
+    if "TMP-BLOCK" in expected_details:
+        assert reason == TEMP_REASON
+    elif any("WORKTREE-CONVENTION" in value or ".worktrees" in value or "worktree add" in value for value in expected_details):
+        assert reason == WORKTREE_REASON
+    elif "security policy unavailable" in expected_details:
+        assert reason == "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."
+    elif expected_details:
+        assert reason == TEMP_REASON
+    else:
+        assert reason in (TEMP_REASON, WORKTREE_REASON)
+
+
 def assert_denied(proc, must_mention=()):
     assert proc.returncode == 2, (
         f"expected DENY (exit 2), got exit {proc.returncode} "
@@ -106,8 +125,7 @@ def assert_denied(proc, must_mention=()):
     out = json.loads(proc.stdout)
     assert out.get("decision") == "block", f"expected decision=block, got {out!r}"
     reason = out.get("reason", "")
-    for needle in must_mention:
-        assert needle in reason, f"deny reason must mention {needle!r}, got: {reason!r}"
+    assert_plain_reason(reason, must_mention)
 
 
 def _decision(proc):
@@ -193,8 +211,7 @@ def assert_refused(proc, must_mention=()):
         f"{proc.stdout[:300]!r}"
     )
     reason = payload.get("reason", "")
-    for needle in must_mention:
-        assert needle in reason, f"deny reason must mention {needle!r}, got: {reason!r}"
+    assert_plain_reason(reason, must_mention)
 
 
 def write_payload(file_path, content="durable-looking notes"):

@@ -7,6 +7,7 @@ on:
   # nothing. push stays master-only so a feature-branch push does not run this
   # a second time alongside its own PR.
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [master]
   # Nightly full run: the semantic-mutant step only runs on PRs that touch its
@@ -64,6 +65,7 @@ jobs:
 
   # Suites that sat in no workflow. Each list is explicit.
   script-tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Script test suites (bun, node, sh)
     runs-on: ubuntu-latest
     steps:
@@ -130,7 +132,8 @@ jobs:
           bun --no-install test ./scripts/tests/worktree-census-esrch.test.ts
           bun --no-install test ./scripts/tests/worktree-census-jcs.test.ts
           bun --no-install test ./scripts/tests/worktree-census-shape.test.ts
-          bun test ./scripts/tests/claude-rules-frontmatter.test.mjs \
+          bun test ./scripts/tests/pr-sentinel.test.mjs \
+                   ./scripts/tests/claude-rules-frontmatter.test.mjs \
                    ./scripts/tests/canon-drift-lint.test.mjs \
                    ./scripts/tests/design-skill-updates.test.mjs \
                    ./scripts/tests/deploy-drift-check.test.mjs \
@@ -185,6 +188,7 @@ jobs:
 
       - name: node suites
         run: |
+          node --test scripts/tests/prepush-touched.test.mjs
           node --test scripts/tests/pr-wait-hygiene.test.mjs
           node --test scripts/tests/install-receipt.test.mjs \
                       scripts/tests/t3-mcp-holders.test.mjs \
@@ -208,6 +212,7 @@ jobs:
           bash skills/golem-powers/claude-desktop-research/scripts/__tests__/migrate-obsidian-to-drive.test.sh
 
   python-skill-tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Python skill test suites
     runs-on: ubuntu-latest
     steps:
@@ -230,7 +235,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install pytest
-        run: python -m pip install --upgrade pip pytest
+        run: python -m pip install --upgrade pip pytest pytest-xdist==3.8.0
 
       - name: Install config parser for Python skill suites
         run: python -m pip install PyYAML
@@ -267,6 +272,7 @@ jobs:
         run: python scripts/ci/pristine-harness.py mutation-proof
 
   shell-skill-tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Shell skill test suites (bats)
     timeout-minutes: 30
     runs-on: ubuntu-latest

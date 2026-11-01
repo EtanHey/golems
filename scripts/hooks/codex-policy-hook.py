@@ -34,10 +34,7 @@ TARGETS = {
     "human-confirm": "skills/golem-powers/human-confirm-gate/hooks/human-confirm-pretooluse.py",
 }
 REPAIR_REASON = (
-    "BLOCKED: Codex policy hook unavailable; refusing tool call. "
-    "FLAG THIS TO THE USER: repair with "
-    "scripts/hooks/install-hooks.sh --host <host> --update --apply; "
-    "then review /hooks from plain codex with no --profile."
+    "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."
 )
 BUDGET_SECONDS = 7
 TIMEOUT_REASON = "BLOCKED: policy check timed out or patch is too large; split the patch or retry a smaller tool call."

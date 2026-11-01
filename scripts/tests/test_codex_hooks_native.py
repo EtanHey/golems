@@ -15,13 +15,20 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 ADAPTER = ROOT / "scripts/hooks/codex-policy-hook.py"
+TMP_DENIAL = ("Blocked: files in /tmp get wiped, so this work would be lost. "
+              "Save it under the repo's docs.local/ or .worktrees/ instead.")
+GIT_DENIAL = ("Blocked: this git command can destroy work (force-push). "
+              "Use a safe alternative, or ask the lead.")
+SECRET_DENIAL = ("Blocked: this git command can destroy work (changing secret files). "
+                 "Use a safe alternative, or ask the lead.")
 _cases_spec = importlib.util.spec_from_file_location("codex_hook_cases", ROOT / "scripts/tests/test_codex_policy_hook.py")
 _cases = importlib.util.module_from_spec(_cases_spec)
 _cases_spec.loader.exec_module(_cases)
 desynced_patch_cases = _cases.desynced_patch_cases
 
 
-@unittest.skipUnless(shutil.which("codex"), "Codex CLI not installed")
+@unittest.skipUnless(shutil.which("codex") or os.environ.get("GOLEMS_REQUIRE_CODEX") == "1",
+                     "Codex CLI not installed")
 class NativeHooksTests(unittest.TestCase):
     def test_native_preexecution_denial_and_allow(self):
         self.run_native_fixture("trusted")
@@ -33,6 +40,7 @@ class NativeHooksTests(unittest.TestCase):
         self.run_native_fixture("modified")
 
     def run_native_fixture(self, trust):
+        self.assertIsNotNone(shutil.which("codex"), "Codex CLI not installed (GOLEMS_REQUIRE_CODEX=1)")
         (ROOT / "docs.local").mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch)
@@ -102,7 +110,9 @@ class NativeHooksTests(unittest.TestCase):
                         item = {"type": "function_call", "call_id": f"call-{index}",
                                 "name": "exec_command", "arguments": json.dumps({
                                     "cmd": commands[index], "workdir": str(workspace),
-                                    "login": False, "yield_time_ms": 1000})}
+                                    # Codex 0.166.0 exec_command schema: 250-30000 ms.
+                                    # Wait for these short commands even under CPU load.
+                                    "login": False, "yield_time_ms": 30000})}
                     elif index < len(commands) + len(patches):
                         item = {"type": "custom_tool_call", "call_id": f"call-{index}",
                                 "name": "apply_patch", "input": patches[index - len(commands)]}
@@ -200,24 +210,24 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
             if trust != "trusted":
                 self.assertEqual((workspace / "blocked-temp-executed.txt").read_text(), "x")
                 self.assertIn("FAKE_GIT_EXECUTED", outputs["call-1"])
-                self.assertNotIn("TMP-BLOCK", outputs["call-0"])
-                self.assertNotIn("BLOCKED", outputs["call-1"])
+                self.assertNotIn(TMP_DENIAL, outputs["call-0"])
+                self.assertNotIn(GIT_DENIAL, outputs["call-1"])
                 self.assertFalse((base / "ledger.jsonl").exists())
                 self.assertEqual((workspace / "allowed.txt").read_text(), "allowed")
                 self.assertIn("FAKE_GIT_EXECUTED", outputs["call-3"])
                 self.assertIn("NATIVE_FIXTURE_DONE", result.stdout)
                 print(f"Native trust={trust}: hooks not executed; paid tokens=0")
                 return
-            self.assertIn("TMP-BLOCK", outputs["call-0"])
+            self.assertIn(TMP_DENIAL, outputs["call-0"])
             self.assertFalse((workspace / "blocked-temp-executed.txt").exists())
-            self.assertIn("BLOCKED", outputs["call-1"])
+            self.assertIn(GIT_DENIAL, outputs["call-1"])
             self.assertNotIn("FAKE_GIT_EXECUTED", outputs["call-1"])
             self.assertEqual((workspace / "allowed.txt").read_text(), "allowed")
             self.assertIn("FAKE_GIT_EXECUTED", outputs["call-3"])
             self.assertEqual(list(tempdir.iterdir()), [], "Bash patch bypass wrote into temp class")
             for index in (4, 5, 6, 7):
                 self.assertIn("blocked by PreToolUse hook", outputs[f"call-{index}"])
-            self.assertIn("TMP-BLOCK", outputs["call-6"], "cd patch must reach existing policy")
+            self.assertIn(TMP_DENIAL, outputs["call-6"], "cd patch must reach existing policy")
             self.assertEqual((workspace / "allowed-heredoc.md").read_text().strip(), "allowed apply_patch")
             self.assertFalse((workspace / ".env").exists())
             self.assertFalse((workspace / "credentials.json").exists())
@@ -225,7 +235,7 @@ PATH = {json.dumps(str(bin_dir) + os.pathsep + os.environ['PATH'])}
                 self.assertIn("blocked by PreToolUse hook", outputs[f"call-{index}"])
                 self.assertIn("native apply_patch", outputs[f"call-{index}"])
             for index in (len(commands), len(commands) + 1):
-                self.assertIn("BLOCKED", outputs[f"call-{index}"])
+                self.assertIn(SECRET_DENIAL, outputs[f"call-{index}"])
             self.assertEqual((workspace / "allowed-note.md").read_text().strip(), "allowed")
             self.assertIn("NATIVE_FIXTURE_DONE", result.stdout)
             print(f"Native trusted fixture: {len(commands) + len(patches) - 4} pre-execution denials, 4 real allowed executions; paid tokens=0")

@@ -181,7 +181,7 @@ def test_issue425_oversized_command_denies_quickly_and_value_free(durable_path):
     proc = run_hook(bash_payload(command), cwd=str(durable_path))
     elapsed = time.perf_counter() - start
     assert_denied(proc, must_mention=("command too large for the policy parser; split it",))
-    assert "write the content to a file and pass it by path" in proc.stdout
+    assert json.loads(proc.stdout)["reason"] == TEMP_REASON
     assert "xxxxx" not in proc.stdout + proc.stderr
     assert elapsed < 3, f"oversized-command deny took {elapsed:.2f}s"
 

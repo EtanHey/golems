@@ -53,8 +53,8 @@ from contextlib import nullcontext, redirect_stderr, redirect_stdout
 from io import StringIO
 
 FAIL_CLOSED_PROTOCOL = 2  # 2: --budget watchdog
-REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`."
-CLIENT_REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: rerun the release installer, then run node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client --source ~/.golems/current --apply."
+REPAIR_REASON = "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."
+CLIENT_REPAIR_REASON = "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."
 # Read before main() rewrites sys.argv, so a launcher crash still knows its mode.
 FAIL_CLOSED = sys.argv[1:2] == ["--fail-closed"]
 CLIENT_INSTALL = sys.argv[1:3] == ["--fail-closed", "--client"]

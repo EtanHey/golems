@@ -1,0 +1,26 @@
+[
+  {
+    "prompt": "Read a public page, then test a signed-in page whose session exists on both Macs.",
+    "expected_output": "Use API/CLI data first, T3 preview or headless for the public page, then the M1 agent browser for the signed-in page.",
+    "assertions": ["M4 is used only if its signed-in session is needed", "Cross-machine delegation follows agent-routing"],
+    "category": "compliance"
+  },
+  {
+    "prompt": "Attach to Chrome Beta for a task, but CDP attachment or newPage fails after start succeeds.",
+    "expected_output": "The task releases its unique lease in finally; any owned page is closed before release.",
+    "assertions": ["start uses an explicit unique lease", "Attach and tab creation are inside try/finally", "Release runs even if page.close fails"],
+    "category": "compliance"
+  },
+  {
+    "prompt": "Finish one task while another task is still using the shared signed-in browser.",
+    "expected_output": "Close only the owned tab and release only the owned lease; keep the other task's browser alive.",
+    "assertions": ["No browser.close call", "No stop while live leases remain", "No other task's tab or lease is touched"],
+    "category": "compliance"
+  },
+  {
+    "prompt": "A task crashes and leaves the browser running after its 30-minute lease expires.",
+    "expected_output": "Reap expired leases and SIGTERM only the verified Chrome Beta PID; corrupt lease data refuses all signals.",
+    "assertions": ["The launchd reaper runs every 600 seconds", "No force kill", "A failed start never proceeds to CDP attach"],
+    "category": "compliance"
+  }
+]

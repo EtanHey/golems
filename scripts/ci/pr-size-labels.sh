@@ -23,8 +23,9 @@
 #                          `size/*` it carries.
 #   check <pr>             Warn when the PR has no `size:*` label or it adds
 #                          over 400 hand-written lines; fail when its label
-#                          under-reports the hand-written count or multiple
+#                          under-reports on forks; correct same-repo labels. Fail if multiple
 #                          labels exist.
+#   suggest [base]         Print the branch size vs origin/master (default).
 #   classify <lines>       Print the label for a hand-written line count.
 #
 # Sizing rule
@@ -36,8 +37,8 @@
 #     count <= 150  -> size:S
 #     count <= 400  -> size:M
 #     count >  400  -> size:L   (canon 9: needs a one-line why)
-#   400 is canon 9's split point, so a count over that cap gets a
-#   non-fatal reminder to include a one-line why in the PR body.
+#   400 is canon 9's split point. Above that cap, warn unless the PR body
+#   has a line starting size-why: plus text. Missing justification never fails.
 #
 # Exit codes: 0 ok, 1 runtime failure, 2 usage error.
 
@@ -106,6 +107,7 @@ usage: pr-size-labels.sh <subcommand>
                                       label under-reports the hand-written count
                                       or multiple labels exist
                                       [--files-tsv <path>]
+  suggest [base]                     print branch size vs base (origin/master)
   classify <lines>                    print the label for a line count
 
   <repo> may be bare (`golems`); it is qualified with $PR_SIZE_LABELS_OWNER
@@ -275,14 +277,34 @@ cmd_check() {
     required="$(classify "$lines")"
 
     if (( $(size_rank "$label") < $(size_rank "$required") )); then
-      printf '::error::%s#%s is %s but has %s hand-written lines (requires %s).\n' \
+      printf '::notice::%s#%s is %s but has %s hand-written lines (requires %s).\n' \
         "$repo" "$pr" "$label" "$lines" "$required"
-      return 1
+      local fork
+      fork="$("$GH_BIN" pr view "$pr" --repo "$repo" --json isCrossRepository --jq '.isCrossRepository')"
+      [[ "$fork" == false ]] || return 1
+      "$GH_BIN" pr edit "$pr" --repo "$repo" --add-label "$required" --remove-label "$label" >/dev/null
+
+      local marker='<!-- pr-size-label-correction -->' comment_id message endpoint method
+      comment_id="$("$GH_BIN" api "repos/${repo}/issues/${pr}/comments" --paginate \
+        --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- pr-size-label-correction -->"))) | .id' | head -1)"
+      message="$marker
+size label corrected: $label → $required ($lines hand-written lines)"
+      endpoint="repos/${repo}/issues/${pr}/comments"
+      method=POST
+      if [[ -n "$comment_id" ]]; then
+        endpoint="repos/${repo}/issues/comments/${comment_id}"
+        method=PATCH
+      fi
+      "$GH_BIN" api "$endpoint" --method "$method" -f body="$message" >/dev/null
+      label="$required"
     fi
 
     if (( lines > M_MAX )); then
-      printf '::warning::%s#%s has %s hand-written lines; canon 9 wants a one-line why in the PR body for changes over %s lines.\n' \
-        "$repo" "$pr" "$lines" "$M_MAX"
+      local body
+      body="$("$GH_BIN" pr view "$pr" --repo "$repo" --json body --jq '.body')"
+      if ! grep -qE '^size-why:[[:blank:]]*[^[:space:]]' <<<"$body"; then
+        printf '::warning::%s#%s has %s hand-written lines; add a size-why: justification line in the PR body to silence this warning.\n' "$repo" "$pr" "$lines"
+      fi
     fi
 
     printf 'OK %s#%s %s covers %s hand-written lines.\n' "$repo" "$pr" "$label" "$lines"
@@ -298,10 +320,23 @@ cmd_check() {
   return 0
 }
 
+cmd_suggest() {
+  [[ $# -le 1 ]] || usage
+  local base="${1:-origin/master}" diff lines
+  diff="$(git diff --numstat "$base...HEAD")"
+  lines="$(while IFS=$'\t' read -r add del path; do
+    [[ -n "$path" ]] || continue
+    [[ "$add" == - ]] && add=0
+    printf '%s\t%s\t%s\n' "$path" "$add" "$del"
+  done <<<"$diff" | sum_handwritten)"
+  classify "$lines"
+}
+
 main() {
   [[ $# -ge 1 ]] || usage
   local sub="$1"; shift
   case "$sub" in
+    suggest)  cmd_suggest "$@" ;;
     ensure)   cmd_ensure "$@" ;;
     compute)  cmd_compute "$@" ;;
     check)    cmd_check "$@" ;;

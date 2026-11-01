@@ -115,7 +115,41 @@ test('waiting policy: watch receipt proves registration without a routine list',
     'not polling liveness, wake delivery, current CI or merge readiness']) assert.ok(paragraph.includes(text), text);
   const policy = waitingPolicy();
   assert.ok(policy.includes('Never call `list_thread_pull_requests` solely to reprove a watch or end work'));
-  assert.ok(policy.includes('inventory, diagnosis, an ambiguous receipt or an audit'));
+  assert.ok(policy.includes('the end-of-turn check above uses `gh` reads'));
+  assert.ok(policy.includes('inventory (such as a settle handoff), diagnosis, an ambiguous receipt or an audit'));
+});
+// Root cause 2026-11-01: PRs rotted on settled threads, unadopted worker/bot PRs and silent holds.
+test('waiting policy: every turn ends with an open-PR check; waiting is not a state', () => {
+  const paragraph = policyParagraph('**Watching is not waiting: check your open PRs before every turn ends.**');
+  assert.ok(paragraph.includes('A draft in its inner loop: check that its implementer or reviewer is still running'));
+  for (const text of ["owning lead's duty, never a worker's", 'Before ending ANY turn', 'every open PR it owns',
+    'fix it now or route the fix now', 'merge it under your lane', 'update the branch yourself',
+    '"Waiting" is never a state for a red or green PR you own']) assert.ok(paragraph.includes(text), text);
+  // Order matters: a valid hold is checked first; pending CI is ordinary waiting, never a hold.
+  const cases = ['Visibly held, and the reason still holds', 'Red or conflicting', 'Green:', 'Behind:',
+    'Checks or the routed review still running: keep the watch and end the turn', 'Otherwise'];
+  let at = -1;
+  for (const text of cases) {
+    const next = paragraph.indexOf(text);
+    assert.ok(next > at, `${text} follows the previous case`);
+    at = next;
+  }
+  assert.ok(paragraph.includes('ordinary waiting, not a hold'), 'pending is not a hold');
+});
+test('waiting policy: ownership survives settle and covers worker and bot PRs', () => {
+  const paragraph = policyParagraph('**Ownership outlives the thread.**');
+  for (const text of ['Before settling, completing or retiring a lead thread', '`watch_pull_request`',
+    'successor lead\'s `threadId`', 'check that call\'s `watching:true` receipt',
+    'only after that unwatch it on the old thread', 'Settling drops the old thread\'s watches',
+    'its acknowledgement is', 'Adopt worker and bot PRs', 'dependabot',
+    'links and watches it in the turn it learns of it']) assert.ok(paragraph.includes(text), text);
+});
+test('waiting policy: a hold is a draft plus a plain HELD comment', () => {
+  const paragraph = policyParagraph('**Held is visible, never silent.**');
+  for (const text of ['is a draft', '`**Held on purpose`', 'why it is held', 'next step', 'owner',
+    'when the head moves', 'mark the PR ready, get the current-head checks and the routed review',
+    'Never merge a held draft', 'not visibly held is unnoticed']) assert.ok(paragraph.includes(text), text);
+  assert.ok(waitingPolicy().includes('mark the PR held (above)'), 'BLOCKED marks the PR held');
 });
 test('waiting policy: parent owns watch and finishes existing work before arming', () => {
   const paragraph = policyParagraph('**The owning lead holds the watch.**');
@@ -143,7 +177,13 @@ test('waiting policy: offline checker is diagnostic and cannot override runtime'
 test('bot policy: configuration-aware drafts and no duplicate current-head requests', () => {
   const skill = doc('skills/golem-powers/pr-loop/SKILL.md');
   for (const text of ['Draft handling depends on effective bot settings',
-    'never merge a draft', 'current-head automatic review already exists']) assert.ok(skill.includes(text), text);
+    'Never merge a draft', 'current-head automatic review already exists',
+    // Draft first, ready once (2026-11-01): the inner loop runs on a draft; the flip starts the bots.
+    'Draft first, ready once', '`gh pr create --draft`', 'run `gh pr ready <N>`',
+    'never request a bot review by hand when the flip already triggered one']) assert.ok(skill.includes(text), text);
+  const handoffs = doc('skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md');
+  assert.ok(handoffs.includes('RIGHT: gh pr create --draft → inner loop on the draft → gh pr ready <N> → bot loop → merge'));
+  assert.ok(!handoffs.includes('WRONG: gh pr create --draft'), 'draft-first is no longer WRONG');
   for (const path of ['skills/golem-powers/pr-loop/SKILL.md',
     'skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md']) {
     assert.ok(!doc(path).replaceAll('**', '').includes('Draft PRs silently skip bot reviews'), path);

@@ -258,7 +258,7 @@ class CodexPolicyHookTests(unittest.TestCase):
                                 result = self.check(run(gate, payload(command), env=env), True)
                                 reason = result["hookSpecificOutput"]["permissionDecisionReason"]
                                 self.assertIn("native apply_patch", reason)
-                                self.assertNotIn("unavailable", reason)
+                                self.assertNotIn("couldn't run", reason)
 
     def test_patch_head_mentions_in_first_line_data_remain_allowed(self):
         for alias in ("apply_patch", "applypatch"):
@@ -301,7 +301,7 @@ class CodexPolicyHookTests(unittest.TestCase):
                             result = self.check(run(gate, p, env=env), True)
                             reason = result["hookSpecificOutput"]["permissionDecisionReason"]
                             self.assertIn("native apply_patch", reason)
-                            self.assertNotIn("unavailable", reason)
+                            self.assertNotIn("couldn't run", reason)
 
     def test_desync_scan_reuses_parser_size_bound(self):
         command = "X=" + "(" * 100000 + "x" + ")" * 100000 + " apply_patch <<'EOF'\n*** Begin Patch\n*** Add File: docs.local/note.md\n+x\n*** End Patch\nEOF"
@@ -364,8 +364,8 @@ class CodexPolicyHookTests(unittest.TestCase):
                 result = self.check(run(gate, payload(command)), True)
                 reason = result["hookSpecificOutput"]["permissionDecisionReason"]
                 self.assertIn("native apply_patch", reason)
-                self.assertNotIn("unavailable", reason)
-                self.assertNotIn("install-hooks.sh", reason)
+                self.assertNotIn("couldn't run", reason)
+                self.assertNotIn("reinstall the hooks", reason)
                 self.assertNotIn("PRIVATE_VALUE", reason)
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             adapter = Path(scratch) / "scripts/hooks/codex-policy-hook.py"
@@ -373,8 +373,8 @@ class CodexPolicyHookTests(unittest.TestCase):
             # An actual missing parser is an installation/runtime failure.
             result = self.check(run("tmp-block", payload(f"apply_patch <<'EOF'\n{patch}\nEOF"), adapter), True)
             reason = result["hookSpecificOutput"]["permissionDecisionReason"]
-            self.assertIn("unavailable", reason)
-            self.assertIn("install-hooks.sh", reason)
+            self.assertIn("couldn't run", reason)
+            self.assertIn("reinstall the hooks", reason)
 
     def test_missing_broken_malformed_and_timed_out_gate_fail_closed(self):
         (ROOT / "docs.local").mkdir(exist_ok=True)
@@ -503,7 +503,7 @@ class CodexPolicyHookTests(unittest.TestCase):
                         "tool_input": {"file_path": "docs.local/allowed.md"}}
                 with self.subTest(cwd=cwd):
                     result = self.check(run("--guardian-batch", [item]), True)
-                    self.assertIn("unavailable", result["hookSpecificOutput"]["permissionDecisionReason"])
+                    self.assertIn("couldn't run", result["hookSpecificOutput"]["permissionDecisionReason"])
 
     def test_patch_policy_process_count_is_bounded(self):
         patch = "*** Begin Patch\n" + "".join(
@@ -561,7 +561,7 @@ class CodexPolicyHookTests(unittest.TestCase):
                     result = self.check(run("git-guardian", payload(patch, "apply_patch"), adapter), True)
                     self.assertNotIn("PRIVATE-VALUE", json.dumps(result))
                     reason = result["hookSpecificOutput"]["permissionDecisionReason"]
-                    self.assertIn("split the patch" if body == "time.sleep(10)" else "unavailable", reason)
+                    self.assertIn("split the patch" if body == "time.sleep(10)" else "couldn't run", reason)
                     self.assertNotIn("native apply_patch", reason)
 
     def test_payload_cwd_reaches_both_policies(self):
