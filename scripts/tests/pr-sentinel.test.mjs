@@ -17,18 +17,20 @@ const thread = (id, numbers, changes = {}) => ({ threadId: id, updatedAt: newer,
   settled: false, pullRequests: numbers.map(n => ({ url: url(n), state: "open" })), ...changes });
 function fixture(fn) {
   const root = mkdtempSync(join(tmpdir(), "pr-sentinel-")), bin = join(root, "bin"); mkdirSync(bin);
-  const files = Object.fromEntries(["prs", "threads", "sends", "state", "config", "calls"].map(k => [k, join(root, k + ".json")]));
+  const files = Object.fromEntries(["prs", "threads", "show", "sends", "state", "config", "calls"].map(k => [k, join(root, k + ".json")]));
   for (const name of ["gh", "t3"]) writeFileSync(join(bin, name), `#!/usr/bin/env python3
 import json,os,sys
 from pathlib import Path
 r=Path(os.environ['FIXTURE'])
 with (r/'calls.json').open('a') as f: f.write(json.dumps(sys.argv)+'\\n')
 if (r/'fail-${name}').exists(): sys.exit(1)
+if '${name}'=='gh' and sys.argv[1]=='pr': print('updated'); sys.exit(0)
 if '${name}'=='gh':
  nodes=json.loads((r/'prs.json').read_text())
  count=int(next(a.split('=',1)[1] for a in sys.argv if a.startswith('count='))); start=int(next((a.split('=',1)[1] for a in sys.argv if a.startswith('cursor=')),0))
  print(json.dumps({'data':{'search':{'nodes':nodes[start:start+count],'pageInfo':{'hasNextPage':start+count<len(nodes),'endCursor':str(start+count)}}}}))
 elif sys.argv[2]=='list': print((r/'threads.json').read_text())
+elif sys.argv[2]=='show': print((r/'show.json').read_text())
 else:
  with (r/'sends.json').open('a') as f: f.write(json.dumps({'target':sys.argv[3],'message':sys.stdin.read()})+'\\n')
 `, { mode: 0o755 });
@@ -36,8 +38,10 @@ else:
   write("prs", []); write("threads", []); write("config", { queries: ["fixture"], projects: ["/fixture"], escalate_thread: "orc", grace_minutes: 45, escalate_minutes: 120, held_stale_hours: 72 }); chmodSync(files.config, 0o600);
   const run = (...extra) => Bun.spawnSync([cli, "scan", "--config", files.config, "--state", files.state, ...extra], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
   const age = seconds => { const s = JSON.parse(readFileSync(files.state)); for (const row of Object.values(s)) row.since -= seconds; write("state", s); };
+  const lead = (...extra) => Bun.spawnSync([cli, "lead", "--thread", "lead-1", "--state", files.state, ...extra], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
+  const calls = () => existsSync(files.calls) ? readFileSync(files.calls, "utf8") : "";
   const sends = () => existsSync(files.sends) ? readFileSync(files.sends, "utf8").trim().split("\n").map(JSON.parse) : [];
-  try { fn({ root, files, write, run, age, sends }); } finally { rmSync(root, { recursive: true, force: true }); }
+  try { fn({ root, files, write, run, lead, calls, age, sends }); } finally { rmSync(root, { recursive: true, force: true }); }
 }
 test("classes, held freshness, cancelled success, owner selection and batching", () => fixture(({ write, run, age, sends }) => {
   const failure = { name: "build\ninjected", status: "COMPLETED", conclusion: "FAILURE", completedAt: old };
@@ -51,21 +55,20 @@ test("classes, held freshness, cancelled success, owner selection and batching",
   const first = run(); expect(first.exitCode, first.stderr.toString()).toBe(0);
   for (const text of ["#1 UNLINKED HELD", "#2 LIVE CONFLICT", "#3 ORPHAN RED", "#4 UNLINKED PENDING", "#5 LIVE GREEN", "#6 UNLINKED OTHER", "#7 UNLINKED HELD", "#8 ORPHAN RED", "#9 LIVE GREEN", "#10 UNLINKED HELD", "#11 ORPHAN GREEN"]) expect(first.stdout.toString()).toContain(text);
   expect(sends()).toHaveLength(0); age(46 * 60); expect(run().exitCode).toBe(0);
-  expect(sends().map(s => s.target).sort()).toEqual(["live", "orc"]);
-  expect(sends().find(s => s.target === "live").message.split("— pr-sentinel")).toHaveLength(4); expect(sends().find(s => s.target === "orc").message.trim().split("\n")).toHaveLength(3);
+  // Live owners run their own `lead` check; the sweep messages orc about the rest only.
+  expect(sends().map(s => s.target)).toEqual(["orc"]); expect(sends()[0].message.trim().split("\n")).toHaveLength(3);
   expect(sends().find(s => s.target === "orc").message).toContain("Previously linked thread: settled");
-  run(); expect(sends()).toHaveLength(2);
+  run(); expect(sends()).toHaveLength(1);
 }));
-test("escalation, failure recovery, dry-run immutability, head/class dedupe and stale holds", () => fixture(({ root, files, write, run, age, sends }) => {
-  write("prs", [pr(1)]); write("threads", [thread("live", [1])]); run(); age(3600);
-  const before = readFileSync(files.state, "utf8"); const dry = run("--dry-run"); expect(dry.stdout.toString()).toContain("WOULD SEND to live"); expect(readFileSync(files.state, "utf8")).toBe(before); expect(sends()).toHaveLength(0);
+test("failure recovery, dry-run immutability, head/class dedupe and stale holds", () => fixture(({ root, files, write, run, age, sends }) => {
+  write("prs", [pr(1)]); run(); age(3600);
+  const before = readFileSync(files.state, "utf8"); const dry = run("--dry-run"); expect(dry.stdout.toString()).toContain("WOULD SEND to orc"); expect(readFileSync(files.state, "utf8")).toBe(before); expect(sends()).toHaveLength(0);
   writeFileSync(join(root, "fail-t3"), ""); expect(run().exitCode).toBe(0); expect(readFileSync(files.state, "utf8")).toBe(before);
-  rmSync(join(root, "fail-t3")); run(); expect(sends()).toHaveLength(1);
-  const s = JSON.parse(readFileSync(files.state)); s[url(1)]["sent"][head + ":GREEN"]["1"] -= 121 * 60; write("state", s); run(); expect(sends().at(-1).target).toBe("orc");
-  write("prs", [pr(1, { isDraft: true })]); run(); age(73 * 3600); run(); expect(sends().at(-1).message).toContain("stale hold"); run(); expect(sends()).toHaveLength(3);
-  write("prs", [pr(1)]); run(); age(3600); run(); expect(sends()).toHaveLength(3);
+  rmSync(join(root, "fail-t3")); run(); expect(sends()).toHaveLength(1); run(); expect(sends()).toHaveLength(1);
+  write("prs", [pr(1, { isDraft: true })]); run(); age(73 * 3600); run(); expect(sends().at(-1).message).toContain("stale hold"); run(); expect(sends()).toHaveLength(2);
+  write("prs", [pr(1)]); run(); age(3600); run(); expect(sends()).toHaveLength(2);
   write("prs", [pr(1, { headRefOid: "b".repeat(40) })]); run(); age(3600);
-  writeFileSync(join(root, "fail-gh"), ""); expect(run().exitCode).toBe(0); expect(sends()).toHaveLength(3); rmSync(join(root, "fail-gh")); run(); expect(sends()).toHaveLength(4);
+  writeFileSync(join(root, "fail-gh"), ""); expect(run().exitCode).toBe(0); expect(sends()).toHaveLength(2); rmSync(join(root, "fail-gh")); run(); expect(sends()).toHaveLength(3);
 }));
 test("send failures retry, zero-grace unlinked delivery, invalid config and fresh dry-run", () => fixture(({ root, files, write, run, sends }) => {
   const cfg = JSON.parse(readFileSync(files.config)); cfg.grace_minutes = 0; write("config", cfg);
@@ -102,4 +105,21 @@ test("a green PR we cannot merge (upstream) is not actionable", () => fixture(({
   expect(out).toContain("#2 UNLINKED OTHER"); expect(out).toContain("#3 UNLINKED GREEN");
   age(46 * 60); run(); expect(sends()).toHaveLength(1);
   expect(sends()[0].message).toContain("#3"); expect(sends()[0].message).not.toContain("upstream/repo");
+}));
+
+test("lead check: updates BEHIND branches silently, messages the lead only for decisions", () => fixture(({ write, lead, calls, age, sends }) => {
+  const failure = { name: "build", status: "COMPLETED", conclusion: "FAILURE", completedAt: old };
+  write("show", { thread: { threadId: "lead-1", pullRequests: [1, 2, 3, 4, 5, 6, 7].map(n => ({ url: url(n), state: "open" })).concat([{ url: url(8), state: "merged" }]) } });
+  write("prs", [check(pr(1), [failure]), pr(2), pr(3, { mergeStateStatus: "BEHIND", viewerCanUpdateBranch: true }),
+    pr(4, { reviewDecision: "CHANGES_REQUESTED" }), pr(5, { isDraft: true }), pr(6, { viewerCanUpdateBranch: true }), pr(8), pr(9)]);
+  const dry = lead("--dry-run"); expect(dry.exitCode, dry.stderr.toString()).toBe(0); expect(calls()).not.toContain("update-branch");
+  const first = lead(); expect(first.exitCode, first.stderr.toString()).toBe(0);
+  expect(calls()).toContain(`update-branch", "${url(3)}`); expect(calls()).not.toContain(url(6) + '"]');
+  expect(sends()).toHaveLength(0); age(11 * 60); lead();
+  expect(sends()).toHaveLength(1); const m = sends()[0];
+  expect(m.target).toBe("lead-1");
+  for (const text of ["#1 is RED", "#2 is GREEN", "merge it under your lane", "#4 is REVIEW", "#6 is GREEN"]) expect(m.message).toContain(text);
+  for (const text of ["#3 ", "#5 ", "#7 ", "#8 ", "#9 "]) expect(m.message).not.toContain(text);
+  lead(); expect(sends()).toHaveLength(1);
+  write("show", { thread: { threadId: "lead-1", pullRequests: [] } }); expect(lead().stdout.toString()).toContain("no open PRs");
 }));

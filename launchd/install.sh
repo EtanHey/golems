@@ -11,7 +11,6 @@ NODE_BIN="$(command -v node)"
 
 PLISTS=(
     "com.golems.worktree-gc.plist"
-    "com.golems.pr-sentinel.plist"
 )
 RETIRED=("com.golemszikaron.briefing.plist")
 
@@ -63,7 +62,7 @@ fi
 echo "🚀 Installing golems launchd agents..."
 
 # Ensure LaunchAgents directory exists
-mkdir -p "$LAUNCH_AGENTS" "$HOME/.local/state/golems/pr-sentinel"
+mkdir -p "$LAUNCH_AGENTS"
 
 remove_plists "${RETIRED[@]}"
 
@@ -90,7 +89,6 @@ done
 echo ""
 echo "✅ Installed! Schedules:"
 echo "  - Worktree prune (scripts/worktree-gc-nightly.sh, under the heavy-suite lock): 6:00 AM daily"
-echo "  - PR sentinel: every 10 minutes (requires ~/.config/golems/pr-sentinel.json)"
 echo "  - Google Drive OAuth guard: login + every 5 minutes"
 echo ""
 echo "📋 Commands:"

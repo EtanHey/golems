@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 
 const repoRoot = resolve(import.meta.dir, "../..");
 const retired = "com.golemszikaron.briefing";
-const activeLabels = ["com.golems.worktree-gc", "com.golems.pr-sentinel"];
+const activeLabels = ["com.golems.worktree-gc"];
 const labels = [retired, ...activeLabels];
 const domain = `gui/${process.getuid()}`;
 

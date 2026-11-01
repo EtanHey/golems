@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""No-model PR inventory and delayed, batched T3 nudges."""
+"""PR checks for leads: `lead` watches one lead's PRs; `scan` is orc's sweep for orphans.
+
+A lead runs `lead --thread <its thread id>` from a cheap delegate on a 5-minute T3
+schedule. It clicks "Update branch" itself and messages the lead only when a decision is
+needed. `scan` covers PRs whose lead thread is gone or that no thread links.
+"""
 import argparse
 from collections import defaultdict
 import fcntl
@@ -21,7 +26,7 @@ DEFAULTS = dict(queries=['is:pr is:open user:EtanHey',
 QUERY = '''query($q:String!,$cursor:String,$count:Int!) {
  search(query:$q,type:ISSUE,first:$count,after:$cursor) {
   pageInfo { hasNextPage endCursor } nodes { ... on PullRequest {
-   url number isDraft headRefOid mergeable mergeStateStatus author { login }
+   url number isDraft headRefOid mergeable mergeStateStatus reviewDecision viewerCanUpdateBranch author { login }
    repository { nameWithOwner viewerPermission } comments(last:20) { nodes { body createdAt } }
    commits(last:1) { nodes { commit { committedDate statusCheckRollup {
     contexts(first:100) { pageInfo { hasNextPage } nodes {
@@ -32,6 +37,12 @@ QUERY = '''query($q:String!,$cursor:String,$count:Int!) {
   } }
  }
 }'''
+
+ACTIONABLE = ('RED', 'GREEN', 'CONFLICT', 'REVIEW')
+ASK = dict(RED='Fix it or route the fix.', CONFLICT='Resolve the conflict or route it.',
+           REVIEW='Answer the review or route the fix.',
+           GREEN="It is ready: merge it under your lane's merge law.")
+
 
 class TransientError(Exception):
     pass
@@ -119,6 +130,8 @@ def classify(pr):
         if runs[-1][2] in {'FAILURE', 'ERROR', 'TIMED_OUT', 'ACTION_REQUIRED', 'STARTUP_FAILURE'} or any(
                 r[2] == 'CANCELLED' and not any(s > r and s[2] == 'SUCCESS' for s in runs) for r in runs):
             return 'RED', f'{" ".join(name.split())[:80]} failed'
+    if pr.get('reviewDecision') == 'CHANGES_REQUESTED':
+        return 'REVIEW', 'a review asked for changes'
     if pending:
         return 'PENDING', 'checks running'
     if pr['mergeStateStatus'] != 'CLEAN':
@@ -183,18 +196,16 @@ def scan(cfg, path, state, dry):
         if kind == 'HELD':
             if age >= cfg['held_stale_hours'] * 3600 and pr['headRefOid'] not in row['held']:
                 level = 'held'
-        elif kind in ('RED', 'GREEN', 'CONFLICT') and age >= cfg['grace_minutes'] * 60:
+        elif kind in ACTIONABLE and age >= cfg['grace_minutes'] * 60:
+            # A live lead's own watcher (`lead`) covers its PRs; this sweep covers the rest.
             if ownership != 'LIVE' and '2' not in sent:
                 level = '2'
-            elif ownership == 'LIVE':
-                if '1' not in sent:
-                    level = '1'
-                elif '2' not in sent and now - sent['1'] >= cfg['escalate_minutes'] * 60:
-                    level = '2'
         detail = f'{pr["repository"]["nameWithOwner"]} #{pr["number"]} {ownership} {kind}'
         print(f'{detail} at {pr["headRefOid"][:8]} ({reason}; {age / 3600:.1f} h)')
+        if level == 'held' and ownership == 'LIVE':
+            level = None
         if level:
-            destination = target if ownership == 'LIVE' and level != '2' else cfg['escalate_thread']
+            destination = cfg['escalate_thread']
             former = f' Previously linked thread: {target}.' if ownership == 'ORPHAN' else (
                 ' No thread links it.' if ownership == 'UNLINKED' else '')
             action = 'Review the stale hold.' if kind == 'HELD' else (
@@ -223,16 +234,70 @@ def scan(cfg, path, state, dry):
         save(path, state)
 
 
+def lead(thread_id, path, state, dry, grace_minutes):
+    """Check one lead's open PRs. Update branches silently; message the lead for decisions."""
+    shown = command(['t3', 'thread', 'show', '--json', '--messages', '0', thread_id])
+    urls = {p['url'].lower().rstrip('/') for p in shown['thread'].get('pullRequests', [])
+            if p.get('state', '').lower() == 'open'}
+    if not urls:
+        print('no open PRs')
+        return
+    repos = sorted({u.split('/pull/')[0].split('github.com/')[1] for u in urls})
+    query = 'is:pr is:open ' + ' '.join(f'repo:{r}' for r in repos)
+    prs = {u: pr for u, pr in inventory(dict(queries=[query])).items() if u in urls}
+    now, items = time.time(), []
+    for url, pr in prs.items():
+        kind, reason = classify(pr)
+        detail = f'{pr["repository"]["nameWithOwner"]} #{pr["number"]}'
+        # Only when GitHub blocks the merge on it (BEHIND). An optional update would rerun CI
+        # and invalidate exact-head evidence for nothing.
+        if (pr['mergeStateStatus'] == 'BEHIND' and pr.get('viewerCanUpdateBranch')
+                and kind not in ('HELD', 'CONFLICT', 'RED')):
+            print(f'{detail} {kind}: branch is behind; updating it')
+            if not dry:
+                command(['gh', 'pr', 'update-branch', url], '')
+            continue  # A new head is a new state; nothing to tell the lead.
+        row = state.setdefault(url, dict(sent={}, held={}))
+        if (row.get('head'), row.get('class')) != (pr['headRefOid'], kind):
+            row.update(head=pr['headRefOid'], **{'class': kind}, since=now)
+        age = max(0, now - row['since'])
+        key = f'{pr["headRefOid"]}:{kind}'
+        print(f'{detail} {kind} at {pr["headRefOid"][:8]} ({reason}; {age / 3600:.1f} h)')
+        if kind in ACTIONABLE and age >= grace_minutes * 60 and '1' not in row['sent'].get(key, {}):
+            items.append((row, key, f'{detail} is {kind} at {pr["headRefOid"][:8]} ({reason}). {ASK[kind]}'))
+    for gone in set(state) - set(prs):
+        del state[gone]  # merged or closed
+    if not dry:
+        save(path, state)
+    if not items:
+        return
+    message = '\n'.join(i[2] for i in items) + '\n— pr-sentinel (your 5-minute PR check)\n'
+    if dry:
+        print(f'WOULD SEND to {thread_id}:\n{message}', end='')
+        return
+    command(['t3', 'thread', 'send', thread_id, '-'], message)
+    for row, key, _ in items:
+        row['sent'].setdefault(key, {})['1'] = now
+    save(path, state)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)
-    for name in ('scan', 'status'):
+    for name in ('scan', 'status', 'lead'):
         p = sub.add_parser(name)
-        p.add_argument('--state', type=Path, default=STATE)
+        p.add_argument('--state', type=Path, default=None)
+        if name in ('scan', 'lead'):
+            p.add_argument('--dry-run', action='store_true')
         if name == 'scan':
             p.add_argument('--config', type=Path, default=CONFIG)
-            p.add_argument('--dry-run', action='store_true')
+        if name == 'lead':
+            p.add_argument('--thread', required=True)
+            p.add_argument('--grace-minutes', type=float, default=10)
     args = parser.parse_args()
+    if args.state is None:
+        safe = ''.join(c if c.isalnum() else '-' for c in getattr(args, 'thread', '') or '')[:80]
+        args.state = STATE.with_name(f'lead-{safe}.json') if args.action == 'lead' else STATE
     try:
         cfg = config(args.config) if args.action == 'scan' else None
         # The lock is not delivery state. Dry runs never replace state.json.
@@ -248,6 +313,11 @@ def main():
                 raise ValueError('state must be an object')
             if args.action == 'status':
                 print(json.dumps(state, indent=2))
+            elif args.action == 'lead':
+                try:
+                    lead(args.thread, args.state, state, args.dry_run, args.grace_minutes)
+                except (KeyError, TypeError, IndexError, AttributeError) as error:
+                    raise TransientError(f'incomplete inventory/state: {error}') from error
             else:
                 try:
                     scan(cfg, args.state, state, args.dry_run)
