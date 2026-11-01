@@ -110,6 +110,7 @@
         "funcAlias": { "$ref": "#/definitions/word" },
         "launcherAliasPrefix": { "$ref": "#/definitions/word" },
         "disableChrome": { "type": "boolean" },
+        "claudeSettings": { "description": "Claude --settings file, ~ expanded; skipped with a warning when missing", "type": "string" },
         "ttydPort": { "description": "0 = no ttyd port", "type": "integer", "minimum": 0, "maximum": 65535 }
       }
     },

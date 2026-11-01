@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { evaluate, parseRows, renderTable } from "../ratchet/table.mjs";
+import { baseRowsAt, evaluate, parseRows, renderTable } from "../ratchet/table.mjs";
 import { runRows } from "../ratchet/run-rows.mjs";
 
 const HEAD = "c".repeat(40);
@@ -127,6 +127,15 @@ describe("performance verdicts", () => {
 });
 
 describe("schema and execution", () => {
+  test("base-mode parsing accepts perf rows alongside the historical parity policy", () => {
+    const oldParity = { id: "installed-skill-parity", kind: "real", metric: "parity", runner: "live", direction: "pass", ceiling: true, command: "exit 1", bug_sha: HEAD, fix_sha: HEAD, report_only: "until-m1-run1", report_only_until: "2026-11-02T00:00:00Z" };
+    const base = { schema: 1, rows: [perf(), perf({ id: "m1-perf", runner: "m1", status: "report-only" }), oldParity] };
+    expect(() => parseRows(base)).toThrow(/report-only/);
+    expect(parseRows(base, { base: true })).toEqual(base);
+    const git = (_command, args) => ({ status: 0, stdout: args.includes("show") ? JSON.stringify(base) : "" });
+    expect(baseRowsAt("scripts/ratchet/rows.json", HEAD, git)).toEqual(base);
+    expect(() => parseRows({ ...base, rows: [perf({ repeats: 0 }), oldParity] }, { base: true })).toThrow(/repeats/);
+  });
   test("strict perf options reject invalid metric, repeats, tolerance, status, direction and unknown keys", () => {
     for (const change of [{ metric: "typo" }, { repeats: 0 }, { repeats: 1.5 }, { repeats: 26 }, { tolerance: -1 }, { tolerance: Infinity }, { status: "skip" }, { direction: "pass", ceiling: true }, { direction: "min" }, { ceiling: Infinity }, { unknown: true }]) {
       expect(() => parseRows(doc(perf(change)))).toThrow();

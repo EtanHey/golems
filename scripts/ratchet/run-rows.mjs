@@ -44,7 +44,7 @@ export function runRows({ rows, head, cwd = process.cwd(), runner = null, log = 
       continue;
     }
     const { run, code } = runCommand(row, cwd, log);
-    if (row.report_only) {
+    if (row.id === "disk-free-floor" && row.report_only) {
       try {
         const measurement = JSON.parse(String(run.stdout ?? "").trim().split("\n").pop());
         if (validDiskMeasurement(measurement) && run.status === (measurement.health ? 0 : 1))

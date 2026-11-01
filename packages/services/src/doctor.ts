@@ -208,7 +208,6 @@ async function checkMLX() {
 async function checkLaunchd() {
   // Map service names to their launchd label prefixes
   const golems: Array<{ name: string; label: string }> = [
-    { name: "briefing", label: "com.golemszikaron.briefing" },
   ];
   const launchResult = runCommand("launchctl list 2>/dev/null | grep -E 'golem|zikaron' || true");
   const loadedOutput = launchResult.output;

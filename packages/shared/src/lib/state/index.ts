@@ -9,14 +9,13 @@
  *   import { logEvent } from "@golems/shared/lib/event-log";
  */
 
-// State store (file/Supabase abstraction)
+// State store (local file storage)
 export {
   getState,
   setState,
   isJobSeen,
   markJobSeen,
   markJobsSeen,
-  reportServiceRun,
   getSeenJobIds,
 } from "../state-store";
 

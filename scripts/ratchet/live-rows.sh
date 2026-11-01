@@ -12,7 +12,7 @@
 set -euo pipefail
 
 die() { echo "live-rows: $*" >&2; exit 2; }
-MERGED="" LEASE_PR="" LEASE_REPO="" SYNC_M1=false
+MERGED="" LEASE_PR="" LEASE_REPO="" SYNC_M1=false M1_RECEIPT=not-requested
 while [ $# -gt 0 ]; do
   case "$1" in
     --merged-pr) MERGED="${2:?}"; shift 2 ;;
@@ -51,6 +51,8 @@ if [ "$SYNC_M1" = true ]; then
   VERSION="$(python3 -c 'from datetime import datetime, timezone; import sys; print(datetime.fromtimestamp(int(sys.argv[1]), timezone.utc).strftime("%Y.%m.%d") + "-" + sys.argv[2][:7])' "$(git -C "$MAIN" show -s --format=%ct "$LIVE_HEAD")" "$LIVE_HEAD")"
   if python3 -B "$HERE/sync-m1.py" "$LIVE_HEAD" "$VERSION" "$RUN/m1-sync" > "$RUN/m1-sync.log" 2>&1; then
     cat "$RUN/m1-sync.log"
+    M1_RECEIPT="$(sed -n 's/^m1-receipt: //p' "$RUN/m1-sync.log" | tail -1)"
+    M1_RECEIPT="${M1_RECEIPT:-unavailable}"
   else
     status=$?; cat "$RUN/m1-sync.log" >&2; exit "$status"
   fi
@@ -65,5 +67,5 @@ node "$HERE/run-rows.mjs" --rows "$HERE/rows.json" --runner live --head "$LIVE_H
 node "$HERE/table.mjs" --rows "$HERE/rows.json" --results "$RUN/results.json" --head "$LIVE_HEAD" --runner live \
   --base-ref "$(git -C "$MAIN" rev-parse "$LIVE_HEAD^1")" \
   --pr-body-file "$PR_BODY_FILE" \
-  --marker golems-ratchet-live --title "Ratchet table (LIVE rows, post-merge, hooks-live@${LIVE_HEAD:0:8})" \
+  --marker golems-ratchet-live --title "Ratchet table (LIVE rows, post-merge, hooks-live@${LIVE_HEAD:0:8}; m1-receipt: $M1_RECEIPT)" \
   --repo "$REPO_SLUG" --pr "$MERGED" --author "$(gh api user -q .login)" --out "$RUN/table.md"

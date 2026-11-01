@@ -11,11 +11,11 @@ const REPAIR = "BLOCKED: Codex policy hook unavailable. Repair with scripts/hook
 export const CLIENT_REPAIR = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: rerun the release installer, then run node ~/.golems/current/scripts/hooks/install-hooks.mjs --host client --source ~/.golems/current --apply; review /hooks from plain codex with no --profile.";
 export const CODEX_TRUST_HINT = "Review /hooks from plain codex with no --profile so trust persists in the base config.toml; repoGolem's per-launch profile is deleted on exit.";
 
-export function codexCommand(python, adapter, gate, repair = REPAIR) {
+export function codexCommand(python, adapter, gate, repair = REPAIR, mode) {
   // Codex exit 2 requires stderr. This fallback survives missing Python, a
   // missing/broken adapter, and its unexpected exit. No policy lives here.
   // -I -B: no PYTHONPATH/user site, no bytecode writes into hooks-live (see fail-open.py).
-  const run = [python, "-I", "-B", adapter, gate].map(quote).join(" ");
+  const run = [python, "-I", "-B", adapter, gate, ...(mode ? ["--mode", mode] : [])].map(quote).join(" ");
   return `/bin/sh -c ${quote(`if output=$(${run} 2>/dev/null); then printf '%s\\n' "$output"; else printf '%s\\n' ${quote(repair)} >&2; exit 2; fi`)}`;
 }
 
@@ -31,7 +31,7 @@ function regular(p, directory = false) {
 
 // The adapter's gates. Only human-confirm carries an owner anchor pin; like its
 // Claude registration it is refused (never registered) while that pin is empty.
-const CODEX_GATES = { "tmp-block": undefined, "git-guardian": undefined,
+const CODEX_GATES = { "m1-window-gate": undefined, "tmp-block": undefined, "git-guardian": undefined, "heredoc-guard": undefined,
   "human-confirm": "skills/golem-powers/human-confirm-gate/anchor.pins" };
 
 export function planCodexHooks({ manifest, host, live, source: releaseSource, codexHome, python = "python3", refused = [] }) {
@@ -41,11 +41,12 @@ export function planCodexHooks({ manifest, host, live, source: releaseSource, co
   for (const list of Object.values(manifest.codex_hosts)) {
     const gates = Array.isArray(list) ? list.map(e => e.gate) : [];
     if (!Array.isArray(list) || new Set(gates).size !== list.length || !gates.includes("tmp-block") ||
-        !gates.includes("git-guardian") || list.length > 3) throw new Error("Invalid Codex policy manifest");
+        !gates.includes("git-guardian") || list.length > 5) throw new Error("Invalid Codex policy manifest");
     for (const e of list) {
       if (!Object.hasOwn(CODEX_GATES, e.gate) || e.requiresPin !== CODEX_GATES[e.gate] ||
+          (e.mode !== undefined && (e.gate !== "m1-window-gate" || e.mode !== "seat")) ||
           e.source !== "scripts/hooks/codex-policy-hook.py" ||
-          e.matcher !== "^(Bash|apply_patch)$" || e.timeout !== 10) throw new Error("Invalid Codex policy entry");
+          e.matcher !== (e.gate === "m1-window-gate" ? "^Bash$" : "^(Bash|apply_patch)$") || e.timeout !== 10) throw new Error("Invalid Codex policy entry");
     }
   }
   const entries = listed.filter(e => !(host === "client" && e.ownerOnly) && !refused.includes(e.gate));
@@ -65,7 +66,7 @@ export function planCodexHooks({ manifest, host, live, source: releaseSource, co
   if (!current || typeof current !== "object" || Array.isArray(current) ||
       (current.hooks && (typeof current.hooks !== "object" || Array.isArray(current.hooks)))) throw new Error("Invalid Codex hook configuration");
   const desired = entries.map(e => ({ matcher: e.matcher, hooks: [{ type: "command",
-    command: codexCommand(python, path.join(live, e.source), e.gate, releaseSource ? CLIENT_REPAIR : REPAIR), timeout: e.timeout }] }));
+    command: codexCommand(python, path.join(live, e.source), e.gate, releaseSource ? CLIENT_REPAIR : REPAIR, e.mode), timeout: e.timeout }] }));
   const hooks = structuredClone(current.hooks ?? {});
   let matches = [];
   for (const [event, groups] of Object.entries(hooks)) {

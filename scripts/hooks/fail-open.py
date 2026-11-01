@@ -31,7 +31,7 @@ runs in a forked child in its own process group, and if it has not finished
 within <s> seconds the whole group is SIGKILLed and the static denial is
 emitted. A harness hook timeout does not block (Claude Code), so the installer
 registers budget = manifest timeout - 1 s. The policy gates opt in via the
-host manifest (#488): tmp-block, git-guardian pre_tool_use, human-confirm. A failure before this file
+host manifest (#488): tmp-block, heredoc-guard, git-guardian pre_tool_use, human-confirm. A failure before this file
 runs (interpreter missing, launcher unparseable) is the installer's /bin/sh
 guard's to deny (install-hooks.mjs failClosedCommand).
 

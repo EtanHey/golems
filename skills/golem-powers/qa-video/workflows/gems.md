@@ -15,10 +15,15 @@ or wants durable insights/takeaways from a video instead of QA findings.
 ## Execution Contract
 
 Default pipeline: `Agent(qa-video-runner)` for QA, `Agent(video-gems)` for gems.
-The pipeline sub-agent owns the whole iterative loop in its **own shell**;
-never read images in the lead or pipeline sub-agent. Read text with Read;
-call `scripts/visual-batch.py` from your own shell for every sheet/frame.
-The driver invokes visual-gather.py concurrently and returns text only.
+The pipeline sub-agent owns the whole iterative loop in its **own shell**
+and **reads the images itself**: it opens the contact sheets and the frames
+behind every finding with Read, in its own context, and connects them over
+time: what changed between the before/after frames of a cue, and whether an
+element's state carries across windows. The lead stays text-only.
+`scripts/visual-batch.py` (driving visual-gather.py) is OPTIONAL bulk
+pre-sorting, e.g. flagging candidate windows across hundreds of samples. Its
+text is a lead, never evidence: view the frames before reporting a finding.
+`debrief.py` runs no helper unless you pass `--presort`.
 NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
 A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
 inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
@@ -26,7 +31,7 @@ screenshot questions outside this pipeline.
 
 Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
 Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
-same loop in its own shell and may view images itself. **Never open a terminal pane**
+same loop in its own shell and views the images itself, like the runner. **Never open a terminal pane**
 or type into another surface to run media tools; never `send_to` media commands.
 If the selected profile has no shell, stop and ask the lead for the shell-enabled
 pipeline profile (or `video-qa` for the explicitly requested visible route).
@@ -52,22 +57,34 @@ or delegation; return text to the parent for persistence and archival.
    ```
    Use the actual downloaded video path. Local video needs no download.
 3. In your own shell launch `bash "$SCRIPTS/run-step.sh" "$WORKDIR" gems -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode gems`.
+   By default debrief.py calls no helper: it extracts the targeted stills, writes frames.tsv and exits `STILLS_READY` for you to view them; `--presort` opts in to the visual-batch.py pre-sort.
    Use a fresh workdir (source video/info.json and run-step logs are allowed); progress.txt covers every phase.
    Poll logs/gems.exit and inspect timing.json and actual outputs. A nonzero budget/partial exit still earns a transcript-only debrief.md when SRT exists; read it and report missing visual coverage.
 4. Read the full transcript and plan.json; the English keyword planner ranks candidate moments across the duration, capped at 12. Synthesize insights/opinions/numbers and warnings from the full transcript, including transcript-only material.
-5. Read targeted visual-batch.py findings.jsonl as they arrive; match each sheet + tile 0 + timestamp to frames.tsv (real PTS). NEVER hand-roll a shell loop. Keep absent/unclear observations NOT DETERMINED; no invented visuals.
+5. View the targeted `moment-NN.jpg` stills yourself (debrief.md marks each NOT YET VIEWED). With `--presort`, `visual/findings.jsonl` points you at them; it is not evidence. Match each sheet + tile 0 + timestamp to frames.tsv (real PTS). NEVER hand-roll a shell loop. Keep absent/unclear observations NOT DETERMINED; no invented visuals.
 6. If a referenced slide/code/chart needs another look, choose a tighter targeted still or ≤2 fps short window within the remaining computed total budget (or explicit parent deadline). Preserve each pass and citation. If unresolved or budget exhausted, report the limit.
 7. Produce a structured gems note with:
    - source title, URL, channel/speaker, and date if available
    - top gems with timestamps
    - direct action items
    - claims that need later verification
-   - frame evidence references
+   - frame evidence references (full-size stills or crops with `pts_s` from frames.tsv)
 8. Return text to the parent to run `brain_digest` on the full transcript/note,
    then `brain_store` the
    structured gems with tags like `["video-gems", "<topic>", "<source>"]`.
 9. If heavy raw media or transcripts should be kept, route them through
    `/drive-filing` (§ Archive a heavy artifact) and record the Drive location in the note.
+
+## Evidence Rules
+
+SKILL.md § Evidence Rules applies here too; details in
+[provenance.md](../references/provenance.md). For gems that means: cite the
+full-size still or a `scripts/crop.sh` crop, never a tile alone; log each still
+you view with `scripts/inspected.sh` and paste `scripts/coverage-count.sh` as
+the coverage line; keep what the speaker says apart from what the screen shows
+(a spoken claim about a slide is not proof of the slide). A helper or parser
+failure is reported as `TOOLING FAILURE` with the raw output path, never as
+"no screenshots".
 
 ## Failure Handling
 

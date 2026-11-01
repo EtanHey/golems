@@ -44,3 +44,9 @@ supported or proven for a release with no checkout.
 The owner-host check matches the exact `MacBook-Pro` LocalHostName. Renaming
 the MBP would allow the explicit `--migrate-owner-install` flag there; this is an
 accepted risk consistent with the owner installer.
+
+The owner `mbp` profile also includes `m1-window-gate`, configured privately in
+`~/.golems/m1-window-gate.json`. It is absent from the client profile. No config
+allows calls; an open registry window blocks unrelated M1 dispatch. Claude
+covers Bash and selected T3 environment calls; Codex covers Bash only. See the
+[gate contract](../../skills/golem-powers/m1-window-gate/SKILL.md) for boundaries.

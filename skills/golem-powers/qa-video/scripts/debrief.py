@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Transcript-first debrief: <=12 stills, preserved evidence, length-aware budget."""
+"""Transcript-first debrief: <=12 stills, preserved evidence, length-aware budget.
+
+Default: extract the targeted stills and hand back for the runner to view them
+itself (no helper call). --presort adds the optional visual-batch.py pre-sort.
+"""
 import argparse
 import importlib.util
 import json
@@ -12,6 +16,9 @@ import subprocess
 import sys
 import time
 HERE = Path(__file__).resolve().parent
+_spec = importlib.util.spec_from_file_location('provenance', HERE/'provenance.py')
+provenance = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(provenance)
 def seconds(value):
     h, m, s = value.replace(',', '.').split(':')
     return int(h)*3600 + int(m)*60 + float(s)
@@ -56,7 +63,12 @@ def command(argv, log, deadline):
         if process.returncode:
             raise subprocess.CalledProcessError(process.returncode, argv)
 
-def evidence_note(work, mode, status, selected, citations):
+def atomic(path, text):
+    pending = path.with_suffix(path.suffix + '.new')
+    pending.write_text(text)
+    pending.replace(path)
+
+def evidence_note(work, mode, status, selected, citations, presorted=True):
     readings = {}
     findings = work/'visual/findings.jsonl'
     if findings.exists():
@@ -70,7 +82,10 @@ def evidence_note(work, mode, status, selected, citations):
     for i, moment in enumerate(selected['moments']):
         image = work/f'moment-{i:02d}.jpg'
         item = readings.get(str(image), {})
-        visual = item.get('finding', '') if item.get('ok') else 'visual: NOT DETERMINED (budget/failed)'
+        if not presorted and i < len(citations):
+            visual = f'visual: NOT YET VIEWED; open {image.name} yourself (no helper pre-sort)'
+        else:
+            visual = item.get('finding', '') if item.get('ok') else 'visual: NOT DETERMINED (budget/failed)'
         citation = 'Frame (tile 0, real PTS): '+citations[i] if i < len(citations) else 'Frame: NOT DETERMINED'
         quotes.append(f'## {moment["start"]:g}s — transcript-only claim\n{moment["text"]}\n{citation}\n{visual}')
     (work/'debrief.md').write_text(f'# {mode.title()} evidence note\nStatus: {status}\n'
@@ -83,8 +98,13 @@ def main():
     parser.add_argument('--mode', choices=['debrief', 'review', 'gems'], default='debrief')
     parser.add_argument('--concurrency', type=int, default=3)
     parser.add_argument('--budget-seconds', type=float, help='Parent deadline override; default max(600, 24 * video minutes)')
-    parser.add_argument('--helper', type=Path, default=HERE/'visual-gather.py', help='Offline helper override')
+    parser.add_argument('--presort', action='store_true',
+                        help='Opt in to the visual-batch.py pre-sort; its text is a lead, not evidence')
+    parser.add_argument('--helper', type=Path, help='Offline helper override (requires --presort)')
     args = parser.parse_args()
+    if args.helper and not args.presort:
+        parser.error('--helper requires --presort; the default route calls no helper')
+    args.helper = args.helper or HERE/'visual-gather.py'
     work = args.workdir.resolve()
     reserved = {'transcript.srt', 'transcript.txt', 'audio.wav', 'progress.txt', 'progress.json',
                 'plan.json', 'frames.tsv', 'debrief.md', 'timing.json', 'failure.txt'}
@@ -95,9 +115,6 @@ def main():
         parser.error('positive finite budget and positive concurrency required')
     work.mkdir(parents=True, exist_ok=True)
     (work/'logs').mkdir(exist_ok=True)
-    spec = importlib.util.spec_from_file_location('batch', HERE/'visual-batch.py')
-    batch = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(batch)
     started = time.monotonic()
     automatic_budget = args.budget_seconds is None
     if automatic_budget:
@@ -107,7 +124,7 @@ def main():
     selected, citations = None, []
 
     def progress(text):
-        batch.atomic(work/'progress.txt', text+'\n')
+        atomic(work/'progress.txt', text+'\n')
         phases[text] = round(time.monotonic()-started, 3)
 
     try:
@@ -123,13 +140,14 @@ def main():
         command(['bash', str(HERE/'extract.sh'), str(args.video.resolve()), str(work)], work/'logs/extract.log', deadline)
         transcript = (work/'transcript.srt').read_text()
         selected = plan(transcript, args.concurrency)
-        batch.atomic(work/'plan.json', json.dumps(selected, indent=2)+'\n')
+        atomic(work/'plan.json', json.dumps(selected, indent=2)+'\n')
         duration = selected['duration_seconds']
         if duration <= 0:
             raise ValueError('empty/invalid timestamped transcript; no debrief earned')
         prefix = f'transcribed {int(duration)//60}:{int(duration)%60:02d} · picked {len(selected["moments"])} moments · total budget {args.budget_seconds:g}s · '
         progress(prefix+'extracting targeted stills · ETA unknown')
         sheets = []
+        (work/'frames.tsv').touch()
         for i, moment in enumerate(selected['moments']):
             image, log = work/f'moment-{i:02d}.jpg', work/f'logs/frame-{i:02d}.log'
             command(['ffmpeg', '-hide_banner', '-nostdin', '-y', '-ss', str(moment['start']), '-copyts',
@@ -137,15 +155,20 @@ def main():
             pts = re.search(r'pts_time:([\d.]+)', log.read_text())
             if not pts or not image.is_file():
                 raise ValueError('targeted frame lacks real PTS or image')
+            provenance.record(work, [(image, pts[1], 'refine', image.name, 0, '')])
             sheets.append(str(image))
             citations.append(f'{image.name}\t0\t{pts[1]}')
             progress(prefix+f'extracted {i+1}/{len(selected["moments"])} stills · ETA unknown')
-        (work/'frames.tsv').write_text('\n'.join(citations)+'\n')
-        # Reserve 205s: N1 drain exceeds launch budget by <=200s at timeout=90.
-        remaining = deadline-time.monotonic()-205
-        if sheets and remaining <= 0:
-            raise subprocess.TimeoutExpired('visual reserve', args.budget_seconds)
-        if sheets:
+        if sheets and not args.presort:
+            status = 'STILLS_READY'  # the runner views them itself; no reserve, no helper
+        elif sheets:
+            # Reserve 205s: N1 drain exceeds launch budget by <=200s at timeout=90.
+            remaining = deadline-time.monotonic()-205
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired('visual reserve', args.budget_seconds)
+            spec = importlib.util.spec_from_file_location('batch', HERE/'visual-batch.py')
+            batch = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(batch)
             progress(prefix+'visual 0/%s · ETA unknown' % len(sheets))
             result = batch.run(argparse.Namespace(workdir=work, budget_seconds=remaining,
                                concurrency=selected['concurrency'], timeout=90, helper=args.helper,
@@ -163,18 +186,18 @@ def main():
     if (work/'transcript.srt').exists():
         if selected is None:
             selected = plan((work/'transcript.srt').read_text(), args.concurrency)
-            batch.atomic(work/'plan.json', json.dumps(selected, indent=2)+'\n')
+            atomic(work/'plan.json', json.dumps(selected, indent=2)+'\n')
         progress('compiling evidence note · ETA <5s')
-        evidence_note(work, args.mode, status, selected, citations)
+        evidence_note(work, args.mode, status, selected, citations, args.presort)
     elapsed = time.monotonic()-started
     if elapsed >= args.budget_seconds and status != 'BUDGET_EXCEEDED':
         status = 'BUDGET_EXCEEDED'
         if selected is not None:
-            evidence_note(work, args.mode, status, selected, citations)
+            evidence_note(work, args.mode, status, selected, citations, args.presort)
     progress(f'{status} · elapsed {elapsed:.3f}s · budget {args.budget_seconds:g}s')
-    batch.atomic(work/'timing.json', json.dumps({'mode': args.mode, 'status': status,
+    atomic(work/'timing.json', json.dumps({'mode': args.mode, 'status': status, 'presort': args.presort,
                  'wall_seconds': elapsed, 'budget_seconds': args.budget_seconds, 'phases': phases}, indent=2)+'\n')
-    return 0 if status in ('COMPLETE', 'TRANSCRIPT_ONLY') else 2
+    return 0 if status in ('COMPLETE', 'TRANSCRIPT_ONLY', 'STILLS_READY') else 2
 
 if __name__ == '__main__':
     sys.exit(main())

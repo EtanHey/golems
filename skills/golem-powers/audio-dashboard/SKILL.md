@@ -422,6 +422,22 @@ Before calling a dashboard done, verify these conditions (enforced by
 - Tailnet publication happens through sync, not direct writes to
   `dashboards-serve`.
 
+## Preserve the published design
+Preserve pinned controls, labelled read-along, transcript at playback end, native
+answers, code-only copy, focus, seeking and resets. Gate both outer and reading-column
+width/centering by role and parent geometry. Require stable explicit `spec.series`.
+History is per-machine: `~/.local/share/audio-dashboard/design-history/<series>/`.
+For the initial publication only, pass `--first-build <reason>` separately to BUILD,
+done-gate, evidence and publish CLIs; no persistent spec declaration is honored.
+On another machine or after registry loss, copy the served predecessor and set
+`designPreservation: { previousPublished: "served-copy.html" }`; absence rejects.
+A waiver needs `redesign: { reason, invariants: ["LAYOUT"], from: "previous sha256" }`;
+only fired codes may be listed, never on a baseline. It expires with its predecessor.
+Run `bun scripts/check-design-preservation.mjs --spec job.json --screenshots proof/`.
+BUILD/evidence prevent drift; the library checks the caller's HTML and PASS sidecar.
+Only the publish probe binds served bytes (`--spec` required); it cannot prevent
+exposure already published. A shared served-host registry is a follow-up, not built.
+
 ## Transcript Fidelity and Teleprompter Drift BUILD Gates
 
 `src/transcript-fidelity-gate.mjs` compares the raw Whisper transcript with the
