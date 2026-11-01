@@ -172,8 +172,8 @@ if [[ $found_secrets -gt 0 ]]; then
     echo "2. Update MCP config to use op:// reference:"
     echo -e "   ${CYAN}\"key\": \"op://Private/_global/service/KEY/password\"${NC}"
     echo ""
-    echo "3. Run Claude with op inject:"
-    echo -e "   ${CYAN}op run -- claude${NC}"
+    echo "3. Resolve the values once into a ~/.config/golems/*.env file (agents load it per command)."
+    echo "   op run -- claude is for Etan's own interactive session only: each op call is a Touch ID prompt."
     echo ""
     echo "See: ~/.claude/skills/1password/workflows/migrate-mcp.md"
 else

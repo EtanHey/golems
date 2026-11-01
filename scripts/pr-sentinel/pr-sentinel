@@ -1,0 +1,364 @@
+#!/usr/bin/env python3
+"""PR checks for leads: `lead` watches one lead's PRs; `scan` is orc's sweep for orphans.
+
+A lead runs `lead --thread <its thread id>` from a cheap delegate on a 5-minute T3
+schedule. It clicks "Update branch" itself and messages the lead only when a decision is
+needed. `scan` covers PRs whose lead thread is gone or that no thread links.
+"""
+import argparse
+from collections import defaultdict
+import fcntl
+import json
+import math
+import os
+from pathlib import Path
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+
+CONFIG = Path.home() / '.config/golems/pr-sentinel.json'
+STATE = Path.home() / '.local/state/golems/pr-sentinel/state.json'
+DEFAULTS = dict(queries=['is:pr is:open user:EtanHey',
+                         'is:pr is:open author:EtanHey -user:EtanHey'],
+                grace_minutes=45, held_stale_hours=72)
+FIELDS = '''fragment F on PullRequest {
+ url number state isDraft headRefOid mergeable mergeStateStatus reviewDecision viewerCanUpdateBranch
+ author { login } repository { nameWithOwner viewerPermission } comments(last:20) { nodes { body createdAt } }
+ commits(last:1) { nodes { commit { committedDate statusCheckRollup {
+  contexts(first:100) { pageInfo { hasNextPage } nodes {
+   ... on CheckRun { name conclusion status completedAt startedAt databaseId }
+   ... on StatusContext { context state createdAt }
+  } }
+ } } } }
+}'''
+QUERY = '''query($q:String!,$cursor:String,$count:Int!) {
+ search(query:$q,type:ISSUE,first:$count,after:$cursor) {
+  pageInfo { hasNextPage endCursor } nodes { ... F }
+ }
+}
+''' + FIELDS
+
+ACTIONABLE = ('RED', 'GREEN', 'CONFLICT', 'REVIEW')
+ASK = dict(RED='Fix it or route the fix.', CONFLICT='Resolve the conflict or route it.',
+           REVIEW='Answer the review or route the fix.',
+           GREEN="It is ready: merge it under your lane's merge law.")
+
+
+class TransientError(Exception):
+    pass
+
+
+def command(argv, message=None):
+    try:
+        proc = subprocess.run(argv, input=message, text=True, capture_output=True, timeout=90)
+        if proc.returncode:
+            raise TransientError(f'{argv[0]} failed: {proc.stderr.strip()}')
+        return proc.stdout if message is not None else json.loads(proc.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError) as error:
+        raise TransientError(f'{argv[0]}: {error}') from error
+
+
+def config(path):
+    if stat.S_IMODE(path.stat().st_mode) != 0o600:
+        raise ValueError('config must have mode 0600')
+    data = {**DEFAULTS, **json.loads(path.read_text())}
+    for key in ('queries', 'projects'):
+        if not isinstance(data.get(key), list) or not data[key] or any(
+                not isinstance(v, str) or not v.strip() for v in data[key]):
+            raise ValueError(f'{key} must be a nonempty string list')
+    if any(not Path(p).is_absolute() for p in data['projects']):
+        raise ValueError('projects must contain absolute paths')
+    if not isinstance(data.get('escalate_thread'), str) or not data['escalate_thread'].strip():
+        raise ValueError('escalate_thread is required')
+    for key in ('grace_minutes', 'held_stale_hours'):
+        v = data[key]
+        if type(v) not in (int, float) or not math.isfinite(v) or v < 0:
+            raise ValueError(f'{key} must be a finite nonnegative number')
+    return data
+
+
+def inventory(cfg):
+    prs, budget = {}, 300
+    for query in cfg['queries']:
+        cursor = None
+        while budget:
+            args = ['gh', 'api', 'graphql', '-f', f'query={QUERY}', '-f', f'q={query}',
+                    '-F', f'count={min(25, budget)}']
+            if cursor:
+                args += ['-f', f'cursor={cursor}']
+            result = command(args)
+            if result.get('errors'):
+                raise TransientError(f'GraphQL errors: {result["errors"]}')
+            page = result['data']['search']
+            for pr in page['nodes']:
+                budget -= 1
+                prs[pr['url'].lower().rstrip('/')] = pr
+            if not budget and page['pageInfo']['hasNextPage']:
+                print('inventory truncated at 300 results', file=sys.stderr)
+            if not page['pageInfo']['hasNextPage']:
+                break
+            next_cursor = page['pageInfo']['endCursor']
+            if not page['nodes'] or not next_cursor or next_cursor == cursor:
+                raise TransientError('invalid GitHub pagination')
+            cursor = next_cursor
+    return prs
+
+
+def classify(pr):
+    commit = pr['commits']['nodes'][-1]['commit']
+    held = [c for c in pr['comments']['nodes'] if c['createdAt'] > commit['committedDate']
+            and ('<!-- pr-sentinel:held -->' in c['body']
+                 or c['body'].startswith('**Held on purpose'))]
+    if pr['isDraft'] or held:
+        return 'HELD', 'held on purpose'
+    if pr['mergeable'] == 'CONFLICTING':
+        return 'CONFLICT', 'merge conflict'
+    rollup = commit.get('statusCheckRollup')
+    contexts = rollup['contexts'] if rollup else dict(nodes=[], pageInfo={})
+    if contexts['pageInfo'].get('hasNextPage'):
+        raise TransientError(f'{pr["url"]}: check inventory exceeds 100 contexts')
+    completed, pending = defaultdict(list), False
+    for c in contexts['nodes']:
+        result = c.get('conclusion') or c.get('state')
+        if c.get('status') not in (None, 'COMPLETED') or result in ('PENDING', 'EXPECTED'):
+            pending = True
+            continue
+        completed[c.get('name') or c['context']].append(
+            (c.get('completedAt') or c.get('createdAt') or '', c.get('databaseId') or 0, result))
+    for name, runs in completed.items():
+        runs.sort()
+        if runs[-1][2] in {'FAILURE', 'ERROR', 'TIMED_OUT', 'ACTION_REQUIRED', 'STARTUP_FAILURE'} or any(
+                r[2] == 'CANCELLED' and not any(s > r and s[2] == 'SUCCESS' for s in runs) for r in runs):
+            return 'RED', f'{" ".join(name.split())[:80]} failed'
+    if pr.get('reviewDecision') == 'CHANGES_REQUESTED':
+        return 'REVIEW', 'a review asked for changes'
+    if pending:
+        return 'PENDING', 'checks running'
+    if pr['mergeStateStatus'] != 'CLEAN':
+        return 'OTHER', 'no action'
+    # A green PR we cannot merge (an upstream repo) waits on its maintainers, not on us.
+    if pr['repository'].get('viewerPermission') not in {'ADMIN', 'MAINTAIN', 'WRITE'}:
+        return 'OTHER', 'green; waiting on the maintainers'
+    return 'GREEN', 'ready to merge'
+
+
+def owners(cfg):
+    threads = {}
+    for project in cfg['projects']:
+        rows = command(['t3', 'thread', 'list', '--json', '--project', project])
+        if not isinstance(rows, list):
+            raise TransientError('t3 thread list must return a list')
+        for t in rows:
+            threads[t['threadId']] = t
+    links = defaultdict(list)
+    for t in threads.values():
+        for pr in t.get('pullRequests', []):
+            if pr.get('state', '').lower() == 'open':
+                links[pr['url'].lower().rstrip('/')].append(t)
+    return links
+
+
+def owner(threads):
+    live = [t for t in threads if not t.get('parentThreadId') and not t.get('settled')
+            and not t.get('settledAt') and not t.get('archivedAt') and not t.get('archived')
+            and t.get('status', '').lower() not in ('settled', 'archived')]
+    latest = max(live or threads, key=lambda t: t['updatedAt'], default=None)
+    return ('LIVE' if live else 'ORPHAN' if threads else 'UNLINKED',
+            latest['threadId'] if latest else None)
+
+
+def save(path, data):
+    fd, name = tempfile.mkstemp(prefix='.state-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'w') as out:
+            json.dump(data, out, indent=2)
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def scan(cfg, path, state, dry):
+    prs, links, now = inventory(cfg), owners(cfg), time.time()
+    batches = defaultdict(list)
+    for url, pr in prs.items():
+        kind, reason = classify(pr)
+        ownership, target = owner(links.get(url, []))
+        row = state.setdefault(url, dict(sent={}, held={}))
+        if (row.get('head'), row.get('class')) != (pr['headRefOid'], kind):
+            row.update(head=pr['headRefOid'], **{'class': kind}, since=now)
+        age = max(0, now - row['since'])
+        key = f'{pr["headRefOid"]}:{kind}'
+        sent = row['sent'].setdefault(key, {})
+        level = None
+        if kind == 'HELD':
+            if age >= cfg['held_stale_hours'] * 3600 and pr['headRefOid'] not in row['held']:
+                level = 'held'
+        elif kind in ACTIONABLE and age >= cfg['grace_minutes'] * 60:
+            # A live lead's own watcher (`lead`) covers its PRs; this sweep covers the rest.
+            if ownership != 'LIVE' and '2' not in sent:
+                level = '2'
+        detail = f'{pr["repository"]["nameWithOwner"]} #{pr["number"]} {ownership} {kind}'
+        print(f'{detail} at {pr["headRefOid"][:8]} ({reason}; {age / 3600:.1f} h)')
+        if level == 'held' and ownership == 'LIVE':
+            level = None
+        if level:
+            destination = cfg['escalate_thread']
+            former = f' Previously linked thread: {target}.' if ownership == 'ORPHAN' else (
+                ' No thread links it.' if ownership == 'UNLINKED' else '')
+            action = 'Review the stale hold.' if kind == 'HELD' else (
+                'Fix it, route the fix, or mark it held (make it a draft and post a '
+                '"Held on purpose" comment with why, next step and owner).')
+            message = (f'{detail} for {age / 3600:.1f} h at {pr["headRefOid"][:8]} '
+                       f'({reason}).{former} {action} — pr-sentinel')
+            batches[destination].append((row, key, level, message))
+    if not dry:
+        save(path, state)
+    for target, items in batches.items():
+        message = '\n'.join(item[3] for item in items) + '\n'
+        if dry:
+            print(f'WOULD SEND to {target}:\n{message}', end='')
+            continue
+        try:
+            command(['t3', 'thread', 'send', target, '-'], message)
+        except TransientError as error:
+            print(error, file=sys.stderr)
+            continue
+        for row, key, level, _ in items:
+            if level == 'held':
+                row['held'][row['head']] = now
+            else:
+                row['sent'][key][level] = now
+        save(path, state)
+
+
+def linked(urls):
+    """Fetch exactly these PRs by number, 25 per GraphQL call; never via a capped search."""
+    found, ordered = {}, sorted(urls)
+    for start in range(0, len(ordered), 25):
+        parts = []
+        for i, url in enumerate(ordered[start:start + 25]):
+            owner, name, _, number = url.split('github.com/')[1].split('/')[:4]
+            parts.append(f'p{i}: repository(owner: {json.dumps(owner)}, name: {json.dumps(name)}) '
+                         f'{{ pullRequest(number: {int(number)}) {{ ... F }} }}')
+        result = command(['gh', 'api', 'graphql', '-f', 'query=query { ' + ' '.join(parts) + ' }\n' + FIELDS])
+        if result.get('errors'):
+            raise TransientError(f'GraphQL errors: {result["errors"]}')
+        for node in result['data'].values():
+            pr = (node or {}).get('pullRequest')
+            if not pr:
+                raise TransientError('a linked PR could not be read')
+            found[pr['url'].lower().rstrip('/')] = pr
+    return found
+
+
+def lead(thread_id, path, state, dry, grace_minutes):
+    """Check one lead's open PRs. Update branches silently; message the lead for decisions."""
+    shown = command(['t3', 'thread', 'show', '--json', '--messages', '0', thread_id])
+    urls = {p['url'].lower().rstrip('/') for p in shown['thread'].get('pullRequests', [])
+            if p.get('state', '').lower() == 'open'}
+    if not urls:
+        print('no open PRs')
+        if not dry and state:
+            state.clear()
+            save(path, state)
+        return
+    fetched = linked(urls)
+    prs = {u: pr for u, pr in fetched.items() if pr.get('state') == 'OPEN'}
+    now, items = time.time(), []
+    for url, pr in prs.items():
+        kind, reason = classify(pr)
+        detail = f'{pr["repository"]["nameWithOwner"]} #{pr["number"]}'
+        # Only when GitHub blocks the merge on it (BEHIND). An optional update would rerun CI
+        # and invalidate exact-head evidence for nothing.
+        if (pr['mergeStateStatus'] == 'BEHIND' and pr.get('viewerCanUpdateBranch')
+                and kind not in ('HELD', 'CONFLICT', 'RED')):
+            print(f'{detail} {kind}: branch is behind; updating it')
+            if not dry:
+                try:
+                    command(['gh', 'pr', 'update-branch', url], '')
+                except TransientError as error:
+                    # One rejected update must not hold back the other PRs' messages; retry next run.
+                    print(f'{detail}: update-branch failed, will retry: {error}', file=sys.stderr)
+            continue  # A new head is a new state; nothing to tell the lead.
+        row = state.setdefault(url, dict(sent={}, held={}))
+        if (row.get('head'), row.get('class')) != (pr['headRefOid'], kind):
+            row.update(head=pr['headRefOid'], **{'class': kind}, since=now)
+        age = max(0, now - row['since'])
+        key = f'{pr["headRefOid"]}:{kind}'
+        print(f'{detail} {kind} at {pr["headRefOid"][:8]} ({reason}; {age / 3600:.1f} h)')
+        if kind in ACTIONABLE and age >= grace_minutes * 60 and '1' not in row['sent'].get(key, {}):
+            items.append((row, key, f'{detail} is {kind} at {pr["headRefOid"][:8]} ({reason}). {ASK[kind]}'))
+    for gone in set(state) - set(prs):
+        if gone in fetched or gone not in urls:
+            del state[gone]  # merged, closed, or no longer linked
+    if not dry:
+        save(path, state)
+    if not items:
+        return
+    message = '\n'.join(i[2] for i in items) + '\n— pr-sentinel (your 5-minute PR check)\n'
+    if dry:
+        print(f'WOULD SEND to {thread_id}:\n{message}', end='')
+        return
+    command(['t3', 'thread', 'send', thread_id, '-'], message)
+    for row, key, _ in items:
+        row['sent'].setdefault(key, {})['1'] = now
+    save(path, state)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest='action', required=True)
+    for name in ('scan', 'status', 'lead'):
+        p = sub.add_parser(name)
+        p.add_argument('--state', type=Path, default=None)
+        if name in ('scan', 'lead'):
+            p.add_argument('--dry-run', action='store_true')
+        if name == 'scan':
+            p.add_argument('--config', type=Path, default=CONFIG)
+        if name == 'lead':
+            p.add_argument('--thread', required=True)
+            p.add_argument('--grace-minutes', type=float, default=10)
+    args = parser.parse_args()
+    if args.state is None:
+        safe = ''.join(c if c.isalnum() else '-' for c in getattr(args, 'thread', '') or '')[:80]
+        args.state = STATE.with_name(f'lead-{safe}.json') if args.action == 'lead' else STATE
+    try:
+        cfg = config(args.config) if args.action == 'scan' else None
+        # The lock is not delivery state. Dry runs never replace state.json.
+        args.state.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with args.state.with_suffix('.lock').open('a') as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                print('another scan is running', file=sys.stderr)
+                return 0
+            state = json.loads(args.state.read_text()) if args.state.exists() else {}
+            if not isinstance(state, dict):
+                raise ValueError('state must be an object')
+            if args.action == 'status':
+                print(json.dumps(state, indent=2))
+            elif args.action == 'lead':
+                try:
+                    lead(args.thread, args.state, state, args.dry_run, args.grace_minutes)
+                except (KeyError, TypeError, IndexError, AttributeError) as error:
+                    raise TransientError(f'incomplete inventory/state: {error}') from error
+            else:
+                try:
+                    scan(cfg, args.state, state, args.dry_run)
+                except (KeyError, TypeError, IndexError, AttributeError) as error:
+                    raise TransientError(f'incomplete inventory/state: {error}') from error
+    except TransientError as error:
+        print(error, file=sys.stderr)
+    except (OSError, ValueError, TypeError) as error:
+        print(f'config/state error: {error}', file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """One headed Chrome Beta instance for fleet CDP testing; never drive Helium."""
+import argparse
 import fcntl
+import json
 import os
 from pathlib import Path
+import re
 import signal
+import stat
 import subprocess
 import sys
+import tempfile
 import time
 
 PORT = 9333
@@ -69,64 +74,147 @@ def listener():
     return pid
 
 
-def status(pid, listening=None):
+def lease_name(value):
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', value):
+        raise argparse.ArgumentTypeError('lease name must be 1-128 letters, digits, dots, underscores or hyphens')
+    return value
+
+
+def ttl_seconds(value):
+    match = re.fullmatch(r'([1-9][0-9]*)(s|m|h)', value)
+    if not match:
+        raise argparse.ArgumentTypeError('TTL must be a positive duration such as 30m, 1h or 60s')
+    return int(match[1]) * {'s': 1, 'm': 60, 'h': 3600}[match[2]]
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('duplicate lease name')
+        result[key] = value
+    return result
+
+
+def read_leases():
+    try:
+        fd = os.open(PROFILE / '.leases.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return {}
+    with os.fdopen(fd) as source:
+        if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+            raise RuntimeError('leases file must be a regular file; refusing to signal')
+        try:
+            leases = json.load(source, object_pairs_hook=unique_object)
+            if not isinstance(leases, dict):
+                raise ValueError('expected an object')
+            for name, expiry in leases.items():
+                lease_name(name)
+                if type(expiry) is not int or expiry <= 0:
+                    raise ValueError('expiry must be a positive Unix timestamp')
+        except (ValueError, argparse.ArgumentTypeError) as error:
+            raise RuntimeError(f'corrupt leases file; refusing to signal: {error}') from error
+    return leases
+
+
+def write_leases(leases):
+    # Atomic replacement under the launcher lock; a crash cannot truncate leases.
+    with tempfile.NamedTemporaryFile(mode='w', dir=PROFILE, prefix='.leases-', delete=False) as target:
+        temporary = Path(target.name)
+        try:
+            os.fchmod(target.fileno(), 0o600)
+            json.dump(leases, target, sort_keys=True)
+            target.write('\n')
+            target.flush()
+            os.fsync(target.fileno())
+            os.replace(temporary, PROFILE / '.leases.json')
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def stop(pid):
+    if not pid:
+        return
+    # Recheck ownership immediately before signalling this one PID.
+    if process() != pid or listener() not in {None, pid}:
+        raise RuntimeError('listener changed before stop; refusing to signal')
+    os.kill(pid, signal.SIGTERM)
+    for _ in range(100):
+        if listener() is None and process() is None:
+            print('agent browser stopped')
+            return
+        time.sleep(0.1)
+    raise RuntimeError('Chrome Beta did not exit after SIGTERM; no forced kill attempted')
+
+
+def status(pid, listening, leases):
     print(f'{"running" if listening else "starting" if pid else "stopped"} pid={pid or "none"} port={PORT} '
           f'profile={PROFILE} listening={"127.0.0.1:" + str(PORT) if listening else "none"}')
+    print('live leases: ' + json.dumps(leases, sort_keys=True))
 
 
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in {'start', 'status', 'stop'}:
-        print('usage: agent-browser start|status|stop', file=sys.stderr)
-        return 2
+    default_name = f'pid-{os.getppid()}'
+    parser = argparse.ArgumentParser(prog='agent-browser')
+    actions = parser.add_subparsers(dest='action', required=True)
+    start = actions.add_parser('start')
+    start.add_argument('--lease', type=lease_name, default=default_name)
+    start.add_argument('--ttl', type=ttl_seconds, default=1800)
+    release = actions.add_parser('release')
+    release.add_argument('name', nargs='?', type=lease_name, default=default_name)
+    for action in ('status', 'reap', 'stop'):
+        actions.add_parser(action)
+    args = parser.parse_args()
     PROFILE.mkdir(parents=True, exist_ok=True, mode=0o700)
     if PROFILE.is_symlink():
         raise RuntimeError('profile directory must not be a symlink')
     PROFILE.chmod(0o700)
-    # Serializes competing starts/stops; kernel releases the lock on crashes.
+    # Serializes competing starts, lease updates and stops; released on crashes.
     fd = os.open(PROFILE / '.launcher.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, 'w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
+        recorded = read_leases()  # Validate BEFORE any signal or lease replacement.
+        now = int(time.time())
+        leases = {name: expiry for name, expiry in recorded.items() if expiry > now}
         listening = listener()
         pid = process()
         if listening and listening != pid:
             raise RuntimeError("listener and process ownership disagree")
-        action = sys.argv[1]
-        if action == 'status':
-            status(pid, listening)
-        elif action == 'start':
+        if args.action == 'release':
+            leases.pop(args.name, None)
+        if args.action == 'stop' and leases:
+            raise RuntimeError('live leases remain; release your lease instead of stopping shared work')
+        if not leases:
+            stop(pid)
+            pid = listening = None
+        if args.action == 'start':
+            if pid and not listening:
+                raise RuntimeError(f'agent browser already starting (pid={pid}); no second launch')
+            leases[args.lease] = now + args.ttl
+            write_leases(leases)
             if pid:
-                if not listening:
-                    raise RuntimeError(f'agent browser already starting (pid={pid}); no second launch')
                 print('agent browser already running')
-                status(pid, listening)
-                return 0
-            result = run('open', '-g', '-a', APP_PATH, '--args',
-                         f'--user-data-dir={PROFILE}',
-                         f'--remote-debugging-port={PORT}',
-                         '--remote-debugging-address=127.0.0.1',
-                         '--no-first-run', '--no-default-browser-check')
-            if result.returncode:
-                raise RuntimeError(f'Chrome Beta launch failed: {result.stderr.strip()}')
-            for _ in range(100):
-                pid = listener()
-                if pid:
-                    status(pid, pid)
-                    return 0
-                time.sleep(0.1)
-            raise RuntimeError('Chrome Beta did not listen within 10 seconds; inspect the app before retrying')
-        elif pid:
-            # Recheck ownership immediately before signalling this one PID.
-            if process() != pid or listener() not in {None, pid}:
-                raise RuntimeError('listener changed before stop; refusing to signal')
-            os.kill(pid, signal.SIGTERM)
-            for _ in range(100):
-                if listener() is None and process() is None:
-                    print('agent browser stopped')
-                    return 0
-                time.sleep(0.1)
-            raise RuntimeError('Chrome Beta did not exit after SIGTERM; no forced kill attempted')
-        else:
-            print('agent browser already stopped')
+            else:
+                result = run('open', '-g', '-a', APP_PATH, '--args',
+                             f'--user-data-dir={PROFILE}',
+                             f'--remote-debugging-port={PORT}',
+                             '--remote-debugging-address=127.0.0.1',
+                             '--no-first-run', '--no-default-browser-check', '--no-startup-window')
+                if result.returncode:
+                    raise RuntimeError(f'Chrome Beta launch failed: {result.stderr.strip()}')
+                for _ in range(100):
+                    listening = listener()
+                    if listening:
+                        pid = process()
+                        if pid != listening:
+                            raise RuntimeError('listener and process ownership disagree')
+                        break
+                    time.sleep(0.1)
+                else:
+                    raise RuntimeError('Chrome Beta did not listen within 10 seconds; inspect the app before retrying')
+        elif leases != recorded:
+            write_leases(leases)
+        status(pid, listening, leases)
     return 0
 
 

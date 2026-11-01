@@ -36,7 +36,7 @@ test("missing target and import error exit 0 with exactly one stderr line", () =
   expect(r.stderr).toContain("ModuleNotFoundError");
 });
 
-const repairReason = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.";
+const repairReason = "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.";
 const closedBlock = {
   decision: "block",
   reason: repairReason,
@@ -180,7 +180,7 @@ for (const [gate, input] of [
       expect(r.status).toBe(code);
       expect(r.stderr).toBe("");
       expect(() => JSON.parse(r.stdout)).not.toThrow();
-      if (code === 2) expect(r.stdout).not.toContain("policy hook unavailable");
+      if (code === 2) expect(r.stdout).not.toContain("couldn't run");
     }
   });
 }

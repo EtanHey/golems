@@ -10,7 +10,20 @@ import re
 import stat
 from pathlib import Path
 
+# Work dispatch to the M1. A message to an M1 LEAD (a top-level thread) is allowed during a window so
+# orc and leads can still talk to it. A send to a delegated child starts a fresh task and `restart`
+# interrupts work, so those stay blocked as dispatch.
 TOOLS = re.compile(r'mcp__t3[-_]code__(delegate_task|t3_thread_send|t3_thread_launch|create_threads|schedule_task|run_scheduled_task_now|t3_thread_send_attachments|t3_thread_configure)\Z')
+SEND = re.compile(r'mcp__t3[-_]code__t3_thread_send\Z')
+# Top-level (lead) thread id shapes only. Every `thread:...` id is a child or generated thread
+# (delegated tasks, provider-native subagents, scheduled runs) and stays blocked: allowlist, not denylist.
+LEAD_THREAD = re.compile(r'(mcp|import):[A-Za-z0-9:_%-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+
+
+def lead_message(name, ti):
+    thread = ti.get('threadId') if isinstance(ti, dict) else None
+    return bool(SEND.fullmatch(name or '') and isinstance(thread, str) and LEAD_THREAD.fullmatch(thread)
+                and ti.get('mode', 'auto') != 'restart')
 REMOTE = {'ssh', 'scp', 'rsync', 'sftp', 'mosh'}
 
 
@@ -149,9 +162,9 @@ def carries(text, token):
     return re.search(r'(?<![A-Za-z0-9._-])' + re.escape(token) + r'(?![A-Za-z0-9._:-])', text)
 
 
-def deny(reason):
+def deny(reason="Blocked: the M1 safety check couldn't read its settings. Ask the lead to fix the m1-window-gate config."):
     return {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny',
-                                  'permissionDecisionReason': 'M1-WINDOW: ' + reason}}
+                                  'permissionDecisionReason': reason}}
 
 
 def read_only_words(words):
@@ -226,14 +239,16 @@ def evaluate_seat(payload):
         pass
     ti = payload.get('tool_input', {})
     text = json.dumps(ti, ensure_ascii=False)
-    if stem and any(carries(text, token) for token in (stem, 'm1-golems-sync-run1-' + stem.rsplit('-', 1)[-1])):
+    # The run's own lane may carry any run label (run1, run2, ...) with this stem's timestamp.
+    own_lane = stem and re.search(r'(?<![A-Za-z0-9._-])m1-golems-sync-[A-Za-z0-9._:-]+-'
+                                  + re.escape(stem.rsplit('-', 1)[-1]) + r'(?![A-Za-z0-9._:-])', text)
+    if stem and (carries(text, stem) or own_lane):
         return {}
     name = payload.get('tool_name')
     if name == 'Bash' and read_only_bash(ti.get('command', '')):
         return {}
     if name == 'Bash' or name in {'Write', 'Edit', 'MultiEdit', 'NotebookEdit'}:
-        return deny(f"procedure lock {stem or 'UNKNOWN (invalid or unreadable owner/lock)'} is active; "
-                    'use read-only tools, wait for lock release, or carry its exact stem/run-1 lane if you ARE that lane')
+        return deny('Blocked: a golems install is running on this Mac, so only read-only commands are allowed. Wait for it to finish.')
     return {}
 
 
@@ -246,14 +261,14 @@ def evaluate(payload):
     targets = {host(t).rsplit('@', 1)[-1] for t in strings(config.get('m1_ssh_targets'))}
     bound = (bash_bound(text, targets) if name == 'Bash' else bool(
         TOOLS.fullmatch(name or '') and set(environment_ids(ti)) & set(strings(config.get('m1_environment_ids')))))
-    if not bound:
+    if not bound or (name != 'Bash' and lead_message(name, ti)):
         return {}
     if error:
-        return deny(error)
+        return deny()
     try:
         lanes, windows = registry_state(read_file(config['registry']))
     except (OSError, ValueError):
-        return deny('registry missing or unreadable; restore the configured registry before M1 dispatch')
+        return deny()
     for stem, (status, opened) in windows.items():
         if status != 'OPEN' or carries(text, stem):
             continue
@@ -261,7 +276,7 @@ def evaluate(payload):
         own = any(state == 'STARTED' and re.fullmatch(r'm1-golems-sync-[A-Za-z0-9._:-]+-' + re.escape(utc), lane)
                   and carries(text, lane) for lane, state in lanes.items())
         if not own:
-            return deny(f'window {stem} opened at {opened} is OPEN; wait for its CLOSED row, or carry the lane id if you ARE that lane')
+            return deny('Blocked: the M1 is in the middle of an install, so other work there has to wait. Try again when it finishes.')
     return {}  # Silent unless a window is OPEN: no closed-window advisory.
 
 
@@ -269,6 +284,6 @@ if __name__ == '__main__':
     mode = sys.argv[1:]
     payload = json.load(sys.stdin)
     result = (evaluate_seat(payload) if mode == ['--mode', 'seat'] else evaluate(payload)
-              if mode in ([], ['--mode', 'dispatch']) else deny('invalid gate mode'))
+              if mode in ([], ['--mode', 'dispatch']) else deny())
     print(json.dumps(result))
     sys.exit(2 if result.get('hookSpecificOutput', {}).get('permissionDecision') == 'deny' else 0)

@@ -30,7 +30,8 @@ def deny(reason, command=None, rule="parse-error", short_reason="invalid payload
         finally:
             os.close(fd)
     except OSError:
-        reason += " (denial ledger unavailable)"
+        pass
+    reason = "Blocked: this command hides a second command inside a here-document, so it can't be checked. Quote the marker (<<'EOF') or run that command on its own."
     print(json.dumps({"decision": "block", "reason": reason, "hookSpecificOutput": {
         "hookEventName": "PreToolUse", "permissionDecision": "deny",
         "permissionDecisionReason": reason}}))

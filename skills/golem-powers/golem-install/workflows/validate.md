@@ -59,16 +59,13 @@ check "Codex approval_policy is never" "awk '/^[[:space:]]*\\[/{exit} /^[[:space
 check "Codex sandbox_mode is danger-full-access" "awk '/^[[:space:]]*\\[/{exit} /^[[:space:]]*sandbox_mode[[:space:]]*=[[:space:]]*\"danger-full-access\"[[:space:]]*$/ {found=1} END{exit !found}' ~/.codex/config.toml"
 echo ""
 
-# 1Password
-echo "=== 1Password ==="
-check "op signed in" "op account list"
-check_warn "GitHub token exists" "op read 'op://Private/github-token/credential'"
+# API key files (agents load these per command; never read a value here)
+echo "=== API key files ==="
+check_warn "anthropic-api.env present" "test -f ~/.config/golems/anthropic-api.env"
+check_warn "openai-api.env present" "test -f ~/.config/golems/openai-api.env"
 echo ""
 
-# Golem-Powers API Keys (golems item)
-echo "=== Golem-Powers API Keys ==="
-check_warn "Linear API key" "op read 'op://Private/golems/linear/API_KEY'"
-echo ""
+# 1Password checks run only with --with-1password: each op call asks Etan for Touch ID.
 
 # Directories
 echo "=== Directories ==="
@@ -132,7 +129,9 @@ cr --version
 
 Expected: Version number.
 
-### 4. Test 1Password Access
+### 4. Test 1Password Access (opt-in, Etan present)
+
+Each `op` call asks Etan for Touch ID, so run this only when he is there to approve:
 
 ```bash
 op account list
@@ -141,14 +140,14 @@ op vault list
 
 Expected: Shows account and vaults.
 
-### 5. Test Golem-Powers API Keys
+### 5. Test the API key files
 
 ```bash
-# Linear API Key
-op read "op://Private/golems/linear/API_KEY"
+# Present and private; never print a value
+ls -l ~/.config/golems/anthropic-api.env ~/.config/golems/openai-api.env
 ```
 
-Expected: Returns the API key value (starts with lin_api_ for Linear).
+Expected: both files exist with mode `-rw-------` (0600).
 
 ### 6. Test Skill Symlinks
 
