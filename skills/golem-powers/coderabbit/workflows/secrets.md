@@ -75,14 +75,9 @@ const apiKey = "sk-ant-abc123...";
 const apiKey = process.env.ANTHROPIC_API_KEY;
 ```
 
-**Best (1Password):**
-```bash
-# .env.template
-ANTHROPIC_API_KEY=op://Private/anthropic/API_KEY/password
-
-# Run with
-op run --env-file=.env.template -- npm run dev
-```
+**Best:** keep secrets out of the repo. Agents load a per-tool file outside the repo for the one
+command, in a subshell: `( set -a; . ~/.config/golems/anthropic-api.env; set +a; npm run dev )`.
+Don't wire `op run` into dev commands: each `op` call asks Etan for Touch ID.
 
 ### Step 5: If secrets found
 
