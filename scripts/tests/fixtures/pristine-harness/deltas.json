@@ -1,39 +1,446 @@
 [
   {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "git-guardian-010",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "git-guardian-011",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "git-guardian-012",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
+    },
+    "case": "git-guardian-013",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9"
+    },
+    "case": "git-guardian-014",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "git-guardian-018",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "git-guardian-110",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "git-guardian-113",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "git-guardian-114",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
+    },
+    "case": "git-guardian-115",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac",
+      "linux": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac"
+    },
+    "case": "issue412-backtick-single-quote-backslash",
+    "reason": "Ordinary single-quoted backslashes are literal, so the later backtick substitution remains executable and is captured."
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87",
+      "linux": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87"
+    },
+    "case": "issue412-dollar-backtick-mixed-quotes",
+    "reason": "A malformed mixed backtick and dollar substitution is rejected as unterminated rather than returning a truncated executable body."
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4",
+      "linux": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4"
+    },
+    "case": "issue412-dollar-nested-mixed-quotes",
+    "reason": "Nested dollar substitutions and quoted parentheses are consumed in their own contexts, preserving the complete outer executable body."
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318",
+      "linux": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318"
+    },
+    "case": "issue412-dollar-single-quote-paren",
+    "reason": "A right parenthesis inside ordinary single quotes is literal data and cannot close the surrounding command substitution."
+  },
+  {
     "authority": "golems#425",
     "candidate_sha256": {
-      "darwin": "87d22eff367f92ed4d557b716399a2293e602635233b278fba7b806e37480af9",
-      "linux": "87d22eff367f92ed4d557b716399a2293e602635233b278fba7b806e37480af9"
+      "darwin": "7d89837d16afaa71190cdcab1d155f63a2817c165c0c54a3f65e2a5f5ae51cfb",
+      "linux": "7d89837d16afaa71190cdcab1d155f63a2817c165c0c54a3f65e2a5f5ae51cfb"
     },
     "case": "issue425-git-guardian-oversized-command",
-    "reason": "Commands beyond the bounded policy-parser input are denied before parsing so a hook timeout cannot fail open."
+    "reason": "Commands beyond the bounded policy-parser input are denied before parsing so a hook timeout cannot fail open.; message text updated by golems#1048"
   },
   {
     "authority": "golems#425",
     "candidate_sha256": {
-      "darwin": "c2033312398b8f7dc426e0372c458e09d2650552b4e85b616001d45f3fda6cbf",
-      "linux": "c2033312398b8f7dc426e0372c458e09d2650552b4e85b616001d45f3fda6cbf"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "issue425-tmp-block-oversized-command",
-    "reason": "Commands beyond the bounded policy-parser input are denied before parsing so a hook timeout cannot fail open."
+    "reason": "Commands beyond the bounded policy-parser input are denied before parsing so a hook timeout cannot fail open.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue460-arithmetic-lookalike",
+    "reason": "Arithmetic-like syntax can hide an executed destructive payload, so the hook must deny it.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue460-arithmetic-newline-lookalike",
+    "reason": "A newline inside arithmetic-like syntax can hide an executed destructive payload, so the hook must deny it.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue460-comment-bare-substitution",
+    "reason": "A comment inside a bare substitution can hide an executed destructive payload, so the hook must deny it.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue460-comment-data-substitution",
+    "reason": "A comment inside a data-command substitution can hide an executed destructive payload, so the hook must deny it.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue460-eval-substitution-output",
+    "reason": "Eval can execute destructive text emitted by a substitution even when its stderr is redirected, so the hook must deny it.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue460-invoked-function-body",
+    "reason": "Invoking a shell function executes its destructive body, so the hook must inspect and deny that body.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue460-param-pattern-longest",
+    "reason": "A longest-match parameter pattern can hide an executed destructive payload, so the hook must deny it.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue460-param-pattern-shortest",
+    "reason": "A shortest-match parameter pattern can hide an executed destructive payload, so the hook must deny it.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#460",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue460-shell-here-string",
+    "reason": "A shell here-string can supply destructive text for execution, so the hook must deny it.; message text updated by golems#1048"
   },
   {
     "authority": "golems#466",
     "candidate_sha256": {
-      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
-      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "issue466-wt-hatch-inner-temp",
-    "reason": "Retain nested temp classification before applying the worktree migration hatch"
+    "reason": "Retain nested temp classification before applying the worktree migration hatch; message text updated by golems#1048"
   },
   {
     "authority": "golems#466",
     "candidate_sha256": {
-      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
-      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "issue466-wt-hatch-outer-convention-inner-temp",
-    "reason": "Retain nested temp classification when an outer in-convention assignment is authoritative"
+    "reason": "Retain nested temp classification when an outer in-convention assignment is authoritative; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue480-hatch-resolved-function-global-temp",
+    "reason": "The migration hatch does not unlock a target that resolves to the temp path-class.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue480-hatch-unresolved-brace",
+    "reason": "The migration hatch does not unlock a target left unresolved by brace-group assignment.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue480-hatch-unresolved-eval",
+    "reason": "The migration hatch does not unlock a target left unresolved by eval assignment.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue480-hatch-unresolved-local",
+    "reason": "The migration hatch does not unlock a target left unresolved by function-local assignment.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue480-hatch-unresolved-process-substitution",
+    "reason": "The migration hatch does not unlock a target left unresolved by process-substitution assignment.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue480-hatch-unresolved-read",
+    "reason": "The migration hatch does not unlock a target left unresolved by read assignment.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue480-hatch-unresolved-subshell",
+    "reason": "The migration hatch does not unlock a target left unresolved by subshell assignment.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#480",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue480-hatch-unresolved-unset",
+    "reason": "The migration hatch does not unlock a target left unresolved by unset variable.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-select-assignment",
+    "reason": "Invalidate the select loop variable before a later worktree target uses it.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-stale-outer-brace-assignment",
+    "reason": "Invalidate a stale outer value after an unmodelled brace-group assignment.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-stale-outer-eval-assignment",
+    "reason": "Invalidate a stale outer value after eval assigns the worktree variable.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-stale-outer-local-control",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-stale-outer-process-substitution-assignment",
+    "reason": "Invalidate a stale outer value after assignment inside process substitution.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-stale-outer-read-assignment",
+    "reason": "Invalidate a stale outer value after read assigns the worktree variable.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-stale-outer-subshell-control",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-static-eval-concatenated",
+    "reason": "Invalidate tracked values when eval receives concatenated command and assignment text.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-static-eval-multiple-assignments",
+    "reason": "Invalidate tracked values when one eval word contains multiple shell assignments.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-static-eval-read",
+    "reason": "Invalidate tracked values when eval runs a builtin that assigns from input.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "issue481-static-eval-semicolon",
+    "reason": "Invalidate tracked values when eval reparses a static compound command body.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue491-control-launcher-after-ansi-c-quote",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue491-control-launcher-after-double-quoted-heredoc",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue491-control-launcher-after-single-quoted-heredoc",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#491",
+    "candidate_sha256": {
+      "darwin": "7d89837d16afaa71190cdcab1d155f63a2817c165c0c54a3f65e2a5f5ae51cfb",
+      "linux": "7d89837d16afaa71190cdcab1d155f63a2817c165c0c54a3f65e2a5f5ae51cfb"
+    },
+    "case": "issue491-control-malformed-process-substitution",
+    "reason": "Retain the issue458 fail-closed block for a real malformed executed process substitution while removing issue491 data false positives; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "issue491-control-real-process-substitution",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
     "authority": "golems#744",
@@ -162,33 +569,6 @@
     "reason": "Fresh Codex boots pin gpt-6.1-sol; resume and overrides keep their semantics; every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
   },
   {
-    "authority": "golems#678",
-    "candidate_sha256": {
-      "darwin": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5",
-      "linux": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5"
-    },
-    "case": "launcher-034",
-    "reason": "Worker continue/resume launches: every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
-  },
-  {
-    "authority": "golems#678",
-    "candidate_sha256": {
-      "darwin": "ae39e1ac0a3ee1bfeb7dfa988d8e25170bbd86fca05d90afceaeee8b2f8304c5",
-      "linux": "ae39e1ac0a3ee1bfeb7dfa988d8e25170bbd86fca05d90afceaeee8b2f8304c5"
-    },
-    "case": "launcher-035",
-    "reason": "Worker continue/resume launches: every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
-  },
-  {
-    "authority": "golems#678",
-    "candidate_sha256": {
-      "darwin": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5",
-      "linux": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5"
-    },
-    "case": "launcher-036",
-    "reason": "Worker continue/resume launches: every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
-  },
-  {
     "authority": "golems#475",
     "candidate_sha256": {
       "darwin": "277303a3f64b96e63673f89c1e6628c14eedd15f85cc814164313d9a57d5af2c",
@@ -232,6 +612,556 @@
     },
     "case": "launcher-033",
     "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
+  },
+  {
+    "authority": "golems#678",
+    "candidate_sha256": {
+      "darwin": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5",
+      "linux": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5"
+    },
+    "case": "launcher-034",
+    "reason": "Worker continue/resume launches: every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
+  },
+  {
+    "authority": "golems#678",
+    "candidate_sha256": {
+      "darwin": "ae39e1ac0a3ee1bfeb7dfa988d8e25170bbd86fca05d90afceaeee8b2f8304c5",
+      "linux": "ae39e1ac0a3ee1bfeb7dfa988d8e25170bbd86fca05d90afceaeee8b2f8304c5"
+    },
+    "case": "launcher-035",
+    "reason": "Worker continue/resume launches: every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
+  },
+  {
+    "authority": "golems#678",
+    "candidate_sha256": {
+      "darwin": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5",
+      "linux": "4df5e0ac1cafe3f9bb74a3e2812af7ade519f7cb105ec24d84d4b5f2458405b5"
+    },
+    "case": "launcher-036",
+    "reason": "Worker continue/resume launches: every agent-shaped Codex launch (anything but --lead or the bare human shape) strips the codex_apps connectors with -c features.apps=false when no connector cache exists (golems#678)"
+  },
+  {
+    "authority": "golems#501",
+    "candidate_sha256": {
+      "darwin": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f",
+      "linux": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f"
+    },
+    "case": "mined-005",
+    "reason": "Protected root removal now reports the direct repository-root reason before the legacy generic removal reason."
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4",
+      "linux": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4"
+    },
+    "case": "parser-042",
+    "reason": "Arithmetic-expansion closing parentheses are retained when heredoc bodies are masked, so surrounding executable text is not truncated."
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45",
+      "linux": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45"
+    },
+    "case": "parser-078",
+    "reason": "Heredoc body parentheses are data and cannot close the surrounding command substitution"
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05",
+      "linux": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05"
+    },
+    "case": "parser-130",
+    "reason": "Case pattern terminators cannot close the surrounding command substitution; incomplete case syntax fails closed"
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05",
+      "linux": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05"
+    },
+    "case": "parser-140",
+    "reason": "Quoted heredoc prose inside a command substitution is non-executable and must be masked from policy text"
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68",
+      "linux": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68"
+    },
+    "case": "parser-r2-r16-1",
+    "reason": "Case pattern terminators are syntax and cannot close the surrounding command substitution"
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616",
+      "linux": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616"
+    },
+    "case": "parser-topup-backtick-escaped",
+    "reason": "Quoted data masking retains the executable outer backtick substitution while removing its literal argument text from policy input."
+  },
+  {
+    "authority": "golems#412",
+    "candidate_sha256": {
+      "darwin": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae",
+      "linux": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae"
+    },
+    "case": "parser-topup-nested-arithmetic",
+    "reason": "Nested arithmetic and command-substitution closing parentheses are retained during masking, preventing the surrounding executable text from being truncated."
+  },
+  {
+    "authority": "golems#671",
+    "candidate_sha256": {
+      "darwin": "4ac31d849e0053e8c99d8d88e5781e6f19767b1e6f5500ed56e7a173fc4f8f34",
+      "linux": "4ac31d849e0053e8c99d8d88e5781e6f19767b1e6f5500ed56e7a173fc4f8f34"
+    },
+    "case": "pr671-worker-installed-shell-profile",
+    "reason": "Installed synthetic shell-worker reaches AGY with explicit agent selection, worker prompt path, merged MCP map and routed Flash model."
+  },
+  {
+    "authority": "golems#501",
+    "candidate_sha256": {
+      "darwin": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f",
+      "linux": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f"
+    },
+    "case": "r2-api-dangerous_shell_reason-00",
+    "reason": "Protected root removal now reports the direct repository-root reason before the legacy generic removal reason."
+  },
+  {
+    "authority": "golems#501",
+    "candidate_sha256": {
+      "darwin": "52edde4bc98fb4fca081bae845e45ed2ead312403c9c42a6b99ab6af0a418e17",
+      "linux": "52edde4bc98fb4fca081bae845e45ed2ead312403c9c42a6b99ab6af0a418e17"
+    },
+    "case": "r2-api-is_dangerous_rm-01",
+    "reason": "Protected root removal now reports the direct repository-root reason before the legacy generic removal reason."
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "r2-guardian-000",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "r2-guardian-002",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
+    },
+    "case": "r2-guardian-004",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9"
+    },
+    "case": "r2-guardian-005",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "3dc8bfcb62fba07a9aa8608e9ce8cc834cdb7e5e35c72e2651fe6d82ce8cf8d1"
+    },
+    "case": "r2-guardian-006",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793"
+    },
+    "case": "r2-guardian-007",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793"
+    },
+    "case": "r2-guardian-008",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793"
+    },
+    "case": "r2-guardian-009",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "r2-guardian-010",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "r2-guardian-011",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "r2-guardian-012",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "r2-guardian-013",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "r2-guardian-014",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
+    },
+    "case": "r2-guardian-015",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "r2-guardian-016",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "r2-guardian-017",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "r2-guardian-018",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "r2-guardian-019",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "r2-guardian-020",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
+    },
+    "case": "r2-guardian-021",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
+    },
+    "case": "r2-guardian-022",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
+    },
+    "case": "r2-guardian-023",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-025",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-026",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-028",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-029",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-030",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-031",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-032",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-033",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-034",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "r2-guardian-035",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-edit-_env",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-edit-_env_local",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-edit-credentials_json",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-edit-secret_yaml",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-edit-secrets_json",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-edit-server_key",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-edit-server_pem",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-notebookedit-_env",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-notebookedit-_env_local",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-notebookedit-credentials_json",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-notebookedit-secret_yaml",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-notebookedit-secrets_json",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-notebookedit-server_key",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-notebookedit-server_pem",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-write-_env",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-write-_env_local",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-write-credentials_json",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-write-secret_yaml",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-write-secrets_json",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-write-server_key",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+    },
+    "case": "r2-guardian-write-server_pem",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
     "authority": "golems#471",
@@ -313,6 +1243,1076 @@
     },
     "case": "r2-launch-persona-gemini-worker-env",
     "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "r2-tmp-pushd-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "r2-tmp-scratchpad-wrong",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "r2-tmp-temp-class-home-traverse",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "r2-tmp-wt-last-component",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "r2-tmp-wt-off-convention",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "r2-tmp-wt-relative-dynamic",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "r2-tmp-wt-sibling-cwd",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-001",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-003",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-004",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-block-006",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-022",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-023",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-024",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-033",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-034",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-035",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-037",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-block-039",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-046",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-047",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-048",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-049",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-050",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-051",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-052",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-053",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-054",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-055",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-058",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-060",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-block-063",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-065",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-066",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-067",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-069",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-070",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-071",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-072",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-073",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-075",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-076",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-077",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-078",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-079",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-081",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-082",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-083",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-086",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-087",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-089",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-090",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-091",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-095",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-096",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-097",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-099",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-100",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-101",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-102",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-103",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-104",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-107",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-108",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-109",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-111",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-112",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-113",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-115",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-117",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-block-118",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-block-121",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-block-122",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-123",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-125",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-128",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-135",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-137",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-138",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-139",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-140",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-141",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-145",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-block-146",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-block-147",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-topup-data-piped-cat",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-topup-data-process-sink",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-topup-eval-ten-depth-budget",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-topup-mapfile-replay",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-topup-nameref-replay",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-topup-printf-v-replay",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-topup-read-replay",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-case-rhs-self",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-conditional-replaces-head",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-cursor-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-deeper-hatch",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-w7-dynamic-before-resolved-wt",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-file-edit-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-file-notebookedit-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-file-write-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "aae8547496cb459b8148c6f72d0ccebb39a2d3a905416056e9e8c1fd9e2c972e"
+    },
+    "case": "tmp-w7-hatched-dynamic-continues",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-hidden-cwd",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-ledger-failure",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-literal-parent-substitution",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-loop-conditional",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-loop-rhs-self",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-patch-add-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-patch-header-order",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-patch-move-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-patch-relative-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-patch-update-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-pipeline-does-not-replace",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-promote-primary-only",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-r1-authoritative-primary-path",
+    "reason": "An unresolved inner reassignment selects the temporary target path and preserves exit 2.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#481",
+    "candidate_sha256": {
+      "darwin": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23",
+      "linux": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23"
+    },
+    "case": "tmp-w7-r1-hits-authoritative-primary-path",
+    "reason": "An unresolved inner reassignment selects the temporary target hit in the API capture."
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-w7-r1-tmp-hatch-not-wt-resolved",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-w7-r1-tmp-hatch-not-wt-unresolved",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-w7-r1-wt-resolved-before-unresolved",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-w7-r1-wt-unresolved-before-resolved",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-w7-relative-c-retains-error",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-scan-order",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "448350daad5993860afdb6997233c21b6184d8ee1de1ed4946e1ebb1ee8211d0",
+      "linux": "448350daad5993860afdb6997233c21b6184d8ee1de1ed4946e1ebb1ee8211d0"
+    },
+    "case": "tmp-w7-seam-classifier-registered",
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "448350daad5993860afdb6997233c21b6184d8ee1de1ed4946e1ebb1ee8211d0",
+      "linux": "448350daad5993860afdb6997233c21b6184d8ee1de1ed4946e1ebb1ee8211d0"
+    },
+    "case": "tmp-w7-seam-classifier-unregistered",
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "448350daad5993860afdb6997233c21b6184d8ee1de1ed4946e1ebb1ee8211d0",
+      "linux": "448350daad5993860afdb6997233c21b6184d8ee1de1ed4946e1ebb1ee8211d0"
+    },
+    "case": "tmp-w7-seam-prefixes-registered",
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#411",
+    "candidate_sha256": {
+      "darwin": "448350daad5993860afdb6997233c21b6184d8ee1de1ed4946e1ebb1ee8211d0",
+      "linux": "448350daad5993860afdb6997233c21b6184d8ee1de1ed4946e1ebb1ee8211d0"
+    },
+    "case": "tmp-w7-seam-prefixes-unregistered",
+    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance.; message text updated by golems#1048"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-sibling-hatch",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "tmp-w7-temp-dynamic-before-unresolved-wt",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-unexposed-wt",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-unknown-replaces-head",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-unquoted-hatch-dedup",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-unset-removes-head",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "5c15fa595439401d538e9a87245e25d196bcece50375fd971d485ca3a5646f7f"
+    },
+    "case": "tmp-w7-wt-hatch-dynamic-refusal",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+    },
+    "case": "tmp-w7-wt-hatch-not-temp",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
     "authority": "golems#671",
@@ -450,427 +2450,60 @@
     "reason": "Gemini worker launches without an installed shell-worker profile now refuse before workspace setup or AGY invocation, as required by the role-aware fail-closed profile contract."
   },
   {
-    "authority": "golems#412",
+    "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac",
-      "linux": "8199b1212358923a2e6ac2778337e33038e04e34ee94ab0422adcd3c27b2e5ac"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
-    "case": "issue412-backtick-single-quote-backslash",
-    "reason": "Ordinary single-quoted backslashes are literal, so the later backtick substitution remains executable and is captured."
+    "case": "topup-guardian-cwd-nested",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
-    "authority": "golems#412",
+    "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87",
-      "linux": "c8129fd839a0f0cb48790f2b00aedfa53c9e1b8d9088e6a744bfc1fe7771ce87"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
-    "case": "issue412-dollar-backtick-mixed-quotes",
-    "reason": "A malformed mixed backtick and dollar substitution is rejected as unterminated rather than returning a truncated executable body."
+    "case": "topup-guardian-cwd-nested-worktree",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
-    "authority": "golems#412",
+    "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4",
-      "linux": "b07e529902c3eac485cd39904dccb1cdebf17b0641357156af3a8241fd54e7c4"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
-    "case": "issue412-dollar-nested-mixed-quotes",
-    "reason": "Nested dollar substitutions and quoted parentheses are consumed in their own contexts, preserving the complete outer executable body."
+    "case": "topup-guardian-cwd-root",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
-    "authority": "golems#412",
+    "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318",
-      "linux": "5212946813752a56e5a53c688615d7782910425f8720822dc23c0e966b640318"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
-    "case": "issue412-dollar-single-quote-paren",
-    "reason": "A right parenthesis inside ordinary single quotes is literal data and cannot close the surrounding command substitution."
+    "case": "topup-guardian-cwd-subdir",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
-    "authority": "golems#412",
+    "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4",
-      "linux": "1c01bea200487a9465101bc51b813aa8178d6cadcf38c2a0b4d19deacf92cbd4"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
-    "case": "parser-042",
-    "reason": "Arithmetic-expansion closing parentheses are retained when heredoc bodies are masked, so surrounding executable text is not truncated."
+    "case": "topup-guardian-cwd-worktree",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
-    "authority": "golems#412",
+    "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45",
-      "linux": "82967f2ac6cd0d09d2f430c42686867aebd3489b4ea90b36300d4d2957c5bf45"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
-    "case": "parser-078",
-    "reason": "Heredoc body parentheses are data and cannot close the surrounding command substitution"
+    "case": "topup-guardian-worker-empty",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
-    "authority": "golems#412",
+    "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05",
-      "linux": "49504e09ce02494f5f196571887bf538a75ac4a9f83242ba316e14e2bad5fe05"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
-    "case": "parser-130",
-    "reason": "Case pattern terminators cannot close the surrounding command substitution; incomplete case syntax fails closed"
-  },
-  {
-    "authority": "golems#412",
-    "candidate_sha256": {
-      "darwin": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05",
-      "linux": "81e982c8174967dc24c33c7b7a44f89d1834375d2db51dc183cc9c0ec518bf05"
-    },
-    "case": "parser-140",
-    "reason": "Quoted heredoc prose inside a command substitution is non-executable and must be masked from policy text"
-  },
-  {
-    "authority": "golems#412",
-    "candidate_sha256": {
-      "darwin": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68",
-      "linux": "f9e1e393912af8890d1621a083757c1eee71f37eb3d6001fcff978e11fb13b68"
-    },
-    "case": "parser-r2-r16-1",
-    "reason": "Case pattern terminators are syntax and cannot close the surrounding command substitution"
-  },
-  {
-    "authority": "golems#412",
-    "candidate_sha256": {
-      "darwin": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616",
-      "linux": "79b9c22b291298f07d45a145d478d6dbfa73536757ae431087ed340d95a9d616"
-    },
-    "case": "parser-topup-backtick-escaped",
-    "reason": "Quoted data masking retains the executable outer backtick substitution while removing its literal argument text from policy input."
-  },
-  {
-    "authority": "golems#412",
-    "candidate_sha256": {
-      "darwin": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae",
-      "linux": "9f11c44979403b785928f7fb40a88e974eeecaec96a4ec5b3804a73dc99c1bae"
-    },
-    "case": "parser-topup-nested-arithmetic",
-    "reason": "Nested arithmetic and command-substitution closing parentheses are retained during masking, preventing the surrounding executable text from being truncated."
-  },
-  {
-    "authority": "golems#411",
-    "candidate_sha256": {
-      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
-      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
-    },
-    "case": "tmp-w7-seam-classifier-registered",
-    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
-  },
-  {
-    "authority": "golems#411",
-    "candidate_sha256": {
-      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
-      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
-    },
-    "case": "tmp-w7-seam-prefixes-registered",
-    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
-  },
-  {
-    "authority": "golems#411",
-    "candidate_sha256": {
-      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
-      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
-    },
-    "case": "tmp-w7-seam-classifier-unregistered",
-    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
-  },
-  {
-    "authority": "golems#411",
-    "candidate_sha256": {
-      "darwin": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a",
-      "linux": "fc10208a03406e1885cf41f21bc7b570e05750a21cbe56c973ffc3cf2232444a"
-    },
-    "case": "tmp-w7-seam-prefixes-unregistered",
-    "reason": "Loading two copied tmp-block trees in one Python process still rejects cached shared policy modules from the first tree, fails closed, and includes static reinstall guidance."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue481-stale-outer-brace-assignment",
-    "reason": "Invalidate a stale outer value after an unmodelled brace-group assignment."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue481-stale-outer-eval-assignment",
-    "reason": "Invalidate a stale outer value after eval assigns the worktree variable."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue481-stale-outer-process-substitution-assignment",
-    "reason": "Invalidate a stale outer value after assignment inside process substitution."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue481-stale-outer-read-assignment",
-    "reason": "Invalidate a stale outer value after read assigns the worktree variable."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue481-static-eval-semicolon",
-    "reason": "Invalidate tracked values when eval reparses a static compound command body."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue481-static-eval-multiple-assignments",
-    "reason": "Invalidate tracked values when one eval word contains multiple shell assignments."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue481-static-eval-concatenated",
-    "reason": "Invalidate tracked values when eval receives concatenated command and assignment text."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue481-static-eval-read",
-    "reason": "Invalidate tracked values when eval runs a builtin that assigns from input."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue481-select-assignment",
-    "reason": "Invalidate the select loop variable before a later worktree target uses it."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543",
-      "linux": "e0375b6aab1d99f0451710d2c365b1f6f4cbfb1c4626eac7741ed69c91f65543"
-    },
-    "case": "tmp-w7-r1-authoritative-primary-path",
-    "reason": "An unresolved inner reassignment selects the temporary target path and preserves exit 2."
-  },
-  {
-    "authority": "golems#481",
-    "candidate_sha256": {
-      "darwin": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23",
-      "linux": "db7339fe5599e5f5ebf9278b6ba9e6b4a8e007a6baf10e918fcb5b2536685d23"
-    },
-    "case": "tmp-w7-r1-hits-authoritative-primary-path",
-    "reason": "An unresolved inner reassignment selects the temporary target hit in the API capture."
-  },
-  {
-    "authority": "golems#480",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue480-hatch-unresolved-brace",
-    "reason": "The migration hatch does not unlock a target left unresolved by brace-group assignment."
-  },
-  {
-    "authority": "golems#480",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue480-hatch-unresolved-eval",
-    "reason": "The migration hatch does not unlock a target left unresolved by eval assignment."
-  },
-  {
-    "authority": "golems#480",
-    "candidate_sha256": {
-      "darwin": "ec383513f8b6170fb13627e18c58efea193277c3072364675237246a42a53dd1",
-      "linux": "ec383513f8b6170fb13627e18c58efea193277c3072364675237246a42a53dd1"
-    },
-    "case": "issue480-hatch-unresolved-local",
-    "reason": "The migration hatch does not unlock a target left unresolved by function-local assignment."
-  },
-  {
-    "authority": "golems#480",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue480-hatch-unresolved-process-substitution",
-    "reason": "The migration hatch does not unlock a target left unresolved by process-substitution assignment."
-  },
-  {
-    "authority": "golems#480",
-    "candidate_sha256": {
-      "darwin": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34",
-      "linux": "8ba8e155891ba063c2a90c9d8d36fe181a2fc48265d3f4486f0a96393dac1b34"
-    },
-    "case": "issue480-hatch-unresolved-read",
-    "reason": "The migration hatch does not unlock a target left unresolved by read assignment."
-  },
-  {
-    "authority": "golems#480",
-    "candidate_sha256": {
-      "darwin": "3e003581960ec8e9f0359c107ae4cf3085cc7f2549dcd46f315fe1fa37b34fc4",
-      "linux": "3e003581960ec8e9f0359c107ae4cf3085cc7f2549dcd46f315fe1fa37b34fc4"
-    },
-    "case": "issue480-hatch-unresolved-subshell",
-    "reason": "The migration hatch does not unlock a target left unresolved by subshell assignment."
-  },
-  {
-    "authority": "golems#480",
-    "candidate_sha256": {
-      "darwin": "031457e852e8edef9f2f160fa4ebd7ede4449703b9f83e5cd6177622e31e45a2",
-      "linux": "031457e852e8edef9f2f160fa4ebd7ede4449703b9f83e5cd6177622e31e45a2"
-    },
-    "case": "issue480-hatch-unresolved-unset",
-    "reason": "The migration hatch does not unlock a target left unresolved by unset variable."
-  },
-  {
-    "authority": "golems#480",
-    "candidate_sha256": {
-      "darwin": "596b527ba2820b332be99fa6fc4b69bd5fef11912ff8e5b462f2221a213bc67b",
-      "linux": "596b527ba2820b332be99fa6fc4b69bd5fef11912ff8e5b462f2221a213bc67b"
-    },
-    "case": "issue480-hatch-resolved-function-global-temp",
-    "reason": "The migration hatch does not unlock a target that resolves to the temp path-class."
-  },
-  {
-    "authority": "golems#460",
-    "candidate_sha256": {
-      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
-      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
-    },
-    "case": "issue460-arithmetic-lookalike",
-    "reason": "Arithmetic-like syntax can hide an executed destructive payload, so the hook must deny it."
-  },
-  {
-    "authority": "golems#460",
-    "candidate_sha256": {
-      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
-      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
-    },
-    "case": "issue460-arithmetic-newline-lookalike",
-    "reason": "A newline inside arithmetic-like syntax can hide an executed destructive payload, so the hook must deny it."
-  },
-  {
-    "authority": "golems#460",
-    "candidate_sha256": {
-      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
-      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
-    },
-    "case": "issue460-comment-bare-substitution",
-    "reason": "A comment inside a bare substitution can hide an executed destructive payload, so the hook must deny it."
-  },
-  {
-    "authority": "golems#460",
-    "candidate_sha256": {
-      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
-      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
-    },
-    "case": "issue460-comment-data-substitution",
-    "reason": "A comment inside a data-command substitution can hide an executed destructive payload, so the hook must deny it."
-  },
-  {
-    "authority": "golems#460",
-    "candidate_sha256": {
-      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
-      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
-    },
-    "case": "issue460-eval-substitution-output",
-    "reason": "Eval can execute destructive text emitted by a substitution even when its stderr is redirected, so the hook must deny it."
-  },
-  {
-    "authority": "golems#460",
-    "candidate_sha256": {
-      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
-      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
-    },
-    "case": "issue460-invoked-function-body",
-    "reason": "Invoking a shell function executes its destructive body, so the hook must inspect and deny that body."
-  },
-  {
-    "authority": "golems#460",
-    "candidate_sha256": {
-      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
-      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
-    },
-    "case": "issue460-param-pattern-longest",
-    "reason": "A longest-match parameter pattern can hide an executed destructive payload, so the hook must deny it."
-  },
-  {
-    "authority": "golems#460",
-    "candidate_sha256": {
-      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
-      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
-    },
-    "case": "issue460-param-pattern-shortest",
-    "reason": "A shortest-match parameter pattern can hide an executed destructive payload, so the hook must deny it."
-  },
-  {
-    "authority": "golems#460",
-    "candidate_sha256": {
-      "darwin": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af",
-      "linux": "be8a9c1ea693ae5923923a128e67073e39014a4d2447998ac3071624ddf5f5af"
-    },
-    "case": "issue460-shell-here-string",
-    "reason": "A shell here-string can supply destructive text for execution, so the hook must deny it."
-  },
-  {
-    "authority": "golems#491",
-    "candidate_sha256": {
-      "darwin": "9beb60a602ca8c9a058c486c3d6cfe5cc6931055f345034c4c8a8e27bee6ee29",
-      "linux": "9beb60a602ca8c9a058c486c3d6cfe5cc6931055f345034c4c8a8e27bee6ee29"
-    },
-    "case": "issue491-control-malformed-process-substitution",
-    "reason": "Retain the issue458 fail-closed block for a real malformed executed process substitution while removing issue491 data false positives"
-  },
-  {
-    "authority": "golems#501",
-    "candidate_sha256": {
-      "darwin": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f",
-      "linux": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f"
-    },
-    "case": "mined-005",
-    "reason": "Protected root removal now reports the direct repository-root reason before the legacy generic removal reason."
-  },
-  {
-    "authority": "golems#501",
-    "candidate_sha256": {
-      "darwin": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f",
-      "linux": "4c9aa451a893d636c35a42ca12fae358eacb44143ef45fc345cc7933d051d56f"
-    },
-    "case": "r2-api-dangerous_shell_reason-00",
-    "reason": "Protected root removal now reports the direct repository-root reason before the legacy generic removal reason."
-  },
-  {
-    "authority": "golems#501",
-    "candidate_sha256": {
-      "darwin": "52edde4bc98fb4fca081bae845e45ed2ead312403c9c42a6b99ab6af0a418e17",
-      "linux": "52edde4bc98fb4fca081bae845e45ed2ead312403c9c42a6b99ab6af0a418e17"
-    },
-    "case": "r2-api-is_dangerous_rm-01",
-    "reason": "Protected root removal now reports the direct repository-root reason before the legacy generic removal reason."
+    "case": "topup-guardian-worker-unset",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
     "authority": "golems#501",
@@ -891,12 +2524,195 @@
     "reason": "Recursive protected-root removal is denied by the repository guard even without the force option."
   },
   {
-    "authority": "golems#671",
+    "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "4ac31d849e0053e8c99d8d88e5781e6f19767b1e6f5500ed56e7a173fc4f8f34",
-      "linux": "4ac31d849e0053e8c99d8d88e5781e6f19767b1e6f5500ed56e7a173fc4f8f34"
+      "darwin": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9"
     },
-    "case": "pr671-worker-installed-shell-profile",
-    "reason": "Installed synthetic shell-worker reaches AGY with explicit agent selection, worker prompt path, merged MCP map and routed Flash model."
+    "case": "topup-r2-guardian-find-clean",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "topup-r2-guardian-find-force-push",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "topup-r2-guardian-nice-force-push",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "topup-r2-guardian-nice-home",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "topup-r2-guardian-nice-option-root",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+    },
+    "case": "topup-r2-guardian-nice-root",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "topup-r2-guardian-sudo-force-push",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+    },
+    "case": "topup-r2-guardian-xargs-force-push",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
+    },
+    "case": "topup-r2-guardian-xargs-reset-hard",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-B-nested",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-B-nested-worktree",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-B-root",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-B-subdir",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-B-worktree",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-b-nested",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-b-nested-worktree",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-b-root",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-b-subdir",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-b-worktree",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-reason-nested",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-reason-nested-worktree",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-reason-root",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-reason-subdir",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1048",
+    "candidate_sha256": {
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+    },
+    "case": "topup-tmp-wt-reason-worktree",
+    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   }
 ]
