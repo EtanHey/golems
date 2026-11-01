@@ -281,3 +281,15 @@ test("M1 window is an owner-only Bash registration alongside the pinned gate set
   entry.matcher = "^(Bash|apply_patch)$";
   expect(() => planCodexHooks(f)).toThrow("Invalid Codex policy entry");
 });
+
+test("M1 client seat mode is explicit in the generated Codex command and validated", () => {
+  const f = confirmFixture();
+  const entry = { gate: "m1-window-gate", source: "scripts/hooks/codex-policy-hook.py", matcher: "^Bash$", timeout: 10, mode: "seat" };
+  f.manifest.codex_hosts.client = [...f.manifest.codex_hosts.mbp, entry];
+  f.host = "client";
+  expect(planCodexHooks(f).next).toContain("--mode");
+  applyCodexHooks(planCodexHooks(f));
+  expect(planCodexHooks(f).registered).toBe(true);
+  entry.mode = "invalid";
+  expect(() => planCodexHooks(f)).toThrow("Invalid Codex policy entry");
+});

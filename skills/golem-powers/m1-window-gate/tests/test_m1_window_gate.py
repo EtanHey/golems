@@ -32,9 +32,11 @@ def cell():
         yield home, config, registry
 
 
-def call(cell, command='ssh m1 true', ti=None, name='Bash', codex=False, hook=HOOK):
+def call(cell, command='ssh m1 true', ti=None, name='Bash', codex=False, hook=HOOK, mode=None):
     argv = ([str(ROOT / 'scripts/hooks/codex-policy-hook.py'), 'm1-window-gate'] if codex
             else [str(ROOT / 'scripts/hooks/fail-open.py'), str(hook)])
+    if mode:
+        argv += ['--mode', mode]
     p = subprocess.run([sys.executable, '-I', '-B', *argv], input=json.dumps(
         dict(tool_name=name, tool_input=ti if ti is not None else dict(command=command), cwd=str(ROOT))),
         capture_output=True, text=True, env={**os.environ, 'HOME': str(cell[0])}, timeout=10)
@@ -130,3 +132,71 @@ def test_without_gate_baseline(cell):
     for relative in ['tmp-block/hooks/tmp-block-pretooluse.py', 'git-guardian/hooks/pre_tool_use.py',
                      'human-confirm-gate/hooks/human-confirm-pretooluse.py']:
         assert not call(cell, hook=ROOT / 'skills/golem-powers' / relative)[0]
+
+
+@pytest.fixture
+def seat(cell):
+    lock = cell[0] / '.golems/m1-procedure.lock'
+    lock.mkdir()
+    (lock / 'owner.json').write_text(json.dumps(dict(stem=STEM, uid=os.getuid())))
+    return cell
+
+
+@pytest.mark.parametrize('command', ['bun test', 'npm run build', 'brew install fixture-package',
+    'launchctl kickstart fixture-service', 'ls; npm run build', 'echo ok > output',
+    'find . -delete', r'find . -exec touch output \;', 'find . -fprint output',
+    'rg --pre=touch pattern', 'git diff --output=output', 'git log --output output',
+    'git diff --ext-diff', 'git -c alias.status=anything status', 'du .',
+    'date 010100002030', 'env X=y ls', 'bash -c "ls"', 'echo "$(touch output)"',
+    'echo `touch output`', 'cat <(touch output)', './ls', 'echo "unterminated'])
+def test_seat_denies(seat, command):
+    denied, value = call(seat, command, mode='seat')
+    assert denied and STEM in str(value)
+
+
+@pytest.mark.parametrize('command', ['ls', '/bin/ls -l', 'git status', 'git log -1',
+    'git diff', 'git show HEAD', 'git rev-parse HEAD', 'ps', 'pgrep fixture',
+    'cat file | head -2; tail file && wc file', 'stat file', 'uptime', 'df -h',
+    'du -s .', 'grep pattern file', 'rg pattern .', 'find . -type f',
+    'echo "npm run build > output"', 'date -u +%Y', 'pwd', 'whoami'])
+def test_seat_read_only(seat, command):
+    assert not call(seat, command, mode='seat')[0]
+
+
+@pytest.mark.parametrize('name', ['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
+def test_seat_writes(seat, name):
+    assert call(seat, name=name, ti={'file_path': 'fixture'}, mode='seat')[0]
+    assert not call(seat, name=name, ti={'file_path': 'fixture', 'description': STEM}, mode='seat')[0]
+
+
+@pytest.mark.parametrize('token', [STEM, 'lane=' + LANE, 'M1-LANE:' + LANE])
+def test_seat_own_lane(seat, token):
+    assert not call(seat, 'bun test # ' + token, mode='seat')[0]
+    assert call(seat, 'bun test # ' + token + '-other', mode='seat')[0]
+
+
+@pytest.mark.parametrize('shape', ['symlink', 'file', 'garbage', 'missing-owner', 'owner-link', 'uid', 'stem'])
+def test_seat_invalid_lock(cell, shape):
+    lock = cell[0] / '.golems/m1-procedure.lock'
+    if shape == 'symlink': lock.symlink_to(cell[2])
+    elif shape == 'file': lock.write_text('fixture')
+    else:
+        lock.mkdir()
+        owner = lock / 'owner.json'
+        if shape == 'garbage': owner.write_text('{')
+        elif shape == 'owner-link': owner.symlink_to(cell[2])
+        elif shape == 'uid': owner.write_text(json.dumps(dict(stem=STEM, uid=-1)))
+        elif shape == 'stem': owner.write_text(json.dumps(dict(stem='invalid', uid=os.getuid())))
+    assert call(cell, 'bun test # ' + STEM, mode='seat')[0]
+    assert not call(cell, 'ls', mode='seat')[0]
+
+
+@pytest.mark.parametrize('codex', [False, True])
+def test_seat_transport_and_no_lock(cell, codex):
+    assert not call(cell, 'bun test', codex=codex, mode='seat')[0]
+    lock = cell[0] / '.golems/m1-procedure.lock'
+    lock.mkdir()
+    (lock / 'owner.json').write_text(json.dumps(dict(stem=STEM, uid=os.getuid())))
+    assert call(cell, 'bun test', codex=codex, mode='seat')[0]
+    assert not call(cell, 'ls', codex=codex, mode='seat')[0]
+    assert not call(cell, 'bun test # ' + LANE, codex=codex, mode='seat')[0]

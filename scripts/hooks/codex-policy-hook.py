@@ -485,9 +485,13 @@ def guardian_batch():
 
 def evaluate():
     started = time.monotonic()
-    gate = sys.argv[1] if len(sys.argv) == 2 else None
+    args = sys.argv[1:]
+    gate = args[0] if args else None
     if gate not in TARGETS:
         raise ValueError("unknown gate")
+    mode = args[1:]
+    if mode and (gate != "m1-window-gate" or mode != ["--mode", "seat"]):
+        raise ValueError("invalid gate mode")
     raw = sys.stdin.read(1024 * 1024 + 1)
     if len(raw) > 1024 * 1024:
         raise ValueError("payload budget exceeded")
@@ -513,7 +517,7 @@ def evaluate():
     if gate == "human-confirm":
         items = [projected for item in items for projected in confirm_inputs(item)]
     for item in items:
-        command = [sys.executable, *ISOLATED, str(LAUNCHER), str(ROOT / TARGETS[gate])]
+        command = [sys.executable, *ISOLATED, str(LAUNCHER), str(ROOT / TARGETS[gate]), *mode]
         data = item
         if gate == "git-guardian" and item["tool_name"] == "apply_patch":
             data = guardian_inputs(item)

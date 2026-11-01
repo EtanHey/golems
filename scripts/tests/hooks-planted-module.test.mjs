@@ -21,7 +21,7 @@ const SHADOWED = ["json", "re", "ast", "fnmatch", "hashlib", "shlex", "subproces
 
 // Deny inputs where the hook has one; otherwise an ordinary event (the planted code must still never run).
 const PAYLOADS = {
-  "m1-window-gate": { tool_name: "Bash", tool_input: { command: "ssh m1 true" } },
+  "m1-window-gate": { tool_name: "Bash", tool_input: { command: "bun test" }, deny: true },
   "heredoc-guard": { tool_name: "Bash", tool_input: { command: "echo ok" } },
   "human-confirm-gate": { tool_name: "Bash", tool_input: { command: "git push -f origin main" }, deny: true },
   "block-dangerous-commands": { tool_name: "Bash", tool_input: { command: "open -a \"Google Chrome\"" }, deny: true },
@@ -70,11 +70,16 @@ function setup(id, e) {
   const rest = e.command.split("golems-fail-open.py ")[1];
   const closed = rest.startsWith("--fail-closed ");  // policy gates: mirror the registered mode
   const after = closed ? rest.slice("--fail-closed ".length) : rest;
-  const entry = isFile ? path.join(tree, source) : path.join(tree, source, after.replace(`{hooks}/${e.link}/`, ""));
+  const [target, ...args] = after.split(" ");
+  const entry = isFile ? path.join(tree, source) : path.join(tree, source, target.replace(`{hooks}/${e.link}/`, ""));
   const flags = e.command.split(" ").slice(1, e.command.split(" ").findIndex((w) => w.includes("golems-fail-open.py")));
   const home = path.join(tree, "home");
   mkdirSync(home, { recursive: true });
-  return { tree, entry, flags, home, closed, launcher: path.join(tree, "scripts/hooks/fail-open.py"),
+  if (args.join(" ") === "--mode seat") {
+    const lock = path.join(home, ".golems/m1-procedure.lock"); mkdirSync(lock, { recursive: true });
+    writeFileSync(path.join(lock, "owner.json"), JSON.stringify({ stem: "a".repeat(40) + "-20300101T010203000000", uid: process.getuid() }));
+  }
+  return { tree, entry, args, flags, home, closed, launcher: path.join(tree, "scripts/hooks/fail-open.py"),
     dirs: [...new Set([...pyDirs(path.join(tree, isFile ? path.dirname(source) : source)), ...pyDirs(path.join(tree, "skills/golem-powers/_shared"))])] };
 }
 
@@ -94,7 +99,7 @@ function invoke(fx, payload, marker, direct = false) {
   }
   const argv = direct ? [fx.entry]  // direct: no launcher, no -I
     : [...fx.flags, fx.launcher, ...(fx.closed ? ["--fail-closed"] : []), fx.entry];
-  const r = spawnSync("python3", argv, { cwd, encoding: "utf8", input: JSON.stringify(event),
+  const r = spawnSync("python3", [...argv, ...fx.args], { cwd, encoding: "utf8", input: JSON.stringify(event),
     env: { PATH: process.env.PATH, HOME: fx.home, PLANT_MARKER: marker, CLAUDE_PROJECT_DIR: cwd } });
   return r.status;
 }

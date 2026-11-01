@@ -1,8 +1,33 @@
 ---
 name: m1-window-gate
-description: Guard M1-bound dispatch during an open maintenance window.
+description: Guard M1 dispatch and client seats during maintenance.
 ---
 # M1 window gate
+
+The `client` manifest explicitly selects `--mode seat`, independently of host
+discovery. Seat mode checks `~/.golems/m1-procedure.lock` with one lstat when
+absent, then ALLOWs without reading configuration or loading the shell parser.
+A real lock directory with an `owner.json` containing the procedure's exact
+SHA/timestamp stem and current UID blocks heavy or mutating Bash and Write,
+Edit, MultiEdit and NotebookEdit. Symlinks, files, missing/unreadable or invalid
+owners also block mutation, naming an UNKNOWN stem when ownership is untrusted.
+Only a valid lock permits an exemption for a call carrying its exact stem or
+`m1-golems-sync-run1-<UTC_TS>` lane. Prefix/suffix lookalikes do not qualify.
+
+Seat Bash permits plain calls to ls, cat, head, tail, wc, stat, ps, pgrep, uptime,
+df, du -s, git status/log/diff/show/rev-parse, grep/rg, non-mutating find, echo,
+date (optionally -u/+format), pwd and whoami. Every pipeline/list command must
+qualify. Redirects, substitutions, wrappers, dynamic arguments and options that
+write files or invoke helpers are refused conservatively using `_shared/shell_parse`.
+Existing shell aliases/functions and configured executable helpers are outside
+static inspection; this is a maintenance backstop, not a sandbox.
+The procedure itself runs `python3 -I -B -` over SSH stdin, outside agent tool
+calls; no hook sees or changes that work. Crashed runs retain their lock until
+the procedure releases it through completion, rollback or retirement.
+Claude covers the listed file tools; Codex seat registration remains Bash-only,
+so native apply_patch and other tools are outside this gate's Codex coverage.
+
+The `mbp` entry retains default dispatch mode (also `--mode dispatch`):
 
 The owner profile reads `~/.golems/m1-window-gate.json` (regular file, current
 UID, mode 0600) with `schema: 1`, an absolute `registry` path, and string arrays

@@ -1788,7 +1788,10 @@ test("M1 window gate registers both T3 spellings and status reports absent confi
   const e = realManifest.hosts.mbp.find((e) => e.id === "m1-window-gate");
   expect(e.command).not.toContain("--fail-closed");
   for (const name of ["Bash", "mcp__t3-code__delegate_task", "mcp__t3_code__delegate_task"]) expect(new RegExp(e.matcher).test(name)).toBe(true);
-  expect(realManifest.hosts.client.some((e) => e.id === "m1-window-gate")).toBe(false);
+  const seat = realManifest.hosts.client.find((e) => e.id === "m1-window-gate");
+  expect(seat.command).toEndWith(" --mode seat");
+  for (const name of ["Bash", "Write", "Edit", "MultiEdit", "NotebookEdit"]) expect(new RegExp(seat.matcher).test(name)).toBe(true);
+  expect(realManifest.codex_hosts.client.find((e) => e.gate === "m1-window-gate")).toMatchObject({ matcher: "^Bash$", mode: "seat" });
   expect(realManifest.codex_hosts.mbp.find((e) => e.gate === "m1-window-gate").matcher).toBe("^Bash$");
   const fx = fixture();
   const manifest = manifestFor(); manifest.hosts.mbp.push(e);
@@ -1797,4 +1800,7 @@ test("M1 window gate registers both T3 spellings and status reports absent confi
   expect(run(fx, "--status").out).toContain("m1-window-gate unconfigured");
   expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
   expect(existsSync(path.join(fx.home, ".golems/m1-window-gate.json"))).toBe(false);
+  manifest.hosts.mbp[manifest.hosts.mbp.length - 1] = seat;
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  expect(run(fx, "--status").out).toContain("m1-window-gate seat (procedure lock checked per call)");
 });
