@@ -53,7 +53,7 @@ def call(cell, command='ssh m1 true', ti=None, name='Bash', codex=False, hook=HO
     'echo ready && ssh m1 true', 'env X=y ssh m1 true', 'bash -c "ssh m1 true"', 'echo "$(ssh m1 true)"'])
 def test_open_denies(cell, command):
     denied, value = call(cell, command)
-    assert denied and STEM in str(value) and 'opened-at' in str(value) and 'CLOSED' in str(value)
+    assert denied and value['hookSpecificOutput']['permissionDecisionReason'] == "Blocked: the M1 is in the middle of an install, so other work there has to wait. Try again when it finishes."
 
 
 @pytest.mark.parametrize('command', ['ssh fixture-other true', 'ssh -- fixture-other m1', 'echo "ssh m1 true"',
@@ -151,7 +151,7 @@ def seat(cell):
     'echo `touch output`', 'cat <(touch output)', './ls', 'echo "unterminated'])
 def test_seat_denies(seat, command):
     denied, value = call(seat, command, mode='seat')
-    assert denied and STEM in str(value)
+    assert denied and value['hookSpecificOutput']['permissionDecisionReason'] == "Blocked: a golems install is running on this Mac, so only read-only commands are allowed. Wait for it to finish."
 
 
 @pytest.mark.parametrize('command', ['ls', '/bin/ls -l', 'git status', 'git log -1',
