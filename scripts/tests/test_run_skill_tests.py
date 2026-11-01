@@ -56,7 +56,7 @@ def test_workflow_runs_the_shared_skill_test_runner():
 
     assert "golem-powers-skill-tests" in workflow
     assert "python-version: \"3.11\"" in workflow
-    assert "python -m pip install --upgrade pip pytest" in workflow
+    assert "python -m pip install --upgrade pip pytest pytest-xdist==3.8.0" in workflow
     assert "scripts/ci/run-skill-tests.sh" in workflow
 
 
@@ -96,3 +96,28 @@ def test_runner_runs_top_level_script_tests(tmp_path):
         [str(runner)], cwd=tmp_path, env=env, text=True, capture_output=True, check=True,
     )
     assert "scripts/test_discovery_fixture.py" in result.stdout.splitlines()
+
+
+def test_runner_uses_four_workers_and_keeps_evals_serial(tmp_path):
+    runner = tmp_path / "scripts" / "ci" / RUNNER.name
+    runner.parent.mkdir(parents=True)
+    shutil.copy2(RUNNER, runner)
+    suite = tmp_path / "skills" / "golem-powers" / "example" / "tests"
+    suite.mkdir(parents=True)
+    (suite / "test_example.py").write_text("# discovery fixture\n")
+    eval_suite = suite.parent / "evals" / "run_suite.py"
+    eval_suite.parent.mkdir()
+    eval_suite.write_text("# eval fixture\n")
+    fake = tmp_path / "python"
+    calls = tmp_path / "calls"
+    fake.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS"\nprintf "%s\\n" "$PROBE"\n')
+    fake.chmod(0o755)
+    result = subprocess.run([str(runner)], cwd=tmp_path, text=True,
+                            capture_output=True, check=True,
+                            env={**os.environ, "PYTHON_BIN": str(fake),
+                                 "CALLS": str(calls), "PROBE": "env-preserved"})
+    assert calls.read_text().splitlines() == [
+        "-m pytest skills/golem-powers/example/tests -q -n 4",
+        "skills/golem-powers/example/evals/run_suite.py",
+    ]
+    assert "env-preserved" in result.stdout
