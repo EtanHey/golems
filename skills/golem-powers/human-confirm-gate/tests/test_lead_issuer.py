@@ -67,7 +67,8 @@ class Fixture:
     def issue(self, *extra, ref='refs/heads/topic', sha=SHA, anchor=None, remote=None):
         argv = [str(self.repo), '--ref', ref, '--sha', sha, '--session', 'lead-session', *extra]
         if remote: argv += ['--remote', remote]
-        with patch('tokens.read_command', side_effect=self.gh), patch('tokens.trusted_binary', return_value='gh'):
+        with patch('tokens.read_command', side_effect=self.gh), patch.object(self.issuer, 'read_metadata', side_effect=self.gh), \
+                patch('tokens.trusted_binary', return_value='gh'):
             return self.issuer.issue(argv, home=self.home, anchor_fn=lambda home: anchor or self.anchor)
 
     def refused(self, **kwargs):
@@ -303,6 +304,32 @@ class LeadTokenThroughTheGate(unittest.TestCase):
         command = self.command
         self.assertTrue(authorize(self.payload(command), operations(command, str(self.repo)), self.home, self.metadata))
         self.assertFalse(authorize(self.payload(command), operations(command, str(self.repo)), self.home, self.metadata))
+
+    def test_hook_slow_gh_refuses_after_two_seconds_without_retry(self):
+        from tokens import authorize
+        from commands import operations
+        import contextlib, io, sys
+        self.issue()
+        calls = self.home / 'gh-calls'
+        fake = self.home / 'gh'
+        fake.write_text(f'''#!{sys.executable}
+import json, pathlib, sys, time
+with pathlib.Path({str(calls)!r}).open('a') as stream:
+    stream.write(' '.join(sys.argv[1:3]) + '\\n')
+if sys.argv[1:3] == ['repo', 'view']:
+    time.sleep(3)
+    print(json.dumps({{'defaultBranchRef': {{'name': 'main'}}}}))
+else:
+    print(json.dumps({self.pr!r}))
+''')
+        fake.chmod(0o700)
+        with patch('tokens.GH_CANDIDATES', (str(fake),)), contextlib.redirect_stderr(io.StringIO()):
+            with patch('tokens.subprocess.run', wraps=subprocess.run) as run:
+                self.assertFalse(authorize(self.payload(self.command), operations(self.command, str(self.repo)), self.home))
+        gh_calls = [call for call in run.call_args_list if call.args[0][0] == str(fake)]
+        self.assertEqual([call.kwargs['timeout'] for call in gh_calls], [2])
+        self.assertEqual(calls.read_text().splitlines(), ['repo view'])
+        self.assertEqual(list(self.store.glob('*.spent')), [])
 
     def signed(self, command):
         """A hand-signed lead token for `command` (what a same-UID agent could forge with the lead key)."""

@@ -15,7 +15,6 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { CalendarEvent } from "../calendar-client";
 import type { EcosystemStatus } from "../status-aggregator";
-import type { Email } from "@golems/shared/email/types";
 
 // --- Test Fixtures ---
 
@@ -36,21 +35,6 @@ function makeEvents(): CalendarEvent[] {
   ];
 }
 
-function makeEmails(): Email[] {
-  return [
-    {
-      gmail_id: "e1",
-      subject: "Interview at Acme",
-      from_address: "hr@acme.com",
-      snippet: "...",
-      score: 10,
-      category: "interview",
-      received_at: new Date(),
-      notified: true,
-    },
-  ];
-}
-
 function makeEcosystem(): EcosystemStatus {
   return {
     timestamp: new Date().toISOString(),
@@ -64,9 +48,7 @@ function makeEcosystem(): EcosystemStatus {
 function makeDeps(overrides?: Partial<BriefingDeps>): BriefingDeps {
   return {
     getCalendarEvents: mock(() => Promise.resolve(makeEvents())),
-    getEmails: mock(() => Promise.resolve(makeEmails())),
     getEcosystem: mock(() => Promise.resolve(makeEcosystem())),
-    reportRun: mock(() => Promise.resolve()),
     ...overrides,
   };
 }
@@ -83,9 +65,8 @@ describe("runMorningBriefing", () => {
     expect(result.briefing).toBeDefined();
     expect(result.briefing).not.toHaveProperty("healthSummary");
     expect(result.briefing!.calendarOverview.eventCount).toBe(1);
-    expect(result.briefing!.emailTriage).not.toBeNull();
+    expect(result.briefing!.emailTriage).toBeNull();
 
-    expect(deps.reportRun).toHaveBeenCalledTimes(1);
   });
 
   test("continues when calendar fails", async () => {
@@ -101,17 +82,6 @@ describe("runMorningBriefing", () => {
     expect(result.briefing!.calendarOverview.eventCount).toBe(0);
   });
 
-  test("continues when email fails", async () => {
-    const deps = makeDeps({
-      getEmails: mock(() => Promise.reject(new Error("Email DB down"))),
-    });
-
-    const result = await runMorningBriefing({ mode: "voice", deps });
-
-    expect(result.success).toBe(true);
-    expect(result.briefing!.emailTriage).toBeNull();
-  });
-
   test("returns voice output when mode is voice", async () => {
     const deps = makeDeps();
     const result = await runMorningBriefing({ mode: "voice", deps });
@@ -120,7 +90,6 @@ describe("runMorningBriefing", () => {
     expect(result.channel).toBe("voice");
     expect(result.voiceText).toBeDefined();
     expect(result.voiceText!.length).toBeGreaterThan(0);
-    expect(deps.reportRun).toHaveBeenCalledTimes(1);
   });
 
   test("rejects an unsupported mode before fetching any data", async () => {
@@ -128,8 +97,6 @@ describe("runMorningBriefing", () => {
     await expect(runMorningBriefing({ mode: "background" as "voice", deps }))
       .rejects.toThrow("explicit voice mode");
     expect(deps.getCalendarEvents).not.toHaveBeenCalled();
-    expect(deps.getEmails).not.toHaveBeenCalled();
-    expect(deps.reportRun).not.toHaveBeenCalled();
   });
 
   test("CLI requires an explicit voice request", async () => {
@@ -155,12 +122,6 @@ describe("runMorningBriefing", () => {
         callOrder.push("calendar-end");
         return result;
       }),
-      getEmails: mock(async () => {
-        callOrder.push("emails-start");
-        const result = makeEmails();
-        callOrder.push("emails-end");
-        return result;
-      }),
       getEcosystem: mock(async () => {
         callOrder.push("ecosystem-start");
         const result = makeEcosystem();
@@ -180,8 +141,8 @@ describe("runMorningBriefing", () => {
       .map((v, i) => (v.endsWith("-end") ? i : -1))
       .filter((i) => i >= 0);
 
-    // Verify all three remaining sources were called.
-    expect(startIndices).toHaveLength(3);
-    expect(endIndices).toHaveLength(3);
+    // Verify both remaining sources were called.
+    expect(startIndices).toHaveLength(2);
+    expect(endIndices).toHaveLength(2);
   });
 });

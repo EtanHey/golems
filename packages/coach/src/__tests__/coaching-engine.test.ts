@@ -1,15 +1,15 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import * as vercelLLM from "@golems/shared/lib/vercel-llm";
 import { generateCoaching } from "../coaching-engine";
 import type { CoachProtocol } from "../protocol";
 
 let lastPrompt = "";
 
-mock.module("@golems/shared/lib/vercel-llm", () => ({
-  runCloudFree: async (prompt: string) => {
-    lastPrompt = prompt;
-    return null;
-  },
-}));
+let llmSpy: ReturnType<typeof spyOn<typeof vercelLLM, "runCloudFree">>;
+
+afterEach(() => {
+  llmSpy.mockRestore();
+});
 
 function makeProtocol(): CoachProtocol {
   return {
@@ -91,6 +91,10 @@ function makeInput(dayOfWeek = "Monday") {
 
 beforeEach(() => {
   lastPrompt = "";
+  llmSpy = spyOn(vercelLLM, "runCloudFree").mockImplementation(async (prompt) => {
+    lastPrompt = prompt;
+    return null;
+  });
 });
 
 describe("generateCoaching without biometric data", () => {

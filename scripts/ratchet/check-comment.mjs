@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 // Requires a producer's ratchet table comment on a PR: the marker comment, posted by an allowed
 // author, whose verdict is bound to this exact head SHA with every enforced real row PASS.
-// Only an explicitly configured disk report-only row may carry a validated health warning.
+// Only explicitly configured disk/parity report-only rows may carry bounded warnings.
 // Missing, stale or red = exit 1 (standards/ratchet.md rule 3: missing is FAIL, never SKIP).
 
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { baseRowsAt, findSticky, parseRows, readVerdict, validDiskMeasurement } from "./table.mjs";
+import { baseRowsAt, findSticky, parseRows, readVerdict, validDiskMeasurement, expectedReporting, PARITY_UNTIL, PARITY_HISTORY } from "./table.mjs";
 
-export function checkVerdict({ comments, marker, head, expectedReal, authors, baseHasRows, expectedReportOnly = [] }) {
+export function checkVerdict({ comments, marker, head, expectedReal, authors, baseHasRows, expectedReportOnly = [], now = Date.now() }) {
   // The same comment the producer PATCHes (findSticky), never a newer or older look-alike.
   const sticky = findSticky(comments, marker, authors);
   if (!sticky) return { ok: false, reason: `no ${marker} ratchet comment from ${authors.join("/")}` };
@@ -25,9 +25,15 @@ export function checkVerdict({ comments, marker, head, expectedReal, authors, ba
   const reporting = verdict.report_only ?? [];
   if (!Array.isArray(reporting) || reporting.length !== expectedReportOnly.length
     || new Set(reporting.map(r => r?.id)).size !== reporting.length
-    || reporting.some(r => r?.id !== "disk-free-floor" || !expectedReportOnly.includes(r.id) || !validDiskMeasurement(r.measurement)))
+    || reporting.some(r => r?.id === "installed-skill-parity"
+      ? ![PARITY_UNTIL, ...PARITY_HISTORY.map(([, until]) => until)].includes(r.until) || !(now < Date.parse(r.until)) || !expectedReportOnly.some(e => e?.id === r.id && e.until === r.until)
+      : r?.id !== "disk-free-floor" || !expectedReportOnly.includes(r.id) || !validDiskMeasurement(r.measurement)))
     return { ok: false, reason: "invalid or unauthorized report-only measurement" };
-  const warnings = reporting.filter(r => !r.measurement.health).length;
+  const diskWarnings = reporting.filter(r => r.id === "disk-free-floor" && !r.measurement.health).length;
+  if (verdict.real_pass > verdict.real_total || verdict.real_total - verdict.real_pass - diskWarnings < 0
+    || verdict.real_total - verdict.real_pass - diskWarnings > (reporting.some(r => r.id === "installed-skill-parity") ? 1 : 0))
+    return { ok: false, reason: "invalid report-only warning counts" };
+  const warnings = verdict.real_total - verdict.real_pass;
   if (verdict.ok !== true || verdict.real_pass + warnings !== verdict.real_total) return { ok: false, reason: `verdict FAIL (${verdict.real_pass}/${verdict.real_total} real rows PASS)` };
   return { ok: true, reason: `${verdict.real_pass}/${verdict.real_total} real rows PASS; ${warnings} measured report-only warnings at ${head.slice(0, 8)}` };
 }
@@ -64,7 +70,7 @@ export function main(argv) {
     return 2;
   }
   const expectedReal = rows.rows.filter((row) => row.runner === options.runner && row.kind === "real").length;
-  const expectedReportOnly = rows.rows.filter(row => row.runner === options.runner && row.report_only).map(row => row.id);
+  const expectedReportOnly = expectedReporting(rows, options.runner);
   const gh = spawnSync("gh", ["api", "--paginate", "--slurp", `repos/${options.repo}/issues/${options.pr}/comments`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (gh.status !== 0) {
     process.stderr.write(`ratchet: cannot read PR comments: ${gh.stderr}\n`);

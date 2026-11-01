@@ -25,7 +25,7 @@
     "note": "review feedback handling"
   },
   {
-    "query": "sign my PR comment with the golem-id footer",
+    "query": "sign my PR comment with the model and harness attribution line",
     "should_trigger": true,
     "note": "signature trigger kept findable"
   },

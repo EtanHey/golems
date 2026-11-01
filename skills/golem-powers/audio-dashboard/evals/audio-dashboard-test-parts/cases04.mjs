@@ -1,3 +1,4 @@
+import { withDesignEvidence } from "./common.mjs";
 import { test, expect, spawnSync, createHash, chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, tmpdir, fileURLToPath, path, performance, validateAudioDashboardEvidence, analyzeAcousticArtifacts, analyzeOnsetEnergy, formatOnsetEnergyReport, ONSET_ENERGY_DEFAULTS, analyzeTeleprompterDrift, formatTeleprompterDriftReport, analyzeTranscriptFidelity, formatTranscriptFidelityReport, TRANSCRIPT_FIDELITY_DEFAULTS, createBuildReceipts, readNarrationVendorStamp, writeBuildReceipts, clearTakeCacheReceiptForByo, writeWordTimingArtifacts, formatCachePurgeReceipt, purgeRejectedTakeCaches, answersMarkdown, injectDecisionSurfaceIntoHtml, buildAfterCodeDashboardPlan, renderV4, clearTakeCacheReceipt, writeTakeCacheReceipt, loadPronunciationRules, normalizeForSpeech, here, redDir, greenDir, transcriptCalibrationPath, onsetEnergyCalibrationPath, skillPath, skillRoot, placeholderMp3, placeholderMp3Duration, loadFixtures, reds, greens, evidenceReds, evidenceGreens, driftReds, driftGreens, acousticReds, onsetEnergyReds, transcriptReds, publishDriftReds, tpdataFromHtml, writeFixtureFfprobe, writeSegment, writeToneWav, writeStereoToneWav, wordsForDuration, writeAcousticSegment, acousticFixtureSegments, buildDashboard } from "./common.mjs";
 
 
@@ -212,7 +213,7 @@ test("nested timing metadata is inherited by child word payloads", () => {
     `
   };
 
-  const result = validateAudioDashboardEvidence(evidence);
+  const result = validateAudioDashboardEvidence(withDesignEvidence(evidence));
   expect(result.verdict).toBe("PASS");
   expect(result.realWordTiming).toBe(true);
   expect(result.realTranscript).toBe(true);
@@ -245,7 +246,7 @@ test("narrationlayer timing.status available with nonempty words is accepted", (
     `
   };
 
-  const result = validateAudioDashboardEvidence(evidence);
+  const result = validateAudioDashboardEvidence(withDesignEvidence(evidence));
   expect(result.verdict).toBe("PASS");
   expect(result.realWordTiming).toBe(true);
 });
@@ -268,7 +269,7 @@ test("historical terms in transcript text do not trigger old-generator rejection
     `
   };
 
-  const result = validateAudioDashboardEvidence(evidence);
+  const result = validateAudioDashboardEvidence(withDesignEvidence(evidence));
   expect(result.verdict).toBe("PASS");
   expect(result.violations.map((v) => v.code)).not.toContain("OLD_GOLEMPLAYLIST_V1");
 });

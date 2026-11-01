@@ -52,7 +52,7 @@ packages/shared/src/
 │   ├── llm.ts                   # Multi-backend LLM runner (Haiku, Ollama, MLX, Gemini, Groq)
 │   ├── cloud-llm.ts             # Haiku backend with token/cost tracking
 │   ├── ollama-helper.ts         # Local Ollama wrapper
-│   ├── state-store.ts           # File/Supabase state abstraction
+│   ├── state-store.ts           # Local file state storage
 │   ├── event-log.ts             # Golem action logging ("while you were down")
 │   ├── load-env.ts              # .env loader for launchd (import FIRST)
 │   ├── shared-types.ts          # GolemStatus, TopicStyle, GolemActor
@@ -67,8 +67,7 @@ packages/shared/src/
 │   ├── router.ts                # Email → domain golem routing
 │   ├── draft-reply.ts           # Template reply drafts
 │   ├── followup.ts              # Follow-up tracking with due dates
-│   ├── db-client.ts             # Supabase email storage + offline queue
-│   ├── mcp-server.ts            # MCP tools (7 tools)
+│   ├── mcp-server.ts            # MCP tools (2 tools)
 │   └── types.ts                 # Email-specific types
 └── package.json                 # @golems/shared
 ```
@@ -111,7 +110,7 @@ import { runCloudFree, runCloudFreeJSON } from "@golems/shared/lib/vercel-llm";
 - Auto-fallback between providers on 429
 
 ### `lib/state-store`
-State abstraction. `STATE_BACKEND=file|supabase`.
+State abstraction backed by local JSON files.
 ```typescript
 import { getState, setState } from "@golems/shared/lib/state-store";
 ```
@@ -132,12 +131,7 @@ import "@golems/shared/lib/load-env"; // FIRST import
 
 | Tool | Description |
 |------|-------------|
-| `email_getRecent` | Recent emails by hours + min score |
-| `email_search` | Keyword search in subject/sender |
-| `email_subscriptions` | Monthly subscription summary |
-| `email_urgent` | Unnotified urgent emails |
-| `email_stats` | 24h category breakdown |
-| `email_getByGolem` | Emails routed to a specific golem |
+| `email_search` | Gmail query search |
 | `email_draftReply` | Generate reply draft by intent |
 
 ## Dependencies

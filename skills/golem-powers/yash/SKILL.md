@@ -130,6 +130,26 @@ When the upstream PR merges:
 
 You just made open source better. Every user of that library benefits from your fix.
 
+## Upstream PR shape (learned from pingdotgg/t3code, 2026-10-31)
+
+Maintainers merge small, test-backed fixes; big PRs get closed. Before opening an upstream PR:
+
+- **One observable bug, smallest fix.** Aim for ≤ 60 hand-written non-test lines across ≤ 4 files
+  (t3code merged median: 17 lines, 2 files). Bigger than that: split it, or open an issue/Ideas
+  discussion first.
+- **Test first, and more test than code.** Add the regression test that fails without the fix
+  (merged PRs average ~3 test lines per code line).
+- **Issue first?** Read the repo's CONTRIBUTING. In t3code a very small fix for an obvious bug needs
+  no prior issue; features and behavior changes need maintainer approval in an Ideas discussion.
+  Say which applies in the PR body.
+- **Title:** `fix(<area>): <what the user now sees>`, plain words, not the mechanism.
+- **Body:** `## Problem` (the bug, 1–3 lines) · `## Change` (what and why this approach) ·
+  `## Scope and approval` (linked issue/approval, or "No issue: small fix for an obvious bug,
+  because …") · `## Verification` (the failing-first test, commands run, what was not checked) ·
+  optional `## Prior PRs`.
+- **Last line:** the attribution line from /pr-loop's "Signature" section.
+- **Expect ~a week to merge.** Open several small independent PRs rather than one stack.
+
 ## When Workarounds ARE Acceptable
 
 Not every dependency issue deserves a PR. Workarounds are fine when:

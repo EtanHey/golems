@@ -53,7 +53,7 @@ sys.exit(r.returncode)
 assert list(Path(os.environ['REMOTE_HOME']).glob('.claude/skills.bak-*')), 'copy preceded backup'
 with open(os.environ['EVENTS'], 'a') as f: f.write('copy\\n')
 dest = Path(os.environ['REMOTE_HOME']) / sys.argv[-1].split('m1:')[1]
-for p in sys.argv[3:-1]: shutil.copy(p, dest / Path(p).name)
+for p in sys.argv[7:-1]: shutil.copy(p, dest / Path(p).name)
 ''')
         self.assertEqual(shutil.which('ssh', path=self.env['PATH']), str(self.bin / 'ssh'))
         self.payload()
@@ -127,7 +127,7 @@ with open(os.environ['EVENTS'], 'a') as f: f.write('apply\\n' if '--apply' in sy
     def test_flag_runs_full_sync_before_parity(self):
         r = self.invoke_live('--sync-m1')
         self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
-        self.assertIn('install\ndry-run\napply\nparity\n', self.events())
+        self.assertIn('install\ndry-run\napply\nssh\nparity\n', self.events())
         backup = next(self.remote.glob('.claude/skills.bak-*'))
         with tarfile.open(backup) as archive:
             self.assertEqual(archive.extractfile('.codex/skills/only-m1/SKILL.md').read(), b'retain me')
@@ -209,7 +209,7 @@ with open(os.environ['EVENTS'], 'a') as f: f.write('apply\\n' if '--apply' in sy
         events = self.events()
         r = self.invoke()
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(self.events(), events + 'ssh\n')
+        self.assertEqual(self.events(), events + 'ssh\nssh\n')
 
     def test_current_without_success_marker_needs_attention(self):
         self.record(HEAD)
@@ -276,6 +276,13 @@ with open(os.environ['EVENTS'], 'a') as f: f.write('apply\\n' if '--apply' in sy
             self.assertIn(message, r.stderr)
             self.assertNotIn('not published yet', r.stderr)
             self.assertEqual(self.events(), '')
+
+    def test_missing_writer_is_unavailable_without_receipt_writes(self):
+        r = self.invoke()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('m1-receipt: unavailable', r.stdout)
+        self.assertFalse((self.remote / '.local/state/golems/install-receipts').exists())
+
 
 
 if __name__ == '__main__':

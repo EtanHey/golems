@@ -1,0 +1,20 @@
+{
+  "verdict": "PASS",
+  "status": "COMPARED",
+  "violations": [],
+  "screenshots": [
+    {
+      "width": 1280,
+      "height": 844,
+      "pixelDiffRatio": 0.0025853450829383885,
+      "reportOnly": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "pixelDiffRatio": 0.009050309879693765,
+      "reportOnly": true
+    }
+  ],
+  "series": "weekly"
+}

@@ -23,7 +23,7 @@ const PHRASES = {
   "agent-routing": ["dispatch a worker", "delegate_task", "hand off", "Invoke before",
     // literal triggers carried from the pinned description
     "who gathers", "gemini gatherer", "Codex model/effort", "/multitask", "fan out", "in parallel"],
-  "pr-loop": ["Open a PR", "merge", "ship", "CI", "Invoke before", "golem-id", "Co-Authored-By"],
+  "pr-loop": ["Open a PR", "merge", "ship", "CI", "Invoke before", "🤖 model + harness line", "Co-Authored-By"],
 };
 
 for (const [name, phrases] of Object.entries(PHRASES)) {
@@ -94,3 +94,29 @@ for (const name of ["large-plan", "agent-routing", "pr-loop"]) {
     expect(description(name).toLowerCase()).toContain(FIRST_ACTION);
   });
 }
+
+test("GitHub identity uses one plain model and harness line", () => {
+  const text = read(skill("pr-loop", "references/github-identity.md"));
+  expect(text).toContain("🤖 Generated with");
+  expect(text).not.toContain("<!-- golem-id");
+  expect(text).not.toMatch(/^— .* · /m);
+});
+
+test("on-behalf comments name Etan, never the GitHub login, even under tstack skills", () => {
+  const text = read(skill("pr-loop", "references/github-identity.md")).split("## On-behalf header")[1].split("## Commit trailer")[0];
+  expect(text).toContain("> [!NOTE]");
+  expect(text).toContain("> 🤖 **<model> responding on behalf of Etan**");
+  expect(text).toContain("never the GitHub login");
+  expect(text).toMatch(/leaving-pr-comments/);
+  expect(text).not.toMatch(/on behalf of EtanHey/);
+});
+
+test("commit trailers name each co-authoring model without seats", () => {
+  const text = read(skill("pr-loop", "references/github-identity.md")).split("## Commit trailer")[1];
+  expect(text).toContain("Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>");
+  expect(text).toContain("Co-Authored-By: GPT-6.1 Sol <noreply@example.com>");
+  expect(text).toContain("One trailer per co-authoring model");
+  expect(text).toContain("live session");
+  expect(text).toContain("No effort in the trailer");
+  expect(text).not.toMatch(/<seat>|running <model>|seat-aware|brainlayerClaude/);
+});

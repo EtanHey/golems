@@ -4,7 +4,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const repoRoot = resolve(import.meta.dir, "../..");
-const labels = ["com.golemszikaron.briefing", "com.golems.worktree-gc"];
+const retired = "com.golemszikaron.briefing";
+const activeLabels = ["com.golems.worktree-gc"];
+const labels = [retired, ...activeLabels];
 const domain = `gui/${process.getuid()}`;
 
 function runInstaller({ loaded = false, failBootstrap = "", failBootout = false, uninstall = false, unloadDelay = 0, prefixOnly = false } = {}, check) {
@@ -74,14 +76,25 @@ fi
 }
 
 describe("launchd installer lifecycle (stubbed launchctl)", () => {
+  test("install removes the stale briefing agent and never bootstraps it", () => {
+    runInstaller({ loaded: true }, ({ result, agents, calls }) => {
+      const label = "com.golemszikaron.briefing";
+      expect(result.exitCode, result.stderr.toString()).toBe(0);
+      expect(calls).toContain(`bootout ${domain}/${label}`);
+      expect(existsSync(join(agents, `${label}.plist`))).toBe(false);
+      expect(calls.some((call) => call.startsWith("bootstrap ") && call.endsWith(`${label}.plist`))).toBe(false);
+    });
+  });
+
   test("already loaded labels boot out before bootstrapping the rendered definition", () => {
     runInstaller({ loaded: true }, ({ result, agents, calls, helperAction }) => {
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       expect(helperAction).toBe("install");
-      expect(calls.filter((call) => !call.startsWith("print ") && call !== "list")).toEqual(labels.flatMap((label) => [
-        `bootout ${domain}/${label}`, `bootstrap ${domain} ${join(agents, `${label}.plist`)}`,
-      ]));
-      for (const label of labels) {
+      expect(calls.filter((call) => !call.startsWith("print ") && call !== "list")).toEqual([
+        `bootout ${domain}/${retired}`, `rm ${join(agents, `${retired}.plist`)}`,
+        ...activeLabels.flatMap((label) => [`bootout ${domain}/${label}`, `bootstrap ${domain} ${join(agents, `${label}.plist`)}`]),
+      ]);
+      for (const label of activeLabels) {
         expect(readFileSync(join(agents, `${label}.plist`), "utf8")).toContain(resolve(agents, "../.."));
       }
       expect(result.stdout.toString()).toContain("Installed!");
@@ -91,10 +104,8 @@ describe("launchd installer lifecycle (stubbed launchctl)", () => {
   test("waits for delayed unload before bootstrapping each label once", () => {
     runInstaller({ loaded: true, unloadDelay: 2 }, ({ result, calls }) => {
       expect(result.exitCode, result.stderr.toString()).toBe(0);
-      for (const label of labels) {
-        expect(calls.filter((call) => call === `print ${domain}/${label}`)).toHaveLength(5);
-        expect(calls.filter((call) => call.startsWith("bootstrap ") && call.endsWith(`${label}.plist`))).toHaveLength(1);
-      }
+      for (const label of labels) expect(calls.filter((call) => call === `print ${domain}/${label}`)).toHaveLength(5);
+      for (const label of activeLabels) expect(calls.filter((call) => call.startsWith("bootstrap ") && call.endsWith(`${label}.plist`))).toHaveLength(1);
       expect(result.stdout.toString()).toContain("Installed!");
     });
   });
@@ -102,12 +113,14 @@ describe("launchd installer lifecycle (stubbed launchctl)", () => {
   test("not loaded labels bootstrap without bootout", () => {
     runInstaller({}, ({ result, agents, calls }) => {
       expect(result.exitCode, result.stderr.toString()).toBe(0);
-      expect(calls.filter((call) => !call.startsWith("print ") && call !== "list")).toEqual(labels.map((label) =>
-        `bootstrap ${domain} ${join(agents, `${label}.plist`)}`));
+      expect(calls.filter((call) => !call.startsWith("print ") && call !== "list")).toEqual([
+        `rm ${join(agents, `${retired}.plist`)}`,
+        ...activeLabels.map((label) => `bootstrap ${domain} ${join(agents, `${label}.plist`)}`),
+      ]);
     });
   });
 
-  for (const label of labels) {
+  for (const label of activeLabels) {
     test(`bootstrap failure for ${label} exits nonzero and never reports Installed!`, () => {
       runInstaller({ failBootstrap: label }, ({ result }) => {
         expect(result.exitCode).not.toBe(0);
@@ -120,7 +133,7 @@ describe("launchd installer lifecycle (stubbed launchctl)", () => {
   test("a label disappearing before bootout does not prevent bootstrap", () => {
     runInstaller({ loaded: true, failBootout: true }, ({ result, calls }) => {
       expect(result.exitCode, result.stderr.toString()).toBe(0);
-      expect(calls.filter((call) => call.startsWith("bootstrap "))).toHaveLength(labels.length);
+      expect(calls.filter((call) => call.startsWith("bootstrap "))).toHaveLength(activeLabels.length);
     });
   });
 

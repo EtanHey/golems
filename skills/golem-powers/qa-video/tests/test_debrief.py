@@ -63,7 +63,8 @@ def test_end_to_end_evidence_and_phase_progress(media, setup, monkeypatch):
     whisper = Path(env['PATH'].split(':')[0])/'whisper-cli'
     whisper.write_text(whisper.read_text().replace('Now I click here.', 'The slide is 42 percent.'))
     monkeypatch.setenv('PATH', env['PATH']); monkeypatch.setenv('WHISPER_MODEL', env['WHISPER_MODEL'])
-    monkeypatch.setattr(sys, 'argv', [str(SCRIPT), str(video), '--workdir', str(work), '--helper', str(setup[0]/'helper.py')])
+    monkeypatch.setattr(sys, 'argv', [str(SCRIPT), str(video), '--workdir', str(work), '--presort',
+                                      '--helper', str(setup[0]/'helper.py')])
     assert module.main() == 0
     receipt = json.loads((work/'timing.json').read_text())
     assert receipt['status'] == 'COMPLETE' and receipt['wall_seconds'] < 600
@@ -105,7 +106,8 @@ def test_failure_preserves_transcript_note(failure_pipeline, monkeypatch, stage,
     if stage == 'frame_failure':
         (scripts/'ffmpeg').write_text('#!/bin/bash\nexit 1\n')
     monkeypatch.setattr(sys, 'argv', [str(SCRIPT), str(video), '--workdir', str(work),
-                                    '--budget-seconds', '.15' if stage == 'extract_timeout' else '1'])
+                                    '--budget-seconds', '.15' if stage == 'extract_timeout' else '1']
+                        + (['--presort'] if stage == 'reserve' else []))
     assert module.main() == 2
     assert json.loads((work/'timing.json').read_text())['status'] == status
     assert json.loads((work/'timing.json').read_text())['budget_seconds'] == (.15 if stage == 'extract_timeout' else 1)
@@ -136,10 +138,57 @@ def test_partial_visuals_keep_transcript_note(failure_pipeline, setup, monkeypat
     helper.write_text(helper.read_text().replace("print('Coverage: 1/1; complete; 0 image findings omitted by output cap.')",
                                               "print('NOT DETERMINED: missing response'); sys.exit(1)"))
     monkeypatch.setattr(sys, 'argv', [str(SCRIPT), str(video), '--workdir', str(work),
-                                    '--budget-seconds', '300', '--helper', str(helper)])
+                                    '--budget-seconds', '300', '--presort', '--helper', str(helper)])
     assert module.main() == 2
     assert json.loads((work/'timing.json').read_text())['status'] == 'PARTIAL'
     assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 4
     note = (work/'debrief.md').read_text()
     assert '42 percent' in note and '99 percent' in note and 'Status: PARTIAL' in note
     assert note.count('visual: NOT DETERMINED (budget/failed)') == 2
+
+
+def tripwire(path, marker):
+    import os
+    pending = path.with_name(path.name + '.tripwire')
+    pending.write_text(f'from pathlib import Path\nPath({str(marker)!r}).write_text("called")\nraise SystemExit(9)\n')
+    os.replace(pending, path)  # swaps the fixture symlink itself, never its real target
+
+
+def test_direct_route_returns_stills_without_helper(failure_pipeline, monkeypatch):
+    import json
+    module, scripts, video, work = failure_pipeline
+    marker = scripts.parent/'helper-called'
+    for name in ('visual-batch.py', 'visual-gather.py'):
+        tripwire(scripts/name, marker)  # FAILS loudly if imported or launched
+    monkeypatch.setattr(sys, 'argv', [str(SCRIPT), str(video), '--workdir', str(work), '--budget-seconds', '1'])
+    assert module.main() == 0
+    assert not marker.exists(), 'direct route invoked a visual helper'
+    timing = json.loads((work/'timing.json').read_text())
+    assert timing['status'] == 'STILLS_READY' and timing['presort'] is False
+    assert [row.split('\t')[0] for row in (work/'frames.tsv').read_text().splitlines()] == ['moment-00.jpg', 'moment-01.jpg']
+    assert all((work/f'moment-0{i}.jpg').is_file() for i in range(2))
+    assert not (work/'visual').exists()
+    note = (work/'debrief.md').read_text()
+    assert note.count('NOT YET VIEWED; open moment-0') == 2 and 'NOT DETERMINED' not in note
+
+
+def test_helper_override_requires_presort(failure_pipeline, monkeypatch, capsys):
+    module, scripts, video, work = failure_pipeline
+    monkeypatch.setattr(sys, 'argv', [str(SCRIPT), str(video), '--workdir', str(work), '--helper', str(scripts/'visual-gather.py')])
+    with pytest.raises(SystemExit):
+        module.main()
+    assert 'requires --presort' in capsys.readouterr().err and not work.exists()
+
+
+def test_presort_calls_helper(failure_pipeline, setup, monkeypatch):
+    import json
+    module, _, video, work = failure_pipeline
+    helper = setup[0]/'helper.py'
+    helper.write_text(helper.read_text() + "\n(image.parent/'helper-called').write_text('called')\n")
+    monkeypatch.setattr(sys, 'argv', [str(SCRIPT), str(video), '--workdir', str(work),
+                                      '--budget-seconds', '300', '--presort', '--helper', str(helper)])
+    assert module.main() == 0
+    assert (work/'helper-called').exists()
+    timing = json.loads((work/'timing.json').read_text())
+    assert timing['status'] == 'COMPLETE' and timing['presort'] is True
+    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 2

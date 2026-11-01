@@ -9,6 +9,7 @@ function split_case_001() {
         HOME="$TMPDIR_/home" \
         AGY_ARGS_FILE="$AGY_ARGS_FILE" \
         PARALLEL_STATE_DIR="$parallel_state" \
+        PARALLEL_START_BARRIER=4 \
         STREAM_WHATSAPP_NOTIFY=0 \
         "$PROCESS_STREAM" "$stream_dir/video.mp4"
 

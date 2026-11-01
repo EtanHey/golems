@@ -3,20 +3,12 @@
  * Data Visualization CLI
  *
  * Usage:
- *   bun run dataviz jobs [--format linkedin|instagram|story] [--output path]
- *   bun run dataviz finance [--format linkedin|instagram|story] [--output path]
  *   bun run dataviz brain [--format linkedin|instagram|story] [--output path]
- *   bun run dataviz activity [--format linkedin|instagram|story] [--output path]
  *   bun run dataviz all [--format linkedin|instagram|story] [--output-dir path]
  */
 
 import { parseArgs } from "util";
-import { fetchJobMarketData } from "../src/dataviz/fetchers/jobs";
-import { fetchFinanceData } from "../src/dataviz/fetchers/finance";
 import { fetchBrainData } from "../src/dataviz/fetchers/brain";
-import { fetchActivityData } from "../src/dataviz/fetchers/activity";
-import { renderBarChart } from "../src/dataviz/charts/bar";
-import { renderDonutChart } from "../src/dataviz/charts/donut";
 import { renderLineChart } from "../src/dataviz/charts/line";
 import { renderStatCards } from "../src/dataviz/charts/stat-card";
 import { renderLinkedInCard } from "../src/dataviz/templates/linkedin-card";
@@ -44,10 +36,7 @@ if (values.help || positionals.length === 0) {
 Usage: bun run dataviz <type> [options]
 
 Types:
-  jobs       Job market stats (top tags, status distribution)
-  finance    LLM costs, subscriptions, email categories
   brain      BrainLayer size and store rate (its observability document)
-  activity   Golem events, service run stats
   all        Generate all data viz types
 
 Options:
@@ -67,58 +56,6 @@ const svgOnly = values["svg-only"] as boolean;
 await mkdir(outputDir, { recursive: true });
 
 const timestamp = new Date().toISOString().slice(0, 10);
-
-async function generateJobsViz(): Promise<string> {
-  console.log("Fetching job market data...");
-  const data = await fetchJobMarketData();
-  console.log(`  ${data.totalJobs} jobs, ${data.topTags.length} tags`);
-
-  const chartSvg = renderBarChart({
-    title: "Top Job Tags",
-    data: data.topTags.map((t) => ({ label: t.tag, value: t.count })),
-    horizontal: true,
-    maxBars: 8,
-  });
-
-  const statsSvg = renderStatCards({
-    stats: [
-      { label: "Total Jobs", value: data.totalJobs },
-      { label: "Sources", value: data.scrapeStats.length },
-      { label: "This Week", value: data.weeklyTrend[data.weeklyTrend.length - 1]?.newJobs ?? 0, deltaLabel: "new" },
-    ],
-    columns: 3,
-    width: format === "story" ? 1000 : format === "instagram" ? 1000 : 1120,
-  });
-
-  return wrapInTemplate("Job Market Overview", `Week of ${timestamp}`, chartSvg, statsSvg);
-}
-
-async function generateFinanceViz(): Promise<string> {
-  console.log("Fetching finance data...");
-  const data = await fetchFinanceData();
-  console.log(`  $${data.totalLLMCost} total LLM cost, ${data.llmCostsByModel.length} models`);
-
-  const chartSvg = renderDonutChart({
-    title: "LLM Costs by Model",
-    data: data.llmCostsByModel
-      .filter((m) => m.totalCost > 0)
-      .map((m) => ({ label: m.model, value: Math.round(m.totalCost * 100) / 100 })),
-    centerValue: `$${data.totalLLMCost.toFixed(2)}`,
-    centerLabel: "Total",
-  });
-
-  const statsSvg = renderStatCards({
-    stats: [
-      { label: "Total LLM Cost", value: `$${data.totalLLMCost.toFixed(2)}` },
-      { label: "Subscriptions/mo", value: `$${data.monthlySubscriptionTotal.toFixed(0)}` },
-      { label: "Emails Processed", value: data.totalEmails },
-    ],
-    columns: 3,
-    width: format === "story" ? 1000 : format === "instagram" ? 1000 : 1120,
-  });
-
-  return wrapInTemplate("Monthly Finance", timestamp.slice(0, 7), chartSvg, statsSvg);
-}
 
 async function generateBrainViz(): Promise<string> {
   console.log("Fetching brain data...");
@@ -144,30 +81,6 @@ async function generateBrainViz(): Promise<string> {
   });
 
   return wrapInTemplate("BrainLayer", `as of ${data.generatedAt?.slice(0, 16).replace("T", " ")}Z`, chartSvg, statsSvg);
-}
-
-async function generateActivityViz(): Promise<string> {
-  console.log("Fetching activity data...");
-  const data = await fetchActivityData();
-  console.log(`  ${data.totalEvents} events, ${data.golemActivity.length} golems`);
-
-  const chartSvg = renderBarChart({
-    title: "Golem Activity",
-    data: data.golemActivity.slice(0, 8).map((g) => ({ label: g.actor, value: g.eventCount })),
-    horizontal: true,
-  });
-
-  const statsSvg = renderStatCards({
-    stats: [
-      { label: "Total Events", value: data.totalEvents },
-      { label: "Active Golems", value: data.golemActivity.length },
-      { label: "Service Runs", value: data.serviceRuns.reduce((s, r) => s + r.totalRuns, 0) },
-    ],
-    columns: 3,
-    width: format === "story" ? 1000 : format === "instagram" ? 1000 : 1120,
-  });
-
-  return wrapInTemplate("Golem Activity", `Last 30 days`, chartSvg, statsSvg);
 }
 
 function wrapInTemplate(title: string, dateRange: string, chartSvg: string, statsSvg: string): string {
@@ -206,30 +119,18 @@ async function saveSvg(svg: string, name: string): Promise<string> {
 }
 
 // Execute
-const types = type === "all" ? ["jobs", "finance", "brain", "activity"] : [type];
+const types = type === "all" ? ["brain"] : [type];
 
 for (const t of types) {
   try {
     let svg: string;
     switch (t) {
-      case "jobs":
-        svg = await generateJobsViz();
-        await saveSvg(svg, "jobs");
-        break;
-      case "finance":
-        svg = await generateFinanceViz();
-        await saveSvg(svg, "finance");
-        break;
       case "brain":
         svg = await generateBrainViz();
         await saveSvg(svg, "brain");
         break;
-      case "activity":
-        svg = await generateActivityViz();
-        await saveSvg(svg, "activity");
-        break;
       default:
-        console.error(`Unknown type: ${t}. Use: jobs, finance, brain, activity, all`);
+        console.error(`Unknown type: ${t}. Use: brain, all`);
     }
   } catch (err) {
     console.error(`Error generating ${t}:`, err);

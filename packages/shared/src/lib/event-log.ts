@@ -4,9 +4,7 @@
  * Gives ClaudeGolem memory of actions taken while "asleep".
  * Events are injected into Claude's context at spawn time.
  *
- * Dual-write: local JSON file + Supabase golem_events table.
- * Local file is the primary source for context injection.
- * Supabase is for dashboard persistence across hosted/runtime restarts.
+ * Local JSON file provides context injection.
  *
  * Storage: ~/.golems-zikaron/event-log.json (max 100 events)
  */
@@ -15,7 +13,6 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
 import { randomUUID } from "crypto";
 import { homedir } from "os";
-import { getSupabase } from "./supabase-factory";
 
 // Default event log path
 const DEFAULT_EVENT_LOG_PATH = join(
@@ -26,34 +23,6 @@ const DEFAULT_EVENT_LOG_PATH = join(
 
 // Maximum events to keep
 const MAX_EVENTS = 100;
-
-/**
- * Fire-and-forget insert to Supabase golem_events table.
- * Never throws — dashboard persistence must not break the main flow.
- */
-function persistEventToSupabase(event: GolemEvent): void {
-  const sb = getSupabase();
-  if (!sb) return;
-
-  sb.from("golem_events")
-    .insert({
-      id: event.id,
-      actor: event.actor,
-      type: event.type,
-      data: event.data,
-      created_at: event.timestamp,
-    })
-    .then(({ error }) => {
-      if (error)
-        console.error("[EventLog] Supabase insert failed:", error.message);
-    })
-    .catch((err: unknown) => {
-      console.error(
-        "[EventLog] Supabase network error:",
-        err instanceof Error ? err.message : err,
-      );
-    });
-}
 
 /** Golem actors that can produce events */
 export type GolemActor =
@@ -69,7 +38,6 @@ export type EventType =
   // Email pipeline
   | "email_alert"
   | "email_routed"
-  | "email_unsubscribe_attempt"
   // Job pipeline
   | "job_match"
   // Content pipeline
@@ -142,9 +110,6 @@ export async function logEvent(
 
   // Write back (local file)
   writeFileSync(logPath, JSON.stringify(events, null, 2));
-
-  // Persist to Supabase (fire-and-forget, for dashboard)
-  persistEventToSupabase(event);
 }
 
 /**
@@ -258,13 +223,6 @@ function formatAction(event: GolemEvent): string {
       const subject = data.subject || "(no subject)";
       const target = data.targetGolem || "unknown";
       return `routed email to ${target}: "${subject}"`;
-    }
-
-    case "email_unsubscribe_attempt": {
-      const sender = data.sender || "unknown";
-      const method = data.method || "unknown";
-      const success = data.success ? "successfully" : "failed";
-      return `unsubscribe ${success} from ${sender} via ${method}`;
     }
 
     default:
