@@ -116,3 +116,18 @@ fake_op() {
   [ -s "$FAKE_HOME/op-calls" ]
   grep -q "op account list" "$FAKE_HOME/op-calls"
 }
+
+@test "file_mode works with GNU stat (no BSD fallback output mixed in)" {
+  mkdir -p "$FAKE_HOME/bin"
+  # GNU-style stat: -c works; -f means filesystem and prints metadata (the bug being guarded).
+  cat > "$FAKE_HOME/bin/stat" <<'GNU'
+#!/bin/sh
+if [ "$1" = "-c" ]; then /usr/bin/stat -f %Lp "$3" 2>/dev/null || command stat -c %a "$3"; exit $?; fi
+if [ "$1" = "-f" ]; then echo "  File: \"$3\" ID: 0 Namelen: 255 Type: apfs"; exit 1; fi
+exit 2
+GNU
+  chmod +x "$FAKE_HOME/bin/stat"
+  printf 'K=x\n' > "$FAKE_HOME/.config/golems/anthropic-api.env"; chmod 600 "$FAKE_HOME/.config/golems/anthropic-api.env"
+  run bash -c "PATH='$FAKE_HOME/bin':\$PATH bash '$SCRIPT' 2>&1 | sed \$'s/\033\\[[0-9;]*m//g'"
+  [[ "$output" == *"[PASS] anthropic-api.env present, mode 0600"* ]]
+}

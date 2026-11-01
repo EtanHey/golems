@@ -129,7 +129,9 @@ cr --version
 
 Expected: Version number.
 
-### 4. Test 1Password Access
+### 4. Test 1Password Access (opt-in, Etan present)
+
+Each `op` call asks Etan for Touch ID, so run this only when he is there to approve:
 
 ```bash
 op account list
@@ -138,14 +140,14 @@ op vault list
 
 Expected: Shows account and vaults.
 
-### 5. Test Golem-Powers API Keys
+### 5. Test the API key files
 
 ```bash
-# Linear API Key
-op read "op://Private/golems/linear/API_KEY"
+# Present and private; never print a value
+ls -l ~/.config/golems/anthropic-api.env ~/.config/golems/openai-api.env
 ```
 
-Expected: Returns the API key value (starts with lin_api_ for Linear).
+Expected: both files exist with mode `-rw-------` (0600).
 
 ### 6. Test Skill Symlinks
 

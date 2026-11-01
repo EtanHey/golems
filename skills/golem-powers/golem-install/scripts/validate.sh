@@ -72,6 +72,12 @@ check() {
     fi
 }
 
+# Octal permission bits of a file. BSD and GNU stat take different flags, and GNU treats -f
+# as "filesystem" and prints metadata, so pick the syntax first instead of falling back.
+file_mode() {
+    if stat -c %a /dev/null >/dev/null 2>&1; then stat -c %a "$1"; else stat -f %Lp "$1"; fi
+}
+
 check_warn() {
     local name="$1"
     local cmd="$2"
@@ -155,7 +161,7 @@ fi
 # Section: API key files. Agents load these per command; validate never reads a value.
 echo "=== API key files (~/.config/golems) ==="
 for keyfile in anthropic-api.env openai-api.env; do
-    check_warn "$keyfile present, mode 0600" "test -f ~/.config/golems/$keyfile && [ \"\$(stat -f %Lp ~/.config/golems/$keyfile 2>/dev/null || stat -c %a ~/.config/golems/$keyfile)\" = 600 ]"
+    check_warn "$keyfile present, mode 0600" "test -f ~/.config/golems/$keyfile && [ \"\$(file_mode ~/.config/golems/$keyfile)\" = 600 ]"
 done
 echo ""
 
