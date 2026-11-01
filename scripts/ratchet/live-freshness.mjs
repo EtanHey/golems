@@ -53,7 +53,8 @@ export function main() {
       'skills/golem-powers/tmp-block/', 'scripts/repogolem/', 'scripts/ratchet/']);
     const guardedHead = guardedAt('origin/master');
     if (!/^[0-9a-f]{40}$/.test(guardedHead)) throw new Error('no guarded master commit');
-    const rows = parseRows(JSON.parse(run('git', ['show', 'origin/master:scripts/ratchet/rows.json'])));
+    // master's rows are the base side: before this lands they may carry the previous parity policy.
+    const rows = parseRows(JSON.parse(run('git', ['show', 'origin/master:scripts/ratchet/rows.json'])), { base: true });
     const expectedReal = rows.rows.filter(r => r.runner === 'live' && r.kind === 'real').length;
     const api = path => JSON.parse(run('gh', ['api', '--paginate', '--slurp', `repos/EtanHey/golems/${path}`])).flat();
     const pulls = api(`commits/${guardedHead}/pulls`);

@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { baseRowsAt, findSticky, parseRows, readVerdict, validDiskMeasurement, expectedReporting, PARITY_UNTIL } from "./table.mjs";
+import { baseRowsAt, findSticky, parseRows, readVerdict, validDiskMeasurement, expectedReporting, PARITY_UNTIL, PARITY_HISTORY } from "./table.mjs";
 
 export function checkVerdict({ comments, marker, head, expectedReal, authors, baseHasRows, expectedReportOnly = [], now = Date.now() }) {
   // The same comment the producer PATCHes (findSticky), never a newer or older look-alike.
@@ -26,7 +26,7 @@ export function checkVerdict({ comments, marker, head, expectedReal, authors, ba
   if (!Array.isArray(reporting) || reporting.length !== expectedReportOnly.length
     || new Set(reporting.map(r => r?.id)).size !== reporting.length
     || reporting.some(r => r?.id === "installed-skill-parity"
-      ? r.until !== PARITY_UNTIL || !(now < Date.parse(r.until)) || !expectedReportOnly.some(e => e?.id === r.id && e.until === r.until)
+      ? ![PARITY_UNTIL, ...PARITY_HISTORY.map(([, until]) => until)].includes(r.until) || !(now < Date.parse(r.until)) || !expectedReportOnly.some(e => e?.id === r.id && e.until === r.until)
       : r?.id !== "disk-free-floor" || !expectedReportOnly.includes(r.id) || !validDiskMeasurement(r.measurement)))
     return { ok: false, reason: "invalid or unauthorized report-only measurement" };
   const diskWarnings = reporting.filter(r => r.id === "disk-free-floor" && !r.measurement.health).length;

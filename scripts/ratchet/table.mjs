@@ -39,7 +39,7 @@ export function validDiskMeasurement(m) {
 export const PARITY_UNTIL = "2026-11-09T00:00:00Z";
 // Base rows (a merge's first parent) may still carry a previous, once-valid parity policy.
 // Only exact earlier pairs are tolerated, and only when parsing BASE rows; current rows stay strict.
-const PARITY_HISTORY = [["until-m1-run1", "2026-11-02T00:00:00Z"]];
+export const PARITY_HISTORY = [["until-m1-run1", "2026-11-02T00:00:00Z"]];
 export function isReportOnly(row, now = Date.now()) {
   return Boolean(row.report_only) && (row.report_only_until === undefined || now < Date.parse(row.report_only_until));
 }

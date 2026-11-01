@@ -66,3 +66,25 @@ test('base rows may carry the previous parity policy; current rows stay strict',
   expect(body).toContain('2026-11-02T00:00:00Z');
   expect(body).toContain('2026-11-09T00:00:00Z');
 });
+
+test('freshness reads master rows in base mode: an old-pair master row parses and reporting is computed', () => {
+  const old = { ...row, report_only: 'until-m1-run1', report_only_until: '2026-11-02T00:00:00Z' };
+  const masterRows = parseRows(doc(old), { base: true });
+  expect(() => expectedReporting(masterRows, 'live')).not.toThrow();
+  expect(Array.isArray(expectedReporting(masterRows, 'live'))).toBe(true);
+  expect(expectedReporting(parseRows(doc(row), { base: true }), 'live')).toEqual(expectedReporting(parseRows(doc(row)), 'live'));
+});
+
+test('a receipt written under the previous parity date stays valid only where master rows still expect it', () => {
+  const old = { ...row, report_only: 'until-m1-run1', report_only_until: '2026-11-02T00:00:00Z' };
+  const oldUntil = old.report_only_until;
+  const evaluation = evaluate({ rows: doc(old), baseRows: doc(old), results: { head_sha: head, results: { [row.id]: false } }, head, now: Date.parse(oldUntil) - 1, base: true });
+  const body = renderTable(evaluation, { marker: 'golems-ratchet-live' });
+  const args = { comments: [{ user: { login: 'EtanHey' }, body }], head, marker: 'golems-ratchet-live', expectedReal: 1, authors: ['EtanHey'], baseHasRows: true, now: Date.parse(oldUntil) - 1 };
+  expect(readVerdict(body, 'golems-ratchet-live').report_only).toEqual([{ id: row.id, until: oldUntil }]);
+  expect(checkVerdict({ ...args, expectedReportOnly: [{ id: row.id, until: oldUntil }] }).ok).toBe(true);
+  expect(checkVerdict({ ...args, expectedReportOnly: [{ id: row.id, until: until }] }).ok).toBe(false);
+  // An arbitrary date that is neither current nor history still fails.
+  const forged = body.replaceAll(oldUntil, '2026-11-05T00:00:00Z');
+  expect(checkVerdict({ ...args, comments: [{ user: { login: 'EtanHey' }, body: forged }], expectedReportOnly: [{ id: row.id, until: '2026-11-05T00:00:00Z' }] }).ok).toBe(false);
+});
