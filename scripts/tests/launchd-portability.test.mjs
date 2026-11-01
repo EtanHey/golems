@@ -73,25 +73,5 @@ describe("launchd templates are portable", () => {
       rmSync(scratch, { recursive: true, force: true });
     }
   });
-  test("agent browser reaper renders the reviewed pin and runs every ten minutes", () => {
-    const scratch = mkdtempSync(join(tmpdir(), "golems-browser-reap-"));
-    const source = join(launchdRoot, "com.golems.agent-browser-reap.plist");
-    const destination = join(scratch, basename(source));
-    try {
-      const result = Bun.spawnSync(["bash", join(launchdRoot, "render-plist.sh"), source, destination], {
-        env: { ...process.env, HOME: "/fixture/home", GOLEMS_ROOT: "/opt/golems" },
-        stdout: "pipe", stderr: "pipe",
-      });
-      expect(result.exitCode, result.stderr.toString()).toBe(0);
-      const rendered = readFileSync(destination, "utf8");
-      expect(rendered).toContain("/fixture/home/Gits/golems/.worktrees/hooks-live/scripts/agent-browser/agent-browser");
-      expect(rendered).toContain("<string>reap</string>");
-      expect(rendered).toContain("<key>StartInterval</key>\n\t<integer>600</integer>");
-      expect(rendered).toContain("/usr/sbin");
-      expect(rendered).not.toMatch(/@[A-Z][A-Z0-9_]*@/);
-    } finally {
-      rmSync(scratch, { recursive: true, force: true });
-    }
-  });
 
 });

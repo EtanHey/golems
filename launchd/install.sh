@@ -11,7 +11,6 @@ NODE_BIN="$(command -v node)"
 
 PLISTS=(
     "com.golems.worktree-gc.plist"
-    "com.golems.agent-browser-reap.plist"
 )
 RETIRED=("com.golemszikaron.briefing.plist")
 
@@ -90,7 +89,6 @@ done
 echo ""
 echo "✅ Installed! Schedules:"
 echo "  - Worktree prune (scripts/worktree-gc-nightly.sh, under the heavy-suite lock): 6:00 AM daily"
-echo "  - Agent browser: reap expired leases every 10 minutes"
 echo "  - Google Drive OAuth guard: login + every 5 minutes"
 echo ""
 echo "📋 Commands:"

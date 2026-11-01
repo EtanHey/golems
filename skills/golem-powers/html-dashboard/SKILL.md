@@ -65,8 +65,10 @@ open -na "Helium" --args \
 
 # 3. Navigate to file:// or localhost URL, exercise tabs/drawer/glossary, screenshot
 
-# 4. Quit temp Helium instance when done
+# 4. Quit the temp browser instance when done (required, not optional)
 ```
+
+**When you're done, close the browser you opened** (Etan, 2026-11-01: no background reaper; the skill closes it). Close your own tabs and quit any browser you started: agent browser → `page.close()` then `agent-browser release <lease>`; a headless or Playwright browser → `browser.close()`; T3 preview → `t3_preview_close`; a cmux browser pane → `close_surface`; a temporary browser profile → quit that instance. Never leave a window open on Etan's screen.
 
 Attach the screenshot + `/never-fabricate` verification receipt before merge.
 
