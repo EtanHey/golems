@@ -476,7 +476,7 @@ test("receipts report an invalid narration vendor manifest as unstamped", () => 
   }
 });
 
-test("receipts convention: PASS build emits portable schema-v1 rows for all four BUILD gates", () => {
+test("receipts convention: PASS build emits portable schema-v1 rows for all registered BUILD gates", () => {
   const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-receipts-pass-"));
   const jobDir = path.join(root, "job");
   const words = [
@@ -512,6 +512,7 @@ test("receipts convention: PASS build emits portable schema-v1 rows for all four
     "acoustic:BUILD:PASS",
     "onset-energy:BUILD:PASS",
     "teleprompter-drift:BUILD:PASS",
+    "design-preservation:BUILD:PASS",
   ]);
   expect(receipts.gates.every((row) => row.violations.length === 0 && Number.isFinite(Date.parse(row.ranAt)))).toBe(true);
   expect(receipts.purges).toEqual([]);
@@ -571,6 +572,7 @@ test("ruled scene deferral is visible beside response notes and portable in BUIL
     "acoustic:BUILD:PASS",
     "onset-energy:BUILD:PASS",
     "teleprompter-drift:BUILD:PASS",
+    "design-preservation:BUILD:PASS",
   ]);
   expect(JSON.stringify(receipts.gates)).not.toContain("s11a");
 });
@@ -637,6 +639,7 @@ test("B13 BUILD maps approved synth timings to authored display tokens", () => {
     "acoustic:PASS",
     "onset-energy:PASS",
     "teleprompter-drift:PASS",
+    "design-preservation:PASS",
   ]);
   expect(receipts.gates.find((gate) => gate.gate === "teleprompter-drift")?.derivedAliases).toEqual([
     { segment: "expanded", term: "P R", spoken: "pull request" },

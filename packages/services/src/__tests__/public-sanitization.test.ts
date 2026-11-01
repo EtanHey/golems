@@ -5,7 +5,9 @@ import { join } from "node:path";
 describe("public services package sanitation", () => {
   it("keeps active shared schedules without retired personal scheduling", () => {
     const cloudWorker = readFileSync(join(import.meta.dir, "../cloud-worker.ts"), "utf8");
-    expect(cloudWorker).toContain('scheduleDaily("CalendarSync"');
+    expect(cloudWorker).toContain('scheduleDaily("Briefing"');
+    expect(cloudWorker).not.toContain("CalendarSync");
+    expect(cloudWorker).not.toContain("getServiceRunReporter");
     expect(cloudWorker).not.toContain("[7, 10, 14, 17, 20]");
 
     const repoRoot = join(import.meta.dir, "../../../..");

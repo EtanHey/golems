@@ -7,7 +7,6 @@
 
 import { getRegistry } from "./registry";
 import type { PipelineStep, RoutingResult } from "./router";
-import { logPipelineRun } from "./tracker";
 
 export interface ExecutionResult {
   /** Whether execution completed successfully */
@@ -37,8 +36,6 @@ export interface ExecutionContext {
   outputDir?: string;
   /** Render service URL (default: http://localhost:3001) */
   serviceUrl?: string;
-  /** Whether to log the run to tracker */
-  trackRun?: boolean;
 }
 
 const DEFAULT_SERVICE_URL = "http://localhost:3001";
@@ -69,47 +66,12 @@ export async function executePlan(
       outputs.push(output);
     } catch (err) {
       const error = `Step ${step.pipelineId} failed: ${(err as Error).message}`;
-      // Log failed run
-      if (context.trackRun !== false) {
-        try {
-          await logPipelineRun({
-            pipelineId: step.pipelineId,
-            idea: step.input,
-            ideaType: classifyIdeaType(step.input),
-            success: false,
-            durationMs: Date.now() - startTime,
-            error,
-          });
-        } catch {
-          // Don't fail execution because of tracking failure
-        }
-      }
       return {
         success: false,
         outputs,
         totalDurationMs: Date.now() - startTime,
         error,
       };
-    }
-  }
-
-  // Log successful run
-  if (context.trackRun !== false) {
-    const lastStep = plan.steps[plan.steps.length - 1];
-    try {
-      await logPipelineRun({
-        pipelineId: plan.isMultiPipeline
-          ? plan.steps.map((s) => s.pipelineId).join("+")
-          : lastStep.pipelineId,
-        idea: plan.steps[0].input,
-        ideaType: classifyIdeaType(plan.steps[0].input),
-        success: true,
-        durationMs: Date.now() - startTime,
-        qualityScore: outputs[outputs.length - 1]?.qualityScore,
-        outputFormat: lastStep.outputFormat,
-      });
-    } catch {
-      // Don't fail execution because of tracking failure
     }
   }
 
@@ -225,14 +187,4 @@ function getMimeType(format: string): string {
     pdf: "application/pdf",
   };
   return mimeTypes[format] ?? "application/octet-stream";
-}
-
-/** Classify idea into a high-level type for tracking. */
-function classifyIdeaType(idea: string): string {
-  const lower = idea.toLowerCase();
-  if (/data|chart|stats|metric|report/.test(lower)) return "data-viz";
-  if (/anim|video|demo|showcase|motion/.test(lower)) return "animation";
-  if (/meme|merch|design|art|illustrat/.test(lower)) return "image-gen";
-  if (/brand|card|template|text/.test(lower)) return "branded-template";
-  return "general";
 }

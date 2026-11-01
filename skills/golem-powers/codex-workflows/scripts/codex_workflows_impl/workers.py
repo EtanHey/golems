@@ -345,6 +345,12 @@ def cleanup_worker(
     if lease["state"] == "closing":
         if not token:
             raise CodexWorkflowError("closing lease token unavailable; reconciliation required")
+        try:
+            lifecycle_tool("lease.py", "check-close", "--lease-id", worker["lease_id"], "--close-token", token)
+        except CodexWorkflowError as exc:
+            update_worker(manifest_path, worker_name, {"retirement_disposition": "RETAINED",
+                          "retirement_reason": str(exc), "worktree_removed": False})
+            raise
     else:
         if token:
             raise CodexWorkflowError("close token exists but lease is not closing")
@@ -425,8 +431,11 @@ def cleanup_worker(
         except (OSError, ValueError, TypeError) as exc:
             raise CodexWorkflowError(f"cannot resume retirement receipt: {exc}") from exc
     else:
+        generation_args = (["--expect-generation", json.dumps(lease["resource_generation"])]
+                           if "resource_generation" in lease else [])
         result = lifecycle_tool("retire.py", "--repo", str(repo), "--path", str(worktree),
-                                "--expect-head", worker["head"], "--receipt-out", str(receipt_path), check=False)
+                                "--expect-head", worker["head"], "--receipt-out", str(receipt_path),
+                                *generation_args, check=False)
         try:
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
             if receipt["disposition"] not in {"REMOVED", "RETAINED"} or (receipt["disposition"] == "REMOVED" and result.returncode != 0):

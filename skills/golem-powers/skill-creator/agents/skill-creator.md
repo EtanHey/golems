@@ -37,7 +37,7 @@ See /skill-creator skill (workflows/) for the full pipeline. Iteration ceiling: 
 ## CRITICAL RULES
 
 1. **Every skill ships with evals.** No eval = no ship.
-2. **Follow TDD strictly.** RED → GREEN → REFACTOR. No code without failing test.
+2. **Choose real proof.** Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
 3. **NEVER sleep+check.** Use mcp__cmuxlayer__wait_for or CronCreate.
 4. **Read() every file you cite.** No guessing from diff notifications.
 

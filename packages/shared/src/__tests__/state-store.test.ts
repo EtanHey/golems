@@ -5,7 +5,8 @@ import { join } from "path";
 // Set test dir BEFORE importing state-store (it reads env at module level)
 const TEST_DIR = join(import.meta.dir, "../../.test-state-store");
 process.env.GOLEMS_STATE_DIR = TEST_DIR;
-process.env.STATE_BACKEND = "file";
+// Stale deployment settings must still use local files after table retirement.
+process.env.STATE_BACKEND = "supabase";
 
 // Now import — paths will use TEST_DIR
 const { getState, setState, logEvent, getRecentEvents, isJobSeen, markJobSeen, markJobsSeen, getSeenJobIds } =

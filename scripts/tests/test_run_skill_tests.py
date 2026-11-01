@@ -25,7 +25,7 @@ def test_runner_lists_python_skill_test_suites_only():
     suites = set(result.stdout.splitlines())
 
     assert "skills/golem-powers/install-runbook-linter/tests" in suites
-    assert "skills/golem-powers/tdd-guard/hooks/tests" in suites
+    assert "skills/golem-powers/tdd-guard/hooks/tests" not in suites
     assert "skills/golem-powers/frustration-capture/hooks/tests" in suites
     assert "skills/golem-powers/eas-prebuild-check/tests" not in suites
 

@@ -525,7 +525,30 @@ case "$*" in
     *) label="UNKNOWN"; delay=0.1; title="Unknown Segment" ;;
 esac
 printf 'start:%s\n' "$label" >> "$PARALLEL_STATE_DIR/events"
-sleep "$delay"
+if [ "${PARALLEL_START_BARRIER:-0}" -gt 0 ]; then
+    deadline=$((SECONDS + 10))
+    # Starts are permanent arrivals: no worker may finish before the pool is full.
+    while [ "$(grep -c '^start:' "$PARALLEL_STATE_DIR/events")" -lt "$PARALLEL_START_BARRIER" ]; do
+        if [ "$SECONDS" -ge "$deadline" ]; then
+            printf 'Timed out waiting for %s scorer starts (%s)\n' "$PARALLEL_START_BARRIER" "$label" >&2
+            exit 47
+        fi
+        sleep 0.01
+    done
+    # Keep ONE alive until FIVE completes, proving a completed slot was reused
+    # and forcing completion order to differ from timestamp order.
+    if [ "$label" = ONE ]; then
+        while ! grep -q '^finish:FIVE$' "$PARALLEL_STATE_DIR/events"; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+                printf 'Timed out waiting for scorer FIVE to finish\n' >&2
+                exit 48
+            fi
+            sleep 0.01
+        done
+    fi
+else
+    sleep "$delay"
+fi
 printf 'finish:%s\n' "$label" >> "$PARALLEL_STATE_DIR/events"
 
 while ! mkdir "$lock" 2>/dev/null; do

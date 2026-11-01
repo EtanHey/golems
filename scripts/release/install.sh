@@ -373,5 +373,13 @@ fi
 # shellcheck disable=SC2016 # The PATH hint intentionally prints a literal $PATH.
 case :${PATH-}: in *:"$prefix/bin":*) ;; *) printf 'Add to PATH: export PATH="%s/bin:$PATH"\n' "$prefix" ;; esac
 printf 'golems %s installed (%s)\ncommit: %s\ntarball sha256: %s\n' "$version" "$channel" "$commit" "$tarball_sha256"
+receipt_writer=$prefix/current/scripts/skills-sync-receipt.mjs
+if command -v node >/dev/null 2>&1 && [ -f "$receipt_writer" ]; then
+  if ! node "$receipt_writer" emit release-channel auto "$prefix/current" "$prefix"; then
+    printf '%s\n' 'SKILLS-SYNC RECEIPT FAILED (install succeeded)' >&2
+  fi
+else
+  printf '%s\n' 'skills-sync receipt: unavailable (node or writer missing)'
+fi
 }
 main "$@"

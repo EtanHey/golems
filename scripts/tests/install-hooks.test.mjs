@@ -122,6 +122,7 @@ const bakFiles = (fx) => spawnSync("ls", [path.join(fx.home, ".claude")], { enco
 
 function fixtureEnv(fx) {
   const env = { ...process.env, HOME: fx.home, CODEX_HOME: path.join(fx.home, ".codex"),
+    RATCHET_SKILL_CONFIG: path.join(fx.home, 'fixture-parity-not-configured.json'),
     GOLEMS_HEAVY_LOCK: path.join(fx.root, "fixture-heavy.lock"),
     GOLEMS_HEAVY_MIN_FREE_GB: "0", GOLEMS_WORKTREE_MIN_FREE_GB: "0", ...(fx.env ?? {}) };
   // The parent suite owns the real mutex; nested synthetic installs use fixture-only state.
@@ -131,6 +132,34 @@ function fixtureEnv(fx) {
   env.PATH = `${bin}:${env.PATH}`;
   return env;
 }
+
+test('owner apply emits a checkout skills-sync receipt through the shared writer', () => {
+  const fx = fixture();
+  const skill = path.join(fx.repo, 'skills/golem-powers/demo-gate');
+  writeFileSync(path.join(skill, 'SKILL.md'), 'receipt fixture');
+  git(fx.repo, 'add', '.'); git(fx.repo, 'commit', '-qm', 'skill fixture'); git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  for (const root of ['.claude/skills', '.agents/skills', '.codex/skills']) {
+    mkdirSync(path.join(fx.home, root), { recursive: true }); symlinkSync(skill, path.join(fx.home, root, 'demo'));
+  }
+  fixtureEnv(fx);
+  const python = pathPython();
+  writeFileSync(path.join(fx.root, 'machine-bin/python3'), `#!/bin/sh\ncase "$*" in *ratchet/installed-skills.py*) printf '%s\\n' '{"measurement":"live","host_identity_valid":true,"name_content_parity":true,"required_readable_valid":true}';; *) exec '${python}' "$@";; esac\n`, { mode: 0o755 });
+  const result = run(fx, '--apply'); expect(result.status).toBe(0);
+  const receipt = JSON.parse(readFileSync(path.join(fx.home, '.local/state/golems/install-receipts/golems/latest-skills-sync-checkout.json')));
+  expect(receipt.install_source.mode).toBe('checkout'); expect(receipt.verdict).toBe('LIVE');
+  expect(receipt.installed.embedded_commit).toBe(git(fx.repo, 'rev-parse', 'HEAD'));
+  expect(receipt.activation.processes).toEqual([]);
+  const hookReceipt = path.join(fx.home, '.local/state/golems/install-receipts/golems/latest-hooks-sync-worktree-pin.json');
+  const pin = JSON.parse(readFileSync(hookReceipt)).target.released_sha;
+  git(fx.repo, 'commit', '--allow-empty', '-qm', 'root advanced independently'); git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  expect(run(fx, '--apply').status).toBe(0);
+  expect(JSON.parse(readFileSync(hookReceipt)).target.released_sha).toBe(pin);
+  expect(JSON.parse(readFileSync(path.join(fx.home, '.local/state/golems/install-receipts/golems/latest-skills-sync-checkout.json'))).target.released_sha).toBe(git(fx.repo, 'rev-parse', 'HEAD'));
+  rmSync(path.join(fx.home, '.local'), { recursive: true });
+  symlinkSync(path.join(fx.root, 'refuse-state-link'), path.join(fx.home, '.local'));
+  const failedReceipt = run(fx, '--apply');
+  expect(failedReceipt.status).toBe(0); expect(failedReceipt.out).toContain('SKILLS-SYNC RECEIPT FAILED (install succeeded)');
+});
 
 function guardedFixture({ privateSuite = "absent", candidate = "pass" } = {}) {
   const fx = fixture({ privateSuite: false });
@@ -457,13 +486,14 @@ test("E1 exclusion: the installer REFUSES every E1 hook even when the manifest n
 test("the shipped manifest names no E1 hook and retires the M1 owner profiles", () => {
   const text = JSON.stringify(realManifest);
   for (const name of E1_DELETED) expect(text).not.toContain(name);
+  expect(text).not.toContain("tdd-guard");
   expect(Object.keys(realManifest.hosts).sort()).toEqual(["client", "mbp"]);
   expect(Object.keys(realManifest.codex_hosts).sort()).toEqual(["client", "mbp"]);
   expect(realManifest.hosts.client.some((h) => h.event === "Stop")).toBe(false);
 });
 
-test("every shipped host set carries the same git-guardian and tmp-block guards", () => {
-  for (const id of ["pre_tool_use", "tmp-block"]) {
+test("every shipped host set carries the same heredoc-guard, git-guardian and tmp-block guards", () => {
+  for (const id of ["heredoc-guard", "pre_tool_use", "tmp-block"]) {
     const mbp = realManifest.hosts.mbp.filter((hook) => hook.id === id);
     expect(mbp).toHaveLength(1);
     expect(mbp[0].timeout).toBe(5);
@@ -953,6 +983,47 @@ function runDefault(fx, ...args) {
     { env: fixtureEnv(fx), encoding: 'utf8' });
   return { status: r.status, out: r.stdout + r.stderr };
 }
+test("tdd-guard retirement: selected manifest removes stale PreToolUse wiring on update and reapply", () => {
+  const fx = pinnedManifestFixture();
+  const manifest = manifestFor();
+  manifest.hosts.mbp.push({ id: "tdd-guard", kind: "golems", event: "PreToolUse", matcher: "Write|Edit",
+    link: "tdd-guard", source: "skills/golem-powers/tdd-guard", match: "tdd-guard.py", timeout: 3,
+    command: "{python} -I -B {hooks}/golems-fail-open.py {hooks}/tdd-guard/hooks/tdd-guard.py" });
+  const source = path.join(fx.repo, "skills/golem-powers/tdd-guard/hooks");
+  mkdirSync(source, { recursive: true });
+  writeFileSync(path.join(source, "tdd-guard.py"), "print('{}')\n");
+  writeFileSync(fx.pinnedManifest, JSON.stringify(manifest));
+  git(fx.repo, "add", "."); git(fx.repo, "commit", "-qm", "old hook manifest");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  expect(runDefault(fx, "--apply").status).toBe(0);
+  const before = readFileSync(fx.settingsPath, "utf8");
+  const stale = JSON.parse(before).hooks.PreToolUse.find((g) => g.matcher === "Write|Edit");
+  expect(stale.hooks[0].command).toContain("tdd-guard.py");
+  git(fx.repo, "rm", "-r", "skills/golem-powers/tdd-guard");
+  commitManifest(fx);
+  const dry = runDefault(fx, "--update");
+  expect(dry.out).toContain("would remove retired registration: tdd-guard/hooks/tdd-guard.py (PreToolUse)");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+  const update = runDefault(fx, "--update", "--apply");
+  expect(update.status).toBe(0);
+  expect(update.out).toContain("removing retired registration: tdd-guard/hooks/tdd-guard.py (PreToolUse)");
+  const link = path.join(fx.home, ".claude/hooks/tdd-guard");
+  expect(linkExists(link)).toBe(false);
+  expect(bakFiles(fx).some((f) => readFileSync(path.join(fx.home, ".claude", f), "utf8") === before)).toBe(true);
+  const settings = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  expect(settings.hooks.SessionStart).toEqual([{ hooks: [EXTERNAL] }]);
+  settings.hooks.PreToolUse.push(stale);
+  writeFileSync(fx.settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
+  const status = runDefault(fx, "--status");
+  expect(status.status).toBe(1);
+  expect(status.out).toContain("retired-registered: tdd-guard/hooks/tdd-guard.py (PreToolUse)");
+  expect(runDefault(fx, "--apply").status).toBe(0);
+  const clean = readFileSync(fx.settingsPath, "utf8");
+  expect(clean).not.toContain("/tdd-guard/hooks/tdd-guard.py");
+  expect(runDefault(fx, "--apply").status).toBe(0);
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(clean);
+  expect(runDefault(fx, "--status").status).toBe(0);
+});
 test('default manifest comes from the selected pin despite an older invoking checkout', () => {
   const fx = pinnedManifestFixture(); const first = commitManifest(fx);
   expect(runDefault(fx, '--apply').status).toBe(0);
@@ -1253,11 +1324,11 @@ const closedDeny = { decision: "block", reason: REPAIR_REASON, hookSpecificOutpu
 const callHook = (fx, command, input = "{}") => spawnSync("sh", ["-c", command],
   { input, encoding: "utf8", env: { ...fixtureEnv(fx), HOME: fx.home } });
 
-test("the policy gates (tmp-block, git-guardian, human-confirm) opt into fail-closed on every host where they run", () => {
+test("the policy gates (heredoc-guard, tmp-block, git-guardian, human-confirm) opt into fail-closed on every host where they run", () => {
   for (const entries of Object.values(realManifest.hosts)) {
     expect(entries.filter((e) => e.command?.includes("--fail-closed")).map((e) => e.id).sort())
-      .toEqual(["human-confirm-gate", "pre_tool_use", "tmp-block"]);
-    for (const id of ["human-confirm-gate", "pre_tool_use", "tmp-block"]) {
+      .toEqual(["heredoc-guard", "human-confirm-gate", "pre_tool_use", "tmp-block"]);
+    for (const id of ["heredoc-guard", "human-confirm-gate", "pre_tool_use", "tmp-block"]) {
       expect(entries.find((e) => e.id === id).timeout).toBeGreaterThanOrEqual(2);  // watchdog budget = timeout - 1
       expect(entries.find((e) => e.id === id).command).toContain("golems-fail-open.py --fail-closed ");
     }
@@ -1740,4 +1811,25 @@ test("creation floor refuses before any fixture worktree is added", () => {
   expect(result.out).toContain("worktree creation refused");
   expect(git(fx.repo, "worktree", "list", "--porcelain")).toBe(before);
   expect(existsSync(live(fx))).toBe(false);
+});
+
+test("M1 window gate registers both T3 spellings and status reports absent config without writes", () => {
+  const e = realManifest.hosts.mbp.find((e) => e.id === "m1-window-gate");
+  expect(e.command).not.toContain("--fail-closed");
+  for (const name of ["Bash", "mcp__t3-code__delegate_task", "mcp__t3_code__delegate_task"]) expect(new RegExp(e.matcher).test(name)).toBe(true);
+  const seat = realManifest.hosts.client.find((e) => e.id === "m1-window-gate");
+  expect(seat.command).toEndWith(" --mode seat");
+  for (const name of ["Bash", "Write", "Edit", "MultiEdit", "NotebookEdit"]) expect(new RegExp(seat.matcher).test(name)).toBe(true);
+  expect(realManifest.codex_hosts.client.find((e) => e.gate === "m1-window-gate")).toMatchObject({ matcher: "^Bash$", mode: "seat" });
+  expect(realManifest.codex_hosts.mbp.find((e) => e.gate === "m1-window-gate").matcher).toBe("^Bash$");
+  const fx = fixture();
+  const manifest = manifestFor(); manifest.hosts.mbp.push(e);
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const before = readFileSync(fx.settingsPath, "utf8");
+  expect(run(fx, "--status").out).toContain("m1-window-gate unconfigured");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+  expect(existsSync(path.join(fx.home, ".golems/m1-window-gate.json"))).toBe(false);
+  manifest.hosts.mbp[manifest.hosts.mbp.length - 1] = seat;
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  expect(run(fx, "--status").out).toContain("m1-window-gate seat (procedure lock checked per call)");
 });

@@ -9,7 +9,7 @@ Claude Code has everything needed for the complete loop:
 | Step | Tool / Command | Notes |
 |------|---------------|-------|
 | Branch | `git checkout -b feat/name` via Bash | Full git access |
-| Implement | Edit/Write tools + TDD skill | Native file editing |
+| Implement | Edit/Write tools + cheapest real proof | See the proof rule in `/pr-loop` |
 | Test | `bun test` via Bash | Full shell access |
 | Commit | `cr review --plain`, then `git commit` | CodeRabbit CLI available |
 | Push | `git push -u origin feat/name` | |
@@ -95,25 +95,11 @@ boot would have been wrong for most of that session's writes. This is Q1's rulin
 The same sweep found `"<synthetic>"` written into `.message.model` on non-assistant records; it is a
 sentinel, never a model, and must be filtered out before it reaches a signature.
 
-**Subagents:** the signature identifies a **seat**, and sub-agents do not hold seats (fleet law).
-A sub-agent signs with its seat's session model. If a sub-agent's own turns are not yet flushed to
-the session JSONL when it writes, do NOT fall back to "whatever the last row says" from a different
-context — use the model the harness reports for the running context and set
-`"model_source":"harness-reported"` so the audit knows which path produced it.
+Use the running context's live model, including subagents that did the work. If its
+turns are not flushed, use harness runtime metadata; otherwise sign with `unknown`.
+Re-read per GitHub write. No effort in the signature or commit trailer.
 
-- `model_source` for this path is `session-jsonl`. If you take the value the harness reports about
-  itself in-band instead, that is `harness-reported` — say so rather than claiming the JSONL.
-- Re-run the read **per GitHub write**, not once per session.
-- The project slug directory is derived from cwd; pin the exact JSONL if the session works across
-  repos (`ls -t ~/.claude/projects/<slug>/*.jsonl | head -1`).
-- No JSONL readable (sandbox, worktree oddity)? Emit `"model":"unknown",
-  "model_source":"unavailable"`. Never guess — a wrong model poisons every audit downstream.
-- Observed effort is allowed only on the Loop-record line. Claude Code JSONLs carry no effort field at all;
-  effort registration happens at the BrainLayer checkpoint (brainlayer lane).
-
-Claude is also the seat that can `brain_store` the checkpoint metadata behind the signature — pair
-the post-merge `brain_store` with the session id you signed with, so comment → JSONL → BrainLayer
-is one traceable chain.
+Observed effort is allowed only on the Loop-record line.
 
 ## Hierarchical Worker Mode
 

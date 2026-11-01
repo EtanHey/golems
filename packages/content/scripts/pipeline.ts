@@ -5,11 +5,10 @@
  * Usage:
  *   bun run pipeline route "Create a weekly job market infographic"
  *   bun run pipeline route "Animated code demo of the new API" --execute
- *   bun run pipeline stats
  *   bun run pipeline list
  */
 
-import { getRegistry, routeIdea, executePlan, getPerformanceStats } from "../src/pipeline";
+import { getRegistry, routeIdea, executePlan } from "../src/pipeline";
 import type { OutputFormat } from "../src/pipeline";
 
 const args = process.argv.slice(2);
@@ -23,9 +22,6 @@ Commands:
   route <idea> [--format png|mp4|...] [--project name] [--execute]
     Route an idea to the best pipeline. Add --execute to also run it.
 
-  stats
-    Show pipeline performance statistics.
-
   list
     List all available pipelines.
 
@@ -33,7 +29,6 @@ Examples:
   bun run pipeline route "Weekly job market bar chart"
   bun run pipeline route "Animated code demo" --execute
   bun run pipeline route "Generate a meme about TypeScript" --format png
-  bun run pipeline stats
 `);
   process.exit(0);
 }
@@ -85,7 +80,6 @@ async function main() {
         console.log("Executing pipeline...");
         const execResult = await executePlan(result, {
           project,
-          trackRun: true,
         });
 
         if (execResult.success) {
@@ -97,26 +91,6 @@ async function main() {
           console.error(`Execution failed: ${execResult.error}`);
           process.exit(1);
         }
-      }
-      break;
-    }
-
-    case "stats": {
-      const stats = await getPerformanceStats();
-      if (stats.length === 0) {
-        console.log("No pipeline runs recorded yet.");
-        break;
-      }
-
-      console.log("Pipeline Performance Stats\n");
-      for (const s of stats) {
-        console.log(`  ${s.pipelineId}`);
-        console.log(`    Runs: ${s.totalRuns} (${s.successfulRuns} successful)`);
-        console.log(`    Success rate: ${(s.successRate * 100).toFixed(0)}%`);
-        console.log(`    Avg quality: ${s.avgQualityScore.toFixed(1)}`);
-        console.log(`    Avg duration: ${(s.avgDurationMs / 1000).toFixed(1)}s`);
-        console.log(`    Top types: ${s.topIdeaTypes.join(", ")}`);
-        console.log();
       }
       break;
     }

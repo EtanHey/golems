@@ -29,7 +29,9 @@ export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), sce
     decisions,
     ...renderOptions,
   });
-  const window = new Window(url ? { url } : undefined);
+  // Keep iframe outcomes under test control. Disabling page loading makes happy-dom
+  // raise its error synchronously on insertion instead of starting a real navigation.
+  const window = new Window({ ...(url ? { url } : {}), settings: { disableIframePageLoading: true } });
   const nativeMatchMedia = window.matchMedia.bind(window);
   window.matchMedia = query => query === "(pointer: coarse)" ? { matches: touch } : nativeMatchMedia(query);
   if (seed) window.localStorage.setItem("dbx:interaction-test", JSON.stringify(seed));
