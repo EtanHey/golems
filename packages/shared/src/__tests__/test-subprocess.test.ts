@@ -1,7 +1,7 @@
 import { expect, it } from "bun:test";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const root = join(import.meta.dir, "../../../..");
 
@@ -18,6 +18,12 @@ for (const helper of [false, true]) {
       writeFileSync(join(cwd, "package.json"), JSON.stringify({ scripts: {
         test: `bun test --no-env-file ${join(import.meta.dir, "llm-default-backend.test.ts")} --test-name-pattern 'eval children'`,
       } }));
+      // The real hook also loads the ratchet entrypoint (empty stdin selects no refs here).
+      for (const file of ["ratchet/pre-push.mjs", "ratchet/run-rows.mjs", "ratchet/table.mjs", "hooks/machine-host.mjs"]) {
+        const target = join(cwd, "scripts", file);
+        mkdirSync(dirname(target), { recursive: true });
+        copyFileSync(join(root, "scripts", file), target);
+      }
       if (helper) {
         const dir = join(cwd, "Gits/golems/.worktrees/hooks-live/scripts/hooks");
         mkdirSync(dir, { recursive: true });
