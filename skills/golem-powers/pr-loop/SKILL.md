@@ -144,14 +144,17 @@ Rollout to other repos is a follow-up; this change wires golems only.
 ## Bots after the flip
 
 ci-hygiene owns the bot config. This is what each bot does once a draft is marked ready
-(2026-11-01). Where it says unverified, the first draft→ready PRs will settle it.
+(2026-11-01). Where it says unverified, the first draft→ready PRs will settle it. Marking ready also
+starts the heavy CI suites, which skip drafts in golems.
 
 | Bot | After `gh pr ready` | What you do |
 |---|---|---|
-| CodeRabbit | Skips drafts. On only in core repos (brainlayer, voicelayer), with no re-review per push. Whether the flip triggers its review is unverified. | Wait up to 10 min after ready. If no review appears, comment `@coderabbitai review` once. Other repos: request it only for a core-risk change. |
+| CodeRabbit | Skips drafts; marking ready triggers its one review (vendor docs, verified 2026-11-01; ~8–9 min in our repos). On only in core repos (brainlayer, voicelayer), with no re-review per push. | Don't request it by hand after ready. Other repos: request `@coderabbitai review` only for a core-risk change. |
 | Codex | Draft behavior unverified. | If it hasn't reviewed ~10 min after ready, comment `@codex review` once. |
 | Copilot | Reviews only on request; automatic review is not enabled. | Don't request it. |
-| Bugbot, Macroscope, Qodo, Greptile | Don't run automatically. | Request one only for a core-risk PR, per the repo's bot policy. |
+| Macroscope | Marking ready triggers a correctness check by design; set to manual-only, which should stop it (unverified). | Request it only for a core-risk PR. |
+| Bugbot | Silent on drafts; on ready it may post only a spend-limit notice until set to "run only when mentioned". | Ignore that notice; request it only for a core-risk PR. |
+| Qodo, Greptile | Don't run automatically. | Request one only for a core-risk PR, per the repo's bot policy. |
 | DeepSource, CodeQL | CI-style checks on every push. | Nothing. |
 
 The 10-minute fallbacks above apply only while the PR is still blocked on something else anyway.
