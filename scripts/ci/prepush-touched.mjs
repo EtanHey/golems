@@ -1,22 +1,36 @@
 #!/usr/bin/env node
 // Select actual CI commands; the workflow remains the command inventory.
-import { readFileSync, readdirSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
+// Only the checked-out HEAD can be pushed; other branch heads are refused.
+import { readFileSync, readdirSync, existsSync, mkdirSync, appendFileSync, accessSync, constants } from 'node:fs';
 import { dirname, basename, resolve, join } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { parse } from 'yaml';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 process.chdir(root);
 const python = process.env.PYTHON_BIN || 'python3';
+function available(command) {
+  return (command.includes('/') ? [command] : (process.env.PATH || '').split(':').map(p => join(p || '.', command)))
+    .some(p => { try { accessSync(p, constants.X_OK); return true; } catch { return false; } });
+}
+const warnMissing = tool => console.error(`prepush-touched: ${tool} not installed here; dependent checks will run in CI`);
+const pythonModules = new Set();
 function run(command, env = {}, capture = false) {
+  if (command[0] !== 'git' && !available(command[0])) { warnMissing(command[0]); return ''; }
+  if (command[1] === '-m' && command[2] === 'pytest' && !pythonModules.has(command[0])) {
+    const probe = spawnSync(command[0], ['-c', "import importlib.util; raise SystemExit(0 if importlib.util.find_spec('pytest') else 1)"], { encoding: 'utf8' });
+    if (probe.status === 1) { warnMissing('pytest'); return ''; }
+    pythonModules.add(command[0]);
+  }
   const display = command.join(' ');
   console.error(`prepush-touched: RUN ${display.length > 700 ? display.slice(0, 700) + ' … (' + command.length + ' args)' : display}`);
   const r = spawnSync(command[0], command.slice(1), {
     cwd: root, env: { ...process.env, ...env }, encoding: 'utf8',
+    ...(command[0] === 'bats' ? { timeout: 180_000, killSignal: 'SIGKILL' } : {}),
     stdio: capture ? ['ignore', 'pipe', 'inherit'] : ['ignore', 'inherit', 'inherit'],
   });
+  if (r.error?.code === 'ENOENT' && command[0] !== 'git') { warnMissing(command[0]); return ''; }
   if (r.error || r.status !== 0) {
     console.error(`prepush-touched: FAIL ${command.join(' ')} (${r.error?.message || r.status})`);
     process.exit(r.status > 0 ? r.status : 1);
@@ -42,8 +56,9 @@ function skip() {
     hatch: 'GOLEMS_PREPUSH_TOUCHED=0', command: 'scripts/ci/prepush-touched.sh' }) + '\n');
   console.error(`prepush-touched: SKIP GOLEMS_PREPUSH_TOUCHED=0; logged to ${ledger}`);
 }
-function main() {
+async function main() {
   if (process.env.GOLEMS_PREPUSH_TOUCHED === '0') return skip();
+  if (!available('git')) return warnMissing('git');
   const args = process.argv.slice(2);
   const ranges = [];
   if (args.length) {
@@ -75,6 +90,7 @@ function main() {
     const original = git('rev-parse', 'HEAD');
     const target = git('rev-parse', head);
     if (original !== target) throw new Error('push head differs from checkout; check out that head before pushing');
+    if (!available(process.env.PUBLISH_BOUNDARY_RUBY_BIN || 'ruby')) { warnMissing('ruby'); continue; }
     run(['bash', 'scripts/check-publish-boundary.sh'], {
       PUBLISH_BOUNDARY_HISTORY_MODE: 'ratchet', PUBLISH_BOUNDARY_HISTORY_BASE: base,
     });
@@ -84,6 +100,12 @@ function main() {
   run(['node', 'scripts/ci/canon-drift-lint.mjs', '--check', '--routing-allowlist',
     'scripts/ci/routing-restatement-allowlist.json', ...scans.flatMap(p => ['--routing-scan', p])]);
 
+  let parse;
+  try { ({ parse } = await import('yaml')); } catch (error) {
+    if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
+    return warnMissing('yaml');
+  }
+  const skillBats = [];
   const workflow = parse(readFileSync('.github/workflows/golem-powers-skill-tests.yml', 'utf8'));
   const skills = [...new Set([...changed].filter(p => p.startsWith('skills/golem-powers/')).map(p => p.split('/')[2]))];
   if (skills.length) {
@@ -93,8 +115,7 @@ function main() {
     const selected = listed.filter(p => skills.some(s => p.startsWith(`skills/golem-powers/${s}/`)));
     const suites = selected.filter(p => !p.endsWith('.py'));
     if (suites.length) run([python, '-m', 'pytest', ...suites, '-q']);
-    for (const path of skills.flatMap(s => walk(`skills/golem-powers/${s}`)).filter(p => p.endsWith('.bats')))
-      run(['timeout', '--kill-after=10s', '180s', 'bats', '--tap', path]);
+    skillBats.push(...skills.flatMap(s => walk(`skills/golem-powers/${s}`)).filter(p => p.endsWith('.bats')));
     for (const evalSuite of selected.filter(p => p.endsWith('.py'))) run([python, evalSuite]);
   }
   // These are the pristine gate's input families (FILES and imported split modules).
@@ -172,7 +193,13 @@ function main() {
     seen.add(JSON.stringify(command));
     run(command[0] === 'python' ? [python, ...command.slice(1)] : command);
   }
-  if (selectedBats.length) run(['node', 'scripts/ci/run-bats-suites.mjs', '--run', ...selectedBats.map(p => basename(p))]);
-  if (!skills.length && !relevant.length) console.error('prepush-touched: no relevant suites; cheap gates passed');
+  const batsCount = skillBats.length + selectedBats.length;
+  if (batsCount && !available('bats')) {
+    console.error(`prepush-touched: bats not installed here; ${batsCount} bats suites will run in CI`);
+  } else {
+    for (const path of skillBats) run(['bats', '--tap', path]);
+    if (selectedBats.length) run(['node', 'scripts/ci/run-bats-suites.mjs', '--run', ...selectedBats.map(p => basename(p))]);
+  }
+  if (!skills.length && !relevant.length) console.error('prepush-touched: no relevant suites; available cheap gates finished');
 }
-try { main(); } catch (error) { console.error(`prepush-touched: FAIL ${error.message}`); process.exitCode = 1; }
+try { await main(); } catch (error) { console.error(`prepush-touched: FAIL ${error.message}`); process.exitCode = 1; }

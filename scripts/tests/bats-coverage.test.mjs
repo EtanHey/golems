@@ -38,7 +38,7 @@ test('stale entries, duplicates, and invalid skip reasons fail', t => {
   ]) assert.equal(fixture(t, manifest)().status, 1);
 });
 
-test('a missing runner command fails even without TAP failure lines', t => {
+test('a missing bats fails in CI even without TAP failure lines', t => {
   const result = fixture(t, { run: ['a.bats'], skip: {} })('--run', { ...process.env, PATH: '' });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /FAIL a.bats:.*ENOENT/);
@@ -51,7 +51,7 @@ test('requested Bats suites run once; unknown or skipped selections fail', t => 
   copyFileSync(new URL('../ci/run-bats-suites.mjs', import.meta.url), join(root, 'scripts/ci/run-bats-suites.mjs'));
   writeFileSync(join(root, 'scripts/ci/bats-suites.json'), JSON.stringify({ run: ['a.bats', 'b.bats'], skip: { 'c.bats': 'Unavailable' } }));
   for (const name of ['a', 'b', 'c']) writeFileSync(join(root, `scripts/tests/${name}.bats`), '');
-  writeFileSync(join(root, 'bin/timeout'), '#!/bin/sh\nprintf "EXEC %s\\n" "$@"\n', { mode: 0o755 });
+  writeFileSync(join(root, 'bin/bats'), '#!/bin/sh\nprintf "EXEC %s\\n" "$@"\n', { mode: 0o755 });
   const invoke = names => spawnSync(process.execPath, [join(root, 'scripts/ci/run-bats-suites.mjs'), '--run', ...names],
     { encoding: 'utf8', env: { ...process.env, PATH: `${root}/bin` } });
   const selected = invoke(['a.bats', 'a.bats']);
