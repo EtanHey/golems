@@ -16,6 +16,10 @@ HOOK = ROOT / ".githooks/pre-push"
 def test_pre_push_wraps_suite_and_preserves_fallback_status(tmp_path, availability, status):
     home, bin_dir = tmp_path / "home", tmp_path / "bin"
     home.mkdir(); bin_dir.mkdir()
+    # This fixture isolates the package queue; touched-suite behavior has its own harness.
+    touched = bin_dir / "bash"
+    touched.write_text('#!/bin/sh\nexit 0\n')
+    touched.chmod(0o755)
     helper = home / "Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
     if availability != "missing-helper":
         helper.parent.mkdir(parents=True)
@@ -59,6 +63,9 @@ def git_env_hook(tmp_path, request):
     clean_env = {k: v for k, v in os.environ.items() if k not in local_names}
     home, bin_dir, decoy = (tmp_path / name for name in ("home", "bin", "decoy"))
     home.mkdir(); bin_dir.mkdir(); decoy.mkdir()
+    touched = bin_dir / "bash"
+    touched.write_text('#!/bin/sh\nexit 0\n')
+    touched.chmod(0o755)
     if request.param == "installed":
         helper = home / "Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
         helper.parent.mkdir(parents=True)
@@ -170,6 +177,8 @@ def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
     bun.chmod(0o755)
     scripts = repo / "scripts"
     scripts.mkdir()
+    (scripts / "ci").mkdir()
+    (scripts / "ci/prepush-touched.sh").write_text('exit 0\n')
     (scripts / "run_tests.sh").write_text(
         'printf ran > "$SUITE_RECORD"\n')
     env.update(PATH=str(bin_dir) + os.pathsep + env["PATH"], SUITE_RECORD=str(marker))

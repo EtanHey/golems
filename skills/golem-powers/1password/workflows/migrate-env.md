@@ -167,7 +167,7 @@ op inject -i .env.template -o .env
 
 Creates .env with actual values.
 
-### Option 2: op run (preferred)
+### Option 2: op run (Etan's own interactive sessions only; agents load ~/.config/golems/*.env instead, since each op call is a Touch ID prompt)
 
 Run commands with secrets injected:
 ```bash
