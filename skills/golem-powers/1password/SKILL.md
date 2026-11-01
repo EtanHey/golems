@@ -1,11 +1,25 @@
 ---
 name: 1password
-description: "Manage 1Password op secrets/env. Triggers: API keys, .env, op auth."
+description: "Deliberate 1Password admin while Etan is present (add, rotate, migrate secrets; each `op` call asks for his Touch ID). NOT for using an API key: load ~/.config/golems/*.env."
 ---
 
 # 1Password Operations
 
 > Secret management skill using 1Password CLI (`op`). Routes to workflows for specific operations.
+
+## Never call `op` for routine secrets
+
+Every `op` call asks Etan for his fingerprint (1Password Touch ID). Agents calling `op` for routine
+work, plus agents ssh-ing through the 1Password SSH agent, made him approve prompts all day
+(measured 2026-11-01). So:
+
+- **Using a key** (live tests, API calls, CLIs): load the per-tool file under `~/.config/golems/`
+  for that one command, in a subshell: `( set -a; . ~/.config/golems/<tool>.env; set +a; <cmd> )`.
+  Never print or echo the value.
+- **`op` only for a deliberate, one-time step Etan is there to approve:** adding, rotating or
+  migrating a secret, or regenerating a launcher cache (`repogolem generate`). Say beforehand that a
+  Touch ID prompt is coming. Never in loops, hooks, schedules, health checks or as a fallback.
+- **If a needed `.env` file is missing**, stop and ask the lead; don't reach for `op`.
 
 ## Prerequisites Check
 
