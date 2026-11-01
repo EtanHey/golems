@@ -16,7 +16,7 @@ function available(command) {
 }
 const warnMissing = tool => console.error(`prepush-touched: ${tool} not installed here; dependent checks will run in CI`);
 const pythonModules = new Set();
-function run(command, env = {}, capture = false, retrySuite = false) {
+function run(command, env = {}, capture = false, patternSelected = false, retrySuite = false) {
   if (command[0] !== 'git' && !available(command[0])) { warnMissing(command[0]); return ''; }
   if (command[1] === '-m' && command[2] === 'pytest' && !pythonModules.has(command[0])) {
     const probe = spawnSync(command[0], ['-c', "import importlib.util; raise SystemExit(0 if importlib.util.find_spec('pytest') else 1)"], { encoding: 'utf8' });
@@ -33,6 +33,12 @@ function run(command, env = {}, capture = false, retrySuite = false) {
   });
   let r = execute();
   if (r.error?.code === 'ENOENT' && command[0] !== 'git') { warnMissing(command[0]); return ''; }
+  if (!r.error && r.status === 5 && patternSelected && command[1] === '-m' && command[2] === 'pytest') {
+    if (r.stdout) process.stdout.write(r.stdout);
+    if (r.stderr) process.stderr.write(r.stderr);
+    console.error(`prepush-touched: WARN no tests collected; skipping ${display}`);
+    return r.stdout || '';
+  }
   if (retrySuite && (r.error || r.status !== 0)) {
     const first = r;
     const tail = result => [result.stdout, result.stderr].filter(Boolean).join('\n').trimEnd().split('\n').slice(-40).join('\n');
@@ -60,7 +66,7 @@ function run(command, env = {}, capture = false, retrySuite = false) {
   }
   return r.stdout || '';
 }
-const suite = command => run(command, {}, false, true);
+const suite = (command, patternSelected = false) => run(command, {}, false, patternSelected, true);
 const git = (...args) => run(['git', ...args], {}, true).trim();
 function walk(dir) {
   if (!existsSync(dir)) return [];
@@ -175,8 +181,8 @@ async function main() {
     }
   }
   // run-skill-tests also collects scripts/tests pytest files, beyond named steps.
-  for (const path of walk('scripts/tests').filter(p => /\/test[^/]*\.py$/.test(p)))
-    inventory.push({ command: [python, '-m', 'pytest', path, '-q'], path });
+  for (const path of walk('scripts/tests').filter(p => /\/(?:test_[^/]*|[^/]*_test)\.py$/.test(p)))
+    inventory.push({ command: [python, '-m', 'pytest', path, '-q'], path, patternSelected: true });
   for (const path of walk('scripts').filter(p => /^scripts\/test_[^/]*\.py$/.test(p)))
     inventory.push({ command: [python, path], path });
   // Include new test files before the CI inventory learns their name.
@@ -212,10 +218,10 @@ async function main() {
     selectedBats = bats;
   }
   const seen = new Set();
-  for (const { command } of selected) {
+  for (const { command, patternSelected } of selected) {
     if (seen.has(JSON.stringify(command))) continue;
     seen.add(JSON.stringify(command));
-    suite(command[0] === 'python' ? [python, ...command.slice(1)] : command);
+    suite(command[0] === 'python' ? [python, ...command.slice(1)] : command, patternSelected);
   }
   const batsCount = skillBats.length + selectedBats.length;
   if (batsCount && !available('bats')) {

@@ -35,6 +35,8 @@ function fixture(t, paths, options = {}) {
     writeFileSync(join(root, 'node_modules/yaml/package.json'), '{"type":"module","exports":"./index.mjs"}');
     writeFileSync(join(root, 'node_modules/yaml/index.mjs'), "export { parse } from './not-installed.mjs';");
   }
+  for (const [path, content] of Object.entries(options.files || {}))
+    writeFileSync(join(root, path), content);
   const log = join(root, 'commands');
   writeFileSync(log, '');
   const fake = `#!${fixturePython}
@@ -53,6 +55,8 @@ if name == 'python' and '-c' in args and os.environ.get('NO_PYTEST'):
     sys.exit(1)
 if name == 'bash' and 'run-skill-tests.sh' in ' '.join(args):
     print('skills/golem-powers/example/tests')
+if name == 'python' and '-m' in args and 'pytest' in args and os.environ.get('PYTEST_EXIT'):
+    sys.exit(int(os.environ['PYTEST_EXIT']))
 if os.environ.get('FAIL_ONCE') == ' '.join([name] + args):
     marker = os.path.join(os.environ['HOME'], 'failed-once')
     if not os.path.exists(marker):
@@ -247,5 +251,50 @@ test('passing suite runs once without a flake receipt', t => {
   const r = fixture(t, ['scripts/example.sh']);
   assert.equal(r.status, 0, r.stderr);
   assert.equal(suiteRuns(r), 1);
+  assert.equal(requireLedger(r).length, 0);
+});
+
+for (const [name, selected] of [['test-x.py', false], ['test_x.py', true], ['x_test.py', true]]) {
+  test(`pytest discovery ${selected ? 'includes' : 'excludes'} ${name}`, t => {
+    const path = `scripts/tests/${name}`;
+    const r = fixture(t, ['scripts/example.sh'], { files: { [path]: '# scripts/example.sh' } });
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.log.includes(JSON.stringify(['python', '-m', 'pytest', path, '-q'])), selected);
+  });
+}
+test('pattern-selected pytest exit 5 warns and passes', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    files: { 'scripts/tests/test_empty.py': '# scripts/example.sh' }, PYTEST_EXIT: '5',
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /WARN.*no tests collected.*test_empty\.py/);
+});
+test('explicit pytest exit 5 still blocks even when also discovered by pattern', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    files: {
+      'scripts/tests/test_explicit.py': '# scripts/example.sh',
+      '.github/workflows/security.yml': 'jobs:\n  check:\n    steps:\n      - run: python -m pytest scripts/tests/test_explicit.py -q\n',
+    }, PYTEST_EXIT: '5',
+  });
+  assert.equal(r.status, 5, r.stderr);
+  assert.match(r.stderr, /FAIL.*pytest.*test_explicit\.py/);
+  assert.doesNotMatch(r.stderr, /WARN.*no tests collected/);
+});
+test('pattern-selected pytest assertion failures still block', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    files: { 'scripts/tests/test_failure.py': '# scripts/example.sh' }, PYTEST_EXIT: '1',
+  });
+  assert.equal(r.status, 1, r.stderr);
+});
+
+test('pattern-selected pytest exit 5 never retries or records a flake', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    files: { 'scripts/tests/test_empty.py': '# scripts/example.sh' }, PYTEST_EXIT: '5',
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /WARN.*no tests collected.*test_empty\.py/);
+  const command = JSON.stringify(['python', '-m', 'pytest', 'scripts/tests/test_empty.py', '-q']);
+  assert.equal(r.log.split('\n').filter(line => line === command).length, 1);
+  assert.doesNotMatch(r.stderr, /RETRY|FLAKE/);
   assert.equal(requireLedger(r).length, 0);
 });
