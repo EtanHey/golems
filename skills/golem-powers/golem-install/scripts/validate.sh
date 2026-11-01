@@ -19,25 +19,28 @@ show_help() {
     echo "Options:"
     echo "  --quick     Quick check (dependencies only)"
     echo "  --skills-only  Skill-symlink + directory checks only (no 1Password, no network)"
+    echo "  --with-1password  Also check 1Password access with op (each op call asks for Touch ID;"
+    echo "                    use only when Etan is there to approve)"
     echo "  --json      Output as JSON"
     echo "  -h, --help  Show this help"
     echo ""
     echo "Validates:"
     echo "  - All CLI dependencies installed"
-    echo "  - 1Password signed in with vault access"
-    echo "  - API tokens accessible"
+    echo "  - API key files present and private (~/.config/golems/*.env); no op calls by default"
     echo "  - Config directories exist"
     echo "  - Skill symlinks valid"
 }
 
 QUICK=false
 SKILLS_ONLY=false
+WITH_OP=false
 JSON_OUTPUT=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --quick) QUICK=true; shift ;;
         --skills-only) SKILLS_ONLY=true; shift ;;
+        --with-1password) WITH_OP=true; shift ;;
         --json) JSON_OUTPUT=true; shift ;;
         -h|--help) show_help; exit 0 ;;
         *) echo -e "${RED}ERROR: Unknown option: $1${NC}"; exit 1 ;;
@@ -67,6 +70,12 @@ check() {
         echo -e "${RED}[FAIL]${NC} $name"
         ((++FAIL))
     fi
+}
+
+# Octal permission bits of a file. BSD and GNU stat take different flags, and GNU treats -f
+# as "filesystem" and prints metadata, so pick the syntax first instead of falling back.
+file_mode() {
+    if stat -c %a /dev/null >/dev/null 2>&1; then stat -c %a "$1"; else stat -f %Lp "$1"; fi
 }
 
 check_warn() {
@@ -149,16 +158,21 @@ if [ "$QUICK" = true ]; then
     fi
 fi
 
-# Section: 1Password
-echo "=== 1Password ==="
-check "op signed in" "op account list 2>/dev/null | grep -q ."
-check_warn "GitHub token accessible" "op read 'op://Private/github-token/credential' 2>/dev/null"
+# Section: API key files. Agents load these per command; validate never reads a value.
+echo "=== API key files (~/.config/golems) ==="
+for keyfile in anthropic-api.env openai-api.env; do
+    check_warn "$keyfile present, mode 0600" "test -f ~/.config/golems/$keyfile && [ \"\$(file_mode ~/.config/golems/$keyfile)\" = 600 ]"
+done
 echo ""
 
-# Section: Skills API Keys
-echo "=== Skills API Keys (golems) ==="
-check_warn "Linear API key" "op read 'op://Private/golems/linear/API_KEY' 2>/dev/null | grep -vq 'PLACEHOLDER'"
-echo ""
+# Section: 1Password, only on request: every op call asks Etan for Touch ID.
+if [ "$WITH_OP" = true ]; then
+    echo "=== 1Password (--with-1password) ==="
+    check "op signed in" "op account list 2>/dev/null | grep -q ."
+    check_warn "GitHub token accessible" "op read 'op://Private/github-token/credential' 2>/dev/null"
+    check_warn "Linear API key" "op read 'op://Private/golems/linear/API_KEY' 2>/dev/null | grep -vq 'PLACEHOLDER'"
+    echo ""
+fi
 fi
 
 # Section: Directories
