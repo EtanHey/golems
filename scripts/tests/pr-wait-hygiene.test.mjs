@@ -114,8 +114,27 @@ test('waiting policy: watch receipt proves registration without a routine list',
   for (const text of ['`watch_pull_request` receipt', '`watching:true`', 'registration',
     'not polling liveness, wake delivery, current CI or merge readiness']) assert.ok(paragraph.includes(text), text);
   const policy = waitingPolicy();
-  assert.ok(policy.includes('Never call `list_thread_pull_requests` solely to reprove a watch or end work'));
-  assert.ok(policy.includes('inventory, diagnosis, an ambiguous receipt or an audit'));
+  assert.ok(policy.includes('Never call `list_thread_pull_requests` solely to reprove a watch.'));
+  assert.ok(policy.includes('end-of-turn open-PR inventory above, diagnosis, an ambiguous receipt or an audit'));
+});
+// Root cause 2026-11-01: PRs rotted on settled threads, unadopted worker/bot PRs and silent holds.
+test('waiting policy: every turn ends with an open-PR check; waiting is not a state', () => {
+  const paragraph = policyParagraph('**Watching is not waiting: check your open PRs before every turn ends.**');
+  for (const text of ['Before ending ANY turn', 'every open PR you own', 'fix it now or route the fix now',
+    'merge it under your lane', 'update the branch yourself', 'visibly held',
+    '"Waiting" is never a state for a red or green PR you own']) assert.ok(paragraph.includes(text), text);
+});
+test('waiting policy: ownership survives settle and covers worker and bot PRs', () => {
+  const paragraph = policyParagraph('**Ownership outlives the thread.**');
+  for (const text of ['Before settling, completing or retiring a lead thread', '`watch_pull_request`',
+    '`threadId`', 'Settling drops the old thread\'s watches', 'Adopt worker and bot PRs', 'dependabot',
+    'links and watches it in the turn it learns of it']) assert.ok(paragraph.includes(text), text);
+});
+test('waiting policy: a hold is a draft plus a plain HELD comment', () => {
+  const paragraph = policyParagraph('**Held is visible, never silent.**');
+  for (const text of ['is a draft', '`**Held on purpose`', 'why it is held', 'next step', 'owner',
+    'when the head moves', 'not visibly held is unnoticed']) assert.ok(paragraph.includes(text), text);
+  assert.ok(waitingPolicy().includes('mark the PR held (above)'), 'BLOCKED marks the PR held');
 });
 test('waiting policy: parent owns watch and finishes existing work before arming', () => {
   const paragraph = policyParagraph('**The owning lead holds the watch.**');
