@@ -31,6 +31,22 @@ Per-harness read paths: [Claude](../adapters/claude.md), [Codex](../adapters/cod
 Append the line manually on every signed write. Use `--body-file` or stdin to preserve
 backticks and literal text; see [PR creation](pr-creation.md#step-7-creating-the-pr).
 
+## On-behalf header (comments posted from Etan's account)
+
+When an agent posts a comment or review from Etan's GitHub account, especially on someone else's
+repo, open it with this header. The name is fixed as **Etan**, never the GitHub login:
+
+```
+> [!NOTE]
+> 🤖 **<model> responding on behalf of Etan**
+```
+
+- `<model>` is read live, as for the signature, e.g. `Claude Opus 5.5`.
+- The header says who is speaking. The signature line at the end still applies.
+- Third-party skills that build their own on-behalf line override this name, and here the header
+  above wins. That includes tstack's leaving-pr-comments ("user's name or GitHub login") and its
+  full-send. If such a skill is ever installed, it still uses "Etan".
+
 ## Commit trailer
 
 Use model-only co-author trailers:

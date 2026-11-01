@@ -102,6 +102,15 @@ test("GitHub identity uses one plain model and harness line", () => {
   expect(text).not.toMatch(/^— .* · /m);
 });
 
+test("on-behalf comments name Etan, never the GitHub login, even under tstack skills", () => {
+  const text = read(skill("pr-loop", "references/github-identity.md")).split("## On-behalf header")[1].split("## Commit trailer")[0];
+  expect(text).toContain("> [!NOTE]");
+  expect(text).toContain("> 🤖 **<model> responding on behalf of Etan**");
+  expect(text).toContain("never the GitHub login");
+  expect(text).toMatch(/leaving-pr-comments/);
+  expect(text).not.toMatch(/on behalf of EtanHey/);
+});
+
 test("commit trailers name each co-authoring model without seats", () => {
   const text = read(skill("pr-loop", "references/github-identity.md")).split("## Commit trailer")[1];
   expect(text).toContain("Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>");
