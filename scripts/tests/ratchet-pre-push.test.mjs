@@ -16,7 +16,8 @@ function fixture(check) {
       copyFileSync(resolve(path), join(dir, path));
     }
     const rows = { schema: 1, rows: [
-      { id: 'fixture-ci', metric: 'fixture', kind: 'unit', runner: 'ci', direction: 'pass', ceiling: true, command: 'test "$ROW_FAIL" != 1' },
+      { id: 'fixture-ci', metric: 'fixture', kind: 'unit', runner: 'ci', direction: 'pass', ceiling: true, command: 'echo fixture-ci >> "$ROW_CALLS"; echo first-row-output; if [ "$ROW_FLAKE" = 1 ] && [ ! -f row-attempt ]; then touch row-attempt; exit 7; fi; test "$ROW_FAIL" != 1' },
+      { id: 'fixture-pass', metric: 'passing', kind: 'unit', runner: 'ci', direction: 'pass', ceiling: true, command: 'echo fixture-pass >> "$ROW_PASS_CALLS"' },
       { id: 'live-tier-freshness', metric: 'freshness', kind: 'unit', runner: 'ci', direction: 'pass', ceiling: true, command: 'false' },
     ] };
     writeFileSync(join(dir, 'scripts/ratchet/rows.json'), JSON.stringify(rows));
@@ -68,7 +69,7 @@ if(name==='git') {
       const result = spawnSync('bash', ['.githooks/pre-push'], { cwd: dir, input, encoding: 'utf8',
         // Model a fresh push; the fake coordinator supplies the fixture's lease.
         env: { ...process.env, GOLEMS_HEAVY_SUITE_HELD: '', HOME: dir, PATH: join(dir, 'bin') + ':' + process.env.PATH,
-          CALL_LOG: log, ROWS_FILE: join(dir, 'scripts/ratchet/rows.json'), SCRIPTS_ROOT: join(dir, 'scripts'), ...extra } });
+          CALL_LOG: log, ROW_CALLS: join(dir, 'row-calls'), ROW_PASS_CALLS: join(dir, 'pass-calls'), ROWS_FILE: join(dir, 'scripts/ratchet/rows.json'), SCRIPTS_ROOT: join(dir, 'scripts'), ...extra } });
       return { ...result, output: result.stdout + result.stderr, calls: readFileSync(log, 'utf8') };
     };
     check(run, dir);
@@ -149,4 +150,28 @@ test('multiple live refs measure each candidate, isolating another SHA from the 
   const failed = run({ ROW_FAIL: '1', CLEANUP_FAIL: '1' }, `refs/heads/other ${other} refs/heads/other ${old}\n`);
   expect(failed.status).toBe(1); expect(failed.output).toContain('CI ratchet failed before push');
   expect(failed.output).toContain('cleanup failed; retained');
+}));
+
+test('CI rows retry only failures once and record recovered rows in the FLK-L ledger', () => fixture((run, dir) => {
+  const r = run({ ROW_FLAKE: '1' });
+  expect(r.status).toBe(0);
+  expect(readFileSync(join(dir, 'pass-calls'), 'utf8').trim().split('\n')).toHaveLength(1);
+  expect(r.output).toContain('ratchet: FLAKE fixture-ci failed then passed on retry; logged');
+  expect(readFileSync(join(dir, 'row-calls'), 'utf8').trim().split('\n')).toHaveLength(2);
+  const lines = readFileSync(join(dir, '.golems/prepush-flakes.jsonl'), 'utf8').trim().split('\n');
+  expect(lines).toHaveLength(1);
+  const entry = JSON.parse(lines[0]);
+  expect(Object.keys(entry).sort()).toEqual(['ts', 'repo', 'head_sha', 'command', 'first_exit', 'first_tail', 'host', 'row'].sort());
+  expect(entry.row).toBe('fixture-ci'); expect(entry.repo).toBe(dir); expect(entry.head_sha).toBe(head);
+  expect(entry.first_exit).toBe(7); expect(entry.first_tail).toContain('first-row-output');
+  expect(entry.command).toContain('ROW_FLAKE'); expect(entry.host.length).toBeGreaterThan(0);
+  expect(Number.isNaN(Date.parse(entry.ts))).toBe(false);
+}));
+test('CI passing rows run once and persistent failures run twice before blocking', () => fixture((run, dir) => {
+  expect(run().status).toBe(0);
+  expect(readFileSync(join(dir, 'row-calls'), 'utf8').trim().split('\n')).toHaveLength(1);
+  const r = run({ ROW_FAIL: '1' });
+  expect(r.status).toBe(1); expect(r.output).toContain('BLOCKED fixture-ci FAIL; local command:');
+  expect(r.output).not.toContain('ratchet: FLAKE');
+  expect(readFileSync(join(dir, 'row-calls'), 'utf8').trim().split('\n')).toHaveLength(3);
 }));
