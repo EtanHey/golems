@@ -25,7 +25,20 @@ fair), because a written rule only works when it is followed.
 The takeaway: the rules fix it only while every agent follows them. The sentinel is the tool that
 fixes it even when an agent doesn't.
 
-Run it (TLC 1.7.4; `-deadlock` because a merged PR has nothing left to do):
+What the model assumes (so read the passes narrowly):
+
+- **orc is the trusted fallback.** It stays live, never settles, never ignores a wake, and
+  eventually acts (weak fairness on `Act`). The sentinel results hold only while that is true.
+- **The sentinel eventually runs** (weak fairness on `Nudge`). There is no bounded response time.
+  The 45-minute and 2-hour timers are not modeled.
+- **A hold eventually ends** (weak fairness on `Unhold`). A visible hold counts as resolution.
+- **A handoff is abstract.** With `Handoff` on, `Settle` keeps a live owner. It models the outcome
+  of a handoff, not a checked `watch_pull_request` transfer.
+- **Acting on red is a fix attempt.** CI goes back to pending, and the model does not prove the fix
+  works or that the PR ever merges.
+- No fairness condition here is runtime evidence that a T3 watch fires.
+
+Run it (tla2tools 1.7.4 jar, which reports itself as TLC2 2.19; `-deadlock` because a merged PR has nothing left to do):
 
 ```sh
 tlc -deadlock -workers 1 -config Today.cfg LeadWait.tla

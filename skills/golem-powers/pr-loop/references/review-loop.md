@@ -147,32 +147,41 @@ A worker arms no watch; its READY hands the PR to the lead. On accepting READY o
 request, handle existing feedback and finish branch fixes and pushes before arming the watch;
 inspect its `watching:true` receipt and end the turn. An existing watch persists.
 
-**Watching is not waiting: check your open PRs before every turn ends.** Before ending ANY turn,
-read the current state of every open PR you own: one bounded `gh pr view <N> --json
+**Watching is not waiting: check your open PRs before every turn ends.** This is the owning
+lead's duty, never a worker's: a worker reports and hands off its PR. Before ending ANY turn, the
+lead reads the current state of every open PR it owns (ones it opened, adopted or was handed;
+keep that list in your own notes), with one bounded `gh pr view <N> --json
 state,isDraft,mergeStateStatus,statusCheckRollup` per PR. "Waiting" is never a state for a red or
-green PR you own (Etan, 2026-11-01). Act on each one:
+green PR you own (Etan, 2026-11-01). Take the first case that applies:
+- Visibly held, and the reason still holds: leave it.
 - Red or conflicting: fix it now or route the fix now.
 - Green: merge it under your lane's merge law.
 - Behind: update the branch yourself whenever GitHub offers it.
-- Neither: it must be visibly held (below).
+- Checks or the routed review still running: keep the watch and end the turn. That is ordinary
+  waiting, not a hold.
+- Otherwise, if you are deliberately not moving it: hold it visibly (below).
 
 **Ownership outlives the thread.** A PR stays yours until it merges, closes, or you hand it off.
 - **Before settling, completing or retiring a lead thread** (yours, or one you settle for someone
-  else), list its open PRs. Hand each one to a live lead with `watch_pull_request` and that lead's
-  `threadId`, then tell the new owner. Or close the PR. Settling drops the old thread's watches.
+  else), find its open PRs. For each one, call `watch_pull_request` with the PR and the successor
+  lead's `threadId`, and check that call's `watching:true` receipt. Then tell the successor, and
+  only after that unwatch it on the old thread (name that thread). Or close the PR. Settling drops
+  the old thread's watches. A registered watch on the successor is not proof that it accepted the
+  work: its acknowledgement is.
 - **Adopt worker and bot PRs.** When a child, worker or bot (such as dependabot) opens a PR, the
   repo's lead links and watches it in the turn it learns of it.
 
 **Held is visible, never silent.** A PR you are deliberately not moving yet is a draft and carries
 a comment that starts `**Held on purpose`. The comment says, in plain words, why it is held, the
 next step with its trigger, and the owner. Post a new one when the head moves. A wake on a held PR
-needs no action unless the reason is gone. A red or green PR that is not visibly held is unnoticed,
-whatever you intended.
+needs no action unless the reason is gone. When it is gone, mark the PR ready, get the current-head
+checks and the routed review, then apply merge law. Never merge a held draft. A red or green PR
+that is not visibly held is unnoticed, whatever you intended.
 
 **Watch claims need evidence.** Cite the same-turn `watch_pull_request` receipt with
 `watching:true` to establish stored registration at that instant, not polling liveness, wake delivery, current CI or merge readiness.
-A remembered or intended watch is not evidence. Never call `list_thread_pull_requests` solely to reprove a watch.
-Use it for the end-of-turn open-PR inventory above, diagnosis, an ambiguous receipt or an audit; its snapshots are not fresh host readiness.
+A remembered or intended watch is not evidence. Never call `list_thread_pull_requests` solely to reprove a watch or end work; the end-of-turn check above uses `gh` reads.
+Use it only for actual inventory (such as a settle handoff), diagnosis, an ambiguous receipt or an audit; its snapshots are not fresh host readiness.
 If the receipt is false or ambiguous, report that state and diagnose it; do not claim the watch stuck.
 
 **Wakes and pushes preserve the watch.** On ordinary wakes, no routine rewatch, relink, list or rearm.
@@ -198,8 +207,8 @@ Snooze alone, including `snoozedUntil`, is not wake evidence. Do not promise del
 is a diagnostic snapshot tool (pass 0, violations 1, invalid input 2), not a live watch verifier.
 It retains its older open-PR contract: watching or BLOCKED-with-wake. A correctly handed-off blocked
 PR can therefore fail it; report that contract mismatch. A checker failure never authorizes a timer, duplicate watcher or runtime override.
-Only feed this checker list/task snapshots from an actual audit or diagnosis allowed by T3's completion
-policy. Its snapshot is not the end-of-turn open-PR check above. The checker accepts one thread, `{ "threads": [...] }` or
+Only capture lists/task state for an actual audit or diagnosis allowed by T3's completion policy,
+never as a routine end-of-turn ritual. The checker accepts one thread, `{ "threads": [...] }` or
 `weave-t3-fleet/v1`; explicit workers/children are skipped. Preserve native `pullRequests` rows on their
 owner, schedules in `schedules`, and task/child parent associations. Snooze does not count.
 Snapshot fields, freshness and supplied events do not establish reactor liveness or wake delivery.

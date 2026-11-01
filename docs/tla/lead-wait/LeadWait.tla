@@ -34,7 +34,7 @@ CIFinish == /\ pr = "open" /\ ci = "pending"
             /\ nudges' = 0
             /\ UNCHANGED <<pr, held, thread, owner>>
 
-\* The owner acts: fix (CI re-runs) or merge. Needs a live thread and a reason:
+\* The owner acts: a fix attempt (CI re-runs) or a merge. Needs a live thread and a reason:
 \* a wake, or, under EndTurnCheck or for orc (which follows the rule), any turn end.
 CanAct == Actionable /\ Watched /\ (wake \/ EndTurnCheck \/ owner = "orc")
 Act == /\ CanAct
