@@ -91,3 +91,28 @@ run_validate() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"[FAIL] coderabbit skill"* ]]
 }
+
+# Every op call asks Etan for Touch ID (2026-11-01): a default validate run must never call op.
+fake_op() {
+  mkdir -p "$FAKE_HOME/bin"
+  printf '#!/bin/sh\necho "op $*" >> "%s/op-calls"\nexit 0\n' "$FAKE_HOME" > "$FAKE_HOME/bin/op"
+  chmod +x "$FAKE_HOME/bin/op"
+}
+
+@test "default validate never calls op; key files are checked for presence and mode" {
+  fake_op
+  printf 'K=x\n' > "$FAKE_HOME/.config/golems/anthropic-api.env"; chmod 600 "$FAKE_HOME/.config/golems/anthropic-api.env"
+  printf 'K=x\n' > "$FAKE_HOME/.config/golems/openai-api.env"; chmod 644 "$FAKE_HOME/.config/golems/openai-api.env"
+  run bash -c "PATH='$FAKE_HOME/bin':\$PATH bash '$SCRIPT' 2>&1 | sed \$'s/\033\\[[0-9;]*m//g'"
+  [ ! -e "$FAKE_HOME/op-calls" ]
+  [[ "$output" == *"[PASS] anthropic-api.env present, mode 0600"* ]]
+  [[ "$output" != *"[PASS] openai-api.env present, mode 0600"* ]]
+  [[ "$output" != *"=== 1Password"* ]]
+}
+
+@test "--with-1password runs the op checks" {
+  fake_op
+  run bash -c "PATH='$FAKE_HOME/bin':\$PATH bash '$SCRIPT' --with-1password 2>&1"
+  [ -s "$FAKE_HOME/op-calls" ]
+  grep -q "op account list" "$FAKE_HOME/op-calls"
+}

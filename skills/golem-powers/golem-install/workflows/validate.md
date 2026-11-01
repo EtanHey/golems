@@ -59,16 +59,13 @@ check "Codex approval_policy is never" "awk '/^[[:space:]]*\\[/{exit} /^[[:space
 check "Codex sandbox_mode is danger-full-access" "awk '/^[[:space:]]*\\[/{exit} /^[[:space:]]*sandbox_mode[[:space:]]*=[[:space:]]*\"danger-full-access\"[[:space:]]*$/ {found=1} END{exit !found}' ~/.codex/config.toml"
 echo ""
 
-# 1Password
-echo "=== 1Password ==="
-check "op signed in" "op account list"
-check_warn "GitHub token exists" "op read 'op://Private/github-token/credential'"
+# API key files (agents load these per command; never read a value here)
+echo "=== API key files ==="
+check_warn "anthropic-api.env present" "test -f ~/.config/golems/anthropic-api.env"
+check_warn "openai-api.env present" "test -f ~/.config/golems/openai-api.env"
 echo ""
 
-# Golem-Powers API Keys (golems item)
-echo "=== Golem-Powers API Keys ==="
-check_warn "Linear API key" "op read 'op://Private/golems/linear/API_KEY'"
-echo ""
+# 1Password checks run only with --with-1password: each op call asks Etan for Touch ID.
 
 # Directories
 echo "=== Directories ==="
