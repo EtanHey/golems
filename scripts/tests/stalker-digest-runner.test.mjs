@@ -155,24 +155,53 @@ test("resolves CODEX_BIN first, then canonical home binary, then PATH", async ()
 test("forced settlement releases pipes retained by a real grandchild", async () => {
   const { root, workDir, executable } = await fixture("inherited-pipe", `
 import { spawn } from "node:child_process";
-spawn(process.execPath, ["-e", "setTimeout(() => {}, 1500)"], { stdio: ["ignore", process.stdout, process.stderr] });
-process.exit(0);`);
-  let child;
+const grandchild = spawn(process.execPath, ["-e", "process.send(process.pid); setInterval(() => {}, 1000);"], { stdio: ["ignore", process.stdout, process.stderr, "ipc"] });
+grandchild.once("message", (pid) => { process.stdout.write(String(pid) + "\\n", () => process.exit(0)); });`);
+  // Start the real process tree before the runner's timeout clock. Readiness
+  // proves the endless grandchild already owns the inherited pipes.
+  const child = spawn(executable, [], { cwd: root, stdio: ["pipe", "pipe", "pipe"] });
+  let grandchildPid;
   let unrefCalled = false;
-  const spawnImpl = (...args) => {
-    child = spawn(...args);
-    const unref = child.unref.bind(child);
-    child.unref = () => { unrefCalled = true; return unref(); };
-    return child;
-  };
-  const started = Date.now();
-  await withCodex(executable, () => assert.rejects(
-    runDigestCodex({ ...options(root, workDir, 500), killGraceMs: 20, settleGraceMs: 20, spawnImpl }),
-    /did not settle after SIGKILL/,
-  ));
-  assert.ok(Date.now() - started < 1000);
-  assert.equal(child.stdin.destroyed, true);
-  assert.equal(child.stdout.destroyed, true);
-  assert.equal(child.stderr.destroyed, true);
-  assert.equal(unrefCalled, true);
+  const signals = [];
+  const kill = child.kill.bind(child);
+  child.kill = (signal) => { signals.push(signal); return kill(signal); };
+  const unref = child.unref.bind(child);
+  child.unref = () => { unrefCalled = true; return unref(); };
+  try {
+    grandchildPid = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("grandchild readiness timed out")), 30000);
+      child.once("error", (error) => { clearTimeout(timer); reject(error); });
+      let ready = "";
+      const onData = (chunk) => {
+        ready += chunk;
+        if (!ready.includes("\n")) return;
+        clearTimeout(timer);
+        child.stdout.off("data", onData);
+        resolve(Number(ready.trim()));
+      };
+      child.stdout.on("data", onData);
+    });
+    assert.ok(Number.isInteger(grandchildPid) && grandchildPid > 0);
+    const started = Date.now();
+    await assert.rejects(
+      runDigestCodex({ ...options(root, workDir, 3000), killGraceMs: 20, settleGraceMs: 20, spawnImpl: () => child }),
+      /timed out after 3000ms and did not settle after SIGKILL/,
+    );
+    // Allow scheduling headroom while still bounding forced settlement.
+    assert.ok(Date.now() - started < 10000);
+    assert.deepEqual(signals, ["SIGTERM", "SIGKILL"]);
+    const diagnostics = JSON.parse(await readFile(join(workDir, "human-digest-codex.stdout.log"), "utf8"));
+    assert.equal(diagnostics.execution.timedOut, true);
+    assert.equal(diagnostics.execution.settlementFailure, true);
+    assert.equal(child.stdin.destroyed, true);
+    assert.equal(child.stdout.destroyed, true);
+    assert.equal(child.stderr.destroyed, true);
+    assert.equal(unrefCalled, true);
+  } finally {
+    kill("SIGKILL");
+    if (grandchildPid) process.kill(grandchildPid, "SIGKILL");
+    child.stdin.destroy();
+    child.stdout.destroy();
+    child.stderr.destroy();
+  }
 });
