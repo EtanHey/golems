@@ -58,7 +58,7 @@ const supportsFailClosed = (bytes) => /^FAIL_CLOSED_PROTOCOL = 2\b/m.test(bytes.
 // guard passes the launcher's own 0/2 through and turns any other status into
 // the launcher's static denial (byte-identical to fail-open.py _block()).
 // Codex has the same shape in codex-hooks-install.mjs.
-export const REPAIR_REASON = "BLOCKED: policy hook unavailable. FLAG THIS TO THE USER: reinstall hooks from the prompt: `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.";
+export const REPAIR_REASON = "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.";
 const quote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
 export function failClosedCommand(run, repair = REPAIR_REASON) {
   const deny = JSON.stringify({ decision: "block", reason: repair, hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: repair } });
@@ -555,6 +555,7 @@ async function install(o) {
   if (ctx.codex) {
     if (!ctx.codex.enabled) die("Codex hooks disabled by existing config; review that setting before installation");
     if (git(o.repo, "show", `${sha}:scripts/hooks/codex-policy-hook.py`) === null) die("Codex adapter absent from selected pin");
+    if (git(o.repo, "show", `${sha}:scripts/hooks/codex-gate.sh`) === null) die("Codex launcher absent from selected pin");
   }
   if (!settings.canonical) {
     const msg = `${ctx.settingsPath} is not canonical 2-space JSON; rewriting it would change unrelated bytes`;
@@ -661,7 +662,7 @@ async function install(o) {
   recordHookNode(ctx.hookNode);
   console.log("applied");
   if (ctx.codex) {
-    ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py"));
+    ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py")) && existsSync(path.join(ctx.live, "scripts/hooks/codex-gate.sh"));
     applyCodexHooks(ctx.codex);
     console.log(CODEX_TRUST_HINT);
   }

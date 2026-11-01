@@ -149,9 +149,9 @@ def carries(text, token):
     return re.search(r'(?<![A-Za-z0-9._-])' + re.escape(token) + r'(?![A-Za-z0-9._:-])', text)
 
 
-def deny(reason):
+def deny(reason="Blocked: the M1 safety check couldn't read its settings. Ask the lead to fix the m1-window-gate config."):
     return {'hookSpecificOutput': {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny',
-                                  'permissionDecisionReason': 'M1-WINDOW: ' + reason}}
+                                  'permissionDecisionReason': reason}}
 
 
 def read_only_words(words):
@@ -232,8 +232,7 @@ def evaluate_seat(payload):
     if name == 'Bash' and read_only_bash(ti.get('command', '')):
         return {}
     if name == 'Bash' or name in {'Write', 'Edit', 'MultiEdit', 'NotebookEdit'}:
-        return deny(f"procedure lock {stem or 'UNKNOWN (invalid or unreadable owner/lock)'} is active; "
-                    'use read-only tools, wait for lock release, or carry its exact stem/run-1 lane if you ARE that lane')
+        return deny('Blocked: a golems install is running on this Mac, so only read-only commands are allowed. Wait for it to finish.')
     return {}
 
 
@@ -249,11 +248,11 @@ def evaluate(payload):
     if not bound:
         return {}
     if error:
-        return deny(error)
+        return deny()
     try:
         lanes, windows = registry_state(read_file(config['registry']))
     except (OSError, ValueError):
-        return deny('registry missing or unreadable; restore the configured registry before M1 dispatch')
+        return deny()
     for stem, (status, opened) in windows.items():
         if status != 'OPEN' or carries(text, stem):
             continue
@@ -261,7 +260,7 @@ def evaluate(payload):
         own = any(state == 'STARTED' and re.fullmatch(r'm1-golems-sync-[A-Za-z0-9._:-]+-' + re.escape(utc), lane)
                   and carries(text, lane) for lane, state in lanes.items())
         if not own:
-            return deny(f'window {stem} opened at {opened} is OPEN; wait for its CLOSED row, or carry the lane id if you ARE that lane')
+            return deny('Blocked: the M1 is in the middle of an install, so other work there has to wait. Try again when it finishes.')
     return {}  # Silent unless a window is OPEN: no closed-window advisory.
 
 
@@ -269,6 +268,6 @@ if __name__ == '__main__':
     mode = sys.argv[1:]
     payload = json.load(sys.stdin)
     result = (evaluate_seat(payload) if mode == ['--mode', 'seat'] else evaluate(payload)
-              if mode in ([], ['--mode', 'dispatch']) else deny('invalid gate mode'))
+              if mode in ([], ['--mode', 'dispatch']) else deny())
     print(json.dumps(result))
     sys.exit(2 if result.get('hookSpecificOutput', {}).get('permissionDecision') == 'deny' else 0)

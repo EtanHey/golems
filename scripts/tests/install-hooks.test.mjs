@@ -90,6 +90,7 @@ function fixture({ settings, privateSuite = true, ownerLayout = false } = {}) {
   writeFileSync(path.join(repo, "skills/golem-powers/demo-gate/hooks/demo.mjs"), "process.stdout.write('{}');\n");
   mkdirSync(path.join(repo, "scripts/hooks"), { recursive: true });
   writeFileSync(path.join(repo, "scripts/hooks/codex-policy-hook.py"), "# synthetic candidate adapter\n");
+  cpSync(path.join(here, "../hooks/codex-gate.sh"), path.join(repo, "scripts/hooks/codex-gate.sh"));
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "seed");
   git(repo, "push", "-q", "origin", "HEAD:master");
@@ -1265,7 +1266,7 @@ test("hook commands pin an ABSOLUTE interpreter >= the minimum, never a bare pyt
   const codex = JSON.parse(readFileSync(path.join(fx.home, ".codex/hooks.json"), "utf8")).hooks.PreToolUse
     .flatMap((g) => g.hooks).map((h) => h.command);
   expect(codex.length).toBe(2);
-  for (const c of codex) expect(c).toContain(`if output=$('\\''${python}'\\'' '\\''-I'\\''`);
+  for (const c of codex) expect(c).toContain(`'${python}' 'codex-policy-hook.py'`);
   // Codex trust stays unreviewed in a fixture, so --status exits nonzero; the pin is still reported.
   expect(run(fx, "--status").out).toContain(`hook-python=${python} (`);
 });
@@ -1451,7 +1452,7 @@ function policyFixture() {
       filter: (s) => !/\/(tests|evals|__pycache__)(\/|$)|\.pyc$/.test(s.slice(sourceRepo.length)) });
   }
   for (const name of ["install-hooks.mjs", "machine-host.mjs", "install-hooks.sh", "hook-interpreters.mjs", "codex-hooks-install.mjs", "fail-open.py",
-    "private-regression-gate.py", "heavy-suite.py", "codex-policy-hook.py"]) {
+    "private-regression-gate.py", "heavy-suite.py", "codex-policy-hook.py", "codex-gate.sh"]) {
     cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
   }
   mkdirSync(path.join(fx.repo, "scripts/repogolem"), { recursive: true });
@@ -1493,9 +1494,8 @@ test("missing locked hooks-live recovers through the actual owner hint from an u
   expect(run(fx, "--update").status).toBe(0);
   expect(git(fx.repo, "worktree", "list", "--porcelain")).toBe(metadata);
   const reason = JSON.parse(callHook(fx, policyCommands(fx)[0], echoRequest(fx)).stdout).reason;
-  const match = reason.match(/`! (bash [^`]+)`/);
-  expect(match).not.toBeNull();
-  const hint = match[1].replace("<host>", "mbp");
+  expect(reason).toBe("Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.");
+  const hint = "bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host mbp --update --apply";
   const result = runHint(fx, hint);
   expect(result.status, result.stderr).toBe(0);
   expect(git(live(fx), "rev-parse", "HEAD")).toBe(git(fx.repo, "rev-parse", "origin/master"));
@@ -1797,7 +1797,7 @@ test("Codex human-confirm: owner and client register it with the Claude gate's p
     expect([pinned, r.status]).toEqual([pinned, 0]);
     expect(r.out.includes("REFUSED codex human-confirm")).toBe(!pinned);
     const gates = JSON.parse(readFileSync(path.join(fx.home, ".codex/hooks.json"), "utf8")).hooks.PreToolUse
-      .flatMap((g) => g.hooks).map((h) => /codex-policy-hook\.py'\\'' '\\''([a-z-]+)/.exec(h.command)?.[1]).sort();
+      .flatMap((g) => g.hooks).map((h) => /codex-gate\.sh' '([a-z-]+)/.exec(h.command)?.[1]).sort();
     expect([pinned, gates]).toEqual([pinned, pinned ? ["git-guardian", "human-confirm", "tmp-block"] : ["git-guardian", "tmp-block"]]);
     expect(run(fx, "--status").out).toContain(pinned ? "codex wiring=ok" : "codex human-confirm refused(unpinned)");
   }

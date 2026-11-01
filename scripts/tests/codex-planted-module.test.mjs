@@ -23,7 +23,7 @@ const CASES = {
 
 function tree(gate) {
   const t = path.join(root, gate);
-  for (const rel of ["scripts/hooks/codex-policy-hook.py", "scripts/hooks/fail-open.py", "skills/golem-powers/_shared",
+  for (const rel of ["scripts/hooks/codex-policy-hook.py", "scripts/hooks/codex-gate.sh", "scripts/hooks/fail-open.py", "skills/golem-powers/_shared",
     "skills/golem-powers/tmp-block", "skills/golem-powers/git-guardian"]) {
     cpSync(path.join(repo, rel), path.join(t, rel), { recursive: true, filter: (s) => !s.includes("__pycache__") });
   }
@@ -61,7 +61,8 @@ function decide(t, gate, marker, direct = false) {
 
 test("the Codex registration runs the adapter isolated and without bytecode writes", () => {
   const cmd = codexCommand("python3", "/live/scripts/hooks/codex-policy-hook.py", "tmp-block");
-  expect(cmd).toContain("python3'\\'' '\\''-I'\\'' '\\''-B'\\'' '\\''/live/scripts/hooks/codex-policy-hook.py");
+  expect(cmd).toContain("'/live/scripts/hooks/codex-gate.sh' 'tmp-block' 'python3' 'codex-policy-hook.py'");
+  expect(readFileSync(path.join(repo, "scripts/hooks/codex-gate.sh"), "utf8")).toContain('"$python" -I -B');
 });
 
 function plant(t) {
