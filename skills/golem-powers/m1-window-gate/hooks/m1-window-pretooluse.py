@@ -179,9 +179,7 @@ def evaluate(payload):
                   and carries(text, lane) for lane, state in lanes.items())
         if not own:
             return deny(f'window {stem} opened at {opened} is OPEN; wait for its CLOSED row, or carry the lane id if you ARE that lane')
-    if windows and all(status == 'CLOSED' for status, _ in windows.values()) and not re.search(r'M1-LANE:|lane=', text):
-        return {'systemMessage': 'M1-WINDOW advisory: log STARTED with an M1-LANE: or lane= token before M1 work'}
-    return {}
+    return {}  # Silent unless a window is OPEN: no closed-window advisory.
 
 
 if __name__ == '__main__':
