@@ -54,7 +54,7 @@ fi
 printf 'Running %d golem-powers Python skill test suite(s):\n' "${#PYTEST_SUITES[@]}"
 printf '  %s\n' "${PYTEST_SUITES[@]}"
 
-"$PYTHON_BIN" -m pytest "${PYTEST_SUITES[@]}" -q
+"$PYTHON_BIN" -m pytest "${PYTEST_SUITES[@]}" -q -n 4
 
 eval_failures=0
 for suite in "${EVAL_SUITES[@]}"; do

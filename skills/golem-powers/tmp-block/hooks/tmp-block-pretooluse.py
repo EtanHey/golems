@@ -113,12 +113,7 @@ from io import StringIO
 
 def _deny_policy_import_failure():
     """Fail closed before the normal policy helpers are available (#411)."""
-    reason = (
-        "⛔ TMP-BLOCK: security policy unavailable; refusing tool call. "
-        "FLAG THIS TO THE USER: reinstall hooks from the prompt: "
-        "`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh "
-        "--host <host> --update --apply`"
-    )
+    reason = "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."
     json.dump(
         {
             "decision": "block",
@@ -362,7 +357,9 @@ def deny(reason):
     failed **and the tool call proceeds** — a refusal that silently becomes an
     allow is precisely the S04 half-fire this guard exists to prevent."""
     cancel_policy_evaluation_deadline()
-    reason = reason or "⛔ TMP-BLOCK: refused (no reason supplied)."
+    reason = ("Blocked: worktrees belong in <repo>/.worktrees/<name>. Create it there instead."
+              if "WORKTREE-CONVENTION" in (reason or "") else
+              "Blocked: files in /tmp get wiped, so this work would be lost. Save it under the repo's docs.local/ or .worktrees/ instead.")
     json.dump(
         {
             "decision": "block",

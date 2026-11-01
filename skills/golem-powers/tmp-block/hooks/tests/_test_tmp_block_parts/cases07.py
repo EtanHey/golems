@@ -325,7 +325,7 @@ def test_no_deny_reason_reads_as_a_question(durable_path):
         if proc.returncode == 0:
             continue
         reason = json.loads(proc.stdout).get("reason", "")
-        assert reason.startswith("⛔"), f"{command!r} -> {reason[:120]!r}"
+        assert reason.startswith("Blocked:"), f"{command!r} -> {reason[:120]!r}"
         assert "❓" not in reason, f"{command!r} -> {reason[:120]!r}"
         for ask_era in ("Approve only", "approve only", "otherwise cancel"):
             assert ask_era not in reason, f"{command!r} kept ask-era wording"
@@ -393,7 +393,7 @@ def test_variable_literal_head_still_proves_the_temp_class(durable_path):
     ):
         proc = run_hook(bash_payload(command), cwd=str(durable_path))
         assert_denied(proc)
-        assert "temp path-class" in json.loads(proc.stdout)["reason"], command
+        assert json.loads(proc.stdout)["reason"] == TEMP_REASON, command
 
 
 def test_tmpdir_variable_head_is_read_when_tmpdir_is_set(durable_path):
@@ -412,7 +412,7 @@ def test_tmpdir_variable_head_is_read_when_tmpdir_is_set(durable_path):
         cwd=str(durable_path),
     )
     assert_denied(proc)
-    assert "temp path-class" in json.loads(proc.stdout)["reason"]
+    assert json.loads(proc.stdout)["reason"] == TEMP_REASON
 
 
 def test_tmpdir_variable_head_is_denied_with_or_without_tmpdir(durable_path):

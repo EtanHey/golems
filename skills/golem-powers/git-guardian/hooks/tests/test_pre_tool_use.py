@@ -56,7 +56,7 @@ def test_the_installed_hook_still_blocks_through_its_own_git_safety(tmp_path):
     result = _run(home, "git push --force origin main")
     assert result.returncode == 2
     assert "FAKE" not in result.stdout
-    assert "git push --force" in json.loads(result.stdout)["reason"]
+    assert "(force-push)" in json.loads(result.stdout)["reason"]
 
 
 def test_copied_hook_loads_its_own_split_implementation_from_another_cwd(tmp_path):
@@ -85,7 +85,7 @@ def test_copied_hook_loads_its_own_split_implementation_from_another_cwd(tmp_pat
         check=False,
     )
     assert result.returncode == 2, result.stdout + result.stderr
-    assert "Dangerous command: COPIED SPLIT IMPLEMENTATION" in json.loads(result.stdout)["reason"]
+    assert "(a destructive operation)" in json.loads(result.stdout)["reason"]
     assert not (guardian / "git_safety_impl" / "__pycache__").exists()
 
 
@@ -161,9 +161,9 @@ def test_wrapper_depth_matrix_blocks_through_copied_hook_and_fail_open_launcher(
                 if depth > 64:
                     reason = json.loads(result.stdout)["reason"]
                     if len(command.encode("utf-8")) > 32 * 1024:
-                        assert "command too large for the policy parser; split it" in reason
+                        assert "(a destructive operation)" in reason
                     else:
-                        assert "wrapper nesting exceeds 64" in reason
+                        assert "(a destructive operation)" in reason
                 assert "golems-fail-open" not in result.stderr
     assert not (guardian / "git_safety_impl" / "__pycache__").exists()
 
@@ -183,7 +183,7 @@ def test_policy_error_blocks_value_free_through_fail_open_launcher(tmp_path):
     )
     assert result.returncode == 2, result.stdout + result.stderr
     reason = json.loads(result.stdout)["reason"]
-    assert "security policy could not evaluate command safely" in reason
+    assert "(a destructive operation)" in reason
     assert "SENSITIVE POLICY DETAIL" not in result.stdout + result.stderr
     assert "golems-fail-open" not in result.stderr
 
@@ -197,7 +197,7 @@ def test_quoted_paren_cannot_hide_force_push_through_copied_fail_open_hook(tmp_p
         text=True, capture_output=True, check=False,
     )
     assert result.returncode == 2, result.stdout + result.stderr
-    assert "git push --force" in json.loads(result.stdout)["reason"]
+    assert "(force-push)" in json.loads(result.stdout)["reason"]
     assert "golems-fail-open" not in result.stderr
 
 
@@ -262,8 +262,8 @@ def test_issue412_truncation_shapes_cannot_hide_force_push(tmp_path):
         else:
             reason = json.loads(result.stdout)["reason"]
             assert (
-                "git push --force" in reason
-                or "security policy could not evaluate command safely" in reason
+                "(force-push)" in reason
+                or "(a destructive operation)" in reason
             )
             assert "golems-fail-open" not in result.stderr
     assert allowed == []
@@ -307,8 +307,7 @@ def test_issue425_oversized_command_denies_quickly_and_value_free(tmp_path):
     elapsed = __import__("time").perf_counter() - started
     assert result.returncode == 2, result.stdout + result.stderr
     reason = json.loads(result.stdout)["reason"]
-    assert "command too large for the policy parser; split it" in reason
-    assert "write the content to a file and pass it by path" in reason
+    assert reason == "Blocked: this git command can destroy work (a destructive operation). Use a safe alternative, or ask the lead."
     assert "xxxxx" not in result.stdout + result.stderr
     assert elapsed < 3, f"oversized-command deny took {elapsed:.2f}s"
 
@@ -324,7 +323,7 @@ def test_issue425_worker_bypass_does_not_skip_the_size_bound(tmp_path):
         command,
     )
     assert result.returncode == 2, result.stdout + result.stderr
-    assert "command too large for the policy parser; split it" in json.loads(result.stdout)["reason"]
+    assert "(a destructive operation)" in json.loads(result.stdout)["reason"]
 
 
 def test_issue425_large_under_limit_quoted_heredoc_keeps_policy(tmp_path):
@@ -356,7 +355,7 @@ def test_issue425_lone_surrogate_denies_in_normal_and_worker_paths(tmp_path):
                 result.stdout,
                 result.stderr,
             )
-            assert "policy parser" in json.loads(result.stdout)["reason"]
+            assert "(a destructive operation)" in json.loads(result.stdout)["reason"]
             assert "golems-fail-open" not in result.stderr
 
 
@@ -371,7 +370,7 @@ def test_issue425_adversarial_under_bound_answers_before_host_timeout(tmp_path):
     elapsed = __import__("time").perf_counter() - started
     assert result.returncode in (0, 2), result.stdout + result.stderr
     if result.returncode == 2:
-        assert "policy evaluation exceeded its time budget" in json.loads(result.stdout)["reason"]
+        assert "(a destructive operation)" in json.loads(result.stdout)["reason"]
     assert elapsed < 3.5, f"under-bound adversarial command took {elapsed:.2f}s"
 
 
@@ -415,7 +414,7 @@ def test_issue425_missing_policy_dependency_keeps_import_failure_deny(tmp_path):
     result = _run_copied_hook(hook, launcher, other_cwd, env, "echo safe")
     elapsed = time.perf_counter() - started
     assert result.returncode == 2, result.stdout + result.stderr
-    assert "security policy unavailable" in json.loads(result.stdout)["reason"]
+    assert "reinstall the hooks" in json.loads(result.stdout)["reason"]
     assert "golems-fail-open" not in result.stderr
     assert elapsed < 3.5
 
@@ -435,7 +434,7 @@ def test_issue425_deadline_uses_specific_value_free_reason(tmp_path):
     elapsed = time.perf_counter() - started
     assert result.returncode == 2, result.stdout + result.stderr
     reason = json.loads(result.stdout)["reason"]
-    assert "policy evaluation exceeded its time budget" in reason
+    assert "(a destructive operation)" in reason
     assert "deadline_test" not in result.stdout + result.stderr
     assert "golems-fail-open" not in result.stderr
     assert elapsed < 3.5
@@ -511,6 +510,6 @@ def test_a_redirect_into_a_credentials_file_is_blocked(tmp_path):
     for command in ("echo x > credentials.json", "printf x >> config/secrets.yaml", "cat a >.env"):
         result = _run_with(home, "Bash", {"command": command})
         assert result.returncode == 2, (command, result.stdout)
-        assert "Sensitive file" in json.loads(result.stdout)["reason"]
+        assert "(changing secret files)" in json.loads(result.stdout)["reason"]
     for command in ("cat credentials.json", "echo 'see credentials.json' >> notes.md", "echo x > notes.md"):
         assert _run_with(home, "Bash", {"command": command}).returncode == 0, command

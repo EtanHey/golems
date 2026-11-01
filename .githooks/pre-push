@@ -4,3 +4,4 @@
 # Queue through the pinned installed helper; missing coordination fails open.
 
 if command -v git >/dev/null; then unset $(git rev-parse --local-env-vars); fi; HS="$HOME/Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"; if [ -f "$HS" ] && command -v python3 >/dev/null; then GOLEMS_HEAVY_PRE_PUSH=1 python3 "$HS" -- bun --no-env-file run test; else echo "heavy-suite: helper missing; running unqueued" >&2; bun --no-env-file run test; fi
+suite_status=$?; [[ $suite_status -eq 0 ]] || exit "$suite_status"; bash scripts/ci/prepush-touched.sh

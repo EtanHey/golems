@@ -72,6 +72,10 @@ def run(*args, cwd=None):
 
 class WorkflowHelpers:
     def setUp(self):
+        # Worktree primitive coverage must not depend on the host's free disk.
+        floor = mock.patch.dict(os.environ, {"GOLEMS_WORKTREE_MIN_FREE_GB": "0"})
+        floor.start()
+        self.addCleanup(floor.stop)
         self.temp_dir = Path(tempfile.mkdtemp(prefix="codex-workflows-test-"))
 
 
