@@ -31,12 +31,7 @@ def _deny_policy_import_failure():
     json.dump(
         {
             "decision": "block",
-            "reason": (
-                "BLOCKED: security policy unavailable; refusing tool call. "
-                "FLAG THIS TO THE USER: reinstall hooks from the prompt: "
-                "`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh "
-                "--host <host> --update --apply`"
-            ),
+            "reason": "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.",
         },
         sys.stdout,
     )
@@ -186,11 +181,20 @@ def classify_tool(tool_name, tool_input):
 
 def block(reason):
     cancel_policy_evaluation_deadline()
-    result_reason = (
-        f"BLOCKED: {reason or 'Dangerous operation detected'}. FLAG THIS TO THE USER as a "
-        "surprise — do NOT retry the same command. Explain what you were trying to do "
-        "and ask the user how to proceed."
-    )
+    operation = 'a destructive operation'
+    for needle, name in [('push --force', 'force-push'), ('reset --hard', 'reset --hard'),
+                         ('clean', 'clean'), ('branch', 'deleting a branch'),
+                         ('reference deletion', 'deleting a remote branch'),
+                         ('restore', 'discarding changes'), ('checkout', 'discarding changes'),
+                         ('rm', 'deleting files'), ('find', 'deleting files'),
+                         ('rsync', 'deleting files'), ('SQL', 'deleting database data'),
+                         ('TABLE', 'deleting database data'), ('DATABASE', 'deleting database data'),
+                         ('railway', 'stopping a service'), ('Sensitive', 'changing secret files'),
+                         ('sensitive', 'changing secret files'), ('kill', 'stopping processes')]:
+        if needle in (reason or ''):
+            operation = name
+            break
+    result_reason = f"Blocked: this git command can destroy work ({operation}). Use a safe alternative, or ask the lead."
     json.dump({"decision": "block", "reason": result_reason}, sys.stdout)
     sys.exit(2)
 

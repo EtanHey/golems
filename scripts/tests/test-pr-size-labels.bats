@@ -20,13 +20,24 @@ teardown() {
 # `--jq '.[].name'`, so both stub payloads are bare names, one per line.
 make_gh_stub() {
   local labels="$1" pr_labels="${2:-}"
+  export STUB_BODY="${3:-}" STUB_FORK=false STUB_COMMENT_ID="" STUB_FAIL=""
   cat > "$TEST_ROOT/gh" <<STUB
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$GH_LOG"
+[[ -z "\$STUB_FAIL" || "\$*" != *"\$STUB_FAIL"* ]] || exit 1
 case "\$1 \$2" in
   "label list") printf '%s' '$labels' ;;
-  "pr view") printf '%s' '$pr_labels' ;;
+  "pr view")
+    case "\$*" in
+      *"--json body"*) printf '%s' "\$STUB_BODY"; exit ;;
+      *"--json isCrossRepository"*) printf '%s' "\$STUB_FORK"; exit ;;
+    esac
+    printf '%s' '$pr_labels' ;;
+  "api repos/"*) ;;
 esac
+if [[ "\$*" == *"/comments"* && "\$*" != *"--method"* ]]; then
+  printf '%s' "\$STUB_COMMENT_ID"
+fi
 exit 0
 STUB
   chmod +x "$TEST_ROOT/gh"
@@ -225,12 +236,13 @@ TSV
   [[ "$output" == *"OK EtanHey/golems#42 size:M covers 200 hand-written lines"* ]]
 }
 
-@test "check still fails when size:XS under-reports 401 measured lines" {
+@test "fork under-reporting retains failure" {
   make_gh_stub '' $'size:XS\nbug'
+  export STUB_FORK=true
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"::error::EtanHey/golems#42 is size:XS but has 401 hand-written lines (requires size:L)"* ]]
+  [[ "$output" == *"::notice::EtanHey/golems#42 is size:XS but has 401 hand-written lines (requires size:L)"* ]]
 }
 
 @test "check allows a conservative label larger than the measured size" {
@@ -241,23 +253,21 @@ TSV
   [[ "$output" == *"OK EtanHey/golems#42 size:M covers 10 hand-written lines"* ]]
 }
 
-@test "check warns but passes measured 401 with size:L and no why in the body" {
-  make_gh_stub '' 'size:L' $'## Summary\nLarge change.'
+@test "L without why warns and passes" {
+  make_gh_stub '' 'size:L'
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"::warning::EtanHey/golems#42 has 401 hand-written lines; canon 9 wants a one-line why in the PR body"* ]] || false
-  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]] || false
-  ! grep -q -- '--json body' "$GH_LOG"
+  [[ "$output" == *"::warning::"* ]]
+  [[ "$output" == *"size-why:"* ]]
 }
 
-@test "check passes measured 401 with size:L when a why is present without parsing the body" {
-  make_gh_stub '' 'size:L' $'## Summary\nsize:L because the callers can\'t land separately.\n\n## Tests'
+@test "L with why passes without warning" {
+  make_gh_stub '' 'size:L' 'size-why: callers must land together'
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"OK EtanHey/golems#42 size:L covers 401 hand-written lines"* ]] || false
-  ! grep -q -- '--json body' "$GH_LOG"
+  [[ "$output" != *"::warning::"* ]]
 }
 
 @test "check still only warns when the size label is missing" {
@@ -286,12 +296,53 @@ TSV
   [[ "$output" == *"OK EtanHey/golems#160 size:XS covers 7 hand-written lines"* ]]
 }
 
-@test "check still fails size:S on 200 added lines (requires size:M)" {
+@test "under-report corrects label and creates marker comment" {
   make_gh_stub '' 'size:S'
-  printf 'src/a.ts\t200\t300\n' > "$TEST_ROOT/files.tsv"
+  printf 'src/a.ts\t223\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  grep -q -- '--add-label size:M --remove-label size:S' "$GH_LOG"
+  grep -q -- '--method POST' "$GH_LOG"
+  grep -q 'size label corrected: size:S → size:M (223 hand-written lines)' "$GH_LOG"
+}
+
+@test "later correction edits existing marker comment" {
+  make_gh_stub '' 'size:S'
+  export STUB_COMMENT_ID=123
+  printf 'src/a.ts\t223\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  grep -q 'issues/comments/123 --method PATCH' "$GH_LOG"
+  ! grep -q -- '--method POST' "$GH_LOG"
+}
+
+@test "correct label leaves comments unchanged" {
+  make_gh_stub '' 'size:M'
+  printf 'src/a.ts\t223\t0\n' > "$TEST_ROOT/files.tsv"
+  run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
+  [ "$status" -eq 0 ]
+  ! grep -q '/comments' "$GH_LOG"
+}
+
+@test "API errors fail the check" {
+  make_gh_stub '' 'size:S'
+  export STUB_FAIL='pr edit'
+  printf 'src/a.ts\t223\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"::error::EtanHey/golems#42 is size:S but has 200 hand-written lines (requires size:M)"* ]]
+}
+
+@test "suggest prints classification for branch diff and excludes generated files" {
+  mkdir "$TEST_ROOT/bin"
+  cat > "$TEST_ROOT/bin/git" <<'STUB'
+#!/usr/bin/env bash
+[[ "$*" == 'diff --numstat origin/master...HEAD' ]] || exit 1
+printf '223\t0\tsrc/a.ts\n9000\t0\tdist/app.js\n'
+STUB
+  chmod +x "$TEST_ROOT/bin/git"
+  run env PATH="$TEST_ROOT/bin:$PATH" "$SCRIPT" suggest
+  [ "$status" -eq 0 ]
+  [ "$output" = 'size:M' ]
 }
 
 @test "check still rejects size:XS and size:L together on 401 measured lines" {

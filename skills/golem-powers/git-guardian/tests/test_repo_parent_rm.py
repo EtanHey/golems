@@ -121,7 +121,7 @@ def test_actual_copied_hook_blocks_exact_specimen_and_preserves_cleanup(workspac
         assert result.returncode == expected, (command, result.stdout, result.stderr)
         assert result.stderr == ''
         output = json.loads(result.stdout)
-        if expected == 2: assert output['decision'] == 'block' and 'repo' in output['reason']
+        if expected == 2: assert output['decision'] == 'block' and '(deleting files)' in output['reason']
     assert (repo / '.git').is_dir() and (repo / 'docs.local/scratch').is_dir()
 
 

@@ -196,9 +196,10 @@ git-guardian gate is `pre_tool_use.py` (source `hooks/pre_tool_use.py`), which
 imports this skill's `git_safety.py`; it is distinct from the project
 `block-dangerous-commands.py` and the human-confirm gate. Both host manifests
 run it through `golems-fail-open.py --fail-closed` (#488). A missing, unreadable,
-syntax-broken or crashed hook denies with a static, value-free reinstall hint:
+syntax-broken or crashed hook denies with the plain refusal: "Blocked: a golems safety
+check couldn't run. Ask the lead to reinstall the hooks." Recovery uses
 `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.
-Flag this to the user: blocked Bash cannot perform agent recovery. A human uses
+Blocked Bash cannot perform agent recovery. A human uses
 the prompt or an outside terminal (omit `!` there). The installer clears the
 missing pin's locked registration, and `--update` moves a broken pin to a healthy
 commit. Local damage inside hooks-live refuses (tamper evidence) until a human
