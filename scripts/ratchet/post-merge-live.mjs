@@ -15,6 +15,15 @@ try {
   }
   if (!/^[1-9]\d*$/.test(options['--merged-pr'] ?? '') || (options['--lease-pr'] && !/^[1-9]\d*$/.test(options['--lease-pr']))) throw new Error('PR numbers must be positive integers');
   run('bash', [root + 'scripts/hooks/install-hooks.sh', '--host', 'mbp', '--update', '--apply'], { stdio: 'inherit' });
+  const hookStatus = spawnSync('bash', [root + 'scripts/hooks/install-hooks.sh', '--host', 'mbp', '--status'],
+    { encoding: 'utf8', cwd: root });
+  if ((hookStatus.stdout ?? '').split('\n').some(line => line.includes('codex wiring=') && /\btrust=missing\b/.test(line))) {
+    console.log('post-merge-live: BLOCKED — Codex hook trust missing (new or changed hook definitions).');
+    console.log('Owner step (Etan, on this Mac): open plain `codex` (no --profile), run /hooks, approve the changed definitions.');
+    console.log(`Then re-run: scripts/ratchet/post-merge-live.sh --merged-pr ${options['--merged-pr']}`);
+    console.log("No receipt posted, so live-freshness's grace window still applies.");
+    process.exit(3);
+  }
   const pulls = JSON.parse(run('gh', ['pr', 'list', '--repo', 'EtanHey/golems', '--state', 'open', '--limit', '1000', '--json', 'number,headRefName,headRefOid']));
   const trees = run('git', ['worktree', 'list', '--porcelain', '-z']).split('\0\0').map(block => {
     const fields = Object.fromEntries(block.split('\0').filter(Boolean).map(line => { const i = line.indexOf(' '); return [line.slice(0, i), line.slice(i + 1)]; }));
