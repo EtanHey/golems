@@ -64,7 +64,7 @@ def test_unrelated_allows(cell, command):
 
 
 @pytest.mark.parametrize('prefix', ['mcp__t3-code__', 'mcp__t3_code__'])
-@pytest.mark.parametrize('tool', ['delegate_task', 't3_thread_launch', 'create_threads',
+@pytest.mark.parametrize('tool', ['delegate_task', 't3_thread_send', 't3_thread_launch', 'create_threads',
     'schedule_task', 'run_scheduled_task_now', 't3_thread_send_attachments', 't3_thread_configure'])
 def test_mcp(cell, tool, prefix):
     name = prefix + tool
@@ -203,9 +203,23 @@ def test_seat_transport_and_no_lock(cell, codex):
 
 
 @pytest.mark.parametrize('prefix', ['mcp__t3-code__', 'mcp__t3_code__'])
-def test_plain_message_to_m1_thread_is_allowed_during_window(cell, prefix):
-    # Messages are not work dispatch: orc and leads can still talk to M1 threads mid-run.
-    assert not call(cell, name=prefix + 't3_thread_send', ti={'environmentId': 'fixture-env', 'message': 'hi'})[0]
+@pytest.mark.parametrize('mode', [None, 'auto', 'queue', 'steer'])
+def test_message_to_m1_lead_is_allowed_during_window(cell, prefix, mode):
+    # orc and leads can still talk to an M1 lead (a top-level thread) mid-run.
+    ti = {'environmentId': 'fixture-env', 'threadId': 'mcp:lead-thread', 'message': 'hi'}
+    if mode:
+        ti['mode'] = mode
+    assert not call(cell, name=prefix + 't3_thread_send', ti=ti)[0]
+
+
+@pytest.mark.parametrize('ti', [
+    {'environmentId': 'fixture-env', 'threadId': 'thread:delegated-task:command%3Ax', 'message': 'go'},
+    {'environmentId': 'fixture-env', 'threadId': 'mcp:lead-thread', 'message': 'go', 'mode': 'restart'},
+    {'environmentId': 'fixture-env', 'message': 'no thread id'},
+    {'environmentId': 'fixture-env', 'threadId': '', 'message': 'empty thread id'}])
+def test_work_starting_sends_stay_blocked(cell, ti):
+    # A send to a finished child starts a fresh task; restart interrupts work: both are dispatch.
+    assert call(cell, name='mcp__t3-code__t3_thread_send', ti=ti)[0]
 
 
 @pytest.mark.parametrize('label', ['run2', 'run3'])
@@ -214,3 +228,9 @@ def test_seat_own_lane_any_run_label(seat, label):
     assert not call(seat, 'bun test # lane=' + lane, mode='seat')[0]
     assert call(seat, 'bun test # lane=' + lane + '-other', mode='seat')[0]
     assert call(seat, 'bun test # lane=' + lane.replace(STEM.rsplit('-', 1)[-1], '20990101T000000000000'), mode='seat')[0]
+
+
+@pytest.mark.parametrize('label', ['run_2', 'run-2', 'run:2'])
+def test_seat_run_label_grammar_is_letters_digits_dots(seat, label):
+    lane = LANE.replace('-run1-', '-' + label + '-')
+    assert call(seat, 'bun test # lane=' + lane, mode='seat')[0]

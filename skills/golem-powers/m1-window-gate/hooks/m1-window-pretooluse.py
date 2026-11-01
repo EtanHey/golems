@@ -10,9 +10,17 @@ import re
 import stat
 from pathlib import Path
 
-# Work dispatch to the M1. A plain t3_thread_send is a message, not work: it stays allowed during a
-# window, so orc and leads can still talk to M1 threads (blocking it was pure cost).
-TOOLS = re.compile(r'mcp__t3[-_]code__(delegate_task|t3_thread_launch|create_threads|schedule_task|run_scheduled_task_now|t3_thread_send_attachments|t3_thread_configure)\Z')
+# Work dispatch to the M1. A message to an M1 LEAD (a top-level thread) is allowed during a window so
+# orc and leads can still talk to it. A send to a delegated child starts a fresh task and `restart`
+# interrupts work, so those stay blocked as dispatch.
+TOOLS = re.compile(r'mcp__t3[-_]code__(delegate_task|t3_thread_send|t3_thread_launch|create_threads|schedule_task|run_scheduled_task_now|t3_thread_send_attachments|t3_thread_configure)\Z')
+SEND = re.compile(r'mcp__t3[-_]code__t3_thread_send\Z')
+
+
+def lead_message(name, ti):
+    thread = ti.get('threadId') if isinstance(ti, dict) else None
+    return bool(SEND.fullmatch(name or '') and isinstance(thread, str) and thread.strip()
+                and not thread.startswith('thread:delegated-task') and ti.get('mode', 'auto') != 'restart')
 REMOTE = {'ssh', 'scp', 'rsync', 'sftp', 'mosh'}
 
 
@@ -250,7 +258,7 @@ def evaluate(payload):
     targets = {host(t).rsplit('@', 1)[-1] for t in strings(config.get('m1_ssh_targets'))}
     bound = (bash_bound(text, targets) if name == 'Bash' else bool(
         TOOLS.fullmatch(name or '') and set(environment_ids(ti)) & set(strings(config.get('m1_environment_ids')))))
-    if not bound:
+    if not bound or (name != 'Bash' and lead_message(name, ti)):
         return {}
     if error:
         return deny()

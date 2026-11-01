@@ -12,7 +12,13 @@ SHA/timestamp stem and current UID blocks heavy or mutating Bash and Write,
 Edit, MultiEdit and NotebookEdit. Symlinks, files, missing/unreadable or invalid
 owners also block mutation, naming an UNKNOWN stem when ownership is untrusted.
 Only a valid lock permits an exemption for a call carrying its exact stem or
-`m1-golems-sync-<run label>-<UTC_TS>` lane (run1, run2, ...). Prefix/suffix lookalikes do not qualify.
+`m1-golems-sync-<run label>-<UTC_TS>` lane, where the run label is letters, digits and dots only
+(`run1`, `run2`, `run2.4`; not `run_2` or `run-2`). Prefix/suffix lookalikes do not qualify.
+
+During an OPEN window, dispatch mode still allows a `t3_thread_send` message to an M1 **lead**
+(a top-level thread) in `auto`, `queue` or `steer` mode, so orc and leads can keep talking to it.
+A send to a delegated child (`thread:delegated-task:…`, which starts a fresh task), a `restart`
+send, attachments and every other dispatch tool stay blocked.
 
 Seat Bash permits plain calls to ls, cat, head, tail, wc, stat, ps, pgrep, uptime,
 df, du -s, git status/log/diff/show/rev-parse, grep/rg, non-mutating find, echo,
