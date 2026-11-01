@@ -102,7 +102,9 @@ class NativeHooksTests(unittest.TestCase):
                         item = {"type": "function_call", "call_id": f"call-{index}",
                                 "name": "exec_command", "arguments": json.dumps({
                                     "cmd": commands[index], "workdir": str(workspace),
-                                    "login": False, "yield_time_ms": 1000})}
+                                    # Codex 0.166.0 exec_command schema: 250-30000 ms.
+                                    # Wait for these short commands even under CPU load.
+                                    "login": False, "yield_time_ms": 30000})}
                     elif index < len(commands) + len(patches):
                         item = {"type": "custom_tool_call", "call_id": f"call-{index}",
                                 "name": "apply_patch", "input": patches[index - len(commands)]}
