@@ -15,6 +15,7 @@ function fixture() {
   const codexHome = path.join(root, "home/.codex"); mkdirSync(codexHome, { recursive: true });
   const live = path.join(root, "repo/.worktrees/hooks-live"); mkdirSync(path.join(live, "scripts/hooks"), { recursive: true });
   writeFileSync(path.join(live, "scripts/hooks/codex-policy-hook.py"), "print('{}')");
+  writeFileSync(path.join(live, "scripts/hooks/codex-gate.sh"), readFileSync(path.resolve(import.meta.dir, "../hooks/codex-gate.sh")));
   const entries = ["tmp-block", "git-guardian"].map(gate => ({ gate, source: "scripts/hooks/codex-policy-hook.py", matcher: "^(Bash|apply_patch)$", timeout: 10 }));
   const manifest = { codex_hosts: { mbp: entries, m1: entries } };
   writeFileSync(path.join(codexHome, "config.toml"), '# keep this comment\nmodel = "my-model"\n');
@@ -31,6 +32,14 @@ for (const host of Object.keys(realManifest.codex_hosts)) {
     expect(plan.source).toBe(true);
     const groups = JSON.parse(plan.next).hooks.PreToolUse;
     expect(groups.length).toBe(realManifest.codex_hosts[host].length);
+    const names = {
+      "tmp-block": "golems tmp-block: keeps work out of /tmp",
+      "git-guardian": "golems git-guardian: stops destructive git commands",
+      "human-confirm": "golems human-confirm: Etan approves actions that can't be undone",
+      "heredoc-guard": "golems heredoc-guard: stops hidden commands in here-documents",
+      "m1-window-gate": "golems m1-window-gate: waits while the M1 is installing",
+    };
+    expect(groups.map(g => g.hooks[0].statusMessage)).toEqual(realManifest.codex_hosts[host].map(e => names[e.gate]));
     expect(groups.map(g => g.matcher)).toEqual(realManifest.codex_hosts[host].map(e => e.matcher));
     expect(gatesIn(plan)).toContain("heredoc-guard");
     expect(readFileSync(path.join(f.codexHome, "config.toml"))).toEqual(config);
@@ -156,6 +165,9 @@ test("status catches matcher, timeout and duplicate drift; apply repairs only ow
   const f = fixture(); applyCodexHooks(planCodexHooks(f));
   const at = path.join(f.codexHome, "hooks.json");
   const value = JSON.parse(readFileSync(at));
+  value.hooks.PreToolUse[0].hooks[0].statusMessage = "wrong";
+  writeFileSync(at, JSON.stringify(value));
+  expect(planCodexHooks(f).registered).toBe(false);
   value.hooks.PreToolUse[0].matcher = "wrong";
   value.hooks.PreToolUse[1].hooks[0].timeout = 600;
   value.hooks.PostToolUse = [structuredClone(value.hooks.PreToolUse[0])];
@@ -165,11 +177,13 @@ test("status catches matcher, timeout and duplicate drift; apply repairs only ow
 });
 
 test("shell fallback blocks missing interpreter and adapter with value-free stderr", () => {
-  for (const [python, adapter] of [["/missing/PRIVATE-VALUE", "/missing/a"], ["python3", "/missing/PRIVATE-VALUE.py"]]) {
+  for (const python of ["/missing/PRIVATE-VALUE", "python3"]) {
+    const f = fixture();
+    const adapter = path.join(f.live, "scripts/hooks/PRIVATE-VALUE.py");
     const cmd = codexCommand(python, adapter, "tmp-block");
     const r = spawnSync("/bin/sh", ["-c", cmd], { encoding: "utf8" });
     expect(r.status).toBe(2);
-    expect(r.stderr).toContain("BLOCKED: Codex policy hook unavailable");
+    expect(r.stderr).toContain("Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.");
     expect(r.stderr + r.stdout).not.toContain("PRIVATE-VALUE");
   }
 });
@@ -192,6 +206,7 @@ test("hooks-live CLI uses the selected manifest for both hosts despite invoking-
     git("remote", "add", "origin", origin);
     mkdirSync(path.join(repo, "scripts/hooks"), { recursive: true });
     writeFileSync(path.join(repo, "scripts/hooks/codex-policy-hook.py"), "print('{}')\n");
+    writeFileSync(path.join(repo, "scripts/hooks/codex-gate.sh"), readFileSync(path.resolve(import.meta.dir, "../hooks/codex-gate.sh")));
     const manifest = { ...f.manifest, hosts: { mbp: [], m1: [] } };
     writeFileSync(path.join(repo, "scripts/hooks/manifest.json"), JSON.stringify(manifest));
     git("add", "."); git("commit", "-qm", "selected pin"); git("push", "-q", "origin", "HEAD:master");
@@ -231,10 +246,21 @@ test("hooks-live CLI uses the selected manifest for both hosts despite invoking-
   }
 }, 20_000);
 
-test("codexCommand registers the adapter as python3 -I -B", () => {
-  const cmd = codexCommand("python3", "/live/a.py", "git-guardian");
-  expect(cmd).toContain("python3'\\'' '\\''-I'\\'' '\\''-B'\\'' '\\''/live/a.py'\\'' '\\''git-guardian");
+test("codexCommand is short and its launcher retains isolated Python flags", () => {
+  expect(codexCommand("/chosen/python", "/live/scripts/hooks/codex-policy-hook.py", "git-guardian"))
+    .toBe("'/bin/sh' '/live/scripts/hooks/codex-gate.sh' 'git-guardian' '/chosen/python' 'codex-policy-hook.py'");
+  expect(readFileSync(path.join(repo, "scripts/hooks/codex-gate.sh"), "utf8")).toContain('"$python" -I -B');
 });
+
+for (const body of ["raise RuntimeError('PRIVATE-VALUE')", "raise SystemExit(3)"]) {
+  test(`shell fallback denies a broken adapter: ${body}`, () => {
+    const f = fixture();
+    const adapter = path.join(f.live, "scripts/hooks/codex-policy-hook.py");
+    writeFileSync(adapter, body);
+    const r = spawnSync("/bin/sh", ["-c", codexCommand("python3", adapter, "tmp-block")], { encoding: "utf8" });
+    expect([r.status, r.stdout, r.stderr.trim()]).toEqual([2, "", "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."]);
+  });
+}
 
 // human-confirm on Codex: a third adapter gate, registered only while pinned.
 const PIN = "skills/golem-powers/human-confirm-gate/anchor.pins";
@@ -244,7 +270,7 @@ function confirmFixture() {
     matcher: "^(Bash|apply_patch)$", timeout: 10, requiresPin: PIN }];
   return { ...f, manifest: { codex_hosts: { mbp: entries, m1: entries } } };
 }
-const gatesIn = (p) => JSON.parse(p.next).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command.match(/codex-policy-hook\.py'\\'' '\\''([a-z0-9-]+)/)?.[1]).sort();
+const gatesIn = (p) => JSON.parse(p.next).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command.match(/codex-gate\.sh' '([a-z0-9-]+)/)?.[1]).sort();
 
 test("human-confirm registers as a third Codex gate; refused while unpinned, and an existing registration is stripped", () => {
   const f = confirmFixture();

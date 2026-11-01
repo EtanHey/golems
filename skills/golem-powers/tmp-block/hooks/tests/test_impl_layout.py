@@ -81,7 +81,7 @@ sys.modules[__name__].__class__ = WiringFailure
     decision = json.loads(result.stdout)
     assert result.returncode == 2 and result.stderr == ""
     assert decision["hookSpecificOutput"]["permissionDecision"] == "deny"
-    assert "security policy unavailable" in decision["reason"]
+    assert decision["reason"] == "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."
 
 
 @pytest.mark.parametrize("bytecode", [False, True])

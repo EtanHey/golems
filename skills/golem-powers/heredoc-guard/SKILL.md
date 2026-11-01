@@ -15,7 +15,7 @@ Escaped backticks/dollars, variable expansion and arithmetic alone are allowed.
 There is no environment bypass. Commands without a heredoc operator return allow
 before shell inspection; `<<` split by escaped newlines still counts. Invalid or
 unsupported syntax and inspection limits in heredoc-bearing commands deny with
-a parse-error reason naming the stage and short cause. ANSI-C escapes in
+a plain refusal; the ledger keeps the stage and short cause. ANSI-C escapes in
 delimiters require a plain quoted rewrite; ordinary ANSI-C quoted arguments are
 treated as strings.
 
@@ -33,6 +33,6 @@ the destination with `HEREDOC_GUARD_LEDGER`; tests and probes use isolated ledge
 Records contain `ts`,
 `command_sha256`, `rule`, and a short static `reason`, never raw command text.
 Missing or invalid commands use the SHA-256 of the empty string. An unwritable
-ledger still denies and adds `denial ledger unavailable` to the refusal.
+ledger still denies with the same plain refusal.
 Source wiring does not prove installed/native enforcement. Installation and
 native acceptance belong to the lead after merge; this change installs nothing.

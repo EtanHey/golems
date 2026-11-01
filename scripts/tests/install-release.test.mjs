@@ -512,7 +512,7 @@ test('client hooks survive four release installs: verified pins, drift zero and 
       const denied = spawnSync('/bin/sh', ['-c', command], { env, encoding: 'utf8', input: JSON.stringify({ tool_name: 'Bash', cwd: dir, session_id: 'fixture', tool_input: { command: `git push --force-with-lease=refs/heads/topic:${'a'.repeat(40)} origin HEAD:refs/heads/topic` } }) });
       expect(denied.status).toBe(command === claude ? 2 : 0);
       expect(JSON.parse(denied.stdout).hookSpecificOutput.permissionDecision).toBe('deny');
-      expect(denied.stdout + denied.stderr).not.toContain('policy hook unavailable');
+      expect(denied.stdout + denied.stderr).not.toContain("couldn't run");
     }
   }
 });
