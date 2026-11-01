@@ -55,11 +55,11 @@ sys.exit(7 if os.environ.get('FAIL_COMMAND') in [' '.join([name] + args)] else 0
     { cwd: root, env, input: options.input ?? '', encoding: 'utf8' });
   return { ...result, log: readFileSync(log, 'utf8'), root };
 }
-test('skill changes scope pytest and run baseline plus cheap gates', t => {
+test('skill changes scope pytest and cheap gates without unrelated pristine work', t => {
   const r = fixture(t, ['skills/golem-powers/example/SKILL.md']);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.log, /"python","-m","pytest","skills\/golem-powers\/example\/tests","-q"/);
-  assert.match(r.log, /pristine-harness.py.*check/);
+  assert.doesNotMatch(r.log, /pristine-harness.py.*check/);
   assert.match(r.log, /check-publish-boundary.sh/);
   assert.match(r.log, /check-model-role-drift.mjs/);
   assert.match(r.log, /canon-drift-lint.mjs/);
@@ -135,4 +135,10 @@ test('hook preserves package failure and only then calls touched suites', t => {
     assert.equal(hook.status, status, hook.stderr);
     assert.equal(hook.stdout.includes('touched-suite-called'), !status);
   }
+});
+
+test('pristine input changes also run the CI baseline command', t => {
+  const r = fixture(t, ['skills/golem-powers/_shared/shell_parse.py']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.log, /pristine-harness.py.*check/);
 });

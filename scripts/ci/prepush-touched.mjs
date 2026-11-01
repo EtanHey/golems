@@ -96,6 +96,12 @@ function main() {
     for (const path of skills.flatMap(s => walk(`skills/golem-powers/${s}`)).filter(p => p.endsWith('.bats')))
       run(['timeout', '--kill-after=10s', '180s', 'bats', '--tap', path]);
     for (const evalSuite of selected.filter(p => p.endsWith('.py'))) run([python, evalSuite]);
+  }
+  // These are the pristine gate's input families (FILES and imported split modules).
+  const pristine = [...changed].some(p =>
+    /^skills\/golem-powers\/(_shared|tmp-block|git-guardian)\//.test(p) ||
+    /^scripts\/(ci\/pristine-harness|tests\/fixtures\/(pristine-harness|codex-sessions)|repogolem\/(golem-dispatch\.zsh|worktree-bootstrap\.sh))/.test(p));
+  if (pristine) {
     const baseline = workflow.jobs['python-skill-tests'].steps.find(s => s.name === 'Pristine split baseline gate');
     if (!baseline?.run) throw new Error('CI pristine baseline command missing');
     run([python, ...baseline.run.trim().split(/\s+/).slice(1)]);
