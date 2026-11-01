@@ -51,3 +51,18 @@ test('live expectation derives only active live policy, and transition needs rul
   expect(ruled.ok).toBe(true);
   expect(renderTable(ruled, { marker: 'live' })).toContain('temporary report-only');
 });
+
+test('base rows may carry the previous parity policy; current rows stay strict', () => {
+  const old = { ...row, report_only: 'until-m1-run1', report_only_until: '2026-11-02T00:00:00Z' };
+  expect(() => parseRows(doc(old))).toThrow();
+  expect(parseRows(doc(old), { base: true })).toEqual(doc(old));
+  for (const bad of [{ ...old, report_only_until: '2026-11-03T00:00:00Z' }, { ...old, report_only: 'until-anything' }, { ...old, id: 'other' }]) {
+    expect(() => parseRows(doc(bad), { base: true })).toThrow();
+  }
+  // The real transition: base carries the old policy, head carries the new one, and the table renders both dates in full.
+  const evaluation = evaluate({ rows: doc(row), baseRows: parseRows(doc(old), { base: true }), results: { head_sha: head, results: { [row.id]: false } }, head, now: before });
+  expect(evaluation.ok).toBe(true);
+  const body = renderTable(evaluation, { marker: 'golems-ratchet-live' });
+  expect(body).toContain('2026-11-02T00:00:00Z');
+  expect(body).toContain('2026-11-09T00:00:00Z');
+});

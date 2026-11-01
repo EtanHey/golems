@@ -37,6 +37,9 @@ export function validDiskMeasurement(m) {
 
 // orc 2026-11-01: report-only until I5 merges and M1 run 2 succeeds; hard backstop below.
 export const PARITY_UNTIL = "2026-11-09T00:00:00Z";
+// Base rows (a merge's first parent) may still carry a previous, once-valid parity policy.
+// Only exact earlier pairs are tolerated, and only when parsing BASE rows; current rows stay strict.
+const PARITY_HISTORY = [["until-m1-run1", "2026-11-02T00:00:00Z"]];
 export function isReportOnly(row, now = Date.now()) {
   return Boolean(row.report_only) && (row.report_only_until === undefined || now < Date.parse(row.report_only_until));
 }
@@ -45,7 +48,7 @@ export function expectedReporting(rows, runner, now = Date.now()) {
     r.id === "installed-skill-parity" ? { id: r.id, until: r.report_only_until } : r.id);
 }
 
-export function parseRows(doc) {
+export function parseRows(doc, { base = false } = {}) {
   if (!doc || doc.schema !== 1 || !Array.isArray(doc.rows)) throw new Error("row file needs schema: 1 and a rows array");
   for (const key of Object.keys(doc)) if (!FILE_KEYS.has(key)) throw new Error(`row file: unknown key ${key}`);
   const seen = new Set();
@@ -79,8 +82,9 @@ export function parseRows(doc) {
     }
     const diskPolicy = row.id === "disk-free-floor" && row.kind === "real" && row.runner === "mac"
       && row.direction === "pass" && row.report_only === "gc-success-on-both-macs" && row.report_only_until === undefined;
-    const parityPolicy = row.id === "installed-skill-parity" && row.kind === "real" && row.runner === "live"
-      && row.direction === "pass" && row.report_only === "until-i5-run2" && row.report_only_until === PARITY_UNTIL;
+    const parityShape = row.id === "installed-skill-parity" && row.kind === "real" && row.runner === "live" && row.direction === "pass";
+    const parityPolicy = parityShape && ((row.report_only === "until-i5-run2" && row.report_only_until === PARITY_UNTIL)
+      || (base && PARITY_HISTORY.some(([token, until]) => row.report_only === token && row.report_only_until === until)));
     if ((row.report_only !== undefined || row.report_only_until !== undefined) && !diskPolicy && !parityPolicy)
       throw new Error(`${where}: invalid report-only policy or expiry`);
     if (row.runner !== undefined && typeof row.runner !== "string") throw new Error(`${where}: runner must be a string`);
@@ -247,7 +251,7 @@ export function renderTable(evaluation, { marker, title = "Ratchet table", produ
   }
   if (evaluation.loosened.length) lines.push("");
   for (const entry of evaluation.metadata ?? []) {
-    const show = (value) => (typeof value === "string" ? short(value) : escapeCell(value ?? "none"));
+    const show = (value) => (typeof value === "string" ? (entry.field === "report_only_until" ? escapeCell(value) : short(value)) : escapeCell(value ?? "none"));
     lines.push(`- Metadata changed: \`${entry.id}\` ${entry.field} ${entry.field === "report_only" ? escapeCell(entry.before ?? "enforced") : show(entry.before)} → ${(entry.field === "report_only" ? escapeCell(entry.after ?? "enforced") : show(entry.after))}`);
   }
   if (evaluation.metadata?.length) lines.push("");
@@ -310,7 +314,7 @@ export function baseRowsAt(rowsPath, baseRef, git = spawnSync) {
   }
   const shown = run(["show", spec]);
   if (shown.status !== 0) throw new Error(`cannot read ${basename(rowsPath)} at base ${baseRef}: ${(shown.stderr ?? "").trim()}`);
-  return parseRows(JSON.parse(shown.stdout));
+  return parseRows(JSON.parse(shown.stdout), { base: true });
 }
 
 function parseArgs(argv) {
