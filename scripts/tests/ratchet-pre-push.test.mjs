@@ -18,7 +18,22 @@ function fixture(check) {
       { id: 'live-tier-freshness', metric: 'freshness', kind: 'unit', runner: 'ci', direction: 'pass', ceiling: true, command: 'false' },
     ] };
     writeFileSync(join(dir, 'scripts/ratchet/rows.json'), JSON.stringify(rows));
-    writeFileSync(join(dir, 'scripts/ratchet/local-run.sh'), '#!/bin/bash\necho "mac $*" >> "$CALL_LOG"\nexit "${MAC_FAIL:-0}"\n');
+    writeFileSync(join(dir, 'scripts/ratchet/local-run.sh'), `#!/bin/bash
+set -e
+if [ "\${REQUIRE_MAC_OWN_LEASE:-0}" = 1 ]; then
+python3 - <<'PY'
+import errno, fcntl, os
+assert not os.environ.get('GOLEMS_HEAVY_SUITE_HELD'), 'installer refuses a nested lease'
+try: os.fstat(198)
+except OSError as error: assert error.errno == errno.EBADF
+else: raise AssertionError('inherited lease fd')
+with open(os.environ['TEST_LEASE_PATH'], 'a+') as lease: fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+with open(os.environ['CALL_LOG'], 'a') as log: log.write('mac-lease-clear\\n')
+PY
+fi
+echo "mac $*" >> "$CALL_LOG"
+exit "\${MAC_FAIL:-0}"
+`);
     const fake = `#!/usr/bin/env node
 const fs=require('fs'), a=process.argv.slice(2), e=process.env, name=require('path').basename(process.argv[1]);
 fs.appendFileSync(e.CALL_LOG, name+' '+a.join(' ')+'\\n');
@@ -91,16 +106,31 @@ test('suite or diff errors block; deleted refs are ignored; every pushed ref is 
   const r = run({}, deleted + `refs/heads/fixture ${head} refs/heads/fixture ${old}\n`);
   expect(r.status).toBe(0); expect(r.calls).toContain(`diff --name-only ${base}...${head}`);
 }));
-test('one queued job preserves stdin refs after the queue consumes them', () => fixture((run, dir) => {
+test('queued CI preserves stdin refs and releases its lease before the Mac installer', () => fixture((run, dir) => {
   const helper = join(dir, 'Gits/golems/.worktrees/hooks-live/scripts/hooks');
   mkdirSync(helper, { recursive: true });
-  writeFileSync(join(helper, 'heavy-suite.py'), `import os, subprocess, sys
+  writeFileSync(join(helper, 'heavy-suite.py'), `import fcntl, os, subprocess, sys
 with open(os.environ['CALL_LOG'], 'a') as f: f.write('queue ' + sys.stdin.read())
-sys.exit(subprocess.call(sys.argv[2:]))
+with open(os.environ['TEST_LEASE_PATH'], 'a+') as lease:
+    os.dup2(lease.fileno(), 198, inheritable=True)
+    fcntl.flock(198, fcntl.LOCK_EX)
+    result = subprocess.call(sys.argv[2:], pass_fds=(198,), env={**os.environ, 'GOLEMS_HEAVY_SUITE_HELD': 'fixture-queue'})
+    os.close(198)
+with open(os.environ['CALL_LOG'], 'a') as f: f.write('queue-done\\n')
+sys.exit(result)
 `);
-  const r = run({ HOST_NAME: 'MacBook-Pro' });
+  const env = { HOST_NAME: 'MacBook-Pro', REQUIRE_MAC_OWN_LEASE: '1', TEST_LEASE_PATH: join(dir, 'queue.lease') };
+  const r = run(env);
   expect(r.status).toBe(0); expect(r.calls).toContain(`queue refs/heads/fixture ${head}`);
   expect(r.calls).toContain(`mac --pr 42 --head ${head}`);
+  expect(r.calls).toContain('mac-lease-clear');
+  expect(r.calls.indexOf('queue-done')).toBeLessThan(r.calls.indexOf('mac --pr'));
+  const failed = run({ ...env, ROW_FAIL: '1' });
+  expect(failed.status).toBe(1); expect(failed.calls).not.toContain('mac --pr');
+  const bypass = run({ ...env, GOLEMS_PREPUSH_RATCHET: '0' });
+  expect(bypass.status).toBe(0); expect(bypass.calls).not.toContain('mac --pr');
+  expect(bypass.output).toContain('WARNING');
+  expect(JSON.parse(readFileSync(join(dir, '.claude/logs/tmp-block-ledger.jsonl'), 'utf8')).hatch).toBe('GOLEMS_PREPUSH_RATCHET=0');
 }));
 test('multiple live refs measure each candidate, isolating another SHA from the current checkout', () => fixture(run => {
   const other = 'd'.repeat(40);

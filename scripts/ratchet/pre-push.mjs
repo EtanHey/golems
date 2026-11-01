@@ -65,6 +65,8 @@ function mac(cwd, head, pr) {
 }
 
 try {
+  const phase = process.argv[2];
+  if (process.argv.length !== 3 || !['--ci', '--mac'].includes(phase)) throw new Error('use --ci or --mac');
   const updates = (process.env.GOLEMS_PREPUSH_UPDATES ?? '').trim().split('\n').filter(Boolean);
   for (const line of updates) {
     const fields = line.trim().split(/\s+/);
@@ -96,8 +98,8 @@ try {
         const installed = run('bun', ['install', '--frozen-lockfile', '--ignore-scripts'], cwd);
         if (installed.status !== 0) throw new Error(`candidate dependencies: ${installed.stderr}`);
       }
-      measure(cwd, head, base, pr);
-      mac(cwd, head, pr);
+      if (phase === '--ci') measure(cwd, head, base, pr);
+      else mac(cwd, head, pr);
     } finally {
       if (scratch) {
         const removed = added ? run('git', ['worktree', 'remove', cwd]) : { status: 0 };
