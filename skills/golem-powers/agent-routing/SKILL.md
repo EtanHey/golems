@@ -59,6 +59,7 @@ Etan (2026-10-28, via orc/PHX): use Sol/Terra/Luna for more of the work so the C
 - UI/UX (2026-10-28): Claude Opus implements and reviews taste; Codex handles only mechanical parts. A fresh taste reviewer and the other-vendor reviewer remain required.
 - Leads are Claude only; Codex never holds a lead seat or long context. "I think codexes should just be workers and not leads and not hold long context." (Etan, 2026-10-28)
 - Fan-outs, gathers and mechanical work (2026-10-28) use Luna/Terra/Haiku; Sonnet 5.5 is a valid worker tier between Haiku and Opus. Antigravity's pool is for research/gather.
+- **When Gemini Argon is out (2026-11-01, Etan, via orc):** gathers go to `antigravity` with `claude-opus-5-5`, `claude-sonnet-5-5` or `gemini-3.8-flash`, never to Codex by default. Antigravity's Claude & GPT pool is separate from the Codex weekly pool and sat unused while Codex drained. Before picking a gatherer, check T3 **Settings > Usage limits**; a Codex gather is the fallback only when Antigravity is out too.
 - Keep the Claude 5h window alive (2026-10-28). Never fast/priority: explicitly pass `fastMode:false` / `serviceTier:"default"`. This supersedes the dated budget-pacing note; it does not revert at a window reset.
 
 | Work | Implements | Reviews | Plus |
