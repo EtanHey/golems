@@ -111,7 +111,7 @@
 ### When to Use CLI (op inject/run)
 
 - **CI/CD pipelines** - automated deployments
-- **One-time scripts** - need secrets in scripts
+- **One-time scripts** - a deliberate step Etan is present for (each `op` call is a Touch ID prompt); routine agent scripts load `~/.config/golems/*.env`
 - **Template-based config** - `.yml.tpl` files
 - **Service Accounts** - non-interactive access
 
@@ -181,7 +181,7 @@ If you have `~/.config/golems/config.json` with secrets:
 ### Multiple processes can't read simultaneously
 
 Named pipes have concurrent read limitations. Options:
-- Use `op run` instead for multi-process scenarios
+- For agents, resolve the values once into a `~/.config/golems/*.env` file and load it per command. `op run` is only for Etan's own interactive runs, since each call is a Touch ID prompt.
 - Have one process export to env vars for others
 
 ### Team member can't access environment

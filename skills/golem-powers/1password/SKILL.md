@@ -101,7 +101,7 @@ op inject -i .env.template -o .env && npm run build
 # Remember to delete .env after!
 ```
 
-**op run (CLI):**
+**op run (CLI; Etan's own interactive runs only, since each call is a Touch ID prompt; agents load `~/.config/golems/*.env`):**
 ```bash
 # Pass secrets as environment variables
 op run --env-file .env.template -- npm run build
