@@ -51,3 +51,49 @@ function split_case_160() {
     grep -F -q -- 'repoGolem: skipping MCP server "stdio-string"' <<< "$output"
     grep -F -q -- 'repoGolem: skipping MCP server "empty"' <<< "$output"
 }
+
+# claudeSettings: a ~-relative path to a Claude --settings file. Coach seats use
+# it to clear the CLIProxyAPI env so claude.ai connectors stay enabled.
+run_claude_settings_launch() {
+    local registry="$TMPDIR_/registry-claude-settings.json"
+    if [ -n "$1" ]; then
+        jq --arg s "$1" '.projects.testrepo.claudeSettings = $s' "$REGISTRY_FILE" > "$registry"
+    else
+        cp "$REGISTRY_FILE" "$registry"
+    fi
+    run zsh -f -c '
+      export RALPH_REGISTRY_FILE="$1" HOME="$3"
+      source "$2"
+      function _ralph_setup_mcps() { return 0; }
+      function _ralph_setup_secrets() { return 0; }
+      function _golem_setup_env() { return 0; }
+      function _golem_setup_title() { return 0; }
+      function _golem_reset_title() { return 0; }
+      function claude() { print -r -- "ARGS=$*"; }
+      testrepoClaude -s
+    ' _ "$registry" "$SOURCE_DISPATCHER" "$TMPDIR_/settings-home"
+}
+
+function split_case_161() {
+    [ -f "$SOURCE_DISPATCHER" ]
+    local home="$TMPDIR_/settings-home"
+    mkdir -p "$home/.config/tokenlayer"
+    printf '%s\n' '{"env":{"ANTHROPIC_BASE_URL":"","ANTHROPIC_AUTH_TOKEN":""}}' > "$home/.config/tokenlayer/direct.json"
+
+    run_claude_settings_launch '~/.config/tokenlayer/direct.json'
+    [ "$status" -eq 0 ]
+    grep -F -q -- "--settings $home/.config/tokenlayer/direct.json" <<< "$output" \
+      || { echo "set: $output" >&2; return 1; }
+
+    run_claude_settings_launch ''
+    [ "$status" -eq 0 ]
+    refute_contains "--settings" "$output" "no claudeSettings field means no --settings"
+    refute_contains "warning" "$output"
+
+    run_claude_settings_launch '~/.config/tokenlayer/missing.json'
+    [ "$status" -eq 0 ]
+    grep -F -q -- "ARGS=" <<< "$output" || { echo "missing: $output" >&2; return 1; }
+    refute_contains "--settings" "$output" "a missing settings file is skipped"
+    grep -F -q -- "claudeSettings file not found: $home/.config/tokenlayer/missing.json" <<< "$output" \
+      || { echo "missing warning: $output" >&2; return 1; }
+}

@@ -24,6 +24,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 
+import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 import { validateAudioDashboardEvidence, formatReport } from "../src/audio-dashboard-evidence.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,6 +41,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const x = argv[i];
     if (x === "--spec") a.spec = argv[++i];
+    else if (x === "--first-build") a.firstBuild = argv[++i];
     else if (x === "--job-dir") a.jobDir = argv[++i];
     else if (x === "--out") a.out = argv[++i];
     else if (x === "--published") a.published = argv[++i];
@@ -58,7 +60,7 @@ function loadWords(p) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-if (args.help) { console.log("usage: bun scripts/validate-evidence.mjs --spec <job.json> [--job-dir <dir>] [--out <html>] [--published \"<cmd>\"] [--json]"); process.exit(0); }
+if (args.help) { console.log("usage: bun scripts/validate-evidence.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>] [--published \"<cmd>\"] [--json]"); process.exit(0); }
 if (!args.spec) fail("--spec is required");
 const specPath = path.resolve(expandHome(args.spec));
 if (!existsSync(specPath)) fail(`spec not found: ${specPath}`);
@@ -90,7 +92,11 @@ const evidence = {
   ...(args.published ? { publishCommand: args.published } : {}),
 };
 
+const preservation = await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
+writeDesignReport(outPath, html, preservation);
 const result = validateAudioDashboardEvidence(evidence);
+result.designPreservation = preservation;
+if (preservation.verdict !== "PASS") { result.verdict = "REJECTED"; result.violations.push(...preservation.violations); }
 if (args.json) console.log(JSON.stringify(result, null, 2));
 else {
   console.log(formatReport(result));

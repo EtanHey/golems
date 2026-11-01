@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { planCodexHooks, applyCodexHooks, codexStatus, codexCommand } from "../hooks/codex-hooks-install.mjs";
+import { checkReleaseHooks } from "../hooks/release-self-check.mjs";
 
 const scratchRoot = path.resolve(import.meta.dir, "../../docs.local/codex-hooks-port");
 mkdirSync(scratchRoot, { recursive: true });
@@ -19,6 +20,66 @@ function fixture() {
   writeFileSync(path.join(codexHome, "config.toml"), '# keep this comment\nmodel = "my-model"\n');
   return { root, codexHome, live, manifest, host: "mbp" };
 }
+
+const repo = path.resolve(import.meta.dir, "../..");
+const realManifest = JSON.parse(readFileSync(path.join(repo, "scripts/hooks/manifest.json"), "utf8"));
+for (const host of Object.keys(realManifest.codex_hosts)) {
+  test(`real hook manifest plans every Codex gate for ${host} without writes`, () => {
+    const f = fixture();
+    const config = readFileSync(path.join(f.codexHome, "config.toml"));
+    const plan = planCodexHooks({ ...f, host, manifest: realManifest, live: repo });
+    expect(plan.source).toBe(true);
+    const groups = JSON.parse(plan.next).hooks.PreToolUse;
+    expect(groups.length).toBe(realManifest.codex_hosts[host].length);
+    expect(groups.map(g => g.matcher)).toEqual(realManifest.codex_hosts[host].map(e => e.matcher));
+    expect(gatesIn(plan)).toContain("heredoc-guard");
+    expect(readFileSync(path.join(f.codexHome, "config.toml"))).toEqual(config);
+    expect(readdirSync(f.codexHome)).toEqual(["config.toml"]);
+  });
+}
+
+test("Codex matcher validation requires the standard matcher for every gate", () => {
+  const f = fixture();
+  for (const gate of ["heredoc-guard", "tmp-block"]) {
+    const manifest = structuredClone(realManifest);
+    manifest.codex_hosts.mbp.find(e => e.gate === gate).matcher = "^Bash$";
+    expect(() => planCodexHooks({ ...f, manifest })).toThrow("Invalid Codex policy entry");
+  }
+});
+
+function releaseCheckFixture() {
+  const f = fixture();
+  const quote = s => `'${s.replaceAll("'", "'\\''")}'`;
+  const options = { source: repo, python: "python3", home: path.dirname(f.codexHome),
+    entries: structuredClone(realManifest.hosts.client),
+    expand: command => command.replaceAll("{python}", "python3").replaceAll("{live}", quote(repo)) };
+  return { f, options };
+}
+
+test("release self-check exercises allow and deny for all four gates on both harnesses", () => {
+  const { options } = releaseCheckFixture();
+  const logs = [];
+  const log = console.log;
+  try {
+    console.log = value => logs.push(value);
+    checkReleaseHooks(options);
+  } finally { console.log = log; }
+  expect(logs).toEqual(["public hook self-tests: PASS (16 specimens)"]);
+});
+
+test("release self-check refuses a missing heredoc registration", () => {
+  const { options } = releaseCheckFixture();
+  options.entries = options.entries.filter(e => e.id !== "heredoc-guard");
+  expect(() => checkReleaseHooks(options)).toThrow("public hook self-tests: missing heredoc-guard");
+});
+
+test("release self-check refuses a heredoc hook that allows its denied JSON specimen", () => {
+  const { f, options } = releaseCheckFixture();
+  const hook = path.join(f.root, "broken-heredoc.py");
+  writeFileSync(hook, "print('{}')\n");
+  options.entries.find(e => e.id === "heredoc-guard").command = `python3 -I -B '${hook}'`;
+  expect(() => checkReleaseHooks(options)).toThrow("public hook self-tests: REFUSED heredoc-guard/claude/deny");
+});
 
 test("both hosts preserve config and external hooks, backup once, install idempotently", () => {
   for (const host of ["mbp", "m1"]) {
@@ -113,8 +174,9 @@ test("shell fallback blocks missing interpreter and adapter with value-free stde
   }
 });
 
-for (const host of ["mbp", "m1"]) {
-  test(`hooks-live CLI uses the selected manifest on ${host} despite invoking-checkout drift`, () => {
+// spawns the installer CLI once per host; ~5 s under fleet load
+test("hooks-live CLI uses the selected manifest for both hosts despite invoking-checkout drift", () => {
+  for (const host of ["mbp", "m1"]) {
     const f = fixture();
     const defaultHome = f.codexHome;
     f.codexHome = path.join(f.root, "alternate-codex"); mkdirSync(f.codexHome);
@@ -174,8 +236,8 @@ require('node:module').syncBuiltinESMExports();\n`);
     expect(readFileSync(probes, "utf8")).toBe("probe\nprobe\n");
     expect(readFileSync(path.join(f.codexHome, "hooks.json"))).toEqual(hooks);
     git("worktree", "unlock", f.live);
-  });
-}
+  }
+}, 20_000);
 
 test("codexCommand registers the adapter as python3 -I -B", () => {
   const cmd = codexCommand("python3", "/live/a.py", "git-guardian");
@@ -190,7 +252,7 @@ function confirmFixture() {
     matcher: "^(Bash|apply_patch)$", timeout: 10, requiresPin: PIN }];
   return { ...f, manifest: { codex_hosts: { mbp: entries, m1: entries } } };
 }
-const gatesIn = (p) => JSON.parse(p.next).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command.match(/codex-policy-hook\.py'\\'' '\\''([a-z-]+)/)?.[1]).sort();
+const gatesIn = (p) => JSON.parse(p.next).hooks.PreToolUse.flatMap((g) => g.hooks).map((h) => h.command.match(/codex-policy-hook\.py'\\'' '\\''([a-z0-9-]+)/)?.[1]).sort();
 
 test("human-confirm registers as a third Codex gate; refused while unpinned, and an existing registration is stripped", () => {
   const f = confirmFixture();
@@ -215,4 +277,27 @@ test("the Codex manifest pins the gate set: human-confirm needs its anchor pin, 
   expect(bad((e) => { e[0].requiresPin = PIN; })).toThrow("Invalid Codex policy entry");
   expect(bad((e) => { e[2].gate = "other-gate"; })).toThrow("Invalid Codex policy entry");
   expect(bad((e) => { e.splice(0, 1); })).toThrow("Invalid Codex policy manifest");
+});
+
+test("M1 window is an owner-only Bash registration alongside the pinned gate set", () => {
+  const f = confirmFixture();
+  const entry = { gate: "m1-window-gate", source: "scripts/hooks/codex-policy-hook.py", matcher: "^Bash$", timeout: 10 };
+  f.manifest.codex_hosts.mbp = [...f.manifest.codex_hosts.mbp, entry];
+  expect(gatesIn(planCodexHooks(f))).toEqual(["git-guardian", "human-confirm", "m1-window-gate", "tmp-block"]);
+  applyCodexHooks(planCodexHooks(f));
+  expect(planCodexHooks(f).registered).toBe(true);
+  entry.matcher = "^(Bash|apply_patch)$";
+  expect(() => planCodexHooks(f)).toThrow("Invalid Codex policy entry");
+});
+
+test("M1 client seat mode is explicit in the generated Codex command and validated", () => {
+  const f = confirmFixture();
+  const entry = { gate: "m1-window-gate", source: "scripts/hooks/codex-policy-hook.py", matcher: "^Bash$", timeout: 10, mode: "seat" };
+  f.manifest.codex_hosts.client = [...f.manifest.codex_hosts.mbp, entry];
+  f.host = "client";
+  expect(planCodexHooks(f).next).toContain("--mode");
+  applyCodexHooks(planCodexHooks(f));
+  expect(planCodexHooks(f).registered).toBe(true);
+  entry.mode = "invalid";
+  expect(() => planCodexHooks(f)).toThrow("Invalid Codex policy entry");
 });

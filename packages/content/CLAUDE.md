@@ -63,7 +63,7 @@ packages/content/
 │   │   ├── scoring.ts           # CLIP Score, LAION Aesthetic, BRISQUE — Python bridge
 │   │   └── index.ts             # Barrel export
 │   ├── dataviz/                 # Data visualization pipeline
-│   │   ├── fetchers/            # Supabase + BrainLayer data fetchers (jobs, finance, brain, activity)
+│   │   ├── fetchers/            # BrainLayer observability data fetcher
 │   │   ├── charts/              # SVG chart generators (bar, donut, line, stat-card)
 │   │   ├── templates/           # Infographic layouts (linkedin-card, instagram-square, story-format)
 │   │   ├── renderer.ts          # SVG → PNG via sharp
@@ -72,7 +72,6 @@ packages/content/
 │   │   ├── registry.ts          # Pipeline capabilities registry
 │   │   ├── router.ts            # AI routing: idea → best pipeline(s)
 │   │   ├── executor.ts          # Pipeline execution engine
-│   │   ├── tracker.ts           # Performance tracking (Supabase)
 │   │   └── index.ts             # Barrel export
 │   └── render/                  # Programmatic render service
 │       ├── render-service.ts    # renderVideo(), renderThumbnail(), job tracking
@@ -261,24 +260,19 @@ console.log(result.scoreSummary);
 
 | Fetcher | Source | Key Metrics |
 |---------|--------|-------------|
-| `jobs` | `golem_jobs`, `scrape_activity` | Top tags, status distribution, weekly trends, scrape stats |
-| `finance` | `llm_usage`, `subscriptions` | LLM costs by model, daily costs, subscription totals |
 | `brain` | BrainLayer's observability document (`~/.local/share/brainlayer/observability.json`, rewritten every 5 min; never the DB) | Total chunks, content classes, stores per hour (last 24h) |
-| `activity` | `golem_events`, `service_runs` | Golem activity, event types, service health |
 
 ### Static Infographics (SVG → PNG)
 
 ```bash
 # Generate a specific data viz
-bun run dataviz jobs --format linkedin
-bun run dataviz finance --format instagram
 bun run dataviz brain --format story
 
 # Generate all types
 bun run dataviz all
 
 # SVG only (no PNG conversion)
-bun run dataviz jobs --svg-only
+bun run dataviz brain --svg-only
 ```
 
 ### Infographic Templates
@@ -310,15 +304,15 @@ bun run render BrainGrowth --project golems-showcase
 ### Programmatic API
 
 ```typescript
-import { fetchJobMarketData, renderBarChart, renderLinkedInCard, renderSvgToPng } from "@golems/content/dataviz";
+import { fetchBrainData, renderLineChart, renderLinkedInCard, renderSvgToPng } from "@golems/content/dataviz";
 
-const data = await fetchJobMarketData();
-const chart = renderBarChart({
-  data: data.topTags.map(t => ({ label: t.tag, value: t.count })),
-  horizontal: true,
+const data = await fetchBrainData();
+if (data.state !== "measured") throw new Error(data.reason);
+const chart = renderLineChart({
+  data: data.hourly.map(h => ({ date: h.hour, value: h.count })),
 });
-const infographic = renderLinkedInCard({ title: "Job Market", chartSvg: chart });
-await renderSvgToPng({ svg: infographic, outputPath: "out/jobs.png" });
+const infographic = renderLinkedInCard({ title: "BrainLayer", chartSvg: chart });
+await renderSvgToPng({ svg: infographic, outputPath: "out/brain.png" });
 ```
 
 ### Brand-Aware Theming
@@ -346,9 +340,6 @@ bun run pipeline route "Weekly job market bar chart"
 
 # Route + execute in one command
 bun run pipeline route "Animated code demo" --execute
-
-# Show pipeline performance stats
-bun run pipeline stats
 
 # List all available pipelines
 bun run pipeline list
@@ -381,7 +372,6 @@ console.log(plan.reasoning); // "Job market data → dataviz pipeline..."
 // Execute the plan
 const result = await executePlan(plan, {
   project: "golems-showcase",
-  trackRun: true,
 });
 ```
 
@@ -391,14 +381,6 @@ For complex ideas, the router can chain pipelines:
 - ComfyUI background → Remotion text animation overlay
 - Dataviz chart → Remotion animated version
 - Multiple chart types → infographic template
-
-### Performance Tracking
-
-Pipeline runs are logged to `pipeline_runs` Supabase table:
-- Pipeline ID, idea text, idea type classification
-- Success/failure, duration, quality score
-- User feedback (1-5 manually supplied)
-- Used by the learning loop to improve routing over time
 
 ---
 

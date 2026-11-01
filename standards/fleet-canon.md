@@ -35,15 +35,9 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    Every non-Cursor Agent/Workflow/Task spawn pins its model explicitly.
    Claude concurrency: at most 5 parallel Claude lead tracks fleet-wide, normally 3-4; a slot is an actually
    running turn (idle, snoozed or waiting threads don't count). Claude workers (role ids in model-roles.json): <=2 `claude.judgment` (inside the shared
-   7-slot `claude.judgment` ceiling with leads), <=2 `claude.subagent.cheap`, <=4 `claude.subagent.mechanical`;
-   all Claude workers together <=20% of the rolling 5h.
-   Brake on tokenlayer `usage.json` five_hour.used_pct, checking every account actually serving:
-   >=60% no new Claude workers and <=2 active leads;
-   >=80% no Claude workers and <=1 essential lead turn.
-   Stale, unknown or rejected telemetry counts as NO headroom; a weekly rejection overrides five-hour
-   headroom; warn early when used% x 300 / elapsed-minutes > 80.
-   Weekly budget: <=6 weekly points per 5h window until the weekly reset.
-   (provisional until the first fresh-session window shows a non-zero 1h-cache write share; then re-derive)
+   7-slot `claude.judgment` ceiling with leads), <=2 `claude.subagent.cheap`, <=4 `claude.subagent.mechanical`.
+   No usage brake: tokenlayer `usage.json` is telemetry only and never pauses, slows or refuses an agent.
+   (Etan, 2026-10-31, via orc: "we're doing telemetry we're not breaking things ... we're not pausing agents".)
    (Etan, 2026-10-28, via fleet control: "3 is too low", "~20 too wide", "even 10 might not kill it as long as they're leads".)
    (Etan, 2026-10-28, via fleet control: "maybe 3-5 leads parallel at a time might have to be the max? since they also use claudes for review and implementations?")
    Usage is managed by pinning and dispatch-counting.

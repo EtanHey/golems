@@ -75,7 +75,7 @@ Gatherer brief rules: prompts only (answer keys stay with the lead); READ-ONLY; 
 - Never send a bare `@word` into an interactive composer; it opens the file picker. Address agents by bare name or deliver a file.
 - Any `[FROM=… TO=… TYPE=…]` envelope emitted locally must be delivered with matching `send_to` in the same turn.
 - A questioning or briefly idle worker is re-prompted/backgrounded/salvaged, not killed. Kill only after evidence of an unresponsive surface and salvage its output first; then respawn with recovered context.
-- Sequentially launch workers; BrainLayer writers are staggered by at least 10 seconds. Claude concurrency and the usage brake are owned by fleet canon #5.
+- Sequentially launch workers; BrainLayer writers are staggered by at least 10 seconds. Claude concurrency caps are owned by fleet canon #5.
 - Before user-away windows, every active worker has `wait_for` coverage or a file completion contract.
 - New research/context goes to every active worker with a one-line why-it-matters note.
 - Skills do not hot-reload in long sessions; notify or respawn affected workers after critical edits.

@@ -734,6 +734,11 @@ function status(o) {
       console.log(`hooks-live ${problem}`);
     }
   }
+  const windowGate = ctx.entries.find((e) => e.id === "m1-window-gate");
+  if (windowGate) {
+    console.log(windowGate.command.endsWith(" --mode seat") ? "m1-window-gate seat (procedure lock checked per call)"
+      : `m1-window-gate ${existsSync(path.join(homedir(), ".golems/m1-window-gate.json")) ? "configured (validation occurs per call)" : "unconfigured"}`);
+  }
   const helper = path.join(ctx.live, "scripts/hooks/heavy-suite.py");
   console.log(`heavy-suite ${existsSync(helper) && statSync(helper).isFile() ? `available ${helper}` : "missing (suites run unqueued)"}`);
   // Only registered hook commands count: a hook name in permissions or env is not a registration.

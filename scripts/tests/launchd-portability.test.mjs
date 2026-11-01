@@ -16,7 +16,7 @@ describe("launchd templates are portable", () => {
 
   test("renderer expands home and checkout tokens", () => {
     const scratch = mkdtempSync(join(tmpdir(), "golems-launchd-"));
-    const source = join(launchdRoot, "com.golemszikaron.briefing.plist");
+    const source = join(launchdRoot, "com.golems.worktree-gc.plist");
     const destination = join(scratch, basename(source));
 
     try {
@@ -34,9 +34,8 @@ describe("launchd templates are portable", () => {
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       const rendered = readFileSync(destination, "utf8");
       expect(rendered).toContain("/fixture/home");
-      expect(rendered).toContain("/opt/golems/packages/services/src/briefing.ts");
-      expect(rendered).toContain("<string>/opt/homebrew/bin/bun</string>");
-      expect(rendered).toContain("<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>");
+      expect(rendered).toContain("/opt/golems/docs.local/worktree-gc-launchd.log");
+      expect(rendered).toContain("<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>");
       expect(rendered).not.toContain("/.bun/bin");
       expect(rendered).not.toMatch(/@[A-Z][A-Z0-9_]*@/);
     } finally {

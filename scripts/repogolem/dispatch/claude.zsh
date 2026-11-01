@@ -126,6 +126,20 @@ _golem_launch_claude() {
     agent_name=$(jq -r --arg proj "$project_name" '.projects[$proj].agent // ""' "$registry" 2>/dev/null)
     [[ -n "$agent_name" ]] && claude_args+=("--agent" "$agent_name")
 
+    # A per-project settings file layered over ~/.claude/settings.json. Coach seats
+    # point it at a file that blanks ANTHROPIC_BASE_URL/AUTH_TOKEN: with the
+    # CLIProxyAPI token set, Claude Code disables claude.ai connectors (Gmail etc.).
+    local claude_settings
+    claude_settings=$(jq -r --arg proj "$project_name" '.projects[$proj].claudeSettings // ""' "$registry" 2>/dev/null)
+    if [[ -n "$claude_settings" ]]; then
+      claude_settings="${claude_settings/#\~/$HOME}"
+      if [[ -f "$claude_settings" ]]; then
+        claude_args+=("--settings" "$claude_settings")
+      else
+        print -u2 -- "repoGolem: warning: claudeSettings file not found: $claude_settings (launching without it)"
+      fi
+    fi
+
     local inherit_from
     inherit_from=$(jq -r --arg proj "$project_name" '.projects[$proj].mcpInheritFrom // ""' "$registry" 2>/dev/null)
     if [[ -n "$inherit_from" ]]; then

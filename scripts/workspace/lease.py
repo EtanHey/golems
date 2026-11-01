@@ -18,6 +18,10 @@ not a secret from the same OS user: the ledger file is readable.
 Only begin-close stdout returns the token; other output and history omit it.
 Closing leases never expire; audit reports their closing_age_seconds. Retry an
 interrupted close with the original receipt; identical closed receipts are no-ops.
+Consumers and closing leases exclude retirement on equal, ancestor or descendant
+realpaths across all live leases. Close refusals return 2 and a RETAINED receipt on stdout,
+durably journaled in the refusing lease's history. check-close rechecks a token
+before resuming retirement; new overlapping binds/consumers are excluded meanwhile.
 Close attempts are journaled before updating terminal state. If the ledger is
 already unwritable, no attempt can be recorded; the CLI fails without retiring.
 """
@@ -34,6 +38,8 @@ import secrets
 import socket
 import sys
 import tempfile
+
+import generation
 
 
 SCHEMA = "workspace-lifecycle/v1"
@@ -160,12 +166,46 @@ def require_no_consumers(record):
         raise ValueError("outstanding consumers: " + ", ".join(record["consumers"]))
 
 
+class SharedHold(ValueError):
+    def __init__(self, receipt):
+        self.receipt = receipt
+        super().__init__(receipt["reason"])
+
+
+def require_no_shared_holds(directory, record, *, path=None, closing_only=False):
+    """Caller holds writer_lock through the check and its state transition."""
+    resource = path if path is not None else record["path"]
+    if resource is None:
+        return
+    resource = Path(canonical(resource))
+    blockers = []
+    for target in sorted(directory.glob("*.json")):
+        other = read_json(lease_file(directory, target.stem))
+        if other.get("schema") != SCHEMA or other.get("lease_id") != target.stem:
+            raise ValueError("invalid lease record identity/schema: " + target.name)
+        if other["lease_id"] == record["lease_id"] or other["state"] == "closed" or not other["path"]:
+            continue
+        candidate = Path(canonical(other["path"]))
+        if not (resource == candidate or resource in candidate.parents or candidate in resource.parents):
+            continue
+        if other["state"] == "closing" or (not closing_only and other["consumers"]):
+            blockers.append({key: other[key] for key in ("lease_id", "state", "consumers")})
+    if blockers:
+        reason = "overlapping leases have outstanding consumers or are closing: " + "; ".join(
+            f"{item['lease_id']} ({item['state']}; consumers: {', '.join(item['consumers']) or 'none'})"
+            for item in blockers)
+        raise SharedHold(dict(schema=RECEIPT_SCHEMA, lease_id=record["lease_id"],
+                              path=record["path"], repo_common_dir=record["repo_common_dir"],
+                              disposition="RETAINED", reason=reason, blocking_leases=blockers,
+                              observed_at=utc_now()))
+
+
 def require_close_token(record, args):
     if not args.close_token or args.close_token != record.get("close_token"):
         raise ValueError("matching close token required")
 
 
-def close_lease(record, args, attempt):
+def close_lease(directory, record, args, attempt):
     try:
         if record["state"] == "closing":
             require_close_token(record, args)
@@ -216,6 +256,7 @@ def close_lease(record, args, attempt):
             attempt.pop("error", None)
             return
         require_no_consumers(record)
+        require_no_shared_holds(directory, record)
         record.update(state="closed", disposition=terminal["disposition"],
                       terminal_receipt=terminal, closed_at=utc_now())
         if terminal["disposition"] == "TRANSFERRED":
@@ -224,6 +265,8 @@ def close_lease(record, args, attempt):
         attempt.pop("error", None)
     except (ValueError, OSError) as error:
         attempt["error"] = str(error)
+        if isinstance(error, SharedHold):
+            attempt["receipt"] = error.receipt
         raise
 
 
@@ -257,7 +300,7 @@ def mutate(directory, args):
                 # cannot replace the still-closing record. No retirement here.
                 persist(target, record)
                 try:
-                    close_lease(record, args, attempt)
+                    close_lease(directory, record, args, attempt)
                 finally:
                     try:
                         persist(target, record)
@@ -273,10 +316,23 @@ def mutate(directory, args):
                         raise
                 return record
             require_open(record)
-            if args.command == "begin-close":
-                if record["state"] not in ("bound", "retained"):
+            if args.command in ("begin-close", "check-close"):
+                if args.command == "check-close":
+                    if record["state"] != "closing":
+                        raise ValueError("lease is not closing")
+                    require_close_token(record, args)
+                elif record["state"] not in ("bound", "retained"):
                     raise ValueError("begin-close requires a bound or retained lease")
                 require_no_consumers(record)
+                try:
+                    require_no_shared_holds(directory, record)
+                except SharedHold as error:
+                    record["history"].append(dict(at=utc_now(), success=False,
+                                                  error=str(error), receipt=error.receipt))
+                    persist(target, record)
+                    raise
+                if args.command == "check-close":
+                    return record
                 record.update(closing_previous_state=record["state"], state="closing",
                               closing_since=utc_now(), close_token=secrets.token_hex(32))
             elif args.command == "abort-close":
@@ -291,12 +347,19 @@ def mutate(directory, args):
                 path = str(Path(args.path).expanduser().resolve(strict=True))
                 if record["path"] is not None and record["path"] != path:
                     raise ValueError("rebinding to a different path refused")
+                require_no_shared_holds(directory, record, path=path, closing_only=True)
+                if record["resource_kind"] == "worktree":
+                    if record["path"] is None:
+                        record["resource_generation"] = generation.capture(path)
+                    elif "resource_generation" in record:
+                        generation.verify(path, record["resource_generation"])
                 record.update(path=path, state="bound")
                 for key in ("branch", "head", "task_id", "thread_id"):
                     value = getattr(args, key)
                     if value is not None:
                         record[key] = value
             elif args.action == "add":
+                require_no_shared_holds(directory, record, closing_only=True)
                 if args.who not in record["consumers"]:
                     record["consumers"].append(args.who)
             else:
@@ -349,6 +412,8 @@ def parser():
     consumer.add_argument("action", choices=("add", "release"))
     consumer.add_argument("--who", required=True)
     begin_close = commands.add_parser("begin-close", help="exclude consumers before retirement")
+    check_close = commands.add_parser("check-close", help="recheck path holds before resuming retirement")
+    check_close.add_argument("--close-token")
     abort_close = commands.add_parser("abort-close", help="restore the state before begin-close")
     abort_close.add_argument("--close-token")
     close = commands.add_parser("close")
@@ -358,7 +423,7 @@ def parser():
     disposition.add_argument("--retained")
     disposition.add_argument("--transferred-to")
     close.add_argument("--ack-file")
-    for command in (reserve, bind, consumer, begin_close, abort_close, close):
+    for command in (reserve, bind, consumer, begin_close, check_close, abort_close, close):
         command.add_argument("--lease-id", required=True)
     audit_parser = commands.add_parser("audit")
     audit_parser.add_argument("--json", action="store_true")
@@ -386,6 +451,10 @@ def main():
                       else without_close_token(record, record.get("close_token")))
             print(json.dumps(result, sort_keys=True))
         return 0
+    except SharedHold as error:
+        print(json.dumps(error.receipt, sort_keys=True))
+        print("lease refused: " + str(error), file=sys.stderr)
+        return 2
     except (ValueError, OSError, KeyError, TypeError) as error:
         prefix = "do not allocate: " if args.command == "reserve" else "lease refused: "
         message = without_close_token(str(error), getattr(args, "close_token", None))

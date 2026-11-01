@@ -27,6 +27,8 @@ ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "scripts/hooks/fail-open.py"
 ISOLATED = ("-I", "-B")
 TARGETS = {
+    "m1-window-gate": "skills/golem-powers/m1-window-gate/hooks/m1-window-pretooluse.py",
+    "heredoc-guard": "skills/golem-powers/heredoc-guard/hooks/heredoc-guard-pretooluse.py",
     "tmp-block": "skills/golem-powers/tmp-block/hooks/tmp-block-pretooluse.py",
     "git-guardian": "skills/golem-powers/git-guardian/hooks/pre_tool_use.py",
     "human-confirm": "skills/golem-powers/human-confirm-gate/hooks/human-confirm-pretooluse.py",
@@ -483,9 +485,13 @@ def guardian_batch():
 
 def evaluate():
     started = time.monotonic()
-    gate = sys.argv[1] if len(sys.argv) == 2 else None
+    args = sys.argv[1:]
+    gate = args[0] if args else None
     if gate not in TARGETS:
         raise ValueError("unknown gate")
+    mode = args[1:]
+    if mode and (gate != "m1-window-gate" or mode != ["--mode", "seat"]):
+        raise ValueError("invalid gate mode")
     raw = sys.stdin.read(1024 * 1024 + 1)
     if len(raw) > 1024 * 1024:
         raise ValueError("payload budget exceeded")
@@ -506,11 +512,12 @@ def evaluate():
     # exemption. Only the library source is fixed to hooks-live.
     env.pop("GIT_GUARDIAN_LIB", None)
     result = {}
-    items = transport_inputs(p)
+    # The heredoc policy judges shell expansion before Codex patch projection.
+    items = [p] if gate in ("m1-window-gate", "heredoc-guard") else transport_inputs(p)
     if gate == "human-confirm":
         items = [projected for item in items for projected in confirm_inputs(item)]
     for item in items:
-        command = [sys.executable, *ISOLATED, str(LAUNCHER), str(ROOT / TARGETS[gate])]
+        command = [sys.executable, *ISOLATED, str(LAUNCHER), str(ROOT / TARGETS[gate]), *mode]
         data = item
         if gate == "git-guardian" and item["tool_name"] == "apply_patch":
             data = guardian_inputs(item)

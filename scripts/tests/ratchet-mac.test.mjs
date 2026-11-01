@@ -76,6 +76,32 @@ describe("post decision (B2 + M3)", () => {
   });
 });
 
+describe("local-run.sh main checkout resolution", () => {
+  test("root and linked worktree invocations resolve MAIN to the main checkout", () => {
+    const { path, git, commit } = repo();
+    git("config", "core.hooksPath", "/dev/null");
+    git("config", "commit.gpgsign", "false");
+    const script = "scripts/ratchet/local-run.sh";
+    mkdirSync(join(path, "scripts/ratchet"), { recursive: true });
+    copyFileSync(join(here, "local-run.sh"), join(path, script));
+    const stop = join(path, "stop-after-main.sh");
+    // Stop the real entry point before Node, network, installs or receipt writes.
+    writeFileSync(stop, `trap 'if [[ "$BASH_COMMAND" == REPO_SLUG=* ]]; then printf "%s\\n" "$MAIN"; exit 0; fi' DEBUG\n`);
+    commit("fixture");
+    const linked = join(path, "linked worktree");
+    git("-c", "core.hooksPath=/dev/null", "worktree", "add", "-q", "--detach", linked);
+    const expected = execFileSync("pwd", ["-P"], { cwd: path, encoding: "utf8" }).trim();
+    for (const cwd of [path, linked]) {
+      const out = spawnSync("bash", [join(cwd, script), "--pr", "763"], {
+        cwd, encoding: "utf8", env: { ...process.env, BASH_ENV: stop },
+      });
+      expect({ cwd, status: out.status, stderr: out.stderr, main: out.stdout.trim() }).toEqual({
+        cwd, status: 0, stderr: "", main: expected,
+      });
+    }
+  });
+});
+
 describe("local-run.sh PR body forwarding", () => {
   const H = "c".repeat(40);
   function fixture() {
@@ -90,7 +116,7 @@ describe("local-run.sh PR body forwarding", () => {
       if [ "$1" = -C ]; then shift 2; fi
       case "$1" in
         rev-parse)
-          if [ "$2" = --git-common-dir ]; then echo "$FIXTURE/repo/.git"; else echo "$FIXTURE_HEAD"; fi ;;
+          if [ "\${!#}" = --git-common-dir ]; then echo "$FIXTURE/repo/.git"; else echo "$FIXTURE_HEAD"; fi ;;
         status|remote|fetch|checkout|worktree) ;;
         clone) while [ "$#" -gt 1 ]; do shift; done; mkdir -p "$1" ;;
         *) echo "unexpected git: $*" >&2; exit 1 ;;

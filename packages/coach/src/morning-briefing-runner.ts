@@ -1,7 +1,7 @@
 /**
  * Morning Briefing Runner — Entry point for the proactive coach morning briefing.
  *
- * Gathers data from Calendar, Email, and the golem ecosystem.
+ * Gathers data from Calendar and the golem ecosystem.
  * Returns voice text only when explicitly requested.
  *
  * Dependency injection via BriefingDeps allows testing without real API calls.
@@ -10,11 +10,6 @@
 
 import { getTodayEvents } from "./calendar-client";
 import { getEcosystemStatus } from "./status-aggregator";
-import { reportServiceRun } from "@golems/shared/lib/state-store";
-import {
-  createDbClient,
-  getRecentEmails,
-} from "@golems/shared/email/db-client";
 import {
   synthesizeBriefing,
   formatForVoice,
@@ -23,15 +18,12 @@ import {
 } from "./morning-briefing";
 import type { CalendarEvent } from "./calendar-client";
 import type { EcosystemStatus } from "./status-aggregator";
-import type { Email } from "@golems/shared/email/types";
 
 // --- Types ---
 
 export interface BriefingDeps {
   getCalendarEvents: () => Promise<CalendarEvent[]>;
-  getEmails: () => Promise<Email[]>;
   getEcosystem: () => Promise<EcosystemStatus>;
-  reportRun: (key: string) => Promise<void>;
 }
 
 export interface BriefingOptions {
@@ -52,12 +44,7 @@ export interface BriefingResult {
 function defaultDeps(): BriefingDeps {
   return {
     getCalendarEvents: getTodayEvents,
-    getEmails: async () => {
-      const db = createDbClient();
-      return getRecentEmails(db, 24, 5);
-    },
     getEcosystem: getEcosystemStatus,
-    reportRun: (key) => reportServiceRun(key),
   };
 }
 
@@ -74,9 +61,8 @@ export async function runMorningBriefing(
   const { deps = defaultDeps() } = options;
 
   // Gather all data concurrently — each source can fail independently
-  const [calendar, emails, ecosystem] = await Promise.all([
+  const [calendar, ecosystem] = await Promise.all([
     deps.getCalendarEvents().catch(() => [] as CalendarEvent[]),
-    deps.getEmails().catch(() => null),
     deps.getEcosystem().catch(
       () =>
         ({
@@ -92,12 +78,11 @@ export async function runMorningBriefing(
   // Synthesize
   const data: MorningBriefingData = {
     calendar,
-    emails,
+    emails: null,
     ecosystem,
   };
   const briefing = synthesizeBriefing(data);
 
   const voiceText = formatForVoice(briefing);
-  await deps.reportRun("lastMorningBriefing");
   return { success: true, channel: "voice", briefing, voiceText };
 }

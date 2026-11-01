@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only live skill parity. Fixtures are explicit and never the live row command."""
+"""Read-only live skill and enabled-plugin parity. Fixtures are explicit and never the live row command."""
 import argparse
 import hashlib
 import json
@@ -24,6 +24,8 @@ def app_managed(root, name):
 
 
 INSTALLER_MARKERS = {'.golems-source-commit', '.golems-install.json'}
+# Claude config dirs (relative to HOME) whose settings.json enabledPlugins must match.
+DEFAULT_CLAUDE_CONFIG_DIRS = ('.claude',)
 
 
 def tree_sha256(root):
@@ -144,6 +146,9 @@ def validate(document, required=False):
         keys.add('installed_version')
         version(document['installed_version'])
     if not required and isinstance(document, dict):
+        if 'claude_plugins' in document:
+            keys.add('claude_plugins')
+            validate_plugins(document['claude_plugins'])
         if 'installed_commit' in document:
             keys.add('installed_commit')
             if 'installed_version' not in document: raise ValueError('release commit without version')
@@ -201,6 +206,80 @@ def validate(document, required=False):
                 if type(value['executable']) is not bool: raise ValueError('malformed executable bit')
 
 
+def config_dirs(value):
+    # Config spelling is ~/<dir>; inventories and diagnostics use the HOME-relative <dir>.
+    if (not isinstance(value, list) or not value or
+            any(not isinstance(item, str) or not item.startswith('~/') for item in value)):
+        raise ValueError('claude_config_dirs must be a nonempty list of ~/ paths')
+    dirs = [item[2:].rstrip('/') for item in value]
+    for item in dirs: name(item, nested=True)
+    if len(set(dirs)) != len(dirs): raise ValueError('duplicate claude_config_dirs entry')
+    return tuple(dirs)
+
+
+def enabled_plugins(home, directory):
+    # Every configured dir owes a readable settings.json; absence is a named failure, not "none enabled".
+    settings = Path(home) / directory / 'settings.json'
+    try:
+        text = settings.read_text()
+    except FileNotFoundError:
+        return dict(error='settings.json missing')
+    except (OSError, UnicodeDecodeError):
+        return dict(error='settings.json unreadable')
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return dict(error='settings.json not JSON')
+    if not isinstance(data, dict): return dict(error='settings.json not a JSON object')
+    plugins = data.get('enabledPlugins', {})
+    if not isinstance(plugins, dict) or any(type(v) is not bool for v in plugins.values()):
+        return dict(error='enabledPlugins malformed')
+    return dict(enabled=sorted(key for key, value in plugins.items() if value))
+
+
+def plugin_key(value):
+    if not isinstance(value, str) or not value or any(ord(c) < 32 for c in value):
+        raise ValueError('malformed plugin key')
+
+
+def validate_plugins(value):
+    if not isinstance(value, dict) or not value: raise ValueError('malformed claude_plugins')
+    for directory, record in value.items():
+        name(directory, nested=True)
+        if isinstance(record, dict) and set(record) == {'error'}:
+            if not isinstance(record['error'], str) or not record['error'] or any(ord(c) < 32 for c in record['error']):
+                raise ValueError('malformed claude_plugins error')
+            continue
+        object_keys(record, ('enabled',), 'claude_plugins')
+        if not isinstance(record['enabled'], list): raise ValueError('malformed claude_plugins enabled')
+        for key in record['enabled']: plugin_key(key)
+        if len(set(record['enabled'])) != len(record['enabled']): raise ValueError('duplicate enabled plugin')
+
+
+def compare_plugins(left, right, dirs):
+    errors = []
+    hosts = [('local', left.get('claude_plugins')), ('remote', right.get('claude_plugins'))]
+    for role, plugins in hosts:
+        if plugins is None:
+            errors.append('plugin-inventory missing: ' + role + ' reported no claude_plugins')
+        elif set(plugins) != set(dirs):
+            errors.append('plugin-config-dirs mismatch: ' + role + ' reported [' + ','.join(sorted(plugins)) +
+                          '] expected [' + ','.join(dirs) + ']')
+    if errors: return errors
+    for directory in dirs:
+        for role, plugins in hosts:
+            if 'error' in plugins[directory]:
+                errors.append('plugin-settings-invalid ' + directory + ': ' + role + ' ' + plugins[directory]['error'])
+    if errors: return errors
+    enabled = [{key: [d for d in dirs if key in plugins[d]['enabled']]
+                for key in {k for d in dirs for k in plugins[d]['enabled']}} for _, plugins in hosts]
+    for key in sorted(set(enabled[0]) | set(enabled[1])):
+        a, b = enabled[0].get(key, []), enabled[1].get(key, [])
+        if a != b:
+            errors.append('plugin-enabled-mismatch ' + key + ': local=[' + ','.join(a) + '] remote=[' + ','.join(b) + ']')
+    return errors
+
+
 def release_policy():
     # Stdin execution on the remote host has no sibling files. The local caller
     # prepends the builder's policy, so neither host relies on the remote checkout.
@@ -231,8 +310,10 @@ def shipped_skill_path(path, policy, directory=False):
             (directory or not re.search(policy['excluded_files'], path)))
 
 
-def remote_inventory_script():
-    return 'RELEASE_SHIPPING_POLICY = ' + repr(release_policy()) + '\n' + Path(__file__).read_text()
+def remote_inventory_script(dirs=DEFAULT_CLAUDE_CONFIG_DIRS):
+    # Config dirs travel inside the script, like the policy: nothing reaches the remote shell.
+    return ('RELEASE_SHIPPING_POLICY = ' + repr(release_policy()) + '\n' +
+            'INVENTORY_CLAUDE_CONFIG_DIRS = ' + repr(tuple(dirs)) + '\n' + Path(__file__).read_text())
 
 
 def content_files(directory, ancestors=frozenset(), prefix='', policy=None, skill_prefix=''):
@@ -260,7 +341,7 @@ def content_files(directory, ancestors=frozenset(), prefix='', policy=None, skil
     return files
 
 
-def inventory():
+def inventory(dirs=DEFAULT_CLAUDE_CONFIG_DIRS):
     policy = release_policy()
     home = str(Path.home())
     roots = {}
@@ -290,7 +371,8 @@ def inventory():
                     skill_directories.add(entry.resolve())
                 entries[entry.name] = row
         roots[root] = dict(exists=directory.is_dir(), entries=entries)
-    document = dict(schema=2, identity=observed_identity(), roots=roots)
+    document = dict(schema=2, identity=observed_identity(), roots=roots,
+                    claude_plugins={directory: enabled_plugins(home, directory) for directory in dirs})
     release = installed_release(home)
     if release is not None:
         document['installed_version'] = release['version']
@@ -311,7 +393,7 @@ def supporting(entry):
             if any(k.startswith(n + '/') for n in entry.get('internal_skills', {}))}
 
 
-def compare(left, right, requirements):
+def compare(left, right, requirements, dirs=DEFAULT_CLAUDE_CONFIG_DIRS):
     validate(left); validate(right); validate(requirements, required=True)
     errors, invalid = [], []
     parity, valid = True, True
@@ -370,8 +452,10 @@ def compare(left, right, requirements):
             if (a['skill_sha256'] != b['skill_sha256'] or
                     a.get('internal_skills', {}) != b.get('internal_skills', {}) or supporting(a) != supporting(b)):
                 errors.append(root + '/' + name + ': local/remote content/shape mismatch'); parity = False
+    plugin_errors = compare_plugins(left, right, dirs)
+    errors += plugin_errors
     return dict(installed_version=versions, notes=notes, host_identity_valid=identities_valid, name_content_parity=parity, required_readable_valid=valid,
-                disclosed_invalid=invalid, errors=errors)
+                plugin_enabled_parity=not plugin_errors, disclosed_invalid=invalid, errors=errors)
 
 
 def load_config(path):
@@ -386,7 +470,9 @@ def load_config(path):
         values = json.loads(config.read_text())
     except (OSError, ValueError):
         raise ValueError('RATCHET_SKILL_CONFIG unreadable or malformed JSON')
-    object_keys(values, ('schema', 'host', 'identity', 'requirements'), 'RATCHET_SKILL_CONFIG')
+    keys = ('schema', 'host', 'identity', 'requirements')
+    object_keys(values, keys + (('claude_config_dirs',) if isinstance(values, dict) and 'claude_config_dirs' in values else ()),
+                'RATCHET_SKILL_CONFIG')
     if type(values['schema']) is not int or values['schema'] != 1:
         raise ValueError('RATCHET_SKILL_CONFIG schema must be 1')
     if not isinstance(values['host'], str) or not re.fullmatch('[A-Za-z0-9][A-Za-z0-9._@:-]*', values['host']):
@@ -395,6 +481,10 @@ def load_config(path):
         value = values[field]
         if not isinstance(value, str) or not Path(value).is_absolute() or not Path(value).is_file():
             raise ValueError('RATCHET_SKILL_CONFIG ' + field + ' must name an existing absolute file')
+    try:
+        values['claude_config_dirs'] = config_dirs(values.get('claude_config_dirs', ['~/' + d for d in DEFAULT_CLAUDE_CONFIG_DIRS]))
+    except ValueError as error:
+        raise ValueError('RATCHET_SKILL_CONFIG ' + str(error))
     return values
 
 
@@ -408,10 +498,13 @@ def main():
     args = parser.parse_args()
     try:
         if args.inventory:
-            print(json.dumps(inventory(), sort_keys=True)); return 0
+            dirs = globals().get('INVENTORY_CLAUDE_CONFIG_DIRS', DEFAULT_CLAUDE_CONFIG_DIRS)
+            print(json.dumps(inventory(dirs), sort_keys=True)); return 0
+        dirs = DEFAULT_CLAUDE_CONFIG_DIRS
         if not (args.left or args.right):
             config = load_config(args.config)
-            args.host, args.identity, args.requirements = (config[k] for k in ('host', 'identity', 'requirements'))
+            args.host, args.identity, args.requirements, dirs = (
+                config[k] for k in ('host', 'identity', 'requirements', 'claude_config_dirs'))
         if not args.requirements: raise ValueError('required readable manifest unavailable')
         try:
             required = json.loads(Path(args.requirements).read_text())
@@ -430,10 +523,10 @@ def main():
             command = ['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', '-o', 'ConnectTimeout=10']
             if args.identity: command += ['-o', 'IdentitiesOnly=yes', '-o', 'IdentityAgent=none', '-i', args.identity]
             command += [args.host, 'python3 - --inventory']
-            remote = subprocess.run(command, input=remote_inventory_script(), text=True,
+            remote = subprocess.run(command, input=remote_inventory_script(dirs), text=True,
                                     capture_output=True, timeout=60, check=True)
-            left, right, measurement = inventory(), json.loads(remote.stdout), 'live'
-        result = compare(left, right, required)
+            left, right, measurement = inventory(dirs), json.loads(remote.stdout), 'live'
+        result = compare(left, right, required, dirs)
         for message in result['errors'] + result['disclosed_invalid']: print(message, file=sys.stderr)
         print(json.dumps({k: v for k, v in dict(measurement=measurement, **result, error_count=len(result['errors']), disclosed_invalid_count=len(result['disclosed_invalid'])).items() if k not in ('errors', 'disclosed_invalid')}, sort_keys=True))
         return 1 if result['errors'] else 0

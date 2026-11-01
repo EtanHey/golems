@@ -1,0 +1,112 @@
+{
+  "verdict": "PASS",
+  "status": "COMPARED",
+  "violations": [],
+  "screenshots": [
+    {
+      "width": 1280,
+      "height": 844,
+      "pixelDiffRatio": 0.001395882701421801,
+      "reportOnly": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "pixelDiffRatio": 0.004581358609794629,
+      "reportOnly": true
+    }
+  ],
+  "behavior": [
+    {
+      "width": 1280,
+      "previous": {
+        "focusClean": true,
+        "questions": [
+          {
+            "key": "first",
+            "clear": true
+          },
+          {
+            "key": "second",
+            "clear": true
+          }
+        ],
+        "reset": true,
+        "scrub": true,
+        "seek": {
+          "before": 0,
+          "after": 1.5,
+          "target": 1.5,
+          "decoded": true
+        }
+      },
+      "new": {
+        "focusClean": true,
+        "questions": [
+          {
+            "key": "first",
+            "clear": true
+          },
+          {
+            "key": "second",
+            "clear": true
+          }
+        ],
+        "reset": true,
+        "scrub": true,
+        "seek": {
+          "before": 0,
+          "after": 1.5,
+          "target": 1.5,
+          "decoded": true
+        }
+      }
+    },
+    {
+      "width": 390,
+      "previous": {
+        "focusClean": true,
+        "questions": [
+          {
+            "key": "first",
+            "clear": true
+          },
+          {
+            "key": "second",
+            "clear": true
+          }
+        ],
+        "reset": true,
+        "scrub": true,
+        "seek": {
+          "before": 0,
+          "after": 1.5,
+          "target": 1.5,
+          "decoded": true
+        }
+      },
+      "new": {
+        "focusClean": true,
+        "questions": [
+          {
+            "key": "first",
+            "clear": true
+          },
+          {
+            "key": "second",
+            "clear": true
+          }
+        ],
+        "reset": true,
+        "scrub": true,
+        "seek": {
+          "before": 0,
+          "after": 1.5,
+          "target": 1.5,
+          "decoded": true
+        }
+      }
+    }
+  ],
+  "series": "weekly"
+}
