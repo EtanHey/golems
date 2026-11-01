@@ -340,7 +340,7 @@ explain the evidence-backed state, and store the correction separately.
 ## Cross-Skill Ownership
 
 - `/repogolem`: launcher flags, defaults, resume behavior, and raw escape hatches.
-- `/pr-loop`: branch through ready-for-review PR; Routing rules (SSOT) above owns the pre-PR pair.
+- `/pr-loop`: branch through draft PR to ready-for-review; Routing rules (SSOT) above owns the inner-loop pair, which runs on the draft.
 - `/collab-monitor`: cmux/collab-mail only: pane worker monitoring and reviewer handoff mechanics. T3 children use completion notifications instead (§ T3-native dispatch).
 - `/qa-video`: video QA/debrief pipeline; its runner reads the frames itself, and Gemini gathering is optional pre-sorting.
 - `/whats-new`: tool-surface changes; they do not revise Routing rules (SSOT) by implication.

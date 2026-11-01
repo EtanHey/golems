@@ -154,6 +154,8 @@ keep that list in your own notes), with one bounded `gh pr view <N> --json
 state,isDraft,mergeStateStatus,statusCheckRollup` per PR. "Waiting" is never a state for a red or
 green PR you own (Etan, 2026-11-01). Take the first case that applies:
 - Visibly held, and the reason still holds: leave it.
+- A draft in its inner loop: check that its implementer or reviewer is still running (a live
+  child task or pane). If that worker stopped, pick the work up or route it now.
 - Red or conflicting: fix it now or route the fix now.
 - Green: merge it under your lane's merge law.
 - Behind: update the branch yourself whenever GitHub offers it.
