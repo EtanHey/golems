@@ -87,3 +87,37 @@ load lib/worktree-gc-fixtures
   [[ "$output" == *'merged_worktrees=1 '* ]] || false
   [ "$(find "$b" -type f -exec shasum -a 256 {} + | LC_ALL=C sort)" = "$before" ]
 }
+
+@test "disk collector skips remote planning for a repo with only its main worktree" {
+  repo="$(make_fixture_repo measured)"
+  stub="$TEST_ROOT/bin"; mkdir "$stub"
+  cat > "$stub/git" <<'STUB'
+#!/usr/bin/env bash
+if [[ " $* " == *" fetch "* ]]; then
+  touch "$FETCH_MARKER"
+  echo unexpected-fetch >&2
+  exit 99
+fi
+exec "$REAL_GIT" "$@"
+STUB
+  chmod +x "$stub/git"
+  run env RATCHET_GITS_ROOT="$TEST_ROOT" DISK_FREE_FLOOR_GB=0 \
+    PATH="$stub:$PATH" REAL_GIT="$(command -v git)" FETCH_MARKER="$TEST_ROOT/fetched" "$REPO_ROOT/scripts/ratchet/mac/disk-free-floor.sh"
+  [ "$status" -eq 0 ]
+  [ ! -e "$TEST_ROOT/fetched" ]
+  [[ "$output" != *unexpected-fetch* ]] || false
+  [[ "$output" == *'merged_worktrees=0 '* ]] || false
+}
+
+@test "disk collector sums independent plans across a full batch and its remainder" {
+  mkdir "$TEST_ROOT/gits"
+  for i in 1 2 3 4 5; do
+    repo="$(make_fixture_repo "measured$i")"
+    mv "$repo" "$TEST_ROOT/gits/measured$i"
+    add_branch_worktree "$TEST_ROOT/gits/measured$i" eligible >/dev/null
+  done
+  run env RATCHET_GITS_ROOT="$TEST_ROOT/gits" DISK_FREE_FLOOR_GB=0 WORKTREE_GC_IDLE_HOURS=0 \
+    "$REPO_ROOT/scripts/ratchet/mac/disk-free-floor.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'merged_worktrees=5 '* ]] || false
+}
