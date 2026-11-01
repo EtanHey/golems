@@ -31,6 +31,16 @@ const skillLatest = (kind, mode) => {
   if (!['checkout', 'release-channel', 'worktree-pin'].includes(mode)) throw Error('Invalid skills receipt mode');
   return `latest-${kind}-${mode}.json`;
 };
+function matchesReceiptSlot(r, kind, mode) {
+  if (kind === 'hooks-sync') return r?.artifact_kind === kind && r.install_source?.mode === 'worktree-pin';
+  if (kind !== 'skills-sync') return true;
+  if (r?.artifact_kind === 'hooks-sync') return false;
+  // Preserve generic legacy receipts in the golems product slot. Their modes
+  // describe the generic install, rather than a skills-sync checkout/release.
+  if (r?.artifact_kind !== 'skills-sync') return true;
+  return ['checkout', 'release-channel'].includes(r.install_source?.mode)
+    && (mode === undefined || r.install_source.mode === mode);
+}
 export function readLocal(names, { skillsMode = existsSync(join(process.env.HOME, '.golems/release.json')) ? 'release-channel' : 'checkout' } = {}) {
   return Object.fromEntries(names.flatMap(product => (product === 'golems' ? ['skills-sync', 'hooks-sync'] : [null]).map(kind => {
     const key = kind === 'hooks-sync' ? 'golems:hooks-sync' : product;
@@ -39,7 +49,7 @@ export function readLocal(names, { skillsMode = existsSync(join(process.env.HOME
       const dir = join(process.env.HOME, '.local/state/golems/install-receipts', product);
       const selected = product === 'golems' ? skillLatest(kind, mode) : 'latest.json';
       const r = JSON.parse(readFileSync(join(dir, existsSync(join(dir, selected)) ? selected : 'latest.json'), 'utf8'));
-      if ((kind === 'hooks-sync' && r?.artifact_kind !== kind) || (r?.artifact_kind === 'skills-sync' && r.install_source?.mode !== mode)) return [key, null];
+      if (!matchesReceiptSlot(r, kind, mode)) return [key, null];
       if (product === 'golems' && r?.artifact_kind === 'skills-sync' && r.install_source?.mode === 'release-channel') {
         const record = JSON.parse(readFileSync(join(r.install_source.path, '..', 'release.json'), 'utf8'));
         if (!/^[0-9a-f]{40}$/.test(record.commit)) throw Error('Invalid release identity');
@@ -71,7 +81,7 @@ export function readRemote(names, exec = execute, { skillsMode = 'release-channe
     }
     let r;
     try { r = JSON.parse(bytes); } catch { return [key, { error: 'unreadable-receipt' }]; }
-    if ((kind === 'hooks-sync' && r?.artifact_kind !== kind) || (r?.artifact_kind === 'skills-sync' && r.install_source?.mode !== mode)) return [key, null];
+    if (!matchesReceiptSlot(r, kind, mode)) return [key, null];
     if (product === 'golems' && r?.artifact_kind === 'skills-sync' && r.install_source?.mode === 'release-channel') {
       try {
         const record = JSON.parse(exec('ssh', ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'UpdateHostKeys=no', 'm1', 'cat -- "$HOME/.golems/release.json"']));
@@ -240,6 +250,7 @@ export function collectStatus({ products: catalog = products, localReader = read
       try {
         validate(r);
         if (r.product !== product || hostAlias(r.host.alias) !== host) throw Error('Wrong receipt identity');
+        if (product === 'golems' && !matchesReceiptSlot(r, kind ?? 'skills-sync')) throw Error('Wrong receipt artifact');
       } catch { return { ...row, status: 'MISMATCH' }; }
       row.activation = assess(r)[0];
       row.installed = r.installed.version;

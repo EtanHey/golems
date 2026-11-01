@@ -34,9 +34,10 @@ def snapshot(mode, source, home, prefix):
         if root == Path(prefix) / 'bin': continue
         targets = []
         for entry in sorted(root.iterdir()):
-            owner = sync.managed_link(entry, Path(home))
+            app_managed = skills.app_managed(root.relative_to(Path(home)).as_posix(), entry.name)
+            owner = None if app_managed else sync.managed_link(entry, Path(home))
             vendor = mode == 'checkout' and owner == 'release'
-            if entry.name not in skills.RECEIPT_IGNORED and owner and not vendor:
+            if not app_managed and entry.name not in skills.RECEIPT_IGNORED and owner and not vendor:
                 targets.append(entry.resolve(strict=True))
             else:
                 excluded.append(dict(path=str(entry), kind='vendor' if vendor else 'symlink' if entry.is_symlink() else
