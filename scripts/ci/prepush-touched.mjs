@@ -110,7 +110,6 @@ function main() {
       if (!/^(bun|node|bash|python|python3\.9)$/.test(tokens[0])) continue;
       if (!(tokens.includes('test') || tokens.includes('--test') || tokens.includes('pytest') ||
             tokens.includes('unittest') || tokens.some(t => t.endsWith('.test.sh')))) continue;
-      if (tokens[0] === 'python3.9') continue; // Interpreter parity stays in CI.
       const first = tokens.findIndex(t => /^(\.\/)?(scripts|skills)\//.test(t));
       if (first < 0) continue;
       if (tokens.includes('unittest')) {
@@ -127,6 +126,8 @@ function main() {
   // run-skill-tests also collects scripts/tests pytest files, beyond named steps.
   for (const path of walk('scripts/tests').filter(p => /\/test[^/]*\.py$/.test(p)))
     inventory.push({ command: [python, '-m', 'pytest', path, '-q'], path });
+  for (const path of walk('scripts').filter(p => /^scripts\/test_[^/]*\.py$/.test(p)))
+    inventory.push({ command: [python, path], path });
   // Include new test files before the CI inventory learns their name.
   for (const path of changed) {
     if (/^scripts\/.*\.test\.mjs$/.test(path) && existsSync(path) && !inventory.some(s => s.path === path))
