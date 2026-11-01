@@ -23,7 +23,7 @@ remain outside static inspection. This is a dispatch backstop, not a sandbox.
 Latest appended events win per lane and per WINDOW stem. Every still-open stem
 must appear in the call, or the call must carry that window's own STARTED
 `m1-golems-sync-…-<UTC_TS>` lane. Other lanes and settled lanes do not qualify.
-Closed windows allow calls; missing lane markers produce an advisory only.
+Closed windows allow calls silently. The gate prints nothing unless a window is OPEN.
 
 The normal fail-open wrapper preserves deliberate exit-2 M1 denials. Global
 `--fail-closed` would also block unrelated calls on launcher/import failure,
