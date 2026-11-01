@@ -15,8 +15,10 @@ LANE = LEASE.with_name("lane.py")
 
 @pytest.fixture
 def shared_holds():
-    scratch = ROOT / "docs.local"
-    scratch.mkdir(exist_ok=True)
+    # Archives and ledgers must persist outside system temp; fixture repos must
+    # also stay outside T3-managed checkouts so direct-Git lanes are allowed.
+    scratch = Path.home() / ".cache/golems/workspace-test-fixtures"
+    scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="w7b-", dir=scratch) as directory:
         root = Path(directory).resolve()
         repo, ledger = root / "repo", root / "ledger"
