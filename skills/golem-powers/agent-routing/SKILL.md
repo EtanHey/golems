@@ -35,7 +35,7 @@ This section is the single source of truth for fleet routing. Fleet canon, globa
 
 ### Gathering
 
-Codex Luna/Terra or Claude Haiku may gather per the 2026-10-28 rule below. Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field; pinned Cursor drains its subscription pool.
+Codex Luna/Terra or Claude Haiku may gather per the 2026-10-28 rule below; when Gemini Argon is out, gather on Antigravity first (the 2026-11-01 rule below). Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field; pinned Cursor drains its subscription pool.
 
 ### Execution capability
 
