@@ -122,7 +122,7 @@ fake_op() {
   # GNU-style stat: -c works; -f means filesystem and prints metadata (the bug being guarded).
   cat > "$FAKE_HOME/bin/stat" <<'GNU'
 #!/bin/sh
-if [ "$1" = "-c" ]; then /usr/bin/stat -f %Lp "$3" 2>/dev/null || command stat -c %a "$3"; exit $?; fi
+if [ "$1" = "-c" ]; then perl -e 'printf "%o\n", (stat $ARGV[0])[2] & 07777' "$3"; exit $?; fi
 if [ "$1" = "-f" ]; then echo "  File: \"$3\" ID: 0 Namelen: 255 Type: apfs"; exit 1; fi
 exit 2
 GNU
