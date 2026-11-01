@@ -26,14 +26,19 @@ the default model (Opus) and creates a new thread and git worktree per run: neve
 delegate_task(
   title: "PR check for <lead name>",
   target: { providerInstanceId: "claudeAgent", model: "claude-haiku-5-5",
-            options: { fastMode: false } },   # or codex gpt-6-luna with { serviceTier: "default" }
+            options: { effort: "low" } },   # Haiku takes only `effort`; or codex gpt-6-luna with { serviceTier: "default" }
   task: "Load mcp__t3-code__schedule_task with ToolSearch and call it once: bindToCurrentThread
          true, schedule {type: interval, everyMs: 300000}, title 'PR check for <lead>', prompt:
-         'Run: <golems>/scripts/pr-sentinel/pr-sentinel lead --thread <LEAD_THREAD_ID>. It
-         updates branches and messages the lead itself. Reply with one line: the last line of
+         'Run exactly this one shell command, with nothing after it:
+         <golems>/scripts/pr-sentinel/pr-sentinel lead --thread <LEAD_THREAD_ID>
+         It updates branches and messages the lead itself. Reply with one line: the last line of
          its output. Use only the shell tool, for that one command.' Reply with the scheduledTaskId,
          then stop.")
 ```
+
+Put the command on its own line with nothing after it: a sentence-ending `.` gets passed as an
+argument and the check fails (seen live). Verify it once with `run_scheduled_task_now` and read the
+child's reply.
 
 Record the `scheduledTaskId` in your notes. **Before settling or retiring the lead thread**, delete
 it with `delete_scheduled_task`, and hand your open PRs to a live lead (pr-loop § Waiting policy).
