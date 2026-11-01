@@ -102,7 +102,9 @@ function main() {
   }
 
   const inventory = [];
-  for (const step of workflow.jobs['script-tests'].steps) {
+  const security = parse(readFileSync('.github/workflows/security.yml', 'utf8'));
+  const steps = [...workflow.jobs['script-tests'].steps, ...Object.values(security.jobs).flatMap(job => job.steps || [])];
+  for (const step of steps) {
     for (const line of (step.run || '').replace(/\\\n\s*/g, ' ').split('\n')) {
       const tokens = line.trim().split(/\s+/);
       if (!/^(bun|node|bash|python|python3\.9)$/.test(tokens[0])) continue;

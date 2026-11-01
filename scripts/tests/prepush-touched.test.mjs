@@ -27,6 +27,7 @@ function fixture(t, paths, options = {}) {
       - name: Pristine split baseline gate
         run: python scripts/ci/pristine-harness.py check
 `);
+  writeFileSync(join(root, '.github/workflows/security.yml'), 'jobs: {}');
   const log = join(root, 'commands');
   writeFileSync(log, '');
   const fake = `#!/usr/bin/env python3
@@ -131,7 +132,7 @@ test('hook preserves package failure and only then calls touched suites', t => {
       cwd: root, input: '', encoding: 'utf8',
       env: { ...process.env, HOME: root, PATH: `${root}/bin:${process.env.PATH}` },
     });
-    assert.equal(hook.status, status ? 1 : 0, hook.stderr);
+    assert.equal(hook.status, status, hook.stderr);
     assert.equal(hook.stdout.includes('touched-suite-called'), !status);
   }
 });
