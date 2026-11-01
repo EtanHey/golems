@@ -2,7 +2,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "git-guardian-010",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -10,7 +11,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "git-guardian-011",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -18,7 +20,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "git-guardian-012",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -26,7 +29,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
+      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7",
+      "linux": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
     },
     "case": "git-guardian-013",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -34,7 +38,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9"
+      "darwin": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9",
+      "linux": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9"
     },
     "case": "git-guardian-014",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -42,7 +47,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "git-guardian-018",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -50,7 +56,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "git-guardian-110",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -58,7 +65,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "git-guardian-113",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -66,7 +74,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "git-guardian-114",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -74,7 +83,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
+      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e",
+      "linux": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
     },
     "case": "git-guardian-115",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -334,7 +344,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "issue481-stale-outer-local-control",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -360,7 +371,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "issue481-stale-outer-subshell-control",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -404,7 +416,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "issue491-control-launcher-after-ansi-c-quote",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -412,7 +425,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "issue491-control-launcher-after-double-quoted-heredoc",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -420,7 +434,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "issue491-control-launcher-after-single-quoted-heredoc",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -437,7 +452,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "issue491-control-real-process-substitution",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -742,7 +758,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "r2-guardian-000",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -750,7 +767,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "r2-guardian-002",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -758,7 +776,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
+      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7",
+      "linux": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
     },
     "case": "r2-guardian-004",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -766,7 +785,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9"
+      "darwin": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9",
+      "linux": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9"
     },
     "case": "r2-guardian-005",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -774,7 +794,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "3dc8bfcb62fba07a9aa8608e9ce8cc834cdb7e5e35c72e2651fe6d82ce8cf8d1"
+      "darwin": "3dc8bfcb62fba07a9aa8608e9ce8cc834cdb7e5e35c72e2651fe6d82ce8cf8d1",
+      "linux": "3dc8bfcb62fba07a9aa8608e9ce8cc834cdb7e5e35c72e2651fe6d82ce8cf8d1"
     },
     "case": "r2-guardian-006",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -782,7 +803,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793"
+      "darwin": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793",
+      "linux": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793"
     },
     "case": "r2-guardian-007",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -790,7 +812,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793"
+      "darwin": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793",
+      "linux": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793"
     },
     "case": "r2-guardian-008",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -798,7 +821,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793"
+      "darwin": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793",
+      "linux": "285f40bbbfa6ee6b36d43140c1d556bd149dd7e512bb985fb3c223c99ebea793"
     },
     "case": "r2-guardian-009",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -806,7 +830,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "r2-guardian-010",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -814,7 +839,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "r2-guardian-011",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -822,7 +848,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "r2-guardian-012",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -830,7 +857,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "r2-guardian-013",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -838,7 +866,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "r2-guardian-014",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -846,7 +875,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
+      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7",
+      "linux": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
     },
     "case": "r2-guardian-015",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -854,7 +884,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "r2-guardian-016",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -862,7 +893,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "r2-guardian-017",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -870,7 +902,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "r2-guardian-018",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -878,7 +911,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "r2-guardian-019",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -886,7 +920,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "r2-guardian-020",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -894,7 +929,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
+      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e",
+      "linux": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
     },
     "case": "r2-guardian-021",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -902,7 +938,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
+      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e",
+      "linux": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
     },
     "case": "r2-guardian-022",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -910,7 +947,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
+      "darwin": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e",
+      "linux": "19b69d7d46388b646e58cf828fa338fc408835c5f65b11219390adc0286a934e"
     },
     "case": "r2-guardian-023",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -918,7 +956,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-025",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -926,7 +965,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-026",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -934,7 +974,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-028",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -942,7 +983,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-029",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -950,7 +992,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-030",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -958,7 +1001,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-031",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -966,7 +1010,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-032",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -974,7 +1019,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-033",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -982,7 +1028,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-034",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -990,7 +1037,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "r2-guardian-035",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -998,7 +1046,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-edit-_env",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1006,7 +1055,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-edit-_env_local",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1014,7 +1064,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-edit-credentials_json",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1022,7 +1073,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-edit-secret_yaml",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1030,7 +1082,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-edit-secrets_json",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1038,7 +1091,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-edit-server_key",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1046,7 +1100,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-edit-server_pem",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1054,7 +1109,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-notebookedit-_env",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1062,7 +1118,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-notebookedit-_env_local",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1070,7 +1127,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-notebookedit-credentials_json",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1078,7 +1136,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-notebookedit-secret_yaml",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1086,7 +1145,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-notebookedit-secrets_json",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1094,7 +1154,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-notebookedit-server_key",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1102,7 +1163,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-notebookedit-server_pem",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1110,7 +1172,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-write-_env",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1118,7 +1181,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-write-_env_local",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1126,7 +1190,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-write-credentials_json",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1134,7 +1199,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-write-secret_yaml",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1142,7 +1208,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-write-secrets_json",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1150,7 +1217,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-write-server_key",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1158,7 +1226,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-write-server_pem",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1247,7 +1316,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "r2-tmp-pushd-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1255,7 +1325,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "r2-tmp-scratchpad-wrong",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1263,7 +1334,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "r2-tmp-temp-class-home-traverse",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1271,7 +1343,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "r2-tmp-wt-last-component",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1279,7 +1352,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "r2-tmp-wt-off-convention",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1287,7 +1361,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "r2-tmp-wt-relative-dynamic",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1295,7 +1370,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "r2-tmp-wt-sibling-cwd",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1303,7 +1379,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-001",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1311,7 +1388,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-003",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1319,7 +1397,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-004",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1327,7 +1406,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-block-006",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1335,7 +1415,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-022",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1343,7 +1424,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-023",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1351,7 +1433,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-024",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1359,7 +1442,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-033",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1367,7 +1451,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-034",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1375,7 +1460,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-035",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1383,7 +1469,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-037",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1391,7 +1478,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-block-039",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1399,7 +1487,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-046",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1407,7 +1496,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-047",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1415,7 +1505,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-048",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1423,7 +1514,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-049",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1431,7 +1523,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-050",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1439,7 +1532,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-051",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1447,7 +1541,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-052",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1455,7 +1550,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-053",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1463,7 +1559,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-054",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1471,7 +1568,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-055",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1479,7 +1577,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-058",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1487,7 +1586,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-060",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1495,7 +1595,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-block-063",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1503,7 +1604,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-065",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1511,7 +1613,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-066",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1519,7 +1622,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-067",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1527,7 +1631,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-069",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1535,7 +1640,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-070",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1543,7 +1649,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-071",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1551,7 +1658,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-072",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1559,7 +1667,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-073",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1567,7 +1676,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-075",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1575,7 +1685,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-076",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1583,7 +1694,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-077",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1591,7 +1703,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-078",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1599,7 +1712,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-079",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1607,7 +1721,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-081",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1615,7 +1730,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-082",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1623,7 +1739,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-083",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1631,7 +1748,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-086",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1639,7 +1757,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-087",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1647,7 +1766,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-089",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1655,7 +1775,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-090",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1663,7 +1784,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-091",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1671,7 +1793,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-095",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1679,7 +1802,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-096",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1687,7 +1811,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-097",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1695,7 +1820,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-099",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1703,7 +1829,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-100",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1711,7 +1838,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-101",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1719,7 +1847,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-102",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1727,7 +1856,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-103",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1735,7 +1865,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-104",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1743,7 +1874,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-107",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1751,7 +1883,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-108",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1759,7 +1892,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-109",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1767,7 +1901,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-111",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1775,7 +1910,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-112",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1783,7 +1919,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-113",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1791,7 +1928,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-115",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1799,7 +1937,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-117",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1807,7 +1946,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-block-118",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1815,7 +1955,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-block-121",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1823,7 +1964,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-block-122",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1831,7 +1973,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-123",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1839,7 +1982,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-125",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1847,7 +1991,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-128",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1855,7 +2000,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-135",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1863,7 +2009,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-137",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1871,7 +2018,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-138",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1879,7 +2027,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-139",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1887,7 +2036,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-140",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1895,7 +2045,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-141",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1903,7 +2054,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-145",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1911,7 +2063,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-block-146",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1919,7 +2072,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-block-147",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1927,7 +2081,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-topup-data-piped-cat",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1935,7 +2090,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-topup-data-process-sink",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1943,7 +2099,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-topup-eval-ten-depth-budget",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1951,7 +2108,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-topup-mapfile-replay",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1959,7 +2117,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-topup-nameref-replay",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1967,7 +2126,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-topup-printf-v-replay",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1975,7 +2135,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-topup-read-replay",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1983,7 +2144,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-case-rhs-self",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1991,7 +2153,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-conditional-replaces-head",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -1999,7 +2162,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-cursor-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2007,7 +2171,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-deeper-hatch",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2015,7 +2180,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-w7-dynamic-before-resolved-wt",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2023,7 +2189,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-file-edit-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2031,7 +2198,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-file-notebookedit-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2039,7 +2207,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-file-write-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2047,7 +2216,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "aae8547496cb459b8148c6f72d0ccebb39a2d3a905416056e9e8c1fd9e2c972e"
+      "darwin": "aae8547496cb459b8148c6f72d0ccebb39a2d3a905416056e9e8c1fd9e2c972e",
+      "linux": "aae8547496cb459b8148c6f72d0ccebb39a2d3a905416056e9e8c1fd9e2c972e"
     },
     "case": "tmp-w7-hatched-dynamic-continues",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2055,7 +2225,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-hidden-cwd",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2063,7 +2234,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-ledger-failure",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2071,7 +2243,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-literal-parent-substitution",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2079,7 +2252,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-loop-conditional",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2087,7 +2261,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-loop-rhs-self",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2095,7 +2270,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-patch-add-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2103,7 +2279,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-patch-header-order",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2111,7 +2288,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-patch-move-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2119,7 +2297,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-patch-relative-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2127,7 +2306,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-patch-update-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2135,7 +2315,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-pipeline-does-not-replace",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2143,7 +2324,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-promote-primary-only",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2169,7 +2351,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-w7-r1-tmp-hatch-not-wt-resolved",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2177,7 +2360,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-w7-r1-tmp-hatch-not-wt-unresolved",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2185,7 +2369,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-w7-r1-wt-resolved-before-unresolved",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2193,7 +2378,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-w7-r1-wt-unresolved-before-resolved",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2201,7 +2387,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-w7-relative-c-retains-error",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2209,7 +2396,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-scan-order",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2253,7 +2441,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-sibling-hatch",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2261,7 +2450,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "tmp-w7-temp-dynamic-before-unresolved-wt",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2269,7 +2459,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-unexposed-wt",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2277,7 +2468,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-unknown-replaces-head",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2285,7 +2477,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-unquoted-hatch-dedup",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2293,7 +2486,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-unset-removes-head",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2301,7 +2495,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "5c15fa595439401d538e9a87245e25d196bcece50375fd971d485ca3a5646f7f"
+      "darwin": "5c15fa595439401d538e9a87245e25d196bcece50375fd971d485ca3a5646f7f",
+      "linux": "5c15fa595439401d538e9a87245e25d196bcece50375fd971d485ca3a5646f7f"
     },
     "case": "tmp-w7-wt-hatch-dynamic-refusal",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2309,7 +2504,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
+      "darwin": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b",
+      "linux": "dd7722d5a857472bea8bbc718059d3c2e9f8e0f4d6b905b1f9e4b8562174a51b"
     },
     "case": "tmp-w7-wt-hatch-not-temp",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2452,7 +2648,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "topup-guardian-cwd-nested",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2460,7 +2657,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "topup-guardian-cwd-nested-worktree",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2468,7 +2666,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "topup-guardian-cwd-root",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2476,7 +2675,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "topup-guardian-cwd-subdir",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2484,7 +2684,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "topup-guardian-cwd-worktree",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2492,7 +2693,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "topup-guardian-worker-empty",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2500,7 +2702,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "topup-guardian-worker-unset",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2526,7 +2729,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9"
+      "darwin": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9",
+      "linux": "1f22442335454d02d477faff798049f8da2aba5606718e9bab0bdf5f5c1e58d9"
     },
     "case": "topup-r2-guardian-find-clean",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2534,7 +2738,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "topup-r2-guardian-find-force-push",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2542,7 +2747,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "topup-r2-guardian-nice-force-push",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2550,7 +2756,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "topup-r2-guardian-nice-home",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2558,7 +2765,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "topup-r2-guardian-nice-option-root",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2566,7 +2774,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
+      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
     },
     "case": "topup-r2-guardian-nice-root",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2574,7 +2783,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "topup-r2-guardian-sudo-force-push",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2582,7 +2792,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
+      "darwin": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d",
+      "linux": "f9f86e381ea6c105c24cc4c8c508f5bb42056365ef8b75937d5be8aa9693447d"
     },
     "case": "topup-r2-guardian-xargs-force-push",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2590,7 +2801,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
+      "darwin": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7",
+      "linux": "696b151f37f3ec6660ec8ee955e2e046eb474e24d87168fbf8102b4ee7096ac7"
     },
     "case": "topup-r2-guardian-xargs-reset-hard",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2598,7 +2810,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-B-nested",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2606,7 +2819,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-B-nested-worktree",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2614,7 +2828,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-B-root",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2622,7 +2837,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-B-subdir",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2630,7 +2846,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-B-worktree",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2638,7 +2855,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-b-nested",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2646,7 +2864,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-b-nested-worktree",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2654,7 +2873,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-b-root",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2662,7 +2882,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-b-subdir",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2670,7 +2891,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-b-worktree",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2678,7 +2900,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-reason-nested",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2686,7 +2909,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-reason-nested-worktree",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2694,7 +2918,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-reason-root",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2702,7 +2927,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-reason-subdir",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
@@ -2710,7 +2936,8 @@
   {
     "authority": "golems#1048",
     "candidate_sha256": {
-      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
+      "darwin": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62",
+      "linux": "55b9cc5a73d86839a79ac4847192af6403baae60be2a127737347bd131192b62"
     },
     "case": "topup-tmp-wt-reason-worktree",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
