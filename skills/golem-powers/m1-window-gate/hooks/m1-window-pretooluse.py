@@ -15,12 +15,15 @@ from pathlib import Path
 # interrupts work, so those stay blocked as dispatch.
 TOOLS = re.compile(r'mcp__t3[-_]code__(delegate_task|t3_thread_send|t3_thread_launch|create_threads|schedule_task|run_scheduled_task_now|t3_thread_send_attachments|t3_thread_configure)\Z')
 SEND = re.compile(r'mcp__t3[-_]code__t3_thread_send\Z')
+# Top-level (lead) thread id shapes only. Every `thread:...` id is a child or generated thread
+# (delegated tasks, provider-native subagents, scheduled runs) and stays blocked: allowlist, not denylist.
+LEAD_THREAD = re.compile(r'(mcp|import):[A-Za-z0-9:_%-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 
 def lead_message(name, ti):
     thread = ti.get('threadId') if isinstance(ti, dict) else None
-    return bool(SEND.fullmatch(name or '') and isinstance(thread, str) and thread.strip()
-                and not thread.startswith('thread:delegated-task') and ti.get('mode', 'auto') != 'restart')
+    return bool(SEND.fullmatch(name or '') and isinstance(thread, str) and LEAD_THREAD.fullmatch(thread)
+                and ti.get('mode', 'auto') != 'restart')
 REMOTE = {'ssh', 'scp', 'rsync', 'sftp', 'mosh'}
 
 
@@ -237,7 +240,7 @@ def evaluate_seat(payload):
     ti = payload.get('tool_input', {})
     text = json.dumps(ti, ensure_ascii=False)
     # The run's own lane may carry any run label (run1, run2, ...) with this stem's timestamp.
-    own_lane = stem and re.search(r'(?<![A-Za-z0-9._-])m1-golems-sync-[A-Za-z0-9.]+-'
+    own_lane = stem and re.search(r'(?<![A-Za-z0-9._-])m1-golems-sync-[A-Za-z0-9._:-]+-'
                                   + re.escape(stem.rsplit('-', 1)[-1]) + r'(?![A-Za-z0-9._:-])', text)
     if stem and (carries(text, stem) or own_lane):
         return {}
