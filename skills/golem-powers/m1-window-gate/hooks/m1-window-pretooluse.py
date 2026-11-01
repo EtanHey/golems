@@ -10,7 +10,9 @@ import re
 import stat
 from pathlib import Path
 
-TOOLS = re.compile(r'mcp__t3[-_]code__(delegate_task|t3_thread_send|t3_thread_launch|create_threads|schedule_task|run_scheduled_task_now|t3_thread_send_attachments|t3_thread_configure)\Z')
+# Work dispatch to the M1. A plain t3_thread_send is a message, not work: it stays allowed during a
+# window, so orc and leads can still talk to M1 threads (blocking it was pure cost).
+TOOLS = re.compile(r'mcp__t3[-_]code__(delegate_task|t3_thread_launch|create_threads|schedule_task|run_scheduled_task_now|t3_thread_send_attachments|t3_thread_configure)\Z')
 REMOTE = {'ssh', 'scp', 'rsync', 'sftp', 'mosh'}
 
 
@@ -226,7 +228,10 @@ def evaluate_seat(payload):
         pass
     ti = payload.get('tool_input', {})
     text = json.dumps(ti, ensure_ascii=False)
-    if stem and any(carries(text, token) for token in (stem, 'm1-golems-sync-run1-' + stem.rsplit('-', 1)[-1])):
+    # The run's own lane may carry any run label (run1, run2, ...) with this stem's timestamp.
+    own_lane = stem and re.search(r'(?<![A-Za-z0-9._-])m1-golems-sync-[A-Za-z0-9.]+-'
+                                  + re.escape(stem.rsplit('-', 1)[-1]) + r'(?![A-Za-z0-9._:-])', text)
+    if stem and (carries(text, stem) or own_lane):
         return {}
     name = payload.get('tool_name')
     if name == 'Bash' and read_only_bash(ti.get('command', '')):

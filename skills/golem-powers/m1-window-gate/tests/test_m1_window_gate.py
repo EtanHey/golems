@@ -64,7 +64,7 @@ def test_unrelated_allows(cell, command):
 
 
 @pytest.mark.parametrize('prefix', ['mcp__t3-code__', 'mcp__t3_code__'])
-@pytest.mark.parametrize('tool', ['delegate_task', 't3_thread_send', 't3_thread_launch', 'create_threads',
+@pytest.mark.parametrize('tool', ['delegate_task', 't3_thread_launch', 'create_threads',
     'schedule_task', 'run_scheduled_task_now', 't3_thread_send_attachments', 't3_thread_configure'])
 def test_mcp(cell, tool, prefix):
     name = prefix + tool
@@ -200,3 +200,17 @@ def test_seat_transport_and_no_lock(cell, codex):
     assert call(cell, 'bun test', codex=codex, mode='seat')[0]
     assert not call(cell, 'ls', codex=codex, mode='seat')[0]
     assert not call(cell, 'bun test # ' + LANE, codex=codex, mode='seat')[0]
+
+
+@pytest.mark.parametrize('prefix', ['mcp__t3-code__', 'mcp__t3_code__'])
+def test_plain_message_to_m1_thread_is_allowed_during_window(cell, prefix):
+    # Messages are not work dispatch: orc and leads can still talk to M1 threads mid-run.
+    assert not call(cell, name=prefix + 't3_thread_send', ti={'environmentId': 'fixture-env', 'message': 'hi'})[0]
+
+
+@pytest.mark.parametrize('label', ['run2', 'run3'])
+def test_seat_own_lane_any_run_label(seat, label):
+    lane = LANE.replace('-run1-', '-' + label + '-')
+    assert not call(seat, 'bun test # lane=' + lane, mode='seat')[0]
+    assert call(seat, 'bun test # lane=' + lane + '-other', mode='seat')[0]
+    assert call(seat, 'bun test # lane=' + lane.replace(STEM.rsplit('-', 1)[-1], '20990101T000000000000'), mode='seat')[0]

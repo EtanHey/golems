@@ -12,7 +12,7 @@ SHA/timestamp stem and current UID blocks heavy or mutating Bash and Write,
 Edit, MultiEdit and NotebookEdit. Symlinks, files, missing/unreadable or invalid
 owners also block mutation, naming an UNKNOWN stem when ownership is untrusted.
 Only a valid lock permits an exemption for a call carrying its exact stem or
-`m1-golems-sync-run1-<UTC_TS>` lane. Prefix/suffix lookalikes do not qualify.
+`m1-golems-sync-<run label>-<UTC_TS>` lane (run1, run2, ...). Prefix/suffix lookalikes do not qualify.
 
 Seat Bash permits plain calls to ls, cat, head, tail, wc, stat, ps, pgrep, uptime,
 df, du -s, git status/log/diff/show/rev-parse, grep/rg, non-mutating find, echo,
