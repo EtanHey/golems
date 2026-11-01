@@ -22,15 +22,9 @@ mock.module("@golems/shared/lib/config", () => ({
   }),
 }));
 
-const {
-  logCCUsage,
-  logError,
-  logLLMCall,
-  logMessagePipeline,
-  logServiceEvent,
-  resetAxiom,
-  sanitizeAxiomEvent,
-} = await import("@golems/shared/lib/axiom");
+// Keep live module bindings: another test can spy on an export while this
+// dynamic import resolves. Destructuring would retain that spy after restore.
+const axiom = await import("@golems/shared/lib/axiom");
 
 // Markers: if either ever appears in a payload, input text or a name leaked.
 const PROMPT = "PROMPT-TEXT-FIXTURE the quick brown fox";
@@ -42,12 +36,12 @@ const HOST_ID = createHash("sha256").update(HOST).digest("hex").slice(0, 12);
 
 beforeEach(() => {
   ingested.length = 0;
-  resetAxiom();
+  axiom.resetAxiom();
 });
 
 describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
   it("error: drops raw error text (even short), stack and all metadata; keeps type + status code", () => {
-    const out = sanitizeAxiomEvent({
+    const out = axiom.sanitizeAxiomEvent({
       _type: "error",
       service: "claudegolem",
       error_message: SHORT_PROMPT,
@@ -66,7 +60,7 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
   });
 
   it("llm_call and message_pipeline: raw error strings never leave", () => {
-    const llm = sanitizeAxiomEvent({
+    const llm = axiom.sanitizeAxiomEvent({
       _type: "llm_call",
       model: "haiku",
       source: "email-router",
@@ -85,7 +79,7 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
     expect(llm).not.toHaveProperty("prompt");
     expect(llm).toMatchObject({ model: "haiku", input_tokens: 10, success: false, status_code: 429 });
 
-    const pipe = sanitizeAxiomEvent({
+    const pipe = axiom.sanitizeAxiomEvent({
       _type: "message_pipeline",
       message_id: "tg-1",
       golem_name: "claudegolem",
@@ -100,7 +94,7 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
   });
 
   it("service metadata: only named metric keys survive; dynamic keys are dropped, not length-checked", () => {
-    const out = sanitizeAxiomEvent({
+    const out = axiom.sanitizeAxiomEvent({
       _type: "service",
       service: "jobgolem",
       event: "run",
@@ -119,7 +113,7 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
   });
 
   it("cc_usage: hostname becomes an opaque host_id, branch is dropped, project stays", () => {
-    const out = sanitizeAxiomEvent({
+    const out = axiom.sanitizeAxiomEvent({
       _type: "cc_usage",
       model: "claude-opus-5-5",
       project: "golems",
@@ -135,7 +129,7 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
   });
 
   it("ID fields must look like IDs: whitespace-bearing text is dropped", () => {
-    const out = sanitizeAxiomEvent({
+    const out = axiom.sanitizeAxiomEvent({
       _type: "error",
       service: `${PERSON} free text`,
       error_type: "not an identifier",
@@ -144,20 +138,20 @@ describe("sanitizeAxiomEvent (IDs and metrics only)", () => {
   });
 
   it("drops unknown event types", () => {
-    expect(sanitizeAxiomEvent({ _type: "transcript", text: PROMPT } as never)).toBeNull();
+    expect(axiom.sanitizeAxiomEvent({ _type: "transcript", text: PROMPT } as never)).toBeNull();
   });
 });
 
 describe("send path — all five helpers, adversarial", () => {
   it("nothing but allowlisted IDs and metrics reaches the client", () => {
-    logError({
+    axiom.logError({
       service: "claudegolem",
       error_message: SHORT_PROMPT,
       error_type: "uncaught_exception",
       stack: STACK,
       metadata: { [PROMPT]: 1, [PERSON]: 1 },
     } as never);
-    logMessagePipeline({
+    axiom.logMessagePipeline({
       message_id: "tg-2",
       golem_name: "claudegolem",
       phase: "respond",
@@ -166,14 +160,14 @@ describe("send path — all five helpers, adversarial", () => {
       error_type: "processing_error",
       error_message: SHORT_PROMPT,
     });
-    logServiceEvent({
+    axiom.logServiceEvent({
       service: "cloud-worker",
       event: "run",
       status: "success",
       duration_ms: 3,
       metadata: { summary: PROMPT, [PROMPT]: 7, [PERSON]: 8, matched: 4 },
     });
-    logLLMCall({
+    axiom.logLLMCall({
       model: "haiku",
       source: "x",
       backend: "haiku",
@@ -186,7 +180,7 @@ describe("send path — all five helpers, adversarial", () => {
       error: SHORT_PROMPT,
       prompt: PROMPT,
     } as never);
-    logCCUsage({
+    axiom.logCCUsage({
       model: "claude-opus-5-5",
       project: "golems",
       input_tokens: 1,
