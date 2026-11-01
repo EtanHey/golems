@@ -20,11 +20,8 @@ request when an eligible automatic review already covers the current head.
 
 CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
 
-| Bot | Expected time | Notes |
-|-----|--------------|-------|
-| CodeRabbit | 2-5 min | Auto-reviews on push |
-| Greptile | Needs OSS approval | Manual activation |
-| Macroscope | Needs activation | Auto-reviews once installed |
+What each bot does once a draft is marked ready, and when to request one: [`/pr-loop` § Bots after the
+flip](../SKILL.md#bots-after-the-flip). That table is current; it replaces the old per-bot timing list.
 
 **If `reviewDecision` is empty and no routed review verdict is on the PR for `headRefOid` → DO NOT MERGE.**
 

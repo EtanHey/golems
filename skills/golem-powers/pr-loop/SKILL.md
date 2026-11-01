@@ -154,7 +154,10 @@ ci-hygiene owns the bot config. This is what each bot does once a draft is marke
 | Bugbot, Macroscope, Qodo, Greptile | Don't run automatically. | Request one only for a core-risk PR, per the repo's bot policy. |
 | DeepSource, CodeQL | CI-style checks on every push. | Nothing. |
 
-A bot that reviews a draft anyway is a config bug: tell ci-hygiene.
+The 10-minute fallbacks above apply only while the PR is still blocked on something else anyway.
+Never hold a merge for a bot: follow [Merge Cadence](#merge-cadence-risk-sized), and record a silent
+bot as unavailable. A bot that reviews a draft anyway is a config
+bug: tell ci-hygiene.
 
 ## Decision Table
 
