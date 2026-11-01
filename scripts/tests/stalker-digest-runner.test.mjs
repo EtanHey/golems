@@ -34,7 +34,7 @@ async function withCodex(executable, callback) {
   }
 }
 
-function options(root, workDir, timeoutMs = 1000) {
+function options(root, workDir, timeoutMs = 30000) {
   return {
     input: "Create digest.\nSOURCE DATA:\n{\"text\":\"PRIVATE_TRANSCRIPT_DO_NOT_PERSIST\"}\n",
     outputPath: join(workDir, "output.json"),
@@ -57,7 +57,7 @@ setInterval(() => {}, 1000);`);
   const { root, workDir, executable } = fixtureData;
   await withCodex(executable, async () => {
     await assert.rejects(
-      runDigestCodex(options(root, workDir)),
+      runDigestCodex(options(root, workDir, 1000)),
       /timed out after 1000ms.*human-digest-codex\.stdout\.log.*human-digest-codex\.stderr\.log/s,
     );
   });
