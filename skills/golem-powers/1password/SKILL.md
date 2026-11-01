@@ -1,6 +1,6 @@
 ---
 name: 1password
-description: "Deliberate 1Password admin while Etan is present (add, rotate, migrate secrets; each `op` call asks for his Touch ID). NOT for using an API key: load ~/.config/golems/*.env."
+description: "1Password admin with Etan present (add/rotate/migrate; op = Touch ID). To use a key, load ~/.config/golems/*.env."
 ---
 
 # 1Password Operations
