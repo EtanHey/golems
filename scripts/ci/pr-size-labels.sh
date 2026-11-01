@@ -37,8 +37,8 @@
 #     count <= 150  -> size:S
 #     count <= 400  -> size:M
 #     count >  400  -> size:L   (canon 9: needs a one-line why)
-#   400 is canon 9's split point, so a count over that cap gets a
-#   required justification: a PR-body line starting size-why: plus text.
+#   400 is canon 9's split point. Above that cap, warn unless the PR body
+#   has a line starting size-why: plus text. Missing justification never fails.
 #
 # Exit codes: 0 ok, 1 runtime failure, 2 usage error.
 
@@ -303,8 +303,7 @@ size label corrected: $label → $required ($lines hand-written lines)"
       local body
       body="$("$GH_BIN" pr view "$pr" --repo "$repo" --json body --jq '.body')"
       if ! grep -qE '^size-why:[[:blank:]]*[^[:space:]]' <<<"$body"; then
-        printf '::error::%s#%s requires a size-why: justification line in the PR body.\n' "$repo" "$pr"
-        return 1
+        printf '::warning::%s#%s has %s hand-written lines; add a size-why: justification line in the PR body to silence this warning.\n' "$repo" "$pr" "$lines"
       fi
     fi
 

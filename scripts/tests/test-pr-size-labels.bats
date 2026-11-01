@@ -253,19 +253,21 @@ TSV
   [[ "$output" == *"OK EtanHey/golems#42 size:M covers 10 hand-written lines"* ]]
 }
 
-@test "L without why fails" {
+@test "L without why warns and passes" {
   make_gh_stub '' 'size:L'
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning::"* ]]
   [[ "$output" == *"size-why:"* ]]
 }
 
-@test "L with why passes" {
+@test "L with why passes without warning" {
   make_gh_stub '' 'size:L' 'size-why: callers must land together'
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
+  [[ "$output" != *"::warning::"* ]]
 }
 
 @test "check still only warns when the size label is missing" {

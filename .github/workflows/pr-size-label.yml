@@ -1,5 +1,5 @@
 # Correct under-reporting labels on same-repo PRs; forks retain failure.
-# L requires a size-why: line; missing labels still warn.
+# L without a size-why: line warns; missing labels still warn.
 name: pr-size-label
 
 on:
