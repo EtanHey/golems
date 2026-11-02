@@ -82,3 +82,35 @@ test('allows final multiline assertions and leaves conditional and-lists alone',
   assert.deepEqual(assertions('@test "probe" {\n[[ -f ready ]] && break\ntrue\n}\n'), []);
   assert.deepEqual(assertions('@test "probe" {\n[ a ] &&\n [[ a == b ]] &&\n [ b ]\n}\n'), []);
 });
+
+test('distinguishes embedded closing brackets from the assertion terminator', () => {
+  for (const expression of ['[[ $x =~ [[:alpha:]] ]]', '[[ $x == "]]" ]]', '[[ $x == " ]] " ]]']) {
+    assert.deepEqual(assertions(`@test "probe" {\n${expression}\ntrue\n}\n`), [2]);
+    assert.deepEqual(assertions(`@test "probe" {\n${expression}\n}\n`), []);
+    assert.deepEqual(assertions(`@test "probe" {\n${expression} || false\ntrue\n}\n`), []);
+  }
+});
+
+test('checks one-line loop, branch and case-arm assertions', () => {
+  for (const prefix of ['for x in a; do ', 'if true; then ', 'a) ']) {
+    const expression = `${prefix}[[ a == b ]]`;
+    assert.deepEqual(assertions(`@test "probe" {\n${expression}\ntrue\n}\n`), [2], prefix);
+    assert.deepEqual(assertions(`@test "probe" {\n${expression} || false\ntrue\n}\n`), [], prefix);
+  }
+  for (const body of ['for x in a; do [[ a == b ]]; done',
+    'if true; then [[ a == b ]]; fi', 'a) [[ a == b ]];;']) {
+    assert.deepEqual(assertions(`@test "probe" {\n${body}\ntrue\n}\n`), [2], body);
+    assert.deepEqual(assertions(`@test "probe" {\n${body.replace(']]', ']] || false')}\ntrue\n}\n`), [], body);
+  }
+});
+
+for (const body of [
+    "grep -q '[[:space:]]' f; [[ a == b ]] || false",
+    'echo "do [[ x ]]"',
+    String.raw`[[ $x == $'it\'s' ]] || false`,
+  ]) {
+  test(`later tests survive ${body}`, () => {
+    const source = `@test "a" {\n${body}\n}\n\n@test "b" {\n[[ c == d ]]\ntrue\n}\n`;
+    assert.deepEqual(assertions(source), [6], body);
+  });
+}
