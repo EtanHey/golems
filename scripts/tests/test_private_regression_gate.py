@@ -551,7 +551,8 @@ def test_owner_marker_never_spawns_ps_and_round_trips(tmp_path, monkeypatch):
     ("v2-other", False),                  # a v2 token of another incarnation: reused PID, prune
     ("partial-young", True),              # an old gate may be mid-write (non-atomic, concurrent slots): keep
     ("empty-young", True),
-    ("partial-old", False),               # its writer died mid-write
+    ("partial-old", True),                # age can't prove the writer dead (a stopped writer stays mid-write): keep
+    ("empty-old", True),
 ])
 def test_owner_marker_states(tmp_path, monkeypatch, case, expected):
     import os, time
@@ -568,13 +569,13 @@ def test_owner_marker_states(tmp_path, monkeypatch, case, expected):
     marker = marker_dir / ".active"
     if case.startswith("partial"):
         marker.write_text('{"pid": 1, "sta')
-    elif case == "empty-young":
+    elif case.startswith("empty"):
         marker.write_text("")
     else:
         pid, start = values[case]
         marker.write_text(json.dumps({"pid": pid, "start": start}))
-    if case == "partial-old":
-        old = time.time() - gate.PARTIAL_MARKER_GRACE_SECONDS - 60
+    if case.endswith("-old"):
+        old = time.time() - 7 * 24 * 3600
         os.utime(marker, (old, old))
     assert gate.active_fixture(marker_dir) is expected
     assert not called.exists()

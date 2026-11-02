@@ -224,10 +224,9 @@ def owner_active(pid, start):
     return True  # legacy marker of a live PID: keep
 
 
-# A marker that is empty, partial or invalid may belong to a pre-R13 gate mid-write (it wrote non-atomically, and old and new
-# gates can run concurrently in separate heavy-suite slots). Keep it while young; an old one means its writer died mid-write
-# (a failed write raises and the gate exits).
-PARTIAL_MARKER_GRACE_SECONDS = 600
+# A marker that is empty, partial, invalid or unreadable may belong to a pre-R13 gate mid-write (it wrote non-atomically, old and
+# new gates can run concurrently in separate heavy-suite slots, and a stopped writer can stay mid-write indefinitely). No age
+# proves its writer dead, so it is always kept (Codex review r2 of R13 2a). Orphans can be reclaimed once no old writer remains.
 
 
 def write_owner_marker(directory, pid, token):
@@ -250,10 +249,7 @@ def active_fixture(path):
     except OSError:
         return True  # unreadable marker: cannot tell, keep
     if not valid:
-        try:
-            return time.time() - marker.stat().st_mtime < PARTIAL_MARKER_GRACE_SECONDS
-        except OSError:
-            return True
+        return True  # cannot tell whose it is: keep
     return owner_active(pid, start)
 
 
