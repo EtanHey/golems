@@ -3,6 +3,7 @@
 import argparse
 import fcntl
 import hashlib
+from itertools import islice
 import json
 import math
 import os
@@ -157,6 +158,28 @@ def save_run(path, record):
     with os.fdopen(fd, "w") as stream:
         json.dump(record, stream, default=lambda value: value.hex())
     os.replace(temporary, path)
+
+
+def save_inner_failure(record, tree, reason, survivors):
+    try:
+        directory = Path.home() / ".local/state/golems/runs"
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700); directory.chmod(0o700)
+        birth = hashlib.sha256(json.dumps(record["wrapper_birth"], default=lambda value: value.hex()).encode()).hexdigest()[:16]
+        path = directory / f"{record['suite_id']}.inner-{record['wrapper_pid']}-{birth}.json"
+        save_run(path, dict(record, nested=True, reason=reason, cleanup="failed",
+            members_seen=[vars(row) for row in islice(tree.known.values(), 200)], members_seen_count=len(tree.known),
+            signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+            identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
+            unattributed_marker_processes=list(tree.unattributed.values())))
+    except OSError as error:
+        notice(f"WARNING inner failure record unavailable: {error}")
+
+
+def inner_failure_pointer(suite_id):
+    directory = Path.home() / ".local/state/golems/runs"
+    try: count = sum(1 for _ in directory.glob(f"{suite_id}.inner-*.json"))
+    except OSError: return ""
+    return f" inner_failures={count} (see {directory}/{suite_id}.inner-*.json)" if count else ""
 
 
 class SuiteTree:
@@ -353,19 +376,21 @@ os.read(control, 1)
             notice(f"CLEANUP FAILED; suite process tree remains or is unverifiable (suite_id={suite_id})")
             if result == 0: result = 70
         if pending and reason != "timeout": result, reason = 128 + pending[0], "cancelled"
+        if nested and not ok: save_inner_failure(record, tree, reason, survivors)
         if path:
             record.update(reason=reason, cleanup="ok" if ok else "failed", members_seen=[vars(row) for row in tree.known.values()],
                 signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
                 unattributed_marker_processes=list(tree.unattributed.values()))
             save_run(path, record); save_run(path.with_suffix(".cleanup.json"), record)
             if ok: path.unlink()
-        if not nested: notice(f"SUITE DONE pid={os.getpid()} slot={slot} suite_id={suite_id} exit={result} reason={reason} cleanup={'ok' if ok else 'failed'}")
+        if not nested: notice(f"SUITE DONE pid={os.getpid()} slot={slot} suite_id={suite_id} exit={result} reason={reason} cleanup={'ok' if ok else 'failed'}{inner_failure_pointer(suite_id)}")
     except (OSError, proc.ProcIdentityUnavailable):
         notice("supervision unavailable; refusing START" if child is None else "CLEANUP FAILED; supervision unavailable")
         if child is not None:
             tree = tree or SuiteTree(None, suite_id, nested)
             tree.incomplete.add("supervision-unavailable")
             ok, survivors = cleanup_tree(tree, child, grace)
+            if nested: save_inner_failure(record, tree, reason, survivors)
             if path:
                 record.update(reason=reason, cleanup="failed", members_seen=[vars(row) for row in tree.known.values()],
                     signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
