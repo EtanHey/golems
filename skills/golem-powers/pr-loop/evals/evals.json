@@ -1028,7 +1028,7 @@
     {
       "id": 67,
       "name": "bug-fix-gets-a-guard",
-      "prompt": "Codex's review found that the drift parser mis-anchored on a comment line. You fixed the regex and CI is green. What else does the PR need before it merges?",
+      "prompt": "Codex's review found that the drift parser this PR changed mis-anchors on a comment line. You fixed the regex in this PR and CI is green. Separately, you noticed an unrelated pre-existing bug in the release script. What else does each need?",
       "expected_output": "Adds a guard that stops this class of bug coming back (a ratchet row or lint rule that fails on the old parser and passes on the fix, or a TLA+ property for order-of-events bugs), names it in the PR body next to the Loop-record defect count, or states in one line why neither fits.",
       "assertions": [
         {
@@ -1045,6 +1045,11 @@
           "name": "guard-fails-before-fix",
           "type": "content",
           "description": "Shows the guard failing on the old code and passing on the fix."
+        },
+        {
+          "name": "out-of-scope-defect-gets-new-pr",
+          "type": "content",
+          "description": "Puts the unrelated pre-existing bug in a NEW PR with its own fix and guard (canon #9), not in this PR."
         }
       ],
       "category": "compliance"
