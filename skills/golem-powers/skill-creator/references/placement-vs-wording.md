@@ -14,6 +14,8 @@ If the user never says the skill's trigger words, description wording alone bare
 
 A hook is a non-blocking reminder (`additionalContext`). It never denies.
 
+### Evidence (skill study 2026-11-02: E2, E3, R3)
+
 Measured so far (E2 /large-plan, E3 /research-lifecycle; the models and cases named in each row):
 
 | Change | Load rate (base → arm) | Source |
@@ -36,6 +38,8 @@ Before you change a description, check:
 ## (b) Once the text is LOADED: precise, case-specific wording is the lever
 
 Once the text is in context (system prompt, routing row, hook reminder, skill body), wording decides behaviour. Make it precise to the case that fails, and measure it per case.
+
+### Evidence (2026-11-02)
 
 - **T3 Code PR #27368** (closed; eval table in its body), https://github.com/pingdotgg/t3code/pull/27368:
   - One instruction line in `orchestrationInstructions.ts` took gpt-6.1-sol from 0/10 to 9/9 on `schedule-current-thread-no-read`. Guard cases held at 3/3.
