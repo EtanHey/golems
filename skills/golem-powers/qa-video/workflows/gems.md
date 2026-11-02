@@ -14,8 +14,9 @@ or wants durable insights/takeaways from a video instead of QA findings.
 
 ## Execution Contract
 
-Default pipeline: `Agent(qa-video-runner)` for QA, `Agent(video-gems)` for gems.
-The pipeline sub-agent owns the whole iterative loop in its **own shell**
+Default pipeline: `Agent(video-gems)` for gems; QA is the QA seat's own fan-out
+(process.md), with `qa-video-runner` only as the no-dispatch fallback.
+The gems sub-agent owns the whole iterative loop in its **own shell**
 and **reads the images itself**: it opens the contact sheets and the frames
 behind every finding with Read, in its own context, and connects them over
 time: what changed between the before/after frames of a cue, and whether an
@@ -25,8 +26,8 @@ pre-sorting, e.g. flagging candidate windows across hundreds of samples. Its
 text is a lead, never evidence: view the frames before reporting a finding.
 `debrief.py` runs no helper unless you pass `--presort`.
 NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
-A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
-inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
+A sub-agent cannot dispatch another sub-agent: `video-gems` never uses the Agent
+tool. The parent may use `Agent(visual-gatherer)` for ad-hoc
 screenshot questions outside this pipeline.
 
 Only when Etan **explicitly** asks for a **visible worker**, the lead opens a

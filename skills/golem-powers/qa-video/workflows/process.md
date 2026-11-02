@@ -1,6 +1,6 @@
 # Video Processing: QA or Transcript-First Debrief
 
-**qa** keeps the dense action pipeline below. **debrief / review / gems** uses TRANSCRIPT-FIRST: ≤12 transcript questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each, no blanket 30s coverage and no scene sweep unless narration references visuals. Default debrief budget is max(600, 24 × video minutes) seconds wall-clock; explicit --budget-seconds overrides it. Preserve/read debrief.md whenever transcript.srt exists, including BUDGET_EXCEEDED/PARTIAL; missing visual reads stay NOT DETERMINED. For these modes use `scripts/debrief.py VIDEO --workdir FRESH_DIR --mode debrief` through run-step.sh. By default debrief.py calls no helper: it extracts the targeted stills, writes frames.tsv and exits `STILLS_READY` for you to view them; `--presort` opts in to the visual-batch.py pre-sort. Then read the full SRT and debrief.md, and view the stills behind any visual claim you keep, for the final synthesis. Skip QA phases 3–5. Never infer visual coverage for unsampled parts of the video. The runner writes root progress.txt at every phase and incremental findings.jsonl; the parent dispatches in the background and reads progress.txt on delay questions. For manual qa steps, rewrite root progress.txt on every phase transition too.
+**qa** keeps the dense action pipeline below. **debrief / review / gems** uses TRANSCRIPT-FIRST: ≤12 transcript questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each, no blanket 30s coverage and no scene sweep unless narration references visuals. Default debrief budget is max(600, 24 × video minutes) seconds wall-clock; explicit --budget-seconds overrides it. Preserve/read debrief.md whenever transcript.srt exists, including BUDGET_EXCEEDED/PARTIAL; missing visual reads stay NOT DETERMINED. For these modes use `scripts/debrief.py VIDEO --workdir FRESH_DIR --mode debrief` through run-step.sh. By default debrief.py calls no helper: it extracts the targeted stills, writes frames.tsv and exits `STILLS_READY` for you to view them; `--presort` opts in to the visual-batch.py pre-sort. Then read the full SRT and debrief.md, and view the stills behind any visual claim you keep, for the final synthesis. Skip QA phases 3–5. Never infer visual coverage for unsampled parts of the video. The QA seat writes root progress.txt at every phase and helpers append findings.jsonl; on delay questions read progress.txt. For manual qa steps, rewrite root progress.txt on every phase transition too.
 
 ## Inputs Required
 - `VIDEO` — path to the .mov screen recording
@@ -15,23 +15,27 @@ command reference and troubleshooting notes.
 
 ## Execution Contract: Agent-Owned Iterative Loop
 
-Default pipeline: `Agent(qa-video-runner)` for QA/debrief/review, `Agent(video-gems)` for gems.
-The pipeline sub-agent owns the whole iterative loop in its **own shell**
-and **reads the images itself**: it opens the contact sheets and the frames
-behind every finding with Read, in its own context, and connects them over
-time: what changed between the before/after frames of a cue, and whether an
-element's state carries across windows. The lead stays text-only.
+Default pipeline: the QA seat for QA/debrief/review (on the machine holding the
+recording), `Agent(video-gems)` for gems. The QA seat runs extraction, transcript,
+hotspots and contact sheets in its **own shell**, then fans the frame windows out
+to ≥2 `claude.judgment` helpers, with a `claude.subagent.mechanical` verifier per
+candidate finding (SKILL.md § Execution routing). Each helper **reads the images itself**:
+it opens its contact sheets and the frames behind every finding with Read, in its
+own context, and connects them over time: what changed between the before/after
+frames of a cue, and whether an element's state carries across windows. The seat
+stays text-only. `qa-video-runner` is only the single-reader contract for a seat
+with no dispatch tool. Phase 4's "yourself" means the reader: a helper or verifier.
 `scripts/visual-batch.py` (driving visual-gather.py) is OPTIONAL bulk
 pre-sorting, e.g. flagging candidate windows across hundreds of samples. Its
 text is a lead, never evidence: view the frames before reporting a finding.
 NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
-A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
-inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
+Helpers and verifiers are sub-agents and cannot dispatch: they never use the
+Agent tool (the QA seat can). The seat may use `Agent(visual-gatherer)` for ad-hoc
 screenshot questions outside this pipeline.
 
 Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
 Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
-same loop in its own shell and views the images itself, like the runner. **Never open a terminal pane**
+same loop in its own shell and views the images itself, like the helpers. **Never open a terminal pane**
 or type into another surface to run media tools; never `send_to` media commands.
 If the selected profile has no shell, stop and ask the lead for the shell-enabled
 pipeline profile (or `video-qa` for the explicitly requested visible route).

@@ -2,10 +2,12 @@
 
 Run this file with <capture.json> to score parent AND pipeline traces.
 Schema: {case: qa|gems|visible, image_paths: [...], calls: [
- {actor: parent|pipeline, tool: Agent|Read|Bash|mcp__cmuxlayer__spawn_agent,
+ {actor: parent|pipeline, tool: Agent|mcp__t3-code__delegate_task|Read|Bash|mcp__cmuxlayer__spawn_agent,
   arguments: {...}}]}. Visible spawn arguments use cli=gemini and a brief
 containing the exact `agy --agent video-qa` launcher contract. The pipeline
 must view at least one image itself; a visual-batch.py call is optional pre-sort.
+QA/debrief (2026-11-02 rule): the parent (the QA seat) fans out >=2 judgment-tier
+helpers itself plus >=1 mechanical-tier verifier, and never one qa-video-runner.
 """
 import copy
 import json
@@ -22,6 +24,17 @@ PROMPTS = {'qa': 'QA this screen recording for bugs',
            'visible': 'show me a visible Gemini worker doing the QA'}
 
 
+DISPATCH = {'Agent', 'mcp__t3-code__delegate_task'}
+TIERS = {'opus': 'helper', 'claude-opus-5-5': 'helper', 'haiku': 'verifier', 'claude-haiku-5-5': 'verifier'}
+
+
+def tier(tool, args):
+    model = args.get('model') if tool == 'Agent' else (args.get('target') or {}).get('model')
+    if tool == 'Agent' and args.get('subagent_type') in {'qa-video-runner', 'video-gems', 'visual-gatherer'}:
+        return args['subagent_type']
+    return TIERS.get(model, f'other:{model}')
+
+
 def score(capture):
     case = capture['case']
     assert case in PROMPTS
@@ -30,9 +43,9 @@ def score(capture):
         tool, args = call['tool'], call.get('arguments', {})
         actor = call.get('actor', 'parent')
         assert actor in {'parent', 'pipeline'}, 'unknown trace actor'
-        if tool == 'Agent':
+        if tool in DISPATCH:
             assert actor == 'parent', 'nested sub-agent dispatch'
-            agents.append(args.get('subagent_type'))
+            agents.append(tier(tool, args))
         if 'cmux' in tool:
             assert case == 'visible' and actor == 'parent', 'unrequested pane access'
             if tool.endswith(('list_agents', 'list_surfaces')):
@@ -54,7 +67,13 @@ def score(capture):
     if case == 'visible':
         assert len(panes) == 1 and not agents, 'visible route missing or mixed'
     else:
-        assert agents == [{'qa': 'qa-video-runner', 'debrief': 'qa-video-runner', 'gems': 'video-gems'}[case]]
+        if case == 'gems':
+            assert agents == ['video-gems']
+        else:
+            assert 'qa-video-runner' not in agents, 'single runner instead of the fan-out'
+            assert agents.count('helper') >= 2, 'QA seat did not fan out >=2 helpers'
+            assert 'verifier' in agents, 'no verifier re-read the findings'
+            assert set(agents) <= {'helper', 'verifier'}, 'unexpected dispatch'
         assert viewed, 'pipeline never viewed a frame itself (helper text is not evidence)'
 
 
@@ -65,9 +84,11 @@ HELPER = {'actor': 'pipeline', 'tool': 'Bash', 'arguments':
 def accepted(case):
     calls = ([{'tool': 'mcp__cmuxlayer__spawn_agent', 'arguments':
                {'cli': 'gemini', 'prompt': 'Use agy --agent video-qa for this visible worker.'}}]
-             if case == 'visible' else [
-                 {'tool': 'Agent', 'arguments': {'subagent_type':
-                  {'qa': 'qa-video-runner', 'debrief': 'qa-video-runner', 'gems': 'video-gems'}[case]}},
+             if case == 'visible' else ([
+                 {'tool': 'Agent', 'arguments': {'subagent_type': 'video-gems'}}] if case == 'gems' else [
+                 {'tool': 'Agent', 'arguments': {'subagent_type': 'general-purpose', 'model': 'opus'}},
+                 {'tool': 'mcp__t3-code__delegate_task', 'arguments': {'target': {'model': 'claude-opus-5-5'}}},
+                 {'tool': 'Agent', 'arguments': {'subagent_type': 'general-purpose', 'model': 'haiku'}}]) + [
                  {'actor': 'pipeline', 'tool': 'Read', 'arguments': {'file_path': '/frame.png'}}])
     if case == 'visible':
         calls.insert(0, {'tool': 'mcp__cmuxlayer__list_surfaces', 'arguments': {}})
@@ -108,13 +129,17 @@ def test_reject_route_counterexamples():
     bad = []
     for case in ('qa', 'gems'):
         c = accepted(case); c['calls'] += accepted('visible')['calls']; bad.append(c)
-        c = accepted(case); c['calls'][0]['arguments']['subagent_type'] = 'visual-gatherer'; bad.append(c)
+        c = accepted(case); c['calls'][0]['arguments'] = {'subagent_type': 'visual-gatherer'}; bad.append(c)
         c = accepted(case); c['calls'].pop(); bad.append(c)
     c = accepted('visible'); c['calls'] = accepted('qa')['calls']; bad.append(c)
     c = accepted('qa'); c['calls'][0]['actor'] = 'pipeline'; bad.append(c)
     c = accepted('qa'); c['calls'].append({'tool': 'view_image'}); bad.append(c)
     c = accepted('visible'); c['calls'].append({'tool': 'mcp__cmuxlayer__send_to', 'arguments': {'text': 'ffmpeg'}}); bad.append(c)
     c = accepted('visible'); c['calls'].pop(); bad.append(c)
+    runner = accepted('qa'); runner['calls'][:3] = [{'tool': 'Agent', 'arguments': {'subagent_type': 'qa-video-runner'}}]
+    one = accepted('qa'); del one['calls'][1]
+    unverified = accepted('debrief'); del unverified['calls'][2]
+    bad += [runner, one, unverified]
     for c in bad:
         with pytest.raises(AssertionError):
             score(copy.deepcopy(c))
