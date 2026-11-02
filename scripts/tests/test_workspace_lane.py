@@ -387,3 +387,5 @@ sys.exit(code)
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["disposition"] == "REMOVED"
     assert lane.record(opened)["consumers"] == [] and not Path(opened["path"]).exists()
+
+# live pre-push proof (throwaway, do not merge)

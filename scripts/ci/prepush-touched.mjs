@@ -253,3 +253,5 @@ async function main() {
   if (!skills.length && !relevant.length) console.error('prepush-touched: no relevant suites; available cheap gates finished');
 }
 try { await main(); } catch (error) { console.error(`prepush-touched: FAIL ${error.message}`); process.exitCode = 1; }
+
+// live pre-push proof (throwaway, do not merge)
