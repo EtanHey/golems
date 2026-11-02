@@ -41,8 +41,8 @@ snapshots disagree with the code, the command prints a NOTE. It then runs every 
 so a regression in any other flag fails it. Evidence goes to `docs.local/verify-merge-receipts/run-*/`.
 
 - Exit 0: everything passes as expected.
-- Exit 1: only known findings remain (master at the sync commit: `TodayMerge`, `TodayLive`,
-  `TodayFresh`). Report them; never certify.
+- Exit 1: only known findings remain. Report them; never certify. Master exits 0 since #1102:
+  all three findings (`TodayMerge`, `TodayLive`, `TodayFresh`) have landed fixes.
 - Exit 2: source drift, an unexpected pass or violation, or a missing tool.
 
 Missing tools fail; they are never skipped. See the [results table](../../../docs/tla/merge-receipts/README.md).
@@ -93,4 +93,4 @@ FAILED receipt (by design) are not modeled.
 To check that the command catches a real source change, save `scripts/ratchet/live/status.sh`,
 put the FX16 end-anchored regex back (`drift=([0-9]+)$`) and rerun. It must exit 2 with
 `TodayWithFixes` violating LiveReceiptIsolated. Restore the exact bytes in a `finally` block and
-rerun to get exit 1 again. Never commit the scratch change.
+rerun to get exit 0 again. Never commit the scratch change.

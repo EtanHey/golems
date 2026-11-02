@@ -17,8 +17,8 @@ Three properties, each one sentence of harm:
 
 | Config | What it switches | Property | Result | Real bug / fix |
 |---|---|---|---|---|
-| `TodayMerge` | today's master | ReceiptMatchesMerge | **violated: finding** | Mac receipt at H1, check green at H1, lead sees green, P pushes H2, `gh pr merge --merge --admin` merges H2. `--admin` skips the server's required-check gate, and the merge step has no `--match-head-commit`. No fix yet. |
-| `MatchHead` | merge refuses a moved head | ReceiptMatchesMerge | passes | proposed fix for the finding above |
+| `TodayMerge` | today's master (merge pinned to the green head) | ReceiptMatchesMerge | passes | Fixed by [#1102](https://github.com/EtanHey/golems/pull/1102) (merge `1a30cb01`): every documented merge passes `--match-head-commit <the head seen green>`, so GitHub refuses a head that moved. Before the fix this was a finding: Mac receipt at H1, check green at H1, lead sees green, P pushes H2, `gh pr merge --merge --admin` merges H2, because `--admin` skips the server's required-check gate. |
+| `MatchHead` | merge refuses a moved head | ReceiptMatchesMerge | passes | the fix #1102 landed |
 | `NoHeadBound` | mutant: no `verdict.head !== head` in `check-comment.mjs` | ReceiptMatchesMerge | violated | the stale-receipt class: local-run reads H1, P pushes H2, the H1 receipt passes H2's check. The head binding is [#689](https://github.com/EtanHey/golems/pull/689); tonight it correctly held #834/#1007/#1009 red on stale receipts. |
 | `TodayLive` | today's master (`--lease-pr` required) | LiveReceiptIsolated | passes | Fixed by [#1092](https://github.com/EtanHey/golems/pull/1092) (merge `10cd7c56`): `post-merge-live.mjs` refuses to run without `--lease-pr` and leases only that PR, and pr-loop's merge step passes it. Before the fix this was a finding, [#1007](https://github.com/EtanHey/golems/pull/1007)'s run 1: the lease search auto-picked [#1083](https://github.com/EtanHey/golems/pull/1083)'s branch, which moved and merged mid-receipt (02:43Z), so the token was denied. Shortest path: lease on Q, Q merges, `live-rows.sh`'s reread still passes (`gh pr view` does not check that the PR is open), and `lead_scope` denies the token. |
 | `PinnedLease` | `--lease-pr <own PR>` | LiveReceiptIsolated | passes | [#1084](https://github.com/EtanHey/golems/pull/1084)'s safe usage, required since #1092 |
@@ -27,7 +27,7 @@ Three properties, each one sentence of harm:
 | `TodayFresh` | today's master | NoFalseFresh | passes | Fixed by [#1097](https://github.com/EtanHey/golems/pull/1097) (merge `ba06e290`): `guarded-set.mjs` derives the guarded set from `hookDriftPaths()`, and both `guarded-paths.sh` and `live-freshness.mjs` use it. Before the fix this was a finding: Q merges a change to a hook's skill root (for example `skills/golem-powers/model-pin-gate/`), `guarded-paths.sh` calls it unguarded, so pr-loop skips the post-merge step and freshness keeps accepting the older receipt: green after 120 minutes with that hook stale. 13 of the 17 `hookDriftPaths()` directories were outside the guarded set. |
 | `GuardHookPaths` | guarded set covers every hook-loaded path | NoFalseFresh | passes | the fix #1097 landed |
 | `NoGraceBound` | mutant: drop `age <= GRACE_MINUTES` | NoFalseFresh | violated | grace without its bound covers a stale install forever. The bound is [#1032](https://github.com/EtanHey/golems/pull/1032)'s. |
-| `AllFixes` | all three fixes (#1092 and #1097 landed, `MatchHead` still proposed) | all three | passes | |
+| `AllFixes` | all three fixes (#1092, #1097 and #1102, all landed) | all three | passes | |
 
 Probes confirm the passes are not vacuous. Under `AllFixes`, a merge, an ok live receipt, a
 freshness PASS after the grace, and a master merge after the status row's fetch are all reachable.

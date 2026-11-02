@@ -4,7 +4,7 @@ pstack `/statechart` drew these paths from the violating configs (TLC2 2.19, tla
 Each config reaches more than the 500-state chart budget, so `/statechart` draws only bug paths. This
 chart merges those paths into one picture. Every numbered state breaks a property. Red marks a path
 today's master can still take; grey dashed marks a path a landed fix has closed. Each numbered state
-lists its config and its fix below. Normal review and CI steps, P's own rows and Q's own receipts are left out.
+lists its config and its fix below. Since #1102, no path is red: every finding has a landed fix. Normal review and CI steps, P's own rows and Q's own receipts are left out.
 
 ```mermaid
 stateDiagram-v2
@@ -31,7 +31,7 @@ stateDiagram-v2
   Receipted --> Green: ratchet check passes
   Older --> Bad1: check passes with no head check, lead merges
   Green --> Moved: P pushes
-  Moved --> Bad1: lead merges with --admin
+  Moved --> Bad1: lead merges with --admin [before #1102]
   Green --> Merged: lead merges
   Merged --> Updated: post-merge-live fetches, then pins
   Updated --> LeaseQ: lease auto-picked [before #1092]
@@ -44,13 +44,13 @@ stateDiagram-v2
   QHook --> Bad5: 120 minutes pass
   classDef bug fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
   classDef fixed fill:#f3f3f3,stroke:#8a8a8a,stroke-width:1.5px,stroke-dasharray:4 3,color:#555555
-  class Bad1 bug
-  class Bad2,Bad3,Bad4,Bad5 fixed
+  class Bad1,Bad2,Bad3,Bad4,Bad5 fixed
 ```
 
-1. **ReceiptMatchesMerge**, two routes. `TodayMerge` (**current finding**, no fix yet): the lead saw
-   green at H1, P pushed H2, and `gh pr merge --merge --admin` merged H2. The proposed fix is
-   `--match-head-commit <the head seen green>`. `NoHeadBound` (a mutant): with no
+1. **ReceiptMatchesMerge**, two routes. `TodayMerge` before #1102: the lead saw green at H1, P pushed
+   H2, and `gh pr merge --merge --admin` merged H2. Fixed by
+   [#1102](https://github.com/EtanHey/golems/pull/1102) (merge `1a30cb01`), which pins every documented
+   merge with `--match-head-commit <the head seen green>`; `TodayMerge` now passes. `NoHeadBound` (a mutant): with no
    `verdict.head !== head` check, a receipt read at H1 passes H2's check. The head binding comes from
    [#689](https://github.com/EtanHey/golems/pull/689).
 2. **LiveReceiptIsolated**, `TodayLive` before #1092: #1007's run 1. The lease went to
