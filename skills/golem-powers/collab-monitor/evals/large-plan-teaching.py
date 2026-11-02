@@ -33,7 +33,8 @@ REQUIRED = {
         'attachment': ('before dispatching any worker',),
         'readiness': ('native Monitor returns its task ID', 'Codex seats: once the process-exit watch is attached'),
         'liveness': ('MUST NOT be the only worker-liveness guard', 'separate liveness watchers are armed'),
-        't3': ('T3-native execution', 'completion notification is the liveness guard', 'Arm no collab monitor'),
+        # 2026-11-02 ruling: the lead's one name waiter watches the lane collab; no second monitor.
+        't3': ('T3-native execution', 'completion notification is the liveness guard', 'one name waiter also watches it', 'Arm no second collab monitor', "Don't relay worker updates into chat"),
     },
     'parallel': {
         'routing': ('Claude uses native Monitor', 'Codex seats arm no collab monitor'),
@@ -98,6 +99,7 @@ NEGATIVE_CONTROLS = (
     ('parallel', 'Codex seats arm no collab monitor', 'routing'),
     ('round', 'before dispatching any worker', 'attachment'),
     ('round', 'completion notification is the liveness guard', 't3'),
+    ('round', 'one name waiter also watches it', 't3'),
     ('parallel', 'before dispatching any worker', 'attachment'),
     ('round', 'native Monitor returns its task ID', 'readiness'),
     ('parallel', 'MUST NOT be the only worker-liveness guard', 'liveness'),

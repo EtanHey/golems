@@ -59,6 +59,11 @@ assert 'lead name waiter' in FRONT
 assert 'never polls a collab file in a loop or on a schedule.' not in RULE, 'Codex loop ban must carve out the lead name waiter'
 for needle in ('the only exception', 'exactly one name waiter', 'orc-inbox.md', '@all-leads', 't3_background_wait', 're-arm it on every wake', 'no model turns', 'Workers and children never arm it'):
     assert needle in RULE, needle
+# 2026-11-02 ruling: with a collab, workers report there and the lead's one monitor watches it.
+LANES = TEXT[TEXT.index('## Lanes with a collab'):native]
+for needle in ('Report to <collab path>, not to the lead thread.', 'ONE live monitor', 'native Monitor', 'no second waiter and no polling turns', 'completion notification stays the liveness guard', "Don't relay worker updates into chat"):
+    assert needle in LANES, needle
+assert 'and on each lane collab it leads' in RULE
 
 # References carry the same seat rule: any section that arms or follows the
 # packaged monitor, or keeps it alive, must exclude Codex/T3 seats and stay cmux-scoped.
