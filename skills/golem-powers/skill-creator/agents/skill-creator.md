@@ -37,7 +37,7 @@ See /skill-creator skill (workflows/) for the full pipeline. Iteration ceiling: 
 ## CRITICAL RULES
 
 1. **Every skill ships with evals.** No eval = no ship.
-2. **Choose real proof.** Prove it the cheapest real way, with the proof its change kind owes: [Pick the proof](../../pr-loop/SKILL.md#pick-the-proof) (prompt or skill text → eval table, regression → ratchet row or fail-first test, race → fail-first race test or TLA+/TLC, daemon or protocol → real-client session on the real binary). The proof must be able to fail on the old behaviour. No test file is required per edit. Mock-green is not live-green.
+2. **Choose real proof.** Prove it the cheapest real way, with the proof its change kind owes: [Pick the proof](../../pr-loop/SKILL.md#pick-the-proof) (prompt or skill text → eval table, regression → a real-CLI ratchet row in repos with a ratchet table, otherwise a fail-first test on real code, race → fail-first race test or TLA+/TLC, daemon or protocol → real-client session on the real binary). The proof must be able to fail on the old behaviour. No test file is required per edit. Mock-green is not live-green.
 3. **NEVER sleep+check.** Use mcp__cmuxlayer__wait_for or CronCreate.
 4. **Read() every file you cite.** No guessing from diff notifications.
 
