@@ -2,15 +2,23 @@
 """Bound concurrency of opted-in heavy commands with a RAM start guard."""
 import argparse
 import fcntl
+import hashlib
 import json
 import math
 import os
 import re
 from pathlib import Path
+from threading import Event
 import signal
 import subprocess
 import sys
 import time
+import uuid
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import proc_identity as proc
+
+runtime_wait = Event().wait
 
 
 def notice(message):
@@ -143,43 +151,234 @@ def write_record(fd, record):
         notice(f"WARNING holder record unavailable: {error}")
 
 
-def run_command(command):
-    child, pending = None, []
-    def forward(signum, _frame):
-        if child is None:
-            pending.append(signum)
-        else:
+def save_run(path, record):
+    temporary = path.with_name(path.name + "." + uuid.uuid4().hex)
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as stream:
+        json.dump(record, stream, default=lambda value: value.hex())
+    os.replace(temporary, path)
+
+
+class SuiteTree:
+    def __init__(self, leader, suite_id, nested):
+        self.leader, self.suite_id, self.nested = leader, suite_id.encode(), nested
+        self.known = {} if leader is None else {(leader.pid, leader.start): leader}
+        self.incomplete, self.signalled, self.unattributed = set(), [], {}
+
+    def scan(self, markers=True, cleanup=False):
+        snapshot = proc.children_snapshot()
+        rows = {pid: proc.ProcIdentity(pid, *row[:2], row[3], row[4], row[2]) for pid, row in snapshot.items()}
+        leader = rows.get(self.leader.pid) if self.leader else None
+        group_live = leader is not None and leader.key == self.leader.key and proc.same_process(leader)
+        for pid, error in snapshot.unavailable.items():
+            scoped_unknown = cleanup and ((group_live and error.pgid == leader.pgid) or
+                any(key[0] == error.ppid for key in self.known))
+            if error.reason != "gone" and (scoped_unknown or any(key[0] == pid for key in self.known)):
+                self.incomplete.add(f"identity-unavailable:{pid}")
+        found = {}
+        for _ in range(len(rows) + 1):
+            changed = False
+            for pid, row in rows.items():
+                if pid <= 1 or pid in (os.getpid(), os.getppid()) or row.pgid == os.getpgrp():
+                    continue
+                key = (pid, row.start)
+                parent = rows.get(row.ppid)
+                lineage = parent is not None and (parent.pid, parent.start) in self.known and row.start >= parent.start
+                proven = key in self.known or lineage or (group_live and row.pgid == leader.pgid and row.start >= leader.start)
+                if proven:
+                    if key not in self.known: self.known[key] = row; changed = True
+                    if (row.uid, row.ruid) != (os.geteuid(), os.getuid()):
+                        self.incomplete.add(f"uid-filtered:{pid}")
+                    else: found[pid] = row
+            if not changed: break
+        if markers and not self.nested:
+            for pid, row in rows.items():
+                key = (pid, row.start)
+                if key in self.known or row.uid != os.geteuid(): continue
+                if proc.owned(pid, b"GOLEMS_HEAVY_SUITE_ID", self.suite_id) is True and proc.same_process(row):
+                    self.unattributed[key] = {**vars(row), "status": "unattributed marker process (not signalled)"}
+                    self.incomplete.add(f"unattributed marker process (not signalled):{pid}")
+        return found
+
+    def send(self, rows, signum):
+        for row in rows.values():
             try:
-                os.killpg(child.pid, signum)
-            except ProcessLookupError:
-                pass
+                with proc.pinned_process(row) as fd:
+                    if fd is None: os.kill(row.pid, signum)
+                    else: signal.pidfd_send_signal(fd, signum)
+                self.signalled.append({"pid": row.pid, "start": row.start, "signal": int(signum)})
+            except ProcessLookupError: pass
+            except (OSError, proc.ProcIdentityUnavailable):
+                try:
+                    current = proc.identity(row.pid)
+                    if current is not None and current.start == row.start: self.incomplete.add(f"signal-unverified:{row.pid}")
+                except proc.ProcIdentityUnavailable: self.incomplete.add(f"signal-unverified:{row.pid}")
+
+
+def cleanup_tree(tree, child, grace, signum=None):
+    start, empty = time.monotonic(), 0
+    initial_group_signal = signum if signum is not None else signal.SIGTERM
+    group_sent = None
+    group_error = False
+    rows = {}
+    while time.monotonic() <= start + grace + 2:
+        try:
+            rows = tree.scan(cleanup=True)
+            # This direct child anchors the new session's group until poll() reaps it.
+            # Never send to a numeric group after releasing that anchor.
+            group_signal = signal.SIGKILL if time.monotonic() >= start + grace else initial_group_signal
+            if (group_sent != group_signal and child.returncode is None and
+                    tree.leader is not None and tree.leader.pid == child.pid):
+                try:
+                    os.killpg(child.pid, group_signal)
+                    group_sent = group_signal
+                    tree.signalled.append({"pid": child.pid, "start": tree.leader.start, "signal": int(group_signal), "group": True})
+                except ProcessLookupError: pass
+                except OSError: group_error = True
+            child.poll()
+            empty = empty + 1 if not rows and child.returncode is not None else 0
+            if empty >= 2:
+                if group_error:
+                    # A delivered TERM can leave only an unreaped zombie (Darwin EPERM).
+                    # After reaping, signal zero only observes existence; never kill a reused group.
+                    try: os.killpg(child.pid, 0)
+                    except ProcessLookupError: pass
+                    except OSError: tree.incomplete.add("group-signal-unverified")
+                    else: tree.incomplete.add("group-signal-unverified")
+                return not tree.incomplete, []
+            if signum is not None: tree.send(rows, signum); signum = None
+            tree.send(rows, signal.SIGKILL if time.monotonic() >= start + grace else signal.SIGTERM)
+        except proc.ProcIdentityUnavailable: tree.incomplete.add("scan-unavailable")
+        runtime_wait(.02)
+    return False, list(rows)
+
+
+def private_pipe():
+    descriptors = []
+    for fd in os.pipe():
+        if fd < 3:
+            replacement = fcntl.fcntl(fd, fcntl.F_DUPFD_CLOEXEC, 3)
+            os.close(fd); fd = replacement
+        descriptors.append(fd)
+    return descriptors
+
+
+def run_command(command, timeout=1800, grace=10, slot=None):
+    child, pending, tree, path = None, [], None, None
+    gate_read = gate_write = status_read = status_write = None
+    suite_id = os.environ.get("GOLEMS_HEAVY_SUITE_ID", "")
+    nested = re.fullmatch(r"[0-9a-f]{32}", suite_id) is not None
+    suite_id = suite_id if nested else uuid.uuid4().hex
     signals = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
-    previous = {sig: signal.signal(sig, forward) for sig in signals}
+    previous = {sig: signal.signal(sig, lambda sig, frame: pending.append(sig)) for sig in signals}
+    result, reason, ok = 70, "supervision-unavailable", False
     try:
-        if pending:
-            return 128 + pending[0]
-        # Install handlers before spawning; forward signals received in Popen.
-        child = subprocess.Popen(command, start_new_session=True,
-            close_fds=True,
-            env={**os.environ, "GOLEMS_HEAVY_SUITE_HELD": str(os.getpid())})
-        for sig in pending:
-            forward(sig, None)
-        result = child.wait()
-        return result if result >= 0 else 128 - result
+        owner, wrapper = proc.identity(os.getppid()), proc.identity(os.getpid())
+        if owner is None or wrapper is None: raise proc.ProcIdentityUnavailable("owner unavailable")
+        record = dict(suite_id=suite_id, owner_pid=owner.pid, owner_birth=owner.start, wrapper_pid=wrapper.pid,
+            wrapper_birth=wrapper.start, leader_pid=None, leader_birth=None, pgid=None, wall_limit_s=timeout,
+            cmd_sha256=hashlib.sha256(os.fsencode(" ".join(command))).hexdigest(), cwd=os.getcwd(), started_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+        if not nested:
+            directory = Path.home() / ".local/state/golems/runs"
+            directory.mkdir(parents=True, exist_ok=True, mode=0o700); directory.chmod(0o700)
+            path = directory / (suite_id + ".json"); save_run(path, record)
+            notice(f"SUITE START pid={os.getpid()} slot={slot} suite_id={suite_id} timeout={timeout:g}")
+        if pending: raise InterruptedError()
+        gate_read, gate_write = private_pipe()
+        status_read, status_write = private_pipe()
+        os.set_blocking(status_read, False)
+        bootstrap = """import os,subprocess,sys
+control, status = map(int, sys.argv[1:3])
+if os.read(control, 1) != b"1": sys.exit(125)
+try: result = subprocess.call(sys.argv[3:], close_fds=True)
+except OSError: result = 2
+try: os.write(status, str(result).encode() + b"\\n")
+except BrokenPipeError: pass
+os.close(status)
+os.read(control, 1)
+"""
+        deadline = time.monotonic() + timeout
+        child = subprocess.Popen([sys.executable, "-c", bootstrap, str(gate_read), str(status_write), *command],
+            pass_fds=(gate_read, status_write), start_new_session=True, close_fds=True, env={**os.environ,
+            "GOLEMS_HEAVY_SUITE_HELD": str(os.getpid()), "GOLEMS_HEAVY_SUITE_ID": suite_id, "GOLEMS_HEAVY_RUN_ID": suite_id})
+        os.close(gate_read); gate_read = None
+        os.close(status_write); status_write = None
+        leader = proc.identity(child.pid)
+        if leader is None: raise proc.ProcIdentityUnavailable("leader unavailable")
+        tree = SuiteTree(leader, suite_id, nested)
+        os.write(gate_write, b"1")
+        record.update(leader_pid=child.pid, leader_birth=leader.start if leader else None, pgid=child.pid)
+        if path: save_run(path, record)
+        while True:
+            tree.scan(markers=False)  # Capture authority before reaping; marker inspection is cleanup-only.
+            try: message = os.read(status_read, 64)
+            except BlockingIOError: message = None
+            status = int(message) if message else None
+            if pending: result, reason = 128 + pending[0], "cancelled"; break
+            if status is not None: result, reason = status if status >= 0 else 128 - status, "child-exit"; break
+            if message == b"" or child.poll() is not None:
+                raise proc.ProcIdentityUnavailable("suite leader exited without command status")
+            if time.monotonic() >= deadline:
+                result, reason = 124, "timeout"
+                if not nested: notice(f"TIMEOUT after {timeout:g}s; terminating suite process tree (suite_id={suite_id})")
+                break
+            runtime_wait(min(.02, max(0, deadline - time.monotonic())))
+        ok, survivors = cleanup_tree(tree, child, grace, pending[0] if pending else None)
+        if not ok:
+            notice(f"CLEANUP FAILED; suite process tree remains or is unverifiable (suite_id={suite_id})")
+            if result == 0: result = 70
+        if pending and reason != "timeout": result, reason = 128 + pending[0], "cancelled"
+        if path:
+            record.update(reason=reason, cleanup="ok" if ok else "failed", members_seen=[vars(row) for row in tree.known.values()],
+                signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                unattributed_marker_processes=list(tree.unattributed.values()))
+            save_run(path, record); save_run(path.with_suffix(".cleanup.json"), record)
+            if ok: path.unlink()
+        if not nested: notice(f"SUITE DONE pid={os.getpid()} slot={slot} suite_id={suite_id} exit={result} reason={reason} cleanup={'ok' if ok else 'failed'}")
+    except (OSError, proc.ProcIdentityUnavailable):
+        notice("supervision unavailable; refusing START" if child is None else "CLEANUP FAILED; supervision unavailable")
+        if child is not None:
+            tree = tree or SuiteTree(None, suite_id, nested)
+            tree.incomplete.add("supervision-unavailable")
+            ok, survivors = cleanup_tree(tree, child, grace)
+            if path:
+                record.update(reason=reason, cleanup="failed", members_seen=[vars(row) for row in tree.known.values()],
+                    signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                    unattributed_marker_processes=list(tree.unattributed.values()))
+                try: save_run(path, record)
+                except OSError: pass
+        elif path: path.unlink(missing_ok=True)
     finally:
-        for sig, handler in previous.items():
-            signal.signal(sig, handler)
+        for fd in (gate_read, gate_write, status_read, status_write):
+            if fd is not None: os.close(fd)
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, signals)
+        for sig in signal.sigpending().intersection(signals).difference(mask):
+            pending.append(sig); signal.sigwait({sig})
+        for sig, handler in previous.items(): signal.signal(sig, handler)
+        signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+    return result if reason == "timeout" or not pending else 128 + pending[0]
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for flag, env, default in (("max-load", "MAX_LOAD", str(2 * (os.cpu_count() or 1))), ("poll-seconds", "POLL_SECONDS", "5"), ("max-wait-seconds", "MAX_WAIT_SECONDS", "1800"), ("min-free-gb", "MIN_FREE_GB", "6")):
         parser.add_argument("--" + flag, type=float, default=os.environ.get("GOLEMS_HEAVY_" + env, default))
+    for flag, default in (("timeout-seconds", "1800"), ("kill-grace-seconds", "10")):
+        parser.add_argument("--" + flag, default=os.environ.get("GOLEMS_HEAVY_" + flag.upper().replace("-", "_"), default))
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     if not command:
         parser.error("provide a command after --")
+    for flag, positive in (("timeout_seconds", True), ("kill_grace_seconds", False)):
+        try:
+            value = float(getattr(args, flag))
+            if not math.isfinite(value) or value < 0 or (positive and value == 0): raise ValueError()
+        except ValueError:
+            notice(f"invalid {flag.replace('_', '-')}; expected a finite number {'> 0' if positive else '>= 0'}; refusing START")
+            return 2
+        setattr(args, flag, value)
+    def run(slot=None): return run_command(command, args.timeout_seconds, args.kill_grace_seconds, slot)
     if (os.environ.get("GOLEMS_HEAVY_PRE_PUSH") == "1"
             and sys.stdin is not None and not sys.stdin.isatty()):
         updates = [line.split() for line in sys.stdin.buffer]
@@ -188,17 +387,17 @@ def main(argv=None):
             notice("SKIP delete-only push: no code to test")
             return 0
     if os.environ.get("GOLEMS_HEAVY_SUITE_HELD"):
-        return run_command(command)
+        return run()
     if os.environ.get("GOLEMS_HEAVY_FORCE") == "1":
         notice("WARNING FORCE=1: running unqueued, bypassing slots, memory and load gates")
-        return run_command(command)
+        return run()
     if not math.isfinite(args.min_free_gb) or args.min_free_gb < 0:
         notice("invalid min-free-gb; refusing START")
         return 75
     for value, name, minimum in ((args.max_load, "max-load", 0), (args.poll_seconds, "poll-seconds", 0), (args.max_wait_seconds, "max-wait-seconds", 0)):
         if not math.isfinite(value) or value < minimum or (name == "poll-seconds" and value == 0):
             notice(f"WARNING invalid {name}; running unqueued")
-            return run_command(command)
+            return run()
     deadline, fd, legacy_fd = time.monotonic() + args.max_wait_seconds, None, None
     try:
         try:
@@ -208,15 +407,13 @@ def main(argv=None):
             notice(f"WARNING lock unavailable ({error}); running unqueued")
             wait_for_memory(args.min_free_gb, args.poll_seconds, deadline)
         if fd is None:
-            return run_command(command)
+            return run()
         if read_record(fd).get("state") in ("running", "waiting-load"):
             notice("RECLAIMED stale owner record")
         record = {"pid": os.getpid(), "slot": index, "state": "running", "started": time.time(), "executable": Path(command[0]).name}
         write_record(fd, record)
-        notice(f"SUITE START pid={os.getpid()} slot={index}")
-        result = run_command(command)
+        result = run(index)
         write_record(fd, {**record, "state": "done", "exit_code": result})
-        notice(f"SUITE DONE pid={os.getpid()} exit={result} slot={index}")
         return result
     except ValueError as error:
         notice(str(error))

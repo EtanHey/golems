@@ -24,6 +24,7 @@ def test_pre_push_wraps_suite_and_preserves_fallback_status(tmp_path, availabili
     if availability != "missing-helper":
         helper.parent.mkdir(parents=True)
         shutil.copyfile(ROOT / "scripts/hooks/heavy-suite.py", helper)
+        shutil.copyfile(ROOT / "scripts/hooks/proc_identity.py", helper.with_name("proc_identity.py"))
     if availability != "missing-python":
         (bin_dir / "python3").symlink_to(sys.executable)
     # A dev helper exists even when the pinned helper is absent; never use it.
@@ -70,6 +71,7 @@ def git_env_hook(tmp_path, request):
         helper = home / "Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
         helper.parent.mkdir(parents=True)
         shutil.copyfile(ROOT / "scripts/hooks/heavy-suite.py", helper)
+        shutil.copyfile(ROOT / "scripts/hooks/proc_identity.py", helper.with_name("proc_identity.py"))
         (bin_dir / "python3").symlink_to(sys.executable)
     clean_env.update(HOME=str(home), GIT_CONFIG_NOSYSTEM="1",
                      GIT_CONFIG_GLOBAL=os.devnull)
@@ -79,7 +81,7 @@ def git_env_hook(tmp_path, request):
                                        env=clean_env, text=True)
 
     decoy_git("init")
-    decoy_git("-c", "user.name=Fixture", "-c", "user.email=fixture@localhost",
+    decoy_git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.com",
               "commit", "--allow-empty", "-m", "Decoy baseline")
     before = (decoy_git("rev-parse", "HEAD"), (decoy / ".git/config").read_bytes(),
               decoy_git("config", "--get", "core.bare"))
@@ -126,7 +128,7 @@ fixture.mkdir()
 def git(*args):
     subprocess.run([os.environ["SUITE_GIT"], "-C", str(fixture), *args], check=True)
 git("init")
-git("-c", "user.name=Fixture", "-c", "user.email=fixture@localhost",
+git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.com",
     "commit", "--allow-empty", "-m", "Fixture commit")
 """)
     _, decoy, env, _, before, decoy_git = git_env_hook
@@ -158,7 +160,7 @@ def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
     run_git("init", "--bare", "-q", remote)
     def commit(message):
         run_git("-C", repo, "-c", "user.name=Fixture", "-c",
-                "user.email=fixture@localhost", "commit", "--allow-empty",
+                "user.email=fixture@example.com", "commit", "--allow-empty",
                 "-qm", message)
     commit("seed")
     run_git("-C", repo, "push", "-q", remote, "main", "main:old-a", "main:old-b")
@@ -169,6 +171,7 @@ def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
     helper = tmp_path / "Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
     helper.parent.mkdir(parents=True)
     shutil.copyfile(ROOT / "scripts/hooks/heavy-suite.py", helper)
+    shutil.copyfile(ROOT / "scripts/hooks/proc_identity.py", helper.with_name("proc_identity.py"))
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     marker = tmp_path / "suite-ran"
@@ -202,7 +205,7 @@ def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
 def test_helper_pre_push_input(tmp_path, ref_input, skips):
     marker = tmp_path / "suite-ran"
     env = {k: v for k, v in os.environ.items() if not k.startswith("GOLEMS_HEAVY_")}
-    env.update(GOLEMS_HEAVY_FORCE="1", GOLEMS_HEAVY_PRE_PUSH="1",
+    env.update(HOME=str(tmp_path), GOLEMS_HEAVY_FORCE="1", GOLEMS_HEAVY_PRE_PUSH="1",
                PYTHONIOENCODING="utf-8:strict")
     result = subprocess.run([
         sys.executable, str(ROOT / "scripts/hooks/heavy-suite.py"), "--",
@@ -220,7 +223,7 @@ def test_helper_pre_push_input(tmp_path, ref_input, skips):
 def test_non_hook_command_preserves_stdin(tmp_path):
     payload = f"(delete) {'0' * 40} refs/heads/old {'a' * 40}\n"
     env = {k: v for k, v in os.environ.items() if not k.startswith("GOLEMS_HEAVY_")}
-    env["GOLEMS_HEAVY_FORCE"] = "1"
+    env.update(HOME=str(tmp_path), GOLEMS_HEAVY_FORCE="1")
     result = subprocess.run([
         sys.executable, str(ROOT / "scripts/hooks/heavy-suite.py"), "--",
         sys.executable, "-c", "import sys; sys.stdout.write(sys.stdin.read())"],
@@ -233,7 +236,7 @@ def test_non_hook_command_preserves_stdin(tmp_path):
 def test_pre_push_with_closed_stdin_runs_suite(tmp_path):
     marker = tmp_path / "suite-ran"
     env = {k: v for k, v in os.environ.items() if not k.startswith("GOLEMS_HEAVY_")}
-    env.update(GOLEMS_HEAVY_FORCE="1", GOLEMS_HEAVY_PRE_PUSH="1")
+    env.update(HOME=str(tmp_path), GOLEMS_HEAVY_FORCE="1", GOLEMS_HEAVY_PRE_PUSH="1")
     result = subprocess.run([
         sys.executable, str(ROOT / "scripts/hooks/heavy-suite.py"), "--",
         sys.executable, "-c", "import pathlib,sys; pathlib.Path(sys.argv[1]).touch()",

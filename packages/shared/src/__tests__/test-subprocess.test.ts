@@ -25,6 +25,7 @@ for (const helper of [false, true]) {
         const dir = join(cwd, "Gits/golems/.worktrees/hooks-live/scripts/hooks");
         mkdirSync(dir, { recursive: true });
         copyFileSync(join(root, "scripts/hooks/heavy-suite.py"), join(dir, "heavy-suite.py"));
+        copyFileSync(join(root, "scripts/hooks/proc_identity.py"), join(dir, "proc_identity.py"));
       }
       const result = Bun.spawnSync(["bash", join(root, ".githooks/pre-push")], {
         cwd, stdin: "ignore", timeout: 30_000,
