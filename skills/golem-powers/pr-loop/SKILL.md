@@ -198,6 +198,7 @@ bug: tell ci-hygiene.
 | You just merged #N | Fast-forward the root checkout (`merge --ff-only`); report if it fails; re-read AGENTS.md/CLAUDE.md if they changed |
 | You just merged a guarded golems PR (`guarded-paths.sh "<merge>^1" "<merge>"` exit 0) | After the root fast-forward, dispatch `scripts/ratchet/post-merge-live.sh --merged-pr N --lease-pr <your open PR>` to `deploy-local-prod` and verify its receipt URL and freshness PASS; exit 2 is a stop ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory) step 1b) |
 | Last PR of the batch merged | Run the feature-batch gate (heavy/e2e, real-client, visual QA, release gate to `CLEAN`) before any done claim |
+| `BLOCKED` while `gh pr checks` is all green | A superseded run of a required check may still count: list and re-run it per [BLOCKED with every check green](references/merge-and-verification.md#blocked-with-every-check-green), re-check at the same head, then merge under Merge Authority (a ruleset-only self-review block never waits) |
 | Linked-worktree merge cleanup fails | Verify whether the remote merge already succeeded before any retry |
 | PR is stacked | Preserve the base branch until children are retargeted |
 | Work stops before endpoint | Report stop-state and next turn; do not say done |

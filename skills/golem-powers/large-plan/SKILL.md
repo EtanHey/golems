@@ -285,7 +285,7 @@ Fleet law for claim/guard/DONE/harvest-close lives in canon #7; this workflow ke
 | Skill | When | Why |
 |-------|------|-----|
 | `/pr-loop` | A bounded phase ends there | Procedural branch-to-merge checklist. |
-| Proof | All implementation | Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green. |
+| Proof | All implementation | Prove it the cheapest real way, with the proof its change kind owes: [Pick the proof](../pr-loop/SKILL.md#pick-the-proof) (prompt or skill text → eval table, regression → a real-CLI ratchet row in repos with a ratchet table, otherwise a fail-first test on real code, race → fail-first race test or TLA+/TLC, daemon or protocol → real-client session on the real binary). The proof must be able to fail on the old behaviour. No test file is required per edit. Mock-green is not live-green. |
 | `/never-fabricate` | Before claiming "done" or reporting results | Evidence before assertions: Read() files before summarizing them, verify before claiming. Enforced by the false-green-gate hook. |
 | `/plan-council` | Review one authored plan/spec | Declared cross-family judges, live validation, measured bias, and lift round. |
 

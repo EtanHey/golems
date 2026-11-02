@@ -67,6 +67,31 @@ Self-approval is structurally blocked on EtanHey repos. A ruleset-only BLOCKED s
 checks, conflicts and unresolved findings; do not bypass them. Omit `--delete-branch`;
 branch retirement follows the workspace lifecycle contract and any stacked-PR holds.
 
+### BLOCKED with every check green
+
+`mergeStateStatus` can stay `BLOCKED` while `gh pr checks` shows every required check green.
+GitHub's `statusCheckRollup` still counts an older cancelled or failed run of a required check
+from a superseded workflow run (a body or label edit, or a new push, cancels the older run),
+even after a newer run of the same check passed. `gh pr checks` shows only the newest run, so it
+hides the stale entry (seen on golems #1095 and #1096, 2026-11-02, reported by ci-hygiene).
+`BLOCKED` alone does not diagnose this: on EtanHey repos the ruleset-only self-review block above
+also shows as `BLOCKED`. List the non-passing rollup entries:
+
+```bash
+gh pr view <N> --json statusCheckRollup --jq '.statusCheckRollup[]
+  | select((.conclusion // .state) | IN("SUCCESS","SKIPPED","NEUTRAL") | not)
+  | [(.name // .context), (.conclusion // .state // .status), (.detailsUrl // .targetUrl)] | @tsv'
+```
+
+1. Keep only required checks whose newest run passed and whose listed entry is an older
+   CANCELLED or FAILURE run. A required check whose newest run failed is a real failure: fix it.
+   A pending entry, or a status context with no Actions run URL, needs its own diagnosis.
+2. Take the run id from each kept URL (`.../actions/runs/<run id>/job/...`), de-duplicate the ids
+   (two stale jobs often share one run), and run `gh run rerun <run id> --failed` once per id.
+3. When those re-runs pass, re-check the required checks, findings and review at the unchanged
+   `headRefOid`, then merge under the rule above. The ruleset-only self-review `BLOCKED` still is
+   not a reason to wait.
+
 ### Worktree-Locked Local Merge
 
 In multi-worktree repos, `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` can fail

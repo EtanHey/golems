@@ -42,7 +42,7 @@ Every agent prompt MUST include:
 
 **Proof:**
 ```
-Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
+Prove it the cheapest real way, with the proof its change kind owes: /pr-loop § Pick the proof (prompt or skill text → eval table, regression → a real-CLI ratchet row in repos with a ratchet table, otherwise a fail-first test on real code, race → fail-first race test or TLA+/TLC, daemon or protocol → real-client session on the real binary). The proof must be able to fail on the old behaviour. No test file is required per edit. Mock-green is not live-green.
 ```
 
 **PR Loop:**

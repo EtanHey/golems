@@ -219,3 +219,55 @@ for (const [check, label, mutate] of MUTANTS) {
     expect(CHECKS[check](corpus).length).toBeGreaterThan(0);
   });
 }
+
+// Proof pointers and the BLOCKED-with-green step (Codex review r1, 2026-11-02).
+// Finding 2: a copied regression summary offered "ratchet row or fail-first test" as a free choice,
+// dropping Pick the proof's rule that repos with a ratchet table owe a real-CLI ratchet row.
+// Finding 1: the recovery step said to merge only once the PR leaves BLOCKED, which a ruleset-only
+// self-review block never does. Presence/absence lint, same LIMIT as above.
+const PROOF_COPIES = [
+  "CONTRIBUTING.md",
+  "skills/golem-powers/large-plan/SKILL.md",
+  "skills/golem-powers/cmux-agents/workflows/prompt-audit.md",
+  "skills/golem-powers/skill-creator/agents/skill-creator.md",
+];
+const MERGE_REF = "skills/golem-powers/pr-loop/references/merge-and-verification.md";
+const readRepo = (rel) => readFileSync(path.join(root, rel), "utf8");
+function proofPointers(read) {
+  const errors = [];
+  for (const rel of PROOF_COPIES) {
+    const text = flat(read(rel));
+    if (!text.includes("Pick the proof")) errors.push(`${rel}: no pointer to Pick the proof`);
+    if (/ratchet row or (?:a )?fail-first test/i.test(text)) errors.push(`${rel}: regression proof offered as a free choice`);
+    if (!text.includes("ratchet row in repos with a ratchet table")) errors.push(`${rel}: regression summary drops the ratchet-table rule`);
+  }
+  return errors;
+}
+function blockedGreen(read) {
+  const step = flat(section(read(MERGE_REF), "### BLOCKED with every check green"));
+  const errors = [];
+  if (!step) return ["BLOCKED-with-green step missing"];
+  if (!/ruleset-only self-review `BLOCKED` still is not a reason to wait/.test(step)) errors.push("step drops the ruleset-only BLOCKED exception");
+  if (/merge only once the PR leaves `?BLOCKED/i.test(step)) errors.push("step waits for BLOCKED to clear");
+  if (!step.includes("de-duplicate the ids")) errors.push("step re-runs once per check, not once per run");
+  if (!step.includes("newest run failed is a real failure")) errors.push("step drops the real-failure stop");
+  return errors;
+}
+test("proof copies point at Pick the proof and keep the ratchet-table rule", () => expect(proofPointers(readRepo)).toEqual([]));
+test("BLOCKED-with-green step keeps the ruleset-only exception", () => expect(blockedGreen(readRepo)).toEqual([]));
+const withEdit = (rel, from, to) => (r) => {
+  const text = readRepo(r);
+  if (r !== rel) return text;
+  if (!text.includes(from)) throw new Error(`mutant anchor missing in ${rel}: ${from}`);
+  return text.replace(from, to);
+};
+const POINTER_MUTANTS = [
+  [proofPointers, "the old free-choice regression summary", withEdit("CONTRIBUTING.md", "a real-CLI ratchet row in repos with a ratchet table, otherwise a fail-first test on real code", "ratchet row or fail-first test")],
+  [proofPointers, "the pointer removed", withEdit("skills/golem-powers/large-plan/SKILL.md", "[Pick the proof](../pr-loop/SKILL.md#pick-the-proof)", "the rules")],
+  [blockedGreen, "merge waits for BLOCKED to clear", withEdit(MERGE_REF, "then merge under the rule above.", "then merge only once the PR leaves BLOCKED.")],
+  [blockedGreen, "the ruleset-only exception removed", withEdit(MERGE_REF, "The ruleset-only self-review `BLOCKED` still is\n   not a reason to wait.", "")],
+  [blockedGreen, "one re-run per check", withEdit(MERGE_REF, "de-duplicate the ids", "keep every id")],
+];
+for (const [check, label, read] of POINTER_MUTANTS) {
+  test(`mutant caught by ${check.name}: ${label}`, () => expect(check(read).length).toBeGreaterThan(0));
+}
