@@ -240,6 +240,17 @@ def identity(pid: int) -> ProcIdentity | None:
                                       **_scope_hint(pid)) from error
 
 
+def start_token(pid: int) -> str | None:
+    """Canonical persisted owner incarnation; None only when gone, never spawn ps."""
+    observed = identity(pid)
+    if observed is None:
+        return None
+    first, second = observed.start
+    if isinstance(first, bytes):
+        return f"v2:linux:{first.hex()}:{second}"
+    return f"v2:darwin:{first}.{second:06d}"
+
+
 def _parse_procargs2(data: bytes) -> tuple[list[bytes], list[bytes]]:
     """Pure Darwin layout parser. Unexplained trailing entries mean ambiguity.
 
@@ -533,3 +544,25 @@ def children_snapshot() -> ChildrenSnapshot:
                 continue
             result[pid] = (observed.ppid, observed.pgid, observed.start, observed.uid, observed.ruid)
     return result
+
+
+def main(args=None) -> int:
+    """start PID: exits 0=printed, 1=gone, 2=unreadable, 64=usage."""
+    args = sys.argv[1:] if args is None else args
+    if (len(args) != 2 or args[0] != "start" or not re.fullmatch(r"[0-9]{1,10}", args[1])
+            or not 0 < int(args[1]) <= 2**31 - 1):
+        print("usage: proc_identity.py start <positive PID>", file=sys.stderr)
+        return 64
+    try:
+        token = start_token(int(args[1]))
+    except ProcIdentityUnavailable as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    if token is None:
+        return 1
+    print(token)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

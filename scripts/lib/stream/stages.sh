@@ -69,6 +69,7 @@ stalker_reconcile_interrupted_scoring_run() {
     local out_dir="$1"
     local marker="$out_dir/.stage-scoring.started"
     local pid expected_start actual_start started_at reason
+    local token_pattern='^v2:(darwin:[0-9]+\.[0-9]{6}|linux:[0-9a-f]{72}:[0-9]+)$'
 
     [ -f "$marker" ] || return 0
     [ ! -f "$out_dir/.stage-scoring.done" ] || return 0
@@ -82,13 +83,17 @@ stalker_reconcile_interrupted_scoring_run() {
     pid="$(sed -n 's/^pid=//p' "$marker" | head -n 1)"
     expected_start="$(sed -n 's/^process_start=//p' "$marker" | head -n 1)"
     started_at="$(sed -n 's/^started_at=//p' "$marker" | head -n 1)"
+    # AIDEV-NOTE: legacy/partial start tokens cannot prove PID reuse. Keep live
+    # or unknown numeric owners; only a different valid v2 token or ESRCH permits deletion.
     if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
-        actual_start="$(stalker_process_start_identity "$pid" || true)"
-        if [ -n "$expected_start" ] \
-            && [ -n "$actual_start" ] \
-            && [ "$actual_start" = "$expected_start" ]; then
-            return 0
-        fi
+        [[ "$expected_start" =~ $token_pattern ]] || return 0
+        actual_start="$(stalker_process_start_identity "$pid")" || return 0
+        [[ "$actual_start" =~ $token_pattern ]] || return 0
+        [ "$actual_start" != "$expected_start" ] || return 0
+    elif [[ "$pid" =~ ^[0-9]+$ ]]; then
+        # kill -0 also fails on EPERM: the native CLI distinguishes gone (1).
+        actual_start="$(stalker_process_start_identity "$pid")" && return 0
+        [ "$?" -eq 1 ] || return 0
     fi
 
     rm -f "$out_dir/gems.md"

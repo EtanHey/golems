@@ -64,12 +64,52 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
     split_case_015
 }
 
-@test "empty scoring identity fails closed even while the recorded PID is alive" {
+@test "empty scoring identity preserves a live owner" {
     split_case_016
 }
 
 @test "live scoring identity is locale-stable, spares a match, and reconciles a mismatch" {
     split_case_017
+}
+
+@test "legacy partial garbled and unreadable live identities survive a new invocation" {
+    for token in '' 'Thu Aug 20 01:00:00 2026' 'garbled' 'v2:darwin:' 'v2:linux:a:0' 'v2:darwin:1.000000' 'v2:darwin:2.000000' 'v2:darwin:3.000000'; do
+        dir="$TMPDIR_/migration"
+        write_scoring_marker "$dir" "$$" "$token"
+        printf 'partial gems\n' > "$dir/gems.md"
+        run env PATH="$TMPDIR_/poison-bin:$PATH" bash -c '
+            source "$1"
+            if [ "$3" = v2:darwin:1.000000 ]; then
+                stalker_process_start_identity() { return 2; }
+            elif [ "$3" = v2:darwin:2.000000 ]; then
+                kill() { return 1; }
+                stalker_process_start_identity() { return 2; }
+            elif [ "$3" = v2:darwin:3.000000 ]; then
+                stalker_process_start_identity() { return 0; }
+            fi
+            stalker_reconcile_interrupted_scoring_run "$2"
+        ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$dir" "$token"
+        [ "$status" -eq 0 ]
+        [ -f "$dir/gems.md" ]
+        [ ! -f "$dir/.stage-scoring.failed" ]
+    done
+}
+
+@test "scorer child enumeration errors propagate before signaling" {
+    run bash -c '
+        source "$1"
+        function /usr/bin/pgrep() { return 2; }
+        stalker_terminate_scorer_tree "$$"
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh"
+    [ "$status" -eq 2 ]
+}
+
+@test "gone scoring owners lose incomplete gems" {
+    write_dead_scoring_marker "$TMPDIR_/gone"
+    echo partial > "$TMPDIR_/gone/gems.md"
+    run stalker_reconcile_interrupted_scoring_run "$TMPDIR_/gone"
+    [ "$status" -eq 0 ]
+    [ ! -f "$TMPDIR_/gone/gems.md" ] && [ -f "$TMPDIR_/gone/.stage-scoring.failed" ]
 }
 
 @test "reconcile backfills scoring done without deleting complete gems" {
