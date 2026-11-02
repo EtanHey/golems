@@ -17,9 +17,7 @@ POWERS = ROOT / "skills" / "golem-powers"
 FAIL_OPEN = ROOT / "scripts" / "hooks" / "fail-open.py"
 SENSITIVE_DETAIL = "SENSITIVE ISSUE411 IMPORT DETAIL"
 RECOVERY_HINT = (
-    "FLAG THIS TO THE USER: reinstall hooks from the prompt: "
-    "`! bash ~/Gits/golems/scripts/hooks/install-hooks.sh "
-    "--host <host> --update --apply`"
+    "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."
 )
 
 

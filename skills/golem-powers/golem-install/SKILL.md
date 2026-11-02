@@ -144,9 +144,12 @@ $ORCHESTRATOR_REPO/standards/
 | `golems` | development | `linear.API_KEY` |
 | `ANTHROPIC` | development | `API_KEY` |
 
+Agents never call `op` for a routine check: each call asks Etan for Touch ID. Verify the key files
+instead, and check 1Password only when Etan is there to approve:
+
 ```bash
-# Verify 1Password access
-op item get "golems" --vault development --fields label=linear.API_KEY 2>/dev/null && echo "✅ 1P connected" || echo "❌ 1P not connected"
+bash scripts/validate.sh                    # key files present and private; no op calls
+bash scripts/validate.sh --with-1password   # also op checks; Touch ID prompts, Etan present
 ```
 
 ## Golem Terminal (Optional)

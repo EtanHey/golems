@@ -97,7 +97,7 @@ def test_bash_worktree_add_tmp_denied():
     Write paths (the harness fix stranded in a prunable /tmp worktree; Etan's
     own terminal burned by a /tmp-worktree-held branch)."""
     proc = run_hook(bash_payload("git worktree add /tmp/leak-fix-wt -b fix/leak"))
-    assert_denied(proc, must_mention=(".worktrees",))
+    assert_denied(proc, must_mention=("TMP-BLOCK", ".worktrees"))
     proc = run_hook(
         bash_payload(
             "git -C /Users/example/Gits/golems worktree add -b p2/x /private/tmp/wt origin/master"

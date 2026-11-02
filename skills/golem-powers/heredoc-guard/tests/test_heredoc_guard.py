@@ -15,6 +15,7 @@ HOOK = ROOT / "skills/golem-powers/heredoc-guard/hooks/heredoc-guard-pretooluse.
 PARSER = HOOK.with_name("heredoc_parser.py")
 LAUNCHER = ROOT / "scripts/hooks/fail-open.py"
 ADAPTER = ROOT / "scripts/hooks/codex-policy-hook.py"
+PLAIN_REASON = "Blocked: this command hides a second command inside a here-document, so it can't be checked. Quote the marker (<<'EOF') or run that command on its own."
 DENY = [
     "cat > f <<EOF\n`npx x`\nEOF",
     "cat <<-EOF\n\t$(id)\n\tEOF",
@@ -127,9 +128,7 @@ def test_hook_denial(codex, command):
     result = json.loads(proc.stdout)["hookSpecificOutput"]
     assert result["permissionDecision"] == "deny"
     reason = result["permissionDecisionReason"]
-    assert reason.startswith("heredoc-guard: unquoted heredoc <<")
-    assert "quote the delimiter" in reason and "Incident: a backticked command" in reason
-    assert "compute it first" in reason and "v=$(cmd)" in reason and "$v" in reason
+    assert reason == PLAIN_REASON
     assert "\n" not in reason and not proc.stderr
 
 
@@ -168,7 +167,7 @@ def test_hook_fails_closed(codex, value):
     result = json.loads(proc.stdout)["hookSpecificOutput"]
     assert result["permissionDecision"] == "deny"
     if not codex:
-        assert "parse error" in result["permissionDecisionReason"]
+        assert result["permissionDecisionReason"] == PLAIN_REASON
 
 
 def test_manifest_wires_every_tmp_block_host():
@@ -206,10 +205,12 @@ def test_non_bash_allows_before_validating_input():
     ("cat <<EOF\nsafe", "unterminated heredoc"),
     ("cat <<'EOF\nsafe\nEOF", "unterminated quote"),
 ])
-def test_parse_denial_names_stage_and_short_cause(codex, command, cause):
+def test_parse_denial_keeps_cause_in_ledger(codex, command, cause, isolated_home):
     proc = run_hook(payload(command), codex)
     reason = json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
-    assert "shell: " + cause in reason
+    assert reason == PLAIN_REASON
+    row = json.loads((isolated_home / "ledgers/denials.jsonl").read_text())
+    assert row["rule"] == "parse-error" and row["reason"] == "shell: " + cause
 
 
 @pytest.mark.parametrize("codex", [False, True])
@@ -238,7 +239,7 @@ def test_unwritable_ledger_still_denies(isolated_home):
     proc = run_hook(payload(DENY[0]))
     assert proc.returncode == 2 and not proc.stderr
     reason = json.loads(proc.stdout)["reason"]
-    assert "denial ledger unavailable" in reason
+    assert reason == PLAIN_REASON
 
 
 @pytest.mark.parametrize("codex", [False, True])
@@ -254,4 +255,4 @@ def test_environment_is_not_a_bypass(monkeypatch):
     for name in ("WEAVE_ALLOW_TMP", "HEREDOC_GUARD_ALLOW", "CLAUDE_WORKER"):
         monkeypatch.setenv(name, "1")
     proc = run_hook(payload(DENY[0]))
-    assert proc.returncode == 2 and "heredoc-guard: unquoted heredoc" in proc.stdout
+    assert proc.returncode == 2 and json.loads(proc.stdout)["reason"] == PLAIN_REASON

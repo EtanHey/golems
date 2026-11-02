@@ -122,7 +122,7 @@ test('P1 tarball installs on an unknown client without git, skips owner-only hoo
   const settings = readFileSync(path.join(f.home, '.claude/settings.json'), 'utf8');
   expect(settings).not.toContain('daemon-gate-precheck');
   const codex = readFileSync(path.join(f.home, '.codex/hooks.json'), 'utf8');
-  expect(codex).toContain(f.source + '/scripts/hooks/codex-policy-hook.py');
+  expect(codex).toContain(f.source + '/scripts/hooks/codex-gate.sh');
   expect(codex).not.toContain('hooks-live');
   const status = run(f, '--status');
   expect(status.status).toBe(0);
@@ -142,8 +142,7 @@ test('R1: client Claude and Codex shell fallbacks give release repair instructio
     const result = spawnSync('/bin/sh', ['-c', hook], { env: f.env, input: '{}', encoding: 'utf8' });
     expect(result.status).toBe(2);
     const output = result.stdout + result.stderr;
-    expect(output).toContain('rerun the release installer');
-    expect(output).toContain('install-hooks.mjs --host client --source ~/.golems/current --apply');
+    expect(output).toContain("Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.");
     expect(output).not.toContain('~/Gits');
   }
 });
@@ -154,7 +153,7 @@ test('client launcher missing-hook denial gives the release repair hint', () => 
   rmSync(path.join(f.home, '.claude/hooks/golems-hooks-release.json'));
   const r = spawnSync('/bin/sh', ['-c', hook], { env: f.env, input: '{}', encoding: 'utf8' });
   expect(r.status).toBe(2);
-  expect(JSON.parse(r.stdout).reason).toContain('install-hooks.mjs --host client --source ~/.golems/current --apply');
+  expect(JSON.parse(r.stdout).reason).toBe("Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.");
   expect(r.stdout).not.toContain('~/Gits');
 });
 test('installed Claude and Codex human-confirm deny a no-token lease and allow an ordinary command', () => {

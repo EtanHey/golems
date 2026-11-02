@@ -380,6 +380,26 @@ describe("CLI", () => {
     expect(out.stdout).toContain("Direction unchecked");
   });
 
+  test("push warns on failed freshness; PR, schedule and other failures stay red", () => {
+    const freshness = { ...gate, id: "live-tier-freshness", runner: "ci" };
+    const other = { ...unit, runner: "ci" };
+    const rows = rowsFile([freshness, other]);
+    for (const event of ["push", "pull_request", "schedule", "workflow_dispatch"]) {
+      const out = cli({ "rows.json": rows, "results.json": results({ "live-tier-freshness": { value: false, detail: "missing live receipt" }, "unit-hook": true }) }, ["--runner", "ci", "--event", event], { base: rows });
+      expect(out.status).toBe(event === "push" ? 0 : 1);
+      expect(out.stdout).toContain("missing live receipt");
+      expect(out.stdout.includes("::warning::live-tier-freshness")).toBe(event === "push");
+      if (event === "push") expect(out.stdout).toContain("WARN (push event)");
+    }
+    for (const values of [
+      { "live-tier-freshness": false, "unit-hook": false },
+      { "unit-hook": true },
+    ]) {
+      expect(cli({ "rows.json": rows, "results.json": results(values) }, ["--runner", "ci", "--event", "push"], { base: rows }).status).toBe(1);
+    }
+    expect(cli({ "rows.json": rows, "results.json": results({ "live-tier-freshness": false, "unit-hook": true }) }, ["--runner", "ci"], { base: rows }).status).toBe(1);
+  });
+
   test("exit 1 when a row is over its ceiling", () => {
     const out = cli({ "rows.json": rowsFile([drift]), "results.json": results({ drift: 3 }) });
     expect(out.status).toBe(1);

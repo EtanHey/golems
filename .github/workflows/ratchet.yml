@@ -143,7 +143,7 @@ jobs:
           set -euo pipefail
           printf '%s' "${PR_BODY:-}" > "$RUNNER_TEMP/pr-body.md"
           args=(--rows scripts/ratchet/rows.json --results "$RUNNER_TEMP/results.json" --head "$HEAD_SHA"
-                --runner ci --marker golems-ratchet-ci --title "Ratchet table (CI rows)"
+                --runner ci --event "$GITHUB_EVENT_NAME" --marker golems-ratchet-ci --title "Ratchet table (CI rows)"
                 --pr-body-file "$RUNNER_TEMP/pr-body.md" --out "$RUNNER_TEMP/table.md")
           [ -f "$RUNNER_TEMP/baseline.json" ] && args+=(--baseline "$RUNNER_TEMP/baseline.json")
           # table.mjs reads the base row file itself (git show) and bootstraps only if the base lacks it.

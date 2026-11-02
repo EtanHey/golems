@@ -18,9 +18,10 @@ installer `scripts/install.sh` is described in `hooks/INSTALL.md`.
 
 Both host manifests run this policy gate through the installed copy of
 `golems-fail-open.py --fail-closed` (#488). A missing, unreadable, syntax-broken
-or crashed hook produces a static, value-free denial with the reinstall hint
+or crashed hook produces the plain refusal: "Blocked: a golems safety check couldn't run.
+Ask the lead to reinstall the hooks." Recovery uses
 `! bash ~/Gits/golems/scripts/hooks/install-hooks.sh --host <host> --update --apply`.
-Flag this to the user: the blocked agent cannot run Bash recovery. A human runs
+The blocked agent cannot run Bash recovery. A human runs
 the command from the prompt or an outside terminal (omit `!` in a terminal).
 The installer clears the missing pin's locked registration before recreating
 it; `--update` also replaces a broken existing pin. Local damage inside
