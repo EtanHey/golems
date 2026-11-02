@@ -44,7 +44,7 @@ Read the user's request and route to the right workflow:
 |-----------|----------|
 | "let's do QA", "test this", "QA round" | [workflows/record.md](workflows/record.md) — Pre-QA checklist + recording setup |
 | "I recorded QA", QA path to .mov file | [workflows/process.md](workflows/process.md) — Stalker pipeline processing |
-| "send fixes to Codex", "hand off findings" | [workflows/handoff.md](workflows/handoff.md) — Agent handoff pattern |
+| "send fixes to Codex", "hand off findings" | [workflows/handoff.md](workflows/handoff.md) — Agent handoff: T3 by default (findings doc, collab line, end task); cmux only on terminal seats |
 | "next round", "retest", "QA round N" | [workflows/iterate.md](workflows/iterate.md) — Multi-round QA cycle |
 | "set up click capture", "qa-record" | [references/click-capture.md](references/click-capture.md) — CGEventTap + qa-record.sh |
 | "debrief", "review this video" | [workflows/process.md](workflows/process.md) — transcript-first debrief/review |
