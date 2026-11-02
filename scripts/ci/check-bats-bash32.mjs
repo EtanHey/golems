@@ -1,12 +1,29 @@
 #!/usr/bin/env node
 // Heuristic for conventional Bats blocks and split test/helper functions. Their
 // closing brace is at column zero. Checks multiline assertions and commands
-// after semicolons. && lists are excluded: conditional predicates cannot be
+// after semicolons, do/then keywords and case-arm patterns. && lists are excluded: conditional predicates cannot be
 // distinguished from assertions without a shell parser. Quoted/evaluated snippets can
 // produce false positives; complex heredocs and generated shell are out of scope.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+
+// A closing token must be unquoted and separated from the expression.
+function assertionEnd(command, from) {
+  let quote = null;
+  for (let i = from; i < command.length; i++) {
+    const char = command[i];
+    if (char === "\\" && quote !== "'") { i++; continue; }
+    if (quote) {
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "'" || char === '"') { quote = char; continue; }
+    if (command.startsWith(']]', i) && /\s/.test(command[i - 1] || '') &&
+        /^(?:\s|;|&|\||$)/.test(command.slice(i + 2))) return i + 2;
+  }
+  return -1;
+}
 
 export function assertions(source) {
   const lines = source.split('\n');
@@ -25,11 +42,13 @@ export function assertions(source) {
     if (!inTest) continue;
     const start = i;
     let command = lines[i];
-    if (!/(?:^|;|&&)\s*\[\[\s/.test(command)) continue;
-    while ((!command.includes(']]') || /(?:\\|&&)\s*$/.test(command)) && i + 1 < lines.length) command += '\n' + lines[++i];
+    if (!/(?:^|;|&&|\b(?:do|then)\b|\))\s*\[\[\s/.test(command)) continue;
+    while ((assertionEnd(command, command.indexOf('[[') + 2) === -1 || /(?:\\|&&)\s*$/.test(command)) && i + 1 < lines.length) command += '\n' + lines[++i];
     const next = lines.slice(i + 1).find(line => !/^\s*(?:#.*)?$/.test(line));
-    for (const match of command.matchAll(/(?:^|;|&&)\s*\[\[\s[\s\S]*?\]\]/g)) {
-      const suffix = command.slice(match.index + match[0].length).trim();
+    for (const match of command.matchAll(/(?:^|;|&&|\b(?:do|then)\b|\))\s*\[\[\s/g)) {
+      const end = assertionEnd(command, match.index + match[0].length);
+      if (end === -1) continue;
+      const suffix = command.slice(end).trim();
       if (suffix.startsWith('||') || /^\\?\s*&&/.test(suffix)) continue;
       const trailing = suffix.replace(/^;\s*/, '').replace(/#.*$/, '').trim();
       if (trailing || (next && !/^}\s*$/.test(next))) findings.push(start + 1);
