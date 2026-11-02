@@ -10,6 +10,11 @@ Two checks, no daemon:
   - It messages the lead only for a decision: red CI, a conflict, a review that asked for changes,
     or green and mergeable. It messages once per head and state, after a 10-minute grace, so the
     T3 PR watch wakes the lead first.
+  - If red CI, a conflict, or green/mergeable remains unchanged for two hours after the first
+    successful nudge, it escalates to the configured `escalate_thread` (orc), once per head/state.
+    The lead still gets only one message per head/state. A changed head or an interrupted state
+    restarts the second grace; failed sends retry. Reviews asking for changes are still nudged,
+    but do not enter this second escalation path.
   - Drafts and visibly held PRs (a comment starting `**Held on purpose`) are left alone.
 - **`scan`: orc's sweep.** Covers what no lead's check sees: PRs whose lead thread is settled or
   gone, and PRs no thread links. These go to `escalate_thread` (orc). A live lead's PRs are its own
@@ -17,6 +22,15 @@ Two checks, no daemon:
   stops when the lead settles.
 
 ## Start a lead's check (once per lead thread)
+
+`lead --thread <id>` works without a config file: nudges and branch updates need none.
+For orc escalation, it optionally reads `~/.config/golems/pr-sentinel.json` (mode 0600)
+and needs only its `escalate_thread` key. Pass `--config` for another location. A missing,
+unreadable or invalid file/key prints one stderr warning per run naming that file/key;
+only orc escalation is disabled. Fixing the config enables overdue escalation on the
+next check without repeating the lead nudge. Orc's footer identifies the owning lead.
+`scan` still requires the full config from `config.example.json`. Existing state files
+retain their successful first-nudge timestamps; no migration is needed.
 
 Delegate a cheap child and let it schedule itself. A schedule bound to the child's own thread runs
 on the child's model, inside that thread, and does not wake the lead. An *unbound* schedule runs on

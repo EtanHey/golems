@@ -23,8 +23,8 @@ It runs the asserting source probe, sentinel tests and all six configs with one 
 the known SentinelOnly finding; exit 2 is any other violation, a source/probe
 regression or an unexpected checker result.
 Missing dependencies fail, never skip. Today, WakeIgnored and SettleWithoutHandoff
-must still demonstrate their historical violations. **SentinelOnly currently fails**:
-a live owner ignores its wake, gets one nudge, ignores it, and never reaches orc.
+must still demonstrate their historical violations. SentinelOnly must pass: after an
+ignored first nudge, an unchanged actionable PR is escalated to trusted orc.
 See [results and reproduction](../../../docs/tla/lead-wait/README.md).
 
 Read **every result with pstack `/statechart`**, including passes. It draws the reachable
@@ -36,15 +36,16 @@ alone is not the bug.
 ## Coverage and synchronization
 
 Source sync commit: `13903d0573c78b708e5100d86771733f447ee4ab` (master).
-The source-aligned Nudge guard records that source's missing live-owner escalation.
-This is a correspondence record, **not** a passing certification.
+That master revision lacked live-owner escalation. Candidate source sync commit:
+`c284c10dbe72a3965df58a12e385e030313f4416` restores the second transition in source and model.
+Keep the master sync separate until the candidate merges.
 
 | Model surface | Source coverage |
 |---|---|
 | `EndTurnCheck`, `Act`, `SilentIgnore` | `skills/golem-powers/pr-loop/references/review-loop.md`, Waiting policy: "Watching is not waiting", ordered end-turn cases; `/pr-loop` SKILL.md, draft-first inner loop |
 | `Handoff`, `Settle` | Same Waiting policy, "Ownership outlives the thread"; `skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md`, handoff responsibilities |
 | `Hold`, `Unhold` | Same Waiting policy, "Held is visible, never silent"; sentinel `classify` only approximates this (it also skips ordinary drafts) |
-| `Sentinel`, `Nudge` | `scripts/pr-sentinel/pr-sentinel`: `lead` sends once per head/class, `scan` escalates orphans; `scripts/pr-sentinel/README.md`, lead check and orc sweep |
+| `Sentinel`, `Nudge` | `scripts/pr-sentinel/pr-sentinel`: `lead` nudges once per head/class and escalates unchanged red/green/conflict after 2 h, `scan` escalates orphans; `scripts/pr-sentinel/README.md`, lead check and orc sweep |
 | Source probes | `scripts/tests/pr-sentinel.test.mjs`; `docs/tla/lead-wait/reproduce.py` replays the ignored-live-owner case |
 
 Before judging a changed source, diff these covered sections against the sync commit.
@@ -63,7 +64,9 @@ wrong atomic boundary, or unsupported fairness premise is a modeling error: corr
 the mapping, retain the finding history, and rerun every config. Intended behavior
 changes require both the source change and corresponding model update.
 
-Scope: one PR, one lead and trusted orc; nudges bounded to 0..2. CI, action, unhold
+Scope: one PR, one lead and trusted orc; nudges bounded to 0..2. Sentinel-on also
+assumes a configured `escalate_thread`. Missing optional config leaves nudges working
+but disables orc escalation; the configured-sentinel proof does not cover that mode. CI, action, unhold
 and nudge have weak fairness. No clock, timer deadline, network outage, delivery,
 scheduler liveness, review approval, or successful fix/merge is proved. Handoff is
 an abstract outcome, not an atomic watch-transfer implementation. Passing TypeOK
@@ -73,4 +76,4 @@ the rerun command disables deadlock checks.
 To prove the command is sensitive to real source changes, save the sentinel file,
 temporarily disable orphan escalation in `scan`, and rerun. The source regressions
 must fail (exit 2). Restore the exact bytes in a `finally` block and rerun: only
-the documented model findings may remain. Never commit the scratch mutation.
+the historical counterexamples may remain and all current configs must pass. Never commit the scratch mutation.
