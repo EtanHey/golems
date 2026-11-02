@@ -41,7 +41,7 @@ parent.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix='repro-', dir=parent) as folder:
     lead_state, scan_state = {}, {}
     for round_number in range(1, 4):
-        sentinel.lead('fixture-lead', Path(folder)/'lead.json', lead_state, False, 0)
+        sentinel.lead('fixture-lead', Path(folder)/'lead.json', lead_state, False, 0, cfg)
         sentinel.scan(cfg, Path(folder)/'scan.json', scan_state, False)
         print(f'round={round_number} destinations={sends}')
         clock[0] += 3 * 3600
