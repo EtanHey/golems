@@ -5,7 +5,7 @@ Thanks for your interest in contributing!
 ## Development Workflow
 
 1. **Fork the repo** and create a branch from the default branch
-2. **Choose real proof.** Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
+2. **Choose real proof.** Prove it the cheapest real way, with the proof its change kind owes: [Pick the proof](skills/golem-powers/pr-loop/SKILL.md#pick-the-proof) (prompt or skill text → eval table, regression → ratchet row or fail-first test, race → fail-first race test or TLA+/TLC, daemon or protocol → real-client session on the real binary). The proof must be able to fail on the old behaviour. No test file is required per edit. Mock-green is not live-green.
 3. **Run the test suite** before pushing (the repo-specific section below names the command)
 4. **Keep commits focused** — one logical change per commit, conventional format (`feat:`, `fix:`, `docs:`)
 5. **Open a PR** against the default branch
