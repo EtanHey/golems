@@ -40,7 +40,7 @@ test('live receipts require boolean success and numeric row counts', () => {
 });
 
 test('failure supplies the one-command recovery', () => {
-  expect(postMergeCommand(42)).toBe('scripts/ratchet/post-merge-live.sh --merged-pr 42');
+  expect(postMergeCommand(42)).toBe('scripts/ratchet/post-merge-live.sh --merged-pr 42 --lease-pr <your open PR>');
 });
 test('grace accepts only a valid immediate predecessor within 120 minutes', () => {
   const priorHead = 'b'.repeat(40);

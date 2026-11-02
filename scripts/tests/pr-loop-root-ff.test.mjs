@@ -227,10 +227,11 @@ test("Update Tracking names post-merge-live.sh as the guarded-merge step", () =>
   assert.ok(step.includes('scripts/ratchet/guarded-paths.sh "<merge>^1" "<merge>"'));
   assert.match(step, /Exit 2 means it cannot tell: STOP/);
   assert.match(step, /Exit 1 means no guarded path: skip/);
-  assert.match(step, /scripts\/ratchet\/post-merge-live\.sh --merged-pr <N>/);
+  // --lease-pr is required (#1007; FV3 LiveReceiptIsolated): a documented command without it exits 1.
+  assert.match(step, /scripts\/ratchet\/post-merge-live\.sh --merged-pr <N> --lease-pr <your open PR>/);
   // Leads never do ops themselves: the install/probe hop goes to deploy-local-prod.
   assert.match(step, /dispatches this exact command[\s\S]*to `deploy-local-prod`/);
   assert.doesNotMatch(step, /the lead runs/);
   const skill = readFileSync(path.resolve(here, "../../skills/golem-powers/pr-loop/SKILL.md"), "utf8");
-  assert.match(skill, /\| You just merged a guarded golems PR .*dispatch `scripts\/ratchet\/post-merge-live\.sh --merged-pr N` to `deploy-local-prod`.*exit 2 is a stop/);
+  assert.match(skill, /\| You just merged a guarded golems PR .*dispatch `scripts\/ratchet\/post-merge-live\.sh --merged-pr N --lease-pr <your open PR>` to `deploy-local-prod`.*exit 2 is a stop/);
 });

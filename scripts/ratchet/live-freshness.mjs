@@ -36,7 +36,7 @@ export function recoveryCommand(mergedPR, leasePR) {
   return `RATCHET_SKILL_CONFIG="$HOME/.golems/ratchet/installed-skills.json" "$HOME/Gits/golems/scripts/ratchet/live-rows.sh" --merged-pr ${mergedPR} --lease-pr ${lease} --lease-repo "$PWD"`;
 }
 export function postMergeCommand(mergedPR) {
-  return `scripts/ratchet/post-merge-live.sh --merged-pr ${mergedPR}`;
+  return `scripts/ratchet/post-merge-live.sh --merged-pr ${mergedPR} --lease-pr <your open PR>`;
 }
 export function main() {
   let mergedPR;
