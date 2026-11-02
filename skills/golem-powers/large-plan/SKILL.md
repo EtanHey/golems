@@ -21,6 +21,14 @@ description: "Invoke before any git/gh/grep, even for context: make a plan, plan
 - Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)
 - Why: Claude T3 leads made 0 Skill calls on Oct 16–18 while all three lead skills sat in their catalog (skill-edits audit, 2026-10-18).
 
+## Before every dispatch
+Check this at each dispatch, not only at scaffold time: a lane added later counts the same as a planned round.
+When a worker, lane or sub-agent is already running, or this turn dispatches 2+:
+1. `collab.md` exists at the plan root. If not, write it now from [workflows/collab.md](workflows/collab.md); a short plan's collab is a few lines.
+2. This brief contains `Report to <collab path>, not to the lead thread.`
+3. STATUS.md lists the new lane.
+Done = all three are true before the `delegate_task` / `t3_thread_launch` / `Agent` call. Otherwise, don't dispatch yet.
+
 ## Quick Actions
 
 | What you want to do | Workflow |

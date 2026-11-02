@@ -228,6 +228,87 @@ test("lead escalation: the second grace starts only after a successful first nud
   expect(sends().map(s => s.target)).toEqual(["lead-1", "orc"]);
 }));
 
+// Public #1088 snapshot: two failures, one cancellation, then a successful rerun.
+const rollup1088 = JSON.parse(readFileSync(join(import.meta.dir, "fixtures/pr-sentinel-1088-rollup.json"), "utf8"));
+const checks1088 = () => structuredClone(rollup1088.nodes);
+for (const state of ["MERGED", "CLOSED"]) test(`stale rollup: scan skips ${state} #1088 despite an open T3 link`, () => fixture(({ files, write, run, sends }) => {
+  write("prs", [check(pr(1088, { state, headRefOid: rollup1088.headRefOid }), checks1088())]);
+  write("threads", [thread("stale-link", [1088], { settled: true })]);
+  const cfg = JSON.parse(readFileSync(files.config)); cfg.grace_minutes = 0; write("config", cfg);
+  const out = run(); expect(out.exitCode, out.stderr.toString()).toBe(0);
+  expect(out.stdout.toString()).not.toContain("#1088");
+  expect(sends()).toHaveLength(0);
+  expect(JSON.parse(readFileSync(files.state))).toEqual({});
+}));
+for (const state of ["MERGED", "CLOSED"]) test(`stale rollup: lead already skips ${state} #1088 from an open T3 link`, () => fixture(({ files, write, lead, sends }) => {
+  write("show", { thread: thread("lead-1", [1088]) });
+  write("prs", [check(pr(1088, { state, headRefOid: rollup1088.headRefOid }), checks1088())]);
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode, out.stderr.toString()).toBe(0);
+  expect(out.stdout.toString()).not.toContain("#1088"); expect(sends()).toHaveLength(0);
+  expect(JSON.parse(readFileSync(files.state))).toEqual({});
+}));
+test("stale rollup: #1088's exact four check runs reduce to the successful rerun", () => fixture(({ write, lead, sends }) => {
+  write("show", { thread: thread("lead-1", [1088]) });
+  write("prs", [check(pr(1088), checks1088())]);
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode).toBe(0);
+  expect(out.stdout.toString()).toContain("#1088 GREEN");
+  expect(sends()[0].message).not.toContain("RED");
+}));
+for (const oldResult of ["FAILURE", "CANCELLED"]) test(`stale rollup: superseded ${oldResult} finishing late cannot override #1088's newer run`, () => fixture(({ write, lead }) => {
+  const nodes = checks1088();
+  // Derived overlap: an older run finishes after the newer run succeeds.
+  nodes.find(n => n.conclusion === oldResult).completedAt = "2026-11-02T05:00:00Z";
+  write("show", { thread: thread("lead-1", [1088]) }); write("prs", [check(pr(1088), nodes)]);
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode).toBe(0);
+  expect(out.stdout.toString()).toContain("#1088 GREEN");
+}));
+test("stale rollup: superseded running check cannot leave a successful newer run pending", () => fixture(({ write, lead }) => {
+  const nodes = checks1088(); Object.assign(nodes[0], { status: "IN_PROGRESS", conclusion: null, completedAt: null });
+  write("show", { thread: thread("lead-1", [1088]) }); write("prs", [check(pr(1088), nodes)]);
+  expect(lead().stdout.toString()).toContain("#1088 GREEN");
+}));
+test("stale rollup: a newer queued rerun supersedes old failures and success", () => fixture(({ write, lead, sends }) => {
+  const nodes = checks1088(), latest = nodes.find(n => n.conclusion === "SUCCESS");
+  nodes.push({ ...latest, databaseId: latest.databaseId + 1, status: "QUEUED", conclusion: null, startedAt: null, completedAt: null });
+  write("show", { thread: thread("lead-1", [1088]) }); write("prs", [check(pr(1088), nodes)]);
+  expect(lead("--grace-minutes", "0").stdout.toString()).toContain("#1088 PENDING"); expect(sends()).toHaveLength(0);
+}));
+test("stale rollup: identical check names from different apps keep independent verdicts", () => fixture(({ write, lead }) => {
+  const nodes = checks1088().filter(n => n.conclusion === "FAILURE");
+  const success = checks1088().find(n => n.conclusion === "SUCCESS");
+  success.checkSuite = { app: { id: "synthetic-independent-app" } }; nodes.push(success);
+  write("show", { thread: thread("lead-1", [1088]) }); write("prs", [check(pr(1088), nodes)]);
+  expect(lead("--grace-minutes", "0").stdout.toString()).toContain("#1088 RED");
+}));
+test("stale rollup: legacy status contexts also reduce before deciding pending or red", () => fixture(({ write, lead }) => {
+  write("show", { thread: thread("lead-1", [1, 2]) });
+  write("prs", [check(pr(1), [{ context: "legacy", state: "FAILURE", createdAt: old }, { context: "legacy", state: "PENDING", createdAt: newer }]),
+    check(pr(2), [{ context: "legacy", state: "PENDING", createdAt: old }, { context: "legacy", state: "SUCCESS", createdAt: newer }])]);
+  const out = lead().stdout.toString(); expect(out).toContain("#1 PENDING"); expect(out).toContain("#2 GREEN");
+}));
+
+test("stale rollup: merged #1088 carrying its historical RED window sends no alert", () => fixture(({ files, write, run, lead, sends }) => {
+  // Derived stale snapshot: replay #1088's recorded failures before the 04:42 success.
+  const red = checks1088().filter(n => n.conclusion !== "SUCCESS");
+  write("prs", [check(pr(1088, { state: "MERGED", headRefOid: rollup1088.headRefOid }), red)]);
+  write("threads", [thread("stale-link", [1088], { settled: true })]);
+  write("show", { thread: thread("lead-1", [1088]) });
+  const cfg = JSON.parse(readFileSync(files.config)); cfg.grace_minutes = 0; write("config", cfg);
+  const sweep = run(); expect(sweep.exitCode).toBe(0); expect(sweep.stdout.toString()).not.toContain("#1088");
+  const ownerCheck = lead("--grace-minutes", "0"); expect(ownerCheck.exitCode).toBe(0);
+  expect(ownerCheck.stdout.toString()).not.toContain("#1088"); expect(sends()).toHaveLength(0);
+}));
+test("stale rollup: merged #1091 with all-green checks sends no ready-to-merge message", () => fixture(({ files, write, run, lead, sends }) => {
+  const green = JSON.parse(readFileSync(join(import.meta.dir, "fixtures/pr-sentinel-1091-rollup.json"), "utf8"));
+  write("prs", [check(pr(1091, { state: "MERGED", headRefOid: green.headRefOid }), green.nodes)]);
+  write("threads", [thread("stale-link", [1091], { settled: true })]);
+  write("show", { thread: thread("lead-1", [1091]) });
+  const cfg = JSON.parse(readFileSync(files.config)); cfg.grace_minutes = 0; write("config", cfg);
+  const sweep = run(); expect(sweep.exitCode).toBe(0); expect(sweep.stdout.toString()).not.toContain("#1091");
+  const ownerCheck = lead("--grace-minutes", "0"); expect(ownerCheck.exitCode).toBe(0);
+  expect(ownerCheck.stdout.toString()).not.toContain("#1091"); expect(sends()).toHaveLength(0);
+}));
+
 
 test("lead optional config: absent default file preserves nudges and warns once per run", () => fixture(({ root, write, leadDefault, age, sends }) => {
   write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
