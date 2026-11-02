@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { machineHost } from '../hooks/machine-host.mjs';
 import { runRows } from './run-rows.mjs';
@@ -27,19 +27,48 @@ function measure(cwd, head, base, pr) {
   // Freshness observes master, not this push. Bound its network wait; keep its measured line.
   const measured = { ...rows, rows: rows.rows.map(r => r.id === 'live-tier-freshness' ? { ...r, timeout_s: 15 } : r) };
   const previous = { RATCHET_PR_BASE: process.env.RATCHET_PR_BASE, RATCHET_PR_HEAD: process.env.RATCHET_PR_HEAD };
-  let results;
+  let results, evaluation;
+  const assess = results => evaluate({ rows, baseRows, bootstrap: !baseRows, results, head, runner: 'ci', prBody: pr?.body ?? '' });
+  const blockingRows = evaluation => evaluation.rows.filter(r => r.id !== 'live-tier-freshness' && !['PASS', 'WARN'].includes(r.status));
   try {
     Object.assign(process.env, { RATCHET_PR_BASE: base, RATCHET_PR_HEAD: head });
-    results = runRows({ rows: measured, head, cwd, runner: 'ci', log: (line, r) => {
+    const ciRows = measured.rows.filter(r => r.runner === 'ci');
+    const firstRuns = new Map();
+    let index = 0;
+    const log = (line, r) => {
       console.log(line); if (r.status !== 0) process.stderr.write(`${r.stdout ?? ''}${r.stderr ?? ''}`);
+    };
+    results = runRows({ rows: measured, head, cwd, runner: 'ci', log: (line, r) => {
+      firstRuns.set(ciRows[index++].id, r); log(line, r);
     } });
+    evaluation = assess(results);
+    const failed = blockingRows(evaluation);
+    if (failed.length) {
+      const retry = runRows({ rows: { ...measured, rows: measured.rows.filter(r => failed.some(f => f.id === r.id)) },
+        head, cwd, runner: 'ci', log });
+      // Missing measurements on retry must replace, never retain, the first measurement.
+      for (const row of failed) delete results.results[row.id];
+      Object.assign(results.results, retry.results);
+      evaluation = assess(results);
+      for (const row of failed) {
+        if (!evaluation.rows.some(r => r.id === row.id && ['PASS', 'WARN'].includes(r.status))) continue;
+        const first = firstRuns.get(row.id);
+        // FLK-L's writer is inline in prepush-touched.mjs; keep its exact fields and tail policy.
+        const ledger = join(homedir(), '.golems/prepush-flakes.jsonl');
+        const tail = [first.stdout, first.stderr].filter(Boolean).join('\n').trimEnd().split('\n').slice(-40).join('\n');
+        mkdirSync(dirname(ledger), { recursive: true });
+        appendFileSync(ledger, JSON.stringify({ ts: new Date().toISOString(), repo: root,
+          head_sha: head, command: row.command, first_exit: first.status > 0 ? first.status : 1,
+          first_tail: tail, host: hostname(), row: row.id }) + '\n');
+        console.log(`ratchet: FLAKE ${row.id} failed then passed on retry; logged`);
+      }
+    }
   } finally {
     for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
   }
-  const evaluation = evaluate({ rows, baseRows, bootstrap: !baseRows, results, head, runner: 'ci', prBody: pr?.body ?? '' });
   console.log(renderTable(evaluation, { marker: 'golems-ratchet-prepush', title: 'Local CI rows (live-tier-freshness informational)' }));
   console.log(`ratchet: CI rows measured in ${((Date.now() - started) / 1000).toFixed(2)}s`);
-  const failed = evaluation.rows.filter(r => r.id !== 'live-tier-freshness' && !['PASS', 'WARN'].includes(r.status));
+  const failed = blockingRows(evaluation);
   for (const row of failed) console.error(`ratchet: BLOCKED ${row.id} ${row.status}; local command: cd ${quote(cwd)} && ${row.command}`);
   if (failed.length || !evaluation.rows.length || evaluation.loosened.some(r => !r.ruled)) throw new Error('CI ratchet failed before push');
   console.log('ratchet: local CI gate PASS (live-tier-freshness informational)');
