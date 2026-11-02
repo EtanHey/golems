@@ -58,7 +58,7 @@ RIGHT: Post structured verdict as a PR comment after a clean bot-reviewed loop
 Merge authority: [Merge Authority](pr-creation.md#merge-authority) (Etan's ruling; SSOT).
 
 After a clean other-vendor review at `headRefOid` and green required checks, leads merge now
-with `gh pr merge <N> --merge --admin` on EtanHey repos; `--admin` is the default. Never ask
+with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos; `--admin` is the default. Never ask
 Etan to approve or merge a PR; only true one-way doors wait for him. Workers follow the
 merge authority in their brief.
 
@@ -69,7 +69,7 @@ branch retirement follows the workspace lifecycle contract and any stacked-PR ho
 
 ### Worktree-Locked Local Merge
 
-In multi-worktree repos, `gh pr merge <N> --merge --delete-branch` can fail
+In multi-worktree repos, `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` can fail
 **locally** even though the PR is fully mergeable: the post-merge branch cleanup
 checks out the default branch, and git refuses when another worktree holds it
 (`failed to run git: fatal: 'main' is already used by worktree at
@@ -161,11 +161,12 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
    - Exit 0 means guarded ("Mac rows required"): the lead dispatches this exact command, from the golems root
      checkout, to `deploy-local-prod` and verifies what it reports:
    ```bash
-   scripts/ratchet/post-merge-live.sh --merged-pr <N>
+   scripts/ratchet/post-merge-live.sh --merged-pr <N> --lease-pr <your open PR>
    ```
-   It updates the mbp hooks-live install, picks a clean exact-head open-PR worktree as the lease, runs the live
-   rows, posts the `golems-ratchet-live` receipt on #N, and prints the comment URL and the live-tier freshness
-   line. Optional `--lease-pr N --lease-repo <path>` constrains the lease. Done means a zero exit, a printed
+   `--lease-pr` is required: an open PR you own and won't push during the receipt (its clean exact-head worktree
+   is the token lease; add `--lease-repo <path>` to pick the worktree). It updates the mbp hooks-live install, runs
+   the live rows, posts the `golems-ratchet-live` receipt on #N, and prints the comment URL and the live-tier
+   freshness line. Never borrow another lead's PR: a branch that moves mid-receipt denies the token (#1007). Done means a zero exit, a printed
    receipt URL and a freshness PASS. Any nonzero exit or FAIL is a stop: report it rather than re-running
    blindly. After the receipt posts, re-run any failed master/PR `ratchet` jobs. A posted comment alone does
    not re-run CI. Rules and the 120-minute grace: `standards/ratchet.md`.
