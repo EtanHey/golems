@@ -160,3 +160,5 @@ text-[28px] → text-3xl
 ## When done
 
 **When you're done, close the browser you opened** (Etan, 2026-11-01: no background reaper; the skill closes it). Close your own tabs and quit any browser you started: agent browser → `page.close()` then `agent-browser release <lease>`; a headless or Playwright browser → `browser.close()`; T3 preview → `t3_preview_close`; a cmux browser pane → `close_surface`; a temporary browser profile → quit that instance. Never leave a window open on Etan's screen.
+
+**Shut down any simulator or emulator you booted** (Etan, 2026-11-02, via orc, on a leftover iOS Simulator: "just like the chrome beta but much worse"). T3 device tools → `device_close`; iOS → `xcrun simctl shutdown <udid>` for the device you booted (check with `xcrun simctl list devices booted`); Android → `adb emu kill`. Leave a simulator you found already running alone.
