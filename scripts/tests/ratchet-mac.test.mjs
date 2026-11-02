@@ -250,8 +250,8 @@ exec "$FIXTURE/native node/node" "$@"
     expect(readFileSync(join(f.path, 'lease-head'), 'utf8').trim()).toBe(H);
     expect(readFileSync(join(f.path, 'git-worktree'), 'utf8')).toEndWith(` ${H}\n`);
     expect(readFileSync(join(f.path, 'gh-calls'), 'utf8')).not.toContain('run list');
-    // R14: every receipt run ends by applying ratchet-run retention.
-    expect(readFileSync(join(f.path, 'prune-calls'), 'utf8')).toMatch(/prune-runs\.mjs --apply\n$/);
+    // R14 incident: pre-push runs a CANDIDATE's local-run.sh, so it must never prune (retention runs in post-merge-live).
+    expect(existsSync(join(f.path, 'prune-calls'))).toBe(false);
   });
 
   test("pending head rejects a different local tip or a PR that moves during measurement", () => {

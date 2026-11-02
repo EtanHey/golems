@@ -13,7 +13,7 @@ modified within two hours remain protected, including writes below a run root.
 The apply step checks identity, timestamps and sizes again before each removal.
 Allocated bytes are reported in decimal GB; APFS snapshots may delay reclamation.
 
-`local-run.sh` invokes `--apply` after producing its receipt and posting its table.
+`post-merge-live.sh` invokes `--apply` after posting its live receipt (master's code, after a merge). It must never run from `local-run.sh` or anything else the pre-push hook executes from a candidate branch: on 2026-11-02 that let an unmerged branch prune (43 old `pr*` receipt dirs, 0.029 GB).
 For the M1 procedure owner (skill-creator): invoke the same command from the
 golems checkout at the end of each procedure run. Procedure files are owned by
 skill-creator and are deliberately unchanged here. The first real apply needs
