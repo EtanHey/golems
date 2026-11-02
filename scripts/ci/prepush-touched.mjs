@@ -66,7 +66,14 @@ function run(command, env = {}, capture = false, patternSelected = false, retryS
   }
   return r.stdout || '';
 }
-const suite = (command, patternSelected = false) => run(command, {}, false, patternSelected, true);
+const listedSuites = [];
+const suite = (command, patternSelected = false) => {
+  if (process.argv.includes('--list')) {
+    listedSuites.push({ command, path: command.find(p => /^(scripts|skills)\//.test(p)), patternSelected });
+    return;
+  }
+  return run(command, {}, false, patternSelected, true);
+};
 const git = (...args) => run(['git', ...args], {}, true).trim();
 function walk(dir) {
   if (!existsSync(dir)) return [];
@@ -87,11 +94,15 @@ function skip() {
   console.error(`prepush-touched: SKIP GOLEMS_PREPUSH_TOUCHED=0; logged to ${ledger}`);
 }
 async function main() {
-  if (process.env.GOLEMS_PREPUSH_TOUCHED === '0') return skip();
+  const listOnly = process.argv.includes('--list');
+  const all = listOnly && process.argv.includes('--all');
+  if (!listOnly && process.env.GOLEMS_PREPUSH_TOUCHED === '0') return skip();
   if (!available('git')) return warnMissing('git');
-  const args = process.argv.slice(2);
+  const args = process.argv.slice(2).filter(arg => !listOnly || (arg !== '--list' && arg !== '--all'));
   const ranges = [];
-  if (args.length) {
+  if (all && !args.length) {
+    // Whole-tree selection needs no ref range.
+  } else if (args.length) {
     if (args.length !== 1 || !/^[^.]+\.\.[^.]+$/.test(args[0]) || args[0].startsWith('-'))
       throw new Error('usage: prepush-touched.sh [base..head] or pre-push stdin');
     ranges.push(args[0].split('..'));
@@ -112,27 +123,30 @@ async function main() {
       ranges.push([git('merge-base', 'origin/master', 'HEAD'), 'HEAD']);
     }
   }
-  if (!ranges.length) return console.error('prepush-touched: SKIP delete-only push');
-  const changed = new Set(ranges.flatMap(([base, head]) =>
+  if (!all && !ranges.length) return console.error('prepush-touched: SKIP delete-only push');
+  const changed = new Set(all ? walk('scripts') : ranges.flatMap(([base, head]) =>
     git('diff', '--name-only', '--no-renames', '-z', `${base}..${head}`).split('\0').filter(Boolean)));
-  // Always check every added commit, including intermediate trees, as CI does.
-  for (const [base, head] of ranges) {
-    const original = git('rev-parse', 'HEAD');
-    const target = git('rev-parse', head);
-    if (original !== target) throw new Error('push head differs from checkout; check out that head before pushing');
-    if (!available(process.env.PUBLISH_BOUNDARY_RUBY_BIN || 'ruby')) { warnMissing('ruby'); continue; }
-    run(['bash', 'scripts/check-publish-boundary.sh'], {
-      PUBLISH_BOUNDARY_HISTORY_MODE: 'ratchet', PUBLISH_BOUNDARY_HISTORY_BASE: base,
-    });
-  }
-  run(['node', 'scripts/ci/check-model-role-drift.mjs']);
-  const scans = git('ls-files', '-z', 'skills/**/*.md').split('\0').filter(Boolean);
-  run(['node', 'scripts/ci/canon-drift-lint.mjs', '--check', '--routing-allowlist',
-    'scripts/ci/routing-restatement-allowlist.json', ...scans.flatMap(p => ['--routing-scan', p])]);
+  if (!listOnly) {
+    // Always check every added commit, including intermediate trees, as CI does.
+    for (const [base, head] of ranges) {
+      const original = git('rev-parse', 'HEAD');
+      const target = git('rev-parse', head);
+      if (original !== target) throw new Error('push head differs from checkout; check out that head before pushing');
+      if (!available(process.env.PUBLISH_BOUNDARY_RUBY_BIN || 'ruby')) { warnMissing('ruby'); continue; }
+      run(['bash', 'scripts/check-publish-boundary.sh'], {
+        PUBLISH_BOUNDARY_HISTORY_MODE: 'ratchet', PUBLISH_BOUNDARY_HISTORY_BASE: base,
+      });
+    }
+    run(['node', 'scripts/ci/check-model-role-drift.mjs']);
+    const scans = git('ls-files', '-z', 'skills/**/*.md').split('\0').filter(Boolean);
+    run(['node', 'scripts/ci/canon-drift-lint.mjs', '--check', '--routing-allowlist',
+      'scripts/ci/routing-restatement-allowlist.json', ...scans.flatMap(p => ['--routing-scan', p])]);
 
+  }
   let parse;
   try { ({ parse } = await import('yaml')); } catch (error) {
     if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
+    if (listOnly) throw new Error('yaml not installed; cannot list selection');
     return warnMissing('yaml');
   }
   const skillBats = [];
@@ -216,6 +230,12 @@ async function main() {
     console.error('prepush-touched: unclear script mapping; running CI Script suite and registered Bats');
     selected = inventory;
     selectedBats = bats;
+  }
+  if (listOnly) {
+    console.log(JSON.stringify({ suites: [...listedSuites, ...selected.map(({ command, path, patternSelected = false }) => ({
+      command: command[0] === 'python' ? [python, ...command.slice(1)] : command, path, patternSelected,
+    }))], bats: [...skillBats, ...selectedBats] }));
+    return;
   }
   const seen = new Set();
   for (const { command, patternSelected } of selected) {
