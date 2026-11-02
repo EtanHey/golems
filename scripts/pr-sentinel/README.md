@@ -21,6 +21,14 @@ Two checks, no daemon:
   check's job. The TLA+ model in `docs/tla/lead-wait/` shows why both are needed: a lead's watcher
   stops when the lead settles.
 
+GitHub's current PR state is authoritative: both paths skip any PR whose state is
+not OPEN, even when T3 still links it as open. Before choosing RED or PENDING,
+checks are reduced to the newest run per name and app (CheckRun databaseId, with
+timestamps as a fallback). Completion time cannot make an old overlapping run win.
+Legacy status contexts are reduced by context and createdAt, separately from check runs.
+The #1088 rollup, #1091 all-green projection and derived overlap/app cases are pinned
+in the sentinel regression suite.
+
 ## Start a lead's check (once per lead thread)
 
 `lead --thread <id>` works without a config file: nudges and branch updates need none.
