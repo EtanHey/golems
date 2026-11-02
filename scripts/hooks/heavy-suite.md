@@ -127,10 +127,17 @@ Nested cleanup failures additionally write private
 `<suite_id>.inner-<wrapper_pid>-<birth_hash>.json` records in the same directory;
 successful nested cleanup writes no record. The outer `SUITE DONE` notice adds
 `inner_failures=<count> (see <directory>/<suite_id>.inner-*.json)` when present,
-even if outer cleanup succeeds. Inner diagnostics writes and pointer discovery
-are best-effort: an exception emits one warning and preserves the command result.
+even if outer cleanup succeeds. All outer record operations (directory creation, START and terminal writes, and
+successful-cleanup unlink), inner diagnostics writes and pointer discovery are
+best-effort: exceptions preserve the command result. Outer record failures emit
+at most one warning per wrapper run. Since #1118, a failed START write lets the
+suite run instead of refusing with exit 70: nothing reads these records, and
+cleanup decides from live process state. If a future guardian reads the active
+record to find orphans, the START write must become fail-closed again.
 Both outer records (including `.cleanup.json`) and inner records cap diagnostic
 lists and dictionaries at 200 entries, with `<field>_total` retaining the original
-size. Identity-reason lists per retained PID are also capped at 200, with counts
+size. Collections longer than 200 keep the first 100 and last 100 entries
+(in insertion order for dictionaries); shorter collections remain intact.
+Identity-reason lists per retained PID are also capped at 200, with counts
 in `identity_unavailable_reasons_totals`. Caps affect stored diagnostics only,
 never cleanup decisions. The existing inner `members_seen_count` remains available.

@@ -163,7 +163,9 @@ def cap_record(record):
         if isinstance(value, (list, dict)):
             result[field + "_total"] = len(value)
             if isinstance(value, dict):
-                kept = dict(islice(value.items(), 200))
+                kept = dict(value.items() if len(value) <= 200 else
+                            list(islice(value.items(), 100)) +
+                            list(islice(value.items(), len(value) - 100, None)))
                 if any(isinstance(v, list) for v in kept.values()):
                     result[field + "_totals"] = {k: len(v) for k, v in kept.items() if isinstance(v, list)}
                     kept = {k: cap_list(v) if isinstance(v, list) else v for k, v in kept.items()}
@@ -337,6 +339,9 @@ def private_pipe():
 
 
 def run_command(command, timeout=1800, grace=10, slot=None):
+    # AIDEV-NOTE: START records are best-effort: no consumer reads them; cleanup
+    # uses live process state. If a future guardian uses active records to find
+    # orphans, START writes must become fail-closed again.
     record_warning = False
     def outer_record(action, *args):
         nonlocal record_warning
