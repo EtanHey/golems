@@ -4,7 +4,7 @@
    The three flags switch the 2026-11-01 fixes on and off:
      EndTurnCheck - the lead reads its open PRs before every turn ends (rule)
      Handoff      - a settle hands the PR's watch to a live lead (rule)
-     Sentinel     - one nudge to a live owner; only orphans (settled or unlinked) go to orc
+     Sentinel     - one live-owner nudge, then orc after 2 h; orphans go directly to orc
    A rule is only as good as compliance, so lead actions that skip a rule stay
    possible (and unfair) whenever the rule is off. *)
 EXTENDS Naturals
@@ -61,9 +61,8 @@ Settle == /\ thread = "live" /\ owner = "lead" /\ pr = "open"
           /\ UNCHANGED <<ci, pr, held, nudges>>
 
 \* pr-sentinel: after a grace period, nudge the live owner once;
-\* only an orphan can move to orc; an ignored live owner is not escalated.
+\* then (or at once for an orphan) move the PR to orc's live thread.
 Nudge == /\ Sentinel /\ Actionable /\ ~wake /\ nudges < 2
-         /\ (thread = "settled" \/ nudges = 0)
          /\ IF thread = "live" /\ nudges = 0
                THEN /\ wake' = TRUE /\ UNCHANGED <<thread, owner>>
                ELSE /\ owner' = "orc" /\ thread' = "live" /\ wake' = TRUE
