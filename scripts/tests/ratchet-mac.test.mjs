@@ -158,6 +158,7 @@ describe("local-run.sh PR body forwarding", () => {
           while [ "$1" != --out ]; do shift; done
           echo '{}' > "$2" ;;
         */table.mjs) printf '%s\\n' "$@" > "$FIXTURE/table-args" ;;
+        */prune-runs.mjs) printf '%s\\n' "$*" >> "$FIXTURE/prune-calls" ;;
         *) echo "unexpected node: $*" >&2; exit 1 ;;
       esac`);
     const body = "ratchet-loosen: installed-skill-parity lead ruling: candidate parity metric\n";
@@ -249,6 +250,8 @@ exec "$FIXTURE/native node/node" "$@"
     expect(readFileSync(join(f.path, 'lease-head'), 'utf8').trim()).toBe(H);
     expect(readFileSync(join(f.path, 'git-worktree'), 'utf8')).toEndWith(` ${H}\n`);
     expect(readFileSync(join(f.path, 'gh-calls'), 'utf8')).not.toContain('run list');
+    // R14: every receipt run ends by applying ratchet-run retention.
+    expect(readFileSync(join(f.path, 'prune-calls'), 'utf8')).toMatch(/prune-runs\.mjs --apply\n$/);
   });
 
   test("pending head rejects a different local tip or a PR that moves during measurement", () => {
