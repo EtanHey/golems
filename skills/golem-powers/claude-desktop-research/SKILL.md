@@ -145,7 +145,8 @@ $ORCHESTRATOR_ROOT/docs.local/claude-desktop/projects/<project>/
 ### Step 0 — Verify active account + MCP wiring
 
 ```bash
-bash skills/golem-powers/_shared/research/verify-account.sh --expect research-account@example.com
+# Expects RESEARCH_ACCOUNT, else the RESEARCH_ACCOUNT= line in ~/.config/research-lifecycle/research.env.
+bash skills/golem-powers/_shared/research/verify-account.sh
 ```
 
 Then run the MCP pre-flight (above). If desktop-mode MCP is required and the relevant server is NOT wired, STOP and tell the user — do not write a prompt that will silently miss its tool.
@@ -257,7 +258,7 @@ If the project's context has changed since the last prompt:
 
 ### Step 4 — Upload prompt + context to Drive (and optional local cache)
 
-1. Upload `R{NN}-{topic}.md` to `Brain Drive/03_RESEARCH/Active/<project>/prompts/`
+1. Upload `R{NN}-{topic}.md` to `Brain Drive/03_RESEARCH/Active/<project>/prompts/` with `mcp__google-drive__uploadFile(..., mimeType="text/markdown")`. Set `mimeType` from the extension on every upload (`.md` → `text/markdown`, `.txt` → `text/plain`, `.json` → `application/json`): a prompt starting with `<!--` is otherwise stored as `text/html`. `createTextFile` takes no `mimeType`; don't use it for these files.
 2. Keep `description.md`, `instructions.md`, and `context/` current in `Brain Drive/03_RESEARCH/Active/<project>/context/`
 3. Optionally mirror to `$ORCHESTRATOR_ROOT/docs.local/claude-desktop/projects/<project>/` for local review
 

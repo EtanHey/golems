@@ -1,4 +1,5 @@
 {
+  "researchAccount": "research-account@example.com",
   "geminiPrompt": "# Grounding\n- \"BrainLayer Architecture Notes\"\n\n# Scope\nVerify current search ranking.",
   "canonicalLocalFiles": [
     {

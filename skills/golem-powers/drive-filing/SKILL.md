@@ -113,7 +113,7 @@ add a destructive home-wide reaper.
 **Before you finish a task that produced a durable artifact: did you FILE it in its home, or leave it scattered in `docs.local/`?** Use the § Machine hygiene table: code and harnesses go to a repo, personal or client documents to iCloud, other durable artifacts to the right Brain Drive folder. If durable and still only local → file it now (the decision tree above, or § Archive a heavy artifact) and drop a one-line `_DRIVE-LEDGER.md` pointer. "It's in docs.local" is not "it's saved."
 
 ## Quick reference (MCP)
-- Upload: `mcp__google-drive__uploadFile(localPath, parentFolderId=<resolved private ID>)`.
+- Upload: `mcp__google-drive__uploadFile(localPath, parentFolderId=<resolved private ID>)`. For text, pass `mimeType` from the extension (`.md` → `text/markdown`, `.txt` → `text/plain`, `.json` → `application/json`); a `.md` starting with `<!--` otherwise lands as `text/html`.
 - New topic folder: `mcp__google-drive__createFolder(name, parent=<resolved private ID>)`.
 - Find: `mcp__google-drive__search(query="'<RESOLVED_PRIVATE_PARENT_ID>' in parents", rawQuery=true)`.
 - Heavy/forever: § Archive a heavy artifact.

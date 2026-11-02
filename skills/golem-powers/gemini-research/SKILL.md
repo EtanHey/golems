@@ -11,15 +11,28 @@ Triggers on: gemini research, Gemini Deep Research, NotebookLM, notebook researc
 
 > **🔑 DRIVE-WORKSPACE RULE (Etan, standing — never violate):** Etan's Gemini has his Google Drive workspace CONNECTED. Every deep-research prompt must REFERENCE the relevant Google Doc(s) by NAME (e.g. *"ground this in my 'Context Strategy' doc in my Drive"*) so Gemini pulls them itself via the Drive connector. **NEVER instruct Etan to attach/upload files** — he should never have to attach anything. Reference doc names, not attachments.
 
-## Grounding prep
+## Grounding prep — your FIRST action, before any search or draft
 
-When asked to research this, find out what's current, or compare options, check
-whether the question needs current project state. If it does, the lead dispatches
-a sub-agent to run `/research-lifecycle` preparation first: verify local context,
-refresh the Drive grounding corpus, and return exact grounding doc names and the
-lifecycle receipt. Pick its execution profile per `/agent-routing` § Execution
-capability (Drive write + shell); a read-only gatherer may only report staleness.
-Do not emit the prompt while preparation is blocked.
+Done condition: no research prompt leaves this skill until ONE of these is true:
+- **Project-grounded** (the default): a `/research-lifecycle` preparation receipt is
+  back, naming the grounding docs.
+- **Web-only** (only when the user says the question needs no project state): the
+  prompt's `# Grounding` block reads `None — web-only research (no project state:
+  <the user's reason>)`. That line replaces the receipt.
+
+1. Right after loading this skill, dispatch ONE sub-agent. Do not search Drive, grep
+   or draft the prompt yourself first. Its brief says: "Run `/research-lifecycle`
+   preparation for <project>: verify local context, refresh the Drive grounding
+   corpus, and return the exact grounding doc names and the lifecycle receipt."
+   Pick its execution profile per `/agent-routing` § Execution capability (Drive
+   write + shell); a read-only gatherer may only report staleness.
+2. Web-only branch: when the user says the question needs no project state, skip
+   step 1, write the `None — web-only research (no project state: <reason>)` line,
+   and go straight to the emit gate below. The Drive-grounding and START/EDIT gates
+   still apply.
+3. Project-grounded: draft the prompt from the receipt's doc names. While
+   preparation runs or is blocked, tell Etan the prompt follows the receipt; never
+   emit it before.
 
 Include one line in the hand-off to Etan: "Before Start Research, check that Drive
 is on as a Deep Research source so it reads the named grounding docs."
@@ -174,8 +187,8 @@ If you get authentication errors, run `nlm login` via Bash first — this is the
 Drive is the source of truth. NotebookLM consumes the same Drive project that `/claude-desktop-research` uses.
 
 ```
-1. Verify account first:
-   bash skills/golem-powers/_shared/research/verify-account.sh --expect research-account@example.com
+1. Verify account first (expects RESEARCH_ACCOUNT, else the one in ~/.config/research-lifecycle/research.env):
+   bash skills/golem-powers/_shared/research/verify-account.sh
 
 2. Ensure Drive folders exist:
    python3 skills/golem-powers/_shared/research/drive-paths.py ensure-project-folders <project>
@@ -201,13 +214,14 @@ Drive is the source of truth. NotebookLM consumes the same Drive project that `/
 
 7. Write the result to:
    Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-gemini-result.md
+   (uploadFile with mimeType="text/markdown"; never content-sniffed)
 ```
 
-Wrapper (live mode needs both variables, and stops with an error if either is unset):
+Wrapper (live mode needs both values, and stops with an error if either is unset):
 
 ```bash
 export GEMINI_RESEARCH_PROFILE=<nlm profile>   # the name you gave `nlm login --profile`
-export RESEARCH_ACCOUNT=<google account>       # Drive/NotebookLM must be signed in as this
+export RESEARCH_ACCOUNT=<google account>       # optional when ~/.config/research-lifecycle/research.env has RESEARCH_ACCOUNT=<address>
 bash skills/golem-powers/gemini-research/scripts/drive-sync.sh --project cmux --prompt R36-R38-cmux-mobile-prompts.md
 ```
 

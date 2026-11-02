@@ -238,6 +238,21 @@
       "bug_fixture": "42967711bc46af89c8eb9e184be34d4ecafa02fb4119f8d50c44c4d5ecf13a3c",
       "fix_fixture": "9f21c2ce1f5fbb7c50cd7ac05c77f43b306910a7a339f2f35d0611d8caa349c5",
       "command": "scripts/ratchet/mac/disk-free-floor.sh"
+    },
+    {
+      "id": "ratchet-runs-size",
+      "report_only": "retention-success-on-both-macs",
+      "metric": "REAL Mac: ratchet run evidence <= 10 decimal GB (allocated bytes)",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "ref_kind": "fixture-hash",
+      "bug_sha": "03c5cf8837cc5ede8d06aee456ea84df5f053469",
+      "fix_sha": "03c5cf8837cc5ede8d06aee456ea84df5f053469",
+      "bug_fixture": "2f4a3f8e232ae908bc6a0516b102001b8d946e3c4c9726f3b07251ca027f7688",
+      "fix_fixture": "5b01f0ceda336433b74a74283513a30913967fe2cf9a7f6d1ea124f3a4ef9cda",
+      "command": "node scripts/ratchet/mac/ratchet-runs-size.mjs"
     }
   ]
 }

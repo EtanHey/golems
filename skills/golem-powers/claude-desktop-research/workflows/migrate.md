@@ -5,7 +5,7 @@ Use this when converting legacy Claude Web research batches from the Obsidian fo
 ## Preconditions
 
 1. Run `bash skills/golem-powers/_shared/research/verify-account.sh`
-2. Confirm the active Google account is `research-account@example.com`
+2. Confirm it reports `"match": true` for the research account (`RESEARCH_ACCOUNT`, else `~/.config/research-lifecycle/research.env`)
 3. Start with the smallest batch first, usually `batch-cmux`
 
 ## Dry Run

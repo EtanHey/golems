@@ -43,6 +43,19 @@ else process.exit(9);
     const picked = run({}, ['--lease-pr', '7', '--lease-repo', valid]);
     expect(picked.status).toBe(0);
     expect(picked.stdout).toContain('https://example.invalid/comment\nfreshness PASS');
+    // R14: retention runs here (master's code, after the receipt), and a refusal never fails the receipt.
+    const lease = ['--lease-pr', '7', '--lease-repo', valid];
+    const pruneLog = join(dir, 'prune-calls');
+    writeFileSync(join(dir, 'scripts/ratchet/prune-runs.mjs'),
+      `import { appendFileSync } from 'node:fs'; appendFileSync(${JSON.stringify(pruneLog)}, process.argv.slice(2).join(' ') + '\\n'); console.log('Apply: 0/0 entries'); process.exit(Number(process.env.PRUNE_EXIT || 0));`);
+    const pruned = run({}, lease);
+    expect(pruned.status).toBe(0);
+    expect(readFileSync(pruneLog, 'utf8')).toBe('--apply\n');
+    expect(pruned.stdout.indexOf('freshness PASS')).toBeLessThan(pruned.stdout.indexOf('Apply: 0/0 entries'));
+    const refused = run({ PRUNE_EXIT: '2' }, lease);
+    expect(refused.status).toBe(0);
+    expect(refused.stderr).toContain('retention refused (non-fatal)');
+    rmSync(join(dir, 'scripts/ratchet/prune-runs.mjs'));
     expect(run({ EXPECT_PATH: '/ordinary' }, ['--lease-pr', '7', '--lease-repo', '/ordinary']).status).toBe(0);
     for (const bad of ['dirty', 'mismatch']) {
       const r = run({}, ['--lease-pr', '7', '--lease-repo', process.env.HOME + '/.t3/worktrees/golems/' + bad]);

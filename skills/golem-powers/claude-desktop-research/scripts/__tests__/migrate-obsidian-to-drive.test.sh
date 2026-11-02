@@ -105,7 +105,23 @@ PY
   rm -rf "$tmp_dir"
 }
 
+# Drive must get the type from the extension, never sniff it: a .md whose
+# first bytes are <!-- is otherwise stored as text/html.
+run_text_mime_case() {
+  python3 - "$ROOT_DIR/scripts/migrate_obsidian_to_drive.py" <<'PY'
+import importlib.util, pathlib, sys
+spec = importlib.util.spec_from_file_location("migrate_under_test", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+expected = {"R82-prompt.md": "text/markdown", "notes.txt": "text/plain", "sample.json": "application/json"}
+for name, mime in expected.items():
+    got = module.guess_mime(pathlib.Path(name))
+    assert got == mime, (name, got)
+PY
+}
+
 run_dry_run_case
 run_real_migration_case
+run_text_mime_case
 
 echo "migrate-obsidian-to-drive.test.sh PASS"
