@@ -17,9 +17,11 @@ test('the guarded set covers every hook-loaded dir, and live-freshness uses the 
   const { guardedPrefixes, STATIC_GUARDED } = await import('../ratchet/guarded-set.mjs');
   const prefixes = guardedPrefixes([manifest]);
   for (const dir of [...hookDriftPaths(manifest), ...STATIC_GUARDED]) assert.ok(prefixes.includes(dir), `${dir} not guarded`);
-  const freshness = readFileSync(join(root, 'scripts/ratchet/live-freshness.mjs'), 'utf8');
-  assert.match(freshness, /guardedPrefixes\(/, 'live-freshness must derive its pathspecs from guarded-set.mjs');
-  assert.doesNotMatch(freshness, /'skills\/golem-powers\/tmp-block\/'/, 'no second hand-written guarded list');
+  for (const consumer of ['live-freshness.mjs', 'schedule.mjs']) {
+    const source = readFileSync(join(root, 'scripts/ratchet', consumer), 'utf8');
+    assert.match(source, /guardedPrefixes\(/, `${consumer} must derive its pathspecs from guarded-set.mjs`);
+    assert.doesNotMatch(source, /'skills\/golem-powers\/tmp-block\/'/, `${consumer}: no second hand-written guarded list`);
+  }
 });
 
 test('guarded-paths.sh: a change in any hook-loaded dir is guarded; docs are not; unknown refs cannot tell', () => {
