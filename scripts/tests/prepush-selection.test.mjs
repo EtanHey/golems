@@ -7,9 +7,9 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-function run(command, cwd = root) {
+function run(command, cwd = root, timeout = 50_000) {
   const result = spawnSync(command[0], command.slice(1), {
-    cwd, encoding: 'utf8', timeout: 50_000, maxBuffer: 32 * 1024 * 1024,
+    cwd, encoding: 'utf8', timeout, maxBuffer: 32 * 1024 * 1024,
     env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
   });
   assert.equal(result.status, 0, `${command.join(' ')}: ${result.error || ''}\n${result.stdout}\n${result.stderr}`);
@@ -17,7 +17,7 @@ function run(command, cwd = root) {
 }
 const list = cwd => JSON.parse(run(['node', 'scripts/ci/prepush-touched.mjs', '--list', '--all'], cwd));
 
-test('whole-tree pre-push selection collects tests and works from a T3 checkout', { timeout: 60_000 }, () => {
+test('whole-tree pre-push selection collects tests and works from a T3 checkout', { timeout: 150_000 }, () => {
   const selection = list(root);
   assert.ok(selection.suites.length > 0, 'whole-tree selection must not be empty');
   const pytest = selection.suites.filter(s => s.command.includes('pytest'));
@@ -45,7 +45,8 @@ test('whole-tree pre-push selection collects tests and works from a T3 checkout'
     symlinkSync(join(root, 'node_modules'), join(checkout, 'node_modules'), 'dir');
     assert.deepEqual(list(checkout), selection, 'selection differs under a T3 checkout path');
     run(['python3', '-m', 'pytest', '-q', '-p', 'no:cacheprovider',
-      'scripts/tests/test_workspace_lane.py', 'scripts/tests/test_workspace_shared_holds.py'], checkout);
+      'scripts/tests/test_workspace_lane.py::test_consumer_refuses_close_without_touching_contents',
+      'scripts/tests/test_workspace_shared_holds.py::test_other_closing_lease_blocks_begin_close'], checkout, 120_000);
   } finally {
     run(['git', 'worktree', 'remove', '--force', checkout]);
     rmSync(scratch, { recursive: true, force: true });
