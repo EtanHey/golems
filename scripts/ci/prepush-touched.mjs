@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Select actual CI commands; the workflow remains the command inventory.
 // Only the checked-out HEAD can be pushed; other branch heads are refused.
-import { readFileSync, readdirSync, existsSync, mkdirSync, appendFileSync, accessSync, constants } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, mkdirSync, appendFileSync, accessSync, constants, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, basename, resolve, join } from 'node:path';
 import { homedir, hostname } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -62,18 +62,68 @@ function run(command, env = {}, capture = false, patternSelected = false, retryS
   }
   if (r.error || r.status !== 0) {
     console.error(`prepush-touched: FAIL ${command.join(' ')} (${r.error?.message || r.status})`);
-    process.exit(r.status > 0 ? r.status : 1);
+    throw Object.assign(new Error(`suite command failed: ${display}`), { exitCode: r.status > 0 ? r.status : 1 });
   }
   return r.stdout || '';
 }
 const listedSuites = [];
-const suite = (command, patternSelected = false) => {
-  if (process.argv.includes('--list')) {
-    listedSuites.push({ command, path: command.find(p => /^(scripts|skills)\//.test(p)), patternSelected });
-    return;
-  }
-  return run(command, {}, false, patternSelected, true);
+const suite = (command, patternSelected = false, direct = true) => {
+  listedSuites.push({ command, path: command.find(p => /^(scripts|skills)\//.test(p)), patternSelected, direct });
 };
+function executeSuites() {
+  const raw = process.env.GOLEMS_PREPUSH_BUDGET_SECONDS ?? '180';
+  const budget = Number(raw);
+  if (!raw.trim() || !Number.isFinite(budget) || budget < 0) throw new Error('invalid GOLEMS_PREPUSH_BUDGET_SECONDS');
+  const ledger = process.env.GOLEMS_PREPUSH_DURATIONS || join(homedir(), '.golems/prepush-durations.json');
+  let durations = {};
+  try {
+    durations = JSON.parse(readFileSync(ledger, 'utf8'));
+    if (!durations || Array.isArray(durations) || typeof durations !== 'object' ||
+        Object.values(durations).some(n => typeof n !== 'number' || !Number.isFinite(n) || n < 0)) throw new Error('invalid durations');
+  } catch (error) {
+    durations = {};
+    if (error.code !== 'ENOENT') console.error(`prepush-touched: WARN duration ledger ignored: ${error.message}`);
+  }
+  const estimate = s => durations[s.command.join(' ')] ?? 30;
+  const unique = new Map();
+  for (const s of listedSuites) {
+    const key = JSON.stringify(s.command);
+    const prior = unique.get(key);
+    if (prior) { prior.direct ||= s.direct; prior.patternSelected &&= s.patternSelected; }
+    else unique.set(key, { ...s });
+  }
+  const ordered = [...unique.values()].sort((a, b) => Number(b.direct) - Number(a.direct) || estimate(a) - estimate(b));
+  const started = performance.now();
+  for (let i = 0; i < ordered.length; i++) {
+    const s = ordered[i];
+    if (budget && (performance.now() - started) / 1000 + estimate(s) > budget) {
+      const commands = ordered.slice(i).map(s => s.command.join(' '));
+      console.error(`prepush-touched: DEFERRED to hosted CI (budget ${budget}s): ${commands.length} suites\n${commands.map(c => '  ' + c).join('\n')}`);
+      try {
+        const audit = join(homedir(), '.golems/prepush-flakes.jsonl');
+        mkdirSync(dirname(audit), { recursive: true });
+        appendFileSync(audit, JSON.stringify({ ts: new Date().toISOString(), event: 'budget-deferred', repo: root,
+          head_sha: git('rev-parse', 'HEAD'), budget_seconds: budget, commands, host: hostname() }) + '\n');
+      } catch (error) { console.error(`prepush-touched: WARN deferral audit: ${error.message}`); }
+      break;
+    }
+    const before = performance.now();
+    let failure;
+    try { run(s.command, {}, false, s.patternSelected, true); } catch (error) { failure = error; }
+    const elapsed = (performance.now() - before) / 1000;
+    const key = s.command.join(' ');
+    durations[key] = durations[key] === undefined ? elapsed : durations[key] * 0.7 + elapsed * 0.3;
+    const temporary = `${ledger}.${process.pid}.tmp`;
+    try {
+      mkdirSync(dirname(ledger), { recursive: true });
+      writeFileSync(temporary, JSON.stringify(durations) + '\n', { flag: 'wx' });
+      renameSync(temporary, ledger);
+    } catch (error) { console.error(`prepush-touched: WARN duration ledger update: ${error.message}`); }
+    finally { try { rmSync(temporary, { force: true }); } catch {} }
+    if (failure) throw failure;
+  }
+  console.error(`prepush-touched: touched suites wall time ${((performance.now() - started) / 1000).toFixed(2)}s`);
+}
 const git = (...args) => run(['git', ...args], {}, true).trim();
 function walk(dir) {
   if (!existsSync(dir)) return [];
@@ -226,6 +276,7 @@ async function main() {
   const touchedSkills = skills.map(s => `skills/golem-powers/${s}/`);
   let selected = inventory.filter(s => [...relevant, ...touchedSkills].some(p => references(s.path, p)));
   let selectedBats = bats.filter(s => [...relevant, ...touchedSkills].some(p => references(s, p)));
+  const directPaths = [...changed, ...touchedSkills];
   if ([...changed].filter(p => p.startsWith('scripts/') || p.startsWith('.githooks/')).some(p => ![...inventory.map(s => s.path), ...bats].some(s => references(s, p)))) {
     console.error('prepush-touched: unclear script mapping; running CI Script suite and registered Bats');
     selected = inventory;
@@ -241,15 +292,16 @@ async function main() {
   for (const { command, patternSelected } of selected) {
     if (seen.has(JSON.stringify(command))) continue;
     seen.add(JSON.stringify(command));
-    suite(command[0] === 'python' ? [python, ...command.slice(1)] : command, patternSelected);
+    suite(command[0] === 'python' ? [python, ...command.slice(1)] : command, patternSelected, directPaths.some(p => references(command.find(t => /^(scripts|skills)\//.test(t)) || '', p)));
   }
   const batsCount = skillBats.length + selectedBats.length;
   if (batsCount && !available('bats')) {
     console.error(`prepush-touched: bats not installed here; ${batsCount} bats suites will run in CI`);
   } else {
     for (const path of skillBats) suite(['bats', '--tap', path]);
-    if (selectedBats.length) suite(['node', 'scripts/ci/run-bats-suites.mjs', '--run', ...selectedBats.map(p => basename(p))]);
+    for (const path of selectedBats) suite(['node', 'scripts/ci/run-bats-suites.mjs', '--run', basename(path)], false, directPaths.some(p => references(path, p)));
   }
+  executeSuites();
   if (!skills.length && !relevant.length) console.error('prepush-touched: no relevant suites; available cheap gates finished');
 }
-try { await main(); } catch (error) { console.error(`prepush-touched: FAIL ${error.message}`); process.exitCode = 1; }
+try { await main(); } catch (error) { console.error(`prepush-touched: FAIL ${error.message}`); process.exitCode = error.exitCode || 1; }
