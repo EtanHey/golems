@@ -20,24 +20,44 @@ export function guardedPrefixes(manifests) {
   return [...prefixes].sort();
 }
 
-// The manifest at each ref: a change that adds OR removes a hook path is guarded. A ref that does not exist is an
-// error (the caller cannot tell: fail closed). A ref without a manifest has no hook-loaded dirs: static set only.
+const gitIn = (cwd) => (args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 });
+
+// The manifest at each ref: a change that adds OR removes a hook path is guarded. Every git failure throws (the
+// caller cannot tell: fail closed). Only a successful tree query that finds NO manifest entry means "no hook-loaded
+// dirs at this ref" (static set only); an entry that exists must read and parse (Codex review r1, B2).
 export function manifestsAt(refs, cwd = process.cwd()) {
-  const git = (args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  const git = gitIn(cwd);
   const manifests = [];
   for (const ref of refs) {
     try { git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]); }
     catch { throw new Error(`unknown ref ${ref}`); }
-    try { git(['cat-file', '-e', `${ref}:scripts/hooks/manifest.json`]); }
-    catch { continue; }
+    if (!git(['ls-tree', `${ref}^{commit}`, '--', 'scripts/hooks/manifest.json']).trim()) continue;
     manifests.push(JSON.parse(git(['show', `${ref}:scripts/hooks/manifest.json`])));
   }
   return manifests;
 }
 
+// Literal prefix matching, never a generated regex: a manifest source can hold any character (Codex review r1, B1).
+export function firstGuardedChange(base, head, cwd = process.cwd()) {
+  const prefixes = guardedPrefixes(manifestsAt([base, head], cwd));
+  const changed = gitIn(cwd)(['diff', '--name-only', '-z', `${base}...${head}`]).split('\0').filter(Boolean);
+  return changed.find(path => prefixes.some(prefix => path.startsWith(prefix))) ?? null;
+}
+
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
-  const refs = process.argv.slice(2);
-  if (!refs.length) { console.error('usage: guarded-set.mjs <ref>...'); process.exit(2); }
-  try { console.log(guardedPrefixes(manifestsAt(refs)).join('\n')); }
-  catch (error) { console.error(`guarded-set: ${error.message}`); process.exit(2); }
+  const args = process.argv.slice(2);
+  try {
+    if (args[0] === '--check') {
+      // guarded-paths.sh contract: exit 0 = guarded, 1 = not guarded, 2 = cannot tell (FAIL, never skip).
+      if (args.length !== 3) throw new Error('usage: guarded-set.mjs --check <base> <head>');
+      const hit = firstGuardedChange(args[1], args[2]);
+      console.log(hit ? 'guarded path touched: Mac rows required' : 'no guarded path touched: Mac rows not required');
+      process.exit(hit ? 0 : 1);
+    }
+    if (!args.length) throw new Error('usage: guarded-set.mjs <ref>... | --check <base> <head>');
+    console.log(guardedPrefixes(manifestsAt(args)).join('\n'));
+  } catch (error) {
+    console.error(`guarded-set: ${error.message.split('\n')[0]}: cannot tell, FAIL`);
+    process.exit(2);
+  }
 }

@@ -111,13 +111,14 @@ const fail = () => process.exit(2);
 if (a[0] === 'cat-file' && a[2] === e.FIXTURE_BASE + ':scripts/ratchet/rows.json') process.exit(0);
 // guarded-set.mjs: known refs verify; the fixture has no hook manifest, so the static guarded set applies.
 if (a[0] === 'rev-parse' && a[1] === '--verify' && [e.FIXTURE_BASE, e.FIXTURE_HEAD, 'origin/master'].map(r => r + '^{commit}').includes(a[3])) process.exit(0);
-if (a[0] === 'cat-file' && a[1] === '-e' && a[2].endsWith(':scripts/hooks/manifest.json')) process.exit(1);
+if (a[0] === 'ls-tree' && a[a.length - 1] === 'scripts/hooks/manifest.json') process.exit(0); // no manifest: static set
 if (a[0] === 'show' && a[1] === e.FIXTURE_BASE + ':scripts/ratchet/rows.json') {
   process.stdout.write(require('fs').readFileSync(e.RUNNER_TEMP + '/fixture-rows.json')); process.exit(0);
 }
 if (a[0] === 'worktree' && a[1] === 'add' && a[2] === '--detach' && a[3] === e.RUNNER_TEMP + '/base' && a[4] === e.FIXTURE_BASE) process.exit(0);
-if (a[0] === 'diff' && a[1] === '--name-only' && a[2] === e.FIXTURE_BASE + '...' + e.FIXTURE_HEAD) {
-  console.log(e.FIXTURE_UNGUARDED ? 'README.md' : 'scripts/hooks/guard.py'); process.exit(0);
+if (a[0] === 'diff' && a[1] === '--name-only' && a.at(-1) === e.FIXTURE_BASE + '...' + e.FIXTURE_HEAD) {
+  const f = e.FIXTURE_UNGUARDED ? 'README.md' : 'scripts/hooks/guard.py';
+  if (a.includes('-z')) process.stdout.write(f + '\\0'); else console.log(f); process.exit(0);
 }
 if (a[0] === 'log' && a.includes('origin/master')) { console.log(e.FIXTURE_GUARDED); process.exit(0); }
 if (a[0] === 'show' && a[1] === 'origin/master:scripts/ratchet/rows.json') {
