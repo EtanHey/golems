@@ -243,3 +243,45 @@ def test_outer_failure_record_does_not_mask_supervision_error(monkeypatch, tmp_p
     monkeypatch.setattr(m.SuiteTree, 'scan', unavailable)
     assert m.run_command([sys.executable, '-c', 'pass'], grace=.1) == 70
     assert capsys.readouterr().err.count('WARNING outer record unavailable') == 1
+
+
+@pytest.mark.parametrize('status', [0, 7])
+def test_outer_directory_failure_warns_once_and_runs(monkeypatch, tmp_path, capsys, status):
+    m = load_module()
+    monkeypatch.setenv('HOME', str(tmp_path))
+    monkeypatch.delenv('GOLEMS_HEAVY_SUITE_ID', raising=False)
+    (tmp_path / '.local').write_text('blocked directory')
+    marker = tmp_path / 'ran'
+    assert m.run_command([sys.executable, '-c',
+        f'from pathlib import Path; Path({str(marker)!r}).touch(); raise SystemExit({status})'], grace=.1) == status
+    assert marker.exists()
+    assert capsys.readouterr().err.count('WARNING outer record unavailable') == 1
+
+
+@pytest.mark.parametrize('status', [0, 7])
+def test_outer_successful_cleanup_unlink_failure_keeps_exit(monkeypatch, tmp_path, capsys, status):
+    m = load_module()
+    monkeypatch.setenv('HOME', str(tmp_path))
+    monkeypatch.delenv('GOLEMS_HEAVY_SUITE_ID', raising=False)
+    calls = []
+    def broken(path, **kwargs):
+        calls.append(path)
+        raise OSError('injected unlink failure')
+    monkeypatch.setattr(m.Path, 'unlink', broken)
+    assert m.run_command([sys.executable, '-c', f'raise SystemExit({status})'], grace=.1) == status
+    assert len(calls) == 1
+    record = json.loads(calls[0].read_text())
+    assert record['cleanup'] == 'ok'
+    assert capsys.readouterr().err.count('WARNING outer record unavailable') == 1
+
+
+def test_dictionary_cap_keeps_head_and_tail_without_mutation():
+    m = load_module()
+    entries = {str(i): list(range(251)) for i in range(251)}
+    capped = m.cap_record({'identity_unavailable_reasons': entries})
+    keys = list(entries)[:100] + list(entries)[-100:]
+    assert list(capped['identity_unavailable_reasons']) == keys
+    assert capped['identity_unavailable_reasons_total'] == 251
+    assert capped['identity_unavailable_reasons_totals'] == dict.fromkeys(keys, 251)
+    assert capped['identity_unavailable_reasons']['250'] == list(range(100)) + list(range(151, 251))
+    assert len(entries) == 251 and len(entries['250']) == 251
