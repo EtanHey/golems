@@ -623,7 +623,7 @@ JSON_U="$(printf '\134')u"
 function split_case_119() {
     [ -f "$SOURCE_DISPATCHER" ]
     local members="\"global\":{\"${JSON_U}0070relaunch\":[\"export PRELAUNCH_PROBE=loaded\"]},"
-    [[ "$members" != *'"prelaunch"'* ]]
+    [[ "$members" != *'"prelaunch"'* ]] || false
     jq -e '.global.prelaunch == ["export PRELAUNCH_PROBE=loaded"]' <<< "{$members\"x\":1}"
     run_prelaunch_registry_text "$(prelaunch_registry_text "$members")"
     [ "$status" -eq 0 ]

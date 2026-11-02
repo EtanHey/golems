@@ -329,7 +329,7 @@ SH
 
     [ -s "$worker_pid_file" ]
     window_worker_pid="$(cat "$worker_pid_file")"
-    [[ "$window_worker_pid" =~ ^[0-9]+$ ]]
+    [[ "$window_worker_pid" =~ ^[0-9]+$ ]] || false
     window_worker_survived=0
     for _ in {1..50}; do
         kill -0 "$window_worker_pid" 2>/dev/null || break

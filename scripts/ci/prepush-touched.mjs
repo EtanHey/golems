@@ -187,6 +187,10 @@ async function main() {
         PUBLISH_BOUNDARY_HISTORY_MODE: 'ratchet', PUBLISH_BOUNDARY_HISTORY_BASE: base,
       });
     }
+    if (all || [...changed].some(p => p.endsWith('.bats') || /-parts\/.*\.bash$/.test(p) || p.includes('bats-bash32'))) {
+      run(['node', 'scripts/ci/check-bats-bash32.mjs']);
+      suite(['node', '--test', 'scripts/tests/check-bats-bash32.test.mjs']);
+    }
     run(['node', 'scripts/ci/check-model-role-drift.mjs']);
     const scans = git('ls-files', '-z', 'skills/**/*.md').split('\0').filter(Boolean);
     run(['node', 'scripts/ci/canon-drift-lint.mjs', '--check', '--routing-allowlist',
