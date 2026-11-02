@@ -152,6 +152,10 @@ def write_record(fd, record):
         notice(f"WARNING holder record unavailable: {error}")
 
 
+def cap_list(value):
+    return value if len(value) <= 200 else value[:100] + value[-100:]
+
+
 def cap_record(record):
     """Cap diagnostic collections only; retain totals and cleanup authority."""
     result = {}
@@ -162,10 +166,10 @@ def cap_record(record):
                 kept = dict(islice(value.items(), 200))
                 if any(isinstance(v, list) for v in kept.values()):
                     result[field + "_totals"] = {k: len(v) for k, v in kept.items() if isinstance(v, list)}
-                    kept = {k: v[:200] if isinstance(v, list) else v for k, v in kept.items()}
+                    kept = {k: cap_list(v) if isinstance(v, list) else v for k, v in kept.items()}
                 value = kept
             else:
-                value = value[:200]
+                value = cap_list(value)
         result[field] = value
     return result
 
@@ -333,6 +337,16 @@ def private_pipe():
 
 
 def run_command(command, timeout=1800, grace=10, slot=None):
+    record_warning = False
+    def outer_record(action, *args):
+        nonlocal record_warning
+        try:
+            action(*args)
+        except Exception as error:
+            if not record_warning:
+                notice(f"WARNING outer record unavailable: {error}")
+                record_warning = True
+
     child, pending, tree, path = None, [], None, None
     gate_read = gate_write = status_read = status_write = None
     suite_id = os.environ.get("GOLEMS_HEAVY_SUITE_ID", "")
@@ -349,8 +363,11 @@ def run_command(command, timeout=1800, grace=10, slot=None):
             cmd_sha256=hashlib.sha256(os.fsencode(" ".join(command))).hexdigest(), cwd=os.getcwd(), started_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
         if not nested:
             directory = Path.home() / ".local/state/golems/runs"
-            directory.mkdir(parents=True, exist_ok=True, mode=0o700); directory.chmod(0o700)
-            path = directory / (suite_id + ".json"); save_run(path, record)
+            def prepare_directory():
+                directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+                directory.chmod(0o700)
+            outer_record(prepare_directory)
+            path = directory / (suite_id + ".json"); outer_record(save_run, path, record)
             notice(f"SUITE START pid={os.getpid()} slot={slot} suite_id={suite_id} timeout={timeout:g}")
         if pending: raise InterruptedError()
         gate_read, gate_write = private_pipe()
@@ -377,7 +394,7 @@ os.read(control, 1)
         tree = SuiteTree(leader, suite_id, nested)
         os.write(gate_write, b"1")
         record.update(leader_pid=child.pid, leader_birth=leader.start if leader else None, pgid=child.pid)
-        if path: save_run(path, record)
+        if path: outer_record(save_run, path, record)
         while True:
             tree.scan(markers=False)  # Capture authority before reaping; marker inspection is cleanup-only.
             try: message = os.read(status_read, 64)
@@ -402,8 +419,9 @@ os.read(control, 1)
             record.update(reason=reason, cleanup="ok" if ok else "failed", members_seen=[vars(row) for row in tree.known.values()],
                 signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
                 unattributed_marker_processes=list(tree.unattributed.values()))
-            save_run(path, record); save_run(path.with_suffix(".cleanup.json"), record)
-            if ok: path.unlink()
+            outer_record(save_run, path, record)
+            outer_record(save_run, path.with_suffix(".cleanup.json"), record)
+            if ok: outer_record(lambda: path.unlink(missing_ok=True))
         if not nested: notice(f"SUITE DONE pid={os.getpid()} slot={slot} suite_id={suite_id} exit={result} reason={reason} cleanup={'ok' if ok else 'failed'}{inner_failure_pointer(suite_id)}")
     except (OSError, proc.ProcIdentityUnavailable):
         notice("supervision unavailable; refusing START" if child is None else "CLEANUP FAILED; supervision unavailable")
@@ -416,9 +434,8 @@ os.read(control, 1)
                 record.update(reason=reason, cleanup="failed", members_seen=[vars(row) for row in tree.known.values()],
                     signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
                     unattributed_marker_processes=list(tree.unattributed.values()))
-                try: save_run(path, record)
-                except OSError: pass
-        elif path: path.unlink(missing_ok=True)
+                outer_record(save_run, path, record)
+        elif path: outer_record(lambda: path.unlink(missing_ok=True))
     finally:
         for fd in (gate_read, gate_write, status_read, status_write):
             if fd is not None: os.close(fd)

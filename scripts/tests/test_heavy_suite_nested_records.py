@@ -166,6 +166,8 @@ def test_all_diagnostic_collections_capped(monkeypatch, tmp_path, nested):
                   'identity_unavailable_reasons', 'unattributed_marker_processes'):
         assert len(record[field]) == 200, field
         assert record[field + '_total'] >= 250, field
+    assert record['signalled'][0]['pid'] == record['leader_pid']
+    assert record['signalled'][-1] == {'pid': 500249}
     for key, reasons in record['identity_unavailable_reasons'].items():
         assert len(reasons) == 200
         assert record['identity_unavailable_reasons_totals'][key] == 250
@@ -181,3 +183,63 @@ def test_diagnostics_preserve_base_exceptions(monkeypatch, error):
         m.inner_failure_pointer(uuid.uuid4().hex)
     with pytest.raises(error):
         m.save_inner_failure({}, None, 'fixture', [])
+
+
+def test_cap_keeps_head_and_tail_without_mutation():
+    m = load_module()
+    entries = [{'pid': i, 'signal': 'SIGKILL' if i == 250 else 'SIGTERM'} for i in range(251)]
+    source = {'signalled': entries, 'identity_unavailable_reasons': {'1': list(range(251))}}
+    capped = m.cap_record(source)
+    assert capped['signalled'] == entries[:100] + entries[-100:]
+    assert capped['signalled_total'] == 251
+    assert capped['identity_unavailable_reasons']['1'] == list(range(100)) + list(range(151, 251))
+    assert capped['identity_unavailable_reasons_totals']['1'] == 251
+    assert len(entries) == len(source['identity_unavailable_reasons']['1']) == 251
+
+
+@pytest.mark.parametrize('write_number', [1, 2, 3, 4])
+@pytest.mark.parametrize('status', [0, 7])
+def test_outer_write_failure_keeps_exit(monkeypatch, tmp_path, capsys, write_number, status):
+    m = load_module()
+    monkeypatch.setenv('HOME', str(tmp_path))
+    monkeypatch.delenv('GOLEMS_HEAVY_SUITE_ID', raising=False)
+    native_save = m.save_run
+    calls = 0
+    def broken(*args):
+        nonlocal calls
+        calls += 1
+        if calls == write_number:
+            raise TypeError('injected outer write failure')
+        return native_save(*args)
+    monkeypatch.setattr(m, 'save_run', broken)
+    assert m.run_command([sys.executable, '-c', f'raise SystemExit({status})'], grace=.1) == status
+    assert capsys.readouterr().err.count('WARNING outer record unavailable') == 1
+
+
+@pytest.mark.parametrize('error', [KeyboardInterrupt, SystemExit])
+def test_outer_write_preserves_base_exceptions(monkeypatch, tmp_path, error):
+    m = load_module()
+    monkeypatch.setenv('HOME', str(tmp_path))
+    monkeypatch.delenv('GOLEMS_HEAVY_SUITE_ID', raising=False)
+    def broken(*args):
+        raise error()
+    monkeypatch.setattr(m, 'save_run', broken)
+    with pytest.raises(error):
+        m.run_command([sys.executable, '-c', 'pass'], grace=.1)
+
+
+def test_outer_failure_record_does_not_mask_supervision_error(monkeypatch, tmp_path, capsys):
+    m = load_module()
+    monkeypatch.setenv('HOME', str(tmp_path))
+    monkeypatch.delenv('GOLEMS_HEAVY_SUITE_ID', raising=False)
+    native_save = m.save_run
+    def broken(path, record):
+        if record.get('cleanup') == 'failed':
+            raise TypeError('injected recovery write failure')
+        return native_save(path, record)
+    def unavailable(*args, **kwargs):
+        raise m.proc.ProcIdentityUnavailable('injected supervision failure')
+    monkeypatch.setattr(m, 'save_run', broken)
+    monkeypatch.setattr(m.SuiteTree, 'scan', unavailable)
+    assert m.run_command([sys.executable, '-c', 'pass'], grace=.1) == 70
+    assert capsys.readouterr().err.count('WARNING outer record unavailable') == 1
