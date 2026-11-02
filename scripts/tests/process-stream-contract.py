@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Base-recorded, whole-pipeline process-stream command/file contract."""
+"""Base-recorded, whole-pipeline process-stream command/file contract.
+
+--record-start-tokens migrates only the legacy fixture token line after every
+other field still matches the base oracle and its existing projections.
+"""
 import json
 import os
 from pathlib import Path
@@ -112,6 +116,9 @@ def normalized(value, sandbox, root):
     value = value.replace(str(sandbox), "<SANDBOX>").replace(str(root), "<TREE>")
     value = value.replace(str(ROOT), "<TREE>")
     value = re.sub(r"pid=[0-9]+", "pid=<PID>", value)
+    # Keep empty/invalid identities visible: only real canonical tokens normalize.
+    value = re.sub(r"(?m)^process_start=v2:(?:darwin:[0-9]+\.[0-9]{6}|linux:[0-9a-f]{72}:[0-9]+)$",
+                   "process_start=<PROCESS_START>", value)
     value = re.sub(r"\.stage-scoring\.started\.tmp\.[0-9]+", ".stage-scoring.started.tmp.<PID>", value)
     value = re.sub(r"agy failed after [0-9]+s", "agy failed after <ELAPSED>s", value)
     # BSD wc pads redirected counts; GNU wc does not. Keep the count exact.
@@ -160,6 +167,10 @@ def capture(root, case):
         tree = sandbox / "tree"
         shutil.copytree(root / "scripts/stalker", tree / "scripts/stalker")
         shutil.copytree(root / "scripts/lib", tree / "scripts/lib")
+        identity = root / "scripts/hooks/proc_identity.py"
+        if identity.exists():  # Historical --record roots predate the native helper.
+            (tree / "scripts/hooks").mkdir()
+            shutil.copy(identity, tree / "scripts/hooks/proc_identity.py")
         shutil.copytree(root / "standards", tree / "standards")
         (tree / "scripts/ci").mkdir()
         for file in ("model-roles.mjs", "ci/check-model-role-drift.mjs"):
@@ -230,6 +241,7 @@ def capture(root, case):
 
 def main():
     record = len(sys.argv) == 3 and sys.argv[1] == "--record"
+    record_start = sys.argv[1:] == ["--record-start-tokens"]
     root = Path(sys.argv[2] if record else os.environ.get("PROCESS_STREAM_CONTRACT_ROOT", ROOT)).resolve()
     if record:
         assert (root / ENTRY).read_bytes() == subprocess.check_output(["git", "show", f"{BASE}:{ENTRY}"], cwd=ROOT)
@@ -241,7 +253,16 @@ def main():
         if record:
             path.write_text(json.dumps(actual, indent=2, ensure_ascii=False) + "\n")
         else:
-            expected = with_background_policy(json.loads(path.read_text()))
+            oracle = json.loads(path.read_text())
+            if record_start:
+                for step in oracle:
+                    marker = step["files"].get(".stage-scoring.started")
+                    if marker is not None:
+                        token = re.findall(r"(?m)^process_start=(.*)$", marker)
+                        assert token in (["Wed Jun 25 01:00:00 2026"], ["<PROCESS_START>"]), token
+                        step["files"][".stage-scoring.started"] = marker.replace(
+                            "process_start=Wed Jun 25 01:00:00 2026", "process_start=<PROCESS_START>")
+            expected = with_background_policy(oracle)
             roles = json.loads((root / "standards/model-roles.json").read_text())["roles"]
             expected = json.loads(json.dumps(expected).replace("<CODEX_MODEL>", roles["codex.implement"]["model"])
                                   .replace("<AGY_MODEL>", roles["gemini.gather.text"]["model"]))
@@ -259,6 +280,9 @@ def main():
                     step["commands"].sort(key=lambda item: json.dumps(item, sort_keys=True))
             assert actual == expected, (f"{case} differs from base golden plus background policy {path}: "
                                         f"{first_difference(actual, expected)}")
+            if record_start:
+                path.write_text(path.read_text().replace(
+                    "process_start=Wed Jun 25 01:00:00 2026", "process_start=<PROCESS_START>"))
         print(f"PASS {case}: {len(actual)} step(s)")
 
 

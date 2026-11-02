@@ -12,7 +12,7 @@
       ".stage-2-frames.done": "2026-06-25T01:02:03Z\n",
       ".stage-3-signals.done": "2026-06-25T01:02:03Z\n",
       ".stage-scoring.failed": "status=FAILED\nstage=scoring\nretryable=true\nreason=available scorers failed for 2 candidate segment(s); incomplete gems were removed\ngem_count=0\nchat_count=2\nstream_dir=run/examplechannel-2026-06-25-040516\ngems_path=run/examplechannel-2026-06-25-040516/gems.md\nchat_path=run/examplechannel-2026-06-25-040516/chat.log\nfailed_at=2026-06-25T01:02:03Z\n",
-      ".stage-scoring.started": "status=STARTED\npid=<PID>\nstarted_at=2026-06-25T01:02:03Z\nprocess_start=Wed Jun 25 01:00:00 2026\n",
+      ".stage-scoring.started": "status=STARTED\npid=<PID>\nstarted_at=2026-06-25T01:02:03Z\nprocess_start=<PROCESS_START>\n",
       "chat-clip-markers.txt": "[00:00:10] a: wow !clip\n",
       "chat-velocity.txt": "# Chat velocity (msgs per 10s) | avg: 1.0\n0 1 [00:00] stream=71690 [1194:50]\n20 1 [00:20] stream=71710 [1195:10]\n",
       "chat.log": "[00:00:10] a: wow !clip\n[00:00:30] b: hype\n",
