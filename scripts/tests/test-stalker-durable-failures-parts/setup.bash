@@ -18,8 +18,6 @@ setup() {
     export PS_CALLS="$TMPDIR_/ps-calls"
     printf '#!/bin/bash\necho called >> "%s"\nexit 99\n' "$PS_CALLS" > "$FAKE_BIN/ps"
     chmod +x "$FAKE_BIN/ps"
-    mkdir -p "$TMPDIR_/poison-bin"
-    mv "$FAKE_BIN/ps" "$TMPDIR_/poison-bin/ps"
 
     STALKER_COMPLETION_SCRIPT="$TMPDIR_/synthetic-completion.mjs"
     STALKER_COMPLETION_CALLS="$TMPDIR_/completion-calls"

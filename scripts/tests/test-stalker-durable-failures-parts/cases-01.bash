@@ -253,7 +253,7 @@ function split_case_017() {
     mismatch_dir="$TMPDIR_/mismatched-live-identity"
     sleep 20 &
     live_pid=$!
-    if ! identity_c="$(PATH="$TMPDIR_/poison-bin:$PATH" LC_ALL=C stalker_process_start_identity "$live_pid")"; then
+    if ! identity_c="$(PATH="$FAKE_BIN:$PATH" LC_ALL=C stalker_process_start_identity "$live_pid")"; then
         kill "$live_pid" 2>/dev/null || true
         wait "$live_pid" 2>/dev/null || true
         return 1

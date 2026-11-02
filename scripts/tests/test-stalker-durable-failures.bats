@@ -77,7 +77,7 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
         dir="$TMPDIR_/migration"
         write_scoring_marker "$dir" "$$" "$token"
         printf 'partial gems\n' > "$dir/gems.md"
-        run env PATH="$TMPDIR_/poison-bin:$PATH" bash -c '
+        run env PATH="$FAKE_BIN:$PATH" bash -c '
             source "$1"
             if [ "$3" = v2:darwin:1.000000 ]; then
                 stalker_process_start_identity() { return 2; }
@@ -110,6 +110,33 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
     run stalker_reconcile_interrupted_scoring_run "$TMPDIR_/gone"
     [ "$status" -eq 0 ]
     [ ! -f "$TMPDIR_/gone/gems.md" ] && [ -f "$TMPDIR_/gone/.stage-scoring.failed" ]
+}
+
+@test "post-stream watchdog uses native identities for TERM and KILL without ps" {
+    python3 - "$POST_STREAM" "$TMPDIR_/watchdog-function.sh" <<'PY'
+import pathlib, re, sys
+source = pathlib.Path(sys.argv[1]).read_text()
+functions = re.findall(r"^stalker_(?:process_tree|terminate_full_process_tree)\(\) \{\n.*?^\}", source, re.M | re.S)
+assert len(functions) == 2
+pathlib.Path(sys.argv[2]).write_text("\n".join(functions) + "\n")
+PY
+    mkfifo "$TMPDIR_/ready"
+    exec 9<> "$TMPDIR_/ready"
+    python3 -u -c 'import signal; signal.signal(signal.SIGTERM, signal.SIG_IGN); print("ready", flush=True); signal.pause()' > "$TMPDIR_/ready" &
+    child_pid=$!
+    read -r -t 5 ready <&9 || ready=""
+    run env PATH="$FAKE_BIN:$PATH" bash -c '
+        source "$1"; source "$2"
+        stalker_terminate_full_process_tree "$3" 0
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/watchdog-function.sh" "$child_pid"
+    survived=0
+    kill -0 "$child_pid" 2>/dev/null && survived=1
+    kill -KILL "$child_pid" 2>/dev/null || true
+    wait "$child_pid" 2>/dev/null || true
+    exec 9>&-
+    printf 'ready=%s status=%s survived=%s output=%s\n' "$ready" "$status" "$survived" "$output"
+    [ ! -e "$PS_CALLS" ]
+    [ "$ready" = ready ] && [ "$status" -eq 0 ] && [ "$survived" -eq 0 ]
 }
 
 @test "reconcile backfills scoring done without deleting complete gems" {
