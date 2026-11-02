@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { checkVerdict } from './check-comment.mjs';
 import { parseRows, findSticky, readVerdict, expectedReporting } from './table.mjs';
+import { guardedPrefixes, manifestsAt } from './guarded-set.mjs';
 export const GRACE_MINUTES = 120;
 export function checkLiveFreshness({ guardedHead, pulls, comments, expectedReal, allowedHeads = [guardedHead], expectedReportOnly = [], now = Date.now(), prior }) {
   const pr = pulls.find(p => p.merged_at && p.base?.ref === 'master' && p.merge_commit_sha === guardedHead);
@@ -47,10 +48,10 @@ export function main() {
       if (scope.status === 1) { console.log('live-tier freshness PASS: non-guarded PR exempt'); return 0; }
       if (scope.status !== 0) throw new Error('cannot determine guarded PR paths');
     }
-    // Same guarded directories as guarded-paths.sh. Candidate-only changes do not invalidate live.
+    // The same guarded set as guarded-paths.sh (guarded-set.mjs: static + hook-loaded dirs, from master's manifest).
+    // Candidate-only changes do not invalidate live.
     const guardedAt = ref => run('git', ['log', '--first-parent', '-1', '--format=%H', ref, '--',
-      'scripts/hooks/', 'skills/golem-powers/human-confirm-gate/', 'skills/golem-powers/git-guardian/',
-      'skills/golem-powers/tmp-block/', 'scripts/repogolem/', 'scripts/ratchet/']);
+      ...guardedPrefixes(manifestsAt([ref]))]);
     const guardedHead = guardedAt('origin/master');
     if (!/^[0-9a-f]{40}$/.test(guardedHead)) throw new Error('no guarded master commit');
     // master's rows are the base side: before this lands they may carry the previous parity policy.
