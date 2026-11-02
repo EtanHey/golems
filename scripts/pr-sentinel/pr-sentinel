@@ -28,7 +28,7 @@ FIELDS = '''fragment F on PullRequest {
  author { login } repository { nameWithOwner viewerPermission } comments(last:20) { nodes { body createdAt } }
  commits(last:1) { nodes { commit { committedDate statusCheckRollup {
   contexts(first:100) { pageInfo { hasNextPage } nodes {
-   ... on CheckRun { name conclusion status completedAt startedAt databaseId }
+   ... on CheckRun { name conclusion status completedAt startedAt databaseId checkSuite { app { id } } }
    ... on StatusContext { context state createdAt }
   } }
  } } } }
@@ -121,18 +121,24 @@ def classify(pr):
     contexts = rollup['contexts'] if rollup else dict(nodes=[], pageInfo={})
     if contexts['pageInfo'].get('hasNextPage'):
         raise TransientError(f'{pr["url"]}: check inventory exceeds 100 contexts')
-    completed, pending = defaultdict(list), False
+    latest = {}
     for c in contexts['nodes']:
+        name = c.get('name') or c['context']
+        is_check = 'name' in c
+        app = ((c.get('checkSuite') or {}).get('app') or {}).get('id') if is_check else None
+        key = (name, app, is_check)
+        # Run identity orders reruns, including queued runs with no startedAt.
+        # Completion time must not let an older overlapping run win.
+        order = (c.get('databaseId') or 0,
+                 c.get('startedAt') or c.get('createdAt') or c.get('completedAt') or '')
+        if key not in latest or order >= latest[key][0]:
+            latest[key] = (order, c)
+    pending = False
+    for (name, _, _), (_, c) in latest.items():
         result = c.get('conclusion') or c.get('state')
         if c.get('status') not in (None, 'COMPLETED') or result in ('PENDING', 'EXPECTED'):
             pending = True
-            continue
-        completed[c.get('name') or c['context']].append(
-            (c.get('completedAt') or c.get('createdAt') or '', c.get('databaseId') or 0, result))
-    for name, runs in completed.items():
-        runs.sort()
-        if runs[-1][2] in {'FAILURE', 'ERROR', 'TIMED_OUT', 'ACTION_REQUIRED', 'STARTUP_FAILURE'} or any(
-                r[2] == 'CANCELLED' and not any(s > r and s[2] == 'SUCCESS' for s in runs) for r in runs):
+        elif result in {'FAILURE', 'ERROR', 'TIMED_OUT', 'ACTION_REQUIRED', 'STARTUP_FAILURE', 'CANCELLED'}:
             return 'RED', f'{" ".join(name.split())[:80]} failed'
     if pr.get('reviewDecision') == 'CHANGES_REQUESTED':
         return 'REVIEW', 'a review asked for changes'
@@ -188,6 +194,9 @@ def scan(cfg, path, state, dry):
     prs, links, now = inventory(cfg), owners(cfg), time.time()
     batches = defaultdict(list)
     for url, pr in prs.items():
+        if pr.get('state') != 'OPEN':
+            state.pop(url, None)
+            continue
         kind, reason = classify(pr)
         ownership, target = owner(links.get(url, []))
         row = state.setdefault(url, dict(sent={}, held={}))
