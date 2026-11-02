@@ -39,7 +39,9 @@ if name == "date":
               "+%Y%m%dT%H%M%SZ": "20260625T010203Z", "+%s": "1750813323"}
     print(values.get(fmt, "Wed Jun 25 01:02:03 UTC 2026"))
 elif name == "ps":
-    print("Wed Jun 25 01:00:00 2026")
+    trace()
+    (data / "ps-called").write_text("called\n")
+    sys.exit(99)
 elif name == "mktemp":
     counter = data / "mktemp-count"
     n = int(counter.read_text()) + 1 if counter.exists() else 1
@@ -223,6 +225,7 @@ def capture(root, case):
             proc = subprocess.run(["/bin/bash", str(tree / ENTRY), *arguments], cwd=data,
                                   env=env, input="caller stdin sentinel\n", text=True,
                                   capture_output=True, timeout=40)
+            assert not (data / "ps-called").exists(), "forbidden ps invocation"
             files = {normalized(str(p.relative_to(run)), sandbox, root):
                      normalized(p.read_text(errors="replace"), sandbox, root)
                      for p in sorted(run.rglob("*")) if p.is_file()}

@@ -46,7 +46,10 @@ stalker_terminate_full_process_tree() {
     [[ "$pid" =~ ^[0-9]+$ ]] || return 2
     # Snapshot before TERM: an exiting parent can orphan a TERM-ignoring child.
     while IFS= read -r child; do
-        identity="$(stalker_process_start_identity "$child" 2>/dev/null)" || continue
+        identity="$(stalker_process_start_identity "$child" 2>/dev/null)" || {
+            log "WARNING: cannot read process identity for pid $child; watchdog cannot safely terminate it"
+            continue
+        }
         pids+=("$child"); identities+=("$identity")
     done < <(stalker_process_tree "$pid")
     for child in "${pids[@]}"; do kill -TERM "$child" 2>/dev/null || true; done

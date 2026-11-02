@@ -114,11 +114,7 @@ write_diagnostics() {
     printf '\n--- launchctl ---\n'
     launchctl print "$SERVICE" 2>&1 || true
     printf '\n--- matching processes ---\n'
-    pids="$(pgrep -f 'stream-watcher|yt-dlp|ffmpeg|twitch-lurk|process-stream' | tr '\n' ' ' || true)"
-    if [ -n "$pids" ]; then
-      pid_csv="$(printf '%s' "$pids" | xargs | tr ' ' ',')"
-      ps -p "$pid_csv" -o pid,ppid,etime,stat,command 2>&1 || true
-    fi
+    pgrep -lf 'stream-watcher|yt-dlp|ffmpeg|twitch-lurk|process-stream' 2>&1 || true
     printf '\n--- watcher.log tail ---\n'
     tail -n 80 "${LOG_DIR}/watcher.log" 2>&1 || true
     printf '\n--- watcher-error.log tail ---\n'

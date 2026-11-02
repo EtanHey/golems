@@ -256,3 +256,67 @@ SH
     [ "$status" -eq 0 ]
     [[ "$output" =~ RAN\ [0-9]+ ]]
 }
+
+@test "readable scoring owner survives EPERM from kill zero" {
+    dir="$TMPDIR_/eperm"
+    write_scoring_marker "$dir" 424242 'v2:darwin:1.000000'
+    echo partial > "$dir/gems.md"
+    run bash -c '
+        source "$1"
+        kill() { echo "Operation not permitted" >&2; return 1; }
+        stalker_process_start_identity() { echo v2:darwin:1.000000; }
+        stalker_reconcile_interrupted_scoring_run "$2"
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$dir"
+    [ "$status" -eq 0 ]
+    [ -f "$dir/.stage-scoring.started" ]
+    [ "$(cat "$dir/gems.md")" = partial ]
+    [ ! -f "$dir/.stage-scoring.failed" ]
+}
+
+extract_termination_functions() {
+    python3 - "$POST_STREAM" "$TMPDIR_/termination.sh" <<'PYTHON'
+import pathlib, re, sys
+source = pathlib.Path(sys.argv[1]).read_text()
+functions = re.findall(r"^stalker_(?:process_tree|terminate_full_process_tree)\(\) \{\n.*?^\}", source, re.M | re.S)
+assert len(functions) == 2
+pathlib.Path(sys.argv[2]).write_text("\n".join(functions) + "\n")
+PYTHON
+}
+
+@test "unverifiable identity after TERM never receives KILL" {
+    extract_termination_functions
+    run bash -c '
+        source "$1"
+        stalker_process_tree() { echo 424242; }
+        # Identity reads happen in subshells, so persist the read counter.
+        stalker_process_start_identity() {
+            if [ -e "$READ_MARKER" ]; then return 2; fi
+            : > "$READ_MARKER"
+            echo v2:darwin:1.000000
+        }
+        kill() { echo "$*" >> "$SIGNALS"; }
+        sleep() { :; }
+        export READ_MARKER="$2/read" SIGNALS="$2/signals"
+        stalker_terminate_full_process_tree 424242 0
+        cat "$SIGNALS"
+    ' _ "$TMPDIR_/termination.sh" "$TMPDIR_"
+    [ "$status" -eq 0 ]
+    [ "$output" = '-TERM 424242' ]
+}
+
+@test "missing native identity helper makes watchdog failure loud" {
+    extract_termination_functions
+    run bash -c '
+        source "$1"; source "$2"
+        STREAM_HELPERS_DIR="$3/missing/lib"
+        stalker_process_tree() { echo 424242; }
+        export SIGNALS="$3/signals"
+        kill() { echo "$*" >> "$SIGNALS"; }
+        sleep() { :; }
+        log() { echo "$*"; }
+        stalker_terminate_full_process_tree 424242 0
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/termination.sh" "$TMPDIR_"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *WARNING*identity* ]]
+    [ ! -e "$TMPDIR_/signals" ]
+}
