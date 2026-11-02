@@ -292,3 +292,98 @@ def test_command_does_not_inherit_launch_control_pipes(tmp_path, closed_stdin):
     probe = "import os;\nfor fd in range(3,256):\n try: os.fstat(fd)\n except OSError: continue\n raise AssertionError('launch descriptor inherited')"
     result = subprocess.run([sys.executable, str(SCRIPT), '--', sys.executable, '-c', probe], env={**env(tmp_path), 'GOLEMS_HEAVY_FORCE': '1'}, capture_output=True, text=True, timeout=5, preexec_fn=(lambda: os.close(0)) if closed_stdin else None)
     assert result.returncode == 0, result.stderr
+
+
+_SPAWNER = ("import os,subprocess,sys\nprint('ready',flush=True)\nos.read(0,1)\n"
+            "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'],env={'PATH': os.defpath},"
+            "start_new_session=True,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)\n"
+            "print(p.pid,flush=True)\nos.read(0,1)\n")
+
+
+def _detached_child_case(monkeypatch, reread):
+    # A member B is unreadable for one scan while it starts C in a new session with a reset env (no lineage, no
+    # marker), then exits. Codex reviews 2026-11-02: pruning, and accepting a reused PID's re-read, both reported
+    # cleanup ok with C alive. `reread` is what B's re-read returns: 'fail', 'ok' (same incarnation) or 'mismatch'.
+    m = load_module()
+    marker = uuid.uuid4().hex
+    b = subprocess.Popen([sys.executable, '-c', _SPAWNER], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+                         start_new_session=True, env={**os.environ, 'GOLEMS_HEAVY_SUITE_ID': marker})
+    c = None
+    try:
+        assert b.stdout.readline().strip() == 'ready'
+        leader = proc.identity(b.pid)
+        tree = m.SuiteTree(leader, marker, False)
+        b.stdin.write('1'); b.stdin.flush()
+        c = proc.identity(int(b.stdout.readline()))
+        assert c is not None and c.ppid == b.pid
+        native_snapshot, native_identity = m.proc.children_snapshot, m.proc.identity
+        # A reused PID: same number, another process's birth key (ours: real, different, and the platform's type).
+        replacement = m.proc.ProcIdentity(leader.pid, 1, leader.pid + 100000, leader.uid, leader.ruid,
+                                          native_identity(os.getpid()).start)
+
+        def unreadable_b():
+            snapshot = native_snapshot()
+            snapshot.pop(b.pid, None)
+            snapshot.unavailable[b.pid] = m.proc.ProcIdentityUnavailable(
+                'injected transient read failure', reason='other', uid=leader.uid, ruid=leader.ruid,
+                ppid=leader.ppid, pgid=leader.pgid)
+            return snapshot
+
+        def identity(pid):
+            if pid == b.pid and reread == 'fail':
+                raise m.proc.ProcIdentityUnavailable('still unreadable', reason='other', uid=leader.uid)
+            if pid == b.pid and reread == 'mismatch':
+                return replacement
+            return native_identity(pid)
+
+        monkeypatch.setattr(m.proc, 'children_snapshot', unreadable_b)
+        monkeypatch.setattr(m.proc, 'identity', identity)
+        tree.scan(markers=False)
+        monkeypatch.setattr(m.proc, 'children_snapshot', native_snapshot)
+        monkeypatch.setattr(m.proc, 'identity', native_identity)
+        b.stdin.write('1'); b.stdin.flush(); b.wait(timeout=5)
+        ok, survivors = m.cleanup_tree(tree, b, 0.5)
+        child_alive = proc.same_process(c)  # before teardown kills it
+        return tree, ok, c, child_alive
+    finally:
+        if b.poll() is None: b.kill()
+        b.wait(timeout=5)
+        b.stdin.close(); b.stdout.close()
+        if c is not None and proc.same_process(c):
+            with proc.pinned_process(c) as fd:
+                if fd is None: os.kill(c.pid, signal.SIGKILL)
+                else: signal.pidfd_send_signal(fd, signal.SIGKILL)
+
+
+@pytest.mark.parametrize('reread', ['fail', 'mismatch'])
+def test_unreadable_parent_of_a_detached_child_keeps_cleanup_failed(monkeypatch, reread):
+    tree, ok, c, child_alive = _detached_child_case(monkeypatch, reread)
+    assert child_alive, 'fixture: the detached child must still be running when cleanup decides'
+    assert not ok, 'an unreadable member that may have hidden a child must never let cleanup pass'
+    assert f'identity-unavailable:{tree.leader.pid}' in tree.incomplete
+    assert tree.identity_reasons[tree.leader.pid] == [{'reason': 'other', 'uid': tree.leader.uid}]
+
+
+def test_reread_of_the_same_incarnation_links_and_cleans_its_child(monkeypatch):
+    tree, ok, c, child_alive = _detached_child_case(monkeypatch, 'ok')
+    assert ok and not tree.incomplete
+    assert (c.pid, c.start) in tree.known
+    assert not child_alive, 'cleanup itself must have killed the linked child'
+
+
+def test_rereads_are_capped_per_scan(monkeypatch):
+    m = load_module()
+    tree = m.SuiteTree(None, 'a' * 32, False)
+    pids = range(500000, 501400)
+    for pid in pids: tree.known[(pid, (1, 0))] = object()
+
+    class Snapshot(dict):
+        unavailable = {pid: m.proc.ProcIdentityUnavailable('x', reason='other') for pid in pids}
+
+    calls = []
+    monkeypatch.setattr(m.proc, 'children_snapshot', lambda: Snapshot())
+    monkeypatch.setattr(m, 'runtime_wait', lambda seconds: calls.append(seconds))
+    monkeypatch.setattr(m.proc, 'identity', lambda pid: (_ for _ in ()).throw(m.proc.ProcIdentityUnavailable('y')))
+    tree.scan(markers=False, cleanup=True)
+    assert len(calls) == m.SuiteTree.REREAD_LIMIT * 2
+    assert len(tree.incomplete) == 1400
