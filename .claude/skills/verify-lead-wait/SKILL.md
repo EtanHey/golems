@@ -64,7 +64,9 @@ wrong atomic boundary, or unsupported fairness premise is a modeling error: corr
 the mapping, retain the finding history, and rerun every config. Intended behavior
 changes require both the source change and corresponding model update.
 
-Scope: one PR, one lead and trusted orc; nudges bounded to 0..2. CI, action, unhold
+Scope: one PR, one lead and trusted orc; nudges bounded to 0..2. Sentinel-on also
+assumes a configured `escalate_thread`. Missing optional config leaves nudges working
+but disables orc escalation; the configured-sentinel proof does not cover that mode. CI, action, unhold
 and nudge have weak fairness. No clock, timer deadline, network outage, delivery,
 scheduler liveness, review approval, or successful fix/merge is proved. Handoff is
 an abstract outcome, not an atomic watch-transfer implementation. Passing TypeOK
