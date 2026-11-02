@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // Heuristic for conventional Bats blocks and split test/helper functions. Their
 // closing brace is at column zero. Checks multiline assertions and commands
-// after semicolons, do/then keywords and case-arm patterns. && lists are excluded: conditional predicates cannot be
-// distinguished from assertions without a shell parser. Quoted/evaluated snippets can
-// produce false positives; complex heredocs and generated shell are out of scope.
+// after semicolons, do/then keywords and case-arm patterns. && lists are
+// excluded: conditional predicates cannot be distinguished from assertions
+// without a shell parser. else, brace groups and negated assertions are not
+// recognized. Quoted/evaluated snippets and a bare ) before [[ can produce
+// false positives; complex heredocs and generated shell are out of scope.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -42,8 +44,10 @@ export function assertions(source) {
     if (!inTest) continue;
     const start = i;
     let command = lines[i];
-    if (!/(?:^|;|&&|\b(?:do|then)\b|\))\s*\[\[\s/.test(command)) continue;
-    while ((assertionEnd(command, command.indexOf('[[') + 2) === -1 || /(?:\\|&&)\s*$/.test(command)) && i + 1 < lines.length) command += '\n' + lines[++i];
+    const opener = /(?:^|;|&&|\b(?:do|then)\b|\))\s*\[\[\s/.exec(command);
+    if (!opener) continue;
+    while ((assertionEnd(command, opener.index + opener[0].length) === -1 || /(?:\\|&&)\s*$/.test(command)) &&
+        i + 1 < lines.length && !/^}\s*$/.test(lines[i + 1])) command += '\n' + lines[++i];
     const next = lines.slice(i + 1).find(line => !/^\s*(?:#.*)?$/.test(line));
     for (const match of command.matchAll(/(?:^|;|&&|\b(?:do|then)\b|\))\s*\[\[\s/g)) {
       const end = assertionEnd(command, match.index + match[0].length);

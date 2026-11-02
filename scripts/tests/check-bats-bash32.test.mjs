@@ -103,3 +103,14 @@ test('checks one-line loop, branch and case-arm assertions', () => {
     assert.deepEqual(assertions(`@test "probe" {\n${body.replace(']]', ']] || false')}\ntrue\n}\n`), [], body);
   }
 });
+
+for (const body of [
+    "grep -q '[[:space:]]' f; [[ a == b ]] || false",
+    'echo "do [[ x ]]"',
+    String.raw`[[ $x == $'it\'s' ]] || false`,
+  ]) {
+  test(`later tests survive ${body}`, () => {
+    const source = `@test "a" {\n${body}\n}\n\n@test "b" {\n[[ c == d ]]\ntrue\n}\n`;
+    assert.deepEqual(assertions(source), [6], body);
+  });
+}
