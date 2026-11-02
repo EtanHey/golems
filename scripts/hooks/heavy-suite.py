@@ -164,17 +164,42 @@ class SuiteTree:
         self.leader, self.suite_id, self.nested = leader, suite_id.encode(), nested
         self.known = {} if leader is None else {(leader.pid, leader.start): leader}
         self.incomplete, self.signalled, self.unattributed = set(), [], {}
+        self.identity_reasons = {}
+
+    REREAD_LIMIT = 8  # per scan: at most 8 x 2 x 5 ms of waiting, however many reads fail
+
+    @staticmethod
+    def reread(pid, attempts=2):
+        # AIDEV-NOTE: never drop or skip an identity-unavailable entry on weaker evidence (Codex reviews 2026-11-02:
+        # an unreadable member can start a detached, env-reset child that no lineage or marker scan links, and a
+        # reused PID is a different process). scan() re-reads only KNOWN members and accepts the result only when it
+        # is the same incarnation (birth key already in `known`); everything else stays fail-closed.
+        for _ in range(attempts):
+            runtime_wait(.005)
+            try: observed = proc.identity(pid)
+            except proc.ProcIdentityUnavailable: continue
+            return observed
+        return None
 
     def scan(self, markers=True, cleanup=False):
         snapshot = proc.children_snapshot()
         rows = {pid: proc.ProcIdentity(pid, *row[:2], row[3], row[4], row[2]) for pid, row in snapshot.items()}
         leader = rows.get(self.leader.pid) if self.leader else None
         group_live = leader is not None and leader.key == self.leader.key and proc.same_process(leader)
+        rereads = 0
         for pid, error in snapshot.unavailable.items():
             scoped_unknown = cleanup and ((group_live and error.pgid == leader.pgid) or
                 any(key[0] == error.ppid for key in self.known))
             if error.reason != "gone" and (scoped_unknown or any(key[0] == pid for key in self.known)):
+                if rereads < self.REREAD_LIMIT and any(key[0] == pid for key in self.known):
+                    rereads += 1
+                    observed = self.reread(pid)
+                    if observed is not None and (observed.pid, observed.start) in self.known:
+                        rows[pid] = observed; continue
                 self.incomplete.add(f"identity-unavailable:{pid}")
+                seen = self.identity_reasons.setdefault(pid, [])
+                detail = {"reason": error.reason, "uid": error.uid}
+                if detail not in seen: seen.append(detail)
         found = {}
         for _ in range(len(rows) + 1):
             changed = False
@@ -330,7 +355,7 @@ os.read(control, 1)
         if pending and reason != "timeout": result, reason = 128 + pending[0], "cancelled"
         if path:
             record.update(reason=reason, cleanup="ok" if ok else "failed", members_seen=[vars(row) for row in tree.known.values()],
-                signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
                 unattributed_marker_processes=list(tree.unattributed.values()))
             save_run(path, record); save_run(path.with_suffix(".cleanup.json"), record)
             if ok: path.unlink()
@@ -343,7 +368,7 @@ os.read(control, 1)
             ok, survivors = cleanup_tree(tree, child, grace)
             if path:
                 record.update(reason=reason, cleanup="failed", members_seen=[vars(row) for row in tree.known.values()],
-                    signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                    signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
                     unattributed_marker_processes=list(tree.unattributed.values()))
                 try: save_run(path, record)
                 except OSError: pass

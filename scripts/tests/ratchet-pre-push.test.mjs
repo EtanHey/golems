@@ -12,7 +12,8 @@ function fixture(check) {
   try {
     for (const path of ['.githooks', 'scripts/ratchet', 'scripts/hooks', 'scripts/ci', 'bin']) mkdirSync(join(dir, path), { recursive: true });
     for (const path of ['.githooks/pre-push', 'scripts/ratchet/pre-push.mjs', 'scripts/ratchet/run-rows.mjs',
-      'scripts/ratchet/table.mjs', 'scripts/ratchet/guarded-paths.sh', 'scripts/hooks/machine-host.mjs']) {
+      'scripts/ratchet/table.mjs', 'scripts/ratchet/guarded-paths.sh', 'scripts/ratchet/guarded-set.mjs',
+      'scripts/hooks/hook-paths.mjs', 'scripts/hooks/machine-host.mjs']) {
       copyFileSync(resolve(path), join(dir, path));
     }
     const rows = { schema: 1, rows: [
@@ -54,7 +55,8 @@ if(name==='git') {
     else { if(e.CLEANUP_FAIL) process.exit(1); fs.rmSync(a[2],{recursive:true}); }
     process.exit(0);
   }
-  if(a[0]==='diff') { if(e.DIFF_ERROR) process.exit(2); console.log(e.UNGUARDED?'README.md':'scripts/ratchet/example'); }
+  if(a[0]==='diff') { if(e.DIFF_ERROR) process.exit(2); const f=e.UNGUARDED?'README.md':'scripts/ratchet/example'; if(a.includes('-z')) process.stdout.write(f+'\\0'); else console.log(f); }
+  else if(a[0]==='ls-tree') {} // no hook manifest in the fixture: static guarded set
   else if(a[0]==='show') console.log(fs.readFileSync(e.ROWS_FILE,'utf8'));
   else if(a[0]==='rev-parse' && a.includes('--local-env-vars')) {}
   else if(a[0]==='rev-parse') console.log(a.some(x=>x.includes('origin/master'))?'${base}':'${head}');
@@ -109,7 +111,7 @@ test('suite or diff errors block; deleted refs are ignored; every pushed ref is 
   const deleted = `refs/heads/gone ${'0'.repeat(40)} refs/heads/gone ${old}\n`;
   expect(run({}, deleted).status).toBe(0);
   const r = run({}, deleted + `refs/heads/fixture ${head} refs/heads/fixture ${old}\n`);
-  expect(r.status).toBe(0); expect(r.calls).toContain(`diff --name-only ${base}...${head}`);
+  expect(r.status).toBe(0); expect(r.calls).toContain(`diff --name-only -z ${base}...${head}`);
 }));
 test('queued CI preserves stdin refs and releases its lease before the Mac installer', () => fixture((run, dir) => {
   const helper = join(dir, 'Gits/golems/.worktrees/hooks-live/scripts/hooks');
@@ -144,7 +146,7 @@ sys.exit(result)
 test('multiple live refs measure each candidate, isolating another SHA from the current checkout', () => fixture(run => {
   const other = 'd'.repeat(40);
   const r = run({}, `refs/heads/fixture ${head} refs/heads/fixture ${old}\nrefs/heads/other ${other} refs/heads/other ${old}\n`);
-  expect(r.status).toBe(0); expect(r.calls).toContain(`diff --name-only ${base}...${other}`);
+  expect(r.status).toBe(0); expect(r.calls).toContain(`diff --name-only -z ${base}...${other}`);
   expect(r.calls).toContain(`worktree add --detach`); expect(r.calls).toContain('worktree remove');
   expect(r.calls).toContain('bun install --frozen-lockfile --ignore-scripts');
   const failed = run({ ROW_FAIL: '1', CLEANUP_FAIL: '1' }, `refs/heads/other ${other} refs/heads/other ${old}\n`);

@@ -301,3 +301,57 @@ test('pattern-selected pytest exit 5 never retries or records a flake', t => {
   assert.doesNotMatch(r.stderr, /RETRY|FLAKE/);
   assert.equal(requireLedger(r).length, 0);
 });
+
+test('budget defers suites successfully and writes an audit receipt', t => {
+  const r = fixture(t, ['scripts/example.sh'], { GOLEMS_PREPUSH_BUDGET_SECONDS: '1' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /DEFERRED to hosted CI \(budget 1s\):/);
+  assert.equal(suiteRuns(r), 0);
+  assert.ok(requireLedger(r).some(e => e.event === 'budget-deferred' && e.commands.includes(suite)));
+});
+test('zero budget is unlimited and records durations', t => {
+  const r = fixture(t, ['scripts/example.sh'], { GOLEMS_PREPUSH_BUDGET_SECONDS: '0' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(suiteRuns(r), 1);
+  const ledger = JSON.parse(readFileSync(join(r.root, '.golems/prepush-durations.json'), 'utf8'));
+  assert.ok(Number.isFinite(ledger[suite]) && ledger[suite] >= 0);
+});
+test('corrupt duration ledger warns and uses default estimate', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    GOLEMS_PREPUSH_BUDGET_SECONDS: '1', files: { 'scripts/ci/durations.json': '{broken' },
+    GOLEMS_PREPUSH_DURATIONS: 'scripts/ci/durations.json',
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /WARN.*duration ledger/);
+  assert.equal(suiteRuns(r), 0);
+});
+test('direct suites precede fallback and each group uses fastest estimates first', t => {
+  const r = fixture(t, ['scripts/example.sh', 'scripts/unknown.sh'], {
+    GOLEMS_PREPUSH_BUDGET_SECONDS: '0', GOLEMS_PREPUSH_DURATIONS: 'scripts/ci/durations.json',
+    files: { 'scripts/ci/durations.json': JSON.stringify({ [suite]: 50,
+      'node --test scripts/tests/other.test.mjs': 0.001,
+      'node scripts/ci/run-bats-suites.mjs --run test-example.bats': 1 }) },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(r.log.indexOf('run-bats-suites.mjs') < r.log.indexOf('example.test.mjs'));
+  assert.ok(r.log.indexOf('example.test.mjs') < r.log.indexOf('other.test.mjs'));
+});
+test('budget stops after a completed fast suite before the next estimate overruns', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    GOLEMS_PREPUSH_BUDGET_SECONDS: '2', GOLEMS_PREPUSH_DURATIONS: 'scripts/ci/durations.json',
+    files: { 'scripts/ci/durations.json': JSON.stringify({ [suite]: 0.01 }) },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(suiteRuns(r), 1);
+  assert.match(r.stderr, /DEFERRED/);
+  assert.equal(requireLedger(r).find(e => e.event === 'budget-deferred').commands.length, 1);
+});
+test('an executed failure blocks even with a budget and updates its estimate', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    GOLEMS_PREPUSH_BUDGET_SECONDS: '2', GOLEMS_PREPUSH_DURATIONS: 'scripts/ci/durations.json',
+    FAIL_COMMAND: suite, files: { 'scripts/ci/durations.json': JSON.stringify({ [suite]: 0.01 }) },
+  });
+  assert.equal(r.status, 7, r.stderr);
+  assert.equal(suiteRuns(r), 2);
+  assert.notEqual(JSON.parse(readFileSync(join(r.root, 'scripts/ci/durations.json'), 'utf8'))[suite], 0.01);
+});

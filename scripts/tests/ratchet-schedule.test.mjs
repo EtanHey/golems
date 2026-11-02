@@ -140,11 +140,14 @@ test('workflow keeps raw table status on other events and serializes schedules',
   assert.match(workflow, /cancel-in-progress: \$\{\{ github.event_name != 'schedule' \}\}/);
   assert.match(workflow, /github.event_name == 'schedule' && 'schedule'/);
   assert.match(workflow, /run: node --test scripts\/tests\/ratchet-schedule.test.mjs/);
-  // Cause identity must follow the existing freshness producer's guarded path set.
-  const paths = source => [...source.matchAll(/'([^']+\/)'/g)].map(match => match[1]);
+  // Cause identity must use the same guarded set as freshness: both derive it from guarded-set.mjs, never a hand-written list
+  // (FV3 NoFalseFresh: hand-written lists missed 13 of 17 hook-loaded dirs).
   const schedule = readFileSync(new URL('../ratchet/schedule.mjs', import.meta.url), 'utf8');
   const freshness = readFileSync(new URL('../ratchet/live-freshness.mjs', import.meta.url), 'utf8');
-  assert.deepEqual(paths(schedule), paths(freshness));
+  for (const source of [schedule, freshness]) {
+    assert.match(source, /guardedPrefixes\(manifestsAt\(\[/);
+    assert.doesNotMatch(source, /'skills\/golem-powers\/tmp-block\/'/);
+  }
 });
 
 test('real CLI emits the warning and summary on repeat; API outage stays RED', () => {
