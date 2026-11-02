@@ -58,7 +58,7 @@ RIGHT: Post structured verdict as a PR comment after a clean bot-reviewed loop
 Merge authority: [Merge Authority](pr-creation.md#merge-authority) (Etan's ruling; SSOT).
 
 After a clean other-vendor review at `headRefOid` and green required checks, leads merge now
-with `gh pr merge <N> --merge --admin` on EtanHey repos; `--admin` is the default. Never ask
+with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos; `--admin` is the default. Never ask
 Etan to approve or merge a PR; only true one-way doors wait for him. Workers follow the
 merge authority in their brief.
 
@@ -69,7 +69,7 @@ branch retirement follows the workspace lifecycle contract and any stacked-PR ho
 
 ### Worktree-Locked Local Merge
 
-In multi-worktree repos, `gh pr merge <N> --merge --delete-branch` can fail
+In multi-worktree repos, `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` can fail
 **locally** even though the PR is fully mergeable: the post-merge branch cleanup
 checks out the default branch, and git refuses when another worktree holds it
 (`failed to run git: fatal: 'main' is already used by worktree at

@@ -15,7 +15,7 @@
 | Trigger review bots | `gh pr comment <N> --body "@codex review"` | Shell path, not a native reviewer tool |
 | Trigger Bugbot | `gh pr comment <N> --body "@cursor @bugbot review"` | **Opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and never where the repo's `AGENTS.md` bans it (§ 8a.0). Not part of the default panel. Re-review with `@cursor @bugbot re-review` |
 | Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | Fetch once on a wake that shows a change — never in a poll loop |
-| Merge | `gh pr merge <N> --merge --delete-branch` | See worktree note below |
+| Merge | `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` | See worktree note below |
 
 ## Critical Gaps
 
