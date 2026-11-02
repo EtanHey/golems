@@ -37,7 +37,7 @@ Every skill change goes through this pipeline. No exceptions.
 - Document intent, inputs, outputs, edge cases
 - Classify: **capability uplift** (may become obsolete) vs **encoded preference** (durable)
 - **Load first, then follow** ([references/placement-vs-wording.md](references/placement-vs-wording.md)):
-  - If the user never says the trigger words, the skill needs placement to load: a ROUTE row, or a hook for a deterministic input shape (a link, a file type). Description wording alone barely moved it in E2/E3 (Haiku/Sonnet 0/30); results are model-specific (Opus already loaded /large-plan 10/30 at baseline).
+  - If the user never says the trigger words, the skill needs placement to load: a ROUTE row, or a hook for a deterministic input shape (a link, a file type). Description wording alone barely moved it in E2/E3 (Haiku/Sonnet 0/30); results are model-specific (on Opus, /large-plan loaded 10/30 with the old ROUTE row and 30/30 with R3's precisely rewritten row).
   - Once the text is loaded, precise, case-specific wording is the lever. Measure it per case.
 
 ### 2. EVAL DESIGN — Create Structured Test Cases
