@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync, rmSy
 import { resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 test('post-merge wrapper requires --lease-pr and picks only that PR\'s clean exact-head worktree', () => {
+  mkdirSync(resolve('docs.local/l3-tests'), { recursive: true }); // absent in a fresh CI checkout
   const dir = mkdtempSync(resolve('docs.local/l3-tests/post-merge-'));
   try {
     mkdirSync(join(dir, 'scripts/ratchet'), { recursive: true });
@@ -58,6 +59,7 @@ else process.exit(9);
 
 
 test('post-merge wrapper blocks missing Codex trust before lease selection or receipts', () => {
+  mkdirSync(resolve('docs.local/l3-tests'), { recursive: true });
   const dir = mkdtempSync(resolve('docs.local/l3-tests/post-merge-trust-'));
   try {
     mkdirSync(join(dir, 'scripts/ratchet'), { recursive: true });
