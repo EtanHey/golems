@@ -47,7 +47,11 @@ stalker_terminate_full_process_tree() {
     # Snapshot before TERM: an exiting parent can orphan a TERM-ignoring child.
     while IFS= read -r child; do
         identity="$(stalker_process_start_identity "$child" 2>/dev/null)" || {
-            log "WARNING: cannot read process identity for pid $child; watchdog cannot safely terminate it"
+            if [ ! -r "$STREAM_HELPERS_DIR/../hooks/proc_identity.py" ]; then
+                log "WARNING: cannot read process identity for pid $child; helper $STREAM_HELPERS_DIR/../hooks/proc_identity.py missing or unreadable; watchdog cannot safely terminate it"
+            else
+                log "WARNING: cannot read process identity for pid $child; watchdog cannot safely terminate it"
+            fi
             continue
         }
         pids+=("$child"); identities+=("$identity")
@@ -66,6 +70,21 @@ run_with_stalker_timeout() {
     local kill_after="${STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER:-1}"
     local external_kill_after="$kill_after"
     shift 2
+
+    # Probe the real helper before launching anything: existence alone does not
+    # prove python3 can run it or this platform can provide process identities.
+    local identity_helper="$STREAM_HELPERS_DIR/../hooks/proc_identity.py"
+    if ! { [ -r "$identity_helper" ] && command -v python3 >/dev/null 2>&1 &&
+        stalker_process_start_identity "$$" >/dev/null 2>&1; }; then
+        if [ -z "$timeout_bin" ]; then
+            timeout_bin="$(stalker_resolve_command timeout || stalker_resolve_command gtimeout || true)"
+        fi
+        if [ -z "$timeout_bin" ]; then
+            log "ERROR: watchdog identity helper $identity_helper is unavailable (requires python3); refusing to start watched command without timeout/gtimeout"
+            return 125
+        fi
+        log "WARNING: watchdog identity helper $identity_helper is unavailable (requires python3); using external timeout $timeout_bin"
+    fi
 
     if [ -n "$timeout_bin" ]; then
         # GNU timeout treats -k 0 as disabled, while the built-in watchdog

@@ -309,14 +309,84 @@ PYTHON
     run bash -c '
         source "$1"; source "$2"
         STREAM_HELPERS_DIR="$3/missing/lib"
-        stalker_process_tree() { echo 424242; }
+        sleep 60 &
+        live_pid=$!
+        cleanup() { builtin kill "$live_pid"; wait "$live_pid" 2>/dev/null || true; }
+        trap cleanup EXIT
+        stalker_process_tree() { echo "$live_pid"; }
         export SIGNALS="$3/signals"
         kill() { echo "$*" >> "$SIGNALS"; }
         sleep() { :; }
         log() { echo "$*"; }
-        stalker_terminate_full_process_tree 424242 0
+        stalker_terminate_full_process_tree "$live_pid" 0
+        builtin kill -0 "$live_pid"
     ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/termination.sh" "$TMPDIR_"
     [ "$status" -eq 0 ]
-    [[ "$output" == *WARNING*identity* ]] || false
+    [[ "$output" == *WARNING*proc_identity.py* ]] || false
     [ ! -e "$TMPDIR_/signals" ]
+}
+
+extract_timeout_functions() {
+    sed -n '/^stalker_timeout_seconds()/,/^queue_brainlayer_replay()/p' "$POST_STREAM" | sed '$d' > "$TMPDIR_/timeout.sh"
+}
+
+@test "watchdog refuses to launch without runnable identities and no external timeout" {
+    extract_timeout_functions
+    for failure in missing broken python; do
+        run /bin/bash -c '
+            source "$1"; source "$2"
+            log() { echo "$*"; }
+            stalker_resolve_command() { return 1; }
+            case "$4" in
+                missing) STREAM_HELPERS_DIR="$3/missing/lib" ;;
+                broken)
+                    mkdir -p "$3/tree/lib" "$3/tree/hooks"
+                    echo "invalid python !" > "$3/tree/hooks/proc_identity.py"
+                    STREAM_HELPERS_DIR="$3/tree/lib" ;;
+                python) python3() { return 127; } ;;
+            esac
+            run_with_stalker_timeout "" 1s touch "$3/started"
+        ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/timeout.sh" "$TMPDIR_" "$failure"
+        [ "$status" -eq 125 ]
+        [[ "$output" == *ERROR*proc_identity.py* ]] || false
+        [ ! -e "$TMPDIR_/started" ]
+    done
+}
+
+@test "missing identities use external timeout with one startup warning" {
+    extract_timeout_functions
+    run /bin/bash -c '
+        source "$1"; source "$2"
+        STREAM_HELPERS_DIR="$3/missing/lib"
+        log() { echo "$*"; }
+        stalker_resolve_command() { echo external_timeout; }
+        external_timeout() {
+            echo "external:$1:$2"
+            shift 2
+            "$@"
+        }
+        run_with_stalker_timeout "" 1s touch "$3/started"
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/timeout.sh" "$TMPDIR_"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *WARNING*proc_identity.py*external* ]] || false
+    [[ "$output" == *external:--kill-after=1s:1s* ]] || false
+    [ -e "$TMPDIR_/started" ]
+}
+
+@test "dead pid with installed identity helper receives no signal" {
+    extract_termination_functions
+    run /bin/bash -c '
+        source "$1"; source "$2"
+        sleep 0 &
+        dead_pid=$!
+        wait "$dead_pid"
+        stalker_process_tree() { echo "$dead_pid"; }
+        kill() { echo "unexpected signal"; return 1; }
+        sleep() { :; }
+        log() { echo "$*"; }
+        stalker_terminate_full_process_tree "$dead_pid" 0
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/termination.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"unexpected signal"* ]] || false
+    [[ "$output" != *proc_identity.py* ]] || false
 }
