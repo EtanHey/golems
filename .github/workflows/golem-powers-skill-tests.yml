@@ -153,8 +153,6 @@ jobs:
           python -m pytest scripts/tests/test_lifecycle_no_temp_clones.py -q
           python -m pytest scripts/tests/test_mutant_inputs_changed.py -q
           python -m pytest scripts/tests/test_pr_watch.py -q
-          python -m pytest scripts/tests/test_pristine_deltas.py -q
-          python -m pytest scripts/tests/test_pristine_tmpblock_api.py -q
           python -m pytest scripts/tests/test_pyyaml_runtime.py -q
           python -m pytest scripts/tests/test_run_skill_tests.py -q
           python -m pytest scripts/tests/test_stalker_admission.py -q
@@ -329,6 +327,10 @@ jobs:
 
       - name: Enforce Telegram retirement
         run: node scripts/ci/check-telegram-retirement.mjs
+
+      # These harness regressions belong with the full-history checkout above.
+      - name: Pristine harness regression suites
+        run: python -m pytest scripts/tests/test_pristine_deltas.py scripts/tests/test_pristine_tmpblock_api.py -q
 
       - name: Pristine split baseline gate
         run: python scripts/ci/pristine-harness.py check
