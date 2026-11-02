@@ -11,15 +11,21 @@ Triggers on: gemini research, Gemini Deep Research, NotebookLM, notebook researc
 
 > **🔑 DRIVE-WORKSPACE RULE (Etan, standing — never violate):** Etan's Gemini has his Google Drive workspace CONNECTED. Every deep-research prompt must REFERENCE the relevant Google Doc(s) by NAME (e.g. *"ground this in my 'Context Strategy' doc in my Drive"*) so Gemini pulls them itself via the Drive connector. **NEVER instruct Etan to attach/upload files** — he should never have to attach anything. Reference doc names, not attachments.
 
-## Grounding prep
+## Grounding prep — your FIRST action, before any search or draft
 
-When asked to research this, find out what's current, or compare options, check
-whether the question needs current project state. If it does, the lead dispatches
-a sub-agent to run `/research-lifecycle` preparation first: verify local context,
-refresh the Drive grounding corpus, and return exact grounding doc names and the
-lifecycle receipt. Pick its execution profile per `/agent-routing` § Execution
-capability (Drive write + shell); a read-only gatherer may only report staleness.
-Do not emit the prompt while preparation is blocked.
+Done condition: no research prompt leaves this skill until a `/research-lifecycle`
+preparation receipt is back.
+
+1. Right after loading this skill, dispatch ONE sub-agent. Do not search Drive, grep
+   or draft the prompt yourself first. Its brief says: "Run `/research-lifecycle`
+   preparation for <project>: verify local context, refresh the Drive grounding
+   corpus, and return the exact grounding doc names and the lifecycle receipt."
+   Pick its execution profile per `/agent-routing` § Execution capability (Drive
+   write + shell); a read-only gatherer may only report staleness.
+2. Skip step 1 only when the user says the question needs no project state (pure
+   web research). Say so in one line ("No grounding prep: web-only research").
+3. Draft the prompt from the receipt's doc names. While preparation runs or is
+   blocked, tell Etan the prompt follows the receipt; never emit it before.
 
 Include one line in the hand-off to Etan: "Before Start Research, check that Drive
 is on as a Deep Research source so it reads the named grounding docs."
