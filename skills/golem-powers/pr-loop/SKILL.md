@@ -32,7 +32,7 @@ Run `scripts/ci/release-gate.mjs <repo>` at the feature-batch gate, not after ev
 Keep these as four explicit turns:
 
 1. Fix.
-2. Commit, push, and open or update the ready-for-review PR.
+2. Commit, push, and open the PR as a draft; mark it ready only when the inner loop is done.
 3. Babysit CI and reviews to green on the latest commit; answer findings and re-push.
 4. Merge only when the dispatch authority permits it.
 
@@ -44,10 +44,14 @@ Run the loop in this order:
 2. Implement under repository law and run the relevant tests.
 3. Invoke `/never-fabricate`. Per-PR visual proof is required below; builder self-QA and real-client runs remain at the feature-batch gate.
 4. Run the bounded local CodeRabbit pre-commit pass when available, then commit with the ratified identity trailer.
-5. After the lead-routed other-vendor inner review is complete, push, create a non-draft PR with a
-   signed body, and apply exactly one `size:*` label. In T3, immediately link every created/taken-over/
-   pushed PR and every stack layer; linking does not arm a watch.
-6. Apply the target repo's bot policy, invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 parent watch and its receipt first; bounded reads for a decision, one cheap watcher only outside T3, never a polling turn.
+5. Push and open the PR as a **draft** (`gh pr create --draft`) with a signed body and exactly one
+   `size:*` label (`scripts/ci/pr-size-labels.sh suggest` before opening, `compute` after; an L PR
+   carries a `size-why:` line). In T3, immediately link every created/taken-over/pushed PR and every
+   stack layer; linking does not arm a watch. The lead-routed other-vendor inner review runs on the
+   draft, and CI runs locally (the repo's pre-push hooks and suites), so review bots stay quiet.
+   When the inner reviewer APPROVEs and the local checks pass, run `gh pr ready <N>`. That flip
+   starts the bots, once (Etan, 2026-11-01).
+6. After the flip, apply the target repo's bot policy (never request a bot review by hand when the flip already triggered one), invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 parent watch and its receipt first; bounded reads for a decision, one cheap watcher only outside T3, never a polling turn.
 7. Classify every finding; fix real bugs, reply to every CRITICAL/MAJOR/HIGH finding, push, and request re-review.
 8. Confirm required checks and reviews are green on `headRefOid`, then either hand off unmerged or merge.
 9. After an authorized merge, verify the remote merge/content, fast-forward the root checkout ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory)), and update tracking; release/install/live-probe at the feature-batch gate, the deploy hop routed to `deploy-local-prod`. Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](../_shared/lifecycle/CONTRACT.md); record REMOVED, RETAINED or acknowledged TRANSFERRED. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
@@ -86,6 +90,7 @@ Etan, 2026-10-28, via orc/PHX: "the cloud reviewers get actual proof of changes 
 
 Every visual PR requires before/after screenshots at desktop AND 390 px width,
 one GIF per animation/interaction, and e2e screenshot diffs before merge.
+**When you're done, close the browser you opened** (Etan, 2026-11-01: no background reaper; the skill closes it). Close your own tabs and quit any browser you started: agent browser → `page.close()` then `agent-browser release <lease>`; a headless or Playwright browser → `browser.close()`; T3 preview → `t3_preview_close`; a cmux browser pane → `close_surface`; a temporary browser profile → quit that instance. Never leave a window open on Etan's screen.
 Use the [PR-body template](references/pr-creation.md#visual-proof-template).
 Links must be reviewable GitHub attachments or committed files; ignored paths
 alone are insufficient. Reviewers inspect and cite the artifacts; a review that
@@ -111,8 +116,11 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - Missing Loop-record = not ready. Use the PR-body template; a same-vendor review states its reason.
 
 - Never merge with zero reviews. Waiting 15 minutes does not waive the review gate; merge only after at least one review and the required review conditions pass.
-- Draft handling depends on effective bot settings; do not rely on draft state to suppress usage and
-  never merge a draft. Keep the other-vendor inner review before opening the ready PR.
+- Draft first, ready once: the inner loop runs on a draft and the PR flips to ready only after the
+  inner reviewer APPROVEs and local checks pass. Bots are configured to skip drafts; a bot that still
+  reviews drafts is a config bug to report to ci-hygiene, not a reason to skip the draft.
+  Draft handling depends on effective bot settings, so check [Bots after the flip](#bots-after-the-flip)
+  before relying on it. Never merge a draft.
 - Avoid a duplicate manual bot request when an eligible current-head automatic review already exists;
   request only missing/stale evidence under the permitted bot policy.
 - A green run on an older SHA is not green. Verify the PR head matches the latest pushed commit.
@@ -134,13 +142,34 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - Never delete a stacked PR's base branch before its children are retargeted and mergeable.
 - Never merge or clean up from the linked worktree holding the active session.
 
+## Bots after the flip
+
+ci-hygiene owns the bot config. This is what each bot does once a draft is marked ready
+(2026-11-01). Where it says unverified, the first draft→ready PRs will settle it. Marking ready also
+starts the heavy CI suites, which skip drafts in golems.
+
+| Bot | After `gh pr ready` | What you do |
+|---|---|---|
+| CodeRabbit | Skips drafts; marking ready triggers its one review (vendor docs, verified 2026-11-01; ~8–9 min in our repos). On only in core repos (brainlayer, voicelayer), with no re-review per push. | Don't request it by hand after ready. Other repos: request `@coderabbitai review` only for a core-risk change. |
+| Codex | Draft behavior unverified. | If it hasn't reviewed ~10 min after ready, comment `@codex review` once. |
+| Copilot | Reviews only on request; automatic review is not enabled. | Don't request it. |
+| Macroscope | Marking ready triggers a correctness check by design; set to manual-only, which should stop it (unverified). | Request it only for a core-risk PR. |
+| Bugbot | Silent on drafts; on ready it may post only a spend-limit notice until set to "run only when mentioned". | Ignore that notice; request it only for a core-risk PR. |
+| Qodo, Greptile | Don't run automatically. | Request one only for a core-risk PR, per the repo's bot policy. |
+| DeepSource, CodeQL | CI-style checks on every push. | Nothing. |
+
+The 10-minute fallbacks above apply only while the PR is still blocked on something else anyway.
+Never hold a merge for a bot: follow [Merge Cadence](#merge-cadence-risk-sized), and record a silent
+bot as unavailable. A bot that reviews a draft anyway is a config
+bug: tell ci-hygiene.
+
 ## Decision Table
 
 | Situation | Action |
 |---|---|
 | Brief says lead owns merge | Worker stops at reviewed PR handoff; lead verifies latest head before merge |
 | Brief grants this seat merge authority | Complete review loop, merge with the required method, then verify and clean up |
-| PR is draft | Finish the inner review, mark ready; bot behavior depends on effective settings, never merge a draft |
+| PR is draft | Inner loop in progress: finish it, then `gh pr ready <N>`. Visibly held: follow the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns). Never merge a draft |
 | Review conflicts with design | Read the cited design and investigate; dismiss only with explicit evidence |
 | XS/S PR, fast CI green at head, one clean routed review | Merge now (seat with merge authority); no wait for bots or heavy gates |
 | PR touches daemon/socket/MCP/protocol | Merge on the size cadence; queue the real-client run for the feature-batch gate (run it now for a single-PR batch) |

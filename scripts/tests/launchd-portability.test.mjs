@@ -73,4 +73,5 @@ describe("launchd templates are portable", () => {
       rmSync(scratch, { recursive: true, force: true });
     }
   });
+
 });

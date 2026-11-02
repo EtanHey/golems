@@ -1373,5 +1373,12 @@
       "reason": "Illustrative model-only co-author attribution; not dispatch selection.",
       "count": 1
     }
-  ]
+,
+    {
+      "file": "skills/golem-powers/pr-loop/SKILL.md",
+      "marker": "| Codex | Draft behavior unverified. | If it hasn't reviewed ~10 min after ready, comment `@codex review` once. |",
+      "class": "FUNCTIONAL",
+      "reason": "Names the Codex review bot and its @codex review trigger command; not implementer/reviewer routing.",
+      "count": 1
+    }  ]
 }

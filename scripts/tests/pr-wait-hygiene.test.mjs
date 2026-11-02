@@ -121,6 +121,7 @@ test('waiting policy: watch receipt proves registration without a routine list',
 // Root cause 2026-11-01: PRs rotted on settled threads, unadopted worker/bot PRs and silent holds.
 test('waiting policy: every turn ends with an open-PR check; waiting is not a state', () => {
   const paragraph = policyParagraph('**Watching is not waiting: check your open PRs before every turn ends.**');
+  assert.ok(paragraph.includes('A draft in its inner loop: check that its implementer or reviewer is still running'));
   for (const text of ["owning lead's duty, never a worker's", 'Before ending ANY turn', 'every open PR it owns',
     'fix it now or route the fix now', 'merge it under your lane', 'update the branch yourself',
     '"Waiting" is never a state for a red or green PR you own']) assert.ok(paragraph.includes(text), text);
@@ -176,7 +177,13 @@ test('waiting policy: offline checker is diagnostic and cannot override runtime'
 test('bot policy: configuration-aware drafts and no duplicate current-head requests', () => {
   const skill = doc('skills/golem-powers/pr-loop/SKILL.md');
   for (const text of ['Draft handling depends on effective bot settings',
-    'never merge a draft', 'current-head automatic review already exists']) assert.ok(skill.includes(text), text);
+    'Never merge a draft', 'current-head automatic review already exists',
+    // Draft first, ready once (2026-11-01): the inner loop runs on a draft; the flip starts the bots.
+    'Draft first, ready once', '`gh pr create --draft`', 'run `gh pr ready <N>`',
+    'never request a bot review by hand when the flip already triggered one']) assert.ok(skill.includes(text), text);
+  const handoffs = doc('skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md');
+  assert.ok(handoffs.includes('RIGHT: gh pr create --draft → inner loop on the draft → gh pr ready <N> → bot loop → merge'));
+  assert.ok(!handoffs.includes('WRONG: gh pr create --draft'), 'draft-first is no longer WRONG');
   for (const path of ['skills/golem-powers/pr-loop/SKILL.md',
     'skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md']) {
     assert.ok(!doc(path).replaceAll('**', '').includes('Draft PRs silently skip bot reviews'), path);

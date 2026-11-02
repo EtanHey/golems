@@ -72,19 +72,21 @@ Resolve roles via `node scripts/model-roles.mjs <role> --field model|alias` (one
 Choose effort per `/large-plan` phase, record `role · effort · why`, and pass it explicitly
 at dispatch. The gate (`model-pin-gate`) is the backstop, not the decision.
 
-## Review-Without-Merge ≠ Draft
+## Draft First, Ready Once
 
-Draft handling depends on effective bot settings; it does not guarantee usage suppression.
-Keep the other-vendor inner review before opening a ready PR; never merge a draft.
+The inner loop runs on a draft PR, so review bots stay quiet while the implementer and the
+other-vendor reviewer iterate (Etan, 2026-11-01). Run CI locally during that loop: the repo's
+pre-push hooks and suites. Flip to ready only when the inner reviewer APPROVEs and the local
+checks pass; the flip starts the bots, once. Never merge a draft.
 
 ```
-WRONG: gh pr create --draft … assuming bots cannot run
-RIGHT: Finish inner review, open ready; if draft exists, `gh pr ready <N>`.
-       Request only missing/stale current-head bot coverage under the permitted policy.
+WRONG: open a ready PR, then iterate with the inner reviewer while bots re-review every push
+WRONG: leave the PR in draft and call it "review without merge"
+RIGHT: gh pr create --draft → inner loop on the draft → gh pr ready <N> → bot loop → merge
 ```
 
-"Review without merge" means mark ready-for-review and run the review loop — NOT
-leave the PR in draft state.
+Draft handling depends on effective bot settings. Bots are configured to skip drafts; a bot that
+still reviews a draft is a config bug for ci-hygiene, who owns the bot config.
 
 ## Lead Merge-Timing
 

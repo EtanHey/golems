@@ -117,6 +117,8 @@ cmux workspace-action --action set-title --title "🤖 orcClaude"
 
 ## In-App Browser
 
+When you're done with a browser pane, close it (`close_surface`, via the cmuxlayer MCP). Never leave one open on Etan's screen.
+
 ```bash
 # Open browser pane (splits alongside terminal)
 cmux new-pane --type browser --direction right --url "http://localhost:3000"

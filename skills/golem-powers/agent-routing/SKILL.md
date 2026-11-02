@@ -86,10 +86,10 @@ When Daybreak Blue returns, evaluate its first security PRs: if they show more r
 ### Inner loop (sequential)
 
 - The implementer goes first. The reviewer is spawned or briefed only after the implementer reports done: its DONE marker or report line, or for a cloud implementer, PR head stable ≥10 min with checks finished.
-- A reviewer never reads a half-finished diff. They iterate until both are happy; then the implementer opens the remote PR and runs `/pr-loop`. Merge follows the lane's merge authority after the PR loop is happy.
+- A reviewer never reads a half-finished diff. The implementer may push and open the PR as a **draft** at any point, so the work is visible and linked. They iterate until both are happy; then the implementer marks the draft ready (`gh pr ready <N>`) and runs the rest of `/pr-loop`. Merge follows the lane's merge authority after the PR loop is happy.
 - The LEAD routes the reviewer; a worker never starts its own. No reviewer pane means ask the lead. The lead is the escalation path, not a gate; its call is final when invoked, and it delegates the review decision to a reviewer worker.
 
-This inner-loop pair review happens before the PR. `/pr-loop` bot and PR reviewers are separate. Pane mechanics live in `/collab-monitor` section "Completion -> Reviewer Handoff".
+This inner-loop pair review happens while the PR is a draft, before it is marked ready. `/pr-loop` bot and PR reviewers are separate and start at the ready flip. Pane mechanics live in `/collab-monitor` section "Completion -> Reviewer Handoff".
 
 ### Review sizing
 
@@ -341,7 +341,7 @@ explain the evidence-backed state, and store the correction separately.
 ## Cross-Skill Ownership
 
 - `/repogolem`: launcher flags, defaults, resume behavior, and raw escape hatches.
-- `/pr-loop`: branch through ready-for-review PR; Routing rules (SSOT) above owns the pre-PR pair.
+- `/pr-loop`: branch through draft PR to ready-for-review; Routing rules (SSOT) above owns the inner-loop pair, which runs on the draft.
 - `/collab-monitor`: cmux/collab-mail only: pane worker monitoring and reviewer handoff mechanics. T3 children use completion notifications instead (§ T3-native dispatch).
 - `/qa-video`: video QA/debrief pipeline; its runner reads the frames itself, and Gemini gathering is optional pre-sorting.
 - `/whats-new`: tool-surface changes; they do not revise Routing rules (SSOT) by implication.

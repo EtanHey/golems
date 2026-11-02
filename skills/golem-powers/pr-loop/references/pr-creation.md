@@ -107,8 +107,12 @@ If the assigned worktree differs from the session cwd, every `apply_patch` filen
 # Push branch first
 git push -u origin HEAD
 
-# Create PR with structured body
-gh pr create --title "feat: description" --body-file - <<'EOF'
+# Size it before opening (prints the branch size vs origin/master)
+scripts/ci/pr-size-labels.sh suggest
+
+# Create the PR as a DRAFT with a structured body; flip it with `gh pr ready <N>`
+# only after the inner reviewer APPROVEs and local checks pass
+gh pr create --draft --title "feat: description" --body-file - <<'EOF'
 ## Summary
 - What changed and why
 

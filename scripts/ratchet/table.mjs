@@ -132,7 +132,7 @@ function rulings(prBody) {
 }
 
 // `baseRows: null` is accepted only with `bootstrap: true` (the base has no row file yet).
-export function evaluate({ rows, results, head, baseRows, bootstrap = false, baseline = null, prBody = "", runner = null, now: clock = Date.now() }) {
+export function evaluate({ rows, results, head, baseRows, bootstrap = false, baseline = null, prBody = "", runner = null, event = null, now: clock = Date.now() }) {
   if (!head) throw new Error("head is required: results are checked against the SHA under test");
   if (!baseRows && !bootstrap) throw new Error("base rows are required (or bootstrap for a base without a row file)");
   const selected = rows.rows.filter((row) => !runner || row.runner === runner);
@@ -145,11 +145,15 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
     const activeReportOnly = isReportOnly(row, clock);
     const measured = row.id === "installed-skill-parity" ? typeof now?.value === "boolean"
       : validDiskMeasurement(now?.measurement) && now.value === now.measurement.health;
-    const status = now === undefined ? "MISSING" : activeReportOnly
+    let status = now === undefined ? "MISSING" : activeReportOnly
       ? measured ? now.value ? "PASS" : "WARN" : "FAIL"
       : judge(row, now.value) ? "PASS" : "FAIL";
+    // Post-merge receipts are produced after the push run; PRs and schedules enforce freshness.
+    const pushWarning = event === "push" && runner === "ci" && row.runner === "ci"
+      && row.id === "live-tier-freshness" && status === "FAIL" && now?.value === false;
+    if (pushWarning) status = "WARN";
     const numeric = row.direction !== "pass" && typeof now?.value === "number" && typeof before?.value === "number";
-    return { ...row, activeReportOnly, value: now?.value, detail: now?.detail, measurement: now?.measurement, baseline: before?.value, delta: numeric ? now.value - before.value : null, status };
+    return { ...row, activeReportOnly, pushWarning, value: now?.value, detail: now?.detail, measurement: now?.measurement, baseline: before?.value, delta: numeric ? now.value - before.value : null, status };
   });
 
   // Direction is checked across EVERY base row, whatever --runner selects.
@@ -239,7 +243,7 @@ export function renderTable(evaluation, { marker, title = "Ratchet table", produ
       ? `free_gb=${m.free_gb} floor=${m.floor} merged_worktrees=${m.merged_worktrees} ceiling=${m.ceiling}; measured health ${m.health ? "PASS" : "FAIL"}`
       : row.detail;
     const value = detail ? `${cell(row, row.value)} (${escapeCell(detail)})` : cell(row, row.value);
-    lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status}${row.activeReportOnly ? (row.report_only_until ? ` (report-only, until ${row.report_only_until.slice(0, 10)})` : " (report-only)") : ""} |`);
+    lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status}${row.pushWarning ? " (push event)" : ""}${row.activeReportOnly ? (row.report_only_until ? ` (report-only, until ${row.report_only_until.slice(0, 10)})` : " (report-only)") : ""} |`);
   }
   lines.push("");
   if (evaluation.rows.some(row => row.activeReportOnly && row.id === "disk-free-floor")) lines.push("Temporary disk report-only: health remains visible; enforcement resumes after durable proof of one successful GC on BOTH Macs. Measurement errors still FAIL.", "");
@@ -319,7 +323,7 @@ export function baseRowsAt(rowsPath, baseRef, git = spawnSync) {
 
 function parseArgs(argv) {
   const options = { marker: "ratchet" };
-  const keys = { "--rows": "rows", "--results": "results", "--baseline": "baseline", "--base-ref": "baseRef", "--pr-body-file": "prBodyFile", "--head": "head", "--runner": "runner", "--marker": "marker", "--title": "title", "--repo": "repo", "--pr": "pr", "--author": "author", "--out": "out", "--producer": "producer", "--receipt": "receipt" };
+  const keys = { "--event": "event", "--rows": "rows", "--results": "results", "--baseline": "baseline", "--base-ref": "baseRef", "--pr-body-file": "prBodyFile", "--head": "head", "--runner": "runner", "--marker": "marker", "--title": "title", "--repo": "repo", "--pr": "pr", "--author": "author", "--out": "out", "--producer": "producer", "--receipt": "receipt" };
   for (let index = 0; index < argv.length; index += 1) {
     const key = keys[argv[index]];
     const value = argv[index + 1];
@@ -378,8 +382,14 @@ export function main(argv) {
     prBody,
     head: options.head,
     runner: options.runner ?? null,
+    event: options.event ?? null,
   });
   const body = renderTable(evaluation, { marker: options.marker, title: options.title, producer: options.producer, receipt: options.receipt });
+  for (const row of evaluation.rows.filter(row => row.pushWarning)) {
+    const detail = String(row.detail ?? "freshness failed; post-merge live receipt pending")
+      .replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+    process.stdout.write(`::warning::live-tier-freshness: ${detail} (report-only on push)\n`);
+  }
   process.stdout.write(`${body}\n`);
   if (options.out) writeFileSync(options.out, `${body}\n`);
   if (options.repo) upsertComment({ repo: options.repo, pr: options.pr, marker: options.marker, author: options.author, body });
