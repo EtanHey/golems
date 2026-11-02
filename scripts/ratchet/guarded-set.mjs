@@ -48,11 +48,13 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
   const args = process.argv.slice(2);
   try {
     if (args[0] === '--check') {
-      // guarded-paths.sh contract: exit 0 = guarded, 1 = not guarded, 2 = cannot tell (FAIL, never skip).
+      // Internal contract: exit 0 = guarded, 3 = not guarded, anything else = cannot tell. "Not guarded" is 3, not 1,
+      // because node itself exits 1 on a syntax error or a missing import, before this code runs (Codex r2, B3).
+      // guarded-paths.sh maps 0 → 0, 3 → 1 and everything else → 2.
       if (args.length !== 3) throw new Error('usage: guarded-set.mjs --check <base> <head>');
       const hit = firstGuardedChange(args[1], args[2]);
       console.log(hit ? 'guarded path touched: Mac rows required' : 'no guarded path touched: Mac rows not required');
-      process.exit(hit ? 0 : 1);
+      process.exit(hit ? 0 : 3);
     }
     if (!args.length) throw new Error('usage: guarded-set.mjs <ref>... | --check <base> <head>');
     console.log(guardedPrefixes(manifestsAt(args)).join('\n'));

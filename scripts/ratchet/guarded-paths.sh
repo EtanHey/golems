@@ -10,7 +10,10 @@ base="${1:?base sha}" head="${2:?head sha}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 node "$here/guarded-set.mjs" --check "$base" "$head"
 rc=$?
+# Internal 3 = a completed "not guarded" verdict. Node's own failures (exit 1 on a syntax error or a missing import)
+# must never read as "not guarded" (Codex r2, B3).
 case "$rc" in
-  0|1) exit "$rc" ;;
+  0) exit 0 ;;
+  3) exit 1 ;;
   *) echo "guarded-paths: cannot decide $base...$head (exit $rc): cannot tell, FAIL" >&2; exit 2 ;;
 esac

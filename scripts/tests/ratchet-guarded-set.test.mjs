@@ -93,3 +93,33 @@ test('B2: a manifest that exists but cannot be read fails closed (exit 2), never
     assert.equal(r.status, 2, `unreadable manifest must be "cannot tell", got ${r.status}: ${r.stdout}${r.stderr}`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// Codex review r2 (2026-11-02), B3: node exits 1 on a syntax error or missing import before guarded-set.mjs can
+// catch anything, and the wrapper must never read that as "not guarded".
+test('B3: a broken or missing evaluator module is "cannot tell" (exit 2), never "not guarded"', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'guarded-set-b3-'));
+  const g = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'core.hooksPath=/dev/null', ...args], { cwd: dir, encoding: 'utf8' }).trim();
+  try {
+    g('init', '-q');
+    for (const file of ['scripts/ratchet/guarded-paths.sh', 'scripts/ratchet/guarded-set.mjs', 'scripts/hooks/hook-paths.mjs']) {
+      mkdirSync(join(dir, dirname(file)), { recursive: true });
+      writeFileSync(join(dir, file), readFileSync(join(root, file)));
+    }
+    writeFileSync(join(dir, 'README.md'), 'x\n');
+    g('add', '-A'); g('commit', '-qm', 'base');
+    const base = g('rev-parse', 'HEAD');
+    writeFileSync(join(dir, 'docs.md'), 'unguarded change\n');
+    g('add', '-A'); g('commit', '-qm', 'docs');
+    const head = g('rev-parse', 'HEAD');
+    const run = () => spawnSync('bash', ['scripts/ratchet/guarded-paths.sh', base, head], { cwd: dir, encoding: 'utf8' });
+    assert.equal(run().status, 1, 'a working evaluator on a docs-only diff: not guarded');
+    const helper = join(dir, 'scripts/hooks/hook-paths.mjs');
+    const good = readFileSync(helper, 'utf8');
+    writeFileSync(helper, good + '\nexport const broken = ;\n');
+    let r = run();
+    assert.equal(r.status, 2, `syntax error must be "cannot tell", got ${r.status}: ${r.stderr}`);
+    rmSync(helper);
+    r = run();
+    assert.equal(r.status, 2, `missing import must be "cannot tell", got ${r.status}: ${r.stderr}`);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
