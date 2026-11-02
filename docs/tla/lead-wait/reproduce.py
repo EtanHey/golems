@@ -45,3 +45,5 @@ with tempfile.TemporaryDirectory(prefix='repro-', dir=parent) as folder:
         sentinel.scan(cfg, Path(folder)/'scan.json', scan_state, False)
         print(f'round={round_number} destinations={sends}')
         clock[0] += 3 * 3600
+
+assert sends == ['fixture-lead'], sends

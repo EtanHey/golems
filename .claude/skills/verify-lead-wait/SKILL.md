@@ -18,9 +18,10 @@ Install Bun, Python 3, Java 11+ and a `tlc` executable using tla2tools 1.7.4
 python3 .claude/skills/verify-lead-wait/verify.py
 ```
 
-It runs the sentinel tests and all six configs with one worker, retaining logs under
+It runs the asserting source probe, sentinel tests and all six configs with one worker, retaining logs under
 `docs.local/verify-lead-wait/`. Exit 0 means the nonhistorical configs pass; exit 1 is
-a current model finding; exit 2 is a source regression or unexpected checker result.
+the known SentinelOnly finding; exit 2 is any other violation, a source/probe
+regression or an unexpected checker result.
 Missing dependencies fail, never skip. Today, WakeIgnored and SettleWithoutHandoff
 must still demonstrate their historical violations. **SentinelOnly currently fails**:
 a live owner ignores its wake, gets one nudge, ignores it, and never reaches orc.

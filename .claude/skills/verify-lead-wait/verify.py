@@ -21,7 +21,11 @@ with (run / 'sentinel-tests.out').open('w') as log:
     tests = subprocess.run(['bun', 'test', 'scripts/tests/pr-sentinel.test.mjs'],
                            cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT)
 print(f'Sentinel regressions: {"PASS" if tests.returncode == 0 else "FAIL"}', flush=True)
-errors = tests.returncode != 0
+with (run / 'source-probe.out').open('w') as log:
+    probe = subprocess.run([sys.executable, 'docs/tla/lead-wait/reproduce.py'],
+                           cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT)
+print(f'Source probe: {"PASS" if probe.returncode == 0 else "FAIL"}', flush=True)
+errors = tests.returncode != 0 or probe.returncode != 0
 historical = {'Today', 'WakeIgnored', 'SettleWithoutHandoff'}
 findings = False
 for name in ['Today', 'WakeIgnored', 'SettleWithoutHandoff', 'RulesFollowed',
@@ -37,11 +41,12 @@ for name in ['Today', 'WakeIgnored', 'SettleWithoutHandoff', 'RulesFollowed',
     expected = name in historical and violated
     print(f'{name}: {"historical counterexample" if expected else "PASS" if passed else "Noticed VIOLATED" if violated else "ERROR"}', flush=True)
     errors |= not (passed or violated) or (name in historical and not violated)
-    findings |= violated and not expected
+    errors |= violated and name not in historical and name != 'SentinelOnly'
+    findings |= violated and name == 'SentinelOnly'
 if errors:
     print('FAIL: source regressions or unexpected checker result; inspect evidence.')
     sys.exit(2)
 if findings:
-    print('FINDING: current modeled behavior violates Noticed; do not certify it.')
+    print('KNOWN FINDING: SentinelOnly violates Noticed; do not certify it.')
     sys.exit(1)
 print('PASS within the model bounds; source/model correspondence still needs review.')
