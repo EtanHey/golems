@@ -183,13 +183,16 @@ Visual re-bench 2026-09-30 (22 visual items incl. 10 harder: near-dup screens, o
 
 ## Cheap sub-agents
 
-Every `claude.judgment` seat (leads and workers) delegates parity tasks to
+Easy work goes to Antigravity Flash-high first (the 2026-11-02 rule above), including one-shot
+verifiers. This section covers two cases: the fallback when Antigravity is out, and the packaged
+agents below whose own tools (BrainLayer MCP, cmux MCP, deploy steps) a `delegate_task` child may not
+carry. In those cases every `claude.judgment` seat (leads and workers) delegates parity tasks to
 `claude.subagent.cheap`; pass its resolved alias as the Agent tool's `model`:
 `node scripts/model-roles.mjs claude.subagent.cheap --field alias`.
 
 - **brain-worker:** single-fact recall ("when did X merge", "what did Etan rule on Y"); use one cheap child instead of the judgment seat's own context.
 - **orc-helper:** spawn/resume/send/read/wait/close pane mechanics; the packaged agent's `role:` pins its alias through the drift lint.
-- **Verifiers (one-shot):** rerun a claimed command once, check now whether an artifact exists, or read a report's DONE marker.
+- **Verifiers (one-shot), when Antigravity is out:** rerun a claimed command once, check now whether an artifact exists, or read a report's DONE marker.
 - **Deploy hops:** release → install → restart → live probe → seat reconnect go to the
   `deploy-local-prod` sub-agent (Agent tool `subagent_type: "deploy-local-prod"`, model pinned to the
   resolved `claude.subagent.cheap` alias). The lead routes the hop and verifies the artifact it reports.
@@ -199,7 +202,7 @@ Anything that sits, polls or waits (CI, a PR, a file appearing, a sleep-then-che
 tier, never the lead; a one-shot check stays a cheap verifier above. From a Claude seat, pass
 `node scripts/model-roles.mjs claude.subagent.mechanical --field alias` as the Agent tool's `model`; for
 a Codex watcher, use `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher --field model`.
-`claude.subagent.cheap` keeps brain-worker recall, orc-helper and verifiers, per its 2026-09-29 evidence.
+`claude.subagent.cheap` keeps brain-worker recall and orc-helper, plus verifiers when Antigravity is out, per its 2026-09-29 evidence.
 
 Keep `claude.judgment` for multi-source or decision-grade history, deletion decisions,
 PR-gating reviews, and UX/UI judgment. Reserve judgment → 3× cheap fan-out for
