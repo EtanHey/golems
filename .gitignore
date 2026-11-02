@@ -18,6 +18,7 @@ nohup.out
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/verify-lead-wait/
+!.claude/skills/verify-merge-receipts/
 .claude/hooks/*.bak-*
 
 # Local profile symlink (source data lives outside this repository)

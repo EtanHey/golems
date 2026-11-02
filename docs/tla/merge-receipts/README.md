@@ -60,11 +60,18 @@ freshness PASS after the grace are all reachable.
 
 ## Rerun
 
-From this folder, one config at a time:
+Every config, with the flags derived from today's code (from the repository root; see the
+[verify skill](../../../.claude/skills/verify-merge-receipts/SKILL.md)):
+
+```sh
+python3 .claude/skills/verify-merge-receipts/verify.py
+```
+
+Or from this folder, one config at a time:
 
 ```sh
 tlc -deadlock -workers 1 -metadir <scratch dir> -config TodayLive.cfg MergeReceipts.tla
 ```
 
 `-deadlock` because the protocol has no end state. Keep `-metadir` outside the tree. Read
-results with pstack `/statechart`.
+results with pstack `/statechart`; the committed bug paths are in [statechart.md](statechart.md).
