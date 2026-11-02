@@ -317,8 +317,9 @@ def _detached_child_case(monkeypatch, reread):
         c = proc.identity(int(b.stdout.readline()))
         assert c is not None and c.ppid == b.pid
         native_snapshot, native_identity = m.proc.children_snapshot, m.proc.identity
+        # A reused PID: same number, another process's birth key (ours: real, different, and the platform's type).
         replacement = m.proc.ProcIdentity(leader.pid, 1, leader.pid + 100000, leader.uid, leader.ruid,
-                                          (c.start[0] + 1, 0))
+                                          native_identity(os.getpid()).start)
 
         def unreadable_b():
             snapshot = native_snapshot()
