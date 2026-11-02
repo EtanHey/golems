@@ -61,7 +61,7 @@ for needle in ('the only exception', 'exactly one name waiter', 'orc-inbox.md', 
     assert needle in RULE, needle
 # 2026-11-02 ruling: with a collab, workers report there and the lead's one monitor watches it.
 LANES = TEXT[TEXT.index('## Lanes with a collab'):native]
-for needle in ('Report to <collab path>, not to the lead thread.', 'ONE live monitor', 'native Monitor', 'no second waiter and no polling turns', 'completion notification stays the liveness guard', "Don't relay worker updates into chat"):
+for needle in ('Report to <collab path>, not to the lead thread, then end your task.', 'The task\'s end is the real wake', 'for awareness only', 'parent_not_active', "Don't dispatch from a monitor-woken turn", 'Task-completion and PR-watch wakes can dispatch', 'the dispatch wake', 'No polling turns', 'ONE live monitor', 'native Monitor', 'no second waiter and no polling turns', 'completion notification stays the liveness guard', "Don't relay worker updates into chat"):
     assert needle in LANES, needle
 assert 'and on each lane collab it leads' in RULE
 

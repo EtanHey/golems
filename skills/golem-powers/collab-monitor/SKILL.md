@@ -51,15 +51,22 @@ another 201M across 729 turns." (Etan 2026-10-18, via orc collab)
 > "when there is a collab the message shouldn't travel through the chat, but have
 > the monitor on the […] collab damn it" (Etan 2026-11-02, via orc)
 
-- Every worker brief says `Report to <collab path>, not to the lead thread.`
-  Workers append their status, DONE and BLOCKED lines to the collab.
+- Every worker brief says `Report to <collab path>, not to the lead thread, then end your task.`
+  Workers append their status, DONE and BLOCKED lines to the collab, then end the task.
+- The task's end is the real wake. Its completion notification carries no chat
+  message, but the lead's turn from it can dispatch the next step.
 - The lead keeps ONE live monitor on the collab, for lines addressed to it. A
   Claude seat in a cmux fleet uses native Monitor (§ Collab tail with a lead
   filter), re-armed at expiry. A T3 lead (any vendor) extends the one name waiter
   above to the lane collab, so it adds no second waiter and no polling turns.
-- The completion notification stays the liveness guard. The collab monitor
-  carries the messages.
-- Don't relay worker updates into chat. Chat is for Etan and orc's routing.
+- That monitor is for awareness only. A monitor wake can arrive as a
+  background-task turn, and T3 can refuse `delegate_task` from it
+  (`parent_not_active`, reproduced twice on 2026-11-02; once it did dispatch).
+  Don't dispatch from a monitor-woken turn: a next step follows on the
+  completion wake. Task-completion and PR-watch wakes can dispatch.
+- The completion notification stays the liveness guard and the dispatch wake.
+  The collab monitor carries the messages.
+- Don't relay worker updates into chat; chat is for Etan and orc's routing. No polling turns.
 
 ## Native Monitor first
 

@@ -307,6 +307,8 @@
     ! grep -Fq 'collab-monitor/scripts/collab-monitor.sh' "$LARGE_PLAN_CAPABILITIES" &&
     grep -Fq 'none for Codex seats (Codex seats must not poll collabs)' "$LARGE_PLAN_CAPABILITIES" &&
     grep -Fq 'the delegate_task completion notification is the liveness guard' "$LARGE_PLAN_CAPABILITIES" &&
+    grep -Fq 'awareness only, not a polling turn' "$LARGE_PLAN_CAPABILITIES" &&
+    ! grep -Fq 'none armed' "$LARGE_PLAN_CAPABILITIES" &&
     ! grep -Eq 'grep -E.*done|grep -E.*blocked' "$LARGE_PLAN_CLAUDE_ADAPTER" &&
     ! grep -Eq 'grep -E.*done|grep -E.*blocked' "$LARGE_PLAN_COLLAB_WORKFLOW" &&
     grep -Fq '### @<agent> → @<listen-name> — [ISO-timestamp] Phase N done' "$LARGE_PLAN_COLLAB_WORKFLOW" &&

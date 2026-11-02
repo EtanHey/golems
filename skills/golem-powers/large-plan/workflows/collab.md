@@ -35,7 +35,7 @@ HERE is orc's fleet collab for a lead's progress; a plan's `collab.md` follows t
    EOF
    ```
    A status change is a move between the status values below, a PR opened or merged, or a blocker. A commit, a test run or a step inside a phase is not one and gets no line. Canon #7's "checkpoint before commits" is a check that your status is current; append only when it changed.
-3. **Progress never goes into orc's T3 thread** or the lead's thread as a message. A T3 child's final message is its report; the `delegate_task` completion wakes the lead, which overwrites STATUS.md only: the worker's own line already recorded the change, so the lead appends no second line. It appends one only when no line for that change landed (the child ended without writing it).
+3. **Progress never goes into orc's T3 thread** or the lead's thread as a message. A T3 child writes its report to the collab, then ends its task; its final message is one line pointing at that entry, and the `delegate_task` completion wakes the lead, which overwrites STATUS.md only: the worker's own line already recorded the change, so the lead appends no second line. It appends one only when no line for that change landed (the child ended without writing it).
 4. **Wake words only for a wake:** `@orc`, `### <lead> → orc`, or a BLOCKED/DONE line, and only for blocked, a lane done, or an Etan decision. Inside a plan, the `### @<agent> → @<listen-name> — … done|blocked` headings below are the same wake for the lead. A progress line carries no `@` tag.
 5. **`@etan`** is for a decision only Etan can make. Routing, scope and model questions go to the lead, never Etan (`/agent-routing` § Goal Contract).
    Only one-way doors qualify (Etan 2026-10-19, via orc; canonical: `/pr-loop` § Hard Gates). A tag, release, install, deploy or upgrade is never an `@etan` ask or a dashboard "Waiting on you" item: ship it, then report it as done. A remote branch delete or force push still needs the `human-confirm-gate` token (deleting data is a one-way door).
@@ -205,8 +205,10 @@ Every agent must know:
 
 ### 4. Arm addressed watches
 
-**T3 (default in T3):** arm nothing. The lead dispatches with `delegate_task` and the
-completion notification is the guard (SKILL.md § T3-native execution). On wake, verify
+**T3 (default in T3):** arm nothing per dispatch; the lead's one name waiter already watches
+the lane collab, for awareness only (`/collab-monitor` § Lanes with a collab). The lead dispatches
+with `delegate_task`, and the completion notification is the guard and the dispatch wake (SKILL.md
+§ T3-native execution). On wake, verify
 the report and requested artifact before advancing.
 
 **cmux adapter:** Watches: follow `/collab-monitor` before dispatch and after every compaction;
@@ -288,7 +290,7 @@ Short. Timestamped. Bold status keywords. One line per update.
 16. **Registering hooks before creating the file** — Agent adds a hook to `settings.json` pointing to a file that doesn't exist yet. Hook runner returns exit code 2 (file not found), which blocks ALL tool calls for ALL agents in the repo. **Rule: create the hook file first, register it second. Never the reverse.**
 17. **No watch cleanup** — when a collab ends, stop owned Monitor task IDs with TaskStop (cmux adapter). In T3, at each child's terminal state (PR merged or handed off), `task_cancel` its taskId; `unwatch_pull_request` its PR; then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. See /agent-routing § Goal Contract for provider release timing and the worktree caveat.
 18. **`/loop` without termination** (cmux adapter, Claude seats only) — `/loop` runs indefinitely. When all phases are `done` or `signed-off`, stop the loop. Don't leave it polling a dead collab. In T3 and on Codex seats, never start one.
-19. **Fire-and-forget delegation** — Orchestrator sends a task to an agent without an armed liveness watcher. A crash or stall emits no addressed message, so the collab monitor alone cannot detect it. **Rule (cmux adapter): before EVERY delegation, arm a process-exit or scheduled process/registry liveness watcher. The collab monitor may additionally deliver addressed status, blocker, and completion messages, but MUST NOT be the only worker-liveness guard.** In T3 the `delegate_task` completion notification is that guard; arm nothing else.
+19. **Fire-and-forget delegation** — Orchestrator sends a task to an agent without an armed liveness watcher. A crash or stall emits no addressed message, so the collab monitor alone cannot detect it. **Rule (cmux adapter): before EVERY delegation, arm a process-exit or scheduled process/registry liveness watcher. The collab monitor may additionally deliver addressed status, blocker, and completion messages, but MUST NOT be the only worker-liveness guard.** In T3 the `delegate_task` completion notification is that guard; arm nothing else (the lead's one name waiter on the collab is for awareness only).
 20. **Silent progress** — Agent does work but doesn't use `TaskCreate`/`TaskUpdate`. Orchestrator and UI have no visibility into what's happening. **All agents MUST use task tools for progress tracking.**
 21. **Lazy reviewer teaching** — Agent responds to CodeRabbit with "Fixed in X" without explaining the design decision. Next review, CodeRabbit flags the same pattern. **Always `@coderabbitai` with a Learning explaining WHY the pattern is correct.**
 22. **Unknown neighbors** — Agent works in isolation without discovering what other agents/daemons/services exist. **Run `brain_entity()` at kickoff to discover the ecosystem before writing code.**
@@ -300,7 +302,7 @@ Short. Timestamped. Bold status keywords. One line per update.
 
 ### WATCH RULE (Monitoring Before Delegation)
 
-Canon #7 owns guard/monitor law. **T3 (default in T3):** the `delegate_task` completion notification is the guard; arm no monitor or liveness watcher. **cmux adapter:** Before sending a task, arm a process-exit or scheduled process/registry liveness watcher that wakes the orchestrator on a worker exit or stall. For addressed status, blocker, and completion messages, also arm native Monitor (Claude) per `/collab-monitor`; Codex seats arm none. The collab monitor MUST NOT be the only worker-liveness guard. Follow the lifecycle in step 4 above, including expiry, compaction re-arm and cleanup. For PR events, query current PR state on each tick per `/collab-monitor`; do not reuse a stale review payload.
+Canon #7 owns guard/monitor law. **T3 (default in T3):** the `delegate_task` completion notification is the guard and the dispatch wake; arm no monitor or liveness watcher beyond the lead's one name waiter, which watches the collab for awareness only. **cmux adapter:** Before sending a task, arm a process-exit or scheduled process/registry liveness watcher that wakes the orchestrator on a worker exit or stall. For addressed status, blocker, and completion messages, also arm native Monitor (Claude) per `/collab-monitor`; Codex seats arm none. The collab monitor MUST NOT be the only worker-liveness guard. Follow the lifecycle in step 4 above, including expiry, compaction re-arm and cleanup. For PR events, query current PR state on each tick per `/collab-monitor`; do not reuse a stale review payload.
 
 ### TASK USAGE (Progress Visibility)
 
@@ -386,7 +388,7 @@ brain_entity("cmux")         # How does it dispatch commands?
 When agents work while the human sleeps:
 
 1. **Scaffold the collab BEFORE the human goes to sleep.** All sections filled, all constraints declared.
-2. **Wake-ups are set before sleep** — T3: completion notifications wake the lead, nothing armed. cmux adapter: each Claude seat arms an addressed watch per `/collab-monitor`, including expiry and compaction re-arm; Codex seats arm none.
+2. **Wake-ups are set before sleep** — T3: completion notifications wake the lead and carry the next dispatch; nothing is armed beyond the lead's one name waiter (awareness only). cmux adapter: each Claude seat arms an addressed watch per `/collab-monitor`, including expiry and compaction re-arm; Codex seats arm none.
 3. **CPU/thermal safety rules in Key Constraints** — which heavy processes can run simultaneously.
 4. **Blocker escalation** — if blocked on human action, update status to `blocked:human` with exactly what's needed. Don't keep retrying.
 5. **Sign off when done** — prevents other agents from waiting for you.
@@ -421,8 +423,9 @@ Example: `brainlayer-v2-launch/collab.md` + `v2-fix-sprint/collab.md`
 Full watch lifecycle: `/collab-monitor`. The short form, which a plan's collab
 section MUST state so every joining agent inherits it:
 
-- **T3 (default in T3): no watcher.** A child reports in its final message and appends its
-  status line here; the `delegate_task` completion notification wakes the lead. "Codex seats
+- **T3 (default in T3): no watcher.** A child appends its status and DONE lines here, then
+  ends its task; the `delegate_task` completion notification wakes the lead, whose one name
+  waiter reads this file for awareness only. "Codex seats
   must not poll collabs; T3 delegate completions already wake you." (Etan 2026-10-18, via orc collab)
 - **cmux adapter: arm a watcher on this file before doing any work** — the moment you are named
   a participant. Claude: native Monitor per `/collab-monitor`. Codex: no collab watcher; the

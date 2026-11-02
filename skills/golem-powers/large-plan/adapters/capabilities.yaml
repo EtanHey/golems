@@ -70,7 +70,7 @@ platform_features:
     claude_code: "Agent(subagent_type=..., isolation='worktree', run_in_background=true)"
     universal: "spawn CLI agent per phase: cd <wt> && codex --full-auto 'phase prompt'"
   collab_monitoring:
-    t3: "none armed — the delegate_task completion notification is the liveness guard"
+    t3: "the lead's one name waiter also watches collab.md (awareness only, not a polling turn); the delegate_task completion notification is the liveness guard and the dispatch wake"
     claude_code: "Monitor per /collab-monitor; 30-minute expiry and compaction re-arm"
     universal: "none for Codex seats (Codex seats must not poll collabs); codex-workflows.sh watch --run-id <run-id>, then read collab.md once"
   pr_waiting:
