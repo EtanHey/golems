@@ -56,7 +56,13 @@ def md5_for_path(path: pathlib.Path) -> str:
     return digest.hexdigest()
 
 
+TEXT_MIME_BY_SUFFIX = {".md": "text/markdown", ".txt": "text/plain", ".json": "application/json"}
+
+
 def guess_mime(path: pathlib.Path) -> str:
+    # Pin the text types: mimetypes' .md mapping varies by Python version.
+    if path.suffix.lower() in TEXT_MIME_BY_SUFFIX:
+        return TEXT_MIME_BY_SUFFIX[path.suffix.lower()]
     mime, _ = mimetypes.guess_type(str(path))
     return mime or "text/plain"
 

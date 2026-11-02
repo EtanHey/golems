@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { loadLifecycleGate, runEvalCase } from "./run_eval_harness.mjs";
 
@@ -48,12 +49,48 @@ function canonicalInventory() {
   return validReceipt().localFiles.map((file) => ({ ...file }));
 }
 
+const fixtureAccount = "research-account@example.com";
+const evalsDir = path.dirname(fileURLToPath(import.meta.url));
+
+// A throwaway HOME inside the worktree, so the real ~/.config is never read.
+function withFixtureHome(configText, run) {
+  const home = mkdtempSync(path.join(evalsDir, ".home-"));
+  try {
+    if (configText !== undefined) {
+      mkdirSync(path.join(home, ".config", "research-lifecycle"), { recursive: true });
+      writeFileSync(path.join(home, ".config", "research-lifecycle", "research.env"), configText);
+    }
+    return run(home);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+}
+
+function accountEnv(home, account) {
+  const env = { ...process.env, HOME: home };
+  delete env.RESEARCH_ACCOUNT;
+  if (account !== undefined) env.RESEARCH_ACCOUNT = account;
+  return env;
+}
+
 function evaluateReceipt(gate, receipt, prompt = namedPrompt, canonicalFiles = canonicalInventory()) {
-  return gate.evaluateLifecycleReceipt(
-    receipt,
-    gate.evaluateGeminiPreflight(prompt),
-    canonicalFiles,
+  return withFixtureHome(undefined, (home) =>
+    gate.evaluateLifecycleReceipt(
+      receipt,
+      gate.evaluateGeminiPreflight(prompt),
+      canonicalFiles,
+      { env: accountEnv(home, fixtureAccount) },
+    ),
   );
+}
+
+function evaluateAccount(gate, home, account) {
+  return gate.evaluateLifecycleReceipt(
+    validReceipt(),
+    gate.evaluateGeminiPreflight(namedPrompt),
+    canonicalInventory(),
+    { env: accountEnv(home, account) },
+  ).checks.DRIVE_ACCOUNT;
 }
 
 test("eval #7 executes the known stale-Drive answer", async () => {
@@ -150,6 +187,47 @@ test("the completion gate rejects missing or mismatched Drive account verificati
 
   assert.equal(evaluateReceipt(gate, missing).checks.DRIVE_ACCOUNT.pass, false);
   assert.equal(evaluateReceipt(gate, wrongAccount).checks.DRIVE_ACCOUNT.pass, false);
+});
+
+test("an unset account with no config file fails DRIVE_ACCOUNT naming the config file", async () => {
+  const gate = await loadLifecycleGate();
+  assert.ok(gate, "executable lifecycle gate is missing");
+
+  const result = withFixtureHome(undefined, (home) => evaluateAccount(gate, home, undefined));
+
+  assert.equal(result.pass, false);
+  assert.match(result.detail, /\.config\/research-lifecycle\/research\.env/);
+  assert.doesNotMatch(result.detail, /research-account@example\.com/);
+});
+
+test("RESEARCH_ACCOUNT in the environment wins over the config file", async () => {
+  const gate = await loadLifecycleGate();
+  assert.ok(gate, "executable lifecycle gate is missing");
+
+  const fromEnv = withFixtureHome("RESEARCH_ACCOUNT=other-account@example.com\n", (home) =>
+    evaluateAccount(gate, home, fixtureAccount),
+  );
+  const wrongEnv = withFixtureHome(`RESEARCH_ACCOUNT=${fixtureAccount}\n`, (home) =>
+    evaluateAccount(gate, home, "other-account@example.com"),
+  );
+
+  assert.equal(fromEnv.pass, true, fromEnv.detail);
+  assert.equal(wrongEnv.pass, false);
+});
+
+test("the config file supplies the account when the environment does not", async () => {
+  const gate = await loadLifecycleGate();
+  assert.ok(gate, "executable lifecycle gate is missing");
+
+  const fromFile = withFixtureHome(`# research account\nRESEARCH_ACCOUNT="${fixtureAccount}"\n`, (home) =>
+    evaluateAccount(gate, home, undefined),
+  );
+  const otherFile = withFixtureHome("RESEARCH_ACCOUNT=other-account@example.com\n", (home) =>
+    evaluateAccount(gate, home, undefined),
+  );
+
+  assert.equal(fromFile.pass, true, fromFile.detail);
+  assert.equal(otherFile.pass, false);
 });
 
 test("the completion gate rejects a receipt that omits canonical local files", async () => {

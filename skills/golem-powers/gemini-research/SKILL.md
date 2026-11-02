@@ -174,8 +174,8 @@ If you get authentication errors, run `nlm login` via Bash first — this is the
 Drive is the source of truth. NotebookLM consumes the same Drive project that `/claude-desktop-research` uses.
 
 ```
-1. Verify account first:
-   bash skills/golem-powers/_shared/research/verify-account.sh --expect research-account@example.com
+1. Verify account first (expects RESEARCH_ACCOUNT, else the one in ~/.config/research-lifecycle/research.env):
+   bash skills/golem-powers/_shared/research/verify-account.sh
 
 2. Ensure Drive folders exist:
    python3 skills/golem-powers/_shared/research/drive-paths.py ensure-project-folders <project>
@@ -201,13 +201,14 @@ Drive is the source of truth. NotebookLM consumes the same Drive project that `/
 
 7. Write the result to:
    Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-gemini-result.md
+   (uploadFile with mimeType="text/markdown"; never content-sniffed)
 ```
 
-Wrapper (live mode needs both variables, and stops with an error if either is unset):
+Wrapper (live mode needs both values, and stops with an error if either is unset):
 
 ```bash
 export GEMINI_RESEARCH_PROFILE=<nlm profile>   # the name you gave `nlm login --profile`
-export RESEARCH_ACCOUNT=<google account>       # Drive/NotebookLM must be signed in as this
+export RESEARCH_ACCOUNT=<google account>       # optional when ~/.config/research-lifecycle/research.env has RESEARCH_ACCOUNT=<address>
 bash skills/golem-powers/gemini-research/scripts/drive-sync.sh --project cmux --prompt R36-R38-cmux-mobile-prompts.md
 ```
 
