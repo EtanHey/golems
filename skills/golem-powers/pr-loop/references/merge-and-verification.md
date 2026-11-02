@@ -69,7 +69,7 @@ branch retirement follows the workspace lifecycle contract and any stacked-PR ho
 
 ### Worktree-Locked Local Merge
 
-In multi-worktree repos, `gh pr merge <N> --merge --delete-branch` can fail
+In multi-worktree repos, `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` can fail
 **locally** even though the PR is fully mergeable: the post-merge branch cleanup
 checks out the default branch, and git refuses when another worktree holds it
 (`failed to run git: fatal: 'main' is already used by worktree at
