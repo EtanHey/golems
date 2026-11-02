@@ -3,11 +3,11 @@
 Status: decided and implemented 2026-11-02 (ci-hygiene lead): `--lease-pr` is required. Confirmed by skill-creator's TLA+ model (FV3, `LiveReceiptIsolated`: auto-pick = finding, pinned lease = pass).
 
 ## What the lease is
-`scripts/ratchet/post-merge-live.sh --merged-pr N` runs the LIVE rows after a guarded merge. The
+`scripts/ratchet/post-merge-live.sh --merged-pr N --lease-pr <your open PR>` runs the LIVE rows after a guarded merge. The
 `live-human-confirm` row proves the installed human-confirm hook with a real lead token. That token is
 issued against a **lease**: an OPEN PR that has a clean local worktree on its branch at the PR's exact head
-(`post-merge-live.mjs`, the lease search before `live-rows.sh`). With no `--lease-pr`, the script picks the
-first open PR whose worktree matches.
+(`post-merge-live.mjs`, the lease search before `live-rows.sh`). Until 2026-11-02 the script picked the first open
+PR whose worktree matched when `--lease-pr` was missing; it now refuses to run without one.
 
 ## What went wrong (2026-11-02, golems #1007)
 - Run 1 auto-picked another lead's open PR branch (`docs/collab-monitor-lead-watches-collab`, #1083). That
