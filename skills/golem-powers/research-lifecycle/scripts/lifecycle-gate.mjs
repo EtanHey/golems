@@ -10,7 +10,19 @@ const canonicalPath = (candidate) => { try { return realpathSync(candidate); } c
 const sharedDriveGate = fileURLToPath(
   new URL("../../_shared/research/drive-grounding-gate.sh", import.meta.url),
 );
-const expectedDriveAccount = process.env.RESEARCH_ACCOUNT?.trim() || "research-account@example.com";
+const sharedAccountResolver = fileURLToPath(
+  new URL("../../_shared/research/resolve-account.sh", import.meta.url),
+);
+
+// Same resolution as verify-account.sh: RESEARCH_ACCOUNT, then
+// ~/.config/research-lifecycle/research.env. No placeholder fallback.
+export function resolveResearchAccount({ env = process.env } = {}) {
+  const result = spawnSync("bash", [sharedAccountResolver], { env, encoding: "utf8" });
+  const account = result.status === 0 ? result.stdout.trim() : "";
+  return account
+    ? { account, error: null }
+    : { account: null, error: (result.stderr || "research account resolver failed").trim() };
+}
 
 function check(pass, detail) {
   return { pass: Boolean(pass), detail };
@@ -156,7 +168,8 @@ export function evaluateGeminiPreflight(promptText) {
   };
 }
 
-export function evaluateLifecycleReceipt(receipt, preflight, canonicalLocalFiles) {
+export function evaluateLifecycleReceipt(receipt, preflight, canonicalLocalFiles, options = {}) {
+  const { account: expectedDriveAccount, error: accountError } = resolveResearchAccount(options);
   const value = receipt && typeof receipt === "object" ? receipt : {};
   const routeTools = new Set(value.driveRoute?.resolvedWith ?? []);
   const reportedLocalFiles = Array.isArray(value.localFiles) ? value.localFiles : [];
@@ -223,6 +236,7 @@ export function evaluateLifecycleReceipt(receipt, preflight, canonicalLocalFiles
 
   const accountVerification = value.accountVerification ?? {};
   const accountMatches =
+    expectedDriveAccount !== null &&
     accountVerification.callSucceeded === true &&
     accountVerification.match === true &&
     accountVerification.expected === expectedDriveAccount &&
@@ -259,9 +273,11 @@ export function evaluateLifecycleReceipt(receipt, preflight, canonicalLocalFiles
     ),
     DRIVE_ACCOUNT: check(
       accountMatches,
-      accountMatches
-        ? `active Drive account matches ${expectedDriveAccount}`
-        : `verify-account.sh must succeed for ${expectedDriveAccount} and record the active identity`,
+      accountError
+        ? accountError
+        : accountMatches
+          ? `active Drive account matches ${expectedDriveAccount}`
+          : `verify-account.sh must succeed for ${expectedDriveAccount} and record the active identity`,
     ),
     LOCAL_INVENTORY: check(
       reportedMatchesCanonical,
