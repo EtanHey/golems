@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 function run(binary, args, options = {}) {
@@ -51,4 +52,13 @@ try {
   const freshness = spawnSync('node', [root + 'scripts/ratchet/live-freshness.mjs'], { cwd: root, encoding: 'utf8' });
   console.log(freshness.stdout.trim().split('\n').at(-1));
   if (freshness.status !== 0) throw new Error(freshness.stderr || 'freshness failed');
+  // AIDEV-NOTE: ratchet-run retention runs HERE (master's code, after a merge), never in local-run.sh: the pre-push hook executes
+  // a candidate branch's local-run.sh, so a destructive step there ran from an unmerged branch (R14 incident, 2026-11-02).
+  // A refusal only warns; the receipt is already posted.
+  const prune = root + 'scripts/ratchet/prune-runs.mjs';
+  if (existsSync(prune)) {
+    const pruned = spawnSync('node', [prune, '--apply'], { cwd: root, encoding: 'utf8' });
+    console.log((pruned.stdout ?? '').trim().split('\n').at(-1) ?? '');
+    if (pruned.status !== 0) console.error(`post-merge-live: retention refused (non-fatal): ${(pruned.stderr ?? '').trim()}`);
+  }
 } catch (error) { console.error(`post-merge-live: ${error.message}`); process.exitCode = 1; }

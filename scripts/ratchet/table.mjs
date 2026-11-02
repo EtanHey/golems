@@ -45,6 +45,12 @@ export function markerComment(marker) {
 
 export const VERDICT_PREFIX = "<!-- ratchet-verdict: ";
 
+export function validRunsMeasurement(m) {
+  return !!m && Number.isSafeInteger(m.bytes) && m.bytes >= 0
+    && Number.isFinite(m.ceiling_gb) && m.ceiling_gb > 0
+    && m.health === (m.bytes <= m.ceiling_gb * 1e9);
+}
+
 export function validDiskMeasurement(m) {
   if (!m || ![m.floor, m.merged_worktrees, m.ceiling].every(n => Number.isSafeInteger(n) && n >= 0)) return false;
   const gb = n => typeof n === "number" && Number.isFinite(n) && n >= 0;
@@ -118,10 +124,12 @@ export function parseRows(doc, { base = false } = {}) {
     }
     const diskPolicy = row.id === "disk-free-floor" && row.kind === "real" && row.runner === "mac"
       && row.direction === "pass" && row.report_only === "gc-success-on-both-macs" && row.report_only_until === undefined;
+    const runsPolicy = row.id === "ratchet-runs-size" && row.kind === "real" && row.runner === "mac"
+      && row.direction === "pass" && row.report_only === "retention-success-on-both-macs" && row.report_only_until === undefined;
     const parityShape = row.id === "installed-skill-parity" && row.kind === "real" && row.runner === "live" && row.direction === "pass";
     const parityPolicy = parityShape && ((row.report_only === "until-i5-run2" && row.report_only_until === PARITY_UNTIL)
       || (base && PARITY_HISTORY.some(([token, until]) => row.report_only === token && row.report_only_until === until)));
-    if ((row.report_only !== undefined || row.report_only_until !== undefined) && !diskPolicy && !parityPolicy)
+    if ((row.report_only !== undefined || row.report_only_until !== undefined) && !diskPolicy && !parityPolicy && !runsPolicy)
       throw new Error(`${where}: invalid report-only policy or expiry`);
     if (row.runner !== undefined && typeof row.runner !== "string") throw new Error(`${where}: runner must be a string`);
     if (row.timeout_s !== undefined && !(Number.isInteger(row.timeout_s) && row.timeout_s > 0)) throw new Error(`${where}: timeout_s must be a positive integer`);
@@ -222,7 +230,7 @@ export function evaluate({ rows, results, head, baseRows, bootstrap = false, bas
     const before = resultOf(base[row.id]);
     const activeReportOnly = isReportOnly(row, clock);
     const measured = row.id === "installed-skill-parity" ? typeof now?.value === "boolean"
-      : validDiskMeasurement(now?.measurement) && now.value === now.measurement.health;
+      : (row.id === "ratchet-runs-size" ? validRunsMeasurement(now?.measurement) : validDiskMeasurement(now?.measurement)) && now.value === now.measurement.health;
     let status = now === undefined ? "MISSING" : activeReportOnly
       ? measured ? now.value ? "PASS" : "WARN" : "FAIL"
       : judge(row, now.value) ? "PASS" : "FAIL";
@@ -301,7 +309,7 @@ function deltaCell(delta) {
 export function renderTable(evaluation, { marker, title = "Ratchet table", producer, receipt } = {}) {
   // `bootstrap` lets a consumer FAIL a verdict that skipped the direction check on a base with rows.
   const verdict = { head: evaluation.head, ok: evaluation.ok, real_pass: evaluation.realPass, real_total: evaluation.realTotal, bootstrap: evaluation.bootstrap };
-  const reporting = evaluation.rows.filter(row => row.activeReportOnly && (row.id === "installed-skill-parity" || validDiskMeasurement(row.measurement)));
+  const reporting = evaluation.rows.filter(row => row.activeReportOnly && (row.id === "installed-skill-parity" || validRunsMeasurement(row.measurement) || validDiskMeasurement(row.measurement)));
   if (reporting.length) verdict.report_only = reporting.map(row => (row.id === "installed-skill-parity" ? { id: row.id, until: row.report_only_until } : { id: row.id, measurement: row.measurement }));
   // Which commit's row scripts produced it, and a hash of the producer's run receipt.
   if (producer) verdict.producer = producer;
@@ -319,7 +327,7 @@ export function renderTable(evaluation, { marker, title = "Ratchet table", produ
     const m = row.measurement;
     const detail = row.activeReportOnly && validDiskMeasurement(m)
       ? `${Object.hasOwn(m, "available_gb") ? `Available ${m.available_gb ?? "unknown"} GB; ${m.free_gb} GB free now; ` : ""}free_gb=${m.free_gb} floor=${m.floor} merged_worktrees=${m.merged_worktrees} ceiling=${m.ceiling}; measured health ${m.health ? "PASS" : "FAIL"}`
-      : row.detail;
+      : row.id === "ratchet-runs-size" && validRunsMeasurement(m) ? `bytes=${m.bytes} ceiling_gb=${m.ceiling_gb}` : row.detail;
     const value = detail ? `${cell(row, row.value)} (${escapeCell(detail)})` : cell(row, row.value);
     lines.push(`| \`${row.id}\` ${escapeCell(row.metric)} | ${row.kind} | ${cell(row, row.baseline)} | ${value} | ${deltaCell(row.delta)} | ${ceilingCell(row)} | ${row.status}${row.pushWarning ? " (push event)" : ""}${row.activeReportOnly ? (row.report_only_until ? ` (report-only, until ${row.report_only_until.slice(0, 10)})` : " (report-only)") : row.perfReportOnly ? " (report-only)" : ""} |`);
   }

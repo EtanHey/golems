@@ -72,3 +72,15 @@ test("only the explicitly configured disk warning can satisfy aggregate without 
   expect(check([comment({...verdict,report_only:[{id:"disk-free-floor",measurement:{...measurement,health:true}}]})],{expectedReportOnly:["disk-free-floor"]}).ok).toBe(false);
   expect(check([comment({...verdict,ok:false})],{expectedReportOnly:["disk-free-floor"]}).ok).toBe(false);
 });
+
+test("R14: the report-only ratchet-runs-size row is authorized exactly like disk, and both can warn together", () => {
+  const runs={bytes:11000000000,ceiling_gb:10,health:false};
+  const verdict={...pass,real_pass:1,report_only:[{id:"ratchet-runs-size",measurement:runs}]};
+  expect(check([comment(verdict)],{expectedReportOnly:["ratchet-runs-size"]}).ok).toBe(true);
+  expect(check([comment(verdict)]).ok).toBe(false); // not configured as report-only: unauthorized
+  expect(check([comment({...verdict,report_only:[{id:"ratchet-runs-size",measurement:{...runs,health:true}}]})],{expectedReportOnly:["ratchet-runs-size"]}).ok).toBe(false);
+  expect(check([comment({...verdict,report_only:[{id:"ratchet-runs-size",measurement:{...runs,bytes:-1}}]})],{expectedReportOnly:["ratchet-runs-size"]}).ok).toBe(false);
+  const disk={free_gb:13,floor:60,merged_worktrees:148,ceiling:25,health:false};
+  const both={...pass,real_pass:0,report_only:[{id:"disk-free-floor",measurement:disk},{id:"ratchet-runs-size",measurement:runs}]};
+  expect(check([comment(both)],{expectedReportOnly:["disk-free-floor","ratchet-runs-size"]}).ok).toBe(true);
+});
