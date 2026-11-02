@@ -209,4 +209,5 @@ if [ "$POST" = 1 ] && [ -z "$PUSH_HEAD" ]; then
   run_id="$(gh run list --repo "$REPO_SLUG" --workflow ratchet.yml --commit "$HEAD" --json databaseId -q '.[0].databaseId' || true)"
   if [ -n "$run_id" ]; then gh run rerun "$run_id" --repo "$REPO_SLUG" || echo "local-run: re-run the ratchet check for $HEAD by hand"; fi
 fi
+"$NODE" "$HERE/prune-runs.mjs" --apply || echo "local-run: retention refused; inspect the pruner output" >&2
 exit "$status"
