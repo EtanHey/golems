@@ -86,5 +86,6 @@ It calls the real `lead` and `scan` functions with fake external commands and a 
 clock, in three rounds spaced three hours apart. Before the fix every round reported
 `destinations=['fixture-lead']`. Now the first round sends only to the lead, and rounds
 two and three report `destinations=['fixture-lead', 'fixture-orc']`: one escalation,
-no duplicate lead nudge or orc message.
+no duplicate lead nudge or orc message. The probe asserts each round's send list,
+and the verifier runs it so a source behavior change fails loudly.
 This is source behavior evidence with mocked services, not live delivery evidence.

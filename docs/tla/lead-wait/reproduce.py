@@ -44,4 +44,8 @@ with tempfile.TemporaryDirectory(prefix='repro-', dir=parent) as folder:
         sentinel.lead('fixture-lead', Path(folder)/'lead.json', lead_state, False, 0, cfg)
         sentinel.scan(cfg, Path(folder)/'scan.json', scan_state, False)
         print(f'round={round_number} destinations={sends}')
+        expected = ['fixture-lead'] if round_number == 1 else ['fixture-lead', 'fixture-orc']
+        assert sends == expected, (round_number, sends)
         clock[0] += 3 * 3600
+
+assert sends == ['fixture-lead', 'fixture-orc'], sends
