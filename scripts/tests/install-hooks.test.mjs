@@ -9,7 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  E1_DELETED, MIN_HOOK_PYTHON, REPAIR_REASON, failClosedCommand, pathPython, pinnedFingerprints, resolveHookPython,
+  E1_DELETED, hookDriftPaths, MIN_HOOK_PYTHON, REPAIR_REASON, failClosedCommand, pathPython, pinnedFingerprints, resolveHookPython,
 } from "../hooks/install-hooks.mjs";
 
 // Every test builds a git fixture and spawns node; a cold CI runner needs headroom.
@@ -706,6 +706,46 @@ test("--apply preserves settings.json's mode (0600 stays 0600) on the file and i
   expect(statSync(path.join(fx.home, ".claude", baks[0])).mode & 0o777).toBe(0o600);
 });
 
+test("drift paths cover every registered hook source and shared runtime", () => {
+  const paths = hookDriftPaths(realManifest);
+  for (const entries of [...Object.values(realManifest.hosts), ...Object.values(realManifest.codex_hosts)]) {
+    for (const e of entries) {
+      if (!e.source) continue;
+      expect(paths.some((dir) => e.source === dir.slice(0, -1) || e.source.startsWith(dir))).toBe(true);
+    }
+  }
+  expect(paths).toContain("skills/golem-powers/_shared/");
+  expect(paths).toContain("skills/golem-powers/git-guardian/");
+  const added = hookDriftPaths({ hosts: { other: [
+    { kind: "golems", source: "new-hook/run.py" },
+    { kind: "golems", source: "new-skill" },
+  ] } });
+  expect(added).toContain("new-hook/");
+  expect(added).toContain("new-skill/");
+});
+
+test("--status counts hook and shared changes, ignoring unrelated commits", () => {
+  const fx = fixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const commit = (file) => {
+    const at = path.join(fx.repo, file);
+    mkdirSync(path.dirname(at), { recursive: true });
+    writeFileSync(at, "# changed\n");
+    git(fx.repo, "add", file);
+    git(fx.repo, "commit", "-qm", "change path");
+    git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  };
+  commit("packages/shared/unrelated.txt");
+  commit("README.md");
+  expect(run(fx, "--status").out).toContain("drift=0 behind=2");
+  commit("skills/golem-powers/demo-gate/hooks/demo-gate.py");
+  expect(run(fx, "--status").out).toContain("drift=1 behind=3");
+  commit("skills/golem-powers/_shared/shell_parse.py");
+  expect(run(fx, "--status").out).toContain("drift=2 behind=4");
+  commit("scripts/hooks/fail-open.py");
+  expect(run(fx, "--status").out).toContain("drift=3 behind=5");
+});
+
 test("--status: ok, drift, then copy(not link) and dangling exit nonzero; missing does not", () => {
   const fx = fixture();
   let r = run(fx, "--status");
@@ -724,7 +764,7 @@ test("--status: ok, drift, then copy(not link) and dangling exit nonzero; missin
   git(fx.repo, "commit", "-q", "--allow-empty", "-m", "next");
   git(fx.repo, "push", "-q", "origin", "HEAD:master");
   git(fx.repo, "fetch", "-q", "origin");
-  expect(run(fx, "--status").out).toContain("drift=1");
+  expect(run(fx, "--status").out).toContain("drift=0 behind=1");
 
   const link = path.join(fx.home, ".claude/hooks/demo-gate");
   rmSync(link);

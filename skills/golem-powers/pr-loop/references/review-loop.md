@@ -20,11 +20,8 @@ request when an eligible automatic review already covers the current head.
 
 CLEAN status with no reviews ≠ approved. It means NOBODY LOOKED.
 
-| Bot | Expected time | Notes |
-|-----|--------------|-------|
-| CodeRabbit | 2-5 min | Auto-reviews on push |
-| Greptile | Needs OSS approval | Manual activation |
-| Macroscope | Needs activation | Auto-reviews once installed |
+What each bot does once a draft is marked ready, and when to request one: [`/pr-loop` § Bots after the
+flip](../SKILL.md#bots-after-the-flip). That table is current; it replaces the old per-bot timing list.
 
 **If `reviewDecision` is empty and no routed review verdict is on the PR for `headRefOid` → DO NOT MERGE.**
 
@@ -154,6 +151,8 @@ keep that list in your own notes), with one bounded `gh pr view <N> --json
 state,isDraft,mergeStateStatus,statusCheckRollup` per PR. "Waiting" is never a state for a red or
 green PR you own (Etan, 2026-11-01). Take the first case that applies:
 - Visibly held, and the reason still holds: leave it.
+- A draft in its inner loop: check that its implementer or reviewer is still running (a live
+  child task or pane). If that worker stopped, pick the work up or route it now.
 - Red or conflicting: fix it now or route the fix now.
 - Green: merge it under your lane's merge law.
 - Behind: update the branch yourself whenever GitHub offers it.

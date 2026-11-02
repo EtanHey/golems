@@ -25,8 +25,10 @@ def lane(tree, monkeypatch):
     (repo / ".gitignore").write_text(".worktrees/\nnode_modules/\n__pycache__/\ndocs.local/\n")
     git(repo, "add", ".gitignore")
     git(repo, "commit", "-qm", "fixture ignores")
-    scratch = CLI.parents[2] / "docs.local"
-    scratch.mkdir(exist_ok=True)
+    # Archives and ledgers must persist outside system temp; fixture repos must
+    # also stay outside T3-managed checkouts so direct-Git lanes are allowed.
+    scratch = Path.home() / ".cache/golems/workspace-test-fixtures"
+    scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="workspace-lane-test-", dir=scratch) as directory:
         root = Path(directory).resolve()
         monkeypatch.setenv("GOLEMS_WORKSPACE_LEASES", str(root / "ledger"))

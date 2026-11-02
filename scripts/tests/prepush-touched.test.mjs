@@ -35,6 +35,8 @@ function fixture(t, paths, options = {}) {
     writeFileSync(join(root, 'node_modules/yaml/package.json'), '{"type":"module","exports":"./index.mjs"}');
     writeFileSync(join(root, 'node_modules/yaml/index.mjs'), "export { parse } from './not-installed.mjs';");
   }
+  for (const [path, content] of Object.entries(options.files || {}))
+    writeFileSync(join(root, path), content);
   const log = join(root, 'commands');
   writeFileSync(log, '');
   const fake = `#!${fixturePython}
@@ -46,19 +48,32 @@ if name == 'git':
     if args[0] == 'diff':
         sys.stdout.buffer.write(${JSON.stringify(paths.join('\0') + (paths.length ? '\0' : ''))}.encode().replace(b'\\\\0', b'\\0'))
     elif args[0] == 'merge-base': print('base')
+    elif args[0] == 'rev-parse': print('fixture-head')
     elif args[0] == 'ls-files': print('skills/golem-powers/example/SKILL.md')
     sys.exit(int(os.environ.get('GIT_FAIL', '0')))
 if name == 'python' and '-c' in args and os.environ.get('NO_PYTEST'):
     sys.exit(1)
 if name == 'bash' and 'run-skill-tests.sh' in ' '.join(args):
     print('skills/golem-powers/example/tests')
-sys.exit(7 if os.environ.get('FAIL_COMMAND') in [' '.join([name] + args)] else 0)
+if name == 'python' and '-m' in args and 'pytest' in args and os.environ.get('PYTEST_EXIT'):
+    sys.exit(int(os.environ['PYTEST_EXIT']))
+if os.environ.get('FAIL_ONCE') == ' '.join([name] + args):
+    marker = os.path.join(os.environ['HOME'], 'failed-once')
+    if not os.path.exists(marker):
+        with open(marker, 'w') as f: f.write('failed')
+        for i in range(60): print('first failure line ' + str(i))
+        sys.exit(9)
+command = ' '.join([name] + args)
+if command == os.environ.get('FAIL_COMMAND') or (os.environ.get('FAIL_PREFIX') and command.startswith(os.environ['FAIL_PREFIX'])):
+    print('persistent failure output')
+    sys.exit(7)
+sys.exit(0)
 `;
   for (const name of ['git', 'bash', 'python', 'node', ...(options.noBats ? [] : ['bats'])]) {
     // The real node starts the runner; only its child commands use the shim.
     writeFileSync(join(root, 'bin', name), fake, { mode: 0o755 });
   }
-  const env = { ...process.env, PATH: options.isolatedPath ? `${root}/bin` : `${root}/bin:${process.env.PATH}`, COMMAND_LOG: log,
+  const env = { ...process.env, PATH: options.isolatedPath ? `${root}/bin` : `${root}/bin:${process.env.PATH}`, COMMAND_LOG: log, HOME: root,
     TMP_BLOCK_LEDGER: join(root, 'ledger.jsonl'), PYTHON_BIN: 'python', ...options };
   const result = spawnSync(process.execPath, [join(root, 'scripts/ci/prepush-touched.mjs'), ...(options.args ?? ['base..head'])],
     { cwd: root, env, input: options.input ?? '', encoding: 'utf8' });
@@ -188,4 +203,101 @@ test('shell entry point defers to CI when node is missing', t => {
   });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stderr, /node not installed here;.*CI/);
+});
+
+const suite = 'node --test scripts/tests/example.test.mjs';
+const suiteRuns = r => r.log.split('\n').filter(line => line === JSON.stringify(suite.split(' '))).length;
+test('suite failures retry once and both failures block', t => {
+  const r = fixture(t, ['scripts/example.sh'], { FAIL_COMMAND: suite });
+  assert.equal(r.status, 7, r.stderr);
+  assert.equal(suiteRuns(r), 2);
+  assert.match(r.stderr, /run 1/);
+  assert.match(r.stderr, /run 2/);
+  assert.equal(r.stderr.match(/persistent failure output/g)?.length, 2);
+  assert.equal(requireLedger(r).length, 0);
+});
+function requireLedger(r) {
+  try { return readFileSync(join(r.root, '.golems/prepush-flakes.jsonl'), 'utf8').trim().split('\n').map(JSON.parse); }
+  catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+}
+test('suite passes on retry and appends one flake receipt', t => {
+  const r = fixture(t, ['scripts/example.sh'], { FAIL_ONCE: suite });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(suiteRuns(r), 2);
+  assert.match(r.stderr, /FLAKE .* failed then passed on retry; logged/);
+  const entries = requireLedger(r);
+  assert.equal(entries.length, 1);
+  const entry = entries[0];
+  assert.deepEqual(Object.keys(entry).sort(), ['ts', 'repo', 'head_sha', 'command', 'first_exit', 'first_tail', 'host'].sort());
+  assert.equal(entry.repo, r.root);
+  assert.equal(entry.head_sha, 'fixture-head');
+  assert.equal(entry.command, suite);
+  assert.equal(entry.first_exit, 9);
+  assert.equal(entry.first_tail.split('\n').length, 40);
+  assert.match(entry.first_tail, /^first failure line 20\n/);
+  assert.ok(Number.isFinite(Date.parse(entry.ts)));
+  assert.ok(entry.host);
+});
+test('deterministic failures never retry', t => {
+  for (const command of ['bash scripts/check-publish-boundary.sh', 'node scripts/ci/check-model-role-drift.mjs']) {
+    const r = fixture(t, ['scripts/example.sh'], { FAIL_COMMAND: command });
+    assert.equal(r.status, 7, r.stderr);
+    assert.equal(r.log.split('\n').filter(line => line === JSON.stringify(command.split(' '))).length, 1);
+    assert.equal(requireLedger(r).length, 0);
+  }
+  const canon = fixture(t, ['scripts/example.sh'], { FAIL_PREFIX: 'node scripts/ci/canon-drift-lint.mjs' });
+  assert.equal(canon.status, 7, canon.stderr);
+  assert.equal(canon.log.split('\n').filter(line => line.includes('canon-drift-lint.mjs')).length, 1);
+  assert.equal(requireLedger(canon).length, 0);
+});
+test('passing suite runs once without a flake receipt', t => {
+  const r = fixture(t, ['scripts/example.sh']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(suiteRuns(r), 1);
+  assert.equal(requireLedger(r).length, 0);
+});
+
+for (const [name, selected] of [['test-x.py', false], ['test_x.py', true], ['x_test.py', true]]) {
+  test(`pytest discovery ${selected ? 'includes' : 'excludes'} ${name}`, t => {
+    const path = `scripts/tests/${name}`;
+    const r = fixture(t, ['scripts/example.sh'], { files: { [path]: '# scripts/example.sh' } });
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.log.includes(JSON.stringify(['python', '-m', 'pytest', path, '-q'])), selected);
+  });
+}
+test('pattern-selected pytest exit 5 warns and passes', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    files: { 'scripts/tests/test_empty.py': '# scripts/example.sh' }, PYTEST_EXIT: '5',
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /WARN.*no tests collected.*test_empty\.py/);
+});
+test('explicit pytest exit 5 still blocks even when also discovered by pattern', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    files: {
+      'scripts/tests/test_explicit.py': '# scripts/example.sh',
+      '.github/workflows/security.yml': 'jobs:\n  check:\n    steps:\n      - run: python -m pytest scripts/tests/test_explicit.py -q\n',
+    }, PYTEST_EXIT: '5',
+  });
+  assert.equal(r.status, 5, r.stderr);
+  assert.match(r.stderr, /FAIL.*pytest.*test_explicit\.py/);
+  assert.doesNotMatch(r.stderr, /WARN.*no tests collected/);
+});
+test('pattern-selected pytest assertion failures still block', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    files: { 'scripts/tests/test_failure.py': '# scripts/example.sh' }, PYTEST_EXIT: '1',
+  });
+  assert.equal(r.status, 1, r.stderr);
+});
+
+test('pattern-selected pytest exit 5 never retries or records a flake', t => {
+  const r = fixture(t, ['scripts/example.sh'], {
+    files: { 'scripts/tests/test_empty.py': '# scripts/example.sh' }, PYTEST_EXIT: '5',
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /WARN.*no tests collected.*test_empty\.py/);
+  const command = JSON.stringify(['python', '-m', 'pytest', 'scripts/tests/test_empty.py', '-q']);
+  assert.equal(r.log.split('\n').filter(line => line === command).length, 1);
+  assert.doesNotMatch(r.stderr, /RETRY|FLAKE/);
+  assert.equal(requireLedger(r).length, 0);
 });
