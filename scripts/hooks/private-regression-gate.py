@@ -18,6 +18,9 @@ import time
 import uuid
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import proc_identity as proc  # noqa: E402
+
 # Load the adjacent reviewed helper, without searching cwd/PYTHONPATH.
 _spec = importlib.util.spec_from_file_location("heavy_suite", Path(__file__).with_name("heavy-suite.py"))
 heavy_suite = importlib.util.module_from_spec(_spec)
@@ -191,11 +194,50 @@ def record_completion(report, receipt, nonce, payload):
     check_completion(report, receipt, nonce)
 
 
-def process_start(pid):
-    # PID alone is unsafe after reuse. ps works on both installer platforms.
-    result = subprocess.run(["ps", "-p", str(pid), "-o", "lstart="],
-                            capture_output=True, text=True, timeout=5)
-    return result.stdout.strip() if result.returncode == 0 else ""
+# AIDEV-NOTE: never run ps here. /bin/ps is setuid root on macOS; inside a heavy suite each run is an unreadable root member,
+# so heavy-suite cleanup fails closed (exit 70). R13 step 2a. The token identifies the owner incarnation (PID + birth key).
+def start_token(pid):
+    """Canonical, JSON-safe owner token, or None when the process is gone. Raises if its identity can't be read."""
+    observed = proc.identity(pid)
+    return None if observed is None else _token(observed)
+
+
+def _token(observed):
+    first, second = observed.start
+    if isinstance(first, bytes):  # Linux: (boot_id, start ticks)
+        return f"v2:linux:{first.hex()}:{second}"
+    return f"v2:darwin:{first}.{second:06d}"  # Darwin: (seconds, microseconds)
+
+
+def _legacy_seconds(text):
+    """Epoch seconds from a pre-R13 marker (`ps -o lstart=`, local time, C locale); None if it doesn't parse."""
+    try:
+        return int(time.mktime(time.strptime(" ".join(str(text).split()), "%a %b %d %H:%M:%S %Y")))
+    except (ValueError, OverflowError):
+        return None
+
+
+def owner_active(pid, start):
+    """True = keep the fixture. Only a provably gone or provably different owner is inactive (Codex: deletion follows)."""
+    try:
+        observed = proc.identity(pid)
+    except proc.ProcIdentityUnavailable:
+        return True  # cannot tell: keep
+    if observed is None:
+        return False  # gone
+    if start.startswith("v2:"):
+        return start == _token(observed)
+    seconds = _legacy_seconds(start)
+    if seconds is None or isinstance(observed.start[0], bytes):
+        return True  # an unknown legacy value, or a Linux legacy marker: keep while the PID lives
+    return seconds == observed.start[0]
+
+
+def write_owner_marker(directory, pid, token):
+    """Atomic, so a reader never sees a live owner's partial marker (a corrupt marker is then always stale)."""
+    marker, staged = directory / ".active", directory / f".active.{uuid.uuid4().hex}"
+    staged.write_text(json.dumps({"pid": pid, "start": token}))
+    os.replace(staged, marker)
 
 
 def active_fixture(path):
@@ -205,10 +247,9 @@ def active_fixture(path):
     try:
         data = json.loads(marker.read_text())
         pid, start = data["pid"], data["start"]
-        return (type(pid) is int and pid > 0 and bool(start)
-                and process_start(pid) == start)
-    except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired):
+    except (OSError, ValueError, KeyError, TypeError):
         return False
+    return type(pid) is int and pid > 0 and isinstance(start, str) and bool(start) and owner_active(pid, start)
 
 
 def prune_fixtures(keep=5):
@@ -268,10 +309,10 @@ def execute_suite(paths, out, tree, name, expected=None, timeout=900):
     fixtures.mkdir(parents=True, mode=0o700)
     if fixtures.resolve() != fixtures:
         raise ValueError("fixture directory must not redirect through a symlink")
-    start = process_start(os.getpid())
+    start = start_token(os.getpid())
     if not start:
         raise ValueError("cannot identify fixture owner process")
-    (fixtures.parent / ".active").write_text(json.dumps({"pid": os.getpid(), "start": start}))
+    write_owner_marker(fixtures.parent, os.getpid(), start)
     env["TMPDIR"] = str(fixtures) + os.sep
     # Restore the reviewed ledger fixture without importing candidate conftests.
     (out / "pytest.ini").write_text("[pytest]\n")
