@@ -120,7 +120,7 @@ AFTER any agent claims "done", "complete", "live eval passed", "PR merged":
 
 ### Verification Checklist for Agent Claims (use `gh` CLI, not `git log`, for PR state)
 
-- [ ] Agent claims "live eval passed" → `cmux list_surfaces` — were new surfaces created?
+- [ ] Agent claims "live eval passed" → T3: the child's `task_status` summary and its artifact — did the eval actually run? Terminal (cmux) seats: `cmux list_surfaces` — were new surfaces created?
 - [ ] Agent claims "PR merged" → `gh pr view <N> --json state` — is state MERGED?
 - [ ] Agent claims "tests pass" → run `npm test` / check CI — are they green?
 - [ ] Agent claims "file updated" → `Read()` the file — is the content correct?
@@ -203,7 +203,7 @@ RIGHT: "agent X: fresh spawn (no prior context — re-briefed via handoff file);
 
 Verification: a resume claim requires the resumed session id (launcher `-c` /
 `--resume <id>` / `codex resume`) AND post-boot evidence the context is present
-(the agent references prior state unprompted, or `read_screen` shows the restored
+(the agent references prior state unprompted, or `t3_thread_read` / cmux `read_screen` shows the restored
 transcript). No id + no evidence = it's a fresh spawn; say so.
 
 ## R13: SYNTHESIZED TIME CLAIMS (gen-12 weave E02, 2026-06-06)

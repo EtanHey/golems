@@ -47,9 +47,9 @@ Template:
 - §EDITS application table state: {applied/dispatched per item, links}
 
 ## Agent State
-| Agent | Agent ID | Surface | Task | Status | Context % | Launcher |
+| Agent | T3 thread id / taskId (cmux: agent_id) | Surface (cmux only) | Task | Status | Context % | Launcher |
 |-------|----------|---------|------|--------|-----------|----------|
-| {name} | {agent_id} | surface:{N} | {task} | {idle/ready/learning/working/blocked/done/signed-off} | {%} | {launcher -flags} |
+| {name} | {thread id / taskId, or agent_id} | surface:{N} or n/a | {task} | {idle/ready/learning/working/blocked/done/signed-off} | {%} | {launcher -flags} |
 
 ## Open PRs
 | Repo | PR # | Status | What |
@@ -85,7 +85,7 @@ If it isn't listed here, it doesn't transfer — and the successor won't know it
 
 At generation handover:
 
-1. **Rename your pane** to `{name}-OUTGOING` or `{name}-RETIRED` via `update_surface({action:"rename", surface, title})`.
+1. **Mark yourself outgoing.** T3: skip this step (t3-native.md documents no thread-title step); the SUCCESSION line below is the signal. Terminal (cmux) seats only: rename your pane to `{name}-OUTGOING` or `{name}-RETIRED` via `update_surface({action:"rename", surface, title})`.
 2. **Broadcast one line** to the active collab: `SUCCESSION: {outgoing} → {successor} | handoff: {absolute path} | watches: {N} items transferred`.
 3. Successor ACKs the handoff path + watch table before spawning parallel work; this prevents two orcs from creating duplicate generation handoffs.
 
@@ -128,7 +128,7 @@ This ensures the new agent can find the handoff via brain_search even if the fil
 
 The new agent will ask orientation questions ("What's the current state?", "What should I focus on?"). The OUTGOING agent must answer these — NOT the user.
 
-**T3:** a delegate child's question surfaces as a pending request: read it with `t3_pending_request_read` and answer with `t3_pending_request_respond`. A launched successor thread is answered with `t3_thread_send` to the thread id you recorded. Track it by that id.
+**T3:** a delegate child's question surfaces as a pending request: read it with `t3_pending_request_read` and answer with `t3_pending_request_respond`. A launched successor thread is answered with `t3_thread_send`, only to a thread id from your brief or one returned by your own `t3_thread_launch`/`delegate_task` call in this handoff. Never invent or guess one. Track it by that id.
 
 **cmux process (terminal seats only):**
 1. Track the new agent by `agent_id`, not by surface index
@@ -213,7 +213,7 @@ When the outgoing window includes a weave doc, the successor orc boot doc MUST r
 |-------|-----------|
 | Send handoff as raw cmux text | Write structured file, new agent reads it |
 | Wait for user to answer grill | Outgoing agent answers from its own context (Step 4) |
-| Forget to set up monitoring | Establish `wait_for` / `list_agents(detail:"full")` coverage BEFORE telling user handoff is done |
+| Forget to set up monitoring | BEFORE telling user handoff is done: T3, record the successor's thread id / `taskId` and confirm it is working with one `t3_thread_read`; terminal (cmux) seats only, establish `wait_for` / `list_agents(detail:"full")` coverage |
 | Skip brain_store | Always store — file can be deleted, BrainLayer persists |
 | Start new session fresh without handoff | Even a 5-line handoff is better than cold start |
 | Declare handoff "complete" without verification | Check: new agent working, monitoring active, corrections stored (Step 5) |
