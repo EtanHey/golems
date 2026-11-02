@@ -110,18 +110,23 @@ STUB
 }
 
 @test "disk collector sums independent plans across a full batch and its remainder" {
+  # Count plans against one idle process snapshot. Real ps/lsof snapshots can
+  # disagree as concurrent GC children exit, legitimately producing KEEP rows.
+  mkdir "$TEST_ROOT/bin"
+  printf '#!/bin/sh\nprintf "4242\\n"\n' > "$TEST_ROOT/bin/ps"
+  printf '#!/bin/sh\nprintf "p4242\\nn%s\\n" "$GC_FIXTURE_ROOT"\n' > "$TEST_ROOT/bin/lsof"
+  chmod +x "$TEST_ROOT/bin/ps" "$TEST_ROOT/bin/lsof"
   mkdir "$TEST_ROOT/gits"
   for i in 1 2 3 4 5; do
     repo="$(make_fixture_repo "measured$i")"
     mv "$repo" "$TEST_ROOT/gits/measured$i"
     add_branch_worktree "$TEST_ROOT/gits/measured$i" eligible >/dev/null
   done
-  run env RATCHET_GITS_ROOT="$TEST_ROOT/gits" DISK_FREE_FLOOR_GB=0 WORKTREE_GC_IDLE_HOURS=0 \
+  run env PATH="$TEST_ROOT/bin:$PATH" RATCHET_GITS_ROOT="$TEST_ROOT/gits" DISK_FREE_FLOOR_GB=0 WORKTREE_GC_IDLE_HOURS=0 \
     "$REPO_ROOT/scripts/ratchet/mac/disk-free-floor.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *'merged_worktrees=5 '* ]] || false
   # Fail a child plan after its preflight census; queued work must still drain.
-  mkdir "$TEST_ROOT/bin"
   cat > "$TEST_ROOT/bin/git" <<'STUB'
 #!/usr/bin/env bash
 if [[ " $* " == *"/measured1 worktree list "* ]]; then
