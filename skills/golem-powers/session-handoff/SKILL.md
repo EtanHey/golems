@@ -92,8 +92,8 @@ At generation handover:
 ## What the New Agent Should Do First
 1. brain_search("handoff session {date}") to verify this was stored
 2. Read this file
-3. Check active agents (`list_agents`, or `list_agents({mine:true})` for your own children)
-4. Resume monitoring (`wait_for`, or `list_agents({agent_ids:[id], detail:"full"})` for a state snapshot)
+3. Check active agents. T3: the open `delegate_task` taskIds and thread ids in this file. cmux seats: `list_agents`, or `list_agents({mine:true})` for your own children
+4. Resume monitoring. T3: completion notifications wake you, no polling. cmux seats: `wait_for`, or `list_agents({agent_ids:[id], detail:"full"})` for a state snapshot
 5. Pick up from Next Steps #1
 ```
 
@@ -111,6 +111,10 @@ This ensures the new agent can find the handoff via brain_search even if the fil
 
 ### Step 3: Spawn the New Agent
 
+**T3 (default):** a successor lead is a new thread, `t3_thread_launch` with "Read and follow <handoff path>"; a continuation worker is an async `delegate_task` with the same one-line prompt. Record the successor's thread id (and `taskId` for a delegate) in the handoff notes and the BrainLayer entry. `t3_thread_launch` has no idempotency key: after a lost response, check `t3_thread_list` before retrying.
+
+**cmux (terminal seats only):**
+
 ```
 1. `spawn_agent({repo, cli, model, prompt})`
 2. Capture the returned `agent_id`
@@ -124,7 +128,9 @@ This ensures the new agent can find the handoff via brain_search even if the fil
 
 The new agent will ask orientation questions ("What's the current state?", "What should I focus on?"). The OUTGOING agent must answer these — NOT the user.
 
-**Process:**
+**T3:** a delegate child's question surfaces as a pending request: read it with `t3_pending_request_read` and answer with `t3_pending_request_respond`. A launched successor thread is answered with `t3_thread_send` to the thread id you recorded. Track it by that id.
+
+**cmux process (terminal seats only):**
 1. Track the new agent by `agent_id`, not by surface index
 2. Use `wait_for({agent_id, target_state:"idle", timeout_ms:120000})` or `list_agents({agent_ids:[agent_id], detail:"full"})` to catch the moment it is waiting for input
 3. When the new agent asks questions → answer via `send_to({agent_id, text, press_enter:true})`
@@ -137,12 +143,12 @@ The outgoing agent must answer from its existing context instead of delegating o
 
 Before declaring handoff complete:
 
-1. **New agent is working** — `wait_for` or `list_agents({agent_ids:[id], detail:"full"})` shows active progress, not a waiting prompt
-2. **Monitoring is active** — the new agent is tracked by `agent_id` and has an explicit `wait_for` / state-check path
+1. **New agent is working** — T3: one `t3_thread_read` of the successor thread shows it working. cmux: `wait_for` or `list_agents({agent_ids:[id], detail:"full"})` shows active progress, not a waiting prompt
+2. **Monitoring is active** — the new agent is tracked by its T3 thread id (cmux: `agent_id`) and has a state-check path (T3: completion notification or one `t3_thread_read`; cmux: `wait_for`)
 3. **Corrections are stored** — brain_search("user-correction") returns the corrections from this session
 4. **Handoff file exists** — Read the file to verify it was written correctly
 
-Then: `brain_store("Handoff complete to {new-agent} ({agent_id}). Verified: working, monitoring active, corrections stored.")` and notify user.
+Then: `brain_store("Handoff complete to {new-agent} ({thread id or agent_id}). Verified: working, monitoring active, corrections stored.")` and notify user.
 
 ---
 

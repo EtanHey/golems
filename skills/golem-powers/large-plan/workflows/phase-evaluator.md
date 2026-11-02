@@ -82,4 +82,4 @@ See `skills/golem-powers/skill-creator/references/scoring-rubric.md` (4 weighted
 
 ## Universal fallback (no Agent tool)
 
-On Codex/Cursor or any non-Claude-Code platform without `Agent(...)`, spawn a fresh CLI agent in an adjacent pane (cmux split, `codex --full-auto`, etc.) with the same prompt template. The hard rule is "different process, fresh context". A different terminal pane in the same shell session counts; the same conversation continuing does not.
+On Codex/Cursor or any non-Claude-Code platform without `Agent(...)`, spawn a fresh evaluator with the same prompt template. In a T3 thread (default) that is a new `delegate_task` child (`role: "review"`); on a terminal seat, a fresh CLI agent in an adjacent pane (cmux split, `codex --full-auto`, etc.). The hard rule is "different process, fresh context". A different terminal pane in the same shell session counts; the same conversation continuing does not.

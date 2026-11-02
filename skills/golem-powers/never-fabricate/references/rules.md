@@ -94,14 +94,15 @@ Never label a URL based on surrounding context. A URL is its own identity.
 
 ## R8: AGENT COMPLETION VERIFICATION
 
-**When ANY agent (subagent, cmux worker, Cursor, Codex) claims completion, verify BEFORE reporting to user.**
+**When ANY agent (T3 delegate, subagent, cmux worker, Cursor, Codex) claims completion, verify BEFORE reporting to user.**
 
 ### The Rule
 
 ```
 AFTER any agent claims "done", "complete", "live eval passed", "PR merged":
-1. READ the actual output (cmux read_screen, Read() file, check PR URL)
-2. VERIFY the claimed action occurred (list_surfaces for live eval, git log for PR)
+1. READ the actual output (T3: `task_status` summary of the reported delegate, then the artifact
+   file and PR URL; terminal seats: cmux read_screen)
+2. VERIFY the claimed action occurred (git log / `gh pr view` for a PR; list_surfaces for a cmux live eval)
 3. ONLY THEN report completion to user
 ```
 

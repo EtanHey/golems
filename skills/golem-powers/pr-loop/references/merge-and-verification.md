@@ -254,8 +254,10 @@ If you release, install, or claim done on a batch without the matching verify ar
 
 For non-VoiceLayer daemon PRs:
 
-1. Open a NEW cmux pane (`cmux new-split right`).
-2. Launch a fresh Claude Code session in that pane.
+1. Start a fresh session after the install. T3 (default): a NEW `delegate_task` child (never a reused
+   one), whose task calls the changed MCP tools and reports their raw output. cmux (terminal seats only):
+   open a NEW pane (`cmux new-split right`).
+2. In cmux, launch a fresh Claude Code session in that pane.
 3. Verify MCP tools are available AND return real results.
 4. If tools are unavailable or return errors, the PR is NOT done.
 
