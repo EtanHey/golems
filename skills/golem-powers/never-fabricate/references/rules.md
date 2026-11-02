@@ -94,14 +94,15 @@ Never label a URL based on surrounding context. A URL is its own identity.
 
 ## R8: AGENT COMPLETION VERIFICATION
 
-**When ANY agent (subagent, cmux worker, Cursor, Codex) claims completion, verify BEFORE reporting to user.**
+**When ANY agent (T3 delegate, subagent, cmux worker, Cursor, Codex) claims completion, verify BEFORE reporting to user.**
 
 ### The Rule
 
 ```
 AFTER any agent claims "done", "complete", "live eval passed", "PR merged":
-1. READ the actual output (cmux read_screen, Read() file, check PR URL)
-2. VERIFY the claimed action occurred (list_surfaces for live eval, git log for PR)
+1. READ the actual output (T3: `task_status` summary of the reported delegate, then the artifact
+   file and PR URL; terminal seats: cmux read_screen)
+2. VERIFY the claimed action occurred (git log / `gh pr view` for a PR; list_surfaces for a cmux live eval)
 3. ONLY THEN report completion to user
 ```
 
@@ -119,7 +120,7 @@ AFTER any agent claims "done", "complete", "live eval passed", "PR merged":
 
 ### Verification Checklist for Agent Claims (use `gh` CLI, not `git log`, for PR state)
 
-- [ ] Agent claims "live eval passed" → `cmux list_surfaces` — were new surfaces created?
+- [ ] Agent claims "live eval passed" → T3: the child's `task_status` summary and its artifact — did the eval actually run? Terminal (cmux) seats: `cmux list_surfaces` — were new surfaces created?
 - [ ] Agent claims "PR merged" → `gh pr view <N> --json state` — is state MERGED?
 - [ ] Agent claims "tests pass" → run `npm test` / check CI — are they green?
 - [ ] Agent claims "file updated" → `Read()` the file — is the content correct?
@@ -202,7 +203,7 @@ RIGHT: "agent X: fresh spawn (no prior context — re-briefed via handoff file);
 
 Verification: a resume claim requires the resumed session id (launcher `-c` /
 `--resume <id>` / `codex resume`) AND post-boot evidence the context is present
-(the agent references prior state unprompted, or `read_screen` shows the restored
+(the agent references prior state unprompted, or `t3_thread_read` / cmux `read_screen` shows the restored
 transcript). No id + no evidence = it's a fresh spawn; say so.
 
 ## R13: SYNTHESIZED TIME CLAIMS (gen-12 weave E02, 2026-06-06)

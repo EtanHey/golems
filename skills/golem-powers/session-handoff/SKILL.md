@@ -47,9 +47,9 @@ Template:
 - §EDITS application table state: {applied/dispatched per item, links}
 
 ## Agent State
-| Agent | Agent ID | Surface | Task | Status | Context % | Launcher |
+| Agent | T3 thread id / taskId (cmux: agent_id) | Surface (cmux only) | Task | Status | Context % | Launcher |
 |-------|----------|---------|------|--------|-----------|----------|
-| {name} | {agent_id} | surface:{N} | {task} | {idle/ready/learning/working/blocked/done/signed-off} | {%} | {launcher -flags} |
+| {name} | {thread id / taskId, or agent_id} | surface:{N} or n/a | {task} | {idle/ready/learning/working/blocked/done/signed-off} | {%} | {launcher -flags} |
 
 ## Open PRs
 | Repo | PR # | Status | What |
@@ -85,15 +85,15 @@ If it isn't listed here, it doesn't transfer — and the successor won't know it
 
 At generation handover:
 
-1. **Rename your pane** to `{name}-OUTGOING` or `{name}-RETIRED` via `update_surface({action:"rename", surface, title})`.
+1. **Mark yourself outgoing.** T3: skip this step (t3-native.md documents no thread-title step); the SUCCESSION line below is the signal. Terminal (cmux) seats only: rename your pane to `{name}-OUTGOING` or `{name}-RETIRED` via `update_surface({action:"rename", surface, title})`.
 2. **Broadcast one line** to the active collab: `SUCCESSION: {outgoing} → {successor} | handoff: {absolute path} | watches: {N} items transferred`.
 3. Successor ACKs the handoff path + watch table before spawning parallel work; this prevents two orcs from creating duplicate generation handoffs.
 
 ## What the New Agent Should Do First
 1. brain_search("handoff session {date}") to verify this was stored
 2. Read this file
-3. Check active agents (`list_agents`, or `list_agents({mine:true})` for your own children)
-4. Resume monitoring (`wait_for`, or `list_agents({agent_ids:[id], detail:"full"})` for a state snapshot)
+3. Check active agents. T3: the open `delegate_task` taskIds and thread ids in this file. cmux seats: `list_agents`, or `list_agents({mine:true})` for your own children
+4. Resume monitoring. T3: completion notifications wake you, no polling. cmux seats: `wait_for`, or `list_agents({agent_ids:[id], detail:"full"})` for a state snapshot
 5. Pick up from Next Steps #1
 ```
 
@@ -111,6 +111,10 @@ This ensures the new agent can find the handoff via brain_search even if the fil
 
 ### Step 3: Spawn the New Agent
 
+**T3 (default):** a successor lead is a new thread, `t3_thread_launch` with "Read and follow <handoff path>"; a continuation worker is an async `delegate_task` with the same one-line prompt. Record the successor's thread id (and `taskId` for a delegate) in the handoff notes and the BrainLayer entry. `t3_thread_launch` has no idempotency key: after a lost response, check `t3_thread_list` before retrying.
+
+**cmux (terminal seats only):**
+
 ```
 1. `spawn_agent({repo, cli, model, prompt})`
 2. Capture the returned `agent_id`
@@ -124,7 +128,9 @@ This ensures the new agent can find the handoff via brain_search even if the fil
 
 The new agent will ask orientation questions ("What's the current state?", "What should I focus on?"). The OUTGOING agent must answer these — NOT the user.
 
-**Process:**
+**T3:** a delegate child's question surfaces as a pending request: read it with `t3_pending_request_read` and answer with `t3_pending_request_respond`. A launched successor thread is answered with `t3_thread_send`, only to a thread id from your brief or one returned by your own `t3_thread_launch`/`delegate_task` call in this handoff. Never invent or guess one. Track it by that id.
+
+**cmux process (terminal seats only):**
 1. Track the new agent by `agent_id`, not by surface index
 2. Use `wait_for({agent_id, target_state:"idle", timeout_ms:120000})` or `list_agents({agent_ids:[agent_id], detail:"full"})` to catch the moment it is waiting for input
 3. When the new agent asks questions → answer via `send_to({agent_id, text, press_enter:true})`
@@ -137,12 +143,12 @@ The outgoing agent must answer from its existing context instead of delegating o
 
 Before declaring handoff complete:
 
-1. **New agent is working** — `wait_for` or `list_agents({agent_ids:[id], detail:"full"})` shows active progress, not a waiting prompt
-2. **Monitoring is active** — the new agent is tracked by `agent_id` and has an explicit `wait_for` / state-check path
+1. **New agent is working** — T3: one `t3_thread_read` of the successor thread shows it working. cmux: `wait_for` or `list_agents({agent_ids:[id], detail:"full"})` shows active progress, not a waiting prompt
+2. **Monitoring is active** — the new agent is tracked by its T3 thread id (cmux: `agent_id`) and has a state-check path (T3: completion notification or one `t3_thread_read`; cmux: `wait_for`)
 3. **Corrections are stored** — brain_search("user-correction") returns the corrections from this session
 4. **Handoff file exists** — Read the file to verify it was written correctly
 
-Then: `brain_store("Handoff complete to {new-agent} ({agent_id}). Verified: working, monitoring active, corrections stored.")` and notify user.
+Then: `brain_store("Handoff complete to {new-agent} ({thread id or agent_id}). Verified: working, monitoring active, corrections stored.")` and notify user.
 
 ---
 
@@ -184,7 +190,7 @@ session) and read ALL of them, (3) ACKed item-by-item on the §EDITS and correct
 lists. Highlights are orientation only — the dropped tail is where re-violations
 come from (gen-11 re-violated gen-10's captured-but-unapplied edits, 2026-06-05).
 
-**Continuation/lead spawns use `claude.judgment` at 1M via proper repoGolem launchers.**
+**Continuation/lead spawns use `claude.judgment` at 1M:** in T3 through `t3_thread_launch` / `delegate_task` with that model pinned; on a terminal (cmux) seat via proper repoGolem launchers.
 Resolve its model with `node scripts/model-roles.mjs claude.judgment --field model` from
 the golems checkout and verify the bare `{repo}Claude -s` pin against it. NEVER
 pass a model param at spawn (`spawn_agent {model}` overrides the pin — 2026-06-05
@@ -207,13 +213,13 @@ When the outgoing window includes a weave doc, the successor orc boot doc MUST r
 |-------|-----------|
 | Send handoff as raw cmux text | Write structured file, new agent reads it |
 | Wait for user to answer grill | Outgoing agent answers from its own context (Step 4) |
-| Forget to set up monitoring | Establish `wait_for` / `list_agents(detail:"full")` coverage BEFORE telling user handoff is done |
+| Forget to set up monitoring | BEFORE telling user handoff is done: T3, record the successor's thread id / `taskId` and confirm it is working with one `t3_thread_read`; terminal (cmux) seats only, establish `wait_for` / `list_agents(detail:"full")` coverage |
 | Skip brain_store | Always store — file can be deleted, BrainLayer persists |
 | Start new session fresh without handoff | Even a 5-line handoff is better than cold start |
 | Declare handoff "complete" without verification | Check: new agent working, monitoring active, corrections stored (Step 5) |
 | Compact or hand off because context crossed a % | Let auto-compaction happen; hand off only when Etan asks or at a /large-plan phase boundary |
 | Relay only "the top things" from a weave/retro | Full-relay: link the entire weave doc, mandate full read + item-by-item ACK |
-| Spawn continuation with a model param | Launcher-only (`{repo}Claude -s`) — verify the resolved `claude.judgment` model and 1M context post-boot |
+| Spawn continuation with an unpinned or wrong model | T3: `t3_thread_launch` / `delegate_task` with the resolved `claude.judgment` model pinned; terminal (cmux) seats: launcher-only (`{repo}Claude -s`). Verify the model and 1M context after boot |
 | Assume a `-c` resume continues the pre-death turn's duties | Treat resume as fresh — re-derive duties from durable artifacts; encode standing orders as machinery (watch-v6 pattern) |
 
 ---
