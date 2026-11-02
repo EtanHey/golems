@@ -1,0 +1,67 @@
+{
+  "source": "https://github.com/EtanHey/golems/pull/1088",
+  "headRefOid": "ebfc89b37f03e6b2d54c64044679c68eb768bd13",
+  "observedState": "MERGED",
+  "nodes": [
+    {
+      "__typename": "CheckRun",
+      "name": "Loop-record",
+      "status": "COMPLETED",
+      "conclusion": "FAILURE",
+      "startedAt": "2026-11-02T04:13:23Z",
+      "completedAt": "2026-11-02T04:13:34Z",
+      "databaseId": 125090681498,
+      "checkSuite": {
+        "app": {
+          "id": "MDM6QXBwMTUzNjg=",
+          "slug": "github-actions"
+        }
+      }
+    },
+    {
+      "__typename": "CheckRun",
+      "name": "Loop-record",
+      "status": "COMPLETED",
+      "conclusion": "FAILURE",
+      "startedAt": "2026-11-02T04:23:10Z",
+      "completedAt": "2026-11-02T04:23:19Z",
+      "databaseId": 125093488781,
+      "checkSuite": {
+        "app": {
+          "id": "MDM6QXBwMTUzNjg=",
+          "slug": "github-actions"
+        }
+      }
+    },
+    {
+      "__typename": "CheckRun",
+      "name": "Loop-record",
+      "status": "COMPLETED",
+      "conclusion": "CANCELLED",
+      "startedAt": "2026-11-02T04:13:20Z",
+      "completedAt": "2026-11-02T04:13:20Z",
+      "databaseId": 125090676638,
+      "checkSuite": {
+        "app": {
+          "id": "MDM6QXBwMTUzNjg=",
+          "slug": "github-actions"
+        }
+      }
+    },
+    {
+      "__typename": "CheckRun",
+      "name": "Loop-record",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "startedAt": "2026-11-02T04:42:26Z",
+      "completedAt": "2026-11-02T04:42:39Z",
+      "databaseId": 125098899330,
+      "checkSuite": {
+        "app": {
+          "id": "MDM6QXBwMTUzNjg=",
+          "slug": "github-actions"
+        }
+      }
+    }
+  ]
+}

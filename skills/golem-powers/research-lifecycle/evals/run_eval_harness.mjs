@@ -58,10 +58,14 @@ export async function runEvalCase(caseId) {
   }
 
   const preflight = gate.evaluateGeminiPreflight(fixture.geminiPrompt);
+  // The fixture names its account, so the verdict never depends on the
+  // RESEARCH_ACCOUNT or ~/.config of the machine running the eval.
+  const accountOptions = { env: { ...process.env, RESEARCH_ACCOUNT: fixture.researchAccount } };
   const lifecycle = gate.evaluateLifecycleReceipt(
     fixture.receipt,
     preflight,
     fixture.canonicalLocalFiles,
+    accountOptions,
   );
   const withoutDriveUsage = structuredClone(fixture.receipt);
   withoutDriveUsage.driveRoute.resolvedWith = ["/braindrive"];
@@ -76,7 +80,7 @@ export async function runEvalCase(caseId) {
     '# Grounding\n- "BrainLayer Architecture Notes"\n\nPlease attach the document.',
   );
   const evaluateMutation = (receipt) =>
-    gate.evaluateLifecycleReceipt(receipt, preflight, fixture.canonicalLocalFiles);
+    gate.evaluateLifecycleReceipt(receipt, preflight, fixture.canonicalLocalFiles, accountOptions);
   const behaviorProbes = {
     staleDriveRejected:
       lifecycle.verdict === "FAIL" && lifecycle.failedChecks.includes("DRIVE_FRESHNESS"),

@@ -13,7 +13,7 @@
 | Push | `git push -u origin feat/name` | |
 | PR | `gh pr create ...` | If `gh` is installed + authenticated |
 | Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | One bounded read per wake, never a poll loop |
-| Merge | `gh pr merge <N> --merge --delete-branch` | |
+| Merge | `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` | |
 
 ## Critical Gaps
 

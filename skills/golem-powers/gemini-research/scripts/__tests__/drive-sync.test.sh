@@ -165,7 +165,13 @@ PY
 # variable verify-account.sh reads). A hardcoded placeholder would fail every
 # real account, so it must be set, and it must be what verify is asked for.
 run_live_mode_account_case() {
-  env -u RESEARCH_ACCOUNT -u GEMINI_DRIVE_SYNC_FIXTURE GEMINI_RESEARCH_PROFILE=research \
+  # HOME is a throwaway fixture inside the worktree, so the real
+  # ~/.config/research-lifecycle/research.env is never read.
+  local fixture_home
+  fixture_home=$(mktemp -d "$ROOT_DIR/scripts/__tests__/.home.XXXXXX")
+  trap 'rm -rf "$fixture_home"' RETURN EXIT
+
+  env -u RESEARCH_ACCOUNT -u GEMINI_DRIVE_SYNC_FIXTURE HOME="$fixture_home" GEMINI_RESEARCH_PROFILE=research \
     python3 - "$ROOT_DIR/scripts/drive_sync.py" <<'PY'
 import contextlib, importlib.util, io, os, sys
 spec = importlib.util.spec_from_file_location("drive_sync_under_test", sys.argv[1])
@@ -192,6 +198,32 @@ with contextlib.redirect_stderr(io.StringIO()):
 verify = calls[0]
 assert verify[verify.index("--expect") + 1] == "someone@example.org", verify
 PY
+
+  # The config file supplies the account when the environment does not.
+  mkdir -p "$fixture_home/.config/research-lifecycle"
+  printf 'RESEARCH_ACCOUNT=from-file@example.org\n' >"$fixture_home/.config/research-lifecycle/research.env"
+  env -u RESEARCH_ACCOUNT -u GEMINI_DRIVE_SYNC_FIXTURE HOME="$fixture_home" GEMINI_RESEARCH_PROFILE=research \
+    python3 - "$ROOT_DIR/scripts/drive_sync.py" <<'PY'
+import contextlib, importlib.util, io, sys
+spec = importlib.util.spec_from_file_location("drive_sync_under_test", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+calls = []
+def record(args, check=True):
+    calls.append(args)
+    raise module.GeminiDriveSyncError("stubbed command")
+module.run_cli = record
+sys.argv = ["drive_sync.py", "--project", "brainlayer", "--prompt", "R82-memory.md"]
+with contextlib.redirect_stderr(io.StringIO()):
+    module.main()
+assert calls, "config-file account did not reach verify-account"
+verify = calls[0]
+assert verify[verify.index("--expect") + 1] == "from-file@example.org", verify
+PY
+
+  trap - RETURN EXIT
+  rm -rf "$fixture_home"
 }
 
 run_shared_helper_paths_case

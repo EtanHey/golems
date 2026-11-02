@@ -252,7 +252,7 @@
       "id": 10,
       "name": "r010-repairs-stale-squash-merge-plan",
       "prompt": "The final merge plan is in fixtures/squash-merge-draft-plan.txt. Check it against current repo law and correct any violation before the lead merges.",
-      "expected_output": "Agent catches the stale squash-merge prescription, corrects the command to `gh pr merge 612 --merge --delete-branch`, and cites the R-010 interim law: merge commits remain the default until the BrainLayer commit-traceability gate ships with BrainLayer-present detection verified. Agent says to check the canonical registry R-010 row's current state before assuming squash has become active.",
+      "expected_output": "Agent catches the stale squash-merge prescription, corrects the command to `gh pr merge 612 --merge --match-head-commit <green head> --delete-branch`, and cites the R-010 interim law: merge commits remain the default until the BrainLayer commit-traceability gate ships with BrainLayer-present detection verified. Agent says to check the canonical registry R-010 row's current state before assuming squash has become active.",
       "root_cause_tested": "r010-repair-path-doc-drift — a pre-existing draft plan already contains the obsolete squash prescription and must be repaired rather than repeated",
       "files": ["fixtures/squash-merge-draft-plan.txt"],
       "assertions": [
@@ -264,7 +264,7 @@
         {
           "name": "repairs-to-merge-commit-command",
           "type": "outcome",
-          "description": "Response replaces the stale command with `gh pr merge 612 --merge --delete-branch`"
+          "description": "Response replaces the stale command with `gh pr merge 612 --merge --match-head-commit <green head> --delete-branch`"
         },
         {
           "name": "cites-r010-interim-condition",

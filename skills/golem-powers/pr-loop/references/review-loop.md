@@ -488,7 +488,7 @@ git push
 # Verify reviews are actually in before merging
 gh pr view <N> --json reviewDecision,comments
 
-gh pr merge <N> --merge --delete-branch
+gh pr merge <N> --merge --match-head-commit <green head> --delete-branch
 git checkout main && git pull
 ```
 

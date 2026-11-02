@@ -5,7 +5,7 @@
 
 ## When to Use
 
-- 2+ Claude sessions working on a plan in parallel
+- 2+ workers of any harness (Claude or Codex sessions, T3 children, sub-agents) running at once
 - Overnight/async autonomous work (human asleep or away)
 - Any multi-agent task where agents must coordinate without human intervention
 

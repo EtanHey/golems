@@ -142,7 +142,7 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - A green run on an older SHA is not green. Verify the PR head matches the latest pushed commit.
 - Never merge with an unreplied CRITICAL, MAJOR, or HIGH finding.
 - One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; round 3 only by a lead exception written in the PR body (canon #9).
-- After a clean other-vendor review at `headRefOid` and green required checks, leads merge now with `gh pr merge <N> --merge --admin` on EtanHey repos, per [Merge Authority](references/pr-creation.md#merge-authority); omit `--delete-branch`. Workers follow their brief's merge authority. Never ask Etan to approve or merge a PR; only true one-way doors wait for him. Failing/pending checks, conflicts and unresolved findings block merge.
+- After a clean other-vendor review at `headRefOid` and green required checks, leads merge now with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos (`--admin` skips required checks, so the head pin is what stops a later push merging unchecked), per [Merge Authority](references/pr-creation.md#merge-authority); omit `--delete-branch`. Workers follow their brief's merge authority. Never ask Etan to approve or merge a PR; only true one-way doors wait for him. Failing/pending checks, conflicts and unresolved findings block merge.
 - On EtanHey repos, bot verdicts are comments, not formal self-reviews.
 - Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for daemon/engine/transport diffs.
 - Cursor diff passes are read-only: findings only, never edit the PR branch. Routing: see `/agent-routing` § Routing rules (SSOT).
@@ -196,7 +196,7 @@ bug: tell ci-hygiene.
 | Remote branch delete or force push | `human-confirm-gate` token required (one-way door: deletes data) |
 | Lead must deploy and probe a Mac | Dispatch `deploy-local-prod`; checks and waits go to the mechanical tier, not the lead |
 | You just merged #N | Fast-forward the root checkout (`merge --ff-only`); report if it fails; re-read AGENTS.md/CLAUDE.md if they changed |
-| You just merged a guarded golems PR (`guarded-paths.sh "<merge>^1" "<merge>"` exit 0) | After the root fast-forward, dispatch `scripts/ratchet/post-merge-live.sh --merged-pr N` to `deploy-local-prod` and verify its receipt URL and freshness PASS; exit 2 is a stop ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory) step 1b) |
+| You just merged a guarded golems PR (`guarded-paths.sh "<merge>^1" "<merge>"` exit 0) | After the root fast-forward, dispatch `scripts/ratchet/post-merge-live.sh --merged-pr N --lease-pr <your open PR>` to `deploy-local-prod` and verify its receipt URL and freshness PASS; exit 2 is a stop ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory) step 1b) |
 | Last PR of the batch merged | Run the feature-batch gate (heavy/e2e, real-client, visual QA, release gate to `CLEAN`) before any done claim |
 | Linked-worktree merge cleanup fails | Verify whether the remote merge already succeeded before any retry |
 | PR is stacked | Preserve the base branch until children are retargeted |
