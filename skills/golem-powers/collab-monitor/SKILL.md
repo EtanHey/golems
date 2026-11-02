@@ -11,8 +11,8 @@ compliance-score: "20/20 owner lifecycle and state hygiene regressions; 6/6 epis
 
 Use the native **Monitor** tool when the harness exposes it. Arm before dispatch,
 keep the returned watch identifier in the lane record, and stop it when its lane
-closes. Codex and T3 seats never poll collabs with turns; a T3 lead keeps one name waiter (next section). A
-detached producer alone does not wake an agent.
+closes. Codex and T3 seats never poll collabs with turns; a T3 lead keeps one name waiter (next section),
+which also watches its lane collab (§ Lanes with a collab). A detached producer alone does not wake an agent.
 
 ## Codex and T3 seats
 
@@ -33,9 +33,10 @@ another 201M across 729 turns." (Etan 2026-10-18, via orc collab)
   completion notifications for child work and `watch_pull_request` for PRs. Do
   not add a second watcher on top of them, apart from the lead name waiter below.
 - A T3 lead keeps exactly one name waiter armed at all times on the leads+orc
-  collab, `orchestrator/docs.local/collab/orc-inbox.md` (lead rules §1, 2026-10-30):
-  a background shell loop that exits on the first new `@<handle>` or `@all-leads`
-  line. Register it with `t3_background_wait` and re-arm it on every wake. It
+  collab, `orchestrator/docs.local/collab/orc-inbox.md` (lead rules §1, 2026-10-30),
+  and on each lane collab it leads (§ Lanes with a collab): a background shell loop
+  that exits on the first new `@<handle>` or `@all-leads` line in the inbox, or the
+  first new line addressed to its listen name in a lane collab. Register it with `t3_background_wait` and re-arm it on every wake. It
   costs no model turns until a line matches, so it is not a polling turn. Keep
   your own handle out of your own posts, or it wakes you. Workers and children never arm it.
 - If something genuinely must sit and watch, dispatch one bounded
@@ -44,6 +45,21 @@ another 201M across 729 turns." (Etan 2026-10-18, via orc collab)
   `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher`.
   It reports once and exits; it never owns the parent's PR watch.
 - Native Monitor below is for Claude seats in a cmux fleet.
+
+## Lanes with a collab
+
+> "when there is a collab the message shouldn't travel through the chat, but have
+> the monitor on the […] collab damn it" (Etan 2026-11-02, via orc)
+
+- Every worker brief says `Report to <collab path>, not to the lead thread.`
+  Workers append their status, DONE and BLOCKED lines to the collab.
+- The lead keeps ONE live monitor on the collab, for lines addressed to it. A
+  Claude seat in a cmux fleet uses native Monitor (§ Collab tail with a lead
+  filter), re-armed at expiry. A T3 lead (any vendor) extends the one name waiter
+  above to the lane collab, so it adds no second waiter and no polling turns.
+- The completion notification stays the liveness guard. The collab monitor
+  carries the messages.
+- Don't relay worker updates into chat. Chat is for Etan and orc's routing.
 
 ## Native Monitor first
 
