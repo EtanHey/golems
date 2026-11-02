@@ -30,7 +30,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 8. REVIEW    Fetch + read review comments (see [Reading Review Comments](review-loop.md#reading-review-comments))
              ↳ Every comment/reply you POST ends with the signature line
 9. FIX       Address real bugs from review
-10. MERGE    gh pr merge `<N>` --merge --admin --delete-branch
+10. MERGE    gh pr merge `<N>` --merge --admin --match-head-commit `<green head>` --delete-branch
              ↳ Leads are ADMINS on Etan's repos: `--admin` is the DEFAULT.
                `reviewDecision: REVIEW_REQUIRED` is a GitHub LABEL, never a
                stop condition. See "Merge Authority" below.
@@ -48,7 +48,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 > you're waiting for, it's my approval, and it's stupid."*
 
 1. **Branch protection exists to stop OUTSIDERS. Leads are not outsiders.** On Etan's repos,
-   leads merge with **`gh pr merge <N> --admin`** as the default. A protection rule is never a
+   leads merge with **`gh pr merge <N> --admin --match-head-commit <green head>`** as the default. A protection rule is never a
    reason to stop, wait, or report "blocked."
 2. **`reviewDecision: REVIEW_REQUIRED` is a GitHub label, not a refusal.** The ONLY real merge
    blockers are: **actual conflicts · failing CI · an unresolved review finding**. Nothing else.

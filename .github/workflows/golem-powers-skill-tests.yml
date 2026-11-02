@@ -148,6 +148,7 @@ jobs:
                    ./scripts/tests/ratchet-pre-push.test.mjs \
                    ./scripts/tests/ratchet-debt.test.mjs \
                    ./scripts/tests/ratchet-live-freshness.test.mjs \
+                   ./scripts/tests/ratchet-post-merge.test.mjs \
                    ./scripts/tests/ratchet-perf.test.mjs \
                    ./scripts/tests/repogolem-agents.test.ts \
                    ./scripts/tests/repogolem-managed-agents.test.ts \
@@ -191,6 +192,7 @@ jobs:
       - name: node suites
         run: |
           node --test scripts/tests/prepush-touched.test.mjs
+          node --test scripts/tests/ratchet-guarded-set.test.mjs
           node --test scripts/tests/pr-wait-hygiene.test.mjs
           node --test scripts/tests/install-receipt.test.mjs \
                       scripts/tests/t3-mcp-holders.test.mjs \
