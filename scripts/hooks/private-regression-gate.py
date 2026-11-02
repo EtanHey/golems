@@ -209,16 +209,10 @@ def _token(observed):
     return f"v2:darwin:{first}.{second:06d}"  # Darwin: (seconds, microseconds)
 
 
-def _legacy_seconds(text):
-    """Epoch seconds from a pre-R13 marker (`ps -o lstart=`, local time, C locale); None if it doesn't parse."""
-    try:
-        return int(time.mktime(time.strptime(" ".join(str(text).split()), "%a %b %d %H:%M:%S %Y")))
-    except (ValueError, OverflowError):
-        return None
-
-
 def owner_active(pid, start):
-    """True = keep the fixture. Only a provably gone or provably different owner is inactive (Codex: deletion follows)."""
+    """True = keep the fixture. Only a provably gone owner, or a v2 token that provably names another incarnation, is
+    inactive: deletion follows (Codex review of R13 2a). A legacy (pre-R13) marker holds local wall time with no zone or
+    DST fold, so it can't prove a different incarnation; keep it while its PID lives or can't be read."""
     try:
         observed = proc.identity(pid)
     except proc.ProcIdentityUnavailable:
@@ -227,14 +221,17 @@ def owner_active(pid, start):
         return False  # gone
     if start.startswith("v2:"):
         return start == _token(observed)
-    seconds = _legacy_seconds(start)
-    if seconds is None or isinstance(observed.start[0], bytes):
-        return True  # an unknown legacy value, or a Linux legacy marker: keep while the PID lives
-    return seconds == observed.start[0]
+    return True  # legacy marker of a live PID: keep
+
+
+# A marker that is empty, partial or invalid may belong to a pre-R13 gate mid-write (it wrote non-atomically, and old and new
+# gates can run concurrently in separate heavy-suite slots). Keep it while young; an old one means its writer died mid-write
+# (a failed write raises and the gate exits).
+PARTIAL_MARKER_GRACE_SECONDS = 600
 
 
 def write_owner_marker(directory, pid, token):
-    """Atomic, so a reader never sees a live owner's partial marker (a corrupt marker is then always stale)."""
+    """Atomic, so this version's readers never see its own partial marker."""
     marker, staged = directory / ".active", directory / f".active.{uuid.uuid4().hex}"
     staged.write_text(json.dumps({"pid": pid, "start": token}))
     os.replace(staged, marker)
@@ -247,9 +244,17 @@ def active_fixture(path):
     try:
         data = json.loads(marker.read_text())
         pid, start = data["pid"], data["start"]
-    except (OSError, ValueError, KeyError, TypeError):
-        return False
-    return type(pid) is int and pid > 0 and isinstance(start, str) and bool(start) and owner_active(pid, start)
+        valid = type(pid) is int and pid > 0 and isinstance(start, str) and bool(start)
+    except (ValueError, KeyError, TypeError):
+        valid = False
+    except OSError:
+        return True  # unreadable marker: cannot tell, keep
+    if not valid:
+        try:
+            return time.time() - marker.stat().st_mtime < PARTIAL_MARKER_GRACE_SECONDS
+        except OSError:
+            return True
+    return owner_active(pid, start)
 
 
 def prune_fixtures(keep=5):

@@ -392,8 +392,8 @@ def test_stale_active_fixture_is_pruned(tmp_path, monkeypatch, stale):
     for i in range(8):
         p = root / format(i, '032x'); p.mkdir(); os.utime(p, (i+1, i+1))
     old = root / format(0, '032x')
-    # A reused PID: same number, a parseable legacy lstart of another time (unparseable legacy values are kept, see below).
-    (old / '.active').write_text(json.dumps({'pid': 99999999 if stale == 'dead' else os.getpid(), 'start': 'Thu Jan  1 00:00:00 1970'}))
+    # A reused PID: same number, a v2 token naming another incarnation (legacy markers of live PIDs are kept, see below).
+    (old / '.active').write_text(json.dumps({'pid': 99999999 if stale == 'dead' else os.getpid(), 'start': 'v2:darwin:1.000000'}))
     os.utime(old, (1, 1))  # Writing the marker must not make the old fixture newest.
     gate.prune_fixtures()
     assert not old.exists() and len(list(root.iterdir())) == 5
@@ -530,11 +530,6 @@ def _poison_ps(tmp_path, monkeypatch):
     return called
 
 
-def _legacy_lstart(epoch_seconds):
-    import time
-    return time.strftime("%a %b %e %H:%M:%S %Y", time.localtime(epoch_seconds))
-
-
 def test_owner_marker_never_spawns_ps_and_round_trips(tmp_path, monkeypatch):
     import os
     called = _poison_ps(tmp_path, monkeypatch)
@@ -548,22 +543,21 @@ def test_owner_marker_never_spawns_ps_and_round_trips(tmp_path, monkeypatch):
 
 
 @parametrize("case,expected", [
-    ("legacy-live-same-start", True),     # an old-format marker of a LIVE owner survives the upgrade
-    ("legacy-live-unparseable", True),    # unknown legacy value + live pid: keep, never delete
-    ("legacy-live-other-start", False),   # parseable legacy of another time: a reused PID, stale
+    ("legacy-live", True),                # an old-format marker of a LIVE owner survives the upgrade (any platform)
+    ("legacy-live-unparseable", True),    # unknown legacy value + live pid: keep
+    ("legacy-live-other-start", True),    # legacy wall time can't prove another incarnation (no zone/DST): keep
     ("legacy-gone", False),
     ("v2-gone", False),
-    ("v2-other", False),
-    ("corrupt", False),                   # writes are atomic, so a corrupt marker can't be a live writer's
+    ("v2-other", False),                  # a v2 token of another incarnation: reused PID, prune
+    ("partial-young", True),              # an old gate may be mid-write (non-atomic, concurrent slots): keep
+    ("empty-young", True),
+    ("partial-old", False),               # its writer died mid-write
 ])
 def test_owner_marker_states(tmp_path, monkeypatch, case, expected):
-    import os, sys
-    if case == "legacy-live-same-start" and sys.platform != "darwin":
-        pytest.skip("legacy lstart comparison is darwin-only; other platforms keep live legacy owners")
+    import os, time
     called = _poison_ps(tmp_path, monkeypatch)
-    me = gate.proc.identity(os.getpid())
     values = {
-        "legacy-live-same-start": (os.getpid(), _legacy_lstart(me.start[0]) if sys.platform == "darwin" else ""),
+        "legacy-live": (os.getpid(), "Mon Nov  2 04:43:22 2026"),
         "legacy-live-unparseable": (os.getpid(), "Lun Nov  2 04:43:22 2026"),
         "legacy-live-other-start": (os.getpid(), "Thu Jan  1 00:00:00 1970"),
         "legacy-gone": (99999999, "Mon Nov  2 04:43:22 2026"),
@@ -571,13 +565,32 @@ def test_owner_marker_states(tmp_path, monkeypatch, case, expected):
         "v2-other": (os.getpid(), "v2:darwin:1.000000"),
     }
     marker_dir = tmp_path / "fx"; marker_dir.mkdir()
-    if case == "corrupt":
-        (marker_dir / ".active").write_text('{"pid": 1, "sta')
+    marker = marker_dir / ".active"
+    if case.startswith("partial"):
+        marker.write_text('{"pid": 1, "sta')
+    elif case == "empty-young":
+        marker.write_text("")
     else:
         pid, start = values[case]
-        (marker_dir / ".active").write_text(json.dumps({"pid": pid, "start": start}))
+        marker.write_text(json.dumps({"pid": pid, "start": start}))
+    if case == "partial-old":
+        old = time.time() - gate.PARTIAL_MARKER_GRACE_SECONDS - 60
+        os.utime(marker, (old, old))
     assert gate.active_fixture(marker_dir) is expected
     assert not called.exists()
+
+
+@parametrize("tz", ["UTC", "Asia/Jerusalem", "America/New_York"])
+def test_legacy_live_owner_survives_timezone_changes(tmp_path, monkeypatch, tz):
+    # Codex review r1: a legacy lstart has no zone/DST fold, so the reader's timezone must not decide deletion.
+    import os, time
+    marker_dir = tmp_path / "fx"; marker_dir.mkdir()
+    (marker_dir / ".active").write_text(json.dumps({"pid": os.getpid(), "start": "Sun Nov  1 01:30:00 2026"}))
+    monkeypatch.setenv("TZ", tz); time.tzset()
+    try:
+        assert gate.active_fixture(marker_dir) is True
+    finally:
+        monkeypatch.undo(); time.tzset()
 
 
 def test_unreadable_owner_identity_is_kept(tmp_path, monkeypatch):
