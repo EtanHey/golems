@@ -190,7 +190,7 @@ session) and read ALL of them, (3) ACKed item-by-item on the §EDITS and correct
 lists. Highlights are orientation only — the dropped tail is where re-violations
 come from (gen-11 re-violated gen-10's captured-but-unapplied edits, 2026-06-05).
 
-**Continuation/lead spawns use `claude.judgment` at 1M via proper repoGolem launchers.**
+**Continuation/lead spawns use `claude.judgment` at 1M:** in T3 through `t3_thread_launch` / `delegate_task` with that model pinned; on a terminal (cmux) seat via proper repoGolem launchers.
 Resolve its model with `node scripts/model-roles.mjs claude.judgment --field model` from
 the golems checkout and verify the bare `{repo}Claude -s` pin against it. NEVER
 pass a model param at spawn (`spawn_agent {model}` overrides the pin — 2026-06-05
@@ -219,7 +219,7 @@ When the outgoing window includes a weave doc, the successor orc boot doc MUST r
 | Declare handoff "complete" without verification | Check: new agent working, monitoring active, corrections stored (Step 5) |
 | Compact or hand off because context crossed a % | Let auto-compaction happen; hand off only when Etan asks or at a /large-plan phase boundary |
 | Relay only "the top things" from a weave/retro | Full-relay: link the entire weave doc, mandate full read + item-by-item ACK |
-| Spawn continuation with a model param | Launcher-only (`{repo}Claude -s`) — verify the resolved `claude.judgment` model and 1M context post-boot |
+| Spawn continuation with an unpinned or wrong model | T3: `t3_thread_launch` / `delegate_task` with the resolved `claude.judgment` model pinned; terminal (cmux) seats: launcher-only (`{repo}Claude -s`). Verify the model and 1M context after boot |
 | Assume a `-c` resume continues the pre-death turn's duties | Treat resume as fresh — re-derive duties from durable artifacts; encode standing orders as machinery (watch-v6 pattern) |
 
 ---
