@@ -193,6 +193,7 @@ jobs:
         run: |
           node --test scripts/tests/prepush-touched.test.mjs
           node --test scripts/tests/ratchet-guarded-set.test.mjs
+          node --test scripts/tests/prune-runs.test.mjs
           node --test scripts/tests/pr-wait-hygiene.test.mjs
           node --test scripts/tests/install-receipt.test.mjs \
                       scripts/tests/t3-mcp-holders.test.mjs \
