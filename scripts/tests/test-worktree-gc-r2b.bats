@@ -218,7 +218,7 @@ age_worktrees() {
   chmod +x "$TEST_ROOT/bin/du"
   run "$WORKTREE_GC" --apply --idle-hours 0
   [ "$status" -eq 0 ]; [ ! -e "$other" ]; [ -d "$worktree" ]
-  [[ "$output" == *"size unknown"* ]]
+  [[ "$output" == *"size unknown"* ]] || false
   python3 -c 'import json,sys; r=json.load(open(sys.argv[1]))["owners"]["t3-repo"][0]; assert r["size_bytes"] is None' "$WORKTREE_GC_REPORT_DIR/latest.json"
 }
 
@@ -239,7 +239,7 @@ CHECK
   git -C "$repo" worktree move "$worktree" "$repo/.worktrees/topic"
   worktree="$repo/.worktrees/topic"; bind_thread NULL
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [[ "$output" == *KEEP-live* ]]; [ -d "$worktree" ]
+  [ "$status" -eq 0 ]; [[ "$output" == *KEEP-live* ]] || false; [ -d "$worktree" ]
 }
 
 @test "FIX1 a failed report row cannot abort sibling reaping" {
@@ -263,8 +263,8 @@ CHECK
   run "$WORKTREE_GC" --apply --idle-hours 0
   [ "$status" -eq 0 ]
   [ -d "$root/t3-repo/first" ]; [ -d "$root/t3-repo/nested/second" ]
-  [[ "$output" == *"t3-managed (T3 storageCleanup owns it): 2 skip"* ]]
-  [[ "$output" != *"$root/t3-repo/first"* ]]
+  [[ "$output" == *"t3-managed (T3 storageCleanup owns it): 2 skip"* ]] || false
+  [[ "$output" != *"$root/t3-repo/first"* ]] || false
   python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" <<'CHECK'
 import json,sys
 assert json.load(open(sys.argv[1]))["t3_managed_skips"] == {"t3-repo": 2}
@@ -289,7 +289,7 @@ CHECK
     ln -s "$worktree/fixture.txt" "$HOME/$root/nested/source"
     run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
     [ "$status" -eq 0 ]; [ -d "$worktree" ]
-    [[ "$output" == *"KEEP-live"*"live-symlink-target $HOME/$root/nested/source"* ]]
+    [[ "$output" == *"KEEP-live"*"live-symlink-target $HOME/$root/nested/source"* ]] || false
     rm "$HOME/$root/nested/source"
   done
 }

@@ -317,6 +317,6 @@ PYTHON
         stalker_terminate_full_process_tree 424242 0
     ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/termination.sh" "$TMPDIR_"
     [ "$status" -eq 0 ]
-    [[ "$output" == *WARNING*identity* ]]
+    [[ "$output" == *WARNING*identity* ]] || false
     [ ! -e "$TMPDIR_/signals" ]
 }

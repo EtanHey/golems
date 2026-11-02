@@ -13,7 +13,7 @@ teardown() {
   WIRED_HOOKS_ROOT="$TEST_ROOT/hooks" run "$REPO_ROOT/skills/golem-powers/tmp-block/scripts/install.sh"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Install verified."* ]]
+  [[ "$output" == *"Install verified."* ]] || false
   cmp -s "$TEST_ROOT/hooks/_shared/shell_parse.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse.py"
   for leaf in tokens masks heredocs substitutions positions structure units function_expansion patterns conditions condition_steps variables eval_payloads expansion_state expansion data_text data_substitutions; do
     cmp -s "$TEST_ROOT/hooks/_shared/shell_parse_impl/$leaf.py" "$REPO_ROOT/skills/golem-powers/_shared/shell_parse_impl/$leaf.py"
@@ -93,7 +93,7 @@ assert second._parse_bash("caffeinate tee /tmp/out")[1][1] is False
   run bash -c "printf '%s' '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo hi > /tmp/parser-split-deny\"},\"cwd\":\"$TEST_ROOT\"}' | env -u GIT_GUARDIAN_LIB -u CLAUDE_WORKER python3 '$TEST_ROOT/hooks/tmp-block/hooks/tmp-block-pretooluse.py'"
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *'"decision": "block"'* ]]
+  [[ "$output" == *'"decision": "block"'* ]] || false
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 

@@ -476,7 +476,7 @@ function split_case_027() {
 
     [[ "$output" == *'Stalker Morning Digest FAILED - 2026-08-19'* \
         && "$output" == *'etan-2026-08-19-2100'* \
-        && "$status" -eq 75 ]]
+        && "$status" -eq 75 ]] || false
     [ ! -s "$ALERTS_FILE" ]
 }
 
@@ -500,7 +500,7 @@ function split_case_028() {
         && "$body" == *"Found 20 matching run directories, but none were eligible for processing"* \
         && "$body" == *"details truncated:"* \
         && "$body" == *"20 total"* \
-        ]]
+        ]] || false
     [ ! -s "$ALERTS_FILE" ]
 }
 
@@ -529,7 +529,7 @@ function split_case_029() {
         && "$body" == *"DROPPED (not counted above):"* \
         && "$body" == *"details truncated:"* \
         && "$body" == *"20 total"* \
-        ]]
+        ]] || false
     [ ! -s "$ALERTS_FILE" ]
 }
 
@@ -560,7 +560,7 @@ function split_case_030() {
         && "$body" == *"examplechannel-2026-08-20-032309"* \
         && "$body" == *"digest truncated"* \
         && "$utf16_units" -le 2000 \
-        && "$output" == *"Stalker Morning Digest - 2026-08-20"* ]]
+        && "$output" == *"Stalker Morning Digest - 2026-08-20"* ]] || false
     [ ! -s "$ALERTS_FILE" ]
 }
 

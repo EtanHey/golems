@@ -258,7 +258,7 @@ TSV
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"::warning::"* ]]
+  [[ "$output" == *"::warning::"* ]] || false
   [[ "$output" == *"size-why:"* ]]
 }
 

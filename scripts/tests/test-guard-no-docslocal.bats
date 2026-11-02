@@ -99,7 +99,7 @@ commit_fixture() { git -c core.hooksPath=/dev/null commit -qm "$1"; }
   for base in '' 0000000000000000000000000000000000000000 missing "$before"; do
     run bash "$GUARD" --range "$base..HEAD"
     [ "$status" -eq 0 ]
-    [[ "$output" == *'full history'* ]]
+    [[ "$output" == *'full history'* ]] || false
   done
 }
 @test "unusable push bases still reject deleted private additions" {
@@ -112,6 +112,6 @@ commit_fixture() { git -c core.hooksPath=/dev/null commit -qm "$1"; }
   for base in '' 0000000000000000000000000000000000000000 missing "$before"; do
     run bash "$GUARD" --range "$base..HEAD"
     [ "$status" -ne 0 ]
-    [[ "$output" == *'pkg/docs.local/synthetic'* ]]
+    [[ "$output" == *'pkg/docs.local/synthetic'* ]] || false
   done
 }
