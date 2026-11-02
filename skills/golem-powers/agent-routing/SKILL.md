@@ -35,7 +35,7 @@ This section is the single source of truth for fleet routing. Fleet canon, globa
 
 ### Gathering
 
-Codex Luna/Terra or Claude Haiku may gather per the 2026-10-28 rule below; when Gemini Argon is out, gather on Antigravity first (the 2026-11-01 rule below). Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field; pinned Cursor drains its subscription pool.
+Easy gathers go to Antigravity Flash-high at any depth (the 2026-11-02 rule below); Codex Luna/Terra or Claude Haiku are the fallback when Antigravity is out (the 2026-10-28 rule below). Other gathers go to Antigravity first when Gemini Argon is out (the 2026-11-01 rule below). Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field; pinned Cursor drains its subscription pool.
 
 ### Execution capability
 
@@ -58,8 +58,9 @@ Etan (2026-10-28, via orc/PHX): use Sol/Terra/Luna for more of the work so the C
 - Reviewers (2026-10-29) are always the other vendor: Sol reviews a Claude implementation, `claude.judgment` reviews a Codex implementation, with no exception. Gemini/Antigravity gather and never review.
 - UI/UX (2026-10-28): Claude Opus implements and reviews taste; Codex handles only mechanical parts. A fresh taste reviewer and the other-vendor reviewer remain required.
 - Leads are Claude only; Codex never holds a lead seat or long context. "I think codexes should just be workers and not leads and not hold long context." (Etan, 2026-10-28)
-- Fan-outs, gathers and mechanical work (2026-10-28) use Luna/Terra/Haiku; Sonnet 5.5 is a valid worker tier between Haiku and Opus. Antigravity's pool is for research/gather.
-- **When Gemini Argon is out (2026-11-01, Etan, via orc):** gathers go to `antigravity` with `claude-opus-5-5`, `claude-sonnet-5-5` or `gemini-3.8-flash`, never to Codex by default. Antigravity's Claude & GPT pool is separate from the Codex weekly pool and sat unused while Codex drained. Before picking a gatherer, check T3 **Settings > Usage limits**; a Codex gather is the fallback only when Antigravity is out too.
+- **Easy work goes to Flash-high, at any depth (2026-11-02, Etan, via orc):** "really got to put them(agy) in use, at least for the most easy tasks...... 3.8 flash high" / "either leads, subagents or subagents of subagents should use them, not lead being agy". Easy work is a `delegate_task` on provider `antigravity`, model `gemini-3.8-flash`, `options: {thinking_level: "high"}`, from a lead, its sub-agents and theirs. Easy work means gathers, reads, greps, inventories, log/screen reads, simple verifications, summaries and mechanical edits; a task that runs commands or writes files still needs an execution profile (§ Execution capability). It excludes judgment recon and hazard recon: anything that decides a deletion or a test edit stays on `claude.judgment` (decision rule 2). The evidence below is why: Flash-High was 20/20 on mixed gathers and 44/44 on visual reads with 0 fabrications, but 0/3 on deletion hazards. Claude verifies a Flash claim before anyone acts on it. Judgment, implementation and review keep their routes in this section. A lead seat is never agy.
+- Fallback for easy work when Antigravity is out (2026-10-28): fan-outs, gathers and mechanical work use Luna/Terra/Haiku; Sonnet 5.5 is a valid worker tier between Haiku and Opus.
+- **When Gemini Argon is out (2026-11-01, Etan, via orc):** gathers that are not easy work (easy work: the 2026-11-02 rule above) go to `antigravity` with `claude-opus-5-5`, `claude-sonnet-5-5` or `gemini-3.8-flash`, never to Codex by default. Antigravity's Claude & GPT pool is separate from the Codex weekly pool and sat unused while Codex drained. Before picking a gatherer, check T3 **Settings > Usage limits**; a Codex gather is the fallback only when Antigravity is out too.
 - Keep the Claude 5h window alive (2026-10-28). Never fast/priority: explicitly pass `fastMode:false` / `serviceTier:"default"`. This supersedes the dated budget-pacing note; it does not revert at a window reset.
 
 | Work | Implements | Reviews | Plus |
@@ -163,7 +164,7 @@ Read every reference triggered by the mission before dispatch. The live referenc
 
 Decision rules:
 
-1. Read-only query, scan, search, audit, or lookup -> the fan-out/gather models permitted by the 2026-10-28 SSOT rule or Cursor; for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
+1. Read-only query, scan, search, audit, or lookup -> Antigravity Flash-high per the 2026-11-02 SSOT rule when it is easy work (fallback: the 2026-10-28 tiers or Cursor; hazard recon: rule 2); for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
 2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
 3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; holistic/product work (skill and doc text, product behaviour, multi-file features) -> Claude Opus (Sonnet/Haiku only as sub-agents for trivial wording edits); narrow technical work (bounded fix, parser/guard/CI script, mechanical refactor, dependency bump) -> Codex Sol (hard) / Terra (bounded); ratchets and TLC/TLA+ specs -> Opus designs and builds (the table's ratchet row owns the tiny exception); the reviewer is always the other vendor (2026-10-29).
 4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
@@ -182,13 +183,16 @@ Visual re-bench 2026-09-30 (22 visual items incl. 10 harder: near-dup screens, o
 
 ## Cheap sub-agents
 
-Every `claude.judgment` seat (leads and workers) delegates parity tasks to
+Easy work goes to Antigravity Flash-high first (the 2026-11-02 rule above), including one-shot
+verifiers. This section covers two cases: the fallback when Antigravity is out, and the packaged
+agents below whose own tools (BrainLayer MCP, cmux MCP, deploy steps) a `delegate_task` child may not
+carry. In those cases every `claude.judgment` seat (leads and workers) delegates parity tasks to
 `claude.subagent.cheap`; pass its resolved alias as the Agent tool's `model`:
 `node scripts/model-roles.mjs claude.subagent.cheap --field alias`.
 
 - **brain-worker:** single-fact recall ("when did X merge", "what did Etan rule on Y"); use one cheap child instead of the judgment seat's own context.
 - **orc-helper:** spawn/resume/send/read/wait/close pane mechanics; the packaged agent's `role:` pins its alias through the drift lint.
-- **Verifiers (one-shot):** rerun a claimed command once, check now whether an artifact exists, or read a report's DONE marker.
+- **Verifiers (one-shot), when Antigravity is out:** rerun a claimed command once, check now whether an artifact exists, or read a report's DONE marker.
 - **Deploy hops:** release → install → restart → live probe → seat reconnect go to the
   `deploy-local-prod` sub-agent (Agent tool `subagent_type: "deploy-local-prod"`, model pinned to the
   resolved `claude.subagent.cheap` alias). The lead routes the hop and verifies the artifact it reports.
@@ -198,7 +202,7 @@ Anything that sits, polls or waits (CI, a PR, a file appearing, a sleep-then-che
 tier, never the lead; a one-shot check stays a cheap verifier above. From a Claude seat, pass
 `node scripts/model-roles.mjs claude.subagent.mechanical --field alias` as the Agent tool's `model`; for
 a Codex watcher, use `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher --field model`.
-`claude.subagent.cheap` keeps brain-worker recall, orc-helper and verifiers, per its 2026-09-29 evidence.
+`claude.subagent.cheap` keeps brain-worker recall and orc-helper, plus verifiers when Antigravity is out, per its 2026-09-29 evidence.
 
 Keep `claude.judgment` for multi-source or decision-grade history, deletion decisions,
 PR-gating reviews, and UX/UI judgment. Reserve judgment → 3× cheap fan-out for
@@ -256,7 +260,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 - Cursor model selection lives in Routing rules (SSOT).
 - Claude Workflow/Agent-tool fan-out is read-only recon, verification, or synthesis except audio-dashboard builds.
 - T3 child work follows § T3-native dispatch.
-- Standalone read-only lanes may use the fan-out/gather models permitted by the 2026-10-28 Routing rules (SSOT), or Cursor.
+- Easy standalone read-only lanes go to Antigravity Flash-high (the 2026-11-02 rule in Routing rules (SSOT)); the 2026-10-28 tiers or Cursor are the fallback.
 - Skills, hooks, agent definitions, and global agent settings are skillCreator-domain work. If skillCreator is not already in the loop, stop and request its audit before patching.
 
 - Superseded placement: "**The M1 Pro becomes a TEST RIG only.** Development stays on the MBP. … Nothing changes on the M1 for this yet." (Etan 2026-10-18, via orc collab) The 2026-10-28 placement below now governs.

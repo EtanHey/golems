@@ -48,7 +48,7 @@ Read the seat's actual `info.model_context_window` from its session. Handoff tim
 3. **Evaluation:** task importance alone does not establish the value of more reasoning.
 4. **Read-heavy Codex children:** use named `recon` with the `codex.implement` model and
    phase-selected effort passed explicitly at dispatch. Verify its runtime; external agent configuration may carry a stale pin.
-   A standalone read-only lane still routes to Cursor. The mechanical candidate cannot bypass its gate.
+   A standalone read-only lane routes per SKILL.md § Routing rules (SSOT) (easy work: the 2026-11-02 Flash-high rule). The mechanical candidate cannot bypass its gate.
 5. **Coordination:** use `claude.judgment` under `/agent-routing`, not a separate literal Codex lead tier.
 
 Every brief names the role, phase effort, and one-line reason, then passes that effort
