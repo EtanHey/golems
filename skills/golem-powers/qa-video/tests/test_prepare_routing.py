@@ -65,7 +65,10 @@ def score(capture):
             assert not re.search(r'(?:^|[;\n])\s*(?:for|while)\s|\b(?:mapfile|readarray)\b', args['command']), 'hand-rolled sheet loop'
             # QA/debrief: the QA seat (parent) runs extraction, including debrief.py, in its own
             # shell (2026-11-02 route). Gems keeps debrief.py inside the video-gems pipeline.
-            seat_extraction = case in {'qa', 'debrief'} and 'debrief.py' in args['command']
+            # The exemption covers debrief.py alone: a seat command that also runs visual-batch.py
+            # is seat-owned visual work and must still fail (review r2 counterexample).
+            seat_extraction = (case in {'qa', 'debrief'} and 'debrief.py' in args['command']
+                               and 'visual-batch.py' not in args['command'])
             assert actor == 'pipeline' or seat_extraction, 'lead owns default visual work'
     if case == 'visible':
         assert len(panes) == 1 and not agents, 'visible route missing or mixed'
@@ -150,7 +153,9 @@ def test_reject_route_counterexamples():
                  {'command': 'python3 /skill/scripts/debrief.py /v.mov --workdir /run --mode gems'}})
     seat_batch = accepted('qa'); seat_batch['calls'].insert(0, {'tool': 'Bash', 'arguments':
                  {'command': 'python3 /skill/scripts/visual-batch.py --workdir /run --question q /f.png'}})
-    bad += [gems_seat, seat_batch]
+    seat_combined = accepted('qa'); seat_combined['calls'].insert(0, {'tool': 'Bash', 'arguments':
+                 {'command': 'python3 /skill/scripts/debrief.py /v.mov --workdir /run --mode qa && python3 /skill/scripts/visual-batch.py --workdir /run --question q /f.png'}})
+    bad += [gems_seat, seat_batch, seat_combined]
     for c in bad:
         with pytest.raises(AssertionError):
             score(copy.deepcopy(c))
