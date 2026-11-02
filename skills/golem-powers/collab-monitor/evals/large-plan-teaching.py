@@ -21,6 +21,7 @@ def sections(repo):
         'arm': between(collab, '### 4. Arm addressed watches', '### 5. Launch agents'),
         'guard': between(collab, '### WATCH RULE', '### TASK USAGE'),
         'participation': collab.partition('## Participation law')[2],
+        'table': between(skill, '| **Collab file monitoring** |', '| **Worker liveness** |'),
     }
     return {name: ' '.join(text.split()) for name, text in scopes.items()}
 
@@ -70,6 +71,10 @@ REQUIRED = {
         'liveness': ('Before sending a task, arm a process-exit', 'MUST NOT be the only worker-liveness guard'),
         'lifecycle': ('lifecycle in step 4', 'expiry, compaction re-arm and cleanup'),
         't3': ('completion notification is the guard; arm no monitor',),
+    },
+    'table': {
+        # 2026-11-02 ruling: the T3 column matches step 2's lane-collab waiter (review r1, #1083).
+        't3': ("the lead's one name waiter also watches `collab.md`", 'not a polling turn'),
     },
     'participation': {
         'routing': ('/collab-monitor', 'Claude: native Monitor', 'Codex: no collab watcher'),
@@ -132,6 +137,7 @@ NEGATIVE_CONTROLS = (
     ('participation', 'engine-issued mailbox contract', 'attachment'),
     ('participation', 'completion notification wakes the lead', 't3'),
     ('participation', 'Re-arm on expiry and after every compaction', 'lifecycle'),
+    ('table', "the lead's one name waiter also watches `collab.md`", 't3'),
 )
 
 
