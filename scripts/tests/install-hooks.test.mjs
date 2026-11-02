@@ -998,6 +998,7 @@ function pinnedManifestFixture() {
   const directory = path.join(fx.root, 'invoking-checkout/scripts/hooks');
   mkdirSync(directory, { recursive: true });
   cpSync(installer, path.join(directory, 'install-hooks.mjs'));
+  cpSync(path.join(path.dirname(installer), 'machine-host.mjs'), path.join(directory, 'machine-host.mjs'));
   cpSync(path.join(path.dirname(installer), "hook-interpreters.mjs"), path.join(directory, "hook-interpreters.mjs"));
   mkdirSync(path.join(directory, '../repogolem'), { recursive: true });
   cpSync(path.join(here, '../repogolem/worktree-disk-floor.py'), path.join(directory, '../repogolem/worktree-disk-floor.py'));
@@ -1005,6 +1006,7 @@ function pinnedManifestFixture() {
   cpSync(wrapper, path.join(directory, 'fail-open.py'));
   cpSync(path.join(here, '../hooks/private-regression-gate.py'), path.join(directory, 'private-regression-gate.py'));
   cpSync(path.join(here, '../hooks/heavy-suite.py'), path.join(directory, 'heavy-suite.py'));
+  cpSync(path.join(here, '../hooks/proc_identity.py'), path.join(directory, 'proc_identity.py'));
   writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifestFor()));
   fx.defaultInstaller = path.join(directory, 'install-hooks.mjs');
   fx.pinnedManifest = path.join(fx.repo, 'scripts/hooks/manifest.json');
@@ -1460,7 +1462,7 @@ test("policy status rejects missing fail-closed registration and stale launcher;
 test("installer refuses a legacy source launcher paired with fail-closed before pin or settings writes", () => {
   const fx = closedFixture();
   const source = path.join(fx.root, "installer"); mkdirSync(source);
-  for (const name of ["install-hooks.mjs", "hook-interpreters.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
+  for (const name of ["install-hooks.mjs", "machine-host.mjs", "hook-interpreters.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
   writeFileSync(path.join(source, "fail-open.py"), legacyLauncher);
   const before = readFileSync(fx.settingsPath, "utf8");
   const result = spawnSync("node", [path.join(source, "install-hooks.mjs"), "--repo", fx.repo,
@@ -1490,8 +1492,8 @@ function policyFixture() {
     cpSync(path.join(sourceRepo, "skills/golem-powers", name), path.join(fx.repo, "skills/golem-powers", name), { recursive: true,
       filter: (s) => !/\/(tests|evals|__pycache__)(\/|$)|\.pyc$/.test(s.slice(sourceRepo.length)) });
   }
-  for (const name of ["install-hooks.mjs", "install-hooks.sh", "hook-interpreters.mjs", "codex-hooks-install.mjs", "fail-open.py",
-    "private-regression-gate.py", "heavy-suite.py", "codex-policy-hook.py", "codex-gate.sh"]) {
+  for (const name of ["install-hooks.mjs", "machine-host.mjs", "install-hooks.sh", "hook-interpreters.mjs", "codex-hooks-install.mjs", "fail-open.py",
+    "private-regression-gate.py", "heavy-suite.py", "proc_identity.py", "codex-policy-hook.py", "codex-gate.sh"]) {
     cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
   }
   mkdirSync(path.join(fx.repo, "scripts/repogolem"), { recursive: true });

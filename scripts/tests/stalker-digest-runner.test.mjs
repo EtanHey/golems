@@ -5,6 +5,7 @@ import { chmod, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterEach, test } from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 import { resolveCodexProgram, runDigestCodex } from "../stalker/stalker-digest-runner.mjs";
 
 const roots = [];
@@ -48,18 +49,33 @@ function options(root, workDir, timeoutMs = 30000) {
 
 test("persists bounded structural diagnostics when codex output contains prompt fragments", async () => {
   const fixtureData = await fixture("timeout", `
+import { writeFile } from "node:fs/promises";
 process.stderr.write("CLI_STDERR_STARTED\\n");
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
-process.stdout.write("x".repeat(70000) + input.slice(0, -2) + "y".repeat(70000));
+await new Promise((resolve) => process.stdout.write("x".repeat(70000) + input.slice(0, -2) + "y".repeat(70000), resolve));
+await writeFile("oversized-ready", "ready");
 process.stderr.write(input);
 setInterval(() => {}, 1000);`);
   const { root, workDir, executable } = fixtureData;
   await withCodex(executable, async () => {
-    await assert.rejects(
-      runDigestCodex(options(root, workDir, 1000)),
-      /timed out after 1000ms.*human-digest-codex\.stdout\.log.*human-digest-codex\.stderr\.log/s,
+    // Attach the rejection handler immediately while waiting for the flushed output.
+    const timedOut = assert.rejects(
+      runDigestCodex(options(root, workDir, 5000)),
+      /timed out after 5000ms.*human-digest-codex\.stdout\.log.*human-digest-codex\.stderr\.log/s,
     );
+    await Promise.all([timedOut, (async () => {
+      const deadline = Date.now() + 30000;
+      while (true) {
+        try {
+          assert.equal(await readFile(join(root, "oversized-ready"), "utf8"), "ready");
+          break;
+        } catch (error) {
+          if (error.code !== "ENOENT" || Date.now() >= deadline) throw error;
+          await delay(20);
+        }
+      }
+    })()]);
   });
   const stdoutPath = join(workDir, "human-digest-codex.stdout.log");
   const stdoutText = await readFile(stdoutPath, "utf8");

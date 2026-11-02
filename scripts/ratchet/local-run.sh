@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Mac ratchet rows for a golems PR (standards/ratchet.md; the lead ruled the scratch-HOME shape).
 #
-#   scripts/ratchet/local-run.sh --pr <N> [--install <sha>] [--private-manifest <file>]
+#   scripts/ratchet/local-run.sh --pr <N> [--head <pending-push-sha>] [--install <sha>] [--private-manifest <file>]
 #                                [--private-file <name>=<path>]... [--with <sha>]... [--no-post] [--keep]
 #                                [--pr-body-file <path>]
 #
@@ -25,11 +25,12 @@ set -euo pipefail
 
 die() { echo "local-run: $*" >&2; exit 2; }
 
-PR="" INSTALL="" PRIVATE_MANIFEST="" PR_BODY_FILE="" POST=1 KEEP=0
+PR="" PUSH_HEAD="" INSTALL="" PRIVATE_MANIFEST="" PR_BODY_FILE="" POST=1 KEEP=0
 declare -a PRIVATE_FILES=() WITH=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --pr) PR="${2:?}"; shift 2 ;;
+    --head) PUSH_HEAD="${2:?}"; shift 2 ;;
     --install) INSTALL="${2:?}"; shift 2 ;;
     --private-manifest) PRIVATE_MANIFEST="${2:?}"; shift 2 ;;
     --private-file) PRIVATE_FILES+=("${2:?}"); shift 2 ;;
@@ -58,14 +59,21 @@ NODE_VERSION="$("$NODE" --version)" || die "cannot read node version: $NODE"
 
 read -r HEAD BRANCH STATE BASE < <(gh pr view "$PR" --repo "$REPO_SLUG" --json headRefOid,headRefName,state,baseRefOid -q '"\(.headRefOid) \(.headRefName) \(.state) \(.baseRefOid)"')
 [ "$STATE" = "OPEN" ] || die "PR #$PR is $STATE; the lease probe needs an open PR"
-INSTALL="${INSTALL:-$HEAD}"
+count() { echo "$#"; }
+if [ -n "$PUSH_HEAD" ]; then
+  [[ "$PUSH_HEAD" =~ ^[0-9a-f]{40}$ ]] || die "--head must be a full commit SHA"
+  [ -z "$INSTALL$PRIVATE_MANIFEST" ] && [ "$(count "${WITH[@]+"${WITH[@]}"}")" = 0 ] && [ "$(count "${PRIVATE_FILES[@]+"${PRIVATE_FILES[@]}"}")" = 0 ] \
+    || die "--head cannot be combined with replay options"
+  [ "$(git -C "$HERE" rev-parse "refs/heads/$BRANCH")" = "$PUSH_HEAD" ] \
+    || die "--head is not the local PR branch tip ($BRANCH)"
+fi
+INSTALL="${INSTALL:-${PUSH_HEAD:-$HEAD}}"
 
 # Post only a canonical PR-head run whose row scripts ARE the PR head's (lib.sh).
 source "$HERE/lib.sh"
 HERE_HEAD="$(git -C "$HERE" rev-parse HEAD)"
 HERE_DIRTY="$(git -C "$HERE" status --porcelain | grep -c . || true)"
-count() { echo "$#"; }
-MODE="$(ratchet_post_mode "$INSTALL" "$HEAD" "$(count "${WITH[@]+"${WITH[@]}"}")" "$PRIVATE_MANIFEST" \
+MODE="$(ratchet_post_mode "$INSTALL" "${PUSH_HEAD:-$HEAD}" "$(count "${WITH[@]+"${WITH[@]}"}")" "$PRIVATE_MANIFEST" \
   "$(count "${PRIVATE_FILES[@]+"${PRIVATE_FILES[@]}"}")" "$HERE_HEAD" "$HERE_DIRTY")"
 case "$MODE" in
   post) ;;
@@ -168,6 +176,7 @@ echo "local-run: install exit $(cat "$RUN/install.rc") (log: $RUN/install.log)"
 cp -R "$CLONE/docs.local/hooks-private-gate-runs" "$RUN/" 2>/dev/null || true
 
 # The checkout the lease payloads name: on the PR branch, push URL github.com, HEAD = PR head.
+# Keep the lease pinned to GitHub's CURRENT head even when installing a pending push above.
 python3 "$HERE/../repogolem/worktree-disk-floor.py" "$SCRATCH/pushwt"
 git -C "$CLONE" worktree add -q -B "$BRANCH" "$SCRATCH/pushwt" "$HEAD"
 
@@ -184,10 +193,18 @@ args=(--rows "$HERE/rows.json" --results "$RUN/results.json" --head "$INSTALL" -
 git -C "$MAIN" fetch -q origin "$BASE" 2>/dev/null || true
 args+=(--base-ref "$BASE")
 [ -n "$PR_BODY_FILE" ] && args+=(--pr-body-file "$PR_BODY_FILE")
+if [ "$POST" = 1 ] && [ -n "$PUSH_HEAD" ]; then
+  current="$(gh pr view "$PR" --repo "$REPO_SLUG" --json headRefOid,headRefName,state -q '"\(.headRefOid) \(.headRefName) \(.state)"')"
+  [ "$current" = "$HEAD $BRANCH OPEN" ] || die "PR changed during the pending-head run; refusing to post"
+  [ "$(git -C "$HERE" rev-parse HEAD)" = "$PUSH_HEAD" ] && [ -z "$(git -C "$HERE" status --porcelain)" ] \
+    || die "candidate checkout changed during the pending-head run; refusing to post"
+  [ "$(git -C "$HERE" rev-parse "refs/heads/$BRANCH")" = "$PUSH_HEAD" ] \
+    || die "local PR branch changed during the pending-head run; refusing to post"
+fi
 [ "$POST" = 1 ] && args+=(--repo "$REPO_SLUG" --pr "$PR" --author "$(gh api user -q .login)")
 status=0
 "$NODE" "$HERE/table.mjs" "${args[@]}" || status=$?
-if [ "$POST" = 1 ]; then
+if [ "$POST" = 1 ] && [ -z "$PUSH_HEAD" ]; then
   # A comment does not re-trigger pull_request; re-run this head's ratchet check so it reads it.
   run_id="$(gh run list --repo "$REPO_SLUG" --workflow ratchet.yml --commit "$HEAD" --json databaseId -q '.[0].databaseId' || true)"
   if [ -n "$run_id" ]; then gh run rerun "$run_id" --repo "$REPO_SLUG" || echo "local-run: re-run the ratchet check for $HEAD by hand"; fi

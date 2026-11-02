@@ -147,7 +147,7 @@ def load_module():
     return module
 
 
-def test_finished_suite_unlocks_while_background_daemon_survives(tmp_path):
+def test_finished_suite_cleans_background_daemon_before_unlocking(tmp_path):
     pid = tmp_path / "daemon.pid"
     code = f"import subprocess,sys; from pathlib import Path; p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'],close_fds=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); Path({str(pid)!r}).write_text(str(p.pid))"
     try:
@@ -155,7 +155,8 @@ def test_finished_suite_unlocks_while_background_daemon_survives(tmp_path):
         result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=env(tmp_path), capture_output=True, text=True, timeout=5)
         assert result.returncode == 0
     finally:
-        if pid.exists(): os.kill(int(pid.read_text()), signal.SIGTERM)
+        if pid.exists():
+            with pytest.raises(ProcessLookupError): os.kill(int(pid.read_text()), 0)
 
 
 def test_force_skips_load_and_lock(tmp_path):
@@ -163,12 +164,13 @@ def test_force_skips_load_and_lock(tmp_path):
     result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "pass"], env=forced, capture_output=True, text=True, timeout=5)
     assert result.returncode == 0
     assert "FORCE" in result.stderr
-    assert not (tmp_path / ".local").exists()
+    assert not list((tmp_path / ".local/state/golems").glob("*.lock"))
 
 
 def test_setup_failure_runs_suite_unlocked(tmp_path):
-    (tmp_path / ".local").write_text("not a directory")
-    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "raise SystemExit(7)"], env=env(tmp_path), capture_output=True, text=True, timeout=5)
+    (tmp_path / "broken").write_text("not a directory")
+    broken = {**env(tmp_path), "GOLEMS_HEAVY_LOCK": str(tmp_path / "broken/lock")}
+    result = subprocess.run([sys.executable, str(SCRIPT), "--", sys.executable, "-c", "raise SystemExit(7)"], env=broken, capture_output=True, text=True, timeout=5)
     assert result.returncode == 7
     assert "unqueued" in result.stderr
 
