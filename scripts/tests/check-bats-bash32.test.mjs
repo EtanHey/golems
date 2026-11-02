@@ -64,3 +64,21 @@ test('CLI rejects tracked Bats and split-part violations and accepts their fixes
   const good = run();
   assert.equal(good.status, 0, good.stderr);
 });
+test('finds multiline and non-final semicolon assertions', () => {
+  for (const body of [['[[ a == b && \\', ' c == d ]]', 'true'].join('\n'),
+    '[ a ]; [[ a == b ]]; [ b ]', 'true && [[ a == b ]]; true']) {
+    const source = `@test "probe" {\n${body}\n}\n`;
+    assert.deepEqual(assertions(source), [2], body);
+    assert.deepEqual(assertions(source.replace(']]', ']] || false')), [], body);
+  }
+});
+test('here-strings do not silence later assertions', () => {
+  for (const input of ["<<< 'abc'", '<<< foo'])
+    assert.deepEqual(assertions(`@test "probe" {\nread x ${input}\n[[ a == b ]]\ntrue\n}\n`), [3]);
+});
+
+test('allows final multiline assertions and leaves conditional and-lists alone', () => {
+  assert.deepEqual(assertions('@test "probe" {\n[[ a == b &&\n c == d ]]\n}\n'), []);
+  assert.deepEqual(assertions('@test "probe" {\n[[ -f ready ]] && break\ntrue\n}\n'), []);
+  assert.deepEqual(assertions('@test "probe" {\n[ a ] &&\n [[ a == b ]] &&\n [ b ]\n}\n'), []);
+});

@@ -239,7 +239,7 @@ CHECK
   git -C "$repo" worktree move "$worktree" "$repo/.worktrees/topic"
   worktree="$repo/.worktrees/topic"; bind_thread NULL
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [[ "$output" == *KEEP-live* ]]; [ -d "$worktree" ]
+  [ "$status" -eq 0 ]; [[ "$output" == *KEEP-live* ]] || false; [ -d "$worktree" ]
 }
 
 @test "FIX1 a failed report row cannot abort sibling reaping" {
