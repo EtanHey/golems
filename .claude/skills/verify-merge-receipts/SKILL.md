@@ -1,6 +1,6 @@
 ---
 name: verify-merge-receipts
-description: Verify guarded-merge receipts when changing scripts/ratchet/ (local-run.sh, post-merge-live, live-rows.sh, live/status.sh, live-freshness.mjs, check-comment.mjs, guarded-paths.sh), install-hooks.mjs status/hookDriftPaths, or pr-loop's merge step. Rerun MergeReceipts and check its mapping to the source.
+description: Verify guarded-merge receipts when changing scripts/ratchet/ (local-run.sh, post-merge-live, live-rows.sh, live/status.sh, mac/hc-probe.py, live-freshness.mjs, check-comment.mjs, guarded-paths.sh), install-hooks.mjs status/selectedPin/hookDriftPaths, scripts/hooks/manifest.json, scripts/golems-lead-confirm, human-confirm-gate's tokens.py (lead_metadata, lead_scope), or pr-loop's merge step. Rerun MergeReceipts and check its mapping to the source.
 ---
 
 # Verify merge receipts
@@ -54,10 +54,12 @@ Source sync commit: `475763a465b9e8f12d9706b0ba7efdb71522e34e` (master).
 | `MacStart`, `MacPost` | `scripts/ratchet/local-run.sh` (head read, `table.mjs --head "$INSTALL"`), `lib.sh` `ratchet_post_mode` |
 | `CIRun`, `HeadBound` | `scripts/ratchet/check-comment.mjs` `checkVerdict`; `.github/workflows/ratchet.yml` Mac rows step |
 | `LeadSeesGreen`, `Merge`, `MatchHead` | `skills/golem-powers/pr-loop/references/merge-and-verification.md`: merge command and step 1b |
-| `LiveUpdate`, `LiveLease`, `PinLease` | `scripts/ratchet/post-merge-live.mjs` (update, lease search); `live-rows.sh` lease head check |
-| `LiveStatus`, `Status` | `scripts/ratchet/live/status.sh`; `scripts/hooks/install-hooks.mjs` `status()`, `hookDriftPaths()` |
-| `LiveToken` | `scripts/ratchet/mac/hc-probe.py` step C; row `live-human-confirm` in `rows.json` |
-| `Fresh`, `GraceBound`, `GuardHookPaths` | `scripts/ratchet/live-freshness.mjs` (`checkLiveFreshness`, `main`, `guardedAt`); `scripts/ratchet/guarded-paths.sh` |
+| `LivePinFetch`, `LivePin` | `scripts/ratchet/post-merge-live.mjs` update call; `scripts/hooks/install-hooks.mjs` `selectedPin()` (fetch, resolve `origin/master`), `pinLive()` |
+| `LiveLease`, `PinLease` | `scripts/ratchet/post-merge-live.mjs` lease search (`--lease-pr`, `--lease-repo`) |
+| `LiveReread` | `scripts/ratchet/live-rows.sh`: `gh pr view` of the lease head and the `--lease-repo` head check |
+| `LiveStatusFetch`, `LiveStatus`, `Status` | `scripts/ratchet/live/status.sh`; `scripts/hooks/install-hooks.mjs` `status()`, `hookDriftPaths()`; `scripts/hooks/manifest.json` (which paths count as hook-loaded) |
+| `LiveToken` | `scripts/ratchet/mac/hc-probe.py` steps B and C; `scripts/golems-lead-confirm` (issuer); `skills/golem-powers/human-confirm-gate/hooks/tokens.py` `lead_metadata()`, `lead_scope()`; row `live-human-confirm` in `rows.json` |
+| `Fresh`, `GraceBound`, `GuardHookPaths` | `scripts/ratchet/live-freshness.mjs` (`checkLiveFreshness`, `main`, `guardedAt`); `scripts/ratchet/guarded-paths.sh`; `scripts/hooks/manifest.json` (via `hookDriftPaths()`) |
 
 Before judging a change, diff these files against the sync commit and trace each changed step,
 guard or ordering to a model action. The flag probes catch only the six facts they test, so a

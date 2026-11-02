@@ -15,7 +15,7 @@ stateDiagram-v2
   Moved: Green seen, then P pushed
   Bad1: 1 Merged at an unreceipted head
   Merged: Merged at the receipted head
-  Updated: hooks-live updated to master
+  Updated: hooks-live pinned to the fetched master
   LeaseQ: Lease on Q's branch
   LeaseOwn: Lease on own PR
   Bad2: 2 Live receipt FAIL, install healthy (Q moved)
@@ -32,11 +32,11 @@ stateDiagram-v2
   Green --> Moved: P pushes
   Moved --> Bad1: lead merges with --admin
   Green --> Merged: lead merges
-  Merged --> Updated: post-merge-live
+  Merged --> Updated: post-merge-live fetches, then pins
   Updated --> LeaseQ: lease auto-picked
   Updated --> LeaseOwn: --lease-pr pinned
-  LeaseQ --> Bad2: Q pushes or merges, token denied
-  LeaseOwn --> Bad3: Q merges docs [drift counts every commit]
+  LeaseQ --> Bad2: Q merges or moves on, token denied
+  LeaseOwn --> Bad3: Q merged docs after the pin fetch [drift counts every commit]
   LeaseOwn --> Bad4: rows run [behind= with end-anchored parser]
   LeaseOwn --> Pass: rows run [today]
   Open --> QHook: Q merges an unguarded hook path
@@ -63,5 +63,5 @@ stateDiagram-v2
    reaches the same state by removing the age check that came with
    [#1032](https://github.com/EtanHey/golems/pull/1032).
 
-`AllFixes` passes all three properties (4,956 states). The chart proves no timing: "120 minutes
+`AllFixes` passes all three properties (15,888 states). The chart proves no timing: "120 minutes
 pass" is one step.
