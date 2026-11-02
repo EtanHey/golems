@@ -306,7 +306,7 @@ def test_completed_fixture_retention_preserves_active_and_foreign_paths(tmp_path
     for i, name in enumerate(names):
         p = root / name; p.mkdir(); (p / 'data').write_text('fixture')
         os.utime(p, (i + 1, i + 1))
-    active = root / names[0]; (active / '.active').write_text(json.dumps({'pid': os.getpid(), 'start': gate.process_start(os.getpid())})); os.utime(active, (1, 1))
+    active = root / names[0]; (active / '.active').write_text(json.dumps({'pid': os.getpid(), 'start': gate.start_token(os.getpid())})); os.utime(active, (1, 1))
     foreign = root / 'unrelated'; foreign.mkdir()
     external = tmp_path / 'external'; external.mkdir(); (external / 'keep').touch()
     (root / ('f' * 32)).symlink_to(external, target_is_directory=True)
@@ -392,7 +392,8 @@ def test_stale_active_fixture_is_pruned(tmp_path, monkeypatch, stale):
     for i in range(8):
         p = root / format(i, '032x'); p.mkdir(); os.utime(p, (i+1, i+1))
     old = root / format(0, '032x')
-    (old / '.active').write_text(json.dumps({'pid': 99999999 if stale == 'dead' else os.getpid(), 'start': 'different-start'}))
+    # A reused PID: same number, a v2 token naming another incarnation (legacy markers of live PIDs are kept, see below).
+    (old / '.active').write_text(json.dumps({'pid': 99999999 if stale == 'dead' else os.getpid(), 'start': 'v2:darwin:1.000000'}))
     os.utime(old, (1, 1))  # Writing the marker must not make the old fixture newest.
     gate.prune_fixtures()
     assert not old.exists() and len(list(root.iterdir())) == 5
@@ -515,3 +516,88 @@ def test_live_layout_fixtures_import_the_validated_candidate(tmp_path, monkeypat
     out = tmp_path / "receipts"; out.mkdir()
     gate.execute_suite([str(fixture_path)], out, roots["candidate"], "private", 2)
     assert (out / "private-completion.json").is_file()
+
+
+# R13 step 2a (2026-11-02): /bin/ps is setuid root on macOS, and each run inside a heavy suite is an unreadable root member that
+# makes cleanup fail closed (exit 70). The gate's owner marker must never spawn ps, and existing live owners must survive the
+# format change (Codex design review: both consumers DELETE on a false "inactive").
+def _poison_ps(tmp_path, monkeypatch):
+    import os
+    bin_dir = tmp_path / "poison-bin"; bin_dir.mkdir()
+    called = tmp_path / "ps-called"
+    (bin_dir / "ps").write_text(f"#!/bin/sh\necho called >> {called}\nexit 99\n"); (bin_dir / "ps").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    return called
+
+
+def test_owner_marker_never_spawns_ps_and_round_trips(tmp_path, monkeypatch):
+    import os
+    called = _poison_ps(tmp_path, monkeypatch)
+    token = gate.start_token(os.getpid())
+    assert token and token.startswith("v2:")
+    marker_dir = tmp_path / "fx"; marker_dir.mkdir()
+    gate.write_owner_marker(marker_dir, os.getpid(), token)
+    assert json.loads((marker_dir / ".active").read_text())["start"] == token  # JSON round-trip keeps it a string
+    assert gate.active_fixture(marker_dir) is True
+    assert not called.exists(), "the owner marker must not run ps"
+
+
+@parametrize("case,expected", [
+    ("legacy-live", True),                # an old-format marker of a LIVE owner survives the upgrade (any platform)
+    ("legacy-live-unparseable", True),    # unknown legacy value + live pid: keep
+    ("legacy-live-other-start", True),    # legacy wall time can't prove another incarnation (no zone/DST): keep
+    ("legacy-gone", False),
+    ("v2-gone", False),
+    ("v2-other", False),                  # a v2 token of another incarnation: reused PID, prune
+    ("partial-young", True),              # an old gate may be mid-write (non-atomic, concurrent slots): keep
+    ("empty-young", True),
+    ("partial-old", True),                # age can't prove the writer dead (a stopped writer stays mid-write): keep
+    ("empty-old", True),
+])
+def test_owner_marker_states(tmp_path, monkeypatch, case, expected):
+    import os, time
+    called = _poison_ps(tmp_path, monkeypatch)
+    values = {
+        "legacy-live": (os.getpid(), "Mon Nov  2 04:43:22 2026"),
+        "legacy-live-unparseable": (os.getpid(), "Lun Nov  2 04:43:22 2026"),
+        "legacy-live-other-start": (os.getpid(), "Thu Jan  1 00:00:00 1970"),
+        "legacy-gone": (99999999, "Mon Nov  2 04:43:22 2026"),
+        "v2-gone": (99999999, gate.start_token(os.getpid())),
+        "v2-other": (os.getpid(), "v2:darwin:1.000000"),
+    }
+    marker_dir = tmp_path / "fx"; marker_dir.mkdir()
+    marker = marker_dir / ".active"
+    if case.startswith("partial"):
+        marker.write_text('{"pid": 1, "sta')
+    elif case.startswith("empty"):
+        marker.write_text("")
+    else:
+        pid, start = values[case]
+        marker.write_text(json.dumps({"pid": pid, "start": start}))
+    if case.endswith("-old"):
+        old = time.time() - 7 * 24 * 3600
+        os.utime(marker, (old, old))
+    assert gate.active_fixture(marker_dir) is expected
+    assert not called.exists()
+
+
+@parametrize("tz", ["UTC", "Asia/Jerusalem", "America/New_York"])
+def test_legacy_live_owner_survives_timezone_changes(tmp_path, monkeypatch, tz):
+    # Codex review r1: a legacy lstart has no zone/DST fold, so the reader's timezone must not decide deletion.
+    import os, time
+    marker_dir = tmp_path / "fx"; marker_dir.mkdir()
+    (marker_dir / ".active").write_text(json.dumps({"pid": os.getpid(), "start": "Sun Nov  1 01:30:00 2026"}))
+    monkeypatch.setenv("TZ", tz); time.tzset()
+    try:
+        assert gate.active_fixture(marker_dir) is True
+    finally:
+        monkeypatch.undo(); time.tzset()
+
+
+def test_unreadable_owner_identity_is_kept(tmp_path, monkeypatch):
+    import os
+    marker_dir = tmp_path / "fx"; marker_dir.mkdir()
+    (marker_dir / ".active").write_text(json.dumps({"pid": os.getpid(), "start": gate.start_token(os.getpid())}))
+    def unreadable(pid): raise gate.proc.ProcIdentityUnavailable("injected", reason="permission", uid=0)
+    monkeypatch.setattr(gate.proc, "identity", unreadable)
+    assert gate.active_fixture(marker_dir) is True, "cannot tell = keep, never delete"

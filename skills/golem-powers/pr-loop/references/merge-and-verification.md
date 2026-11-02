@@ -161,11 +161,12 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
    - Exit 0 means guarded ("Mac rows required"): the lead dispatches this exact command, from the golems root
      checkout, to `deploy-local-prod` and verifies what it reports:
    ```bash
-   scripts/ratchet/post-merge-live.sh --merged-pr <N>
+   scripts/ratchet/post-merge-live.sh --merged-pr <N> --lease-pr <your open PR>
    ```
-   It updates the mbp hooks-live install, picks a clean exact-head open-PR worktree as the lease, runs the live
-   rows, posts the `golems-ratchet-live` receipt on #N, and prints the comment URL and the live-tier freshness
-   line. Optional `--lease-pr N --lease-repo <path>` constrains the lease. Done means a zero exit, a printed
+   `--lease-pr` is required: an open PR you own and won't push during the receipt (its clean exact-head worktree
+   is the token lease; add `--lease-repo <path>` to pick the worktree). It updates the mbp hooks-live install, runs
+   the live rows, posts the `golems-ratchet-live` receipt on #N, and prints the comment URL and the live-tier
+   freshness line. Never borrow another lead's PR: a branch that moves mid-receipt denies the token (#1007). Done means a zero exit, a printed
    receipt URL and a freshness PASS. Any nonzero exit or FAIL is a stop: report it rather than re-running
    blindly. After the receipt posts, re-run any failed master/PR `ratchet` jobs. A posted comment alone does
    not re-run CI. Rules and the 120-minute grace: `standards/ratchet.md`.
