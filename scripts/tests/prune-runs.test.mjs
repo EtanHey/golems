@@ -67,3 +67,20 @@ test('named citation and descendant writes protect runs; changed plan is refused
     assert.equal(fs.readdirSync(root).length, 3);
   } finally { fs.rmSync(root, { recursive: true }); }
 });
+
+test('archive files are never selected, even old, uncited and run-shaped', () => {
+  // skill-creator's ack condition for #1098: m1-procedure-*.tar.zst archives must survive the prune.
+  const root = fs.mkdtempSync(path.resolve('docs.local/retention-test-'));
+  const old = new Date(Date.now() - 4 * 3600000);
+  const dirs = ['m1-procedure-aaaaaaa-20260101T000000', 'm1-procedure-bbbbbbb-20260102T000000'];
+  const files = ['m1-procedure-ccccccc-20260103T000000.tar.zst', 'm1-procedure-ddddddd-20260104T000000'];
+  try {
+    for (const name of dirs) fs.mkdirSync(path.join(root, name));
+    for (const name of files) fs.writeFileSync(path.join(root, name), 'archive');
+    for (const name of [...dirs, ...files]) fs.utimesSync(path.join(root, name), old, old);
+    const plan = planRuns(root, { keep: 1, citations: '' });
+    assert.deepEqual(plan.filter(x => x.action === 'delete').map(x => x.name), [dirs[0]]);
+    applyPlan(root, plan);
+    assert.deepEqual(fs.readdirSync(root).sort(), [dirs[1], ...files].sort());
+  } finally { fs.rmSync(root, { recursive: true }); }
+});
