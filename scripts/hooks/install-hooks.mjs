@@ -30,6 +30,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+import { machineHost } from "./machine-host.mjs";
 import { planCodexHooks, applyCodexHooks, codexStatus, CODEX_TRUST_HINT } from "./codex-hooks-install.mjs";
 
 import { MIN_HOOK_PYTHON, HOOK_PYTHON_CANDIDATES, pathPython, pythonProblem, resolveHookPython,
@@ -471,15 +472,6 @@ function relock(repo, live) {
   mustGit(repo, "worktree", "lock", "--reason", LOCK_REASON, live);
 }
 
-// LocalHostNames configured by orchestrator/repogolem/config.yaml. Like
-// repogolem-config.ts, read scutil; installation deliberately has no env override.
-function machineHost() {
-  const r = spawnSync("scutil", ["--get", "LocalHostName"], { encoding: "utf8" });
-  const name = r.status === 0 ? r.stdout.trim() : "";
-  const host = { "MacBook-Pro": "mbp", "Locals-MacBook-Pro": "m1" }[name];
-  if (!host) die("machine identity unavailable or unmapped; refusing installation");
-  return host;
-}
 // Only untracked regular bytecode / real cache directories are disposable.
 // Never follow symlinks or exempt a tracked edit because of its filename.
 function derivedPath(live, rel) {
@@ -548,6 +540,7 @@ function purgeBytecode(live, dirs = []) {
 
 async function install(o) {
   const machine = o.apply ? machineHost() : o.host;
+  if (!machine) die("machine identity unavailable or unmapped; refusing installation");
   if (o.apply && machine !== o.host) die(`machine identity ${machine} does not match requested host ${o.host}; refusing installation`);
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
   // Read/validate the immutable selected manifest before creating or moving the pin.

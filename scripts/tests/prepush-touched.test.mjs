@@ -149,9 +149,12 @@ test('hook preserves package failure and only then calls touched suites', t => {
   const root = mkdtempSync(join(source, 'docs.local/n4b/hook-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, 'bin'));
+  mkdirSync(join(root, 'scripts/ci'), { recursive: true });
+  writeFileSync(join(root, 'scripts/ci/prepush-touched.sh'), 'echo touched-suite-called\n');
+  // Ratchet dispatch is covered by its own real-runner harness.
+  writeFileSync(join(root, 'bin/node'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
   for (const status of [0, 7]) {
     writeFileSync(join(root, 'bin/bun'), `#!/bin/sh\nexit ${status}\n`, { mode: 0o755 });
-    writeFileSync(join(root, 'bin/bash'), '#!/bin/sh\necho touched-suite-called\n', { mode: 0o755 });
     const hook = spawnSync('/bin/bash', [join(source, '.githooks/pre-push')], {
       cwd: root, input: '', encoding: 'utf8',
       env: { ...process.env, HOME: root, PATH: `${root}/bin:${process.env.PATH}` },
