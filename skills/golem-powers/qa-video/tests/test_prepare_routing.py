@@ -63,7 +63,10 @@ def score(capture):
         if tool == 'Bash' and any(name in args.get('command', '') for name in ('visual-batch.py', 'debrief.py')):
             import re
             assert not re.search(r'(?:^|[;\n])\s*(?:for|while)\s|\b(?:mapfile|readarray)\b', args['command']), 'hand-rolled sheet loop'
-            assert actor == 'pipeline', 'lead owns default visual work'
+            # QA/debrief: the QA seat (parent) runs extraction, including debrief.py, in its own
+            # shell (2026-11-02 route). Gems keeps debrief.py inside the video-gems pipeline.
+            seat_extraction = case in {'qa', 'debrief'} and 'debrief.py' in args['command']
+            assert actor == 'pipeline' or seat_extraction, 'lead owns default visual work'
     if case == 'visible':
         assert len(panes) == 1 and not agents, 'visible route missing or mixed'
     else:
@@ -92,6 +95,9 @@ def accepted(case):
                  {'actor': 'pipeline', 'tool': 'Read', 'arguments': {'file_path': '/frame.png'}}])
     if case == 'visible':
         calls.insert(0, {'tool': 'mcp__cmuxlayer__list_surfaces', 'arguments': {}})
+    if case == 'debrief':
+        calls.insert(0, {'tool': 'Bash', 'arguments': {'command':
+                         'bash /skill/scripts/run-step.sh /run debrief -- python3 /skill/scripts/debrief.py /v.mov --workdir /run --mode debrief'}})
     return {'case': case, 'prompt': PROMPTS[case], 'image_paths': ['/frame.png', '/extensionless'], 'calls': calls}
 
 
@@ -140,6 +146,11 @@ def test_reject_route_counterexamples():
     one = accepted('qa'); del one['calls'][1]
     unverified = accepted('debrief'); del unverified['calls'][2]
     bad += [runner, one, unverified]
+    gems_seat = accepted('gems'); gems_seat['calls'].insert(0, {'tool': 'Bash', 'arguments':
+                 {'command': 'python3 /skill/scripts/debrief.py /v.mov --workdir /run --mode gems'}})
+    seat_batch = accepted('qa'); seat_batch['calls'].insert(0, {'tool': 'Bash', 'arguments':
+                 {'command': 'python3 /skill/scripts/visual-batch.py --workdir /run --question q /f.png'}})
+    bad += [gems_seat, seat_batch]
     for c in bad:
         with pytest.raises(AssertionError):
             score(copy.deepcopy(c))

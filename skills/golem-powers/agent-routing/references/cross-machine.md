@@ -19,7 +19,10 @@ Environment ids come from `t3_environment_links`.
 ## 2. Code writes on the other Mac: `t3_thread_launch`
 
 - `t3_thread_launch(environmentId, projectId=<that machine's project id>, workspaceStrategy: {type: "worktree", baseRef: <verified ref>})`.
-  This is the one sanctioned use of a thread launch for a worker (see t3-native § 7).
+  This is the one sanctioned use of a thread launch for a worker (see t3-native § 7), with one
+  exception: a `/qa-video` QA seat launched on the Mac that holds the recording (the recording is
+  never copied; see qa-video § Execution routing). The rules below apply to it as well:
+  completion reporting and settling.
 - It is top-level, so completion does NOT wake the launcher. The brief must tell the worker to
   report with `t3_thread_send(environmentId=<origin env>, threadId=<lead>)` (proven to work).
 - The owner settles it: `t3_thread_organize({action: "settle", threadId, environmentId})`.

@@ -60,7 +60,8 @@ Read the user's request and route to the right workflow:
 **Run where the recording lives.** The QA seat (the thread or agent that invoked
 /qa-video) runs on the machine that holds the recording. If the recording is on
 another Mac, the lead launches the QA thread on that Mac (`t3_thread_launch` with
-its `environmentId`, per [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md);
+its `environmentId`, per [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md)
+§ 2: its brief tells the QA thread to report back with `t3_thread_send`, and the lead settles it;
 admission (§ 5) applies). Never copy the recording to another machine.
 
 | Request | Execution owner | Image reader |
@@ -185,7 +186,7 @@ If a provenance tool or column is missing, keep reading the frames directly, say
      - (c) click logs, if `qa_click_logger` data exists for the session
    - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (1–120 accepted; it prints a WARN and repeats frames above `scripts/source-fps.sh`; use up to the source fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) plus a headerless `frames.tsv` row per extracted frame (`sheet_file`, `tile`, `t_s`, `frame`, `pts_s`, `source`, `sheet`, `sha256`, `repeat_of`, `crop_of`; crop.sh rows use `source=crop` and fill `crop_of` with the parent frame; see [references/provenance.md](references/provenance.md)). Full-size frames stay beside the sheets as `window_N-f_*.png`. Times are the decoded pts, so `window_start_s` can be later than the padded cue start; take every timestamp from `frames.tsv`.
    - **Every contact sheet is viewed, in time order, by the helper that owns its window.** For each window, state: what the cursor targets, the before/after UI state, what carried over from the previous window or changed since it, and any visual defect. Work within the remaining wall-clock AND image-context budget: pick candidate windows before bulk image loading, keep the before/after and adjacent-window frames for each retained finding, append findings to the text ledger as you go, and stop with honest partial coverage before context runs out. If the budget forces a helper pre-sort, the sheets you did not view stay pre-sorted only, never confirmed.
-   - **Cite or label.** A visual finding cites the full-size frames or crops you viewed yourself, before and after, with `pts_s` (e.g. before `<frame> @ 12.600s`, after `<frame> @ 12.800s`, both `frame` paths from `frames.tsv`, located via `sheet_004.jpg` tile 6–8). A finding with no frame citation is transcript-only and must be labelled **transcript-only**.
+   - **Cite or label.** A visual finding cites the full-size frames or crops a helper or verifier viewed, before and after, with `pts_s` (e.g. before `<frame> @ 12.600s`, after `<frame> @ 12.800s`, both `frame` paths from `frames.tsv`, located via `sheet_004.jpg` tile 6–8). A finding with no frame citation is transcript-only and must be labelled **transcript-only**.
 
 3. **QA interval frames are a coverage pass only** — Still extract one frame every 30 seconds (`scripts/coverage.sh <video> <workdir>` → `frames/interval-<t>s.png`; run it first, since it creates the run ledger that dense and refine passes in child directories append to) so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
 
@@ -260,10 +261,10 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$
 # After logs/scene.exit exists and is 0, append the scene TSV output:
 cat "$WORKDIR/logs/scene.log" >> "$WORKDIR/cues.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
-# Wait for dense.exit=0. View the sheets yourself (process.md Phase 4; visual-batch.py pre-sort optional). If a moment is unclear, re-densify a single tighter window:
+# Wait for dense.exit=0. Fan the windows out: helpers view the sheets (process.md Phase 4; the seat never opens them; visual-batch.py pre-sort optional). If a helper reports a moment unclear, re-densify a single tighter window:
 printf '1.0\t1.5\tunclear-target\n' > "$WORKDIR/refine-cues.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
-# Wait for refine-01.exit=0. View the new sheets; repeat as needed, or mark NOT DETERMINED. Full workflow:
+# Wait for refine-01.exit=0. Send the new sheets to a helper; repeat as needed, or mark NOT DETERMINED. Full workflow:
 # inspected.sh per viewed frame, coverage-count.sh, full-size before/after findings.
 ```
 

@@ -49,7 +49,7 @@ Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
 **QA mode:** Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
-view every sheet yourself (helper pre-sort optional) → **re-densify** unclear moments at
+every sheet viewed by its window's helper (pre-sort optional) → **re-densify** unclear moments at
 up to the source fps / tighter windows → re-fetch and view again until resolved or **NOT
 DETERMINED**. Cite full-size frames or crops with `pts_s` from `frames.tsv`; the
 sheet + tile only locates them. Follow SKILL.md § Evidence Rules; column and
@@ -250,7 +250,7 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows
 
 Poll `logs/refine-01.exit` and require `0` before viewing the new sheets.
 The final `0 0` disables cue padding, making this exactly one start/end/fps
-window; a `refine*` directory records `source=refine`. View the new sheets yourself (optionally pre-sort the new `index.tsv` with
+window; a `refine*` directory records `source=refine`. A helper views the new sheets (optionally pre-sort the new `index.tsv` with
 visual-batch.py in a fresh batch workdir); use that pass's `frames.tsv` for exact tile timestamps. Repeat at different bounds if needed.
 If source-rate sampling or source resolution cannot resolve the moment, mark it **NOT
 DETERMINED**, explain the limitation and request better evidence. Higher output
