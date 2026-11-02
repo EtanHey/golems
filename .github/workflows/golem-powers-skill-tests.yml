@@ -145,6 +145,7 @@ jobs:
                    ./scripts/tests/ratchet-run-rows.test.mjs \
                    ./scripts/tests/ratchet-check-comment.test.mjs \
                    ./scripts/tests/ratchet-mac.test.mjs \
+                   ./scripts/tests/ratchet-pre-push.test.mjs \
                    ./scripts/tests/ratchet-debt.test.mjs \
                    ./scripts/tests/ratchet-live-freshness.test.mjs \
                    ./scripts/tests/repogolem-agents.test.ts \

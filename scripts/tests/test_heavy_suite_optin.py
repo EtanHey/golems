@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
 import sys
 import pytest
@@ -11,15 +12,25 @@ ROOT = Path(__file__).resolve().parents[2]
 HOOK = ROOT / ".githooks/pre-push"
 
 
+def hook_runtime(bin_dir):
+    """Keep these queue/isolation tests independent of the ratchet rows."""
+    (bin_dir / "cat").symlink_to(shutil.which("cat"))
+    bash = bin_dir / "bash"
+    # Run the real suite shell; isolate touched-suite behavior in its own harness.
+    bash.write_text('#!/bin/sh\nif [ "$1" = scripts/ci/prepush-touched.sh ]; then exit 0; fi\n'
+                    + 'exec ' + shlex.quote(shutil.which("bash")) + ' "$@"\n')
+    bash.chmod(0o755)
+    node = bin_dir / "node"
+    node.write_text("#!/bin/sh\nexit 0\n")
+    node.chmod(0o755)
+
+
 @pytest.mark.parametrize("availability", ["installed", "missing-helper", "missing-python"])
 @pytest.mark.parametrize("status", [0, 7])
 def test_pre_push_wraps_suite_and_preserves_fallback_status(tmp_path, availability, status):
     home, bin_dir = tmp_path / "home", tmp_path / "bin"
     home.mkdir(); bin_dir.mkdir()
-    # This fixture isolates the package queue; touched-suite behavior has its own harness.
-    touched = bin_dir / "bash"
-    touched.write_text('#!/bin/sh\nexit 0\n')
-    touched.chmod(0o755)
+    hook_runtime(bin_dir)
     helper = home / "Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
     if availability != "missing-helper":
         helper.parent.mkdir(parents=True)
@@ -63,9 +74,7 @@ def git_env_hook(tmp_path, request):
     clean_env = {k: v for k, v in os.environ.items() if k not in local_names}
     home, bin_dir, decoy = (tmp_path / name for name in ("home", "bin", "decoy"))
     home.mkdir(); bin_dir.mkdir(); decoy.mkdir()
-    touched = bin_dir / "bash"
-    touched.write_text('#!/bin/sh\nexit 0\n')
-    touched.chmod(0o755)
+    hook_runtime(bin_dir)
     if request.param == "installed":
         helper = home / "Gits/golems/.worktrees/hooks-live/scripts/hooks/heavy-suite.py"
         helper.parent.mkdir(parents=True)
@@ -171,6 +180,7 @@ def test_pre_push_delete_only_real_git(tmp_path, push_args, runs_suite):
     shutil.copyfile(ROOT / "scripts/hooks/heavy-suite.py", helper)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
+    hook_runtime(bin_dir)
     marker = tmp_path / "suite-ran"
     bun = bin_dir / "bun"
     bun.write_text('#!/bin/sh\nprintf ran > "$SUITE_RECORD"\n')

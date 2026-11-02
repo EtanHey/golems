@@ -116,8 +116,9 @@ describe("local-run.sh PR body forwarding", () => {
       if [ "$1" = -C ]; then shift 2; fi
       case "$1" in
         rev-parse)
-          if [ "\${!#}" = --git-common-dir ]; then echo "$FIXTURE/repo/.git"; else echo "$FIXTURE_HEAD"; fi ;;
-        status|remote|fetch|checkout|worktree) ;;
+          if [ "\${!#}" = --git-common-dir ]; then echo "$FIXTURE/repo/.git"; else echo "\${FIXTURE_PENDING:-$FIXTURE_HEAD}"; fi ;;
+        worktree) printf '%s\\n' "$*" >> "$FIXTURE/git-worktree" ;;
+        status|remote|fetch|checkout) ;;
         clone) while [ "$#" -gt 1 ]; do shift; done; mkdir -p "$1" ;;
         *) echo "unexpected git: $*" >&2; exit 1 ;;
       esac`);
@@ -125,7 +126,11 @@ describe("local-run.sh PR body forwarding", () => {
       printf '%s ' "$@" >> "$FIXTURE/gh-calls"
       printf '\\n' >> "$FIXTURE/gh-calls"
       case "$1 $2" in
-        'pr view') echo "$FIXTURE_HEAD fixture-branch OPEN $FIXTURE_HEAD" ;;
+        'pr view')
+          case "$*" in
+            *baseRefOid*) echo "$FIXTURE_HEAD fixture-branch OPEN $FIXTURE_HEAD" ;;
+            *) echo "\${FIXTURE_MOVED:-$FIXTURE_HEAD} fixture-branch OPEN" ;;
+          esac ;;
         'api repos/EtanHey/golems/pulls/763')
           if [ "$BODY_FETCH_FAIL" = 1 ]; then echo 'body fetch failed' >&2; exit 1; fi
           cat "$FIXTURE/fetched-body.md" ;;
@@ -147,6 +152,7 @@ describe("local-run.sh PR body forwarding", () => {
           sh -c 'command -v node' > "$FIXTURE/install-node"
           echo 'fixture installer' ;;
         */run-rows.mjs)
+          printf '%s\\n' "$RATCHET_PR_HEAD" > "$FIXTURE/lease-head"
           sh -c 'command -v node' > "$FIXTURE/rows-node"
           printf '%s' "$PATH" > "$FIXTURE/rows-path"
           while [ "$1" != --out ]; do shift; done
@@ -231,6 +237,26 @@ exec "$FIXTURE/native node/node" "$@"
     const f = fixture();
     expect(f.invoke(["--no-post"]).status).toBe(0);
     expect(f.tableArgs()).not.toContain("--pr-body-file");
+  });
+
+  test("pending push installs/posts the exact candidate and probes the current remote lease", () => {
+    const f = fixture(), pending = 'a'.repeat(40);
+    const out = f.invoke(['--head', pending], { FIXTURE_PENDING: pending });
+    expect({ status: out.status, stderr: out.stderr }).toEqual({ status: 0, stderr: '' });
+    const args = f.tableArgs();
+    expect(args[args.indexOf('--head') + 1]).toBe(pending);
+    expect(args).toContain('--pr');
+    expect(readFileSync(join(f.path, 'lease-head'), 'utf8').trim()).toBe(H);
+    expect(readFileSync(join(f.path, 'git-worktree'), 'utf8')).toEndWith(` ${H}\n`);
+    expect(readFileSync(join(f.path, 'gh-calls'), 'utf8')).not.toContain('run list');
+  });
+
+  test("pending head rejects a different local tip or a PR that moves during measurement", () => {
+    const f = fixture(), pending = 'a'.repeat(40);
+    expect(f.invoke(['--head', pending]).status).toBe(2);
+    const moved = f.invoke(['--head', pending], { FIXTURE_PENDING: pending, FIXTURE_MOVED: 'b'.repeat(40) });
+    expect(moved.status).toBe(2); expect(moved.stderr).toContain('PR changed');
+    expect(existsSync(join(f.path, 'table-args'))).toBe(false);
   });
 });
 
