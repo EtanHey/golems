@@ -5,7 +5,14 @@
 # large path list, and under pipefail that read as "not guarded" (#689 R1 B1).
 set -uo pipefail
 base="${1:?base sha}" head="${2:?head sha}"
-guarded='^(scripts/hooks/|skills/golem-powers/(human-confirm-gate|git-guardian|tmp-block)/|scripts/repogolem/|scripts/ratchet/)'
+# The guarded set comes from guarded-set.mjs: static prefixes plus every hook-loaded dir in the manifest at either
+# ref (FV3 NoFalseFresh: a hand-written list missed 13 of 17 hook-loaded dirs). If it can't be computed: FAIL.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if ! prefixes="$(node "$here/guarded-set.mjs" "$base" "$head")" || [ -z "$prefixes" ]; then
+  echo "guarded-paths: cannot compute the guarded set for $base...$head: cannot tell, FAIL" >&2
+  exit 2
+fi
+guarded="^($(printf '%s\n' "$prefixes" | sed 's/[.]/\\./g' | paste -sd'|' -))"
 if ! changed="$(git diff --name-only "$base...$head")"; then
   echo "guarded-paths: git diff $base...$head failed: cannot tell, FAIL" >&2
   exit 2

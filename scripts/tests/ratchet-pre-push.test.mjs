@@ -12,7 +12,8 @@ function fixture(check) {
   try {
     for (const path of ['.githooks', 'scripts/ratchet', 'scripts/hooks', 'scripts/ci', 'bin']) mkdirSync(join(dir, path), { recursive: true });
     for (const path of ['.githooks/pre-push', 'scripts/ratchet/pre-push.mjs', 'scripts/ratchet/run-rows.mjs',
-      'scripts/ratchet/table.mjs', 'scripts/ratchet/guarded-paths.sh', 'scripts/hooks/machine-host.mjs']) {
+      'scripts/ratchet/table.mjs', 'scripts/ratchet/guarded-paths.sh', 'scripts/ratchet/guarded-set.mjs',
+      'scripts/hooks/hook-paths.mjs', 'scripts/hooks/machine-host.mjs']) {
       copyFileSync(resolve(path), join(dir, path));
     }
     const rows = { schema: 1, rows: [

@@ -97,9 +97,11 @@ test('BASE workflow authenticates its consumer, preserves BASE identity and PR s
   ] };
   try {
     mkdirSync(bin); mkdirSync(join(baselineDir, 'scripts/ratchet'), { recursive: true });
-    for (const file of ['run-rows.mjs', 'live-freshness.mjs', 'table.mjs', 'check-comment.mjs', 'guarded-paths.sh']) {
+    for (const file of ['run-rows.mjs', 'live-freshness.mjs', 'table.mjs', 'check-comment.mjs', 'guarded-paths.sh', 'guarded-set.mjs']) {
       copyFileSync(resolve(import.meta.dir, '../ratchet', file), join(baselineDir, 'scripts/ratchet', file));
     }
+    mkdirSync(join(baselineDir, 'scripts/hooks'), { recursive: true });
+    copyFileSync(resolve(import.meta.dir, '../hooks/hook-paths.mjs'), join(baselineDir, 'scripts/hooks/hook-paths.mjs'));
     writeFileSync(join(cwd, 'fixture-rows.json'), JSON.stringify(rows));
     // Only external setup/GitHub data are stubbed; execute the workflow shell, producer,
     // guarded-path consumer and freshness CLI. Unknown or HEAD-targeted Git calls fail.
@@ -107,6 +109,9 @@ test('BASE workflow authenticates its consumer, preserves BASE identity and PR s
 const a = process.argv.slice(2), e = process.env;
 const fail = () => process.exit(2);
 if (a[0] === 'cat-file' && a[2] === e.FIXTURE_BASE + ':scripts/ratchet/rows.json') process.exit(0);
+// guarded-set.mjs: known refs verify; the fixture has no hook manifest, so the static guarded set applies.
+if (a[0] === 'rev-parse' && a[1] === '--verify' && [e.FIXTURE_BASE, e.FIXTURE_HEAD, 'origin/master'].map(r => r + '^{commit}').includes(a[3])) process.exit(0);
+if (a[0] === 'cat-file' && a[1] === '-e' && a[2].endsWith(':scripts/hooks/manifest.json')) process.exit(1);
 if (a[0] === 'show' && a[1] === e.FIXTURE_BASE + ':scripts/ratchet/rows.json') {
   process.stdout.write(require('fs').readFileSync(e.RUNNER_TEMP + '/fixture-rows.json')); process.exit(0);
 }
