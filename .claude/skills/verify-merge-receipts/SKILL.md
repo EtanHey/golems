@@ -1,6 +1,6 @@
 ---
 name: verify-merge-receipts
-description: Verify guarded-merge receipts when changing scripts/ratchet/ (local-run.sh, post-merge-live, live-rows.sh, live/status.sh, mac/hc-probe.py, live-freshness.mjs, check-comment.mjs, guarded-paths.sh), install-hooks.mjs status/selectedPin/hookDriftPaths, scripts/hooks/manifest.json, scripts/golems-lead-confirm, human-confirm-gate's tokens.py (lead_metadata, lead_scope), or pr-loop's merge step. Rerun MergeReceipts and check its mapping to the source.
+description: Verify guarded-merge receipts when changing scripts/ratchet/ (local-run.sh, post-merge-live, live-rows.sh, live/status.sh, mac/hc-probe.py, live-freshness.mjs, check-comment.mjs, guarded-paths.sh, guarded-set.mjs), install-hooks.mjs status/selectedPin, hookDriftPaths (hooks/hook-paths.mjs), scripts/hooks/manifest.json, scripts/golems-lead-confirm, human-confirm-gate's tokens.py (lead_metadata, lead_scope), or pr-loop's merge step. Rerun MergeReceipts and check its mapping to the source.
 ---
 
 # Verify merge receipts
@@ -26,16 +26,23 @@ python3 .claude/skills/verify-merge-receipts/verify.py
 ```
 
 The command takes about 15 s. It first derives today's flags from the code: `HeadBound`,
-`MatchHead`, `PinLease`, `Status`, `GraceBound` and `GuardHookPaths`. `Status` comes from running
-the real `live/status.sh` on the real `status()` line template, and `GuardHookPaths` from the real
-`hookDriftPaths()` checked against `guarded-paths.sh`'s regex. The other four are text probes. The
-command fails if the `Today*.cfg` files say otherwise. Then it runs every config in
-`docs/tla/merge-receipts/`, plus `TodayWithFixes`: today's flags with the three open findings
-switched to their proposed fixes. Evidence goes to `docs.local/verify-merge-receipts/run-*/`.
+`MatchHead`, `PinLease`, `Status`, `GraceBound` and `GuardHookPaths`. Two are behavioural:
+- `Status` comes from running the real `live/status.sh` on the real `status()` line template.
+- `GuardHookPaths` builds a scratch commit for each real `hookDriftPaths()` dir. The commit is an
+  unreferenced object with no ref and no working-tree change, touching one file in that dir. The
+  real `guarded-paths.sh` must call that commit guarded. Freshness must also cover the dir: either
+  `live-freshness.mjs` imports `guarded-set.mjs`, or (master's form) its inline `guardedAt` list does.
+
+The other four are text probes. The three `Today*` runs use configs built from those flags.
+`TodayMerge`, `TodayLive` and `TodayFresh` must pass when their fix flag (`MatchHead`, `PinLease`,
+`GuardHookPaths`) reads TRUE, and are known findings otherwise. If the committed `Today*.cfg`
+snapshots disagree with the code, the command prints a NOTE. It then runs every other config in
+`docs/tla/merge-receipts/`, plus `TodayWithFixes`: today's flags with all three fixes switched on,
+so a regression in any other flag fails it. Evidence goes to `docs.local/verify-merge-receipts/run-*/`.
 
 - Exit 0: everything passes as expected.
-- Exit 1: only the three known findings remain (today: `TodayMerge`, `TodayLive`, `TodayFresh`).
-  Report them; never certify.
+- Exit 1: only known findings remain (master at the sync commit: `TodayMerge`, `TodayLive`,
+  `TodayFresh`). Report them; never certify.
 - Exit 2: source drift, an unexpected pass or violation, or a missing tool.
 
 Missing tools fail; they are never skipped. See the [results table](../../../docs/tla/merge-receipts/README.md).
@@ -59,14 +66,14 @@ Source sync commit: `475763a465b9e8f12d9706b0ba7efdb71522e34e` (master).
 | `LiveReread` | `scripts/ratchet/live-rows.sh`: `gh pr view` of the lease head and the `--lease-repo` head check |
 | `LiveStatusFetch`, `LiveStatus`, `Status` | `scripts/ratchet/live/status.sh`; `scripts/hooks/install-hooks.mjs` `status()`, `hookDriftPaths()`; `scripts/hooks/manifest.json` (which paths count as hook-loaded) |
 | `LiveToken` | `scripts/ratchet/mac/hc-probe.py` steps B and C; `scripts/golems-lead-confirm` (issuer); `skills/golem-powers/human-confirm-gate/hooks/tokens.py` `lead_metadata()`, `lead_scope()`; row `live-human-confirm` in `rows.json` |
-| `Fresh`, `GraceBound`, `GuardHookPaths` | `scripts/ratchet/live-freshness.mjs` (`checkLiveFreshness`, `main`, `guardedAt`); `scripts/ratchet/guarded-paths.sh`; `scripts/hooks/manifest.json` (via `hookDriftPaths()`) |
+| `Fresh`, `GraceBound`, `GuardHookPaths` | `scripts/ratchet/live-freshness.mjs` (`checkLiveFreshness`, `main`, `guardedAt`); `scripts/ratchet/guarded-paths.sh`; `scripts/ratchet/guarded-set.mjs` once it exists; `scripts/hooks/manifest.json` (via `hookDriftPaths()`, in `install-hooks.mjs` or `scripts/hooks/hook-paths.mjs`) |
 
 Before judging a change, diff these files against the sync commit and trace each changed step,
 guard or ordering to a model action. The flag probes catch only the six facts they test, so a
 plain pass does not prove that the rest of the model still matches. Move the sync commit forward
-only after confirming that the model describes the code at the new commit. When a fix lands, flip
-its flag in the three `Today*.cfg` files, move that config's expectation in `verify.py` from
-`finding` to `pass`, and update the README and the chart. Use `/maintain-formal-verification-skill`
+only after confirming that the model describes the code at the new commit. When a fix lands, its
+`Today*` run turns into a required pass on its own. Then flip the flag in the three committed
+`Today*.cfg` snapshots, which clears the NOTE, and update the README and the chart. Use `/maintain-formal-verification-skill`
 to bring an old coverage record up to date.
 
 ## Real bug or modeling error

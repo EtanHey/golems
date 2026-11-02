@@ -42,19 +42,47 @@ def status_mode():
     return 'today' if probe.returncode == 0 else 'fx16'
 
 
+freshness = read('scripts/ratchet/live-freshness.mjs')
+
+
+def git(*args, **extra):
+    return subprocess.run(['git', *args], cwd=root, capture_output=True, text=True, check=True,
+                          env={**env, **extra}).stdout.strip()
+
+
 def unguarded_hook_paths():
-    """Real hookDriftPaths(manifest) against guarded-paths.sh's own regex."""
-    guarded = re.search(r"^guarded='([^']+)'", read('scripts/ratchet/guarded-paths.sh'), re.M).group(1)
+    """Each real hookDriftPaths(manifest) dir must be guarded by the real guarded-paths.sh, judged on a
+    scratch commit (an unreferenced object; no ref or working tree changes) touching a file there, and by
+    live-freshness's guarded set: guarded-set.mjs when it imports that, else its own inline pathspecs."""
     script = ('import { readFileSync } from "node:fs";'
               'import { hookDriftPaths } from "./scripts/hooks/install-hooks.mjs";'
               'const m = JSON.parse(readFileSync("scripts/hooks/manifest.json", "utf8"));'
               'console.log(hookDriftPaths(m).join("\\n"));')
-    paths = subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, env=env,
-                           capture_output=True, text=True, check=True).stdout.split()
-    return [p for p in paths if not re.match(guarded, p)]
+    dirs = subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, env=env,
+                          capture_output=True, text=True, check=True).stdout.split()
+    shared = "from './guarded-set.mjs'" in freshness
+    inline = [] if shared else re.findall(r"'([^']+/)'", freshness.split('const guardedAt', 1)[1].split(');', 1)[0])
+    index = {'GIT_INDEX_FILE': str(run / 'probe.index'), 'GIT_AUTHOR_NAME': 'fv3-probe', 'GIT_AUTHOR_EMAIL': 'probe@localhost',
+             'GIT_COMMITTER_NAME': 'fv3-probe', 'GIT_COMMITTER_EMAIL': 'probe@localhost'}
+    blob = subprocess.run(['git', 'hash-object', '-w', '--stdin'], cwd=root, input='fv3 guard probe\n',
+                          capture_output=True, text=True, check=True, env=env).stdout.strip()
+    unguarded = []
+    with (run / 'guard-probe.out').open('w') as log:
+        for d in dirs:
+            git('read-tree', 'HEAD', **index)
+            git('update-index', '--add', '--cacheinfo', f'100644,{blob},{d}fv3-guard-probe.txt', **index)
+            commit = git('commit-tree', git('write-tree', **index), '-p', 'HEAD', '-m', 'fv3 guard probe', **index)
+            probe = subprocess.run(['bash', 'scripts/ratchet/guarded-paths.sh', 'HEAD', commit], cwd=root, env=env,
+                                   capture_output=True, text=True)
+            fresh = shared or any(d.startswith(p) for p in inline)
+            log.write(f'{d} guarded-paths.sh rc={probe.returncode} freshness={"shared set" if shared else fresh}\n')
+            if probe.returncode not in (0, 1):
+                raise SystemExit(f'ERROR: guarded-paths.sh cannot tell for {d}: {probe.stderr.strip()}')
+            if probe.returncode == 1 or not fresh:
+                unguarded.append(d)
+    return unguarded
 
 
-freshness = read('scripts/ratchet/live-freshness.mjs')
 grace_body = freshness.split('export function checkLiveFreshness', 1)[1].split('\nfunction run(', 1)[0]
 unguarded = unguarded_hook_paths()
 derived = {
@@ -75,22 +103,34 @@ for name in ('TodayMerge', 'TodayLive', 'TodayFresh'):
     text = (spec / f'{name}.cfg').read_text()
     for key, value in derived.items():
         if not re.search(rf'^\s*{key} = {re.escape(tla(value))}$', text, re.M):
-            print(f'SOURCE CHANGED: {name}.cfg does not say {key} = {tla(value)}; re-check the model first.')
-            errors = True
+            print(f'NOTE: the committed {name}.cfg (master snapshot) says {key} differently; the code now says '
+                  f'{tla(value)}. Update the snapshot, README and chart when this lands.')
 
-fixes = {**derived, 'MatchHead': True, 'PinLease': True, 'GuardHookPaths': True}
-(run / 'TodayWithFixes.cfg').write_text(
-    'SPECIFICATION Spec\nCONSTANTS\n' + ''.join(f'  {k} = {tla(v)}\n' for k, v in fixes.items())
-    + '  QKinds = {"hooks", "hookSkill", "docs"}\n  MaxPush = 1\nINVARIANT TypeOK\n'
-    + ''.join(f'INVARIANT {p}\n' for p in ('ReceiptMatchesMerge', 'LiveReceiptIsolated', 'NoFalseFresh')))
 
-expected = {'TodayMerge': 'finding', 'TodayLive': 'finding', 'TodayFresh': 'finding',
+def write_cfg(name, flags, invariants):
+    (run / f'{name}.cfg').write_text(
+        'SPECIFICATION Spec\nCONSTANTS\n' + ''.join(f'  {k} = {tla(v)}\n' for k, v in flags.items())
+        + '  QKinds = {"hooks", "hookSkill", "docs"}\n  MaxPush = 1\nINVARIANT TypeOK\n'
+        + ''.join(f'INVARIANT {p}\n' for p in invariants))
+
+
+# Today's configs come from the code: a property whose fix flag reads TRUE must pass; otherwise it is the
+# known finding. TodayWithFixes switches all three fixes on, so a regression in any other flag fails it.
+fix_flag = {'TodayMerge': ('MatchHead', 'ReceiptMatchesMerge'), 'TodayLive': ('PinLease', 'LiveReceiptIsolated'),
+            'TodayFresh': ('GuardHookPaths', 'NoFalseFresh')}
+for name, (_, prop) in fix_flag.items():
+    write_cfg(name, derived, [prop])
+write_cfg('TodayWithFixes', {**derived, 'MatchHead': True, 'PinLease': True, 'GuardHookPaths': True},
+          ['ReceiptMatchesMerge', 'LiveReceiptIsolated', 'NoFalseFresh'])
+generated = set(fix_flag) | {'TodayWithFixes'}
+
+expected = {**{name: 'pass' if derived[flag] else 'finding' for name, (flag, _) in fix_flag.items()},
             'MatchHead': 'pass', 'NoHeadBound': 'violated', 'PinnedLease': 'pass', 'Pre1063': 'violated',
             'FX16': 'violated', 'GuardHookPaths': 'pass', 'NoGraceBound': 'violated', 'AllFixes': 'pass',
             'TodayWithFixes': 'pass'}
 findings = []
 for name, want in expected.items():
-    config = run / f'{name}.cfg' if name == 'TodayWithFixes' else spec / f'{name}.cfg'
+    config = run / f'{name}.cfg' if name in generated else spec / f'{name}.cfg'
     with (run / f'{name}.out').open('w') as log:
         checked = subprocess.run(['tlc', '-deadlock', '-workers', '1', '-metadir', str(run / f'{name}-states'),
                                   '-config', str(config), 'MergeReceipts.tla'],
