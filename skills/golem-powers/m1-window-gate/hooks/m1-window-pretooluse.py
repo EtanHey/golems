@@ -5,6 +5,7 @@ import sys
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) != HERE]
+import functools
 import json
 import re
 import stat
@@ -25,6 +26,23 @@ def lead_message(name, ti):
     return bool(SEND.fullmatch(name or '') and isinstance(thread, str) and LEAD_THREAD.fullmatch(thread)
                 and ti.get('mode', 'auto') != 'restart')
 REMOTE = {'ssh', 'scp', 'rsync', 'sftp', 'mosh'}
+
+# HOME-relative paths a golems install owns. Mirrors the M1 procedure's FIXED lease list (its OWNED set);
+# `.golems/releases` is a conservative superset of the run's one target release. Change both together.
+LEASED = ('.claude/skills', '.agents/skills', '.codex/skills', '.cursor/skills', '.gemini/config/skills',
+          '.golems/bin', '.golems/vendor', '.golems/current', '.golems/release.json',
+          '.golems/release-history', '.golems/releases', '.claude/hooks', '.claude/settings.json',
+          '.codex/hooks.json', '.local/state/golems/install-receipts/golems',
+          '.golems/ratchet/installed-skills.json', '.golems/ratchet/requirements.json')
+# Directories under HOME that hold a leased path: removing or moving one removes the lease too.
+HOLDERS = sorted({rel.rsplit('/', i)[0] for rel in LEASED for i in range(1, rel.count('/') + 1)}, key=len)
+FILE_TOOLS = {'Write': 'file_path', 'Edit': 'file_path', 'MultiEdit': 'file_path', 'NotebookEdit': 'notebook_path'}
+DELIM = r'\s\'"`;|&()<>=:,\\'
+END = r'(?=[/' + DELIM + r']|\Z)'
+HOME_SPELLING = r'(?:~[A-Za-z0-9._-]*|\$HOME|\$\{HOME\}|/Users/[^/' + DELIM + r']+)'
+INSTALLER = re.compile(r'(?<![\w.-])(?:scripts/release/install\.sh|install-hooks(?:\.sh|\.mjs)?|codex-hooks-install\.mjs'
+                       r'|client-install-transaction\.mjs|golem-install'
+                       r'|(?:golems(?:-cli)?|golem-skills/src/index\.ts)\s+(?:update|wizard|skills\s+(?:install|update|uninstall)))(?![\w.-])')
 
 
 def read_file(path, private=False):
@@ -139,6 +157,17 @@ def environment_ids(value):
             yield from environment_ids(child)
 
 
+def all_strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from all_strings(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from all_strings(child)
+
+
 def registry_state(text):
     lanes, windows = {}, {}
     for line in text.splitlines():
@@ -216,6 +245,121 @@ def read_only_bash(command):
         return False
 
 
+class Unchecked(Exception):
+    """A path or command this gate can't check against the lease: fail closed."""
+
+
+def blocked(where, rel=None):
+    if rel == 'installer':
+        return deny(f'Blocked: a golems install is already running on {where}. Wait for it to finish before starting another.')
+    if rel is None:
+        return deny(f"Blocked: a golems install is running on {where}, and this call can't be checked against the paths "
+                    "it owns. Use a full path, or wait for it to finish.")
+    return deny(f"Blocked: a golems install is running on {where} and owns ~/{rel}. "
+                "Wait for it to finish, or work outside the install's paths.")
+
+
+def text_hit(text, bare):
+    """The leased path or golems installer a call's text names, in any home spelling."""
+    if INSTALLER.search(text):
+        return 'installer'
+    prefix = '(?:' + re.escape(str(Path.home())) + '|' + HOME_SPELLING + ')/'
+    lead = '(?:' + prefix + '|(?<![^' + DELIM + ']))' if bare else prefix
+    for rel in LEASED:
+        if re.search(lead + re.escape(rel) + END, text):
+            return rel
+    for holder in HOLDERS:  # `rm -rf ~/.claude` names no leased path but removes one
+        if re.search(lead + re.escape(holder) + r'/?(?=[' + DELIM + r']|\Z)', text):
+            return next(rel for rel in LEASED if rel.startswith(holder + '/'))
+    return None
+
+
+@functools.lru_cache(maxsize=None)
+def leased_roots(home):
+    # A leased path that is itself a symlink owns its target as well.
+    return [(rel, root) for rel in LEASED for root in {home + '/' + rel, os.path.realpath(home + '/' + rel)}]
+
+
+def lease_hit(path, holders):
+    """The leased path that `path` is or is inside; with `holders`, also one it contains."""
+    found = {str(Path.home())} | ({m[0]} if (m := re.match(r'/Users/[^/]+', path)) else set())
+    for home in found:
+        for rel, root in leased_roots(home):
+            if path == root or path.startswith(root + '/'):
+                return rel
+            if (holders == 'all' or holders and path.startswith(home + '/')) and root.startswith(path.rstrip('/') + '/'):
+                return rel
+    return None
+
+
+def resolve(word, cwd):
+    """Absolute spellings of `word`; anything it can't place under a known directory is Unchecked."""
+    if not isinstance(word, str) or not word or '\0' in word:
+        raise Unchecked(word)
+    home = str(Path.home())
+    if m := re.match(r'(?:~|\$HOME|\$\{HOME\})(?=/|\Z)', word):
+        word = home + word[m.end():]
+    elif word.startswith('~'):
+        word = os.path.expanduser(word)
+        if word.startswith('~'):
+            raise Unchecked(word)
+    if not os.path.isabs(word):
+        if not isinstance(cwd, str) or not os.path.isabs(cwd):
+            raise Unchecked(word)
+        word = os.path.join(cwd, word)
+    path = os.path.normpath(word)
+    # Lexical, symlinked parents resolved, and a final symlink's target (even dangling: a write creates it).
+    return {path, os.path.join(os.path.realpath(os.path.dirname(path)), os.path.basename(path)),
+            os.path.realpath(path)}
+
+
+def file_hit(name, ti, cwd):
+    path = ti.get(FILE_TOOLS[name], ti.get('file_path'))
+    return next(filter(None, (lease_hit(p, None) for p in resolve(path, cwd))), None)
+
+
+def bash_hit(command, cwd, depth=0):
+    """The leased path or installer a mutating command touches, from its words and every cwd it can use."""
+    sys.path.append(str(Path(HERE).parents[1] / '_shared'))
+    import shell_parse as shell
+    if (depth > 8 or not isinstance(command, str) or shell.policy_command_size_reason(command)
+            or shell.executable_shell_structure_has_open_state(command)):
+        raise Unchecked(command)
+    if hit := text_hit(command, bare=False):
+        return hit
+    tokens, positions, segments, scopes = shell._parse_bash(command)
+    if hit := next(filter(None, (lease_hit(p, None) for p in resolve('.', cwd))), None):
+        return hit
+    # One pass: a word resolves against the cwd its last `cd` left (and the starting cwd, for subshells).
+    current, seen, skip = {cwd}, {cwd}, None
+    for i, word in enumerate(tokens):
+        if i == skip:
+            continue
+        if positions[i] and os.path.basename(word) in ('cd', 'pushd'):
+            skip = next((j for j in range(i + 1, min(i + 3, len(tokens))) if not tokens[j].startswith('-')), None)
+            target = '~' if skip is None or shell._is_separator(tokens, skip) else tokens[skip]
+            current = {path for base in current | {cwd} for path in resolve(target, base)}
+            if hit := next(filter(None, (lease_hit(p, 'home') for p in current)), None):
+                return hit  # inside a leased path, or in a directory under HOME that holds one
+            seen |= current
+            if len(current) > 16:  # a long `cd` chain fails closed rather than near the hook timeout
+                raise Unchecked(command)
+            continue
+        for piece in re.split(r'[\s=:]+', word):
+            if not piece or re.fullmatch(r'[$()`<>&|;!{}\[\]*?-]+', piece) or piece.startswith('-'):
+                continue
+            piece = re.sub(r'\A(?:\$HOME|\$\{HOME\})(?=/|\Z)', lambda _: str(Path.home()), piece)
+            dynamic = re.search(r'[$`*?\[{]', piece)
+            if dynamic:  # `~/.claude/sk*` or `$X/y` may expand to anything under its static directory
+                piece = piece[:dynamic.start()].rsplit('/', 1)[0] + '/' if '/' in piece[:dynamic.start()] else '.'
+            for base in current | {cwd}:
+                if hit := next(filter(None, (lease_hit(p, 'all') for p in resolve(piece, base))), None):
+                    return hit
+    nested = [body for body, *_ in shell._executable_subcommands(shell._strip_heredoc_bodies(command))]
+    nested += [body for body, *_ in shell._shell_command_payloads(tokens, positions, segments)]
+    return next(filter(None, (bash_hit(body, base, depth + 1) for body in nested for base in seen)), None)
+
+
 def evaluate_seat(payload):
     lock = Path.home() / '.golems/m1-procedure.lock'
     stem = None
@@ -244,12 +388,20 @@ def evaluate_seat(payload):
                                   + re.escape(stem.rsplit('-', 1)[-1]) + r'(?![A-Za-z0-9._:-])', text)
     if stem and (carries(text, stem) or own_lane):
         return {}
-    name = payload.get('tool_name')
+    name, cwd = payload.get('tool_name'), payload.get('cwd')
     if name == 'Bash' and read_only_bash(ti.get('command', '')):
         return {}
-    if name == 'Bash' or name in {'Write', 'Edit', 'MultiEdit', 'NotebookEdit'}:
-        return deny('Blocked: a golems install is running on this Mac, so only read-only commands are allowed. Wait for it to finish.')
-    return {}
+    if name != 'Bash' and name not in FILE_TOOLS:
+        return {}
+    sys.path.append(str(Path(HERE).parents[1] / '_shared'))
+    import shell_parse as shell
+    try:
+        with shell.policy_evaluation_deadline():
+            hit = (bash_hit(ti.get('command'), cwd) if name == 'Bash'
+                   else file_hit(name, ti if isinstance(ti, dict) else {}, cwd))
+    except (Exception, shell.PolicyEvaluationDeadlineExceeded):
+        return blocked('this Mac')
+    return blocked('this Mac', hit) if hit else {}
 
 
 def evaluate(payload):
@@ -275,8 +427,11 @@ def evaluate(payload):
         utc = stem.rsplit('-', 1)[-1]
         own = any(state == 'STARTED' and re.fullmatch(r'm1-golems-sync-[A-Za-z0-9._:-]+-' + re.escape(utc), lane)
                   and carries(text, lane) for lane, state in lanes.items())
-        if not own:
-            return deny('Blocked: the M1 is in the middle of an install, so other work there has to wait. Try again when it finishes.')
+        # An OPEN window blocks only work naming a leased path or a golems installer. The remote cwd
+        # is HOME, so a bare `.claude/skills` counts.
+        hit = not own and text_hit(text if name == 'Bash' else '\n'.join(all_strings(ti)), bare=True)
+        if hit:
+            return blocked('the M1', hit)
     return {}  # Silent unless a window is OPEN: no closed-window advisory.
 
 
