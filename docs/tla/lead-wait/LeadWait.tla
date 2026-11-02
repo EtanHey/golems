@@ -61,8 +61,9 @@ Settle == /\ thread = "live" /\ owner = "lead" /\ pr = "open"
           /\ UNCHANGED <<ci, pr, held, nudges>>
 
 \* pr-sentinel: after a grace period, nudge the live owner once;
-\* then (or at once for an orphan) move the PR to orc's live thread.
+\* only an orphan can move to orc; an ignored live owner is not escalated.
 Nudge == /\ Sentinel /\ Actionable /\ ~wake /\ nudges < 2
+         /\ (thread = "settled" \/ nudges = 0)
          /\ IF thread = "live" /\ nudges = 0
                THEN /\ wake' = TRUE /\ UNCHANGED <<thread, owner>>
                ELSE /\ owner' = "orc" /\ thread' = "live" /\ wake' = TRUE
