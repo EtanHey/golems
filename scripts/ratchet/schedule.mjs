@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { baseRowsAt, evaluate, parseRows } from './table.mjs';
+import { guardedPrefixes, manifestsAt } from './guarded-set.mjs';
 
 const MARKER = '<!-- golems-ratchet-schedule -->';
 const LABEL = 'ratchet-red';
@@ -88,10 +89,9 @@ export function main(argv, env = process.env) {
     const baseRows = baseRowsAt('scripts/ratchet/rows.json', env.GITHUB_SHA);
     const evaluation = evaluate({ rows, baseRows, bootstrap: baseRows === null, head: env.GITHUB_SHA,
       results: JSON.parse(readFileSync(argv[1], 'utf8')), runner: 'ci' });
-    // Same first-parent guarded path set as live-freshness.mjs; this only identifies the cause.
+    // The same guarded set as guarded-paths.sh and live-freshness.mjs (guarded-set.mjs); this only identifies the cause.
     const guardedHead = command('git', ['log', '--first-parent', '-1', '--format=%H', 'origin/master', '--',
-      'scripts/hooks/', 'skills/golem-powers/human-confirm-gate/', 'skills/golem-powers/git-guardian/',
-      'skills/golem-powers/tmp-block/', 'scripts/repogolem/', 'scripts/ratchet/']);
+      ...guardedPrefixes(manifestsAt(['origin/master']))]);
     const decision = trackSchedule({ event: env.GITHUB_EVENT_NAME, tableStatus, evaluation, guardedHead,
       repo: env.GITHUB_REPOSITORY, runUrl: `https://github.com/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` });
     console.log(decision.warning ? `::warning::${decision.warning}` : decision.summary);

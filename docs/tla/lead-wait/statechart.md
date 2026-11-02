@@ -49,9 +49,9 @@ address this path when followed. [#1062](https://github.com/EtanHey/golems/pull/
 adds draft-first review and checking that an inner-loop draft has a live worker;
 it does not supply a missing sentinel transition.
 
-## SentinelOnly: current source bug
+## SentinelOnly: historical source bug, fixed by the second grace
 
-The report's shortest path (steps 0–4):
+PR A's report gave this shortest path (steps 0–4), retained as regression history:
 
 ```mermaid
 stateDiagram-v2
@@ -72,9 +72,24 @@ stateDiagram-v2
 
 Noticed breaks. [#1056](https://github.com/EtanHey/golems/pull/1056)'s final code
 nudges a live lead only once and sweeps only orphans. It **does not fix this path**;
-the required live-owner escalation remains a separate fix. See the
-[source reproduction](README.md#current-finding-a-live-lead-ignores-the-sentinel).
+the [second-grace rule](../../../scripts/pr-sentinel/README.md) now supplies that fix.
+See the [source reproduction](README.md#regression-history-a-live-lead-ignores-the-sentinel).
 
-RulesFollowed and RulesAndSentinel pass under their fairness assumptions; TypeOK
+The current `/statechart` run passes SentinelOnly. The formerly stuck state has a
+route to action (the model abstracts the two-hour delay):
+
+```mermaid
+stateDiagram-v2
+  [*] --> Ignored
+  Ignored: Nudge ignored, lead still live
+  Orc: Orc owns actionable PR
+  Acted: Fix attempted or PR merged
+  Ignored --> Orc: Second grace ends, escalate to orc
+  Orc --> Acted: Orc acts
+  classDef fixed fill:#dcfce7,stroke:#15803d,color:#14532d
+  class Ignored,Orc,Acted fixed
+```
+
+RulesFollowed, SentinelOnly and RulesAndSentinel pass under their fairness assumptions; TypeOK
 holds in every config. These diagrams prove neither real watch delivery nor a
 bounded escalation time. The model has one PR and assumes trusted, live orc.

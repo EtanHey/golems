@@ -28,6 +28,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { hookDriftPaths } from "./hook-paths.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { machineHost } from "./machine-host.mjs";
@@ -689,26 +690,7 @@ function registeredExactly(hooks, e) {
 }
 
 // Use the registry itself so newly registered hook sources join the drift check.
-export function hookDriftPaths(manifest) {
-  // The launcher and Codex adapter live in scripts/hooks; Python hooks and
-  // stop telemetry import shared modules whose paths aren't manifest entries.
-  const dirs = new Set(["scripts/hooks/", "skills/golem-powers/_shared/"]);
-  for (const entries of Object.values(manifest.hosts ?? {})) {
-    for (const e of entries) {
-      if (e.kind !== "golems" || !e.source) continue;
-      // Single-file hooks can import siblings from their skill root (for
-      // example git-guardian/hooks/pre_tool_use.py loads ../git_safety.py).
-      const skill = e.source.match(/^skills\/golem-powers\/[^/]+/);
-      dirs.add((skill?.[0] ?? (path.posix.extname(e.source) ? path.posix.dirname(e.source) : e.source)) + "/");
-    }
-  }
-  for (const entries of Object.values(manifest.codex_hosts ?? {})) {
-    for (const e of entries) {
-      if (e.source) dirs.add(path.posix.dirname(e.source) + "/");
-    }
-  }
-  return [...dirs];
-}
+export { hookDriftPaths };
 
 function status(o) {
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
