@@ -196,17 +196,7 @@ def record_completion(report, receipt, nonce, payload):
 
 # AIDEV-NOTE: never run ps here. /bin/ps is setuid root on macOS; inside a heavy suite each run is an unreadable root member,
 # so heavy-suite cleanup fails closed (exit 70). R13 step 2a. The token identifies the owner incarnation (PID + birth key).
-def start_token(pid):
-    """Canonical, JSON-safe owner token, or None when the process is gone. Raises if its identity can't be read."""
-    observed = proc.identity(pid)
-    return None if observed is None else _token(observed)
-
-
-def _token(observed):
-    first, second = observed.start
-    if isinstance(first, bytes):  # Linux: (boot_id, start ticks)
-        return f"v2:linux:{first.hex()}:{second}"
-    return f"v2:darwin:{first}.{second:06d}"  # Darwin: (seconds, microseconds)
+start_token = proc.start_token
 
 
 def owner_active(pid, start):
@@ -214,13 +204,13 @@ def owner_active(pid, start):
     inactive: deletion follows (Codex review of R13 2a). A legacy (pre-R13) marker holds local wall time with no zone or
     DST fold, so it can't prove a different incarnation; keep it while its PID lives or can't be read."""
     try:
-        observed = proc.identity(pid)
+        token = start_token(pid)
     except proc.ProcIdentityUnavailable:
         return True  # cannot tell: keep
-    if observed is None:
+    if token is None:
         return False  # gone
     if start.startswith("v2:"):
-        return start == _token(observed)
+        return start == token
     return True  # legacy marker of a live PID: keep
 
 

@@ -778,3 +778,35 @@ def test_pinned_process_closes_on_changed_identity(spawn, monkeypatch):
         with proc.pinned_process(original):
             pytest.fail('changed incarnation must never yield a handle')
     assert closed == [12345]
+
+
+def test_start_cli_matches_gate_without_ps(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location(
+        'start_gate', Path(__file__).resolve().parents[1] / 'hooks/private-regression-gate.py')
+    gate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gate)
+    called = tmp_path / 'ps-called'
+    poison = tmp_path / 'ps'
+    poison.write_text(f'#!/bin/sh\necho called >> "{called}"\nexit 99\n')
+    poison.chmod(0o755)
+    monkeypatch.setenv('PATH', f"{tmp_path}:{os.environ['PATH']}")
+    result = subprocess.run([sys.executable, SPEC.origin, 'start', str(os.getpid())],
+                            capture_output=True, text=True, cwd=tmp_path)
+    assert result.returncode == 0 and result.stdout == gate.start_token(os.getpid()) + '\n'
+    assert not called.exists()
+
+
+@pytest.mark.parametrize('args,code', [(['start', '99999999'], 1), ([], 64),
+    (['start', '0'], 64), (['start', '-1'], 64), (['start', 'x'], 64),
+    (['start', '2147483648'], 64), (['other', '1'], 64), (['start', '1', '2'], 64)])
+def test_start_cli_exit_contract(args, code):
+    result = subprocess.run([sys.executable, SPEC.origin, *args], capture_output=True)
+    assert result.returncode == code and result.stdout == b''
+
+
+def test_start_cli_unreadable_identity(monkeypatch, capsys):
+    def unreadable(pid):
+        raise proc.ProcIdentityUnavailable('injected permission failure', reason='permission')
+    monkeypatch.setattr(proc, 'identity', unreadable)
+    assert proc.main(['start', str(os.getpid())]) == 2
+    assert capsys.readouterr().out == ''

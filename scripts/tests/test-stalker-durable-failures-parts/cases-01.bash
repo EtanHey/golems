@@ -243,8 +243,8 @@ function split_case_016() {
     wait "$live_pid" 2>/dev/null || true
 
     [[ "$empty_status" -eq 0 \
-        && "$empty_gems" -eq 0 \
-        && "$empty_failed" -eq 1 \
+        && "$empty_gems" -eq 1 \
+        && "$empty_failed" -eq 0 \
         && "$alert_count" -eq 0 ]]
 }
 
@@ -253,14 +253,14 @@ function split_case_017() {
     mismatch_dir="$TMPDIR_/mismatched-live-identity"
     sleep 20 &
     live_pid=$!
-    if ! identity_c="$(LC_ALL=C stalker_process_start_identity "$live_pid")"; then
+    if ! identity_c="$(PATH="$FAKE_BIN:$PATH" LC_ALL=C stalker_process_start_identity "$live_pid")"; then
         kill "$live_pid" 2>/dev/null || true
         wait "$live_pid" 2>/dev/null || true
-        skip "process identity unavailable in this test environment"
+        return 1
     fi
     identity_he="$(LC_ALL=he_IL.UTF-8 stalker_process_start_identity "$live_pid")"
     write_scoring_marker "$matching_dir" "$live_pid" "$identity_c"
-    write_scoring_marker "$mismatch_dir" "$live_pid" "not-the-live-process-$identity_c"
+    write_scoring_marker "$mismatch_dir" "$live_pid" "v2:darwin:0.000000"
     printf '# partial matching gems\n' > "$matching_dir/gems.md"
     printf '# partial mismatched gems\n' > "$mismatch_dir/gems.md"
 
