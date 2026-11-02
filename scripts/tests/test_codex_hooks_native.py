@@ -27,7 +27,8 @@ _cases_spec.loader.exec_module(_cases)
 desynced_patch_cases = _cases.desynced_patch_cases
 
 
-@unittest.skipUnless(shutil.which("codex"), "Codex CLI not installed")
+@unittest.skipUnless(shutil.which("codex") or os.environ.get("GOLEMS_REQUIRE_CODEX") == "1",
+                     "Codex CLI not installed")
 class NativeHooksTests(unittest.TestCase):
     def test_native_preexecution_denial_and_allow(self):
         self.run_native_fixture("trusted")
@@ -39,6 +40,7 @@ class NativeHooksTests(unittest.TestCase):
         self.run_native_fixture("modified")
 
     def run_native_fixture(self, trust):
+        self.assertIsNotNone(shutil.which("codex"), "Codex CLI not installed (GOLEMS_REQUIRE_CODEX=1)")
         (ROOT / "docs.local").mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
             base = Path(scratch)
@@ -108,7 +110,9 @@ class NativeHooksTests(unittest.TestCase):
                         item = {"type": "function_call", "call_id": f"call-{index}",
                                 "name": "exec_command", "arguments": json.dumps({
                                     "cmd": commands[index], "workdir": str(workspace),
-                                    "login": False, "yield_time_ms": 1000})}
+                                    # Codex 0.166.0 exec_command schema: 250-30000 ms.
+                                    # Wait for these short commands even under CPU load.
+                                    "login": False, "yield_time_ms": 30000})}
                     elif index < len(commands) + len(patches):
                         item = {"type": "custom_tool_call", "call_id": f"call-{index}",
                                 "name": "apply_patch", "input": patches[index - len(commands)]}

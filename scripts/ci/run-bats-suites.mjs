@@ -35,11 +35,16 @@ if (process.argv[2] !== '--run') throw new Error('Usage: run-bats-suites.mjs --c
 
 // Bound each file: the dispatch concurrency test has previously hung waiting
 // for a release sentinel. A timeout is a failure; still report later suites.
+// Hard-kill at 180s so a child ignoring SIGTERM cannot hang spawnSync.
 let failed = false;
-for (const name of run) {
+const requested = process.argv.slice(3);
+for (const name of requested) {
+  if (!run.includes(name)) throw new Error(`Unknown or skipped Bats suite: ${name}`);
+}
+for (const name of requested.length ? [...new Set(requested)] : run) {
   console.log(`\n=== ${name} ===`);
-  const result = spawnSync('timeout', ['--kill-after=10s', '180s', 'bats', '--tap', `scripts/tests/${name}`], {
-    cwd: root, stdio: 'inherit',
+  const result = spawnSync('bats', ['--tap', `scripts/tests/${name}`], {
+    cwd: root, stdio: 'inherit', timeout: 180_000, killSignal: 'SIGKILL',
   });
   if (result.error || result.status !== 0) {
     console.error(`FAIL ${name}: ${result.error?.message ?? `exit ${result.status}, signal ${result.signal}`}`);

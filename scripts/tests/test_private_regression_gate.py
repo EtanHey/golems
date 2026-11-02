@@ -9,6 +9,8 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def scheduling_defaults(monkeypatch):
+    # Gate contract coverage must not depend on the host's free disk.
+    monkeypatch.setenv("GOLEMS_WORKTREE_MIN_FREE_GB", "0")
     monkeypatch.setenv("GOLEMS_HEAVY_MIN_FREE_GB", "0")
     monkeypatch.setenv("GOLEMS_HEAVY_SUITE_SLOTS", "1")
 

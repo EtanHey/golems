@@ -18,6 +18,9 @@ for (const helper of [false, true]) {
       writeFileSync(join(cwd, "package.json"), JSON.stringify({ scripts: {
         test: `bun test --no-env-file ${join(import.meta.dir, "llm-default-backend.test.ts")} --test-name-pattern 'eval children'`,
       } }));
+      const touchedDir = join(cwd, "scripts/ci");
+      mkdirSync(touchedDir, { recursive: true });
+      writeFileSync(join(touchedDir, "prepush-touched.sh"), "exit 0\n");
       if (helper) {
         const dir = join(cwd, "Gits/golems/.worktrees/hooks-live/scripts/hooks");
         mkdirSync(dir, { recursive: true });

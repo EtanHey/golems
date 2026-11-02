@@ -113,7 +113,7 @@ After:
 
 ## Using op:// in MCP Configs
 
-### Option 1: Run Claude with op run
+### Option 1: Run Claude with op run (Etan's own interactive session only; never for agent launches, since each launch is a Touch ID prompt)
 
 Run:
 ```bash
@@ -122,7 +122,7 @@ op run -- claude
 
 All `op://` references in env vars are resolved.
 
-### Option 2: Shell wrapper
+### Option 2: Shell wrapper (Etan's own shell only; never for agent launches, since every launch is a Touch ID prompt)
 
 Add to .zshrc:
 ```bash
@@ -131,7 +131,7 @@ claude() {
 }
 ```
 
-### Option 3: Environment injection
+### Option 3: Environment injection (a deliberate one-time step with Etan present; agents load `~/.config/golems/*.env` instead)
 
 For MCPs that read env vars:
 ```bash
