@@ -50,9 +50,10 @@ else:
   const run = (...extra) => Bun.spawnSync([cli, "scan", "--config", files.config, "--state", files.state, ...extra], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
   const age = seconds => { const s = JSON.parse(readFileSync(files.state)); for (const row of Object.values(s)) { row.since -= seconds; for (const sent of Object.values(row.sent)) for (const key of Object.keys(sent)) sent[key] -= seconds; } write("state", s); };
   const lead = (...extra) => Bun.spawnSync([cli, "lead", "--thread", "lead-1", "--config", files.config, "--state", files.state, ...extra], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
+  const leadDefault = (...extra) => Bun.spawnSync([cli, "lead", "--thread", "lead-1", "--state", files.state, ...extra], { env: { ...process.env, HOME: root, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
   const calls = () => existsSync(files.calls) ? readFileSync(files.calls, "utf8") : "";
   const sends = () => existsSync(files.sends) ? readFileSync(files.sends, "utf8").trim().split("\n").map(JSON.parse) : [];
-  try { fn({ root, files, write, run, lead, calls, age, sends }); } finally { rmSync(root, { recursive: true, force: true }); }
+  try { fn({ root, files, write, run, lead, leadDefault, calls, age, sends }); } finally { rmSync(root, { recursive: true, force: true }); }
 }
 test("classes, held freshness, cancelled success, owner selection and batching", () => fixture(({ write, run, age, sends }) => {
   const failure = { name: "build\ninjected", status: "COMPLETED", conclusion: "FAILURE", completedAt: old };
@@ -164,6 +165,9 @@ for (const kind of ["RED", "GREEN", "CONFLICT"]) test(`lead check: ignored live 
   expect(sends()).toHaveLength(1); // More than 2 h in this class, but not 2 h since the nudge.
   age(61); expect(lead().exitCode).toBe(0);
   expect(sends().map(s => s.target)).toEqual(["lead-1", "orc"]);
+  expect(sends()[0].message).toContain("— pr-sentinel (your 5-minute PR check)");
+  expect(sends()[1].message).toContain("— pr-sentinel (lead check for lead-1)");
+  expect(sends()[1].message).not.toContain("your 5-minute PR check");
   expect(sends()[1].message).toContain(kind);
   expect(sends()[1].message).toContain("#1");
   lead(); expect(sends()).toHaveLength(2);
@@ -222,4 +226,42 @@ test("lead escalation: the second grace starts only after a successful first nud
   expect(sends().map(s => s.target)).toEqual(["lead-1"]);
   age(121 * 60); lead();
   expect(sends().map(s => s.target)).toEqual(["lead-1", "orc"]);
+}));
+
+
+test("lead optional config: absent default file preserves nudges and warns once per run", () => fixture(({ root, write, leadDefault, age, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  const first = leadDefault("--grace-minutes", "0");
+  expect(first.exitCode, first.stderr.toString()).toBe(0);
+  expect(first.stderr.toString()).toContain(join(root, ".config/golems/pr-sentinel.json"));
+  expect(first.stderr.toString().trim().split("\n")).toHaveLength(1);
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
+  age(121 * 60); const due = leadDefault();
+  expect(due.exitCode).toBe(0); expect(due.stderr.toString().trim().split("\n")).toHaveLength(1);
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
+}));
+test("lead optional config: missing escalate_thread disables only escalation until restored", () => fixture(({ files, write, lead, age, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  write("config", {});
+  const first = lead("--grace-minutes", "0"); expect(first.exitCode, first.stderr.toString()).toBe(0);
+  expect(first.stderr.toString()).toContain(files.config); expect(first.stderr.toString()).toContain("escalate_thread");
+  expect(first.stderr.toString().trim().split("\n")).toHaveLength(1);
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
+  age(121 * 60); const due = lead(); expect(due.exitCode).toBe(0);
+  expect(due.stderr.toString().trim().split("\n")).toHaveLength(1); expect(sends()).toHaveLength(1);
+  // Lead escalation needs no scan-only projects or queries.
+  write("config", { escalate_thread: "orc" }); const restored = lead();
+  expect(restored.exitCode, restored.stderr.toString()).toBe(0); expect(restored.stderr.toString()).toBe("");
+  expect(sends().map(s => s.target)).toEqual(["lead-1", "orc"]);
+  expect(sends()[1].message).toContain("— pr-sentinel (lead check for lead-1)");
+}));
+for (const invalid of ["json", "mode", "object"]) test(`lead optional config: invalid ${invalid} preserves the first nudge`, () => fixture(({ files, write, lead, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  if (invalid === "json") writeFileSync(files.config, "{");
+  if (invalid === "mode") chmodSync(files.config, 0o644);
+  if (invalid === "object") write("config", []);
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode, out.stderr.toString()).toBe(0);
+  expect(out.stderr.toString()).toContain(files.config);
+  expect(out.stderr.toString().trim().split("\n")).toHaveLength(1);
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
 }));

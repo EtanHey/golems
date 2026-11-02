@@ -30,6 +30,9 @@ What the model assumes (so read the passes narrowly):
 
 - **orc is the trusted fallback.** It stays live, never settles, never ignores a wake, and
   eventually acts (weak fairness on `Act`). The sentinel results hold only while that is true.
+- **Sentinel-on requires a configured escalation destination.** `lead` still nudges with no
+  config, but disables orc escalation with a warning. The sentinel-on results assume a valid
+  `escalate_thread`; they do not certify eventual action in the unconfigured fallback mode.
 - **The sentinel eventually runs** (weak fairness on `Nudge`). There is no bounded response time.
   Grace periods are not modeled; the second live-owner escalation is modeled explicitly.
 - **A hold eventually ends** (weak fairness on `Unhold`). A visible hold counts as resolution.

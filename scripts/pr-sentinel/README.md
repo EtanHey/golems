@@ -23,10 +23,14 @@ Two checks, no daemon:
 
 ## Start a lead's check (once per lead thread)
 
-Both `lead` and `scan` read `~/.config/golems/pr-sentinel.json` (mode 0600); `lead`
-now needs that file to resolve `escalate_thread`. Pass `--config` for another location.
-Prepare the config from `config.example.json` before starting a lead's check. Existing
-state files retain their successful first-nudge timestamps; no migration is needed.
+`lead --thread <id>` works without a config file: nudges and branch updates need none.
+For orc escalation, it optionally reads `~/.config/golems/pr-sentinel.json` (mode 0600)
+and needs only its `escalate_thread` key. Pass `--config` for another location. A missing,
+unreadable or invalid file/key prints one stderr warning per run naming that file/key;
+only orc escalation is disabled. Fixing the config enables overdue escalation on the
+next check without repeating the lead nudge. Orc's footer identifies the owning lead.
+`scan` still requires the full config from `config.example.json`. Existing state files
+retain their successful first-nudge timestamps; no migration is needed.
 
 Delegate a cheap child and let it schedule itself. A schedule bound to the child's own thread runs
 on the child's model, inside that thread, and does not wake the lead. An *unbound* schedule runs on

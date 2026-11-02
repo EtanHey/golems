@@ -81,6 +81,24 @@ def config(path):
     return data
 
 
+def lead_config(path):
+    """Optional escalation destination; lead nudges do not depend on scan configuration."""
+    try:
+        if stat.S_IMODE(path.stat().st_mode) != 0o600:
+            raise ValueError('config must have mode 0600')
+        data = json.loads(path.read_text())
+        if not isinstance(data, dict):
+            raise ValueError('config must be an object')
+        target = data.get('escalate_thread')
+        if not isinstance(target, str) or not target.strip():
+            raise ValueError('missing or empty escalate_thread')
+        return dict(escalate_thread=target)
+    except (OSError, ValueError, TypeError) as error:
+        detail = error.strerror if isinstance(error, OSError) else str(error)
+        print(f'pr-sentinel: orc escalation disabled: {path}: {detail}', file=sys.stderr)
+        return {}
+
+
 def inventory(cfg):
     prs, budget = {}, 300
     for query in cfg['queries']:
@@ -271,6 +289,7 @@ def lead(thread_id, path, state, dry, grace_minutes, cfg):
         return
     fetched = linked(urls)
     prs = {u: pr for u, pr in fetched.items() if pr.get('state') == 'OPEN'}
+    escalate_thread = cfg.get('escalate_thread')
     now, items, escalations = time.time(), [], []
     for url, pr in prs.items():
         kind, reason = classify(pr)
@@ -299,7 +318,7 @@ def lead(thread_id, path, state, dry, grace_minutes, cfg):
         notice = f'{detail} is {kind} at {pr["headRefOid"][:8]} ({reason}). {ASK.get(kind, "")}'
         if kind in ACTIONABLE and age >= grace_minutes * 60 and '1' not in sent:
             items.append((row, key, notice))
-        elif (kind in ESCALATABLE and '1' in sent and '2' not in sent
+        elif (escalate_thread and kind in ESCALATABLE and '1' in sent and '2' not in sent
               and now - max(sent['1'], row['since']) >= ESCALATE_AFTER_SECONDS):
             escalations.append((row, key, f'{notice} Lead {thread_id} was nudged at least 2 h ago; '
                                 'the head and state remain unchanged. Take ownership or route the work.'))
@@ -308,10 +327,11 @@ def lead(thread_id, path, state, dry, grace_minutes, cfg):
             del state[gone]  # merged, closed, or no longer linked
     if not dry:
         save(path, state)
-    for target, batch, level in ((thread_id, items, '1'), (cfg['escalate_thread'], escalations, '2')):
+    for target, batch, level in ((thread_id, items, '1'), (escalate_thread, escalations, '2')):
         if not batch:
             continue
-        message = '\n'.join(i[2] for i in batch) + '\n— pr-sentinel (your 5-minute PR check)\n'
+        footer = 'your 5-minute PR check' if level == '1' else f'lead check for {thread_id}'
+        message = '\n'.join(i[2] for i in batch) + f'\n— pr-sentinel ({footer})\n'
         if dry:
             print(f'WOULD SEND to {target}:\n{message}', end='')
             continue
@@ -343,7 +363,11 @@ def main():
         safe = ''.join(c if c.isalnum() else '-' for c in getattr(args, 'thread', '') or '')[:80]
         args.state = STATE.with_name(f'lead-{safe}.json') if args.action == 'lead' else STATE
     try:
-        cfg = config(args.config) if args.action in ('scan', 'lead') else None
+        cfg = None
+        if args.action == 'scan':
+            cfg = config(args.config)
+        elif args.action == 'lead':
+            cfg = lead_config(args.config)
         # The lock is not delivery state. Dry runs never replace state.json.
         args.state.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with args.state.with_suffix('.lock').open('a') as lock:
