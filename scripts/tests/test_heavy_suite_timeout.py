@@ -292,3 +292,70 @@ def test_command_does_not_inherit_launch_control_pipes(tmp_path, closed_stdin):
     probe = "import os;\nfor fd in range(3,256):\n try: os.fstat(fd)\n except OSError: continue\n raise AssertionError('launch descriptor inherited')"
     result = subprocess.run([sys.executable, str(SCRIPT), '--', sys.executable, '-c', probe], env={**env(tmp_path), 'GOLEMS_HEAVY_FORCE': '1'}, capture_output=True, text=True, timeout=5, preexec_fn=(lambda: os.close(0)) if closed_stdin else None)
     assert result.returncode == 0, result.stderr
+
+
+_SPAWNER = ("import os,subprocess,sys\nprint('ready',flush=True)\nos.read(0,1)\n"
+            "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'],env={'PATH': os.defpath},"
+            "start_new_session=True,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)\n"
+            "print(p.pid,flush=True)\nos.read(0,1)\n")
+
+
+def _detached_child_case(monkeypatch, reread_ok):
+    # A member B is unreadable for one scan while it starts C in a new session with a reset env (no lineage, no
+    # marker), then exits. Codex review 2026-11-02 reproduced pruning reporting cleanup ok with C alive.
+    m = load_module()
+    marker = uuid.uuid4().hex
+    b = subprocess.Popen([sys.executable, '-c', _SPAWNER], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+                         start_new_session=True, env={**os.environ, 'GOLEMS_HEAVY_SUITE_ID': marker})
+    c = None
+    try:
+        assert b.stdout.readline().strip() == 'ready'
+        leader = proc.identity(b.pid)
+        tree = m.SuiteTree(leader, marker, False)
+        b.stdin.write('1'); b.stdin.flush()
+        c = proc.identity(int(b.stdout.readline()))
+        assert c is not None and c.ppid == b.pid
+        native_snapshot, native_identity = m.proc.children_snapshot, m.proc.identity
+
+        def unreadable_b():
+            snapshot = native_snapshot()
+            snapshot.pop(b.pid, None)
+            snapshot.unavailable[b.pid] = m.proc.ProcIdentityUnavailable(
+                'injected transient read failure', reason='other', uid=leader.uid, ruid=leader.ruid,
+                ppid=leader.ppid, pgid=leader.pgid)
+            return snapshot
+
+        def identity(pid):
+            if pid == b.pid and not reread_ok:
+                raise m.proc.ProcIdentityUnavailable('still unreadable', reason='other', uid=leader.uid)
+            return native_identity(pid)
+
+        monkeypatch.setattr(m.proc, 'children_snapshot', unreadable_b)
+        monkeypatch.setattr(m.proc, 'identity', identity)
+        tree.scan(markers=False)
+        monkeypatch.setattr(m.proc, 'children_snapshot', native_snapshot)
+        monkeypatch.setattr(m.proc, 'identity', native_identity)
+        b.stdin.write('1'); b.stdin.flush(); b.wait(timeout=5)
+        ok, survivors = m.cleanup_tree(tree, b, 0.5)
+        return m, tree, ok, c
+    finally:
+        if b.poll() is None: b.kill()
+        b.wait(timeout=5)
+        b.stdin.close(); b.stdout.close()
+        if c is not None and proc.same_process(c):
+            with proc.pinned_process(c) as fd:
+                if fd is None: os.kill(c.pid, signal.SIGKILL)
+                else: signal.pidfd_send_signal(fd, signal.SIGKILL)
+
+
+def test_unreadable_parent_of_a_detached_child_keeps_cleanup_failed(monkeypatch):
+    m, tree, ok, c = _detached_child_case(monkeypatch, reread_ok=False)
+    assert not ok, 'an unreadable member that may have hidden a child must never let cleanup pass'
+    assert f'identity-unavailable:{tree.leader.pid}' in tree.incomplete
+    assert tree.identity_reasons[tree.leader.pid] == [{'reason': 'other', 'uid': tree.leader.uid}]
+
+
+def test_reread_of_a_live_unreadable_member_links_and_cleans_its_child(monkeypatch):
+    m, tree, ok, c = _detached_child_case(monkeypatch, reread_ok=True)
+    assert ok and not tree.incomplete
+    assert (c.pid, c.start) in tree.known and not proc.same_process(c)

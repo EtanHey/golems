@@ -164,6 +164,19 @@ class SuiteTree:
         self.leader, self.suite_id, self.nested = leader, suite_id.encode(), nested
         self.known = {} if leader is None else {(leader.pid, leader.start): leader}
         self.incomplete, self.signalled, self.unattributed = set(), [], {}
+        self.identity_reasons = {}
+
+    @staticmethod
+    def reread(pid, attempts=2):
+        # AIDEV-NOTE: never drop an identity-unavailable entry (Codex review 2026-11-02: an unreadable member can
+        # start a detached, env-reset child that no lineage or marker scan links). Instead, re-read a member whose
+        # read failed: a live, readable result restores real lineage; anything else stays fail-closed.
+        for _ in range(attempts):
+            runtime_wait(.005)
+            try: observed = proc.identity(pid)
+            except proc.ProcIdentityUnavailable: continue
+            return observed
+        return None
 
     def scan(self, markers=True, cleanup=False):
         snapshot = proc.children_snapshot()
@@ -174,7 +187,13 @@ class SuiteTree:
             scoped_unknown = cleanup and ((group_live and error.pgid == leader.pgid) or
                 any(key[0] == error.ppid for key in self.known))
             if error.reason != "gone" and (scoped_unknown or any(key[0] == pid for key in self.known)):
+                observed = self.reread(pid)
+                if observed is not None:
+                    rows[pid] = observed; continue
                 self.incomplete.add(f"identity-unavailable:{pid}")
+                seen = self.identity_reasons.setdefault(pid, [])
+                detail = {"reason": error.reason, "uid": error.uid}
+                if detail not in seen: seen.append(detail)
         found = {}
         for _ in range(len(rows) + 1):
             changed = False
@@ -330,7 +349,7 @@ os.read(control, 1)
         if pending and reason != "timeout": result, reason = 128 + pending[0], "cancelled"
         if path:
             record.update(reason=reason, cleanup="ok" if ok else "failed", members_seen=[vars(row) for row in tree.known.values()],
-                signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
                 unattributed_marker_processes=list(tree.unattributed.values()))
             save_run(path, record); save_run(path.with_suffix(".cleanup.json"), record)
             if ok: path.unlink()
@@ -343,7 +362,7 @@ os.read(control, 1)
             ok, survivors = cleanup_tree(tree, child, grace)
             if path:
                 record.update(reason=reason, cleanup="failed", members_seen=[vars(row) for row in tree.known.values()],
-                    signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                    signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
                     unattributed_marker_processes=list(tree.unattributed.values()))
                 try: save_run(path, record)
                 except OSError: pass
