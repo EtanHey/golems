@@ -225,9 +225,9 @@ comment. The fixed-line verdict must match that merge SHA or a later first-paren
 pass every real live row defined on master. Missing, stale, red, wrong-author receipts and API
 failures fail closed. Candidate PR changes and later unguarded merges do not invalidate a receipt.
 For 120 minutes from `merged_at`, the immediately preceding guarded merge's valid receipt may cover a missing/invalid latest receipt; all current row, report-only and head checks apply.
-Two consecutive unreceipted guarded merges fail; after 120 minutes the latest receipt is required. Run `scripts/ratchet/post-merge-live.sh --merged-pr N`: update mbp hooks-live, auto-select a clean exact-head open-PR worktree, run live rows with installed-skills.json, print comment URL and freshness.
+Two consecutive unreceipted guarded merges fail; after 120 minutes the latest receipt is required. Run `scripts/ratchet/post-merge-live.sh --merged-pr N --lease-pr <your open PR>`: update mbp hooks-live, use that PR's clean exact-head worktree as the token lease, run live rows with installed-skills.json, print comment URL and freshness. `--lease-pr` is required and checked before any side effect: an auto-picked lease can be another lead's branch that moves mid-receipt (#1007; docs/architecture/post-merge-live-lease.md).
 Exit 3 means Codex hook trust is missing: the owner must open plain `codex` (no `--profile`), run `/hooks`, approve the changed definitions, then rerun; no live rows run or receipt is posted.
-Optional `--lease-pr N --lease-repo <path>` constrain selection. Later unguarded master SHAs are accepted; branch SHAs and receipts preceding the guarded merge are rejected. The receipt measures the live
+Optional `--lease-repo <path>` picks among worktrees of that PR. Later unguarded master SHAs are accepted; branch SHAs and receipts preceding the guarded merge are rejected. The receipt measures the live
 install's status and token probe; this CI row checks the receipt, never uses lead tokens or
 installs hooks. It is labeled `unit` so receipt checks cannot be mistaken for a live replay.
 
@@ -235,7 +235,7 @@ The existing required `ratchet` job enforces this row only on guarded-path PRs, 
 pushes and manual dispatch. Hourly scheduled runs evaluate this row under the
 [scheduled alert deduplication](#scheduled-alert-deduplication) policy above.
 Non-guarded PRs are exempt before any live API request, so the lead install
-cannot block unrelated work. Failure output prints the exact `post-merge-live.sh --merged-pr N` command. After the lead publishes the receipt, rerun the failed master/PR ratchet jobs
+cannot block unrelated work. Failure output prints the exact `post-merge-live.sh --merged-pr N --lease-pr <your open PR>` command. After the lead publishes the receipt, rerun the failed master/PR ratchet jobs
 (or dispatch the workflow); posting a comment alone does not rerun CI. This prevents a green CI
 claim for merged-but-uninstalled guarded changes. It does not continuously inspect the machine:
 after a passing receipt, later local tampering still requires a fresh lead live run to detect.
@@ -369,3 +369,5 @@ observations are stored separately; the row's fix fixture points at the new iden
 Run class-only tests with `WEAVE_ALLOW_TMP=1 python3 -B -m unittest discover -s scripts/tests
 -p 'test_installed_skill*.py'`; their owned temporary directories are outside the measured
 checkout and contain no durable evidence.
+
+The touched-suite step defaults to a 180-second scheduling budget (`GOLEMS_PREPUSH_BUDGET_SECONDS`). Direct references to changed files run before fallback suites, fastest estimated command first in each group. Estimates use `~/.golems/prepush-durations.json` (atomic EWMA updates; unknown commands estimate 30 seconds; corrupt ledgers warn and use defaults). Before starting a command, elapsed suite time plus its estimate must fit. A running command, including its one flake retry, finishes even if it exceeds the estimate, so this is not a hard timeout. Remaining commands appear in one `DEFERRED to hosted CI` block and an audit entry in `~/.golems/prepush-flakes.jsonl`; deferral permits the push, while an executed failure still blocks. Set `GOLEMS_PREPUSH_BUDGET_SECONDS=0` for a full local run. Package tests and deterministic gates remain outside this budget.

@@ -157,7 +157,7 @@ test("PR merge law forbids asking Etan to approve or merge", () => {
   }
   const merge = flat(section(docs["pr-loop/references/merge-and-verification.md"], "## Single-Account Review Verdicts"));
   expect(merge).toContain("[Merge Authority](pr-creation.md#merge-authority)");
-  expect(merge).toContain("`gh pr merge <N> --merge --admin`");
+  expect(merge).toContain("`gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>`");
   expect(merge).toContain("BLOCKED");
 });
 
