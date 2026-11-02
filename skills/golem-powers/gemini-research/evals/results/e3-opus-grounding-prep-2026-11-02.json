@@ -3,7 +3,7 @@
   "skill": "gemini-research",
   "change": "\u00a7 Grounding prep as the first action with a done condition and a web-only completion path (review r1 text; byte-identical to the measured variant, sha256 1f553fbbe2761e90...)",
   "harness": "skill-creator evals/research-links/run.mjs (eval/research-links): API-key cell (all 66 rows apiKeySource ANTHROPIC_API_KEY), real golems catalog at bfc67477, seat CLAUDE.md, Agent + t3-code + google-drive + exa stubs; Claude Code 2.1.316; --effort high",
-  "scorer": "evals/research-links/score.mjs (review r1): positive passes when gemini-research loads AND its first relevant action is a research-lifecycle load or a dispatch whose brief the pinned semantic judge (src/semantic-judge.js, claude-opus-5-5 high) says instructs the preparation; judgments replay-verified (hashes, pin, verbatim quotes); judge corpus 4/4 with 0 false passes. Summary: skill-creator src/eval-summary.js (Fisher exact).",
+  "scorer": "evals/research-links/score.mjs (review r1+r2): a positive passes only when gemini-research loads AND its FIRST relevant action is a dispatch whose brief the pinned semantic judge (src/semantic-judge.js, claude-opus-5-5 high) says instructs the /research-lifecycle preparation, as GP01 requires. Loading or reading /research-lifecycle is housekeeping and never passes. Judgments are replay-verified (hashes, pin, verbatim quotes); judge corpus 4/4, 0 false passes. Summary: skill-creator src/eval-summary.js (Fisher exact).",
   "provenance": [
     {
       "agent_or_arm": "opus-ask-baseline",
@@ -24,12 +24,12 @@
   ],
   "cases": "10 research-ask positives (6 verbatim from Etan's sessions, 4 reconstructed) + 1 web-only ask (W01), x3 per arm",
   "results": {
-    "first_action_prep": {
-      "baseline": "2/30",
-      "arm": "13/30",
-      "delta_pp": 36.7,
-      "fisher_p": 0.0021,
-      "sensitivity": "excluding the 2 effort-unobserved baseline runs: 2/28 vs 13/30, p=0.0023"
+    "first_action_prep_dispatch": {
+      "baseline": "0/30",
+      "arm": "12/30",
+      "delta_pp": 40.0,
+      "fisher_p": 0.0001236,
+      "sensitivity": "3 A06 runs (baseline reps 1 and 3, arm rep 1) loaded /research-lifecycle and were stopped there by the pre-r2 stop rule, so their next action is unobserved and they score as no dispatch. Excluding them: 0/28 vs 12/29, p=0.00012. Worst case for the change (both baseline runs counted as passes): 2/30 vs 12/30, p=0.0048. The 2 baseline runs with unobserved effort are A04 fails; excluding them changes nothing material."
     },
     "gemini_research_load": {
       "baseline": "21/30",
@@ -37,10 +37,11 @@
     },
     "web_only_completes_without_prep": {
       "baseline": "3/3",
-      "arm": "3/3"
+      "arm": "3/3",
+      "note": "structural: loads and dispatches no preparation; does not itself check the emitted Grounding line or run the shell gate"
     },
-    "arm_prep_by_kind": "12 judged dispatches + 1 research-lifecycle load; baseline 2 loads"
+    "arm_passes": "12 judged preparation dispatches as the first relevant action (A07, A08, A09, A10, each 3/3)"
   },
   "boundary": "Dispatch is stubbed: this measures that preparation is started first, not that the Drive refresh completed or a receipt returned. Short context-dependent verbatim asks (A01-A05) stay 0/3 in both arms.",
-  "verdict": "SHIP on Opus 5.5 (+36.7pp, p=0.0021; no load or web-only regression)"
+  "verdict": "SHIP on Opus 5.5 for GP01's dispatch contract: first-action preparation dispatch 0/30 -> 12/30 (+40pp, Fisher p=0.000124); no load or web-only regression."
 }

@@ -51,11 +51,11 @@
       "prompt": "Gemini deep research this: which local Hebrew speech-to-text model should VoiceLayer use on an M1 Pro?",
       "expected_behavior": "Right after loading /gemini-research, the lead dispatches ONE sub-agent whose brief runs /research-lifecycle preparation (verify local context, refresh the Drive grounding corpus, return grounding doc names + receipt), before searching Drive or drafting the prompt itself.",
       "assertions": [
-        "The first dispatch after the skill loads names /research-lifecycle preparation in its brief",
+        "The FIRST relevant action after the skill loads is ONE dispatch whose brief runs /research-lifecycle preparation (loading or reading /research-lifecycle yourself does not satisfy this)",
         "No research prompt is emitted before that dispatch",
         "The lead does not search Drive or grep for context before dispatching"
       ],
-      "discriminating_power": "high: at baseline Opus 5.5 started preparation first in 2/30 runs (13/30 with this text)",
+      "discriminating_power": "high: at baseline Opus 5.5 dispatched preparation as its first action in 0/30 runs (12/30 with this text); a bare /research-lifecycle load does not count",
       "measured_in": "skill-creator E3 (evals/research-links); comparable result: evals/results/e3-opus-grounding-prep-2026-11-02.json"
     },
     {
