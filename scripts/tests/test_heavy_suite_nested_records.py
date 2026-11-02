@@ -111,3 +111,73 @@ def test_nested_failure_caps_members_without_dropping_total(monkeypatch, tmp_pat
     assert receipt['members_seen'][0]['pid'] == receipt['leader_pid']
     assert receipt['survivors'] == [500000] and receipt['incomplete'] == ['diagnostic-fixture']
     assert path.stat().st_size < 100000
+
+
+def test_inner_non_oserror_write_keeps_exit(monkeypatch, tmp_path, capsys):
+    m = load_module()
+    monkeypatch.setenv('HOME', str(tmp_path))
+    monkeypatch.setenv('GOLEMS_HEAVY_SUITE_ID', uuid.uuid4().hex)
+    native_cleanup = m.cleanup_tree
+    def cleanup(*args):
+        native_cleanup(*args)
+        return False, []
+    def broken(*args):
+        raise TypeError('injected write failure')
+    monkeypatch.setattr(m, 'cleanup_tree', cleanup)
+    monkeypatch.setattr(m, 'save_run', broken)
+    assert m.run_command([sys.executable, '-c', 'pass'], grace=.1) == 70
+    assert capsys.readouterr().err.count('WARNING inner failure record unavailable') == 1
+
+
+def test_pointer_non_oserror_warns(monkeypatch, capsys):
+    m = load_module()
+    def broken(*args):
+        raise TypeError('injected glob failure')
+    monkeypatch.setattr(m.Path, 'glob', broken)
+    assert m.inner_failure_pointer(uuid.uuid4().hex) == ''
+    assert capsys.readouterr().err.count('WARNING inner failure pointer unavailable') == 1
+
+
+@pytest.mark.parametrize('nested', [True, False])
+def test_all_diagnostic_collections_capped(monkeypatch, tmp_path, nested):
+    m = load_module()
+    monkeypatch.setenv('HOME', str(tmp_path))
+    if nested:
+        monkeypatch.setenv('GOLEMS_HEAVY_SUITE_ID', uuid.uuid4().hex)
+    else:
+        monkeypatch.delenv('GOLEMS_HEAVY_SUITE_ID', raising=False)
+    native_cleanup = m.cleanup_tree
+    def cleanup(tree, child, *args):
+        native_cleanup(tree, child, *args)
+        for pid in range(500000, 500250):
+            row = m.proc.ProcIdentity(pid, 1, pid, os.geteuid(), os.getuid(), tree.leader.start)
+            tree.known[(pid, row.start)] = row
+            tree.signalled.append({'pid': pid})
+            tree.incomplete.add(str(pid))
+            tree.identity_reasons[pid] = [{'reason': str(i)} for i in range(250)]
+            tree.unattributed[pid] = {'pid': pid}
+        return False, list(range(250))
+    monkeypatch.setattr(m, 'cleanup_tree', cleanup)
+    assert m.run_command([sys.executable, '-c', 'pass'], grace=.1) == 70
+    pattern = '*.inner-*.json' if nested else '*.cleanup.json'
+    path, = (tmp_path / '.local/state/golems/runs').glob(pattern)
+    record = json.loads(path.read_text())
+    for field in ('members_seen', 'signalled', 'survivors', 'incomplete',
+                  'identity_unavailable_reasons', 'unattributed_marker_processes'):
+        assert len(record[field]) == 200, field
+        assert record[field + '_total'] >= 250, field
+    for key, reasons in record['identity_unavailable_reasons'].items():
+        assert len(reasons) == 200
+        assert record['identity_unavailable_reasons_totals'][key] == 250
+
+
+@pytest.mark.parametrize('error', [KeyboardInterrupt, SystemExit])
+def test_diagnostics_preserve_base_exceptions(monkeypatch, error):
+    m = load_module()
+    def broken(*args):
+        raise error()
+    monkeypatch.setattr(m.Path, 'home', broken)
+    with pytest.raises(error):
+        m.inner_failure_pointer(uuid.uuid4().hex)
+    with pytest.raises(error):
+        m.save_inner_failure({}, None, 'fixture', [])

@@ -122,3 +122,15 @@ with unavailable identity or changed UIDs prevent successful cleanup. A detached
 branch escaping its original group before any lineage observation cannot be
 signalled safely, even if it retains the marker. Wrapper SIGKILL, owner-exit supervision and inherited
 root deadlines need A2; this change does not install a guardian or update hooks-live.
+
+Nested cleanup failures additionally write private
+`<suite_id>.inner-<wrapper_pid>-<birth_hash>.json` records in the same directory;
+successful nested cleanup writes no record. The outer `SUITE DONE` notice adds
+`inner_failures=<count> (see <directory>/<suite_id>.inner-*.json)` when present,
+even if outer cleanup succeeds. Inner diagnostics writes and pointer discovery
+are best-effort: an exception emits one warning and preserves the command result.
+Both outer records (including `.cleanup.json`) and inner records cap diagnostic
+lists and dictionaries at 200 entries, with `<field>_total` retaining the original
+size. Identity-reason lists per retained PID are also capped at 200, with counts
+in `identity_unavailable_reasons_totals`. Caps affect stored diagnostics only,
+never cleanup decisions. The existing inner `members_seen_count` remains available.

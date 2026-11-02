@@ -152,11 +152,29 @@ def write_record(fd, record):
         notice(f"WARNING holder record unavailable: {error}")
 
 
+def cap_record(record):
+    """Cap diagnostic collections only; retain totals and cleanup authority."""
+    result = {}
+    for field, value in record.items():
+        if isinstance(value, (list, dict)):
+            result[field + "_total"] = len(value)
+            if isinstance(value, dict):
+                kept = dict(islice(value.items(), 200))
+                if any(isinstance(v, list) for v in kept.values()):
+                    result[field + "_totals"] = {k: len(v) for k, v in kept.items() if isinstance(v, list)}
+                    kept = {k: v[:200] if isinstance(v, list) else v for k, v in kept.items()}
+                value = kept
+            else:
+                value = value[:200]
+        result[field] = value
+    return result
+
+
 def save_run(path, record):
     temporary = path.with_name(path.name + "." + uuid.uuid4().hex)
     fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as stream:
-        json.dump(record, stream, default=lambda value: value.hex())
+        json.dump(cap_record(record), stream, default=lambda value: value.hex())
     os.replace(temporary, path)
 
 
@@ -167,18 +185,21 @@ def save_inner_failure(record, tree, reason, survivors):
         birth = hashlib.sha256(json.dumps(record["wrapper_birth"], default=lambda value: value.hex()).encode()).hexdigest()[:16]
         path = directory / f"{record['suite_id']}.inner-{record['wrapper_pid']}-{birth}.json"
         save_run(path, dict(record, nested=True, reason=reason, cleanup="failed",
-            members_seen=[vars(row) for row in islice(tree.known.values(), 200)], members_seen_count=len(tree.known),
+            members_seen=[vars(row) for row in tree.known.values()], members_seen_count=len(tree.known),
             signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
             identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
             unattributed_marker_processes=list(tree.unattributed.values())))
-    except OSError as error:
+    except Exception as error:
         notice(f"WARNING inner failure record unavailable: {error}")
 
 
 def inner_failure_pointer(suite_id):
-    directory = Path.home() / ".local/state/golems/runs"
-    try: count = sum(1 for _ in directory.glob(f"{suite_id}.inner-*.json"))
-    except OSError: return ""
+    try:
+        directory = Path.home() / ".local/state/golems/runs"
+        count = sum(1 for _ in directory.glob(f"{suite_id}.inner-*.json"))
+    except Exception as error:
+        notice(f"WARNING inner failure pointer unavailable: {error}")
+        return ""
     return f" inner_failures={count} (see {directory}/{suite_id}.inner-*.json)" if count else ""
 
 
