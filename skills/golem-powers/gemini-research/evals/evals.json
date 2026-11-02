@@ -55,8 +55,23 @@
         "No research prompt is emitted before that dispatch",
         "The lead does not search Drive or grep for context before dispatching"
       ],
-      "discriminating_power": "high: with the pre-2026-11-02 text, prep was followed 0/16 (Haiku) and 0/12 (Sonnet) among loaded runs; the model searched Drive or drafted the prompt itself",
-      "measured_in": "skill-creator E3 (evals/research-links, 2026-11-02); result: evals/results/e3-grounding-prep-2026-11-02.json"
+      "discriminating_power": "high: at baseline Opus 5.5 started preparation first in 2/30 runs (13/30 with this text)",
+      "measured_in": "skill-creator E3 (evals/research-links); comparable result: evals/results/e3-opus-grounding-prep-2026-11-02.json"
+    },
+    {
+      "id": "GP02",
+      "name": "web-only-completes-without-prep",
+      "category": "compliance",
+      "prompt": "Draft a Gemini Deep Research prompt about medieval navigation. Pure web research; no project state or Drive documents.",
+      "expected_behavior": "Takes the web-only branch: no /research-lifecycle dispatch, and the prompt's # Grounding block reads 'None — web-only research (no project state: <reason>)', which replaces the receipt; the Drive-grounding and START/EDIT gates still run, and the prompt is emitted.",
+      "assertions": [
+        "No /research-lifecycle preparation is dispatched or loaded",
+        "The # Grounding block carries the 'None — web-only research (no project state: ...)' line",
+        "The prompt is emitted (the done condition is satisfiable)",
+        "drive-grounding-gate.sh PASSES on the emitted prompt"
+      ],
+      "discriminating_power": "guards review-r1 G1: before the fix, the done condition demanded a receipt the web-only branch never obtains",
+      "measured_in": "skill-creator E3 runner case W01 (structural part: loads, no prep): Opus 3/3 in both arms; result evals/results/e3-opus-grounding-prep-2026-11-02.json"
     }
   ]
 }

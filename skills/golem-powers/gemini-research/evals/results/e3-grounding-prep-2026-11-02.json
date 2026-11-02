@@ -1,9 +1,9 @@
 {
   "date": "2026-11-02",
   "skill": "gemini-research",
-  "change": "\u00a7 Grounding prep rewritten as the first action with a done condition (branch skill/gemini-research-grounding-done)",
+  "status": "UNSCORED HISTORY (NON_COMPARABLE): effective effort was not observed in these runs, so they carry no score, delta or verdict. The comparable measurement is e3-opus-grounding-prep-2026-11-02.json.",
+  "change_measured": "the first \u00a7 Grounding prep rewrite (pre review-r1 text, sha256 f619b493d3764a35..., before the web-only completion path was added)",
   "harness": "skill-creator evals/research-links/run.mjs (branch eval/research-links): API-key cell, real golems catalog at bfc67477, seat CLAUDE.md, Agent + t3-code + google-drive + exa stubs; CC 2.1.316",
-  "scorer": "evals/research-links/score.mjs: pass = gemini-research loaded AND a later /research-lifecycle load or a dispatch whose brief names research-lifecycle; summarized by skill-creator src/eval-summary.js (Fisher exact)",
   "provenance": [
     {
       "agent_or_arm": "haiku-baseline",
@@ -38,21 +38,5 @@
       "effort_observation_source": "NOT DETERMINED: stream-json init reports effort null"
     }
   ],
-  "cases": "10 research-ask positives (6 verbatim from Etan's sessions, 4 reconstructed in his phrasing) x3; Haiku arms also ran 4 hard negatives + 1 named control x3",
-  "results": {
-    "haiku": {
-      "prep_followed": "0/30 -> 7/30",
-      "among_loaded": "0/16 -> 7/13",
-      "false_loads": "0/12 -> 0/12",
-      "controls": "3/3 -> 3/3"
-    },
-    "sonnet": {
-      "prep_followed": "0/30 -> 9/30",
-      "among_loaded": "0/12 -> 9/13",
-      "gemini_research_load": "12/30 -> 13/30"
-    }
-  },
-  "residual": "A01-A06 (short, context-dependent verbatim asks) stay 0/3 in every arm: the skill often does not load, or loads and the model asks a question first.",
-  "verdict": "SHIP (ship rule: +>=10pp, 0 false loads, no control regression; both models)",
-  "comparability": "NON_COMPARABLE per the provenance gate: effort was not observable (no --effort flag; stream-json init reports effort null). Both arms of each model ran the identical config; the Fisher p and deltas are in skill-creator docs.local E3-eval.md, not claimed here."
+  "what_ran": "Haiku 5.5 and Sonnet 5.5, baseline vs the first rewrite, 10 research-ask positives x3 (Haiku also 4 hard negatives + 1 named control x3). Run records and the first-action prep re-score (review r1) are in skill-creator docs.local E3-eval.md."
 }

@@ -13,8 +13,12 @@ Triggers on: gemini research, Gemini Deep Research, NotebookLM, notebook researc
 
 ## Grounding prep — your FIRST action, before any search or draft
 
-Done condition: no research prompt leaves this skill until a `/research-lifecycle`
-preparation receipt is back.
+Done condition: no research prompt leaves this skill until ONE of these is true:
+- **Project-grounded** (the default): a `/research-lifecycle` preparation receipt is
+  back, naming the grounding docs.
+- **Web-only** (only when the user says the question needs no project state): the
+  prompt's `# Grounding` block reads `None — web-only research (no project state:
+  <the user's reason>)`. That line replaces the receipt.
 
 1. Right after loading this skill, dispatch ONE sub-agent. Do not search Drive, grep
    or draft the prompt yourself first. Its brief says: "Run `/research-lifecycle`
@@ -22,10 +26,13 @@ preparation receipt is back.
    corpus, and return the exact grounding doc names and the lifecycle receipt."
    Pick its execution profile per `/agent-routing` § Execution capability (Drive
    write + shell); a read-only gatherer may only report staleness.
-2. Skip step 1 only when the user says the question needs no project state (pure
-   web research). Say so in one line ("No grounding prep: web-only research").
-3. Draft the prompt from the receipt's doc names. While preparation runs or is
-   blocked, tell Etan the prompt follows the receipt; never emit it before.
+2. Web-only branch: when the user says the question needs no project state, skip
+   step 1, write the `None — web-only research (no project state: <reason>)` line,
+   and go straight to the emit gate below. The Drive-grounding and START/EDIT gates
+   still apply.
+3. Project-grounded: draft the prompt from the receipt's doc names. While
+   preparation runs or is blocked, tell Etan the prompt follows the receipt; never
+   emit it before.
 
 Include one line in the hand-off to Etan: "Before Start Research, check that Drive
 is on as a Deep Research source so it reads the named grounding docs."
