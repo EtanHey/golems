@@ -30,7 +30,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 8. REVIEW    Fetch + read review comments (see [Reading Review Comments](review-loop.md#reading-review-comments))
              ↳ Every comment/reply you POST ends with the signature line
 9. FIX       Address real bugs from review
-10. MERGE    gh pr merge `<N>` --merge --admin --delete-branch
+10. MERGE    gh pr merge `<N>` --merge --admin --match-head-commit `<green head>` --delete-branch
              ↳ Leads are ADMINS on Etan's repos: `--admin` is the DEFAULT.
                `reviewDecision: REVIEW_REQUIRED` is a GitHub LABEL, never a
                stop condition. See "Merge Authority" below.
