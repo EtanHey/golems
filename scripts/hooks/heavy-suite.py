@@ -166,11 +166,14 @@ class SuiteTree:
         self.incomplete, self.signalled, self.unattributed = set(), [], {}
         self.identity_reasons = {}
 
+    REREAD_LIMIT = 8  # per scan: at most 8 x 2 x 5 ms of waiting, however many reads fail
+
     @staticmethod
     def reread(pid, attempts=2):
-        # AIDEV-NOTE: never drop an identity-unavailable entry (Codex review 2026-11-02: an unreadable member can
-        # start a detached, env-reset child that no lineage or marker scan links). Instead, re-read a member whose
-        # read failed: a live, readable result restores real lineage; anything else stays fail-closed.
+        # AIDEV-NOTE: never drop or skip an identity-unavailable entry on weaker evidence (Codex reviews 2026-11-02:
+        # an unreadable member can start a detached, env-reset child that no lineage or marker scan links, and a
+        # reused PID is a different process). scan() re-reads only KNOWN members and accepts the result only when it
+        # is the same incarnation (birth key already in `known`); everything else stays fail-closed.
         for _ in range(attempts):
             runtime_wait(.005)
             try: observed = proc.identity(pid)
@@ -183,13 +186,16 @@ class SuiteTree:
         rows = {pid: proc.ProcIdentity(pid, *row[:2], row[3], row[4], row[2]) for pid, row in snapshot.items()}
         leader = rows.get(self.leader.pid) if self.leader else None
         group_live = leader is not None and leader.key == self.leader.key and proc.same_process(leader)
+        rereads = 0
         for pid, error in snapshot.unavailable.items():
             scoped_unknown = cleanup and ((group_live and error.pgid == leader.pgid) or
                 any(key[0] == error.ppid for key in self.known))
             if error.reason != "gone" and (scoped_unknown or any(key[0] == pid for key in self.known)):
-                observed = self.reread(pid)
-                if observed is not None:
-                    rows[pid] = observed; continue
+                if rereads < self.REREAD_LIMIT and any(key[0] == pid for key in self.known):
+                    rereads += 1
+                    observed = self.reread(pid)
+                    if observed is not None and (observed.pid, observed.start) in self.known:
+                        rows[pid] = observed; continue
                 self.incomplete.add(f"identity-unavailable:{pid}")
                 seen = self.identity_reasons.setdefault(pid, [])
                 detail = {"reason": error.reason, "uid": error.uid}

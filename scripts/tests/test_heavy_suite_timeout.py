@@ -300,9 +300,10 @@ _SPAWNER = ("import os,subprocess,sys\nprint('ready',flush=True)\nos.read(0,1)\n
             "print(p.pid,flush=True)\nos.read(0,1)\n")
 
 
-def _detached_child_case(monkeypatch, reread_ok):
+def _detached_child_case(monkeypatch, reread):
     # A member B is unreadable for one scan while it starts C in a new session with a reset env (no lineage, no
-    # marker), then exits. Codex review 2026-11-02 reproduced pruning reporting cleanup ok with C alive.
+    # marker), then exits. Codex reviews 2026-11-02: pruning, and accepting a reused PID's re-read, both reported
+    # cleanup ok with C alive. `reread` is what B's re-read returns: 'fail', 'ok' (same incarnation) or 'mismatch'.
     m = load_module()
     marker = uuid.uuid4().hex
     b = subprocess.Popen([sys.executable, '-c', _SPAWNER], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
@@ -316,6 +317,8 @@ def _detached_child_case(monkeypatch, reread_ok):
         c = proc.identity(int(b.stdout.readline()))
         assert c is not None and c.ppid == b.pid
         native_snapshot, native_identity = m.proc.children_snapshot, m.proc.identity
+        replacement = m.proc.ProcIdentity(leader.pid, 1, leader.pid + 100000, leader.uid, leader.ruid,
+                                          (c.start[0] + 1, 0))
 
         def unreadable_b():
             snapshot = native_snapshot()
@@ -326,8 +329,10 @@ def _detached_child_case(monkeypatch, reread_ok):
             return snapshot
 
         def identity(pid):
-            if pid == b.pid and not reread_ok:
+            if pid == b.pid and reread == 'fail':
                 raise m.proc.ProcIdentityUnavailable('still unreadable', reason='other', uid=leader.uid)
+            if pid == b.pid and reread == 'mismatch':
+                return replacement
             return native_identity(pid)
 
         monkeypatch.setattr(m.proc, 'children_snapshot', unreadable_b)
@@ -337,7 +342,8 @@ def _detached_child_case(monkeypatch, reread_ok):
         monkeypatch.setattr(m.proc, 'identity', native_identity)
         b.stdin.write('1'); b.stdin.flush(); b.wait(timeout=5)
         ok, survivors = m.cleanup_tree(tree, b, 0.5)
-        return m, tree, ok, c
+        child_alive = proc.same_process(c)  # before teardown kills it
+        return tree, ok, c, child_alive
     finally:
         if b.poll() is None: b.kill()
         b.wait(timeout=5)
@@ -348,14 +354,35 @@ def _detached_child_case(monkeypatch, reread_ok):
                 else: signal.pidfd_send_signal(fd, signal.SIGKILL)
 
 
-def test_unreadable_parent_of_a_detached_child_keeps_cleanup_failed(monkeypatch):
-    m, tree, ok, c = _detached_child_case(monkeypatch, reread_ok=False)
+@pytest.mark.parametrize('reread', ['fail', 'mismatch'])
+def test_unreadable_parent_of_a_detached_child_keeps_cleanup_failed(monkeypatch, reread):
+    tree, ok, c, child_alive = _detached_child_case(monkeypatch, reread)
+    assert child_alive, 'fixture: the detached child must still be running when cleanup decides'
     assert not ok, 'an unreadable member that may have hidden a child must never let cleanup pass'
     assert f'identity-unavailable:{tree.leader.pid}' in tree.incomplete
     assert tree.identity_reasons[tree.leader.pid] == [{'reason': 'other', 'uid': tree.leader.uid}]
 
 
-def test_reread_of_a_live_unreadable_member_links_and_cleans_its_child(monkeypatch):
-    m, tree, ok, c = _detached_child_case(monkeypatch, reread_ok=True)
+def test_reread_of_the_same_incarnation_links_and_cleans_its_child(monkeypatch):
+    tree, ok, c, child_alive = _detached_child_case(monkeypatch, 'ok')
     assert ok and not tree.incomplete
-    assert (c.pid, c.start) in tree.known and not proc.same_process(c)
+    assert (c.pid, c.start) in tree.known
+    assert not child_alive, 'cleanup itself must have killed the linked child'
+
+
+def test_rereads_are_capped_per_scan(monkeypatch):
+    m = load_module()
+    tree = m.SuiteTree(None, 'a' * 32, False)
+    pids = range(500000, 501400)
+    for pid in pids: tree.known[(pid, (1, 0))] = object()
+
+    class Snapshot(dict):
+        unavailable = {pid: m.proc.ProcIdentityUnavailable('x', reason='other') for pid in pids}
+
+    calls = []
+    monkeypatch.setattr(m.proc, 'children_snapshot', lambda: Snapshot())
+    monkeypatch.setattr(m, 'runtime_wait', lambda seconds: calls.append(seconds))
+    monkeypatch.setattr(m.proc, 'identity', lambda pid: (_ for _ in ()).throw(m.proc.ProcIdentityUnavailable('y')))
+    tree.scan(markers=False, cleanup=True)
+    assert len(calls) == m.SuiteTree.REREAD_LIMIT * 2
+    assert len(tree.incomplete) == 1400
