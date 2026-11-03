@@ -215,6 +215,7 @@ class SuiteTree:
         self.known = {} if leader is None else {(leader.pid, leader.start): leader}
         self.incomplete, self.signalled, self.unattributed = set(), [], {}
         self.identity_reasons = {}
+        self.uid_filtered = set()
 
     REREAD_LIMIT = 8  # per scan: at most 8 x 2 x 5 ms of waiting, however many reads fail
 
@@ -233,6 +234,10 @@ class SuiteTree:
 
     def scan(self, markers=True, cleanup=False):
         snapshot = proc.children_snapshot()
+        # A verified foreign incarnation blocks cleanup while alive. Unknown
+        # identity/lineage gaps remain sticky, even after the PID disappears.
+        self.incomplete.difference_update(self.uid_filtered)
+        self.uid_filtered.clear()
         rows = {pid: proc.ProcIdentity(pid, *row[:2], row[3], row[4], row[2]) for pid, row in snapshot.items()}
         leader = rows.get(self.leader.pid) if self.leader else None
         group_live = leader is not None and leader.key == self.leader.key and proc.same_process(leader)
@@ -263,7 +268,9 @@ class SuiteTree:
                 if proven:
                     if key not in self.known: self.known[key] = row; changed = True
                     if (row.uid, row.ruid) != (os.geteuid(), os.getuid()):
-                        self.incomplete.add(f"uid-filtered:{pid}")
+                        failure = f"uid-filtered:{pid}"
+                        self.uid_filtered.add(failure)
+                        self.incomplete.add(failure)
                     else: found[pid] = row
             if not changed: break
         if markers and not self.nested:

@@ -118,7 +118,13 @@ terminal `<suite_id>.cleanup.json` receipts retain identities seen, signals,
 survivors and incomplete evidence, without command/environment contents. The
 active record is removed only after verified cleanup. Unreadable processes
 outside the observed tree do not become members or signal targets. Known members
-with unavailable identity or changed UIDs prevent successful cleanup. A detached
+with unavailable identity prevent successful cleanup, even after disappearing:
+they could have spawned an unobserved detached child. On Darwin, permission-denied
+full BSD reads fall back to short BSD metadata bracketed by matching
+`KERN_PROC_PID` birth timestamps. This covers transient setuid children such as
+`/bin/ps` without an executable allowlist. Verified foreign-UID members prevent
+successful cleanup while alive and remain excluded from individual signals;
+their verified lifetimes still supply lineage for discovering descendants. A detached
 branch escaping its original group before any lineage observation cannot be
 signalled safely, even if it retains the marker. Wrapper SIGKILL, owner-exit supervision and inherited
 root deadlines need A2; this change does not install a guardian or update hooks-live.
