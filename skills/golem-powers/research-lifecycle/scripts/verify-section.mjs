@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, open, readFile, readdir, rename, rm, writeFile } from '
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveModelRole } from '../../../../scripts/model-roles.mjs';
+
 
 const TOOLS = 'Read,Grep,Glob,WebSearch,WebFetch';
 const fail = code => { const error = new Error(code); error.verifierCode = code; throw error; };
@@ -40,6 +40,9 @@ async function verifySection({ promptFile, out, role, budgetUsd, timeoutMs = 900
   if (!key) fail('API_KEY_MISSING');
   if (![promptFile, out, role].every(v => typeof v === 'string' && v && !hasKey(v, key))) fail('INVALID_ARGUMENTS');
   if (!Number.isFinite(budgetUsd) || budgetUsd <= 0) fail('BUDGET_REQUIRED');
+  let resolveModelRole;
+  try { ({ resolveModelRole } = await import('../../../../scripts/model-roles.mjs')); }
+  catch { fail('GOLEMS_CHECKOUT_REQUIRED'); }
   const model = resolveModelRole(role);
   if (!model.startsWith('claude-')) fail('CLAUDE_ROLE_REQUIRED');
   const prompt = await readFile(promptFile, 'utf8');
@@ -51,7 +54,10 @@ async function verifySection({ promptFile, out, role, budgetUsd, timeoutMs = 900
   let failure, record;
   try {
     const settings = path.join(cell, 'settings.json');
-    await writeFile(settings, JSON.stringify({ disableAllHooks: true }), { mode: 0o600 });
+    const protectedPaths = ['.config', '.ssh', '.codex', '.claude'].flatMap(dir => [path.join(homedir(), dir), path.join(homedir(), dir, '**')]);
+    protectedPaths.push(path.join(homedir(), '.claude.json'), path.join(homedir(), '.config/golems/anthropic-api.env'), cell, path.join(cell, '**'));
+    const deny = ['Read', 'Grep', 'Glob'].flatMap(tool => protectedPaths.map(file => `${tool}(/${file})`));
+    await writeFile(settings, JSON.stringify({ disableAllHooks: true, permissions: { deny } }), { mode: 0o600 });
     const env = { HOME: cell, CLAUDE_CONFIG_DIR: path.join(cell, '.claude'), PATH: process.env.PATH,
       LANG: 'en_US.UTF-8', ANTHROPIC_API_KEY: key, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' };
     const args = ['--restricted', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
@@ -59,8 +65,8 @@ async function verifySection({ promptFile, out, role, budgetUsd, timeoutMs = 900
       '--permission-mode', 'dontAsk', '--model', model, '--effort', 'high',
       '--max-budget-usd', String(budgetUsd), '--output-format', 'json', '--verbose', '-p', prompt];
     const raw = await new Promise((resolve, reject) => {
-      const child = execFile('claude', args, { env, cwd: path.dirname(path.resolve(promptFile)), detached: true,
-        timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024 }, (error, stdout) => {
+      const child = execFile('claude', args, { env, cwd: cell, detached: true,
+        timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => {
         try { process.kill(-child.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') return reject(new Error('CHILD_REAP_FAILED')); }
         if (error) return reject(new Error('CHILD_FAILED'));
         resolve(stdout);
@@ -73,9 +79,16 @@ async function verifySection({ promptFile, out, role, budgetUsd, timeoutMs = 900
     if (inits[0].fast_mode_state !== 'off') fail('FAST_MODE_REFUSED');
     const result = events.findLast(e => e?.type === 'result');
     if (!result || result.is_error || result.subtype !== 'success') fail('RESULT_FAILED');
-    if (inits[0].model !== model || Object.keys(result.modelUsage ?? {}).length !== 1 || Object.keys(result.modelUsage)[0] !== model) fail('MODEL_MISMATCH');
+    // WebFetch may bill a pinned mechanical helper in addition to the primary.
+    const allowedModels = new Set([model, resolveModelRole('claude.subagent.mechanical')]);
+    const primaryModels = events.filter(e => e?.type === 'assistant').map(e => e.message?.model);
+    const billedModels = Object.keys(result.modelUsage ?? {});
+    if (inits[0].model !== model || !primaryModels.length || primaryModels.some(m => m !== model) ||
+      !billedModels.includes(model) || billedModels.some(m => !allowedModels.has(m))) fail('MODEL_MISMATCH');
     await scan(cell, key);
-    record = redact({ auth: 'api-key', apiKeySource: inits[0].apiKeySource, model, effort_requested: 'high', result }, key);
+    record = redact({ auth: 'api-key', apiKeySource: inits[0].apiKeySource, model, effort_requested: 'high',
+      tool_calls: events.filter(e => e?.type === 'assistant').flatMap(e => (e.message?.content ?? []).filter(c => c.type === 'tool_use')),
+      tool_results: events.filter(e => e?.type === 'user').flatMap(e => (Array.isArray(e.message?.content) ? e.message.content : []).filter(c => c.type === 'tool_result')), result }, key);
     if (hasKey(JSON.stringify(record), key)) fail('OUTPUT_SECRET_LEAK');
   } catch (error) { failure = error; }
   try { await rm(cell, { recursive: true, force: true }); } catch { failure = new Error('CELL_CLEANUP_FAILED'); }

@@ -1,7 +1,8 @@
 # Independent adjudicator rubric
 
 Status: required by VERIFY BEFORE STORE. One adjudicator for the report; different
-model family from the section verifiers unless the step owner explicitly
+model family from the section verifiers unless the lead named as step owner in
+the coordinator brief explicitly
 overrides that rule (record it and double the VERIFIED audit). Read-only except assigned outputs; no
 subagents, installs, credential changes or memory writes.
 
@@ -52,5 +53,6 @@ Coordinator alone stores facts: VERIFIED from completed audited sections or
 adjudication-resolved VERIFIED claims, with their evidence and baseline.
 WRONG/HALLUCINATED may be stored only as corrections with the correct evidence,
 never as the original false assertion. UNVERIFIABLE is never a stored fact.
-PROPOSAL-OK stays in the report as a labeled proposal. Memory retention requires
-adjudication; never promote it to fact.
+PROPOSAL-OK stays in the report as a labeled proposal. For optional memory
+retention, explicitly queue it for adjudication first and store it only as a
+labeled proposal; never promote it to fact.
