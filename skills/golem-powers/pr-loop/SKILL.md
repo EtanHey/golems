@@ -31,9 +31,9 @@ Run `scripts/ci/release-gate.mjs <repo>` at the feature-batch gate, not after ev
 
 Select **full stop** for a PR-workflow “full stop” command, an explicit no-merge request, or a third-party upstream base (for example, pingdotgg/t3code). Emphasis (“Full stop.”), quotations and questions about the phrase do not select it; read-only inspection does not start PR preparation.
 This endpoint overrides generic ship/merge rules for every role and survives handoffs and watch wakes until the user explicitly changes it. Confirm the live PR base, not the fork remote; see [full-stop rules](references/full-stop.md).
-Never merge, enable auto-merge, enqueue, push the default branch, or delegate those actions. Before work and before each push, disarm existing auto-merge/queue enrollment and verify it is off; inability to do so is BLOCKED before mutation.
+Never merge, enable auto-merge, enqueue, push the default branch, or delegate those actions. Before work and each push, verify auto-merge/queue state; disarm only this account’s enrollment or our own PR’s setting we control, otherwise stop BLOCKED before a push that would merge.
 Keep the normal proof, draft-first, lead-routed review and latest-head checks. Finish with **READY UNMERGED**, **WAITING FOR MAINTAINER APPROVAL** (only a verified upstream human-approval requirement remains), or **BLOCKED**; use the [readiness and handoff contract](references/full-stop.md).
-Hand off the PR URL, base, final head, proof/checks/review, risks and next owner. Terminal readiness ends PR preparation unmerged; it is not a held draft or release/install/LIVE proof. Workers never watch; the owning lead unwatches at terminal handoff.
+Terminal readiness ends PR preparation unmerged; it is not a held draft or release/install/LIVE proof.
 
 ## Required Sequence
 

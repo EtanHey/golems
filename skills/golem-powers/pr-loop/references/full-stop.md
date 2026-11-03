@@ -25,11 +25,16 @@ authority and an account with that permission; respect upstream protections.
 Never merge, enable auto-merge, join a merge queue, push the default branch,
 or ask another agent to do any of those for this task.
 For an existing task PR, inspect its auto-merge and queue state before work
-and again before each push. Disable automatic merging, remove queue enrollment,
-and read back both states before proceeding; report what you changed. If the
-account cannot establish that automatic merging is disabled, stop before code
-changes or pushes and report BLOCKED with the permission owner. Touch only the
-assigned PR. A new PR is opened as a draft without automatic merging.
+and again before each push. Read `autoMergeRequest.enabledBy` and the current
+account identity. Disable auto-merge or remove queue enrollment only when this
+task’s account enabled it, or it is our own PR’s setting we control; read back
+both states before proceeding and report changes. If a maintainer or another
+account armed it on an upstream PR, do not override them: stop before code
+changes or any push and report **BLOCKED: maintainer-armed auto-merge; a push
+would merge**, naming the maintainer as permission owner. Unknown ownership or
+inability to verify that automatic completion is off is also BLOCKED before
+mutation. Touch only the assigned PR. Open a new PR as a draft without
+automatic merging.
 
 ## Readiness at the final head
 
@@ -49,7 +54,9 @@ changes; evidence from an earlier head cannot establish readiness.
 - **BLOCKED:** any other missing proof, check, review, permission or unresolved
   conflict/finding. List each blocker and next owner. Draft or failing work
   cannot be called ready. If someone else merged or closed the PR, report its
-  actual state instead of asserting it remains open.
+  actual state instead of asserting it remains open. Full stop is exempt from
+  review-loop’s “mark it held” path: report BLOCKED to the owner instead. Never
+  convert an upstream PR to draft or post hold comments upstream.
 
 ## Watches, ownership and receipt
 
