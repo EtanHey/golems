@@ -90,15 +90,18 @@ may keep a View details expander that shows the visualization's underlying data.
 ## Copyable instructions
 
 Attribution: Etan, 2026-11-03.
-Any terminal command, path, URL or text the reader must run, paste or copy must
-render as a code block with a one-click **Copy** button and visible **Copied**
-confirmation, never plain prose. In either type, author it as a triple-backtick
-fenced block in `decision.body`; keep a multi-line command sequence in ONE fence,
-copied in order. The shared component supports keyboard activation, clipboard
-fallback and resetting feedback in light/dark mode. BUILD's `copy-blocks` gate
-rejects command-like text and literal paths/URLs outside copy blocks on cards and the decision-flow page header,
-records `COPY_BLOCK_REQUIRED` in `<output>.receipts.json`, and withholds HTML.
-Ordinary prose mentioning git and descriptive links are fine. There is no bypass.
+Copy blocks are only for what the reader runs or pastes: terminal commands,
+CLI words, literal text to paste, and file paths to paste. Render these as code
+with a one-click **Copy** button and visible **Copied** confirmation. In either
+type, use a triple-backtick fence in `decision.body`; keep a multi-line command
+sequence in ONE fence, copied in order. Keyboard activation, clipboard fallback
+and resetting feedback are shared.
+URLs stay normal clickable links; never require or suggest a copy block for a
+link. Bare HTTP(S) URLs and `[label](https://example.com)` in card bodies render
+as links. A URL inside a shell command belongs in that command's copy block.
+BUILD rejects unprotected commands and pasteable paths on cards and the
+decision-flow header, records `COPY_BLOCK_REQUIRED` in `<output>.receipts.json`,
+and withholds HTML. Ordinary prose and links pass. There is no bypass.
 
 ## Issue and PR references
 
