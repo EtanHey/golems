@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-10-19",
+  "updated": "2026-11-03",
   "swap_rule": "A model change = bench it with the skill-creator harness, then edit ONE line here. No skill/agent file names a role-owned model directly (drift lint).",
   "roles": {
     "claude.judgment": {
@@ -50,6 +50,24 @@
       "launcher_tier": "flash-high",
       "use_for": "frames, screenshots, OCR, video state changes, /qa-video",
       "evidence": "2026-09-30 visual re-bench: 44/44 vs Pro-High 43/44 + fabricated timing"
+    },
+    "claude.research.verifier": {
+      "model": "claude-haiku-5-5",
+      "alias": "haiku",
+      "use_for": "fixed-list research section fact checking with mandatory cross-family adjudication and VERIFIED audit",
+      "evidence": "2026-11-03 P1 research-verify measurement and RV-tiebreak; lead w5 decision",
+      "never_for": "final research fact release without adjudication/audit"
+    },
+    "codex.research.verifier": {
+      "model": "gpt-6-luna",
+      "use_for": "alternative research section verifier when Claude budget is short; requires Claude adjudicator",
+      "evidence": "2026-11-03 P1 research-verify measurement; lead w5 allowed alternative",
+      "never_for": "final research fact release without adjudication/audit"
+    },
+    "codex.research.adjudicator": {
+      "model": "gpt-6.1-sol",
+      "use_for": "cross-family adjudication of research flags, VERIFIED audit and decision-critical unresolved claims",
+      "evidence": "2026-11-03 RV-tiebreak and lead w5 amendment: default adjudicator"
     }
   }
 }

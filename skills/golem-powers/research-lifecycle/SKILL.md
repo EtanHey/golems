@@ -21,7 +21,7 @@ Every research dispatch — fleet-fired OR **Etan-fired in his own Gemini/Notebo
 | **harvest_trigger** | What event starts harvest (report complete, Drive export lands, cron poll, Etan says "it's done", etc.) |
 | **export_route** | Where results land for the fleet: Drive path, `docs.local/research/`, collab ack, brain_store digest — adapters must name this explicitly |
 
-**Research without all three = PARKED.** Do not mark done, do not brain_store conclusions, do not close the collab row until harvest completes or Etan explicitly parks it.
+**Research without all three = PARKED.** Do not mark done, do not brain_store conclusions, do not close the collab row until harvest completes and [VERIFY BEFORE STORE](#verify-before-store) passes for those conclusions, or Etan explicitly parks it.
 
 Applies to `/gemini-research`, `/claude-desktop-research`, and orc W5 research dispatches. The E07 integrity gate catches bad claims; this gate catches **throughput** — results sitting unharvested since morning.
 
@@ -40,6 +40,16 @@ dispatch's `export_route` evidence before closing.
 If the prompt or R-number cannot be resolved, report the missing association to
 the lead and keep the harvest PARKED; do not guess a folder or claim completion.
 Then apply the existing harvest contract and lifecycle gates.
+
+## VERIFY BEFORE STORE
+
+After harvest/readback, **before any `brain_store` of research conclusions**:
+
+1. Freeze a numbered list of checkable claims per section, with exact report quotes, source locations and the intended code/corpus revision. Dispatch one section verifier per list using [the verifier rubric](references/verifier.md). Default: `claude.research.verifier`; `codex.research.verifier` is an allowed alternative when Claude budget is short (say so).
+2. Dispatch ONE independent adjudicator using [the adjudicator rubric](references/adjudicator.md): every WRONG/HALLUCINATED, a random audit of 85 VERIFIED claims (all if fewer), and a separate queue of decision-critical UNVERIFIABLE. Default: `codex.research.adjudicator`, effort high, service tier default. Verifiers and adjudicator must be from different model families: Codex verifiers require `claude.judgment` adjudication. The Claude adjudicator is otherwise opt-in when the lead asks or Codex is unavailable; switch verifier family with it. Never fast.
+3. Write `VERIFY-SUMMARY.md` beside the harvested report: coverage, final verdict counts, hallucination/error rates and denominators, audit sample/seed, source revisions and evidence links. Only VERIFIED claims from completed, audited sections or claims resolved VERIFIED by adjudication may enter `brain_store` as facts. Store WRONG/HALLUCINATED only as evidenced corrections; never store UNVERIFIABLE as fact or PROPOSAL-OK as an established fact. Partial verification permits only that eligible subset; leave the rest pending.
+
+Resolve each role with `node scripts/model-roles.mjs <role> --field model` from `standards/model-roles.json`; dispatch through `delegate_task`/`Agent` per `/agent-routing`. Report-authored proposals/specs are PROPOSAL-OK, never VERIFIED; check factual premises separately. This gate applies to research conclusions, not ordinary non-research notes.
 
 ## THE LIFECYCLE
 

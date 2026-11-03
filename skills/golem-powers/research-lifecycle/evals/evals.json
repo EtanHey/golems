@@ -1,6 +1,6 @@
 {
   "skill_name": "research-lifecycle",
-  "description": "Eval cases for research-lifecycle skill. Tests staleness detection, context refresh, condensation, archival, Drive corpus freshness, and NotebookLM mirroring. Based on the R75→R76 transition anti-pattern and the 2026-08-02 stale-Drive regression.",
+  "description": "Eval cases for research-lifecycle skill. Tests staleness detection, context refresh, condensation, archival, Drive corpus freshness, and NotebookLM mirroring. Based on the R75\u2192R76 transition anti-pattern and the 2026-08-02 stale-Drive regression.",
   "evals": [
     {
       "id": 1,
@@ -20,7 +20,7 @@
           "type": "negative"
         },
         {
-          "text": "Includes benchmark numbers (before→after) in the new file",
+          "text": "Includes benchmark numbers (before\u2192after) in the new file",
           "type": "behavioral"
         },
         {
@@ -32,7 +32,7 @@
     {
       "id": 2,
       "prompt": "We're about to write the R76 research prompt for BrainLayer. The last sprint fixed most of R75's findings. Should we just send R76 with the same context files?",
-      "expected_output": "Absolutely NOT — must run lifecycle Steps 2-4 first (condense, update, archive). Sending stale context means R76 starts from wrong assumptions. The researcher will waste time on already-fixed problems.",
+      "expected_output": "Absolutely NOT \u2014 must run lifecycle Steps 2-4 first (condense, update, archive). Sending stale context means R76 starts from wrong assumptions. The researcher will waste time on already-fixed problems.",
       "assertions": [
         {
           "text": "Recommends running lifecycle before writing R76 (not just sending with existing context)",
@@ -55,7 +55,7 @@
     {
       "id": 3,
       "prompt": "The brainlayer research-context/ folder has 15 files. Some are from 2 weeks ago and reference problems that are fixed. Should I delete them?",
-      "expected_output": "Don't delete — CONDENSE. Merge related stale files into a condensed summary that reflects current state. Keep timeless content (references, architecture decisions). Archive fully-implemented research results.",
+      "expected_output": "Don't delete \u2014 CONDENSE. Merge related stale files into a condensed summary that reflects current state. Keep timeless content (references, architecture decisions). Archive fully-implemented research results.",
       "assertions": [
         {
           "text": "Recommends condensing rather than deleting stale files",
@@ -132,7 +132,7 @@
     {
       "id": 6,
       "prompt": "/maintenance is running for the brainlayer project. Should it check research context?",
-      "expected_output": "Yes — /maintenance should include a research context staleness check. At minimum: verify description.md stats are current, check if any context files reference fixed problems, flag files older than 2 sprints.",
+      "expected_output": "Yes \u2014 /maintenance should include a research context staleness check. At minimum: verify description.md stats are current, check if any context files reference fixed problems, flag files older than 2 sprints.",
       "assertions": [
         {
           "text": "Confirms that /maintenance should check research context staleness",
@@ -157,7 +157,7 @@
       "name": "completed-local-lifecycle-with-stale-drive-must-fail",
       "category": "compliance",
       "prompt": "A lifecycle run refreshed the local project context, updated description.md, archived implemented research, and replaced every stale NotebookLM source. The Google Drive corpus was never refreshed and is older than the local context. Can I mark the lifecycle complete and send the next Gemini Deep Research prompt?",
-      "expected_output": "No. The lifecycle must fail its completion gate until the current local corpus is pushed to the correct Drive location and verified there. Before emitting the Gemini prompt, require a Grounding block naming the Drive docs or the exact line 'None — web-only research'.",
+      "expected_output": "No. The lifecycle must fail its completion gate until the current local corpus is pushed to the correct Drive location and verified there. Before emitting the Gemini prompt, require a Grounding block naming the Drive docs or the exact line 'None \u2014 web-only research'.",
       "assertions": [
         {
           "name": "completion-refused",
@@ -176,7 +176,7 @@
         },
         {
           "name": "grounding-required",
-          "text": "Requires the Gemini prompt Grounding block or the exact 'None — web-only research' line before emission",
+          "text": "Requires the Gemini prompt Grounding block or the exact 'None \u2014 web-only research' line before emission",
           "type": "behavioral"
         },
         {
@@ -186,7 +186,95 @@
         }
       ],
       "fixture": "fixtures/eval-7-stale-drive.json",
-      "discriminating_power": "high — the pre-fix skill documents a complete run that never touches Drive"
+      "discriminating_power": "high \u2014 the pre-fix skill documents a complete run that never touches Drive"
+    },
+    {
+      "id": 8,
+      "name": "harvested-before-store",
+      "category": "compliance",
+      "prompt": "/research-lifecycle: R19 is harvested, filed in the correct results folder and read back. Harvest owner, trigger and export_route are recorded. Its conclusions C1 (an existing tool has a fast path) and C2 (a benchmark is 12 ms) have not been fact-checked. Store the research conclusions in BrainLayer now and close the row. Take the next available action.",
+      "expected_output": "Dispatch section verification before storing C1/C2; require independent adjudication and VERIFIED audit before release.",
+      "assertions": [
+        {
+          "name": "harvested-before-store",
+          "type": "behavioral",
+          "text": "Dispatch section verification before storing C1/C2; require independent adjudication and VERIFIED audit before release."
+        }
+      ],
+      "ladder": {
+        "reps": 5,
+        "tier1": [
+          "claude-haiku-5-5",
+          "gpt-6-luna"
+        ],
+        "pass_count": 4
+      }
+    },
+    {
+      "id": 9,
+      "name": "unnamed-research-conclusions",
+      "category": "compliance",
+      "prompt": "The research report R20 has finished. Filing and readback are done and its R-number prompt is resolved. Please remember conclusions C1 and C2 from this report as project facts and mark it complete. They have not been checked against sources. Take the next available action.",
+      "expected_output": "Load research-lifecycle and dispatch verification; no fact storage before verification and adjudication audit.",
+      "assertions": [
+        {
+          "name": "unnamed-research-conclusions",
+          "type": "behavioral",
+          "text": "Load research-lifecycle and dispatch verification; no fact storage before verification and adjudication audit."
+        }
+      ],
+      "ladder": {
+        "reps": 5,
+        "tier1": [
+          "claude-haiku-5-5",
+          "gpt-6-luna"
+        ],
+        "pass_count": 4
+      }
+    },
+    {
+      "id": 10,
+      "name": "partial-verification",
+      "category": "compliance",
+      "prompt": "/research-lifecycle: R21 is harvested. Section A has completed verification and independent adjudication/audit: C1 is VERIFIED, C2 is WRONG with an evidenced correction, C3 is UNVERIFIABLE, C4 is PROPOSAL-OK (the report's own proposed threshold). Section B claims C5 and C6 have not been verified. Store the conclusions we can safely retain and continue the unfinished work. Take the next available action.",
+      "expected_output": "Only C1 as fact, C2 as correction; C4 only labeled proposal, C3/C5/C6 not facts. Dispatch section B verification and require its adjudication/audit.",
+      "assertions": [
+        {
+          "name": "partial-verification",
+          "type": "behavioral",
+          "text": "Only C1 as fact, C2 as correction; C4 only labeled proposal, C3/C5/C6 not facts. Dispatch section B verification and require its adjudication/audit."
+        }
+      ],
+      "ladder": {
+        "reps": 5,
+        "tier1": [
+          "claude-haiku-5-5",
+          "gpt-6-luna"
+        ],
+        "pass_count": 4
+      }
+    },
+    {
+      "id": 11,
+      "name": "non-research-note-control",
+      "category": "compliance",
+      "prompt": "Remember my personal preference C1: I prefer a short plain-text status update at the end of a task. This is a note from me, not a research finding. Take the next available action.",
+      "expected_output": "Retain the user preference without research section verifier or adjudicator dispatch.",
+      "assertions": [
+        {
+          "name": "non-research-note-control",
+          "type": "behavioral",
+          "text": "Retain the user preference without research section verifier or adjudicator dispatch."
+        }
+      ],
+      "ladder": {
+        "reps": 5,
+        "tier1": [
+          "claude-haiku-5-5",
+          "gpt-6-luna"
+        ],
+        "pass_count": 5
+      }
     }
   ]
 }
