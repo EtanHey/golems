@@ -1,5 +1,7 @@
 # Video Gems Workflow
 
+Before media work, route named model/subagent requests through [SKILL.md](../SKILL.md) § Subagent routing — named requests first.
+
 Use this workflow when the user shares a YouTube URL, asks to extract gems,
 or wants durable insights/takeaways from a video instead of QA findings.
 
