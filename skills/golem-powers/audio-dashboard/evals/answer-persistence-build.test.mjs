@@ -10,6 +10,8 @@ const cell = designTestCell(), skillRoot = fileURLToPath(new URL('../', import.m
 function build({ type, strip = 'none', id = 'account-build-proof', defaultJob = false, basename = 'stable-output.html' }) {
   const root = mkdtempSync(path.join(cell.root, 'answers-'));
   const outputPath = path.join(root, 'docs.local/dashboards', basename);
+  const bin = path.join(root, 'bin'); mkdirSync(bin);
+  writeFileSync(path.join(bin, 'ffprobe'), "#!/usr/bin/env sh\nprintf '1.000000\\n'\n", { mode: 0o755 });
   const job = defaultJob ? path.join(root, '.narrationlayer/jobs', id || 'audio-dashboard-job') : root;
   const segment = path.join(job, 'segments/s1'); mkdirSync(segment, { recursive: true });
   const words = [{ word: 'alpha', start: 0.05, end: 0.42 }, { word: 'beta', start: 0.45, end: 0.8 }];
@@ -25,7 +27,7 @@ const actual=await import(modulePath), name=${JSON.stringify(type === 'cinema' ?
 function strip(html){return ${strip === 'meta' ? 'html.replace(/<meta name="dashboard-id"[^>]*>/g, "")' : strip === 'bridge' ? 'html.replaceAll("__answerStore", "__missingStore")' : strip === 'consumer' ? 'html.replace(/data-answer-consumer="[^"]*"/g, "")' : 'html'};}
 mock.module(modulePath,()=>({...actual,[name]:(...args)=>{const result=original(...args);return typeof result==='string'?strip(result):{...result,html:strip(result.html)};}}));`);
   const args = ['--spec', spec, ...(!defaultJob ? ['--job-dir', root] : []), '--first-build', 'Isolated answer persistence fixture'];
-  const result = spawnSync(process.execPath, ['--preload', preload, ...cell.command(path.join(skillRoot, 'scripts/build-dashboard.mjs'), args).slice(1)], { cwd: skillRoot, encoding: 'utf8', env: { ...process.env, HOME: root, PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || chromium.executablePath().replace(/[/\\]chromium-[^/\\]+[/\\].*$/, '') } });
+  const result = spawnSync(process.execPath, ['--preload', preload, ...cell.command(path.join(skillRoot, 'scripts/build-dashboard.mjs'), args).slice(1)], { cwd: skillRoot, encoding: 'utf8', env: { ...process.env, PATH: bin + path.delimiter + (process.env.PATH || ''), HOME: root, PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || chromium.executablePath().replace(/[/\\]chromium-[^/\\]+[/\\].*$/, '') } });
   return { result, outputPath, receiptsPath: outputPath.replace(/\.html$/, '.receipts.json') };
 }
 for (const type of ['decision-flow', 'cinema']) for (const strip of ['none', 'meta', 'bridge', 'consumer']) {
