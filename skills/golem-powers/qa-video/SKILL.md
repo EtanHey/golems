@@ -67,24 +67,21 @@ admission (§ 5) applies). Never copy the recording to another machine.
 **Subagent routing — named requests first:** When the user names a model or
 subagent for the QA pass (a named model, or "use video-gems"), dispatch exactly
 that model or subagent **before any media probe, extraction, transcription or
-frame preparation**. The named worker owns
-the entire pass. Never run its pipeline inline in the requesting seat, including
-setup "for" the worker. This overrides the default owner and helper routes below.
+frame preparation**. The requesting seat only briefs and waits; never run the
+pipeline inline, including setup "for" the worker. The named worker runs the full
+/qa-video pipeline itself, including its own helper fan-out. Authorize that
+fan-out explicitly in its brief. This overrides the default execution owner below.
 
 In T3, call `orchestrator_capabilities` then `delegate_task` with the model the
 user named and its provider, putting settings in `target.options`: Codex
-`serviceTier:"default"`, Claude `fastMode:false`. Resolve named tiers through
-`standards/model-roles.json` (`codex.subagent.mechanical` for the named Codex
-mechanical tier; `claude.subagent.mechanical` for the named Claude mechanical
-tier), using `node scripts/model-roles.mjs <role> --field model` (add
-`--use codex-internal-subagent` for the explicitly requested Codex child), and
-check the live catalog. A named agent profile belongs in the worker brief. Claude seats
-outside T3 may use `Agent` with the named model/profile and `fastMode:false`.
-Codex seats have no `Agent` tool: use `delegate_task`. If the requested model,
-profile or dispatch tool is unavailable, say so and stop. Never substitute another
-model, open a replacement pane, or fall back to inline execution. Give the worker
-the source path, mode, absolute artifact directory, deadline and evidence rules;
-a worker without dispatch tools follows the single-reader runner contract below.
+`serviceTier:"default"`, Claude `fastMode:false`. Match the named model against
+the live dispatch catalog (`orchestrator_capabilities`); if it isn't offered,
+report and stop. Claude seats outside T3 may use `Agent` with the named model/profile.
+Codex seats have no `Agent` tool: use `delegate_task`. If the profile or dispatch
+tool is unavailable, say so and stop. Never substitute, open a replacement pane,
+or fall back to inline execution. Brief the worker with the named profile, source,
+mode, absolute artifact directory, deadline and evidence rules; without dispatch
+tools it follows the single-reader runner contract below.
 
 **No model or subagent named:** Keep the default pipeline in this table.
 
