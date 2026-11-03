@@ -79,9 +79,9 @@
       "name": "grounded-prompt-practices",
       "category": "compliance",
       "prompt": "Draft a research prompt comparing local indexing approaches. Our connected Drive corpus has Project facts and Verified findings + struck claims. The owner said: \"Keep exact-match recall; measure before migrating.\"",
-      "expected_behavior": "Uses the reference template, quotes the owner, names the verified findings doc, seeks counterevidence, separates evidence labels and targets, obtains two independent bias checks before emission.",
+      "expected_behavior": "Uses the reference template, quotes the owner, names the verified findings doc, seeks counterevidence, labels planned behavior PROPOSED until shipped evidence exists, obtains two independent bias checks, validates the author record and emits researcher text without prep.",
       "assertions": [
-        "prompt-preflight.mjs passes the emitted prompt",
+        "prompt-preflight.mjs --emit passes the full author record and emits researcher text without the Pre-fire checks section or reviewer identities",
         "No source or review result is invented; missing reviews keep emission blocked",
         "Targets and proposals are not reported as measured outcomes"
       ],
@@ -107,7 +107,7 @@
       "expected_behavior": "Uses explicit web-only N/A grounding while preserving evidence labels, counterevidence, source/number requirements and independent bias checks.",
       "assertions": [
         "No project-grounding preparation dispatch",
-        "Filled web-only prompt passes prompt-preflight.mjs",
+        "Filled web-only author record passes prompt-preflight.mjs --emit; emitted researcher text retains web-only grounding and excludes prep",
         "No invented project doc or attachment request"
       ],
       "measurement_status": "Planned; no live agent behavior measurement in this change"
