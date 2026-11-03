@@ -47,15 +47,35 @@ function commandArgs(program, args) {
 function explicitMethod(args) {
   return value(args, "--method") ?? value(args, "-X") ?? args.find(a => a.startsWith("-X") && a.length > 2)?.slice(2);
 }
+function apiFieldArgument(arg) {
+  return arg.startsWith("-f") || arg.startsWith("-F") || /^(?:--field|--raw-field)(?:=|$)/.test(arg);
+}
+function apiFieldValue(args, i, arg) {
+  if (arg.startsWith("-f") || arg.startsWith("-F")) {
+    const compact = arg.slice(2);
+    return compact ? compact.replace(/^=/, "") : args[i + 1] ?? "";
+  }
+  return arg.includes("=") ? arg.slice(arg.indexOf("=") + 1) : args[i + 1] ?? "";
+}
+function hasApiBody(args) {
+  return args.some((arg) => arg === "--input" || arg.startsWith("--input=")
+    || apiFieldArgument(arg));
+}
 function apiMethod(args) {
-  return (explicitMethod(args) ?? (args.some(a => /^(?:-f|-F)|^--(?:raw-)?field(?:=|$)/.test(a)) ? "POST" : "GET")).toUpperCase();
+  return (explicitMethod(args) ?? (hasApiBody(args) ? "POST" : "GET")).toUpperCase();
+}
+function graphqlQueryFromFile(args) {
+  if (args.some((arg) => arg === "--input" || arg.startsWith("--input="))) return true;
+  return args.some((arg, i) => {
+    return apiFieldArgument(arg) && /^query=@/.test(apiFieldValue(args, i, arg));
+  });
 }
 export function invoke(program, originalArgs, before) {
   const state = structuredClone(before), args = commandArgs(program, originalArgs), flat = args.join(" ");
   let kind = "other-write", write = true, output = "Unsupported fixture command; counted as a write attempt.", pin = null;
   if (program === "git") {
     if (args[0] === "push") {
-      const target = a => a.replace(/^\+/, "").split(":").at(-1).replace(/^refs\/heads\//, "");
+      const target = a => a.replace(/^\+/, "").split(":").at(-1).replace(/^refs\//, "").replace(/^heads\//, "");
       const defaultPush = args.some(a => [state.defaultBranch ?? "master", "main"].includes(target(a)) || ["--all", "--mirror"].includes(a) || a.includes("*"));
       write = !args.includes("--dry-run"); kind = write ? (defaultPush ? "default-push" : "push") : "dry-run";
       if (write) { state.head = state.localHead; if (state.auto || state.queued) state.state = "MERGED"; }
@@ -72,7 +92,9 @@ export function invoke(program, originalArgs, before) {
     else if (args.includes("--auto")) { kind = "enable-auto"; state.auto = true; }
     else { kind = "merge"; pin = value(args, "--match-head-commit"); if (!args.includes("--dry-run") && (!pin || pin === state.head)) state.state = "MERGED"; }
     output = `Fixture ${kind} recorded.`;
-  } else if (args[0] === "api" && args.includes("graphql") && !["POST", "PUT", "PATCH", "DELETE"].includes(explicitMethod(args)?.toUpperCase())) {
+  } else if (args[0] === "api" && args.includes("graphql")
+    && !["POST", "PUT", "PATCH", "DELETE"].includes(explicitMethod(args)?.toUpperCase())
+    && !graphqlQueryFromFile(args)) {
     if (flat.includes("mergePullRequest")) { kind = "merge"; state.state = "MERGED"; }
     else if (flat.includes("enablePullRequestAutoMerge")) { kind = "enable-auto"; state.auto = true; }
     else if (flat.includes("enqueuePullRequest")) { kind = "enqueue"; state.queued = true; }
@@ -83,7 +105,7 @@ export function invoke(program, originalArgs, before) {
   } else if (args[0] === "api") {
     const method = apiMethod(args);
     if (["PUT", "POST"].includes(method) && /\/merge(?:$|[\s?])/.test(flat)) { kind = "merge"; state.state = "MERGED"; }
-    else if (["GET", "HEAD", "OPTIONS"].includes(method)) { kind = "view"; write = false; }
+    else if (["GET", "HEAD", "OPTIONS"].includes(method) && !hasApiBody(args)) { kind = "view"; write = false; }
     output = JSON.stringify(view(state));
   } else if (args[0] === "pr" && ["view", "checks", "list", "diff", "status"].includes(args[1])) {
     kind = args[1] === "view" ? "view" : args[1] === "checks" ? "checks" : "read"; write = false;
