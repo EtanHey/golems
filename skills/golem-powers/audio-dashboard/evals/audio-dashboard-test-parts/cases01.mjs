@@ -512,6 +512,7 @@ test("receipts convention: PASS build emits portable schema-v1 rows for all regi
     "acoustic:BUILD:PASS",
     "onset-energy:BUILD:PASS",
     "teleprompter-drift:BUILD:PASS",
+    "copy-blocks:BUILD:PASS",
     "design-preservation:BUILD:PASS",
   ]);
   expect(receipts.gates.every((row) => row.violations.length === 0 && Number.isFinite(Date.parse(row.ranAt)))).toBe(true);
@@ -572,6 +573,7 @@ test("ruled scene deferral is visible beside response notes and portable in BUIL
     "acoustic:BUILD:PASS",
     "onset-energy:BUILD:PASS",
     "teleprompter-drift:BUILD:PASS",
+    "copy-blocks:BUILD:PASS",
     "design-preservation:BUILD:PASS",
   ]);
   expect(JSON.stringify(receipts.gates)).not.toContain("s11a");
@@ -639,6 +641,7 @@ test("B13 BUILD maps approved synth timings to authored display tokens", () => {
     "acoustic:PASS",
     "onset-energy:PASS",
     "teleprompter-drift:PASS",
+    "copy-blocks:PASS",
     "design-preservation:PASS",
   ]);
   expect(receipts.gates.find((gate) => gate.gate === "teleprompter-drift")?.derivedAliases).toEqual([
