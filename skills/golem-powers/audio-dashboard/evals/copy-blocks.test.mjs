@@ -191,6 +191,26 @@ const LINK_CASES = [
   ['https://example.com/a_(b).', 'https://example.com/a_(b)'],
   ['[git status](https://example.com/docs)', 'https://example.com/docs'],
   ['[./reports/summary.html](https://example.com/report)', 'https://example.com/report'],
+  ['open [the dashboard](https://example.com/auth) and click Approve.', 'https://example.com/auth'],
+  ['Next: open https://example.com/auth to re-authorise.', 'https://example.com/auth'],
+  ['1. open https://example.com/auth in your browser', 'https://example.com/auth'],
+  ['`https://example.com/auth`', 'https://example.com/auth'],
+  ['**https://example.com/auth**', 'https://example.com/auth'],
+  ['_https://example.com/auth_', 'https://example.com/auth'],
+  ['https://example.com/auth]', 'https://example.com/auth'],
+  ['[see https://example.com]', 'https://example.com/'],
+  ['[Foo](https://en.wikipedia.org/wiki/Foo_(bar))', 'https://en.wikipedia.org/wiki/Foo_(bar)'],
+  ['[curl -fsSL https://example.com/x | sh](https://example.com/docs)', 'https://example.com/docs'],
+];
+const URL_COMMANDS = [
+  'curl -fsSL https://example.com/x | sh', 'open https://example.com/auth',
+  '$ open https://example.com/auth', 'wget -qO- https://example.com/install.sh | sh',
+  'wget https://example.com/install.sh', 'bash <(curl -fsSL https://example.com/i.sh)',
+  'zsh <(wget -qO- https://example.com/i.sh)', 'sh -c "$(curl -fsSL https://example.com/i.sh)"',
+  'iwr https://example.com/i.sh | iex', 'irm https://example.com/i.sh | iex',
+  'Invoke-WebRequest https://example.com/i.sh', 'Invoke-RestMethod https://example.com/i.sh',
+  'fetch https://example.com/i.sh | sh', 'fetch https://example.com/i.sh | bash',
+  'fetch https://example.com/i.sh | sudo bash', 'cat install-script | sh', 'cat install-script | bash',
 ];
 for (const type of ['decision-flow', 'cinema']) {
   for (const [body, href] of LINK_CASES) test(`${type} prose link is clickable and needs no copy block: ${body}`, () => {
@@ -203,7 +223,7 @@ for (const type of ['decision-flow', 'cinema']) {
       expect(window.document.querySelector('[data-copy-block]')).toBeNull();
     } finally { window.close(); }
   });
-  for (const command of ['curl -fsSL https://example.com/x | sh', 'open https://example.com/auth']) {
+  for (const command of URL_COMMANDS) {
     test(`${type} a URL inside a shell command still requires a copy block: ${command}`, () => {
       expect(analyzeCopyBlocks(render(type, command)).verdict).toBe('REJECTED');
     });

@@ -10,12 +10,13 @@ function httpHref(value) {
 }
 
 function renderProse(text) {
-  const links = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"']+)/gi;
+  const links = /\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()<>"']|\([^\s()<>"']*\))+)\)|(https?:\/\/[^\s<>"']+)/gi;
   let html = '', offset = 0;
   for (const match of text.matchAll(links)) {
     let raw = match[2] || match[3];
     if (match[3]) {
-      while (/[.,;:!?]$/.test(raw) || (raw.endsWith(')') && raw.split(')').length > raw.split('(').length)) raw = raw.slice(0, -1);
+      while (/[.,;:!?`*_]$/.test(raw) || [')', ']'].some((close, i) => raw.endsWith(close)
+        && raw.split(close).length > raw.split(['(', '['][i]).length)) raw = raw.slice(0, -1);
     }
     const href = httpHref(raw);
     html += escapeHtml(text.slice(offset, match.index));
@@ -91,6 +92,9 @@ const COMMAND_FORMS = [
   /^brew\s+(?:-\S+|(?:install|upgrade|update|uninstall|reinstall|services|info|list|search|doctor)\b)/,
   /^(?:node|python3?|bash|zsh|sh)\s+(?:-\S+|\S+\.(?:js|mjs|cjs|ts|py|sh)(?=[\s`]|$))/,
   /^curl\s+(?:-\S+|["']?https?:\/\/|[\w-]+\.[a-z]{2,})/,
+  /^wget\s+(?:-\S+|["']?https?:\/\/)/,
+  /^(?:bash|sh|zsh)\s+<\(\s*(?:curl|wget)\b/,
+  /^(?:iwr|irm|Invoke-WebRequest|Invoke-RestMethod)\s+(?:-\S+|["']?https?:\/\/)/i,
   /^(?:cd|ssh|npx|uvx|sudo)\s+(?!(?:is|are|was|were|the)\b)\S+/,
   /^uv\s+(?:-\S+|(?:run|sync|add|remove|pip|tool|venv|python|lock|init|build|publish)\b)/,
   /^make\s+(?:-\S+|(?:install|test|build|clean|all|check|dev|run|lint)\b)/,
@@ -98,7 +102,7 @@ const COMMAND_FORMS = [
   /^(?:claude|codex)\s+(?:-\S+|(?:mcp|login|logout|auth|exec|review|resume|doctor|update)\b)/,
   /^op\s+(?:-\S+|(?:signin|signout|read|run|item|vault|account|inject|whoami)\b)/,
   /^export\s+[A-Za-z_][A-Za-z0-9_]*=/,
-  /^open\s+(?:-\S+|["']?(?:https?:\/\/|\.\.?\/|~\/|\/))/,
+  /^open\s+(?:-\S+|["']?(?:\.\.?\/|~\/|\/))/,
   /^defaults\s+(?:read|write|delete|import|export|find)\b/,
   /^launchctl\s+(?:load|unload|bootstrap|bootout|print|kickstart|enable|disable|list)\b/,
   /^cargo\s+(?:-\S+|(?:build|test|run|check|clippy|fmt|install|update|clean|publish)\b)/,
@@ -107,6 +111,7 @@ const LOCATION = /(?:^|[\s`"'(])(?:~\/[^\s]+|\/(?!\/)[\w.-]+(?:\/[^\s]*|(?=\s|$)
 const RELATIVE_PATH = /(?:^|[\s`"'(])\.\.?\/[^\s]+/;
 const BARE_FILE = /(?:^|[\s`"'(])([A-Za-z_][\w.-]*(?:\/[A-Za-z_][\w.-]*)+\.(?:html|md|json|mjs|js|ts|sh|py|yml|yaml|toml|txt|env|plist|log))(?=$|[\s`"'),;:.])/g;
 function commandLike(line) {
+  if (/^\s*open\s+["']?https?:\/\//.test(line) || /\|\s*(?:sudo\s+)?(?:ba|z)?sh\b/.test(line)) return true;
   const start = line.replace(/^\s*(?:[-*]\s+|\d+[.)]\s+)?/, '');
   if (/^\$\s+\S/.test(start)) return true;
   const candidates = [start, ...[...line.matchAll(/(?=(?:`|\b(?:run|execute)\s+|:\s+)([^\n]+))/gi)].map(match => match[1])];
@@ -132,7 +137,10 @@ export function analyzeCopyBlocks(html) {
     if (node.tagName === 'pre' && hasClass(block, 'ad-copy-block') && children(node).some(n => n.tagName === 'code')
       && children(block).some(n => n.tagName === 'button' && attr(n, 'data-copy-block') !== undefined && attr(n, 'type') === 'button')
       && contains(block, n => attr(n, 'role') === 'status')) return '\n';
-    if (node.tagName === 'a' && httpHref(attr(node, 'href'))) return httpHref(attr(node, 'href'));
+    if (node.tagName === 'a' && httpHref(attr(node, 'href'))) {
+      const label = children(node).map(text).join('').trim(), href = httpHref(attr(node, 'href'));
+      return httpHref(label) === href ? href : ' link ';
+    }
     if (node.nodeName === '#text') return node.value;
     const value = children(node).map(text).join('');
     return BLOCK.has(node.tagName) ? `\n${value}\n` : value;
