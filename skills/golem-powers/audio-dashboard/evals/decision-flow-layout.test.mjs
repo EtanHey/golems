@@ -435,3 +435,24 @@ for (const destination of ["bottom", "mid-page"]) layoutTest(`an interrupted far
   const expected = destination === "bottom" ? "nl3" : "d19";
   expect(states).toEqual([390, 1280].map(() => ({ bottom: destination === "bottom", card: expected, chip: expected, index: expected })));
 }, 15000);
+
+// AIDEV-NOTE: nightly cards cite long evidence URLs in prose; a single unbroken URL must wrap inside the card at
+// phone width instead of widening the page, and prose links must read as links, matching rail links.
+layoutTest("long prose URLs wrap inside the card at phone width and prose links read as links", async () => {
+  const browser = await chromium.launch(), failures = [];
+  const longUrl = "https://example.com/reports/2026/11/nightly/synthetic-release-lane-comparison-with-a-long-unbroken-slug-for-wrapping?view=full&section=browser-checks";
+  try { for (const width of [360, 390, 1280]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, reducedMotion: "reduce" });
+    const html = renderDecisionFlow({ storageKey: "dbx:layout-test", heading: "Links", scenes: [scene("u1")], decisions: [{ id: "u1", title: "Long link", options: ["A", "B"], sceneIds: ["u1"], body: `Evidence: ${longUrl} and the [release notes](https://example.com/notes).` }] });
+    const dir = mkdtempSync(path.join(tmpdir(), "decision-flow-layout-")); const file = path.join(dir, "dashboard.html"); writeFileSync(file, html);
+    await page.goto(`file://${file}`);
+    const state = await page.evaluate(() => {
+      const card = document.querySelector(".df-card").getBoundingClientRect(), links = [...document.querySelectorAll(".df-question a")];
+      const text = getComputedStyle(document.querySelector(".df-question p")).color;
+      return { page: document.documentElement.scrollWidth - document.documentElement.clientWidth, outside: links.filter(link => [...link.getClientRects()].some(r => r.right > card.right + 0.5 || r.left < card.left - 0.5)).length, sameColour: links.filter(link => getComputedStyle(link).color === text).length };
+    });
+    if (state.page > 0 || state.outside || state.sameColour) failures.push({ width, ...state });
+    await page.close();
+  } } finally { await browser.close(); }
+  expect(failures).toEqual([]);
+}, 30000);

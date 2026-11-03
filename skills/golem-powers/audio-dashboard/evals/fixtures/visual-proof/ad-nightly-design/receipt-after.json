@@ -1,0 +1,148 @@
+{
+  "label": "after",
+  "htmlSha256": "f4ff6992d7e87ebd0e384686c867e29cb94071f5486ccb63b994f0a5aa72e979",
+  "viewports": {
+    "390": {
+      "pageOverflowPx": 0,
+      "proseLinksOutsideCard": 0,
+      "proseLinkColour": "rgb(121, 207, 194)",
+      "proseTextColour": "rgb(213, 219, 230)",
+      "noteButtonNames": [
+        "Review 1 note on Pick tonight's release lane, or add another",
+        "Add a note to Run the cache cleanup now?",
+        "Add a note to Morning checks",
+        "Add a note to Name the morning summary",
+        "Add a note to Reply: can the fast lane be undone?"
+      ],
+      "copyButtonPx": "66x40",
+      "copyPressTargetPx": "51px tall at centre",
+      "replyStatus": "Reply rgb(236, 239, 245) radius=999px",
+      "cardIds": [
+        "decision-release-lane",
+        "decision-cache-cleanup",
+        "decision-morning-checks",
+        "decision-summary-name",
+        "decision-reply-fast-lane-undo"
+      ],
+      "answerInputs": 14,
+      "playerControls": 12,
+      "keyboard": [
+        {
+          "name": "Open Cinema listening mode",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Details",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Play card: Pick tonight's release lane",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Next card",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "0.8×1×1.25×1.5×1.75×2×",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Story view",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Section 1: Pick tonight's release lane. Awaiting answer. 1 n",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Section 2: Run the cache cleanup now?. Awaiting answer",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Section 3: Morning checks. Awaiting answer",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Section 4: Name the morning summary. Awaiting answer",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Section 5: Reply: can the fast lane be undone?. Awaiting ans",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Copy answers",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Review 1 note on Pick tonight's release lane, or add another",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Play this decision's full audio",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "Restart this decision's audio",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "release notes draft",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "https://example.com/reports/2026/11/nightly/synthetic-releas",
+          "ring": true,
+          "inView": true
+        },
+        {
+          "name": "demo#12",
+          "ring": true,
+          "inView": true
+        }
+      ]
+    },
+    "1280": {
+      "pageOverflowPx": 0,
+      "proseLinksOutsideCard": 0,
+      "proseLinkColour": "rgb(121, 207, 194)",
+      "proseTextColour": "rgb(213, 219, 230)",
+      "noteButtonNames": [
+        "Review 1 note on Pick tonight's release lane, or add another",
+        "Add a note to Run the cache cleanup now?",
+        "Add a note to Morning checks",
+        "Add a note to Name the morning summary",
+        "Add a note to Reply: can the fast lane be undone?"
+      ],
+      "copyButtonPx": "66x40",
+      "copyPressTargetPx": "51px tall at centre",
+      "replyStatus": "Reply rgb(236, 239, 245) radius=999px",
+      "cardIds": [
+        "decision-release-lane",
+        "decision-cache-cleanup",
+        "decision-morning-checks",
+        "decision-summary-name",
+        "decision-reply-fast-lane-undo"
+      ],
+      "answerInputs": 14,
+      "playerControls": 12
+    }
+  }
+}

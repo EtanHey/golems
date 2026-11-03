@@ -95,6 +95,14 @@ a{color:inherit}
 .df-question{margin:18px 0 0;max-width:64ch;color:#d5dbe6;font-size:16px;line-height:1.6}
 .df-question p{margin:0}
 .df-question p+p{margin-top:10px}
+/* Prose links match rail links, and one long unbroken URL wraps inside the card instead of widening the phone page. */
+.df-question{overflow-wrap:anywhere}
+.df-question a{color:var(--glass);text-decoration-color:rgba(121,207,194,.45);text-underline-offset:3px}
+@media(hover:hover) and (pointer:fine){.df-question a:hover{color:var(--moon);text-decoration-color:currentColor}}
+/* Copy keeps its compact look; an invisible ring extends its press target to 44px tall. */
+.df-question .ad-copy-block button::after{content:"";position:absolute;inset:-6px}
+/* A reply appended as a new end card reads as a reply at a glance, not as one more open question. */
+.df-status[data-status="reply"]{justify-self:start;display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--moon)}
 .df-rail{margin:18px 0 0;padding:14px 0 0;border-top:1px solid var(--line);display:grid;gap:12px}
 .df-rail div{display:grid;gap:1px}
 .df-rail dt{color:var(--faint);font-size:13px}

@@ -401,7 +401,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
       <span class="df-rank" aria-hidden="true">${escapeHtml(rankLabel(decision, index))}</span>
       <div class="df-title">${ANSWER_MARK}<h2>${escapeHtml(decision.title)}</h2></div>
       <span class="df-status" data-status="${escapeHtml(status.toLowerCase())}">${escapeHtml(sentenceCase(status))}</span>
-      <button type="button" class="df-card-note" aria-label="Add or review notes for ${escapeHtml(decision.title)}" title="Cite &amp; note">${NOTE_ICON}<span class="df-note-count" hidden></span></button>
+      <button type="button" class="df-card-note" aria-label="Add a note to ${escapeHtml(decision.title)}" title="Cite &amp; note">${NOTE_ICON}<span class="df-note-count" hidden></span></button>
     </header>
     <div class="df-player">
       <button type="button" class="df-play" aria-label="Play this decision's full audio">▶ Play full section</button><button type="button" class="df-restart" aria-label="Restart this decision's audio">↻ Restart</button>

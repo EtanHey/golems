@@ -1,0 +1,122 @@
+{
+  "decision-flow-1280-top": {
+    "size": [
+      2560,
+      1800
+    ],
+    "beforeSize": [
+      2560,
+      1800
+    ],
+    "afterSize": [
+      2560,
+      1800
+    ],
+    "changedPixels": 24656
+  },
+  "decision-flow-390-top": {
+    "size": [
+      780,
+      1688
+    ],
+    "beforeSize": [
+      780,
+      1688
+    ],
+    "afterSize": [
+      780,
+      1688
+    ],
+    "changedPixels": 45072
+  },
+  "decision-flow-390-copy-card": {
+    "size": [
+      716,
+      1628
+    ],
+    "beforeSize": [
+      716,
+      1626
+    ],
+    "afterSize": [
+      716,
+      1628
+    ],
+    "changedPixels": 38158
+  },
+  "decision-flow-390-reply-card": {
+    "size": [
+      716,
+      1340
+    ],
+    "beforeSize": [
+      716,
+      1334
+    ],
+    "afterSize": [
+      716,
+      1340
+    ],
+    "changedPixels": 86045
+  },
+  "decision-flow-1280-reply-card": {
+    "size": [
+      1480,
+      1072
+    ],
+    "beforeSize": [
+      1480,
+      1072
+    ],
+    "afterSize": [
+      1480,
+      1072
+    ],
+    "changedPixels": 1602
+  },
+  "decision-flow-1280-copy-card": {
+    "size": [
+      1480,
+      1364
+    ],
+    "beforeSize": [
+      1480,
+      1364
+    ],
+    "afterSize": [
+      1480,
+      1364
+    ],
+    "changedPixels": 0
+  },
+  "decision-flow-390-full": {
+    "size": [
+      450,
+      4290
+    ],
+    "beforeSize": [
+      450,
+      4263
+    ],
+    "afterSize": [
+      390,
+      4290
+    ],
+    "changedPixels": 487101
+  },
+  "decision-flow-1280-full": {
+    "size": [
+      1280,
+      3455
+    ],
+    "beforeSize": [
+      1280,
+      3455
+    ],
+    "afterSize": [
+      1280,
+      3455
+    ],
+    "changedPixels": 6975
+  }
+}

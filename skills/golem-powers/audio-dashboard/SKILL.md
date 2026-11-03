@@ -63,6 +63,13 @@ markdown. Playback rate and list/story preferences stay on this device.
 Each card also exposes **↻ Restart**, which restarts that decision's audio and
 teleprompter section from the beginning without advancing to another card.
 
+**Replies append; identifiers never move.** Answers are keyed by the dashboard
+id and each decision `id` (`<id>`, `<id>-free`, `<id>-checks`, `<id>-notes`).
+To answer the operator's note or pick on a later build, append a new decision
+at the END with a new stable `id` and `"status": "REPLY"` (rendered as a Reply
+pill). Never rename, reorder or reuse an earlier decision `id`, `spec.id` or
+`dashboardId`, or the saved answers detach from their cards.
+
 Decision-flow is parallel to cinema, not a replacement. Cinema remains the
 pure-listening narrated-digest/story surface with global Play-All. A decision
 dashboard may set `cinemaUrl` to expose a small **Cinema listening mode** link to

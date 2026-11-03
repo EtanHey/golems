@@ -932,3 +932,25 @@ test("when a card's final clip ends, every word of the card reads as read", () =
   expect(words.every((word) => word.classList.contains("is-read") && !word.classList.contains("is-current"))).toBe(true);
   expect(card.querySelector(".df-play").textContent).toContain("Play again");
 });
+
+// AIDEV-NOTE: the card note button's accessible name is its only state signal for screen readers (the count
+// badge inside an aria-labelled button is not read), so the name itself must say add vs review and the count.
+test("card note button names its real state: add when empty, review with the count once notes exist", () => {
+  const run = boot(); const { document } = run; const button = document.querySelector('[data-decision="a"] .df-card-note');
+  expect(button.getAttribute("aria-label")).toBe("Add a note to A");
+  button.click(); noteText(run, "First");
+  expect(button.getAttribute("aria-label")).toBe("Review 1 note on A, or add another");
+  button.click(); noteText(run, "Second");
+  expect(button.getAttribute("aria-label")).toBe("Review 2 notes on A, or add another");
+  for (let i = 0; i < 2; i++) { button.click(); document.querySelector(".df-note-edit").click(); document.getElementById("df-note-delete").click(); }
+  expect(button.getAttribute("aria-label")).toBe("Add a note to A");
+  expect(document.querySelector('[data-decision="b"] .df-card-note').getAttribute("aria-label")).toBe("Add a note to B");
+  const seeded = boot({ seed: { "a-notes": [{ quote: "A", text: "Seeded" }] } }).document;
+  expect(seeded.querySelector('[data-decision="a"] .df-card-note').getAttribute("aria-label")).toBe("Review 1 note on A, or add another");
+});
+
+test("static card markup names the note button as an add action before the runtime runs", () => {
+  const html = renderDecisionFlow({ storageKey: "dbx:note-label", scenes: [scene("only")], decisions: [{ id: "only", title: "Only", sceneIds: ["only"] }] });
+  expect(html).toContain('class="df-card-note" aria-label="Add a note to Only"');
+  expect(html).not.toContain("Add or review notes for");
+});
