@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -11,7 +11,7 @@ const key = 'SYNTHETIC_' + 'RESEARCH_VERIFIER_KEY_123456789';
 function files(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(path.join(dir, e.name)) : [path.join(dir, e.name)]);
 }
-for (const mode of ['success', 'auxiliary', 'unknown-auxiliary', 'wrong-primary', 'key-denied', 'wrong-source', 'missing-init', 'nonzero', 'escaped', 'literal-escape', 'cell-leak', 'key-path', 'symlink', 'fast', 'missing-key']) {
+for (const mode of ['success', 'symlink-launch', 'auxiliary', 'unknown-auxiliary', 'wrong-primary', 'key-denied', 'wrong-source', 'missing-init', 'nonzero', 'escaped', 'literal-escape', 'cell-leak', 'key-path', 'symlink', 'fast', 'missing-key']) {
   test('API-key verifier boundary: ' + mode, () => {
     const root = mkdtempSync(path.join(tmpdir(), 'research-auth-test-'));
     try {
@@ -45,9 +45,11 @@ process.stdout.write(text);
       const env = { ...process.env, HOME: home, PATH: bin + path.delimiter + process.env.PATH,
         ANTHROPIC_API_KEY: key, CLAUDE_CODE_OAUTH_TOKEN: 'must-not-reach-child', ANTHROPIC_AUTH_TOKEN: 'must-not-reach-child' };
       if (mode === 'missing-key') delete env.ANTHROPIC_API_KEY;
-      const result = spawnSync(process.execPath, [script, '--prompt-file', prompt, '--out', out,
+      const entry=mode==='symlink-launch'?path.join(root,'verify-link.mjs'):script;
+      if(mode==='symlink-launch')symlinkSync(script,entry);
+      const result = spawnSync(process.execPath, [entry, '--prompt-file', prompt, '--out', out,
         '--role', mode==='auxiliary'||mode==='unknown-auxiliary'?'claude.judgment':'claude.research.verifier', '--budget-usd', '1'], { env, encoding: 'utf8', timeout: 10000 });
-      assert.equal(result.status, ['success', 'auxiliary', 'escaped', 'literal-escape', 'key-denied'].includes(mode) ? 0 : 1, result.stderr);
+      assert.equal(result.status, ['success', 'symlink-launch', 'auxiliary', 'escaped', 'literal-escape', 'key-denied'].includes(mode) ? 0 : 1, result.stderr);
       assert.ok(!(result.stdout + result.stderr).includes(key));
       const cells=path.join(home,'.local/share/research-verifier-cells');
       assert.deepEqual(existsSync(cells)?readdirSync(cells):[], [], 'owned cell not cleaned');
@@ -61,3 +63,15 @@ process.stdout.write(text);
     } finally { rmSync(root, { recursive: true, force: true }); }
   });
 }
+
+// A copied skill must fail by name rather than silently skipping its entry point.
+test('copied install requires the checkout registry', () => {
+  const root=mkdtempSync(path.join(tmpdir(),'research-copy-test-'));
+  try {
+    const entry=path.join(root,'verify-section.mjs');copyFileSync(script,entry);
+    const result=spawnSync(process.execPath,[entry,'--role','claude.research.verifier','--prompt-file',path.join(root,'prompt'),'--out',path.join(root,'out.json'),'--budget-usd','1'],{env:{...process.env,ANTHROPIC_API_KEY:key},encoding:'utf8'});
+    assert.equal(result.status,1);
+    assert.equal(result.stderr.trim(),'research verifier failed: GOLEMS_CHECKOUT_REQUIRED');
+    assert.ok(!existsSync(path.join(root,'out.json')));
+  } finally {rmSync(root,{recursive:true,force:true});}
+});

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
-import { mkdir, mkdtemp, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, readFile, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -102,7 +102,7 @@ async function verifySection({ promptFile, out, role, budgetUsd, timeoutMs = 900
     await rename(path.join(stage, 'result.json'), destination);
   } finally { await rm(stage, { recursive: true, force: true }); }
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && await realpath(process.argv[1]).catch(() => null) === fileURLToPath(import.meta.url)) {
   try {
     const flags = new Map();
     for (let i = 2; i < process.argv.length; i += 2) {
