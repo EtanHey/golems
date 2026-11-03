@@ -45,11 +45,11 @@ Then apply the existing harvest contract and lifecycle gates.
 
 After harvest/readback, **before any `brain_store` of research conclusions**:
 
-1. Freeze a numbered list of checkable claims per section, with report quotes, source locations and code/corpus revision. Dispatch one section verifier per list using [the verifier rubric](references/verifier.md). Default: `claude.research.verifier`; `codex.research.verifier` is an allowed alternative when Claude budget is short (say so).
+1. Freeze a numbered list of checkable claims per section, with exact report quotes, source locations and the intended code/corpus revision. Dispatch one section verifier per list using [the verifier rubric](references/verifier.md). Default: `claude.research.verifier`; `codex.research.verifier` is an allowed alternative when Claude budget is short (say so).
 2. Dispatch ONE independent adjudicator using [the adjudicator rubric](references/adjudicator.md): every WRONG/HALLUCINATED, a random audit of 85 VERIFIED claims (all if fewer), and a separate queue of decision-critical UNVERIFIABLE. Default: `codex.research.adjudicator`, effort high, service tier default. Verifiers and adjudicator must be from different model families: Codex verifiers require `claude.judgment` adjudication. The Claude adjudicator is otherwise opt-in when the lead asks or Codex is unavailable; switch verifier family with it. Never fast.
-3. Write `VERIFY-SUMMARY.md` beside the harvested report. Only VERIFIED claims from completed, audited sections or claims resolved VERIFIED by adjudication may enter `brain_store` as facts. Store WRONG/HALLUCINATED only as evidenced corrections; never store UNVERIFIABLE as fact or PROPOSAL-OK as an established fact. Partial verification permits only that eligible subset; leave the rest pending.
+3. Write `VERIFY-SUMMARY.md` beside the harvested report: coverage, final verdict counts, hallucination/error rates and denominators, audit sample/seed, source revisions and evidence links. Only VERIFIED claims from completed, audited sections or claims resolved VERIFIED by adjudication may enter `brain_store` as facts. Store WRONG/HALLUCINATED only as evidenced corrections; never store UNVERIFIABLE as fact or PROPOSAL-OK as an established fact. Partial verification permits only that eligible subset; leave the rest pending.
 
-Resolve each role with `node scripts/model-roles.mjs <role> --field model` from `standards/model-roles.json`; dispatch through `delegate_task`/`Agent` per `/agent-routing`. This gate applies to research conclusions, not ordinary non-research notes.
+Resolve each role with `node scripts/model-roles.mjs <role> --field model` from `standards/model-roles.json`; dispatch through `delegate_task`/`Agent` per `/agent-routing`. Report-authored proposals/specs are PROPOSAL-OK, never VERIFIED; check factual premises separately. This gate applies to research conclusions, not ordinary non-research notes.
 
 ## THE LIFECYCLE
 
