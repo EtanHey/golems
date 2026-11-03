@@ -25,9 +25,12 @@
   var storyCount=document.getElementById("df-story-count");
   var backdrop=document.getElementById("df-sheet-backdrop");
   var totals={};try{var tp=JSON.parse(document.getElementById("tpdata").textContent||"{}");Object.keys(tp).forEach(function(id){totals[id]=Number(tp[id].total)||0;});}catch(error){totals={};}
-  var store={};
-  try{store=JSON.parse(localStorage.getItem(KEY)||"{}");}catch(error){store={};}
-  if(!store||typeof store!=="object")store={};
+  var persistence=document.defaultView.AudioDashboardAnswers({key:KEY,
+    status:function(text,error){storageState.textContent=text;storageState.classList.toggle("is-error",error);},
+    change:function(field,value){if(value==null)delete store[field];else store[field]=value;restoreAnswers();if(field==="_prefs"){prefs=store._prefs||{};rate=RATES.indexOf(Number(prefs.rate))>=0?Number(prefs.rate):1;view=prefs.view==="story"?"story":"list";closeSheet(false);applyRate();applyView();updateTransport();}}
+  });
+  var store=persistence.values;
+  function restoreAnswers(){cards.forEach(function(card){card.querySelectorAll('input[type="radio"]').forEach(function(input){input.checked=store[input.name]===input.value;});checklistBoxes(card).forEach(function(box){box.checked=checksFor(card)[box.dataset.checkIndex]===true;});card.querySelector(".df-free").value=store[card.dataset.decision+"-free"]||"";});updateCounts();}
   var prefs=store._prefs&&typeof store._prefs==="object"?store._prefs:{};
   var rate=RATES.indexOf(Number(prefs.rate))>=0?Number(prefs.rate):1;
   var view=prefs.view==="story"?"story":"list";
@@ -35,7 +38,7 @@
   function chipFor(card){return document.querySelector('.df-chip[data-chip-for="'+card.dataset.decision+'"]');}
   function revealChip(chip){if(!chipStrip||!chip)return;var left=chip.offsetLeft,right=left+chip.offsetWidth;if(left<chipStrip.scrollLeft)chipStrip.scrollLeft=Math.max(0,left-12);else if(right>chipStrip.scrollLeft+chipStrip.clientWidth)chipStrip.scrollLeft=right-chipStrip.clientWidth+12;}
   function markIndex(card,name,on){var link=indexLink(card);if(link)link.classList.toggle(name,on);var chip=chipFor(card);if(!chip)return;chip.classList.toggle(name,on);if(name==="is-active"){if(on){chip.setAttribute("aria-current","true");revealChip(chip);}else chip.removeAttribute("aria-current");}}
-  function persist(){var saved=true;try{localStorage.setItem(KEY,JSON.stringify(store));storageState.textContent="Answers saved locally.";storageState.classList.remove("is-error");}catch(error){saved=false;storageState.textContent="Storage unavailable · use Copy answers";storageState.classList.add("is-error");}updateCounts();return saved;}
+  function persist(){var saved=persistence.save(store);updateCounts();return saved;}
   function savePrefs(){store._prefs={rate:rate,view:view};persist();}
   function checklistBoxes(card){return Array.from(card.querySelectorAll(".df-checklist .df-check-input"));}
   function checksFor(card){var value=store[card.dataset.decision+"-checks"];return value&&typeof value==="object"?value:{};}

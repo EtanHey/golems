@@ -1,3 +1,4 @@
+import { ANSWER_ASSETS, dashboardId } from '../../../src/answer-persistence.mjs';
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -366,6 +367,8 @@ export function renderV4(payload, options = {}) {
   });
 
   return replaceAllTokens(shell, {
+    DASHBOARD_ID: escapeHtml(dashboardId(payload.dashboardId || payload.id, normalized.notesStorageKey.replace(/\.notes$/, ""))),
+    ANSWER_ASSETS,
     TITLE: escapeHtml(normalized.title),
     STORAGE_SCOPE: normalized.storageScope,
     CINEMA_CSS: cinemaCss,

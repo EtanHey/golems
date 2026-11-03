@@ -22,6 +22,7 @@
  * (publish happens via tailnet sync, never a direct dashboards-serve write) —
  * build-dashboard warns loudly if the path is off-contract.
  */
+import { analyzeAnswerPersistence, ANSWER_RUNBOOK } from "../src/answer-persistence.mjs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
@@ -253,7 +254,7 @@ async function main() {
     fail(`unsupported spec.type: ${dashboardType}`);
   }
 
-  const jobId = safePathId(spec.id || "audio-dashboard-job", "spec.id");
+  const jobId = safePathId(spec.id || path.basename(args.out || spec.outputPath || "audio-dashboard-job", ".html"), "spec.id");
   const jobDir = path.resolve(
     expandHome(args.jobDir || path.join(os.homedir(), ".narrationlayer", "jobs", jobId)),
   );
@@ -462,6 +463,7 @@ async function main() {
     }
     try {
       html = renderDecisionFlow({
+        dashboardId: spec.id || path.basename(outPath, path.extname(outPath)),
         title: spec.title || "Decision flow",
         kicker: spec.kicker || "Decision flow",
         heading: spec.heading || spec.title || "Decisions",
@@ -486,7 +488,7 @@ async function main() {
     }
   } else {
     html = renderV4({
-      id: spec.id,
+      id: spec.id || path.basename(outPath, path.extname(outPath)),
       title: spec.title || "Audio Dashboard",
       kicker: spec.kicker || "Story Mode · V4",
       heading: spec.heading || spec.title || "Audio Dashboard",
@@ -630,6 +632,12 @@ async function main() {
   if (!hasData) fail("rendered HTML has no embedded data:audio mp3");
   if (!hasRealFlag) fail("rendered HTML has no realWordTiming:true — words.json missing or empty for every scene");
   if (!hasNoteArea) fail("rendered HTML has no .note-area response boxes");
+
+  const answerPersistence = analyzeAnswerPersistence(html);
+  upsertBuildGate(buildReceipts, { gate: "answer-persistence", result: answerPersistence,
+    config: {}, runbook: ANSWER_RUNBOOK });
+  writeBuildReceipts(outPath, buildReceipts, html);
+  if (answerPersistence.verdict !== "PASS") fail(`answer-persistence: ${answerPersistence.violations.map(v => v.metric).join(", ")}. ${ANSWER_RUNBOOK}`);
 
   const copyBlocks = analyzeCopyBlocks(html);
   upsertBuildGate(buildReceipts, { gate: "copy-blocks", result: copyBlocks,

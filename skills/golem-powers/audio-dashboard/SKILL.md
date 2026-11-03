@@ -87,6 +87,11 @@ action, or offer a **Listen deeper** button that opens an inline narrated sectio
 with real-word-timed read-along and word-click seek. Cards with a visualization
 may keep a View details expander that shows the visualization's underlying data.
 
+Answers save to the account through `window.__answerStore` (or the parent bridge),
+using a stable `dashboard-id` meta. localStorage is only a visible **device-only**
+fallback (the local keys below describe that fallback); never ship device-only.
+BUILD rejects missing identity or answer-store wiring.
+
 ## Copyable instructions
 
 Attribution: Etan, 2026-11-03.

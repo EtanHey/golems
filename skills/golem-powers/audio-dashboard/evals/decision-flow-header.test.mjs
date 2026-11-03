@@ -5,7 +5,7 @@ import { boot, scene, DEFAULT_DECISIONS } from "./decision-flow-harness.mjs";
 
 import { renderDecisionFlow } from "../src/decision-flow.mjs";
 
-const SCOPE = "Answers save only for this dashboard on this device.";
+const SCOPE = "Answers sync to your account when connected. See the save status.";
 
 function render(extra = {}) {
   const html = renderDecisionFlow({ heading: "Two calls", scenes: [scene("a1"), scene("a2"), scene("b1")], decisions: DEFAULT_DECISIONS, ...extra });

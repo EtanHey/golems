@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="dashboard-id" content="{{DASHBOARD_ID}}">
+{{ANSWER_ASSETS}}
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{{TITLE}}</title>
 <style>
@@ -218,7 +220,7 @@
 
 <div class="wrap">
   <div class="notes-tools">
-    <span class="nt-lbl"><b>&#127908; Ideation capture</b> — dictate per-section; auto-saved to this browser</span>
+    <span class="nt-lbl"><b>&#127908; Ideation capture</b> — dictate per-section; <span data-answer-status id="notes-save-state" aria-live="polite">Loading answers…</span></span>
     <button class="nt-btn" id="nt-copy" type="button">Copy all notes</button>
     <button class="nt-btn" id="nt-json" type="button">Download JSON</button>
     <button class="nt-btn primary" id="nt-export" type="button">Export my notes</button>
@@ -231,17 +233,19 @@
 
 <script type="application/json" id="tpdata">{{TPDATA_JSON}}</script>
 
-<script>
+<script data-answer-consumer="notes">
 /* =========================================================================
-   IDEATION-CAPTURE — per-section dictation notes, browser-persisted,
+   IDEATION-CAPTURE — per-section dictation notes, account-persisted,
    plus global Copy / Download-JSON / Export. Wispr & VoiceBar dictate
    straight into the focused textarea (they are normal text inputs).
    ========================================================================= */
 (function(){
   var LS_KEY = {{NOTES_STORAGE_KEY_JSON}};
-  function loadAll(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch(e){ return {}; } }
-  function saveAll(o){ try { localStorage.setItem(LS_KEY, JSON.stringify(o)); } catch(e){} }
-  var store = loadAll();
+  var persistence=document.defaultView.AudioDashboardAnswers({key:LS_KEY,prefix:"_notes:",
+    status:function(text){document.getElementById("notes-save-state").textContent=text;},
+    change:function(id,value){if(value==null)delete store[id];else store[id]=value;areas.forEach(function(ta){if(ta.dataset.note===id){ta.value=value?.text||"";ta.classList.toggle("has-text",!!ta.value);}});}
+  });
+  var store = persistence.values;
   var areas = Array.prototype.slice.call(document.querySelectorAll(".note-area"));
   areas.forEach(function(ta){
     var id = ta.getAttribute("data-note");
@@ -257,13 +261,13 @@
         ts: new Date().toISOString()
       };
       if (!ta.value.trim()) delete store[id];
-      saveAll(store);
-      if (savedEl){ savedEl.textContent = "saved ✓"; clearTimeout(t); t = setTimeout(function(){ savedEl.textContent=""; }, 1400); }
+      var ok = persistence.save(store);
+      if (savedEl){ savedEl.textContent = ok ? "See save status above" : "Saving unavailable"; clearTimeout(t); t = setTimeout(function(){ savedEl.textContent=""; }, 1400); }
     });
   });
 
   function collect(){
-    var cur = loadAll();
+    var cur = store;
     var out = [];
     areas.forEach(function(ta){
       var id = ta.getAttribute("data-note");
