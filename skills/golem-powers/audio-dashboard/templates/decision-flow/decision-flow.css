@@ -398,3 +398,5 @@ body[data-view="story"] .df-card.is-active .df-compare-open{flex:none;margin:10p
 @media(max-width:600px){.df-compare{width:100%;max-width:100%;height:100dvh;max-height:100dvh;margin:0;border:0;border-radius:0}}
 
 body[data-view="story"] .df-storage-state{order:4;margin:6px 0 0}
+/* Badge text: >=4.5:1 in every state; use this opaque pair and recheck any custom colors or ancestor opacity. */
+.ad-badge{display:inline-block;padding:2px 9px;border-radius:999px;background:#79cfc2;color:#101a2c;font-size:12px;font-weight:600;line-height:1.5}
