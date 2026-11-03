@@ -111,6 +111,18 @@
       "timeout_s": 90
     },
     {
+      "id": "heavy-suite-setuid-lifetime",
+      "metric": "real Darwin setuid ps: completed child exits 0; detached live child still exits 70",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "0beff416515fb10d0545ee3f4b76de94c92d0fac",
+      "fix_sha": "74c40f59e009416b5bf38e9249d5e71f3771e32a",
+      "command": "test \"$(uname -s)\" = Darwin && test -u /bin/ps && python3 -m pytest -q scripts/tests/test_heavy_suite_setuid.py",
+      "timeout_s": 30
+    },
+    {
       "id": "hooks-status",
       "metric": "installer --status problems on the scratch install after a lead-token issuance (codex trust excluded)",
       "kind": "real",
