@@ -2,12 +2,37 @@ import { parse } from 'parse5';
 
 const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
-// Fences are the card source format; all authored content remains escaped text.
+function httpHref(value) {
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) && url.hostname ? url.href : '';
+  } catch { return ''; }
+}
+
+function renderProse(text) {
+  const links = /\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()<>"']|\([^\s()<>"']*\))+)\)|(https?:\/\/[^\s<>"']+)/gi;
+  let html = '', offset = 0;
+  for (const match of text.matchAll(links)) {
+    let raw = match[2] || match[3];
+    if (match[3]) {
+      while (/[.,;:!?`*_]$/.test(raw) || [')', ']'].some((close, i) => raw.endsWith(close)
+        && raw.split(close).length > raw.split(['(', '['][i]).length)) raw = raw.slice(0, -1);
+    }
+    const href = httpHref(raw);
+    html += escapeHtml(text.slice(offset, match.index));
+    html += href ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(match[1] || raw)}</a>` : escapeHtml(match[0]);
+    if (match[3] && href) html += escapeHtml(match[3].slice(raw.length));
+    offset = match.index + match[0].length;
+  }
+  return html + escapeHtml(text.slice(offset));
+}
+
+// Only HTTP(S) prose becomes links; fenced payloads remain escaped literal text.
 export function renderCardBody(text = '') {
   const source = String(text).replace(/\r\n?/g, '\n');
   const fence = /^```[^\n`]*\n([\s\S]*?)\n```[ \t]*(?=\n|$)/gm;
   let html = '', offset = 0;
-  const prose = text => text.split(/\n+/).filter(line => line.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join('');
+  const prose = text => text.split(/\n+/).filter(line => line.trim()).map(line => `<p>${renderProse(line)}</p>`).join('');
   for (const match of source.matchAll(fence)) {
     html += prose(source.slice(offset, match.index));
     html += `<div class="ad-copy-block"><pre><code>${escapeHtml(match[1].replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g, ''))}</code></pre><button type="button" data-copy-block aria-label="Copy code block">Copy</button><span role="status" aria-live="polite"></span></div>`;
@@ -67,6 +92,9 @@ const COMMAND_FORMS = [
   /^brew\s+(?:-\S+|(?:install|upgrade|update|uninstall|reinstall|services|info|list|search|doctor)\b)/,
   /^(?:node|python3?|bash|zsh|sh)\s+(?:-\S+|\S+\.(?:js|mjs|cjs|ts|py|sh)(?=[\s`]|$))/,
   /^curl\s+(?:-\S+|["']?https?:\/\/|[\w-]+\.[a-z]{2,})/,
+  /^wget\s+(?:-\S+|["']?https?:\/\/)/,
+  /^(?:bash|sh|zsh)\s+<\(\s*(?:curl|wget)\b/,
+  /^(?:iwr|irm|Invoke-WebRequest|Invoke-RestMethod)\s+(?:-\S+|["']?https?:\/\/)/i,
   /^(?:cd|ssh|npx|uvx|sudo)\s+(?!(?:is|are|was|were|the)\b)\S+/,
   /^uv\s+(?:-\S+|(?:run|sync|add|remove|pip|tool|venv|python|lock|init|build|publish)\b)/,
   /^make\s+(?:-\S+|(?:install|test|build|clean|all|check|dev|run|lint)\b)/,
@@ -79,21 +107,24 @@ const COMMAND_FORMS = [
   /^launchctl\s+(?:load|unload|bootstrap|bootout|print|kickstart|enable|disable|list)\b/,
   /^cargo\s+(?:-\S+|(?:build|test|run|check|clippy|fmt|install|update|clean|publish)\b)/,
 ];
-const LOCATION = /https?:\/\/[^\s]+|(?:^|[\s`"'(])(?:~\/[^\s]+|\/(?!\/)[\w.-]+(?:\/[^\s]*|(?=\s|$)))/i;
+const LOCATION = /(?:^|[\s`"'(])(?:~\/[^\s]+|\/(?!\/)[\w.-]+(?:\/[^\s]*|(?=\s|$)))/i;
 const RELATIVE_PATH = /(?:^|[\s`"'(])\.\.?\/[^\s]+/;
 const BARE_FILE = /(?:^|[\s`"'(])([A-Za-z_][\w.-]*(?:\/[A-Za-z_][\w.-]*)+\.(?:html|md|json|mjs|js|ts|sh|py|yml|yaml|toml|txt|env|plist|log))(?=$|[\s`"'),;:.])/g;
 function commandLike(line) {
+  if (/^\s*open\s+["']?https?:\/\//.test(line) || /\|\s*(?:sudo\s+)?(?:ba|z)?sh\b/.test(line)
+    || /[<$]\(\s*(?:curl|wget)\b|\b(?:irm|iwr|Invoke-WebRequest|Invoke-RestMethod)\s+["']?https?:\/\/|\|\s*(?:iex|Invoke-Expression)\b/i.test(line)) return true;
   const start = line.replace(/^\s*(?:[-*]\s+|\d+[.)]\s+)?/, '');
   if (/^\$\s+\S/.test(start)) return true;
   const candidates = [start, ...[...line.matchAll(/(?=(?:`|\b(?:run|execute)\s+|:\s+)([^\n]+))/gi)].map(match => match[1])];
   return candidates.some(candidate => COMMAND_FORMS.some(pattern => pattern.test(candidate)));
 }
 function pathLike(line) {
+  line = line.replace(/https?:\/\/[^\s]+/gi, '');
   return LOCATION.test(line) || RELATIVE_PATH.test(line) || [...line.matchAll(BARE_FILE)]
     .some(match => /^[a-z_]/.test(match[1]) || match[1].split('/').length >= 3);
 }
 const BLOCK = new Set(['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'dt', 'dd', 'pre', 'br', 'label']);
-export const COPY_BLOCK_RUNBOOK = 'Put commands, paths, URLs and pasteable text in one fenced code block in the card body. Keep a multi-line sequence in one fence. No bypass.';
+export const COPY_BLOCK_RUNBOOK = 'Put terminal commands and literal text or file paths to paste in a fenced code block in the card body. Keep a multi-line sequence in one fence. URLs remain clickable links, never copy blocks. No bypass.';
 
 export function analyzeCopyBlocks(html) {
   const violations = [];
@@ -107,6 +138,10 @@ export function analyzeCopyBlocks(html) {
     if (node.tagName === 'pre' && hasClass(block, 'ad-copy-block') && children(node).some(n => n.tagName === 'code')
       && children(block).some(n => n.tagName === 'button' && attr(n, 'data-copy-block') !== undefined && attr(n, 'type') === 'button')
       && contains(block, n => attr(n, 'role') === 'status')) return '\n';
+    if (node.tagName === 'a' && httpHref(attr(node, 'href'))) {
+      const label = children(node).map(text).join('').trim(), href = httpHref(attr(node, 'href'));
+      return httpHref(label) === href ? href : ' link ';
+    }
     if (node.nodeName === '#text') return node.value;
     const value = children(node).map(text).join('');
     return BLOCK.has(node.tagName) ? `\n${value}\n` : value;
