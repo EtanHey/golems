@@ -88,7 +88,8 @@ def test_setuid_group_child_is_cleaned_without_false_ok(tree, cancel):
         try: observed = proc.identity(top_pid)
         except proc.ProcIdentityUnavailable as error:
             assert error.reason == 'permission' and error.ruid == os.getuid()
-        else: pytest.skip(f'kernel permits setuid inspection: {observed}')
+        else:
+            assert observed is not None and observed.uid == 0 and observed.ruid == os.getuid()
         if cancel: wrapper.send_signal(signal.SIGTERM)
         _, err = wrapper.communicate(timeout=10)
         assert wrapper.returncode == (143 if cancel else 124), err

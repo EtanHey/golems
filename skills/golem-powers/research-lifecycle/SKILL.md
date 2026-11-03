@@ -21,7 +21,7 @@ Every research dispatch — fleet-fired OR **Etan-fired in his own Gemini/Notebo
 | **harvest_trigger** | What event starts harvest (report complete, Drive export lands, cron poll, Etan says "it's done", etc.) |
 | **export_route** | Where results land for the fleet: Drive path, `docs.local/research/`, collab ack, brain_store digest — adapters must name this explicitly |
 
-**Research without all three = PARKED.** Do not mark done, do not brain_store conclusions, do not close the collab row until harvest completes or Etan explicitly parks it.
+**Research without all three = PARKED.** Do not mark done, do not brain_store conclusions, do not close the collab row until harvest completes and [VERIFY BEFORE STORE](#verify-before-store) passes for those conclusions, or Etan explicitly parks it.
 
 Applies to `/gemini-research`, `/claude-desktop-research`, and orc W5 research dispatches. The E07 integrity gate catches bad claims; this gate catches **throughput** — results sitting unharvested since morning.
 
@@ -29,17 +29,19 @@ Applies to `/gemini-research`, `/claude-desktop-research`, and orc W5 research d
 
 ## INCOMING RESEARCH DOC LINK — harvest before closing
 
-When a research docs link arrives (Google Docs link or Gemini Deep Research
-report URL), the lead has a gatherer read the report and locate its R-number
-prompt; the filing write goes to a Drive-write-capable sub-agent (or the lead)
-per `/agent-routing` § Execution capability. Use `/drive-filing` to resolve the
-project's research folder; file the report as `R{NN}-<slug>-result` in the
-`results/` folder beside the `prompts/` folder that holds its R-number prompt.
-Verify the filed document by readback and record the filed doc's link as the
-dispatch's `export_route` evidence before closing.
-If the prompt or R-number cannot be resolved, report the missing association to
-the lead and keep the harvest PARKED; do not guess a folder or claim completion.
-Then apply the existing harvest contract and lifecycle gates.
+When research links arrive, the receiver's **FIRST dispatch is ONE coordinator child** for the whole batch, including already-filed reports. Use `delegate_task` with `role: "research"`, `target.providerInstanceId: "codex-worker"`, high effort/default tier, and label its brief `codex.research.coordinator`. Pass [the workflow](references/coordinator.md), all links and the verifier parameter. Omit `isolation` (shared checkout). Then **end the turn**. The receiver does no harvesting, splitting, verifying or filing. A non-research link does not take this route. Children briefed by a coordinator (the coordinator itself and its Drive harvest child) skip this route.
+
+The coordinator skips intake dispatch. Per `/agent-routing` § Execution capability, delegate harvest/readback/filing/NotebookLM to a Drive-write-capable child; wait for its receipt while orchestrating verification. The workflow preserves `R{NN}-<slug>-result`, readback/`export_route` and PARKED-not-guessed associations.
+
+## VERIFY BEFORE STORE — coordinator-owned
+
+**Verifier parameter: `VERIFIER_ROLE=claude.research.verifier` (API key); one override to `codex.research.verifier` selects subscription dispatch.**
+
+1. Freeze numbered checkable claims per section (exact report quotes, locations, code/corpus revision). Fan out section verifiers using [the verifier rubric](references/verifier.md). For the Claude family, use [the API-key launcher](references/coordinator.md#api-key-section-verifiers), never a subscription `delegate_task`. Expect ~$0.21/section or ~$0.66/100 claims for verifiers; post the batch projection before fan-out.
+2. Send all WRONG/HALLUCINATED verdicts, a random audit of 85 VERIFIED claims (all if fewer), and a separate decision-critical UNVERIFIABLE queue to ONE adjudicator using [its rubric](references/adjudicator.md). Default adjudicator role: `codex.research.adjudicator`, effort high, service tier default. Use the other model family; Codex verifiers therefore switch it to `claude.judgment` (high, never fast). Only the lead named as step owner in the brief can override the cross-family rule, in which case double the VERIFIED audit to 170 (all if fewer).
+3. Write `VERIFY-SUMMARY.md` beside each report, with coverage, final verdict counts, hallucination/error rates and denominators, audit seed/IDs and evidence. Store only VERIFIED facts from completed audited sections or adjudication-resolved VERIFIED claims; WRONG/HALLUCINATED only as evidenced corrections. Never store UNVERIFIABLE as fact or report-authored PROPOSAL-OK as established fact. Partial work releases only the eligible subset; pending claims remain pending.
+
+Resolve roles from `standards/model-roles.json`; dispatch per `/agent-routing`. This gate applies to research conclusions, not ordinary non-research notes.
 
 ## THE LIFECYCLE
 
@@ -215,6 +217,8 @@ The local corpus is the source to push. Drive is where Gemini grounds, so the Dr
 ---
 
 ## GEMINI RESEARCH PROMPT PREFLIGHT — BLOCKING
+
+Prepare the next prompt with [/gemini-research's template](../gemini-research/references/prompt-template.md) and its structural pre-fire gate.
 
 Before emitting any Gemini research prompt, require exactly one `# Grounding` block. That block must contain either a Drive document referenced by name or the exact line `None — web-only research`. Never instruct Etan to attach or upload Drive documents; his connected Drive workspace pulls named documents itself.
 

@@ -22,6 +22,7 @@
  * (publish happens via tailnet sync, never a direct dashboards-serve write) —
  * build-dashboard warns loudly if the path is off-contract.
  */
+import { analyzeAnswerPersistence, ANSWER_RUNBOOK } from "../src/answer-persistence.mjs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
@@ -65,6 +66,8 @@ import {
 import { analyzeTeleprompterDrift, formatTeleprompterDriftReport } from "../src/teleprompter-drift-gate.mjs";
 import { injectDecisionSurfaceIntoHtml } from "../src/decision-surface.mjs";
 import { comparisonPages, findBareReferences, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
+
+import { analyzeCopyBlocks, COPY_BLOCK_RUNBOOK } from "../src/copy-blocks.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -460,6 +463,7 @@ async function main() {
     }
     try {
       html = renderDecisionFlow({
+        dashboardId: spec.id,
         title: spec.title || "Decision flow",
         kicker: spec.kicker || "Decision flow",
         heading: spec.heading || spec.title || "Decisions",
@@ -628,6 +632,18 @@ async function main() {
   if (!hasData) fail("rendered HTML has no embedded data:audio mp3");
   if (!hasRealFlag) fail("rendered HTML has no realWordTiming:true — words.json missing or empty for every scene");
   if (!hasNoteArea) fail("rendered HTML has no .note-area response boxes");
+
+  const answerPersistence = analyzeAnswerPersistence(html, spec.id);
+  upsertBuildGate(buildReceipts, { gate: "answer-persistence", result: answerPersistence,
+    config: {}, runbook: ANSWER_RUNBOOK });
+  writeBuildReceipts(outPath, buildReceipts, html);
+  if (answerPersistence.verdict !== "PASS") fail(`answer-persistence: ${answerPersistence.violations.map(v => v.metric).join(", ")}. ${ANSWER_RUNBOOK}`);
+
+  const copyBlocks = analyzeCopyBlocks(html);
+  upsertBuildGate(buildReceipts, { gate: "copy-blocks", result: copyBlocks,
+    config: {}, runbook: COPY_BLOCK_RUNBOOK });
+  writeBuildReceipts(outPath, buildReceipts, html);
+  if (copyBlocks.verdict !== "PASS") fail(`copy-blocks: COPY_BLOCK_REQUIRED. ${COPY_BLOCK_RUNBOOK}`);
 
   const preservation = await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
   buildReceipts.designPreservation = preservation;
