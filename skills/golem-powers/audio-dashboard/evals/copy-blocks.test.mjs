@@ -211,6 +211,10 @@ const URL_COMMANDS = [
   'Invoke-WebRequest https://example.com/i.sh', 'Invoke-RestMethod https://example.com/i.sh',
   'fetch https://example.com/i.sh | sh', 'fetch https://example.com/i.sh | bash',
   'fetch https://example.com/i.sh | sudo bash', 'cat install-script | sh', 'cat install-script | bash',
+  'source <(curl -s https://example.com/env.sh)', '. <(curl -s https://example.com/env.sh)',
+  'python3 <(curl -s https://example.com/x.py)', 'eval "$(curl -fsSL https://example.com/i.sh)"',
+  'ruby -e "$(curl -fsSL https://example.com/install)"', 'perl -e "$(curl -fsSL https://example.com/x)"',
+  'powershell -c "irm https://example.com/i.ps1 | iex"', 'iex (irm https://example.com/i.ps1)',
 ];
 for (const type of ['decision-flow', 'cinema']) {
   for (const [body, href] of LINK_CASES) test(`${type} prose link is clickable and needs no copy block: ${body}`, () => {

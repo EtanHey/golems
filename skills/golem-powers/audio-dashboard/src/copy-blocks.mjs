@@ -111,7 +111,8 @@ const LOCATION = /(?:^|[\s`"'(])(?:~\/[^\s]+|\/(?!\/)[\w.-]+(?:\/[^\s]*|(?=\s|$)
 const RELATIVE_PATH = /(?:^|[\s`"'(])\.\.?\/[^\s]+/;
 const BARE_FILE = /(?:^|[\s`"'(])([A-Za-z_][\w.-]*(?:\/[A-Za-z_][\w.-]*)+\.(?:html|md|json|mjs|js|ts|sh|py|yml|yaml|toml|txt|env|plist|log))(?=$|[\s`"'),;:.])/g;
 function commandLike(line) {
-  if (/^\s*open\s+["']?https?:\/\//.test(line) || /\|\s*(?:sudo\s+)?(?:ba|z)?sh\b/.test(line)) return true;
+  if (/^\s*open\s+["']?https?:\/\//.test(line) || /\|\s*(?:sudo\s+)?(?:ba|z)?sh\b/.test(line)
+    || /[<$]\(\s*(?:curl|wget)\b|\b(?:irm|iwr|Invoke-WebRequest|Invoke-RestMethod)\s+["']?https?:\/\/|\|\s*(?:iex|Invoke-Expression)\b/i.test(line)) return true;
   const start = line.replace(/^\s*(?:[-*]\s+|\d+[.)]\s+)?/, '');
   if (/^\$\s+\S/.test(start)) return true;
   const candidates = [start, ...[...line.matchAll(/(?=(?:`|\b(?:run|execute)\s+|:\s+)([^\n]+))/gi)].map(match => match[1])];
