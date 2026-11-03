@@ -272,8 +272,8 @@ jobs:
                       scripts/tests/stalker-model-roles.test.mjs \
                       scripts/tests/stalker-human-digest.test.mjs \
                       scripts/tests/stalker-digest-curation.test.mjs \
-                      scripts/tests/check-telegram-retirement.test.mjs \
-                      skills/golem-powers/agent-routing/scripts/launch-guard.test.mjs
+                      skills/golem-powers/agent-routing/scripts/launch-guard.test.mjs \
+                      scripts/tests/check-telegram-retirement.test.mjs
 
       - name: shell suites
         run: |
