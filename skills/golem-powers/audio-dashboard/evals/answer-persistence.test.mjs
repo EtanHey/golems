@@ -7,8 +7,8 @@ import { renderV4 } from '../vendor/agent-html/lib/render-v4.mjs';
 const scene = { id: 's1', title: 'A neutral question', script: 'Choose a path.', duration: 1,
   words: [{ word: 'Choose', start: 0, end: 0.3 }, { word: 'a', start: 0.3, end: 0.5 }, { word: 'path.', start: 0.5, end: 1 }] };
 const decision = { id: 'choice', title: 'Choose a path', body: 'Keep the current plan or change it.', options: ['Keep', 'Change'], checklist: ['Read the proposal'], sceneIds: ['s1'] };
-export function fixture(type) {
-  const opts = { id: 'account-proof', dashboardId: 'account-proof', storageKey: 'dbx:account-proof', answerSink: '/answers', title: 'A shared decision', scenes: [scene], decisions: [decision] };
+export function fixture(type, storageKey = 'dbx:account-proof') {
+  const opts = { id: 'account-proof', dashboardId: 'account-proof', storageKey, answerSink: '/answers', title: 'A shared decision', scenes: [scene], decisions: [decision] };
   return type === 'decision-flow' ? renderDecisionFlow(opts)
     : injectDecisionSurfaceIntoHtml(renderV4(opts), [decision], opts).html;
 }
@@ -26,6 +26,7 @@ async function open(type, bridge = true) {
       load: async () => ({ _prefs: { rate: 1.5, view: 'list' }, choice: 'Change', 'choice-free': 'Account answer', '_notes:s1': { text: 'Account scene note' } }),
       save: (field, value) => { window.saves.push([field, value]); return window.hold ? new Promise(resolve => window.releases.push(() => resolve({ ok: true }))) : Promise.resolve({ ok: true }); },
       onRemoteChange: cb => { window.remoteChange = cb; },
+      onStatus: cb => { window.remoteStatus = cb; },
     };
   }, bridge);
   await page.route('http://dashboard.test/**', route => route.fulfill({ contentType: 'text/html', body: fixture(type) }));
@@ -44,7 +45,7 @@ for (const type of ['decision-flow', 'cinema']) {
     try {
       await page.waitForFunction(selector => document.querySelector(selector)?.value === 'Account answer', free, { timeout: 1500 });
       expect(await page.locator('input[value="Change"]').isChecked()).toBe(true);
-      if (type === 'decision-flow') expect(await page.locator('#df-speed').inputValue()).toBe('1.5');
+      if (type === 'decision-flow') expect(await page.locator('#df-speed').inputValue()).toBe('1');
       await page.evaluate(() => { window.hold = true; });
       await page.locator(free).fill('First edit');
       await page.locator(free).fill('Latest edit');
@@ -96,6 +97,7 @@ test('a late account load cannot overwrite a new edit or a newer remote event', 
         load: () => new Promise(resolve => { window.finishLoad = resolve; }),
         save: async (field, value) => { window.saves.push([field, value]); return { ok: true }; },
         onRemoteChange: cb => { window.remoteChange = cb; },
+      onStatus: cb => { window.remoteStatus = cb; },
       };
     });
     await page.route('http://dashboard.test/**', route => route.fulfill({ contentType: 'text/html', body: fixture('decision-flow') }));
@@ -135,18 +137,87 @@ test('a same-origin frame uses the parent account bridge', async () => {
   } finally { await page.close(); }
 });
 
-test('an edit queued before a failed load still saves, while the load error stays visible', async () => {
+test('failed account loads retry visibly, restore untouched answers and protect queued edits', async () => {
   const page = await browser.newPage();
   try {
+    await page.clock.install();
     await page.addInitScript(() => {
-      window.saves = [];
-      window.__answerStore = { load: () => new Promise((resolve, reject) => { window.failLoad = reject; }), save: async (field, value) => { window.saves.push([field, value]); return { ok: true }; } };
+      window.saves = []; window.loads = 0;
+      window.__answerStore = {
+        load: async () => { if (++window.loads < 3) throw new Error('temporary failure'); return { choice: 'Change', 'choice-free': 'Old account answer' }; },
+        save: async (field, value) => { window.saves.push([field, value]); return { ok: true }; },
+      };
     });
     await page.route('http://dashboard.test/**', route => route.fulfill({ contentType: 'text/html', body: fixture('decision-flow') }));
     await page.goto('http://dashboard.test/');
+    expect(await page.locator('[data-answer-status]').textContent()).toBe('Account answers unavailable · retrying…');
     await page.locator('.df-free').fill('Queued answer');
-    await page.evaluate(() => window.failLoad(new Error('load unavailable')));
-    await page.waitForFunction(() => window.saves.length === 1, null, { timeout: 1500 });
-    expect(await page.locator('[data-answer-status]').textContent()).toContain('Account answers unavailable');
+    await page.clock.runFor(3000); expect(await page.evaluate(() => window.loads)).toBe(2);
+    expect(await page.locator('[data-answer-status]').textContent()).toBe('Account answers unavailable · retrying…');
+    await page.clock.runFor(3000); expect(await page.evaluate(() => window.loads)).toBe(3);
+    expect(await page.locator('input[value="Change"]').isChecked()).toBe(true);
+    expect(await page.locator('.df-free').inputValue()).toBe('Queued answer');
+    expect(await page.evaluate(() => window.saves)).toEqual([['choice-free', 'Queued answer']]);
+    expect(await page.locator('[data-answer-status]').textContent()).toBe('Answers saved to your account.');
+  } finally { await page.close(); }
+});
+
+test('device preferences ignore account changes and never enter account saves', async () => {
+  const page = await open('decision-flow');
+  try {
+    await page.evaluate(() => localStorage.setItem('dbx:account-proof', JSON.stringify({ _prefs: { rate: 1.25, view: 'list' } })));
+    await page.reload();
+    expect(await page.locator('#df-speed').inputValue()).toBe('1.25');
+    await page.evaluate(() => window.remoteChange('_prefs', { rate: 2, view: 'story' }));
+    expect(await page.locator('body').getAttribute('data-view')).toBe('list');
+    await page.locator('#df-speed').selectOption('1.75');
+    await page.locator('#df-view-toggle').click();
+    expect(await page.evaluate(() => window.saves.some(([field]) => field === '_prefs'))).toBe(false);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('dbx:account-proof'))._prefs)).toEqual({ rate: 1.75, view: 'story' });
+  } finally { await page.close(); }
+});
+
+test('failed field keeps its error after another field saves, then retries to saved', async () => {
+  const page = await open('decision-flow');
+  try {
+    await page.clock.install();
+    await page.evaluate(() => {
+      window.recover = false;
+      window.__answerStore.save = async field => ({ ok: field !== 'choice-free' || window.recover });
+    });
+    await page.locator('.df-free').fill('Retry this answer');
+    await page.locator('input[value="Keep"]').check();
+    await page.waitForFunction(() => document.querySelector('[data-answer-status]').textContent.includes('unavailable'));
+    await page.evaluate(() => { window.recover = true; });
+    await page.clock.runFor(3000);
+    await page.waitForFunction(() => document.querySelector('[data-answer-status]').textContent === 'Answers saved to your account.', null, { timeout: 1500 });
+    await page.evaluate(() => window.remoteStatus('choice-free', 'Saving…'));
+    expect(await page.locator('[data-answer-status]').textContent()).toBe('Answers saved to your account.');
+  } finally { await page.close(); }
+});
+
+for (const type of ['decision-flow', 'cinema']) test(`${type}: a custom device key restores existing answers`, async () => {
+  const page = await browser.newPage();
+  try {
+    await page.addInitScript(() => { if (!localStorage.getItem('dbx:legacy-key')) localStorage.setItem('dbx:legacy-key', JSON.stringify({ 'choice-free': 'Legacy answer' })); });
+    await page.route('http://dashboard.test/**', route => route.fulfill({ contentType: 'text/html', body: fixture(type, 'dbx:legacy-key') }));
+    await page.goto('http://dashboard.test/');
+    if (type === 'cinema') await page.locator('#cx-exit').click();
+    const free = page.locator(type === 'cinema' ? '.dbx-free' : '.df-free');
+    expect(await free.inputValue()).toBe('Legacy answer'); await free.fill('Updated answer');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('dbx:legacy-key'))['choice-free'])).toBe('Updated answer');
+    expect(await page.locator('[data-answer-status]').last().textContent()).toBe('Answers saved on this device only.');
+    expect(await page.locator('.dbx-lede, .df-scope').textContent()).not.toContain('sync to your account');
+  } finally { await page.close(); }
+});
+
+for (const action of ['preferences', 'answers']) test(`a malformed device record does not block new ${action}`, async () => {
+  const page = await open('decision-flow', false);
+  try {
+    await page.evaluate(() => localStorage.setItem('dbx:account-proof', '{broken'));
+    if (action === 'preferences') await page.locator('#df-speed').selectOption('1.75');
+    else await page.locator('.df-free').fill('Recovered answer');
+    const stored = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('dbx:account-proof')); } catch { return null; } });
+    expect(action === 'preferences' ? stored?._prefs?.rate : stored?.['choice-free']).toBe(action === 'preferences' ? 1.75 : 'Recovered answer');
   } finally { await page.close(); }
 });

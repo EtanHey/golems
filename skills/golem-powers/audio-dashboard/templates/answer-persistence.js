@@ -13,17 +13,17 @@
     let remote;
     try { remote = win.__answerStore ?? win.parent?.__answerStore; } catch {}
     const account = remote != null;
-    const owns = field => prefix ? field.startsWith(prefix) : !field.startsWith('_notes:');
+    const owns = field => field !== '_prefs' && (prefix ? field.startsWith(prefix) : !field.startsWith('_notes:'));
     const id = document.querySelector('meta[name=dashboard-id]')?.content;
-    if (id) key = 'dbx:' + id + (prefix ? '.notes' : '');
+    key ||= 'dbx:' + id + (prefix ? '.notes' : '');
     const record = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     const clone = value => JSON.parse(JSON.stringify(value));
-    let values = {}, snapshot = {}, loading = account, problem = '', loadProblem = '';
-    const pending = new Map(), sending = new Set(), touched = new Set();
-    const report = () => status(problem || loadProblem || (loading ? 'Loading account answers…' : pending.size ? 'Saving answers to your account…' : account ? 'Answers saved to your account.' : 'Answers saved on this device only.'), Boolean(problem || loadProblem));
+    let values = {}, snapshot = {}, loading = account, localError = '', loadError = '';
+    const pending = new Map(), sending = new Set(), touched = new Set(), failed = new Set(), retries = new Map();
+    const report = () => status(localError || loadError || (failed.size ? 'Account saving unavailable · retrying…' : loading ? 'Loading account answers…' : pending.size ? 'Saving answers to your account…' : account ? 'Answers saved to your account.' : 'Answers saved on this device only.'), Boolean(localError || loadError || failed.size || !account));
     if (!account) {
-      try { values = record(JSON.parse(localStorage.getItem(key) || '{}')); }
-      catch { problem = 'Storage unavailable · use Copy answers'; }
+      try { values = record(JSON.parse(localStorage.getItem(key) || '{}')); delete values._prefs; }
+      catch { localError = 'Storage unavailable · use Copy answers'; }
     }
     snapshot = clone(values);
     function apply(field, value) {
@@ -32,17 +32,19 @@
       change(field, value);
     }
     async function send(field) {
-      if (loading || sending.has(field) || !pending.has(field)) return;
+      if (sending.has(field) || !pending.has(field)) return;
+      win.clearTimeout(retries.get(field)); retries.delete(field);
       const item = pending.get(field);
       sending.add(field);
       let ok = false;
       try {
         const result = await remote.save(prefix + field, item.value);
         ok = result?.ok === true;
-        if (!ok) problem = 'Account saving unavailable · keep this page open; use Copy answers';
-        else if (pending.get(field) === item) { pending.delete(field); problem = ''; }
-      } catch { problem = 'Account saving unavailable · keep this page open; use Copy answers'; }
-      finally { sending.delete(field); report(); }
+      } catch {}
+      sending.delete(field);
+      if (ok) { failed.delete(field); if (pending.get(field) === item) pending.delete(field); }
+      else { failed.add(field); retries.set(field, win.setTimeout(() => send(field), 3000)); }
+      report();
       if (ok && pending.has(field)) send(field);
     }
     function flush() {
@@ -50,16 +52,21 @@
       try { Promise.resolve(remote?.flush?.()).catch(() => {}); } catch {}
     }
     const ready = account ? Promise.resolve().then(async () => {
-      try {
-        const loaded = record(await remote.load());
+      for (;;) {
+        let loaded;
+        try { loaded = record(await remote.load()); }
+        catch {
+          loadError = 'Account answers unavailable · retrying…'; report();
+          await new Promise(resolve => win.setTimeout(resolve, 3000));
+          continue;
+        }
         for (const [remoteField, value] of Object.entries(loaded)) {
           if (!owns(remoteField)) continue;
           const field = remoteField.slice(prefix.length);
           if (!touched.has(field)) apply(field, value);
         }
-        loading = false; problem = ''; flush();
-      } catch { loading = false; loadProblem = 'Account answers unavailable · reload to retry; use Copy answers'; flush(); }
-      report();
+        loading = false; loadError = ''; report(); flush(); return;
+      }
     }) : Promise.resolve();
     if (account) {
       listen(remote, 'onRemoteChange', (remoteField, value) => {
@@ -68,7 +75,7 @@
         if (pending.has(field)) return;
         touched.add(field); apply(field, value);
       });
-      listen(remote, 'onStatus', (field, text) => { if (!pending.size && !loading && !loadProblem && text) status('Account: ' + text, false); });
+      listen(remote, 'onStatus', report);
     }
     win.addEventListener('pagehide', flush);
     win.addEventListener('online', flush);
@@ -77,11 +84,16 @@
       values, ready,
       save(next) {
         if (!account) {
-          try { localStorage.setItem(key, JSON.stringify(next)); values = clone(next); snapshot = clone(next); problem = ''; report(); return true; }
-          catch { problem = 'Storage unavailable · use Copy answers'; report(); return false; }
+          try {
+            const raw = localStorage.getItem(key);
+            let device = {}; try { device = record(JSON.parse(raw || '{}')); } catch {}
+            const prefs = device._prefs;
+            localStorage.setItem(key, JSON.stringify({ ...next, ...(prefs === undefined ? {} : { _prefs: prefs }) }));
+            values = clone(next); snapshot = clone(next); localError = ''; report(); return true;
+          } catch { localError = 'Storage unavailable · use Copy answers'; report(); return false; }
         }
         for (const field of new Set([...Object.keys(snapshot), ...Object.keys(next)])) {
-          if (JSON.stringify(snapshot[field]) === JSON.stringify(next[field])) continue;
+          if (!owns(prefix + field) || JSON.stringify(snapshot[field]) === JSON.stringify(next[field])) continue;
           touched.add(field); pending.set(field, { value: clone(next[field] ?? null) });
         }
         values = clone(next); snapshot = clone(next); report(); flush(); return true;

@@ -1,4 +1,7 @@
 <!DOCTYPE html>
+<!-- AIDEV-NOTE: Skill-local account answer wiring, not upstream agent-html.
+Do not re-vendor without re-applying the answer runtime, identity and native-note
+consumer below. BUILD's answer-persistence gate rejects missing wiring. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -94,6 +97,7 @@
   .note-area:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(90,176,255,.18)}
   .note-area.has-text{border-color:#2e5a44}
   .note-foot{min-height:14px;margin-top:4px}
+  #notes-save-state.is-error{color:var(--gold)}
   .note-saved{font-size:10px;font-weight:700;color:var(--green)}
 
   footer.page-ft{color:var(--dim);font-size:11.5px;text-align:center;padding:30px 0 50px;line-height:1.7}
@@ -220,7 +224,7 @@
 
 <div class="wrap">
   <div class="notes-tools">
-    <span class="nt-lbl"><b>&#127908; Ideation capture</b> — dictate per-section; <span data-answer-status id="notes-save-state" aria-live="polite">Loading answers…</span></span>
+    <span class="nt-lbl"><b>&#127908; Ideation capture</b> — dictate per-section. <span data-answer-status id="notes-save-state" aria-live="polite">Loading answers…</span></span>
     <button class="nt-btn" id="nt-copy" type="button">Copy all notes</button>
     <button class="nt-btn" id="nt-json" type="button">Download JSON</button>
     <button class="nt-btn primary" id="nt-export" type="button">Export my notes</button>
@@ -242,7 +246,7 @@
 (function(){
   var LS_KEY = {{NOTES_STORAGE_KEY_JSON}};
   var persistence=document.defaultView.AudioDashboardAnswers({key:LS_KEY,prefix:"_notes:",
-    status:function(text){document.getElementById("notes-save-state").textContent=text;},
+    status:function(text,error){var state=document.getElementById("notes-save-state");state.textContent=text;state.classList.toggle("is-error",error);},
     change:function(id,value){if(value==null)delete store[id];else store[id]=value;areas.forEach(function(ta){if(ta.dataset.note===id){ta.value=value?.text||"";ta.classList.toggle("has-text",!!ta.value);}});}
   });
   var store = persistence.values;
@@ -250,8 +254,6 @@
   areas.forEach(function(ta){
     var id = ta.getAttribute("data-note");
     if (store[id] && store[id].text){ ta.value = store[id].text; ta.classList.add("has-text"); }
-    var savedEl = document.querySelector('[data-saved-for="'+CSS.escape(id)+'"]');
-    var t = null;
     ta.addEventListener("input", function(){
       ta.classList.toggle("has-text", !!ta.value.trim());
       store[id] = {
@@ -261,8 +263,7 @@
         ts: new Date().toISOString()
       };
       if (!ta.value.trim()) delete store[id];
-      var ok = persistence.save(store);
-      if (savedEl){ savedEl.textContent = ok ? "See save status above" : "Saving unavailable"; clearTimeout(t); t = setTimeout(function(){ savedEl.textContent=""; }, 1400); }
+      persistence.save(store);
     });
   });
 

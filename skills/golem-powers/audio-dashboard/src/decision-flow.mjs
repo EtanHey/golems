@@ -449,7 +449,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{TITLE}}", escapeHtml(title || "Decision flow")],
     ["{{KICKER}}", escapeHtml(kicker || "Decision flow")],
     ["{{HEADING}}", escapeHtml(heading || title || "Decisions")],
-    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers sync to your account when connected. See the save status.</p></details>`],
+    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers are kept separately for each dashboard.</p></details>`],
     ["{{DECISION_COUNT}}", decisions.length],
     ["{{SCENE_COUNT}}", scenes.length],
     ["{{DASHBOARD_ID}}", escapeHtml(dashboardId(accountId || id, storageKey || "dbx:decision-flow"))],

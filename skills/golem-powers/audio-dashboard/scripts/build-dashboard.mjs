@@ -254,7 +254,7 @@ async function main() {
     fail(`unsupported spec.type: ${dashboardType}`);
   }
 
-  const jobId = safePathId(spec.id || path.basename(args.out || spec.outputPath || "audio-dashboard-job", ".html"), "spec.id");
+  const jobId = safePathId(spec.id || "audio-dashboard-job", "spec.id");
   const jobDir = path.resolve(
     expandHome(args.jobDir || path.join(os.homedir(), ".narrationlayer", "jobs", jobId)),
   );
@@ -463,7 +463,7 @@ async function main() {
     }
     try {
       html = renderDecisionFlow({
-        dashboardId: spec.id || path.basename(outPath, path.extname(outPath)),
+        dashboardId: spec.id,
         title: spec.title || "Decision flow",
         kicker: spec.kicker || "Decision flow",
         heading: spec.heading || spec.title || "Decisions",
@@ -488,7 +488,7 @@ async function main() {
     }
   } else {
     html = renderV4({
-      id: spec.id || path.basename(outPath, path.extname(outPath)),
+      id: spec.id,
       title: spec.title || "Audio Dashboard",
       kicker: spec.kicker || "Story Mode · V4",
       heading: spec.heading || spec.title || "Audio Dashboard",
@@ -633,7 +633,7 @@ async function main() {
   if (!hasRealFlag) fail("rendered HTML has no realWordTiming:true — words.json missing or empty for every scene");
   if (!hasNoteArea) fail("rendered HTML has no .note-area response boxes");
 
-  const answerPersistence = analyzeAnswerPersistence(html);
+  const answerPersistence = analyzeAnswerPersistence(html, spec.id);
   upsertBuildGate(buildReceipts, { gate: "answer-persistence", result: answerPersistence,
     config: {}, runbook: ANSWER_RUNBOOK });
   writeBuildReceipts(outPath, buildReceipts, html);

@@ -82,7 +82,7 @@ export function renderDecisionSurface(decisions, opts = {}) {
   assertDecisions(decisions);
   const storageKey = normalizeStorageKey(opts.storageKey, opts.title);
   const title = opts.title || "Your answers";
-  const lede = opts.lede || "Pick an option or write your own. Answers sync to your account when connected.";
+  const lede = opts.lede || "Pick an option or write your own.";
   const answerSink = opts.answerSink || "";
 
   const cards = decisions.map((decision) => {
@@ -122,6 +122,7 @@ export function renderDecisionSurface(decisions, opts = {}) {
     .dbx-actions{display:flex;gap:10px;align-items:center;margin:4px 0 2px}
     .dbx-btn{font-size:12px;font-weight:700;color:#dbe6f2;background:#0e2036;border:1px solid #2e4a68;border-radius:8px;padding:6px 13px;cursor:pointer}
     .dbx-btn:hover{border-color:#5ab0ff}
+    .dbx-saved.is-error{color:#ffb454}
     .dbx-saved{display:block;font-size:12px;color:#8aa0b8;letter-spacing:normal;text-transform:none}
   </style>
   <p class="dbx-head">${escapeHtml(title)} <span class="dbx-saved" id="dbx-saved" data-answer-status aria-live="polite">Loading answers…</span></p>
@@ -138,7 +139,7 @@ ${ANSWER_ASSETS}
   var KEY=box.getAttribute("data-storage-key")||"dbx:decisions";
   var saved=document.getElementById("dbx-saved");
   var persistence=document.defaultView.AudioDashboardAnswers({key:KEY,
-    status:function(text){saved.textContent=text;},
+    status:function(text,error){saved.textContent=text;saved.classList.toggle("is-error",error);},
     change:function(field,value){if(value==null)delete store[field];else store[field]=value;restoreAnswers();}
   });
   var store=persistence.values;
