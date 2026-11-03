@@ -28,7 +28,9 @@ For an existing task PR, inspect its auto-merge and queue state before work
 and again before each push. Read `autoMergeRequest.enabledBy` and the current
 account identity. Disable auto-merge or remove queue enrollment only when this
 task’s account enabled it, or it is our own PR’s setting we control; read back
-both states before proceeding and report changes. If a maintainer or another
+both states before proceeding and report changes. Use
+`gh pr merge <N> --repo <base-owner/repo> --disable-auto` for an owned auto-merge
+setting, then query the PR again. If a maintainer or another
 account armed it on an upstream PR, do not override them: stop before code
 changes or any push and report **BLOCKED: maintainer-armed auto-merge; a push
 would merge**, naming the maintainer as permission owner. Unknown ownership or
