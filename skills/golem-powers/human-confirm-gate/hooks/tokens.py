@@ -164,8 +164,9 @@ def private_read(path):
         return stream.read(65537)
 
 
-def read_command(argv):
-    return subprocess.run(argv, capture_output=True, text=True, check=True, timeout=2).stdout.strip()
+def read_command(argv, *, strip=True):
+    stdout = subprocess.run(argv, capture_output=True, text=True, check=True, timeout=2).stdout
+    return stdout.strip() if strip else stdout
 
 
 def lead_metadata(op, *, gh_read=None):
@@ -233,11 +234,20 @@ def own_lease_scope(payload, ops, metadata_fn=None):
         if words[:len(prefix)] != prefix or [w for w in words[len(prefix):] if w not in ('--atomic', '--verbose', '-v')] != expected:
             return False, ''
         repo, remote = op['repo'], op['remote']
+        # Git can omit empty URL entries from get-url; count the raw config too.
+        for key in ('url', 'pushurl'):
+            raw = git_config.read(repo, 'config', '--null', '--get-all', 'remote.' + remote + '.' + key)
+            if raw and (not raw.endswith('\0') or len(raw.split('\0')) != 2
+                        or not raw[:-1] or raw[:-1] != raw[:-1].strip()):
+                return False, ''
         targets = []
         for flags in ([], ['--push']):
-            url = read_command([GIT, '-C', repo, 'remote', 'get-url', *flags, '--all', remote])
+            urls = read_command([GIT, '-C', repo, 'remote', 'get-url', *flags, '--all', remote], strip=False).splitlines()
+            if len(urls) != 1 or urls[0] != urls[0].strip():
+                return False, ''
+            url = urls[0]
             match = re.fullmatch(r'(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)'
-                                 r'(EtanHey/[A-Za-z0-9_.-]+?)(?:\.git)?', url, re.I)
+                                 r'(EtanHey/[A-Za-z0-9_.-]+?)(?:\.git)?', url, re.I | re.ASCII)
             if not match or match[1].split('/')[1] in ('.', '..'):
                 return False, ''
             targets.append(match[1])
@@ -245,20 +255,20 @@ def own_lease_scope(payload, ops, metadata_fn=None):
             return False, ''
         # Reuse the parser's config reader/boolean semantics for additional push
         # modes that do not appear as destructive flags in effective_push.
-        for key in ('push.followTags', 'push.useForceIfIncludes', 'push.recurseSubmodules',
+        for key in ('push.followTags', 'push.useForceIfIncludes', 'push.recurseSubmodules', 'submodule.recurse',
                     'remote.' + remote + '.receivepack', 'remote.' + remote + '.vcs'):
             values = git_config.read(repo, 'config', '--null', '--get-all', key)
             if values and (key.endswith(('.receivepack', '.vcs')) or any(git_config.truthy(v) for v in values.rstrip('\0').split('\0'))):
                 return False, ''
         target = targets[1]
         branch = op['ref'].removeprefix('refs/heads/')
+        if branch.casefold() in ('main', 'master', 'develop', 'trunk', 'gh-pages') or branch.casefold().startswith('release'):
+            return False, f"Blocked: that's a shared branch of {target}; force-pushing it needs Etan."
         default, data = (metadata_fn or own_lease_metadata)(target, branch)
         if not isinstance(default, str) or not default or data['name'] != branch or type(data['protected']) is not bool:
             return False, ''
         detail = ('default' if branch.casefold() == default.casefold() else
-                  'protected' if data['protected'] else
-                  'shared' if branch.casefold() in ('main', 'master', 'develop', 'trunk', 'gh-pages')
-                  or branch.casefold().startswith('release') else '')
+                  'protected' if data['protected'] else '')
         if detail:
             return False, f"Blocked: that's a {detail} branch of {target}; force-pushing it needs Etan."
         return True, ''

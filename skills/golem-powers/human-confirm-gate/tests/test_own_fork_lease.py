@@ -5,6 +5,7 @@ import json
 import os
 import shlex
 import subprocess
+from unittest.mock import Mock
 from urllib.parse import quote
 
 import pytest
@@ -87,8 +88,12 @@ def test_other_commands_stay_denied(cell, monkeypatch, command):
 @pytest.mark.parametrize('branch', ['main', 'MASTER', 'Main', 'develop', 'trunk',
                                    'gh-pages', 'release/x', 'ReLeAsE-candidate'])
 def test_shared_names_deny_with_plain_reason(cell, monkeypatch, branch):
+    metadata = Mock(side_effect=subprocess.TimeoutExpired(['gh'], 2))
+    monkeypatch.setattr(tokens, 'own_lease_metadata', metadata)
     rc, reason = decision(cell, monkeypatch, lease(branch))
+    metadata.assert_not_called()
     assert rc == 2 and 'EtanHey/t3code' in reason and 'branch' in reason
+    assert 'shared branch' in reason
     assert '\n' not in reason
 
 
@@ -111,6 +116,7 @@ def test_github_shared_branches_deny(cell, monkeypatch, default, protected, deta
     ('remote.fork.mirror', 'true'), ('push.followTags', 'true'),
     ('push.useForceIfIncludes', 'true'), ('remote.fork.receivepack', 'custom-receive-pack'),
     ('push.recurseSubmodules', 'on-demand'), ('remote.fork.vcs', 'ext'),
+    ('submodule.recurse', 'true'),
 ])
 def test_redirected_or_nonplain_push_config_denies(cell, monkeypatch, key, value):
     config(cell, key, value)
@@ -172,3 +178,30 @@ def test_git_c_uses_target_repo_not_hook_cwd(cell, monkeypatch):
     subprocess.run([tokens.GIT, 'init', '-q', str(other)], check=True)
     command = lease().replace('git push', f'git -C {shlex.quote(str(cell[1]))} push')
     assert decision((cell[0], other), monkeypatch, command) == (0, '')
+
+
+@pytest.mark.parametrize('url', ['https://gıthub.com/EtanHey/t3code.git',
+                               'https://gİthub.com/EtanHey/t3code.git',
+                               'httpſ://github.com/EtanHey/t3code.git',
+                               'https://github.com/EtanHey/t3code-K.git',
+                               'https://github.com/EtanHey/t3code-İ.git',
+                               'https://github.com/EtanHey/t3code-ı.git'])
+def test_unicode_url_lookalikes_deny(cell, monkeypatch, url):
+    subprocess.run([tokens.GIT, '-C', str(cell[1]), 'remote', 'set-url', 'fork', url], check=True)
+    assert decision(cell, monkeypatch, lease())[0] == 2
+
+
+@pytest.mark.parametrize('key', ['remote.fork.url', 'remote.fork.pushurl'])
+@pytest.mark.parametrize('extra', ['', '   ', '\t'])
+@pytest.mark.parametrize('extra_first', [False, True])
+def test_blank_extra_url_entries_deny(cell, monkeypatch, key, extra, extra_first):
+    subprocess.run([tokens.GIT, '-C', str(cell[1]), 'config', '--unset-all', key], check=False)
+    url = 'https://github.com/EtanHey/t3code.git'
+    for value in ([extra, url] if extra_first else [url, extra]):
+        config(cell, key, value)
+    assert decision(cell, monkeypatch, lease())[0] == 2
+
+
+@pytest.mark.parametrize('flags', ['--atomic -v', '--verbose'])
+def test_documented_optional_flags_stay_allowed(cell, monkeypatch, flags):
+    assert decision(cell, monkeypatch, lease().replace('git push', 'git push ' + flags)) == (0, '')

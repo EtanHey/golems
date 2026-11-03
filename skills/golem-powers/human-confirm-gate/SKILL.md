@@ -260,11 +260,14 @@ Etan (2026-11-04): "it's a 2 way door… it always is reversible, and it's my fo
 confusing why the agent says it needs my help to do force with lease".
 A single literal `git [-C <repo>] push --force-with-lease=refs/heads/<branch>:<full-sha>
 <remote> <source>:refs/heads/<branch>` needs no token when all three hold:
+
 - The existing narrow parser identifies exactly one plain lease.
 - The named remote's fetch and push URLs resolve to the same EtanHey GitHub repository;
   other remotes are fine, but redirects elsewhere and additional push modes deny.
 - GitHub metadata confirms the branch is neither default nor protected, and its name is
   not main/master/develop/trunk/gh-pages/release* (case-insensitive).
+
+Optional `--atomic`, `--verbose` and `-v` flags are accepted.
 Metadata failure or ambiguity denies. Everything else still needs a token.
 The gate has no non-fatal write-result channel, so this exception writes no audit log.
 
