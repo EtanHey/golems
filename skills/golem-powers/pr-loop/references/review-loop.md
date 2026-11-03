@@ -2,6 +2,8 @@
 
 Read this when selecting PR-stage reviewers, waiting for them, classifying feedback, replying, fixing, or requesting re-review.
 
+[Full stop](full-stop.md) takes precedence over every green-wake merge and held-draft rule below: preserve no-merge on wakes, hand off verified readiness without drafting it, and unwatch at terminal handoff; pending CI/review remains parent-owned.
+
 ## Step 8: REVIEW (The Critical Step)
 
 **This is NOT optional. This is NOT "auto-merge."**

@@ -2,6 +2,8 @@
 
 Read this when preparing the branch, commit, PR body, size label, or pre-review repository state.
 
+Choose the endpoint before the loop below: [full stop](full-stop.md) overrides its merge commands; the standing grant covers Etan’s repos and supplies no upstream merge authority.
+
 ## The Full Loop
 
 1. BRANCH    git checkout main && git pull && git checkout -b feat/name
