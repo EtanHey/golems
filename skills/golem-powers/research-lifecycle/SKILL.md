@@ -29,7 +29,7 @@ Applies to `/gemini-research`, `/claude-desktop-research`, and orc W5 research d
 
 ## INCOMING RESEARCH DOC LINK — harvest before closing
 
-When research links arrive, the receiver's **FIRST dispatch is ONE coordinator child** for the whole batch, including already-filed reports. Use `delegate_task` with `role: "research"`, `target.providerInstanceId: "codex-worker"`, high effort/default tier, and label its brief `codex.research.coordinator`. Pass [the workflow](references/coordinator.md), all links and the verifier parameter. Omit `isolation` (shared checkout). Then **end the turn**. The receiver does no harvesting, splitting, verifying or filing. A non-research link does not take this route.
+When research links arrive, the receiver's **FIRST dispatch is ONE coordinator child** for the whole batch, including already-filed reports. Use `delegate_task` with `role: "research"`, `target.providerInstanceId: "codex-worker"`, high effort/default tier, and label its brief `codex.research.coordinator`. Pass [the workflow](references/coordinator.md), all links and the verifier parameter. Omit `isolation` (shared checkout). Then **end the turn**. The receiver does no harvesting, splitting, verifying or filing. A non-research link does not take this route. Children briefed by a coordinator (the coordinator itself and its Drive harvest child) skip this route.
 
 The coordinator skips intake dispatch. Per `/agent-routing` § Execution capability, delegate harvest/readback/filing/NotebookLM to a Drive-write-capable child; wait for its receipt while orchestrating verification. The workflow preserves `R{NN}-<slug>-result`, readback/`export_route` and PARKED-not-guessed associations.
 

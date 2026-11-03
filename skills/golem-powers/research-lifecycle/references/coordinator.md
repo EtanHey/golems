@@ -13,7 +13,9 @@ The brief names the lead as step owner; you cannot self-override the family rule
    /agent-routing § Execution capability; wait for its receipt. Its task: locate the
    R-number prompt; use /drive-filing for the project destination. File the report
    as R{NN}-<slug>-result in results/ beside prompts/, verify by readback and
-   record export_route. Missing associations stay PARKED, not guessed.
+   record export_route. Missing associations stay PARKED, not guessed. Brief that
+   child as the coordinator's harvest child: skip SKILL.md intake dispatch, verify
+   nothing, and return the filed links plus a local export path for each report.
 2. Pin the grounding corpus/code revision. Split on report headings and freeze
    exact numbered claim lists before grading. Pass each child its section,
    citations, list, baseline and references/verifier.md; require exact ID coverage.
