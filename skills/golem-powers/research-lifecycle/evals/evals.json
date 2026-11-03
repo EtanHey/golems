@@ -187,6 +187,82 @@
       ],
       "fixture": "fixtures/eval-7-stale-drive.json",
       "discriminating_power": "high — the pre-fix skill documents a complete run that never touches Drive"
+    },
+    {
+      "id": 8,
+      "name": "named-batch-intake",
+      "category": "compliance",
+      "prompt": "I explicitly authorize invoking the research-lifecycle Skill. /research-lifecycle: Process this batch of three Gemini research reports, put reports and prompts in the right places, verify the conclusions and retain the safe facts: {{RESEARCH_LINK_1}} {{RESEARCH_LINK_2}} {{RESEARCH_LINK_3}}",
+      "expected_output": "First child dispatch is exactly one coordinator at the resolved mid-Codex tier, with every batch URL and the coordinator role label; no receiver harvest/verify/file action before or after it.",
+      "assertions": [
+        {
+          "name": "coordinator-route",
+          "type": "tool_usage",
+          "text": "First child dispatch is exactly one coordinator at the resolved mid-Codex tier, with every batch URL and the coordinator role label; no receiver harvest/verify/file action before or after it."
+        }
+      ],
+      "batch_urls": [
+        "{{RESEARCH_LINK_1}}",
+        "{{RESEARCH_LINK_2}}",
+        "{{RESEARCH_LINK_3}}"
+      ],
+      "control": false
+    },
+    {
+      "id": 9,
+      "name": "unnamed-batch-intake",
+      "category": "compliance",
+      "prompt": "These three Gemini Deep Research reports are finished. Please bring the whole batch into our research corpus and take the next action: {{RESEARCH_LINK_1}} {{RESEARCH_LINK_2}} {{RESEARCH_LINK_3}}",
+      "expected_output": "First child dispatch is exactly one coordinator at the resolved mid-Codex tier, with every batch URL and the coordinator role label; no receiver harvest/verify/file action before or after it.",
+      "assertions": [
+        {
+          "name": "coordinator-route",
+          "type": "tool_usage",
+          "text": "First child dispatch is exactly one coordinator at the resolved mid-Codex tier, with every batch URL and the coordinator role label; no receiver harvest/verify/file action before or after it."
+        }
+      ],
+      "batch_urls": [
+        "{{RESEARCH_LINK_1}}",
+        "{{RESEARCH_LINK_2}}",
+        "{{RESEARCH_LINK_3}}"
+      ],
+      "control": false
+    },
+    {
+      "id": 10,
+      "name": "mixed-filed-batch",
+      "category": "compliance",
+      "prompt": "I explicitly authorize invoking the research-lifecycle Skill. /research-lifecycle: R31 was already filed/read back but has not been verified. R32 and R33 are new incoming research reports. Handle all three as one batch and complete the research lifecycle: {{RESEARCH_LINK_1}} {{RESEARCH_LINK_2}} {{RESEARCH_LINK_3}}",
+      "expected_output": "First child dispatch is exactly one coordinator at the resolved mid-Codex tier, with every batch URL and the coordinator role label; no receiver harvest/verify/file action before or after it.",
+      "assertions": [
+        {
+          "name": "coordinator-route",
+          "type": "tool_usage",
+          "text": "First child dispatch is exactly one coordinator at the resolved mid-Codex tier, with every batch URL and the coordinator role label; no receiver harvest/verify/file action before or after it."
+        }
+      ],
+      "batch_urls": [
+        "{{RESEARCH_LINK_1}}",
+        "{{RESEARCH_LINK_2}}",
+        "{{RESEARCH_LINK_3}}"
+      ],
+      "control": false
+    },
+    {
+      "id": 11,
+      "name": "non-research-link-control",
+      "category": "compliance",
+      "prompt": "This Google Doc is my CV, not research. Read its local snapshot and suggest a concise title: {{NON_RESEARCH_LINK}}",
+      "expected_output": "No research coordinator dispatch for this non-research link.",
+      "assertions": [
+        {
+          "name": "non-research-control",
+          "type": "tool_usage",
+          "text": "No research coordinator dispatch for this non-research link."
+        }
+      ],
+      "batch_urls": [],
+      "control": true
     }
   ]
 }
