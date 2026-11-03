@@ -1,5 +1,7 @@
 # Video Processing: QA or Transcript-First Debrief
 
+Before media work, route named model/subagent requests through [SKILL.md](../SKILL.md) § Subagent routing — named requests first.
+
 **qa** keeps the dense action pipeline below. **debrief / review / gems** uses TRANSCRIPT-FIRST: ≤12 transcript questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each, no blanket 30s coverage and no scene sweep unless narration references visuals. Default debrief budget is max(600, 24 × video minutes) seconds wall-clock; explicit --budget-seconds overrides it. Preserve/read debrief.md whenever transcript.srt exists, including BUDGET_EXCEEDED/PARTIAL; missing visual reads stay NOT DETERMINED. For these modes use `scripts/debrief.py VIDEO --workdir FRESH_DIR --mode debrief` through run-step.sh. By default debrief.py calls no helper: it extracts the targeted stills, writes frames.tsv and exits `STILLS_READY` so the QA seat hands the stills to its helpers (the seat never opens them itself); `--presort` opts in to the visual-batch.py pre-sort. Then read the full SRT and debrief.md, and have a helper or verifier view the stills behind any visual claim you keep, for the final synthesis. Skip QA phases 3–5. Never infer visual coverage for unsampled parts of the video. The QA seat writes root progress.txt at every phase and helpers append findings.jsonl; on delay questions read progress.txt. For manual qa steps, rewrite root progress.txt on every phase transition too.
 
 ## Inputs Required
