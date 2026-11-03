@@ -2,12 +2,36 @@ import { parse } from 'parse5';
 
 const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
-// Fences are the card source format; all authored content remains escaped text.
+function httpHref(value) {
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) && url.hostname ? url.href : '';
+  } catch { return ''; }
+}
+
+function renderProse(text) {
+  const links = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"']+)/gi;
+  let html = '', offset = 0;
+  for (const match of text.matchAll(links)) {
+    let raw = match[2] || match[3];
+    if (match[3]) {
+      while (/[.,;:!?]$/.test(raw) || (raw.endsWith(')') && raw.split(')').length > raw.split('(').length)) raw = raw.slice(0, -1);
+    }
+    const href = httpHref(raw);
+    html += escapeHtml(text.slice(offset, match.index));
+    html += href ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(match[1] || raw)}</a>` : escapeHtml(match[0]);
+    if (match[3] && href) html += escapeHtml(match[3].slice(raw.length));
+    offset = match.index + match[0].length;
+  }
+  return html + escapeHtml(text.slice(offset));
+}
+
+// Only HTTP(S) prose becomes links; fenced payloads remain escaped literal text.
 export function renderCardBody(text = '') {
   const source = String(text).replace(/\r\n?/g, '\n');
   const fence = /^```[^\n`]*\n([\s\S]*?)\n```[ \t]*(?=\n|$)/gm;
   let html = '', offset = 0;
-  const prose = text => text.split(/\n+/).filter(line => line.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join('');
+  const prose = text => text.split(/\n+/).filter(line => line.trim()).map(line => `<p>${renderProse(line)}</p>`).join('');
   for (const match of source.matchAll(fence)) {
     html += prose(source.slice(offset, match.index));
     html += `<div class="ad-copy-block"><pre><code>${escapeHtml(match[1].replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g, ''))}</code></pre><button type="button" data-copy-block aria-label="Copy code block">Copy</button><span role="status" aria-live="polite"></span></div>`;
@@ -74,12 +98,12 @@ const COMMAND_FORMS = [
   /^(?:claude|codex)\s+(?:-\S+|(?:mcp|login|logout|auth|exec|review|resume|doctor|update)\b)/,
   /^op\s+(?:-\S+|(?:signin|signout|read|run|item|vault|account|inject|whoami)\b)/,
   /^export\s+[A-Za-z_][A-Za-z0-9_]*=/,
-  /^open\s+(?:-\S+|["']?(?:\.\.?\/|~\/|\/))/,
+  /^open\s+(?:-\S+|["']?(?:https?:\/\/|\.\.?\/|~\/|\/))/,
   /^defaults\s+(?:read|write|delete|import|export|find)\b/,
   /^launchctl\s+(?:load|unload|bootstrap|bootout|print|kickstart|enable|disable|list)\b/,
   /^cargo\s+(?:-\S+|(?:build|test|run|check|clippy|fmt|install|update|clean|publish)\b)/,
 ];
-const LOCATION = /https?:\/\/[^\s]+|(?:^|[\s`"'(])(?:~\/[^\s]+|\/(?!\/)[\w.-]+(?:\/[^\s]*|(?=\s|$)))/i;
+const LOCATION = /(?:^|[\s`"'(])(?:~\/[^\s]+|\/(?!\/)[\w.-]+(?:\/[^\s]*|(?=\s|$)))/i;
 const RELATIVE_PATH = /(?:^|[\s`"'(])\.\.?\/[^\s]+/;
 const BARE_FILE = /(?:^|[\s`"'(])([A-Za-z_][\w.-]*(?:\/[A-Za-z_][\w.-]*)+\.(?:html|md|json|mjs|js|ts|sh|py|yml|yaml|toml|txt|env|plist|log))(?=$|[\s`"'),;:.])/g;
 function commandLike(line) {
@@ -89,11 +113,12 @@ function commandLike(line) {
   return candidates.some(candidate => COMMAND_FORMS.some(pattern => pattern.test(candidate)));
 }
 function pathLike(line) {
+  line = line.replace(/https?:\/\/[^\s]+/gi, '');
   return LOCATION.test(line) || RELATIVE_PATH.test(line) || [...line.matchAll(BARE_FILE)]
     .some(match => /^[a-z_]/.test(match[1]) || match[1].split('/').length >= 3);
 }
 const BLOCK = new Set(['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'dt', 'dd', 'pre', 'br', 'label']);
-export const COPY_BLOCK_RUNBOOK = 'Put commands, paths, URLs and pasteable text in one fenced code block in the card body. Keep a multi-line sequence in one fence. No bypass.';
+export const COPY_BLOCK_RUNBOOK = 'Put terminal commands and literal text or file paths to paste in a fenced code block in the card body. Keep a multi-line sequence in one fence. URLs remain clickable links, never copy blocks. No bypass.';
 
 export function analyzeCopyBlocks(html) {
   const violations = [];
@@ -107,6 +132,7 @@ export function analyzeCopyBlocks(html) {
     if (node.tagName === 'pre' && hasClass(block, 'ad-copy-block') && children(node).some(n => n.tagName === 'code')
       && children(block).some(n => n.tagName === 'button' && attr(n, 'data-copy-block') !== undefined && attr(n, 'type') === 'button')
       && contains(block, n => attr(n, 'role') === 'status')) return '\n';
+    if (node.tagName === 'a' && httpHref(attr(node, 'href'))) return httpHref(attr(node, 'href'));
     if (node.nodeName === '#text') return node.value;
     const value = children(node).map(text).join('');
     return BLOCK.has(node.tagName) ? `\n${value}\n` : value;

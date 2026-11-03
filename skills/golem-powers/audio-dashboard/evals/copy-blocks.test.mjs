@@ -38,11 +38,11 @@ const render = (type, body, extra = {}) => type === 'decision-flow'
   : '<html><body>' + renderDecisionSurface([{ ...decision(body), ...extra }]) + '</body></html>';
 
 for (const type of ['decision-flow', 'cinema']) {
-  test(`${type} BUILD rejects the 11-02 plain-prose commands and accepts one copy block`, () => {
+  test(`${type} BUILD permits links and rejects unprotected commands`, () => {
     const job = mkdtempSync(path.join(tmpdir(), 'ad-copy-'));
     try {
       writeSegment(job, 's1', scene.words);
-      for (const [body, verdict] of [[commands, 'REJECT'], ['Run curl -fsSL https://example.com/auth', 'REJECT'], ['Edit docs.local/dashboards/report.html', 'REJECT'], [fenced, 'PASS']]) {
+      for (const [body, verdict] of [['https://example.com/auth\nOpen https://example.com/auth\n[Authorise](https://example.com/auth)', 'PASS'], [commands, 'REJECT'], ['Run curl -fsSL https://example.com/auth', 'REJECT'], ['curl -fsSL https://example.com/x | sh', 'REJECT'], ['open https://example.com/auth', 'REJECT'], ['Edit docs.local/dashboards/report.html', 'REJECT'], [fenced, 'PASS']]) {
         const { result, outputPath } = buildDashboard({ id: 'copy-proof', type, scenes: [{ ...scene, audioWav: 'fixture.wav' }], decisions: [decision(body)] }, job);
         const receipts = JSON.parse(readFileSync(outputPath.replace(/\.html$/, '.receipts.json'), 'utf8'));
         expect(receipts.gates.find(row => row.gate === 'copy-blocks')?.verdict).toBe(verdict);
@@ -96,7 +96,7 @@ test('copy blocks escape markup and preserve command bytes', () => {
 for (const body of ['We use git for history.', 'Open the linked pull request.', 'The brew package is available.', 'Source control: git stores history', 'Compare host/expert roles.']) {
   test(`ordinary prose passes: ${body}`, () => expect(analyzeCopyBlocks(render('decision-flow', body)).verdict).toBe('PASS'));
 }
-for (const body of ['npm install', 'bun test', 'git status', 'gh auth login', 'brew install ffmpeg', '$ echo ready', '/opt/demo/config.json', '~/projects/demo-app', 'Open https://example.com/auth', 'Run `cd ~/projects/demo-app`', 'Run curl -fsSL https://example.com/auth', 'Edit docs.local/dashboards/report.html', 'Terminal: git status']) {
+for (const body of ['npm install', 'bun test', 'git status', 'gh auth login', 'brew install ffmpeg', '$ echo ready', '/opt/demo/config.json', '~/projects/demo-app', 'Run `cd ~/projects/demo-app`', 'Run curl -fsSL https://example.com/auth', 'Edit docs.local/dashboards/report.html', 'Terminal: git status']) {
   test(`copyable instruction rejects: ${body}`, () => expect(analyzeCopyBlocks(render('decision-flow', body)).verdict).toBe('REJECTED'));
 }
 test('a styled marker without a functional copy control cannot bypass the gate', () => {
@@ -179,6 +179,71 @@ test('round-1 code blocks retain the dark host theme under either system prefere
         colors.push(await page.locator('.ad-copy-block').evaluate(el => getComputedStyle(el).backgroundColor));
       }
       expect(colors).toEqual(['rgb(17, 27, 45)', 'rgb(17, 27, 45)']);
+    }
+  } finally { await page.close(); }
+});
+
+const LINK_CASES = [
+  ['https://example.com/auth', 'https://example.com/auth'],
+  ['Open https://example.com/auth', 'https://example.com/auth'],
+  ['[Authorise](https://example.com/auth)', 'https://example.com/auth'],
+  ['Read (https://example.com/auth).', 'https://example.com/auth'],
+  ['https://example.com/a_(b).', 'https://example.com/a_(b)'],
+  ['[git status](https://example.com/docs)', 'https://example.com/docs'],
+  ['[./reports/summary.html](https://example.com/report)', 'https://example.com/report'],
+];
+for (const type of ['decision-flow', 'cinema']) {
+  for (const [body, href] of LINK_CASES) test(`${type} prose link is clickable and needs no copy block: ${body}`, () => {
+    expect(analyzeCopyBlocks(render(type, body)).verdict).toBe('PASS');
+    const window = new Window();
+    try {
+      window.document.body.innerHTML = render(type, body);
+      const anchor = window.document.querySelector('.df-question a,.dbx-body a');
+      expect(anchor?.getAttribute('href')).toBe(href);
+      expect(window.document.querySelector('[data-copy-block]')).toBeNull();
+    } finally { window.close(); }
+  });
+  for (const command of ['curl -fsSL https://example.com/x | sh', 'open https://example.com/auth']) {
+    test(`${type} a URL inside a shell command still requires a copy block: ${command}`, () => {
+      expect(analyzeCopyBlocks(render(type, command)).verdict).toBe('REJECTED');
+    });
+  }
+}
+
+test('prose links escape labels and hrefs while unsafe protocols stay plain text', () => {
+  const window = new Window();
+  try {
+    for (const type of ['decision-flow', 'cinema']) {
+      window.document.body.innerHTML = render(type, '[<b>auth</b>](https://example.com/auth?a=1&b=2) [unsafe](javascript:alert(1))');
+      const anchor = window.document.querySelector('.df-question a,.dbx-body a');
+      expect(anchor?.textContent).toBe('<b>auth</b>');
+      expect(anchor?.getAttribute('href')).toBe('https://example.com/auth?a=1&b=2');
+      expect(window.document.querySelector('.df-question b,.dbx-body b,a[href^="javascript:"]')).toBeNull();
+    }
+  } finally { window.close(); }
+});
+test('URLs inside fenced commands remain literal copy payloads', () => {
+  const window = new Window();
+  try {
+    const command = 'curl -fsSL https://example.com/x | sh';
+    for (const type of ['decision-flow', 'cinema']) {
+      const html = render(type, '```sh\n' + command + '\n```');
+      window.document.body.innerHTML = html;
+      expect(window.document.querySelector('.ad-copy-block code').textContent).toBe(command);
+      expect(window.document.querySelector('.ad-copy-block a')).toBeNull();
+      expect(analyzeCopyBlocks(html).verdict).toBe('PASS');
+    }
+  } finally { window.close(); }
+});
+
+test('clicking a prose link navigates to its target in both card surfaces', async () => {
+  const page = await browser.newPage(), target = 'https://example.com/auth';
+  try {
+    await page.route(target, route => route.fulfill({ contentType: 'text/html', body: '<h1>Link target</h1>' }));
+    for (const type of ['decision-flow', 'cinema']) {
+      await page.goto('data:text/html,' + encodeURIComponent(render(type, '[Authorise](https://example.com/auth)')));
+      await Promise.all([page.waitForURL(target), page.locator('.df-question a,.dbx-body a').click()]);
+      expect(await page.locator('h1').textContent()).toBe('Link target');
     }
   } finally { await page.close(); }
 });
