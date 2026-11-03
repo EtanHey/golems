@@ -1,11 +1,11 @@
 {
   "date": "2026-11-03",
   "skill": "qa-video",
-  "measurement": "Historical 70dd912e loaded-skill recordings, re-scored offline into separate dispatch-ordering and explicit-default-options measures. Round-1 text revision has not been live-recorded.",
+  "measurement": "Final 8a3e9bbe candidate-only Tier-1 rerun versus reused master baselines. Three separate assertions: dispatch before media, named model match, explicit default settings.",
   "baseline_ref": "bd67db53a87123182a673bf7678bec9fcd9f9897",
   "case_definitions": "../evals.json cases 10-12, mapped by cases[]; prompts are byte-identical",
   "repeats": 5,
-  "iterations": 2,
+  "iterations": 3,
   "provenance": [
     {
       "agent_or_arm": "haiku-baseline",
@@ -70,52 +70,94 @@
       "effort_effective": "high",
       "model_observation_source": "session JSONL model field: checked in all three excluded partial baseline receipts",
       "effort_observation_source": "session JSONL effort field: checked in all three excluded partial baseline receipts"
+    },
+    {
+      "agent_or_arm": "haiku-final8a-candidate",
+      "model_requested": "claude-haiku-5-5",
+      "model_effective": "claude-haiku-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: final8a per-leg catalog provenance checked for every row",
+      "effort_observation_source": "session JSONL effort field: final8a per-leg catalog provenance checked for every row"
+    },
+    {
+      "agent_or_arm": "luna-final8a-candidate",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: final8a turn_context.model checked in every runtime receipt",
+      "effort_observation_source": "session JSONL effort field: final8a turn_context.effort checked in every runtime receipt"
     }
   ],
   "arms": [
     {
       "label": "haiku-baseline",
-      "n": 15,
+      "model": "claude-haiku-5-5",
+      "source_commit": "bd67db53a87123182a673bf7678bec9fcd9f9897",
       "hash": "8cdefbd01f636918cf507247258257be942ef02beae4fe30839ff11e966bdb25",
       "bytes": 22379,
       "approx_tokens": 5595,
+      "n": 15,
+      "assertions": {
+        "dispatched_before_media": {
+          "k": 4,
+          "n": 10
+        },
+        "named_model_match": {
+          "k": 4,
+          "n": 10
+        },
+        "default_settings": {
+          "k": 0,
+          "n": 10
+        }
+      },
+      "control_correct": {
+        "k": 5,
+        "n": 5
+      },
       "cases": [
         {
           "case": "P-luna",
           "n": 5,
-          "composite_pass": 0,
-          "dispatch_before_media": {
-            "k": 4,
-            "n": 5,
-            "pct": 80
+          "assertions": {
+            "dispatched_before_media": {
+              "k": 4,
+              "n": 5
+            },
+            "named_model_match": {
+              "k": 4,
+              "n": 5
+            },
+            "default_settings": {
+              "k": 0,
+              "n": 5
+            }
           },
-          "default_options": {
-            "k": 0,
-            "n": 5,
-            "pct": 0
-          }
+          "control_correct": null
         },
         {
           "case": "P-haiku",
           "n": 5,
-          "composite_pass": 0,
-          "dispatch_before_media": {
-            "k": 0,
-            "n": 5,
-            "pct": 0
+          "assertions": {
+            "dispatched_before_media": {
+              "k": 0,
+              "n": 5
+            },
+            "named_model_match": {
+              "k": 0,
+              "n": 5
+            },
+            "default_settings": {
+              "k": 0,
+              "n": 5
+            }
           },
-          "default_options": {
-            "k": 0,
-            "n": 5,
-            "pct": 0
-          }
+          "control_correct": null
         },
         {
           "case": "C-default",
           "n": 5,
-          "composite_pass": 5,
-          "dispatch_before_media": null,
-          "default_options": null,
+          "assertions": null,
           "control_correct": {
             "k": 5,
             "n": 5
@@ -123,123 +165,155 @@
         }
       ],
       "api_usd": 0.0483464,
-      "list_usd": 0.04834640000000001,
-      "dispatch_before_media": {
-        "k": 4,
-        "n": 10,
-        "pct": 40
-      },
-      "default_options": {
-        "k": 0,
-        "n": 10,
-        "pct": 0
-      }
+      "list_usd": 0.04834640000000001
     },
     {
-      "label": "haiku-candidate",
+      "label": "haiku-final8a-candidate",
+      "model": "claude-haiku-5-5",
+      "source_commit": "8a3e9bbe88ab7d9e4e2e6062ac92052dff5ae322",
+      "hash": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8",
+      "bytes": 23919,
+      "approx_tokens": 5980,
       "n": 15,
-      "hash": "16439bc53400a8e43754bbc3d25eda514a69a565bd68fa66be4a70c24514bfd9",
-      "bytes": 24131,
-      "approx_tokens": 6033,
+      "assertions": {
+        "dispatched_before_media": {
+          "k": 10,
+          "n": 10
+        },
+        "named_model_match": {
+          "k": 10,
+          "n": 10
+        },
+        "default_settings": {
+          "k": 10,
+          "n": 10
+        }
+      },
+      "control_correct": {
+        "k": 5,
+        "n": 5
+      },
       "cases": [
         {
           "case": "P-luna",
           "n": 5,
-          "composite_pass": 5,
-          "dispatch_before_media": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
+          "assertions": {
+            "dispatched_before_media": {
+              "k": 5,
+              "n": 5
+            },
+            "named_model_match": {
+              "k": 5,
+              "n": 5
+            },
+            "default_settings": {
+              "k": 5,
+              "n": 5
+            }
           },
-          "default_options": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
-          }
+          "control_correct": null
         },
         {
           "case": "P-haiku",
           "n": 5,
-          "composite_pass": 5,
-          "dispatch_before_media": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
+          "assertions": {
+            "dispatched_before_media": {
+              "k": 5,
+              "n": 5
+            },
+            "named_model_match": {
+              "k": 5,
+              "n": 5
+            },
+            "default_settings": {
+              "k": 5,
+              "n": 5
+            }
           },
-          "default_options": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
-          }
+          "control_correct": null
         },
         {
           "case": "C-default",
           "n": 5,
-          "composite_pass": 5,
-          "dispatch_before_media": null,
-          "default_options": null,
+          "assertions": null,
           "control_correct": {
             "k": 5,
             "n": 5
           }
         }
       ],
-      "api_usd": 0.05036631999999999,
-      "list_usd": 0.05036632,
-      "dispatch_before_media": {
-        "k": 10,
-        "n": 10,
-        "pct": 100
-      },
-      "default_options": {
-        "k": 10,
-        "n": 10,
-        "pct": 100
-      }
+      "api_usd": 0.046587960000000005,
+      "list_usd": 0.04658796
     },
     {
       "label": "luna-t1-baseline",
-      "n": 15,
+      "model": "gpt-6-luna",
+      "source_commit": "bd67db53a87123182a673bf7678bec9fcd9f9897",
       "hash": "8cdefbd01f636918cf507247258257be942ef02beae4fe30839ff11e966bdb25",
       "bytes": 22379,
       "approx_tokens": 5595,
+      "n": 15,
+      "assertions": {
+        "dispatched_before_media": {
+          "k": 10,
+          "n": 10
+        },
+        "named_model_match": {
+          "k": 10,
+          "n": 10
+        },
+        "default_settings": {
+          "k": 0,
+          "n": 10
+        }
+      },
+      "control_correct": {
+        "k": 5,
+        "n": 5
+      },
       "cases": [
         {
           "case": "P-luna",
           "n": 5,
-          "composite_pass": 0,
-          "dispatch_before_media": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
+          "assertions": {
+            "dispatched_before_media": {
+              "k": 5,
+              "n": 5
+            },
+            "named_model_match": {
+              "k": 5,
+              "n": 5
+            },
+            "default_settings": {
+              "k": 0,
+              "n": 5
+            }
           },
-          "default_options": {
-            "k": 0,
-            "n": 5,
-            "pct": 0
-          }
+          "control_correct": null
         },
         {
           "case": "P-haiku",
           "n": 5,
-          "composite_pass": 0,
-          "dispatch_before_media": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
+          "assertions": {
+            "dispatched_before_media": {
+              "k": 5,
+              "n": 5
+            },
+            "named_model_match": {
+              "k": 5,
+              "n": 5
+            },
+            "default_settings": {
+              "k": 0,
+              "n": 5
+            }
           },
-          "default_options": {
-            "k": 0,
-            "n": 5,
-            "pct": 0
-          }
+          "control_correct": null
         },
         {
           "case": "C-default",
           "n": 5,
-          "composite_pass": 5,
-          "dispatch_before_media": null,
-          "default_options": null,
+          "assertions": null,
           "control_correct": {
             "k": 5,
             "n": 5
@@ -247,61 +321,77 @@
         }
       ],
       "api_usd": 0,
-      "list_usd": null,
-      "dispatch_before_media": {
-        "k": 10,
-        "n": 10,
-        "pct": 100
-      },
-      "default_options": {
-        "k": 0,
-        "n": 10,
-        "pct": 0
-      }
+      "list_usd": null
     },
     {
-      "label": "luna-t1-candidate",
+      "label": "luna-final8a-candidate",
+      "model": "gpt-6-luna",
+      "source_commit": "8a3e9bbe88ab7d9e4e2e6062ac92052dff5ae322",
+      "hash": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8",
+      "bytes": 23919,
+      "approx_tokens": 5980,
       "n": 15,
-      "hash": "16439bc53400a8e43754bbc3d25eda514a69a565bd68fa66be4a70c24514bfd9",
-      "bytes": 24131,
-      "approx_tokens": 6033,
+      "assertions": {
+        "dispatched_before_media": {
+          "k": 10,
+          "n": 10
+        },
+        "named_model_match": {
+          "k": 10,
+          "n": 10
+        },
+        "default_settings": {
+          "k": 10,
+          "n": 10
+        }
+      },
+      "control_correct": {
+        "k": 5,
+        "n": 5
+      },
       "cases": [
         {
           "case": "P-luna",
           "n": 5,
-          "composite_pass": 5,
-          "dispatch_before_media": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
+          "assertions": {
+            "dispatched_before_media": {
+              "k": 5,
+              "n": 5
+            },
+            "named_model_match": {
+              "k": 5,
+              "n": 5
+            },
+            "default_settings": {
+              "k": 5,
+              "n": 5
+            }
           },
-          "default_options": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
-          }
+          "control_correct": null
         },
         {
           "case": "P-haiku",
           "n": 5,
-          "composite_pass": 5,
-          "dispatch_before_media": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
+          "assertions": {
+            "dispatched_before_media": {
+              "k": 5,
+              "n": 5
+            },
+            "named_model_match": {
+              "k": 5,
+              "n": 5
+            },
+            "default_settings": {
+              "k": 5,
+              "n": 5
+            }
           },
-          "default_options": {
-            "k": 5,
-            "n": 5,
-            "pct": 100
-          }
+          "control_correct": null
         },
         {
           "case": "C-default",
           "n": 5,
-          "composite_pass": 5,
-          "dispatch_before_media": null,
-          "default_options": null,
+          "assertions": null,
           "control_correct": {
             "k": 5,
             "n": 5
@@ -309,17 +399,7 @@
         }
       ],
       "api_usd": 0,
-      "list_usd": null,
-      "dispatch_before_media": {
-        "k": 10,
-        "n": 10,
-        "pct": 100
-      },
-      "default_options": {
-        "k": 10,
-        "n": 10,
-        "pct": 100
-      }
+      "list_usd": null
     }
   ],
   "per_run": [
@@ -329,6 +409,15 @@
         {
           "case": "P-luna",
           "rep": 1,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.004199189999999999,
@@ -349,17 +438,20 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 1,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": false,
+            "named_model_match": false,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": null,
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.00205022,
@@ -380,17 +472,16 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": null,
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": false,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 1,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.002469765,
@@ -411,17 +502,20 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 2,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.003328505,
@@ -442,17 +536,20 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 2,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": false,
+            "named_model_match": false,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.003017255,
@@ -473,17 +570,16 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": null,
-          "options_ok": false,
-          "media_before_dispatch": true,
-          "dispatch_before_media": false,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 2,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.0027012599999999996,
@@ -504,17 +600,20 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 3,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": false,
+            "named_model_match": false,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.00479395,
@@ -535,17 +634,20 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": null,
-          "options_ok": false,
-          "media_before_dispatch": true,
-          "dispatch_before_media": false,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 3,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": false,
+            "named_model_match": false,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.00399216,
@@ -566,17 +668,16 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": null,
-          "options_ok": false,
-          "media_before_dispatch": true,
-          "dispatch_before_media": false,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 3,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.00368584,
@@ -597,17 +698,20 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 4,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.0036551099999999996,
@@ -628,17 +732,20 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 4,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": false,
+            "named_model_match": false,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.003924995000000001,
@@ -659,17 +766,16 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": null,
-          "options_ok": false,
-          "media_before_dispatch": true,
-          "dispatch_before_media": false,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 4,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.0023397599999999998,
@@ -690,17 +796,20 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 5,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.0033431249999999993,
@@ -721,17 +830,20 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 5,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": false,
+            "named_model_match": false,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.002393765,
@@ -752,17 +864,16 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": false,
-          "first_dispatch_model": null,
-          "options_ok": false,
-          "media_before_dispatch": true,
-          "dispatch_before_media": false,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 5,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": 0.0024515,
@@ -783,483 +894,502 @@
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         }
       ]
     },
     {
-      "arm": "haiku-candidate",
+      "arm": "haiku-final8a-candidate",
       "runs": [
         {
           "case": "P-luna",
           "rep": 1,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.004457995,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.004978995000000001,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 4863,
-              "cacheReadInputTokens": 65477,
-              "cacheCreationInputTokens": 10969,
+              "outputTokens": 2496,
+              "cacheReadInputTokens": 47902,
+              "cacheCreationInputTokens": 26011,
               "webSearchRequests": 0,
-              "costUSD": 0.004457995,
+              "costUSD": 0.004978995000000001,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 2110,
-              "cacheCreationEphemeral5mInputTokens": 10969,
+              "thinkingTokens": 943,
+              "cacheCreationEphemeral5mInputTokens": 26011,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "P-haiku",
           "rep": 1,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.003162295,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.002903565,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 2703,
-              "cacheReadInputTokens": 65332,
-              "cacheCreationInputTokens": 9255,
+              "outputTokens": 2295,
+              "cacheReadInputTokens": 64709,
+              "cacheCreationInputTokens": 8867,
               "webSearchRequests": 0,
-              "costUSD": 0.003162295,
+              "costUSD": 0.002903565,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1301,
-              "cacheCreationEphemeral5mInputTokens": 9255,
+              "thinkingTokens": 613,
+              "cacheCreationEphemeral5mInputTokens": 8867,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "C-default",
           "rep": 1,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.004091215,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.002673175,
           "tokens": {
             "claude-haiku-5-5": {
-              "inputTokens": 6,
-              "outputTokens": 2167,
-              "cacheReadInputTokens": 75099,
-              "cacheCreationInputTokens": 18049,
+              "inputTokens": 4,
+              "outputTokens": 2373,
+              "cacheReadInputTokens": 40565,
+              "cacheCreationInputTokens": 8645,
               "webSearchRequests": 0,
-              "costUSD": 0.004091215,
+              "costUSD": 0.002673175,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1180,
-              "cacheCreationEphemeral5mInputTokens": 18049,
+              "thinkingTokens": 1616,
+              "cacheCreationEphemeral5mInputTokens": 8645,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 2,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.0033162,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.0033370450000000003,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 3035,
-              "cacheReadInputTokens": 65410,
-              "cacheCreationInputTokens": 9152,
+              "outputTokens": 3041,
+              "cacheReadInputTokens": 65082,
+              "cacheCreationInputTokens": 9321,
               "webSearchRequests": 0,
-              "costUSD": 0.0033162,
+              "costUSD": 0.0033370450000000003,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1429,
-              "cacheCreationEphemeral5mInputTokens": 9152,
+              "thinkingTokens": 997,
+              "cacheCreationEphemeral5mInputTokens": 9321,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "P-haiku",
           "rep": 2,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.0038209100000000003,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.0032400149999999997,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 3824,
-              "cacheReadInputTokens": 65556,
-              "cacheCreationInputTokens": 10022,
+              "outputTokens": 2888,
+              "cacheReadInputTokens": 65679,
+              "cacheCreationInputTokens": 9109,
               "webSearchRequests": 0,
-              "costUSD": 0.0038209100000000003,
+              "costUSD": 0.0032400149999999997,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1618,
-              "cacheCreationEphemeral5mInputTokens": 10022,
+              "thinkingTokens": 966,
+              "cacheCreationEphemeral5mInputTokens": 9109,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "C-default",
           "rep": 2,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.0023457900000000004,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.002440055,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 4,
-              "outputTokens": 1865,
-              "cacheReadInputTokens": 41039,
-              "cacheCreationInputTokens": 8020,
+              "outputTokens": 2039,
+              "cacheReadInputTokens": 40878,
+              "cacheCreationInputTokens": 8091,
               "webSearchRequests": 0,
-              "costUSD": 0.0023457900000000004,
+              "costUSD": 0.002440055,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1020,
-              "cacheCreationEphemeral5mInputTokens": 8020,
+              "thinkingTokens": 1294,
+              "cacheCreationEphemeral5mInputTokens": 8091,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 3,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.0026003249999999997,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.002992365,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 1858,
-              "cacheReadInputTokens": 65335,
-              "cacheCreationInputTokens": 8139,
+              "outputTokens": 2502,
+              "cacheReadInputTokens": 65089,
+              "cacheCreationInputTokens": 8719,
               "webSearchRequests": 0,
-              "costUSD": 0.0026003249999999997,
+              "costUSD": 0.002992365,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 702,
-              "cacheCreationEphemeral5mInputTokens": 8139,
+              "thinkingTokens": 807,
+              "cacheCreationEphemeral5mInputTokens": 8719,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "P-haiku",
           "rep": 3,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.00267828,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.0033599499999999996,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 1992,
-              "cacheReadInputTokens": 65293,
-              "cacheCreationInputTokens": 8230,
+              "outputTokens": 3094,
+              "cacheReadInputTokens": 65060,
+              "cacheCreationInputTokens": 9294,
               "webSearchRequests": 0,
-              "costUSD": 0.00267828,
+              "costUSD": 0.0033599499999999996,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 775,
-              "cacheCreationEphemeral5mInputTokens": 8230,
+              "thinkingTokens": 1335,
+              "cacheCreationEphemeral5mInputTokens": 9294,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "C-default",
           "rep": 3,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.0027127899999999996,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.00423951,
           "tokens": {
             "claude-haiku-5-5": {
-              "inputTokens": 4,
-              "outputTokens": 2487,
-              "cacheReadInputTokens": 41039,
-              "cacheCreationInputTokens": 8468,
+              "inputTokens": 6,
+              "outputTokens": 2518,
+              "cacheReadInputTokens": 75291,
+              "cacheCreationInputTokens": 17816,
               "webSearchRequests": 0,
-              "costUSD": 0.0027127899999999996,
+              "costUSD": 0.00423951,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1694,
-              "cacheCreationEphemeral5mInputTokens": 8468,
+              "thinkingTokens": 1327,
+              "cacheCreationEphemeral5mInputTokens": 17816,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 4,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.0036763150000000003,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.002696545,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 3577,
-              "cacheReadInputTokens": 65459,
-              "cacheCreationInputTokens": 9861,
+              "outputTokens": 1996,
+              "cacheReadInputTokens": 65232,
+              "cacheCreationInputTokens": 8365,
               "webSearchRequests": 0,
-              "costUSD": 0.0036763150000000003,
+              "costUSD": 0.002696545,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1702,
-              "cacheCreationEphemeral5mInputTokens": 9861,
+              "thinkingTokens": 749,
+              "cacheCreationEphemeral5mInputTokens": 8365,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "P-haiku",
           "rep": 4,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.003745765,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.0030572250000000002,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 3708,
-              "cacheReadInputTokens": 65454,
-              "cacheCreationInputTokens": 9893,
+              "outputTokens": 2608,
+              "cacheReadInputTokens": 65125,
+              "cacheCreationInputTokens": 8811,
               "webSearchRequests": 0,
-              "costUSD": 0.003745765,
+              "costUSD": 0.0030572250000000002,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1623,
-              "cacheCreationEphemeral5mInputTokens": 9893,
+              "thinkingTokens": 711,
+              "cacheCreationEphemeral5mInputTokens": 8811,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "C-default",
           "rep": 4,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.00280805,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.00279143,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 4,
-              "outputTokens": 2661,
-              "cacheReadInputTokens": 41040,
-              "cacheCreationInputTokens": 8534,
+              "outputTokens": 2618,
+              "cacheReadInputTokens": 40878,
+              "cacheCreationInputTokens": 8586,
               "webSearchRequests": 0,
-              "costUSD": 0.00280805,
+              "costUSD": 0.00279143,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1806,
-              "cacheCreationEphemeral5mInputTokens": 8534,
+              "thinkingTokens": 1726,
+              "cacheCreationEphemeral5mInputTokens": 8586,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 5,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.004177145,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.0026936399999999997,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 4415,
-              "cacheReadInputTokens": 65367,
-              "cacheCreationInputTokens": 10523,
+              "outputTokens": 2012,
+              "cacheReadInputTokens": 65179,
+              "cacheCreationInputTokens": 8282,
               "webSearchRequests": 0,
-              "costUSD": 0.004177145,
+              "costUSD": 0.0026936399999999997,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1642,
-              "cacheCreationEphemeral5mInputTokens": 10523,
+              "thinkingTokens": 717,
+              "cacheCreationEphemeral5mInputTokens": 8282,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "P-haiku",
           "rep": 5,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.00415632,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.002699025,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 6,
-              "outputTokens": 2262,
-              "cacheReadInputTokens": 75072,
-              "cacheCreationInputTokens": 18192,
+              "outputTokens": 2023,
+              "cacheReadInputTokens": 65305,
+              "cacheCreationInputTokens": 8271,
               "webSearchRequests": 0,
-              "costUSD": 0.00415632,
+              "costUSD": 0.002699025,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 790,
-              "cacheCreationEphemeral5mInputTokens": 18192,
+              "thinkingTokens": 568,
+              "cacheCreationEphemeral5mInputTokens": 8271,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+          }
         },
         {
           "case": "C-default",
           "rep": 5,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": 0.002616925,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": 0.00248542,
           "tokens": {
             "claude-haiku-5-5": {
               "inputTokens": 4,
-              "outputTokens": 2330,
-              "cacheReadInputTokens": 41040,
-              "cacheCreationInputTokens": 8329,
+              "outputTokens": 2149,
+              "cacheReadInputTokens": 40877,
+              "cacheCreationInputTokens": 8014,
               "webSearchRequests": 0,
-              "costUSD": 0.002616925,
+              "costUSD": 0.00248542,
               "contextWindow": 1000000,
               "maxOutputTokens": 128000,
-              "thinkingTokens": 1504,
-              "cacheCreationEphemeral5mInputTokens": 8329,
+              "thinkingTokens": 1518,
+              "cacheCreationEphemeral5mInputTokens": 8014,
               "cacheCreationEphemeral1hInputTokens": 0,
               "canonicalModel": "claude-haiku-5-5",
               "provider": "firstParty",
               "costBasis": "list"
             }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         }
       ]
     },
@@ -1269,6 +1399,15 @@
         {
           "case": "P-luna",
           "rep": 1,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1278,17 +1417,20 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 2044,
             "reasoning_output_tokens": 1703
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 1,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1298,17 +1440,16 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1798,
             "reasoning_output_tokens": 1287
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 1,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1318,17 +1459,20 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1303,
             "reasoning_output_tokens": 981
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 2,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1338,17 +1482,20 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1837,
             "reasoning_output_tokens": 1392
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 2,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1358,17 +1505,16 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 2157,
             "reasoning_output_tokens": 1692
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 2,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1378,17 +1524,20 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1347,
             "reasoning_output_tokens": 896
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 3,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1398,17 +1547,20 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 2240,
             "reasoning_output_tokens": 1574
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 3,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1418,17 +1570,16 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1351,
             "reasoning_output_tokens": 1069
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 3,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1438,17 +1589,20 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1178,
             "reasoning_output_tokens": 691
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 4,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1458,17 +1612,20 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 2833,
             "reasoning_output_tokens": 2311
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 4,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1478,17 +1635,16 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1769,
             "reasoning_output_tokens": 1294
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 4,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1498,17 +1654,20 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 2275,
             "reasoning_output_tokens": 1850
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         },
         {
           "case": "P-luna",
           "rep": 5,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1518,17 +1677,20 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1710,
             "reasoning_output_tokens": 1236
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "P-haiku",
           "rep": 5,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": false
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1538,17 +1700,16 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1503,
             "reasoning_output_tokens": 1135
-          },
-          "composite_pass": false,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": false,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": false
+          }
         },
         {
           "case": "C-default",
           "rep": 5,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
           "skill_bytes": 22379,
           "skill_approx_tokens": 5595,
           "api_usd": null,
@@ -1558,318 +1719,337 @@
             "cache_write_input_tokens": 0,
             "output_tokens": 1725,
             "reasoning_output_tokens": 1066
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+          }
         }
       ]
     },
     {
-      "arm": "luna-t1-candidate",
+      "arm": "luna-final8a-candidate",
       "runs": [
         {
           "case": "P-luna",
           "rep": 1,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
           "api_usd": null,
           "tokens": {
-            "input_tokens": 85390,
-            "cached_input_tokens": 62720,
+            "input_tokens": 123913,
+            "cached_input_tokens": 105472,
             "cache_write_input_tokens": 0,
-            "output_tokens": 1011,
-            "reasoning_output_tokens": 561
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+            "output_tokens": 1098,
+            "reasoning_output_tokens": 466
+          }
         },
         {
           "case": "P-haiku",
           "rep": 1,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
           "api_usd": null,
           "tokens": {
-            "input_tokens": 103466,
-            "cached_input_tokens": 81792,
+            "input_tokens": 124071,
+            "cached_input_tokens": 105600,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1100,
+            "reasoning_output_tokens": 493
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 1,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 83232,
+            "cached_input_tokens": 61568,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1236,
+            "reasoning_output_tokens": 849
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 2,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 96963,
+            "cached_input_tokens": 80896,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 985,
+            "reasoning_output_tokens": 470
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 2,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 86166,
+            "cached_input_tokens": 58880,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1265,
+            "reasoning_output_tokens": 794
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 2,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 112148,
+            "cached_input_tokens": 81024,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1474,
+            "reasoning_output_tokens": 882
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 3,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 86214,
+            "cached_input_tokens": 69888,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1461,
+            "reasoning_output_tokens": 974
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 3,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 86279,
+            "cached_input_tokens": 63104,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1369,
+            "reasoning_output_tokens": 889
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 3,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 70028,
+            "cached_input_tokens": 54912,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1346,
+            "reasoning_output_tokens": 917
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 4,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 130533,
+            "cached_input_tokens": 94976,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1478,
+            "reasoning_output_tokens": 682
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 4,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 124840,
+            "cached_input_tokens": 106368,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 999,
+            "reasoning_output_tokens": 506
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 4,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 129946,
+            "cached_input_tokens": 94848,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1115,
+            "reasoning_output_tokens": 562
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 5,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "gpt-6.1-luna",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 138084,
+            "cached_input_tokens": 117632,
             "cache_write_input_tokens": 0,
             "output_tokens": 1064,
-            "reasoning_output_tokens": 535
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "C-default",
-          "rep": 1,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 75053,
-            "cached_input_tokens": 57600,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1040,
-            "reasoning_output_tokens": 623
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
-        },
-        {
-          "case": "P-luna",
-          "rep": 2,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 130336,
-            "cached_input_tokens": 108288,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1135,
-            "reasoning_output_tokens": 556
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "P-haiku",
-          "rep": 2,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 94638,
-            "cached_input_tokens": 79488,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1034,
-            "reasoning_output_tokens": 565
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "C-default",
-          "rep": 2,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 65213,
-            "cached_input_tokens": 49152,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1279,
-            "reasoning_output_tokens": 883
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
-        },
-        {
-          "case": "P-luna",
-          "rep": 3,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 85464,
-            "cached_input_tokens": 73216,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1024,
-            "reasoning_output_tokens": 545
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "P-haiku",
-          "rep": 3,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 95000,
-            "cached_input_tokens": 79616,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1133,
-            "reasoning_output_tokens": 680
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "C-default",
-          "rep": 3,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 75583,
-            "cached_input_tokens": 57600,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1469,
-            "reasoning_output_tokens": 1006
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
-        },
-        {
-          "case": "P-luna",
-          "rep": 4,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 85906,
-            "cached_input_tokens": 62976,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1351,
-            "reasoning_output_tokens": 833
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "P-haiku",
-          "rep": 4,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 112186,
-            "cached_input_tokens": 98048,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1019,
-            "reasoning_output_tokens": 451
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "C-default",
-          "rep": 4,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 115768,
-            "cached_input_tokens": 93056,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1886,
-            "reasoning_output_tokens": 1422
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
-        },
-        {
-          "case": "P-luna",
-          "rep": 5,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 124638,
-            "cached_input_tokens": 95872,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1083,
-            "reasoning_output_tokens": 454
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+            "reasoning_output_tokens": 395
+          }
         },
         {
           "case": "P-haiku",
           "rep": 5,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
+          "category": "positive",
+          "assertions": {
+            "dispatched_before_media": true,
+            "named_model_match": true,
+            "default_settings": true
+          },
+          "control_correct": null,
+          "first_dispatch_model": "claude-haiku-5-5",
+          "media_before_dispatch": false,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
           "api_usd": null,
           "tokens": {
-            "input_tokens": 86440,
-            "cached_input_tokens": 73600,
+            "input_tokens": 85619,
+            "cached_input_tokens": 62464,
             "cache_write_input_tokens": 0,
-            "output_tokens": 1476,
-            "reasoning_output_tokens": 838
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
+            "output_tokens": 1299,
+            "reasoning_output_tokens": 754
+          }
         },
         {
           "case": "C-default",
           "rep": 5,
-          "skill_bytes": 24131,
-          "skill_approx_tokens": 6033,
+          "category": "control",
+          "assertions": null,
+          "control_correct": true,
+          "first_dispatch_model": null,
+          "media_before_dispatch": true,
+          "skill_bytes": 23919,
+          "skill_approx_tokens": 5980,
           "api_usd": null,
           "tokens": {
-            "input_tokens": 42270,
-            "cached_input_tokens": 30720,
+            "input_tokens": 99314,
+            "cached_input_tokens": 82432,
             "cache_write_input_tokens": 0,
-            "output_tokens": 1112,
-            "reasoning_output_tokens": 918
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null
+            "output_tokens": 861,
+            "reasoning_output_tokens": 428
+          }
         }
       ]
     }
@@ -1878,7 +2058,9 @@
     {
       "tier": 1,
       "model": "claude-haiku-5-5",
-      "dispatch_before_media": {
+      "baseline_label": "haiku-baseline",
+      "candidate_label": "haiku-final8a-candidate",
+      "dispatched_before_media": {
         "baseline": {
           "label": "haiku-baseline",
           "runs": 15,
@@ -1927,7 +2109,7 @@
           }
         },
         "arm": {
-          "label": "haiku-candidate",
+          "label": "haiku-final8a-candidate",
           "runs": 15,
           "valid": 15,
           "rowErrors": 0,
@@ -1966,10 +2148,10 @@
             }
           },
           "cost": {
-            "listUsd": 0.05036632,
+            "listUsd": 0.04658796,
             "unknownModels": [],
             "lowerBoundRows": 0,
-            "ccUsd": 0.05036631999999999,
+            "ccUsd": 0.046587960000000005,
             "ccRows": 15
           }
         },
@@ -1997,7 +2179,126 @@
           }
         ]
       },
-      "default_options": {
+      "named_model_match": {
+        "baseline": {
+          "label": "haiku-baseline",
+          "runs": 15,
+          "valid": 15,
+          "rowErrors": 0,
+          "unjudged": 0,
+          "errors": 0,
+          "positives": {
+            "k": 4,
+            "n": 10,
+            "excluded": 0,
+            "pct": 40
+          },
+          "named": {
+            "k": 4,
+            "n": 10,
+            "excluded": 0,
+            "pct": 40
+          },
+          "unnamed": {
+            "k": 0,
+            "n": 0,
+            "excluded": 0,
+            "pct": null
+          },
+          "falseTriggers": {
+            "k": 0,
+            "n": 0,
+            "excluded": 0,
+            "pct": null
+          },
+          "correct": {
+            "control": {
+              "k": 5,
+              "n": 5,
+              "excluded": 0,
+              "pct": 100
+            }
+          },
+          "cost": {
+            "listUsd": 0.04834640000000001,
+            "unknownModels": [],
+            "lowerBoundRows": 0,
+            "ccUsd": 0.0483464,
+            "ccRows": 15
+          }
+        },
+        "arm": {
+          "label": "haiku-final8a-candidate",
+          "runs": 15,
+          "valid": 15,
+          "rowErrors": 0,
+          "unjudged": 0,
+          "errors": 0,
+          "positives": {
+            "k": 10,
+            "n": 10,
+            "excluded": 0,
+            "pct": 100
+          },
+          "named": {
+            "k": 10,
+            "n": 10,
+            "excluded": 0,
+            "pct": 100
+          },
+          "unnamed": {
+            "k": 0,
+            "n": 0,
+            "excluded": 0,
+            "pct": null
+          },
+          "falseTriggers": {
+            "k": 0,
+            "n": 0,
+            "excluded": 0,
+            "pct": null
+          },
+          "correct": {
+            "control": {
+              "k": 5,
+              "n": 5,
+              "excluded": 0,
+              "pct": 100
+            }
+          },
+          "cost": {
+            "listUsd": 0.04658796,
+            "unknownModels": [],
+            "lowerBoundRows": 0,
+            "ccUsd": 0.046587960000000005,
+            "ccRows": 15
+          }
+        },
+        "delta": {
+          "positivesPp": 60,
+          "positivesP": 0.01083591331269349,
+          "unnamedPp": null,
+          "unnamedP": null
+        },
+        "grid": [
+          {
+            "case": "C-default",
+            "baseline": "✓✓✓✓✓",
+            "arm": "✓✓✓✓✓"
+          },
+          {
+            "case": "P-haiku",
+            "baseline": "✗✗✗✗✗",
+            "arm": "✓✓✓✓✓"
+          },
+          {
+            "case": "P-luna",
+            "baseline": "✓✓✗✓✓",
+            "arm": "✓✓✓✓✓"
+          }
+        ]
+      },
+      "default_settings": {
         "baseline": {
           "label": "haiku-baseline",
           "runs": 15,
@@ -2046,7 +2347,7 @@
           }
         },
         "arm": {
-          "label": "haiku-candidate",
+          "label": "haiku-final8a-candidate",
           "runs": 15,
           "valid": 15,
           "rowErrors": 0,
@@ -2085,10 +2386,10 @@
             }
           },
           "cost": {
-            "listUsd": 0.05036632,
+            "listUsd": 0.04658796,
             "unknownModels": [],
             "lowerBoundRows": 0,
-            "ccUsd": 0.05036631999999999,
+            "ccUsd": 0.046587960000000005,
             "ccRows": 15
           }
         },
@@ -2120,7 +2421,9 @@
     {
       "tier": 1,
       "model": "gpt-6-luna",
-      "dispatch_before_media": {
+      "baseline_label": "luna-t1-baseline",
+      "candidate_label": "luna-final8a-candidate",
+      "dispatched_before_media": {
         "baseline": {
           "label": "luna-t1-baseline",
           "runs": 15,
@@ -2169,7 +2472,7 @@
           }
         },
         "arm": {
-          "label": "luna-t1-candidate",
+          "label": "luna-final8a-candidate",
           "runs": 15,
           "valid": 15,
           "rowErrors": 0,
@@ -2239,7 +2542,126 @@
           }
         ]
       },
-      "default_options": {
+      "named_model_match": {
+        "baseline": {
+          "label": "luna-t1-baseline",
+          "runs": 15,
+          "valid": 15,
+          "rowErrors": 0,
+          "unjudged": 0,
+          "errors": 0,
+          "positives": {
+            "k": 10,
+            "n": 10,
+            "excluded": 0,
+            "pct": 100
+          },
+          "named": {
+            "k": 10,
+            "n": 10,
+            "excluded": 0,
+            "pct": 100
+          },
+          "unnamed": {
+            "k": 0,
+            "n": 0,
+            "excluded": 0,
+            "pct": null
+          },
+          "falseTriggers": {
+            "k": 0,
+            "n": 0,
+            "excluded": 0,
+            "pct": null
+          },
+          "correct": {
+            "control": {
+              "k": 5,
+              "n": 5,
+              "excluded": 0,
+              "pct": 100
+            }
+          },
+          "cost": {
+            "listUsd": null,
+            "unknownModels": [],
+            "lowerBoundRows": 0,
+            "ccUsd": null,
+            "ccRows": 0
+          }
+        },
+        "arm": {
+          "label": "luna-final8a-candidate",
+          "runs": 15,
+          "valid": 15,
+          "rowErrors": 0,
+          "unjudged": 0,
+          "errors": 0,
+          "positives": {
+            "k": 10,
+            "n": 10,
+            "excluded": 0,
+            "pct": 100
+          },
+          "named": {
+            "k": 10,
+            "n": 10,
+            "excluded": 0,
+            "pct": 100
+          },
+          "unnamed": {
+            "k": 0,
+            "n": 0,
+            "excluded": 0,
+            "pct": null
+          },
+          "falseTriggers": {
+            "k": 0,
+            "n": 0,
+            "excluded": 0,
+            "pct": null
+          },
+          "correct": {
+            "control": {
+              "k": 5,
+              "n": 5,
+              "excluded": 0,
+              "pct": 100
+            }
+          },
+          "cost": {
+            "listUsd": null,
+            "unknownModels": [],
+            "lowerBoundRows": 0,
+            "ccUsd": null,
+            "ccRows": 0
+          }
+        },
+        "delta": {
+          "positivesPp": 0,
+          "positivesP": 0.9999999999999929,
+          "unnamedPp": null,
+          "unnamedP": null
+        },
+        "grid": [
+          {
+            "case": "C-default",
+            "baseline": "✓✓✓✓✓",
+            "arm": "✓✓✓✓✓"
+          },
+          {
+            "case": "P-haiku",
+            "baseline": "✓✓✓✓✓",
+            "arm": "✓✓✓✓✓"
+          },
+          {
+            "case": "P-luna",
+            "baseline": "✓✓✓✓✓",
+            "arm": "✓✓✓✓✓"
+          }
+        ]
+      },
+      "default_settings": {
         "baseline": {
           "label": "luna-t1-baseline",
           "runs": 15,
@@ -2288,7 +2710,7 @@
           }
         },
         "arm": {
-          "label": "luna-t1-candidate",
+          "label": "luna-final8a-candidate",
           "runs": 15,
           "valid": 15,
           "rowErrors": 0,
@@ -2369,206 +2791,14 @@
     "Five repetitions of each prompt are not five independent task types.",
     "High-tier partial work started under the original brief and was stopped on the ladder amendment; it is retained locally outside these comparative arms.",
     "Cells are T3 stub seats: measured dispatch is delegate_task; the Claude terminal Agent route was not live-tested.",
-    "Round-1 edits are not newly recorded. All live scores refer to the evaluated 70dd912e text, not the revised worker-fan-out requirement."
-  ],
-  "confirmations": [
-    {
-      "tier": 3,
-      "arm": "opus-confirm",
-      "model": "claude-opus-5-5",
-      "mode": "candidate-only smoke",
-      "cases": [
-        {
-          "case": "P-luna",
-          "n": 1,
-          "bytes": 24131,
-          "approx_tokens": 6033,
-          "api_usd": 0.2477014,
-          "tokens": {
-            "claude-opus-5-5": {
-              "inputTokens": 6,
-              "outputTokens": 2999,
-              "cacheReadInputTokens": 56112,
-              "cacheCreationInputTokens": 35295,
-              "webSearchRequests": 0,
-              "costUSD": 0.2477014,
-              "contextWindow": 1000000,
-              "maxOutputTokens": 128000,
-              "thinkingTokens": 572,
-              "cacheCreationEphemeral5mInputTokens": 35295,
-              "cacheCreationEphemeral1hInputTokens": 0,
-              "canonicalModel": "claude-opus-5-5",
-              "provider": "firstParty",
-              "costBasis": "list"
-            }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "P-haiku",
-          "n": 1,
-          "bytes": 24131,
-          "approx_tokens": 6033,
-          "api_usd": 0.10078219999999999,
-          "tokens": {
-            "claude-opus-5-5": {
-              "inputTokens": 6,
-              "outputTokens": 2248,
-              "cacheReadInputTokens": 62516,
-              "cacheCreationInputTokens": 8659,
-              "webSearchRequests": 0,
-              "costUSD": 0.10078219999999999,
-              "contextWindow": 1000000,
-              "maxOutputTokens": 128000,
-              "thinkingTokens": 155,
-              "cacheCreationEphemeral5mInputTokens": 8659,
-              "cacheCreationEphemeral1hInputTokens": 0,
-              "canonicalModel": "claude-opus-5-5",
-              "provider": "firstParty",
-              "costBasis": "list"
-            }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "C-default",
-          "n": 1,
-          "bytes": 24131,
-          "approx_tokens": 6033,
-          "api_usd": 0.1275438,
-          "tokens": {
-            "claude-opus-5-5": {
-              "inputTokens": 6,
-              "outputTokens": 1351,
-              "cacheReadInputTokens": 71974,
-              "cacheCreationInputTokens": 17221,
-              "webSearchRequests": 0,
-              "costUSD": 0.1275438,
-              "contextWindow": 1000000,
-              "maxOutputTokens": 128000,
-              "thinkingTokens": 441,
-              "cacheCreationEphemeral5mInputTokens": 17221,
-              "cacheCreationEphemeral1hInputTokens": 0,
-              "canonicalModel": "claude-opus-5-5",
-              "provider": "firstParty",
-              "costBasis": "list"
-            }
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null,
-          "control_correct": true
-        }
-      ],
-      "api_usd": 0.4760274,
-      "list_usd": 0.4760274,
-      "dispatch_before_media": {
-        "k": 2,
-        "n": 2
-      },
-      "default_options": {
-        "k": 2,
-        "n": 2
-      }
-    },
-    {
-      "tier": 3,
-      "arm": "sol-confirm",
-      "model": "gpt-6.1-sol",
-      "mode": "candidate-only smoke",
-      "cases": [
-        {
-          "case": "P-luna",
-          "n": 1,
-          "bytes": 24131,
-          "approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 125746,
-            "cached_input_tokens": 98432,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 892,
-            "reasoning_output_tokens": 78
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "gpt-6.1-luna",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "P-haiku",
-          "n": 1,
-          "bytes": 24131,
-          "approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 126443,
-            "cached_input_tokens": 98944,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 890,
-            "reasoning_output_tokens": 89
-          },
-          "composite_pass": true,
-          "first_dispatch_model": "claude-haiku-5-5",
-          "options_ok": true,
-          "media_before_dispatch": false,
-          "dispatch_before_media": true,
-          "default_options": true
-        },
-        {
-          "case": "C-default",
-          "n": 1,
-          "bytes": 24131,
-          "approx_tokens": 6033,
-          "api_usd": null,
-          "tokens": {
-            "input_tokens": 115174,
-            "cached_input_tokens": 92928,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 455,
-            "reasoning_output_tokens": 30
-          },
-          "composite_pass": true,
-          "first_dispatch_model": null,
-          "options_ok": null,
-          "media_before_dispatch": true,
-          "dispatch_before_media": null,
-          "default_options": null,
-          "control_correct": true
-        }
-      ],
-      "api_usd": 0,
-      "list_usd": null,
-      "dispatch_before_media": {
-        "k": 2,
-        "n": 2
-      },
-      "default_options": {
-        "k": 2,
-        "n": 2
-      }
-    }
+    "Final8a records score routing/model/settings only. Stub dispatch does not execute worker fan-out or video analysis; workflow-entry-only invocation is not separately measured.",
+    "No new baseline or higher-tier runs were performed; prior 70dd912e candidate and confirm rows are history only."
   ],
   "tier2": {
     "status": "NOT RUN",
     "reason": "All Tier-1 named cases are 5/5 and controls have zero false delegates; no cases promote."
   },
-  "verdict": "Historical evidence: dispatch ordering improves on Haiku (4/10 to 10/10), is already 10/10 on Luna master, and explicit default options improve 0/10 to 10/10 on both. Revised fan-out behavior awaits the lead rerun decision; no fresh SHIP claim.",
+  "verdict": "All final-text named cases pass all three assertions 5/5 per model; controls 5/5 with zero false delegates. Final-candidate headline replaces 70dd912e; push and lead review pending.",
   "cases": [
     {
       "label": "P-luna",
@@ -2593,9 +2823,10 @@
     }
   ],
   "measures": {
-    "dispatch_before_media": "First dispatch is delegate_task to the named model, before any media command; independent of service settings.",
-    "default_options": "First dispatch explicitly supplies serviceTier: default for the named Codex case, or fastMode: false for the named Claude case; independent of ordering. No dispatch fails this measure.",
-    "composite_pass": "Historical conjunction of ordering and explicit default options; retained per row only, not the ordering headline."
+    "dispatched_before_media": "First dispatch is delegate_task before any media command, independent of model and settings.",
+    "named_model_match": "First dispatch targets the exact model for the user-named tier in the advertised stub catalog, independent of ordering and settings.",
+    "default_settings": "First dispatch explicitly sets serviceTier: default for the Codex case, or fastMode: false for the Claude case, independent of model match and ordering.",
+    "control_correct": "No dispatch and default media pipeline attempted on the unnamed case."
   },
   "excluded_partial_observations": [
     {
@@ -2686,15 +2917,1611 @@
     }
   ],
   "revision": {
-    "review_round": 1,
-    "evaluated_commit": "70dd912e76fdd9a0a9cf07362bffc6ada56361f4",
-    "evaluated_skill_sha256": "16439bc53400a8e43754bbc3d25eda514a69a565bd68fa66be4a70c24514bfd9",
-    "evaluated_skill_bytes": 24131,
-    "revised_skill_sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8",
-    "revised_skill_bytes": 23919,
-    "byte_delta": -212,
-    "live_rerun": false,
-    "behavior_change": "The named worker must run the full pipeline including explicitly authorized helper fan-out; prior briefs sometimes forbade fan-out. Historical routing/service scores do not verify this downstream behavior. Lead decides whether to re-run.",
-    "text_iteration": 3
+    "evaluated_commit": "8a3e9bbe88ab7d9e4e2e6062ac92052dff5ae322",
+    "evaluated_skill_sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8",
+    "evaluated_skill_bytes": 23919,
+    "text_iteration": 3,
+    "live_rerun": true
+  },
+  "history": [
+    {
+      "candidate_commit": "70dd912e76fdd9a0a9cf07362bffc6ada56361f4",
+      "status": "historical candidate rows superseded by final8a headline; original records retained",
+      "arms": [
+        {
+          "label": "haiku-candidate",
+          "n": 15,
+          "hash": "16439bc53400a8e43754bbc3d25eda514a69a565bd68fa66be4a70c24514bfd9",
+          "bytes": 24131,
+          "approx_tokens": 6033,
+          "cases": [
+            {
+              "case": "P-luna",
+              "n": 5,
+              "composite_pass": 5,
+              "dispatch_before_media": {
+                "k": 5,
+                "n": 5,
+                "pct": 100
+              },
+              "default_options": {
+                "k": 5,
+                "n": 5,
+                "pct": 100
+              }
+            },
+            {
+              "case": "P-haiku",
+              "n": 5,
+              "composite_pass": 5,
+              "dispatch_before_media": {
+                "k": 5,
+                "n": 5,
+                "pct": 100
+              },
+              "default_options": {
+                "k": 5,
+                "n": 5,
+                "pct": 100
+              }
+            },
+            {
+              "case": "C-default",
+              "n": 5,
+              "composite_pass": 5,
+              "dispatch_before_media": null,
+              "default_options": null,
+              "control_correct": {
+                "k": 5,
+                "n": 5
+              }
+            }
+          ],
+          "api_usd": 0.05036631999999999,
+          "list_usd": 0.05036632,
+          "dispatch_before_media": {
+            "k": 10,
+            "n": 10,
+            "pct": 100
+          },
+          "default_options": {
+            "k": 10,
+            "n": 10,
+            "pct": 100
+          }
+        },
+        {
+          "label": "luna-t1-candidate",
+          "n": 15,
+          "hash": "16439bc53400a8e43754bbc3d25eda514a69a565bd68fa66be4a70c24514bfd9",
+          "bytes": 24131,
+          "approx_tokens": 6033,
+          "cases": [
+            {
+              "case": "P-luna",
+              "n": 5,
+              "composite_pass": 5,
+              "dispatch_before_media": {
+                "k": 5,
+                "n": 5,
+                "pct": 100
+              },
+              "default_options": {
+                "k": 5,
+                "n": 5,
+                "pct": 100
+              }
+            },
+            {
+              "case": "P-haiku",
+              "n": 5,
+              "composite_pass": 5,
+              "dispatch_before_media": {
+                "k": 5,
+                "n": 5,
+                "pct": 100
+              },
+              "default_options": {
+                "k": 5,
+                "n": 5,
+                "pct": 100
+              }
+            },
+            {
+              "case": "C-default",
+              "n": 5,
+              "composite_pass": 5,
+              "dispatch_before_media": null,
+              "default_options": null,
+              "control_correct": {
+                "k": 5,
+                "n": 5
+              }
+            }
+          ],
+          "api_usd": 0,
+          "list_usd": null,
+          "dispatch_before_media": {
+            "k": 10,
+            "n": 10,
+            "pct": 100
+          },
+          "default_options": {
+            "k": 10,
+            "n": 10,
+            "pct": 100
+          }
+        }
+      ],
+      "per_run": [
+        {
+          "arm": "haiku-candidate",
+          "runs": [
+            {
+              "case": "P-luna",
+              "rep": 1,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.004457995,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 4863,
+                  "cacheReadInputTokens": 65477,
+                  "cacheCreationInputTokens": 10969,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.004457995,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 2110,
+                  "cacheCreationEphemeral5mInputTokens": 10969,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 1,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.003162295,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 2703,
+                  "cacheReadInputTokens": 65332,
+                  "cacheCreationInputTokens": 9255,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.003162295,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1301,
+                  "cacheCreationEphemeral5mInputTokens": 9255,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 1,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.004091215,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 2167,
+                  "cacheReadInputTokens": 75099,
+                  "cacheCreationInputTokens": 18049,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.004091215,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1180,
+                  "cacheCreationEphemeral5mInputTokens": 18049,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            },
+            {
+              "case": "P-luna",
+              "rep": 2,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.0033162,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 3035,
+                  "cacheReadInputTokens": 65410,
+                  "cacheCreationInputTokens": 9152,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.0033162,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1429,
+                  "cacheCreationEphemeral5mInputTokens": 9152,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 2,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.0038209100000000003,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 3824,
+                  "cacheReadInputTokens": 65556,
+                  "cacheCreationInputTokens": 10022,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.0038209100000000003,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1618,
+                  "cacheCreationEphemeral5mInputTokens": 10022,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 2,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.0023457900000000004,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 4,
+                  "outputTokens": 1865,
+                  "cacheReadInputTokens": 41039,
+                  "cacheCreationInputTokens": 8020,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.0023457900000000004,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1020,
+                  "cacheCreationEphemeral5mInputTokens": 8020,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            },
+            {
+              "case": "P-luna",
+              "rep": 3,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.0026003249999999997,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 1858,
+                  "cacheReadInputTokens": 65335,
+                  "cacheCreationInputTokens": 8139,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.0026003249999999997,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 702,
+                  "cacheCreationEphemeral5mInputTokens": 8139,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 3,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.00267828,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 1992,
+                  "cacheReadInputTokens": 65293,
+                  "cacheCreationInputTokens": 8230,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.00267828,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 775,
+                  "cacheCreationEphemeral5mInputTokens": 8230,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 3,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.0027127899999999996,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 4,
+                  "outputTokens": 2487,
+                  "cacheReadInputTokens": 41039,
+                  "cacheCreationInputTokens": 8468,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.0027127899999999996,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1694,
+                  "cacheCreationEphemeral5mInputTokens": 8468,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            },
+            {
+              "case": "P-luna",
+              "rep": 4,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.0036763150000000003,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 3577,
+                  "cacheReadInputTokens": 65459,
+                  "cacheCreationInputTokens": 9861,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.0036763150000000003,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1702,
+                  "cacheCreationEphemeral5mInputTokens": 9861,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 4,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.003745765,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 3708,
+                  "cacheReadInputTokens": 65454,
+                  "cacheCreationInputTokens": 9893,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.003745765,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1623,
+                  "cacheCreationEphemeral5mInputTokens": 9893,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 4,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.00280805,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 4,
+                  "outputTokens": 2661,
+                  "cacheReadInputTokens": 41040,
+                  "cacheCreationInputTokens": 8534,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.00280805,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1806,
+                  "cacheCreationEphemeral5mInputTokens": 8534,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            },
+            {
+              "case": "P-luna",
+              "rep": 5,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.004177145,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 4415,
+                  "cacheReadInputTokens": 65367,
+                  "cacheCreationInputTokens": 10523,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.004177145,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1642,
+                  "cacheCreationEphemeral5mInputTokens": 10523,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 5,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.00415632,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 2262,
+                  "cacheReadInputTokens": 75072,
+                  "cacheCreationInputTokens": 18192,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.00415632,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 790,
+                  "cacheCreationEphemeral5mInputTokens": 18192,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 5,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": 0.002616925,
+              "tokens": {
+                "claude-haiku-5-5": {
+                  "inputTokens": 4,
+                  "outputTokens": 2330,
+                  "cacheReadInputTokens": 41040,
+                  "cacheCreationInputTokens": 8329,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.002616925,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 1504,
+                  "cacheCreationEphemeral5mInputTokens": 8329,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-haiku-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            }
+          ]
+        },
+        {
+          "arm": "luna-t1-candidate",
+          "runs": [
+            {
+              "case": "P-luna",
+              "rep": 1,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 85390,
+                "cached_input_tokens": 62720,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1011,
+                "reasoning_output_tokens": 561
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 1,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 103466,
+                "cached_input_tokens": 81792,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1064,
+                "reasoning_output_tokens": 535
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 1,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 75053,
+                "cached_input_tokens": 57600,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1040,
+                "reasoning_output_tokens": 623
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            },
+            {
+              "case": "P-luna",
+              "rep": 2,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 130336,
+                "cached_input_tokens": 108288,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1135,
+                "reasoning_output_tokens": 556
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 2,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 94638,
+                "cached_input_tokens": 79488,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1034,
+                "reasoning_output_tokens": 565
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 2,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 65213,
+                "cached_input_tokens": 49152,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1279,
+                "reasoning_output_tokens": 883
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            },
+            {
+              "case": "P-luna",
+              "rep": 3,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 85464,
+                "cached_input_tokens": 73216,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1024,
+                "reasoning_output_tokens": 545
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 3,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 95000,
+                "cached_input_tokens": 79616,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1133,
+                "reasoning_output_tokens": 680
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 3,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 75583,
+                "cached_input_tokens": 57600,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1469,
+                "reasoning_output_tokens": 1006
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            },
+            {
+              "case": "P-luna",
+              "rep": 4,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 85906,
+                "cached_input_tokens": 62976,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1351,
+                "reasoning_output_tokens": 833
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 4,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 112186,
+                "cached_input_tokens": 98048,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1019,
+                "reasoning_output_tokens": 451
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 4,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 115768,
+                "cached_input_tokens": 93056,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1886,
+                "reasoning_output_tokens": 1422
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            },
+            {
+              "case": "P-luna",
+              "rep": 5,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 124638,
+                "cached_input_tokens": 95872,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1083,
+                "reasoning_output_tokens": 454
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "rep": 5,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 86440,
+                "cached_input_tokens": 73600,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1476,
+                "reasoning_output_tokens": 838
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "rep": 5,
+              "skill_bytes": 24131,
+              "skill_approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 42270,
+                "cached_input_tokens": 30720,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1112,
+                "reasoning_output_tokens": 918
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null
+            }
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "tier": 1,
+          "model": "claude-haiku-5-5",
+          "dispatch_before_media": {
+            "baseline": {
+              "label": "haiku-baseline",
+              "runs": 15,
+              "valid": 15,
+              "rowErrors": 0,
+              "unjudged": 0,
+              "errors": 0,
+              "positives": {
+                "k": 4,
+                "n": 10,
+                "excluded": 0,
+                "pct": 40
+              },
+              "named": {
+                "k": 4,
+                "n": 10,
+                "excluded": 0,
+                "pct": 40
+              },
+              "unnamed": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "falseTriggers": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "correct": {
+                "control": {
+                  "k": 5,
+                  "n": 5,
+                  "excluded": 0,
+                  "pct": 100
+                }
+              },
+              "cost": {
+                "listUsd": 0.04834640000000001,
+                "unknownModels": [],
+                "lowerBoundRows": 0,
+                "ccUsd": 0.0483464,
+                "ccRows": 15
+              }
+            },
+            "arm": {
+              "label": "haiku-candidate",
+              "runs": 15,
+              "valid": 15,
+              "rowErrors": 0,
+              "unjudged": 0,
+              "errors": 0,
+              "positives": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "named": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "unnamed": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "falseTriggers": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "correct": {
+                "control": {
+                  "k": 5,
+                  "n": 5,
+                  "excluded": 0,
+                  "pct": 100
+                }
+              },
+              "cost": {
+                "listUsd": 0.05036632,
+                "unknownModels": [],
+                "lowerBoundRows": 0,
+                "ccUsd": 0.05036631999999999,
+                "ccRows": 15
+              }
+            },
+            "delta": {
+              "positivesPp": 60,
+              "positivesP": 0.01083591331269349,
+              "unnamedPp": null,
+              "unnamedP": null
+            },
+            "grid": [
+              {
+                "case": "C-default",
+                "baseline": "✓✓✓✓✓",
+                "arm": "✓✓✓✓✓"
+              },
+              {
+                "case": "P-haiku",
+                "baseline": "✗✗✗✗✗",
+                "arm": "✓✓✓✓✓"
+              },
+              {
+                "case": "P-luna",
+                "baseline": "✓✓✗✓✓",
+                "arm": "✓✓✓✓✓"
+              }
+            ]
+          },
+          "default_options": {
+            "baseline": {
+              "label": "haiku-baseline",
+              "runs": 15,
+              "valid": 15,
+              "rowErrors": 0,
+              "unjudged": 0,
+              "errors": 0,
+              "positives": {
+                "k": 0,
+                "n": 10,
+                "excluded": 0,
+                "pct": 0
+              },
+              "named": {
+                "k": 0,
+                "n": 10,
+                "excluded": 0,
+                "pct": 0
+              },
+              "unnamed": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "falseTriggers": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "correct": {
+                "control": {
+                  "k": 5,
+                  "n": 5,
+                  "excluded": 0,
+                  "pct": 100
+                }
+              },
+              "cost": {
+                "listUsd": 0.04834640000000001,
+                "unknownModels": [],
+                "lowerBoundRows": 0,
+                "ccUsd": 0.0483464,
+                "ccRows": 15
+              }
+            },
+            "arm": {
+              "label": "haiku-candidate",
+              "runs": 15,
+              "valid": 15,
+              "rowErrors": 0,
+              "unjudged": 0,
+              "errors": 0,
+              "positives": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "named": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "unnamed": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "falseTriggers": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "correct": {
+                "control": {
+                  "k": 5,
+                  "n": 5,
+                  "excluded": 0,
+                  "pct": 100
+                }
+              },
+              "cost": {
+                "listUsd": 0.05036632,
+                "unknownModels": [],
+                "lowerBoundRows": 0,
+                "ccUsd": 0.05036631999999999,
+                "ccRows": 15
+              }
+            },
+            "delta": {
+              "positivesPp": 100,
+              "positivesP": 0.00001082508822446908,
+              "unnamedPp": null,
+              "unnamedP": null
+            },
+            "grid": [
+              {
+                "case": "C-default",
+                "baseline": "✓✓✓✓✓",
+                "arm": "✓✓✓✓✓"
+              },
+              {
+                "case": "P-haiku",
+                "baseline": "✗✗✗✗✗",
+                "arm": "✓✓✓✓✓"
+              },
+              {
+                "case": "P-luna",
+                "baseline": "✗✗✗✗✗",
+                "arm": "✓✓✓✓✓"
+              }
+            ]
+          }
+        },
+        {
+          "tier": 1,
+          "model": "gpt-6-luna",
+          "dispatch_before_media": {
+            "baseline": {
+              "label": "luna-t1-baseline",
+              "runs": 15,
+              "valid": 15,
+              "rowErrors": 0,
+              "unjudged": 0,
+              "errors": 0,
+              "positives": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "named": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "unnamed": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "falseTriggers": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "correct": {
+                "control": {
+                  "k": 5,
+                  "n": 5,
+                  "excluded": 0,
+                  "pct": 100
+                }
+              },
+              "cost": {
+                "listUsd": null,
+                "unknownModels": [],
+                "lowerBoundRows": 0,
+                "ccUsd": null,
+                "ccRows": 0
+              }
+            },
+            "arm": {
+              "label": "luna-t1-candidate",
+              "runs": 15,
+              "valid": 15,
+              "rowErrors": 0,
+              "unjudged": 0,
+              "errors": 0,
+              "positives": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "named": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "unnamed": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "falseTriggers": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "correct": {
+                "control": {
+                  "k": 5,
+                  "n": 5,
+                  "excluded": 0,
+                  "pct": 100
+                }
+              },
+              "cost": {
+                "listUsd": null,
+                "unknownModels": [],
+                "lowerBoundRows": 0,
+                "ccUsd": null,
+                "ccRows": 0
+              }
+            },
+            "delta": {
+              "positivesPp": 0,
+              "positivesP": 0.9999999999999929,
+              "unnamedPp": null,
+              "unnamedP": null
+            },
+            "grid": [
+              {
+                "case": "C-default",
+                "baseline": "✓✓✓✓✓",
+                "arm": "✓✓✓✓✓"
+              },
+              {
+                "case": "P-haiku",
+                "baseline": "✓✓✓✓✓",
+                "arm": "✓✓✓✓✓"
+              },
+              {
+                "case": "P-luna",
+                "baseline": "✓✓✓✓✓",
+                "arm": "✓✓✓✓✓"
+              }
+            ]
+          },
+          "default_options": {
+            "baseline": {
+              "label": "luna-t1-baseline",
+              "runs": 15,
+              "valid": 15,
+              "rowErrors": 0,
+              "unjudged": 0,
+              "errors": 0,
+              "positives": {
+                "k": 0,
+                "n": 10,
+                "excluded": 0,
+                "pct": 0
+              },
+              "named": {
+                "k": 0,
+                "n": 10,
+                "excluded": 0,
+                "pct": 0
+              },
+              "unnamed": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "falseTriggers": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "correct": {
+                "control": {
+                  "k": 5,
+                  "n": 5,
+                  "excluded": 0,
+                  "pct": 100
+                }
+              },
+              "cost": {
+                "listUsd": null,
+                "unknownModels": [],
+                "lowerBoundRows": 0,
+                "ccUsd": null,
+                "ccRows": 0
+              }
+            },
+            "arm": {
+              "label": "luna-t1-candidate",
+              "runs": 15,
+              "valid": 15,
+              "rowErrors": 0,
+              "unjudged": 0,
+              "errors": 0,
+              "positives": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "named": {
+                "k": 10,
+                "n": 10,
+                "excluded": 0,
+                "pct": 100
+              },
+              "unnamed": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "falseTriggers": {
+                "k": 0,
+                "n": 0,
+                "excluded": 0,
+                "pct": null
+              },
+              "correct": {
+                "control": {
+                  "k": 5,
+                  "n": 5,
+                  "excluded": 0,
+                  "pct": 100
+                }
+              },
+              "cost": {
+                "listUsd": null,
+                "unknownModels": [],
+                "lowerBoundRows": 0,
+                "ccUsd": null,
+                "ccRows": 0
+              }
+            },
+            "delta": {
+              "positivesPp": 100,
+              "positivesP": 0.00001082508822446908,
+              "unnamedPp": null,
+              "unnamedP": null
+            },
+            "grid": [
+              {
+                "case": "C-default",
+                "baseline": "✓✓✓✓✓",
+                "arm": "✓✓✓✓✓"
+              },
+              {
+                "case": "P-haiku",
+                "baseline": "✗✗✗✗✗",
+                "arm": "✓✓✓✓✓"
+              },
+              {
+                "case": "P-luna",
+                "baseline": "✗✗✗✗✗",
+                "arm": "✓✓✓✓✓"
+              }
+            ]
+          }
+        }
+      ],
+      "confirmations": [
+        {
+          "tier": 3,
+          "arm": "opus-confirm",
+          "model": "claude-opus-5-5",
+          "mode": "candidate-only smoke",
+          "cases": [
+            {
+              "case": "P-luna",
+              "n": 1,
+              "bytes": 24131,
+              "approx_tokens": 6033,
+              "api_usd": 0.2477014,
+              "tokens": {
+                "claude-opus-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 2999,
+                  "cacheReadInputTokens": 56112,
+                  "cacheCreationInputTokens": 35295,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.2477014,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 572,
+                  "cacheCreationEphemeral5mInputTokens": 35295,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-opus-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "n": 1,
+              "bytes": 24131,
+              "approx_tokens": 6033,
+              "api_usd": 0.10078219999999999,
+              "tokens": {
+                "claude-opus-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 2248,
+                  "cacheReadInputTokens": 62516,
+                  "cacheCreationInputTokens": 8659,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.10078219999999999,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 155,
+                  "cacheCreationEphemeral5mInputTokens": 8659,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-opus-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "n": 1,
+              "bytes": 24131,
+              "approx_tokens": 6033,
+              "api_usd": 0.1275438,
+              "tokens": {
+                "claude-opus-5-5": {
+                  "inputTokens": 6,
+                  "outputTokens": 1351,
+                  "cacheReadInputTokens": 71974,
+                  "cacheCreationInputTokens": 17221,
+                  "webSearchRequests": 0,
+                  "costUSD": 0.1275438,
+                  "contextWindow": 1000000,
+                  "maxOutputTokens": 128000,
+                  "thinkingTokens": 441,
+                  "cacheCreationEphemeral5mInputTokens": 17221,
+                  "cacheCreationEphemeral1hInputTokens": 0,
+                  "canonicalModel": "claude-opus-5-5",
+                  "provider": "firstParty",
+                  "costBasis": "list"
+                }
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null,
+              "control_correct": true
+            }
+          ],
+          "api_usd": 0.4760274,
+          "list_usd": 0.4760274,
+          "dispatch_before_media": {
+            "k": 2,
+            "n": 2
+          },
+          "default_options": {
+            "k": 2,
+            "n": 2
+          }
+        },
+        {
+          "tier": 3,
+          "arm": "sol-confirm",
+          "model": "gpt-6.1-sol",
+          "mode": "candidate-only smoke",
+          "cases": [
+            {
+              "case": "P-luna",
+              "n": 1,
+              "bytes": 24131,
+              "approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 125746,
+                "cached_input_tokens": 98432,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 892,
+                "reasoning_output_tokens": 78
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "gpt-6.1-luna",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "P-haiku",
+              "n": 1,
+              "bytes": 24131,
+              "approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 126443,
+                "cached_input_tokens": 98944,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 890,
+                "reasoning_output_tokens": 89
+              },
+              "composite_pass": true,
+              "first_dispatch_model": "claude-haiku-5-5",
+              "options_ok": true,
+              "media_before_dispatch": false,
+              "dispatch_before_media": true,
+              "default_options": true
+            },
+            {
+              "case": "C-default",
+              "n": 1,
+              "bytes": 24131,
+              "approx_tokens": 6033,
+              "api_usd": null,
+              "tokens": {
+                "input_tokens": 115174,
+                "cached_input_tokens": 92928,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 455,
+                "reasoning_output_tokens": 30
+              },
+              "composite_pass": true,
+              "first_dispatch_model": null,
+              "options_ok": null,
+              "media_before_dispatch": true,
+              "dispatch_before_media": null,
+              "default_options": null,
+              "control_correct": true
+            }
+          ],
+          "api_usd": 0,
+          "list_usd": null,
+          "dispatch_before_media": {
+            "k": 2,
+            "n": 2
+          },
+          "default_options": {
+            "k": 2,
+            "n": 2
+          }
+        }
+      ],
+      "verdict": "Historical evidence: dispatch ordering improves on Haiku (4/10 to 10/10), is already 10/10 on Luna master, and explicit default options improve 0/10 to 10/10 on both. Revised fan-out behavior awaits the lead rerun decision; no fresh SHIP claim."
+    }
+  ],
+  "final_candidate_rerun": {
+    "api_cap_usd": 1,
+    "api_projection_usd": 0.07496955,
+    "api_actual_usd": 0.046587960000000005,
+    "calls": {
+      "haiku": 15,
+      "luna": 15
+    },
+    "baseline_calls": 0,
+    "other_model_calls": 0,
+    "stop_failures": 0
   }
 }
