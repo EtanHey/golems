@@ -29,14 +29,27 @@ def hook_command(home):
     return None
 
 
+OUTPUT_LIMIT = 4096
+
+
+def diagnostics(run, started):
+    detail = dict(rc=run.returncode, wall_ms=round((time.monotonic() - started) * 1000, 3))
+    for stream in ('stdout', 'stderr'):
+        raw = getattr(run, stream).encode('utf-8')
+        detail[stream] = raw[:OUTPUT_LIMIT].decode('utf-8', errors='ignore')
+        detail[stream + '_truncated'] = len(raw) > OUTPUT_LIMIT
+    return detail
+
+
 def feed(hook, command, cwd, session):
     payload = json.dumps(dict(tool_name='Bash', tool_input=dict(command=command), cwd=cwd,
                               session_id=session, hook_event_name='PreToolUse'))
+    started = time.monotonic()
     run = subprocess.run(['sh', '-c', hook], input=payload, capture_output=True, text=True, timeout=60)
     out = run.stdout + run.stderr
     # Any other exit (a hook crash) is ALLOW: Claude Code treats a non-blocking hook error as allow.
     denied = run.returncode == 2 or '"deny"' in out or '"block"' in out
-    return 'DENY' if denied else 'ALLOW', f'rc={run.returncode} ' + out.replace('\n', ' ')[:160]
+    return 'DENY' if denied else 'ALLOW', f'rc={run.returncode} ' + out.replace('\n', ' ')[:160], diagnostics(run, started)
 
 
 def main():
@@ -51,24 +64,40 @@ def main():
     lease = f'git push --force-with-lease=refs/heads/{args.branch}:{args.sha} origin HEAD:refs/heads/{args.branch}'
     master = f'git push --force-with-lease=refs/heads/master:{args.sha} origin HEAD:refs/heads/master'
     steps = {}
+    details = {}
+
+    def record(key, result):
+        verdict, summary, detail = result
+        steps[key] = (verdict, summary)
+        details[key] = detail
+
     hook = hook_command(home)
     if hook is None:
         # An unregistered gate (e.g. a refused, unpinned tree) guards nothing: every deny fails.
         steps['hook'] = 'human-confirm not registered in settings.json'
-        print(json.dumps(dict(ok=False, steps=steps)))
+        print('human-confirm first failing step hook: ' + steps['hook'], file=sys.stderr)
+        print(json.dumps(dict(ok=False, steps=steps, details=details, first_failure='hook')))
         return 1
-    steps['A_no_token'] = feed(hook, lease, args.repo, session)
+    record('A_no_token', feed(hook, lease, args.repo, session))
     # Exec the issuer the way a lead does (its own shebang), so its side effects are real.
+    started = time.monotonic()
     issued = subprocess.run([args.issuer, args.repo, '--ref', f'refs/heads/{args.branch}', '--sha', args.sha,
                              '--session', session], capture_output=True, text=True, timeout=60)
     steps['B_issue'] = ('OK' if issued.returncode == 0 else 'REFUSED',
                         f'rc={issued.returncode} ' + (issued.stdout + issued.stderr).replace('\n', ' ')[:160])
-    steps['C_token'] = feed(hook, lease, args.repo, session)
-    steps['D_replay'] = feed(hook, lease, args.repo, session)
-    steps['E_master'] = feed(hook, master, args.repo, session)
+    details['B_issue'] = diagnostics(issued, started)
+    record('C_token', feed(hook, lease, args.repo, session))
+    record('D_replay', feed(hook, lease, args.repo, session))
+    record('E_master', feed(hook, master, args.repo, session))
     expected = dict(A_no_token='DENY', B_issue='OK', C_token='ALLOW', D_replay='DENY', E_master='DENY')
     ok = all(steps[key][0] == want for key, want in expected.items())
-    print(json.dumps(dict(ok=ok, steps=steps)))
+    first_failure = next((key for key, want in expected.items() if steps[key][0] != want), None)
+    if first_failure:
+        detail = details[first_failure]
+        # JSON escaping keeps even multiline hook reasons on one receipt-log line.
+        print(f'human-confirm first failing step {first_failure}: '
+              + json.dumps(detail), file=sys.stderr)
+    print(json.dumps(dict(ok=ok, steps=steps, details=details, first_failure=first_failure)))
     return 0 if ok else 1
 
 
