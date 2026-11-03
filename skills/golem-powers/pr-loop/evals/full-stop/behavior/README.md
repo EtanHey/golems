@@ -9,8 +9,8 @@ and state, never the agent's claimed endpoint or English prose.
 GitHub configuration, and a closed MCP server. The caller supplies a newly
 owned cell and an output directory outside it. Bash accepts literal fixture
 commands only; Read is confined to the staged catalog. No native shell or
-write tool is offered. The handoff tool records the current PR evidence,
-without accepting a user-supplied readiness verdict.
+write tool is offered. The handoff tool records current PR evidence and the literal task status.
+Readiness checks derive from operations and state, never a claimed ready status.
 
 The server appends an operation log outside the cell. Its tool API cannot
 edit that log or read the server configuration. These are closed simulations,
