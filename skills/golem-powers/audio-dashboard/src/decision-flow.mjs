@@ -1,3 +1,4 @@
+import { ANSWER_RUNTIME, dashboardId } from './answer-persistence.mjs';
 import { COPY_BLOCK_ASSETS, renderCardBody } from './copy-blocks.mjs';
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -247,6 +248,7 @@ function renderController(decisions) {
       </div>
       <span class="df-progress" aria-hidden="true"><i id="df-progress-fill"></i></span>
       <div class="df-chips">${chips}</div>
+      <p class="df-storage-state" id="df-storage-state" data-answer-status aria-live="polite"></p>
     </nav>`;
 }
 
@@ -425,7 +427,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
   </article>`;
 }
 
-export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, decisions, storageKey, cinemaUrl, comparisonTimeoutMs = DEFAULT_COMPARISON_TIMEOUT_MS }) {
+export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, decisions, id, dashboardId: accountId, storageKey, cinemaUrl, comparisonTimeoutMs = DEFAULT_COMPARISON_TIMEOUT_MS }) {
   if (!Array.isArray(scenes) || scenes.length === 0) throw new Error("decision-flow: scenes must be non-empty");
   if (!Array.isArray(decisions) || decisions.length === 0) throw new Error("decision-flow: decisions must be non-empty");
   assertSceneOwnership(decisions, scenes);
@@ -447,9 +449,10 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{TITLE}}", escapeHtml(title || "Decision flow")],
     ["{{KICKER}}", escapeHtml(kicker || "Decision flow")],
     ["{{HEADING}}", escapeHtml(heading || title || "Decisions")],
-    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers save only for this dashboard on this device.</p></details>`],
+    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers are kept separately for each dashboard.</p></details>`],
     ["{{DECISION_COUNT}}", decisions.length],
     ["{{SCENE_COUNT}}", scenes.length],
+    ["{{DASHBOARD_ID}}", escapeHtml(dashboardId(accountId || id, storageKey || "dbx:decision-flow"))],
     ["{{STORAGE_KEY}}", escapeHtml(storageKey || "dbx:decision-flow")],
     ["{{MODE_SWITCH}}", safeModeUrl ? `<p class="df-mode-label">Audio decision dashboard · <a class="df-cinema-link" href="${escapeHtml(safeModeUrl)}">Open Cinema listening mode</a></p>` : `<p class="df-mode-label">Audio decision dashboard</p>`],
     ["{{STYLES}}", styles],
@@ -458,7 +461,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{COMPARE_DIALOG}}", decisions.some((decision) => decision.comparison !== undefined) ? COMPARE_DIALOG : ""],
     ["{{INDEX}}", renderIndex(decisions)],
     ["{{TPDATA}}", safeJson(tpdata)],
-    ["{{SCRIPT}}", script],
+    ["{{SCRIPT}}", ANSWER_RUNTIME + "\n" + script],
     ["{{COPY_BLOCK_ASSETS}}", COPY_BLOCK_ASSETS],
   ]);
   return shell.replace(/\{\{[A-Z_]+\}\}/g, token => String(values.get(token) ?? token));

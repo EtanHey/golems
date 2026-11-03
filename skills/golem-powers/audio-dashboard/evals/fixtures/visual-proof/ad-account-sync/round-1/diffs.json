@@ -1,0 +1,38 @@
+[
+  {
+    "name": "decision-flow-1280-diff.png",
+    "before": "../decision-flow-1280-dark-after.png",
+    "changedPixels": 1462,
+    "totalPixels": 1152000
+  },
+  {
+    "name": "decision-flow-story-1280-diff.png",
+    "before": "../decision-flow-story-1280-dark-after.png",
+    "changedPixels": 1333,
+    "totalPixels": 1152000
+  },
+  {
+    "name": "decision-flow-390-diff.png",
+    "before": "../decision-flow-390-dark-after.png",
+    "changedPixels": 1462,
+    "totalPixels": 351000
+  },
+  {
+    "name": "decision-flow-story-390-diff.png",
+    "before": "../decision-flow-story-390-dark-after.png",
+    "changedPixels": 1333,
+    "totalPixels": 351000
+  },
+  {
+    "name": "cinema-1280-diff.png",
+    "before": "../cinema-1280-dark-after.png",
+    "changedPixels": 3748,
+    "totalPixels": 1152000
+  },
+  {
+    "name": "cinema-390-diff.png",
+    "before": "../cinema-390-dark-after.png",
+    "changedPixels": 39559,
+    "totalPixels": 351000
+  }
+]

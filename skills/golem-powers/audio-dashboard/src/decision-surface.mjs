@@ -1,9 +1,10 @@
+import { ANSWER_ASSETS, dashboardId } from './answer-persistence.mjs';
 import { COPY_BLOCK_ASSETS, renderCardBody } from './copy-blocks.mjs';
 /**
  * Skill-local decision/answer-box surface for audio dashboards.
  *
  * The round-trip is intentionally self-contained: radio picks and free text are
- * persisted to localStorage, and the Copy answers button exports paste-ready
+ * saved through the account answer store, and Copy answers exports paste-ready
  * markdown so answers are never trapped in browser storage.
  */
 
@@ -81,7 +82,7 @@ export function renderDecisionSurface(decisions, opts = {}) {
   assertDecisions(decisions);
   const storageKey = normalizeStorageKey(opts.storageKey, opts.title);
   const title = opts.title || "Your answers";
-  const lede = opts.lede || "Pick an option or write your own. Everything saves locally as you go.";
+  const lede = opts.lede || "Pick an option or write your own.";
   const answerSink = opts.answerSink || "";
 
   const cards = decisions.map((decision) => {
@@ -121,25 +122,29 @@ export function renderDecisionSurface(decisions, opts = {}) {
     .dbx-actions{display:flex;gap:10px;align-items:center;margin:4px 0 2px}
     .dbx-btn{font-size:12px;font-weight:700;color:#dbe6f2;background:#0e2036;border:1px solid #2e4a68;border-radius:8px;padding:6px 13px;cursor:pointer}
     .dbx-btn:hover{border-color:#5ab0ff}
-    .dbx-saved{font-size:12px;color:#3fae72;opacity:0;transition:opacity .2s}
-    .dbx-saved.on{opacity:1}
+    .dbx-saved.is-error{color:#ffb454}
+    .dbx-saved{display:block;font-size:12px;color:#8aa0b8;letter-spacing:normal;text-transform:none}
   </style>
-  <p class="dbx-head">${escapeHtml(title)} <span class="dbx-saved" id="dbx-saved" aria-live="polite">saved</span></p>
+  <p class="dbx-head">${escapeHtml(title)} <span class="dbx-saved" id="dbx-saved" data-answer-status aria-live="polite">Loading answers…</span></p>
   <p class="dbx-lede">${escapeHtml(lede)}</p>
   ${cards}
   <div class="dbx-actions"><button type="button" class="dbx-btn" id="dbx-copy">Copy answers</button></div>
 </section>
 ${COPY_BLOCK_ASSETS}
-<script>
+${ANSWER_ASSETS}
+<script data-answer-consumer="decisions">
 (function(){
   var box=document.getElementById("decision-boxes");
   if(!box) return;
   var KEY=box.getAttribute("data-storage-key")||"dbx:decisions";
   var saved=document.getElementById("dbx-saved");
-  function flash(){ if(!saved)return; saved.classList.add("on"); clearTimeout(flash._t); flash._t=setTimeout(function(){saved.classList.remove("on");},900); }
-  var store={};
-  try{ store=JSON.parse(localStorage.getItem(KEY)||"{}"); }catch(e){ store={}; }
-  function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(store)); flash(); }catch(e){} }
+  var persistence=document.defaultView.AudioDashboardAnswers({key:KEY,
+    status:function(text,error){saved.textContent=text;saved.classList.toggle("is-error",error);},
+    change:function(field,value){if(value==null)delete store[field];else store[field]=value;restoreAnswers();}
+  });
+  var store=persistence.values;
+  function persist(){return persistence.save(store);}
+  function restoreAnswers(){box.querySelectorAll('input[type="radio"]').forEach(function(input){input.checked=store[input.name]===input.value;syncRadioGroup(input.name);});box.querySelectorAll(".dbx-free").forEach(function(area){area.value=store[area.dataset.note]||"";area.classList.toggle("has-text",!!area.value);});}
   function syncRadioGroup(name){
     box.querySelectorAll('input[type="radio"]').forEach(function(input){
       if(input.name===name){
@@ -227,7 +232,11 @@ ${DECISION_MARK_CLOSE}`;
 
 export function injectDecisionSurfaceIntoHtml(html, decisions, opts = {}) {
   const block = renderDecisionSurface(decisions, opts);
-  const withoutExisting = String(html).replace(markerRegex(), "");
+  let withoutExisting = String(html).replace(markerRegex(), "");
+  if (!/<meta\s+name=["']dashboard-id["']/i.test(withoutExisting)) {
+    const id = dashboardId(opts.dashboardId || opts.id, normalizeStorageKey(opts.storageKey, opts.title));
+    withoutExisting = withoutExisting.replace(/<head\b[^>]*>/i, head => `${head}\n<meta name="dashboard-id" content="${escapeHtml(id)}">`);
+  }
   if (!/<\/body>/i.test(withoutExisting)) {
     throw new Error("decision-surface: no </body> in HTML - cannot inject");
   }
