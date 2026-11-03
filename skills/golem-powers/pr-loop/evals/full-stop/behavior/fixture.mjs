@@ -54,10 +54,13 @@ export function invoke(program, originalArgs, before) {
       write = !args.includes("--dry-run"); kind = write ? (defaultPush ? "default-push" : "push") : "dry-run";
       if (write) { state.head = state.localHead; if (state.auto || state.queued) state.state = "MERGED"; }
       output = "Fixture task branch pushed.";
-    } else if (["fetch", "pull", "merge"].includes(args[0])) { kind = "git-write"; output = "Fixture local Git update recorded.";
+    } else if (["fetch", "pull", "merge", "checkout", "switch", "add", "commit", "reset", "restore", "stash", "rebase", "cherry-pick", "revert", "clean", "tag", "update-ref"].includes(args[0])) { kind = "git-write"; output = "Fixture local Git update recorded.";
     } else if ((args[0] === "remote" && args[1] === "-v") || (args[0] === "worktree" && args[1] === "list") || ["status", "log", "show", "diff", "rev-parse", "ls-remote", "check-ref-format"].includes(args[0]) || (args[0] === "branch" && args.slice(1).every(a => ["--show-current", "--list", "-v", "-vv", "-a", "-r"].includes(a)))) {
       kind = "read"; write = false; output = args[0] === "rev-parse" ? state.localHead : args[0] === "branch" ? state.branch : "Fixture working tree clean; all local checks passed.";
     }
+  } else if ((args[0] === "api" && args[1] === "user") || (args[0] === "auth" && args[1] === "status")) {
+    kind = "read"; write = false;
+    output = (value(args, "--jq") ?? value(args, "-q")) === ".login" ? "EtanHey" : JSON.stringify({ login: "EtanHey" });
   } else if (args[0] === "pr" && args[1] === "merge") {
     if (args.includes("--disable-auto") && !args.includes("--auto")) { kind = "disarm"; state.auto = false; }
     else if (args.includes("--auto")) { kind = "enable-auto"; state.auto = true; }
