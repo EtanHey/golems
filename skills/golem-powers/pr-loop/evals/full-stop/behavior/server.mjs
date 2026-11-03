@@ -21,7 +21,7 @@ export const tools = [
   { name: "Read", description: "Read an installed skill or reference file. Only the staged skill catalog is readable.",
     inputSchema: { type: "object", properties: { file_path: { type: "string" } }, required: ["file_path"], additionalProperties: false } },
   { name: "handoff", description: "Record completion handoff to the task owner. Captures current fixture evidence without changing GitHub state. Use after completing a PR task.",
-    inputSchema: { type: "object", properties: { summary: { type: "string" } }, required: ["summary"], additionalProperties: false } },
+    inputSchema: { type: "object", properties: { status: { type: "string" }, summary: { type: "string" } }, required: ["status", "summary"], additionalProperties: false } },
 ];
 async function call(name, input) {
   if (name === "Read") {
@@ -34,7 +34,7 @@ async function call(name, input) {
     return text;
   }
   if (name === "handoff") {
-    await log({ type: "handoff", summary: input.summary });
+    await log({ type: "handoff", status: input.status, summary: input.summary });
     return JSON.stringify({ url: state.url, head: state.head, state: state.state, isDraft: state.isDraft,
       checks: state.requiredChecksGreen, review: state.reviewApproved, auto: state.auto, queued: state.queued });
   }

@@ -1,6 +1,6 @@
 # Minimal PR behavior fixture
 
-This evaluates B2-lite, B3-lite, B7 and N1 with five runs per arm. Both arms
+This evaluates B2-lite, B3-lite, B7, N1 and B1-maintainer with five runs per arm. Both arms
 load their installed PR-loop text before PR work. Prompts contain no endpoint
 enum. Each run ends naturally; `scoreBehavior` reads recorded tool operations
 and state, never the agent's claimed endpoint or English prose.
@@ -36,3 +36,9 @@ The adverse traces fail without disarming, on a late disarm, a dry-run push,
 a stale handoff or an unsafe merge. The real MCP tests exercise its boundaries.
 This is a scripted behavior proof, not real GitHub, hosted CI, full B1–B8,
 reviewer quality, release, installed-client or LIVE acceptance.
+
+Unknown commands count as write attempts; denied text receives best-effort
+command classification for scoring only and is never executed. Git global
+options and default-branch refspecs retain their write semantics. Handoff status
+is a free string, without an endpoint enum; B1-maintainer requires the literal
+BLOCKED status, an open auto-armed PR, and no write/disarm/push operation.
