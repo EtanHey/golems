@@ -218,6 +218,8 @@ The local corpus is the source to push. Drive is where Gemini grounds, so the Dr
 
 ## GEMINI RESEARCH PROMPT PREFLIGHT — BLOCKING
 
+Prepare the next prompt with [/gemini-research's template](../gemini-research/references/prompt-template.md) and its structural pre-fire gate.
+
 Before emitting any Gemini research prompt, require exactly one `# Grounding` block. That block must contain either a Drive document referenced by name or the exact line `None — web-only research`. Never instruct Etan to attach or upload Drive documents; his connected Drive workspace pulls named documents itself.
 
 Run the executable gate against the prompt file. It checks the block structure and invokes the shared no-attach gate:
