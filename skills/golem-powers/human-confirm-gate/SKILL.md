@@ -8,7 +8,7 @@ A chat turn, send_to, sender stamp, or model assertion is never approval.
 The Claude PreToolUse hook classifies shell commands with `_shared/shell_parse`.
 Simple literal assignments resolve command/argument words (including #500);
 unresolved protected executable scope and xargs Git/GH/shell executors deny.
-It blocks force/lease pushes, positive-force refspecs, remote deletes, mirror/prune,
+It blocks force/lease pushes (except own-branch leases below), positive-force refspecs, remote deletes, mirror/prune,
 filter-repo/filter-branch/replace (conservatively even local rewrites), replacement
 ref pushes, every `gh repo edit` plus repo delete/archive/unarchive/rename/
 forced-sync and deploy-key add/delete, `gh secret|variable set/delete`,
@@ -253,6 +253,20 @@ reuse. A valid human token permits its entire scoped command. A `.spent` nonce
 is atomically created before capability deletion; keep tombstones permanently.
 Even a restored token is denied. Failed execution still consumes approval: get
 a fresh token for retries. Concurrent callers cannot consume the same nonce.
+
+## Own-branch leases
+
+Etan (2026-11-04): "it's a 2 way door… it always is reversible, and it's my fork…
+confusing why the agent says it needs my help to do force with lease".
+A single literal `git [-C <repo>] push --force-with-lease=refs/heads/<branch>:<full-sha>
+<remote> <source>:refs/heads/<branch>` needs no token when all three hold:
+- The existing narrow parser identifies exactly one plain lease.
+- The named remote's fetch and push URLs resolve to the same EtanHey GitHub repository;
+  other remotes are fine, but redirects elsewhere and additional push modes deny.
+- GitHub metadata confirms the branch is neither default nor protected, and its name is
+  not main/master/develop/trunk/gh-pages/release* (case-insensitive).
+Metadata failure or ambiguity denies. Everything else still needs a token.
+The gate has no non-fatal write-result channel, so this exception writes no audit log.
 
 ## Lead tokens
 
