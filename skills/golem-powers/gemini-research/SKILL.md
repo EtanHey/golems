@@ -17,8 +17,8 @@ Done condition: no research prompt leaves this skill until ONE of these is true:
 - **Project-grounded** (the default): a `/research-lifecycle` preparation receipt is
   back, naming the grounding docs.
 - **Web-only** (only when the user says the question needs no project state): the
-  prompt's `# Grounding` block reads `None — web-only research (no project state:
-  <the user's reason>)`. That line replaces the receipt.
+  prompt's `# Grounding` block has the exact line `None — web-only research`
+  and a separate `Reason: <the user's reason>` line. These replace the receipt.
 
 1. Right after loading this skill, dispatch ONE sub-agent. Do not search Drive, grep
    or draft the prompt yourself first. Its brief says: "Run `/research-lifecycle`
@@ -27,7 +27,7 @@ Done condition: no research prompt leaves this skill until ONE of these is true:
    Pick its execution profile per `/agent-routing` § Execution capability (Drive
    write + shell); a read-only gatherer may only report staleness.
 2. Web-only branch: when the user says the question needs no project state, skip
-   step 1, write the `None — web-only research (no project state: <reason>)` line,
+   step 1, write the exact web-only line and separate reason,
    and go straight to the emit gate below. The Drive-grounding and START/EDIT gates
    still apply.
 3. Project-grounded: draft the prompt from the receipt's doc names. While
@@ -72,33 +72,12 @@ Keep the existing grounding and prompt-author START/EDIT gates below.
 - **gemini.google.com** → one-shot broad web research, won't revisit, want the plan-review step, want to edit the research plan before it runs
 - **NotebookLM** → persistent notebook, curated sources, repeat queries, generate artifacts (audio overview, slides, quizzes, etc.)
 
-**Prompt template for gemini.google.com Deep Research:**
-```
-# Research goal
-<one-sentence what you need to learn>
+**Prompt template (Gemini and NotebookLM):** Fill [references/prompt-template.md](references/prompt-template.md): named verified-findings + struck-claims grounding, owner asks verbatim, evidence against, documented / observed / claimed labels, sourced measurements and two independent bias checks. Web-only research uses the template's explicit N/A branch. Do not emit an unfilled template.
 
-# Grounding (Drive workspace — CONNECTED; REQUIRED block)
-Ground this research in the following docs from my Google Drive — pull them
-yourself via the connected Drive workspace; do NOT ask me to attach anything:
-- "<Exact Google Doc name 1>"
-- "<Exact Google Doc name 2>"
-<If no Drive doc applies, write "None — web-only research" so the omission is
-deliberate, not an oversight. Never replace this block with an attach/upload ask.>
+Before emitting or firing, run the structural pre-fire gate (also enforced by `drive-sync.sh` before notebook creation). Exit nonzero means rewrite and rerun; a pass proves required sections and review records exist, not that their claims are true:
 
-# Scope
-<what TO include — specific domains, timeframes, primary vs secondary sources>
-
-# Anti-scope
-<what NOT to include — common tangents, outdated info, marketing content>
-
-# Evaluation criteria
-<how I'll judge the findings — what makes a good source, what's disqualifying>
-
-# Prior art I already have
-<optional: what BrainLayer / local context already says so the research doesn't re-cover it>
-
-# Desired output
-<structure: executive summary, N findings, confidence level, sources, etc.>
+```bash
+node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs /path/to/R{NN}-prompt.md
 ```
 
 ### 🔒 EMIT-GATE — Drive-Workspace compliance (BLOCKING — run before emitting ANY prompt)
@@ -203,7 +182,7 @@ Drive is the source of truth. NotebookLM consumes the same Drive project that `/
    - add each file into the notebook
    - for raw markdown/text files, download from Drive then upload as file sources
 
-5. Run Drive-backed research:
+5. Run the prompt-preflight.mjs gate above, then Drive-backed research:
    research_start(query=<prompt from Drive/prompts/>, source="drive", notebook_id=<id>)
    - if the tool/UI returns a research PLAN before execution, return that PLAN
      to the prompt author and wait for `START` / `EDIT` before firing

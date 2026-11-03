@@ -27,6 +27,17 @@ make_fixture() {
   "operations": []
 }
 EOF
+  python3 - "$path" "$ROOT_DIR/references/prompt-template.md" <<'PY'
+import json, pathlib, re, sys
+template = pathlib.Path(sys.argv[2]).read_text()
+prompt = template.split('For explicitly authorized web-only research,')[0]
+prompt += '# Owner asks (verbatim)' + template.split('# Owner asks (verbatim)', 1)[1]
+prompt = prompt.replace('<reviewer-one>', 'reader-a').replace('<reviewer-two>', 'reader-b')
+prompt = re.sub(r'<[^>]+>', 'Example', prompt).replace('- [ ]', '- [x]')
+p = pathlib.Path(sys.argv[1]); fixture = json.loads(p.read_text())
+fixture['prompts'][0]['content'] = prompt
+p.write_text(json.dumps(fixture))
+PY
 }
 
 run_new_project_case() {
@@ -226,6 +237,31 @@ PY
   rm -rf "$fixture_home"
 }
 
+run_prompt_failure_case() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+  make_fixture "$tmp_dir/fixture.json"
+  python3 - "$tmp_dir/fixture.json" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); data = json.loads(p.read_text())
+data['prompts'][0]['content'] = '# Grounding\n- "Overview"\n'
+p.write_text(json.dumps(data))
+PY
+  if GEMINI_DRIVE_SYNC_FIXTURE="$tmp_dir/fixture.json" GEMINI_RESEARCH_STATE_FILE="$tmp_dir/state.json" \
+    "$SCRIPT" --project example --prompt R82-memory.md >"$tmp_dir/out" 2>"$tmp_dir/err"; then
+    fail "missing practices reached research"
+  fi
+  python3 - "$tmp_dir/fixture.json" "$tmp_dir/err" <<'PY'
+import json, pathlib, sys
+ops = json.loads(pathlib.Path(sys.argv[1]).read_text())['operations']
+assert [op['op'] for op in ops] == ['verify-account'], ops
+assert 'prompt preflight failed' in pathlib.Path(sys.argv[2]).read_text()
+PY
+  rm -rf "$tmp_dir"
+}
+
+node --test "$ROOT_DIR/scripts/__tests__/prompt-preflight.test.mjs"
+run_prompt_failure_case
 run_shared_helper_paths_case
 run_live_mode_requires_profile_case
 run_live_mode_account_case
