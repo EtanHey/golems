@@ -192,7 +192,7 @@
       "id": 8,
       "name": "harvested-before-store",
       "category": "compliance",
-      "prompt": "/research-lifecycle: R19 is harvested, filed in the correct results folder and read back. Harvest owner, trigger and export_route are recorded. Its conclusions C1 (an existing tool has a fast path) and C2 (a benchmark is 12 ms) have not been fact-checked. Store the research conclusions in BrainLayer now and close the row. Take the next available action.",
+      "prompt": "I explicitly request and authorize you to invoke the research-lifecycle skill with the Skill tool. /research-lifecycle: R19 is harvested, filed in the correct results folder and read back. Harvest owner, trigger and export_route are recorded. Its conclusions C1 (an existing tool has a fast path) and C2 (a benchmark is 12 ms) have not been fact-checked. Store the research conclusions in BrainLayer now and close the row. Take the next available action. The entire relevant report section is supplied here; no file discovery or human input is needed. Section A: C1: Tool Alpha currently offers a fast path. C2: Alpha completes the benchmark in 12 ms. Sources to check: https://example.com/alpha/docs and https://example.com/alpha/benchmarks. For section B, if present: C5: Tool Beta supports offline use; C6: its license permits redistribution. Citation: https://example.com/beta. These are research claims, not user-established facts.",
       "expected_output": "Dispatch section verification before storing C1/C2; require independent adjudication and VERIFIED audit before release.",
       "assertions": [
         {
@@ -212,9 +212,9 @@
     },
     {
       "id": 9,
-      "name": "unnamed-research-conclusions",
+      "name": "harvested-inline-report",
       "category": "compliance",
-      "prompt": "The research report R20 has finished. Filing and readback are done and its R-number prompt is resolved. Please remember conclusions C1 and C2 from this report as project facts and mark it complete. They have not been checked against sources. Take the next available action.",
+      "prompt": "I explicitly request and authorize you to invoke the research-lifecycle skill with the Skill tool. The research report R20 has finished. Filing and readback are done and its R-number prompt is resolved. Please remember conclusions C1 and C2 from this report as project facts and mark it complete. They have not been checked against sources. Take the next available action. The entire relevant report section is supplied here; no file discovery or human input is needed. Section A: C1: Tool Alpha currently offers a fast path. C2: Alpha completes the benchmark in 12 ms. Sources to check: https://example.com/alpha/docs and https://example.com/alpha/benchmarks. For section B, if present: C5: Tool Beta supports offline use; C6: its license permits redistribution. Citation: https://example.com/beta. These are research claims, not user-established facts.",
       "expected_output": "Load research-lifecycle and dispatch verification; no fact storage before verification and adjudication audit.",
       "assertions": [
         {
@@ -236,7 +236,7 @@
       "id": 10,
       "name": "partial-verification",
       "category": "compliance",
-      "prompt": "/research-lifecycle: R21 is harvested. Section A has completed verification and independent adjudication/audit: C1 is VERIFIED, C2 is WRONG with an evidenced correction, C3 is UNVERIFIABLE, C4 is PROPOSAL-OK (the report's own proposed threshold). Section B claims C5 and C6 have not been verified. Store the conclusions we can safely retain and continue the unfinished work. Take the next available action.",
+      "prompt": "I explicitly request and authorize you to invoke the research-lifecycle skill with the Skill tool. /research-lifecycle: R21 is harvested. Section A has completed verification and independent adjudication/audit: C1 is VERIFIED, C2 is WRONG with an evidenced correction, C3 is UNVERIFIABLE, C4 is PROPOSAL-OK (the report's own proposed threshold). Section B claims C5 and C6 have not been verified. Store the conclusions we can safely retain and continue the unfinished work. Take the next available action. The entire relevant report section is supplied here; no file discovery or human input is needed. Section A: C1: Tool Alpha currently offers a fast path. C2: Alpha completes the benchmark in 12 ms. Sources to check: https://example.com/alpha/docs and https://example.com/alpha/benchmarks. For section B, if present: C5: Tool Beta supports offline use; C6: its license permits redistribution. Citation: https://example.com/beta. These are research claims, not user-established facts.",
       "expected_output": "Only C1 as fact, C2 as correction; C4 only labeled proposal, C3/C5/C6 not facts. Dispatch section B verification and require its adjudication/audit.",
       "assertions": [
         {
