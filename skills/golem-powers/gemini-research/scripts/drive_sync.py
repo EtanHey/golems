@@ -443,15 +443,18 @@ def main() -> int:
         verify_account(fixture)
         state = load_state()
         folders, context_files, prompt, prompt_content = load_project_assets(args.project, args.prompt, fixture)
-        preflight = subprocess.run(
-            ["node", str(SCRIPT_DIR / "prompt-preflight.mjs"), "-"],
-            input=prompt_content, capture_output=True, text=True, check=False,
-        )
+        try:
+            preflight = subprocess.run(
+                ["node", str(SCRIPT_DIR / "prompt-preflight.mjs"), "--emit", "-"],
+                input=prompt_content, capture_output=True, text=True, check=False,
+            )
+        except FileNotFoundError as exc:
+            raise GeminiDriveSyncError("prompt preflight needs node") from exc
         if preflight.returncode != 0:
             raise GeminiDriveSyncError("prompt preflight failed: " + (preflight.stdout or preflight.stderr).strip())
         notebook_id = ensure_notebook(args.project, state, fixture)
         add_context_sources(notebook_id, context_files, fixture)
-        task_id = run_research(notebook_id, prompt_content, fixture)
+        task_id = run_research(notebook_id, preflight.stdout, fixture)
         result_number = parse_result_number(prompt["name"])
         result_name = f"R{result_number}-gemini-result.md"
         summary = query_summary(notebook_id, prompt["name"], fixture)

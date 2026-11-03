@@ -72,13 +72,18 @@ Keep the existing grounding and prompt-author START/EDIT gates below.
 - **gemini.google.com** → one-shot broad web research, won't revisit, want the plan-review step, want to edit the research plan before it runs
 - **NotebookLM** → persistent notebook, curated sources, repeat queries, generate artifacts (audio overview, slides, quizzes, etc.)
 
-**Prompt template (Gemini and NotebookLM):** Fill [references/prompt-template.md](references/prompt-template.md): named verified-findings + struck-claims grounding, owner asks verbatim, evidence against, documented / observed / claimed labels, sourced measurements and two independent bias checks. Web-only research uses the template's explicit N/A branch. Do not emit an unfilled template.
+**Prompt template (Gemini and NotebookLM):** Fill [references/prompt-template.md](references/prompt-template.md): named verified-findings + struck-claims grounding, owner asks verbatim, evidence against, DOCUMENTED / OBSERVED / CLAIMED / PROPOSED / TARGET labels, sourced measurements and two independent bias checks. Web-only research uses the template's explicit N/A branch. Do not emit an unfilled template.
 
-Before emitting or firing, run the structural pre-fire gate (also enforced by `drive-sync.sh` before notebook creation). Exit nonzero means rewrite and rerun; a pass proves required sections and review records exist, not that their claims are true:
+Before emitting or firing, validate the author record and produce the researcher text (also enforced by `drive-sync.sh` before notebook creation). Exit nonzero means rewrite and rerun; a pass proves sections contain the required instruction terms and review records, not that their claims are true. Free-text sections need a phrase, not a single token:
 
 ```bash
-node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs /path/to/R{NN}-prompt.md
+node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --emit /path/to/R{NN}-prompt.md > /path/to/R{NN}-research.md
 ```
+
+Keep the author record locally. Paste/send only the emitted `-research.md` text
+to Gemini/NotebookLM, including `research_start` queries; it excludes the entire
+author-only `# Pre-fire checks` section. Do not send reviewer identities or prep
+instructions. The wrapper accepts the author record and strips prep itself.
 
 ### 🔒 EMIT-GATE — Drive-Workspace compliance (BLOCKING — run before emitting ANY prompt)
 
@@ -183,7 +188,7 @@ Drive is the source of truth. NotebookLM consumes the same Drive project that `/
    - for raw markdown/text files, download from Drive then upload as file sources
 
 5. Run the prompt-preflight.mjs gate above, then Drive-backed research:
-   research_start(query=<prompt from Drive/prompts/>, source="drive", notebook_id=<id>)
+   research_start(query=<emitted researcher text, without pre-fire checks>, source="drive", notebook_id=<id>)
    - if the tool/UI returns a research PLAN before execution, return that PLAN
      to the prompt author and wait for `START` / `EDIT` before firing
    research_status(notebook_id, task_id=<task>, max_wait=60)

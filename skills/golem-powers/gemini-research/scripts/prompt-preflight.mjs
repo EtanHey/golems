@@ -8,11 +8,12 @@ export const requiredSections = [
   'Evidence labels', 'Sources and numbers', 'Desired output', 'Pre-fire checks',
 ];
 
-// This checks the template's schema, never the truth of English claims or reviews.
-export function evaluatePrompt(text) {
+function parsePrompt(text) {
   const sections = new Map();
+  const lines = text.split(/\r?\n/);
+  let prepStart, prepEnd;
   let current, fence, comment = false;
-  for (const line of text.split(/\r?\n/)) {
+  for (const [index, line] of lines.entries()) {
     if (comment) { if (line.includes('-->')) comment = false; continue; }
     if (line.trimStart().startsWith('<!--')) {
       comment = !line.includes('-->'); continue;
@@ -26,19 +27,45 @@ export function evaluatePrompt(text) {
     if (fence) continue;
     const header = line.match(/^ {0,3}#\s+(.+?)\s*#*\s*$/);
     if (header) {
+      if (current === 'Pre-fire checks') prepEnd = index;
       current = header[1].replace(/^Grounding\s+\(.+\)$/, 'Grounding');
+      if (current === 'Pre-fire checks') prepStart = index;
       if (!sections.has(current)) sections.set(current, []);
       sections.get(current).push([]);
     } else if (current) sections.get(current).at(-1).push(line);
   }
+  return { sections, lines, prepStart, prepEnd: prepEnd ?? lines.length };
+}
+
+export function researcherPrompt(text) {
+  const { lines, prepStart, prepEnd } = parsePrompt(text);
+  return lines.filter((_, index) => prepStart === undefined || index < prepStart || index >= prepEnd).join('\n').trim() + '\n';
+}
+
+// Check required instruction terms, never the truth of English claims or reviews.
+export function evaluatePrompt(text) {
+  const { sections } = parsePrompt(text);
   const body = name => (sections.get(name)?.[0] || []).join('\n').trim();
   const failures = [];
-  const placeholder = value => /<[^>]+>|\b(?:TODO|TBD)\b/.test(value);
+  const placeholder = value => /(?<![\w>])<[A-Za-z][^<>\n]*>|\b(?:TODO|TBD)\b/.test(value);
   for (const name of requiredSections) {
-    if (sections.get(name)?.length !== 1 || !body(name) || placeholder(body(name))) {
-      failures.push(`SECTION: ${name} (one nonempty section, no placeholders)`);
+    if (sections.get(name)?.length !== 1 || body(name).split(/\s+/).length < 2 || placeholder(body(name))) {
+      failures.push(`SECTION: ${name} (one section with a phrase, no placeholders)`);
     }
   }
+  const requiredWords = {
+    'Evidence against': ['against'],
+    'Evidence labels': ['DOCUMENTED', 'OBSERVED', 'CLAIMED', 'PROPOSED'],
+    'Sources and numbers': ['primary', 'hardware', 'dataset', 'method', 'units', 'TARGET', 'Recompute'],
+    'Desired output': ['DOCUMENTED', 'OBSERVED', 'CLAIMED', 'PROPOSED', 'TARGET'],
+    'Pre-fire checks': ['independent', 'findings', 'resolved'],
+  };
+  for (const [name, words] of Object.entries(requiredWords)) {
+    for (const word of words) {
+      if (!new RegExp(`\\b${word}\\b`, 'i').test(body(name))) failures.push(`CONTENT: ${name} requires ${word}`);
+    }
+  }
+  if (!/"[^"\r\n]+"|“[^”\r\n]+”/.test(body('Owner asks (verbatim)'))) failures.push('OWNER_QUOTE: include an exact quoted ask');
   const grounding = body('Grounding');
   const webOnly = grounding.split('\n').includes('None — web-only research');
   if (grounding.split('\n').filter(line => line.startsWith('Verified findings + struck claims:')).length !== 1
@@ -52,7 +79,7 @@ export function evaluatePrompt(text) {
   const reviewers = [];
   for (const number of [1, 2]) {
     const matches = [...body('Pre-fire checks').matchAll(new RegExp(
-      `^- \\[x\\] Bias check ${number} \\(([^()\\n]+)\\): (.+)$`, 'gm'))];
+      `^- \\[[xX]\\] Bias check ${number} \\(([^()\\n]+)\\): (.+)$`, 'gm'))];
     if (matches.length !== 1 || !matches[0][1].trim() || !matches[0][2].trim()) {
       failures.push(`BIAS_CHECK_${number}: completed row with reviewer, findings and disposition`);
     } else reviewers.push(matches[0][1].trim().toLowerCase());
@@ -70,9 +97,14 @@ export function evaluatePrompt(text) {
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    if (process.argv.length !== 3) throw new Error('usage: prompt-preflight.mjs <prompt.md | ->');
-    const result = evaluatePrompt(readFileSync(process.argv[2] === '-' ? 0 : process.argv[2], 'utf8'));
-    console.log(JSON.stringify(result, null, 2));
+    const args = process.argv.slice(2);
+    const emit = args[0] === '--emit';
+    if (emit) args.shift();
+    if (args.length !== 1) throw new Error('usage: prompt-preflight.mjs [--emit] <prompt.md | ->');
+    const text = readFileSync(args[0] === '-' ? 0 : args[0], 'utf8');
+    const result = evaluatePrompt(text);
+    if (emit && result.pass) process.stdout.write(researcherPrompt(text));
+    else (emit ? console.error : console.log)(JSON.stringify(result, null, 2));
     process.exitCode = result.pass ? 0 : 1;
   } catch (error) { console.error(error.message); process.exitCode = 2; }
 }

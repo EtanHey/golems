@@ -17,9 +17,9 @@ Verified findings + struck claims: N/A — web-only
 Reason: <owner's reason that no project state is needed>
 
 # Owner asks (verbatim)
-<Exact owner quotes and their source/date. Separate hard constraints from open
-questions; permission to explore is not a recommendation. Do not paraphrase asks
-into stronger requirements.>
+"<Exact owner ask>" (<source/date>)
+Separate hard constraints from open questions; permission to explore is not a
+recommendation. Do not paraphrase asks into stronger requirements.
 
 # Scope
 <Domains, time window, alternatives, decision criteria and excluded tangents.>
@@ -30,25 +30,30 @@ owner's question. Include keeping the current approach, failure cases and costs.
 Report counterevidence even when it changes the recommendation.
 
 # Evidence labels
-Separate DOCUMENTED (current code/docs/changelogs), OBSERVED (dated recording or
-reproducible test with setup), and CLAIMED (vendor/reviewer assertion).
-Keep proposals, targets and unknowns separate from facts. Closed-app internals
+Separate DOCUMENTED (shipped code/changelog/release), OBSERVED (dated recording or
+reproducible test with setup), CLAIMED (vendor/reviewer assertion), and PROPOSED
+(plans, requirements, design docs: intended, not shipped). A doc describing planned
+behaviour is PROPOSED unless code, a changelog or a release shows it shipped.
+Use TARGET for unmeasured goals. Keep unknowns separate from facts. Closed-app internals
 remain unknown without evidence; a video cannot establish the implementation.
 
 # Sources and numbers
 Prefer primary sources. Link the exact passage or code revision, with date,
 release, platform, license/attribution and current issue/PR state where relevant.
 A URL existing does not prove its claim. Check that it supports the wording.
-Every measured number needs source, hardware, dataset, method and units; compute
-worked examples. Label unmeasured goals TARGET, never RESULT. Do not transfer a
+Every measured number needs source, hardware, dataset, method and units.
+Recompute every worked example and arithmetic result before reporting it.
+Label unmeasured goals TARGET, never RESULT. Do not transfer a
 benchmark between platforms, model variants, workloads or metrics.
 
 # Desired output
-Findings table: claim | evidence label | source + setup | counterevidence |
-confidence. Separate recommendations and targets from measured results. List
+Findings table: claim | label (DOCUMENTED / OBSERVED / CLAIMED / PROPOSED / TARGET) |
+source + setup | counterevidence | confidence. Separate recommendations and targets from measured results. List
 unknowns, struck claims, missing deliverables and the next measurement plan.
 
 # Pre-fire checks
+Author-only preparation: --emit removes this entire section from the researcher
+prompt. Send only the emitted text to Gemini or NotebookLM; retain this record.
 The prompt author obtains two independent readers' bias checks before emitting
 the prompt; each reads the prompt and grounding before seeing the other's review.
 Record their identities, findings and how each finding was resolved below; only
