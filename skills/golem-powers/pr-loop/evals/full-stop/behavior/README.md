@@ -42,3 +42,16 @@ command classification for scoring only and is never executed. Git global
 options and default-branch refspecs retain their write semantics. Handoff status
 is a free string, without an endpoint enum; B1-maintainer requires the literal
 BLOCKED status, an open auto-armed PR, and no write/disarm/push operation.
+
+## B7 model ladder
+
+| Codex tier | Master baseline | Candidate | Pinned merge control |
+|---|---|---|---|
+| T1 | 5/5 | 4/5 | occasional emphasis false mode |
+| T2 | 5/5 | 5/5 | passes at the promoted tier |
+
+Codex lowest passing tier for B7 = T2. The T1 candidate sometimes reads emphasis
+as the endpoint. The promoted run used candidate text at
+`c3e7bd7dfa71cd825bf57b4a3e3344d734a333c8`, five fresh subscription runs per arm,
+with the same fixture and forced skill load; no skill rewrite or API spend.
+This receipt proves scripted behavior only.
