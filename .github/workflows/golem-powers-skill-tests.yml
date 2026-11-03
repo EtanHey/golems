@@ -224,7 +224,8 @@ jobs:
                    ./scripts/cc/cc-statusline.test.ts \
                    ./scripts/cc/cc-axiom-reporter.test.ts \
                    ./skills/golem-powers/never-fabricate/scripts/__tests__ \
-                   ./skills/golem-powers/drive-filing/scripts
+                   ./skills/golem-powers/drive-filing/scripts \
+                   ./skills/golem-powers/skill-creator/evals/eval-provenance.test.mjs
 
       - name: Check canon routing SSOT
         run: |
@@ -271,7 +272,8 @@ jobs:
                       scripts/tests/stalker-model-roles.test.mjs \
                       scripts/tests/stalker-human-digest.test.mjs \
                       scripts/tests/stalker-digest-curation.test.mjs \
-                      scripts/tests/check-telegram-retirement.test.mjs
+                      scripts/tests/check-telegram-retirement.test.mjs \
+                      skills/golem-powers/agent-routing/scripts/launch-guard.test.mjs
 
       - name: shell suites
         run: |
@@ -321,6 +323,12 @@ jobs:
 
       - name: Run golem-powers Python skill suites
         run: scripts/ci/run-skill-tests.sh
+
+      - name: Install JEV test certificate dependency
+        run: python -m pip install certifi
+
+      - name: JEV Python package tests
+        run: python -m pytest packages/shared/src/__tests__/test_jev.py -q
 
       - name: Preserve split comments and their locations
         run: python scripts/ci/check-split-comments.py
