@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-10-19",
+  "updated": "2026-11-03",
   "swap_rule": "A model change = bench it with the skill-creator harness, then edit ONE line here. No skill/agent file names a role-owned model directly (drift lint).",
   "roles": {
     "claude.judgment": {
@@ -50,6 +50,29 @@
       "launcher_tier": "flash-high",
       "use_for": "frames, screenshots, OCR, video state changes, /qa-video",
       "evidence": "2026-09-30 visual re-bench: 44/44 vs Pro-High 43/44 + fabricated timing"
+    },
+    "claude.research.verifier": {
+      "model": "claude-haiku-5-5",
+      "alias": "haiku",
+      "use_for": "fixed-list research section fact checking with mandatory adjudication and VERIFIED audit",
+      "evidence": "2026-11-03 P1 research-verify measurement and RV-tiebreak; lead w5 decision",
+      "never_for": "final research fact release without adjudication/audit"
+    },
+    "codex.research.verifier": {
+      "model": "gpt-6-luna",
+      "use_for": "parameter-selected research section verification with adjudication/audit",
+      "evidence": "2026-11-03 P1 research-verify measurement; lead w5 allowed alternative",
+      "never_for": "final research fact release without adjudication/audit"
+    },
+    "codex.research.adjudicator": {
+      "model": "gpt-6.1-sol",
+      "use_for": "research flag adjudication, VERIFIED audit and decision-critical unresolved claims under the pairing policy",
+      "evidence": "2026-11-03 RV-tiebreak and lead w5 amendment: default adjudicator"
+    },
+    "codex.research.coordinator": {
+      "model": "gpt-6.1-terra",
+      "use_for": "whole-batch research intake, lifecycle filing and verifier/adjudicator coordination",
+      "evidence": "2026-11-03 lead w5 amendment: one mid-tier Codex coordinator owns intake"
     }
   }
 }
