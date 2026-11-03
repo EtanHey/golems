@@ -1,3 +1,5 @@
+import { ANSWER_RUNTIME, dashboardId } from './answer-persistence.mjs';
+import { COPY_BLOCK_ASSETS, renderCardBody } from './copy-blocks.mjs';
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,10 +25,6 @@ function safeJson(value) {
     .replaceAll("<", "\\u003c")
     .replaceAll("\u2028", "\\u2028")
     .replaceAll("\u2029", "\\u2029");
-}
-
-function replaceToken(html, token, value) {
-  return html.replaceAll(token, () => String(value));
 }
 
 function safeCinemaUrl(value) {
@@ -100,7 +98,8 @@ const COLOUR_CONTEXT = /\b(?:colou?rs?|background(?:-colou?r)?|fill|stroke|borde
 
 function referenceTokens(text) {
   const source = String(text ?? "");
-  const prose = source.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
+  const prose = source.replace(/^```[^\n`]*\n[\s\S]*?\n```[ \t]*(?=\n|$)/gm, span => " ".repeat(span.length))
+    .replace(/`[^`\n]*`/g, span => " ".repeat(span.length));
   return [...prose.matchAll(BARE_REFERENCE)].filter((match) => !COLOUR_CONTEXT.test(prose.slice(0, match.index)));
 }
 const GITHUB_REFERENCE = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/(pull|issues)\/(\d+)(?:[/?#]|$)/;
@@ -169,11 +168,6 @@ export function findBareReferences(decisions = []) {
     }
   }
   return found;
-}
-
-function renderParagraphs(text) {
-  return String(text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean)
-    .map((line) => `<p>${escapeHtml(line)}</p>`).join("");
 }
 
 function sentenceCase(value) {
@@ -254,6 +248,7 @@ function renderController(decisions) {
       </div>
       <span class="df-progress" aria-hidden="true"><i id="df-progress-fill"></i></span>
       <div class="df-chips">${chips}</div>
+      <p class="df-storage-state" id="df-storage-state" data-answer-status aria-live="polite"></p>
     </nav>`;
 }
 
@@ -419,7 +414,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
     <div class="df-sheet" id="sheet-${escapeHtml(decision.id)}">
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
-    <div class="df-question">${renderParagraphs(decision.body)}</div>
+    <div class="df-question">${renderCardBody(decision.body)}</div>
     ${renderRail(decision.rail)}
     <div class="df-answer">
       ${renderChecklist(decision)}
@@ -432,7 +427,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
   </article>`;
 }
 
-export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, decisions, storageKey, cinemaUrl, comparisonTimeoutMs = DEFAULT_COMPARISON_TIMEOUT_MS }) {
+export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, decisions, id, dashboardId: accountId, storageKey, cinemaUrl, comparisonTimeoutMs = DEFAULT_COMPARISON_TIMEOUT_MS }) {
   if (!Array.isArray(scenes) || scenes.length === 0) throw new Error("decision-flow: scenes must be non-empty");
   if (!Array.isArray(decisions) || decisions.length === 0) throw new Error("decision-flow: decisions must be non-empty");
   assertSceneOwnership(decisions, scenes);
@@ -450,13 +445,14 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
   const cards = decisions.map((decision, index) => renderCard(decision, index, sceneById, timeoutMs)).join("\n");
   const safeModeUrl = safeCinemaUrl(cinemaUrl);
 
-  return [
+  const values = new Map([
     ["{{TITLE}}", escapeHtml(title || "Decision flow")],
     ["{{KICKER}}", escapeHtml(kicker || "Decision flow")],
     ["{{HEADING}}", escapeHtml(heading || title || "Decisions")],
-    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers save only for this dashboard on this device.</p></details>`],
+    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers are kept separately for each dashboard.</p></details>`],
     ["{{DECISION_COUNT}}", decisions.length],
     ["{{SCENE_COUNT}}", scenes.length],
+    ["{{DASHBOARD_ID}}", escapeHtml(dashboardId(accountId || id, storageKey || "dbx:decision-flow"))],
     ["{{STORAGE_KEY}}", escapeHtml(storageKey || "dbx:decision-flow")],
     ["{{MODE_SWITCH}}", safeModeUrl ? `<p class="df-mode-label">Audio decision dashboard · <a class="df-cinema-link" href="${escapeHtml(safeModeUrl)}">Open Cinema listening mode</a></p>` : `<p class="df-mode-label">Audio decision dashboard</p>`],
     ["{{STYLES}}", styles],
@@ -465,6 +461,8 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{COMPARE_DIALOG}}", decisions.some((decision) => decision.comparison !== undefined) ? COMPARE_DIALOG : ""],
     ["{{INDEX}}", renderIndex(decisions)],
     ["{{TPDATA}}", safeJson(tpdata)],
-    ["{{SCRIPT}}", script],
-  ].reduce((html, [token, value]) => replaceToken(html, token, value), shell);
+    ["{{SCRIPT}}", ANSWER_RUNTIME + "\n" + script],
+    ["{{COPY_BLOCK_ASSETS}}", COPY_BLOCK_ASSETS],
+  ]);
+  return shell.replace(/\{\{[A-Z_]+\}\}/g, token => String(values.get(token) ?? token));
 }

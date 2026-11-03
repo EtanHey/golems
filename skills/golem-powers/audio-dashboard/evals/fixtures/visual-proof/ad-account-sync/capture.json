@@ -1,0 +1,105 @@
+{
+  "base": "e74ac6ab6e5b0d546eaef85df604d8237fc6549b",
+  "receipts": [
+    {
+      "name": "decision-flow-1280-light-before.png",
+      "htmlSha256": "673cedf920664058a3c340e0de19be4ff054e58e2783d3f807076475d8fc8cd0",
+      "status": []
+    },
+    {
+      "name": "decision-flow-1280-dark-before.png",
+      "htmlSha256": "673cedf920664058a3c340e0de19be4ff054e58e2783d3f807076475d8fc8cd0",
+      "status": []
+    },
+    {
+      "name": "decision-flow-390-light-before.png",
+      "htmlSha256": "673cedf920664058a3c340e0de19be4ff054e58e2783d3f807076475d8fc8cd0",
+      "status": []
+    },
+    {
+      "name": "decision-flow-390-dark-before.png",
+      "htmlSha256": "673cedf920664058a3c340e0de19be4ff054e58e2783d3f807076475d8fc8cd0",
+      "status": []
+    },
+    {
+      "name": "cinema-1280-light-before.png",
+      "htmlSha256": "63dcdb48c5b7c3022536bb94c4accca3aed208743a1854321c505a4eef6e73cc",
+      "status": []
+    },
+    {
+      "name": "cinema-1280-dark-before.png",
+      "htmlSha256": "63dcdb48c5b7c3022536bb94c4accca3aed208743a1854321c505a4eef6e73cc",
+      "status": []
+    },
+    {
+      "name": "cinema-390-light-before.png",
+      "htmlSha256": "63dcdb48c5b7c3022536bb94c4accca3aed208743a1854321c505a4eef6e73cc",
+      "status": []
+    },
+    {
+      "name": "cinema-390-dark-before.png",
+      "htmlSha256": "63dcdb48c5b7c3022536bb94c4accca3aed208743a1854321c505a4eef6e73cc",
+      "status": []
+    },
+    {
+      "name": "decision-flow-1280-light-after.png",
+      "htmlSha256": "e0e65a4ec31e7260655443da7cee7779c69ce820999a3db603fe7a1107394a11",
+      "status": [
+        "Answers saved on this device only."
+      ]
+    },
+    {
+      "name": "decision-flow-1280-dark-after.png",
+      "htmlSha256": "e0e65a4ec31e7260655443da7cee7779c69ce820999a3db603fe7a1107394a11",
+      "status": [
+        "Answers saved on this device only."
+      ]
+    },
+    {
+      "name": "decision-flow-390-light-after.png",
+      "htmlSha256": "e0e65a4ec31e7260655443da7cee7779c69ce820999a3db603fe7a1107394a11",
+      "status": [
+        "Answers saved on this device only."
+      ]
+    },
+    {
+      "name": "decision-flow-390-dark-after.png",
+      "htmlSha256": "e0e65a4ec31e7260655443da7cee7779c69ce820999a3db603fe7a1107394a11",
+      "status": [
+        "Answers saved on this device only."
+      ]
+    },
+    {
+      "name": "cinema-1280-light-after.png",
+      "htmlSha256": "8340009da0a6a6613552f52269b77f6a850eed92f394ef9ea061575b609556e9",
+      "status": [
+        "Answers saved on this device only.",
+        "Answers saved on this device only."
+      ]
+    },
+    {
+      "name": "cinema-1280-dark-after.png",
+      "htmlSha256": "8340009da0a6a6613552f52269b77f6a850eed92f394ef9ea061575b609556e9",
+      "status": [
+        "Answers saved on this device only.",
+        "Answers saved on this device only."
+      ]
+    },
+    {
+      "name": "cinema-390-light-after.png",
+      "htmlSha256": "8340009da0a6a6613552f52269b77f6a850eed92f394ef9ea061575b609556e9",
+      "status": [
+        "Answers saved on this device only.",
+        "Answers saved on this device only."
+      ]
+    },
+    {
+      "name": "cinema-390-dark-after.png",
+      "htmlSha256": "8340009da0a6a6613552f52269b77f6a850eed92f394ef9ea061575b609556e9",
+      "status": [
+        "Answers saved on this device only.",
+        "Answers saved on this device only."
+      ]
+    }
+  ]
+}

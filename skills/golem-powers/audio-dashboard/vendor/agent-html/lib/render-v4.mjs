@@ -1,3 +1,8 @@
+// AIDEV-NOTE: Skill-local account answer wiring, not upstream agent-html.
+// Do not re-vendor without restoring the answer assets/id tokens and import below;
+// BUILD's answer-persistence gate rejects missing wiring. The skill ships as a unit.
+// The import intentionally keeps direct renderV4 callers wired too, outside BUILD.
+import { ANSWER_ASSETS, dashboardId } from '../../../src/answer-persistence.mjs';
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -366,6 +371,8 @@ export function renderV4(payload, options = {}) {
   });
 
   return replaceAllTokens(shell, {
+    DASHBOARD_ID: escapeHtml(dashboardId(payload.dashboardId || payload.id, normalized.notesStorageKey.replace(/\.notes$/, ""))),
+    ANSWER_ASSETS,
     TITLE: escapeHtml(normalized.title),
     STORAGE_SCOPE: normalized.storageScope,
     CINEMA_CSS: cinemaCss,

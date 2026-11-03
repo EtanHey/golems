@@ -146,6 +146,7 @@ jobs:
           python -m pytest scripts/tests/test_heavy_suite_lock.py -q
           python -m pytest scripts/tests/test_heavy_suite_nested_records.py -q
           python -m pytest scripts/tests/test_heavy_suite_optin.py -q
+          python -m pytest scripts/tests/test_heavy_suite_setuid.py -q
           python -m pytest scripts/tests/test_heavy_suite_timeout.py -q
           python -m pytest scripts/tests/test_hook_import_fail_closed.py -q
           python -m pytest scripts/tests/test_installed_skill_live_config.py -q
