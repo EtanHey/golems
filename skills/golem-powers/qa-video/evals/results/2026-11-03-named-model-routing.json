@@ -1,0 +1,1820 @@
+{
+  "date": "2026-11-03",
+  "skill": "qa-video",
+  "measurement": "Named-model routing after the exact skill body is loaded; stub dispatch, synthetic recording path; no real QA worker or media analysis.",
+  "baseline_ref": "bd67db53a87123182a673bf7678bec9fcd9f9897",
+  "case_definitions": "../evals.json cases 10-12",
+  "repeats": 5,
+  "iterations": 2,
+  "provenance": [
+    {
+      "agent_or_arm": "haiku-baseline",
+      "model_requested": "claude-haiku-5-5",
+      "model_effective": "claude-haiku-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: per-leg catalog record provenance, checked on every row",
+      "effort_observation_source": "session JSONL effort field: per-leg catalog record provenance, checked on every row"
+    },
+    {
+      "agent_or_arm": "haiku-candidate",
+      "model_requested": "claude-haiku-5-5",
+      "model_effective": "claude-haiku-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: per-leg catalog record provenance, checked on every row",
+      "effort_observation_source": "session JSONL effort field: per-leg catalog record provenance, checked on every row"
+    },
+    {
+      "agent_or_arm": "luna-t1-baseline",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: turn_context.model, persisted in every runtime receipt",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort, persisted in every runtime receipt"
+    },
+    {
+      "agent_or_arm": "luna-t1-candidate",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: turn_context.model, persisted in every runtime receipt",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort, persisted in every runtime receipt"
+    },
+    {
+      "agent_or_arm": "opus-confirm",
+      "model_requested": "claude-opus-5-5",
+      "model_effective": "claude-opus-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: per-leg catalog record provenance, checked on all three confirms",
+      "effort_observation_source": "session JSONL effort field: per-leg catalog record provenance, checked on all three confirms"
+    },
+    {
+      "agent_or_arm": "sol-confirm",
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: turn_context.model, persisted in every confirm runtime receipt",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort, persisted in every confirm runtime receipt"
+    }
+  ],
+  "arms": [
+    {
+      "label": "haiku-baseline",
+      "n": 15,
+      "hash": "8cdefbd01f636918cf507247258257be942ef02beae4fe30839ff11e966bdb25",
+      "bytes": 22379,
+      "approx_tokens": 5595,
+      "cases": [
+        {
+          "case": "P-luna",
+          "pass": 0,
+          "n": 5
+        },
+        {
+          "case": "P-haiku",
+          "pass": 0,
+          "n": 5
+        },
+        {
+          "case": "C-default",
+          "pass": 5,
+          "n": 5
+        }
+      ],
+      "api_usd": 0.0483464,
+      "list_usd": 0.04834640000000001
+    },
+    {
+      "label": "haiku-candidate",
+      "n": 15,
+      "hash": "16439bc53400a8e43754bbc3d25eda514a69a565bd68fa66be4a70c24514bfd9",
+      "bytes": 24131,
+      "approx_tokens": 6033,
+      "cases": [
+        {
+          "case": "P-luna",
+          "pass": 5,
+          "n": 5
+        },
+        {
+          "case": "P-haiku",
+          "pass": 5,
+          "n": 5
+        },
+        {
+          "case": "C-default",
+          "pass": 5,
+          "n": 5
+        }
+      ],
+      "api_usd": 0.05036631999999999,
+      "list_usd": 0.05036632
+    },
+    {
+      "label": "luna-t1-baseline",
+      "n": 15,
+      "hash": "8cdefbd01f636918cf507247258257be942ef02beae4fe30839ff11e966bdb25",
+      "bytes": 22379,
+      "approx_tokens": 5595,
+      "cases": [
+        {
+          "case": "P-luna",
+          "pass": 0,
+          "n": 5
+        },
+        {
+          "case": "P-haiku",
+          "pass": 0,
+          "n": 5
+        },
+        {
+          "case": "C-default",
+          "pass": 5,
+          "n": 5
+        }
+      ],
+      "api_usd": 0,
+      "list_usd": null
+    },
+    {
+      "label": "luna-t1-candidate",
+      "n": 15,
+      "hash": "16439bc53400a8e43754bbc3d25eda514a69a565bd68fa66be4a70c24514bfd9",
+      "bytes": 24131,
+      "approx_tokens": 6033,
+      "cases": [
+        {
+          "case": "P-luna",
+          "pass": 5,
+          "n": 5
+        },
+        {
+          "case": "P-haiku",
+          "pass": 5,
+          "n": 5
+        },
+        {
+          "case": "C-default",
+          "pass": 5,
+          "n": 5
+        }
+      ],
+      "api_usd": 0,
+      "list_usd": null
+    }
+  ],
+  "per_run": [
+    {
+      "arm": "haiku-baseline",
+      "runs": [
+        {
+          "case": "P-luna",
+          "rep": 1,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.004199189999999999,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2431,
+              "cacheReadInputTokens": 52709,
+              "cacheCreationInputTokens": 19648,
+              "webSearchRequests": 0,
+              "costUSD": 0.004199189999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 829,
+              "cacheCreationEphemeral5mInputTokens": 19648,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 1,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.00205022,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1430,
+              "cacheReadInputTokens": 39532,
+              "cacheCreationInputTokens": 7516,
+              "webSearchRequests": 0,
+              "costUSD": 0.00205022,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 834,
+              "cacheCreationEphemeral5mInputTokens": 7516,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 1,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.002469765,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 2065,
+              "cacheReadInputTokens": 39524,
+              "cacheCreationInputTokens": 8333,
+              "webSearchRequests": 0,
+              "costUSD": 0.002469765,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1254,
+              "cacheCreationEphemeral5mInputTokens": 8333,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 2,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.003328505,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 3075,
+              "cacheReadInputTokens": 63703,
+              "cacheCreationInputTokens": 9227,
+              "webSearchRequests": 0,
+              "costUSD": 0.003328505,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1239,
+              "cacheCreationEphemeral5mInputTokens": 9227,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 2,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.003017255,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 3004,
+              "cacheReadInputTokens": 39848,
+              "cacheCreationInputTokens": 8931,
+              "webSearchRequests": 0,
+              "costUSD": 0.003017255,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 2232,
+              "cacheCreationEphemeral5mInputTokens": 8931,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 2,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.0027012599999999996,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 2481,
+              "cacheReadInputTokens": 39836,
+              "cacheCreationInputTokens": 8496,
+              "webSearchRequests": 0,
+              "costUSD": 0.0027012599999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1754,
+              "cacheCreationEphemeral5mInputTokens": 8496,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 3,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.00479395,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 3459,
+              "cacheReadInputTokens": 72885,
+              "cacheCreationInputTokens": 18680,
+              "webSearchRequests": 0,
+              "costUSD": 0.00479395,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 2385,
+              "cacheCreationEphemeral5mInputTokens": 18680,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 3,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.00399216,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2225,
+              "cacheReadInputTokens": 72706,
+              "cacheCreationInputTokens": 17216,
+              "webSearchRequests": 0,
+              "costUSD": 0.00399216,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1289,
+              "cacheCreationEphemeral5mInputTokens": 17216,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 3,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.00368584,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1776,
+              "cacheReadInputTokens": 72299,
+              "cacheCreationInputTokens": 16594,
+              "webSearchRequests": 0,
+              "costUSD": 0.00368584,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 783,
+              "cacheCreationEphemeral5mInputTokens": 16594,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 4,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.0036551099999999996,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 3584,
+              "cacheReadInputTokens": 63851,
+              "cacheCreationInputTokens": 9792,
+              "webSearchRequests": 0,
+              "costUSD": 0.0036551099999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1214,
+              "cacheCreationEphemeral5mInputTokens": 9792,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 4,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.003924995000000001,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2090,
+              "cacheReadInputTokens": 72927,
+              "cacheCreationInputTokens": 17201,
+              "webSearchRequests": 0,
+              "costUSD": 0.003924995000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1103,
+              "cacheCreationEphemeral5mInputTokens": 17201,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 4,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.0023397599999999998,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1907,
+              "cacheReadInputTokens": 39836,
+              "cacheCreationInputTokens": 7900,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023397599999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1111,
+              "cacheCreationEphemeral5mInputTokens": 7900,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 5,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.0033431249999999993,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 3074,
+              "cacheReadInputTokens": 63765,
+              "cacheCreationInputTokens": 9343,
+              "webSearchRequests": 0,
+              "costUSD": 0.0033431249999999993,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1567,
+              "cacheCreationEphemeral5mInputTokens": 9343,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 5,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.002393765,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 2029,
+              "cacheReadInputTokens": 39849,
+              "cacheCreationInputTokens": 7843,
+              "webSearchRequests": 0,
+              "costUSD": 0.002393765,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1455,
+              "cacheCreationEphemeral5mInputTokens": 7843,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 5,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": 0.0024515,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 2082,
+              "cacheReadInputTokens": 39835,
+              "cacheCreationInputTokens": 8094,
+              "webSearchRequests": 0,
+              "costUSD": 0.0024515,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1395,
+              "cacheCreationEphemeral5mInputTokens": 8094,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "arm": "haiku-candidate",
+      "runs": [
+        {
+          "case": "P-luna",
+          "rep": 1,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.004457995,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 4863,
+              "cacheReadInputTokens": 65477,
+              "cacheCreationInputTokens": 10969,
+              "webSearchRequests": 0,
+              "costUSD": 0.004457995,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 2110,
+              "cacheCreationEphemeral5mInputTokens": 10969,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 1,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.003162295,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2703,
+              "cacheReadInputTokens": 65332,
+              "cacheCreationInputTokens": 9255,
+              "webSearchRequests": 0,
+              "costUSD": 0.003162295,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1301,
+              "cacheCreationEphemeral5mInputTokens": 9255,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 1,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.004091215,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2167,
+              "cacheReadInputTokens": 75099,
+              "cacheCreationInputTokens": 18049,
+              "webSearchRequests": 0,
+              "costUSD": 0.004091215,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1180,
+              "cacheCreationEphemeral5mInputTokens": 18049,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 2,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.0033162,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 3035,
+              "cacheReadInputTokens": 65410,
+              "cacheCreationInputTokens": 9152,
+              "webSearchRequests": 0,
+              "costUSD": 0.0033162,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1429,
+              "cacheCreationEphemeral5mInputTokens": 9152,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 2,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.0038209100000000003,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 3824,
+              "cacheReadInputTokens": 65556,
+              "cacheCreationInputTokens": 10022,
+              "webSearchRequests": 0,
+              "costUSD": 0.0038209100000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1618,
+              "cacheCreationEphemeral5mInputTokens": 10022,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 2,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.0023457900000000004,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1865,
+              "cacheReadInputTokens": 41039,
+              "cacheCreationInputTokens": 8020,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023457900000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1020,
+              "cacheCreationEphemeral5mInputTokens": 8020,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 3,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.0026003249999999997,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1858,
+              "cacheReadInputTokens": 65335,
+              "cacheCreationInputTokens": 8139,
+              "webSearchRequests": 0,
+              "costUSD": 0.0026003249999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 702,
+              "cacheCreationEphemeral5mInputTokens": 8139,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 3,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.00267828,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1992,
+              "cacheReadInputTokens": 65293,
+              "cacheCreationInputTokens": 8230,
+              "webSearchRequests": 0,
+              "costUSD": 0.00267828,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 775,
+              "cacheCreationEphemeral5mInputTokens": 8230,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 3,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.0027127899999999996,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 2487,
+              "cacheReadInputTokens": 41039,
+              "cacheCreationInputTokens": 8468,
+              "webSearchRequests": 0,
+              "costUSD": 0.0027127899999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1694,
+              "cacheCreationEphemeral5mInputTokens": 8468,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 4,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.0036763150000000003,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 3577,
+              "cacheReadInputTokens": 65459,
+              "cacheCreationInputTokens": 9861,
+              "webSearchRequests": 0,
+              "costUSD": 0.0036763150000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1702,
+              "cacheCreationEphemeral5mInputTokens": 9861,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 4,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.003745765,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 3708,
+              "cacheReadInputTokens": 65454,
+              "cacheCreationInputTokens": 9893,
+              "webSearchRequests": 0,
+              "costUSD": 0.003745765,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1623,
+              "cacheCreationEphemeral5mInputTokens": 9893,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 4,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.00280805,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 2661,
+              "cacheReadInputTokens": 41040,
+              "cacheCreationInputTokens": 8534,
+              "webSearchRequests": 0,
+              "costUSD": 0.00280805,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1806,
+              "cacheCreationEphemeral5mInputTokens": 8534,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 5,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.004177145,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 4415,
+              "cacheReadInputTokens": 65367,
+              "cacheCreationInputTokens": 10523,
+              "webSearchRequests": 0,
+              "costUSD": 0.004177145,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1642,
+              "cacheCreationEphemeral5mInputTokens": 10523,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 5,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.00415632,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2262,
+              "cacheReadInputTokens": 75072,
+              "cacheCreationInputTokens": 18192,
+              "webSearchRequests": 0,
+              "costUSD": 0.00415632,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 790,
+              "cacheCreationEphemeral5mInputTokens": 18192,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 5,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": 0.002616925,
+          "tokens": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 2330,
+              "cacheReadInputTokens": 41040,
+              "cacheCreationInputTokens": 8329,
+              "webSearchRequests": 0,
+              "costUSD": 0.002616925,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1504,
+              "cacheCreationEphemeral5mInputTokens": 8329,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "arm": "luna-t1-baseline",
+      "runs": [
+        {
+          "case": "P-luna",
+          "rep": 1,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 86141,
+            "cached_input_tokens": 69888,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2044,
+            "reasoning_output_tokens": 1703
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 1,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 161877,
+            "cached_input_tokens": 125952,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1798,
+            "reasoning_output_tokens": 1287
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 1,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 63357,
+            "cached_input_tokens": 51456,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1303,
+            "reasoning_output_tokens": 981
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 2,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 121921,
+            "cached_input_tokens": 103552,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1837,
+            "reasoning_output_tokens": 1392
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 2,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 85885,
+            "cached_input_tokens": 62336,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2157,
+            "reasoning_output_tokens": 1692
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 2,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 94340,
+            "cached_input_tokens": 66944,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1347,
+            "reasoning_output_tokens": 896
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 3,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 164832,
+            "cached_input_tokens": 137600,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2240,
+            "reasoning_output_tokens": 1574
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 3,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 85080,
+            "cached_input_tokens": 69248,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1351,
+            "reasoning_output_tokens": 1069
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 3,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 82163,
+            "cached_input_tokens": 60928,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1178,
+            "reasoning_output_tokens": 691
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 4,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 167677,
+            "cached_input_tokens": 143232,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2833,
+            "reasoning_output_tokens": 2311
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 4,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 157957,
+            "cached_input_tokens": 134784,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1769,
+            "reasoning_output_tokens": 1294
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 4,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 64142,
+            "cached_input_tokens": 51328,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2275,
+            "reasoning_output_tokens": 1850
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 5,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 122982,
+            "cached_input_tokens": 104832,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1710,
+            "reasoning_output_tokens": 1236
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 5,
+          "pass": false,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 101730,
+            "cached_input_tokens": 83712,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1503,
+            "reasoning_output_tokens": 1135
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 5,
+          "pass": true,
+          "skill_bytes": 22379,
+          "skill_approx_tokens": 5595,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 133871,
+            "cached_input_tokens": 109184,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1725,
+            "reasoning_output_tokens": 1066
+          }
+        }
+      ]
+    },
+    {
+      "arm": "luna-t1-candidate",
+      "runs": [
+        {
+          "case": "P-luna",
+          "rep": 1,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 85390,
+            "cached_input_tokens": 62720,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1011,
+            "reasoning_output_tokens": 561
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 1,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 103466,
+            "cached_input_tokens": 81792,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1064,
+            "reasoning_output_tokens": 535
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 1,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 75053,
+            "cached_input_tokens": 57600,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1040,
+            "reasoning_output_tokens": 623
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 2,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 130336,
+            "cached_input_tokens": 108288,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1135,
+            "reasoning_output_tokens": 556
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 2,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 94638,
+            "cached_input_tokens": 79488,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1034,
+            "reasoning_output_tokens": 565
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 2,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 65213,
+            "cached_input_tokens": 49152,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1279,
+            "reasoning_output_tokens": 883
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 3,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 85464,
+            "cached_input_tokens": 73216,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1024,
+            "reasoning_output_tokens": 545
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 3,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 95000,
+            "cached_input_tokens": 79616,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1133,
+            "reasoning_output_tokens": 680
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 3,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 75583,
+            "cached_input_tokens": 57600,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1469,
+            "reasoning_output_tokens": 1006
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 4,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 85906,
+            "cached_input_tokens": 62976,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1351,
+            "reasoning_output_tokens": 833
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 4,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 112186,
+            "cached_input_tokens": 98048,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1019,
+            "reasoning_output_tokens": 451
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 4,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 115768,
+            "cached_input_tokens": 93056,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1886,
+            "reasoning_output_tokens": 1422
+          }
+        },
+        {
+          "case": "P-luna",
+          "rep": 5,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 124638,
+            "cached_input_tokens": 95872,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1083,
+            "reasoning_output_tokens": 454
+          }
+        },
+        {
+          "case": "P-haiku",
+          "rep": 5,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 86440,
+            "cached_input_tokens": 73600,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1476,
+            "reasoning_output_tokens": 838
+          }
+        },
+        {
+          "case": "C-default",
+          "rep": 5,
+          "pass": true,
+          "skill_bytes": 24131,
+          "skill_approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 42270,
+            "cached_input_tokens": 30720,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1112,
+            "reasoning_output_tokens": 918
+          }
+        }
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "tier": 1,
+      "model": "claude-haiku-5-5",
+      "baseline": {
+        "label": "haiku-baseline",
+        "runs": 15,
+        "valid": 15,
+        "rowErrors": 0,
+        "unjudged": 0,
+        "errors": 0,
+        "positives": {
+          "k": 0,
+          "n": 10,
+          "excluded": 0,
+          "pct": 0
+        },
+        "named": {
+          "k": 0,
+          "n": 10,
+          "excluded": 0,
+          "pct": 0
+        },
+        "unnamed": {
+          "k": 0,
+          "n": 0,
+          "excluded": 0,
+          "pct": null
+        },
+        "falseTriggers": {
+          "k": 0,
+          "n": 0,
+          "excluded": 0,
+          "pct": null
+        },
+        "correct": {
+          "control": {
+            "k": 5,
+            "n": 5,
+            "excluded": 0,
+            "pct": 100
+          }
+        },
+        "cost": {
+          "listUsd": 0.04834640000000001,
+          "unknownModels": [],
+          "lowerBoundRows": 0,
+          "ccUsd": 0.0483464,
+          "ccRows": 15
+        }
+      },
+      "arm": {
+        "label": "haiku-candidate",
+        "runs": 15,
+        "valid": 15,
+        "rowErrors": 0,
+        "unjudged": 0,
+        "errors": 0,
+        "positives": {
+          "k": 10,
+          "n": 10,
+          "excluded": 0,
+          "pct": 100
+        },
+        "named": {
+          "k": 10,
+          "n": 10,
+          "excluded": 0,
+          "pct": 100
+        },
+        "unnamed": {
+          "k": 0,
+          "n": 0,
+          "excluded": 0,
+          "pct": null
+        },
+        "falseTriggers": {
+          "k": 0,
+          "n": 0,
+          "excluded": 0,
+          "pct": null
+        },
+        "correct": {
+          "control": {
+            "k": 5,
+            "n": 5,
+            "excluded": 0,
+            "pct": 100
+          }
+        },
+        "cost": {
+          "listUsd": 0.05036632,
+          "unknownModels": [],
+          "lowerBoundRows": 0,
+          "ccUsd": 0.05036631999999999,
+          "ccRows": 15
+        }
+      },
+      "delta": {
+        "positivesPp": 100,
+        "positivesP": 0.00001082508822446908,
+        "unnamedPp": null,
+        "unnamedP": null
+      },
+      "grid": [
+        {
+          "case": "C-default",
+          "baseline": "✓✓✓✓✓",
+          "arm": "✓✓✓✓✓"
+        },
+        {
+          "case": "P-haiku",
+          "baseline": "✗✗✗✗✗",
+          "arm": "✓✓✓✓✓"
+        },
+        {
+          "case": "P-luna",
+          "baseline": "✗✗✗✗✗",
+          "arm": "✓✓✓✓✓"
+        }
+      ]
+    },
+    {
+      "tier": 1,
+      "model": "gpt-6-luna",
+      "baseline": {
+        "label": "luna-t1-baseline",
+        "runs": 15,
+        "valid": 15,
+        "rowErrors": 0,
+        "unjudged": 0,
+        "errors": 0,
+        "positives": {
+          "k": 0,
+          "n": 10,
+          "excluded": 0,
+          "pct": 0
+        },
+        "named": {
+          "k": 0,
+          "n": 10,
+          "excluded": 0,
+          "pct": 0
+        },
+        "unnamed": {
+          "k": 0,
+          "n": 0,
+          "excluded": 0,
+          "pct": null
+        },
+        "falseTriggers": {
+          "k": 0,
+          "n": 0,
+          "excluded": 0,
+          "pct": null
+        },
+        "correct": {
+          "control": {
+            "k": 5,
+            "n": 5,
+            "excluded": 0,
+            "pct": 100
+          }
+        },
+        "cost": {
+          "listUsd": null,
+          "unknownModels": [],
+          "lowerBoundRows": 0,
+          "ccUsd": null,
+          "ccRows": 0
+        }
+      },
+      "arm": {
+        "label": "luna-t1-candidate",
+        "runs": 15,
+        "valid": 15,
+        "rowErrors": 0,
+        "unjudged": 0,
+        "errors": 0,
+        "positives": {
+          "k": 10,
+          "n": 10,
+          "excluded": 0,
+          "pct": 100
+        },
+        "named": {
+          "k": 10,
+          "n": 10,
+          "excluded": 0,
+          "pct": 100
+        },
+        "unnamed": {
+          "k": 0,
+          "n": 0,
+          "excluded": 0,
+          "pct": null
+        },
+        "falseTriggers": {
+          "k": 0,
+          "n": 0,
+          "excluded": 0,
+          "pct": null
+        },
+        "correct": {
+          "control": {
+            "k": 5,
+            "n": 5,
+            "excluded": 0,
+            "pct": 100
+          }
+        },
+        "cost": {
+          "listUsd": null,
+          "unknownModels": [],
+          "lowerBoundRows": 0,
+          "ccUsd": null,
+          "ccRows": 0
+        }
+      },
+      "delta": {
+        "positivesPp": 100,
+        "positivesP": 0.00001082508822446908,
+        "unnamedPp": null,
+        "unnamedP": null
+      },
+      "grid": [
+        {
+          "case": "C-default",
+          "baseline": "✓✓✓✓✓",
+          "arm": "✓✓✓✓✓"
+        },
+        {
+          "case": "P-haiku",
+          "baseline": "✗✗✗✗✗",
+          "arm": "✓✓✓✓✓"
+        },
+        {
+          "case": "P-luna",
+          "baseline": "✗✗✗✗✗",
+          "arm": "✓✓✓✓✓"
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Catalog fixture advertises the named Codex tier as gpt-6.1-luna, while the Luna evaluation seat is runtime-verified gpt-6-luna. Selection is checked against the advertised fixture; this is not proof of current live catalog resolution.",
+    "Skill is explicitly loaded into both arms. This measures follow-through, not trigger discovery.",
+    "Only the three requested routing cases are live-measured. Profile selection and unavailable-model cases are definitions only.",
+    "Scoring checks first dispatch, selected named model, explicit default service settings, and no pre-dispatch media commands. It does not score worker-brief quality or actual video findings.",
+    "Codex subscription has no incremental API spend; its list-price dollars are unmeasured.",
+    "Five repetitions of each prompt are not five independent task types.",
+    "High-tier partial work started under the original brief and was stopped on the ladder amendment; it is retained locally outside these comparative arms."
+  ],
+  "confirmations": [
+    {
+      "tier": 3,
+      "arm": "opus-confirm",
+      "model": "claude-opus-5-5",
+      "mode": "candidate-only smoke",
+      "cases": [
+        {
+          "case": "P-luna",
+          "pass": true,
+          "n": 1,
+          "bytes": 24131,
+          "approx_tokens": 6033,
+          "api_usd": 0.2477014,
+          "tokens": {
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2999,
+              "cacheReadInputTokens": 56112,
+              "cacheCreationInputTokens": 35295,
+              "webSearchRequests": 0,
+              "costUSD": 0.2477014,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 572,
+              "cacheCreationEphemeral5mInputTokens": 35295,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "P-haiku",
+          "pass": true,
+          "n": 1,
+          "bytes": 24131,
+          "approx_tokens": 6033,
+          "api_usd": 0.10078219999999999,
+          "tokens": {
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2248,
+              "cacheReadInputTokens": 62516,
+              "cacheCreationInputTokens": 8659,
+              "webSearchRequests": 0,
+              "costUSD": 0.10078219999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 155,
+              "cacheCreationEphemeral5mInputTokens": 8659,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        {
+          "case": "C-default",
+          "pass": true,
+          "n": 1,
+          "bytes": 24131,
+          "approx_tokens": 6033,
+          "api_usd": 0.1275438,
+          "tokens": {
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1351,
+              "cacheReadInputTokens": 71974,
+              "cacheCreationInputTokens": 17221,
+              "webSearchRequests": 0,
+              "costUSD": 0.1275438,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 441,
+              "cacheCreationEphemeral5mInputTokens": 17221,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        }
+      ],
+      "api_usd": 0.4760274,
+      "list_usd": 0.4760274
+    },
+    {
+      "tier": 3,
+      "arm": "sol-confirm",
+      "model": "gpt-6.1-sol",
+      "mode": "candidate-only smoke",
+      "cases": [
+        {
+          "case": "P-luna",
+          "pass": true,
+          "n": 1,
+          "bytes": 24131,
+          "approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 125746,
+            "cached_input_tokens": 98432,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 892,
+            "reasoning_output_tokens": 78
+          }
+        },
+        {
+          "case": "P-haiku",
+          "pass": true,
+          "n": 1,
+          "bytes": 24131,
+          "approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 126443,
+            "cached_input_tokens": 98944,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 890,
+            "reasoning_output_tokens": 89
+          }
+        },
+        {
+          "case": "C-default",
+          "pass": true,
+          "n": 1,
+          "bytes": 24131,
+          "approx_tokens": 6033,
+          "api_usd": null,
+          "tokens": {
+            "input_tokens": 115174,
+            "cached_input_tokens": 92928,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 455,
+            "reasoning_output_tokens": 30
+          }
+        }
+      ],
+      "api_usd": 0,
+      "list_usd": null
+    }
+  ],
+  "tier2": {
+    "status": "NOT RUN",
+    "reason": "All Tier-1 named cases are 5/5 and controls have zero false delegates; no cases promote."
+  },
+  "verdict": "SHIP for the measured named-model routing change; lead review and push pending."
+}

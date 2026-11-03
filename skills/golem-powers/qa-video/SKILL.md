@@ -64,6 +64,30 @@ its `environmentId`, per [agent-routing/references/cross-machine.md](../agent-ro
 § 2: its brief tells the QA thread to report back with `t3_thread_send`, and the lead settles it;
 admission (§ 5) applies). Never copy the recording to another machine.
 
+**Subagent routing — named requests first:** When the user names a model or
+subagent for the QA pass (a named model, or "use video-gems"), dispatch exactly
+that model or subagent **before any media probe, extraction, transcription or
+frame preparation**. The named worker owns
+the entire pass. Never run its pipeline inline in the requesting seat, including
+setup "for" the worker. This overrides the default owner and helper routes below.
+
+In T3, call `orchestrator_capabilities` then `delegate_task` with the model the
+user named and its provider, putting settings in `target.options`: Codex
+`serviceTier:"default"`, Claude `fastMode:false`. Resolve named tiers through
+`standards/model-roles.json` (`codex.subagent.mechanical` for the named Codex
+mechanical tier; `claude.subagent.mechanical` for the named Claude mechanical
+tier), using `node scripts/model-roles.mjs <role> --field model` (add
+`--use codex-internal-subagent` for the explicitly requested Codex child), and
+check the live catalog. A named agent profile belongs in the worker brief. Claude seats
+outside T3 may use `Agent` with the named model/profile and `fastMode:false`.
+Codex seats have no `Agent` tool: use `delegate_task`. If the requested model,
+profile or dispatch tool is unavailable, say so and stop. Never substitute another
+model, open a replacement pane, or fall back to inline execution. Give the worker
+the source path, mode, absolute artifact directory, deadline and evidence rules;
+a worker without dispatch tools follows the single-reader runner contract below.
+
+**No model or subagent named:** Keep the default pipeline in this table.
+
 | Request | Execution owner | Image reader |
 |---|---|---|
 | QA a recording (default) | The QA seat itself: extraction, transcript, hotspots and contact sheets in its own shell, then the fan-out below | ≥2 `claude.judgment` helpers, each Reading its frame windows' sheets/frames; a `claude.subagent.mechanical` verifier re-reads each candidate finding's frames |
@@ -71,13 +95,13 @@ admission (§ 5) applies). Never copy the recording to another machine.
 | Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `video-gems` itself (Read on stills); `visual-batch.py` pre-sort optional |
 | Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` and an explicit absolute `docs.local` workdir | That worker views sheets and runs the same iterative loop |
 
-**Subagent routing:** Use this table once per request. Do not open an unrequested
+**Default subagent routing:** Use this table once per unnamed request. Do not open an unrequested
 Gemini pane, and do not hand the QA pipeline to a single runner sub-agent.
 `video-gems` currently lives in `~/.claude/agents/video-gems.md`; its
 packaging/helper update is a lead follow-up. If that local agent lacks the
 helper contract, include this workflow in its brief.
 
-Default pipeline: the QA seat for QA/debrief/review, `Agent(video-gems)` for gems.
+Default pipeline (no named override): the QA seat for QA/debrief/review, `Agent(video-gems)` for gems.
 The QA seat runs extraction, transcript, hotspots and contact sheets in its **own shell**.
 After the transcript and hotspots it **fans out itself**: it splits the frame
 windows in time order (along the transcript's sections) across **several
@@ -202,7 +226,8 @@ If a provenance tool or column is missing, keep reading the frames directly, say
 
 9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
-10. **One pipeline route** — debrief and review follow the QA route. QA: the QA seat,
+10. **One pipeline route** — a named model/subagent owns the entire pass under
+    Subagent routing; otherwise debrief and review follow the default QA route. QA: the QA seat,
     on the machine holding the recording, owns extraction, hotspots and refinement in its own Bash, then fans the
     frame windows out to ≥2 `claude.judgment` helpers that view the sheets/frames
     themselves, with a `claude.subagent.mechanical` verifier per candidate finding;
