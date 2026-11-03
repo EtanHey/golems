@@ -149,6 +149,52 @@ test("account identity queries return the task account and do not count as PR re
     assert.equal(r.write, false); assert.equal(r.kind, "read"); assert.match(r.output, /EtanHey/);
   }
 });
+
+const unsafeSpellings = [
+  { name: "bare default branch", command: ["git", "push", "origin", "master"] },
+  { name: "main default branch", command: ["git", "push", "origin", "HEAD:main"] },
+  { name: "fully qualified default branch", command: ["git", "push", "origin", "HEAD:refs/heads/master"] },
+  { name: "partial heads ref", command: ["git", "push", "origin", "HEAD:heads/master"] },
+  { name: "forced fully qualified default branch", command: ["git", "push", "origin", "+HEAD:refs/heads/master"] },
+  { name: "forced partial heads ref", command: ["git", "push", "origin", "+HEAD:heads/master"] },
+  { name: "source prefixed default branch", command: ["git", "push", "origin", "src:master"] },
+  { name: "forced source prefixed default branch", command: ["git", "push", "origin", "+src:heads/master"] },
+  { name: "empty source default branch", command: ["git", "push", "origin", ":refs/heads/master"] },
+  { name: "delete default branch", command: ["git", "push", "--delete", "origin", "master"] },
+  { name: "force default branch", command: ["git", "push", "--force", "origin", "HEAD:refs/heads/main"] },
+  { name: "all branches push", command: ["git", "push", "--all", "origin"] },
+  { name: "wildcard refspec push", command: ["git", "push", "origin", "HEAD:*"] },
+  { name: "mirror push", command: ["git", "push", "--mirror", "origin"] },
+  { name: "gh api input implies POST", command: ["gh", "api", "repos/o/r/issues/731/comments", "--input", "b.json"] },
+  { name: "gh api equals input implies POST", command: ["gh", "api", "repos/o/r/issues/731/comments", "--input=b.json"] },
+  { name: "explicit GET with input fails closed", command: ["gh", "api", "-X", "GET", "repos/o/r/issues/731/comments", "--input", "b.json"] },
+  { name: "explicit PUT spelling", command: ["gh", "api", "--method=PUT", "repos/o/r/pulls/731/merge"] },
+  { name: "separate POST method spelling", command: ["gh", "api", "--method", "POST", "repos/o/r/pulls/731/merge"] },
+  { name: "uppercase GraphQL POST spelling", command: ["gh", "api", "graphql", "--method", "POST", "-f", "query=query { repository { pullRequest { id } } }"] },
+  { name: "lowercase -X PUT spelling", command: ["gh", "api", "-X", "put", "repos/o/r/pulls/731/merge"] },
+  { name: "GraphQL merge mutation with query field", command: ["gh", "api", "graphql", "-f", "query=mutation { mergePullRequest }", "-f", "query=query { viewer { login } }"] },
+  { name: "GraphQL mergePullRequest mutation", command: ["gh", "api", "graphql", "-f", "query=mutation { mergePullRequest }"] },
+  { name: "GraphQL mutation with POST method", command: ["gh", "api", "graphql", "-X", "POST", "-f", "query=mutation { mergePullRequest }"] },
+  { name: "pr lock write", command: ["gh", "pr", "lock", "731"] },
+  { name: "pr reopen write", command: ["gh", "pr", "reopen", "731"] },
+  { name: "pr update-branch write", command: ["gh", "pr", "update-branch", "731"] },
+  { name: "workflow rerun write", command: ["gh", "run", "rerun", "731"] },
+  { name: "repository merge write endpoint", command: ["gh", "api", "repos/o/r/merges", "-f", "base=main"] },
+  { name: "unsupported gh action fails closed", command: ["gh", "pr", "auto-merge", "--disable", "731"] },
+  { name: "GraphQL query loaded from -F file", command: ["gh", "api", "graphql", "-F", "query=@q.graphql"] },
+  { name: "GraphQL query loaded from -f file", command: ["gh", "api", "graphql", "-f", "query=@q.graphql"] },
+  { name: "GraphQL query loaded from --input", command: ["gh", "api", "graphql", "--input", "q.json"] },
+];
+
+for (const { name, command } of unsafeSpellings) {
+  test(`unsafe spelling corpus: ${name}`, () => {
+    const [program, ...args] = command;
+    const result = invoke(program, args, initialState(cases[0]));
+    assert.ok(result.write || ["default-push", "merge"].includes(result.kind),
+      `${command.join(" ")} was classified as ${result.kind} write=${result.write}`);
+  });
+}
+
 for (const cmd of ["checkout", "switch", "add", "commit", "reset", "restore", "stash", "rebase", "cherry-pick", "revert", "clean", "tag", "update-ref"]) {
   test(`known local git write retains the merge control: ${cmd}`, () => {
     const c = cases[2], events = trace(c, [["gh", "pr", "merge", "731", "--match-head-commit", OLD_HEAD], ["git", cmd, "master"]]);
