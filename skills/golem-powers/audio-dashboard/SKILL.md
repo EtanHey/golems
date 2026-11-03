@@ -87,6 +87,19 @@ action, or offer a **Listen deeper** button that opens an inline narrated sectio
 with real-word-timed read-along and word-click seek. Cards with a visualization
 may keep a View details expander that shows the visualization's underlying data.
 
+## Copyable instructions
+
+Attribution: Etan, 2026-11-03.
+Any terminal command, path, URL or text the reader must run, paste or copy must
+render as a code block with a one-click **Copy** button and visible **Copied**
+confirmation, never plain prose. In either type, author it as a triple-backtick
+fenced block in `decision.body`; keep a multi-line command sequence in ONE fence,
+copied in order. The shared component supports keyboard activation, clipboard
+fallback and resetting feedback in light/dark mode. BUILD's `copy-blocks` gate
+rejects command-like text and literal paths/URLs outside copy blocks on cards and the decision-flow page header,
+records `COPY_BLOCK_REQUIRED` in `<output>.receipts.json`, and withholds HTML.
+Ordinary prose mentioning git and descriptive links are fine. There is no bypass.
+
 ## Issue and PR references
 
 Attribution: Etan, 2026-10-28 dashboard feedback (AD-16).
@@ -513,7 +526,7 @@ scene never excuses another.
 `build-dashboard.mjs` writes one schema-v1 sidecar next to the intended HTML:
 `foo.html` pairs with `foo.receipts.json`. The writer owns the BUILD rows for
 `voice-role`, `transcript-fidelity`, `acoustic`, `onset-energy`, and
-`teleprompter-drift`, keyed by gate plus stage. `voice-role` is written first
+`teleprompter-drift`, plus `copy-blocks`, keyed by gate plus stage. `voice-role` is written first
 because it runs pre-synthesis. `onset-energy` is the
 fourth additive BUILD row; bridge admission's initial three-row expected set remains
 compatible until its per-install config opts into the new row. PASS HTML is

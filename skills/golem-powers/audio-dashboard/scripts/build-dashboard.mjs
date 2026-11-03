@@ -66,6 +66,8 @@ import { analyzeTeleprompterDrift, formatTeleprompterDriftReport } from "../src/
 import { injectDecisionSurfaceIntoHtml } from "../src/decision-surface.mjs";
 import { comparisonPages, findBareReferences, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
 
+import { analyzeCopyBlocks, COPY_BLOCK_RUNBOOK } from "../src/copy-blocks.mjs";
+
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function expandHome(value) {
@@ -628,6 +630,12 @@ async function main() {
   if (!hasData) fail("rendered HTML has no embedded data:audio mp3");
   if (!hasRealFlag) fail("rendered HTML has no realWordTiming:true — words.json missing or empty for every scene");
   if (!hasNoteArea) fail("rendered HTML has no .note-area response boxes");
+
+  const copyBlocks = analyzeCopyBlocks(html);
+  upsertBuildGate(buildReceipts, { gate: "copy-blocks", result: copyBlocks,
+    config: {}, runbook: COPY_BLOCK_RUNBOOK });
+  writeBuildReceipts(outPath, buildReceipts, html);
+  if (copyBlocks.verdict !== "PASS") fail(`copy-blocks: COPY_BLOCK_REQUIRED. ${COPY_BLOCK_RUNBOOK}`);
 
   const preservation = await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
   buildReceipts.designPreservation = preservation;

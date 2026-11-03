@@ -1,3 +1,4 @@
+import { COPY_BLOCK_ASSETS, renderCardBody } from './copy-blocks.mjs';
 /**
  * Skill-local decision/answer-box surface for audio dashboards.
  *
@@ -93,7 +94,7 @@ export function renderDecisionSurface(decisions, opts = {}) {
     return `
     <section class="dbx-card" data-decision="${escapeHtml(id)}" data-title="${escapeHtml(decision.title)}">
       <h3 class="dbx-title">${escapeHtml(decision.title)}${deadline}</h3>
-      <p class="dbx-body">${escapeHtml(decision.body || "")}</p>
+      <div class="dbx-body">${renderCardBody(decision.body)}</div>
       <div class="dbx-opts">${options}</div>
       <textarea class="note-area dbx-free" data-note="${escapeHtml(id)}-free" data-title="${escapeHtml(decision.title)}" placeholder="Or write it in your own words..."></textarea>
     </section>`;
@@ -128,6 +129,7 @@ export function renderDecisionSurface(decisions, opts = {}) {
   ${cards}
   <div class="dbx-actions"><button type="button" class="dbx-btn" id="dbx-copy">Copy answers</button></div>
 </section>
+${COPY_BLOCK_ASSETS}
 <script>
 (function(){
   var box=document.getElementById("decision-boxes");

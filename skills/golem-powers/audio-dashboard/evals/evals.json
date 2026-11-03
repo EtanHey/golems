@@ -185,6 +185,21 @@
       { "type": "content", "name": "preserves-real-timing-through-approved-aliases", "description": "The exact persisted synth transcript derives approved synth/display aliases, so raw STT timings map to authored display tokens without estimated fallback; unrelated substitutions still reject." },
       { "type": "negative", "name": "preserves-original-display-text", "description": "Scene scripts and rendered teleprompter text equal the original authored text including punctuation; words.json/tpdata display tokens preserve their original text, ordering, and timing metadata, and none contain pull request or lyve unless authored." }
     ]
+  },
+  {
+    "id": 14,
+    "name": "copyable-card-instructions",
+    "category": "compliance",
+    "description": "Commands and pasteable text in either dashboard type use one accessible copy block per sequence; BUILD rejects plain-prose commands.",
+    "prompt": "Build a decision-flow card telling the reader to re-authorise demo access by running cd ~/projects/demo-app followed by ./scripts/auth.sh login.",
+    "assertions": [
+      { "type": "content", "name": "one-fence-for-sequence", "description": "The card body authors both commands in one fenced code block in order." },
+      { "type": "interaction", "name": "copies-whole-block-and-confirms", "description": "Keyboard activation copies both lines in order, trims only blank edge lines, preserves interior lines, shows Copied, resets, and restores focus with native clipboard and fallback." },
+      { "type": "negative", "name": "plain-prose-build-rejects", "description": "Both BUILD paths withhold HTML and write a copy-blocks REJECT receipt for the original plain-prose commands." },
+      { "type": "content", "name": "ordinary-prose-control", "description": "All 19 review prose controls, including capitalised tool names, framework labels, versions and ratios, pass in card bodies and option labels; descriptive links remain valid." },
+      { "type": "negative", "name": "fleet-command-and-header-coverage", "description": "Lowercase command-shaped fleet CLIs reject outside copy blocks; the decision-flow header shares the card instruction gate." },
+      { "type": "content", "name": "preserves-host-theme", "description": "The code block retains its dark host palette under both dark and light system preferences." }
+    ]
   }
   ]
 }
