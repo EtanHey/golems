@@ -89,7 +89,7 @@
     },
     {
       "id": "human-confirm-installed",
-      "metric": "INSTALLED human-confirm hook: no-token lease denied, lead token allowed once, replay denied, master denied",
+      "metric": "INSTALLED human-confirm hook: own-branch lease allowed without token and on replay, plain force/foreign lease/master denied, lead issuance succeeds and token lease allowed",
       "kind": "real",
       "runner": "mac",
       "direction": "pass",

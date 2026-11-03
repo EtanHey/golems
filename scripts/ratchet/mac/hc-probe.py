@@ -3,12 +3,14 @@
 
 Reads the hook command from $HOME/.claude/settings.json (the installer wrote it) and runs it
 with the real interpreter. The lease is scoped to a real open PR (gh is read-only here):
-  A  no token, lease to the PR head      -> deny
+  A  no token, own lease to the PR head  -> allow
+  A2 plain force to the PR branch        -> deny
+  A3 lease to a foreign repository URL   -> deny
   B  lead token issued by the installed golems-lead-confirm
   C  the same lease with that token      -> allow
-  D  the same lease again (replay)       -> deny
+  D  the same lease again (own branch)   -> allow
   E  a lease to master                   -> deny
-Prints one JSON line and exits 0 only when A-E all hold. Run it with HOME set to the home the
+Prints one JSON line and exits 0 only when all seven steps hold. Run it with HOME set to the home the
 hook was installed into: local-run.sh points it at a scratch HOME, live-rows.sh at the real one.
 """
 import argparse
@@ -78,7 +80,10 @@ def main():
         print('human-confirm first failing step hook: ' + steps['hook'], file=sys.stderr)
         print(json.dumps(dict(ok=False, steps=steps, details=details, first_failure='hook')))
         return 1
-    record('A_no_token', feed(hook, lease, args.repo, session))
+    record('A_own_lease', feed(hook, lease, args.repo, session))
+    record('A2_plain_force', feed(hook, f'git push --force origin HEAD:refs/heads/{args.branch}', args.repo, session))
+    foreign = lease.replace(' origin ', ' https://github.com/pingdotgg/t3code.git ', 1)
+    record('A3_foreign', feed(hook, foreign, args.repo, session))
     # Exec the issuer the way a lead does (its own shebang), so its side effects are real.
     started = time.monotonic()
     issued = subprocess.run([args.issuer, args.repo, '--ref', f'refs/heads/{args.branch}', '--sha', args.sha,
@@ -87,9 +92,11 @@ def main():
                         f'rc={issued.returncode} ' + (issued.stdout + issued.stderr).replace('\n', ' ')[:160])
     details['B_issue'] = diagnostics(issued, started)
     record('C_token', feed(hook, lease, args.repo, session))
+    # Own-branch rule covers replay; token replay protection stays in unit test test_lead_issuer.LeadTokenThroughTheGate.test_issued_token_authorizes_exactly_its_lease_once.
     record('D_replay', feed(hook, lease, args.repo, session))
     record('E_master', feed(hook, master, args.repo, session))
-    expected = dict(A_no_token='DENY', B_issue='OK', C_token='ALLOW', D_replay='DENY', E_master='DENY')
+    expected = dict(A_own_lease='ALLOW', A2_plain_force='DENY', A3_foreign='DENY',
+                    B_issue='OK', C_token='ALLOW', D_replay='ALLOW', E_master='DENY')
     ok = all(steps[key][0] == want for key, want in expected.items())
     first_failure = next((key for key, want in expected.items() if steps[key][0] != want), None)
     if first_failure:
