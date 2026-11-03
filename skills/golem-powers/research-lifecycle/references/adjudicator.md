@@ -1,14 +1,16 @@
 # Independent adjudicator rubric
 
 Status: required by VERIFY BEFORE STORE. One adjudicator for the report; different
-model family from the section verifiers. Read-only except assigned outputs; no
+model family from the section verifiers unless the step owner explicitly
+overrides that rule (record it and double the VERIFIED audit). Read-only except assigned outputs; no
 subagents, installs, credential changes or memory writes.
 
 ## Queue and independence
 
 Receive the fixed claim lists, original report sections/citations, section verdicts,
 grounding corpus and exact code revision. Re-grade ALL WRONG/HALLUCINATED claims.
-The coordinator also selects 85 VERIFIED claims uniformly at random without
+The coordinator also selects 85 VERIFIED claims (170 for an explicit same-family
+override) uniformly at random without
 replacement (all if fewer), records the seed, population and sampled IDs before
 review, and sends a separate queue of decision-critical UNVERIFIABLE claims.
 Never silently drop that unresolved queue or treat it as a VERIFIED audit.
@@ -26,7 +28,7 @@ UNVERIFIABLE; an absent search result alone is not HALLUCINATED.
 
 If the VERIFIED sample reveals a wrong pass, hold the affected section's facts
 and expand review to all its VERIFIED claims before releasing that section.
-A sample of 85 is an audit policy, not proof that all remaining claims are true
+The sample size is an audit policy, not proof that all remaining claims are true
 or a population risk bound. Unaffected completed sections may proceed after their
 audit closes. Keep unaudited/pending sections and decision-critical UNVERIFIABLE
 premises out of fact storage and decisions that require them.
@@ -50,4 +52,5 @@ Coordinator alone stores facts: VERIFIED from completed audited sections or
 adjudication-resolved VERIFIED claims, with their evidence and baseline.
 WRONG/HALLUCINATED may be stored only as corrections with the correct evidence,
 never as the original false assertion. UNVERIFIABLE is never a stored fact.
-PROPOSAL-OK can be retained as a labeled proposal, never promoted to fact.
+PROPOSAL-OK stays in the report as a labeled proposal. Memory retention requires
+adjudication; never promote it to fact.

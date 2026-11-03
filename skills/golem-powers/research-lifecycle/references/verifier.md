@@ -1,7 +1,8 @@
 # Section verifier rubric
 
 Status: required by VERIFY BEFORE STORE. Read-only verification; no subagents,
-installs, credential changes or memory writes. Write only the assigned outputs.
+installs, credential changes, file writes or memory writes. Return outputs to
+the coordinator; the launcher captures the response.
 
 ## Inputs and fixed claim inventory
 
@@ -47,8 +48,10 @@ revision. Reconcile every input ID exactly once, including unresolved claims.
 
 ## Outputs
 
-Write the assigned section JSON array and Markdown table. Each row carries
+Return one raw JSON object (no code fences) with `claims` (the section JSON
+array) and `markdown` (the section table as a string). Each claim row carries
 `id`, `claim`, `report_location`, `category`, `framing`, `verdict`, `evidence`,
 `correction` (or null), `recommendation_impact` (or null), `baseline_revision`.
-The table includes counts, coverage and unresolved dependencies. Validate JSON
-and exact ID coverage before reporting completion. No brain_store from this leg.
+The table includes counts, coverage and unresolved dependencies. The coordinator
+validates JSON and exact ID coverage before persisting either output; malformed
+or incomplete responses leave the section pending. No brain_store from this leg.

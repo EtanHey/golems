@@ -29,27 +29,19 @@ Applies to `/gemini-research`, `/claude-desktop-research`, and orc W5 research d
 
 ## INCOMING RESEARCH DOC LINK — harvest before closing
 
-When a research docs link arrives (Google Docs link or Gemini Deep Research
-report URL), the lead has a gatherer read the report and locate its R-number
-prompt; the filing write goes to a Drive-write-capable sub-agent (or the lead)
-per `/agent-routing` § Execution capability. Use `/drive-filing` to resolve the
-project's research folder; file the report as `R{NN}-<slug>-result` in the
-`results/` folder beside the `prompts/` folder that holds its R-number prompt.
-Verify the filed document by readback and record the filed doc's link as the
-dispatch's `export_route` evidence before closing.
-If the prompt or R-number cannot be resolved, report the missing association to
-the lead and keep the harvest PARKED; do not guess a folder or claim completion.
-Then apply the existing harvest contract and lifecycle gates.
+When a batch of research links arrives, the receiving seat's **FIRST dispatch is ONE coordinator child** with the entire batch, including already-filed reports. Resolve `codex.research.coordinator` with `node scripts/model-roles.mjs codex.research.coordinator --field model`; use `delegate_task` with `role: "research"`, `target.providerInstanceId: "codex-worker"`, effort high, service tier default, and include the role label `codex.research.coordinator` in its brief. Pass [the coordinator workflow](references/coordinator.md), every link and the verifier parameter below. Omit `isolation` (shared checkout). Then **end the turn**. The receiving seat does no harvesting, splitting, verifying or filing itself. A non-research link does not take this route.
 
-## VERIFY BEFORE STORE
+The coordinator owns intake through return: locate each R-number prompt, resolve the project destination through `/drive-filing`, file `R{NN}-<slug>-result` under sibling `results/`, read it back and record `export_route`. Unresolved associations stay PARKED; never guess a folder. It runs the lifecycle below and returns one batch summary to the lead.
 
-After harvest/readback, **before any `brain_store` of research conclusions**:
+## VERIFY BEFORE STORE — coordinator-owned
 
-1. Freeze a numbered list of checkable claims per section, with exact report quotes, source locations and the intended code/corpus revision. Dispatch one section verifier per list using [the verifier rubric](references/verifier.md). Default: `claude.research.verifier`; `codex.research.verifier` is an allowed alternative when Claude budget is short (say so).
-2. Dispatch ONE independent adjudicator using [the adjudicator rubric](references/adjudicator.md): every WRONG/HALLUCINATED, a random audit of 85 VERIFIED claims (all if fewer), and a separate queue of decision-critical UNVERIFIABLE. Default: `codex.research.adjudicator`, effort high, service tier default. Verifiers and adjudicator must be from different model families: Codex verifiers require `claude.judgment` adjudication. The Claude adjudicator is otherwise opt-in when the lead asks or Codex is unavailable; switch verifier family with it. Never fast.
-3. Write `VERIFY-SUMMARY.md` beside the harvested report: coverage, final verdict counts, hallucination/error rates and denominators, audit sample/seed, source revisions and evidence links. Only VERIFIED claims from completed, audited sections or claims resolved VERIFIED by adjudication may enter `brain_store` as facts. Store WRONG/HALLUCINATED only as evidenced corrections; never store UNVERIFIABLE as fact or PROPOSAL-OK as an established fact. Partial verification permits only that eligible subset; leave the rest pending.
+**Verifier parameter: `VERIFIER_ROLE=claude.research.verifier` (API key); one override to `codex.research.verifier` selects subscription dispatch.**
 
-Resolve each role with `node scripts/model-roles.mjs <role> --field model` from `standards/model-roles.json`; dispatch through `delegate_task`/`Agent` per `/agent-routing`. Report-authored proposals/specs are PROPOSAL-OK, never VERIFIED; check factual premises separately. This gate applies to research conclusions, not ordinary non-research notes.
+1. Freeze numbered checkable claims per section (exact report quotes, locations, code/corpus revision). Fan out section verifiers using [the verifier rubric](references/verifier.md). For the Claude family, use [the API-key launcher](references/coordinator.md#api-key-section-verifiers), never a subscription `delegate_task`. Expect ~$0.21/section or ~$0.66/100 claims for verifiers; post the batch projection before fan-out. Meanwhile organize reports/prompts and run lifecycle filing while verification runs.
+2. Send all WRONG/HALLUCINATED verdicts, a random audit of 85 VERIFIED claims (all if fewer), and a separate decision-critical UNVERIFIABLE queue to ONE adjudicator using [its rubric](references/adjudicator.md). Default adjudicator role: `codex.research.adjudicator`, effort high, service tier default. Use the other model family; Codex verifiers therefore switch it to `claude.judgment` (high, never fast). Only the step owner can override the cross-family rule, in which case double the VERIFIED audit to 170 (all if fewer).
+3. Write `VERIFY-SUMMARY.md` beside each report, with coverage, final verdict counts, hallucination/error rates and denominators, audit seed/IDs and evidence. Store only VERIFIED facts from completed audited sections or adjudication-resolved VERIFIED claims; WRONG/HALLUCINATED only as evidenced corrections. Never store UNVERIFIABLE as fact or report-authored PROPOSAL-OK as established fact. Partial work releases only the eligible subset; pending claims remain pending.
+
+Resolve roles from `standards/model-roles.json`; dispatch per `/agent-routing`. This gate applies to research conclusions, not ordinary non-research notes.
 
 ## THE LIFECYCLE
 

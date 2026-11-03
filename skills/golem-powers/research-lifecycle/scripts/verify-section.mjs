@@ -12,7 +12,10 @@ const fail = code => { const error = new Error(code); error.verifierCode = code;
 const decoded = text => text.replace(/\\u([a-f\d]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 const hasKey = (text, key) => String(text).includes(key) || decoded(String(text)).includes(key);
 function redact(value, key) {
-  if (typeof value === 'string') return decoded(value).split(key).join('[REDACTED_API_KEY]');
+  if (typeof value === 'string') {
+    if (value.includes(key)) return value.split(key).join('[REDACTED_API_KEY]');
+    return hasKey(value, key) ? '[REDACTED_API_KEY]' : value;
+  }
   if (Array.isArray(value)) return value.map(v => redact(v, key));
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [redact(k, key), redact(v, key)]));
   return value;
