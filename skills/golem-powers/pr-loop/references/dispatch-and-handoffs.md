@@ -2,6 +2,8 @@
 
 Read this when a PR loop starts, stops early, runs autonomously, or has separate worker and lead ownership.
 
+[Full stop](full-stop.md) constrains every role: carry the endpoint and PR URL to the lead/successor; neither handoff nor “merge only on instruction” restores merge authority. Its verified terminal handoff is an end state, not the early stop described below.
+
 ## Stop-State and End-State
 
 **End state, precisely:** done = required checks GREEN and the routed review clean on the **LATEST**

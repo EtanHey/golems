@@ -6,6 +6,8 @@ Read this before an authorized merge and through remote verification, tracking, 
 For merge authority, the `--admin` default, and R-010, first read
 [Merge Authority](pr-creation.md#merge-authority).
 
+The merge paths, “mission is MERGED” example and alternative endings below apply only to merge-authorized endpoints; [full stop](full-stop.md) ends at verified unmerged PR handoff, retains its workspace and reports `ROOT-FF STOP: not merged`.
+
 ## Merge Receipts: commit message vs PR body (2026-09-08)
 
 > git log is where you look when you already know something is wrong; the PR page is where you look to find out.

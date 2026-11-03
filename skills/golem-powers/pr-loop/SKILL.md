@@ -21,11 +21,19 @@ Who implements and who opens the inner-loop reviewer pane is owned by `/agent-ro
 
 This skill begins at branch preparation and ends at the authority-appropriate endpoint:
 
-- Lead: reviewed, latest-head-green PR merged, verified, root checkout fast-forwarded, and cleaned up; released/installed where applicable at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate), without asking Etan.
+- Lead, when the endpoint permits merge: reviewed, latest-head-green PR merged, verified, root checkout fast-forwarded, and cleaned up; released/installed where applicable at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate), without asking Etan.
 - Worker whose brief says the lead owns merge: ready-for-review PR, review responses addressed, URL handed to the lead, unmerged.
 - A worker must hand the reviewed PR to its lead unmerged.
 
 Run `scripts/ci/release-gate.mjs <repo>` at the feature-batch gate, not after every PR. At the batch endpoint, `MERGED_UNRELEASED`, `RELEASED_UNINSTALLED`, or `UNKNOWN` is a stop; release/install and rerun until `CLEAN`. A `MERGED_UNRELEASED` mid-batch is expected, not a stop: keep merging the batch.
+
+## Full stop endpoint
+
+Select **full stop** for a PR-workflow “full stop” command, an explicit no-merge request, or a third-party upstream base (for example, pingdotgg/t3code). Emphasis (“Full stop.”), quotations and questions about the phrase do not select it; read-only inspection does not start PR preparation.
+This endpoint overrides generic ship/merge rules for every role and survives handoffs and watch wakes until the user explicitly changes it. Confirm the live PR base, not the fork remote; see [full-stop rules](references/full-stop.md).
+Never merge, enable auto-merge, enqueue, push the default branch, or delegate those actions. Before work and each push, verify auto-merge/queue state; disarm only this account’s enrollment or our own PR’s setting we control, otherwise stop BLOCKED before a push that would merge.
+Keep the normal proof, draft-first, lead-routed review and latest-head checks. Finish with **READY UNMERGED**, **WAITING FOR MAINTAINER APPROVAL** (only a verified upstream human-approval requirement remains), or **BLOCKED**; use the [readiness and handoff contract](references/full-stop.md).
+Terminal readiness ends PR preparation unmerged; it is not a held draft or release/install/LIVE proof.
 
 ## Required Sequence
 
@@ -142,7 +150,7 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - A green run on an older SHA is not green. Verify the PR head matches the latest pushed commit.
 - Never merge with an unreplied CRITICAL, MAJOR, or HIGH finding.
 - One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; round 3 only by a lead exception written in the PR body (canon #9).
-- After a clean other-vendor review at `headRefOid` and green required checks, leads merge now with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos (`--admin` skips required checks, so the head pin is what stops a later push merging unchecked), per [Merge Authority](references/pr-creation.md#merge-authority); omit `--delete-branch`. Workers follow their brief's merge authority. Never ask Etan to approve or merge a PR; only true one-way doors wait for him. Failing/pending checks, conflicts and unresolved findings block merge.
+- For merge-authorized endpoints, after a clean other-vendor review at `headRefOid` and green required checks, leads merge now with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos (`--admin` skips required checks, so the head pin is what stops a later push merging unchecked), per [Merge Authority](references/pr-creation.md#merge-authority); omit `--delete-branch`. Workers follow their brief's merge authority. Never ask Etan to approve or merge a PR; only true one-way doors wait for him. Failing/pending checks, conflicts and unresolved findings block merge.
 - On EtanHey repos, bot verdicts are comments, not formal self-reviews.
 - Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for daemon/engine/transport diffs.
 - Cursor diff passes are read-only: findings only, never edit the PR branch. Routing: see `/agent-routing` § Routing rules (SSOT).
@@ -183,6 +191,8 @@ bug: tell ci-hygiene.
 
 | Situation | Action |
 |---|---|
+| Full stop selected (including a third-party upstream base) | Follow [full-stop rules](references/full-stop.md); no merge/auto-merge/queue/default-branch push, including on watch wakes |
+| Full-stop proof, checks and review pass at the final head | Hand off READY UNMERGED; keep it ready, never merge or convert the terminal handoff to a held draft |
 | Brief says lead owns merge | Worker stops at reviewed PR handoff; lead verifies latest head before merge |
 | Brief grants this seat merge authority | Complete review loop, merge with the required method, then verify and clean up |
 | PR is draft | Inner loop in progress: finish it, then `gh pr ready <N>`. Visibly held: follow the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns). Never merge a draft |

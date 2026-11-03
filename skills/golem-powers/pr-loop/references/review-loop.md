@@ -2,6 +2,8 @@
 
 Read this when selecting PR-stage reviewers, waiting for them, classifying feedback, replying, fixing, or requesting re-review.
 
+[Full stop](full-stop.md) takes precedence over every green-wake merge and held-draft rule below: preserve no-merge on wakes, hand off verified readiness without drafting it, and unwatch at terminal handoff; pending CI/review remains parent-owned.
+
 ## Step 8: REVIEW (The Critical Step)
 
 **This is NOT optional. This is NOT "auto-merge."**
@@ -192,7 +194,7 @@ rearm an eligible parent; never automatically undo User Stop or settle/archive. 
 **Act on both PR-watch outcomes.** Red checks or conflicts mean fix now or route the fix now.
 For green, verify current required checks and the routed review at the exact latest head before an
 authorized merge; a completed notification is not approval. If blocked, report BLOCKED with a named blocker
-and next owner, mark the PR held (above), then hand off when appropriate. Always unwatch before handback or terminal completion.
+and next owner, mark the PR held (above), then hand off when appropriate. For [full stop](full-stop.md), report BLOCKED to the owner instead; never convert an upstream PR to draft or post hold comments. Always unwatch before handback or terminal completion.
 Do not leave ready work idle behind another PR's red checks.
 
 **Every wait needs an owned wake source.** Name the event and its owner before ending as WAITING.
