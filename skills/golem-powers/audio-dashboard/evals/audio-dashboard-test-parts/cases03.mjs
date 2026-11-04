@@ -346,7 +346,7 @@ test("build-dashboard renders decision-flow as a distinct card-local audio type"
         title: "Path $& costs $$",
         status: "OPEN",
         body: "Choose the first path.",
-        summary: "The first decision owns the context and its answer clip.",
+        summary: "Owns context and answer audio.",
         options: ["Keep", "Change"],
         sceneIds: ["intro", "decision-a"],
         rail: [{ label: "Owner", value: "Etan" }]
