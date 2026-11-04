@@ -37,6 +37,8 @@ terminal you control, outside any agent. `SKILL.md` describes what the gate enfo
   by design.
 
 ## Daily use
+
+- **Own-branch leases:** see [SKILL.md, "Own-branch leases"](SKILL.md#own-branch-leases) for the narrow token-free exception.
 - **Human tokens:** `scripts/golems-confirm <repo> <ref> <action> --session <id>` from your
   terminal, approved in 1Password per request.
 - **Lead tokens:** `scripts/golems-lead-confirm` (see SKILL.md, "Lead tokens"), for lease
