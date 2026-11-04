@@ -7,6 +7,7 @@ import stat
 import subprocess
 import time
 from pathlib import Path
+from urllib.parse import quote
 
 GIT = '/usr/bin/git'
 SSH = '/usr/bin/ssh-keygen'
@@ -163,8 +164,9 @@ def private_read(path):
         return stream.read(65537)
 
 
-def read_command(argv):
-    return subprocess.run(argv, capture_output=True, text=True, check=True, timeout=2).stdout.strip()
+def read_command(argv, *, strip=True):
+    stdout = subprocess.run(argv, capture_output=True, text=True, check=True, timeout=2).stdout
+    return stdout.strip() if strip else stdout
 
 
 def lead_metadata(op, *, gh_read=None):
@@ -201,6 +203,101 @@ def lead_scope(op, metadata_fn=lead_metadata):
             or pr['headRefName'] != branch or pr['headRefOid'] != op['sha']):
         raise ValueError('outside lead scope: own open PR head, not the default branch')
     return pr
+
+
+def own_lease_metadata(target, branch):
+    """Two concurrent REST reads, four seconds total, within the hook's policy deadline."""
+    gh = trusted_binary(GH_CANDIDATES)
+    requests = [('repos/' + target, '{full_name,default_branch}'),
+                ('repos/' + target + '/branches/' + quote(branch, safe=''), '{name,protected}')]
+    pending, replies = [], []
+    deadline = time.monotonic() + 4
+    try:
+        for endpoint, fields in requests:
+            pending.append(subprocess.Popen([gh, 'api', '--hostname', 'github.com', '--jq', fields, endpoint],
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
+        for process in pending:
+            stdout, _ = process.communicate(timeout=max(0, deadline - time.monotonic()))
+            if process.returncode:
+                raise subprocess.CalledProcessError(process.returncode, process.args)
+            replies.append(json.loads(stdout))
+    finally:
+        for process in pending:
+            if process.poll() is None:
+                process.kill()
+        for process in pending:
+            process.wait()
+            process.stdout.close()
+            process.stderr.close()
+    repo, branch_data = replies
+    if not isinstance(repo['full_name'], str) or repo['full_name'].casefold() != target.casefold():
+        raise ValueError('repository metadata was redirected')
+    return repo['default_branch'], branch_data
+
+
+def own_lease_scope(payload, ops, metadata_fn=None):
+    """Unsigned exception for one explicit lease to Etan's non-shared branch.
+
+    operations() has already applied git_config.effective_push: configured mirror,
+    overrides and same-call config changes cannot arrive here as a plain lease.
+    """
+    if len(ops) != 1 or ops[0]['class'] != 'lease':
+        return False, ''
+    try:
+        import shlex
+        import git_config
+        from commands import shell
+        op = ops[0]
+        words = shlex.split(payload['tool_input']['command'])
+        prefix = words[:3] + ['push'] if words[:2] == ['git', '-C'] else ['git', 'push']
+        expected = [f"--force-with-lease={op['ref']}:{op['sha']}", op['remote'], op['source'] + ':' + op['ref']]
+        if words[:len(prefix)] != prefix or [w for w in words[len(prefix):] if w not in ('--atomic', '--verbose', '-v')] != expected:
+            return False, ''
+        repo, remote = op['repo'], op['remote']
+        # Git can omit empty URL entries from get-url; count the raw config too.
+        for key in ('url', 'pushurl'):
+            raw = git_config.read(repo, 'config', '--null', '--get-all', 'remote.' + remote + '.' + key)
+            if raw and (not raw.endswith('\0') or len(raw.split('\0')) != 2
+                        or not raw[:-1] or raw[:-1] != raw[:-1].strip()):
+                return False, ''
+        targets = []
+        for flags in ([], ['--push']):
+            urls = read_command([GIT, '-C', repo, 'remote', 'get-url', *flags, '--all', remote], strip=False).splitlines()
+            if len(urls) != 1 or urls[0] != urls[0].strip():
+                return False, ''
+            url = urls[0]
+            match = re.fullmatch(r'(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)'
+                                 r'(EtanHey/[A-Za-z0-9_.-]+?)(?:\.git)?', url, re.I | re.ASCII)
+            if not match or match[1].split('/')[1] in ('.', '..'):
+                return False, ''
+            targets.append(match[1])
+        if targets[0].casefold() != targets[1].casefold():
+            return False, ''
+        # Reuse the parser's config reader/boolean semantics for additional push
+        # modes that do not appear as destructive flags in effective_push.
+        for key in ('push.followTags', 'push.useForceIfIncludes', 'push.recurseSubmodules', 'submodule.recurse',
+                    'remote.' + remote + '.receivepack', 'remote.' + remote + '.vcs'):
+            values = git_config.read(repo, 'config', '--null', '--get-all', key)
+            if values and (key.endswith(('.receivepack', '.vcs')) or any(git_config.truthy(v) for v in values.rstrip('\0').split('\0'))):
+                return False, ''
+        target = targets[1]
+        branch = op['ref'].removeprefix('refs/heads/')
+        if branch.casefold() in ('main', 'master', 'develop', 'trunk', 'gh-pages') or branch.casefold().startswith('release'):
+            return False, f"Blocked: that's a shared branch of {target}; force-pushing it needs Etan."
+        try:
+            default, data = (metadata_fn or own_lease_metadata)(target, branch)
+            if not isinstance(default, str) or not default or data['name'] != branch or type(data['protected']) is not bool:
+                raise ValueError('ambiguous branch metadata')
+        except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, shell.PolicyEvaluationDeadlineExceeded):
+            return False, (f"Blocked: couldn't confirm with GitHub in time that {branch} isn't the default "
+                           f"or a protected branch of {target}. Retry the push.")
+        detail = ('default' if branch.casefold() == default.casefold() else
+                  'protected' if data['protected'] else '')
+        if detail:
+            return False, f"Blocked: that's a {detail} branch of {target}; force-pushing it needs Etan."
+        return True, ''
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        return False, ''
 
 
 def authorize(payload, ops, home, metadata_fn=lead_metadata):
