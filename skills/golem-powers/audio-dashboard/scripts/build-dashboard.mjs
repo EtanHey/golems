@@ -65,7 +65,7 @@ import {
 } from "../src/build-receipts.mjs";
 import { analyzeTeleprompterDrift, formatTeleprompterDriftReport } from "../src/teleprompter-drift-gate.mjs";
 import { injectDecisionSurfaceIntoHtml } from "../src/decision-surface.mjs";
-import { analyzeCardProse, CARD_PROSE_MAX_CHARS, CARD_PROSE_RUNBOOK, comparisonPages, findBareReferences, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
+import { analyzeCardProseLayout, analyzeCardProse, CARD_PROSE_MAX_CHARS, CARD_PROSE_RUNBOOK, comparisonPages, findBareReferences, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
 
 import { analyzeCopyBlocks, COPY_BLOCK_RUNBOOK } from "../src/copy-blocks.mjs";
 
@@ -521,6 +521,14 @@ async function main() {
       lede: decisionSurface.lede || spec.decisionLede,
       answerSink: decisionSurface.answerSink || spec.answerSink || spec.decisionAnswerSink,
     }).html;
+  }
+
+  if (dashboardType === "decision-flow") {
+    const layout = await analyzeCardProseLayout(html);
+    upsertBuildGate(buildReceipts, { gate: "card-prose", result: layout,
+      config: { maxChars: CARD_PROSE_MAX_CHARS, maxBlocks: 2, maxLines: 2, widths: [390, 1280] }, runbook: CARD_PROSE_RUNBOOK });
+    writeBuildReceipts(outPath, buildReceipts, html);
+    if (layout.verdict !== "PASS") fail(`card-prose: ${layout.violations.map(v => v.metric).join(", ")}. ${CARD_PROSE_RUNBOOK}`);
   }
 
   const transcriptFidelity = analyzeTranscriptFidelity({

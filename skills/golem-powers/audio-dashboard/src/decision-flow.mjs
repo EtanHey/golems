@@ -1,3 +1,5 @@
+import { parseFragment } from 'parse5';
+export { analyzeCardProseLayout } from './card-prose-layout.mjs';
 import { ANSWER_RUNTIME, dashboardId } from './answer-persistence.mjs';
 import { sourceHref as safeHref, sourceRowFits, SOURCE_MAX_ROWS, SOURCE_NOTE_MAX_CHARS } from './source-rail.mjs';
 export { SOURCE_NOTE_MAX_CHARS } from './source-rail.mjs';
@@ -279,13 +281,17 @@ function renderVisual(decision) {
 // excluded) is one or two short lines. Titles, controls, the Sources drawer and the teaching visual are separate.
 export const CARD_PROSE_MAX_CHARS = 110;
 
-function proseText(text) {
-  return String(text ?? "").replace(/\r\n?/g, "\n").replace(/^```[^\n`]*\n[\s\S]*?\n```[ \t]*(?=\n|$)/gm, " ")
-    .replace(/\[([^\]\n]+)\]\((https?:[^)\s]+)\)/g, "$1").replace(/\s+/g, " ").trim();
+function proseBlocks(decision) {
+  // Summary is literal text. Only the body goes through Markdown/copy-block rendering.
+  const summary = String(decision.summary ?? "").replace(/\s+/g, " ").trim();
+  const text = node => node.nodeName === '#text' ? node.value : (node.childNodes || []).map(text).join('');
+  const body = parseFragment(renderCardBody(decision.body)).childNodes
+    .filter(node => node.tagName === 'p').map(text).map(value => value.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  return [summary, ...body].filter(Boolean);
 }
 
 export function cardProse(decision) {
-  return [proseText(decision.summary), proseText(decision.body)].filter(Boolean).join(" ");
+  return proseBlocks(decision).join(" ");
 }
 
 // BUILD contract: every card's visible prose fits the budget. Returns typed violations for the receipts sidecar.
@@ -294,9 +300,14 @@ export function analyzeCardProse(decisions = []) {
     .filter(({ chars }) => chars > CARD_PROSE_MAX_CHARS)
     .map(({ decision, chars }) => ({ segment: String(decision.id), metric: "CARD_PROSE_BUDGET", value: chars, threshold: CARD_PROSE_MAX_CHARS,
       evidence: `Visible card prose is ${chars} characters; the explanation belongs in the narration.` }));
+  for (const decision of decisions) {
+    const blocks = proseBlocks(decision).length;
+    if (blocks > 2) violations.push({ segment: String(decision.id), metric: "CARD_PROSE_BLOCKS", value: blocks, threshold: 2,
+      evidence: "Each visible paragraph takes at least one line; combine or shorten the card prose." });
+  }
   return { verdict: violations.length ? "REJECTED" : "PASS", violations };
 }
-export const CARD_PROSE_RUNBOOK = `Cut the card's summary and body to one or two short lines (at most ${CARD_PROSE_MAX_CHARS} characters, copy blocks excluded). Keep the full explanation in the scene scripts, links in rail rows (the Sources drawer), attribution in sourceNote and any model or code in a code-pair visual.`;
+export const CARD_PROSE_RUNBOOK = `Cut the card's summary and body to one or two short lines (at most ${CARD_PROSE_MAX_CHARS} characters in at most two prose blocks, rendered body copy blocks excluded). BUILD also measures two readable, unclipped lines at 390 and 1280 pixels. Keep the full explanation in the scene scripts, links in rail rows (the Sources drawer), attribution in sourceNote and any model or code in a code-pair visual.`;
 
 function sentenceCase(value) {
   const text = String(value || "");

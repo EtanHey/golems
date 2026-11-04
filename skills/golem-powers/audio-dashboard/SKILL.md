@@ -85,8 +85,10 @@ audio strip / separate question list from reappearing.
 Attribution: Etan, 2026-11-04 (0300 dashboard polish). Applies to decision-flow cards.
 
 - **Short cards.** The narration explains; the card shows one or two short lines (`summary` + `body`, at most
-  110 characters, copy blocks excluded). BUILD rejects longer prose as `CARD_PROSE_BUDGET` in the `card-prose`
-  receipt row. Cut the words; never clip with CSS or hide an essay behind another expander.
+  110 characters in at most two prose blocks; only rendered body copy blocks are excluded). Summaries are
+  literal text, so fences in a summary still count. BUILD records `CARD_PROSE_BUDGET` or `CARD_PROSE_BLOCKS`
+  for excess copy and `CARD_PROSE_LAYOUT` when the actual rendered prose exceeds two readable, unclipped
+  lines or overflows at 390 or 1280 pixels. All use the typed `card-prose` receipt row. Cut the words; never clip with CSS or hide an essay behind another expander.
 - **Real selections only where something is asked.** `options` render radios (one pick); add `multiple: true`
   for independent multiple picks (checkboxes, stored as a list); `checklist` stays a to-do list. A written answer
   needs `answer: { type: "text", label: "<the question>" }`. A card with none of these is information: no answer

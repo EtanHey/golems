@@ -1,3 +1,8 @@
+import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { writeSegment } from './audio-dashboard-test-parts/common.mjs';
 import { expect, test } from "bun:test";
 import { boot, scene } from "./decision-flow-harness.mjs";
 import * as decisionFlow from "../src/decision-flow.mjs";
@@ -52,3 +57,55 @@ test("full audio preserved: a code-pair visual changes no timing or transcript",
   expect(tp(polished)).toBe(tp(plain));
   expect(words(polished)).toBe(words(plain));
 });
+
+test("literal summary fences count; rendered body copy blocks alone are exempt", () => {
+  const literal = { ...INFO, summary: '```text\n' + 'Essay '.repeat(900) + '\n```', body: '' };
+  expect(analyzeCardProse([literal]).verdict).toBe('REJECTED');
+  expect(analyzeCardProse([{ ...INFO, summary: '', body: '```text\n' + 'payload '.repeat(900) + '\n```' }]).verdict).toBe('PASS');
+});
+
+test("four rendered paragraphs cannot pass the two-line contract", () => {
+  const paragraphs = { ...INFO, body: 'One short line.\n\nTwo short lines.\n\nThree short lines.\n\nFour short lines.' };
+  expect(analyzeCardProse([paragraphs]).verdict).toBe('REJECTED');
+});
+
+test("real rendered prose at 390 and 1280: max length, paragraphs and long tokens", async () => {
+  const cases = [
+    { ...INFO, body: 'i '.repeat(54) + 'ii', want: 'PASS' },
+    { ...INFO, summary: 'i'.repeat(55), body: 'i'.repeat(55), want: 'PASS' },
+    { ...INFO, body: 'W'.repeat(110), want: 'REJECTED' },
+    { ...INFO, body: 'word '.repeat(22).trim(), want: 'REJECTED' },
+    { ...INFO, body: 'One short line.\n\nTwo short lines.\n\nThree short lines.\n\nFour short lines.', want: 'REJECTED' },
+  ];
+  for (const decision of cases) {
+    const result = await decisionFlow.analyzeCardProseLayout(render([decision]));
+    expect(result.verdict).toBe(decision.want);
+    expect(result.stats.map(row => row.width)).toEqual([390, 1280]);
+    if (result.verdict === 'PASS') expect(result.stats.every(row => row.lines <= 2 && row.blocks.every(b => b.readable && !b.overflow))).toBe(true);
+    else expect(result.violations.some(v => v.metric === 'CARD_PROSE_LAYOUT')).toBe(true);
+  }
+}, 15000);
+
+
+test("real BUILD withholds stale HTML and writes typed prose rejects", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'prose-build-'));
+  const out = path.join(dir, 'index.html'), specPath = path.join(dir, 'job.json');
+  writeSegment(dir, 'i1', scene('i1').words);
+  for (const [body, summary, metric] of [
+    ['', '```text\n' + 'Essay '.repeat(900) + '\n```', 'CARD_PROSE_BUDGET'],
+    ['One.\n\nTwo.\n\nThree.\n\nFour.', '', 'CARD_PROSE_BLOCKS'],
+    ['W'.repeat(110), '', 'CARD_PROSE_LAYOUT'],
+  ]) {
+    writeFileSync(out, 'STALE');
+    writeFileSync(path.join(dir, 'index.receipts.json'), '{"stale":"PASS"}');
+    writeFileSync(specPath, JSON.stringify({ type: 'decision-flow', id: 'prose-build', series: 'prose-build', outputPath: out,
+      scenes: [{ id: 'i1', script: 'one two', audioWav: path.join(dir, 'segments/i1/i1.wav') }], decisions: [{ ...INFO, body, summary }] }));
+    const run = spawnSync('bun', [path.resolve(import.meta.dir, '../scripts/build-dashboard.mjs'), '--spec', specPath, '--job-dir', dir], { encoding: 'utf8' });
+    expect(run.status).toBe(1);
+    expect(existsSync(out)).toBe(false);
+    const row = JSON.parse(readFileSync(path.join(dir, 'index.receipts.json'), 'utf8')).gates.find(g => g.gate === 'card-prose');
+    expect(row.verdict).toBe('REJECT');
+    expect(row.violations.some(v => v.metric === metric)).toBe(true);
+    expect(row.runbook).toContain('scene scripts');
+  }
+}, 15000);
