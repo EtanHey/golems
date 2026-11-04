@@ -48,7 +48,20 @@ Legacy `Brain Drive/Research/<project>/` folders are being moved under 03_RESEAR
 6. **Lightweight, session-scoped scratch?** → fine to leave in `docs.local/` — but if anyone else (or future-you) needs it, FILE it per 1–5.
 
 ## Naming convention
-`YYYY-MM-DD-<topic>[-<surface/agent>].<ext>` — date-prefixed, kebab-case, topic-first. Folders: `<topic>-<domain>/` (e.g. `weave-eval/`). Keep the local mirror name identical to the Drive name so the ledger maps 1:1.
+New standalone artifacts: `YYYY-MM-DD-<project>-<topic>-<kind>[-by-<producer>].<ext>`, lowercase kebab-case. Example: `2026-11-04-voicebar-focus-audit-by-author.md`. Topic must describe the work; `Theo.md`, `Model.md` and `2026-11-04-golems-theo-report.md` fail. Put a person/model attribution in `by-<producer>`, never use it as the only topic. Kinds: report, prompt, result, transcript, recording, audit, plan, review, frame, image, notes, receipt, manifest, data, archive, index, dashboard, summary, eval, log.
+
+Before uploading a new standalone artifact, run `node scripts/drive/lint-name.mjs <basename>` from the golems checkout; nonzero blocks filing until renamed. Existing files and preserved archive members (including `MANIFEST.json` and frame names) are grandfathered: `--existing` reports issues without blocking or renaming. Research-lifecycle's sequential context/R-number names keep their own contract. Folders retain `<topic>-<domain>/`; keep local mirror and Drive names identical for 1:1 ledger mapping.
+
+## Verify the ledger after uploads
+
+Use one bullet per file: `- <local path> → Brain Drive/<exact path>/<name> | bytes=<integer> | SHA256=<64 hex> | cloud=pending`. Record hashes from the source manifest; metadata such as Drive ID/URL and manifest pointer may follow as extra pipe fields. Absolute Drive-for-Desktop paths containing `/My Drive/Brain Drive/` are also accepted. Old Markdown tables remain readable history; add a machine-readable pending row for verification.
+
+```bash
+node scripts/drive/verify-ledger.mjs <ledger.md>            # dry-run; no ledger write
+node scripts/drive/verify-ledger.mjs <ledger.md> --apply    # only verified rows change
+```
+
+Run from the golems checkout after each upload batch. The verifier uses the existing outside-repo OAuth guard and read-only Drive API, checks the recorded account for mount paths, resolves every exact path (duplicates fail), compares bytes and any recorded SHA-256 (downloads remote bytes if Drive omits the checksum), and alone writes `cloud=verified <ISO timestamp>`. A local mount/cache is not sync proof. Missing, malformed, mismatched or unauthenticated rows remain pending with a reason on stdout; exit 1 means some rows remain, exit 2 is usage/ledger failure. Names in old rows are report-only. `--apply` is idempotent and never uploads or deletes. Verification without a recorded hash proves path/size only; deletion still requires the full preservation and authorization gates below.
 
 ## Machine hygiene: no ad-hoc home folders
 
@@ -131,7 +144,7 @@ or a `/tmp` cleanup that may hold forever-knowledge. The eight steps, in short:
    `repos`, `voice`); `mcp__google-drive__search` for precedent first.
 3. `createFolder` per level, keeping every ID. 4. `uploadFile`; keep `id`, `link`, `size`.
 5. `brain_digest` every text file (a background agent for >150KB).
-6. Write `docs.local/<area>/<topic>/_DRIVE-LEDGER.md` (never committed).
+6. Write `docs.local/<area>/<topic>/_DRIVE-LEDGER.md` (never committed) with pending rows, then run § Verify the ledger after uploads. Never mark rows verified by hand.
 7. Write the ledger, then apply § Machine hygiene rules 2 and 5 as the single deletion gate:
    manifest hashes must match verified archive bytes, a one-file restore test must pass,
    and Etan must authorize deletion (or have already opened that door for this work, quoted).
