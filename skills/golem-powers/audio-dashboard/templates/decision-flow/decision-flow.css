@@ -117,6 +117,21 @@ a{color:inherit}
 .df-sources .df-rail{margin:0;padding:0;border-top:0}
 .df-source-note{margin:14px 0 0;max-width:64ch;color:var(--muted);font-size:14px;line-height:1.5}
 
+/* Teaching visual: two labelled code panels, side by side from 720px, stacked on the phone. */
+.df-visual{margin:18px 0 0;min-width:0}
+.df-visual-label{margin:0 0 10px;color:var(--muted);font-size:14px}
+.df-codepair-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.df-code-panel{display:flex;flex-direction:column;min-width:0;margin:0;border:1px solid var(--line);border-radius:14px;background:var(--well);overflow:hidden}
+.df-code-panel figcaption{display:grid;gap:3px;padding:12px 14px 11px;border-bottom:1px solid var(--line)}
+.df-code-panel figcaption b{color:var(--moon);font-size:15px;font-weight:600;line-height:1.3}
+.df-code-panel figcaption span{color:var(--muted);font-size:14px;line-height:1.45}
+.df-code{flex:1 1 auto;margin:0;padding:12px 14px 14px;overflow-x:auto;color:#d5dbe6;font:13.5px/1.6 ui-monospace,"SF Mono",Menlo,Consolas,monospace;white-space:pre;tab-size:2}
+.df-code:focus-visible{outline-offset:-2px}
+.df-tok-op{color:var(--glass)}
+.df-tok-str{color:#efc77c}
+.df-tok-lit{color:var(--amber);font-weight:600}
+.df-tok-com{color:var(--faint);font-style:italic}
+
 /* Optional note: a quiet text action until asked for; an explicit written ask is labelled and always open. */
 .df-note-field{margin:6px 0 0}
 .df-note-toggle{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 4px;border:0;border-radius:10px;background:transparent;color:var(--muted);font-weight:500;cursor:pointer;transition:color .15s,transform 160ms ease-out}
@@ -220,6 +235,7 @@ body:has(.df-card.is-active.is-playing) .df-tplay{background:transparent;color:v
   .df-player-state{flex:0 1 auto}
   .df-play{flex:0 0 auto}
   .df-rail{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));column-gap:24px}
+  .df-codepair-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .df-teleprompter{margin:16px 0 0;padding:20px 24px 22px}
   .df-words{font-size:20px}
   .df-card-actions{display:flex;justify-content:flex-end}

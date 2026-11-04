@@ -84,6 +84,9 @@ audio strip / separate question list from reappearing.
 
 Attribution: Etan, 2026-11-04 (0300 dashboard polish). Applies to decision-flow cards.
 
+- **Short cards.** The narration explains; the card shows one or two short lines (`summary` + `body`, at most
+  110 characters, copy blocks excluded). BUILD rejects longer prose as `CARD_PROSE_BUDGET` in the `card-prose`
+  receipt row. Cut the words; never clip with CSS or hide an essay behind another expander.
 - **Real selections only where something is asked.** `options` render radios (one pick); add `multiple: true`
   for independent multiple picks (checkboxes, stored as a list); `checklist` stays a to-do list. A written answer
   needs `answer: { type: "text", label: "<the question>" }`. A card with none of these is information: no answer
@@ -93,6 +96,11 @@ Attribution: Etan, 2026-11-04 (0300 dashboard polish). Applies to decision-flow 
   `sourceNote` (at most 280 characters, no local paths). Each card renders one closed native **Sources** drawer;
   links open in a new tab with `rel="noopener noreferrer"`; non-http(s) hrefs stay plain text. Never end `body`
   with a "Source: ..." paragraph.
+- **Formal models and code: two panels.** Teach a model, trace or rule with
+  `visual: { type: "code-pair", label, panels: [{ title, caption, language, code }, { ... }] }`: side by side
+  from 720 px, stacked on a phone. Keep each panel at most 16 lines and about 36 characters wide (no scroll at
+  390 px or 1280 px), captions at most 140 characters, `language: "tla"` for TLA+ highlighting. Label excerpts
+  and reduced specs as such; quote saved traces, never a run you did not make.
 
 ## Card detail format
 

@@ -65,7 +65,7 @@ import {
 } from "../src/build-receipts.mjs";
 import { analyzeTeleprompterDrift, formatTeleprompterDriftReport } from "../src/teleprompter-drift-gate.mjs";
 import { injectDecisionSurfaceIntoHtml } from "../src/decision-surface.mjs";
-import { comparisonPages, findBareReferences, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
+import { analyzeCardProse, CARD_PROSE_MAX_CHARS, CARD_PROSE_RUNBOOK, comparisonPages, findBareReferences, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
 
 import { analyzeCopyBlocks, COPY_BLOCK_RUNBOOK } from "../src/copy-blocks.mjs";
 
@@ -299,6 +299,18 @@ async function main() {
   if (voiceRoles.verdict !== "PASS") {
     writeBuildReceipts(outPath, buildReceipts, "");
     fail(formatVoiceRoleReport(voiceRoles));
+  }
+
+  // CARD-PROSE gate (Etan, 2026-11-04: "Explanations belong in AUDIO"). Decision-flow cards show one or two short
+  // lines; the explanation stays in the narration. Spec-level, before any audio gate, so it never touches takes.
+  if (dashboardType === "decision-flow") {
+    const cardProse = analyzeCardProse(Array.isArray(spec.decisions) ? spec.decisions : []);
+    upsertBuildGate(buildReceipts, { gate: "card-prose", result: cardProse,
+      config: { maxChars: CARD_PROSE_MAX_CHARS }, runbook: CARD_PROSE_RUNBOOK });
+    if (cardProse.verdict !== "PASS") {
+      writeBuildReceipts(outPath, buildReceipts, "");
+      fail(`card-prose: ${cardProse.violations.map(v => `${v.segment} ${v.value}>${v.threshold}`).join("; ")}. ${CARD_PROSE_RUNBOOK}`);
+    }
   }
 
   const scenes = [];

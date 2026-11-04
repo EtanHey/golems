@@ -172,6 +172,8 @@ export function findBareReferences(decisions = []) {
       ["summary", decision.summary],
       ["body", decision.body],
       ["sourceNote", decision.sourceNote],
+      ...visualPanels(decision).flatMap((panel, index) => [[`visual ${index} title`, panel.title], [`visual ${index} caption`, panel.caption]]),
+      ["visual label", decision.visual?.label],
       ...(decision.options || []).flatMap((option, index) => typeof option === "string"
         ? [[`option ${index}`, option]]
         : [[`option ${index}`, option?.label ?? option?.title], [`option ${index} summary`, option?.summary]]),
@@ -217,6 +219,89 @@ function textAnswer(decision) {
   if (!label) throw new Error(`decision-flow: ${decision.id} text answer needs a label naming the question`);
   return { label, placeholder: String(answer.placeholder ?? "").trim() };
 }
+
+// Teaching visual rule (Etan, 2026-11-04): a formal model or code explanation shows two short, labelled code panels
+// side by side (stacked on a phone), e.g. a saved counterexample beside the rule that catches it. The full
+// explanation stays in the audio; panels carry a caption, never an essay.
+export const VISUAL_CAPTION_MAX_CHARS = 140;
+export const VISUAL_CODE_MAX_LINES = 16;
+
+function visualPanels(decision) {
+  const visual = decision?.visual;
+  return visual && Array.isArray(visual.panels) ? visual.panels : [];
+}
+
+function normalizeVisual(decision) {
+  if (decision.visual === undefined) return null;
+  const visual = decision.visual;
+  if (!visual || visual.type !== "code-pair" || !Array.isArray(visual.panels) || visual.panels.length !== 2) {
+    throw new Error(`decision-flow: ${decision.id} visual must be { type: "code-pair", panels: [two panels] }`);
+  }
+  const panels = visual.panels.map((panel, index) => {
+    const title = String(panel?.title ?? "").trim();
+    const caption = String(panel?.caption ?? "").trim();
+    const code = String(panel?.code ?? "").replace(/\r\n?/g, "\n").replace(/^\n+|\s+$/g, "");
+    const language = String(panel?.language ?? "text").trim().toLowerCase();
+    if (!title) throw new Error(`decision-flow: ${decision.id} visual panel ${index} needs a title`);
+    if (!code) throw new Error(`decision-flow: ${decision.id} visual panel ${index} needs code`);
+    if (caption.length > VISUAL_CAPTION_MAX_CHARS) {
+      throw new Error(`decision-flow: ${decision.id} visual panel ${index} caption must be at most ${VISUAL_CAPTION_MAX_CHARS} characters; explain in the audio`);
+    }
+    if (code.split("\n").length > VISUAL_CODE_MAX_LINES) {
+      throw new Error(`decision-flow: ${decision.id} visual panel ${index} must be at most ${VISUAL_CODE_MAX_LINES} lines; show the excerpt, narrate the rest`);
+    }
+    if (!/^[a-z0-9+-]+$/.test(language)) throw new Error(`decision-flow: ${decision.id} visual panel ${index} language must be a plain name`);
+    return { title, caption, code, language };
+  });
+  return { label: String(visual.label ?? "").trim(), panels };
+}
+
+// TLA+ reads better with its operators and literals set apart; every other language stays plain escaped text.
+function highlightCode(code, language) {
+  if (language !== "tla") return escapeHtml(code);
+  const token = /("(?:[^"\\\n]|\\.)*")|(\(\*[\s\S]*?\*\)|\\\*[^\n]*)|(\b(?:TRUE|FALSE)\b)|(~>|\/\\|\\\/|==|\|->|=>|\[\]|<>)/g;
+  let html = "", offset = 0;
+  for (const match of code.matchAll(token)) {
+    html += escapeHtml(code.slice(offset, match.index));
+    const kind = match[1] ? "str" : match[2] ? "com" : match[3] ? "lit" : "op";
+    html += `<span class="df-tok-${kind}">${escapeHtml(match[0])}</span>`;
+    offset = match.index + match[0].length;
+  }
+  return html + escapeHtml(code.slice(offset));
+}
+
+function renderVisual(decision) {
+  const visual = normalizeVisual(decision);
+  if (!visual) return "";
+  const panels = visual.panels.map((panel, index) => {
+    const id = `visual-${escapeHtml(decision.id)}-${index}`;
+    return `<figure class="df-code-panel" aria-labelledby="${id}"><figcaption><b id="${id}">${escapeHtml(panel.title)}</b>${panel.caption ? `<span>${escapeHtml(panel.caption)}</span>` : ""}</figcaption><pre class="df-code" tabindex="0" aria-labelledby="${id}" data-language="${escapeHtml(panel.language)}"><code>${highlightCode(panel.code, panel.language)}</code></pre></figure>`;
+  }).join("");
+  return `<figure class="df-visual df-codepair"${visual.label ? ` aria-label="${escapeHtml(visual.label)}"` : ""}>${visual.label ? `<figcaption class="df-visual-label">${escapeHtml(visual.label)}</figcaption>` : ""}<div class="df-codepair-grid">${panels}</div></figure>`;
+}
+
+// Prose rule (Etan, 2026-11-04): audio owns the explanation. A card's visible prose (summary plus body, copy blocks
+// excluded) is one or two short lines. Titles, controls, the Sources drawer and the teaching visual are separate.
+export const CARD_PROSE_MAX_CHARS = 110;
+
+function proseText(text) {
+  return String(text ?? "").replace(/\r\n?/g, "\n").replace(/^```[^\n`]*\n[\s\S]*?\n```[ \t]*(?=\n|$)/gm, " ")
+    .replace(/\[([^\]\n]+)\]\((https?:[^)\s]+)\)/g, "$1").replace(/\s+/g, " ").trim();
+}
+
+export function cardProse(decision) {
+  return [proseText(decision.summary), proseText(decision.body)].filter(Boolean).join(" ");
+}
+
+// BUILD contract: every card's visible prose fits the budget. Returns typed violations for the receipts sidecar.
+export function analyzeCardProse(decisions = []) {
+  const violations = decisions.map((decision) => ({ decision, chars: cardProse(decision).length }))
+    .filter(({ chars }) => chars > CARD_PROSE_MAX_CHARS)
+    .map(({ decision, chars }) => ({ segment: String(decision.id), metric: "CARD_PROSE_BUDGET", value: chars, threshold: CARD_PROSE_MAX_CHARS,
+      evidence: `Visible card prose is ${chars} characters; the explanation belongs in the narration.` }));
+  return { verdict: violations.length ? "REJECTED" : "PASS", violations };
+}
+export const CARD_PROSE_RUNBOOK = `Cut the card's summary and body to one or two short lines (at most ${CARD_PROSE_MAX_CHARS} characters, copy blocks excluded). Keep the full explanation in the scene scripts, links in rail rows (the Sources drawer), attribution in sourceNote and any model or code in a code-pair visual.`;
 
 function sentenceCase(value) {
   const text = String(value || "");
@@ -493,6 +578,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
     ${body ? `<div class="df-question">${body}</div>` : ""}
+    ${renderVisual(decision)}
     <div class="df-answer">
       ${renderChecklist(decision)}
       ${renderOptions(decision, kind)}
