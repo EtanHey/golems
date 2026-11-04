@@ -506,7 +506,7 @@ def evaluate():
         cwd_stat = os.stat(cwd)
     except FileNotFoundError:
         return denial(
-            f"Blocked: the working directory {cwd} doesn't exist. "
+            f"Blocked: the working directory {cwd!r} doesn't exist. "
             "Create it from an existing directory (mkdir -p) or use an existing "
             "working directory, then retry."
         )
