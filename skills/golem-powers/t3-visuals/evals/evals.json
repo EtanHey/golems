@@ -1,0 +1,841 @@
+{
+  "schema": 1,
+  "status": "DRAFT_UNMEASURED",
+  "source": "Synthetic data; subjects adapted from historical T3 visuals research.",
+  "cases": [
+    {
+      "id": "status-board",
+      "subject": "status board",
+      "prompt": "Show a T3 release status board. Keep built, tested, merged and installed distinct; identify every lane on hover.",
+      "data": {
+        "as_of": "2026-11-04T03:22:00Z",
+        "timezone": "Asia/Jerusalem",
+        "release": "3.2",
+        "lanes": [
+          {
+            "id": "A",
+            "meaning": "Fresh install setup",
+            "built": true,
+            "tested": true,
+            "merged": true,
+            "installed": false,
+            "state": "ready"
+          },
+          {
+            "id": "B",
+            "meaning": "Paste at cursor",
+            "built": true,
+            "tested": false,
+            "merged": false,
+            "installed": false,
+            "state": "active"
+          },
+          {
+            "id": "C",
+            "meaning": "Selection restore",
+            "built": false,
+            "tested": false,
+            "merged": false,
+            "installed": false,
+            "state": "blocked"
+          },
+          {
+            "id": "D",
+            "meaning": "Settings redesign",
+            "built": false,
+            "tested": null,
+            "merged": false,
+            "installed": false,
+            "state": "not started"
+          }
+        ]
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R04",
+          "category": "compliance",
+          "claim": "Every status-bearing row/mark has the correct color and a non-color state cue."
+        },
+        {
+          "id": "R06",
+          "category": "compliance",
+          "claim": "Omitted per-item precision appears immediately as one unclipped line on hover and keyboard focus."
+        },
+        {
+          "id": "R07",
+          "category": "compliance",
+          "claim": "All displayed tooltip content including pseudo-elements computes to normal font-style."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        },
+        {
+          "id": "R12",
+          "category": "compliance",
+          "claim": "Visible wall clocks use Asia/Jerusalem local human time with correct DST conversion."
+        }
+      ]
+    },
+    {
+      "id": "before-after",
+      "subject": "before/after",
+      "prompt": "Visualize decoder throughput before and after; preserve the uncertainty about end-to-end performance.",
+      "data": {
+        "fixture_mb": 150,
+        "unit": "MB/s",
+        "runs_per_arm": 5,
+        "before": {
+          "median": 2418,
+          "range": [
+            830,
+            2613
+          ]
+        },
+        "after": {
+          "median": 3399,
+          "range": [
+            2605,
+            3639
+          ]
+        },
+        "scope": "Decoder only; busy machine; no stable end-to-end speedup established"
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R05",
+          "category": "quality",
+          "claim": "Color carries stable entity or ordered-magnitude meaning with a useful legend."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R09",
+          "category": "structure",
+          "claim": "Both Before/Old and After/New sides are explicitly labeled with comparable scales."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        }
+      ]
+    },
+    {
+      "id": "timeline",
+      "subject": "timeline",
+      "prompt": "Show these task windows as a T3 timeline with exact local time ranges on hover. Use Asia/Jerusalem.",
+      "data": {
+        "date": "2026-11-04",
+        "tasks": [
+          {
+            "name": "Build",
+            "start": "2026-11-04T02:30:00Z",
+            "end": "2026-11-04T03:10:00Z"
+          },
+          {
+            "name": "Test",
+            "start": "2026-11-04T03:05:00Z",
+            "end": "2026-11-04T03:50:00Z"
+          },
+          {
+            "name": "Review",
+            "start": "2026-11-04T03:20:00Z",
+            "end": "2026-11-04T04:00:00Z"
+          }
+        ]
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R05",
+          "category": "quality",
+          "claim": "Color carries stable entity or ordered-magnitude meaning with a useful legend."
+        },
+        {
+          "id": "R06",
+          "category": "compliance",
+          "claim": "Omitted per-item precision appears immediately as one unclipped line on hover and keyboard focus."
+        },
+        {
+          "id": "R07",
+          "category": "compliance",
+          "claim": "All displayed tooltip content including pseudo-elements computes to normal font-style."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        },
+        {
+          "id": "R12",
+          "category": "compliance",
+          "claim": "Visible wall clocks use Asia/Jerusalem local human time with correct DST conversion."
+        }
+      ]
+    },
+    {
+      "id": "decision-comparison",
+      "subject": "decision table",
+      "prompt": "Compare three proposed website scopes so I can see responsibilities, price and what remains unknown at a glance. Explain abbreviated items on hover.",
+      "data": {
+        "currency": "NIS",
+        "proposals": [
+          {
+            "scope": "Existing work",
+            "price": 4000,
+            "deliverables": [
+              "Source handover",
+              "Walkthrough"
+            ],
+            "support": "Unagreed",
+            "acceptance": "Checklist missing"
+          },
+          {
+            "scope": "Data copy",
+            "price": null,
+            "deliverables": [
+              "Products",
+              "Customers"
+            ],
+            "support": "Not included",
+            "acceptance": "Destination missing"
+          },
+          {
+            "scope": "Store setup",
+            "price": 3500,
+            "deliverables": [
+              "Payment connection",
+              "Checkout test"
+            ],
+            "support": "Separate quote",
+            "acceptance": "Not accepted"
+          }
+        ]
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R05",
+          "category": "quality",
+          "claim": "Color carries stable entity or ordered-magnitude meaning with a useful legend."
+        },
+        {
+          "id": "R06",
+          "category": "compliance",
+          "claim": "Omitted per-item precision appears immediately as one unclipped line on hover and keyboard focus."
+        },
+        {
+          "id": "R07",
+          "category": "compliance",
+          "claim": "All displayed tooltip content including pseudo-elements computes to normal font-style."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        }
+      ]
+    },
+    {
+      "id": "metrics-trend",
+      "subject": "trend",
+      "prompt": "Chart observed model-family shares over time and the separately estimated next day. Include exact daily shares on hover.",
+      "data": {
+        "unit": "percent of reported turns",
+        "days": [
+          "Nov 1",
+          "Nov 2",
+          "Nov 3",
+          "Nov 4"
+        ],
+        "series": {
+          "A": [
+            80,
+            60,
+            45,
+            40
+          ],
+          "B": [
+            0,
+            20,
+            40,
+            45
+          ],
+          "Other": [
+            20,
+            20,
+            15,
+            15
+          ]
+        },
+        "daily_turns": [
+          100,
+          200,
+          200,
+          300
+        ],
+        "estimated_next_day": {
+          "A": 35,
+          "B": 50,
+          "Other": 15
+        }
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R05",
+          "category": "quality",
+          "claim": "Color carries stable entity or ordered-magnitude meaning with a useful legend."
+        },
+        {
+          "id": "R06",
+          "category": "compliance",
+          "claim": "Omitted per-item precision appears immediately as one unclipped line on hover and keyboard focus."
+        },
+        {
+          "id": "R07",
+          "category": "compliance",
+          "claim": "All displayed tooltip content including pseudo-elements computes to normal font-style."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        }
+      ]
+    },
+    {
+      "id": "pipeline-flow",
+      "subject": "flow",
+      "prompt": "Diagram the dictation pipeline and the failure branch. Show where each stage sends its output; reveal stage meaning on hover.",
+      "data": {
+        "nodes": [
+          {
+            "id": "capture",
+            "meaning": "Microphone produces audio"
+          },
+          {
+            "id": "transcribe",
+            "meaning": "Audio becomes text"
+          },
+          {
+            "id": "polish",
+            "meaning": "Optional punctuation pass"
+          },
+          {
+            "id": "paste",
+            "meaning": "Insert text at active cursor"
+          },
+          {
+            "id": "retry",
+            "meaning": "Keep recording and offer retry"
+          }
+        ],
+        "edges": [
+          [
+            "capture",
+            "transcribe"
+          ],
+          [
+            "transcribe",
+            "polish"
+          ],
+          [
+            "polish",
+            "paste"
+          ],
+          [
+            "transcribe",
+            "retry"
+          ]
+        ],
+        "failure_edge": [
+          "transcribe",
+          "retry"
+        ]
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R05",
+          "category": "quality",
+          "claim": "Color carries stable entity or ordered-magnitude meaning with a useful legend."
+        },
+        {
+          "id": "R06",
+          "category": "compliance",
+          "claim": "Omitted per-item precision appears immediately as one unclipped line on hover and keyboard focus."
+        },
+        {
+          "id": "R07",
+          "category": "compliance",
+          "claim": "All displayed tooltip content including pseudo-elements computes to normal font-style."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        }
+      ]
+    },
+    {
+      "id": "single-kpi",
+      "subject": "single KPI",
+      "prompt": "Visualize the current audio backlog as one KPI; we have no historical measurements.",
+      "data": {
+        "value": 12,
+        "unit": "recordings waiting",
+        "as_of": "2026-11-04T03:22:00Z",
+        "timezone": "Asia/Jerusalem",
+        "history": null
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        },
+        {
+          "id": "R12",
+          "category": "compliance",
+          "claim": "Visible wall clocks use Asia/Jerusalem local human time with correct DST conversion."
+        }
+      ]
+    },
+    {
+      "id": "heatmap",
+      "subject": "heatmap",
+      "prompt": "Show weekday/hour activity hotspots with exact counts on hover; all hours are already local.",
+      "data": {
+        "unit": "completed turns",
+        "timezone": "Asia/Jerusalem",
+        "period": "Nov 1–7, 2026",
+        "hours": [
+          0,
+          4,
+          8,
+          12,
+          16,
+          20
+        ],
+        "days": [
+          "Sun",
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sat"
+        ],
+        "counts": [
+          [
+            1,
+            0,
+            5,
+            12,
+            8,
+            3
+          ],
+          [
+            0,
+            1,
+            9,
+            20,
+            11,
+            4
+          ],
+          [
+            1,
+            1,
+            8,
+            18,
+            10,
+            5
+          ],
+          [
+            0,
+            0,
+            12,
+            25,
+            13,
+            6
+          ],
+          [
+            1,
+            0,
+            10,
+            30,
+            15,
+            4
+          ],
+          [
+            0,
+            0,
+            3,
+            8,
+            4,
+            2
+          ],
+          [
+            0,
+            0,
+            2,
+            6,
+            3,
+            1
+          ]
+        ]
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R05",
+          "category": "quality",
+          "claim": "Color carries stable entity or ordered-magnitude meaning with a useful legend."
+        },
+        {
+          "id": "R06",
+          "category": "compliance",
+          "claim": "Omitted per-item precision appears immediately as one unclipped line on hover and keyboard focus."
+        },
+        {
+          "id": "R07",
+          "category": "compliance",
+          "claim": "All displayed tooltip content including pseudo-elements computes to normal font-style."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        }
+      ]
+    },
+    {
+      "id": "linked-hierarchy",
+      "subject": "hierarchy",
+      "prompt": "Show repository size and edit hotspots. Link ranked-file hover to the map; drill down into src, update the summary and provide a working back control.",
+      "data": {
+        "period": "60 days",
+        "files": [
+          {
+            "path": "src/auth.js",
+            "lines": 300,
+            "edits": 12
+          },
+          {
+            "path": "src/main.js",
+            "lines": 1200,
+            "edits": 20
+          },
+          {
+            "path": "test/auth.test.js",
+            "lines": 500,
+            "edits": 8
+          }
+        ],
+        "scales": {
+          "area": "lines",
+          "color": "edits, fixed 0–20"
+        }
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R05",
+          "category": "quality",
+          "claim": "Color carries stable entity or ordered-magnitude meaning with a useful legend."
+        },
+        {
+          "id": "R06",
+          "category": "compliance",
+          "claim": "Omitted per-item precision appears immediately as one unclipped line on hover and keyboard focus."
+        },
+        {
+          "id": "R07",
+          "category": "compliance",
+          "claim": "All displayed tooltip content including pseudo-elements computes to normal font-style."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        },
+        {
+          "id": "R11",
+          "category": "quality",
+          "claim": "Requested linked views and controls work coherently and reduced motion preserves meaning."
+        }
+      ]
+    },
+    {
+      "id": "reference-motion",
+      "subject": "motion reference",
+      "prompt": "Recreate this specified replay: dots start at the left, bounce back and forth at proportional speeds; include pause/reset. This is an illustrative rate comparison, not measured runtime.",
+      "data": {
+        "unit": "illustrative rate",
+        "rates": {
+          "A": 6,
+          "B": 3,
+          "C": 1
+        },
+        "reference": {
+          "origin": "left",
+          "direction": "ping-pong",
+          "reset": "left",
+          "reduced_motion": "static labeled rates"
+        }
+      },
+      "expected_output": "Self-contained inline T3 HTML preserving the supplied meaning.",
+      "category": "compliance",
+      "assertions": [
+        {
+          "id": "R01",
+          "category": "compliance",
+          "claim": "The form answers the supplied question and honors its reference."
+        },
+        {
+          "id": "R02",
+          "category": "compliance",
+          "claim": "Values, population, units, periods and unknowns match the input; no unsupported claims."
+        },
+        {
+          "id": "R03",
+          "category": "compliance",
+          "claim": "The whole scroll surface has compact labels and no explanatory prose blocks."
+        },
+        {
+          "id": "R05",
+          "category": "quality",
+          "claim": "Color carries stable entity or ordered-magnitude meaning with a useful legend."
+        },
+        {
+          "id": "R08",
+          "category": "compliance",
+          "claim": "All text and badge contrast measures at least 4.5:1 in light and dark."
+        },
+        {
+          "id": "R10",
+          "category": "structure",
+          "claim": "Essential labels and units remain readable without overlap at 1280 and 390 pixels."
+        },
+        {
+          "id": "R11",
+          "category": "quality",
+          "claim": "Requested linked views and controls work coherently and reduced motion preserves meaning."
+        }
+      ]
+    }
+  ],
+  "trigger_controls": [
+    {
+      "id": "no-visual",
+      "prompt": "What is 7 plus 5? Reply with the number only.",
+      "expected_output": "12",
+      "assertions": [
+        "No skill load",
+        "No visual tools"
+      ]
+    },
+    {
+      "id": "published-dashboard",
+      "prompt": "Create a standalone published HTML dashboard on the configured hub using html-dashboard.",
+      "expected_output": "Follow html-dashboard delivery, not inline T3 visuals.",
+      "assertions": [
+        "Load html-dashboard",
+        "Do not substitute inline html_render delivery"
+      ]
+    }
+  ]
+}
