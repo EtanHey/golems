@@ -84,11 +84,20 @@ audio strip / separate question list from reappearing.
 
 Attribution: Etan, 2026-11-04 (0300 dashboard polish). Applies to decision-flow cards.
 
-- **Short cards.** The narration explains; the card shows one or two short lines (`summary` + `body`, at most
-  110 characters in at most two prose blocks; only rendered body copy blocks are excluded). Summaries are
-  literal text, so fences in a summary still count. BUILD records `CARD_PROSE_BUDGET` or `CARD_PROSE_BLOCKS`
-  for excess copy and `CARD_PROSE_LAYOUT` when the actual rendered prose exceeds two readable, unclipped
-  lines or overflows at 390 or 1280 pixels. All use the typed `card-prose` receipt row. Cut the words; never clip with CSS or hide an essay behind another expander.
+- **Short cards.** Prefer ONE prose block: use `body` or `summary`, roughly 60 characters total.
+  Keep the full explanation in the audio. The unchanged hard ceiling is 110 characters across
+  `summary` + `body`, in at most two prose blocks; it is a rejection limit, not a drafting target.
+  Only rendered body copy blocks are excluded; summaries are literal text, so summary fences count.
+  No character count guarantees two lines across fonts. The actual render at 375 usable pixels
+  (a 390px frame minus a 15px scrollbar), 390 and 1280 decides: at most two readable, unclipped
+  lines with no overflow. BUILD records `CARD_PROSE_BUDGET`, `CARD_PROSE_BLOCKS` or `CARD_PROSE_LAYOUT`
+  in the typed `card-prose` receipt row. Cut words; never shrink text, clip, or hide an essay in an expander.
+- **Preserve what the evidence means.** Shortening must retain supplied facts and caveats. Keep explicit
+  what actually discovered a defect and what an earlier model omitted when that changes the meaning;
+  put that correction in the short card or teaching visual. Teaching panels and captions must retain
+  supplied saved states/results, the meaning of notation, and limits on what a model proves.
+  Distinguish saved results from fresh runs and safety from eventual progress; keep the need for real
+  app testing explicit. Keep source links and attribution accessible, with the full explanation in audio.
 - **Real selections only where something is asked.** `options` render radios (one pick); add `multiple: true`
   for independent multiple picks (checkboxes, stored as a list); `checklist` stays a to-do list. A written answer
   needs `answer: { type: "text", label: "<the question>" }`. A card with none of these is information: no answer

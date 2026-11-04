@@ -68,7 +68,7 @@ test("four rendered paragraphs cannot pass the two-line contract", () => {
   expect(analyzeCardProse([paragraphs]).verdict).toBe('REJECTED');
 });
 
-test("real rendered prose at 390 and 1280: max length, paragraphs and long tokens", async () => {
+test("real rendered prose at 375, 390 and 1280: max length, paragraphs and long tokens", async () => {
   const cases = [
     { ...INFO, body: 'i '.repeat(54) + 'ii', want: 'PASS' },
     { ...INFO, summary: 'i'.repeat(55), body: 'i'.repeat(55), want: 'PASS' },
@@ -79,12 +79,32 @@ test("real rendered prose at 390 and 1280: max length, paragraphs and long token
   for (const decision of cases) {
     const result = await decisionFlow.analyzeCardProseLayout(render([decision]));
     expect(result.verdict).toBe(decision.want);
-    expect(result.stats.map(row => row.width)).toEqual([390, 1280]);
+    expect(result.stats.map(row => row.width)).toEqual([375, 390, 1280]);
     if (result.verdict === 'PASS') expect(result.stats.every(row => row.lines <= 2 && row.blocks.every(b => b.readable && !b.overflow))).toBe(true);
     else expect(result.violations.some(v => v.metric === 'CARD_PROSE_LAYOUT')).toBe(true);
   }
 }, 15000);
 
+
+test("usable phone width rejects prose that fits the full 390px viewport", async () => {
+  const body = 'The saved report shows which checks passed and which ones still need attention.';
+  expect(analyzeCardProse([{ ...INFO, body }]).verdict).toBe('PASS');
+  const result = await decisionFlow.analyzeCardProseLayout(render([{ ...INFO, body }]));
+  expect(result.stats.find(row => row.width === 390)?.lines).toBe(2);
+  expect(result.stats.find(row => row.width === 1280)?.lines).toBe(1);
+  expect(result.verdict).toBe('REJECTED');
+  expect(result.violations).toContainEqual(expect.objectContaining({
+    segment: 'info', metric: 'CARD_PROSE_LAYOUT', value: 3, threshold: 2,
+  }));
+  expect(result.stats.find(row => row.width === 375)?.lines).toBe(3);
+  const short = await decisionFlow.analyzeCardProseLayout(render([{ ...INFO, body: 'Read the saved report.' }]));
+  expect(short.verdict).toBe('PASS');
+  for (const width of [375, 390, 1280]) {
+    const row = short.stats.find(row => row.width === width);
+    expect(row?.lines).toBe(1);
+    expect(row?.blocks.every(block => block.readable && !block.overflow)).toBe(true);
+  }
+}, 15000);
 
 test("real BUILD withholds stale HTML and writes typed prose rejects", () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'prose-build-'));

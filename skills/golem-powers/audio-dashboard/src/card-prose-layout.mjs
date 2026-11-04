@@ -5,7 +5,8 @@ export async function analyzeCardProseLayout(html, { browser } = {}) {
   const owned = !browser, stats = [], violations = [];
   try {
     browser ||= await chromium.launch({ args: ['--mute-audio'] });
-    for (const width of [390, 1280]) {
+    // A 390px frame with a classic 15px scrollbar has only 375px of usable width.
+    for (const width of [375, 390, 1280]) {
       const context = await browser.newContext({ viewport: { width, height: 844 }, serviceWorkers: 'block' });
       try {
         const page = await context.newPage();
