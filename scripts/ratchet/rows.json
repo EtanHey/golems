@@ -146,7 +146,7 @@
     },
     {
       "id": "live-human-confirm",
-      "metric": "LIVE human-confirm hook with a lead-issued token: deny / allow once / replay deny / master deny (post-merge, lead-run)",
+      "metric": "LIVE human-confirm hook: own-branch lease allowed without token and on replay, plain force/foreign lease/master denied, lead issuance succeeds and token lease allowed (post-merge, lead-run)",
       "kind": "real",
       "runner": "live",
       "direction": "pass",
