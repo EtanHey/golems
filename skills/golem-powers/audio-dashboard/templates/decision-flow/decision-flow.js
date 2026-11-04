@@ -112,7 +112,7 @@
   function goTo(index,keepFocus){activate(index,allAudios().some(function(audio){return !audio.paused;}),keepFocus);}
   cards.forEach(function(card,index){
     var audios=audiosFor(card);
-    audios.forEach(function(audio,audioIndex){audio.onended=function(){clearHighlights(card,audio.dataset.audioScene);playAt(card,audioIndex+1);};audio.ontimeupdate=function(){if(audio.paused)return;setHighlight(card,audio.dataset.audioScene,audio.currentTime);updateProgress(card);};});
+    audios.forEach(function(audio,audioIndex){audio.addEventListener("play",function(){updateTransport();startTicking();});audio.addEventListener("pause",updateTransport);audio.onended=function(){clearHighlights(card,audio.dataset.audioScene);playAt(card,audioIndex+1);};audio.ontimeupdate=function(){if(audio.paused)return;setHighlight(card,audio.dataset.audioScene,audio.currentTime);updateProgress(card);};});
     card.querySelector(".df-play").addEventListener("click",function(){playCard(card);});
     card.querySelector(".df-restart").addEventListener("click",function(){restartCard(card);});
     function seekWord(word){var audioIndex=audios.findIndex(function(item){return item.dataset.audioScene===word.dataset.scene;});if(audioIndex<0)return;audios.forEach(function(audio,indexToReset){audio.pause();if(indexToReset>audioIndex){audio.currentTime=0;card.querySelectorAll('.df-word[data-scene="'+audio.dataset.audioScene+'"]').forEach(function(laterWord){laterWord.classList.remove("is-current","is-read");});}});clearHighlights(card);card.dataset.audioIndex=String(audioIndex);audios[audioIndex].currentTime=Number(word.dataset.wordStart);playAt(card,audioIndex);}
