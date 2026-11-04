@@ -8,7 +8,16 @@ execute: scripts/default.sh
 
 > Record your screen while narrating, or provide a YouTube/local video for knowledge extraction. The pipeline extracts speech, pulls visual context, and produces either structured QA findings or durable gems.
 
-**Declare mode before dispatch.** **qa:** UI/app QA; mandatory 10 fps action-cue windows, scene cues, 30s coverage and refinement remain. **debrief / review / gems:** TRANSCRIPT-FIRST; transcribe, pick ≤12 moments (questions, claims, numbers, referenced slides), then one still or a ≤2 fps short window per moment. No blanket 30s coverage; no scene-cue sweep unless the transcript references visuals such as slides/code/screen share. Default budget: **max(600, 24 × video minutes) seconds total wall-clock**, including transcription and notes (25min → 600s; 90min → 2160s). An explicit parent remaining deadline wins. Preserve debrief.md whenever the transcript exists, even on budget/partial exits; unread visuals stay NOT DETERMINED.
+**Declare mode before dispatch.** **qa:** UI/app QA; mandatory 10 fps action-cue windows, scene cues, 30s coverage and refinement remain. **debrief / review / gems:** normally TRANSCRIPT-FIRST (the exhaustive override below wins); transcribe, pick ≤12 moments (questions, claims, numbers, referenced slides), then one still or a ≤2 fps short window per moment. No blanket 30s coverage; no scene-cue sweep unless the transcript references visuals such as slides/code/screen share. Default budget: **max(600, 24 × video minutes) seconds total wall-clock**, including transcription and notes (25min → 600s; 90min → 2160s). An explicit parent remaining deadline wins. Preserve debrief.md whenever the transcript exists, even on budget/partial exits; unread visuals stay NOT DETERMINED.
+
+## Visual-first exhaustive override (gems / debrief / review)
+
+"Full pass" / "full coverage" (including "Full /qa-video GEMS pass"),
+"rigorous", "exhaustive", a visual-reference/catalog goal, or a silent
+video (missing/empty transcript or no audio stream) selects **VISUAL-FIRST
+EXHAUSTIVE**. This overrides every ≤12-moment cap, transcript-only stop and
+early-context/PARTIAL exit below and in the runner. Ordinary debriefs retain
+the cheap transcript-first path; "full transcript debrief" alone stays there. See [gems.md](workflows/gems.md) § Visual-first exhaustive.
 
 ## How It Works — QA mode
 
@@ -68,9 +77,11 @@ admission (§ 5) applies). Never copy the recording to another machine.
 subagent for the QA pass (a named model, or "use video-gems"), dispatch exactly
 that model or subagent **before any media probe, extraction, transcription or
 frame preparation**. The requesting seat only briefs and waits; never run the
-pipeline inline, including setup "for" the worker. The named worker runs the full
-/qa-video pipeline itself, including its own helper fan-out. Authorize that
-fan-out explicitly in its brief. This overrides the default execution owner below.
+pipeline inline, including setup "for" the worker. The named worker owns the full
+/qa-video pipeline, including reader coordination. Authorize helper fan-out
+explicitly in its brief. A nested Agent profile without dispatch tools returns
+NEEDS_READERS with frame batches to its parent, which dispatches the readers
+and completes synthesis; this is a handoff, not a PARTIAL/completed audit. This overrides the default execution owner below.
 
 In T3, call `orchestrator_capabilities` then `delegate_task` with the model the
 user named and its provider, putting settings in `target.options`: Codex
@@ -89,14 +100,14 @@ tools it follows the single-reader runner contract below.
 |---|---|---|
 | QA a recording (default) | The QA seat itself: extraction, transcript, hotspots and contact sheets in its own shell, then the fan-out below | ≥2 `claude.judgment` helpers, each Reading its frame windows' sheets/frames; a `claude.subagent.mechanical` verifier re-reads each candidate finding's frames |
 | Debrief/review (default) | The QA seat itself (`debrief.py` in its own shell), mode=debrief/review | The same fan-out over the ≤12 moment stills (2 helpers is enough); verifier per kept visual claim |
-| Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `video-gems` itself (Read on stills); `visual-batch.py` pre-sort optional |
+| Extract gems (default) | `Agent(video-gems)` with source and artifact directory | Ordinary gems: video-gems reads targeted stills; exhaustive: reader fan-out, single-reader fallback if dispatch is unavailable |
 | Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` and an explicit absolute `docs.local` workdir | That worker views sheets and runs the same iterative loop |
 
 **Default subagent routing:** Use this table once per unnamed request. Do not open an unrequested
 Gemini pane, and do not hand the QA pipeline to a single runner sub-agent.
-`video-gems` currently lives in `~/.claude/agents/video-gems.md`; its
-packaging/helper update is a lead follow-up. If that local agent lacks the
-helper contract, include this workflow in its brief.
+`video-gems` is managed at `agents/video-gems.md`, installed with the other
+qa-video agents by `skills/golem-powers/orc/scripts/install.sh`. Include the absolute skill and
+workflow paths in its brief; the installed agent delegates media policy there.
 
 Default pipeline (no named override): the QA seat for QA/debrief/review, `Agent(video-gems)` for gems.
 The QA seat runs extraction, transcript, hotspots and contact sheets in its **own shell**.
@@ -130,7 +141,7 @@ and terminates in-flight helpers. Output overflow is an explicit failed read.
 Helpers and verifiers are sub-agents and cannot dispatch: they never use the
 Agent tool. That limit is theirs, not the QA seat's. The seat may use
 `Agent(visual-gatherer)` for ad-hoc screenshot questions outside this pipeline.
-`qa-video-runner` (`agents/qa-video-runner.md`, installed by `orc/scripts/install.sh`)
+`qa-video-runner` (`agents/qa-video-runner.md`, installed by `skills/golem-powers/orc/scripts/install.sh`)
 is off the default route: it is the single-reader contract for a QA seat with no
 dispatch tool at all (a sub-agent, or headless `claude -p` without Agent), which
 then runs the whole loop alone.
