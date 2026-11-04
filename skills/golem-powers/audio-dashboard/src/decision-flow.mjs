@@ -307,7 +307,7 @@ export function analyzeCardProse(decisions = []) {
   }
   return { verdict: violations.length ? "REJECTED" : "PASS", violations };
 }
-export const CARD_PROSE_RUNBOOK = `Cut the card's summary and body to one or two short lines (at most ${CARD_PROSE_MAX_CHARS} characters in at most two prose blocks, rendered body copy blocks excluded). BUILD also measures two readable, unclipped lines at 390 and 1280 pixels. Keep the full explanation in the scene scripts, links in rail rows (the Sources drawer), attribution in sourceNote and any model or code in a code-pair visual.`;
+export const CARD_PROSE_RUNBOOK = `Cut the card's summary and body to one or two short lines (at most ${CARD_PROSE_MAX_CHARS} characters in at most two prose blocks, rendered body copy blocks excluded). BUILD also measures two readable, unclipped lines at 375, 390 and 1280 pixels. Keep the full explanation in the scene scripts, links in rail rows (the Sources drawer), attribution in sourceNote and any model or code in a code-pair visual.`;
 
 function sentenceCase(value) {
   const text = String(value || "");

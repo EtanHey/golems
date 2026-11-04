@@ -526,7 +526,7 @@ async function main() {
   if (dashboardType === "decision-flow") {
     const layout = await analyzeCardProseLayout(html);
     upsertBuildGate(buildReceipts, { gate: "card-prose", result: layout,
-      config: { maxChars: CARD_PROSE_MAX_CHARS, maxBlocks: 2, maxLines: 2, widths: [390, 1280] }, runbook: CARD_PROSE_RUNBOOK });
+      config: { maxChars: CARD_PROSE_MAX_CHARS, maxBlocks: 2, maxLines: 2, widths: [375, 390, 1280] }, runbook: CARD_PROSE_RUNBOOK });
     writeBuildReceipts(outPath, buildReceipts, html);
     if (layout.verdict !== "PASS") fail(`card-prose: ${layout.violations.map(v => v.metric).join(", ")}. ${CARD_PROSE_RUNBOOK}`);
   }

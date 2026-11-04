@@ -14,13 +14,16 @@ Short control: “Read the saved report.”
 
 | Copy | 375px lines | 390px lines | 1280px lines | Old guard | New guard |
 |---|---:|---:|---:|---|---|
-| Synthetic boundary | 3 | 2 | 1 | PASS (missed 375px) | REJECTED |
+| Synthetic boundary (macOS/Avenir Next) | 3 | 2 | 1 | PASS (missed 375px) | REJECTED |
 | Short control | 1 | 1 | 1 | PASS | PASS |
 
 The regression test failed at base `3c035fb4ee5b1dd4c993ab31558982d0d3408165`
 with expected REJECTED / received PASS. After the guard change the focused suite
 passed 8 tests, 0 failures, 72 assertions. Full `bun run test:spine-gates` passed
 1141 tests, skipped 2 historical private controls, failed 0 (1143 tests / 52 files).
+The fixed-sentence counts above are the original macOS measurements; hosted replay failed because its font wrapped differently.
+The revised test derives boundary copy from the actual rendered fonts: old guard fails, new focused suite passes 8/0 (71 assertions).
+Hosted portability remains pending until the new replay run passes.
 Owned muted Chromium contexts blocked network requests and closed after measurement.
 
 Reproduce: `bun install`, then
@@ -51,6 +54,8 @@ The intended unchanged-choice control fails in the baseline and passes in the
 candidate, so experiment acceptance is **ITERATE**, despite candidate assertion
 acceptance. No broad SHIP claim or significance inference follows from this n=1.
 Previous 25%/55% results remain historical evidence, not overwritten by this run.
+The scorer was edited after initial execution; its manifest pins the edited source.
+Offline replay reproduces the final scores; the executed pre-edit scorer bytes are not retained.
 
 Exactly one smoke, one pair and three judgments; no transport retries or extra
 paid passes. New recorded list cost $0.19235865. Additional budget accounting
@@ -62,7 +67,7 @@ Private prompts, outputs and dashboard imagery are excluded from this proof.
 
 - Branch skill SHA256: `f8c925bc38c8b294cc2b10ce9266f136f3c781e7ac6d0cf1fc7f38c74fbc48df`
 - Guard SHA256: `c0efaf07ff8b42715f09c131c35b3221ddd5fe56af407f022f0758895af6746e`
-- Regression SHA256: `631bd520acd93ea38cdcc8012e6703e91503c60bade21aacd127b22439b5f35e`
+- Regression SHA256: `575535da61f883d9c10d86c161201248a3a4b4753916c8020ca43c211cb05c42`
 - Prompt SHA256: `ffda9d3801f750e2405dc4afb74bda188fe2a03e1dca975b05cba40b8bade5eb`
 - Spec SHA256: `494031cf8b6bab5957872d58d89070e95523625395b5fdfde3b4c642d214a5fa`
 - Final score SHA256: `f0c2040f5701b44bf3174493e4ed6c5bc53314ece5436c2cf80ba7ac1d35d0d0`
