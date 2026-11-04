@@ -1,6 +1,8 @@
 {
   "skill_name": "audio-dashboard",
   "evals": [
+{"id": 15, "name": "badge-text-contrast-aa", "category": "compliance", "description": "All badge labels keep at least 4.5:1 text contrast on effective fill.", "prompt": "Render recommended and REBOOT badges in both templates at phone and desktop widths.", "expected_output": "Dark text on light fill or white text on deep fill; every measured ratio >=4.5:1.",
+"assertions": [{"type": "content", "name": "badge-ratio-aa", "description": "Measure computed text/fill colors at 390px and desktop; require >=4.5 without rounding."}, {"type": "negative", "name": "rejects-pale-on-pale", "description": "Pale text on pale green fails the contrast assertion."}]},
   {
     "id": 1,
     "name": "canonical-readalong-passes",
