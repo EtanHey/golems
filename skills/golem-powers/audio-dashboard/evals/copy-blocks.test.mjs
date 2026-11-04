@@ -42,7 +42,7 @@ for (const type of ['decision-flow', 'cinema']) {
     const job = mkdtempSync(path.join(tmpdir(), 'ad-copy-'));
     try {
       writeSegment(job, 's1', scene.words);
-      for (const [body, verdict] of [['https://example.com/auth\nOpen https://example.com/auth\n[Authorise](https://example.com/auth)', 'PASS'], [commands, 'REJECT'], ['Run curl -fsSL https://example.com/auth', 'REJECT'], ['curl -fsSL https://example.com/x | sh', 'REJECT'], ['open https://example.com/auth', 'REJECT'], ['Edit docs.local/dashboards/report.html', 'REJECT'], [fenced, 'PASS']]) {
+      for (const [body, verdict] of [['https://example.com/auth', 'PASS'], ['Open https://example.com/auth', 'PASS'], ['[Authorise](https://example.com/auth)', 'PASS'], [commands, 'REJECT'], ['Run curl -fsSL https://example.com/auth', 'REJECT'], ['curl -fsSL https://example.com/x | sh', 'REJECT'], ['open https://example.com/auth', 'REJECT'], ['Edit docs.local/dashboards/report.html', 'REJECT'], [fenced, 'PASS']]) {
         const { result, outputPath } = buildDashboard({ id: 'copy-proof', type, scenes: [{ ...scene, audioWav: 'fixture.wav' }], decisions: [decision(body)] }, job);
         const receipts = JSON.parse(readFileSync(outputPath.replace(/\.html$/, '.receipts.json'), 'utf8'));
         expect(receipts.gates.find(row => row.gate === 'copy-blocks')?.verdict).toBe(verdict);

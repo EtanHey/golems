@@ -1,8 +1,7 @@
-import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { writeSegment } from './audio-dashboard-test-parts/common.mjs';
 import { expect, test } from "bun:test";
 import { boot, scene } from "./decision-flow-harness.mjs";
 import * as decisionFlow from "../src/decision-flow.mjs";
@@ -90,7 +89,10 @@ test("real rendered prose at 390 and 1280: max length, paragraphs and long token
 test("real BUILD withholds stale HTML and writes typed prose rejects", () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'prose-build-'));
   const out = path.join(dir, 'index.html'), specPath = path.join(dir, 'job.json');
-  writeSegment(dir, 'i1', scene('i1').words);
+  const segment = path.join(dir, 'segments/i1'); mkdirSync(segment, { recursive: true });
+  copyFileSync(new URL('./fixtures/design-preservation/hardening-tone.wav', import.meta.url), path.join(segment, 'i1.wav'));
+  copyFileSync(new URL('../vendor/agent-html/templates/v4-story-mode/_placeholder.mp3', import.meta.url), path.join(segment, 'i1.mp3'));
+  for (const name of ['words.json', 'words.raw.json']) writeFileSync(path.join(segment, name), JSON.stringify(scene('i1').words));
   for (const [body, summary, metric] of [
     ['', '```text\n' + 'Essay '.repeat(900) + '\n```', 'CARD_PROSE_BUDGET'],
     ['One.\n\nTwo.\n\nThree.\n\nFour.', '', 'CARD_PROSE_BLOCKS'],
