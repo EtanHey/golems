@@ -1,3 +1,4 @@
+import { isSourceRail, SOURCE_NOTE_MAX_CHARS } from './source-rail.mjs';
 import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { designReportFailure } from "./design-history.mjs";
@@ -253,8 +254,8 @@ function hasTextOnlyDetails(html, outputPath) {
     if (parts.length !== 2 || summary?.tagName !== "summary" || !/^\s*sources?(?![a-z])/i.test(normalize(text(summary)))) return false;
     if (body?.tagName !== "div" || !/(?:^|\s)df-sources-body(?:\s|$)/.test(attrs(body).class || "")) return false;
     const blocks = children(body).filter(child => child.nodeName !== "#text" || child.value.trim());
-    const isRail = node => node.tagName === "dl" && /(?:^|\s)df-rail(?:\s|$)/.test(attrs(node).class || "");
-    const isNote = node => node.tagName === "p" && /(?:^|\s)df-source-note(?:\s|$)/.test(attrs(node).class || "") && normalize(text(node)).trim().length <= 280;
+    const isRail = node => isSourceRail(node, { attrs, children, text });
+    const isNote = node => node.tagName === "p" && /(?:^|\s)df-source-note(?:\s|$)/.test(attrs(node).class || "") && children(node).every(n => n.nodeName === "#text") && normalize(text(node)).trim().length <= SOURCE_NOTE_MAX_CHARS;
     return blocks.length > 0 && blocks.length <= 2 && blocks.every(node => isRail(node) || isNote(node)) &&
       blocks.filter(isRail).length <= 1 && blocks.filter(isNote).length <= 1 &&
       descendants(body).every(n => n.tagName !== "details" && n.tagName !== "audio");

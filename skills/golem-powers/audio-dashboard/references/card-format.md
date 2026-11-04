@@ -24,7 +24,10 @@ Decision-flow cards keep links and evidence attribution in one closed native
 `details.df-sources` drawer, rendered from rail rows plus an optional
 `sourceNote`. The evidence gate exempts only that exact shape (a summary that
 names Sources, the rail list and at most one note of 280 characters or fewer)
-from `TEXT_ONLY_VIEW_DETAILS`. Card prose, repeated text or a nested expander
+from `TEXT_ONLY_VIEW_DETAILS`. Rails contain at most 12 `div > dt + dd` rows; labels
+are 1–48 characters, authored values at most 160. Full HTTP(S) source URLs
+may use up to 2048 characters. Values contain plain text or one safe source
+link (plus its renderer-generated repository reference), never nested prose. Card prose, repeated text or a nested expander
 inside the drawer is still a text-only details expander and fails.
 
 ## Issue and PR references
