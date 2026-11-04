@@ -2663,5 +2663,13 @@
         "proof_kind": "stubbed-plan-only; no media reading or helper execution"
       }
     }
+  ],
+  "source_ref": "9cef80ad",
+  "historical_only": true,
+  "measurement_limitations": [
+    "Codex master already planned all 48 frames and failed only reader/batch-count checks and literal coverage-template wording; no missing-frame, refinement, continuation or PARTIAL-policy failure.",
+    "Claude master reproduced the thin pattern: 12/40 frames and zero reader dispatches.",
+    "The measured prompt supplied scorer field names, stop-cause identifiers and scroll/hover cues. Coverage-line is a literal template match, not observed behavior.",
+    "Round 2 adds a six-frame cap and merge/gap protocol; these historical candidate scores do not measure that text."
   ]
 }

@@ -13,12 +13,12 @@ Those files own the mode, media, evidence and persistence contracts; do not use
 an independent audio/hotspot-only pipeline.
 
 Declare transcript-first for an ordinary debrief, or VISUAL-FIRST EXHAUSTIVE for
-full/rigorous/exhaustive, visual-reference/catalog or silent/empty-transcript
+full-pass/full-coverage/rigorous/exhaustive, visual-reference/catalog or silent/empty-transcript
 sources. Exhaustive means every extracted full-size frame read, scroll/hover
 windows densified, and continued work on unread batches while budget remains.
 For exhaustive mode use the skill's image-reader fan-out with explicit
 authorization from the parent; ordinary transcript-first gems reads its few
-targeted stills itself.
+targeted stills itself. "Full transcript debrief" alone keeps that route.
 When nested Agent tools are unavailable, return NEEDS_READERS with ordered frame
 batches, absolute workdir, deadline and ledger paths so the parent dispatches
 readers and synthesizes; never call that handoff PARTIAL or complete coverage.

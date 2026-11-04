@@ -21,17 +21,43 @@ No user screenshots or private evidence are included.
 
 ## Full-pass regression cases
 
-Cases 15–16 pin the full narrated pass and silent visual catalog failures; case
-17 is the unchanged ordinary-debrief control. `full-pass-score.py <capture.json>`
-scores structured plans plus intercepted dispatch calls. A capture has `case`,
-`available_frame_ids`, `dispatches`, and `plan` with `selected_frame_ids`,
-`own_frame_ids`, `helper_batches` (`frame_ids` per batch), `densify_windows`,
-`continue_with_unread_and_time`, `partial_causes`, `coverage_line_template`.
-This is bounded live instruction-following evidence, not an executed video audit:
-planned frames and stub attempts never count as reads/completed helpers. Runtime
-model/effort, source hashes, elapsed seconds and auth/cost accompany each record.
-No media or personal paths belong in committed results.
+Case 15's Claude master baseline reproduces the thin pattern: 12/40 planned
+frames and zero reader dispatches. Case 16's Codex master captures already plan
+**all 48 frames**, scroll/hover refinement, continued unread work and a strict
+partial-stop policy. They fail narrowly on reader/batch counts and coverage-line
+wording; they do not demonstrate missing-frame coverage. Case 17 is the ordinary
+debrief control; case 18 adds "full transcript debrief" as a false-trigger check.
+The old results are historical evidence for `9cef80ad`, not the round-2 text.
 
-The managed `agents/video-gems.md` is picked up by the existing qa-video agents
-glob in `orc/scripts/install.sh`; installation (including backup of a regular
-file) is separate from eval/packaging proof.
+`full-pass-score.py <capture.json>` scores structured plans and intercepted calls;
+its current batch check caps each helper task at six full-size frames, including
+overlap. The round-1 replay explicitly disables that new cap to retain its
+original verdicts. The round-1 coverage-line check is a literal template match,
+not observed behaviour. Its measured prompt partly reveals the answer: it supplies
+the scorer's field names, stop-cause identifiers and known scroll/hover cues.
+Those seeded scores cannot establish independent discovery or execution of the
+workflow. The old captures, narrow failure reasons and exact redacted prompts
+remain in `results/2026-11-04-full-pass.json`.
+
+Round 2 removes those field names, cause identifiers and action cues from the
+measured prompt. Natural-language plans are assessed by the existing pinned
+semantic judge, with verbatim supporting quotes and prompt/claim/transcript
+hashes; no regex over prose or footer-template match is used for that comparison.
+The fresh results, individual verdicts and runtime provenance are recorded in
+`results/2026-11-04-full-pass-r2.json`. A failed compound verdict is retained;
+it is not silently upgraded from helper counts alone.
+
+Both rounds are **planning-only** loaded-body A/Bs, not skill-free baselines or
+executed video audits. Planned frames and stub attempts are not reads or completed
+helpers: actual media reads and completed helpers are zero. They run from a
+**top-level cell**; the nested `Agent(video-gems)` / NEEDS_READERS handoff has no
+live eval. Sample sizes are small: one Claude capture per arm per case, three
+Codex captures per arm for the silent case. Report pass counts, not an uplift or
+statistical claim. Runtime model/effort, source hashes, elapsed time and API cost
+accompany records. No media or private paths belong in committed results.
+
+The managed `agents/video-gems.md` is picked up by the qa-video agents glob in
+`skills/golem-powers/orc/scripts/install.sh`. Installation, including backup of a
+regular file, is separate from packaging and planning proof. The six-frame cap
+borrows the real visual-gatherer's six-image call limit; applying it to large
+full-size frames is a conservative policy, not a measured context-capacity guarantee.

@@ -17,7 +17,7 @@ or wants durable insights/takeaways from a video instead of QA findings.
 ## Execution Contract
 
 Default pipeline: `Agent(video-gems)` for gems, managed at
-`../agents/video-gems.md` and installed by `orc/scripts/install.sh`. Include
+`../agents/video-gems.md` and installed by `skills/golem-powers/orc/scripts/install.sh`. Include
 absolute skill/workflow paths, source, workdir and the remaining deadline.
 The worker owns extraction and reader coordination in its own shell. Ordinary
 transcript-first gems keeps one reader over the targeted stills. For exhaustive
@@ -51,10 +51,12 @@ or delegation; return text to the parent for persistence and archival.
 
 ## Visual-first exhaustive
 
-Select **VISUAL-FIRST EXHAUSTIVE** for "full", "rigorous", "exhaustive", a
+Select **VISUAL-FIRST EXHAUSTIVE** for "full pass" / "full coverage"
+(including "Full /qa-video GEMS pass"), "rigorous", "exhaustive", a
 visual-reference/catalog goal, or a silent video (no audio, missing/empty
 transcript). Do not run the ≤12-moment `debrief.py` planner for this mode; an
 empty transcript is a mode switch, not a reason to end the visual pass.
+"Full transcript debrief" alone requests the entire transcript, not exhaustive visuals.
 
 1. Start one monotonic wall-clock deadline before setup; the same total budget
    includes extraction, readers, refinement and synthesis. Use the explicit
@@ -63,11 +65,24 @@ empty transcript is a mode switch, not a reason to end the visual pass.
    first, then `scene-cues.sh` and `dense-windows.sh` over visual changes; for a
    short silent clip sample the whole duration at 2 fps initially. Plan from
    metadata, not image loading. List every extracted frame in ordered batches.
-3. Split batches across at least two image-reading helpers when dispatch exists,
-   with the adjacent batch's boundary frame, absolute paths, mode and remaining
+3. Split across at least two image-reading helpers, **at most six full-size
+   frames per helper task, including adjacent-boundary overlap**. Create more
+   tasks, never larger batches; schedule waves within the parent's concurrency
+   limit and use a fresh helper context per task. This conservative cap borrows
+   `visual-gather.py`'s `FIRST_BATCH_SIZE=6` (2,000-character per-call output cap):
+   six 1280×720 stills are 5.53M raw pixels; six 2822×2160 demo frames are 36.57M.
+   Raw pixels are not a token estimate or a guarantee of fitting context; shrink
+   further for large crops or a failed/overflowed read, down to singleton tasks.
+   Keep absolute paths, the adjacent batch's boundary frame, mode and remaining
    deadline in each brief (SKILL.md § Execution routing owns role/model routing).
    Every helper opens **every full-size frame** assigned, logs each actual read
-   with `inspected.sh` and its helper id, and returns text plus unread IDs.
+   with `inspected.sh` and its helper id, and returns one record per frame:
+   `{frame_id, pts_s, finding, read_status, helper_id}`, plus unread IDs. `pts_s`
+   comes from the decoded ledger, never a filename. The parent merges records
+   by `(frame_id, pts_s)`, sorts by decoded timestamp, and collapses identical
+   overlap records. Conflicting observations remain flagged for re-read, never
+   silently overwritten. Compare merged reads with the complete extracted-frame
+   manifest; list missing/unread IDs and unresolved conflicts as coverage gaps.
    A sheet, planned batch or pre-sort is not a full-size read. Dispatch-unavailable
    seats follow the single-reader fallback above without dropping frames.
 4. Read all extracted frames, including new refinement frames. Densify scroll,
@@ -81,7 +96,7 @@ empty transcript is a mode switch, not a reason to end the visual pass.
    alone does not authorize PARTIAL. Stop PARTIAL only on actual deadline expiry
    or a hard error (including failed reads/dispatch); identify the cause, raw error
    path, unread IDs and remaining time. Never idle just to consume the budget.
-6. End with `frames read N/N, helpers K, budget used X/Y s`, computed from actual
+6. End with `frames read N/N, helpers K, budget used X/Y s, gaps [frame IDs/conflicts or none]`, computed from actual
    reader receipts and elapsed wall-clock, plus pasted `coverage-count.sh` output.
    Planned frames and requested helpers stay separate from actual reads/completed
    helpers. Do not label an unexecuted plan COMPLETE. Preserve transcript-derived

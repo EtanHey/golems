@@ -12,11 +12,12 @@ execute: scripts/default.sh
 
 ## Visual-first exhaustive override (gems / debrief / review)
 
-"Full", "rigorous", "exhaustive", a visual-reference/catalog goal, or a silent
+"Full pass" / "full coverage" (including "Full /qa-video GEMS pass"),
+"rigorous", "exhaustive", a visual-reference/catalog goal, or a silent
 video (missing/empty transcript or no audio stream) selects **VISUAL-FIRST
 EXHAUSTIVE**. This overrides every ≤12-moment cap, transcript-only stop and
 early-context/PARTIAL exit below and in the runner. Ordinary debriefs retain
-the cheap transcript-first path. See [gems.md](workflows/gems.md) § Visual-first exhaustive.
+the cheap transcript-first path; "full transcript debrief" alone stays there. See [gems.md](workflows/gems.md) § Visual-first exhaustive.
 
 ## How It Works — QA mode
 
@@ -105,7 +106,7 @@ tools it follows the single-reader runner contract below.
 **Default subagent routing:** Use this table once per unnamed request. Do not open an unrequested
 Gemini pane, and do not hand the QA pipeline to a single runner sub-agent.
 `video-gems` is managed at `agents/video-gems.md`, installed with the other
-qa-video agents by `orc/scripts/install.sh`. Include the absolute skill and
+qa-video agents by `skills/golem-powers/orc/scripts/install.sh`. Include the absolute skill and
 workflow paths in its brief; the installed agent delegates media policy there.
 
 Default pipeline (no named override): the QA seat for QA/debrief/review, `Agent(video-gems)` for gems.
@@ -140,7 +141,7 @@ and terminates in-flight helpers. Output overflow is an explicit failed read.
 Helpers and verifiers are sub-agents and cannot dispatch: they never use the
 Agent tool. That limit is theirs, not the QA seat's. The seat may use
 `Agent(visual-gatherer)` for ad-hoc screenshot questions outside this pipeline.
-`qa-video-runner` (`agents/qa-video-runner.md`, installed by `orc/scripts/install.sh`)
+`qa-video-runner` (`agents/qa-video-runner.md`, installed by `skills/golem-powers/orc/scripts/install.sh`)
 is off the default route: it is the single-reader contract for a QA seat with no
 dispatch tool at all (a sub-agent, or headless `claude -p` without Agent), which
 then runs the whole loop alone.

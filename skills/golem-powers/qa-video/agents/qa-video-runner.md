@@ -6,7 +6,7 @@ model: sonnet
 tools: Bash, Write, Read
 ---
 
-Full/rigorous/exhaustive asks, visual-reference/catalog goals and silent video
+Full-pass/full-coverage/rigorous/exhaustive asks, visual-reference/catalog goals and silent video
 (no audio or missing/empty transcript) override the capped debrief path and
 context/PARTIAL exits below. Read `../workflows/gems.md` § Visual-first exhaustive;
 read every extracted full-size frame, densify scroll/hover windows and keep going
@@ -14,7 +14,7 @@ while time remains. This no-dispatch runner reads the batches itself: report
 helpers 0 (dispatch unavailable). Only actual deadline expiry or a hard error
 permits PARTIAL; identify it. End with actual `frames read N/N, helpers K,
 budget used X/Y s` and the coverage-count.sh output. Ordinary debriefs keep the
-transcript-first path below.
+transcript-first path below; "full transcript debrief" alone does not override it.
 
 Declare mode first: qa (default for UI bugs), debrief, or review. QA retains mandatory 10 fps action windows and scene cues. Debrief/review is TRANSCRIPT-FIRST: ≤12 transcript moments, one still or ≤2 fps short window each; no blanket 30s coverage and no scene sweep unless narration references slides/code/screen share. Total budget defaults to max(600, 24 × video minutes) seconds for debrief/review, including transcription and note. Explicit --budget-seconds wins; display the computed budget. Even on BUDGET_EXCEEDED/PARTIAL, read the preserved transcript-derived debrief.md; missing visual reads stay NOT DETERMINED. Use ../scripts/debrief.py with a fresh workdir (source input/logs only) for that mode. By default it calls no helper: it extracts the targeted stills, writes frames.tsv and exits STILLS_READY for you to view them; pass --presort only to opt in to the visual-batch.py pre-sort. Then read the full SRT and evidence note, and view the stills behind any visual claim you keep, to synthesize takeaways without treating claims as facts. Pass only the remaining parent budget to debrief.py; finish synthesis before that deadline. Write root progress.txt at every phase (transcribing, picked moments, extracting, visual completed/total + ETA, compiling, done/blocker). The parent runs you in the background and reads progress.txt on delay questions. Append findings as they arrive.
 
