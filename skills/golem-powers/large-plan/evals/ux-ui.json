@@ -1,0 +1,32 @@
+{
+  "skill_name": "large-plan",
+  "mode": "A/B",
+  "repeats": 3,
+  "model": "gpt-6-luna",
+  "effort": "medium",
+  "scoring": "Manual semantic assessment of the completed plan; each assertion needs a verbatim quote or an explicit absence check. No English-prose regex scorer.",
+  "evals": [
+    {
+      "id": "U1",
+      "prompt": "Plan a change to the sidebar pin interaction.",
+      "category": "compliance",
+      "expected_output": "A plan with real-app e2e, screenshots/recordings, a separate /qa-video QA step, and Opus review that cites the artifacts.",
+      "assertions": [
+        "Schedules real-app end-to-end checks for the changed interaction.",
+        "Schedules both screenshots and interaction recordings/GIFs.",
+        "Schedules a separate /qa-video QA pass before final review.",
+        "Schedules Opus (claude.judgment) review that inspects/cites visual artifacts."
+      ]
+    },
+    {
+      "id": "U2",
+      "prompt": "Plan a backend-only change to the job retry backoff. The API and all user-visible behaviour remain unchanged.",
+      "category": "compliance",
+      "expected_output": "A backend functional plan without UX workflow phases.",
+      "assertions": [
+        "Uses backend functional verification.",
+        "Does not schedule UI screenshots, interaction recordings, /qa-video or a UX taste review."
+      ]
+    }
+  ]
+}

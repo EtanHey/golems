@@ -33,6 +33,7 @@ Done = all three are true before the `delegate_task` / `t3_thread_launch` / `Age
 
 | What you want to do | Workflow |
 |---------------------|----------|
+| Plan any visible front-end change | [workflows/ux-ui.md](workflows/ux-ui.md) |
 | Create a new plan from a description | [workflows/scaffold.md](workflows/scaffold.md) |
 | Execute the next phase in a plan | [workflows/execute-phase.md](workflows/execute-phase.md) |
 | Start async collab on a phase | [workflows/collab.md](workflows/collab.md) |
@@ -50,6 +51,8 @@ Done = all three are true before the `delegate_task` / `t3_thread_launch` / `Age
 ## Core Concept
 
 ALWAYS use `/large-plan` for planning, including short work. A short plan is a few lines with the same skeleton: Goal, Time, Round, Tools (model, effort and why), Steps, Depends On, Status, and verification. Keep it inline or in one plan file; phase folders are for larger work.
+
+When planning phases for any visible front-end change, read [workflows/ux-ui.md](workflows/ux-ui.md) and name every stage in the plan, even while app details are pending.
 
 Each slice of a multi-PR plan declares its invariant test: name the behavior that must hold and the test command or case that proves it before READY. Fill this in even when using the scaffold script or workflow templates.
 
