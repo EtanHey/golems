@@ -391,10 +391,10 @@ test('github-release requires a published release with all three assets; equal d
     const stdout = key.includes('get-url') ? 'https://github.com/EtanHey/golems.git' : key.includes('remote show') ? 'HEAD branch: master' : key.includes('--first-parent') ? `HEAD, tag: v${version}\ntag: v2026.10.11-ffffff0` : key.includes('for-each-ref') ? `v2026.10.11-ffffff0\nv${version}` : key.includes('--count') ? '0' : '';
     return { status: 0, stdout, stderr: '' };
   };
-  expect(inspectRelease({ repo: root, manifest }, command).verdict).toBe('RELEASED_UNINSTALLED');
-  expect(inspectRelease({ repo: root, manifest, releaseOnly: true }, command)).toMatchObject({ verdict: 'CLEAN', latestTag: `v${version}` });
+  expect(inspectRelease({ repo: root, manifest, home: root }, command).verdict).toBe('RELEASED_UNINSTALLED');
+  expect(inspectRelease({ repo: root, manifest, home: root, releaseOnly: true }, command)).toMatchObject({ verdict: 'CLEAN', latestTag: `v${version}` });
   assets = [];
-  expect(inspectRelease({ repo: root, manifest, releaseOnly: true }, command).verdict).toBe('UNKNOWN');
+  expect(inspectRelease({ repo: root, manifest, home: root, releaseOnly: true }, command).verdict).toBe('UNKNOWN');
 });
 
 for (const shaMode of [false, true]) test(`github-release nightly prereleases work in ${shaMode ? '--sha' : 'release-only'} mode; drafts and other channels fail closed`, () => {
@@ -411,7 +411,7 @@ for (const shaMode of [false, true]) test(`github-release nightly prereleases wo
   };
   const inspect = () => {
     writeFileSync(manifest, JSON.stringify({ repositories: { 'EtanHey/golems': { channel, artifact: { kind: 'github-release', releaseJson: installed } } } }));
-    return inspectRelease({ repo: root, manifest, ...(shaMode ? { sha: commit } : { releaseOnly: true }) }, command);
+    return inspectRelease({ repo: root, manifest, home: root, ...(shaMode ? { sha: commit } : { releaseOnly: true }) }, command);
   };
   expect(inspect().verdict).toBe(shaMode ? 'CONTAINED' : 'CLEAN');
   draft = true; expect(inspect().verdict).toBe('UNKNOWN'); draft = false;
@@ -600,14 +600,14 @@ describe("release gate owner checkout installation", () => {
     expect(ownerFixture({ marker: false }).report).toMatchObject({ verdict: "UNKNOWN", installedVersion: null, installationDetection: "release-json" });
   });
 
-  test.each(["current", "2026.11.01-1234567", null])("client receipt %s takes precedence over owner markers", (clientVersion) => {
-    const { report, version } = ownerFixture({ clientVersion, hooksBehind: true });
+  test.each(["current", "2026.11.01-1234567", null])("client-only receipt %s keeps its verdict", (clientVersion) => {
+    const { report, version } = ownerFixture({ clientVersion, hooksBehind: true, marker: false });
     expect(report).toMatchObject({ verdict: clientVersion === "current" ? "CLEAN" : clientVersion ? "RELEASED_UNINSTALLED" : "UNKNOWN",
       installedVersion: clientVersion === "current" ? version : clientVersion, installationDetection: "release-json" });
   });
 
   test("a dangling client receipt cannot fall back to a healthy owner installation", () => {
-    expect(ownerFixture({ danglingReceipt: true }).report).toMatchObject({ verdict: "UNKNOWN", installedVersion: null, installationDetection: "release-json" });
+    expect(ownerFixture({ danglingReceipt: true, marker: false }).report).toMatchObject({ verdict: "UNKNOWN", installedVersion: null, installationDetection: "release-json" });
   });
 
   test("an owner checkout newer than the release passes by ancestry", () => {
@@ -618,6 +618,46 @@ describe("release gate owner checkout installation", () => {
     const { report } = ownerFixture({ hooksBehind: true, noSharedTag: true });
     expect(report).toMatchObject({ verdict: "RELEASED_UNINSTALLED", installationDetection: "owner-checkout" });
     expect(report.installedVersion).toStartWith("checkout:");
+  });
+
+  test("lagging owner hooks name the verified installer remedy in JSON and human output", async () => {
+    const { report } = ownerFixture({ hooksBehind: true });
+    const remediation = "bash scripts/hooks/install-hooks.sh --host mbp --update --apply";
+    expect(report).toMatchObject({ verdict: "RELEASED_UNINSTALLED", remediation });
+    expect(report.reason).toContain("hooks-live");
+    const { formatHuman } = await import("../ci/release-gate.mjs");
+    expect(formatHuman(report)).toContain(remediation);
+    expect(ownerFixture({ skillsBehind: true }).report.remediation).toBeUndefined();
+  });
+
+  test.each(["current", "2026.11.01-1234567", null])("mixed client receipt %s and owner pin fail closed", (clientVersion) => {
+    const { report } = ownerFixture({ clientVersion, hooksBehind: true });
+    expect(report).toMatchObject({ verdict: "UNKNOWN", installationDetection: "ambiguous" });
+    expect(report.reason).toContain("release.json");
+    expect(report.reason).toContain("golems-hooks-live.sha");
+    expect(releaseExitCode(report.verdict)).toBe(2);
+  });
+
+  test("mixed client and owner evidence is UNKNOWN in SHA mode and with unreleased commits", () => {
+    for (const mode of [{ shaMode: true }, { postTag: true }]) {
+      const { report } = ownerFixture({ clientVersion: "current", ...mode });
+      expect(report).toMatchObject({ verdict: "UNKNOWN", installationDetection: "ambiguous" });
+      expect(report.reason).toContain("release.json");
+      expect(report.reason).toContain("golems-hooks-live.sha");
+    }
+  });
+
+  test("a dangling client receipt with an owner pin is ambiguous", () => {
+    const { report } = ownerFixture({ danglingReceipt: true });
+    expect(report).toMatchObject({ verdict: "UNKNOWN", installationDetection: "ambiguous" });
+    expect(report.reason).toContain("release.json");
+    expect(report.reason).toContain("golems-hooks-live.sha");
+  });
+
+  test("an untagged owner checkout is UNKNOWN in SHA mode", () => {
+    const { report } = ownerFixture({ hooksBehind: true, noSharedTag: true, shaMode: true });
+    expect(report).toMatchObject({ verdict: "UNKNOWN", installationDetection: "owner-checkout" });
+    expect(report.reason).toContain("has no tag matching");
   });
 
   test("owner --sha containment uses the shared installed tag", () => {

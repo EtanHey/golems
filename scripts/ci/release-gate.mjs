@@ -168,43 +168,93 @@ export function detectInstalledVersion(artifact, runCommand = execute) {
 }
 
 // The owner installer records this pin; a hostname alone never selects this path.
-// Client receipts (including invalid receipts and explicit overrides) keep precedence.
+// A receipt and owner marker together are ambiguous, including explicit receipt paths.
 function detectInstallation(options, config, repository, runCommand) {
   const artifact = config.artifact;
-  if (artifact.kind !== "github-release") return { installedVersion: detectInstalledVersion(artifact, runCommand) };
+  if (artifact.kind !== "github-release") {
+    return { installedVersion: detectInstalledVersion(artifact, runCommand) };
+  }
   const home = options.home ?? homedir();
   const receipt = artifact.releaseJson ?? artifact.installedJson ?? resolve(home, ".golems/release.json");
-  const client = { installedVersion: detectInstalledVersion({ ...artifact, releaseJson: receipt }, runCommand), installationDetection: "release-json" };
+  const client = {
+    installedVersion: detectInstalledVersion({ ...artifact, releaseJson: receipt }, runCommand),
+    installationDetection: "release-json",
+  };
+  if (repository !== "EtanHey/golems") {
+    return client;
+  }
   let receiptPresent = true;
-  try { lstatSync(receipt); } catch (error) { if (error.code === "ENOENT") receiptPresent = false; }
-  if (repository !== "EtanHey/golems" || artifact.releaseJson || artifact.installedJson || receiptPresent) return client;
+  try {
+    lstatSync(receipt);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      receiptPresent = false;
+    }
+  }
+  const ownerMarker = resolve(home, ".claude/hooks/golems-hooks-live.sha");
+  let markerPresent = false;
+  try {
+    lstatSync(ownerMarker);
+    markerPresent = true;
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      return { ...client, installationDetection: "owner-checkout", installationError: error.message };
+    }
+  }
+  if (receiptPresent && markerPresent) {
+    const reason = "ambiguous installation: both client release.json and owner golems-hooks-live.sha are present";
+    return { installedVersion: null, installationDetection: "ambiguous", installationError: reason, reason };
+  }
+  if (artifact.releaseJson || artifact.installedJson || receiptPresent || !markerPresent) {
+    return client;
+  }
   let pin;
-  try { pin = readFileSync(resolve(home, ".claude/hooks/golems-hooks-live.sha"), "utf8").trim(); }
-  catch (error) {
-    if (error.code === "ENOENT") return client;
+  try {
+    pin = readFileSync(ownerMarker, "utf8").trim();
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return client;
+    }
     return { ...client, installationDetection: "owner-checkout", installationError: error.message };
   }
   const owner = { installedVersion: null, installationDetection: "owner-checkout" };
   try {
-    if (!/^[0-9a-f]{40}$/.test(pin)) throw new Error("invalid owner hooks-live pin");
-    const repo = realpathSync(options.repo), hooks = realpathSync(resolve(repo, ".worktrees/hooks-live"));
+    if (!/^[0-9a-f]{40}$/.test(pin)) {
+      throw new Error("invalid owner hooks-live pin");
+    }
+    const repo = realpathSync(options.repo);
+    const hooks = realpathSync(resolve(repo, ".worktrees/hooks-live"));
     const git = (at, ...args) => checked("git", ["-C", at, ...args], { runCommand });
     for (const at of [repo, hooks]) {
-      if (realpathSync(git(at, "rev-parse", "--show-toplevel")) !== at) throw new Error("owner source is not a worktree root");
-      if (git(at, "rev-parse", "--is-shallow-repository") !== "false") throw new Error("owner source is shallow");
+      if (realpathSync(git(at, "rev-parse", "--show-toplevel")) !== at) {
+        throw new Error("owner source is not a worktree root");
+      }
+      if (git(at, "rev-parse", "--is-shallow-repository") !== "false") {
+        throw new Error("owner source is shallow");
+      }
     }
     if (realpathSync(git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")) !==
-        realpathSync(git(hooks, "rev-parse", "--path-format=absolute", "--git-common-dir"))) throw new Error("owner sources do not share a repository");
-    const skillsHead = git(repo, "rev-parse", "HEAD"), hooksHead = git(hooks, "rev-parse", "HEAD");
+        realpathSync(git(hooks, "rev-parse", "--path-format=absolute", "--git-common-dir"))) {
+      throw new Error("owner sources do not share a repository");
+    }
+    const skillsHead = git(repo, "rev-parse", "HEAD");
+    const hooksHead = git(hooks, "rev-parse", "HEAD");
     owner.installedCommits = { skills: skillsHead, hooks: hooksHead };
-    if (hooksHead !== pin) throw new Error("hooks-live HEAD differs from the recorded owner pin");
+    if (hooksHead !== pin) {
+      throw new Error("hooks-live HEAD differs from the recorded owner pin");
+    }
     const catalog = JSON.parse(readFileSync(resolve(repo, "skills/catalog.json"), "utf8"));
     for (const [key, directory] of [["claude", ".claude/skills"], ["agents", ".agents/skills"]]) {
       const names = catalog.roots?.[key];
-      if (!Array.isArray(names) || !names.length) throw new Error(`owner ${key} skill catalog is missing`);
+      if (!Array.isArray(names) || !names.length) {
+        throw new Error(`owner ${key} skill catalog is missing`);
+      }
       for (const name of names) {
-        const link = resolve(home, directory, name), target = realpathSync(resolve(repo, "skills/golem-powers", name));
-        if (!lstatSync(link).isSymbolicLink() || realpathSync(link) !== target) throw new Error(`owner ${key} skill link differs: ${name}`);
+        const link = resolve(home, directory, name);
+        const target = realpathSync(resolve(repo, "skills/golem-powers", name));
+        if (!lstatSync(link).isSymbolicLink() || realpathSync(link) !== target) {
+          throw new Error(`owner ${key} skill link differs: ${name}`);
+        }
       }
     }
     const common = git(repo, "merge-base", skillsHead, hooksHead);
@@ -214,7 +264,9 @@ function detectInstallation(options, config, repository, runCommand) {
     // A pre-release-channel checkout is still a known installation, but has no installed release tag.
     owner.installedVersion = installedTag ? cleanVersion(installedTag) : `checkout:${skillsHead}+hooks-live:${hooksHead}`;
     return owner;
-  } catch (error) { return { ...owner, installationError: error.message }; }
+  } catch (error) {
+    return { ...owner, installationError: error.message };
+  }
 }
 
 function containmentUnknown(report, reason) {
@@ -366,14 +418,21 @@ export function inspectRelease(options, runCommand = execute) {
   const { installedVersion } = installation;
   const installedComparison = options.releaseOnly || !installedVersion ? null : compareVersions(installedVersion, tag);
   let verdict = "CLEAN";
-  if (commits.shippable > 0) verdict = "MERGED_UNRELEASED";
+  if (installation.installationDetection === "ambiguous") verdict = "UNKNOWN";
+  else if (commits.shippable > 0) verdict = "MERGED_UNRELEASED";
   else if (installation.installationError || (!options.releaseOnly && !installedVersion)) verdict = "UNKNOWN";
   else if (installation.installationDetection === "owner-checkout") {
     const tagCommit = checked("git", ["-C", repo, "rev-parse", "--verify", `refs/tags/${tag}^{commit}`], { runCommand });
-    for (const head of Object.values(installation.installedCommits)) {
+    for (const [component, head] of Object.entries(installation.installedCommits)) {
       const ancestor = runCommand("git", ["-C", repo, "merge-base", "--is-ancestor", tagCommit, head]);
       if (ancestor.status !== 0 && ancestor.status !== 1) throw new Error("owner release ancestry could not be determined");
-      if (ancestor.status === 1) verdict = "RELEASED_UNINSTALLED";
+      if (ancestor.status === 1) {
+        verdict = "RELEASED_UNINSTALLED";
+        if (component === "hooks") {
+          installation.reason = `hooks-live does not contain latest release ${tag}`;
+          installation.remediation = "bash scripts/hooks/install-hooks.sh --host mbp --update --apply";
+        }
+      }
     }
   }
   else if (!options.releaseOnly && installedComparison === null) verdict = "UNKNOWN";
@@ -385,7 +444,7 @@ export function inspectRelease(options, runCommand = execute) {
   };
 }
 
-function formatHuman(report) {
+export function formatHuman(report) {
   if (report.verdict === 'UNKNOWN' && report.error) return `RELEASE GATE: UNKNOWN\n${report.error}`;
   if (report.verdict === "NOT_RELEASABLE") {
     return [
@@ -418,6 +477,8 @@ function formatHuman(report) {
     ...(report.installationDetection ? [`Installation detection: ${report.installationDetection}`] : []),
     ...(report.installedCommits ? [`Installed commits: skills=${report.installedCommits.skills} hooks=${report.installedCommits.hooks}`] : []),
     ...(report.installationError ? [`Installation error: ${report.installationError}`] : []),
+    ...(report.reason && !report.installationError ? [`Reason: ${report.reason}`] : []),
+    ...(report.remediation ? [`Fix: ${report.remediation}`] : []),
     report.installationCheck === "skipped" ? "Installed artifact: NOT_CHECKED (--release-only)" : `Installed artifact: ${report.artifact.kind}:${report.artifact.identifier} version=${report.installedVersion ?? "UNKNOWN"}`,
   ].join("\n");
 }
