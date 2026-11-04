@@ -2,10 +2,64 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { planRuns, applyPlan } from '../ratchet/prune-runs.mjs';
 
 // A fresh checkout (hosted CI) has no docs.local/ yet.
 const scratch = () => { fs.mkdirSync('docs.local', { recursive: true }); return fs.mkdtempSync(path.resolve('docs.local/retention-test-')); };
+
+test('size row counts symlinks by lstat without following cycle, absolute, relative or dangling targets', () => {
+  const root = scratch();
+  const cli = path.resolve('scripts/ratchet/mac/ratchet-runs-size.mjs');
+  try {
+    const repo = path.join(root, 'repo');
+    fs.mkdirSync(repo);
+    execFileSync('git', ['init', '--quiet', repo]);
+    const runs = path.join(repo, 'docs.local/ratchet-runs');
+    const run = path.join(runs, 'm1-procedure-aaaaaaa-20260101T000000');
+    const outside = path.join(root, 'outside');
+    fs.mkdirSync(run, { recursive: true });
+    fs.mkdirSync(outside);
+    fs.writeFileSync(path.join(outside, 'keep'), Buffer.alloc(64 * 1024));
+    fs.writeFileSync(path.join(run, 'receipt.log'), 'receipt');
+    const links = { cycle: '.', absolute: outside, relative: path.relative(run, outside), dangling: 'missing' };
+    for (const [name, target] of Object.entries(links)) fs.symlinkSync(target, path.join(run, name));
+    const expectedBytes = [runs, run, ...fs.readdirSync(run).map(name => path.join(run, name))]
+      .reduce((sum, entry) => sum + fs.lstatSync(entry).blocks * 512, 0);
+    const result = spawnSync(process.execPath, [cli], { cwd: repo, encoding: 'utf8', timeout: 10000 });
+    assert.equal(result.status, 0, result.stderr);
+    const measured = JSON.parse(result.stdout);
+    assert.equal(measured.bytes, expectedBytes);
+    assert.equal(measured.health, true);
+    assert.throws(() => planRuns(runs, { citations: '' }), /symlink refused/);
+    assert.equal(fs.statSync(path.join(outside, 'keep')).size, 64 * 1024);
+  } finally { fs.rmSync(root, { recursive: true }); }
+});
+
+test('apply refuses links introduced after planning without deleting through them', () => {
+  const root = scratch();
+  const old = new Date(Date.now() - 4 * 3600000);
+  const names = ['pr1-aaaaaaa-20260101T000000', 'pr1-bbbbbbb-20260102T000000'];
+  try {
+    const outside = path.join(root, 'outside');
+    fs.mkdirSync(outside);
+    fs.writeFileSync(path.join(outside, 'keep'), 'preserve');
+    for (const name of names) { fs.mkdirSync(path.join(root, name)); fs.utimesSync(path.join(root, name), old, old); }
+    const plan = planRuns(root, { keep: 1, citations: '' });
+    assert.equal(plan.find(row => row.name === names[0]).action, 'delete');
+    const run = path.join(root, names[0]);
+    for (const target of ['.', outside, '../outside', 'missing']) {
+      const link = path.join(run, 'fixture');
+      fs.symlinkSync(target, link);
+      fs.utimesSync(run, old, old);
+      assert.throws(() => applyPlan(root, plan), /symlink refused/);
+      assert.equal(fs.readFileSync(path.join(outside, 'keep'), 'utf8'), 'preserve');
+      assert.equal(fs.lstatSync(link).isSymbolicLink(), true);
+      fs.unlinkSync(link);
+    }
+    assert.equal(fs.existsSync(run), true);
+  } finally { fs.rmSync(root, { recursive: true }); }
+});
 
 test('retention protects cited, recent and unknown runs; apply matches dry plan', () => {
   const root = scratch();
