@@ -30,8 +30,8 @@ Reproduce: `bun install`, then
 
 One composite containing three authoring cases, n=1 per arm. Actual skill-free
 baseline versus this branch's explicit skill source; empty tool allowlists;
-SC-1 API-key cells. Haiku 5.5/high smoke, Sonnet 5.5/high arms,
-Opus 5.5/high pinned semantic judge with verified hashes and verbatim quotes.
+SC-1 API-key cells. The PR body records the measured smoke, arm and judge models
+and effort. Semantic judging verifies the pinned model, hashes and verbatim quotes.
 Prior supplied facts, expected outputs, weights and hostile controls were preserved;
 layout acceptance was strengthened to require 375/390/1280 for every authored card.
 
