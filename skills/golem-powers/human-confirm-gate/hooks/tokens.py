@@ -206,13 +206,32 @@ def lead_scope(op, metadata_fn=lead_metadata):
 
 
 def own_lease_metadata(target, branch):
-    """Read only, two seconds per request, no retries (same hook budget as lead_metadata)."""
+    """Two concurrent REST reads, four seconds total, within the hook's policy deadline."""
     gh = trusted_binary(GH_CANDIDATES)
-    repo = json.loads(read_command([gh, 'api', '--hostname', 'github.com', 'repos/' + target]))
+    requests = [('repos/' + target, '{full_name,default_branch}'),
+                ('repos/' + target + '/branches/' + quote(branch, safe=''), '{name,protected}')]
+    pending, replies = [], []
+    deadline = time.monotonic() + 4
+    try:
+        for endpoint, fields in requests:
+            pending.append(subprocess.Popen([gh, 'api', '--hostname', 'github.com', '--jq', fields, endpoint],
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
+        for process in pending:
+            stdout, _ = process.communicate(timeout=max(0, deadline - time.monotonic()))
+            if process.returncode:
+                raise subprocess.CalledProcessError(process.returncode, process.args)
+            replies.append(json.loads(stdout))
+    finally:
+        for process in pending:
+            if process.poll() is None:
+                process.kill()
+        for process in pending:
+            process.wait()
+            process.stdout.close()
+            process.stderr.close()
+    repo, branch_data = replies
     if not isinstance(repo['full_name'], str) or repo['full_name'].casefold() != target.casefold():
         raise ValueError('repository metadata was redirected')
-    branch_data = json.loads(read_command([gh, 'api', '--hostname', 'github.com',
-                                           'repos/' + target + '/branches/' + quote(branch, safe='')]))
     return repo['default_branch'], branch_data
 
 
@@ -227,6 +246,7 @@ def own_lease_scope(payload, ops, metadata_fn=None):
     try:
         import shlex
         import git_config
+        from commands import shell
         op = ops[0]
         words = shlex.split(payload['tool_input']['command'])
         prefix = words[:3] + ['push'] if words[:2] == ['git', '-C'] else ['git', 'push']
@@ -264,9 +284,13 @@ def own_lease_scope(payload, ops, metadata_fn=None):
         branch = op['ref'].removeprefix('refs/heads/')
         if branch.casefold() in ('main', 'master', 'develop', 'trunk', 'gh-pages') or branch.casefold().startswith('release'):
             return False, f"Blocked: that's a shared branch of {target}; force-pushing it needs Etan."
-        default, data = (metadata_fn or own_lease_metadata)(target, branch)
-        if not isinstance(default, str) or not default or data['name'] != branch or type(data['protected']) is not bool:
-            return False, ''
+        try:
+            default, data = (metadata_fn or own_lease_metadata)(target, branch)
+            if not isinstance(default, str) or not default or data['name'] != branch or type(data['protected']) is not bool:
+                raise ValueError('ambiguous branch metadata')
+        except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, shell.PolicyEvaluationDeadlineExceeded):
+            return False, (f"Blocked: couldn't confirm with GitHub in time that {branch} isn't the default "
+                           f"or a protected branch of {target}. Retry the push.")
         detail = ('default' if branch.casefold() == default.casefold() else
                   'protected' if data['protected'] else '')
         if detail:

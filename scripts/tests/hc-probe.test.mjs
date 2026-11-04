@@ -57,8 +57,8 @@ if __name__ == '__main__':
   assert.match(run.stderr, /OK/);
 });
 
-test("new probe expectations fail on master's hook and pass on the own-lease hook", () => {
-  const run = spawnSync("python3", ["-c", String.raw`import io, json, subprocess, sys, tarfile, tempfile
+test("probe expectations pass on this tree's own-lease hook without Git history", () => {
+  const run = spawnSync("python3", ["-c", String.raw`import json, subprocess, sys
 from pathlib import Path
 
 root = Path.cwd()
@@ -110,24 +110,17 @@ def measure(source):
     run = subprocess.run([sys.executable, '-c', cell, str(source), str(root)], capture_output=True, text=True, check=True)
     return json.loads(run.stdout)
 
-with tempfile.TemporaryDirectory() as tmp:
-    archive = subprocess.check_output(['git', 'archive', 'f4bdb28c2238e27ab7b7201614d89fd4029d9e4c', 'skills/golem-powers/human-confirm-gate/hooks', 'skills/golem-powers/_shared'])
-    with tarfile.open(fileobj=io.BytesIO(archive)) as tree:
-        tree.extractall(tmp, filter='data')
-    base, candidate = measure(Path(tmp)), measure(root)
-assert base['rc'] == 1 and base['result']['first_failure'] == 'A_own_lease', base
-assert base['result']['steps']['A_own_lease'][0] == 'DENY', base
+candidate = measure(root)
 expected = dict(A_own_lease='ALLOW', A2_plain_force='DENY', A3_foreign='DENY', B_issue='OK', C_token='ALLOW', D_replay='ALLOW', E_master='DENY')
 assert candidate['rc'] == 0 and candidate['result']['first_failure'] is None, candidate
 assert {key: value[0] for key, value in candidate['result']['steps'].items()} == expected, candidate
 assert ' https://github.com/pingdotgg/t3code.git ' in candidate['commands'][2], candidate
 assert set(candidate['result']['details']) == set(expected), candidate
 assert set(candidate['result']) == {'ok', 'steps', 'details', 'first_failure'}, candidate
-print(json.dumps(dict(base=base['result'], candidate=candidate['result'])))
+print(json.dumps(dict(candidate=candidate['result'])))
 `], { cwd: resolve(import.meta.dirname, "../.."), encoding: "utf8" });
   assert.equal(run.status, 0, run.stderr);
   const proof = JSON.parse(run.stdout);
-  assert.equal(proof.base.first_failure, "A_own_lease");
   assert.equal(proof.candidate.ok, true);
-  console.log("source-hook proof: f4bdb28c FAIL A_own_lease; candidate PASS 7/7 (issuer/metadata stubbed)");
+  console.log("source-hook proof: current tree PASS 7/7 (issuer/metadata stubbed; no Git history required)");
 });

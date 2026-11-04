@@ -5,6 +5,8 @@ import json
 import os
 import shlex
 import subprocess
+import sys
+import time
 from unittest.mock import Mock
 from urllib.parse import quote
 
@@ -129,7 +131,9 @@ def test_metadata_errors_deny(cell, monkeypatch, error):
     def fail(*args):
         raise error
     monkeypatch.setattr(tokens, 'own_lease_metadata', fail, raising=False)
-    assert decision(cell, monkeypatch, lease())[0] == 2
+    rc, reason = decision(cell, monkeypatch, lease())
+    assert rc == 2 and 'Retry the push.' in reason and 'EtanHey/t3code' in reason
+    assert 'Etan has to approve' not in reason
 
 
 @pytest.mark.parametrize('metadata', [('', dict(name=BRANCH, protected=False)),
@@ -142,35 +146,20 @@ def test_ambiguous_metadata_denies(cell, monkeypatch, metadata):
 
 
 def test_metadata_reader_is_bounded_and_targets_encoded_branch(cell, monkeypatch):
-    monkeypatch.delattr(tokens, 'own_lease_metadata')  # restore the real implementation below
-    # Load a fresh module so the fixture's stub cannot conceal the reader contract.
-    real = load(ROOT / 'hooks/tokens.py', 'own_lease_tokens')
-    replies = iter([dict(full_name='EtanHey/t3code', default_branch='main'), dict(name=BRANCH, protected=False)])
-    calls = []
-    monkeypatch.setattr(real, 'trusted_binary', lambda _: '/trusted/gh')
-    def run(argv, **kwargs):
-        calls.append((argv, kwargs))
-        return subprocess.CompletedProcess(argv, 0, json.dumps(next(replies)), '')
-    monkeypatch.setattr(real.subprocess, 'run', run)
+    real, receipts = metadata_processes(cell, monkeypatch)
     assert real.own_lease_metadata('EtanHey/t3code', BRANCH) == ('main', dict(name=BRANCH, protected=False))
-    assert [args[0][-1] for args in calls] == [
+    calls = [json.loads((receipts / (kind + '-start.json')).read_text())['argv'] for kind in ('repo', 'branch')]
+    assert [argv[-1] for argv in calls] == [
         'repos/EtanHey/t3code', 'repos/EtanHey/t3code/branches/' + quote(BRANCH, safe='')]
-    assert all(kwargs['timeout'] == 2 and kwargs['check'] for _, kwargs in calls)
-    assert all(argv[1:4] == ['api', '--hostname', 'github.com'] for argv, _ in calls)
+    assert all(argv[:3] == ['api', '--hostname', 'github.com'] for argv in calls)
 
 
 @pytest.mark.parametrize('full_name', ['other/t3code', 'EtanHey/other', None])
 def test_metadata_redirects_deny(cell, monkeypatch, full_name):
-    real = load(ROOT / 'hooks/tokens.py', 'own_lease_redirect_tokens')
-    monkeypatch.setattr(real, 'trusted_binary', lambda _: '/trusted/gh')
-    calls = []
-    def read(argv):
-        calls.append(argv)
-        return json.dumps(dict(full_name=full_name, default_branch='main'))
-    monkeypatch.setattr(real, 'read_command', read)
+    real, receipts = metadata_processes(cell, monkeypatch, full_name=full_name)
     with pytest.raises(ValueError):
         real.own_lease_metadata('EtanHey/t3code', BRANCH)
-    assert len(calls) == 1
+    assert (receipts / 'repo-start.json').exists()
 
 
 def test_git_c_uses_target_repo_not_hook_cwd(cell, monkeypatch):
@@ -205,3 +194,49 @@ def test_blank_extra_url_entries_deny(cell, monkeypatch, key, extra, extra_first
 @pytest.mark.parametrize('flags', ['--atomic -v', '--verbose'])
 def test_documented_optional_flags_stay_allowed(cell, monkeypatch, flags):
     assert decision(cell, monkeypatch, lease().replace('git push', 'git push ' + flags)) == (0, '')
+
+
+def metadata_processes(cell, monkeypatch, *, delay=0, fail=False, full_name='EtanHey/t3code'):
+    """Real child processes and timeouts; fake only GitHub's response and latency."""
+    real = load(ROOT / 'hooks/tokens.py', 'own_lease_process_tokens')
+    receipts = cell[0] / 'metadata-receipts'
+    receipts.mkdir()
+    fake = cell[0] / 'gh-metadata'
+    fake.write_text(f'''#!{sys.executable}
+import json, pathlib, sys, time
+root = pathlib.Path({str(receipts)!r})
+kind = 'branch' if '/branches/' in sys.argv[-1] else 'repo'
+(root / (kind + '-start.json')).write_text(json.dumps(dict(at=time.monotonic(), argv=sys.argv[1:])))
+time.sleep({delay!r})
+if {fail!r}: sys.exit(1)
+data = dict(name={BRANCH!r}, protected=False) if kind == 'branch' else dict(full_name={full_name!r}, default_branch='main')
+(root / (kind + '-end.json')).write_text(json.dumps(dict(at=time.monotonic())))
+print(json.dumps(data))
+''')
+    fake.chmod(0o700)
+    monkeypatch.setattr(real, 'trusted_binary', lambda _: str(fake))
+    monkeypatch.setattr(tokens, 'own_lease_metadata', real.own_lease_metadata)
+    return real, receipts
+
+
+def test_slow_metadata_requests_allow_after_two_point_five_seconds(cell, monkeypatch):
+    metadata_processes(cell, monkeypatch, delay=2.5)
+    assert decision(cell, monkeypatch, lease()) == (0, '')
+
+
+def test_metadata_requests_overlap(cell, monkeypatch):
+    _, receipts = metadata_processes(cell, monkeypatch, delay=0.3)
+    assert decision(cell, monkeypatch, lease()) == (0, '')
+    starts = [json.loads((receipts / (kind + '-start.json')).read_text())['at'] for kind in ('repo', 'branch')]
+    ends = [json.loads((receipts / (kind + '-end.json')).read_text())['at'] for kind in ('repo', 'branch')]
+    assert max(starts) < min(ends), 'requests must actually overlap'
+
+
+@pytest.mark.parametrize('delay,fail', [(5, False), (0, True)])
+def test_metadata_timeout_or_failure_requests_retry(cell, monkeypatch, delay, fail):
+    metadata_processes(cell, monkeypatch, delay=delay, fail=fail)
+    started = time.monotonic()
+    rc, reason = decision(cell, monkeypatch, lease())
+    assert rc == 2 and 'Retry the push.' in reason and 'EtanHey/t3code' in reason
+    assert 'Etan has to approve' not in reason
+    assert time.monotonic() - started < 7  # stays inside the unchanged 8-second policy budget
