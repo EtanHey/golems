@@ -87,9 +87,10 @@ current-head automatic review already exists:
 gh pr comment <N> --body "@cursor @bugbot review"   # eligible L/core-risk PR only
 ```
 
-Out of usage, rate-limited, a spend-limit notice or silence: record
-`Bugbot: unavailable (usage)` by editing the PR body before merge; a response or
-comment alone does not count. After the one eligible request, continue directly
+Record `Bugbot: unavailable (usage)` in the PR body only if Bugbot was actually
+requested and is unavailable, or it posted a real usage/rate/spend-limit notice
+on this PR. A routine XS/S/M PR with no Bugbot activity needs no request, wait,
+record or extra step. After the one eligible request, continue directly
 to exact-head merge checks in the same turn. No "awaiting Bugbot" state, watch,
 grace period, retry or re-review gate; never block on its availability/verdict.
 Actual findings still follow the normal finding rules; important findings must be
@@ -110,7 +111,7 @@ cursor-agent -p --output-format text \
 ```
 
 - Because it spends no Bugbot quota, this pass is still available on a repo whose policy bans Bugbot
-  (8a.0) and on a non-core diff where Bugbot is correctly off the panel.
+  (8a.0) and on a routine (non-L, non-core-risk) diff where Bugbot is correctly off the panel.
 - If the pass exhausts Cursor's shared quota through its own dispatch, report **that dispatch** as the
   cause — never the resulting `resource_exhausted` as an external finding (canon #3).
 
@@ -121,7 +122,8 @@ ships; until then, sign them by hand like any other comment.
 Reviewer roster reality can degrade. If Greptile is unavailable, Cursor/Bugbot
 is billing-blocked, or CodeRabbit is rate-limited, do not burn dead mentions.
 Bugbot unavailability needs no replacement bot and never delays merge; record
-`Bugbot: unavailable (usage)` in the PR body. For a missing routed reviewer, use
+`Bugbot: unavailable (usage)` in the PR body only for an actual request or real
+usage notice. For a missing routed reviewer, use
 the routing pointer in Step 8a.2 to select a replacement reviewer; retain the
 Macroscope + `cr review --plain` pre-commit checks (not a substitute for the routed
 pair review), and document which reviewers were unavailable in the PR.
@@ -141,8 +143,9 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 ### For public repos (bot reviewers configured):
 
 Bot reviewers post on the PR. They are advisory: wait on CI and the routed review with the waiting
-policy below, and on a bot only when it flags something important. A silent or rate-limited bot is
-recorded as unavailable, never awaited.
+policy below. Answer already-posted bot findings like any finding; never await
+a bot. Record unavailable bots only if actually requested or a real usage notice
+was posted; normal silence from a never-requested Bugbot needs no record.
 
 ### Waiting policy (no polling turns)
 
@@ -259,10 +262,10 @@ Wait in this order. Take the first option that fits:
    - Codex collab-monitor wakes: a Codex seat never arms `/collab-monitor` or its packaged fallback.
    - `sleep N; gh pr view` loops and "watch #N" loops in a big-context lead session.
    - A duplicate watcher on the same PR: a T3 watch plus a `pr-watch`, or two `pr-watch` processes.
-   - Waiting on bot rate limits. Review bots run after the inner loop and are advisory. Wait on a bot
-     only when it flags something important. A rate-limited or silent bot is recorded as unavailable
-     in the PR body, and the loop proceeds on the routed review. Bugbot is never waited on;
-     use `Bugbot: unavailable (usage)` for usage/rate/spend-limit notices or silence.
+   - Waiting on bots or their rate limits. Review bots run after the inner loop and are advisory.
+     Answer already-posted findings like any finding. For Bugbot, record
+     `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real
+     usage/rate/spend-limit notice. A routine PR with no Bugbot activity needs no entry or step.
 
 #### Watcher process: pr-watch
 
@@ -336,7 +339,7 @@ collection path does not reply to a thread; use `/replies` or the documented
 | CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |
 | Codex Cloud | AI code review | `gh pr comment <N> --body "@codex review"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md "Review guidelines". Flags P0/P1 by default. |
 | Cursor (diff pass) | Diff findings through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — see routing pointer in Step 8a.2. |
-| Cursor Bugbot | Bug detection — **opt-in, L or very important/core-risk PRs only** | Follow 8a.1 and repo bans (8a.0). Request once if available and not already covering the head: `gh pr comment <N> --body "@cursor @bugbot review"`. Unavailable: record `Bugbot: unavailable (usage)`; never wait or block. Bot responds as `cursor[bot]`. |
+| Cursor Bugbot | Bug detection — **opt-in, L or very important/core-risk PRs only** | Follow 8a.1 and repo bans (8a.0). Request once if available and not already covering the head: `gh pr comment <N> --body "@cursor @bugbot review"`. Record `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real usage notice; no activity on a routine PR needs no entry. Never wait or block. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | DeepSource findings: use `deepsource-issues <owner/repo> <pr>`, or the `deepsource-io[bot]` inline comments via `gh api`. The token comes from `DEEPSOURCE_TOKEN` or the 0600 file `~/.config/deepsource/deepsource.env` (override: `DEEPSOURCE_TOKEN_FILE`). Never a browser, never op |
 

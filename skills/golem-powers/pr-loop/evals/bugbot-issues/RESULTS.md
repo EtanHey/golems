@@ -1,62 +1,56 @@
 # Evidence: PR-loop Bugbot and issue-closing measurement
 
 date: 2026-11-04
-Status: IMPLEMENTED FOR LEAD REVIEW; no push, PR, merge or installed claim.
+Status: Sonnet r1 CHANGES addressed; lead-routed re-review pending. No push.
 
-Final comparison: master `23734011baa44db19f2d9d5f78227dd94a1b3c16` versus
-candidate source hashes in [the recordings](fixtures/recordings.json).
+Compare master `23734011baa44db19f2d9d5f78227dd94a1b3c16` with the corrected
+candidate hashes in [round-2 recordings](fixtures/review-r2-recordings.json).
 
-| Case | Master | Candidate | Observed requirement |
+| Case | Master | Candidate | Scored behavior |
 |---|---|---|---|
-| C1: routine XS, spend-limit notice | 0/3 | 3/3 | No request/wait; exact unavailable marker in PR body; pinned merge |
-| C2: L daemon transport, available bot | 1/3 | 3/3 | One request; immediate continuation to pinned merge |
-| C3: resolves same-repo issue #42 | 0/3 | 3/3 | Body `Fixes #42`; issue-state check; conditional PR-linked close |
-| All case requirements | 1/9 | 9/9 | Full-case compliance pass rate: 11.1% → 100% (+88.9pp) |
+| C1: XS, real spend-limit notice | 0/3 | 3/3 | No request/wait; exact unavailable entry in PR body; pinned merge |
+| C2: L daemon transport, available bot | 1/3 | 3/3 | Request once; immediate pinned merge continuation |
+| C3: fully resolves #42 | 0/3 | 3/3 | Literal `Fixes #42` in the PR body only |
+| C4: XS, no Bugbot activity | 3/3 | 2/3 | No request, wait, body entry or extra step; pinned merge |
 
-Three repetitions per case/arm, gpt-6-luna at medium effort, default service.
-Actual API spend: $0 (subscription); 45 completed text-only cells across three
-iterations. Iteration 1: candidate 5/9; iteration 2: 7/9; final: 9/9. Master
-was 1/9 in each of the two baseline batches. The final arm reuses iteration 2's
-baseline after verifying identical prompts, seat, baseline source bytes, model
-and effort. Every earlier failure is retained, including quotes and outputs.
+C4’s Bugbot assertions and merge continuation passed 3/3. One candidate answer
+omitted an explicit head pin, so it fails the retained `pinned_merge` assertion;
+full-case totals are master 4/12, candidate 11/12, not an all-green claim.
 
-The first edits still produced an awaiting-review state and omitted the body
-edit on some XS runs. The final change puts the explicit body-edit requirement
-at the merge step and in the decision table. No fourth iteration was run.
+Three repetitions per case/arm; observed gpt-6-luna/medium, default service,
+subscription, $0 API. Scoring is **implementer-only manual inspection**, no live
+GitHub. This measures proposed output, not real merges, hosted checks, actual
+issue closure or general reliability. C3's delta is the literal `Fixes` keyword:
+master already checked issue state in the earlier recordings. That behavior is
+not scored as an improvement. C3's verification hint was removed and both arms
+were rerun; C1/C4 were rerun on both arms. Only master C2 was reused, after checking
+identical prompt, seat, five source hashes, model and effort; candidate C2 reran.
 
-Scoring is implementer semantic inspection of the complete outputs; the routed
-reviewer must inspect the evidence. No regex over English, independent judgment,
-semantic-judge gate, or statistical generalization is claimed. These rates measure
-full-case compliance, not a fabricated compliance/structure/quality composite.
+Sonnet r1: CHANGES, 1 blocking — silence-recording added a step to every routine
+PR. The record now applies only to a requested, unavailable Bugbot or a real
+usage notice. Routine/no-activity PRs have no Bugbot action. Posted findings are
+answered; bots are never awaited. C4 guards that negative case. The earlier
+candidate missed C1's real-notice exception in 3/3 runs; those failures are
+retained, then the notice exception was made explicit. An extra C4 control on
+`c5cd5fd8` passed 3/3: the literal wording defect did not reproduce as an output
+failure in that small sample; no empirical C4 regression or uplift is claimed.
 
-C1's broad merge/no-wait behavior was already present in master: its delta is
-the exact PR-body record. One earlier master C3 used `Closes #42`, a valid GitHub
-closing keyword but outside the requested exact `Fixes` preference. C2 is an
-unchanged core-risk control; C1 is the routine-PR false-trigger probe. Other
-sizes, security/release exceptions, cross-repo closing and partial `Refs` work
-are covered by instruction inspection, not by these three live cases.
+Round-2 evidence retains 36 fresh cells plus 3 reused master-C2 receipts.
+[Pre-review recordings](fixtures/recordings.json) retain the earlier 45 cells;
+their obsolete silence policy and broader C3 assertions are historical only.
+All active cases/expectations and source hashes are recorded; expected answers
+are never supplied to the model. See [methodology](README.md).
 
-The fixture proves proposed actions and body text only. No GitHub action ran;
-this is not hosted CI, actual issue closure, installation or LIVE evidence.
-The source description is byte-identical. See [runner methodology](README.md).
-
-## Verification
-
-- PR-loop Python suite: 32 passed.
-- Node PR-record/root-update tests: 42 passed.
-- Existing full-stop fixture suite: 99 passed.
-- Description-cap suite: 8 passed; description separately compared byte-for-byte.
-- Publication boundary, canon drift, model-role drift: exit 0 (model-role lint
-  reports 17 existing notices and 59 exemptions, zero drift hits).
-- `node --check` and `git diff --check`: exit 0.
-- Runner evidence guards: 2 passed; the same tests both fail on the pre-guard
-  control. Local CodeRabbit identified evidence overwrite and missing invalid-run
-  receipts; both were fixed. The guard changes do not alter measured skill bytes.
-- Provenance checker `--require-comparable`: VALID, 45 provenance entries.
+Verification: 32 PR-loop Python checks; 143 focused Node tests (42 PR record/root
+update, 99 full-stop fixture, 2 runner guards); 8 description-cap tests passed.
+Description bytes unchanged. Syntax, whitespace and comparable-provenance checks
+passed (39 provenance entries: 36 fresh, 3 reused). Publication boundary/canon/
+model-role checks exited 0; local CodeRabbit reported 0 findings. No API key
+loaded or GitHub action executed.
 
 ## Eval Provenance
 
 | agent_or_arm | model_requested | model_effective | effort_effective | model_observation_source | effort_observation_source |
 |---|---|---|---|---|---|
-| master baseline (iteration 2) | gpt-6-luna | gpt-6-luna | medium | session JSONL model field: turn_context.model | session JSONL effort field: turn_context.effort |
-| final candidate (iteration 3) | gpt-6-luna | gpt-6-luna | medium | session JSONL model field: turn_context.model | session JSONL effort field: turn_context.effort |
+| master (fresh C1/C3/C4, reused C2) | gpt-6-luna | gpt-6-luna | medium | session JSONL model field: turn_context.model | session JSONL effort field: turn_context.effort |
+| corrected candidate | gpt-6-luna | gpt-6-luna | medium | session JSONL model field: turn_context.model | session JSONL effort field: turn_context.effort |

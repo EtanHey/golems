@@ -4,20 +4,43 @@
     "category": "compliance",
     "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #731. It is a routine size:XS README typo change, already ready, with required checks green and the routed other-vendor reviewer approving the exact head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. The only bot activity is cursor[bot]: 'spend limit reached'. The current PR body contains Summary, Test plan and a valid Loop-record; it names no issues. The repo permits optional bots and has no stricter policy. The batch needs no release. Give the next actions and any PR body update.",
     "expected_output": "No Bugbot request or wait; add Bugbot: unavailable (usage) to the PR body; proceed with the pinned merge.",
-    "assertions": ["no_bugbot_request", "no_bugbot_wait", "pinned_merge", "body_unavailable"]
+    "assertions": [
+      "no_bugbot_request",
+      "no_bugbot_wait",
+      "pinned_merge",
+      "body_unavailable"
+    ]
   },
   {
     "id": "C2",
     "category": "compliance",
     "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #732, a size:L daemon transport refactor. It is ready; the routed full panel approved head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb and required checks are green. There are no findings. The repo permits optional bots. Bugbot is set to run only when mentioned, is available, and has not been invoked or produced a current-head review. The feature-batch real-client verification is separately owned. Give the next actions and any PR body update.",
     "expected_output": "Request Bugbot once, without waiting or blocking the pinned merge.",
-    "assertions": ["one_bugbot_request", "no_bugbot_wait", "pinned_merge"]
+    "assertions": [
+      "one_bugbot_request",
+      "no_bugbot_wait",
+      "pinned_merge"
+    ]
   },
   {
     "id": "C3",
     "category": "compliance",
-    "prompt": "Prepare the draft PR body for a size:S parser fix in EtanHey/example. It fully resolves the same repo's open issue #42, 'Parser crashes on empty input'. The real regression check failed on main and passes on the branch; no UI or release is involved. Implementer codex/gpt-6.1-sol/high, reviewer none, rounds 0/0, defects 0, role worker. Include the subsequent issue-related verification after an authorized merge. Return the body and next commands.",
-    "expected_output": "The PR body contains Fixes #42; after merge inspect issue state, and close with a PR-linked comment if still open.",
-    "assertions": ["body_fixes_42", "check_issue_state", "close_if_open"]
+    "prompt": "Prepare the draft PR body for a size:S parser fix in EtanHey/example. It fully resolves the same repo's open issue #42, 'Parser crashes on empty input'. The real regression check failed on main and passes on the branch; no UI or release is involved. Implementer codex/gpt-6.1-sol/high, reviewer none, rounds 0/0, defects 0, role worker. Return the body and next commands.",
+    "expected_output": "The PR body contains literal Fixes #42.",
+    "assertions": [
+      "body_fixes_42"
+    ]
+  },
+  {
+    "id": "C4",
+    "category": "compliance",
+    "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #731. It is a routine size:XS README typo change, already ready, with required checks green and the routed other-vendor reviewer approving the exact head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. There has been no Bugbot activity on this PR: no request, review or notice. The current PR body contains Summary, Test plan and a valid Loop-record; it names no issues. The repo permits optional bots and has no stricter policy. The batch needs no release. Give the next actions and any PR body update.",
+    "expected_output": "No Bugbot request, wait, PR-body line or extra step; proceed with the pinned merge.",
+    "assertions": [
+      "no_bugbot_request",
+      "no_bugbot_wait",
+      "pinned_merge",
+      "no_bugbot_body_entry"
+    ]
   }
 ]

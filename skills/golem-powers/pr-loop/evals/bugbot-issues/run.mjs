@@ -5,8 +5,8 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-const [creator, baseline, output, onlyArm] = process.argv.slice(2);
-if (onlyArm && !["baseline", "candidate"].includes(onlyArm)) throw Error("arm must be baseline or candidate");
+const [creator, baseline, output, onlyArm, caseFilter] = process.argv.slice(2);
+if (onlyArm && !["baseline", "candidate", "both"].includes(onlyArm)) throw Error("arm must be baseline, candidate or both");
 if (!creator || !baseline || !output) throw Error('usage: node run.mjs <skill-creator-root> <baseline-ref> <output-dir>');
 // Reserve a fresh evidence directory before imports, credentials or child work.
 await mkdir(path.dirname(path.resolve(output)), { recursive: true });
@@ -18,7 +18,10 @@ const baselineSha = execFileSync('git', ['rev-parse', baseline], { encoding: 'ut
 const model = 'gpt-6-luna', effort = 'medium', cells = new Set();
 const relatives = ['SKILL.md', 'references/pr-creation.md', 'references/review-loop.md', 'adapters/codex.md', 'adapters/cursor.md'];
 const prefix = 'skills/golem-powers/pr-loop/';
-const cases = JSON.parse(await readFile(path.join(here, 'cases.json'), 'utf8'));
+const allCases = JSON.parse(await readFile(path.join(here, 'cases.json'), 'utf8'));
+const ids = caseFilter?.split(',') ?? allCases.map(c => c.id);
+if (new Set(ids).size !== ids.length || ids.some(id => !allCases.some(c => c.id === id))) throw Error('unknown or duplicate case ID');
+const cases = allCases.filter(c => ids.includes(c.id));
 const seat = 'You assist with repository maintenance. This is a closed text-only fixture: return proposed actions, commands and requested body text without executing commands or using tools. All relevant instructions and facts are supplied below. Treat the supplied skill files as already read. Do not access external files or services.';
 const hash = s => createHash('sha256').update(s).digest('hex');
 const toml = v => JSON.stringify(v);
@@ -44,7 +47,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => {
   await Promise.allSettled([...cells].map(c => c.cleanup())); process.exit(130);
 });
 const receipts = [];
-for (let rep = 1; rep <= 3; rep++) for (const c of cases) for (const arm of (onlyArm ? [onlyArm] : rep % 2 ? ['baseline', 'candidate'] : ['candidate', 'baseline'])) {
+for (let rep = 1; rep <= 3; rep++) for (const c of cases) for (const arm of (onlyArm && onlyArm !== 'both' ? [onlyArm] : rep % 2 ? ['baseline', 'candidate'] : ['candidate', 'baseline'])) {
   const parent = path.join(homedir(), '.local/share/skill-creator-evals');
   await mkdir(parent, { recursive: true, mode: 0o700 });
   const root = await mkdtemp(path.join(parent, 'pr-loop-'));

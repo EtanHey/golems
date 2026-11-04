@@ -236,7 +236,7 @@ RULE_MERGING = ("Merging: small PRs merge right away on fast CI + 1 review. Heav
                 "pre-merge gate.")
 RULE_XS_S = "XS/S: 1 reviewer, 1 round."
 RULE_BOTS = ("Review bots (CodeRabbit/Bugbot) run only AFTER the inner loop, and they're advisory. "
-             "Only wait on a bot when it flags something important. Never wait on rate limits.")
+             "Answer an already-posted bot finding like any finding; never await a bot or rate-limit recovery.")
 RULE_PARALLEL = "Give each test/build its own ports and temp folders so they run in parallel."
 SSOT = "`/agent-routing` § Routing rules (SSOT)"
 BATCH_LINK = "references/merge-and-verification.md#feature-batch-gate"
@@ -245,7 +245,7 @@ BATCH_LINK = "references/merge-and-verification.md#feature-batch-gate"
 class RiskSizedGates(unittest.TestCase):
     """Etan 2026-10-18 22:00 + 23:25 rulings: risk-sized merges, feature-batch heavy gates."""
 
-    def test_skill_md_quotes_the_rules_verbatim_with_attribution(self):
+    def test_skill_md_pins_rules_and_bot_clarification_with_attribution(self):
         content = flat("SKILL.md").replace("**", "")
         for rule in [RULE_MERGING, RULE_XS_S, RULE_BOTS, RULE_PARALLEL]:
             with self.subTest(rule=rule[:40]):

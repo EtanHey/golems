@@ -9,7 +9,7 @@ Read this when a PR loop starts, stops early, runs autonomously, or has separate
 **End state, precisely:** done = required checks GREEN and the routed review clean on the **LATEST**
 commit. Not "a green run exists" — green on the commit that is actually at the head of the PR. Review
 bots are advisory: answer a bot that flags something important, but a silent or rate-limited bot is
-recorded as unavailable in the PR body, never awaited ([Merge Cadence](../SKILL.md#merge-cadence-risk-sized)).
+recorded as unavailable in the PR body only if actually requested or a real usage notice was posted; normal Bugbot silence on a routine PR needs no entry. Bots are never awaited ([Merge Cadence](../SKILL.md#merge-cadence-risk-sized)).
 
 **The four explicit turns**, in order, none skipped and none merged into a neighbour:
 1. fix

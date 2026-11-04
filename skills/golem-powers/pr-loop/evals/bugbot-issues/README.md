@@ -5,7 +5,8 @@ loads master PR-loop; the candidate loads the edited skill, PR-creation/review
 references and Codex/Cursor adapters. The same neutral seat and prompts reach
 both arms. `cases.json` expectations and assertions are never sent to the model.
 C1 is the routine-PR false-trigger probe; C2 preserves the core-risk request path;
-C3 tests the issue-closing body and follow-up. Three fresh repetitions per arm.
+C3 scores only literal `Fixes #42` in the body; C4 is the routine/no-activity
+negative control. Three fresh repetitions per arm.
 
 Run from the golems worktree:
 
@@ -14,7 +15,8 @@ node skills/golem-powers/pr-loop/evals/bugbot-issues/run.mjs \
   <skill-creator-root> <baseline-sha> <fresh-output-directory>
 ```
 
-An optional fourth argument, `baseline` or `candidate`, records only that arm.
+An optional fourth argument, `baseline`, `candidate` or `both`, selects arms.
+A fifth argument selects comma-separated case IDs, for example `both C1,C3,C4`.
 A later candidate may reuse a recorded baseline only with byte-identical prompts,
 seat, baseline source hashes, model and effort; retain both iterations.
 
@@ -36,14 +38,17 @@ and no contradictory pending/awaiting gate. `body_unavailable` requires the exac
 `Bugbot: unavailable (usage)` marker in a proposed PR-body update; a response-only
 note or explicit refusal to update the body fails. `pinned_merge` requires an
 explicit merge action tied to the supplied head. Count one Bugbot review request
-for C2. C3 requires literal `Fixes #42` in the body, an issue-state check and a
-conditional close with a PR-linked comment. A case passes only if all its
+for C2. C3 requires only literal `Fixes #42` in the body; it does not score
+issue-state checks or closure, which master already demonstrated. C4 requires
+no Bugbot request/wait/body entry or extra step and a pinned merge. A case passes only if all its
 assertions pass. Keep quotes and answer hashes beside the manual judgments so
 the lead-routed reviewer can inspect them. No paid judge is required.
 
 The result artifact retains all repetitions, runtime provenance and source
 hashes; failed iterations remain recorded. These are implementer-scored probes,
-not an independent review. Baseline is master text, not a skill-free arm.
+not an independent review. No live GitHub action runs. Baseline is master text,
+not a skill-free arm. Pre-review evidence remains historical; see RESULTS.md for
+the corrected scope and the reviewer finding.
 
 Runner guard tests (synthetic transport/validator, no model calls):
 `WEAVE_ALLOW_TMP=1 node --test skills/golem-powers/pr-loop/evals/bugbot-issues/runner.test.mjs`.

@@ -25,7 +25,7 @@ Choose the endpoint before the loop below: [full stop](full-stop.md) overrides i
                hard timeout BEFORE committing. If the local CLI hangs or hits
                rate/review limits, stop it, record the limitation, and commit
                on fresh test evidence. After the PR exists, PR-level bots
-               are advisory: wait on one only when it flags something important.
+               are advisory: answer posted findings; never await a bot.
                If CRITICAL issues found → fix first. If minor → proceed.
                Ralph mode: `--story=ID --message=MSG` for atomic commit + criterion.
              ↳ Commit trailer = `Co-Authored-By: <Model>
