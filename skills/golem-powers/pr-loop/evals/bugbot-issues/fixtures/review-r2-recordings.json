@@ -1,0 +1,3004 @@
+{
+  "date": "2026-11-04",
+  "scoring": "implementer-only manual inspection; no live GitHub",
+  "new_cells": 36,
+  "reused_cells": 3,
+  "provenance": [
+    {
+      "agent_or_arm": "w19-review-r2/C1-baseline-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C1-candidate-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C3-baseline-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C3-candidate-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C4-baseline-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C4-candidate-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C1-candidate-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C1-baseline-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C3-candidate-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C3-baseline-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C4-candidate-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C4-baseline-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C1-baseline-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C1-candidate-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C3-baseline-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C3-candidate-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C4-baseline-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2/C4-candidate-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-c2/C2-candidate-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-c2/C2-candidate-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-c2/C2-candidate-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C1-candidate-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C2-candidate-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C3-candidate-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C4-candidate-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C1-candidate-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C2-candidate-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C3-candidate-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C4-candidate-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C1-candidate-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C2-candidate-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C3-candidate-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-final/C4-candidate-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-regression/C4-baseline-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-regression/C4-baseline-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "w19-review-r2-regression/C4-baseline-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "reused-master-C2/C2-baseline-1",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "reused-master-C2/C2-baseline-2",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    },
+    {
+      "agent_or_arm": "reused-master-C2/C2-baseline-3",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL model field: turn_context.model",
+      "effort_observation_source": "session JSONL effort field: turn_context.effort"
+    }
+  ],
+  "batches": [
+    {
+      "id": "w19-review-r2",
+      "baseline_sha": "23734011baa44db19f2d9d5f78227dd94a1b3c16",
+      "seat": "You assist with repository maintenance. This is a closed text-only fixture: return proposed actions, commands and requested body text without executing commands or using tools. All relevant instructions and facts are supplied below. Treat the supplied skill files as already read. Do not access external files or services.",
+      "cases": [
+        {
+          "id": "C1",
+          "category": "compliance",
+          "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #731. It is a routine size:XS README typo change, already ready, with required checks green and the routed other-vendor reviewer approving the exact head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. The only bot activity is cursor[bot]: 'spend limit reached'. The current PR body contains Summary, Test plan and a valid Loop-record; it names no issues. The repo permits optional bots and has no stricter policy. The batch needs no release. Give the next actions and any PR body update.",
+          "expected_output": "No Bugbot request or wait; add Bugbot: unavailable (usage) to the PR body; proceed with the pinned merge.",
+          "assertions": [
+            "no_bugbot_request",
+            "no_bugbot_wait",
+            "pinned_merge",
+            "body_unavailable"
+          ]
+        },
+        {
+          "id": "C3",
+          "category": "compliance",
+          "prompt": "Prepare the draft PR body for a size:S parser fix in EtanHey/example. It fully resolves the same repo's open issue #42, 'Parser crashes on empty input'. The real regression check failed on main and passes on the branch; no UI or release is involved. Implementer codex/gpt-6.1-sol/high, reviewer none, rounds 0/0, defects 0, role worker. Return the body and next commands.",
+          "expected_output": "The PR body contains literal Fixes #42.",
+          "assertions": [
+            "body_fixes_42"
+          ]
+        },
+        {
+          "id": "C4",
+          "category": "compliance",
+          "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #731. It is a routine size:XS README typo change, already ready, with required checks green and the routed other-vendor reviewer approving the exact head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. There has been no Bugbot activity on this PR: no request, review or notice. The current PR body contains Summary, Test plan and a valid Loop-record; it names no issues. The repo permits optional bots and has no stricter policy. The batch needs no release. Give the next actions and any PR body update.",
+          "expected_output": "No Bugbot request, wait, PR-body line or extra step; proceed with the pinned merge.",
+          "assertions": [
+            "no_bugbot_request",
+            "no_bugbot_wait",
+            "pinned_merge",
+            "no_bugbot_body_entry"
+          ]
+        }
+      ],
+      "source_hashes": {
+        "baseline": {
+          "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+          "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+          "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+          "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+          "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+        },
+        "candidate": {
+          "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+          "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+          "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+          "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+          "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+        }
+      },
+      "rows": [
+        {
+          "id": "C1-baseline-1",
+          "pass": false,
+          "failed_assertion": "body_unavailable",
+          "failure_quote": "No PR body update is needed.",
+          "answer": "Merge PR #731 now: size:XS, ready, required checks are green, and the routed reviewer approved the exact current head. The `cursor[bot]` spend-limit notice is advisory; don\u2019t wait on it.\n\nNo PR body update is needed. The body already has a valid Loop-record and names no issues, so there\u2019s no defect guard to add.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and fast-forward the root checkout per the merge tracking procedure.",
+          "runtime": {
+            "case": "C1",
+            "arm": "baseline",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+              "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+              "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+              "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+              "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+            },
+            "answer_sha256": "9119f5dc450f943645c2a7c862c9b5b94fc34e4399a730f4e5edc81ab41820ad",
+            "usage": {
+              "input_tokens": 31699,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 123,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a448-4503-7ef2-bedf-4861cbe5a89c"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now: size:XS, ready, required checks are green, and the routed reviewer approved the exact current head. The `cursor[bot]` spend-limit notice is advisory; don\u2019t wait on it.\n\nNo PR body update is needed. The body already has a valid Loop-record and names no issues, so there\u2019s no defect guard to add.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and fast-forward the root checkout per the merge tracking procedure."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 31699,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 123,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C1-candidate-1",
+          "pass": false,
+          "failed_assertion": "body_unavailable",
+          "failure_quote": "its usage notice does not require",
+          "answer": "Merge PR #731 now. It is a routine XS PR with green required checks and an approving routed review at the exact current head; the Cursor spend limit does not block the merge.\n\nNo PR body update is needed. Bugbot was not requested, and its usage notice does not require the `Bugbot: unavailable (usage)` entry. There are no issues to close and no release step for this batch.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and fast-forward the root checkout.",
+          "runtime": {
+            "case": "C1",
+            "arm": "candidate",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "75449b0652f84c50dacebe048aa10f4ad5535e26c91a5982a967d57f6ae2595c",
+            "usage": {
+              "input_tokens": 32622,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 125,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a448-6165-7243-a685-ae826c5973a2"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now. It is a routine XS PR with green required checks and an approving routed review at the exact current head; the Cursor spend limit does not block the merge.\n\nNo PR body update is needed. Bugbot was not requested, and its usage notice does not require the `Bugbot: unavailable (usage)` entry. There are no issues to close and no release step for this batch.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and fast-forward the root checkout."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32622,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 125,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C3-baseline-1",
+          "pass": false,
+          "failed_assertion": "body_fixes_42",
+          "failure_quote": "fully resolving #42.",
+          "answer": "```markdown\n## Summary\n- Fix the parser crash on empty input, fully resolving #42.\n\n## Test plan\n- [x] Regression check fails on `main` and passes on this branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nBot policy: EtanHey/example AGENTS.md \u2192 panel not yet applied; read its PR workflow before summoning reviewers.\n\nProof: regression \u2014 check fails on main and passes on branch.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands:\n\n```bash\ngh issue view 42 --repo EtanHey/example\ngit status --short\ngit push -u origin HEAD\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --repo EtanHey/example --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n## Summary\n- Fix the parser crash on empty input, fully resolving #42.\n\n## Test plan\n- [x] Regression check fails on `main` and passes on this branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nBot policy: EtanHey/example AGENTS.md \u2192 panel not yet applied; read its PR workflow before summoning reviewers.\n\nProof: regression \u2014 check fails on main and passes on branch.\n\n\ud83e\udd16 Generated with unknown in codex\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR> --repo EtanHey/example\n```\n\nReplace `<PR>` with the number returned by `gh pr create`. Read `EtanHey/example`\u2019s `AGENTS.md` PR workflow before requesting any review.",
+          "runtime": {
+            "case": "C3",
+            "arm": "baseline",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+              "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+              "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+              "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+              "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+            },
+            "answer_sha256": "454f9803e0643929a9ac3dbe0ee445048718c75b2d4614e31939ec07634a98f1",
+            "usage": {
+              "input_tokens": 31672,
+              "cached_input_tokens": 31232,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 382,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a448-88a5-7671-b52c-b5d70afcdcdb"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "```markdown\n## Summary\n- Fix the parser crash on empty input, fully resolving #42.\n\n## Test plan\n- [x] Regression check fails on `main` and passes on this branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nBot policy: EtanHey/example AGENTS.md \u2192 panel not yet applied; read its PR workflow before summoning reviewers.\n\nProof: regression \u2014 check fails on main and passes on branch.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands:\n\n```bash\ngh issue view 42 --repo EtanHey/example\ngit status --short\ngit push -u origin HEAD\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --repo EtanHey/example --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n## Summary\n- Fix the parser crash on empty input, fully resolving #42.\n\n## Test plan\n- [x] Regression check fails on `main` and passes on this branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nBot policy: EtanHey/example AGENTS.md \u2192 panel not yet applied; read its PR workflow before summoning reviewers.\n\nProof: regression \u2014 check fails on main and passes on branch.\n\n\ud83e\udd16 Generated with unknown in codex\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR> --repo EtanHey/example\n```\n\nReplace `<PR>` with the number returned by `gh pr create`. Read `EtanHey/example`\u2019s `AGENTS.md` PR workflow before requesting any review."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 31672,
+                "cached_input_tokens": 31232,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 382,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C3-candidate-1",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- [x] Real regression check fails on main and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\nProof: regression check fails on main and passes on the branch.\nBot policy: EtanHey/example AGENTS.md policy not supplied; confirm it before any reviewer mentions.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands:\n\n```bash\n# Confirm the target repo's PR and bot policy before any reviewer mentions.\nsed -n '/## PR Workflow/,/^## /p' AGENTS.md 2>/dev/null\ngrep -n -i 'bugbot\\|greptile\\|coderabbit\\|codex review\\|do not route' AGENTS.md CLAUDE.md 2>/dev/null\n\n# Size S is 51\u2013150 hand-written added lines. Confirm the measured size before opening.\nscripts/ci/pr-size-labels.sh suggest\n\ngh pr create --draft --repo EtanHey/example \\\n  --title \"fix: handle empty parser input\" \\\n  --body-file - <<'EOF'\n[body above]\nEOF\n```\n\nAfter creation, use the returned PR number:\n\n```bash\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR> --repo EtanHey/example\n```",
+          "runtime": {
+            "case": "C3",
+            "arm": "candidate",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "793dbe220058561e4956e3dbb604373601616ec59becf098d978a00ee74c371f",
+            "usage": {
+              "input_tokens": 32595,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 321,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a448-ba4b-74f0-a501-54cb7ad63963"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- [x] Real regression check fails on main and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\nProof: regression check fails on main and passes on the branch.\nBot policy: EtanHey/example AGENTS.md policy not supplied; confirm it before any reviewer mentions.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands:\n\n```bash\n# Confirm the target repo's PR and bot policy before any reviewer mentions.\nsed -n '/## PR Workflow/,/^## /p' AGENTS.md 2>/dev/null\ngrep -n -i 'bugbot\\|greptile\\|coderabbit\\|codex review\\|do not route' AGENTS.md CLAUDE.md 2>/dev/null\n\n# Size S is 51\u2013150 hand-written added lines. Confirm the measured size before opening.\nscripts/ci/pr-size-labels.sh suggest\n\ngh pr create --draft --repo EtanHey/example \\\n  --title \"fix: handle empty parser input\" \\\n  --body-file - <<'EOF'\n[body above]\nEOF\n```\n\nAfter creation, use the returned PR number:\n\n```bash\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR> --repo EtanHey/example\n```"
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32595,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 321,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-baseline-1",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 now; the required checks are green and the routed reviewer approved exact head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. No bot wait or request is needed for this XS README typo change.\n\nNo PR body update is needed: it already has Summary, Test plan, and a valid Loop-record, with no issues to report.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and fast-forward the root checkout. Since no release is needed for this batch, finish with the applicable cleanup receipt.",
+          "runtime": {
+            "case": "C4",
+            "arm": "baseline",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+              "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+              "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+              "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+              "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+            },
+            "answer_sha256": "3832333834500bb8e4107a2ac7c6c50df090de0e45760750be867b7386232998",
+            "usage": {
+              "input_tokens": 31702,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 125,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a448-f0b1-71d2-8e8f-1a91935ca85e"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now; the required checks are green and the routed reviewer approved exact head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. No bot wait or request is needed for this XS README typo change.\n\nNo PR body update is needed: it already has Summary, Test plan, and a valid Loop-record, with no issues to report.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and fast-forward the root checkout. Since no release is needed for this batch, finish with the applicable cleanup receipt."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 31702,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 125,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-candidate-1",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 promptly at the approved, green head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. The body already has a valid Loop-record and names no issues; routine XS PRs with no Bugbot activity need no Bugbot entry or action. After merging, verify the remote merge and update the root checkout per the merge-tracking procedure.",
+          "runtime": {
+            "case": "C4",
+            "arm": "candidate",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "15ffd29f6bb7c215e3ddd477a27ad83537696c7a5166cd7ece895b7802f3aaf5",
+            "usage": {
+              "input_tokens": 32625,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 99,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-0f0b-7852-b2c6-2d0065079164"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 promptly at the approved, green head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. The body already has a valid Loop-record and names no issues; routine XS PRs with no Bugbot activity need no Bugbot entry or action. After merging, verify the remote merge and update the root checkout per the merge-tracking procedure."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32625,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 99,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C1-candidate-2",
+          "pass": false,
+          "failed_assertion": "body_unavailable",
+          "failure_quote": "the notice alone does not require",
+          "answer": "PR #731 is merge-ready: it is a routine XS change with required checks green and the routed reviewer\u2019s approval at the exact head. The cursor[bot] spend-limit notice does not block merge; Bugbot is optional for this PR, and the notice alone does not require a PR body entry.\n\nNo PR body update is needed. Merge now, pinned to the approved head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and update the root checkout as required by the merge and cleanup contract. No issue checks or release gate are needed.",
+          "runtime": {
+            "case": "C1",
+            "arm": "candidate",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "058eeee452767d19f21b88148faa7bbf8d57fed43adf8288043435091e8c8767",
+            "usage": {
+              "input_tokens": 32624,
+              "cached_input_tokens": 32128,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 136,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-28b2-79c1-ac5c-fc75d9bd9cbf"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "PR #731 is merge-ready: it is a routine XS change with required checks green and the routed reviewer\u2019s approval at the exact head. The cursor[bot] spend-limit notice does not block merge; Bugbot is optional for this PR, and the notice alone does not require a PR body entry.\n\nNo PR body update is needed. Merge now, pinned to the approved head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and update the root checkout as required by the merge and cleanup contract. No issue checks or release gate are needed."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32624,
+                "cached_input_tokens": 32128,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 136,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C1-baseline-2",
+          "pass": false,
+          "failed_assertion": "body_unavailable",
+          "failure_quote": "Update the PR body with a brief bot-policy line",
+          "answer": "The PR meets the XS merge gate: required checks are green and the routed reviewer approved exact head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. Cursor\u2019s spend-limit notice is advisory; record it as unavailable and don\u2019t wait for it. No extra bot review is needed.\n\nUpdate the PR body with a brief bot-policy line recording that optional bots were permitted and Cursor was unavailable due to its spend limit. Keep the existing Summary, Test plan, and valid Loop-record; the change names no issues, so no issue section is needed. Preserve the required signature as the final line.\n\nThen merge promptly using the authorized merge method, pinned to the approved green head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo release gate is needed for this batch.",
+          "runtime": {
+            "case": "C1",
+            "arm": "baseline",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+              "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+              "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+              "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+              "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+            },
+            "answer_sha256": "aae6be696f994b32fbd76ce4036ef7dc844f9fb7324f6349a7f8e70e8c9eeb43",
+            "usage": {
+              "input_tokens": 31695,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 169,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-4eb4-7741-a0b1-2c4bd6d92a3a"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "The PR meets the XS merge gate: required checks are green and the routed reviewer approved exact head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. Cursor\u2019s spend-limit notice is advisory; record it as unavailable and don\u2019t wait for it. No extra bot review is needed.\n\nUpdate the PR body with a brief bot-policy line recording that optional bots were permitted and Cursor was unavailable due to its spend limit. Keep the existing Summary, Test plan, and valid Loop-record; the change names no issues, so no issue section is needed. Preserve the required signature as the final line.\n\nThen merge promptly using the authorized merge method, pinned to the approved green head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo release gate is needed for this batch."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 31695,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 169,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C3-candidate-2",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "## Draft PR body\n\n```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on main and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\nProof: regression check fails on main and passes on the branch.\n\nBot policy: not yet read; read EtanHey/example's AGENTS.md (or CLAUDE.md) before any reviewer @mentions.\n\n\ud83e\udd16 Generated with unknown in Codex\n```\n\n## Next commands\n\n```bash\n# Confirm the branch/worktree and repository state before proceeding.\ngit status --short --branch\n\n# Size the branch before opening.\nscripts/ci/pr-size-labels.sh suggest\n\n# Open as a draft; replace the title if needed.\ngh pr create --repo EtanHey/example --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[insert the body above]\nEOF\n\n# After gh returns the PR number:\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nAfter opening, read the target repo\u2019s bot policy before any reviewer mentions. As a worker, hand the reviewed PR to the lead unmerged.",
+          "runtime": {
+            "case": "C3",
+            "arm": "candidate",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "cb60970398906fe124a2747e670501cb681a91c0255a11033ef80f572ec42b96",
+            "usage": {
+              "input_tokens": 32595,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 294,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-7601-7371-bd90-e12d10850c09"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "## Draft PR body\n\n```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on main and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\nProof: regression check fails on main and passes on the branch.\n\nBot policy: not yet read; read EtanHey/example's AGENTS.md (or CLAUDE.md) before any reviewer @mentions.\n\n\ud83e\udd16 Generated with unknown in Codex\n```\n\n## Next commands\n\n```bash\n# Confirm the branch/worktree and repository state before proceeding.\ngit status --short --branch\n\n# Size the branch before opening.\nscripts/ci/pr-size-labels.sh suggest\n\n# Open as a draft; replace the title if needed.\ngh pr create --repo EtanHey/example --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[insert the body above]\nEOF\n\n# After gh returns the PR number:\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nAfter opening, read the target repo\u2019s bot policy before any reviewer mentions. As a worker, hand the reviewed PR to the lead unmerged."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32595,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 294,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C3-baseline-2",
+          "pass": false,
+          "failed_assertion": "body_fixes_42",
+          "failure_quote": "fully resolving #42.",
+          "answer": "```markdown\n## Summary\n- Fix the parser crash on empty input, fully resolving #42.\n\n## Test plan\n- [x] Regression check fails on `main` and passes on this branch.\n\nProof: base failure and branch pass for the real-code regression check; no UI or release involved.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\n## Bot policy\n- Target repo `AGENTS.md` policy must be read before any review bot is summoned.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands, after checking the target repo\u2019s `AGENTS.md` review policy:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[body above]\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nThe body\u2019s signature needs the live model from the Codex rollout record; replace `unknown` only if that source is available.",
+          "runtime": {
+            "case": "C3",
+            "arm": "baseline",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+              "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+              "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+              "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+              "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+            },
+            "answer_sha256": "2fd28409f11087287f69d5e928ed24829f3be654fed9caba2c3061658e880efe",
+            "usage": {
+              "input_tokens": 31674,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 251,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-a2a3-7d61-aed7-228e6c560c8e"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "```markdown\n## Summary\n- Fix the parser crash on empty input, fully resolving #42.\n\n## Test plan\n- [x] Regression check fails on `main` and passes on this branch.\n\nProof: base failure and branch pass for the real-code regression check; no UI or release involved.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\n## Bot policy\n- Target repo `AGENTS.md` policy must be read before any review bot is summoned.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands, after checking the target repo\u2019s `AGENTS.md` review policy:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[body above]\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nThe body\u2019s signature needs the live model from the Codex rollout record; replace `unknown` only if that source is available."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 31674,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 251,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-candidate-2",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 now at the verified head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. It already has a valid Loop-record and names no issues; with no Bugbot request or usage notice, add no Bugbot entry. After merging, verify the remote merge and fast-forward the root checkout.",
+          "runtime": {
+            "case": "C4",
+            "arm": "candidate",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "48b84bb090620de69e789bd54e6e827300ce4ef3f9ff8c8e9fc4e741b1ba567d",
+            "usage": {
+              "input_tokens": 32623,
+              "cached_input_tokens": 32128,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 89,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-c7d1-77b3-823c-cb0b8726a70d"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now at the verified head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. It already has a valid Loop-record and names no issues; with no Bugbot request or usage notice, add no Bugbot entry. After merging, verify the remote merge and fast-forward the root checkout."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32623,
+                "cached_input_tokens": 32128,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 89,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-baseline-2",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "1. Do not request Bugbot: this is a README typo, not a daemon, engine, or transport change.\n2. Verify #731 is still ready, required checks are green, and the routed approval applies to head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. If those facts still hold, merge promptly with the authorized method, pinning that head:\n   ```bash\n   gh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n   ```\n3. No PR body update is needed. The existing body has the required sections and a valid Loop-record; there are no bot findings to record.",
+          "runtime": {
+            "case": "C4",
+            "arm": "baseline",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+              "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+              "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+              "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+              "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+            },
+            "answer_sha256": "3b1cbee262d83c947dde530f21a9a95e32014cb41308a914129929e332d6dd2a",
+            "usage": {
+              "input_tokens": 31702,
+              "cached_input_tokens": 31232,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 133,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-e311-75a1-8458-38021e75fc11"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "1. Do not request Bugbot: this is a README typo, not a daemon, engine, or transport change.\n2. Verify #731 is still ready, required checks are green, and the routed approval applies to head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. If those facts still hold, merge promptly with the authorized method, pinning that head:\n   ```bash\n   gh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n   ```\n3. No PR body update is needed. The existing body has the required sections and a valid Loop-record; there are no bot findings to record."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 31702,
+                "cached_input_tokens": 31232,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 133,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C1-baseline-3",
+          "pass": false,
+          "failed_assertion": "body_unavailable",
+          "failure_quote": "No PR body update is needed.",
+          "answer": "Merge PR #731 now. The XS PR has green required checks and a clean routed review on the exact head; `cursor[bot]`\u2019s spend-limit notice is advisory and does not block the merge.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. The bot notice does not require an unavailable-bot entry, and the existing body already has a valid Loop-record with no issues named.",
+          "runtime": {
+            "case": "C1",
+            "arm": "baseline",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+              "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+              "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+              "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+              "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+            },
+            "answer_sha256": "5991fec6a1aecc51dd4a6a503637c9f67408b84299123e377bc0a0bf370dbc35",
+            "usage": {
+              "input_tokens": 31699,
+              "cached_input_tokens": 31232,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 108,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-0109-71c0-96e6-1dee0f205425"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now. The XS PR has green required checks and a clean routed review on the exact head; `cursor[bot]`\u2019s spend-limit notice is advisory and does not block the merge.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. The bot notice does not require an unavailable-bot entry, and the existing body already has a valid Loop-record with no issues named."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 31699,
+                "cached_input_tokens": 31232,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 108,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C1-candidate-3",
+          "pass": false,
+          "failed_assertion": "body_unavailable",
+          "failure_quote": "so do not add",
+          "answer": "Merge PR #731 now. The exact-head approval and green required checks satisfy the merge gates; the Cursor spend-limit notice is advisory and does not block merge.\n\nNo PR body update is needed: this routine XS PR did not request Bugbot, so do not add `Bugbot: unavailable (usage)`. Keep the existing body and Loop-record unchanged.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and content, fast-forward the root checkout, and update tracking. No release gate is needed for this batch.",
+          "runtime": {
+            "case": "C1",
+            "arm": "candidate",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "3c4363c09e9f22d7560ad46b78ef784cadee7e24b7541e5389e38d94bf1f15e8",
+            "usage": {
+              "input_tokens": 32622,
+              "cached_input_tokens": 32128,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 129,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-1d5d-7941-bf89-cfa2b7ba495b"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now. The exact-head approval and green required checks satisfy the merge gates; the Cursor spend-limit notice is advisory and does not block merge.\n\nNo PR body update is needed: this routine XS PR did not request Bugbot, so do not add `Bugbot: unavailable (usage)`. Keep the existing body and Loop-record unchanged.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThen verify the remote merge and content, fast-forward the root checkout, and update tracking. No release gate is needed for this batch."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32622,
+                "cached_input_tokens": 32128,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 129,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C3-baseline-3",
+          "pass": false,
+          "failed_assertion": "body_fixes_42",
+          "failure_quote": "Fully resolves EtanHey/example#42.",
+          "answer": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n- Fully resolves EtanHey/example#42.\n\n## Test plan\n- [x] Real regression check fails on main and passes on this branch.\n- [ ] No UI or release work involved.\n\nProof: regression check \u2014 fails on main, passes on branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\n## Bot policy\n- Not yet verified; read `EtanHey/example`\u2019s `AGENTS.md` (or `CLAUDE.md`) before summoning reviewers.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nI can\u2019t truthfully fill in the live model signature or repo bot policy from the supplied details. Replace `unknown` with the verified model from the current Codex rollout; read the repo\u2019s bot policy before any review request. The supplied facts don\u2019t establish the PR number or head SHA, so use the actual values in the commands.\n\n```bash\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[body above, with verified model signature]\nEOF\n\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```",
+          "runtime": {
+            "case": "C3",
+            "arm": "baseline",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+              "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+              "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+              "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+              "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+            },
+            "answer_sha256": "7fc19574ff71d95d850fe864846ee92dd5e3576888306b68f5bb16d417ca4f65",
+            "usage": {
+              "input_tokens": 31672,
+              "cached_input_tokens": 6912,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 290,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-4242-72c0-824c-f28c9dc35b5a"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n- Fully resolves EtanHey/example#42.\n\n## Test plan\n- [x] Real regression check fails on main and passes on this branch.\n- [ ] No UI or release work involved.\n\nProof: regression check \u2014 fails on main, passes on branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\n## Bot policy\n- Not yet verified; read `EtanHey/example`\u2019s `AGENTS.md` (or `CLAUDE.md`) before summoning reviewers.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nI can\u2019t truthfully fill in the live model signature or repo bot policy from the supplied details. Replace `unknown` with the verified model from the current Codex rollout; read the repo\u2019s bot policy before any review request. The supplied facts don\u2019t establish the PR number or head SHA, so use the actual values in the commands.\n\n```bash\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[body above, with verified model signature]\nEOF\n\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```"
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 31672,
+                "cached_input_tokens": 6912,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 290,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C3-candidate-3",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on `main` and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nProof: regression check fails on main and passes on the branch.\n\nBot policy: EtanHey/example AGENTS.md \u2192 panel not yet checked; no reviewers summoned.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on `main` and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nProof: regression check fails on main and passes on the branch.\n\nBot policy: EtanHey/example AGENTS.md \u2192 panel not yet checked; no reviewers summoned.\n\n\ud83e\udd16 Generated with unknown in codex\nEOF\n```\n\nAfter `gh pr create` returns the PR number:\n\n```bash\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```",
+          "runtime": {
+            "case": "C3",
+            "arm": "candidate",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "27160b53266ef8ec32d37c7f859ec32ab1a9cc833e6b0bb2aedd2ae9b610461c",
+            "usage": {
+              "input_tokens": 32595,
+              "cached_input_tokens": 32128,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 317,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-7068-7d21-ba73-f1e64d35c225"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on `main` and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nProof: regression check fails on main and passes on the branch.\n\nBot policy: EtanHey/example AGENTS.md \u2192 panel not yet checked; no reviewers summoned.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on `main` and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nProof: regression check fails on main and passes on the branch.\n\nBot policy: EtanHey/example AGENTS.md \u2192 panel not yet checked; no reviewers summoned.\n\n\ud83e\udd16 Generated with unknown in codex\nEOF\n```\n\nAfter `gh pr create` returns the PR number:\n\n```bash\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```"
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32595,
+                "cached_input_tokens": 32128,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 317,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-baseline-3",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 now at the approved, green head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo Bugbot request or PR body update is needed: it is optional, there has been no Bugbot activity, and the body already has a valid Loop-record with no issues. After merging, verify the remote merge and fast-forward the root checkout; provide the required cleanup receipt.",
+          "runtime": {
+            "case": "C4",
+            "arm": "baseline",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+              "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+              "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+              "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+              "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+            },
+            "answer_sha256": "88d7e105f154ea36afb54f03a4d7d52b55ea3e3c10714858f975641fa85672c3",
+            "usage": {
+              "input_tokens": 31702,
+              "cached_input_tokens": 31232,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 99,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-a724-7582-84c3-fd1380c646f4"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now at the approved, green head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo Bugbot request or PR body update is needed: it is optional, there has been no Bugbot activity, and the body already has a valid Loop-record with no issues. After merging, verify the remote merge and fast-forward the root checkout; provide the required cleanup receipt."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 31702,
+                "cached_input_tokens": 31232,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 99,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-candidate-3",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 promptly at the approved, green head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. The body already has a valid Loop-record and names no issues, so no closing keywords are needed. With no Bugbot activity, don\u2019t request Bugbot or add a Bugbot entry. After merging, verify the remote merge and fast-forward the root checkout; finish with the required cleanup receipt.",
+          "runtime": {
+            "case": "C4",
+            "arm": "candidate",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "aa1cfab51518cb33bf504442397c695e9662a42ba5220ea7238769e6adfda25c",
+            "usage": {
+              "input_tokens": 32623,
+              "cached_input_tokens": 32128,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 109,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-cec6-73f1-af45-ca8c714a0b50"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 promptly at the approved, green head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. The body already has a valid Loop-record and names no issues, so no closing keywords are needed. With no Bugbot activity, don\u2019t request Bugbot or add a Bugbot entry. After merging, verify the remote merge and fast-forward the root checkout; finish with the required cleanup receipt."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32623,
+                "cached_input_tokens": 32128,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 109,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w19-review-r2-c2",
+      "baseline_sha": "23734011baa44db19f2d9d5f78227dd94a1b3c16",
+      "seat": "You assist with repository maintenance. This is a closed text-only fixture: return proposed actions, commands and requested body text without executing commands or using tools. All relevant instructions and facts are supplied below. Treat the supplied skill files as already read. Do not access external files or services.",
+      "cases": [
+        {
+          "id": "C2",
+          "category": "compliance",
+          "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #732, a size:L daemon transport refactor. It is ready; the routed full panel approved head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb and required checks are green. There are no findings. The repo permits optional bots. Bugbot is set to run only when mentioned, is available, and has not been invoked or produced a current-head review. The feature-batch real-client verification is separately owned. Give the next actions and any PR body update.",
+          "expected_output": "Request Bugbot once, without waiting or blocking the pinned merge.",
+          "assertions": [
+            "one_bugbot_request",
+            "no_bugbot_wait",
+            "pinned_merge"
+          ]
+        }
+      ],
+      "source_hashes": {
+        "baseline": {
+          "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+          "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+          "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+          "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+          "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+        },
+        "candidate": {
+          "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+          "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+          "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+          "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+          "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+        }
+      },
+      "rows": [
+        {
+          "id": "C2-candidate-1",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Proceed with the merge-authorized loop:\n\n1. Since this is an eligible L, core-risk daemon transport PR and Bugbot is available with no current-head coverage, request it once:\n   ```bash\n   gh pr comment 732 --body \"@cursor @bugbot review\"\n   ```\n   Sign the comment with the required Codex identity signature. Do not wait for Bugbot.\n\n2. Confirm PR #732 is still ready and that required checks and the routed full-panel approval cover head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`. Check for any newly posted findings; if a finding appears, investigate and resolve it before merging.\n\n3. If the exact-head checks and approval remain valid with no blocking findings, merge promptly using the required head pin:\n   ```bash\n   gh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n   ```\n   Omit `--delete-branch`. The feature-batch real-client verification remains with its separate owner.\n\n**PR body update:** No update is needed for Bugbot; it was actually requested, and there is no usage notice. Do not add `Bugbot: unavailable (usage)`. Ensure the existing body has the required L rationale and Loop-record guard details.",
+          "runtime": {
+            "case": "C2",
+            "arm": "candidate",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "8df24c8415c694b0d8566d6a6d27a81883e115dfbce9902fafb158532dfcd1c0",
+            "usage": {
+              "input_tokens": 32610,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 264,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-6500-7b01-98d5-6f36cd88b6d1"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Proceed with the merge-authorized loop:\n\n1. Since this is an eligible L, core-risk daemon transport PR and Bugbot is available with no current-head coverage, request it once:\n   ```bash\n   gh pr comment 732 --body \"@cursor @bugbot review\"\n   ```\n   Sign the comment with the required Codex identity signature. Do not wait for Bugbot.\n\n2. Confirm PR #732 is still ready and that required checks and the routed full-panel approval cover head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`. Check for any newly posted findings; if a finding appears, investigate and resolve it before merging.\n\n3. If the exact-head checks and approval remain valid with no blocking findings, merge promptly using the required head pin:\n   ```bash\n   gh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n   ```\n   Omit `--delete-branch`. The feature-batch real-client verification remains with its separate owner.\n\n**PR body update:** No update is needed for Bugbot; it was actually requested, and there is no usage notice. Do not add `Bugbot: unavailable (usage)`. Ensure the existing body has the required L rationale and Loop-record guard details."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32610,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 264,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C2-candidate-2",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Because this is an L daemon transport PR, Bugbot is eligible. It is available and has no current-head review, so request it once; don\u2019t wait for a verdict or make it a merge gate.\n\n```bash\ngh pr comment 732 --body \"@cursor @bugbot review\"\n```\n\nNo PR body update is needed: there are no findings, and Bugbot was available and requested. Keep the existing body and Loop-record unchanged.\n\nThe routed full panel has approved `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, and required checks are green at that head. Merge now, pinning the verified head:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nThen verify the remote merge and merged content, fast-forward the root checkout, update tracking, and complete the required cleanup receipt. The feature-batch real-client verification remains with its separate owner.",
+          "runtime": {
+            "case": "C2",
+            "arm": "candidate",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "2b68d210fb83de2fdc6d06d83c080ff919e6d6fc1c6241cadaefab8a2d000466",
+            "usage": {
+              "input_tokens": 32616,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 199,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-9055-74f2-97b7-74221b8184e6"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Because this is an L daemon transport PR, Bugbot is eligible. It is available and has no current-head review, so request it once; don\u2019t wait for a verdict or make it a merge gate.\n\n```bash\ngh pr comment 732 --body \"@cursor @bugbot review\"\n```\n\nNo PR body update is needed: there are no findings, and Bugbot was available and requested. Keep the existing body and Loop-record unchanged.\n\nThe routed full panel has approved `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, and required checks are green at that head. Merge now, pinning the verified head:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nThen verify the remote merge and merged content, fast-forward the root checkout, update tracking, and complete the required cleanup receipt. The feature-batch real-client verification remains with its separate owner."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32616,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 199,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C2-candidate-3",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Request Bugbot once because this is an L PR and it is available:\n\n```bash\ngh pr comment 732 --body \"@cursor @bugbot review\"\n```\n\nThen proceed directly to the merge checks; do not wait for Bugbot. Confirm the PR is still at `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, required checks remain green, and the routed full panel\u2019s approvals cover that head. With no findings, merge using the pinned head:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nNo PR body update is needed: there are no findings or Bugbot availability issues to record, and the feature-batch real-client verification is separately owned.",
+          "runtime": {
+            "case": "C2",
+            "arm": "candidate",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "28b51501e6c29d14ccd5460ea26b773e70085a0791d76286c6ad43d831acb505",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "9ac34049fdc4ea080d11674f5992ed1290432a08fa0af9ca3e69aa79e612eca2",
+            "usage": {
+              "input_tokens": 32614,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 159,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a449-b373-7d80-9b72-2d2de43e8152"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Request Bugbot once because this is an L PR and it is available:\n\n```bash\ngh pr comment 732 --body \"@cursor @bugbot review\"\n```\n\nThen proceed directly to the merge checks; do not wait for Bugbot. Confirm the PR is still at `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, required checks remain green, and the routed full panel\u2019s approvals cover that head. With no findings, merge using the pinned head:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nNo PR body update is needed: there are no findings or Bugbot availability issues to record, and the feature-batch real-client verification is separately owned."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32614,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 159,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w19-review-r2-final",
+      "baseline_sha": "23734011baa44db19f2d9d5f78227dd94a1b3c16",
+      "seat": "You assist with repository maintenance. This is a closed text-only fixture: return proposed actions, commands and requested body text without executing commands or using tools. All relevant instructions and facts are supplied below. Treat the supplied skill files as already read. Do not access external files or services.",
+      "cases": [
+        {
+          "id": "C1",
+          "category": "compliance",
+          "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #731. It is a routine size:XS README typo change, already ready, with required checks green and the routed other-vendor reviewer approving the exact head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. The only bot activity is cursor[bot]: 'spend limit reached'. The current PR body contains Summary, Test plan and a valid Loop-record; it names no issues. The repo permits optional bots and has no stricter policy. The batch needs no release. Give the next actions and any PR body update.",
+          "expected_output": "No Bugbot request or wait; add Bugbot: unavailable (usage) to the PR body; proceed with the pinned merge.",
+          "assertions": [
+            "no_bugbot_request",
+            "no_bugbot_wait",
+            "pinned_merge",
+            "body_unavailable"
+          ]
+        },
+        {
+          "id": "C2",
+          "category": "compliance",
+          "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #732, a size:L daemon transport refactor. It is ready; the routed full panel approved head bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb and required checks are green. There are no findings. The repo permits optional bots. Bugbot is set to run only when mentioned, is available, and has not been invoked or produced a current-head review. The feature-batch real-client verification is separately owned. Give the next actions and any PR body update.",
+          "expected_output": "Request Bugbot once, without waiting or blocking the pinned merge.",
+          "assertions": [
+            "one_bugbot_request",
+            "no_bugbot_wait",
+            "pinned_merge"
+          ]
+        },
+        {
+          "id": "C3",
+          "category": "compliance",
+          "prompt": "Prepare the draft PR body for a size:S parser fix in EtanHey/example. It fully resolves the same repo's open issue #42, 'Parser crashes on empty input'. The real regression check failed on main and passes on the branch; no UI or release is involved. Implementer codex/gpt-6.1-sol/high, reviewer none, rounds 0/0, defects 0, role worker. Return the body and next commands.",
+          "expected_output": "The PR body contains literal Fixes #42.",
+          "assertions": [
+            "body_fixes_42"
+          ]
+        },
+        {
+          "id": "C4",
+          "category": "compliance",
+          "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #731. It is a routine size:XS README typo change, already ready, with required checks green and the routed other-vendor reviewer approving the exact head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. There has been no Bugbot activity on this PR: no request, review or notice. The current PR body contains Summary, Test plan and a valid Loop-record; it names no issues. The repo permits optional bots and has no stricter policy. The batch needs no release. Give the next actions and any PR body update.",
+          "expected_output": "No Bugbot request, wait, PR-body line or extra step; proceed with the pinned merge.",
+          "assertions": [
+            "no_bugbot_request",
+            "no_bugbot_wait",
+            "pinned_merge",
+            "no_bugbot_body_entry"
+          ]
+        }
+      ],
+      "source_hashes": {
+        "baseline": {
+          "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+          "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+          "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+          "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+          "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+        },
+        "candidate": {
+          "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+          "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+          "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+          "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+          "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+        }
+      },
+      "rows": [
+        {
+          "id": "C1-candidate-1",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 now at the verified head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThe required checks and routed review are green at that exact head, so the XS merge gate is met. The Cursor spend-limit notice requires a PR body update, even though this routine PR did not request Bugbot. Add this line to the body:\n\n```text\nBugbot: unavailable (usage)\n```\n\nNo issue-closing lines or release steps are needed. After merging, verify the remote merge and fast-forward the root checkout; report the cleanup receipt.",
+          "runtime": {
+            "case": "C1",
+            "arm": "candidate",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "8ffa7a08b27615f076572a080030ef8b0edd2c32b9ccb49004014188aaa9614a",
+            "usage": {
+              "input_tokens": 32675,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 133,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-875d-7000-85da-269bcfee3fba"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now at the verified head:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nThe required checks and routed review are green at that exact head, so the XS merge gate is met. The Cursor spend-limit notice requires a PR body update, even though this routine PR did not request Bugbot. Add this line to the body:\n\n```text\nBugbot: unavailable (usage)\n```\n\nNo issue-closing lines or release steps are needed. After merging, verify the remote merge and fast-forward the root checkout; report the cleanup receipt."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32675,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 133,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C2-candidate-1",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Do not merge yet. PR #732 is size L, so the full panel and exact-head green checks are satisfied, but Bugbot is eligible and has not reviewed this head. Request it once, then continue directly to the merge checks in the same turn; don\u2019t wait for its verdict.\n\nNext actions:\n\n1. Comment on PR #732: `@cursor @bugbot review`.\n2. Recheck that required checks remain green and the PR head is still `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`. If either changed, reassess at the new head.\n3. With merge authority, merge using `gh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`. Keep the feature-batch real-client verification with its separate owner.\n\nNo PR body update is needed: Bugbot is available and was requested, so there is no usage-unavailability notice to record.",
+          "runtime": {
+            "case": "C2",
+            "arm": "candidate",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "40c57fe6cc4e4fa58ed878ca53d5dad7c9c9cf82469e2024c41001dd790c0d05",
+            "usage": {
+              "input_tokens": 32665,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 194,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-b61c-7320-8a64-0ff5c995345a"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Do not merge yet. PR #732 is size L, so the full panel and exact-head green checks are satisfied, but Bugbot is eligible and has not reviewed this head. Request it once, then continue directly to the merge checks in the same turn; don\u2019t wait for its verdict.\n\nNext actions:\n\n1. Comment on PR #732: `@cursor @bugbot review`.\n2. Recheck that required checks remain green and the PR head is still `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`. If either changed, reassess at the new head.\n3. With merge authority, merge using `gh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`. Keep the feature-batch real-client verification with its separate owner.\n\nNo PR body update is needed: Bugbot is available and was requested, so there is no usage-unavailability notice to record."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32665,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 194,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C3-candidate-1",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check: fails on `main`, passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\nProof: regression check fails on main and passes on the branch; no UI or release change.\nBot policy: EtanHey/example AGENTS.md review policy must be read before any reviewer request.\n\n\ud83e\udd16 Generated with unknown in Codex\n```\n\nNext commands:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[Paste the body above]\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nBefore requesting reviewers, read `EtanHey/example`\u2019s `AGENTS.md` PR review policy.",
+          "runtime": {
+            "case": "C3",
+            "arm": "candidate",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "df691b3474ca33671abe3811c8424874078640e81a8ea76eff0275e5b181e237",
+            "usage": {
+              "input_tokens": 32648,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 228,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-f5d9-7e71-94ff-fd73ae0522a6"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check: fails on `main`, passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\nProof: regression check fails on main and passes on the branch; no UI or release change.\nBot policy: EtanHey/example AGENTS.md review policy must be read before any reviewer request.\n\n\ud83e\udd16 Generated with unknown in Codex\n```\n\nNext commands:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[Paste the body above]\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nBefore requesting reviewers, read `EtanHey/example`\u2019s `AGENTS.md` PR review policy."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32648,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 228,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-candidate-1",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 now; the exact head is approved and checks are green, and the merge authority permits it:\n\n```bash\ngh pr merge 731 --merge --admin \\\n  --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. This routine XS PR had no Bugbot activity, so don\u2019t request Bugbot or add an availability note. After merging, verify the remote merge and content, then fast-forward the root checkout and update tracking.",
+          "runtime": {
+            "case": "C4",
+            "arm": "candidate",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "302302c3c7a8b5ce8b17d2ab11ff79e22152a44a124b6ba696e67de7a7f01dcf",
+            "usage": {
+              "input_tokens": 32680,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 105,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44b-2b3d-7f40-b6ac-775f06ce33b2"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now; the exact head is approved and checks are green, and the merge authority permits it:\n\n```bash\ngh pr merge 731 --merge --admin \\\n  --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. This routine XS PR had no Bugbot activity, so don\u2019t request Bugbot or add an availability note. After merging, verify the remote merge and content, then fast-forward the root checkout and update tracking."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32680,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 105,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C1-candidate-2",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Proceed to merge PR #731 now. It is ready, the required checks are green, and the routed reviewer approved the exact current head. Routine XS PRs do not wait on bots; the `cursor[bot]` spend-limit notice requires the exact body entry below.\n\nUpdate the PR body while preserving its existing Summary, Test plan, Loop-record, and signature:\n\n```markdown\n## Bot policy\n- Bot policy: repo permits optional bots; no stricter policy. Bugbot: unavailable (usage)\n```\n\nThen merge with a head pin:\n\n```bash\ngh pr edit 731 --body-file <updated-body-file>\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nAfter merging, verify the remote merge and content, fast-forward the root checkout, and update tracking. No release is needed for this batch.",
+          "runtime": {
+            "case": "C1",
+            "arm": "candidate",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "545e7f032be6089950b437aa481e644c8f64c10ebab98bc7ec878dee905df800",
+            "usage": {
+              "input_tokens": 32673,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 183,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44b-5904-7210-81f8-29b3a1282f74"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Proceed to merge PR #731 now. It is ready, the required checks are green, and the routed reviewer approved the exact current head. Routine XS PRs do not wait on bots; the `cursor[bot]` spend-limit notice requires the exact body entry below.\n\nUpdate the PR body while preserving its existing Summary, Test plan, Loop-record, and signature:\n\n```markdown\n## Bot policy\n- Bot policy: repo permits optional bots; no stricter policy. Bugbot: unavailable (usage)\n```\n\nThen merge with a head pin:\n\n```bash\ngh pr edit 731 --body-file <updated-body-file>\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nAfter merging, verify the remote merge and content, fast-forward the root checkout, and update tracking. No release is needed for this batch."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32673,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 183,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C2-candidate-2",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "No PR body update is needed: there are no review findings or Bugbot usage notices to record, and the real-client verification is separately owned.\n\nBugbot is eligible for this size L transport change and is available. Since it has no current-head review, request it once, then proceed directly to merge checks without waiting for its verdict:\n\n```bash\ngh pr comment 732 --body \"@cursor @bugbot review\"\ngh pr view 732 --json state,isDraft,headRefOid,mergeStateStatus,statusCheckRollup,reviewDecision\n```\n\nConfirm the PR is ready, its head is still `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, required checks remain green, and the routed full-panel approval is for that head. If so, merge promptly:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nThen verify the remote merge and update the root checkout per the merge tracking procedure. The feature-batch gate, including real-client verification, remains owned separately.",
+          "runtime": {
+            "case": "C2",
+            "arm": "candidate",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "2285b3da4e4bf04fff387539931c2438cb16681d1187621edc8eab9c3b268c48",
+            "usage": {
+              "input_tokens": 32665,
+              "cached_input_tokens": 32256,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 222,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44b-86aa-7d33-91eb-3ce6a48e8faa"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "No PR body update is needed: there are no review findings or Bugbot usage notices to record, and the real-client verification is separately owned.\n\nBugbot is eligible for this size L transport change and is available. Since it has no current-head review, request it once, then proceed directly to merge checks without waiting for its verdict:\n\n```bash\ngh pr comment 732 --body \"@cursor @bugbot review\"\ngh pr view 732 --json state,isDraft,headRefOid,mergeStateStatus,statusCheckRollup,reviewDecision\n```\n\nConfirm the PR is ready, its head is still `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, required checks remain green, and the routed full-panel approval is for that head. If so, merge promptly:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nThen verify the remote merge and update the root checkout per the merge tracking procedure. The feature-batch gate, including real-client verification, remains owned separately."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32665,
+                "cached_input_tokens": 32256,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 222,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C3-candidate-2",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check: fails on `main`, passes on the branch.\n- No UI or release changes.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\n## Bot policy\n- Not supplied; read EtanHey/example\u2019s AGENTS.md (or CLAUDE.md) before invoking reviewers.\n\n\ud83e\udd16 Generated with unknown in Codex\n```\n\nNext commands:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[ paste the body above ]\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nAfter opening, link the PR to the lead. As the worker, hand it off unmerged; the lead owns the watch and merge.",
+          "runtime": {
+            "case": "C3",
+            "arm": "candidate",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "bb35cc3b9e4dbc05c3ba7e33ac78663b7e637be70a913ef26da3644d518594bb",
+            "usage": {
+              "input_tokens": 32652,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 230,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44b-b192-7812-8a94-6fc799152f4a"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check: fails on `main`, passes on the branch.\n- No UI or release changes.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\n## Bot policy\n- Not supplied; read EtanHey/example\u2019s AGENTS.md (or CLAUDE.md) before invoking reviewers.\n\n\ud83e\udd16 Generated with unknown in Codex\n```\n\nNext commands:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n[ paste the body above ]\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nAfter opening, link the PR to the lead. As the worker, hand it off unmerged; the lead owns the watch and merge."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32652,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 230,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-candidate-2",
+          "pass": false,
+          "failed_assertion": "pinned_merge",
+          "failure_quote": "Merge PR #731 promptly; its size, exact-head checks, and routed review satisfy the merge gate.",
+          "answer": "Merge PR #731 promptly; its size, exact-head checks, and routed review satisfy the merge gate. No Bugbot action or body entry is needed.\n\nNo PR body update is needed: it names no issues and already has a valid Loop-record. After merging, verify the merge and content, then fast-forward the root checkout and update tracking. Since this is the last PR in the batch, run the feature-batch gate before claiming the work is done.",
+          "runtime": {
+            "case": "C4",
+            "arm": "candidate",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "2d03419ef607828d3630f7278d23f46f046ef24498f40826d8a2bd648a1ff84f",
+            "usage": {
+              "input_tokens": 32680,
+              "cached_input_tokens": 32256,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 96,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44b-df3c-7ef2-a6c5-6b934e1fbbd6"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 promptly; its size, exact-head checks, and routed review satisfy the merge gate. No Bugbot action or body entry is needed.\n\nNo PR body update is needed: it names no issues and already has a valid Loop-record. After merging, verify the merge and content, then fast-forward the root checkout and update tracking. Since this is the last PR in the batch, run the feature-batch gate before claiming the work is done."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32680,
+                "cached_input_tokens": 32256,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 96,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C1-candidate-3",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 now. The exact head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` has green required checks and the routed reviewer\u2019s approval; this XS PR needs no additional review round. The `cursor[bot]` spend limit is an actual usage notice, so update the PR body to record it. Do not request or wait for another bot.\n\nAppend this to the body, preserving its existing Summary, Test plan, and Loop-record:\n\n```markdown\nBugbot: unavailable (usage)\n```\n\nThen merge with the reviewed head pinned:\n\n```bash\ngh pr edit 731 --body-file <updated-body-file>\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nVerify the remote merge and fast-forward the root checkout. No release is needed for this batch.",
+          "runtime": {
+            "case": "C1",
+            "arm": "candidate",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "752f36f3a722d7aef67c6889ace44f2f9cbad89bcd7c70be1bce5163f195fa97",
+            "usage": {
+              "input_tokens": 32673,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 170,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44b-fe08-78c1-814b-76b8953923cd"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now. The exact head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` has green required checks and the routed reviewer\u2019s approval; this XS PR needs no additional review round. The `cursor[bot]` spend limit is an actual usage notice, so update the PR body to record it. Do not request or wait for another bot.\n\nAppend this to the body, preserving its existing Summary, Test plan, and Loop-record:\n\n```markdown\nBugbot: unavailable (usage)\n```\n\nThen merge with the reviewed head pinned:\n\n```bash\ngh pr edit 731 --body-file <updated-body-file>\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nVerify the remote merge and fast-forward the root checkout. No release is needed for this batch."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32673,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 170,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C2-candidate-3",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Request Bugbot once for this eligible size:L daemon transport PR, then proceed directly to merge checks without waiting for its verdict:\n\n```bash\ngh pr comment 732 --body \"@cursor @bugbot review\"\n```\n\nUpdate the PR body to record the eligible request:\n\n```markdown\nBugbot: requested (eligible L/core-risk PR)\n```\n\nThen verify the PR is still ready, required checks are green, the routed full panel approvals cover head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, and there are no unresolved findings. If those conditions still hold, merge promptly at that pinned head:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nThe separately owned feature-batch real-client verification remains with its owner.",
+          "runtime": {
+            "case": "C2",
+            "arm": "candidate",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "84e65510871e9476921ba17086ddf6151fd38ebc921f2347cb70156774fbc68d",
+            "usage": {
+              "input_tokens": 32669,
+              "cached_input_tokens": 32256,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 171,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44c-27fc-7e12-a474-0c43cf44ccbe"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Request Bugbot once for this eligible size:L daemon transport PR, then proceed directly to merge checks without waiting for its verdict:\n\n```bash\ngh pr comment 732 --body \"@cursor @bugbot review\"\n```\n\nUpdate the PR body to record the eligible request:\n\n```markdown\nBugbot: requested (eligible L/core-risk PR)\n```\n\nThen verify the PR is still ready, required checks are green, the routed full panel approvals cover head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, and there are no unresolved findings. If those conditions still hold, merge promptly at that pinned head:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nThe separately owned feature-batch real-client verification remains with its owner."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32669,
+                "cached_input_tokens": 32256,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 171,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C3-candidate-3",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on main and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nProof: regression check fails on main and passes on the branch.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on main and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nProof: regression check fails on main and passes on the branch.\n\n\ud83e\udd16 Generated with unknown in codex\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nI used `unknown` for the model because no verified live-model record was provided. After opening, immediately link the PR to the lead; this worker endpoint hands it off unmerged.",
+          "runtime": {
+            "case": "C3",
+            "arm": "candidate",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "3a9c63a1875d4b80b6faaf462db78afd8dd17a2801f63f912a27d5a25dc9aac2",
+            "usage": {
+              "input_tokens": 32648,
+              "cached_input_tokens": 0,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 295,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44c-582a-7630-9e3c-ae5e97584978"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "```markdown\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on main and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nProof: regression check fails on main and passes on the branch.\n\n\ud83e\udd16 Generated with unknown in codex\n```\n\nNext commands:\n\n```bash\nscripts/ci/pr-size-labels.sh suggest\ngh pr create --draft --title \"fix: handle empty parser input\" --body-file - <<'EOF'\n## Summary\n- Fix the parser crash on empty input.\n\nFixes #42\n\n## Test plan\n- Regression check fails on main and passes on the branch.\n\nLoop-record: implementer=codex/gpt-6.1-sol/high reviewer=none rounds=0/0 defects=0 role=worker\n\nProof: regression check fails on main and passes on the branch.\n\n\ud83e\udd16 Generated with unknown in codex\nEOF\nscripts/ci/pr-size-labels.sh ensure EtanHey/example\nscripts/ci/pr-size-labels.sh compute <PR_NUMBER> --repo EtanHey/example\n```\n\nI used `unknown` for the model because no verified live-model record was provided. After opening, immediately link the PR to the lead; this worker endpoint hands it off unmerged."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32648,
+                "cached_input_tokens": 0,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 295,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-candidate-3",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "No Bugbot step is needed: this routine XS PR has had no Bugbot activity. The PR is already ready, and the exact head has green required checks plus an approving routed review.\n\nMerge promptly with the head pinned:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. There are no issue references or Bugbot notices to record. After merging, verify the remote merge and content, fast-forward the root checkout, and complete the required cleanup receipt.",
+          "runtime": {
+            "case": "C4",
+            "arm": "candidate",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+              "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+              "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+              "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+              "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+            },
+            "answer_sha256": "d43e5abd8c8a39c98cb7a70a676f74ff535e893525b1cee62725371ae648e8b0",
+            "usage": {
+              "input_tokens": 32678,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 118,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44c-840b-74e2-b4ba-888705645e37"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "No Bugbot step is needed: this routine XS PR has had no Bugbot activity. The PR is already ready, and the exact head has green required checks plus an approving routed review.\n\nMerge promptly with the head pinned:\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. There are no issue references or Bugbot notices to record. After merging, verify the remote merge and content, fast-forward the root checkout, and complete the required cleanup receipt."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32678,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 118,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w19-review-r2-regression",
+      "baseline_sha": "c5cd5fd83f81180850978aedef4fad342ec0f96c",
+      "seat": "You assist with repository maintenance. This is a closed text-only fixture: return proposed actions, commands and requested body text without executing commands or using tools. All relevant instructions and facts are supplied below. Treat the supplied skill files as already read. Do not access external files or services.",
+      "cases": [
+        {
+          "id": "C4",
+          "category": "compliance",
+          "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #731. It is a routine size:XS README typo change, already ready, with required checks green and the routed other-vendor reviewer approving the exact head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa. There has been no Bugbot activity on this PR: no request, review or notice. The current PR body contains Summary, Test plan and a valid Loop-record; it names no issues. The repo permits optional bots and has no stricter policy. The batch needs no release. Give the next actions and any PR body update.",
+          "expected_output": "No Bugbot request, wait, PR-body line or extra step; proceed with the pinned merge.",
+          "assertions": [
+            "no_bugbot_request",
+            "no_bugbot_wait",
+            "pinned_merge",
+            "no_bugbot_body_entry"
+          ]
+        }
+      ],
+      "source_hashes": {
+        "baseline": {
+          "SKILL.md": "d2677dc9571f9832417f3f991321a58af6476a5986ff9368236c1a6ff892a20b",
+          "references/pr-creation.md": "c753bba28ecfb20df0f1247bb5400a492910d8ad68a44955f24659697a957573",
+          "references/review-loop.md": "b20869fecaa4ffa58fe7736c1430c78cd69cbd951b2454497eb1e28659fb41d1",
+          "adapters/codex.md": "ca23778c51453b95568d2823abc7be2b32f8ab67a0249e6c88d72fcd889aba00",
+          "adapters/cursor.md": "84f1d7c416304b02592727f5bb69da87cf42d431555554246f2e44383049a3e4"
+        },
+        "candidate": {
+          "SKILL.md": "1c1b98689d2a31709b842f9a0782fb95c02f12b522d43a5482c775ce3001feab",
+          "references/pr-creation.md": "442c4d151ead48783980fa2ec94a31f9c18a808f5f0fc270e60e6aa602a8dc75",
+          "references/review-loop.md": "335134edafe50dd06b9b84817f80300adc57e904d5f8a6089f6853b95948cb3d",
+          "adapters/codex.md": "6ef3e22c1fb2e0460d222fd9820fc2e201c8b1c1b1030b422e4e594b0a15fb76",
+          "adapters/cursor.md": "ac023f85eb424ae841f6d76458fa04b549b27eedff31c91a5f4042cc31d6614d"
+        }
+      },
+      "rows": [
+        {
+          "id": "C4-baseline-1",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 now: it is size XS, ready, and has green required checks plus an approving routed review at the exact head.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. Bugbot is optional for a routine XS PR, and there was no Bugbot request, review, or usage notice. The valid Loop-record and existing body sections remain sufficient.",
+          "runtime": {
+            "case": "C4",
+            "arm": "baseline",
+            "rep": 1,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "d2677dc9571f9832417f3f991321a58af6476a5986ff9368236c1a6ff892a20b",
+              "references/pr-creation.md": "c753bba28ecfb20df0f1247bb5400a492910d8ad68a44955f24659697a957573",
+              "references/review-loop.md": "b20869fecaa4ffa58fe7736c1430c78cd69cbd951b2454497eb1e28659fb41d1",
+              "adapters/codex.md": "ca23778c51453b95568d2823abc7be2b32f8ab67a0249e6c88d72fcd889aba00",
+              "adapters/cursor.md": "84f1d7c416304b02592727f5bb69da87cf42d431555554246f2e44383049a3e4"
+            },
+            "answer_sha256": "1cb8538b388f2e47d14d467b1023fe94dfbf01707c9be8ce458bc5994e1d1304",
+            "usage": {
+              "input_tokens": 32444,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 101,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-8e7a-72c1-946d-a4cfb628bbdb"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now: it is size XS, ready, and has green required checks plus an approving routed review at the exact head.\n\n```bash\ngh pr merge 731 --merge --admin --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed. Bugbot is optional for a routine XS PR, and there was no Bugbot request, review, or usage notice. The valid Loop-record and existing body sections remain sufficient."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32444,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 101,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-baseline-2",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 now; no PR body update is needed. It\u2019s an XS PR with green required checks and an approving routed review at the exact head, and Bugbot was neither requested nor unavailable.\n\n```bash\ngh pr merge 731 --merge --admin \\\n  --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nAfter merging, verify the remote merge and fast-forward the root checkout. No release gate is needed for this batch.",
+          "runtime": {
+            "case": "C4",
+            "arm": "baseline",
+            "rep": 2,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "d2677dc9571f9832417f3f991321a58af6476a5986ff9368236c1a6ff892a20b",
+              "references/pr-creation.md": "c753bba28ecfb20df0f1247bb5400a492910d8ad68a44955f24659697a957573",
+              "references/review-loop.md": "b20869fecaa4ffa58fe7736c1430c78cd69cbd951b2454497eb1e28659fb41d1",
+              "adapters/codex.md": "ca23778c51453b95568d2823abc7be2b32f8ab67a0249e6c88d72fcd889aba00",
+              "adapters/cursor.md": "84f1d7c416304b02592727f5bb69da87cf42d431555554246f2e44383049a3e4"
+            },
+            "answer_sha256": "0826d9b3f5ba26b07b9e3d6e4a1058b189a36c950e35c103c3c0b92f8cb02247",
+            "usage": {
+              "input_tokens": 32446,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 97,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-b404-70c0-8b27-6f5157884369"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 now; no PR body update is needed. It\u2019s an XS PR with green required checks and an approving routed review at the exact head, and Bugbot was neither requested nor unavailable.\n\n```bash\ngh pr merge 731 --merge --admin \\\n  --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nAfter merging, verify the remote merge and fast-forward the root checkout. No release gate is needed for this batch."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32446,
+                "cached_input_tokens": 10368,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 97,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "C4-baseline-3",
+          "pass": true,
+          "failed_assertion": null,
+          "failure_quote": null,
+          "answer": "Merge PR #731 promptly at the verified head:\n\n```bash\ngh pr merge 731 --merge --admin \\\n  --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed: Bugbot is optional for a routine XS PR, and there has been no request, review, or usage notice. After merging, verify the remote merge and fast-forward the root checkout; finish with the required cleanup receipt.",
+          "runtime": {
+            "case": "C4",
+            "arm": "baseline",
+            "rep": 3,
+            "exitCode": 0,
+            "model_requested": "gpt-6-luna",
+            "model_effective": "gpt-6-luna",
+            "effort_effective": "medium",
+            "model_observation_source": "session JSONL model field: turn_context.model",
+            "effort_observation_source": "session JSONL effort field: turn_context.effort",
+            "auth": "subscription",
+            "usd": 0,
+            "tool_calls": 0,
+            "skill_hashes": {
+              "SKILL.md": "d2677dc9571f9832417f3f991321a58af6476a5986ff9368236c1a6ff892a20b",
+              "references/pr-creation.md": "c753bba28ecfb20df0f1247bb5400a492910d8ad68a44955f24659697a957573",
+              "references/review-loop.md": "b20869fecaa4ffa58fe7736c1430c78cd69cbd951b2454497eb1e28659fb41d1",
+              "adapters/codex.md": "ca23778c51453b95568d2823abc7be2b32f8ab67a0249e6c88d72fcd889aba00",
+              "adapters/cursor.md": "84f1d7c416304b02592727f5bb69da87cf42d431555554246f2e44383049a3e4"
+            },
+            "answer_sha256": "faa04a1a849de5375a5c342388862529596b0d4c5896fb5c63ae8ab9c35676d3",
+            "usage": {
+              "input_tokens": 32444,
+              "cached_input_tokens": 32000,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 94,
+              "reasoning_output_tokens": 0
+            }
+          },
+          "events": [
+            {
+              "type": "thread.started",
+              "thread_id": "01a1a44a-df62-7fe3-9bd5-28723fead8b3"
+            },
+            {
+              "type": "turn.started"
+            },
+            {
+              "type": "item.completed",
+              "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "Merge PR #731 promptly at the verified head:\n\n```bash\ngh pr merge 731 --merge --admin \\\n  --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n```\n\nNo PR body update is needed: Bugbot is optional for a routine XS PR, and there has been no request, review, or usage notice. After merging, verify the remote merge and fast-forward the root checkout; finish with the required cleanup receipt."
+              }
+            },
+            {
+              "type": "turn.completed",
+              "usage": {
+                "input_tokens": 32444,
+                "cached_input_tokens": 32000,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 94,
+                "reasoning_output_tokens": 0
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "reused_master_C2": {
+    "source": "recordings.json, w19-r2",
+    "rows": [
+      {
+        "id": "C2-baseline-1",
+        "pass": true,
+        "failed_assertion": null,
+        "failure_quote": null,
+        "answer": "**Next action:** request Bugbot\u2019s missing current-head review. Because this is a daemon transport refactor, Bugbot is in the core-path panel; the repo permits it, and it has not reviewed this head.\n\n```bash\ngh pr comment 732 --body-file - <<'EOF'\n@cursor @bugbot review\n\n\ud83e\udd16 Generated with unknown in Codex\nEOF\n```\n\nThen check the review at head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb` and required checks before merging. With the routed full panel approved, no findings, and checks green at that exact head, merge promptly:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nNo PR body update is needed: the supplied facts establish no new Loop-record or proof detail to add. Record the separately owned real-client verification at the feature-batch gate; it does not hold this PR\u2019s merge.",
+        "runtime": {
+          "case": "C2",
+          "arm": "baseline",
+          "rep": 1,
+          "exitCode": 0,
+          "model_requested": "gpt-6-luna",
+          "model_effective": "gpt-6-luna",
+          "effort_effective": "medium",
+          "model_observation_source": "session JSONL model field: turn_context.model",
+          "effort_observation_source": "session JSONL effort field: turn_context.effort",
+          "auth": "subscription",
+          "usd": 0,
+          "tool_calls": 0,
+          "skill_hashes": {
+            "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+            "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+            "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+            "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+            "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+          },
+          "answer_sha256": "e44b1f68f08019b3fc6a0917e0b50b19df32eb3b2d48612527a8370f8e0412b0",
+          "usage": {
+            "input_tokens": 31689,
+            "cached_input_tokens": 10368,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 204,
+            "reasoning_output_tokens": 0
+          }
+        },
+        "events": [
+          {
+            "type": "thread.started",
+            "thread_id": "01a1a437-faf5-7761-94a7-a7a55d538688"
+          },
+          {
+            "type": "turn.started"
+          },
+          {
+            "type": "item.completed",
+            "item": {
+              "id": "item_0",
+              "type": "agent_message",
+              "text": "**Next action:** request Bugbot\u2019s missing current-head review. Because this is a daemon transport refactor, Bugbot is in the core-path panel; the repo permits it, and it has not reviewed this head.\n\n```bash\ngh pr comment 732 --body-file - <<'EOF'\n@cursor @bugbot review\n\n\ud83e\udd16 Generated with unknown in Codex\nEOF\n```\n\nThen check the review at head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb` and required checks before merging. With the routed full panel approved, no findings, and checks green at that exact head, merge promptly:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nNo PR body update is needed: the supplied facts establish no new Loop-record or proof detail to add. Record the separately owned real-client verification at the feature-batch gate; it does not hold this PR\u2019s merge."
+            }
+          },
+          {
+            "type": "turn.completed",
+            "usage": {
+              "input_tokens": 31689,
+              "cached_input_tokens": 10368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 204,
+              "reasoning_output_tokens": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": "C2-baseline-2",
+        "pass": false,
+        "failed_assertion": "one_bugbot_request",
+        "failure_quote": "need not be invoked.",
+        "answer": "This is a merge-authorized endpoint, and the evidence at head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb` meets the merge gate: the routed full panel approved, required checks are green, and there are no findings. Don\u2019t wait for optional bots. Bugbot is opt-in even on core diffs, and its absence doesn\u2019t block the merge.\n\nNext:\n\n1. Merge #732, pinning the verified head:\n   ```bash\n   gh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n   ```\n   Omit `--delete-branch` per the current hard gate.\n2. Verify the remote merge and content, then fast-forward the root checkout and update tracking. Follow the workspace lifecycle contract and record the cleanup receipt.\n3. Keep the feature-batch real-client verification with its separate owner; don\u2019t claim the batch is complete until that gate passes.\n\nNo PR body update is needed: there are no findings to record, and the optional Bugbot is advisory and need not be invoked.",
+        "runtime": {
+          "case": "C2",
+          "arm": "baseline",
+          "rep": 2,
+          "exitCode": 0,
+          "model_requested": "gpt-6-luna",
+          "model_effective": "gpt-6-luna",
+          "effort_effective": "medium",
+          "model_observation_source": "session JSONL model field: turn_context.model",
+          "effort_observation_source": "session JSONL effort field: turn_context.effort",
+          "auth": "subscription",
+          "usd": 0,
+          "tool_calls": 0,
+          "skill_hashes": {
+            "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+            "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+            "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+            "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+            "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+          },
+          "answer_sha256": "c439c18c50a461f2b3699aadc2293bbcdc14b3886b4be207f56a29adc5bc156f",
+          "usage": {
+            "input_tokens": 31693,
+            "cached_input_tokens": 31232,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 224,
+            "reasoning_output_tokens": 0
+          }
+        },
+        "events": [
+          {
+            "type": "thread.started",
+            "thread_id": "01a1a439-051f-73c3-8f65-5799d345f09c"
+          },
+          {
+            "type": "turn.started"
+          },
+          {
+            "type": "item.completed",
+            "item": {
+              "id": "item_0",
+              "type": "agent_message",
+              "text": "This is a merge-authorized endpoint, and the evidence at head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb` meets the merge gate: the routed full panel approved, required checks are green, and there are no findings. Don\u2019t wait for optional bots. Bugbot is opt-in even on core diffs, and its absence doesn\u2019t block the merge.\n\nNext:\n\n1. Merge #732, pinning the verified head:\n   ```bash\n   gh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n   ```\n   Omit `--delete-branch` per the current hard gate.\n2. Verify the remote merge and content, then fast-forward the root checkout and update tracking. Follow the workspace lifecycle contract and record the cleanup receipt.\n3. Keep the feature-batch real-client verification with its separate owner; don\u2019t claim the batch is complete until that gate passes.\n\nNo PR body update is needed: there are no findings to record, and the optional Bugbot is advisory and need not be invoked."
+            }
+          },
+          {
+            "type": "turn.completed",
+            "usage": {
+              "input_tokens": 31693,
+              "cached_input_tokens": 31232,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 224,
+              "reasoning_output_tokens": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": "C2-baseline-3",
+        "pass": false,
+        "failed_assertion": "no_bugbot_wait",
+        "failure_quote": "invoke it once, then inspect its result",
+        "answer": "Do not merge yet. Because Bugbot is available, optional, and not reviewed this core daemon/transport diff, invoke it once, then inspect its result and address any important findings. Keep the PR body\u2019s bot-policy line accurate; no update is needed unless it currently says Bugbot was summoned or unavailable.\n\nAfter that, verify required checks and the routed full-panel approvals still apply to head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, with no unreplied CRITICAL/MAJOR/HIGH findings. If clean, merge promptly using the pinned head:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nThe separately owned feature-batch real-client verification remains pending; it is required at the batch gate before declaring the batch done.",
+        "runtime": {
+          "case": "C2",
+          "arm": "baseline",
+          "rep": 3,
+          "exitCode": 0,
+          "model_requested": "gpt-6-luna",
+          "model_effective": "gpt-6-luna",
+          "effort_effective": "medium",
+          "model_observation_source": "session JSONL model field: turn_context.model",
+          "effort_observation_source": "session JSONL effort field: turn_context.effort",
+          "auth": "subscription",
+          "usd": 0,
+          "tool_calls": 0,
+          "skill_hashes": {
+            "SKILL.md": "a44f04d080b2f82035d683ca2488117266643cc078cffa83ebcf7f5bf92ec816",
+            "references/pr-creation.md": "861ae80ae0b70734c297a7ce289445c96fbf8030b13d952bf20f3e3cf071433e",
+            "references/review-loop.md": "046d44919a7529baede86f87de2c74555062765221e2061fd54cbfa38d7e434e",
+            "adapters/codex.md": "d3459916a597562fe26835291da165e3c3dbf236d86321479763b7381b13c800",
+            "adapters/cursor.md": "6e5ca4e0e9909e67d2353885c7f62a27dfb2e8526f5e07472398770b10df47d5"
+          },
+          "answer_sha256": "c8e07e81dead5b7be45c2f99cd18fc1f54ab7151b9ff2e26df33da94363e73c3",
+          "usage": {
+            "input_tokens": 31691,
+            "cached_input_tokens": 31232,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 173,
+            "reasoning_output_tokens": 0
+          }
+        },
+        "events": [
+          {
+            "type": "thread.started",
+            "thread_id": "01a1a439-c9c1-7331-b4f5-5e087ba0d724"
+          },
+          {
+            "type": "turn.started"
+          },
+          {
+            "type": "item.completed",
+            "item": {
+              "id": "item_0",
+              "type": "agent_message",
+              "text": "Do not merge yet. Because Bugbot is available, optional, and not reviewed this core daemon/transport diff, invoke it once, then inspect its result and address any important findings. Keep the PR body\u2019s bot-policy line accurate; no update is needed unless it currently says Bugbot was summoned or unavailable.\n\nAfter that, verify required checks and the routed full-panel approvals still apply to head `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, with no unreplied CRITICAL/MAJOR/HIGH findings. If clean, merge promptly using the pinned head:\n\n```bash\ngh pr merge 732 --merge --admin --match-head-commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n```\n\nThe separately owned feature-batch real-client verification remains pending; it is required at the batch gate before declaring the batch done."
+            }
+          },
+          {
+            "type": "turn.completed",
+            "usage": {
+              "input_tokens": 31691,
+              "cached_input_tokens": 31232,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 173,
+              "reasoning_output_tokens": 0
+            }
+          }
+        ]
+      }
+    ],
+    "validation": "same prompt, seat, source hashes, model, effort"
+  },
+  "final_comparison": {
+    "C1": {
+      "baseline": "w19-review-r2",
+      "candidate": "w19-review-r2-final"
+    },
+    "C2": {
+      "baseline": "reused_master_C2",
+      "candidate": "w19-review-r2-final"
+    },
+    "C3": {
+      "baseline": "w19-review-r2",
+      "candidate": "w19-review-r2-final",
+      "assertion": "body_fixes_42 only; previous issue verification hint removed"
+    },
+    "C4": {
+      "baseline": "w19-review-r2",
+      "candidate": "w19-review-r2-final"
+    }
+  }
+}

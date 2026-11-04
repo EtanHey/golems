@@ -23,7 +23,7 @@
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Use routed review handoffs |
 | No native `Monitor` | Needs an attached watch consumer | T3 `watch_pull_request` first; else `pr-watch` with a pinned head and exit code for CI; `/collab-monitor` only under the cmux adapter |
 | No BrainLayer MCP | Can't brain_store post-merge | Orchestrate from Claude session |
-| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (§ 8a.0). Where it genuinely applies, comment `@cursor @bugbot review` on GitHub by hand |
+| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, L or very important/core-risk PRs only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (§ 8a.0). Where eligible and available, request once with `@cursor @bugbot review`; never wait or block, and record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage notice; routine/no activity needs no entry |
 
 ## CI and Review Waiting
 
@@ -64,9 +64,12 @@ cursor-agent -p --output-format text \
 If this pass exhausts the shared quota, report the dispatch as the cause, not
 the resulting `resource_exhausted` as an external finding (canon #3).
 
-Cursor **Bugbot** is a different thing and is **not** part of this pass: it is opt-in, core paths only
-(daemon/engine/transport diffs), and off entirely where the target repo's `AGENTS.md` bans it — read
-that policy first ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)). On a non-core diff, do not summon it at all.
+**Bugbot** is a different thing and is **not** part of this pass: it is opt-in for L or very important/core-risk PRs
+(daemon/engine/transport, security, release), never routine XS/S/M PRs, and off where repo policy
+bans it ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)). Record `Bugbot: unavailable (usage)`
+in the PR body only for an actual request that is unavailable or a real usage/rate/spend-limit
+notice on this PR. A routine PR with no Bugbot activity needs no request, wait, record or extra
+step. Never wait or block merge.
 
 ## Agent Identity Signature — Cursor (ratified 2026-08-08) — OPEN GAP
 

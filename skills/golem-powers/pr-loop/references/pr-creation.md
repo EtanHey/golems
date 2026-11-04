@@ -25,7 +25,7 @@ Choose the endpoint before the loop below: [full stop](full-stop.md) overrides i
                hard timeout BEFORE committing. If the local CLI hangs or hits
                rate/review limits, stop it, record the limitation, and commit
                on fresh test evidence. After the PR exists, PR-level bots
-               are advisory: wait on one only when it flags something important.
+               are advisory: answer posted findings; never await a bot.
                If CRITICAL issues found → fix first. If minor → proceed.
                Ralph mode: `--story=ID --message=MSG` for atomic commit + criterion.
              ↳ Commit trailer = `Co-Authored-By: <Model>
@@ -121,6 +121,9 @@ gh pr create --draft --title "feat: description" --body-file - <<'EOF'
 ## Summary
 - What changed and why
 
+Fixes #N
+<!-- One line per resolved issue; omit when none. Partial work uses Refs #N. -->
+
 ## Test plan
 - [ ] Tests pass
 - [ ] Manual verification done
@@ -133,6 +136,8 @@ Loop-record: implementer=<vendor/model/effort> reviewer=<vendor/model|none> roun
 🤖 Generated with <live model> in <harness>
 EOF
 ```
+
+For every GitHub issue fully resolved by the PR, put `Fixes #N` (same repo) or `Fixes owner/repo#N` (cross-repo) in the **PR body**, one keyword line per issue. A bare mention does not close an issue. Cross-repo closing keywords work only where GitHub supports them; a non-default base may also leave an issue open. Partial work uses `Refs #N`, never `Fixes`. After merge, verify each issue with `gh issue view N --json state` (add `--repo owner/repo` for cross-repo issues); if still open, use `gh issue close N --comment "Resolved by <PR URL>"` with the same repo selector.
 
 A same-vendor review states its reason. Put the reason on its own line below Loop-record. Replace the Loop-record placeholders with observed values: rounds and defects are non-negative integers; reviewer is `none` until a review has occurred. The lane-approved Loop-record effort field supersedes the older public-effort restriction for this line only; identity signatures and commit trailers keep their existing schema. Model IDs use letters, digits, dots, underscores, plus or hyphen; no `[`, `:` or `@`. For example, write `claude/model-id`, not `claude-model-id[context]`; Cursor is `cursor/auto/default`.
 
