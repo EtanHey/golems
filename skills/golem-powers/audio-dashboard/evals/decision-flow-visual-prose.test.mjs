@@ -89,6 +89,10 @@ test("real rendered prose at 390 and 1280: max length, paragraphs and long token
 test("real BUILD withholds stale HTML and writes typed prose rejects", () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'prose-build-'));
   const out = path.join(dir, 'index.html'), specPath = path.join(dir, 'job.json');
+  // This fixture's committed MP3 is exactly 1s. Keep the real BUILD independent of host ffprobe
+  // installation, as the existing BUILD fixtures do; no prose/audio gate is mocked or bypassed.
+  const bin = path.join(dir, 'bin'); mkdirSync(bin);
+  writeFileSync(path.join(bin, 'ffprobe'), "#!/bin/sh\nprintf '1.000000\\n'\n", { mode: 0o755 });
   const segment = path.join(dir, 'segments/i1'); mkdirSync(segment, { recursive: true });
   copyFileSync(new URL('./fixtures/design-preservation/hardening-tone.wav', import.meta.url), path.join(segment, 'i1.wav'));
   copyFileSync(new URL('../vendor/agent-html/templates/v4-story-mode/_placeholder.mp3', import.meta.url), path.join(segment, 'i1.mp3'));
@@ -102,10 +106,17 @@ test("real BUILD withholds stale HTML and writes typed prose rejects", () => {
     writeFileSync(path.join(dir, 'index.receipts.json'), '{"stale":"PASS"}');
     writeFileSync(specPath, JSON.stringify({ type: 'decision-flow', id: 'prose-build', series: 'prose-build', outputPath: out,
       scenes: [{ id: 'i1', script: 'one two', audioWav: path.join(dir, 'segments/i1/i1.wav') }], decisions: [{ ...INFO, body, summary }] }));
-    const run = spawnSync('bun', [path.resolve(import.meta.dir, '../scripts/build-dashboard.mjs'), '--spec', specPath, '--job-dir', dir], { encoding: 'utf8' });
-    expect(run.status).toBe(1);
-    expect(existsSync(out)).toBe(false);
-    const row = JSON.parse(readFileSync(path.join(dir, 'index.receipts.json'), 'utf8')).gates.find(g => g.gate === 'card-prose');
+    const run = spawnSync(process.execPath, [path.resolve(import.meta.dir, '../scripts/build-dashboard.mjs'), '--spec', specPath, '--job-dir', dir],
+      { encoding: 'utf8', env: { ...process.env, PATH: bin + path.delimiter + (process.env.PATH || '') } });
+    const diagnostic = JSON.stringify({ metric, status: run.status, signal: run.signal, error: run.error?.message, stdout: run.stdout, stderr: run.stderr });
+    expect(run.error, diagnostic).toBeUndefined();
+    expect(run.signal, diagnostic).toBeNull();
+    expect(run.status, diagnostic).toBe(1);
+    expect(existsSync(out), diagnostic).toBe(false);
+    const receiptsPath = path.join(dir, 'index.receipts.json');
+    expect(existsSync(receiptsPath), diagnostic).toBe(true);
+    const row = JSON.parse(readFileSync(receiptsPath, 'utf8')).gates.find(g => g.gate === 'card-prose');
+    expect(row, diagnostic).toBeDefined();
     expect(row.verdict).toBe('REJECT');
     expect(row.violations.some(v => v.metric === metric)).toBe(true);
     expect(row.runbook).toContain('scene scripts');
