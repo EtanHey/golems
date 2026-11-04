@@ -94,6 +94,10 @@ fallback (the local keys described in this file are fallback keys); never ship
 device-only. Answer inputs require an explicit, stable `spec.id`.
 BUILD rejects missing identity or answer-store wiring.
 
+## Badge contrast
+Every badge/pill label (including recommended and REBOOT) must have WCAG AA text contrast of at least **4.5:1** against its effective fill, at every size and supported state/theme. Use `.ad-badge` in either template for dark text on a light fill; white text requires a sufficiently deep fill. Never use pale text on pale green or a 3:1 large-text exception for badges.
+Check browser-computed text/fill colors, composing transparency and inherited backgrounds/opacity before measuring; custom colors and states must also pass without rounding a value below 4.5 into a pass. This rule covers badge text, not all WCAG requirements.
+
 ## Copyable instructions
 
 Attribution: Etan, 2026-11-03.
