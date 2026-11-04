@@ -3,7 +3,7 @@ import { readdir, lstat, realpath, readFile, mkdir, writeFile, appendFile, unlin
 import { createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { homedir, hostname } from 'node:os';
-import { join, basename, dirname, resolve } from 'node:path';
+import { join, basename, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createDriveReader, verifyLedger, parseRow } from './verify-ledger.mjs';
 import { createDriveArchive, driveAccessToken } from '../stalker/stalker-drive-archive.mjs';
@@ -13,6 +13,13 @@ const safe = value => typeof value === 'string' && !/[|\r\n\x00-\x1f\\]| → /.t
 async function digest(path) {
   const hash = createHash('sha256'); for await (const chunk of createReadStream(path)) hash.update(chunk);
   return hash.digest('hex');
+}
+async function directoryPaths(root) {
+  const dirs = [];
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    if (entry.isDirectory()) dirs.push(...await directoryPaths(join(root, entry.name)));
+  }
+  return [...dirs, root];
 }
 async function members(root, relative = '') {
   const path = join(root, relative), s = await lstat(path);
@@ -95,12 +102,20 @@ export function createUploader(account, { tokenImpl = driveAccessToken, fetchImp
 const rowFor = (source, target, f, account, receipt, manifest) => `- ${source} → ${target} | bytes=${f.bytes} | SHA256=${f.sha256} | account=${account} | cloud=pending | id=${receipt.id} | url=${receipt.url} | manifest=${manifest}\n`;
 export async function archiveRuns(plan, { apply = false, pruneVerified = false, account, upload, readRemote = createDriveReader() } = {}) {
   if (pruneVerified && !apply) throw Error('prune requires --apply');
-  if (!apply) return { runs: plan.runs.length, files: plan.files, bytes: plan.bytes, pending: 0 };
+  if (!apply) return { runs: plan.runs.length, files: plan.files, bytes: plan.bytes, pending: 0, holds: [] };
   if (!/^[^@\s/|]+@[^@\s/|]+$/.test(account ?? '')) throw Error('expected account required');
   upload ??= createUploader(account);
-  let pending = 0;
+  const ledgers = new Set(), heldRoots = new Set(), holds = [];
   for (const run of plan.runs) {
-    const lock = join(run.root, '.archive-lock'); await mkdir(lock);
+    if (heldRoots.has(run.root)) continue;
+    const lock = join(run.root, '.archive-lock');
+    try { await mkdir(lock); }
+    catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      heldRoots.add(run.root);
+      holds.push(`Repo held by lock ${lock}; confirm no archive is active, then clear this empty directory with rmdir and rerun.`);
+      continue;
+    }
     try {
       const fresh = await members(run.path);
       if (JSON.stringify(fresh) !== JSON.stringify(run.files)) throw Error('source changed since plan');
@@ -116,6 +131,7 @@ export async function archiveRuns(plan, { apply = false, pruneVerified = false, 
       catch (error) { if (error.code !== 'EEXIST' || await readFile(manifestPath, 'utf8') !== text) throw Error('manifest conflict'); }
       try { if (!(await lstat(ledger)).isFile()) throw Error('invalid ledger'); }
       catch (error) { if (error.code !== 'ENOENT') throw error; await writeFile(ledger, '# QA-video Drive ledger\n', { flag: 'wx' }); }
+      ledgers.add(ledger);
       const all = [...run.files, { path: 'MANIFEST.json', absolutePath: manifestPath, bytes: Buffer.byteLength(text), sha256: await digest(manifestPath) }];
       for (const f of all) {
         const target = `${run.target}/${f.path}`, existing = (await readFile(ledger, 'utf8')).split('\n').filter(line => line.includes(` → ${target} |`));
@@ -131,8 +147,8 @@ export async function archiveRuns(plan, { apply = false, pruneVerified = false, 
       try {
         for await (const chunk of await (await readRemote(`${run.target}/${sample.path}`, account)).body()) { bytes += chunk.length; if (bytes > sample.bytes) throw Error('restore size mismatch'); hash.update(chunk); }
         if (bytes !== sample.bytes || hash.digest('hex') !== sample.sha256) throw Error('restore drill failed');
-      } catch { pending += all.length; continue; }
-      const verified = await verifyLedger(ledger, { apply: true, readRemote }); pending += verified.notVerifiable;
+      } catch { holds.push(`Restore drill failed for ${run.path}; local evidence retained.`); continue; }
+      await verifyLedger(ledger, { apply: true, readRemote });
       if (!pruneVerified) continue;
       for (const f of all) {
         const line = (await readFile(ledger, 'utf8')).split('\n').find(line => line.includes(` → ${run.target}/${f.path} |`));
@@ -142,25 +158,40 @@ export async function archiveRuns(plan, { apply = false, pruneVerified = false, 
       }
       if (JSON.stringify(await members(run.path)) !== JSON.stringify(fresh)) throw Error('source changed before prune');
       for (const f of run.files) await unlink(f.absolutePath);
-      const dirs = new Set(run.files.flatMap(f => { const dirs = []; for (let d = dirname(f.absolutePath); d !== run.root; d = dirname(d)) dirs.push(d); return dirs; }));
-      for (const dir of [...dirs].sort((a, b) => b.length - a.length)) await rmdir(dir);
+      for (const dir of await directoryPaths(run.path)) {
+        try { await rmdir(dir); }
+        catch (error) { if (!['ENOTEMPTY', 'EEXIST', 'ENOENT'].includes(error.code)) throw error; }
+      }
     } finally { await rmdir(lock); }
   }
-  return { runs: plan.runs.length, files: plan.files, bytes: plan.bytes, pending };
+  let pending = 0;
+  for (const ledger of ledgers) pending += (await readFile(ledger, 'utf8')).split('\n').filter(line => /(?:^|\|)\s*cloud\s*=\s*pending\s*(?=\||$)/i.test(line)).length;
+  return { runs: plan.runs.length, files: plan.files, bytes: plan.bytes, pending, holds };
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+export async function runCli(args, { configPath = join(homedir(), '.config/golems/qa-video-archive.json'), error = console.error, log = console.log } = {}) {
   try {
-    const args = process.argv.slice(2), repos = [], flags = [];
+    const repos = [], flags = [];
     for (let i = 0; i < args.length; i++) {
       if (args[i] === '--repo' && args[i + 1] && !args[i + 1].startsWith('--')) repos.push({ path: args[++i] });
       else if (['--apply', '--dry-run', '--prune-verified'].includes(args[i])) flags.push(args[i]);
       else throw Error('usage');
     }
     if ((flags.includes('--apply') && flags.includes('--dry-run')) || (repos.length && flags.includes('--apply'))) throw Error('inventory is dry-run only');
-    const config = repos.length ? { repos } : JSON.parse(await readFile(join(homedir(), '.config/golems/qa-video-archive.json'), 'utf8'));
+    let config;
+    if (repos.length) config = { repos };
+    else try { config = JSON.parse(await readFile(configPath, 'utf8')); }
+    catch (caught) {
+      if (caught.code !== 'ENOENT') throw caught;
+      error(`qa-video-archive: missing config ${configPath}; configure account and repos entries with path, owner and harvestedRuns, then run --dry-run before enabling the monthly job.`);
+      return 2;
+    }
     const plan = await planArchive(config), apply = args.includes('--apply');
     const result = await archiveRuns(plan, { apply, pruneVerified: args.includes('--prune-verified'), account: config.account });
-    console.log(`qa-video-archive: mode=${apply ? 'apply' : 'dry-run'} runs=${result.runs} files=${result.files} bytes=${result.bytes} age-runs=${plan.ageRuns} age-bytes=${plan.ageBytes} held=${plan.held.length} pending=${result.pending}`);
-    if (result.pending) process.exitCode = 1;
-  } catch { console.error('qa-video-archive: stopped; check outside-repo config, ownership/holds, auth and archive conflicts'); process.exitCode = 2; }
+    for (const hold of result.holds) error(`qa-video-archive: ${hold}`);
+    log(`qa-video-archive: mode=${apply ? 'apply' : 'dry-run'} runs=${result.runs} files=${result.files} bytes=${result.bytes} age-runs=${plan.ageRuns} age-bytes=${plan.ageBytes} held=${plan.held.length + result.holds.length} pending=${result.pending}`);
+    return result.pending || result.holds.length ? 1 : 0;
+  } catch { error('qa-video-archive: stopped; check outside-repo config, ownership/holds, auth and archive conflicts'); return 2; }
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = await runCli(process.argv.slice(2));
 }

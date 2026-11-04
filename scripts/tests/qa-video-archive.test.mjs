@@ -58,7 +58,8 @@ test('default dry-run changes nothing; real verifier accepts rows; rerun is idem
 test('prune requires flag, verified remote bytes, and successful restore; failures preserve locals', async t => {
   const f = await fixture(t), plan = await planArchive(f.options);
   await assert.rejects(archiveRuns(plan, { pruneVerified: true }), /requires --apply/);
-  await archiveRuns(plan, { apply: true, pruneVerified: true, account: 'owner@example.com', upload: f.upload, readRemote: async () => { throw Error('missing Drive file'); } });
+  const failed = await archiveRuns(plan, { apply: true, pruneVerified: true, account: 'owner@example.com', upload: f.upload, readRemote: async () => { throw Error('missing Drive file'); } });
+  assert.equal(failed.pending, 2); assert.equal(failed.holds.length, 1);
   assert.ok(await stat(f.run));
   await archiveRuns(await planArchive(f.options), { apply: true, pruneVerified: true, account: 'owner@example.com', upload: f.upload, readRemote: f.readRemote });
   await assert.rejects(stat(f.run), { code: 'ENOENT' });
@@ -135,4 +136,37 @@ test('calendar cutoff uses Jerusalem midnight; CLI inventory is dry-run without 
   const r = spawnSync(process.execPath, [join(import.meta.dirname, '../drive/archive-qa-video.mjs'), '--dry-run', '--repo', f.repo], { encoding: 'utf8' });
   assert.equal(r.status, 0); assert.match(r.stdout, /mode=dry-run/);
   await assert.rejects(stat(join(f.repo, 'docs.local/qa-video/_DRIVE-LEDGER.md')), { code: 'ENOENT' });
+});
+test('stale lock holds only its repo, names recovery, and leaves later repos runnable', async t => {
+  const f = await fixture(t), g = await fixture(t);
+  const lock = join(f.repo, 'docs.local/qa-video/.archive-lock'); await mkdir(lock);
+  const result = await archiveRuns({ runs: [...(await planArchive(f.options)).runs, ...(await planArchive(g.options)).runs] }, {
+    apply: true, account: 'owner@example.com',
+    upload: async (...args) => { assert.notEqual(args[0].path, f.run); return g.upload(...args); }, readRemote: g.readRemote,
+  });
+  assert.equal(result.holds.length, 1); assert.match(result.holds[0], /\.archive-lock.*rmdir/);
+  assert.ok(result.holds[0].includes(lock)); assert.ok(await stat(lock));
+  assert.ok(g.uploads() > 0); assert.equal(f.uploads(), 0);
+});
+test('unverifiable pending rows are counted once across multiple runs in one repo', async t => {
+  const f = await fixture(t), other = join(f.repo, 'docs.local/qa-video/other');
+  await mkdir(other); await writeFile(join(other, 'frame.png'), 'image');
+  await utimes(join(other, 'frame.png'), new Date('2026-09-20'), new Date('2026-09-20'));
+  f.options.repos[0].harvestedRuns.push('other');
+  const ledger = join(f.repo, 'docs.local/qa-video/_DRIVE-LEDGER.md');
+  await writeFile(ledger, `- /missing.png → Brain Drive/missing.png | bytes=5 | SHA256=${hash('image')} | account=owner@example.com | cloud=pending\n`);
+  const args = { apply: true, account: 'owner@example.com', upload: f.upload, readRemote: f.readRemote };
+  assert.equal((await archiveRuns(await planArchive(f.options), args)).pending, 1);
+  assert.equal((await archiveRuns(await planArchive(f.options), args)).pending, 1);
+});
+test('successful prune removes empty nested folders without an error', async t => {
+  const f = await fixture(t); await mkdir(join(f.run, 'empty/nested'), { recursive: true });
+  await archiveRuns(await planArchive(f.options), { apply: true, pruneVerified: true, account: 'owner@example.com', upload: f.upload, readRemote: f.readRemote });
+  await assert.rejects(stat(f.run), { code: 'ENOENT' });
+});
+test('missing scheduled config names its path and fields on stderr', async () => {
+  const { runCli } = await import('../drive/archive-qa-video.mjs'), errors = [];
+  assert.equal(await runCli(['--apply'], { configPath: '/missing/qa-video-archive.json', error: s => errors.push(s) }), 2);
+  assert.match(errors.join('\n'), /\/missing\/qa-video-archive\.json/);
+  for (const field of ['account', 'repos', 'path', 'owner', 'harvestedRuns']) assert.ok(errors.join('\n').includes(field));
 });
