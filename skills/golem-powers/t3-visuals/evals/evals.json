@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "DRAFT_UNMEASURED",
+  "status": "MEASURED_ITERATE",
   "source": "Synthetic data; subjects adapted from historical T3 visuals research.",
   "cases": [
     {
@@ -837,5 +837,10 @@
         "Do not substitute inline html_render delivery"
       ]
     }
-  ]
+  ],
+  "measured_result": {
+    "taste": "ITERATE: pooled 15/30 wins, 12 losses, 3 ties; p=0.701108; subgroup results exploratory",
+    "deterministic": "Strict mechanical artifacts 0/30 without to 7/30 with; text contrast 4/30 to 18/30; local clock format 0/11 to 8/11",
+    "results": "skill-creator:evals/t3-visuals/results/w31-pairwise.json"
+  }
 }
