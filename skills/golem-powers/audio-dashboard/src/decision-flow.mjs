@@ -119,7 +119,7 @@ function renderRailValue(row) {
   const href = safeHref(row.href);
   if (!href) return escapeHtml(row.value);
   const reference = href.match(GITHUB_REFERENCE);
-  if (!reference) return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(value || href)}</a>`;
+  if (!reference) return `<a class="df-rail-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value || href)}</a>`;
   const [, owner, repo, kind, number] = reference;
   const stated = referenceTokens(value).map((match) => match[1]);
   if (stated.some((statedNumber) => statedNumber !== number)) {
@@ -127,14 +127,29 @@ function renderRailValue(row) {
   }
   const label = `${repo}#${number}`;
   const text = !value || /^#\d+$/.test(value) ? escapeHtml(label) : `${escapeHtml(value)} <span class="df-rail-ref">${escapeHtml(label)}</span>`;
-  return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer" title="${kind === "pull" ? "Pull request" : "Issue"} ${escapeHtml(`${owner}/${repo}#${number}`)}">${text}</a>`;
+  return `<a class="df-rail-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" title="${kind === "pull" ? "Pull request" : "Issue"} ${escapeHtml(`${owner}/${repo}#${number}`)}">${text}</a>`;
 }
 
-function renderRail(rows = []) {
-  if (!rows.length) return "";
-  return `<dl class="df-rail">${rows.map((row) =>
+// Sources rule (Etan, 2026-11-04): a card's links and evidence attribution live in ONE native drawer, closed by
+// default, never as an inline rail beside the card prose. Every http(s) source opens in a new tab with
+// rel="noopener noreferrer"; anything else (javascript:, data:, malformed) stays plain text.
+export const SOURCE_NOTE_MAX_CHARS = 280;
+
+function renderSources(decision) {
+  const rows = Array.isArray(decision.rail) ? decision.rail : [];
+  const note = String(decision.sourceNote ?? "").trim();
+  if (note.length > SOURCE_NOTE_MAX_CHARS) {
+    throw new Error(`decision-flow: ${decision.id} sourceNote must be at most ${SOURCE_NOTE_MAX_CHARS} characters; keep attribution concise`);
+  }
+  if (!rows.length && !note) return "";
+  const links = rows.filter((row) => safeHref(row.href)).length;
+  const count = rows.length > 1 ? `<span class="df-sources-count" aria-hidden="true">${rows.length}</span>` : "";
+  const label = links === 1 && rows.length === 1 ? "Source" : "Sources";
+  const list = rows.length ? `<dl class="df-rail">${rows.map((row) =>
     `<div><dt>${escapeHtml(row.label)}</dt><dd>${renderRailValue(row)}</dd></div>`,
-  ).join("")}</dl>`;
+  ).join("")}</dl>` : "";
+  const aria = rows.length ? `${label}, ${rows.length} ${rows.length === 1 ? "entry" : "entries"}` : label;
+  return `<details class="df-sources" data-sources><summary aria-label="${escapeHtml(aria)}"><span>${label}</span>${count}</summary><div class="df-sources-body">${list}${note ? `<p class="df-source-note">${escapeHtml(note)}</p>` : ""}</div></details>`;
 }
 
 // Producer check: every "#N" a card shows must be linked on that card by a repository-qualified href.
@@ -156,6 +171,7 @@ export function findBareReferences(decisions = []) {
       ["title", decision.title],
       ["summary", decision.summary],
       ["body", decision.body],
+      ["sourceNote", decision.sourceNote],
       ...(decision.options || []).flatMap((option, index) => typeof option === "string"
         ? [[`option ${index}`, option]]
         : [[`option ${index}`, option?.label ?? option?.title], [`option ${index} summary`, option?.summary]]),
@@ -168,6 +184,38 @@ export function findBareReferences(decisions = []) {
     }
   }
   return found;
+}
+
+// Answer rule (Etan, 2026-11-04): a card shows an input only when it really asks something, with the control that
+// matches the ask. Radios for one mutually exclusive pick, checkboxes for independent multiple picks or a to-do
+// checklist, a labelled text box only for an explicit written answer (`answer: { type: "text", label }`).
+// Everything else is information: no answer input, not counted in progress; an optional "Add a note" stays.
+export function answerKind(decision) {
+  const options = Array.isArray(decision.options) ? decision.options : [];
+  const answer = decision.answer === undefined ? null : typeof decision.answer === "string" ? { type: decision.answer } : decision.answer;
+  if (answer && (typeof answer !== "object" || answer.type !== "text")) {
+    throw new Error(`decision-flow: ${decision.id} answer must be { type: "text", label }`);
+  }
+  if (decision.multiple !== undefined && typeof decision.multiple !== "boolean") {
+    throw new Error(`decision-flow: ${decision.id} multiple must be true or false`);
+  }
+  if (decision.multiple && options.length < 2) {
+    throw new Error(`decision-flow: ${decision.id} multiple picks need at least two options`);
+  }
+  if (answer && options.length) {
+    throw new Error(`decision-flow: ${decision.id} cannot combine options with a text answer; use options plus the optional note`);
+  }
+  if (options.length) return decision.multiple ? "multiple" : "single";
+  if (answer) return "text";
+  if (decision.checklist !== undefined) return "checklist";
+  return "info";
+}
+
+function textAnswer(decision) {
+  const answer = typeof decision.answer === "string" ? {} : decision.answer || {};
+  const label = String(answer.label ?? "").trim();
+  if (!label) throw new Error(`decision-flow: ${decision.id} text answer needs a label naming the question`);
+  return { label, placeholder: String(answer.placeholder ?? "").trim() };
 }
 
 function sentenceCase(value) {
@@ -184,9 +232,13 @@ function rankLabel(decision, index) {
   return String(decision.rank === "✓" ? "QA" : (decision.rank ?? index + 1));
 }
 
+function answerMark(decision) {
+  return answerKind(decision) === "info" ? "" : ANSWER_MARK;
+}
+
 function renderIndex(decisions) {
   return `<ol class="df-index-list">${decisions.map((decision, index) =>
-    `<li><a href="#decision-${escapeHtml(decision.id)}" data-index-for="${escapeHtml(decision.id)}"${index === 0 ? ' class="is-active"' : ""}><span class="df-index-rank">${escapeHtml(rankLabel(decision, index))}</span>${ANSWER_MARK}<span class="df-index-title">${escapeHtml(decision.title)}</span></a></li>`,
+    `<li><a href="#decision-${escapeHtml(decision.id)}" data-index-for="${escapeHtml(decision.id)}"${index === 0 ? ' class="is-active"' : ""}><span class="df-index-rank">${escapeHtml(rankLabel(decision, index))}</span>${answerMark(decision)}<span class="df-index-title">${escapeHtml(decision.title)}</span></a></li>`,
   ).join("")}</ol>`;
 }
 
@@ -230,7 +282,7 @@ function renderChecklist(decision) {
 
 function renderController(decisions) {
   const chips = decisions.map((decision, index) =>
-    `<button type="button" class="df-chip" data-chip-for="${escapeHtml(decision.id)}"${index === 0 ? ' aria-current="true"' : ""}><span class="df-chip-rank">${escapeHtml(rankLabel(decision, index))}</span>${ANSWER_MARK}<span class="df-chip-title">${escapeHtml(decision.title)}</span><span class="df-note-count" hidden></span></button>`,
+    `<button type="button" class="df-chip" data-chip-for="${escapeHtml(decision.id)}"${index === 0 ? ' aria-current="true"' : ""}><span class="df-chip-rank">${escapeHtml(rankLabel(decision, index))}</span>${answerMark(decision)}<span class="df-chip-title">${escapeHtml(decision.title)}</span><span class="df-note-count" hidden></span></button>`,
   ).join("");
   const rates = PLAYBACK_RATES.map((rate) =>
     `<option value="${rate}"${rate === 1 ? " selected" : ""}>${rate}×</option>`,
@@ -374,8 +426,32 @@ const COMPARE_DIALOG = `<dialog class="df-compare" id="df-compare" aria-labelled
     <div class="df-compare-status" role="status" aria-live="polite"><span class="df-compare-spinner" aria-hidden="true"></span><p id="df-compare-message"></p><div class="df-compare-actions"><button type="button" id="df-compare-retry" hidden>Retry</button><button type="button" id="df-compare-close" hidden>Back to the card</button></div></div>
   </dialog>`;
 
-function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
+function renderOptions(decision, kind) {
   const options = (decision.options || []).map(normalizeOption);
+  if (!options.length) return "";
+  const type = kind === "multiple" ? "checkbox" : "radio";
+  const blocks = options.map((option) =>
+    `<label class="df-option"><input type="${type}"${type === "checkbox" ? ' class="df-pick"' : ""} name="${escapeHtml(decision.id)}" value="${escapeHtml(option.value)}"><span><b>${escapeHtml(option.label)}</b>${option.summary ? `<small>${escapeHtml(option.summary)}</small>` : ""}</span></label>`,
+  ).join("");
+  const hint = kind === "multiple" ? '<p class="df-options-hint">Pick any that apply</p>' : "";
+  return `<fieldset class="df-options"${kind === "multiple" ? ' data-multiple="true"' : ""}><legend class="df-sr-only">${escapeHtml(decision.title)}${kind === "multiple" ? ", pick any that apply" : ", pick one"}</legend>${hint}${blocks}</fieldset>`;
+}
+
+// The card's one text field. An explicit text ask shows it labelled; otherwise it is the optional note, collapsed
+// behind "Add a note" (a saved note reopens it, so nothing stored is hidden or cleared).
+function renderTextField(decision, kind) {
+  const id = escapeHtml(decision.id);
+  const shared = `class="note-area df-free${kind === "text" ? " df-ask" : ""}" id="free-${id}" data-note="${id}-free" data-title="${escapeHtml(decision.title)}"`;
+  if (kind === "text") {
+    const { label, placeholder } = textAnswer(decision);
+    return `<div class="df-ask-field"><label class="df-ask-label" for="free-${id}">${escapeHtml(label)}</label><textarea ${shared}${placeholder ? ` placeholder="${escapeHtml(placeholder)}"` : ""}></textarea></div>`;
+  }
+  return `<div class="df-note-field"><button type="button" class="df-note-toggle" aria-expanded="false" aria-controls="note-${id}"><span aria-hidden="true">+</span> Add a note</button><div class="df-note-region" id="note-${id}" hidden><label class="df-sr-only" for="free-${id}">Note for ${escapeHtml(decision.title)}</label><textarea ${shared} placeholder="Optional note"></textarea></div></div>`;
+}
+
+function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
+  const kind = answerKind(decision);
+  const answerable = kind !== "info";
   const comparison = normalizeComparison(decision, comparisonTimeoutMs);
   const audio = decision.sceneIds.map((sceneId) => {
     const scene = sceneById.get(sceneId);
@@ -389,17 +465,19 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
     const title = String(scene.title || "").trim().toLowerCase() === label.toLowerCase() ? "" : `<span class="df-scene-title">${escapeHtml(scene.title)}</span>`;
     return `<section class="df-transcript-scene" data-transcript-scene="${escapeHtml(scene.id)}"${role ? ` data-role="${role}"` : ""}><p class="df-scene-label">${speaker}${title}</p><p class="df-words" tabindex="0" role="group" aria-label="Transcript: ${escapeHtml(scene.title)}" aria-describedby="df-seek-help">${renderWords(scene)}</p></section>`;
   }).join("");
-  const optionBlocks = options.map((option) =>
-    `<label class="df-option"><input type="radio" name="${escapeHtml(decision.id)}" value="${escapeHtml(option.value)}"><span><b>${escapeHtml(option.label)}</b>${option.summary ? `<small>${escapeHtml(option.summary)}</small>` : ""}</span></label>`,
-  ).join("");
   const status = String(decision.status || "OPEN");
   const clips = decision.sceneIds.length;
   const listenTime = formatDuration(decision.sceneIds.reduce((sum, sceneId) => sum + (Number(sceneById.get(sceneId).duration) || 0), 0));
+  const body = renderCardBody(decision.body);
+  const opener = answerable
+    ? '<span class="df-ao-todo">Answer this card</span><span class="df-ao-offer">Your turn: answer this card</span><span class="df-ao-done">Answered, review</span>'
+    : '<span class="df-ao-todo">Summary and sources</span>';
+  const skip = answerable ? '<button type="button" class="df-skip">Skip for now</button>' : "";
 
-  return `<article class="df-card${index === 0 ? " is-active" : ""}" id="decision-${escapeHtml(decision.id)}" data-decision="${escapeHtml(decision.id)}" data-title="${escapeHtml(decision.title)}" data-index="${index}">
+  return `<article class="df-card${index === 0 ? " is-active" : ""}" id="decision-${escapeHtml(decision.id)}" data-decision="${escapeHtml(decision.id)}" data-title="${escapeHtml(decision.title)}" data-index="${index}" data-answer-kind="${kind}" data-answerable="${answerable}">
     <header class="df-card-head">
       <span class="df-rank" aria-hidden="true">${escapeHtml(rankLabel(decision, index))}</span>
-      <div class="df-title">${ANSWER_MARK}<h2>${escapeHtml(decision.title)}</h2></div>
+      <div class="df-title">${answerMark(decision)}<h2>${escapeHtml(decision.title)}</h2></div>
       <span class="df-status" data-status="${escapeHtml(status.toLowerCase())}">${escapeHtml(sentenceCase(status))}</span>
       <button type="button" class="df-card-note" aria-label="Add or review notes for ${escapeHtml(decision.title)}" title="Cite &amp; note">${NOTE_ICON}<span class="df-note-count" hidden></span></button>
     </header>
@@ -409,19 +487,20 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
       ${audio}
     </div>
     <div class="df-teleprompter" hidden aria-live="off">${transcript}</div>
-    <button type="button" class="df-answer-open" aria-haspopup="dialog" aria-controls="sheet-${escapeHtml(decision.id)}"><span class="df-ao-todo">Answer this card</span><span class="df-ao-offer">Your turn: answer this card</span><span class="df-ao-done">Answered, review</span></button>
+    <button type="button" class="df-answer-open" aria-haspopup="dialog" aria-controls="sheet-${escapeHtml(decision.id)}">${opener}</button>
     ${renderComparisonOpener(comparison)}
     <div class="df-sheet" id="sheet-${escapeHtml(decision.id)}">
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
-    <div class="df-question">${renderCardBody(decision.body)}</div>
-    ${renderRail(decision.rail)}
+    ${body ? `<div class="df-question">${body}</div>` : ""}
     <div class="df-answer">
       ${renderChecklist(decision)}
-      ${optionBlocks ? `<fieldset class="df-options"><legend class="df-sr-only">${escapeHtml(decision.title)} options</legend>${optionBlocks}</fieldset>` : ""}
-      <textarea class="note-area df-free" data-note="${escapeHtml(decision.id)}-free" data-title="${escapeHtml(decision.title)}" placeholder="${optionBlocks ? "Or write it in your own words" : "Anything to add? Write it here"}"></textarea>
-      <div class="df-card-actions"><button type="button" class="df-clear" aria-label="Clear answers for ${escapeHtml(decision.title)}" aria-expanded="false" aria-controls="clear-${escapeHtml(decision.id)}"><span aria-hidden="true">⌫</span> Clear</button><button type="button" class="df-skip">Skip for now</button><button type="button" class="df-next">Next decision →</button></div>
-      <div class="df-clear-confirm" id="clear-${escapeHtml(decision.id)}" role="group" aria-label="Confirm clearing ${escapeHtml(decision.title)}" hidden><p>Clear this card’s picks, checklist, answer and notes?</p><div><button type="button" class="df-clear-cancel">Keep answers</button><button type="button" class="df-clear-apply">Clear this card</button></div><p class="df-clear-error" role="alert"></p></div>
+      ${renderOptions(decision, kind)}
+      ${kind === "text" ? renderTextField(decision, kind) : ""}
+      ${renderSources(decision)}
+      ${kind === "text" ? "" : renderTextField(decision, kind)}
+      <div class="df-card-actions"><button type="button" class="df-clear" aria-label="Clear answers for ${escapeHtml(decision.title)}" aria-expanded="false" aria-controls="clear-${escapeHtml(decision.id)}"><span aria-hidden="true">⌫</span> Clear</button>${skip}<button type="button" class="df-next">Next decision →</button></div>
+      <div class="df-clear-confirm" id="clear-${escapeHtml(decision.id)}" role="group" aria-label="Confirm clearing ${escapeHtml(decision.title)}" hidden><p>Clear this card’s ${answerable ? "picks, checklist, answer and notes" : "notes"}?</p><div><button type="button" class="df-clear-cancel">Keep ${answerable ? "answers" : "notes"}</button><button type="button" class="df-clear-apply">Clear this card</button></div><p class="df-clear-error" role="alert"></p></div>
     </div>
     </div>
   </article>`;
@@ -443,6 +522,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
   const styles = readFileSync(path.join(TEMPLATE_ROOT, "decision-flow.css"), "utf8");
   const script = readFileSync(path.join(TEMPLATE_ROOT, "decision-flow.js"), "utf8");
   const cards = decisions.map((decision, index) => renderCard(decision, index, sceneById, timeoutMs)).join("\n");
+  const answerableCount = decisions.filter((decision) => answerKind(decision) !== "info").length;
   const safeModeUrl = safeCinemaUrl(cinemaUrl);
 
   const values = new Map([
@@ -451,6 +531,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{HEADING}}", escapeHtml(heading || title || "Decisions")],
     ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers are kept separately for each dashboard.</p></details>`],
     ["{{DECISION_COUNT}}", decisions.length],
+    ["{{ANSWER_COUNT}}", answerableCount],
     ["{{SCENE_COUNT}}", scenes.length],
     ["{{DASHBOARD_ID}}", escapeHtml(dashboardId(accountId || id, storageKey || "dbx:decision-flow"))],
     ["{{STORAGE_KEY}}", escapeHtml(storageKey || "dbx:decision-flow")],

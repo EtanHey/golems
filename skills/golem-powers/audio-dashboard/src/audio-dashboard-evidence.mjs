@@ -239,9 +239,25 @@ function hasTextOnlyDetails(html, outputPath) {
   }
   function inNarratedDetails(node, card) {
     for (let n = node; n && n !== card; n = n.parentNode) {
-      if (n.tagName === "details") return isNarratedDetails(n);
+      if (n.tagName === "details") return isNarratedDetails(n) || isSourcesDrawer(n);
     }
     return false;
+  }
+  // The decision-flow Sources drawer (Etan, 2026-11-04) holds links and short attribution, not the card's text:
+  // a details.df-sources whose summary names Sources and whose body is only the rail list plus one note of at most
+  // 280 characters. Any other content (repeated prose, a nested expander) is still a text-only details expander.
+  function isSourcesDrawer(details) {
+    if (!/(?:^|\s)df-sources(?:\s|$)/.test(attrs(details).class || "")) return false;
+    const parts = children(details).filter(child => child.nodeName !== "#text" || child.value.trim());
+    const [summary, body] = parts;
+    if (parts.length !== 2 || summary?.tagName !== "summary" || !/^\s*sources?(?![a-z])/i.test(normalize(text(summary)))) return false;
+    if (body?.tagName !== "div" || !/(?:^|\s)df-sources-body(?:\s|$)/.test(attrs(body).class || "")) return false;
+    const blocks = children(body).filter(child => child.nodeName !== "#text" || child.value.trim());
+    const isRail = node => node.tagName === "dl" && /(?:^|\s)df-rail(?:\s|$)/.test(attrs(node).class || "");
+    const isNote = node => node.tagName === "p" && /(?:^|\s)df-source-note(?:\s|$)/.test(attrs(node).class || "") && normalize(text(node)).trim().length <= 280;
+    return blocks.length > 0 && blocks.length <= 2 && blocks.every(node => isRail(node) || isNote(node)) &&
+      blocks.filter(isRail).length <= 1 && blocks.filter(isNote).length <= 1 &&
+      descendants(body).every(n => n.tagName !== "details" && n.tagName !== "audio");
   }
   const targetHasVisual = target => target && target.tagName !== "iframe" &&
     (["dialog", "figure", "section"].includes(target.tagName) || attrs(target).role === "dialog") &&

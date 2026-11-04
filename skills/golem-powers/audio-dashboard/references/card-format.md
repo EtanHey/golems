@@ -16,6 +16,17 @@ belong to the parent decision, preserving exactly-one-decision scene ownership.
 its **Listen deeper** button; parent audio stays paused until explicitly resumed.
 This is authoring guidance; the renderer does not supply this interaction.
 
+## Sources drawer
+
+Attribution: Etan, 2026-11-04 (0300 polish).
+
+Decision-flow cards keep links and evidence attribution in one closed native
+`details.df-sources` drawer, rendered from rail rows plus an optional
+`sourceNote`. The evidence gate exempts only that exact shape (a summary that
+names Sources, the rail list and at most one note of 280 characters or fewer)
+from `TEXT_ONLY_VIEW_DETAILS`. Card prose, repeated text or a nested expander
+inside the drawer is still a text-only details expander and fails.
+
 ## Issue and PR references
 
 Attribution: Etan, 2026-10-28 dashboard feedback (AD-16).

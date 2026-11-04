@@ -56,7 +56,7 @@ card's audio. The card-local play button runs those clips in order, keeps the
 real-word-timed teleprompter open while playing or paused, and collapses it only
 when that decision's full section completes. Word clicks seek within the section
 and retain the normal clip-to-clip flow. Next and Skip acknowledge the action,
-advance to the following card, and autoplay it. Picks and free text save through
+advance to the following card, and autoplay it. Picks, notes and written answers save through
 the account answer store. Without a bridge, the visible device-only fallback uses
 `dbx:<spec.id>` (or the spec's custom storage key). Copy answers exports paste-ready
 markdown. Playback rate and list/story preferences stay on this device.
@@ -79,6 +79,20 @@ make the audio understandable.
 Decision-flow fails closed unless every scene is owned by exactly one decision.
 This keeps audio and questions woven together and prevents a cinema-style global
 audio strip / separate question list from reappearing.
+
+## Card content: audio first
+
+Attribution: Etan, 2026-11-04 (0300 dashboard polish). Applies to decision-flow cards.
+
+- **Real selections only where something is asked.** `options` render radios (one pick); add `multiple: true`
+  for independent multiple picks (checkboxes, stored as a list); `checklist` stays a to-do list. A written answer
+  needs `answer: { type: "text", label: "<the question>" }`. A card with none of these is information: no answer
+  input, not counted in "N of M answered"; it keeps an optional **Add a note** (same `<id>-free` key, so saved
+  notes stay visible). A note never completes a pick. Do not invent confirmations to make a card answerable.
+- **Sources drawer.** Put every link in rail rows (`{label, value, href}`) and short evidence attribution in
+  `sourceNote` (at most 280 characters, no local paths). Each card renders one closed native **Sources** drawer;
+  links open in a new tab with `rel="noopener noreferrer"`; non-http(s) hrefs stay plain text. Never end `body`
+  with a "Source: ..." paragraph.
 
 ## Card detail format
 
@@ -339,8 +353,9 @@ For decision-flow dashboards, `heading` is a title of at most 8 words. Put statu
 `reference` is a registered voice profile name OR a direct `.wav` reference clip
 path. A scene may also carry `audioWav` (existing WAV) for a daemon-free BYO run.
 `decisions` is optional; when present it must be a non-empty array of
-`{id,title,body,options,deadline?}` records, with `options` allowed to be empty
-for free-text-only decisions.
+`{id,title,body,options,deadline?}` records. In decision-flow, empty `options`
+means an information card; a written answer needs an explicit
+`answer: { type: "text", label }` (see Card content: audio first).
 
 For decision-flow, `decisions` is required and must be a non-empty array. Add
 the type plus explicit scene ownership: every scene must appear in exactly one

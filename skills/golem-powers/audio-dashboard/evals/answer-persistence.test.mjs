@@ -13,10 +13,14 @@ export function fixture(type, storageKey = 'dbx:account-proof') {
     : injectDecisionSurfaceIntoHtml(renderV4(opts), [decision], opts).html;
 }
 let browser;
+// The fixture card asks for a pick, so its free text is the optional note behind "Add a note" (2026-11-04 answer
+// rule). These tests are about persisting that field, so each page opens the note before interacting.
+const openNotes = () => document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('.df-note-toggle').forEach(button => button.click()));
+async function newPage() { const page = await browser.newPage(); await page.addInitScript(openNotes); return page; }
 beforeAll(async () => { browser = await chromium.launch(); });
 afterAll(async () => { await browser.close(); });
 async function open(type, bridge = true) {
-  const page = await browser.newPage();
+  const page = await newPage();
   page.setDefaultTimeout(2000);
   await page.addInitScript(useBridge => {
     window.saves = [];
@@ -89,7 +93,7 @@ test('cinema scene notes use the account bridge and receive remote changes', asy
 });
 
 test('a late account load cannot overwrite a new edit or a newer remote event', async () => {
-  const page = await browser.newPage();
+  const page = await newPage();
   try {
     await page.addInitScript(() => {
       window.saves = [];
@@ -125,7 +129,7 @@ test('account rejection stays visible and never writes a device-only copy', asyn
 });
 
 test('a same-origin frame uses the parent account bridge', async () => {
-  const page = await browser.newPage();
+  const page = await newPage();
   try {
     await page.route('http://dashboard.test/**', route => route.fulfill({ contentType: 'text/html', body: route.request().url().endsWith('/frame') ? fixture('decision-flow') : `<script>window.saves=[];window.__answerStore={load:async()=>({'choice-free':'Parent answer'}),save:async(field,value)=>{window.saves.push([field,value]);return {ok:true}}};</script><iframe src="/frame"></iframe>` }));
     await page.goto('http://dashboard.test/');
@@ -138,7 +142,7 @@ test('a same-origin frame uses the parent account bridge', async () => {
 });
 
 test('failed account loads retry visibly, restore untouched answers and protect queued edits', async () => {
-  const page = await browser.newPage();
+  const page = await newPage();
   try {
     await page.clock.install();
     await page.addInitScript(() => {
@@ -197,7 +201,7 @@ test('failed field keeps its error after another field saves, then retries to sa
 });
 
 for (const type of ['decision-flow', 'cinema']) test(`${type}: a custom device key restores existing answers`, async () => {
-  const page = await browser.newPage();
+  const page = await newPage();
   try {
     await page.addInitScript(() => { if (!localStorage.getItem('dbx:legacy-key')) localStorage.setItem('dbx:legacy-key', JSON.stringify({ 'choice-free': 'Legacy answer' })); });
     await page.route('http://dashboard.test/**', route => route.fulfill({ contentType: 'text/html', body: fixture(type, 'dbx:legacy-key') }));

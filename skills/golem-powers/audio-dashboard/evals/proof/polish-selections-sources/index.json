@@ -1,0 +1,44 @@
+{
+  "run": "layerA-vs-4b2df04f",
+  "textMode": "long",
+  "synthetic": true,
+  "muted": true,
+  "rows": [
+    {
+      "width": 390,
+      "variant": "before",
+      "errors": [],
+      "tally": "0 of 3 answered, 3 left",
+      "pageOverflowX": 0
+    },
+    {
+      "width": 390,
+      "variant": "after",
+      "errors": [],
+      "tally": "0 of 1 answered, 1 left",
+      "pageOverflowX": 0,
+      "sourcesOpenedByKeyboard": true,
+      "tallyAfterNote": "0 of 1 answered, 1 left",
+      "tallyAfterPick": "1 of 1 answered, 0 left",
+      "gif": "interaction-390.gif"
+    },
+    {
+      "width": 1280,
+      "variant": "before",
+      "errors": [],
+      "tally": "0 of 3 answered, 3 left",
+      "pageOverflowX": 0
+    },
+    {
+      "width": 1280,
+      "variant": "after",
+      "errors": [],
+      "tally": "0 of 1 answered, 1 left",
+      "pageOverflowX": 0,
+      "sourcesOpenedByKeyboard": true,
+      "tallyAfterNote": "0 of 1 answered, 1 left",
+      "tallyAfterPick": "1 of 1 answered, 0 left",
+      "gif": "interaction-1280.gif"
+    }
+  ]
+}

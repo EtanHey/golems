@@ -390,7 +390,7 @@ test("build-dashboard renders decision-flow as a distinct card-local audio type"
   expect(html).toContain("Storage unavailable · use Copy answers");
   expect(html).toContain('class="df-player-state" aria-live="polite"');
   expect(html).toContain('<fieldset class="df-options">');
-  expect(html).toContain('<legend class="df-sr-only">Path $&amp; costs $$ options</legend>');
+  expect(html).toContain('<legend class="df-sr-only">Path $&amp; costs $$, pick one</legend>');
 
   const qa = spawnSync("bun", ["vendor/qa/verify-decision-flow.mjs", outputPath], {
     cwd: skillRoot,

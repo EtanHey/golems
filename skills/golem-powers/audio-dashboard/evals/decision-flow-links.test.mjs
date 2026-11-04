@@ -10,8 +10,9 @@ const railOf = html => html.match(/<dl class="df-rail">.*?<\/dl>/s)[0];
 
 test("a rail record with a PR href renders a real anchor labelled repo#number", () => {
   const rail = railOf(render([{ label: "PR", value: "#39", href: PR }]));
-  expect(rail).toContain(`<a class="df-rail-link" href="${PR}" rel="noopener noreferrer" title="Pull request EtanHey/golems#39">golems#39</a>`);
-  expect(rail).not.toContain("target=");
+  expect(rail).toContain(`<a class="df-rail-link" href="${PR}" target="_blank" rel="noopener noreferrer" title="Pull request EtanHey/golems#39">golems#39</a>`);
+  // Sources rule (Etan, 2026-11-04): every source opens in a new tab, always with noopener noreferrer.
+  expect((rail.match(/target="_blank" rel="noopener noreferrer"/g) || []).length).toBe((rail.match(/<a /g) || []).length);
 });
 
 test("issue hrefs and descriptive values keep their label and gain the qualified reference", () => {
@@ -25,7 +26,7 @@ test("issue hrefs and descriptive values keep their label and gain the qualified
 
 test("other http(s) hrefs link their value", () => {
   const rail = railOf(render([{ label: "Doc", value: "Design note", href: "https://example.com/a?b=1&c=2" }]));
-  expect(rail).toContain('<a class="df-rail-link" href="https://example.com/a?b=1&amp;c=2" rel="noopener noreferrer">Design note</a>');
+  expect(rail).toContain('<a class="df-rail-link" href="https://example.com/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">Design note</a>');
 });
 
 test("unsafe or non-http hrefs never become anchors", () => {

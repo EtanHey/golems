@@ -136,10 +136,13 @@ test("answer indicators are separate from ranks and follow restored and cleared 
   for (const selector of ['[data-index-for="a"]', '[data-chip-for="a"]']) expect(document.querySelector(selector + " .df-answer-status").getAttribute("aria-label")).toBe("Answered");
   expect(document.querySelector('[data-chip-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
   expect(document.querySelector('[data-chip-for="a"] .df-chip-rank').textContent).toBe("1");
+  // Answer rule (2026-11-04): on a pick card the free text is an optional note; it never completes the pick.
   const free = document.querySelector('[data-decision="b"] .df-free'); free.value = "reply"; free.dispatchEvent(new run.window.Event("input"));
+  expect(document.querySelector('[data-index-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
+  document.querySelector('[data-decision="b"] input[value="Two"]').click();
   expect(document.querySelector('[data-index-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
   free.value = ""; free.dispatchEvent(new run.window.Event("input"));
-  expect(document.querySelector('[data-index-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Awaiting answer");
+  expect(document.querySelector('[data-index-for="b"] .df-answer-status').getAttribute("aria-label")).toBe("Answered");
   const checklist = boot({ decisions: DEFAULT_DECISIONS.map((decision, index) => ({ ...decision, rank: index ? 1 : "✓" })) });
   expect(checklist.document.querySelector(".df-chip-rank").textContent).toBe("QA");
   expect(checklist.document.querySelector(".df-answer-status").getAttribute("aria-label")).toBe("Awaiting answer");
@@ -444,7 +447,7 @@ test("card keeps line breaks, shows listening time, and omits empty option sets"
 });
 
 test("player sits above the written briefing so listening comes first", () => {
-  const { document } = boot();
+  const { document } = boot({ decisions: DEFAULT_DECISIONS.map(decision => ({ ...decision, body: "One short line." })) });
   const card = document.querySelector('[data-decision="a"]');
   const before = (first, second) => Boolean(card.querySelector(first).compareDocumentPosition(card.querySelector(second)) & 4);
   expect(before(".df-player", ".df-question")).toBe(true);
