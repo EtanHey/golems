@@ -60,7 +60,27 @@ gh api 'repos/EtanHey/golems/releases?per_page=30&page=1' | \
 
 The `github-release` gate support requires a published release with all three
 assets. Local installation detection reads `~/.golems/release.json` and compares the full
-version, including the SHA suffix. `--release-only` skips local installation.
+version, including the SHA suffix. When no client receipt exists, the golems owner
+installation is selected only by the installer's `golems-hooks-live.sha` marker.
+The gate verifies that pin against the hooks-live worktree, its shared repository,
+and both catalog skill-link sets into the inspected checkout. It reports both
+installed commits. The installed tag is the nearest pattern-matching tag on the
+first-parent history of `merge-base(skills HEAD, hooks-live HEAD)`. When that
+history has no matching tag, the installed version is
+`checkout:<skills SHA>+hooks-live:<hooks SHA>`; `--sha` returns UNKNOWN because
+that identity has no installed release tag to verify against origin.
+The latest released commit must be an ancestor of both installed commits to pass,
+even when the hook files have not changed. If hooks-live lags, JSON and human
+output name the owner update command:
+`bash scripts/hooks/install-hooks.sh --host mbp --update --apply`.
+Use the installer's `--status` for wiring and worktree-integrity checks.
+A missing marker retains the client detector's UNKNOWN behavior; invalid owner
+evidence fails closed. JSON and text output name `owner-checkout` or
+`release-json` as the detection method. A client `release.json` and the owner
+`golems-hooks-live.sha` marker together return UNKNOWN with both named in the
+reason, including explicit receipt paths and invalid or dangling receipts.
+Receipt-only clients keep their existing verdicts. `--release-only` skips local
+installation.
 Prereleases are accepted only for manifest entries with `channel:nightly`;
 drafts and missing assets remain refused, including in the `--sha` gate.
 Golems is `kind:github-release` in `release-gate.json`; workspace and daemon-host

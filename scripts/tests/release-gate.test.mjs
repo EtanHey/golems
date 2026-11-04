@@ -391,10 +391,10 @@ test('github-release requires a published release with all three assets; equal d
     const stdout = key.includes('get-url') ? 'https://github.com/EtanHey/golems.git' : key.includes('remote show') ? 'HEAD branch: master' : key.includes('--first-parent') ? `HEAD, tag: v${version}\ntag: v2026.10.11-ffffff0` : key.includes('for-each-ref') ? `v2026.10.11-ffffff0\nv${version}` : key.includes('--count') ? '0' : '';
     return { status: 0, stdout, stderr: '' };
   };
-  expect(inspectRelease({ repo: root, manifest }, command).verdict).toBe('RELEASED_UNINSTALLED');
-  expect(inspectRelease({ repo: root, manifest, releaseOnly: true }, command)).toMatchObject({ verdict: 'CLEAN', latestTag: `v${version}` });
+  expect(inspectRelease({ repo: root, manifest, home: root }, command).verdict).toBe('RELEASED_UNINSTALLED');
+  expect(inspectRelease({ repo: root, manifest, home: root, releaseOnly: true }, command)).toMatchObject({ verdict: 'CLEAN', latestTag: `v${version}` });
   assets = [];
-  expect(inspectRelease({ repo: root, manifest, releaseOnly: true }, command).verdict).toBe('UNKNOWN');
+  expect(inspectRelease({ repo: root, manifest, home: root, releaseOnly: true }, command).verdict).toBe('UNKNOWN');
 });
 
 for (const shaMode of [false, true]) test(`github-release nightly prereleases work in ${shaMode ? '--sha' : 'release-only'} mode; drafts and other channels fail closed`, () => {
@@ -411,7 +411,7 @@ for (const shaMode of [false, true]) test(`github-release nightly prereleases wo
   };
   const inspect = () => {
     writeFileSync(manifest, JSON.stringify({ repositories: { 'EtanHey/golems': { channel, artifact: { kind: 'github-release', releaseJson: installed } } } }));
-    return inspectRelease({ repo: root, manifest, ...(shaMode ? { sha: commit } : { releaseOnly: true }) }, command);
+    return inspectRelease({ repo: root, manifest, home: root, ...(shaMode ? { sha: commit } : { releaseOnly: true }) }, command);
   };
   expect(inspect().verdict).toBe(shaMode ? 'CONTAINED' : 'CLEAN');
   draft = true; expect(inspect().verdict).toBe('UNKNOWN'); draft = false;
@@ -511,4 +511,157 @@ test("callback tolerates five minutes of clock skew, treating future timestamps 
   expect(callbackResult(report, now)).toMatchObject({ code: 0, annotation: "warning" });
   expect(callbackResult(report, now + 1).code).toBe(0);
   expect(() => callbackResult(report, now - 1)).toThrow("invalid unreleased integration time");
+});
+
+// Git ancestry is real; only remote publication metadata is stubbed.
+function ownerFixture({ hooksBehind = false, skillsBehind = false, marker = true, pinMismatch = false,
+  wrongSkill = false, strayHooks = false, clientVersion, danglingReceipt = false, malformedMarker = false,
+  noSharedTag = false, postTag = false, shaMode = false, localAhead = false } = {}) {
+  const root = mkdtempSync(join(repoRoot, ".release-gate-test-")); scratch.push(root);
+  const repo = join(root, "repo"), home = join(root, "home"), hooks = join(repo, ".worktrees/hooks-live");
+  run("git", ["init", "-b", "master", repo], root);
+  run("git", ["config", "user.email", "fixture@example.com"], repo);
+  run("git", ["config", "user.name", "Owner Fixture"], repo);
+  mkdirSync(join(repo, "skills/golem-powers/example"), { recursive: true });
+  writeFileSync(join(repo, "skills/golem-powers/example/SKILL.md"), "fixture skill\n");
+  writeFileSync(join(repo, "skills/catalog.json"), JSON.stringify({ roots: { claude: ["example"], agents: ["example"] } }));
+  run("git", ["add", "."], repo); run("git", ["commit", "-m", "old release"], repo);
+  const git = (...args) => execFileSync("git", args, { cwd: repo, encoding: "utf8" }).trim();
+  const old = git("rev-parse", "HEAD"), oldVersion = `2026.11.01-${old.slice(0, 7)}`;
+  run("git", ["tag", `v${oldVersion}`], repo);
+  writeFileSync(join(repo, "new.js"), "released\n");
+  run("git", ["add", "."], repo); run("git", ["commit", "-m", "latest release"], repo);
+  const released = git("rev-parse", "HEAD"), version = `2026.11.04-${released.slice(0, 7)}`;
+  run("git", ["tag", `v${version}`], repo);
+  if (postTag) {
+    writeFileSync(join(repo, "new.js"), "unreleased\n");
+    run("git", ["commit", "-am", "unreleased change"], repo);
+  }
+  run("git", ["update-ref", "refs/remotes/origin/master", "HEAD"], repo);
+  if (localAhead) run("git", ["commit", "--allow-empty", "-m", "local checkout advance"], repo);
+  if (noSharedTag) run("git", ["tag", "-d", `v${oldVersion}`], repo);
+  if (strayHooks) mkdirSync(hooks, { recursive: true });
+  else run("git", ["worktree", "add", "--detach", hooks, hooksBehind ? old : "HEAD"], repo);
+  if (skillsBehind) run("git", ["checkout", "--detach", old], repo);
+  mkdirSync(join(home, ".claude/hooks"), { recursive: true });
+  if (marker) writeFileSync(join(home, ".claude/hooks/golems-hooks-live.sha"), malformedMarker ? "broken" : pinMismatch ? old : hooksBehind ? old : execFileSync("git", ["-C", hooks, "rev-parse", "HEAD"], { encoding: "utf8" }).trim());
+  for (const directory of [".claude/skills", ".agents/skills"]) {
+    mkdirSync(join(home, directory), { recursive: true });
+    symlinkSync(join(repo, wrongSkill ? "missing" : "skills/golem-powers/example"), join(home, directory, "example"));
+  }
+  if (clientVersion !== undefined) {
+    mkdirSync(join(home, ".golems"), { recursive: true });
+    writeFileSync(join(home, ".golems/release.json"), JSON.stringify({ version: clientVersion === "current" ? version : clientVersion }));
+  }
+  if (danglingReceipt) {
+    mkdirSync(join(home, ".golems"), { recursive: true });
+    symlinkSync(join(home, "missing-receipt"), join(home, ".golems/release.json"));
+  }
+  const manifest = join(root, "gate.json");
+  writeFileSync(manifest, JSON.stringify({ repositories: { "EtanHey/golems": {
+    channel: "nightly", artifact: { kind: "github-release", identifier: "golems" },
+  } } }));
+  const command = (program, args) => {
+    const selectedVersion = args.some(arg => arg.endsWith(`v${oldVersion}`)) ? oldVersion : version;
+    if (program === "gh") return { status: 0, stdout: JSON.stringify({ prerelease: true, assets:
+      [`golems-${selectedVersion}.tar.gz`, "MANIFEST.json", "SHA256SUMS"].map(name => ({ name, state: "uploaded", size: 1 })) }), stderr: "" };
+    if (args.includes("fetch")) return { status: 0, stdout: "", stderr: "" };
+    if (args.includes("get-url")) return { status: 0, stdout: "https://github.com/EtanHey/golems.git", stderr: "" };
+    if (args.includes("show") && args.includes("remote")) return { status: 0, stdout: "HEAD branch: master", stderr: "" };
+    if (args.includes("ls-remote")) return { status: 0, stdout: `${selectedVersion === oldVersion ? old : released}\trefs/tags/v${selectedVersion}`, stderr: "" };
+    return spawnSync(program, args, { encoding: "utf8" });
+  };
+  return { report: inspectRelease({ repo, manifest, home, ...(shaMode ? { sha: released } : {}) }, command), old, released, version, oldVersion };
+}
+
+describe("release gate owner checkout installation", () => {
+  test("explicit owner pin and checkout skills contain the release", () => {
+    const { report, released, version } = ownerFixture();
+    expect(report).toMatchObject({ verdict: "CLEAN", installedVersion: version, installationDetection: "owner-checkout",
+      installedCommits: { skills: released, hooks: released } });
+  });
+
+  test.each(["hooksBehind", "skillsBehind"])("%s preserves RELEASED_UNINSTALLED", (behind) => {
+    const { report, oldVersion } = ownerFixture({ [behind]: true });
+    expect(report).toMatchObject({ verdict: "RELEASED_UNINSTALLED", installedVersion: oldVersion, installationDetection: "owner-checkout" });
+  });
+
+  test("owner installation never hides merged but unreleased changes", () => {
+    expect(ownerFixture({ postTag: true }).report).toMatchObject({ verdict: "MERGED_UNRELEASED", commits: { shippable: 1 } });
+  });
+
+  test.each(["pinMismatch", "wrongSkill", "strayHooks", "malformedMarker"])("%s fails closed", (problem) => {
+    const { report } = ownerFixture({ [problem]: true });
+    expect(report).toMatchObject({ verdict: "UNKNOWN", installationDetection: "owner-checkout" });
+    expect(report.installationError).toBeTruthy();
+  });
+
+  test("missing owner marker keeps unknown-host behavior even with matching checkout links", () => {
+    expect(ownerFixture({ marker: false }).report).toMatchObject({ verdict: "UNKNOWN", installedVersion: null, installationDetection: "release-json" });
+  });
+
+  test.each(["current", "2026.11.01-1234567", null])("client-only receipt %s keeps its verdict", (clientVersion) => {
+    const { report, version } = ownerFixture({ clientVersion, hooksBehind: true, marker: false });
+    expect(report).toMatchObject({ verdict: clientVersion === "current" ? "CLEAN" : clientVersion ? "RELEASED_UNINSTALLED" : "UNKNOWN",
+      installedVersion: clientVersion === "current" ? version : clientVersion, installationDetection: "release-json" });
+  });
+
+  test("a dangling client receipt cannot fall back to a healthy owner installation", () => {
+    expect(ownerFixture({ danglingReceipt: true, marker: false }).report).toMatchObject({ verdict: "UNKNOWN", installedVersion: null, installationDetection: "release-json" });
+  });
+
+  test("an owner checkout newer than the release passes by ancestry", () => {
+    expect(ownerFixture({ localAhead: true }).report).toMatchObject({ verdict: "CLEAN", installationDetection: "owner-checkout" });
+  });
+
+  test("an owner pin predating all shared release tags is known but uninstalled", () => {
+    const { report } = ownerFixture({ hooksBehind: true, noSharedTag: true });
+    expect(report).toMatchObject({ verdict: "RELEASED_UNINSTALLED", installationDetection: "owner-checkout" });
+    expect(report.installedVersion).toStartWith("checkout:");
+  });
+
+  test("lagging owner hooks name the verified installer remedy in JSON and human output", async () => {
+    const { report } = ownerFixture({ hooksBehind: true });
+    const remediation = "bash scripts/hooks/install-hooks.sh --host mbp --update --apply";
+    expect(report).toMatchObject({ verdict: "RELEASED_UNINSTALLED", remediation });
+    expect(report.reason).toContain("hooks-live");
+    const { formatHuman } = await import("../ci/release-gate.mjs");
+    expect(formatHuman(report)).toContain(remediation);
+    expect(ownerFixture({ skillsBehind: true }).report.remediation).toBeUndefined();
+  });
+
+  test.each(["current", "2026.11.01-1234567", null])("mixed client receipt %s and owner pin fail closed", (clientVersion) => {
+    const { report } = ownerFixture({ clientVersion, hooksBehind: true });
+    expect(report).toMatchObject({ verdict: "UNKNOWN", installationDetection: "ambiguous" });
+    expect(report.reason).toContain("release.json");
+    expect(report.reason).toContain("golems-hooks-live.sha");
+    expect(releaseExitCode(report.verdict)).toBe(2);
+  });
+
+  test("mixed client and owner evidence is UNKNOWN in SHA mode and with unreleased commits", () => {
+    for (const mode of [{ shaMode: true }, { postTag: true }]) {
+      const { report } = ownerFixture({ clientVersion: "current", ...mode });
+      expect(report).toMatchObject({ verdict: "UNKNOWN", installationDetection: "ambiguous" });
+      expect(report.reason).toContain("release.json");
+      expect(report.reason).toContain("golems-hooks-live.sha");
+    }
+  });
+
+  test("a dangling client receipt with an owner pin is ambiguous", () => {
+    const { report } = ownerFixture({ danglingReceipt: true });
+    expect(report).toMatchObject({ verdict: "UNKNOWN", installationDetection: "ambiguous" });
+    expect(report.reason).toContain("release.json");
+    expect(report.reason).toContain("golems-hooks-live.sha");
+  });
+
+  test("an untagged owner checkout is UNKNOWN in SHA mode", () => {
+    const { report } = ownerFixture({ hooksBehind: true, noSharedTag: true, shaMode: true });
+    expect(report).toMatchObject({ verdict: "UNKNOWN", installationDetection: "owner-checkout" });
+    expect(report.reason).toContain("has no tag matching");
+  });
+
+  test("owner --sha containment uses the shared installed tag", () => {
+    expect(ownerFixture({ shaMode: true }).report).toMatchObject({ verdict: "CONTAINED", installationDetection: "owner-checkout" });
+    expect(ownerFixture({ shaMode: true, hooksBehind: true }).report).toMatchObject({ verdict: "NOT_CONTAINED", installationDetection: "owner-checkout" });
+  });
 });
