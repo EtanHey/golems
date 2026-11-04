@@ -1,0 +1,30 @@
+{
+  "run": "sticky-r2-single-indexed",
+  "baseline": "9dbb9c02bf9c7ecc0e7099442da6127f8ac3a054",
+  "rows": [
+    {
+      "width": 390,
+      "variant": "before",
+      "label": "Play card: Synthetic audio",
+      "muted": true
+    },
+    {
+      "width": 390,
+      "variant": "after",
+      "label": "Resume card: Synthetic audio",
+      "muted": true
+    },
+    {
+      "width": 1280,
+      "variant": "before",
+      "label": "Play card: Synthetic audio",
+      "muted": true
+    },
+    {
+      "width": 1280,
+      "variant": "after",
+      "label": "Resume card: Synthetic audio",
+      "muted": true
+    }
+  ]
+}

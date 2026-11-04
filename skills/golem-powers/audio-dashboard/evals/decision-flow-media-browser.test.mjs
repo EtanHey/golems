@@ -47,6 +47,10 @@ for (const width of [390, 1280]) test(`sticky media transitions at ${width}px`, 
     await button.click(); expect(await page.locator(audio('host')).evaluate(a => a.paused)).toBe(true);
     await state('▶', 'Resume card: Audio'); await shot('paused');
     await button.click(); await playing('host'); await state('⏸', 'Pause card: Audio'); await shot('resumed');
+    await page.locator('#decision-a .df-word').first().evaluate(w => w.click());
+    await playing('host'); await state('⏸', 'Pause card: Audio');
+    expect(await page.locator('#decision-a .df-play').textContent()).toContain('Pause');
+    await page.waitForFunction(() => document.querySelector('#decision-a .df-word.is-current') && parseFloat(document.querySelector('#df-progress-fill').style.width) > 0);
     await finish('host'); await playing('expert'); await state('⏸', 'Pause card: Audio');
     await finish('expert'); await state('↻', 'Again card: Audio');
     // Completed section retains its existing replay action (not a pause icon).
@@ -62,7 +66,10 @@ for (const width of [390, 1280]) test(`sticky media transitions at ${width}px`, 
     expect(await page.locator(audio('other')).evaluate(a => a.paused)).toBe(true);
     await page.locator('#decision-b .df-play').evaluate(b => b.click()); await playing('other'); await state('⏸', 'Pause card: Other');
     await page.evaluate(selector => document.querySelector(selector).pause(), audio('other'));
-    await state('▶', 'Play card: Other');
+    await state('▶', 'Resume card: Other');
+    expect(await page.locator('#decision-b .df-play').textContent()).toContain('Resume full section');
+    expect(await button.evaluate(b => getComputedStyle(b).boxShadow)).toBe('none');
+    expect(await button.evaluate(b => getComputedStyle(b).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await context.close();
   } finally { await browser.close(); }

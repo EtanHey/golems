@@ -10,3 +10,5 @@ Native ten-second silent PCM media, delayed native play invocation, one injected
 Old template reproduced ▶ while native audio was playing. Fixed template synchronizes via native play/pause events and restarts media-time ticking when delayed playback starts. Current card is resolved at event time, so a noncurrent event cannot select its own label.
 
 Private 0300 candidate, preservation receipt, scripts, screenshots/video and maintenance logs live under the parent sticky-player folder, outside this public repo. No live runtime/account or deployment acceptance is claimed.
+
+R2: external pause must synchronize the filled sticky, Resume accessible action and section Resume. Pending operation identity protects seek/handoff pause events and stale promise rejection. Tests assert native seek followed by delayed start, highlight and progress. Synthetic indexed B1 before/after proof is in proof/sticky-r2/ (baseline 9dbb9c02); interaction.gif shows pause/resume. No private dashboard content is included. N2 pending Next hidden playback is pre-existing and queued separately; not fixed here.
