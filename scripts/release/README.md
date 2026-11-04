@@ -60,7 +60,16 @@ gh api 'repos/EtanHey/golems/releases?per_page=30&page=1' | \
 
 The `github-release` gate support requires a published release with all three
 assets. Local installation detection reads `~/.golems/release.json` and compares the full
-version, including the SHA suffix. `--release-only` skips local installation.
+version, including the SHA suffix. When no client receipt exists, the golems owner
+installation is selected only by the installer's `golems-hooks-live.sha` marker.
+The gate verifies that pin against the hooks-live worktree, its shared repository,
+and both catalog skill-link sets into the inspected checkout. It reports both
+installed commits and their newest shared release tag; the latest released commit
+must be an ancestor of both to pass. A missing marker retains the client detector's
+UNKNOWN behavior; invalid owner evidence fails closed. JSON and text output name
+`owner-checkout` or `release-json` as the detection method. Existing client receipts
+and explicit receipt paths always take precedence, including invalid receipts.
+`--release-only` skips local installation.
 Prereleases are accepted only for manifest entries with `channel:nightly`;
 drafts and missing assets remain refused, including in the `--sha` gate.
 Golems is `kind:github-release` in `release-gate.json`; workspace and daemon-host

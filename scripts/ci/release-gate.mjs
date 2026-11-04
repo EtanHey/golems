@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { appendFileSync, readFileSync, realpathSync } from "node:fs";
+import { appendFileSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
@@ -167,6 +167,56 @@ export function detectInstalledVersion(artifact, runCommand = execute) {
   return cleanVersion(artifact.kind.startsWith("homebrew") ? fields.at(-1) : result.stdout);
 }
 
+// The owner installer records this pin; a hostname alone never selects this path.
+// Client receipts (including invalid receipts and explicit overrides) keep precedence.
+function detectInstallation(options, config, repository, runCommand) {
+  const artifact = config.artifact;
+  if (artifact.kind !== "github-release") return { installedVersion: detectInstalledVersion(artifact, runCommand) };
+  const home = options.home ?? homedir();
+  const receipt = artifact.releaseJson ?? artifact.installedJson ?? resolve(home, ".golems/release.json");
+  const client = { installedVersion: detectInstalledVersion({ ...artifact, releaseJson: receipt }, runCommand), installationDetection: "release-json" };
+  let receiptPresent = true;
+  try { lstatSync(receipt); } catch (error) { if (error.code === "ENOENT") receiptPresent = false; }
+  if (repository !== "EtanHey/golems" || artifact.releaseJson || artifact.installedJson || receiptPresent) return client;
+  let pin;
+  try { pin = readFileSync(resolve(home, ".claude/hooks/golems-hooks-live.sha"), "utf8").trim(); }
+  catch (error) {
+    if (error.code === "ENOENT") return client;
+    return { ...client, installationDetection: "owner-checkout", installationError: error.message };
+  }
+  const owner = { installedVersion: null, installationDetection: "owner-checkout" };
+  try {
+    if (!/^[0-9a-f]{40}$/.test(pin)) throw new Error("invalid owner hooks-live pin");
+    const repo = realpathSync(options.repo), hooks = realpathSync(resolve(repo, ".worktrees/hooks-live"));
+    const git = (at, ...args) => checked("git", ["-C", at, ...args], { runCommand });
+    for (const at of [repo, hooks]) {
+      if (realpathSync(git(at, "rev-parse", "--show-toplevel")) !== at) throw new Error("owner source is not a worktree root");
+      if (git(at, "rev-parse", "--is-shallow-repository") !== "false") throw new Error("owner source is shallow");
+    }
+    if (realpathSync(git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")) !==
+        realpathSync(git(hooks, "rev-parse", "--path-format=absolute", "--git-common-dir"))) throw new Error("owner sources do not share a repository");
+    const skillsHead = git(repo, "rev-parse", "HEAD"), hooksHead = git(hooks, "rev-parse", "HEAD");
+    owner.installedCommits = { skills: skillsHead, hooks: hooksHead };
+    if (hooksHead !== pin) throw new Error("hooks-live HEAD differs from the recorded owner pin");
+    const catalog = JSON.parse(readFileSync(resolve(repo, "skills/catalog.json"), "utf8"));
+    for (const [key, directory] of [["claude", ".claude/skills"], ["agents", ".agents/skills"]]) {
+      const names = catalog.roots?.[key];
+      if (!Array.isArray(names) || !names.length) throw new Error(`owner ${key} skill catalog is missing`);
+      for (const name of names) {
+        const link = resolve(home, directory, name), target = realpathSync(resolve(repo, "skills/golem-powers", name));
+        if (!lstatSync(link).isSymbolicLink() || realpathSync(link) !== target) throw new Error(`owner ${key} skill link differs: ${name}`);
+      }
+    }
+    const common = git(repo, "merge-base", skillsHead, hooksHead);
+    const tags = git(repo, "log", "--first-parent", "--decorate=short", "--format=%D", common);
+    const matcher = new RegExp(config.tagPattern ?? defaultTagPattern);
+    const installedTag = [...tags.matchAll(/(?:^|, |\n)tag: ([^,\n]+)/g)].map(match => match[1]).find(tag => matcher.test(tag));
+    // A pre-release-channel checkout is still a known installation, but has no installed release tag.
+    owner.installedVersion = installedTag ? cleanVersion(installedTag) : `checkout:${skillsHead}+hooks-live:${hooksHead}`;
+    return owner;
+  } catch (error) { return { ...owner, installationError: error.message }; }
+}
+
 function containmentUnknown(report, reason) {
   return { ...report, verdict: "UNKNOWN", reason };
 }
@@ -218,8 +268,10 @@ function inspectContainment(options, runCommand = execute) {
   };
   const requested = runCommand("git", ["-C", repo, "rev-parse", "--verify", "--end-of-options", `${options.sha}^{commit}`]);
   if (requested.status === 0) report.sha = requested.stdout.trim();
-  const installedVersion = detectInstalledVersion(config.artifact, runCommand);
-  report.installedVersion = installedVersion;
+  const installation = detectInstallation(options, { ...config, tagPattern: config.tagPattern ?? manifest.tagPattern }, identity.slug, runCommand);
+  Object.assign(report, installation);
+  const { installedVersion } = installation;
+  if (installation.installationError) return containmentUnknown(report, installation.installationError);
   if (!installedVersion) return containmentUnknown(report, "installed artifact version could not be detected");
 
   const matcher = new RegExp(config.tagPattern ?? manifest.tagPattern ?? defaultTagPattern);
@@ -310,16 +362,25 @@ export function inspectRelease(options, runCommand = execute) {
     const error = publishedReleaseError(identity.slug, tag, config.channel, runCommand);
     if (error) return { verdict: 'UNKNOWN', repo, repository: identity.slug, latestTag: tag, artifact: config.artifact, error };
   }
-  const installedVersion = options.releaseOnly ? null : detectInstalledVersion(config.artifact, runCommand);
+  const installation = options.releaseOnly ? { installedVersion: null } : detectInstallation(options, { ...config, tagPattern: config.tagPattern ?? manifest.tagPattern }, identity.slug, runCommand);
+  const { installedVersion } = installation;
   const installedComparison = options.releaseOnly || !installedVersion ? null : compareVersions(installedVersion, tag);
   let verdict = "CLEAN";
   if (commits.shippable > 0) verdict = "MERGED_UNRELEASED";
-  else if (!options.releaseOnly && !installedVersion) verdict = "UNKNOWN";
+  else if (installation.installationError || (!options.releaseOnly && !installedVersion)) verdict = "UNKNOWN";
+  else if (installation.installationDetection === "owner-checkout") {
+    const tagCommit = checked("git", ["-C", repo, "rev-parse", "--verify", `refs/tags/${tag}^{commit}`], { runCommand });
+    for (const head of Object.values(installation.installedCommits)) {
+      const ancestor = runCommand("git", ["-C", repo, "merge-base", "--is-ancestor", tagCommit, head]);
+      if (ancestor.status !== 0 && ancestor.status !== 1) throw new Error("owner release ancestry could not be determined");
+      if (ancestor.status === 1) verdict = "RELEASED_UNINSTALLED";
+    }
+  }
   else if (!options.releaseOnly && installedComparison === null) verdict = "UNKNOWN";
   else if (!options.releaseOnly && (installedComparison === -1 || (config.artifact.kind === 'github-release' && installedVersion !== cleanVersion(tag)))) verdict = "RELEASED_UNINSTALLED";
   return {
     verdict, repo, repository: identity.slug, defaultBranch: branch, remoteRef, latestTag: tag,
-    releasedVersion: cleanVersion(tag), installedVersion, installationCheck: options.releaseOnly ? "skipped" : "performed",
+    releasedVersion: cleanVersion(tag), ...installation, installationCheck: options.releaseOnly ? "skipped" : "performed",
     artifact: config.artifact, commits, ignorePaths,
   };
 }
@@ -339,6 +400,7 @@ function formatHuman(report) {
       `RELEASE GATE: ${report.verdict}`,
       `Repository: ${report.repository} (${report.repo})`,
       `Installed artifact: ${report.artifact.kind}:${report.artifact.identifier} version=${report.installedVersion ?? "UNKNOWN"}`,
+      ...(report.installationDetection ? [`Installation detection: ${report.installationDetection}`] : []),
       `Installed tag: ${report.tag ?? "UNKNOWN"}`,
       `Installed tag commit: ${report.tagCommit ?? "UNKNOWN"}`,
       `Requested input: ${report.requestedSha}`,
@@ -353,6 +415,9 @@ function formatHuman(report) {
     `Latest release tag: ${report.latestTag}`,
     `Commits past tag: raw=${report.commits.raw} shippable=${report.commits.shippable}`,
     `Ignored paths: ${report.ignorePaths.join(", ")}`,
+    ...(report.installationDetection ? [`Installation detection: ${report.installationDetection}`] : []),
+    ...(report.installedCommits ? [`Installed commits: skills=${report.installedCommits.skills} hooks=${report.installedCommits.hooks}`] : []),
+    ...(report.installationError ? [`Installation error: ${report.installationError}`] : []),
     report.installationCheck === "skipped" ? "Installed artifact: NOT_CHECKED (--release-only)" : `Installed artifact: ${report.artifact.kind}:${report.artifact.identifier} version=${report.installedVersion ?? "UNKNOWN"}`,
   ].join("\n");
 }
