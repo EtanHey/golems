@@ -28,13 +28,15 @@ export function createDriveReader({ tokenImpl = driveAccessToken, fetchImpl = fe
     if (!response.ok) throw Error(`Drive HTTP ${response.status}`);
     return response;
   }
-  return async target => {
+  return async (target, recordedAccount) => {
     const parts = driveParts(target);
-    const expectedAccount = /\/GoogleDrive-([^/]+)\/My Drive\//.exec(target)?.[1];
-    if (expectedAccount) {
-      account ??= (await (await get('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)')).json()).user?.emailAddress;
-      if (account?.toLowerCase() !== expectedAccount.toLowerCase()) throw Error('Drive account mismatch');
-    }
+    const mountAccount = /\/GoogleDrive-([^/]+)\/My Drive\//.exec(target)?.[1];
+    const expectedAccount = mountAccount ?? recordedAccount;
+    if (!expectedAccount) throw Error('Drive account required');
+    if (mountAccount && recordedAccount && mountAccount.toLowerCase() !== recordedAccount.toLowerCase()) throw Error('Drive account mismatch');
+    account ??= (await (await get('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)')).json()).user?.emailAddress;
+    if (!account) throw Error('Drive account unavailable');
+    if (account.toLowerCase() !== expectedAccount.toLowerCase()) throw Error('Drive account mismatch');
     rootId ??= (await (await get(`${API}/root?fields=id`)).json()).id;
     if (!rootId) throw Error('invalid Drive root');
     let parent = rootId, entry;
@@ -68,11 +70,13 @@ function parseRow(line) {
   const fields = line.split('|').map(s => s.trim());
   const paths = /^- (.+?) → (.+)$/.exec(fields.shift());
   const bytes = fields.filter(s => /^bytes=/i.test(s)), sha = fields.filter(s => /^sha256=/i.test(s));
+  const accounts = fields.filter(s => /^account=/i.test(s));
   if (!paths || bytes.length !== 1 || !/^bytes=\d+$/i.test(bytes[0]) || !Number.isSafeInteger(Number(bytes[0].slice(6)))
-    || sha.length > 1 || (sha.length && !/^sha256=[a-f0-9]{64}$/i.test(sha[0]))
+    || sha.length !== 1 || !/^sha256=[a-f0-9]{64}$/i.test(sha[0])
+    || accounts.length > 1 || (accounts.length && !/^account=[^@\s/]+@[^@\s/]+$/i.test(accounts[0]))
     || fields.filter(s => /^cloud\s*=/i.test(s)).length !== 1) throw Error('malformed row');
   driveParts(paths[2]);
-  return { target: paths[2], bytes: Number(bytes[0].slice(6)), sha256: sha[0]?.slice(7).toLowerCase() };
+  return { target: paths[2], bytes: Number(bytes[0].slice(6)), sha256: sha[0].slice(7).toLowerCase(), account: accounts[0]?.slice(8) };
 }
 export async function verifyLedger(path, { apply = false, readRemote = createDriveReader() } = {}) {
   if (!(await lstat(path)).isFile()) throw Error('ledger must be a regular file');
@@ -84,9 +88,9 @@ export async function verifyLedger(path, { apply = false, readRemote = createDri
     try {
       const row = parseRow(line);
       result.naming = lintName(basename(row.target)); // Existing names never block custody verification.
-      const remote = await readRemote(row.target);
+      const remote = await readRemote(row.target, row.account);
       if (remote.bytes !== row.bytes) throw Error('size mismatch');
-      if (row.sha256 && (remote.sha256 ?? await remote.hash()) !== row.sha256) throw Error('hash mismatch');
+      if ((remote.sha256 ?? await remote.hash()) !== row.sha256) throw Error('hash mismatch');
       result.verified = true;
       lines[index] = line.replace(/(\|\s*)cloud\s*=\s*pending(?=\s*(?:\||$))/i, `$1cloud=verified ${stamp}`);
     } catch (error) { result.reason = /^(Drive |invalid Drive |missing Drive |ambiguous\/incomplete Drive |malformed row$|size mismatch$|hash mismatch$)/.test(error.message) ? error.message : 'Drive verification failed'; }

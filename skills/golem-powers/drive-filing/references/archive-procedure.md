@@ -108,7 +108,7 @@ Capture the returned folder ID at every level. You will need them in the ledger.
 
 ### 4. Upload the artifacts
 
-Lint new standalone filenames with `node scripts/drive/lint-name.mjs <basename>` before upload, per [Naming convention](../SKILL.md#naming-convention); preserve existing archive member names unchanged.
+Set `GOLEMS_ROOT` to the absolute golems checkout (normally `$HOME/Gits/golems`); these commands work from any repo. Lint new standalone filenames with `node "$GOLEMS_ROOT/scripts/drive/lint-name.mjs" <basename>` before upload, per [Naming convention](../SKILL.md#naming-convention); preserve existing archive member names unchanged.
 
 Write the unit's `MANIFEST.json` before upload, upload it with the unit, and link it from the ledger.
 Use the [manifest schema](archiving-convention.md#manifestjson-one-per-archive-unit); a rollup plan
@@ -143,13 +143,13 @@ Path: `docs.local/<area>/<topic>/_DRIVE-LEDGER.md`
 
 > Source of truth for these artifacts is Brain Drive. Local files are caches.
 
-- <local transcript path> → Brain Drive/06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>/<name>.txt | bytes=<exact integer> | SHA256=<manifest hash> | cloud=pending | id=<file-id> | url=<link> | manifest=<Drive manifest pointer>
+- <local transcript path> → Brain Drive/06_ARCHIVE/<area>/<topic>/<YYYY-MM-DD>/<name>.txt | bytes=<exact integer> | SHA256=<manifest hash> | account=<expected-email> | cloud=pending | id=<file-id> | url=<link> | manifest=<Drive manifest pointer>
 
 ## Skipped (regeneratable derivatives)
 - `audio-16k.wav` — 16kHz mono downsample of `audio.wav` for whisper-cli. Regenerate via `ffmpeg -i audio.wav -ar 16000 -ac 1 audio-16k.wav`.
 ```
 
-Run `node scripts/drive/verify-ledger.mjs <ledger.md>` after the upload, inspect pending reasons, then `--apply` to mark only verified rows. Do not flip cloud state by hand. See [Verify the ledger](../SKILL.md#verify-the-ledger-after-uploads) for exact schema, authentication and exit codes. Legacy tables remain historical; new verification rows use the bullet schema.
+Run `node "$GOLEMS_ROOT/scripts/drive/verify-ledger.mjs" <ledger.md>` after the upload, inspect pending reasons, then `--apply` to mark only verified rows. Do not flip cloud state by hand. See [Verify the ledger](../SKILL.md#verify-the-ledger-after-uploads) for exact schema, authentication and exit codes. Legacy tables remain historical; new verification rows use the bullet schema.
 
 The ledger is what lets a future agent answer **"where is the original?"** without spelunking through Drive.
 

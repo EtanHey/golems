@@ -48,20 +48,21 @@ Legacy `Brain Drive/Research/<project>/` folders are being moved under 03_RESEAR
 6. **Lightweight, session-scoped scratch?** → fine to leave in `docs.local/` — but if anyone else (or future-you) needs it, FILE it per 1–5.
 
 ## Naming convention
-New standalone artifacts: `YYYY-MM-DD-<project>-<topic>-<kind>[-by-<producer>].<ext>`, lowercase kebab-case. Example: `2026-11-04-voicebar-focus-audit-by-author.md`. Topic must describe the work; `Theo.md`, `Model.md` and `2026-11-04-golems-theo-report.md` fail. Put a person/model attribution in `by-<producer>`, never use it as the only topic. Kinds: report, prompt, result, transcript, recording, audit, plan, review, frame, image, notes, receipt, manifest, data, archive, index, dashboard, summary, eval, log.
+New standalone artifacts: `YYYY-MM-DD-<project>-<topic>-<kind>[-by-<producer>].<ext>`, lowercase kebab-case. Example: `2026-11-04-voicebar-focus-audit-by-author.md`. Topic must describe the work; `Theo.md`, `Model.md` and `2026-11-04-golems-theo-report.md` fail. Put a person/model attribution in `by-<producer>` (exactly one lowercase token), never in the project, topic or kind slots. Kinds: report, prompt, result, transcript, recording, audit, plan, review, frame, image, notes, receipt, manifest, data, archive, index, dashboard, summary, eval, log.
 
-Before uploading a new standalone artifact, run `node scripts/drive/lint-name.mjs <basename>` from the golems checkout; nonzero blocks filing until renamed. Existing files and preserved archive members (including `MANIFEST.json` and frame names) are grandfathered: `--existing` reports issues without blocking or renaming. Research-lifecycle's sequential context/R-number names keep their own contract. Folders retain `<topic>-<domain>/`; keep local mirror and Drive names identical for 1:1 ledger mapping.
+Before uploading a new standalone artifact, set `GOLEMS_ROOT` to the absolute golems checkout (normally `$HOME/Gits/golems`) and run `node "$GOLEMS_ROOT/scripts/drive/lint-name.mjs" <basename>` from any repo; nonzero blocks filing until renamed. Existing files and preserved archive members (including `MANIFEST.json` and frame names) are grandfathered: `--existing` reports issues without blocking or renaming. Research-lifecycle's sequential context/R-number names keep their own contract. Folders retain `<topic>-<domain>/`; keep local mirror and Drive names identical for 1:1 ledger mapping.
 
 ## Verify the ledger after uploads
 
-Use one bullet per file: `- <local path> → Brain Drive/<exact path>/<name> | bytes=<integer> | SHA256=<64 hex> | cloud=pending`. Record hashes from the source manifest; metadata such as Drive ID/URL and manifest pointer may follow as extra pipe fields. Absolute Drive-for-Desktop paths containing `/My Drive/Brain Drive/` are also accepted. Old Markdown tables remain readable history; add a machine-readable pending row for verification.
+Use one bullet per file: `- <local path> → Brain Drive/<exact path>/<name> | bytes=<integer> | SHA256=<64 hex> | account=<expected-email> | cloud=pending`. SHA256 is mandatory: missing or invalid hashes are malformed rows. Bare `Brain Drive/` paths require `account=<expected-email>`; mount paths derive it from `GoogleDrive-<account>` (an explicit account, if provided, must agree). Record hashes from the source manifest; metadata such as Drive ID/URL and manifest pointer may follow as extra pipe fields. Absolute Drive-for-Desktop paths containing `/My Drive/Brain Drive/` are also accepted. Old Markdown tables remain readable history; add a machine-readable pending row for verification.
 
 ```bash
-node scripts/drive/verify-ledger.mjs <ledger.md>            # dry-run; no ledger write
-node scripts/drive/verify-ledger.mjs <ledger.md> --apply    # only verified rows change
+GOLEMS_ROOT="${GOLEMS_ROOT:-$HOME/Gits/golems}"
+node "$GOLEMS_ROOT/scripts/drive/verify-ledger.mjs" <ledger.md>            # dry-run; no ledger write
+node "$GOLEMS_ROOT/scripts/drive/verify-ledger.mjs" <ledger.md> --apply    # only verified rows change
 ```
 
-Run from the golems checkout after each upload batch. The verifier uses the existing outside-repo OAuth guard and read-only Drive API, checks the recorded account for mount paths, resolves every exact path (duplicates fail), compares bytes and any recorded SHA-256 (downloads remote bytes if Drive omits the checksum), and alone writes `cloud=verified <ISO timestamp>`. A local mount/cache is not sync proof. Missing, malformed, mismatched or unauthenticated rows remain pending with a reason on stdout; exit 1 means some rows remain, exit 2 is usage/ledger failure. Names in old rows are report-only. `--apply` is idempotent and never uploads or deletes. Verification without a recorded hash proves path/size only; deletion still requires the full preservation and authorization gates below.
+Run after each upload batch from any repo using the absolute `GOLEMS_ROOT`. The token has full Drive scope; the verifier only reads, using GET requests through the existing outside-repo OAuth guard. It checks the recorded account for every path, resolves every exact path (duplicates fail), compares bytes and the mandatory recorded SHA-256 (downloads remote bytes if Drive omits the checksum), and alone writes `cloud=verified <ISO timestamp>`. A local mount/cache is not sync proof. Missing, malformed, mismatched or unauthenticated rows remain pending with a reason on stdout; exit 1 means some rows remain, exit 2 is usage/ledger failure. Names in old rows are report-only. `--apply` is idempotent and never uploads or deletes. Deletion still requires the full preservation and authorization gates below.
 
 ## Machine hygiene: no ad-hoc home folders
 
@@ -162,9 +163,9 @@ artifact, with a `_DRIVE-LEDGER.md` pointer left behind. `/fleet-wrap` is to run
 (skillcreator owns that call site; golems owns this skill).
 
 ```bash
-node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N            # dry-run (default): report only
-node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N --json     # the full plan
-node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N --apply    # month moves + plan file
+node "$GOLEMS_ROOT/skills/golem-powers/drive-filing/scripts/rollup.mjs" --repo <path> --keep-months N            # dry-run (default): report only
+node "$GOLEMS_ROOT/skills/golem-powers/drive-filing/scripts/rollup.mjs" --repo <path> --keep-months N --json     # the full plan
+node "$GOLEMS_ROOT/skills/golem-powers/drive-filing/scripts/rollup.mjs" --repo <path> --keep-months N --apply    # month moves + plan file
 ```
 
 The last stdout line is the one-line summary `/fleet-wrap` records: `drive-filing rollup: mode=… files=…
