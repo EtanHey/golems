@@ -157,6 +157,18 @@ uploading, upload without a ledger row, re-upload what Drive already has.
 
 ## docs.local lifecycle
 
+### Monthly qa-video archive
+
+Job `monthly-qa-video-drive-archive`: first day of each month, Asia/Jerusalem, ONLY on the skill-creator lead's scheduling child (seat/role resolution: /agent-routing). The lead creates it after merge. Exact scheduled command: `node "$HOME/Gits/golems/scripts/drive/archive-qa-video.mjs" --apply`. Never add pruning to the scheduled command.
+
+Configure `~/.config/golems/qa-video-archive.json` outside repos: `{"account":"<expected-email>","repos":[{"path":"<absolute-repo-root>","owner":"<producer>","harvestedRuns":["<completed-run-name>"]}]}`. The scheduled job reports a missing config path and these required fields on stderr (exit 2). Before activation, create the config and run a configured `--dry-run` with eligible runs. Owners register only harvested runs; unknown ownership/harvest state stays held. Default command (or `--dry-run`) reports counts/bytes without writes or Drive calls. For unconfigured read-only inventory, repeat `--repo <absolute-repo-root>` with `--dry-run`; those units remain held until owners register them. `--apply` uploads preserved members plus MANIFEST.json to `Brain Drive/06_ARCHIVE/docs-local/<repo>/qa-video/<YYYY-MM>/<run>/`, writes pending member rows, restores one image (or a member if no image), checks its bytes/hash, then runs the verifier. Existing members and MANIFEST.json keep their names. No derivative is omitted.
+
+Old means newest member mtime before the first day of the preceding calendar month (Asia/Jerusalem month); current/previous months stay local. Producer holds (`active`, `pinned`, `hold`, `latest`, `partial`, `unharvested`), credentials/content scans, symlinks, unknown ownership and regenerable directories hold the whole run. Manifests and the ledger stay outside the run. Re-runs reuse matching remote files/rows; conflicts stop. The existing outside-repo OAuth guard provides authentication; never call `op`. The token has full scope; image fetch uses only GETs.
+
+Local pruning is optional, never implied by archive success: only `--apply --prune-verified`, with ownership and explicit deletion authority under Machine hygiene rule 5, may remove unchanged members after every row is verified, every remote hash matches and a restore drill passes. It preserves the ledger/manifests; logical bytes are not physical disk recovery. An existing `.archive-lock` holds only that repo; other repos continue. The job names the lock on stderr and exits nonzero. Confirm no archive process is active, then clear only the empty lock directory with `rmdir` and rerun; never automatically delete it. Pending counts include each remaining ledger row once across runs. Pruning removes empty nested directories; any newly nonempty directories remain intact without a cleanup error.
+
+For a missing cited image, use `node "$HOME/Gits/golems/scripts/drive/fetch-qa-image.mjs" <ledger.md> <original-image-path>`; it restores exact verified ledger bytes into `~/.cache/qa-video/`, reports the Drive path/ID/URL/hash, and never changes Drive or the ledger. Open that returned image before making a visual claim; ambiguity, missing bytes or hash/auth failure stays NOT DETERMINED.
+
 `docs.local/` stays legible, "not just walls of MD files": daily items (`YYYY-MM-DD-*`) roll up into
 monthly folders (`YYYY-MM/`), and months older than N go to Brain Drive through § Archive a heavy
 artifact, with a `_DRIVE-LEDGER.md` pointer left behind. `/fleet-wrap` is to run it at sprint close

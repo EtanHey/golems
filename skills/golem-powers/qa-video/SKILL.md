@@ -176,6 +176,8 @@ convenience index never gates the loop.
 
 ## Evidence Rules (every mode)
 
+Completed `docs.local/qa-video` runs join drive-filing's monthly archive only after their owner registers them as harvested in the outside-repo archive config. Keep original member names, full-size cited frames/crops, decoded timestamps and inspection provenance. Leave `_DRIVE-LEDGER.md` pointers after archival; missing local proof is restored read-only with `$GOLEMS_ROOT/scripts/drive/fetch-qa-image.mjs` and inspected before a visual claim. See `/drive-filing` § Monthly qa-video archive; archive success alone grants no deletion authority.
+
 The helpers and verifiers are the readers; the tooling records provenance. Column and helper
 details: [references/provenance.md](references/provenance.md).
 If a provenance tool or column is missing, keep reading the frames directly, say

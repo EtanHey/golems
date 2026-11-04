@@ -57,7 +57,9 @@ export function createDriveReader({ tokenImpl = driveAccessToken, fetchImpl = fe
       parent = entry.id;
     }
     if (entry.mimeType === folder || !/^\d+$/.test(entry.size) || !Number.isSafeInteger(Number(entry.size))) throw Error('Drive target is not a regular binary file');
-    return { bytes: Number(entry.size), sha256: entry.sha256Checksum, hash: async () => {
+    return { id: entry.id, url: `https://drive.google.com/file/d/${encodeURIComponent(entry.id)}/view`,
+      body: async () => (await get(`${API}/${encodeURIComponent(entry.id)}?alt=media`)).body,
+      bytes: Number(entry.size), sha256: entry.sha256Checksum, hash: async () => {
       const response = await get(`${API}/${encodeURIComponent(entry.id)}?alt=media`);
       const hash = createHash('sha256'); let bytes = 0;
       for await (const chunk of response.body) { bytes += chunk.length; hash.update(chunk); }
@@ -66,7 +68,7 @@ export function createDriveReader({ tokenImpl = driveAccessToken, fetchImpl = fe
     } };
   };
 }
-function parseRow(line) {
+export function parseRow(line) {
   const fields = line.split('|').map(s => s.trim());
   const paths = /^- (.+?) → (.+)$/.exec(fields.shift());
   const bytes = fields.filter(s => /^bytes=/i.test(s)), sha = fields.filter(s => /^sha256=/i.test(s));
