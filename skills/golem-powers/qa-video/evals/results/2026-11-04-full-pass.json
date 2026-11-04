@@ -1,0 +1,2675 @@
+{
+  "date": "2026-11-04",
+  "baseline_ref": "895960f6",
+  "comparison": "master text + prior unmanaged agent vs candidate text + managed agent; loaded-body A/B, not skill-free baseline",
+  "proof_kind": "stubbed-plan-only; no video frames read or helpers executed",
+  "model_cost_note": "Claude API list USD measured; Codex subscription API spend 0, subscription list value unmeasured",
+  "claude_total_usd_including_superseded": 0.6056401,
+  "claude_smoke_usd": 0.114089,
+  "claude_hard_cap_usd": 8,
+  "excluded_errors": [
+    "Codex local recorder TOML array serialization preflight failure (no model turn)",
+    "Codex baseline rep1 and candidate rep1: stub MCP approval refused; runtime-error records excluded"
+  ],
+  "superseded_valid": [
+    "claude-candidate-youtube-full-pass-1",
+    "claude-candidate-ordinary-debrief-1",
+    "codex-candidate-silent-visual-catalog-2"
+  ],
+  "provenance": [
+    {
+      "agent_or_arm": "claude-baseline-youtube-full-pass-1",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded Claude assistant message",
+      "effort_observation_source": "session JSONL effort field: recorded Claude effort"
+    },
+    {
+      "agent_or_arm": "claude-candidate-youtube-full-pass-2",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded Claude assistant message",
+      "effort_observation_source": "session JSONL effort field: recorded Claude effort"
+    },
+    {
+      "agent_or_arm": "claude-baseline-ordinary-debrief-1",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded Claude assistant message",
+      "effort_observation_source": "session JSONL effort field: recorded Claude effort"
+    },
+    {
+      "agent_or_arm": "claude-candidate-ordinary-debrief-2",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded Claude assistant message",
+      "effort_observation_source": "session JSONL effort field: recorded Claude effort"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: turn_context",
+      "effort_observation_source": "session JSONL effort field: turn_context",
+      "agent_or_arm": "codex-baseline-silent-visual-catalog-2"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: turn_context",
+      "effort_observation_source": "session JSONL effort field: turn_context",
+      "agent_or_arm": "codex-baseline-silent-visual-catalog-3"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: turn_context",
+      "effort_observation_source": "session JSONL effort field: turn_context",
+      "agent_or_arm": "codex-baseline-silent-visual-catalog-4"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: turn_context",
+      "effort_observation_source": "session JSONL effort field: turn_context",
+      "agent_or_arm": "codex-candidate-silent-visual-catalog-3"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: turn_context",
+      "effort_observation_source": "session JSONL effort field: turn_context",
+      "agent_or_arm": "codex-candidate-silent-visual-catalog-4"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: turn_context",
+      "effort_observation_source": "session JSONL effort field: turn_context",
+      "agent_or_arm": "codex-candidate-silent-visual-catalog-5"
+    }
+  ],
+  "runs": [
+    {
+      "id": "claude-baseline-youtube-full-pass-1",
+      "arm": "baseline",
+      "raw_capture_sha256": "2528453e7fc1345fc3fd499c715ce5c3e215895f2ec88a03b5dd7cf4b1b35902",
+      "capture": {
+        "case": "youtube-full-pass",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [],
+        "plan": {
+          "mode": "gems",
+          "selected_frame_ids": [
+            "F2",
+            "F4",
+            "F5",
+            "F6",
+            "F8",
+            "F9",
+            "F20",
+            "F21",
+            "F26",
+            "F27",
+            "F32",
+            "F33"
+          ],
+          "own_frame_ids": [
+            "F2",
+            "F4",
+            "F5",
+            "F6",
+            "F8",
+            "F9",
+            "F20",
+            "F21",
+            "F26",
+            "F27",
+            "F32",
+            "F33"
+          ],
+          "helper_batches": [],
+          "densify_windows": [
+            "scroll_transition_le2fps",
+            "hover_transition_le2fps"
+          ],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "hard_error",
+            "context_pressure"
+          ],
+          "coverage_line_template": "Coverage: <pasted output of scripts/coverage-count.sh WORKDIR> (extracted=\u2026 unique=\u2026 repeated=\u2026 inspected=\u2026 pre-sorted-only=\u2026); selected=12 of 40 existing frames, viewed by video-gems itself; unread frames and unsampled spans NOT DETERMINED; budget=600s (parent deadline)."
+        },
+        "seconds": 10.032,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-baseline-youtube-full-pass-1",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded Claude assistant message",
+            "effort_observation_source": "session JSONL effort field: recorded Claude effort"
+          }
+        ],
+        "cost_usd": 0.11408900000000001,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "seconds_basis": "Claude duration_ms; parent elapsed not captured due recorder postprocess error",
+        "prompt_sha256": "ee4a00a6651e45d6a967b492a8e3b318d80321290be178e53c39c2984c203ba9",
+        "prompt_redacted": "You are the Sonnet video-gems worker. Full /qa-video GEMS pass on the narrated Theo UI video (31:44). Transcript is usable and references UI screens.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": false,
+          "helper-dispatch": false,
+          "batch-plan": false,
+          "refinement": false,
+          "budget-continuation": true,
+          "partial-gate": false,
+          "coverage-line": false
+        },
+        "pass": false,
+        "planned": 12,
+        "available": 40,
+        "helper_dispatch_attempts": 0,
+        "planned_helpers": 0,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    },
+    {
+      "id": "claude-candidate-youtube-full-pass-2",
+      "arm": "candidate",
+      "raw_capture_sha256": "4a4e5c40df8571d6bf75997116c45ea8ae841abc3b7cfc160dc8da140726934b",
+      "capture": {
+        "case": "youtube-full-pass",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "Reader h1: frames F1-F14",
+              "role": "claude.judgment image reader",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "84255ac1492dad45422d5276c1cfb1177959a7fb9e910a231c41778f9e0aa0b1"
+            }
+          },
+          {
+            "input": {
+              "title": "Reader h2: frames F15-F27",
+              "role": "claude.judgment image reader",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "b55a7ce51ba2a56c5f3ddd0d8ae2fb50fa661596977dab562dbbe1a5c9c091d8"
+            }
+          },
+          {
+            "input": {
+              "title": "Reader h3: frames F28-F40",
+              "role": "claude.judgment image reader",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "3b9341db66f474c38c2017822fc7559ca65c541a2f8b37bbc1ddd05a3abd20e1"
+            }
+          }
+        ],
+        "plan": {
+          "mode": "VISUAL-FIRST EXHAUSTIVE (gems)",
+          "selected_frame_ids": [
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "F11",
+            "F12",
+            "F13",
+            "F14",
+            "F15",
+            "F16",
+            "F17",
+            "F18",
+            "F19",
+            "F20",
+            "F21",
+            "F22",
+            "F23",
+            "F24",
+            "F25",
+            "F26",
+            "F27",
+            "F28",
+            "F29",
+            "F30",
+            "F31",
+            "F32",
+            "F33",
+            "F34",
+            "F35",
+            "F36",
+            "F37",
+            "F38",
+            "F39",
+            "F40"
+          ],
+          "own_frame_ids": [],
+          "helper_batches": [
+            {
+              "frame_ids": [
+                "F1",
+                "F2",
+                "F3",
+                "F4",
+                "F5",
+                "F6",
+                "F7",
+                "F8",
+                "F9",
+                "F10",
+                "F11",
+                "F12",
+                "F13",
+                "F14"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F15",
+                "F16",
+                "F17",
+                "F18",
+                "F19",
+                "F20",
+                "F21",
+                "F22",
+                "F23",
+                "F24",
+                "F25",
+                "F26",
+                "F27"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F28",
+                "F29",
+                "F30",
+                "F31",
+                "F32",
+                "F33",
+                "F34",
+                "F35",
+                "F36",
+                "F37",
+                "F38",
+                "F39",
+                "F40"
+              ]
+            }
+          ],
+          "densify_windows": [
+            "scroll",
+            "hover",
+            "tooltip",
+            "transition"
+          ],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "hard_error"
+          ],
+          "coverage_line_template": "frames read {N}/{40}, helpers {K} completed of 3 dispatched, budget used {X}/600 s; coverage-count.sh: extracted={..} unique={..} repeated={..} inspected={..} pre-sorted-only={..}"
+        },
+        "seconds": 30.561,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-candidate-youtube-full-pass-2",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded Claude assistant message",
+            "effort_observation_source": "session JSONL effort field: recorded Claude effort"
+          }
+        ],
+        "cost_usd": 0.1439995,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "3c50356e323e5b90c3fab92328c70145a51c7b134bc22337f96dc9b30ecadb72"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "e9007de28d408beaced317b4a351690fc9f8d207c8d6d74c334af0a467e106c3"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "7bd0605d538fcb85f6ebb97d234cc4c385bce562072fee139734b95312510c4a"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "18e1811dec16b00771343fee690365e751ef807725f6d8af0b6eb2515e2ebd8e"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "91c123f3bcc56a77e44cfd15ccf22c2f245ec5da7552610ac6acd25ca826fd57"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "prompt_sha256": "ee4a00a6651e45d6a967b492a8e3b318d80321290be178e53c39c2984c203ba9",
+        "prompt_redacted": "You are the Sonnet video-gems worker. Full /qa-video GEMS pass on the narrated Theo UI video (31:44). Transcript is usable and references UI screens.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": true,
+          "helper-dispatch": true,
+          "batch-plan": true,
+          "refinement": true,
+          "budget-continuation": true,
+          "partial-gate": true,
+          "coverage-line": true
+        },
+        "pass": true,
+        "planned": 40,
+        "available": 40,
+        "helper_dispatch_attempts": 3,
+        "planned_helpers": 3,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    },
+    {
+      "id": "claude-baseline-ordinary-debrief-1",
+      "arm": "baseline",
+      "raw_capture_sha256": "1f77d4180dff5d212028f5cdd09d3ed4ef610b4f2e3e5dad2537da005d8e0660",
+      "capture": {
+        "case": "ordinary-debrief",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "h1: debrief stills F3-F18",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claudeAgent",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "c0d15930a521e286d9e7308d54400a2f6455bfb28f931d3cd0a86fae2e9f2552"
+            }
+          },
+          {
+            "input": {
+              "title": "h2: debrief stills F21-F39",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claudeAgent",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "701cbfe29fd5e552731f06d5815d2499b995506e8a213d0463ac98253ba804c7"
+            }
+          }
+        ],
+        "plan": {
+          "mode": "debrief",
+          "selected_frame_ids": [
+            "F3",
+            "F6",
+            "F9",
+            "F12",
+            "F15",
+            "F18",
+            "F21",
+            "F24",
+            "F28",
+            "F31",
+            "F35",
+            "F39"
+          ],
+          "own_frame_ids": [],
+          "helper_batches": [
+            {
+              "frame_ids": [
+                "F3",
+                "F6",
+                "F9",
+                "F12",
+                "F15",
+                "F18"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F21",
+                "F24",
+                "F28",
+                "F31",
+                "F35",
+                "F39"
+              ]
+            }
+          ],
+          "densify_windows": [],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "context_pressure",
+            "hard_error"
+          ],
+          "coverage_line_template": "Coverage: <pasted output of scripts/coverage-count.sh WORKDIR> (extracted=<n> unique=<n> repeated=<n> inspected=<n> pre-sorted-only=<n>); helpers h1,h2 viewed <n>/12 selected stills; unread stills NOT DETERMINED; transcript-derived debrief.md preserved; partial_cause=<none|deadline_exhausted|context_pressure|hard_error>"
+        },
+        "seconds": 22.965,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-baseline-ordinary-debrief-1",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded Claude assistant message",
+            "effort_observation_source": "session JSONL effort field: recorded Claude effort"
+          }
+        ],
+        "cost_usd": 0.061768699999999996,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "prompt_sha256": "8982b525f920512b9bb3e1e018d7da8ff590cfffe92e38d5be79dc886c4304e9",
+        "prompt_redacted": "Give me a normal debrief of this narrated technical talk; the transcript is usable, and the goal is its spoken insights.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": true,
+          "helper-dispatch": true,
+          "batch-plan": true,
+          "refinement": true,
+          "budget-continuation": true,
+          "partial-gate": true,
+          "coverage-line": true
+        },
+        "pass": true,
+        "planned": 12,
+        "available": 40,
+        "helper_dispatch_attempts": 2,
+        "planned_helpers": 2,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    },
+    {
+      "id": "claude-candidate-ordinary-debrief-2",
+      "arm": "candidate",
+      "raw_capture_sha256": "3808fac653882c53b9986567d0d90ad4ae9ac1fb22fa6ca11a0aa69c2ed17926",
+      "capture": {
+        "case": "ordinary-debrief",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "h1: debrief stills batch 1",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "79774ab1f63ee128a044e2c11ba2ab247cc404e2a90e240a28ce58d825b782b3"
+            }
+          },
+          {
+            "input": {
+              "title": "h2: debrief stills batch 2",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "cdcac5a624d35a2e10b2c4caadc8d16be01546f8e9be3e168afc4f165e2a3b14"
+            }
+          }
+        ],
+        "plan": {
+          "mode": "debrief (transcript-first, ordinary; not visual-first exhaustive)",
+          "selected_frame_ids": [
+            "F2",
+            "F4",
+            "F7",
+            "F10",
+            "F13",
+            "F16",
+            "F19",
+            "F22",
+            "F25",
+            "F29",
+            "F33",
+            "F37"
+          ],
+          "own_frame_ids": [],
+          "helper_batches": [
+            {
+              "frame_ids": [
+                "F2",
+                "F4",
+                "F7",
+                "F10",
+                "F13",
+                "F16"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F19",
+                "F22",
+                "F25",
+                "F29",
+                "F33",
+                "F37"
+              ]
+            }
+          ],
+          "densify_windows": [],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "hard_error"
+          ],
+          "coverage_line_template": "frames read {N}/12 selected (28 existing frames deliberately not read), helpers {K} completed of 2 dispatched, budget used {X}/600 s; coverage-count.sh: {pasted output}"
+        },
+        "seconds": 26.885,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-candidate-ordinary-debrief-2",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded Claude assistant message",
+            "effort_observation_source": "session JSONL effort field: recorded Claude effort"
+          }
+        ],
+        "cost_usd": 0.0681544,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "3c50356e323e5b90c3fab92328c70145a51c7b134bc22337f96dc9b30ecadb72"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "e9007de28d408beaced317b4a351690fc9f8d207c8d6d74c334af0a467e106c3"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "7bd0605d538fcb85f6ebb97d234cc4c385bce562072fee139734b95312510c4a"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "18e1811dec16b00771343fee690365e751ef807725f6d8af0b6eb2515e2ebd8e"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "91c123f3bcc56a77e44cfd15ccf22c2f245ec5da7552610ac6acd25ca826fd57"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "prompt_sha256": "8982b525f920512b9bb3e1e018d7da8ff590cfffe92e38d5be79dc886c4304e9",
+        "prompt_redacted": "Give me a normal debrief of this narrated technical talk; the transcript is usable, and the goal is its spoken insights.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": true,
+          "helper-dispatch": true,
+          "batch-plan": true,
+          "refinement": true,
+          "budget-continuation": true,
+          "partial-gate": true,
+          "coverage-line": true
+        },
+        "pass": true,
+        "planned": 12,
+        "available": 40,
+        "helper_dispatch_attempts": 2,
+        "planned_helpers": 2,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    },
+    {
+      "id": "codex-baseline-silent-visual-catalog-2",
+      "arm": "baseline",
+      "raw_capture_sha256": "b6fd661bb4d3d36d8be4ffea4a1303b56a6d51994594ed078de6bc01e198895a",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "video-gems: exhaustive silent T3 visualization reference catalog",
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false,
+                  "effort": "high"
+                }
+              },
+              "task_sha256": "30ca6bf6c030698909d81fb4de45ded52b7952adfe41598e0961ac6a1b357c95"
+            }
+          }
+        ],
+        "plan": {
+          "mode": "gems",
+          "selected_frame_ids": [
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "F11",
+            "F12",
+            "F13",
+            "F14",
+            "F15",
+            "F16",
+            "F17",
+            "F18",
+            "F19",
+            "F20",
+            "F21",
+            "F22",
+            "F23",
+            "F24",
+            "F25",
+            "F26",
+            "F27",
+            "F28",
+            "F29",
+            "F30",
+            "F31",
+            "F32",
+            "F33",
+            "F34",
+            "F35",
+            "F36",
+            "F37",
+            "F38",
+            "F39",
+            "F40",
+            "F41",
+            "F42",
+            "F43",
+            "F44",
+            "F45",
+            "F46",
+            "F47",
+            "F48"
+          ],
+          "own_frame_ids": [],
+          "helper_batches": [
+            {
+              "frame_ids": [
+                "F1",
+                "F2",
+                "F3",
+                "F4",
+                "F5",
+                "F6",
+                "F7",
+                "F8",
+                "F9",
+                "F10",
+                "F11",
+                "F12",
+                "F13",
+                "F14",
+                "F15",
+                "F16",
+                "F17",
+                "F18",
+                "F19",
+                "F20",
+                "F21",
+                "F22",
+                "F23",
+                "F24",
+                "F25",
+                "F26",
+                "F27",
+                "F28",
+                "F29",
+                "F30",
+                "F31",
+                "F32",
+                "F33",
+                "F34",
+                "F35",
+                "F36",
+                "F37",
+                "F38",
+                "F39",
+                "F40",
+                "F41",
+                "F42",
+                "F43",
+                "F44",
+                "F45",
+                "F46",
+                "F47",
+                "F48"
+              ]
+            }
+          ],
+          "densify_windows": [
+            "scroll",
+            "hover"
+          ],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "hard_error"
+          ],
+          "coverage_line_template": "extracted=<ledger count> unique=<ledger count> repeated=<ledger count> inspected=<logged direct reads> pre-sorted-only=<ledger count>; paste actual coverage-count.sh output; if unavailable: provenance unavailable"
+        },
+        "seconds": 60.677,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: turn_context",
+            "effort_observation_source": "session JSONL effort field: turn_context",
+            "agent_or_arm": "codex-baseline-silent-visual-catalog-2"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "94ce4b4aa41f0175eb4dc45fcacbb75de086b9f245d37d804983eebe3ea2e24d",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": true,
+          "helper-dispatch": false,
+          "batch-plan": false,
+          "refinement": true,
+          "budget-continuation": true,
+          "partial-gate": true,
+          "coverage-line": false
+        },
+        "pass": false,
+        "planned": 48,
+        "available": 48,
+        "helper_dispatch_attempts": 0,
+        "planned_helpers": 1,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    },
+    {
+      "id": "codex-baseline-silent-visual-catalog-3",
+      "arm": "baseline",
+      "raw_capture_sha256": "9396057fc85648b9845b2f3bd0f42aa89f2cf9cfc71f625a2c1c03f973053055",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false,
+                  "effort": "high"
+                }
+              },
+              "title": "Plan exhaustive silent T3 visualization reference catalog",
+              "task_sha256": "85fff4ee49c6e9741155857630ab79614000469381f67cbfe6eb70ab0ab832e4"
+            }
+          }
+        ],
+        "plan": {
+          "mode": "gems",
+          "selected_frame_ids": [
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "F11",
+            "F12",
+            "F13",
+            "F14",
+            "F15",
+            "F16",
+            "F17",
+            "F18",
+            "F19",
+            "F20",
+            "F21",
+            "F22",
+            "F23",
+            "F24",
+            "F25",
+            "F26",
+            "F27",
+            "F28",
+            "F29",
+            "F30",
+            "F31",
+            "F32",
+            "F33",
+            "F34",
+            "F35",
+            "F36",
+            "F37",
+            "F38",
+            "F39",
+            "F40",
+            "F41",
+            "F42",
+            "F43",
+            "F44",
+            "F45",
+            "F46",
+            "F47",
+            "F48"
+          ],
+          "own_frame_ids": [],
+          "helper_batches": [
+            {
+              "frame_ids": [
+                "F1",
+                "F2",
+                "F3",
+                "F4",
+                "F5",
+                "F6",
+                "F7",
+                "F8",
+                "F9",
+                "F10",
+                "F11",
+                "F12",
+                "F13",
+                "F14",
+                "F15",
+                "F16",
+                "F17",
+                "F18",
+                "F19",
+                "F20",
+                "F21",
+                "F22",
+                "F23",
+                "F24",
+                "F25",
+                "F26",
+                "F27",
+                "F28",
+                "F29",
+                "F30",
+                "F31",
+                "F32",
+                "F33",
+                "F34",
+                "F35",
+                "F36",
+                "F37",
+                "F38",
+                "F39",
+                "F40",
+                "F41",
+                "F42",
+                "F43",
+                "F44",
+                "F45",
+                "F46",
+                "F47",
+                "F48"
+              ]
+            }
+          ],
+          "densify_windows": [
+            "scroll",
+            "hover"
+          ],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "hard_error"
+          ],
+          "coverage_line_template": "extracted=<ledger> unique=<ledger> repeated=<ledger> inspected=<ledger> pre-sorted-only=<ledger>; reader=video-gems; catalog_viewed=<actual reads>/48; unread_frame_ids=<actual unread IDs>; transition_coverage=<actual scroll/hover reads>; provenance=<available|unavailable>"
+        },
+        "seconds": 63.369,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: turn_context",
+            "effort_observation_source": "session JSONL effort field: turn_context",
+            "agent_or_arm": "codex-baseline-silent-visual-catalog-3"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "94ce4b4aa41f0175eb4dc45fcacbb75de086b9f245d37d804983eebe3ea2e24d",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": true,
+          "helper-dispatch": false,
+          "batch-plan": false,
+          "refinement": true,
+          "budget-continuation": true,
+          "partial-gate": true,
+          "coverage-line": false
+        },
+        "pass": false,
+        "planned": 48,
+        "available": 48,
+        "helper_dispatch_attempts": 0,
+        "planned_helpers": 1,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    },
+    {
+      "id": "codex-baseline-silent-visual-catalog-4",
+      "arm": "baseline",
+      "raw_capture_sha256": "59feb313d293267bbeaebc7508e8ddffc31b7b186b1b3b20fda75307b6676a31",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "video-gems: exhaustive silent visual catalog, reader 1",
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "4f81853cc8f13791fbf9fcb34d05dcfeda6c2dfd25ccb3c5f9d05e4a9e9cbc76"
+            }
+          },
+          {
+            "input": {
+              "title": "Gems visual catalog reader 2",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "9ace1a38eed07ff197e2cef716f9270c7fc82e862d615b32a5ecb9848c8c545c"
+            }
+          },
+          {
+            "input": {
+              "title": "Gems visual catalog reader 3",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "4b01ea8ffa699cfa2e7a5a6fc41b7a4ca283b32e6657dd74080781dbc8103ab9"
+            }
+          },
+          {
+            "input": {
+              "title": "Gems visual catalog reader 4",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "5ba776a5610db099aee0317a120190567f84e63f352707e1fc25a9731e222a51"
+            }
+          }
+        ],
+        "plan": {
+          "mode": "gems",
+          "selected_frame_ids": [
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "F11",
+            "F12",
+            "F13",
+            "F14",
+            "F15",
+            "F16",
+            "F17",
+            "F18",
+            "F19",
+            "F20",
+            "F21",
+            "F22",
+            "F23",
+            "F24",
+            "F25",
+            "F26",
+            "F27",
+            "F28",
+            "F29",
+            "F30",
+            "F31",
+            "F32",
+            "F33",
+            "F34",
+            "F35",
+            "F36",
+            "F37",
+            "F38",
+            "F39",
+            "F40",
+            "F41",
+            "F42",
+            "F43",
+            "F44",
+            "F45",
+            "F46",
+            "F47",
+            "F48"
+          ],
+          "own_frame_ids": [],
+          "helper_batches": [
+            {
+              "frame_ids": [
+                "F1",
+                "F2",
+                "F3",
+                "F4",
+                "F5",
+                "F6",
+                "F7",
+                "F8",
+                "F9",
+                "F10",
+                "F11",
+                "F12"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F13",
+                "F14",
+                "F15",
+                "F16",
+                "F17",
+                "F18",
+                "F19",
+                "F20",
+                "F21",
+                "F22",
+                "F23",
+                "F24"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F25",
+                "F26",
+                "F27",
+                "F28",
+                "F29",
+                "F30",
+                "F31",
+                "F32",
+                "F33",
+                "F34",
+                "F35",
+                "F36"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F37",
+                "F38",
+                "F39",
+                "F40",
+                "F41",
+                "F42",
+                "F43",
+                "F44",
+                "F45",
+                "F46",
+                "F47",
+                "F48"
+              ]
+            }
+          ],
+          "densify_windows": [
+            "scroll",
+            "hover"
+          ],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "hard_error"
+          ],
+          "coverage_line_template": "extracted=<ledger count> unique=<ledger count> repeated=<ledger count> inspected=<logged direct reads> pre-sorted-only=<ledger count>"
+        },
+        "seconds": 64.496,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: turn_context",
+            "effort_observation_source": "session JSONL effort field: turn_context",
+            "agent_or_arm": "codex-baseline-silent-visual-catalog-4"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "94ce4b4aa41f0175eb4dc45fcacbb75de086b9f245d37d804983eebe3ea2e24d",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": true,
+          "helper-dispatch": false,
+          "batch-plan": true,
+          "refinement": true,
+          "budget-continuation": true,
+          "partial-gate": true,
+          "coverage-line": false
+        },
+        "pass": false,
+        "planned": 48,
+        "available": 48,
+        "helper_dispatch_attempts": 3,
+        "planned_helpers": 4,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    },
+    {
+      "id": "codex-candidate-silent-visual-catalog-3",
+      "arm": "candidate",
+      "raw_capture_sha256": "c6755ad657d4276139fe65bc6e309491c3b1567289d03b654ca1344ec010a76d",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "Plan video-gems exhaustive catalog coordination",
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false,
+                  "effort": "high"
+                }
+              },
+              "task_sha256": "0e231f0b7785df5cf57827b9d4eddaf77da6975dce85130beae480ec5d71d0ba"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive full-size reader h1",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "f3da273f815ed8a92ff1759d3c47d948078ad178550eba93902f656349d506f3"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive full-size reader h2",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "8930513b71fe1ccd94cbb330514e90fa4cfe21c2f45fbe9823b6398370d82984"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive full-size reader h3",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "da0058db7c951c6b68ed79c59b881cc3dee6b017e1a1955e0636ea588936160c"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive full-size reader h4",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "45b211f17d87c3b7b41db2538cb9728ae08d47dd346d2a525d3b79fcc9580d21"
+            }
+          }
+        ],
+        "plan": {
+          "mode": "VISUAL-FIRST EXHAUSTIVE",
+          "selected_frame_ids": [
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "F11",
+            "F12",
+            "F13",
+            "F14",
+            "F15",
+            "F16",
+            "F17",
+            "F18",
+            "F19",
+            "F20",
+            "F21",
+            "F22",
+            "F23",
+            "F24",
+            "F25",
+            "F26",
+            "F27",
+            "F28",
+            "F29",
+            "F30",
+            "F31",
+            "F32",
+            "F33",
+            "F34",
+            "F35",
+            "F36",
+            "F37",
+            "F38",
+            "F39",
+            "F40",
+            "F41",
+            "F42",
+            "F43",
+            "F44",
+            "F45",
+            "F46",
+            "F47",
+            "F48"
+          ],
+          "own_frame_ids": [],
+          "helper_batches": [
+            {
+              "frame_ids": [
+                "F1",
+                "F2",
+                "F3",
+                "F4",
+                "F5",
+                "F6",
+                "F7",
+                "F8",
+                "F9",
+                "F10",
+                "F11",
+                "F12",
+                "F13"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F12",
+                "F13",
+                "F14",
+                "F15",
+                "F16",
+                "F17",
+                "F18",
+                "F19",
+                "F20",
+                "F21",
+                "F22",
+                "F23",
+                "F24",
+                "F25"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F24",
+                "F25",
+                "F26",
+                "F27",
+                "F28",
+                "F29",
+                "F30",
+                "F31",
+                "F32",
+                "F33",
+                "F34",
+                "F35",
+                "F36",
+                "F37"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F36",
+                "F37",
+                "F38",
+                "F39",
+                "F40",
+                "F41",
+                "F42",
+                "F43",
+                "F44",
+                "F45",
+                "F46",
+                "F47",
+                "F48"
+              ]
+            }
+          ],
+          "densify_windows": [
+            "scroll",
+            "hover"
+          ],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "hard_error"
+          ],
+          "coverage_line_template": "frames read {actual_unique_full_size_reads}/{all_extracted_frames_including_refinements}, helpers {completed_reader_helpers}, budget used {actual_elapsed_seconds}/600 s; {verbatim coverage-count.sh output: extracted=\u2026 unique=\u2026 repeated=\u2026 inspected=\u2026 pre-sorted-only=\u2026}"
+        },
+        "seconds": 60.633,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: turn_context",
+            "effort_observation_source": "session JSONL effort field: turn_context",
+            "agent_or_arm": "codex-candidate-silent-visual-catalog-3"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "3c50356e323e5b90c3fab92328c70145a51c7b134bc22337f96dc9b30ecadb72"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "e9007de28d408beaced317b4a351690fc9f8d207c8d6d74c334af0a467e106c3"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "7bd0605d538fcb85f6ebb97d234cc4c385bce562072fee139734b95312510c4a"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "18e1811dec16b00771343fee690365e751ef807725f6d8af0b6eb2515e2ebd8e"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "91c123f3bcc56a77e44cfd15ccf22c2f245ec5da7552610ac6acd25ca826fd57"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "94ce4b4aa41f0175eb4dc45fcacbb75de086b9f245d37d804983eebe3ea2e24d",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": true,
+          "helper-dispatch": true,
+          "batch-plan": true,
+          "refinement": true,
+          "budget-continuation": true,
+          "partial-gate": true,
+          "coverage-line": true
+        },
+        "pass": true,
+        "planned": 48,
+        "available": 48,
+        "helper_dispatch_attempts": 4,
+        "planned_helpers": 4,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    },
+    {
+      "id": "codex-candidate-silent-visual-catalog-4",
+      "arm": "candidate",
+      "raw_capture_sha256": "81d3f4ed89c2085062d7bb325cf35b4c0ced6e1394e871601b2e31d08bf8a747",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false,
+                  "effort": "high"
+                }
+              },
+              "title": "Plan exhaustive silent T3 visualization gems",
+              "task_sha256": "a58693d3ddf35ec7b21c120b624e682ab60c58f01b0082ad6949df82d80f7f8d"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan exhaustive frame reader h1",
+              "task_sha256": "f0f9f85455c3326e24f78e881dd64cf439c338a7578087acaeb8e8b691512917"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan exhaustive frame reader h2",
+              "task_sha256": "fbba136af9dd26a87a9f9fd1462d01274f1b226ee3aa2e7931411934b24007d7"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan exhaustive frame reader h3",
+              "task_sha256": "0ae737a8e7c3344debb702535b85e245b8131f53192e7657de3cfe6ba9166b5f"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan exhaustive frame reader h4",
+              "task_sha256": "6b531c8afc80726542c13ae63d20b8fed4bda16936963bbd83c585676e37bd9f"
+            }
+          }
+        ],
+        "plan": {
+          "mode": "VISUAL-FIRST EXHAUSTIVE",
+          "selected_frame_ids": [
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "F11",
+            "F12",
+            "F13",
+            "F14",
+            "F15",
+            "F16",
+            "F17",
+            "F18",
+            "F19",
+            "F20",
+            "F21",
+            "F22",
+            "F23",
+            "F24",
+            "F25",
+            "F26",
+            "F27",
+            "F28",
+            "F29",
+            "F30",
+            "F31",
+            "F32",
+            "F33",
+            "F34",
+            "F35",
+            "F36",
+            "F37",
+            "F38",
+            "F39",
+            "F40",
+            "F41",
+            "F42",
+            "F43",
+            "F44",
+            "F45",
+            "F46",
+            "F47",
+            "F48"
+          ],
+          "own_frame_ids": [],
+          "helper_batches": [
+            {
+              "frame_ids": [
+                "F1",
+                "F2",
+                "F3",
+                "F4",
+                "F5",
+                "F6",
+                "F7",
+                "F8",
+                "F9",
+                "F10",
+                "F11",
+                "F12"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F12",
+                "F13",
+                "F14",
+                "F15",
+                "F16",
+                "F17",
+                "F18",
+                "F19",
+                "F20",
+                "F21",
+                "F22",
+                "F23",
+                "F24"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F24",
+                "F25",
+                "F26",
+                "F27",
+                "F28",
+                "F29",
+                "F30",
+                "F31",
+                "F32",
+                "F33",
+                "F34",
+                "F35",
+                "F36"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F36",
+                "F37",
+                "F38",
+                "F39",
+                "F40",
+                "F41",
+                "F42",
+                "F43",
+                "F44",
+                "F45",
+                "F46",
+                "F47",
+                "F48"
+              ]
+            }
+          ],
+          "densify_windows": [
+            "scroll",
+            "hover"
+          ],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "hard_error"
+          ],
+          "coverage_line_template": "frames read <actual distinct full-size frames read>/<all extracted frames including refinements>, helpers <actual completed readers>, budget used <actual elapsed>/600 s; <verbatim coverage-count.sh output: extracted=\u2026 unique=\u2026 repeated=\u2026 inspected=\u2026 pre-sorted-only=\u2026>"
+        },
+        "seconds": 61.748,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: turn_context",
+            "effort_observation_source": "session JSONL effort field: turn_context",
+            "agent_or_arm": "codex-candidate-silent-visual-catalog-4"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "3c50356e323e5b90c3fab92328c70145a51c7b134bc22337f96dc9b30ecadb72"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "e9007de28d408beaced317b4a351690fc9f8d207c8d6d74c334af0a467e106c3"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "7bd0605d538fcb85f6ebb97d234cc4c385bce562072fee139734b95312510c4a"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "18e1811dec16b00771343fee690365e751ef807725f6d8af0b6eb2515e2ebd8e"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "91c123f3bcc56a77e44cfd15ccf22c2f245ec5da7552610ac6acd25ca826fd57"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "94ce4b4aa41f0175eb4dc45fcacbb75de086b9f245d37d804983eebe3ea2e24d",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": true,
+          "helper-dispatch": true,
+          "batch-plan": true,
+          "refinement": true,
+          "budget-continuation": true,
+          "partial-gate": true,
+          "coverage-line": true
+        },
+        "pass": true,
+        "planned": 48,
+        "available": 48,
+        "helper_dispatch_attempts": 4,
+        "planned_helpers": 4,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    },
+    {
+      "id": "codex-candidate-silent-visual-catalog-5",
+      "arm": "candidate",
+      "raw_capture_sha256": "7752fab54fab2fae6687c8be8ac233c95e5ab159587715e1cffab951b6922580",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "Plan video-gems exhaustive coordinator",
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false,
+                  "effort": "high"
+                }
+              },
+              "task_sha256": "ff162f67fba22bf71c23328f0207b5b525c661f4e712c12548efdfb4a6ca3296"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive full-size reader h1",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "b8ff6cefd32c112773fc346ed3d3be73b50f31b859f03a434ab5d9920f79539d"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive full-size reader h2",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "334b8ca3e1289b9d98a9928c1374f1a609cf8eb74f5e344c602fba1dffa91527"
+            }
+          }
+        ],
+        "plan": {
+          "mode": "gems / VISUAL-FIRST EXHAUSTIVE",
+          "selected_frame_ids": [
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "F11",
+            "F12",
+            "F13",
+            "F14",
+            "F15",
+            "F16",
+            "F17",
+            "F18",
+            "F19",
+            "F20",
+            "F21",
+            "F22",
+            "F23",
+            "F24",
+            "F25",
+            "F26",
+            "F27",
+            "F28",
+            "F29",
+            "F30",
+            "F31",
+            "F32",
+            "F33",
+            "F34",
+            "F35",
+            "F36",
+            "F37",
+            "F38",
+            "F39",
+            "F40",
+            "F41",
+            "F42",
+            "F43",
+            "F44",
+            "F45",
+            "F46",
+            "F47",
+            "F48"
+          ],
+          "own_frame_ids": [],
+          "helper_batches": [
+            {
+              "frame_ids": [
+                "F1",
+                "F2",
+                "F3",
+                "F4",
+                "F5",
+                "F6",
+                "F7",
+                "F8",
+                "F9",
+                "F10",
+                "F11",
+                "F12",
+                "F13",
+                "F14",
+                "F15",
+                "F16",
+                "F17",
+                "F18",
+                "F19",
+                "F20",
+                "F21",
+                "F22",
+                "F23",
+                "F24",
+                "F25"
+              ]
+            },
+            {
+              "frame_ids": [
+                "F24",
+                "F25",
+                "F26",
+                "F27",
+                "F28",
+                "F29",
+                "F30",
+                "F31",
+                "F32",
+                "F33",
+                "F34",
+                "F35",
+                "F36",
+                "F37",
+                "F38",
+                "F39",
+                "F40",
+                "F41",
+                "F42",
+                "F43",
+                "F44",
+                "F45",
+                "F46",
+                "F47",
+                "F48"
+              ]
+            }
+          ],
+          "densify_windows": [
+            "scroll",
+            "hover"
+          ],
+          "continue_with_unread_and_time": true,
+          "partial_causes": [
+            "deadline_exhausted",
+            "hard_error"
+          ],
+          "coverage_line_template": "frames read {actual_unique_full_size_reads}/{all_extracted_frames_including_refinements}, helpers {actual_completed_readers}, budget used {actual_elapsed_seconds}/600 s; {paste_actual_coverage-count.sh_output}"
+        },
+        "seconds": 58.191,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: turn_context",
+            "effort_observation_source": "session JSONL effort field: turn_context",
+            "agent_or_arm": "codex-candidate-silent-visual-catalog-5"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "3c50356e323e5b90c3fab92328c70145a51c7b134bc22337f96dc9b30ecadb72"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "e9007de28d408beaced317b4a351690fc9f8d207c8d6d74c334af0a467e106c3"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "7bd0605d538fcb85f6ebb97d234cc4c385bce562072fee139734b95312510c4a"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "18e1811dec16b00771343fee690365e751ef807725f6d8af0b6eb2515e2ebd8e"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "91c123f3bcc56a77e44cfd15ccf22c2f245ec5da7552610ac6acd25ca826fd57"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "94ce4b4aa41f0175eb4dc45fcacbb75de086b9f245d37d804983eebe3ea2e24d",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Known scroll and hover transitions are available for further extraction; no hard error exists. Use the loaded workflow to decide how much coverage and what reader arrangement to plan. Planning-only eval: do not inspect media; issue the stub dispatch calls your chosen plan would make. Then return ONLY JSON (no fences) with fields: mode (string), selected_frame_ids (array), own_frame_ids (array), helper_batches (array of {frame_ids:array}), densify_windows (array of cue kinds), continue_with_unread_and_time (boolean), partial_causes (array of machine-readable causes you permit), coverage_line_template (string). When choosing causes use identifiers such as deadline_exhausted, hard_error, context_pressure, sufficient_summary. Do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "score": {
+        "assertions": {
+          "frame-plan": true,
+          "helper-dispatch": true,
+          "batch-plan": true,
+          "refinement": true,
+          "budget-continuation": true,
+          "partial-gate": true,
+          "coverage-line": true
+        },
+        "pass": true,
+        "planned": 48,
+        "available": 48,
+        "helper_dispatch_attempts": 2,
+        "planned_helpers": 2,
+        "actual_frames_read": 0,
+        "actual_helpers_completed": 0,
+        "proof_kind": "stubbed-plan-only; no media reading or helper execution"
+      }
+    }
+  ],
+  "source_ref": "9cef80ad",
+  "historical_only": true,
+  "measurement_limitations": [
+    "Codex master already planned all 48 frames and failed only reader/batch-count checks and literal coverage-template wording; no missing-frame, refinement, continuation or PARTIAL-policy failure.",
+    "Claude master reproduced the thin pattern: 12/40 frames and zero reader dispatches.",
+    "The measured prompt supplied scorer field names, stop-cause identifiers and scroll/hover cues. Coverage-line is a literal template match, not observed behavior.",
+    "Round 2 adds a six-frame cap and merge/gap protocol; these historical candidate scores do not measure that text."
+  ]
+}

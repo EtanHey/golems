@@ -250,6 +250,8 @@ jobs:
           node --test scripts/tests/stalker-digest-evidence.test.mjs
           node --test scripts/tests/stalker-digest-runner.test.mjs
           node --test scripts/tests/stalker-digest-text.test.mjs
+          node --test scripts/tests/drive-ledger.test.mjs
+          node --test scripts/tests/qa-video-archive.test.mjs
           node --test scripts/tests/stalker-drive-archive.test.mjs
           node --test scripts/tests/stalker-media-retention.test.mjs
           node --test scripts/tests/stalker-morning-digest.test.mjs

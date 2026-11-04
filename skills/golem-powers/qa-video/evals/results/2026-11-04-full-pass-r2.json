@@ -1,0 +1,2608 @@
+{
+  "date": "2026-11-04",
+  "baseline_ref": "895960f6",
+  "comparison": "unseeded natural-language planning A/B; master + old unmanaged profile vs round-2 candidate + managed profile",
+  "proof_kind": "planning-only; no media reads or real helpers; nested Agent handoff untested",
+  "prompt_disclosure": "No scorer field names, cause identifiers or scroll/hover cues in the measured prompt. The loaded skill still supplies its intended instructions.",
+  "semantic_judge_pin": {
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "prompt_sha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245"
+  },
+  "judge_effort_note": "Judge effort is the protocol pin; served model is observed in API modelUsage. Plan-arm model and effort are observed in session JSONL.",
+  "claude_total_usd_including_round1_and_judging": 1.5825699000000002,
+  "claude_hard_cap_usd": 8,
+  "sample_limit": "one Claude rep per arm/case; three Codex silent reps per arm; no statistical uplift claim",
+  "provenance": [
+    {
+      "agent_or_arm": "claude-baseline-youtube-full-pass-1",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime"
+    },
+    {
+      "agent_or_arm": "claude-candidate-youtube-full-pass-1",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime"
+    },
+    {
+      "agent_or_arm": "claude-baseline-ordinary-debrief-1",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime"
+    },
+    {
+      "agent_or_arm": "claude-candidate-ordinary-debrief-1",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime"
+    },
+    {
+      "agent_or_arm": "claude-baseline-full-transcript-debrief-1",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime"
+    },
+    {
+      "agent_or_arm": "claude-candidate-full-transcript-debrief-1",
+      "model_requested": "claude-sonnet-5-5",
+      "model_effective": "claude-sonnet-5-5",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime",
+      "agent_or_arm": "codex-baseline-silent-visual-catalog-1"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime",
+      "agent_or_arm": "codex-baseline-silent-visual-catalog-2"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime",
+      "agent_or_arm": "codex-baseline-silent-visual-catalog-3"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime",
+      "agent_or_arm": "codex-candidate-silent-visual-catalog-1"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime",
+      "agent_or_arm": "codex-candidate-silent-visual-catalog-2"
+    },
+    {
+      "model_requested": "gpt-6.1-sol",
+      "model_effective": "gpt-6.1-sol",
+      "effort_effective": "high",
+      "model_observation_source": "session JSONL model field: recorded runtime",
+      "effort_observation_source": "session JSONL effort field: recorded runtime",
+      "agent_or_arm": "codex-candidate-silent-visual-catalog-3"
+    }
+  ],
+  "runs": [
+    {
+      "id": "claude-baseline-youtube-full-pass-1",
+      "arm": "baseline",
+      "raw_capture_sha256": "7a25098381febce164ea8db2825e55364ebbcfa54f5ded6f94f3a957744cdd2b",
+      "capture": {
+        "case": "youtube-full-pass",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [],
+        "text": "**Dispatch calls issued: none.** I am the named video-gems worker, so I run the whole gems pass myself, including reading the stills. The workflow says a sub-agent never uses the Agent tool, and gems mode has no helper fan-out. The parent persists to BrainLayer, so I don't. Native subagents are off. I have not inspected any media, and I have no reads, timings or helper results to report yet.\n\n**Mode and budget**\n- Mode is **gems**, which is transcript-first.\n- The default budget would be max(600, 24 \u00d7 31.73 min) \u2248 762 s. The parent's remaining deadline of **600 s wins**, so I'll show 600 s as the computed budget.\n- The 600 s covers everything: transcription, stills, reads and the note.\n- The target is a hard stop on new work at about 480 s, and a finished note by about 560 s.\n\n**Plan**\n1. **Progress file.** Write `progress.txt` at the root of a fresh workdir at every phase: transcribing, moments picked, extracting stills, viewing n/N, compiling, done or blocker.\n2. **Run the pipeline.** Use a fresh workdir with the source video, info.json and logs only. Launch `run-step.sh <workdir> gems -- python3 -I debrief.py <video> --workdir <fresh> --mode gems --budget-seconds <remaining>`. Poll `logs/gems.exit` until it is numeric `0` or `STILLS_READY`, then check the real outputs: `transcript.srt`, `plan.json`, `moment-NN.jpg`, `frames.tsv`.\n3. **Read the transcript first.** Read the full SRT and `plan.json`. Pick **at most 12** moments: referenced UI screens, claims, numbers, opinions and advice. Each gets one still, or a short window of 2 fps or less. There is no blanket 30 s coverage. A scene-cue sweep is allowed only around screens the narration explicitly refers to, and only if budget remains.\n4. **View the stills myself.** Read each `moment-NN.jpg` in time order and match it to `frames.tsv` for its real `pts_s`. Log each one with `inspected.sh`, and cite full-size stills or `crop.sh` crops, never a tile alone. If a slide, code or chart is unclear, take one tighter still or a short 2 fps window within the budget. Otherwise mark it NOT DETERMINED.\n5. **Keep narration apart from the screen.** The note has \"Speaker says\" and \"Screen shows\" separately. A spoken claim about a UI is not proof of the UI.\n6. **Write the gems note.** It contains:\n   - the source title, URL, speaker and date from info.json;\n   - top gems with timestamps;\n   - action items;\n   - claims that need later verification;\n   - frame citations with `pts_s`;\n   - the pasted `coverage-count.sh` line.\n7. **Return text to the parent.** The parent runs `brain_digest` on the transcript and note, then `brain_store`, and decides on `/drive-filing`. If BrainLayer is down, the parent saves the fallback file and flags that persistence failed.\n\n**The 40 frames you listed (F1\u2013F40)**\n- I have not opened them.\n- They run only from 3 s to 885 s of a 1904 s video, so at most about the first 46% is covered.\n- They aren't in this run's `frames.tsv` ledger, so I can't log them as inspected.\n- I'd use one only as a locator if it matches a chosen moment, and never as coverage.\n- I would not claim any visual coverage past 885 s unless a targeted still from `debrief.py` shows it.\n\n**Stopping conditions**\n- **Transcription fails.** Stop and report `TOOLING FAILURE` with the raw log path. I won't reuse an old transcript.\n- **Deadline or budget exit.** Stop new launches at about 480 s. If `debrief.py` exits `BUDGET_EXCEEDED` or partial, I still read the preserved `debrief.md` and the SRT and write the note from them. Every still I didn't view stays **NOT DETERMINED**.\n- **Image-context limit.** Stop viewing before context runs out, and report the partial coverage honestly.\n- **Helper or parser failure.** Report it as `TOOLING FAILURE` with the path, never as \"no screenshots\".\n- **Unclear moment.** After at most one refinement pass it becomes NOT DETERMINED, never a confirmed visual finding.\n- **No media tools.** If Bash or the shell is missing, report the blocker and stop. I won't open panes or send media commands to other surfaces.",
+        "seconds": 25.375,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-baseline-youtube-full-pass-1",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime"
+          }
+        ],
+        "cost_usd": 0.1273365,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "prompt_sha256": "98fe7dabba58ff4edf4be9f31f21aff41defb62708584d2be44b6591d6f504f5",
+        "prompt_redacted": "You are the Sonnet video-gems worker. Full /qa-video GEMS pass on the narrated Theo UI video (31:44). Transcript is usable and references UI screens.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "assertion": {
+        "id": "youtube-full-pass",
+        "kind": "semantic",
+        "claim": "The operative plan commits to reading every supplied frame using multiple image-reader tasks, each capped at six full-size frames including overlap. It merges findings keyed by frame ID and decoded timestamp, collapses duplicates, and lists missing/unread IDs or conflicts as coverage gaps. Unread work continues while time remains; partial delivery is allowed only at the real deadline or on a hard error."
+      },
+      "judgment": {
+        "verdict": false,
+        "quotes": [
+          "**Dispatch calls issued: none.** I am the named video-gems worker, so I run the whole gems pass myself, including reading the stills.",
+          "- I have not opened them.",
+          "Pick **at most 12** moments"
+        ],
+        "rationale": "The transcript rules out fanning work out to helpers and says the worker will read the stills itself. It also refuses to read the 40 supplied frames and instead picks at most 12 transcript-driven moments. So it never commits to reading every frame with multiple image-reader tasks capped at six frames each, or to merging findings by frame ID.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 274,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 3484,
+              "webSearchRequests": 0,
+              "costUSD": 0.022908,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "cacheCreationEphemeral5mInputTokens": 3484,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "9c088b18d57ce0b6cec4a947f1b3b92c42f9eedb6ed54a60391869e9dd372615",
+          "transcriptSha256": "12cf1501ce0bdeb23daa13e2856b02fa411f74126eb0fe4d5ed90e0907decb72",
+          "judgedAt": "2026-11-04T04:48:14.676Z"
+        }
+      },
+      "judging_usd": 0.022908,
+      "score": {
+        "trusted": true,
+        "pass": false
+      },
+      "reader_dispatch_attempts": 0,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "claude-candidate-youtube-full-pass-1",
+      "arm": "candidate",
+      "raw_capture_sha256": "7f5ee153070fa386aaa02b2473f10706a04b09163c647328c6944c35663a5cbc",
+      "capture": {
+        "case": "youtube-full-pass",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "h1 frames F1-F6",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "c0891cbbd2beacd597676f3b426f4737ab2e33a37b488731beb3ee88d26b718d"
+            }
+          },
+          {
+            "input": {
+              "title": "h2 frames F6-F11",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "5d0cba7d13fc0fd717e319e6187b86924f591ec8ac36da8f3e87564b28db1e63"
+            }
+          },
+          {
+            "input": {
+              "title": "h3 frames F11-F16",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "2cc5bf2e1573259dbb6ec34f2c8543ae115936da726c04fb83f1cc9e3b661798"
+            }
+          },
+          {
+            "input": {
+              "title": "h4 frames F16-F21",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "3d86cff3dcad0e16df74b6fc3330bd4bfeefbe7869e64367ef1f5210590f70b7"
+            }
+          },
+          {
+            "input": {
+              "title": "h5 frames F21-F26",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "90cc49a762744c810d5bc168f1fa90eb05eb01b69418374f40b492a3d21f6266"
+            }
+          },
+          {
+            "input": {
+              "title": "h6 frames F26-F31",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "056293839cb206d8e1f83eacc0bfce923ec764d5e4bc6bd4965eff1c6fc2e622"
+            }
+          },
+          {
+            "input": {
+              "title": "h7 frames F31-F36",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "cf9f2e6ae545e082b8e3b73591a410a72bcf5644d17a490a70e7ee550f277e6b"
+            }
+          },
+          {
+            "input": {
+              "title": "h8 frames F36-F40",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "b013b6d6ddee6b2db0ba5e45762822f9c55d37285ceefdbe5a6df89fa8a92cbc"
+            }
+          }
+        ],
+        "text": "## Plan (planning capture only)\n\nNothing has been read, extracted or verified yet. The eight dispatches were accepted as stubs (`stub-task-1` to `stub-task-8`). I haven't awaited them, so there are no reader receipts. Reads done: 0/40. Helpers completed: 0/8. Elapsed time is not measured.\n\n**Mode.** VISUAL-FIRST EXHAUSTIVE. \"Full /qa-video GEMS pass\" overrides the \u226412-moment transcript-first cap. The transcript is usable, so a transcript-derived `debrief.md` is preserved as well.\n\n**Deadline.** The parent's 600 s explicit deadline wins over the default `max(600, 24\u00d731.73)` \u2248 761 s. That 600 s covers setup, readers, refinement and synthesis.\n\n**Helper count and batching.**\n- The 40 frames are split into 8 batches. Each has at most 6 full-size frames, counting the boundary frame it shares with its neighbour.\n- Batches: h1 F1\u2013F6, h2 F6\u2013F11, h3 F11\u2013F16, h4 F16\u2013F21, h5 F21\u2013F26, h6 F26\u2013F31, h7 F31\u2013F36, h8 F36\u2013F40.\n- Each helper opens every assigned frame itself, logs it with `inspected.sh` under its helper id, and returns `{frame_id, pts_s, finding, read_status, helper_id}` records plus any unread IDs. `pts_s` comes from `frames.tsv`, not filenames.\n- I used `claude-sonnet-5-5` with `fastMode:false` because I didn't resolve the `claude.judgment` role mapping. If that role maps to another model, re-dispatch.\n\n**Parent steps once notifications arrive.**\n1. Merge records by `(frame_id, pts_s)` and sort by decoded timestamp.\n2. Collapse identical overlap records on F6, F11, F16, F21, F26, F31 and F36.\n3. Flag conflicting observations for re-read.\n4. Compare the merged reads against the 40-frame manifest and list unread IDs and conflicts as gaps.\n5. Check `frames.tsv` for the existing ledger. If it's missing, run `coverage.sh` first to create one.\n\n**Coverage gap.** The 40 existing frames span only about 3\u2013885 s of a 1904 s video, so roughly 1019 s have no frames. In the remaining time I would do this:\n- Run `coverage.sh` over the video.\n- Run `scene-cues.sh` over the video.\n- Run `dense-windows.sh` on the unsampled span, using transcript-referenced UI/slide moments and scene cues.\n- Run `dense-windows.sh` on scroll, hover, tooltip and transition windows inside the covered span, in fresh output directories.\n\nNew frames go to additional helpers in batches of \u22646. Each long job goes through `run-step.sh`. I would poll `.exit` for numeric `0` and verify outputs before continuing.\n\n**Synthesis (text only).**\n- Gems with timestamps, kept apart from screen evidence.\n- Action items.\n- Claims that need verification.\n- Frame citations (full-size or crop, with `pts_s`).\n- A coverage line from pasted `coverage-count.sh` output.\n- A closing line in the form `frames read N/N, helpers K, budget used X/600 s, gaps [...]`, computed from real receipts.\n\n**Persistence.** I'd return text to the parent for `brain_digest` and `brain_store`, tagged `[\"video-gems\",\"theo-ui\",\"xq0eB8vxeqk\"]`. If BrainLayer fails, write `docs.local/qa-video/<date>-<title>.md` and flag it.\n\n**Stopping conditions.**\n- **Complete:** every extracted frame, including new refinement frames, has a helper read receipt, and conflicts are resolved or marked NOT DETERMINED.\n- **PARTIAL:** only on actual deadline expiry or a hard error, such as a failed read or dispatch. I'd name the cause, the raw error path, the unread frame IDs and the time remaining.\n- **Not a stop reason:** context pressure alone. If a read fails or overflows, I'd re-batch the unread IDs into smaller tasks, down to singletons.\n- **NOT DETERMINED:** a source-resolution limit, once inspected.\n- **Unread frames:** these stay unread. Frames beyond about 885 s never earn visual claims until extracted and read.\n- **Failures:** helper or parser failures are reported as `TOOLING FAILURE` with the raw log path.\n- **Pre-sorting:** `visual-gatherer` or `visual-batch.py` output is only a lead. It never counts as a read.",
+        "seconds": 59.455,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-candidate-youtube-full-pass-1",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime"
+          }
+        ],
+        "cost_usd": 0.20715589999999998,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "bd1ea018414dda0a636c3cbae767a593c1d33bf1f6923d0fcc9a22d37d15c26b"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "310e7290b72c7ec626b278df50799da3a51bf40054266fa7db34f94a18db05a9"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "c1f4d0c0e248ac9fccd6d319ba5a1d0b3a7f81e5f8d9e74de2e0ac57d216dceb"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "e42a87bf837c2700593efd6dbcaf35cc9de7274295b66d9ce7cd313d8fd51098"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "ffe2797de9d72aad921e4e0913a792ca849ae1110fbbfd4240a21f8b4c901050"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "prompt_sha256": "98fe7dabba58ff4edf4be9f31f21aff41defb62708584d2be44b6591d6f504f5",
+        "prompt_redacted": "You are the Sonnet video-gems worker. Full /qa-video GEMS pass on the narrated Theo UI video (31:44). Transcript is usable and references UI screens.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "assertion": {
+        "id": "youtube-full-pass",
+        "kind": "semantic",
+        "claim": "The operative plan commits to reading every supplied frame using multiple image-reader tasks, each capped at six full-size frames including overlap. It merges findings keyed by frame ID and decoded timestamp, collapses duplicates, and lists missing/unread IDs or conflicts as coverage gaps. Unread work continues while time remains; partial delivery is allowed only at the real deadline or on a hard error."
+      },
+      "judgment": {
+        "verdict": true,
+        "quotes": [
+          "- The 40 frames are split into 8 batches. Each has at most 6 full-size frames, counting the boundary frame it shares with its neighbour.",
+          "- Each helper opens every assigned frame itself, logs it with `inspected.sh` under its helper id, and returns `{frame_id, pts_s, finding, read_status, helper_id}` records plus any unread IDs. `pts_s` comes from `frames.tsv`, not filenames.",
+          "1. Merge records by `(frame_id, pts_s)` and sort by decoded timestamp.",
+          "2. Collapse identical overlap records on F6, F11, F16, F21, F26, F31 and F36.",
+          "4. Compare the merged reads against the 40-frame manifest and list unread IDs and conflicts as gaps.",
+          "- **Complete:** every extracted frame, including new refinement frames, has a helper read receipt, and conflicts are resolved or marked NOT DETERMINED.",
+          "- **PARTIAL:** only on actual deadline expiry or a hard error, such as a failed read or dispatch. I'd name the cause, the raw error path, the unread frame IDs and the time remaining.",
+          "- **Not a stop reason:** context pressure alone. If a read fails or overflows, I'd re-batch the unread IDs into smaller tasks, down to singletons."
+        ],
+        "rationale": "The plan splits all 40 frames across 8 helper tasks, each capped at 6 full-size frames counting the shared overlap frame. It merges records by (frame_id, pts_s) using decoded timestamps, collapses the duplicate overlap records, and lists unread IDs and conflicts as gaps. Its stopping rules allow PARTIAL only when the deadline actually expires or on a hard error, and say unread frames get re-batched rather than dropped, so unread work keeps going while time remains.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1422,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 2274,
+              "webSearchRequests": 0,
+              "costUSD": 0.0400692,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 723,
+              "cacheCreationEphemeral5mInputTokens": 2274,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "9c088b18d57ce0b6cec4a947f1b3b92c42f9eedb6ed54a60391869e9dd372615",
+          "transcriptSha256": "3a9dbd74f1d59230a5d700cf07ed0c343ecb2f8a48dcbcccefc5b12408270d29",
+          "judgedAt": "2026-11-04T04:51:33.258Z"
+        }
+      },
+      "judging_usd": 0.0400692,
+      "score": {
+        "trusted": true,
+        "pass": true
+      },
+      "reader_dispatch_attempts": 8,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "claude-baseline-ordinary-debrief-1",
+      "arm": "baseline",
+      "raw_capture_sha256": "f03c0346cc8d6188296dad6f382b39b0daa4387c17ab63b05ec3224675ed75ce",
+      "capture": {
+        "case": "ordinary-debrief",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [],
+        "text": "I made one inert call, `orchestrator_capabilities`. It lists `claude-sonnet-5-5` and `claude-opus-5-5` on the claude provider, so the helper dispatches can run. I haven't dispatched helpers yet, and I explain why below. Nothing has been read, extracted or verified. I have no results to report.\n\n**Mode and budget**\n- Mode is **debrief**, and it runs transcript-first. The goal is the talk's spoken insights, not UI QA.\n- The deadline is 600s, the parent's remaining time. That is also the default `max(600, 24 \u00d7 minutes)` for a talk of about 15 minutes, since the last listed frame is at 885s. The parent deadline wins either way, and `progress.txt` will show it.\n- There is no 10 fps dense pass, no `coverage.sh` 30s sweep and no scene-cue sweep. Those belong to QA mode. I'd only add scene cues if the transcript points at slides, code or a screen share.\n\n**Plan**\n1. **Setup.** Make a fresh `WORKDIR`, write root `progress.txt` (\"extracting\"), and use `run-step.sh` for every long step. I'd launch `debrief.py <video> --workdir <fresh> --mode debrief --budget-seconds ~560`, which leaves margin for synthesis. I'd poll `logs/*.exit` for a numeric `0` and check the actual outputs.\n2. **Transcript.** Read the full `transcript.srt`, `plan.json` and `debrief.md`. Synthesize the insights, opinions, numbers and claims to verify from the whole transcript, including material with no visual. I'd check the SRT for whisper repetition loops first. Because the transcript is usable, `debrief.md` is preserved even if the run ends on `BUDGET_EXCEEDED` or `PARTIAL`.\n3. **Moments.** Keep at most 12 moments: questions, claims, numbers, and anything the speaker says is on a slide. Each gets one targeted `moment-NN.jpg` still, or a short window at 2 fps or less.\n4. **The 40 listed frames.**\n   - They are 3s to 30s apart, not tied to transcript moments. I won't hand all of them to helpers, because that would be the blanket coverage this mode avoids.\n   - I may reuse one only if its timestamp matches a chosen moment. Its `pts_s` would have to come from the ledger, not from the filename.\n   - Otherwise it counts as extracted but not inspected.\n5. **Helper dispatch (not yet issued).**\n   - After `STILLS_READY`, I'd send the moment stills to 2 `claude-sonnet-5-5` helpers through `delegate_task`. Each brief carries the mode, the absolute workdir, its moments and the remaining deadline. Each helper logs frames with `inspected.sh` and appends to `visual/findings.jsonl`.\n   - I can't dispatch yet because those stills and moment lists don't exist. Briefs written now would be empty or would send helpers over unselected frames.\n   - A verifier then re-reads the before and after frames for each visual claim I keep. I stay text-only and never open a still myself.\n6. **Write-up.** Write `debrief.md` with takeaways and timestamps, unverified claims, and frame citations using `pts_s` from `frames.tsv`. Keep what the speaker says apart from what the screen shows. Paste the coverage line from `coverage-count.sh` as it is.\n7. **Handoff.** I return text and paths to the parent. The parent runs `brain_digest` and `brain_store` with tags like `[\"video-gems\", topic, source]`, and filing through `/drive-filing` if needed.\n\n**Stopping conditions**\n- **Deadline.** I stop launching new work at about 540s. Anything still unread is NOT DETERMINED, and I write the note with what I have.\n- **Failed extraction or transcription.** I report the failure and stop. I never fall back to an old transcript.\n- **Tooling failure.** If a helper, parser or validator fails, I report `TOOLING FAILURE` with the raw log path, not \"no screenshots\".\n- **Unclear visual.** I allow one tighter still or a window at 2 fps or less, only if budget remains. Otherwise it stays NOT DETERMINED.\n- **Claims with no frame.** I label them transcript-only.\n- **Persistence.** If BrainLayer persistence fails, I report that, save the output under `docs.local/qa-video/`, and don't call the gems durable.",
+        "seconds": 28.063,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-baseline-ordinary-debrief-1",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime"
+          }
+        ],
+        "cost_usd": 0.0648425,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "prompt_sha256": "5c59c3da908ffe222e63ab04ec1bd6ef7e2cba3f4444cd47cda1acbab4d8ae4c",
+        "prompt_redacted": "Give me a normal debrief of this narrated technical talk; the transcript is usable, and the goal is its spoken insights.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "assertion": {
+        "id": "ordinary-debrief",
+        "kind": "semantic",
+        "claim": "The operative plan uses transcript-first analysis of the full transcript and at most twelve visual moments, rather than exhaustive reading of every supplied frame."
+      },
+      "judgment": {
+        "verdict": true,
+        "quotes": [
+          "- Mode is **debrief**, and it runs transcript-first. The goal is the talk's spoken insights, not UI QA.",
+          "2. **Transcript.** Read the full `transcript.srt`, `plan.json` and `debrief.md`. Synthesize the insights, opinions, numbers and claims to verify from the whole transcript, including material with no visual. I'd check the SRT for whisper repetition loops first. Because the transcript is usable, `debrief.md` is preserved even if the run ends on `BUDGET_EXCEEDED` or `PARTIAL`.",
+          "3. **Moments.** Keep at most 12 moments: questions, claims, numbers, and anything the speaker says is on a slide. Each gets one targeted `moment-NN.jpg` still, or a short window at 2 fps or less.",
+          "   - They are 3s to 30s apart, not tied to transcript moments. I won't hand all of them to helpers, because that would be the blanket coverage this mode avoids."
+        ],
+        "rationale": "The plan says it works transcript-first, reads the full transcript and keeps at most 12 moments. It also refuses to hand all 40 listed frames to helpers, calling that blanket coverage the mode avoids. That covers every part of the claim.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 754,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 2114,
+              "webSearchRequests": 0,
+              "costUSD": 0.0259092,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 251,
+              "cacheCreationEphemeral5mInputTokens": 2114,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "683f2dd89cb241272cd8950a9e3bf0c0a82f2eddd39ed80089b05d9328c43822",
+          "transcriptSha256": "2688c9529fc30442ee38f20856a03f49c5ea248025a54daceed04f46a453b11a",
+          "judgedAt": "2026-11-04T04:51:00.167Z"
+        }
+      },
+      "judging_usd": 0.0259092,
+      "score": {
+        "trusted": true,
+        "pass": true
+      },
+      "reader_dispatch_attempts": 0,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "claude-candidate-ordinary-debrief-1",
+      "arm": "candidate",
+      "raw_capture_sha256": "ed4c149fdd61ba99f2695a1f73c98a5168e8171717b3466d544eb7018beeebcf",
+      "capture": {
+        "case": "ordinary-debrief",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [],
+        "text": "## Plan: transcript-first debrief\n\n**Mode:** debrief, transcript-first. The request is a normal debrief of a talk whose transcript is usable, and the goal is its spoken insights. No \"full pass\", \"exhaustive\" or \"rigorous\" signal appears, and the video isn't silent. So the visual-first exhaustive override does not apply. The 40 listed frames (F1\u2013F40, about every 30 s up to roughly 885 s) are not a reading list. Reading all of them would be the blanket coverage this mode forbids.\n\n**Budget:** 600 s total wall-clock, shown up front. That equals max(600, 24 \u00d7 about 15 min), and it covers transcription, helpers and synthesis. This is the parent's remaining deadline, so it wins. `progress.txt` is rewritten at every phase.\n\n**Routing:** No model or subagent was named, so the QA seat runs the default debrief route itself. It does not use `video-gems` (the gems route) or a runner. It runs the media steps in its own shell, uses at least 2 `claude.judgment` helpers to read the stills, and uses a `claude.subagent.mechanical` verifier per kept visual claim. The seat never opens an image itself.\n\n**Steps:**\n1. **Setup.** Create a fresh workdir and reuse the existing source and transcript if they are present. Don't reuse the old `frames-v2` ledger as evidence.\n2. **Debrief run.** Launch `run-step.sh \"$WORKDIR\" debrief -- python3 debrief.py \"$VIDEO\" --workdir \"$WORKDIR\" --mode debrief`, then poll `logs/debrief.exit` for numeric `0`. By default it calls no helper. It extracts at most 12 targeted stills, writes `frames.tsv`, and exits `STILLS_READY`.\n3. **Transcript read.** Read the full SRT, `plan.json` and `debrief.md`. The insights, opinions, numbers and warnings come from the whole transcript, including material that has no visual. I check the SRT for whisper repetition loops.\n4. **Visual pass.** Keep only moments where the speaker refers to a slide, code, a diagram or a number on screen.\n   - Split those stills across 2 helpers (enough for \u226412 stills). Each helper reads its stills in full size, logs each with `inspected.sh` using its helper id as the `why` prefix, and returns text only.\n   - A verifier re-reads the frames behind any visual claim I keep.\n   - Frames nobody read stay NOT DETERMINED.\n   - If a referenced slide needs a second look, I use one tighter still or a short window of at most 2 fps, within the remaining budget.\n5. **Note.** Write `debrief.md` with:\n   - source and speaker\n   - top spoken insights with timestamps\n   - action items\n   - claims needing later verification\n   - frame citations (full-size, with `pts_s` from `frames.tsv`)\n   - limitations\n\n   Speech stays separate from screen evidence. The coverage line is the pasted `coverage-count.sh` output.\n6. **Handoff.** Return text paths to the parent, which runs `brain_digest` and `brain_store`. I do not persist anything myself.\n\n**Dispatch calls issued:** I called `orchestrator_capabilities`, which is required once per thread before the first `delegate_task`. It lists the claude provider with `claude-sonnet-5-5` and the other models. I have not issued `delegate_task` for the readers yet, because the targeted moment stills don't exist until the debrief run exits `STILLS_READY`. A brief now would have nothing to point at. When the stills exist, I'll issue 2 `delegate_task` calls to the `claude` provider with a judgment-role model, using `fastMode:false`. Each brief carries the absolute workdir, its stills and the adjacent boundary still, the remaining deadline, and the evidence rules. Verifier calls follow, one per kept visual claim. Those calls haven't run, and I haven't read any media or got any helper results.\n\n**Stopping conditions:**\n- **Normal finish:** `debrief.md` is written, the kept visual claims are verified or marked NOT DETERMINED, and the coverage line and progress file are final.\n- **Deadline expiry (600 s):** stop launching helpers and end as PARTIAL. Keep the transcript-derived `debrief.md`, and list every unread still as NOT DETERMINED.\n- **Hard error:** this means a nonzero `debrief.exit`, a failed transcription, or a helper or parser failure. Report it as `TOOLING FAILURE` with the raw log path. If transcription fails, stop, and do not fall back to an old transcript. If dispatch is unavailable, the seat reads the few stills itself and reports `helpers 0 (dispatch unavailable)`.\n- **Out of scope:** no 30 s coverage sweep, scene-cue pass or 10 fps windows. I'd switch to the exhaustive path only if the user asks for a full or exhaustive pass.",
+        "seconds": 26.682,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-candidate-ordinary-debrief-1",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime"
+          }
+        ],
+        "cost_usd": 0.0645455,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "bd1ea018414dda0a636c3cbae767a593c1d33bf1f6923d0fcc9a22d37d15c26b"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "310e7290b72c7ec626b278df50799da3a51bf40054266fa7db34f94a18db05a9"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "c1f4d0c0e248ac9fccd6d319ba5a1d0b3a7f81e5f8d9e74de2e0ac57d216dceb"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "e42a87bf837c2700593efd6dbcaf35cc9de7274295b66d9ce7cd313d8fd51098"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "ffe2797de9d72aad921e4e0913a792ca849ae1110fbbfd4240a21f8b4c901050"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "prompt_sha256": "5c59c3da908ffe222e63ab04ec1bd6ef7e2cba3f4444cd47cda1acbab4d8ae4c",
+        "prompt_redacted": "Give me a normal debrief of this narrated technical talk; the transcript is usable, and the goal is its spoken insights.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "assertion": {
+        "id": "ordinary-debrief",
+        "kind": "semantic",
+        "claim": "The operative plan uses transcript-first analysis of the full transcript and at most twelve visual moments, rather than exhaustive reading of every supplied frame."
+      },
+      "judgment": {
+        "verdict": true,
+        "quotes": [
+          "**Mode:** debrief, transcript-first.",
+          "The 40 listed frames (F1\u2013F40, about every 30 s up to roughly 885 s) are not a reading list.",
+          "It extracts at most 12 targeted stills, writes `frames.tsv`, and exits `STILLS_READY`.",
+          "Read the full SRT, `plan.json` and `debrief.md`."
+        ],
+        "rationale": "The plan says it is transcript-first and reads the full SRT. It caps the visual moments at 12 targeted stills and explicitly rejects reading all 40 supplied frames.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 278,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 2279,
+              "webSearchRequests": 0,
+              "costUSD": 0.0172142,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "cacheCreationEphemeral5mInputTokens": 2279,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "683f2dd89cb241272cd8950a9e3bf0c0a82f2eddd39ed80089b05d9328c43822",
+          "transcriptSha256": "589b34b25544c192d2a4baa9d910aa55b25824336672c3aaaee255bcbdbab194",
+          "judgedAt": "2026-11-04T04:51:16.730Z"
+        }
+      },
+      "judging_usd": 0.0172142,
+      "score": {
+        "trusted": true,
+        "pass": true
+      },
+      "reader_dispatch_attempts": 0,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "claude-baseline-full-transcript-debrief-1",
+      "arm": "baseline",
+      "raw_capture_sha256": "9f63e4da672b65e1377aa34572602f15acc789ae311c395b7fec8e201a45d874",
+      "capture": {
+        "case": "full-transcript-debrief",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "debrief helper h1: first-half moment stills",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "135f89d8a58b636c718ac036fd0a9246aca0ca67632169cd8831ecb9fa7959b7"
+            }
+          },
+          {
+            "input": {
+              "title": "debrief helper h2: second-half moment stills",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "e3dbf851c549f2038a67902a7a384396eb8783b7d681d49eb54d631d72a10fb4"
+            }
+          }
+        ],
+        "text": "## Plan: transcript-first debrief of xq0eB8vxeqk\n\n**Mode and routing.** Mode is `debrief`, and you didn't name a model, so the default route applies. I (the QA seat) run `debrief.py` in my own shell on the machine that holds the recording. I fan the stills out to two `claude.judgment` helpers. I don't open any frame myself.\n\n**Budget.** The frame list reaches 885 s, so the video is about 15 minutes. The default budget, max(600, 24 \u00d7 15 min), is 600 s. The 600 s remaining at plan start is the same number, so it is the single deadline for everything: transcription, helper reads, retries and the note. Every subprocess timeout is clamped to what remains.\n\n**Existing frames.** I won't read the 40 interval frames (F1\u2013F40). They are a blanket 30 s sweep, which this mode excludes. They could only support a visual claim if a chosen moment lands on one of them, and nobody has viewed them. I also won't run a scene-cue sweep, unless the transcript turns out to reference slides, code or a screen share.\n\n**Steps**\n1. Write root `progress.txt` at every phase. Run `run-step.sh <fresh workdir> gems -- python3 debrief.py VIDEO --workdir <fresh workdir> --mode debrief`, using the fresh workdir `.../2026-11-04-xq0eB8vxeqk/debrief-01`. Poll `logs/gems.exit` and require a numeric 0. A launch receipt does not count as completion.\n2. Read the full `transcript.srt`, `plan.json` and `debrief.md`. The planner caps moments at 12 (questions, claims, numbers, referenced slides). I synthesize the spoken insights from the whole transcript, including material with no visual. Each insight gets a timestamp. I keep what the speaker says apart from what the screen shows, and I mark claims that need later verification.\n3. When `debrief.py` exits `STILLS_READY`, the helpers view the targeted `moment-NN.jpg` stills. h1 takes the first half in time order. h2 takes the second half, with one still overlapping. Each helper logs every frame with `inspected.sh` and appends to `visual/findings.jsonl`. They return text only.\n4. For each visual claim I keep, a `claude.subagent.mechanical` verifier re-reads its still and returns CONFIRMED or NOT CONFIRMED. If a referenced slide or chart is still unclear, I allow one tighter still or a short window at no more than 2 fps, and only if time remains.\n5. Write `debrief.md`: the spoken insights with timestamps, action items, claims to verify and limitations. I paste `coverage-count.sh` output as the coverage line. Each visual claim cites a full-size still or crop with its `pts_s` from `frames.tsv`. A claim with no cited frame is labelled **transcript-only**.\n6. Hand the text back to the parent for `brain_digest` and `brain_store`, and for `/qa-verdict-gate` if a verdict is wanted. I don't persist anything myself.\n\n**Dispatch so far.** I called `orchestrator_capabilities`, then issued two `delegate_task` calls for helpers h1 and h2, which the stub accepted as `stub-task-1` and `stub-task-2`. That acceptance is a launch receipt only, not a read, and I have no helper output.\n\nTwo assumptions to correct if wrong:\n- **Model:** I used `claude-sonnet-5-5` for the helpers. I didn't resolve the `claude.judgment` role through `model-roles.mjs` (the lookup that maps a role to a model), so check that mapping.\n- **Timing:** I dispatched the helpers before the stills exist. Their briefs tell them to stop and report \"stills not ready\" if `STILLS_READY` isn't in `progress.txt` yet. I will re-dispatch them after `STILLS_READY` if they exit early.\n\n**Stopping conditions**\n- **Normal finish:** `debrief.md` is written and the helper reads and verifier checks are in.\n- **Budget expiry at 600 s, or a `BUDGET_EXCEEDED`/`PARTIAL` exit:** I stop launching helpers and cut off any still running. I keep and read the transcript-derived `debrief.md`, and every unread visual stays **NOT DETERMINED**.\n- **Transcription failure:** I stop and report it. I don't fall back to an older transcript.\n- **Helper or parser failure, or output overflow:** I report `TOOLING FAILURE` with the raw log path. I don't say \"no screenshots\", and I don't relaunch blindly.\n- **Quota or auth error:** I stop dispatching and report the cause.\n- **Missing `inspected.sh`, `coverage-count.sh` or other provenance tooling:** I say \"provenance unavailable\" and report no counts.\n\nI have not read any media, transcript, still or helper result yet, and I haven't run anything. There is no elapsed time, coverage or insight list to report, and I won't give any until the helpers and `debrief.py` have returned.",
+        "seconds": 44.442,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-baseline-full-transcript-debrief-1",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime"
+          }
+        ],
+        "cost_usd": 0.09631540000000001,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "prompt_sha256": "d7e5da63df4cab177646a310c831eb52a9db4a5da97e10948c7eca1810af8637",
+        "prompt_redacted": "Give me a full transcript debrief of this narrated technical talk; the transcript is usable, and I want its spoken insights.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "assertion": {
+        "id": "full-transcript-debrief",
+        "kind": "semantic",
+        "claim": "The operative plan uses transcript-first analysis of the full transcript and at most twelve visual moments, rather than exhaustive reading of every supplied frame."
+      },
+      "judgment": {
+        "verdict": true,
+        "quotes": [
+          "## Plan: transcript-first debrief of xq0eB8vxeqk",
+          "I won't read the 40 interval frames (F1\u2013F40). They are a blanket 30 s sweep, which this mode excludes.",
+          "Read the full `transcript.srt`, `plan.json` and `debrief.md`. The planner caps moments at 12 (questions, claims, numbers, referenced slides)."
+        ],
+        "rationale": "The plan says it is transcript-first, reads the full transcript, and caps the planner's visual moments at 12. It explicitly turns down reading the 40 supplied interval frames as a blanket sweep. The conditional extras (a scene-cue sweep if slides are mentioned, or one tighter still) are narrow follow-ups, not exhaustive frame reading, so I count every part of the claim as stated.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1034,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 2310,
+              "webSearchRequests": 0,
+              "costUSD": 0.0324892,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 676,
+              "cacheCreationEphemeral5mInputTokens": 2310,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "683f2dd89cb241272cd8950a9e3bf0c0a82f2eddd39ed80089b05d9328c43822",
+          "transcriptSha256": "05865da576477c023d1eda75dd5c46acbda5ab751cd83b62afa471ba53543d47",
+          "judgedAt": "2026-11-04T04:50:47.390Z"
+        }
+      },
+      "judging_usd": 0.0324892,
+      "score": {
+        "trusted": true,
+        "pass": true
+      },
+      "reader_dispatch_attempts": 2,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "claude-candidate-full-transcript-debrief-1",
+      "arm": "candidate",
+      "raw_capture_sha256": "358de296a71eb057cc9563d603465aadbfc3c1e6270ef04a201452d89e9bbe20",
+      "capture": {
+        "case": "full-transcript-debrief",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40"
+        ],
+        "dispatches": [],
+        "text": "I've made one dispatch call so far, `orchestrator_capabilities`, which `delegate_task` requires first. It returned the live catalog, and `claude-sonnet-5-5` is available for the helper role. I'm not issuing any helper `delegate_task` call yet, because the helpers need stills that don't exist until `debrief.py` has run. I have not run the pipeline, viewed any frame or counted any elapsed time.\n\n## Plan\n\n**Mode: transcript-first debrief.**\n- \"Full transcript debrief\" with a usable transcript doesn't trigger the visual-first exhaustive override. That override needs \"full pass\", \"full coverage\", \"rigorous\" or \"exhaustive\", a catalog goal, or a silent video. None applies.\n- The 40 listed frames therefore don't need a full-size read. That would take at least 7 helpers at 6 frames each, and it's the wrong route for this request.\n- There is no blanket 30s coverage and no scene-cue sweep. There is also no dense 10 fps pass, since that belongs to QA mode.\n\n**Budget.** The budget is 600s total wall-clock, which is the parent deadline and also the formula floor, `max(600, 24 \u00d7 minutes)` for a ~15-minute video. It covers transcription, helper reads and synthesis. I'll write `progress.txt` at every phase.\n\n**Route.** The QA seat runs the pipeline itself in its own shell, and no model was named. It stays text-only and never opens a still itself.\n\n**Steps**\n1. Create a fresh workdir under `docs.local/qa-video/2026-11-04-xq0eB8vxeqk/`. I'd reuse the existing source video and `info.json` but not the old `frames-v2` output.\n2. Run `run-step.sh \"$WORKDIR\" gems -- python3 debrief.py \"$VIDEO\" --workdir \"$WORKDIR\" --mode debrief --budget-seconds <remaining>`. Poll `logs/gems.exit` for a numeric `0`.\n   - It transcribes and picks at most 12 moments: questions, claims, numbers and slides the speaker references.\n   - It extracts one still or a \u22642 fps short window per moment, then exits `STILLS_READY`. That also writes `frames.tsv`, `plan.json` and `debrief.md`.\n3. Read the full SRT, `plan.json` and `debrief.md` myself. The spoken insights, opinions, numbers and warnings come from the whole transcript, including material with no visual. Claims stay unverified claims.\n4. After `STILLS_READY`, run `orchestrator_capabilities` again only if the catalog may have changed. Then call `delegate_task` for 2 `claude.judgment` helpers, provider `claude`, model `claude-sonnet-5-5`, `fastMode:false`.\n   - Each helper gets about 6 stills in time order, plus the absolute workdir and the remaining deadline.\n   - Each helper reads its stills itself, logs each one with `inspected.sh` using its helper id as the `why` prefix, and appends `visual/findings.jsonl`.\n   - Each returns text only.\n   - Then I dispatch a `claude.subagent.mechanical` verifier for each visual claim I keep. It re-reads that claim's still and returns CONFIRMED or NOT CONFIRMED.\n5. If a referenced slide or code block is unclear, take one tighter still or a \u22642 fps window in a fresh output directory, within the remaining budget. Otherwise it stays NOT DETERMINED.\n6. Write the final debrief with:\n   - source, speaker and URL\n   - top spoken insights with timestamps\n   - action items\n   - claims needing verification\n   - frame citations (full-size still with `pts_s` from `frames.tsv`)\n   - a coverage line that is the pasted `coverage-count.sh` output\n   \n   Speech stays separate from screen evidence.\n7. Return the text and paths to the parent, which runs `brain_digest` on the transcript and `brain_store` on the gems. I don't persist anything myself.\n\n## Stopping conditions\n- **Normal finish:** `debrief.md` is synthesized from the full transcript, helper and verifier receipts are in, and the coverage line is pasted.\n- **Budget or deadline exhausted (600s):** I stop launching helpers. I keep `debrief.md` as a transcript-derived note, and any still nobody viewed is labelled NOT DETERMINED, not PARTIAL-complete.\n- **Hard errors:** a nonzero `gems.exit`, a failed dispatch or helper read, or an unparseable SRT is reported as `TOOLING FAILURE` with the raw log path. If the transcript is empty or missing, I switch to visual-first exhaustive.\n- **Helper limits:** no helper gets more than 6 frames. If a read overflows, the batch shrinks.\n- **No dispatch available:** I use the single-reader fallback and report `helpers 0 (dispatch unavailable)`.\n- **Never claimed:** visual coverage nobody viewed, the existing 40 frames as read, or a pre-sort or a launch receipt as a read.",
+        "seconds": 30.076,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "agent_or_arm": "claude-candidate-full-transcript-debrief-1",
+            "model_requested": "claude-sonnet-5-5",
+            "model_effective": "claude-sonnet-5-5",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime"
+          }
+        ],
+        "cost_usd": 0.1305948,
+        "auth": "api-key",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "bd1ea018414dda0a636c3cbae767a593c1d33bf1f6923d0fcc9a22d37d15c26b"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "310e7290b72c7ec626b278df50799da3a51bf40054266fa7db34f94a18db05a9"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "c1f4d0c0e248ac9fccd6d319ba5a1d0b3a7f81e5f8d9e74de2e0ac57d216dceb"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "e42a87bf837c2700593efd6dbcaf35cc9de7274295b66d9ce7cd313d8fd51098"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "ffe2797de9d72aad921e4e0913a792ca849ae1110fbbfd4240a21f8b4c901050"
+          }
+        ],
+        "manifest_sha256": "4d8ff99afbd5d4a04a680811a42c4106b61be805e9a373d75a53955200245aa8",
+        "prompt_sha256": "d7e5da63df4cab177646a310c831eb52a9db4a5da97e10948c7eca1810af8637",
+        "prompt_redacted": "Give me a full transcript debrief of this narrated technical talk; the transcript is usable, and I want its spoken insights.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/v2-0003s.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/v2-0015s.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/v2-0045s.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/v2-0075s.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/v2-0105s.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/v2-0116s.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/v2-0135s.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/v2-0165s.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/v2-0170s.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/v2-0195s.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/v2-0225s.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/v2-0255s.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/v2-0270s.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/v2-0285s.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/v2-0315s.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/v2-0345s.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/v2-0355s.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/v2-0375s.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/v2-0405s.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/v2-0430s.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/v2-0435s.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/v2-0465s.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/v2-0495s.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/v2-0525s.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/v2-0555s.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/v2-0580s.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/v2-0585s.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/v2-0600s.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/v2-0615s.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/v2-0645s.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/v2-0675s.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/v2-0705s.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/v2-0715s.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/v2-0735s.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/v2-0765s.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/v2-0795s.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/v2-0825s.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/v2-0845s.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/v2-0855s.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/v2-0885s.jpg\"}]"
+      },
+      "assertion": {
+        "id": "full-transcript-debrief",
+        "kind": "semantic",
+        "claim": "The operative plan uses transcript-first analysis of the full transcript and at most twelve visual moments, rather than exhaustive reading of every supplied frame."
+      },
+      "judgment": {
+        "verdict": true,
+        "quotes": [
+          "**Mode: transcript-first debrief.**",
+          "The 40 listed frames therefore don't need a full-size read.",
+          "It transcribes and picks at most 12 moments: questions, claims, numbers and slides the speaker references.",
+          "Read the full SRT, `plan.json` and `debrief.md` myself."
+        ],
+        "rationale": "The plan explicitly adopts transcript-first mode, reads the full SRT, and caps the visual moments at 12. It also says the 40 supplied frames don't need a full-size read. The visual-first exhaustive mode only comes in as a fallback if the transcript is missing, so it isn't the plan actually in use.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 425,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 2323,
+              "webSearchRequests": 0,
+              "costUSD": 0.0203742,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 123,
+              "cacheCreationEphemeral5mInputTokens": 2323,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "683f2dd89cb241272cd8950a9e3bf0c0a82f2eddd39ed80089b05d9328c43822",
+          "transcriptSha256": "5d9caa809f76cc9a4dbc7222ab53709fb6659801fa5c1412f7d704d340749d7a",
+          "judgedAt": "2026-11-04T04:51:08.226Z"
+        }
+      },
+      "judging_usd": 0.0203742,
+      "score": {
+        "trusted": true,
+        "pass": true
+      },
+      "reader_dispatch_attempts": 0,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "codex-baseline-silent-visual-catalog-1",
+      "arm": "baseline",
+      "raw_capture_sha256": "dcad6d920cad1e3263022514954610c46575f1fc01a366a6233d813efdae8a32",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "effort": "high",
+                  "fastMode": false
+                }
+              },
+              "title": "Plan silent T3 demo: exhaustive visual-reference catalog",
+              "task_sha256": "3f816e640ae27832124d1a7be900d283cd7cbc877aaac1eab402b007f89eaec1"
+            }
+          }
+        ],
+        "text": "Mode: **gems**, adapted for an exhaustive visual-reference catalog of a silent source. I issued one inert `video-gems` dispatch using catalog-listed Claude Sonnet. Its acceptance is not a read; no media was inspected and no worker results were awaited.\n\nThe planned reader will inspect **all 48 supplied full-size frames**, overriding the usual \u226412 transcript-selected moments. Empty narration provides no selection signal, so transcription is skipped. The pass will reuse existing frames without downloads, blanket sampling or QA action-window extraction.\n\nThe 600-second budget is measured from plan start: up to 30 seconds for existing text metadata and provenance, 360 seconds for initial reads, 120 seconds for targeted rereads, and 90 seconds for synthesis. These are planned allocations, not reported elapsed time.\n\nThe catalog will document visible layouts, labels, controls, diagrams, styling and state changes, with an entry or explicit disposition for every F-ID. Repeated appearances may share catalog entries while retaining every frame reference. Static observations cite full-size paths; transition claims require directly viewed before/after evidence. Timestamps come only from existing decoded metadata. Without it, references use frame IDs and paths, with provenance marked unavailable.\n\nCompletion requires every supplied frame to have been directly read and every retained observation supported. This establishes completeness for the supplied frame set, not continuous video coverage. Ambiguous details remain **NOT DETERMINED**.\n\nNew reads stop by the synthesis reserve, or earlier if context capacity requires it. The hard deadline stops remaining work and produces a partial catalog identifying unread frames. Reader failures, overflow and authentication errors are **TOOLING FAILURE**, with at most one bounded retry when time permits.\n\nA later execution would preserve incremental findings, progress, `debrief.md` and the catalog. This planning capture writes no artifacts, stores nothing in BrainLayer and makes no QA verdict.",
+        "seconds": 67.248,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime",
+            "agent_or_arm": "codex-baseline-silent-visual-catalog-1"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "11e9369d25b910a22904c8e15ac60755caf457f405f9fbd94aa7818fad691772",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "assertion": {
+        "id": "silent-visual-catalog",
+        "kind": "semantic",
+        "claim": "The operative plan commits to reading every supplied frame using multiple image-reader tasks, each capped at six full-size frames including overlap. It merges findings keyed by frame ID and decoded timestamp, collapses duplicates, and lists missing/unread IDs or conflicts as coverage gaps. Unread work continues while time remains; partial delivery is allowed only at the real deadline or on a hard error."
+      },
+      "judgment": {
+        "verdict": false,
+        "quotes": [
+          "The planned reader will inspect **all 48 supplied full-size frames**, overriding the usual \u226412 transcript-selected moments.",
+          "New reads stop by the synthesis reserve, or earlier if context capacity requires it."
+        ],
+        "rationale": "The transcript does commit to reading every frame, but it describes a single planned reader. It never mentions multiple reader tasks capped at six frames each with overlap, or merging findings keyed by frame ID and timestamp. It also stops new reads at the synthesis reserve or when context capacity runs short, not only at the real deadline or on a hard error, so the claim's continuation rule isn't asserted.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 433,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 1352,
+              "webSearchRequests": 0,
+              "costUSD": 0.0156792,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 132,
+              "cacheCreationEphemeral5mInputTokens": 1352,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "9c088b18d57ce0b6cec4a947f1b3b92c42f9eedb6ed54a60391869e9dd372615",
+          "transcriptSha256": "08a71c55c2217b43740c30c4c4b4f03bc79ded5f4f83ceda124ca69cbd898390",
+          "judgedAt": "2026-11-04T04:51:42.208Z"
+        }
+      },
+      "judging_usd": 0.0156792,
+      "score": {
+        "trusted": true,
+        "pass": false
+      },
+      "reader_dispatch_attempts": 0,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "codex-baseline-silent-visual-catalog-2",
+      "arm": "baseline",
+      "raw_capture_sha256": "4dc440bf05fc72603e4215243774f20e711922af0298cc0815197cbc411b8ce9",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "Plan gems visual-reference catalog \u2014 silent T3 launch demo, F1\u2013F48",
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false,
+                  "effort": "high"
+                }
+              },
+              "task_sha256": "b5f2e3335bf9c1a0ea97121e904e6b08f8c9752e2d1259535c77df648b23739b"
+            }
+          }
+        ],
+        "text": "Mode: **gems**, adapted for a silent source. The exhaustive catalog request overrides the workflow\u2019s \u226412 transcript-selected moments: all **48 supplied frames** belong in scope. Empty narration provides no basis for spoken insights or timestamps.\n\nI issued one inert dispatch to the default `video-gems` role using Claude Sonnet, with the complete frame manifest, absolute artifact directory, evidence rules and 600-second deadline. That route owns direct visual reading without further delegation. No media was inspected, no persistence occurred, and no worker results were awaited. Stub acceptance establishes no visual coverage.\n\nThe proposed execution allocates 30 seconds to manifest/provenance setup, 420 seconds to reading the full-size frames in small batches, 90 seconds to reconciling references and rereading ambiguities, and 60 seconds to synthesis. These are planned allocations, not measured elapsed time; the original parent deadline governs every phase.\n\nEach frame would receive an inventory entry recording visible references, readable text, UI state, supporting path and uncertainty. A separate index would consolidate recurring references while retaining every supporting frame ID. Changes require directly read before/after evidence. Timestamps would come only from actual decoded provenance; filenames cannot establish timing. The planned outputs are incremental findings, phase progress and a `debrief.md` catalog documenting the silent source and coverage limits.\n\nCompletion requires actual direct reads of all 48 frames and reconciliation of their references. Otherwise, stop before the deadline or context limit, preserve the partial catalog, and mark unread or unresolved material **NOT DETERMINED**. Tool failures remain explicit failures with available raw-output paths. Exhaustiveness applies only to the supplied frame set; it cannot establish coverage of unseen video intervals.",
+        "seconds": 54.737,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime",
+            "agent_or_arm": "codex-baseline-silent-visual-catalog-2"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "11e9369d25b910a22904c8e15ac60755caf457f405f9fbd94aa7818fad691772",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "assertion": {
+        "id": "silent-visual-catalog",
+        "kind": "semantic",
+        "claim": "The operative plan commits to reading every supplied frame using multiple image-reader tasks, each capped at six full-size frames including overlap. It merges findings keyed by frame ID and decoded timestamp, collapses duplicates, and lists missing/unread IDs or conflicts as coverage gaps. Unread work continues while time remains; partial delivery is allowed only at the real deadline or on a hard error."
+      },
+      "judgment": {
+        "verdict": false,
+        "quotes": [
+          "I issued one inert dispatch to the default `video-gems` role using Claude Sonnet, with the complete frame manifest, absolute artifact directory, evidence rules and 600-second deadline.",
+          "That route owns direct visual reading without further delegation.",
+          "420 seconds to reading the full-size frames in small batches",
+          "Otherwise, stop before the deadline or context limit, preserve the partial catalog, and mark unread or unresolved material **NOT DETERMINED**."
+        ],
+        "rationale": "The plan sends one dispatch to a single role that reads frames itself without further delegation. It does not commit to multiple image-reader tasks, and while it mentions \"small batches,\" it never sets a cap of six frames with overlap. It also allows stopping early at a context limit, not only at the real deadline or on a hard error, and it never describes merging findings keyed by frame ID and decoded timestamp.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 513,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 1296,
+              "webSearchRequests": 0,
+              "costUSD": 0.0169992,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 118,
+              "cacheCreationEphemeral5mInputTokens": 1296,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "9c088b18d57ce0b6cec4a947f1b3b92c42f9eedb6ed54a60391869e9dd372615",
+          "transcriptSha256": "429ba61680f67207db6c8a6727378011190576f789a5d9a61e797b0bb9ae82b8",
+          "judgedAt": "2026-11-04T04:51:52.786Z"
+        }
+      },
+      "judging_usd": 0.0169992,
+      "score": {
+        "trusted": true,
+        "pass": false
+      },
+      "reader_dispatch_attempts": 0,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "codex-baseline-silent-visual-catalog-3",
+      "arm": "baseline",
+      "raw_capture_sha256": "edbf7a4ef6efb71a5642f3b2988f18bafef6098961e730364c549d219f237cf4",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "effort": "high",
+                  "fastMode": false
+                }
+              },
+              "title": "Plan gems: exhaustive catalog of 48 silent T3 demo frames",
+              "task_sha256": "0d2547191681f05a2d16d96bcea703d3c3957c3bb3b99e0fdd82250cfd6aff50"
+            }
+          }
+        ],
+        "text": "Mode is **gems**, with exhaustive coverage of F1\u2013F48 replacing the default 12 transcript moments. The silent source needs a visual-first pass; an empty transcript does not block it.\n\nI issued one inert `video-gems` dispatch using catalog-listed Claude Sonnet with high effort and `fastMode:false`. It assigns direct inspection of all 48 full-size frames, ordered catalog entries, legible text, visible interface states, reusable visual references, and a consolidated index retaining every supporting frame ID. Transition claims require inspected before/after frames. Timestamps require decoded metadata; filenames establish no timing.\n\nThe proposed 600-second schedule, measured from plan start, reserves up to 30 seconds for planning, reaches initial-read completion by +450 seconds, ends ambiguity checks by +540 seconds, and reserves the final minute for synthesis. Every operation shares that cutoff.\n\nStop when all 48 frames have supported entries and necessary rechecks are complete, or earlier upon deadline, context exhaustion, inaccessible frames, or unrecoverable tooling failure. Partial output must enumerate unread IDs and mark unresolved observations **NOT DETERMINED**. \u201cExhaustive\u201d can describe only the supplied frame set, never unseen portions of the video.\n\nThe stub accepted the dispatch. No images were inspected, media commands run, artifacts persisted, or helper results received; no completion wait was performed.",
+        "seconds": 64.868,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime",
+            "agent_or_arm": "codex-baseline-silent-visual-catalog-3"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "705b719ee8eafc281b4f4754d6387816285ca1148a609968cf22998da64a17f8"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "94ecd5a6620698db41f58ec190c1051ab3cf983644ca0c957525c8af6a9f2dc5"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "6644f9a4c42418c3e322e34658712182448b16ad16eae1a591f4d503c0fff553"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "2e8bbe5cc7a52925bf8fb65c9306950ac27b65bd43edb542a7c83b5a49bcce13"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "a5e2c74a5ff5890e5778700562d3bf5b82225cdaae1c9bcb7cb75d572f2754f7"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "11e9369d25b910a22904c8e15ac60755caf457f405f9fbd94aa7818fad691772",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "assertion": {
+        "id": "silent-visual-catalog",
+        "kind": "semantic",
+        "claim": "The operative plan commits to reading every supplied frame using multiple image-reader tasks, each capped at six full-size frames including overlap. It merges findings keyed by frame ID and decoded timestamp, collapses duplicates, and lists missing/unread IDs or conflicts as coverage gaps. Unread work continues while time remains; partial delivery is allowed only at the real deadline or on a hard error."
+      },
+      "judgment": {
+        "verdict": false,
+        "quotes": [
+          "I issued one inert `video-gems` dispatch using catalog-listed Claude Sonnet with high effort and `fastMode:false`. It assigns direct inspection of all 48 full-size frames,",
+          "or earlier upon deadline, context exhaustion, inaccessible frames, or unrecoverable tooling failure."
+        ],
+        "rationale": "The transcript does not meet the claim. Its plan sends all 48 frames to a single dispatch instead of splitting them across several reader tasks capped at six frames each. It never describes merging findings by frame ID and timestamp or collapsing duplicates. It also allows stopping early with partial output for more reasons than the claim permits, including context exhaustion and inaccessible frames.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 390,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 1171,
+              "webSearchRequests": 0,
+              "costUSD": 0.013914199999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 64,
+              "cacheCreationEphemeral5mInputTokens": 1171,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "9c088b18d57ce0b6cec4a947f1b3b92c42f9eedb6ed54a60391869e9dd372615",
+          "transcriptSha256": "b7257cfdfba73c1487803ea23354a52d7379b162b16128574d616bda1b50ae85",
+          "judgedAt": "2026-11-04T04:52:03.051Z"
+        }
+      },
+      "judging_usd": 0.013914199999999998,
+      "score": {
+        "trusted": true,
+        "pass": false
+      },
+      "reader_dispatch_attempts": 0,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "codex-candidate-silent-visual-catalog-1",
+      "arm": "candidate",
+      "raw_capture_sha256": "4e576e322bf88c531901c7980acc7d1e5899af8f84f2b13e3fd7287a903d6f3e",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false,
+                  "effort": "high"
+                }
+              },
+              "title": "Plan exhaustive silent T3 visualization gems catalog",
+              "task_sha256": "aabfdfe911570a9e53b2ecee5e2a0aefa2fc5ffae97f9aab0f8e0f134f1fc9be"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h01: exhaustive full-size F1\u2013F6, planned wave 1",
+              "task_sha256": "b994a6a3182b9e1594c13930c2f4e545019a8cd1df39ba54d3c8830fc22f1318"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h02: exhaustive full-size F6\u2013F11, planned wave 1",
+              "task_sha256": "202bb3d710821feb8e3a7c118f110e0a2c0f7d9ddc0df838e91463235d8453e5"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h03: exhaustive full-size F11\u2013F16, planned wave 1",
+              "task_sha256": "abed47aed2d1c21304e5f9a281716c441d7dfa156fe8b3966f2a41205961eebf"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h04: exhaustive full-size F16\u2013F21, planned wave 2",
+              "task_sha256": "094556e4a43555449f30af1553489d6d7ca9d2d2fd8902f37ae3bfafe4d6d55c"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h05: exhaustive full-size F21\u2013F26, planned wave 2",
+              "task_sha256": "dfc120f7be3e3d129aad09074a75e7cba25b8839b0c124567e10c6dfaba6e1a4"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h06: exhaustive full-size F26\u2013F31, planned wave 2",
+              "task_sha256": "edb8b2eb879584aab4da6e38f05d0ce939b061678b7e408134dfd16632110fd8"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h07: exhaustive full-size F31\u2013F36, planned wave 3",
+              "task_sha256": "15010da3b48bbac53517baa34066cb25c7c9a30b0916d9b6e4cea8b552b246c5"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h08: exhaustive full-size F36\u2013F41, planned wave 3",
+              "task_sha256": "8fc041b1d278bfe3ad3b0ec6866660594cdce702badc7ad8ab4cfe8705ae7e95"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h09: exhaustive full-size F41\u2013F46, planned wave 3",
+              "task_sha256": "d25378ae3ffb46b62fe90a5687540bc54429f9733680f53a6806e383701eb66f"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "h10: exhaustive full-size F46\u2013F48, planned wave 4",
+              "task_sha256": "ea4232b05de5b31ef1380c400c12bb92274a8d8eadd22d886d564aa0556e68a7"
+            }
+          }
+        ],
+        "text": "**Mode: gems, VISUAL-FIRST EXHAUSTIVE.** Silence, the empty transcript and the catalog goal require exhaustive visual inspection. One deadline\u2014plan start plus 600 seconds\u2014covers setup, readers, refinement and synthesis.\n\nIssued inert calls for one `video-gems` coordinator and ten `claude.judgment` reader tasks. Planned concurrency is three, across four waves. Batches are F1\u2013F6, F6\u2013F11, F11\u2013F16, F16\u2013F21, F21\u2013F26, F26\u2013F31, F31\u2013F36, F36\u2013F41, F41\u2013F46 and F46\u2013F48. Each task includes at most six full-size frames, counting the shared boundary frame.\n\nDuring execution, reuse the existing frames and obtain decoded timestamps from `frames.tsv`. Each reader opens every assigned frame, logs actual reads and returns per-frame observations plus unread IDs. The parent remains text-only, merges records by `(frame_id, pts_s)`, deduplicates matching overlaps and sends conflicting observations for re-reading. Compare receipts against the complete extracted-frame manifest; batch assignments and stub acceptances provide no coverage evidence.\n\nBuild the catalog from visible labels, controls, layouts, states and transitions. Cite full-size before/after frames for changes. Densify unclear scroll, hover, tooltip and transition windows at 10 fps up to source fps, using fresh output directories, then read every new frame. Shrink failed or overflowing batches down to singletons. Keep inspected but unresolved details **NOT DETERMINED**; missing timestamps remain explicit citation gaps.\n\nContinue while unread frames or resolvable windows remain and time remains. Finish only after all extracted and refinement frames have actual reads and conflicts are resolved. Stop **PARTIAL** only on actual deadline expiry or a hard error, reporting unread IDs, conflicts, raw error paths and remaining time. Context pressure alone calls for smaller tasks. If the source path cannot be resolved for required refinement, report that blocker explicitly.\n\nThe eventual output should include visual-only catalog notes, actual reader/helper counts, measured budget use and pasted `coverage-count.sh` output. This planning capture inspected no media, awaited no worker results, performed no persistence and makes no completion claim.",
+        "seconds": 79.001,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime",
+            "agent_or_arm": "codex-candidate-silent-visual-catalog-1"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "bd1ea018414dda0a636c3cbae767a593c1d33bf1f6923d0fcc9a22d37d15c26b"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "310e7290b72c7ec626b278df50799da3a51bf40054266fa7db34f94a18db05a9"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "c1f4d0c0e248ac9fccd6d319ba5a1d0b3a7f81e5f8d9e74de2e0ac57d216dceb"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "e42a87bf837c2700593efd6dbcaf35cc9de7274295b66d9ce7cd313d8fd51098"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "ffe2797de9d72aad921e4e0913a792ca849ae1110fbbfd4240a21f8b4c901050"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "11e9369d25b910a22904c8e15ac60755caf457f405f9fbd94aa7818fad691772",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "assertion": {
+        "id": "silent-visual-catalog",
+        "kind": "semantic",
+        "claim": "The operative plan commits to reading every supplied frame using multiple image-reader tasks, each capped at six full-size frames including overlap. It merges findings keyed by frame ID and decoded timestamp, collapses duplicates, and lists missing/unread IDs or conflicts as coverage gaps. Unread work continues while time remains; partial delivery is allowed only at the real deadline or on a hard error."
+      },
+      "judgment": {
+        "verdict": true,
+        "quotes": [
+          "Each task includes at most six full-size frames, counting the shared boundary frame.",
+          "Each reader opens every assigned frame, logs actual reads and returns per-frame observations plus unread IDs.",
+          "The parent remains text-only, merges records by `(frame_id, pts_s)`, deduplicates matching overlaps and sends conflicting observations for re-reading.",
+          "During execution, reuse the existing frames and obtain decoded timestamps from `frames.tsv`.",
+          "Continue while unread frames or resolvable windows remain and time remains.",
+          "Stop **PARTIAL** only on actual deadline expiry or a hard error, reporting unread IDs, conflicts, raw error paths and remaining time."
+        ],
+        "rationale": "The plan sets up ten reader tasks, each holding at most six full-size frames counting the shared boundary frame, and every reader opens all of its assigned frames. Results are merged by (frame_id, pts_s) using decoded timestamps from frames.tsv, matching overlaps are deduplicated, and unread IDs and conflicts are reported. Work continues while time remains, and a partial stop is allowed only when the real deadline expires or on a hard error.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 971,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 1466,
+              "webSearchRequests": 0,
+              "costUSD": 0.0270092,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 493,
+              "cacheCreationEphemeral5mInputTokens": 1466,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "9c088b18d57ce0b6cec4a947f1b3b92c42f9eedb6ed54a60391869e9dd372615",
+          "transcriptSha256": "98ea8bb03cfbb7089cc7d00fc76524229eb1668628671a9351190920881a82f7",
+          "judgedAt": "2026-11-04T04:49:31.564Z"
+        }
+      },
+      "judging_usd": 0.0270092,
+      "score": {
+        "trusted": true,
+        "pass": true
+      },
+      "reader_dispatch_attempts": 10,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "codex-candidate-silent-visual-catalog-2",
+      "arm": "candidate",
+      "raw_capture_sha256": "9899554c617932d06bf66f7e230cc281cba2101237906c7ca04db6ebf3b70f2d",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "title": "Plan video-gems exhaustive silent-demo catalog",
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "fastMode": false,
+                  "effort": "high"
+                }
+              },
+              "task_sha256": "6848b45b54d321debd5bf773c759965509369ee3d762e642bddbb7c217504ec9"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h01: F1\u2013F6",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "5243f94f831babbc17397ddb159dd8e6542e316cdc576da4afee25acd228444c"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h02: F6\u2013F11",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "b1fb6eed8d1f1955f4beefd86a96d034ae3f2941c7a0463b32aecdc03a714884"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h03: F11\u2013F16",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "5a88fffe925863bb28fb688ba68eb786f6be340651b7001a0374f2006e72f1f4"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h04: F16\u2013F21",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "18d5f40c8a7548d77efa65279677a8a4410083a9f215abc269bfd4ae7fbb0dc5"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h05: F21\u2013F26",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "e6776828440da77198eaf5add06fefa11e76a5f1bdaf81ecfc254b5d98851434"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h07: F31\u2013F36",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "d9c136241375f2c8bd8a9c55fae986cffe74dbc4b3f7d8b0ef1776749e952c6c"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h06: F26\u2013F31",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "c3c8a01dec960f265ddc75755ec6b7265fffd9f8651d583203434763b4970971"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h08: F36\u2013F41",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "013e962113f93f4f869b85bc224e45efd2a3fbfa2bf7f8b61fca696eb893ce76"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h09: F41\u2013F46",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "1ef491a14f332b21b354186f4aa092fc79ce0347c07a34ffd32b62b5a05c25fa"
+            }
+          },
+          {
+            "input": {
+              "title": "Plan exhaustive reader h10: F46\u2013F48",
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "task_sha256": "d1a592d1494ba24fffca5ef83dee88f769e27aae740b658efabc96bb229580db"
+            }
+          }
+        ],
+        "text": "**Mode: gems \u2014 VISUAL-FIRST EXHAUSTIVE.** The silent source and catalog goal require every extracted full-size frame to be read. One shared deadline is plan start +600 seconds, covering setup, reading, refinement and synthesis.\n\nIssued inert dispatches for the default `video-gems` owner and ten `claude.judgment` reader tasks. Planned batches are F1\u2013F6, F6\u2013F11, F11\u2013F16, F16\u2013F21, F21\u2013F26, F26\u2013F31, F31\u2013F36, F36\u2013F41, F41\u2013F46 and F46\u2013F48. Each includes boundary overlap within the six-frame maximum. Actual execution would use fresh contexts in waves of at most three readers; the parent handles dispatch because nested agents are disabled.\n\nBefore execution, validate order and decoded `pts_s` against `frames.tsv`; filenames supply no timing evidence. Readers would open every assigned full-size image, log actual reads and return per-frame records plus unread IDs. The parent would merge matching overlaps, flag conflicts for re-reading and reconcile coverage against the complete extracted-frame manifest.\n\nScroll, hover, tooltip and transition windows would receive fresh refinements at 10 fps, increasing up to source fps when needed. Every new frame joins the manifest and reader queue. Retained visual claims require verified full-size before/after evidence. The result would be a visual-only catalog of observed elements, states, text and transitions, with uncertainty explicitly marked.\n\nContinue while unread frames or resolvable windows remain and time permits. Context pressure triggers smaller batches and compact notes. Stop **PARTIAL** only on actual deadline expiry or a hard error, identifying the cause, raw error path, unread IDs and conflicts. Completion requires reconciled reads of all extracted and refinement frames, with actual accounting and `coverage-count.sh` output.\n\nThis capture inspected no media, awaited no worker results and performed no persistence. Stub acceptances establish no reads, completed helpers, elapsed time or findings.",
+        "seconds": 75.953,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime",
+            "agent_or_arm": "codex-candidate-silent-visual-catalog-2"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "bd1ea018414dda0a636c3cbae767a593c1d33bf1f6923d0fcc9a22d37d15c26b"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "310e7290b72c7ec626b278df50799da3a51bf40054266fa7db34f94a18db05a9"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "c1f4d0c0e248ac9fccd6d319ba5a1d0b3a7f81e5f8d9e74de2e0ac57d216dceb"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "e42a87bf837c2700593efd6dbcaf35cc9de7274295b66d9ce7cd313d8fd51098"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "ffe2797de9d72aad921e4e0913a792ca849ae1110fbbfd4240a21f8b4c901050"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "11e9369d25b910a22904c8e15ac60755caf457f405f9fbd94aa7818fad691772",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "assertion": {
+        "id": "silent-visual-catalog",
+        "kind": "semantic",
+        "claim": "The operative plan commits to reading every supplied frame using multiple image-reader tasks, each capped at six full-size frames including overlap. It merges findings keyed by frame ID and decoded timestamp, collapses duplicates, and lists missing/unread IDs or conflicts as coverage gaps. Unread work continues while time remains; partial delivery is allowed only at the real deadline or on a hard error."
+      },
+      "judgment": {
+        "verdict": false,
+        "quotes": [
+          "The parent would merge matching overlaps, flag conflicts for re-reading and reconcile coverage against the complete extracted-frame manifest.",
+          "Before execution, validate order and decoded `pts_s` against `frames.tsv`; filenames supply no timing evidence."
+        ],
+        "rationale": "The transcript does commit to reading every frame with multiple reader tasks capped at six frames including overlap, and to allowing partial delivery only at the real deadline or on a hard error. However, it never says findings are merged keyed by frame ID and decoded timestamp: the decoded `pts_s` is only used to validate order before execution. It also says conflicts are flagged for re-reading rather than listed as coverage gaps, and much of the plan is phrased with \"would\", so the claim is not fully and clearly asserted.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 815,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 1369,
+              "webSearchRequests": 0,
+              "costUSD": 0.0234042,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 463,
+              "cacheCreationEphemeral5mInputTokens": 1369,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "9c088b18d57ce0b6cec4a947f1b3b92c42f9eedb6ed54a60391869e9dd372615",
+          "transcriptSha256": "2cf2ad41bc9ce9fb78377405795dbb8982d2654ca7bffb25564e3d4d9c895254",
+          "judgedAt": "2026-11-04T04:52:15.519Z"
+        }
+      },
+      "judging_usd": 0.0234042,
+      "score": {
+        "trusted": true,
+        "pass": false
+      },
+      "reader_dispatch_attempts": 10,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    },
+    {
+      "id": "codex-candidate-silent-visual-catalog-3",
+      "arm": "candidate",
+      "raw_capture_sha256": "4964acd2705d202e612a9a7ac76395b43b866c0ff99942de19b2dc2f63c0742b",
+      "capture": {
+        "case": "silent-visual-catalog",
+        "available_frame_ids": [
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "F5",
+          "F6",
+          "F7",
+          "F8",
+          "F9",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16",
+          "F17",
+          "F18",
+          "F19",
+          "F20",
+          "F21",
+          "F22",
+          "F23",
+          "F24",
+          "F25",
+          "F26",
+          "F27",
+          "F28",
+          "F29",
+          "F30",
+          "F31",
+          "F32",
+          "F33",
+          "F34",
+          "F35",
+          "F36",
+          "F37",
+          "F38",
+          "F39",
+          "F40",
+          "F41",
+          "F42",
+          "F43",
+          "F44",
+          "F45",
+          "F46",
+          "F47",
+          "F48"
+        ],
+        "dispatches": [
+          {
+            "input": {
+              "role": "video-gems",
+              "target": {
+                "provider": "claude",
+                "model": "claude-sonnet-5-5",
+                "options": {
+                  "effort": "high",
+                  "fastMode": false
+                }
+              },
+              "title": "Plan exhaustive silent T3 visualization catalog ownership",
+              "task_sha256": "d4e05a7d7b1d7a0a3316b6f29b22335b19ccc926c90d6593f99e4f1931650395"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h1: F1\u2013F6, wave 1",
+              "task_sha256": "db4da37c039a51677bb033cc538fe45afa74694e7ffac92659a418c91cb3cc46"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h2: F6\u2013F11, wave 1",
+              "task_sha256": "e2a84ecf97189064fd44e81bdbc5e1535ff11996c73ad2f89c0d30f4910fdfb7"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h3: F11\u2013F16, wave 1",
+              "task_sha256": "895046d983909d41f4c18ab9c880bf0c3e52716157dbd07501b47ecb055331f5"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h4: F16\u2013F21, wave 2",
+              "task_sha256": "86fc5a8d1885510bd42c4f7c6dd75d8deb01ad526ae4b3c4b069e6575eda90a6"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h5: F21\u2013F26, wave 2",
+              "task_sha256": "8cd0b935530bb2d731d30b97b68887bc87703928c2d7740a98fd895bcec81429"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h6: F26\u2013F31, wave 2",
+              "task_sha256": "7219613e452870582d35b97d1ac3ba95b045f480482224c69201252f94621ebe"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h7: F31\u2013F36, wave 3",
+              "task_sha256": "e05bb94aa044d69e2407530fd6495f74353efda657fa4a6ca28bc76b9fb7bb11"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h8: F36\u2013F41, wave 3",
+              "task_sha256": "ca691ef08b8011d9602ddfd6704837ca4259a137c3dba0d17190a22b12ad2723"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h9: F41\u2013F46, wave 3",
+              "task_sha256": "b316975ea8f6e09b372183763d651d2fd6474427d0ddfcb6b278604f5dfa8a20"
+            }
+          },
+          {
+            "input": {
+              "role": "claude.judgment",
+              "target": {
+                "provider": "claude",
+                "model": "claude-opus-5-5",
+                "options": {
+                  "fastMode": false
+                }
+              },
+              "title": "Plan reader h10: F46\u2013F48, wave 4",
+              "task_sha256": "e166f56e621b0e2877c982e52b6fb1d4c234e87e3e76adee0e2af8cad57c87fc"
+            }
+          }
+        ],
+        "text": "Mode is **gems \u2014 VISUAL-FIRST EXHAUSTIVE**, with one shared deadline of plan start +600 seconds covering setup, reading, refinement and synthesis.\n\nI issued inert dispatch calls for a `video-gems` owner and ten `claude.judgment` reader tasks. Planned execution uses three concurrent readers in four waves: F1\u2013F6, F6\u2013F11, F11\u2013F16; F16\u2013F21, F21\u2013F26, F26\u2013F31; F31\u2013F36, F36\u2013F41, F41\u2013F46; then F46\u2013F48. Every task includes at most six full-size frames, including boundary overlap.\n\nExecution would reuse the existing frames, validate their order against the decoded-PTS ledger, and log every actual read. The parent would merge records by `(frame_id, pts_s)`, collapse matching overlaps, and reassign conflicts or unread frames. Failed or overflowing batches would shrink to singleton tasks. Scroll, hover, tooltip and transition windows would receive fresh refinement frames at 10 fps up to source fps, with every new frame also assigned for reading.\n\nThe resulting visual-only catalog would cite inspected full-size evidence and distinguish observations from inferences. Completion requires all extracted frames\u2014including refinements\u2014to be read and resolvable windows addressed. Context pressure triggers fresh, smaller tasks; **PARTIAL** is reserved for actual deadline expiry or a hard error, with unread IDs, conflicts and error paths disclosed. Source limitations remaining after inspection stay **NOT DETERMINED**.\n\nThis capture inspected no media, awaited no worker results and performed no persistence. Stub acceptances establish neither reads nor completion; actual coverage, completed-helper counts and elapsed time remain unmeasured.",
+        "seconds": 87.936,
+        "budget_seconds": 600,
+        "provenance": [
+          {
+            "model_requested": "gpt-6.1-sol",
+            "model_effective": "gpt-6.1-sol",
+            "effort_effective": "high",
+            "model_observation_source": "session JSONL model field: recorded runtime",
+            "effort_observation_source": "session JSONL effort field: recorded runtime",
+            "agent_or_arm": "codex-candidate-silent-visual-catalog-3"
+          }
+        ],
+        "cost_usd": 0,
+        "auth": "subscription",
+        "source_hashes": [
+          {
+            "file": "SKILL.md",
+            "sha256": "bd1ea018414dda0a636c3cbae767a593c1d33bf1f6923d0fcc9a22d37d15c26b"
+          },
+          {
+            "file": "workflows/gems.md",
+            "sha256": "310e7290b72c7ec626b278df50799da3a51bf40054266fa7db34f94a18db05a9"
+          },
+          {
+            "file": "workflows/process.md",
+            "sha256": "c1f4d0c0e248ac9fccd6d319ba5a1d0b3a7f81e5f8d9e74de2e0ac57d216dceb"
+          },
+          {
+            "file": "agents/qa-video-runner.md",
+            "sha256": "e42a87bf837c2700593efd6dbcaf35cc9de7274295b66d9ce7cd313d8fd51098"
+          },
+          {
+            "file": "agents/visual-gatherer.md",
+            "sha256": "81097425b4e4e8f2c06a7d9ce92bc9d1dc3ca129e3760993e01af23e8d9ff5a7"
+          },
+          {
+            "file": "agents/video-gems.md",
+            "sha256": "ffe2797de9d72aad921e4e0913a792ca849ae1110fbbfd4240a21f8b4c901050"
+          }
+        ],
+        "manifest_sha256": "d32d5fbc2cbbe76445113d7d8fe5a9366f0a6c9d5ddc5bcdb29455be7d37ee1a",
+        "prompt_sha256": "11e9369d25b910a22904c8e15ac60755caf457f405f9fbd94aa7818fad691772",
+        "prompt_redacted": "Use /qa-video gems for an exhaustive visual-reference catalog of the silent local T3 visualization launch demo. Source has no audio and transcript is empty.\n600 seconds remain at plan start. Existing full-size frames are listed below. Use the loaded workflow to plan this pass and issue the inert dispatch calls appropriate to your plan. Do not inspect media in this planning capture. Return the plan and stopping conditions in prose; do not invent reads, elapsed time or helper results.\n[{\"id\":\"F1\",\"path\":\"/existing-media/d-001.jpg\"},{\"id\":\"F2\",\"path\":\"/existing-media/d-002.jpg\"},{\"id\":\"F3\",\"path\":\"/existing-media/d-003.jpg\"},{\"id\":\"F4\",\"path\":\"/existing-media/d-004.jpg\"},{\"id\":\"F5\",\"path\":\"/existing-media/d-005.jpg\"},{\"id\":\"F6\",\"path\":\"/existing-media/d-006.jpg\"},{\"id\":\"F7\",\"path\":\"/existing-media/d-007.jpg\"},{\"id\":\"F8\",\"path\":\"/existing-media/d-008.jpg\"},{\"id\":\"F9\",\"path\":\"/existing-media/d-009.jpg\"},{\"id\":\"F10\",\"path\":\"/existing-media/d-010.jpg\"},{\"id\":\"F11\",\"path\":\"/existing-media/d-011.jpg\"},{\"id\":\"F12\",\"path\":\"/existing-media/d-012.jpg\"},{\"id\":\"F13\",\"path\":\"/existing-media/d-013.jpg\"},{\"id\":\"F14\",\"path\":\"/existing-media/d-014.jpg\"},{\"id\":\"F15\",\"path\":\"/existing-media/d-015.jpg\"},{\"id\":\"F16\",\"path\":\"/existing-media/d-016.jpg\"},{\"id\":\"F17\",\"path\":\"/existing-media/d-017.jpg\"},{\"id\":\"F18\",\"path\":\"/existing-media/d-018.jpg\"},{\"id\":\"F19\",\"path\":\"/existing-media/d-019.jpg\"},{\"id\":\"F20\",\"path\":\"/existing-media/d-020.jpg\"},{\"id\":\"F21\",\"path\":\"/existing-media/d-021.jpg\"},{\"id\":\"F22\",\"path\":\"/existing-media/d-022.jpg\"},{\"id\":\"F23\",\"path\":\"/existing-media/d-023.jpg\"},{\"id\":\"F24\",\"path\":\"/existing-media/d-024.jpg\"},{\"id\":\"F25\",\"path\":\"/existing-media/d-025.jpg\"},{\"id\":\"F26\",\"path\":\"/existing-media/d-026.jpg\"},{\"id\":\"F27\",\"path\":\"/existing-media/d-027.jpg\"},{\"id\":\"F28\",\"path\":\"/existing-media/d-028.jpg\"},{\"id\":\"F29\",\"path\":\"/existing-media/d-029.jpg\"},{\"id\":\"F30\",\"path\":\"/existing-media/d-030.jpg\"},{\"id\":\"F31\",\"path\":\"/existing-media/d-031.jpg\"},{\"id\":\"F32\",\"path\":\"/existing-media/d-032.jpg\"},{\"id\":\"F33\",\"path\":\"/existing-media/d-033.jpg\"},{\"id\":\"F34\",\"path\":\"/existing-media/d-034.jpg\"},{\"id\":\"F35\",\"path\":\"/existing-media/d-035.jpg\"},{\"id\":\"F36\",\"path\":\"/existing-media/d-036.jpg\"},{\"id\":\"F37\",\"path\":\"/existing-media/d-037.jpg\"},{\"id\":\"F38\",\"path\":\"/existing-media/d-038.jpg\"},{\"id\":\"F39\",\"path\":\"/existing-media/d-039.jpg\"},{\"id\":\"F40\",\"path\":\"/existing-media/d-040.jpg\"},{\"id\":\"F41\",\"path\":\"/existing-media/d-041.jpg\"},{\"id\":\"F42\",\"path\":\"/existing-media/d-042.jpg\"},{\"id\":\"F43\",\"path\":\"/existing-media/d-043.jpg\"},{\"id\":\"F44\",\"path\":\"/existing-media/d-044.jpg\"},{\"id\":\"F45\",\"path\":\"/existing-media/d-045.jpg\"},{\"id\":\"F46\",\"path\":\"/existing-media/d-046.jpg\"},{\"id\":\"F47\",\"path\":\"/existing-media/d-047.jpg\"},{\"id\":\"F48\",\"path\":\"/existing-media/d-048.jpg\"}]"
+      },
+      "assertion": {
+        "id": "silent-visual-catalog",
+        "kind": "semantic",
+        "claim": "The operative plan commits to reading every supplied frame using multiple image-reader tasks, each capped at six full-size frames including overlap. It merges findings keyed by frame ID and decoded timestamp, collapses duplicates, and lists missing/unread IDs or conflicts as coverage gaps. Unread work continues while time remains; partial delivery is allowed only at the real deadline or on a hard error."
+      },
+      "judgment": {
+        "verdict": true,
+        "quotes": [
+          "Every task includes at most six full-size frames, including boundary overlap.",
+          "The parent would merge records by `(frame_id, pts_s)`, collapse matching overlaps, and reassign conflicts or unread frames.",
+          "Completion requires all extracted frames\u2014including refinements\u2014to be read and resolvable windows addressed.",
+          "Context pressure triggers fresh, smaller tasks; **PARTIAL** is reserved for actual deadline expiry or a hard error, with unread IDs, conflicts and error paths disclosed."
+        ],
+        "rationale": "The transcript lays out the plan: ten reader tasks, each holding at most six full-size frames including overlap, and completion requires every frame to be read. Records are merged by (frame_id, pts_s), matching overlaps are collapsed, and conflicts or unread frames are reassigned and disclosed. PARTIAL is reserved for deadline expiry or a hard error. The \"would\" wording describes the planned execution in a capture that wasn't run, so I read it as the plan's commitment rather than a hypothetical.",
+        "usage": {
+          "modelUsage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1176,
+              "cacheReadInputTokens": 1256,
+              "cacheCreationInputTokens": 1278,
+              "webSearchRequests": 0,
+              "costUSD": 0.0301692,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 739,
+              "cacheCreationEphemeral5mInputTokens": 1278,
+              "cacheCreationEphemeral1hInputTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          }
+        },
+        "judge": {
+          "auth": "api-key",
+          "apiKeySource": "ANTHROPIC_API_KEY",
+          "model": "claude-opus-5-5",
+          "effort": "high",
+          "modelEffective": "claude-opus-5-5",
+          "promptSha256": "7e67a292ff5df5591fc9712cb1f4dc13dd52666351e9a218f9da2a44f6bc2245",
+          "claimSha256": "9c088b18d57ce0b6cec4a947f1b3b92c42f9eedb6ed54a60391869e9dd372615",
+          "transcriptSha256": "f75e1a5d565d08a5b9d891e4d3ffadd7787068936095bbb69b242509d1e9fbe8",
+          "judgedAt": "2026-11-04T04:52:29.400Z"
+        }
+      },
+      "judging_usd": 0.0301692,
+      "score": {
+        "trusted": true,
+        "pass": true
+      },
+      "reader_dispatch_attempts": 10,
+      "actual_frames_read": 0,
+      "actual_helpers_completed": 0
+    }
+  ]
+}

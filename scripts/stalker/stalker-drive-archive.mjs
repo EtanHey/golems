@@ -96,7 +96,7 @@ export function createDriveArchive({ parentId, tokenImpl = driveAccessToken, fet
     return n;
   }
   return async expected => {
-    if (!/^[\w-]+$/.test(expected.runName ?? '') || !Number.isSafeInteger(expected.size) || expected.size <= 0
+    if (!/^[\w-]+$/.test(expected.runName ?? '') || !Number.isSafeInteger(expected.size) || expected.size < 0
       || !/^[a-f0-9]{64}$/.test(expected.sha256 ?? '') || !expected.relativePath
       || expected.relativePath.split('/').some(part => !part || part === '.' || part === '..' || part.includes('\\'))) throw new Error('invalid archive source');
     if (!validated) {
@@ -109,6 +109,11 @@ export function createDriveArchive({ parentId, tokenImpl = driveAccessToken, fet
     for (const part of parts) parent = await folder(parent, part);
     const existing = await children(parent, name);
     if (existing.length) return verified(await metadata(existing[0].id), expected, parent, name);
+    if (expected.size === 0) {
+      const empty = await data(API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, parents: [parent], mimeType: 'application/octet-stream' }) });
+      return verified(await metadata(empty.id), expected, parent, name);
+    }
     const start = await request('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Upload-Content-Length': String(expected.size), 'X-Upload-Content-Type': 'application/octet-stream' },
       body: JSON.stringify({ name, parents: [parent] }),
