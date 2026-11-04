@@ -1,4 +1,6 @@
 import { ANSWER_RUNTIME, dashboardId } from './answer-persistence.mjs';
+import { sourceHref as safeHref, sourceRowFits, SOURCE_MAX_ROWS, SOURCE_NOTE_MAX_CHARS } from './source-rail.mjs';
+export { SOURCE_NOTE_MAX_CHARS } from './source-rail.mjs';
 import { COPY_BLOCK_ASSETS, renderCardBody } from './copy-blocks.mjs';
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -104,16 +106,6 @@ function referenceTokens(text) {
 }
 const GITHUB_REFERENCE = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/(pull|issues)\/(\d+)(?:[/?#]|$)/;
 
-function safeHref(value) {
-  let url;
-  try {
-    url = new URL(String(value ?? "").trim());
-  } catch {
-    return "";
-  }
-  return (url.protocol === "https:" || url.protocol === "http:") && url.hostname ? url.href : "";
-}
-
 function renderRailValue(row) {
   const value = String(row.value ?? "").trim();
   const href = safeHref(row.href);
@@ -133,10 +125,13 @@ function renderRailValue(row) {
 // Sources rule (Etan, 2026-11-04): a card's links and evidence attribution live in ONE native drawer, closed by
 // default, never as an inline rail beside the card prose. Every http(s) source opens in a new tab with
 // rel="noopener noreferrer"; anything else (javascript:, data:, malformed) stays plain text.
-export const SOURCE_NOTE_MAX_CHARS = 280;
+
 
 function renderSources(decision) {
   const rows = Array.isArray(decision.rail) ? decision.rail : [];
+  if (rows.length > SOURCE_MAX_ROWS || rows.some(row => !sourceRowFits(row))) {
+    throw new Error(`decision-flow: ${decision.id} rail needs at most ${SOURCE_MAX_ROWS} rows, labels of 1–48 characters and values of at most 160 characters (full source URLs allowed)`);
+  }
   const note = String(decision.sourceNote ?? "").trim();
   if (note.length > SOURCE_NOTE_MAX_CHARS) {
     throw new Error(`decision-flow: ${decision.id} sourceNote must be at most ${SOURCE_NOTE_MAX_CHARS} characters; keep attribution concise`);

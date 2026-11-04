@@ -67,7 +67,11 @@ const report = {
   scenesWithWords: `${scenesWithWords.length}/${tpdataIds.length}`,
   wordClickSeek: /currentTime\s*=\s*Number\(word\.dataset\.wordStart\)/.test(html),
   copyAnswers: html.includes('id="df-copy"') && html.includes("localStorage.setItem"),
-  nextAndSkip: html.includes('class="df-next"') && html.includes('class="df-skip"'),
+  nextAndSkip: cards.every(([card]) => {
+    // Infer asks from native controls as well as metadata; notes never manufacture an ask.
+    const asks = /data-answerable="true"|class="df-options"|class="df-checklist"|class="[^"]*\bdf-ask\b/.test(card);
+    return card.includes('class="df-next"') && (!asks || card.includes('class="df-skip"'));
+  }),
   controllerChips: chipIds.length,
   chipsMatchCards: chipIds.length === decisionIds.length && chipIds.every((id, index) => id === decisionIds[index]),
   cardTransport: ['id="df-transport-prev"', 'id="df-transport-play"', 'id="df-transport-next"'].every((marker) => html.includes(marker)),

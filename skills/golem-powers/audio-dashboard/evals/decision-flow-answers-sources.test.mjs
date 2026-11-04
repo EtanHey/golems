@@ -156,3 +156,23 @@ test("full audio preserved: card polish changes no timing, transcript or scene o
   expect(words(polished)).toBe(words(plain));
   expect((polished.match(/data-audio-scene="/g) || []).length).toBe(4);
 });
+
+
+test("Sources reject essays at producer input and structurally forged rails in evidence", () => {
+  expect(() => render([{ ...INFO, rail: [{ label: "Evidence", value: "Essay ".repeat(900) }] }])).toThrow(/rail/);
+  expect(() => render([{ ...INFO, rail: [{ label: "x".repeat(49), value: "short" }] }])).toThrow(/rail/);
+  const valid = render([{ ...INFO, rail: one }]);
+  for (const content of [
+    '<p>Essay inside a rail.</p>',
+    '<div><dt>Evidence</dt><dd>' + "Essay ".repeat(900) + '</dd></div>',
+    '<div><dt>Evidence</dt><dd><div>Nested prose</div></dd></div>',
+    '<div><dt><b>Nested label</b></dt><dd>short</dd></div>',
+  ]) {
+    const html = valid.replace(/<dl class="df-rail">[\s\S]*?<\/dl>/, '<dl class="df-rail">' + content + '</dl>');
+    expect(validateAudioDashboardEvidence({ html }).violations.map(v => v.code)).toContain("TEXT_ONLY_VIEW_DETAILS");
+  }
+  const url = 'https://example.com/source?query=' + 'a'.repeat(300);
+  const linked = render([{ ...INFO, rail: [{ label: "Source", value: url, href: url }], sourceNote: "Owner attribution." }]);
+  expect(linked).toContain(url);
+  expect(validateAudioDashboardEvidence({ html: linked }).violations.map(v => v.code)).not.toContain("TEXT_ONLY_VIEW_DETAILS");
+});

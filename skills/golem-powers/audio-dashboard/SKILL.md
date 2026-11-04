@@ -90,7 +90,9 @@ Attribution: Etan, 2026-11-04 (0300 dashboard polish). Applies to decision-flow 
   input, not counted in "N of M answered"; it keeps an optional **Add a note** (same `<id>-free` key, so saved
   notes stay visible). A note never completes a pick. Do not invent confirmations to make a card answerable.
 - **Sources drawer.** Put every link in rail rows (`{label, value, href}`) and short evidence attribution in
-  `sourceNote` (at most 280 characters, no local paths). Each card renders one closed native **Sources** drawer;
+  `sourceNote` (at most 280 characters, no local paths). Use at most 12 rows, labels of 1–48
+  characters and values of at most 160 characters; a full HTTP(S) URL may use up to 2048.
+  Keep explanations in audio, including when a source row has a link. Each card renders one closed native **Sources** drawer;
   links open in a new tab with `rel="noopener noreferrer"`; non-http(s) hrefs stay plain text. Never end `body`
   with a "Source: ..." paragraph.
 

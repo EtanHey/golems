@@ -95,3 +95,26 @@ test("verifier fails when a card loses its answer sheet or the sheet loses its d
   expect(noStage.report.storyStage).toBe(false);
   expect(noStage.report.pass).toBe(false);
 });
+
+const infoAndAsk = () => renderDecisionFlow({
+  scenes: [scene("i"), scene("a")],
+  decisions: [
+    { id: "info", title: "Info", sceneIds: ["i"] },
+    { id: "ask", title: "Ask", sceneIds: ["a"], options: ["Keep", "Change"] },
+  ],
+});
+
+test("canonical verifier accepts zero asks and mixed info/answer cards", () => {
+  const info = renderDecisionFlow({ scenes: [scene("i")], decisions: [{ id: "info", title: "Info", sceneIds: ["i"] }] });
+  expect(verify(info).report.pass).toBe(true);
+  expect(verify(infoAndAsk()).report.pass).toBe(true);
+});
+
+test("canonical verifier requires Next on every card and Skip on every actual ask", () => {
+  const html = infoAndAsk();
+  expect(verify(html.replace('class="df-next"', 'class="gone"')).report.pass).toBe(false);
+  const twoAsks = render();
+  expect(verify(twoAsks.replace('class="df-skip"', 'class="gone"')).report.pass).toBe(false);
+  // Metadata alone cannot hide an actual native answer control from QA.
+  expect(verify(html.replace('data-answerable="true"', 'data-answerable="false"').replace('class="df-skip"', 'class="gone"')).report.pass).toBe(false);
+});
