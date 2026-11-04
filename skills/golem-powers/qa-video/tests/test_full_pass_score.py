@@ -91,8 +91,11 @@ def test_unseeded_semantic_records_and_source_hashes():
         assert all(token not in c['prompt_redacted'] for token in
                    ['selected_frame_ids', 'helper_batches', 'partial_causes', 'deadline_exhausted', 'context_pressure', 'scroll', 'hover'])
         if run['arm'] == 'candidate':
+            # The measured text is pinned as committed snapshots, so later edits to the live
+            # skill files can't break this evidence check (and can't silently "match" it either).
+            snapshots = skill/'evals/results/sources/2026-11-04-full-pass-r2'
             for s in c['source_hashes']:
-                assert hashlib.sha256((skill/s['file']).read_bytes()).hexdigest() == s['sha256']
+                assert hashlib.sha256((snapshots/(s['file'] + '.snapshot')).read_bytes()).hexdigest() == s['sha256']
         altered = dict(c, text=c['text']+' changed')
         assert not module.replay_semantic(altered, run['assertion'], run['judgment'], evidence['semantic_judge_pin'])['trusted']
     silent = [r for r in evidence['runs'] if r['arm'] == 'candidate' and r['capture']['case'] == 'silent-visual-catalog']
