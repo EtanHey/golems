@@ -14,9 +14,10 @@ these cases deliberately test whether the workflow survives pending app context.
 
 Baseline catalog: golems `23734011baa44db19f2d9d5f78227dd94a1b3c16`. Candidate
 catalog differs only in large-plan/SKILL.md and workflows/ux-ui.md. Text hashes,
-transcript hashes and complete plans are in the fixture. Model: gpt-6-luna,
-effort medium, normal service. All 18 calls completed with runtime settings
-verified and disposable cells removed. API spend $0; list-price cost unmeasured.
+transcript hashes and complete plans are in the fixture. Its schema-valid
+`provenance` entries record requested/effective model, effective effort and their
+session-JSONL observation sources. The measured effort was medium, normal service.
+All 18 calls completed with runtime settings verified and disposable cells removed. API spend $0; list-price cost unmeasured.
 
 | Case / measure | Master | First draft | Revised candidate |
 | --- | ---: | ---: | ---: |
@@ -34,8 +35,8 @@ candidate calls make 18 total. The final comparison is 2 cases × 3 reps × 2 ar
 
 Scoring is a manual semantic assessment of complete plans, with all outputs kept.
 Real-app flow/state assertions count as e2e checks without an invented runner name.
-`claude.judgment` counts as the role-equivalent of the configured Opus taste model;
-the resolver returned claude-opus-5-5. For example, revised U1 rep2 says “Run e2e
+The taste assertion uses the role identifier from [agent-routing](../../agent-routing/SKILL.md).
+For example, revised U1 rep2 says “Run e2e
 on the actual app” and “A separate QA subagent”, then requires a fresh taste review
 that “cites the screenshots, GIFs, and recording frames.” Generic “QA” fails.
 Absence of UX steps was checked against each complete backend plan.
@@ -43,3 +44,7 @@ Absence of UX steps was checked against each complete backend plan.
 This is bounded body-compliance evidence on one model, three repeats and two
 prompts, scored by the implementer. It is not a triggering benchmark, an automated
 semantic judge result, cross-model generalization, or installed-skill acceptance.
+
+Recorded candidate text is commit `e0c8a21d`; the subsequent routing-pointer and
+provenance-format correction was not re-recorded. Runtime receipts and plan outputs
+remain unchanged.

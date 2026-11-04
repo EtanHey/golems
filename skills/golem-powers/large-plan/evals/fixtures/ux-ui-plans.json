@@ -421,5 +421,31 @@
       "pass": true,
       "plan": "## Plan: backend job retry backoff\n\n**Goal:** Change only the server-side delay policy between job retries. Preserve the API contract and all user-visible behavior, including job status, retry counts, error reporting, and timing expectations visible to clients.\n\n**Scope:** Identify the backend retry scheduler and its current delay calculation. Update that calculation in one place, keeping API schemas, responses, events, and client code untouched. The desired backoff parameters and formula are unspecified, so choose them after locating the current policy and its constraints.\n\n**Steps:**\n\n1. Trace job creation, retry scheduling, attempt limits, and terminal failure handling. Find the owner of the delay policy and any configuration or tests that encode it.\n2. Define the new backoff formula and parameters. Preserve existing retry limits and failure semantics; account for maximum delay, overflow, and any jitter or clock behavior already supported.\n3. Update the backend policy and focused tests for delay progression, bounds, attempt limits, and terminal behavior. Keep API and user-visible behavior unchanged.\n4. Review the diff for changes outside the backend retry path and verify the relevant test suite and build.\n\n**Execution:** Sequential; one backend change with no independent workstreams.  \n**Depends on:** Repository source and the intended backoff parameters.  \n**Verification:** Focused retry scheduling tests plus existing backend tests/build; confirm API definitions and client-facing behavior have no changes.  \n**Status:** Planning only. The provided workspace is empty, so the implementation location and current retry policy could not be identified. No files were changed."
     }
+  ],
+  "provenance": [
+    {
+      "agent_or_arm": "baseline",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL `model` field (cell turn_context, all six arm runtime receipts)",
+      "effort_observation_source": "session JSONL `effort` field (cell turn_context, all six arm runtime receipts)"
+    },
+    {
+      "agent_or_arm": "pilot",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL `model` field (cell turn_context, all six arm runtime receipts)",
+      "effort_observation_source": "session JSONL `effort` field (cell turn_context, all six arm runtime receipts)"
+    },
+    {
+      "agent_or_arm": "candidate",
+      "model_requested": "gpt-6-luna",
+      "model_effective": "gpt-6-luna",
+      "effort_effective": "medium",
+      "model_observation_source": "session JSONL `model` field (cell turn_context, all six arm runtime receipts)",
+      "effort_observation_source": "session JSONL `effort` field (cell turn_context, all six arm runtime receipts)"
+    }
   ]
 }
