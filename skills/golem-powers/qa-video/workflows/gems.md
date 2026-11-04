@@ -16,21 +16,21 @@ or wants durable insights/takeaways from a video instead of QA findings.
 
 ## Execution Contract
 
-Default pipeline: `Agent(video-gems)` for gems; QA is the QA seat's own fan-out
-(process.md), with `qa-video-runner` only as the no-dispatch fallback.
-The gems sub-agent owns the whole iterative loop in its **own shell**
-and **reads the images itself**: it opens the contact sheets and the frames
-behind every finding with Read, in its own context, and connects them over
-time: what changed between the before/after frames of a cue, and whether an
-element's state carries across windows. The lead stays text-only.
-`scripts/visual-batch.py` (driving visual-gather.py) is OPTIONAL bulk
-pre-sorting, e.g. flagging candidate windows across hundreds of samples. Its
-text is a lead, never evidence: view the frames before reporting a finding.
+Default pipeline: `Agent(video-gems)` for gems, managed at
+`../agents/video-gems.md` and installed by `orc/scripts/install.sh`. Include
+absolute skill/workflow paths, source, workdir and the remaining deadline.
+The worker owns extraction and reader coordination in its own shell. Ordinary
+transcript-first gems keeps one reader over the targeted stills. For exhaustive
+mode, when it has dispatch tools it uses the SKILL.md image-reader fan-out. A nested Agent
+without dispatch returns NEEDS_READERS plus ordered frame batches to its parent;
+the parent dispatches readers and synthesizes their evidence. If neither can
+dispatch, use the single-reader contract in `qa-video-runner.md`, disclose
+`helpers 0 (dispatch unavailable)`, and still read every frame for exhaustive mode.
+Each reader reads the images itself and returns text only. The parent stays text-only
+when helpers are available. `visual-batch.py` (driving `visual-gather.py`) / `visual-gatherer` are optional
+pre-sorting: a lead, never evidence; do not count pre-sort as reader fan-out.
 `debrief.py` runs no helper unless you pass `--presort`.
 NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
-A sub-agent cannot dispatch another sub-agent: `video-gems` never uses the Agent
-tool. The parent may use `Agent(visual-gatherer)` for ad-hoc
-screenshot questions outside this pipeline.
 
 Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
 Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
@@ -47,11 +47,51 @@ no `command_status`/`send_command_input`; a launch return is not completion.
 Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
-**Mode: gems (or debrief/review)** — TRANSCRIPT-FIRST, default max(600, 24 × video minutes) seconds wall-clock budget; explicit --budget-seconds from the parent wins. Preserve transcript-derived debrief.md on budget/partial exits; absent visual reads stay NOT DETERMINED. Select ≤12 questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each. No blanket 30s coverage and no scene sweep unless the transcript references visuals. Dense 10 fps/re-densify behavior belongs to qa. Write root progress.txt at every phase and findings incrementally. The parent runs the runner in the background and reads progress.txt on delay questions.
+**Default mode: gems (or debrief/review)** — TRANSCRIPT-FIRST unless the exhaustive override below applies, default max(600, 24 × video minutes) seconds wall-clock budget; explicit --budget-seconds from the parent wins. Preserve transcript-derived debrief.md on budget/partial exits; absent visual reads stay NOT DETERMINED. Select ≤12 questions/claims/numbers/referenced-slide moments, one still or ≤2 fps short window each. No blanket 30s coverage and no scene sweep unless the transcript references visuals. Dense 10 fps/re-densify behavior belongs to qa. Write root progress.txt at every phase and findings incrementally. The parent runs the runner in the background and reads progress.txt on delay questions.
+
+## Visual-first exhaustive
+
+Select **VISUAL-FIRST EXHAUSTIVE** for "full", "rigorous", "exhaustive", a
+visual-reference/catalog goal, or a silent video (no audio, missing/empty
+transcript). Do not run the ≤12-moment `debrief.py` planner for this mode; an
+empty transcript is a mode switch, not a reason to end the visual pass.
+
+1. Start one monotonic wall-clock deadline before setup; the same total budget
+   includes extraction, readers, refinement and synthesis. Use the explicit
+   parent deadline or max(600, 24 × video minutes) seconds. Display it.
+2. Reuse existing frames and their decoded-PTS ledger. Otherwise run `coverage.sh`
+   first, then `scene-cues.sh` and `dense-windows.sh` over visual changes; for a
+   short silent clip sample the whole duration at 2 fps initially. Plan from
+   metadata, not image loading. List every extracted frame in ordered batches.
+3. Split batches across at least two image-reading helpers when dispatch exists,
+   with the adjacent batch's boundary frame, absolute paths, mode and remaining
+   deadline in each brief (SKILL.md § Execution routing owns role/model routing).
+   Every helper opens **every full-size frame** assigned, logs each actual read
+   with `inspected.sh` and its helper id, and returns text plus unread IDs.
+   A sheet, planned batch or pre-sort is not a full-size read. Dispatch-unavailable
+   seats follow the single-reader fallback above without dropping frames.
+4. Read all extracted frames, including new refinement frames. Densify scroll,
+   hover, tooltip and transition windows at 10 fps up to source fps, using fresh
+   `dense-windows.sh` output directories; use decoded PTS for before/after claims.
+   Repeat unclear windows within the remaining budget. A source-resolution limit
+   may stay NOT DETERMINED after inspection; an unread frame may not.
+5. While unread frames or resolvable windows remain and time remains, continue:
+   dispatch/rebatch unread IDs or read them in the no-dispatch fallback. Compact
+   text findings and split smaller batches before context fills; context pressure
+   alone does not authorize PARTIAL. Stop PARTIAL only on actual deadline expiry
+   or a hard error (including failed reads/dispatch); identify the cause, raw error
+   path, unread IDs and remaining time. Never idle just to consume the budget.
+6. End with `frames read N/N, helpers K, budget used X/Y s`, computed from actual
+   reader receipts and elapsed wall-clock, plus pasted `coverage-count.sh` output.
+   Planned frames and requested helpers stay separate from actual reads/completed
+   helpers. Do not label an unexecuted plan COMPLETE. Preserve transcript-derived
+   notes when a transcript exists; a silent source earns visual-only notes.
 
 ## Steps
 
-1. Create a session directory under `docs.local/qa-video/<slug>/` and set
+1. Declare default transcript-first or visual-first exhaustive using the rule above.
+   For exhaustive mode follow that section, then steps 7–9; steps 3–6 are the
+   ordinary transcript-first path only. Create a session directory under `docs.local/qa-video/<slug>/` and set
    `WORKDIR` to it; set `SCRIPTS` to the qa-video skill's `scripts/` directory.
 2. For YouTube, download metadata and **video** in your own shell; an audio-only
    download cannot provide visual evidence:
