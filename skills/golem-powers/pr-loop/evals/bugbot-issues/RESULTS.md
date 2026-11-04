@@ -1,7 +1,7 @@
 # Evidence: PR-loop Bugbot and issue-closing measurement
 
 date: 2026-11-04
-Status: Sonnet r1 CHANGES addressed; lead-routed re-review pending. No push.
+Status: First review CHANGES addressed; lead-routed re-review pending. No push.
 
 Compare master `23734011baa44db19f2d9d5f78227dd94a1b3c16` with the corrected
 candidate hashes in [round-2 recordings](fixtures/review-r2-recordings.json).
@@ -17,8 +17,9 @@ C4’s Bugbot assertions and merge continuation passed 3/3. One candidate answer
 omitted an explicit head pin, so it fails the retained `pinned_merge` assertion;
 full-case totals are master 4/12, candidate 11/12, not an all-green claim.
 
-Three repetitions per case/arm; observed gpt-6-luna/medium, default service,
-subscription, $0 API. Scoring is **implementer-only manual inspection**, no live
+Three repetitions per case/arm; effective model/effort and their observation
+sources are recorded in the fixture's schema-valid `provenance` entries. Measured
+effort was medium, default service, subscription, $0 API. Scoring is **implementer-only manual inspection**, no live
 GitHub. This measures proposed output, not real merges, hosted checks, actual
 issue closure or general reliability. C3's delta is the literal `Fixes` keyword:
 master already checked issue state in the earlier recordings. That behavior is
@@ -26,7 +27,7 @@ not scored as an improvement. C3's verification hint was removed and both arms
 were rerun; C1/C4 were rerun on both arms. Only master C2 was reused, after checking
 identical prompt, seat, five source hashes, model and effort; candidate C2 reran.
 
-Sonnet r1: CHANGES, 1 blocking — silence-recording added a step to every routine
+First review: CHANGES, 1 blocking — silence-recording added a step to every routine
 PR. The record now applies only to a requested, unavailable Bugbot or a real
 usage notice. Routine/no-activity PRs have no Bugbot action. Posted findings are
 answered; bots are never awaited. C4 guards that negative case. The earlier
@@ -50,7 +51,12 @@ loaded or GitHub action executed.
 
 ## Eval Provenance
 
-| agent_or_arm | model_requested | model_effective | effort_effective | model_observation_source | effort_observation_source |
-|---|---|---|---|---|---|
-| master (fresh C1/C3/C4, reused C2) | gpt-6-luna | gpt-6-luna | medium | session JSONL model field: turn_context.model | session JSONL effort field: turn_context.effort |
-| corrected candidate | gpt-6-luna | gpt-6-luna | medium | session JSONL model field: turn_context.model | session JSONL effort field: turn_context.effort |
+The [round-2 fixture](fixtures/review-r2-recordings.json) records requested/effective
+model, observed effort and session-JSONL observation sources in schema-valid
+`provenance` entries. The [earlier fixture](fixtures/recordings.json) retains its
+original provenance too. Validate the JSON fixtures, where runtime identities are
+structured measurement data rather than Markdown routing instructions.
+
+Recorded candidate text is commit `171efe88`; the subsequent routing-marker and
+provenance-presentation correction was not re-recorded. Runtime receipts, outputs
+and recorded scores remain unchanged.

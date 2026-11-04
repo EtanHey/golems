@@ -934,13 +934,6 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/adapters/codex.md",
-      "marker": "| Trigger Bugbot | `gh pr comment <N> --body \"@cursor @bugbot review\"` | **Opt-in, core paths only** ([review loop \u00a7 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and never where the repo's `AGENTS.md` bans it (\u00a7 8a.0). Not part of the default panel. Re-review with `@cursor @bugbot re-review` |",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
       "marker": "| No BrainLayer MCP | Can't brain_store post-merge | Skip or orchestrate from Claude session |",
       "class": "FALSE POSITIVE",
       "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
@@ -976,7 +969,7 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/adapters/codex.md",
-      "marker": "gh pr comment <N> --body \"@cursor @bugbot review\"      # core paths ONLY \u2014 opt-in",
+      "marker": "gh pr comment <N> --body \"@cursor @bugbot review\"      # eligible L/core-risk PR only \u2014 once",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1
@@ -1018,7 +1011,7 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/adapters/cursor.md",
-      "marker": "| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed \u2014 Bugbot is **opt-in, core paths only** ([review loop \u00a7 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (\u00a7 8a.0). Where it genuinely applies, comment `@cursor @bugbot review` on GitHub by hand |",
+      "marker": "| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed \u2014 Bugbot is **opt-in, L or very important/core-risk PRs only** ([review loop \u00a7 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (\u00a7 8a.0). Where eligible and available, request once with `@cursor @bugbot review`; never wait or block, and record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage notice; routine/no activity needs no entry |",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1
@@ -1060,7 +1053,7 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/references/review-loop.md",
-      "marker": "gh pr comment <N> --body \"@cursor @bugbot review\"   # core paths ONLY \u2014 opt-in",
+      "marker": "gh pr comment <N> --body \"@cursor @bugbot review\"   # eligible L/core-risk PR only",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1
@@ -1095,7 +1088,7 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/references/review-loop.md",
-      "marker": "| Cursor Bugbot | Bug detection \u2014 **opt-in, core paths only** | Not on the default panel (see Step 8a tiering) and never where repo policy bans it (Step 8a.0). On a daemon/engine/transport diff: `gh pr comment <N> --body \"@cursor @bugbot review\"`. Re-review after fixes: `gh pr comment <N> --body \"@cursor @bugbot re-review\"`. Bot responds as `cursor[bot]`. |",
+      "marker": "| Cursor Bugbot | Bug detection \u2014 **opt-in, L or very important/core-risk PRs only** | Follow 8a.1 and repo bans (8a.0). Request once if available and not already covering the head: `gh pr comment <N> --body \"@cursor @bugbot review\"`. Record `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real usage notice; no activity on a routine PR needs no entry. Never wait or block. Bot responds as `cursor[bot]`. |",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1

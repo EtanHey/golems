@@ -2,7 +2,7 @@
 
 This is an A/B text-behavior probe for an encoded workflow preference. The baseline
 loads master PR-loop; the candidate loads the edited skill, PR-creation/review
-references and Codex/Cursor adapters. The same neutral seat and prompts reach
+references and CLI adapters. The same neutral seat and prompts reach
 both arms. `cases.json` expectations and assertions are never sent to the model.
 C1 is the routine-PR false-trigger probe; C2 preserves the core-risk request path;
 C3 scores only literal `Fixes #42` in the body; C4 is the routine/no-activity
@@ -22,7 +22,8 @@ seat, baseline source hashes, model and effort; retain both iterations.
 
 The #140 trigger adapter is tied to large-plan reads and dispatch events, so the
 runner reuses its clean-cell lifecycle and runtime validator instead. Codex runs
-with subscription auth and default service. The 2026-11-04 brief pins gpt-6-luna/medium.
+with subscription auth and default service. Requested/effective model and observed
+effort are recorded in the fixtures' schema-valid `provenance` entries.
 Its private HOME is outside repos; user config, MCPs, apps, bundled skills and agents
 are disabled.
 No API key is loaded. Credentials are deleted with each cell; output is redacted.

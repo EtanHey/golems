@@ -64,7 +64,7 @@ cursor-agent -p --output-format text \
 If this pass exhausts the shared quota, report the dispatch as the cause, not
 the resulting `resource_exhausted` as an external finding (canon #3).
 
-Cursor **Bugbot** is a different thing and is **not** part of this pass: it is opt-in for L or very important/core-risk PRs
+**Bugbot** is a different thing and is **not** part of this pass: it is opt-in for L or very important/core-risk PRs
 (daemon/engine/transport, security, release), never routine XS/S/M PRs, and off where repo policy
 bans it ([review loop § 8a.0](../references/review-loop.md#8a0--read-the-target-repos-bot-policy-before-summoning-anything)). Record `Bugbot: unavailable (usage)`
 in the PR body only for an actual request that is unavailable or a real usage/rate/spend-limit
