@@ -87,16 +87,20 @@ test("real rendered prose at 375, 390 and 1280: max length, paragraphs and long 
 
 
 test("usable phone width rejects prose that fits the full 390px viewport", async () => {
-  const body = 'The saved report shows which checks passed and which ones still need attention.';
-  expect(analyzeCardProse([{ ...INFO, body }]).verdict).toBe('PASS');
-  const result = await decisionFlow.analyzeCardProseLayout(render([{ ...INFO, body }]));
-  expect(result.stats.find(row => row.width === 390)?.lines).toBe(2);
-  expect(result.stats.find(row => row.width === 1280)?.lines).toBe(1);
+  const words = 'The saved report shows which checks passed and which ones still need attention.'.split(' ');
+  const decisions = words.flatMap((_, n) => Array.from({ length: 13 }, (_, k) => ({ ...INFO, id: `c${n}-${k}`, sceneIds: [`c${n}-${k}`], body: words.slice(0, n + 1).join(' ') + ' i'.repeat(k) })))
+    .filter(d => analyzeCardProse([d]).verdict === 'PASS');
+  const probe = await decisionFlow.analyzeCardProseLayout(renderDecisionFlow({ scenes: decisions.map(d => scene(d.id)), decisions }));
+  const passesOld = (stats, id) => [390, 1280].every(width => { const row = stats.find(r => r.segment === id && r.width === width); return row && row.lines <= 2 && row.blocks.every(b => b.readable && !b.overflow); });
+  const hit = decisions.find(d => probe.stats.find(r => r.segment === d.id && r.width === 375)?.lines > 2 && passesOld(probe.stats, d.id));
+  expect(hit).toBeDefined();
+  const result = await decisionFlow.analyzeCardProseLayout(render([{ ...INFO, body: hit.body }]));
+  expect(passesOld(result.stats, 'info')).toBe(true);
   expect(result.verdict).toBe('REJECTED');
   expect(result.violations).toContainEqual(expect.objectContaining({
-    segment: 'info', metric: 'CARD_PROSE_LAYOUT', value: 3, threshold: 2,
+    segment: 'info', metric: 'CARD_PROSE_LAYOUT', threshold: 2,
   }));
-  expect(result.stats.find(row => row.width === 375)?.lines).toBe(3);
+  expect(result.stats.find(row => row.width === 375)?.lines).toBeGreaterThan(2);
   const short = await decisionFlow.analyzeCardProseLayout(render([{ ...INFO, body: 'Read the saved report.' }]));
   expect(short.verdict).toBe('PASS');
   for (const width of [375, 390, 1280]) {
@@ -104,7 +108,7 @@ test("usable phone width rejects prose that fits the full 390px viewport", async
     expect(row?.lines).toBe(1);
     expect(row?.blocks.every(block => block.readable && !block.overflow)).toBe(true);
   }
-}, 15000);
+}, 30000);
 
 test("real BUILD withholds stale HTML and writes typed prose rejects", () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'prose-build-'));
