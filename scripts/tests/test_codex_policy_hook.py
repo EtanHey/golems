@@ -30,9 +30,11 @@ def clean_env():
     return env
 
 
-def run(gate, payload, adapter=ADAPTER, cwd=ROOT, env=None, python=sys.executable):
+def run(gate, payload, adapter=ADAPTER, cwd=ROOT, env=None, python=sys.executable, through_gate=False):
     data = payload if isinstance(payload, str) else json.dumps(payload)
-    return subprocess.run([python, str(adapter), gate], input=data,
+    argv = (["sh", str(adapter.with_name("codex-gate.sh")), gate, python, adapter.name]
+            if through_gate else [python, str(adapter), gate])
+    return subprocess.run(argv, input=data,
                           capture_output=True, text=True, cwd=cwd,
                           env=env or clean_env(), timeout=12)
 
@@ -567,9 +569,36 @@ class CodexPolicyHookTests(unittest.TestCase):
     def test_payload_cwd_reaches_both_policies(self):
         p = payload("git worktree add /workspace/sibling/x HEAD")
         self.check(run("tmp-block", p), True)
-        p["cwd"] = "/missing-PRIVATE-VALUE/cwd"
+        p["cwd"] = "relative-PRIVATE-VALUE/cwd"
         result = self.check(run("tmp-block", p), True)
         self.assertNotIn("PRIVATE-VALUE", json.dumps(result))
+
+    def test_missing_cwd_names_path_and_recovery_through_both_transports(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:
+            missing = str(Path(scratch) / "missing workdir")
+            for gate in (*TARGETS, "m1-window-gate", "heredoc-guard", "human-confirm"):
+                for through_gate in (False, True):
+                    with self.subTest(gate=gate, through_gate=through_gate):
+                        p = payload("pwd"); p["cwd"] = missing
+                        result = self.check(run(gate, p, through_gate=through_gate), True)
+                        reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+                        self.assertIn(missing, reason)
+                        self.assertIn("doesn't exist", reason)
+                        self.assertIn("mkdir -p", reason)
+                        self.assertIn("existing directory", reason)
+                        self.assertNotIn("reinstall", reason)
+                        self.assertFalse(Path(missing).exists())
+
+    def test_existing_and_invalid_cwd_keep_their_decisions_through_both_transports(self):
+        repair = "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."
+        for gate in (*TARGETS, "m1-window-gate", "heredoc-guard", "human-confirm"):
+            for through_gate in (False, True):
+                with self.subTest(gate=gate, through_gate=through_gate):
+                    self.assertEqual(self.check(run(gate, payload("pwd"), through_gate=through_gate), False), {})
+                    for cwd in ("relative-PRIVATE-VALUE", None, 123, [], {}, str(ADAPTER)):
+                        p = payload("pwd"); p["cwd"] = cwd
+                        result = self.check(run(gate, p, through_gate=through_gate), True)
+                        self.assertEqual(result["hookSpecificOutput"]["permissionDecisionReason"], repair)
 
     def test_timeout_stops_descendant_effects(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "docs.local") as scratch:

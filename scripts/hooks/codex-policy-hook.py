@@ -18,6 +18,7 @@ from pathlib import Path
 import subprocess
 import signal
 import shlex
+import stat
 import sys
 import time
 
@@ -499,7 +500,17 @@ def evaluate():
     if not isinstance(ti, dict) or not isinstance(ti.get("command"), str):
         raise ValueError("invalid command")
     cwd = p.get("cwd", os.getcwd())
-    if not isinstance(cwd, str) or not os.path.isabs(cwd) or not os.path.isdir(cwd):
+    if not isinstance(cwd, str) or not os.path.isabs(cwd):
+        raise ValueError("invalid cwd")
+    try:
+        cwd_stat = os.stat(cwd)
+    except FileNotFoundError:
+        return denial(
+            f"Blocked: the working directory {cwd} doesn't exist. "
+            "Create it from an existing directory (mkdir -p) or use an existing "
+            "working directory, then retry."
+        )
+    if not stat.S_ISDIR(cwd_stat.st_mode):
         raise ValueError("invalid cwd")
     # Native Codex Bash omits workdir from tool_input; tmp-block's patch path
     # resolver expects cwd there. Both child processes also start in that cwd.
