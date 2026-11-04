@@ -74,11 +74,13 @@ def evaluate(payload, home):
     if not isinstance(args.get('command'), str):
         return
     from commands import operations, shell
-    from tokens import authorize
+    from tokens import authorize, own_lease_scope
     with shell.policy_evaluation_deadline(8):
         ops = operations(args['command'], payload['cwd'])
         if ops and not authorize(payload, ops, home):
-            raise ConfirmationRequired(approval_reason(ops))
+            allowed, reason = own_lease_scope(payload, ops)
+            if not allowed:
+                raise ConfirmationRequired(reason or approval_reason(ops))
 
 
 def main():
