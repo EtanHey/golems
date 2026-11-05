@@ -441,13 +441,13 @@
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
-    "authority": "golems#491",
+    "authority": "golems#1153",
     "candidate_sha256": {
-      "darwin": "7d89837d16afaa71190cdcab1d155f63a2817c165c0c54a3f65e2a5f5ae51cfb",
-      "linux": "7d89837d16afaa71190cdcab1d155f63a2817c165c0c54a3f65e2a5f5ae51cfb"
+      "darwin": "ab3ea397a0145a798846e85e4861c9b5ff3ebf1cfe8b2e4bcbf918d70c4e612c",
+      "linux": "ab3ea397a0145a798846e85e4861c9b5ff3ebf1cfe8b2e4bcbf918d70c4e612c"
     },
     "case": "issue491-control-malformed-process-substitution",
-    "reason": "Retain the issue458 fail-closed block for a real malformed executed process substitution while removing issue491 data false positives; message text updated by golems#1048"
+    "reason": "parse-failure message text updated; decision and exit unchanged"
   },
   {
     "authority": "golems#1048",

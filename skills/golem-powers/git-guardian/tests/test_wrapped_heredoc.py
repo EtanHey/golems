@@ -21,7 +21,7 @@ def hook(command):
 
 
 @pytest.mark.parametrize('reader', [
-    "ssh -o BatchMode=yes h '/opt/homebrew/bin/timeout 90 python3 -I -'",
+    "ssh -o BatchMode=yes h '/usr/bin/timeout 90 python3 -I -'",
     'timeout 90 python3 -', 'timeout -s TERM -k 2 90 python3 -',
     '/usr/bin/nice -n 5 nohup env MODE=x command exec python3 -',
     "ssh h 'node -'", "ssh -p 22 -i key -l user -J jump h 'python3 -'",
