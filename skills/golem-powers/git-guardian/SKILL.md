@@ -143,6 +143,18 @@ are probed for `.git` at depth at most 3 with a 5,000-entry cap; cap or filesyst
 errors fail closed. The initial checkout stays protected after `cd`; `~`, `~+`
 and `~-` use tracked HOME/cwd/oldpwd, and other tilde prefixes fail closed.
 
+An exact recursive `rm` operand at repo depth 1 can pass when its existing
+directory is not a symlink, resolves within the same checkout, is Git-ignored,
+has no tracked index entries beneath it, and contains no worktree listed by
+`git worktree list --porcelain -z`. Its resolved basename must exactly match
+this case-sensitive build-output allowlist: `.build`, `.build.noindex`, `build`,
+`dist`, `node_modules`, `.next`, `.turbo`, `.parcel-cache`, `DerivedData`, `target`,
+`__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.gradle`, `coverage`.
+Other ignored names, including `docs.local`, `.worktrees`, `.env.d`, and `scratch`,
+retain the breadth denial. Git inspection errors retain that denial as well.
+Protected roots and metadata, globs, loop-driven
+cleanup, and other deletion tools receive no new exception.
+
 The same target policy covers `find -delete` roots and local `rsync --delete*`/`--del`
 destinations. Find follows its selected `-H`/`-L`/`-follow` policy (last
 `-P` overrides earlier flags); local rsync destinations are evaluated physically.
