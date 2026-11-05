@@ -83,7 +83,7 @@ def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
         if value.returncode == 0 and value.stdout.strip().isdigit():
             birth = int(value.stdout.strip())
             break
-    if reason != "KEEP-undetermined" and (not birth or time.time() - birth < 72 * 3600):
+    if reason not in ("KEEP-undetermined", "KEEP-busy") and (not birth or time.time() - birth < 72 * 3600):
         return
     owner = repo
     try:

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Nightly worktree prune (launchd com.golems.worktree-gc, 06:00, clear of BrainLayer's 03:00-05:30
-# backup/scrub window). It never competes with a heavy suite: a perl parent takes the shared
-# heavy-suite lock WITHOUT waiting and holds it while the prune runs as its child. A held lock, or
-# a lock it cannot open, skips the night (logged, exit 0); the next night retries.
+# backup/scrub window). A perl parent holds a dedicated single-instance GC lock.
+# Scans run without the heavy-suite lock; worktree-gc.sh takes it nonblocking only
+# around archive/removal, keeping busy candidates for the next night. A held GC
+# lock, or one it cannot open, skips the night (logged, exit 0).
 # The child never inherits the lock fd (close-on-exec), so no daemon a child spawns (git
 # fsmonitor, ...) can keep the lock after the run. The run is time-limited
 # (WORKTREE_GC_NIGHTLY_TIMEOUT seconds, default 3600): on expiry the child's process group is
@@ -87,7 +88,7 @@ fi
 
 # Nightly must prove registry coverage; standalone GC may omit a registry.
 export WORKTREE_GC_CMUX_REGISTRY="${WORKTREE_GC_CMUX_REGISTRY-$HOME/.cmuxlayer/session-registry.jsonl}"
-LOCK="${GOLEMS_HEAVY_LOCK:-$HOME/.local/state/golems/heavy-suite.lock}"
+LOCK="${GOLEMS_WORKTREE_GC_LOCK:-$HOME/.local/state/golems/worktree-gc.lock}"
 LIMIT="${WORKTREE_GC_NIGHTLY_TIMEOUT:-3600}"
 
 # Refuse upward Git discovery before even trying to take the lock.
@@ -113,11 +114,11 @@ exec perl -MFcntl=:flock -MPOSIX=:sys_wait_h,:signal_h -e '
   my ($lock, $limit, @cmd) = @ARGV;
   my $fh;
   if (!open($fh, ">>", $lock)) {
-    print STDERR "worktree-gc-nightly: SKIP cannot open heavy-suite lock $lock ($!); next night retries\n";
+    print STDERR "worktree-gc-nightly: SKIP cannot open worktree-gc lock $lock ($!); next night retries\n";
     exit 0;
   }
   if (!flock($fh, LOCK_EX | LOCK_NB)) {
-    print STDERR "worktree-gc-nightly: SKIP heavy-suite lock held ($lock); next night retries\n";
+    print STDERR "worktree-gc-nightly: SKIP worktree-gc lock held ($lock); next night retries\n";
     exit 0;
   }
   # Block shutdown signals until the child owns its group and handlers are ready.
