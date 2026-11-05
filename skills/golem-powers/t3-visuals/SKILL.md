@@ -43,7 +43,7 @@ Copy these opaque AA pairs; apply the surface to the visual root and the matchin
 .t3v-surface{color:var(--t3v-fg);background:var(--t3v-bg)}.t3v-muted{color:var(--t3v-muted)}
 .t3v-ready{color:var(--t3v-ready-fg);background:var(--t3v-ready-bg)}.t3v-wait{color:var(--t3v-wait-fg);background:var(--t3v-wait-bg)}.t3v-error{color:var(--t3v-error-fg);background:var(--t3v-error-bg)}.t3v-idle{color:var(--t3v-idle-fg);background:var(--t3v-idle-bg)}
 ```
-Local clocks: `new Date(t).toLocaleTimeString('en-US',{timeZone:'Asia/Jerusalem',hour:'numeric',minute:'2-digit',hour12:true}).toLowerCase()`; add date when needed and the local zone on literal times/ranges; never display ISO/UTC/Z.
+Local clocks always include am/pm, including heatmap/axis labels and both range endpoints: `new Date(t).toLocaleTimeString('en-US',{timeZone:'Asia/Jerusalem',hour:'numeric',minute:'2-digit',hour12:true}).toLowerCase()` → `"5:22 am"`; add date when needed and a space before the zone, e.g. `5:22 am Asia/Jerusalem` or `4:30 am–5:10 am Asia/Jerusalem`; never display ISO/UTC/Z.
 Label selectively without tiny type; preserve identities and units at desktop and 390px, with hover for omitted precision.
 Add linked hover/drill-down only when useful; update scope, KPIs, map, ranking and breadcrumb together.
 Keep controls local and working (back/reset/replay when needed); motion must explain change and respect reduced motion.
