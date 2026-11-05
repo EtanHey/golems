@@ -4,8 +4,15 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
+import time
 
 _SHELL_VAR_RE = re.compile(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))")
+_REGENERABLE_BUILD_DIRS = frozenset({
+    '.build', '.build.noindex', 'build', 'dist', 'node_modules', '.next',
+    '.turbo', '.parcel-cache', 'DerivedData', 'target', '__pycache__',
+    '.pytest_cache', '.mypy_cache', '.ruff_cache', '.gradle', 'coverage',
+})
 
 def _expand_known_vars(value: str, variables: dict[str, str], shell_var_re) -> tuple[str, bool]:
     """Expand known simple variables; return (literal prefix, fully resolved)."""
@@ -265,6 +272,53 @@ def _protected_root_reason(resolved, physical, home, cwd, protected_cwd, *,
     return None
 
 
+def _ignored_untracked_directory(resolved: str, physical: str, repo: str) -> bool:
+    """Narrow rm exception; Git/identity uncertainty retains the breadth deny."""
+    try:
+        if (os.path.basename(physical) not in _REGENERABLE_BUILD_DIRS
+                or os.path.islink(resolved) or not os.path.isdir(resolved)
+                or '.git' in [part.casefold() for part in physical.split(os.sep)]
+                or not _within(physical, os.path.realpath(repo))
+                or os.path.samefile(physical, repo)):
+            return False
+        # No Git invocation helper exists in this guard. Bound all reads to one
+        # second inside the hook's existing three-second policy deadline. Ambient
+        # GIT_DIR/INDEX_FILE/etc must never redirect the inspected repo or index.
+        deadline = time.monotonic() + 1
+        env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
+
+        def read(directory, *args):
+            return subprocess.run(
+                ['/usr/bin/git', '-c', 'core.fsmonitor=false', '-C', directory,
+                 *args], env=env, capture_output=True,
+                timeout=max(0.001, deadline - time.monotonic()), check=False)
+
+        # Query FROM the target: nested repos and submodules must not inherit
+        # their parent's ignored status. Linked worktrees report their own root.
+        root = read(physical, 'rev-parse', '--show-toplevel', '--show-superproject-working-tree')
+        roots = os.fsdecode(root.stdout).splitlines()
+        if root.returncode != 0 or len(roots) != 1 or not os.path.samefile(roots[0], repo):
+            return False
+        relative = os.path.relpath(physical, os.path.realpath(repo))
+        ignored = read(os.path.realpath(repo), 'check-ignore', '-q', '--', relative)
+        if ignored.returncode != 0:
+            return False
+        tracked = read(os.path.realpath(repo), '--literal-pathspecs', 'ls-files', '-z', '--', relative)
+        if tracked.returncode != 0 or tracked.stdout:
+            return False
+        # Ignored build directories can still contain another checkout's work.
+        # NUL porcelain avoids Git's quoting/escaping of whitespace and newlines.
+        worktrees = read(os.path.realpath(repo), 'worktree', 'list', '--porcelain', '-z')
+        if worktrees.returncode != 0 or not worktrees.stdout.endswith(b'\0'):
+            return False
+        paths = [os.fsdecode(field[len(b'worktree '):])
+                 for field in worktrees.stdout.split(b'\0') if field.startswith(b'worktree ')]
+        return bool(paths) and all(os.path.isabs(path) and not _contains_repo_root(
+            os.path.realpath(path), physical, _within) for path in paths)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return False
+
+
 def _rm_target_reason(
     target: str, cwd: str, variables: dict[str, str], *,
     expand_known_vars_fn, literal_tail_fn, outermost_repo_root_fn,
@@ -274,6 +328,7 @@ def _rm_target_reason(
     follow_symlinks: bool = False,
     filtered_find: bool = False,
     assume_directory: bool = False,
+    allow_ignored_directory: bool = False,
 ) -> str | None:
     literal_parts = [part for part in target.split(os.sep) if part]
     if ".." in literal_parts and not protected_only:
@@ -351,6 +406,10 @@ def _rm_target_reason(
             if part not in ("", ".")
         ]
         if len(repo_parts) < 2:
+            if (len(repo_parts) == 1 and allow_ignored_directory and complete
+                    and prefix == target
+                    and _ignored_untracked_directory(resolved, physical, repo)):
+                return None
             return (
                 f"rm target too broad within repo ({len(repo_parts)} path components): "
                 f"{target}"
@@ -371,3 +430,39 @@ def _rm_target_reason(
     if len(parts) < 3:
         return f"rm target too broad ({len(parts)} path components): {target}"
     return None
+
+
+def _created_target_reason(api, target, cwd, variables, _created_paths):
+    """A future filesystem operand cannot be trusted from today's realpath."""
+    if not _created_paths:
+        return None
+    expanded, complete = api["_expand_known_vars"](target, variables)
+    expanded, tilde_complete = _expand_tilde(expanded, variables)
+    resolved = os.path.abspath(os.path.join(cwd, expanded)) if complete and tilde_complete and cwd else None
+    for path in _created_paths:
+        known_directory = isinstance(path, tuple)
+        if known_directory:
+            path = path[0]
+        if (resolved is None or path is None or api["_within"](path, resolved)
+                or (not known_directory and api["_within"](resolved, path))):
+            return "deletion target affected by earlier path creation cannot be evaluated safely"
+    return None
+
+
+def _rm_exact_target_reason(api, target, cwd, argument_variables, protected_cwd,
+                            _depth, allow_ignored_directory):
+    reason = api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd)
+    # Preserve every existing path-policy refusal except the depth-1 breadth
+    # class, including the facade's replaceable policy seam.
+    if (allow_ignored_directory and _depth == 0 and reason
+            and reason.startswith('rm target too broad within repo (1 path components):')):
+        reason = api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd,
+                                          allow_ignored_directory=True)
+    return reason
+
+
+def _rm_allows_ignored_directory(segments):
+    # This new exemption is for exact rm operands, never loop-driven cleanup.
+    return not any(
+        word in {'for', 'while', 'until', 'select', 'repeat'}
+        for words, _before, _after in segments for word in words)

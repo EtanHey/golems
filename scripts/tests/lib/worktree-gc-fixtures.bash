@@ -15,6 +15,7 @@ setup() {
   export WORKTREE_GC_REPORT_DIR="$TEST_ROOT/report" WORKTREE_GC_T3_DB="$TEST_ROOT/t3.sqlite"
   export WORKTREE_GC_CMUX_REGISTRY="$TEST_ROOT/registry.jsonl" GOLEMS_HEAVY_LOCK="$TEST_ROOT/lock"
   : > "$WORKTREE_GC_CMUX_REGISTRY"
+  export GOLEMS_WORKTREE_GC_LOCK="$TEST_ROOT/gc.lock"
   export GC_FIXTURE_ROOT="$TEST_ROOT" GC_SOURCE="$REPO_ROOT/scripts/worktree-gc.sh"
   export WORKTREE_GC="$TEST_ROOT/contained-gc"
   cat > "$WORKTREE_GC" <<'GUARD'

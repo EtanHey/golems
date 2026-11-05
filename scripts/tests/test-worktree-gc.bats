@@ -581,7 +581,7 @@ load lib/worktree-gc-fixtures
     [[ "$(git -C "$repo" worktree list --porcelain)" == *"worktree $outer"$'\n'* ]]
 }
 
-@test "nightly wrapper skips the night while the heavy-suite lock is held" {
+@test "nightly wrapper skips the night while the GC instance lock is held" {
   repo="$(make_fixture_repo nightly-held-repo)"
   worktree="$(add_branch_worktree "$repo" nightly-held-branch)"
   lock="$TEST_ROOT/heavy-suite.lock"
@@ -591,17 +591,17 @@ load lib/worktree-gc-fixtures
   holder=$!
   for _ in $(seq 50); do [ -e "$ready" ] && break; sleep 0.1; done
 
-  run env GOLEMS_HEAVY_LOCK="$lock" "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
+  run env GOLEMS_WORKTREE_GC_LOCK="$lock" "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
   kill "$holder" 2>/dev/null || true
 
   [ -e "$ready" ] &&
     [ "$status" -eq 0 ] &&
-    [[ "$output" == *"SKIP heavy-suite lock held"* ]] &&
+    [[ "$output" == *"SKIP worktree-gc lock held"* ]] &&
     [[ "$output" != *"$worktree"* ]] &&
     [ -d "$worktree" ]
 }
 
-@test "nightly wrapper prunes while holding the heavy-suite lock" {
+@test "nightly removal holds the heavy-suite lock" {
   repo="$(make_fixture_repo nightly-free-repo)"
   worktree="$(add_branch_worktree "$repo" nightly-free-branch)"
   lock="$TEST_ROOT/heavy-suite.lock"
@@ -881,12 +881,12 @@ make_github_origin() {
   chmod 500 "$TEST_ROOT/ro"
   [ -w "$TEST_ROOT/ro" ] && skip "running as a user who can write a mode-500 dir"
 
-  run env GOLEMS_HEAVY_LOCK="$TEST_ROOT/ro/heavy-suite.lock" \
+  run env GOLEMS_WORKTREE_GC_LOCK="$TEST_ROOT/ro/heavy-suite.lock" \
     "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
   chmod 700 "$TEST_ROOT/ro"
 
   [ "$status" -eq 0 ] &&
-    [[ "$output" == *"SKIP cannot open heavy-suite lock"* ]] &&
+    [[ "$output" == *"SKIP cannot open worktree-gc lock"* ]] &&
     [ -d "$worktree" ]
 }
 

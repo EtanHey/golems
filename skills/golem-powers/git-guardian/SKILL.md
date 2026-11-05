@@ -143,6 +143,18 @@ are probed for `.git` at depth at most 3 with a 5,000-entry cap; cap or filesyst
 errors fail closed. The initial checkout stays protected after `cd`; `~`, `~+`
 and `~-` use tracked HOME/cwd/oldpwd, and other tilde prefixes fail closed.
 
+An exact recursive `rm` operand at repo depth 1 can pass when its existing
+directory is not a symlink, resolves within the same checkout, is Git-ignored,
+has no tracked index entries beneath it, and contains no worktree listed by
+`git worktree list --porcelain -z`. Its resolved basename must exactly match
+this case-sensitive build-output allowlist: `.build`, `.build.noindex`, `build`,
+`dist`, `node_modules`, `.next`, `.turbo`, `.parcel-cache`, `DerivedData`, `target`,
+`__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.gradle`, `coverage`.
+Other ignored names, including `docs.local`, `.worktrees`, `.env.d`, and `scratch`,
+retain the breadth denial. Git inspection errors retain that denial as well.
+Protected roots and metadata, globs, loop-driven
+cleanup, and other deletion tools receive no new exception.
+
 The same target policy covers `find -delete` roots and local `rsync --delete*`/`--del`
 destinations. Find follows its selected `-H`/`-L`/`-follow` policy (last
 `-P` overrides earlier flags); local rsync destinations are evaluated physically.
@@ -188,6 +200,12 @@ outside `~/Gits` and the active checkout, remote rsync destinations, `trash`,
 interpreter deletion one-liners and filesystem changes between evaluation and
 execution remain outside its boundary. The lead tracks interpreter deletion
 as a separate issue; passing this policy is not permission to delete.
+
+Heredoc data masking also recognizes known stdin-preserving wrappers and one
+simple SSH remote interpreter or literal cat/tee file write. Shell readers,
+compound/uncertain remote commands and piped output retain body scanning;
+unquoted heredocs retain executable substitutions. Parse failures deny with a
+parse-failure explanation, without claiming a destructive git operation.
 
 Wrapper evaluation is capped at 64 nested commands. Deeper input and any
 `RecursionError` fail closed with a value-free reason. The hook also converts

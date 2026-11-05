@@ -31,6 +31,7 @@
     "test-wired-hook-shared-parser.bats",
     "test-worktree-bootstrap.bats",
     "test-worktree-gc-astra.bats",
+    "test-worktree-gc-lock.bats",
     "test-worktree-gc-nightly-r2.bats",
     "test-worktree-gc-r2.bats",
     "test-worktree-gc-r2b.bats",

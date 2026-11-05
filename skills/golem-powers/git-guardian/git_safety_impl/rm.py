@@ -11,7 +11,10 @@ import time
 from functools import lru_cache
 
 from . import shell_parse
-from .paths import _expand_tilde, _is_bare_repo, _bare_repo_ancestor
+from .paths import (
+    _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason,
+    _rm_exact_target_reason, _rm_allows_ignored_directory,
+)
 
 CreatedPath = str | None | tuple[str | None, str]
 
@@ -92,23 +95,6 @@ def _without_redirections(source: str) -> str:
             result[offset] = " "
         index = end
     return "".join(result)
-
-
-def _created_target_reason(api, target, cwd, variables, _created_paths):
-    """A future filesystem operand cannot be trusted from today's realpath."""
-    if not _created_paths:
-        return None
-    expanded, complete = api["_expand_known_vars"](target, variables)
-    expanded, tilde_complete = _expand_tilde(expanded, variables)
-    resolved = os.path.abspath(os.path.join(cwd, expanded)) if complete and tilde_complete and cwd else None
-    for path in _created_paths:
-        known_directory = isinstance(path, tuple)
-        if known_directory:
-            path = path[0]
-        if (resolved is None or path is None or api["_within"](path, resolved)
-                or (not known_directory and api["_within"](resolved, path))):
-            return "deletion target affected by earlier path creation cannot be evaluated safely"
-    return None
 
 
 def _rsync_destination(words, position):
@@ -555,6 +541,7 @@ def _rm_reason_in_words(
     _depth: int = 0,
     _find_cache: dict[tuple, str | None] | None = None,
     _created_paths: list[CreatedPath] | None = None,
+    allow_ignored_directory: bool = True,
 ) -> str | None:
     """Inspect command positions, including wrapper-owned nested commands."""
     if _depth > api["_MAX_WRAPPER_DEPTH"]:
@@ -913,7 +900,8 @@ def _rm_reason_in_words(
         reason = _created_target_reason(api, target, cwd, argument_variables, _created_paths)
         if reason:
             return reason
-        reason = api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd)
+        reason = _rm_exact_target_reason(api, target, cwd, argument_variables,
+                                         protected_cwd, _depth, allow_ignored_directory)
         if reason:
             return reason
     return None
@@ -968,6 +956,7 @@ def is_dangerous_rm(
     previous = variables.get("OLDPWD", "")
     assignment_re = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", re.DOTALL)
 
+    allow_ignored_directory = _rm_allows_ignored_directory(segments)
     for words, operator_before, operator_after in segments:
         variables.update(PWD=current, OLDPWD=previous)
         argument_variables = dict(variables)
@@ -1072,6 +1061,7 @@ def is_dangerous_rm(
             protected_cwd=protected_cwd,
             _depth=_depth,
             _find_cache=_find_cache, _created_paths=_created_paths,
+            allow_ignored_directory=allow_ignored_directory,
         )
         if reason:
             return True, reason

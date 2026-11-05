@@ -54,7 +54,7 @@ emit_row() {
   printf '%s\n' "$row" >> "$LOG_FILE"
   printf '%s\n' "$row"
   case "$verdict" in
-    KEEP-dirty|KEEP-unmerged|KEEP-unpushed|KEEP-live|KEEP-detached|KEEP-reflog|KEEP-undetermined)
+    KEEP-dirty|KEEP-unmerged|KEEP-unpushed|KEEP-live|KEEP-detached|KEEP-reflog|KEEP-undetermined|KEEP-busy)
       local report_detail
       report_detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
         "$repo_name" "$worktree_path" "$branch" "$verdict" "$reason" 2>&1)" ||
@@ -343,6 +343,40 @@ apply_removal() {
       "REMOVE" "eligible prune plan; archive verification required before removal"
     return 0
   fi
+  locked_removal "$worktree_path" "$branch_display" "$head_sha"
+}
+
+# The parent subshell owns fd 9; every archive/remove child runs with it closed.
+# flock on the inherited open-file description survives the short Perl acquirer.
+locked_removal() (
+  local worktree_path="$1" branch_display="$2" head_sha="$3"
+  local lock="${GOLEMS_HEAVY_LOCK:-$HOME/.local/state/golems/heavy-suite.lock}"
+  if ! mkdir -p "$(dirname "$lock")" || ! exec 9>>"$lock"; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 \
+      KEEP-undetermined "cannot open heavy-suite lock: $lock"
+    return 0
+  fi
+  local rc=0
+  perl -MFcntl=:flock -MErrno=EAGAIN,EWOULDBLOCK -e '
+    flock(STDIN, LOCK_EX | LOCK_NB) and exit 0;
+    exit(($! == EAGAIN || $! == EWOULDBLOCK) ? 75 : 74);
+  ' <&9 || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    local verdict=KEEP-undetermined reason="cannot acquire heavy-suite lock: $lock"
+    if [[ "$rc" -eq 75 ]]; then
+      verdict=KEEP-busy; reason="heavy-suite lock held; next night retries"
+    fi
+    (emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 "$verdict" "$reason") 9>&-
+    return 0
+  fi
+  # Do not release exclusion early on shutdown. Nightly still kills this whole
+  # process group after its grace period; children never inherit the lock fd.
+  trap '' TERM INT HUP
+  (archive_and_remove "$worktree_path" "$branch_display" "$head_sha") 9>&-
+)
+
+archive_and_remove() {
+  local worktree_path="$1" branch_display="$2" head_sha="$3" removed_detail
   if ! archive_ignored "$worktree_path" "$head_sha"; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
       "KEEP-undetermined" "${archive_detail:-ignored-data archive failed}"

@@ -183,7 +183,7 @@ def test_policy_error_blocks_value_free_through_fail_open_launcher(tmp_path):
     )
     assert result.returncode == 2, result.stdout + result.stderr
     reason = json.loads(result.stdout)["reason"]
-    assert "(a destructive operation)" in reason
+    assert "couldn't parse this command" in reason
     assert "SENSITIVE POLICY DETAIL" not in result.stdout + result.stderr
     assert "golems-fail-open" not in result.stderr
 
@@ -264,6 +264,7 @@ def test_issue412_truncation_shapes_cannot_hide_force_push(tmp_path):
             assert (
                 "(force-push)" in reason
                 or "(a destructive operation)" in reason
+                or "couldn't parse this command" in reason
             )
             assert "golems-fail-open" not in result.stderr
     assert allowed == []
