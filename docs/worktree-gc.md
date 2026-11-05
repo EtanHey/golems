@@ -21,7 +21,19 @@ or any per-repository failure. Each per-repo failure, including crashes with exi
 sweep continues with the next repository. The final exit is 2 if any repo failed;
 2 outranks 3 even when another repo has KEEP-unpushed. The nightly wrapper maps
 only 3 to success and preserves other failures. Shutdown signals and timeout kill
-the prune process group before releasing the suite lock.
+the prune process group before releasing the nightly instance lock.
+
+Nightly holds `~/.local/state/golems/worktree-gc.lock` for single-instance
+protection (`GOLEMS_WORKTREE_GC_LOCK` overrides it). Fetch, PR, status and live-cwd
+scans run without the heavy-suite lock. Each apply archive/removal takes
+`~/.local/state/golems/heavy-suite.lock` (`GOLEMS_HEAVY_LOCK`) exclusively and
+nonblocking, retaining exclusion from suite slots without blocking their queue
+for a whole sweep. A held suite lock produces a durable `KEEP-busy` row, even
+for a young worktree, and leaves its archive/removal for the next run. Failure to
+open/acquire the lock keeps the candidate undetermined. Only the removal parent
+holds the descriptor; archive/git children cannot retain it. Dry runs and prune
+plans never acquire it. The original whole-sweep exclusion (ccb66f4d) avoided
+competing with heavy suites; scans need no suite exclusion.
 
 Every scan writes `docs.local/worktree-gc/last-run.{json,md}`, including ERROR
 rows for failed repositories. `latest.{json,md}` is the last FULL scan, complete
