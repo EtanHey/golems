@@ -171,7 +171,8 @@ def _interpreter_heredoc_header(header: str, *, piped: bool = False) -> bool:
 def _reader_words(source: str) -> list[str]:
     # Only extend masking for a literal simple command. Even quoted expansions
     # are refused here: ssh reparses its remote argument as shell source.
-    if any(char in source for char in "$`\n\r"):
+    # Refuse '#' too: shlex treats mid-word hashes as comments, unlike sh.
+    if any(char in source for char in "$`#\n\r"):
         return []
     lexer = shlex.shlex(source, posix=True, punctuation_chars=";&|()<>")
     lexer.whitespace_split = True
@@ -227,7 +228,7 @@ def _wrapped_heredoc_reader(header: str) -> bool:
                     option, options = options[0], options[1:]
                     if option in 'nfNsWOQ':
                         return False  # no stdin reader / no remote command
-                    if option in 'opilFJELRDWbcmSOQwBeI':
+                    if option in 'opilFJELRDbcmSwBeI':
                         value = options or (words.pop(0) if words else '')
                         if not value or (option == 'o' and re.match(r'(?i)(RemoteCommand|StdinNull|SessionType)\b', value)):
                             return False

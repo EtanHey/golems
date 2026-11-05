@@ -50,6 +50,14 @@ def test_uncertain_reader_keeps_destructive_body(reader):
     assert hook(f"{reader} <<'EOF'\ngit push --force origin main\nEOF\n")[0] == 2
 
 
+@pytest.mark.parametrize('remote', [
+    'python3 -#x; bash', 'python3 -#x && sh', 'cat >> a#b; bash',
+])
+def test_midword_hash_cannot_hide_remote_shell_reader(remote):
+    command = f"ssh h '{remote}' <<'EOF'\ngit push --force origin main\nEOF\n"
+    assert hook(command)[0] == 2
+
+
 @pytest.mark.parametrize('reader', ["ssh h 'python3 -'", "ssh h 'cat >> f'"])
 def test_piped_output_and_unquoted_expansions_still_block(reader):
     assert hook(f"{reader} <<'EOF' | sh\ngit push --force origin main\nEOF\n")[0] == 2
