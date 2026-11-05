@@ -15,12 +15,13 @@ function checkedRoot(root) {
   return root;
 }
 // Inspect all descendants: writes to an existing log need not update the run directory.
-export function inspectTree(target) {
+// Only read-only size measurement permits links; lstat counts the link, never its target.
+export function inspectTree(target, { allowSymlinks = false } = {}) {
   const st = fs.lstatSync(target);
-  if (st.isSymbolicLink()) throw new Error(`symlink refused: ${target}`);
+  if (st.isSymbolicLink() && !allowSymlinks) throw new Error(`symlink refused: ${target}`);
   let bytes = st.blocks * 512, modified = st.mtimeMs;
   if (st.isDirectory()) for (const name of fs.readdirSync(target)) {
-    const child = inspectTree(path.join(target, name));
+    const child = inspectTree(path.join(target, name), { allowSymlinks });
     bytes += child.bytes; modified = Math.max(modified, child.modified);
   }
   return { bytes, modified, dev: st.dev, ino: st.ino };
