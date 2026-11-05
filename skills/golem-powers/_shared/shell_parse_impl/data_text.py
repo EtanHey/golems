@@ -162,7 +162,94 @@ def _interpreter_heredoc_header(header: str, *, piped: bool = False) -> bool:
         words = [w for w in lexer if "=" not in w]
     except ValueError:
         return False
-    return bool(words) and os.path.basename(words[0]) in _HEREDOC_INTERPRETERS
+    return bool(words) and (
+        os.path.basename(words[0]) in _HEREDOC_INTERPRETERS
+        or _wrapped_heredoc_reader(header)
+    )
+
+
+def _reader_words(source: str) -> list[str]:
+    # Only extend masking for a literal simple command. Even quoted expansions
+    # are refused here: ssh reparses its remote argument as shell source.
+    if any(char in source for char in "$`\n\r"):
+        return []
+    lexer = shlex.shlex(source, posix=True, punctuation_chars=";&|()<>")
+    lexer.whitespace_split = True
+    words = list(lexer)
+    return [] if any(w in {";", "&&", "||", "|", "&", "(", ")", "<"} for w in words) else words
+
+
+def _unwrap_reader(words: list[str]) -> list[str]:
+    for _ in range(64):
+        if not words:
+            return []
+        name = os.path.basename(words[0])
+        if name not in {"timeout", "nice", "nohup", "env", "command", "exec"}:
+            return words
+        words = words[1:]
+        if name == "timeout":
+            while words and words[0].startswith('-') and words[0] != '--':
+                option = words.pop(0)
+                if option in {'-s', '--signal', '-k', '--kill-after'}:
+                    if not words:
+                        return []
+                    words.pop(0)
+                elif option not in {'--foreground', '--preserve-status', '-v', '--verbose'} and not option.startswith(('--signal=', '--kill-after=')):
+                    return []
+            if words[:1] == ['--']:
+                words = words[1:]
+            if not words or not re.fullmatch(r'\d+(?:\.\d+)?[smhd]?', words.pop(0)):
+                return []
+        elif name == 'nice' and words[:1] == ['-n']:
+            if len(words) < 2 or not re.fullmatch(r'[+-]?\d+', words[1]):
+                return []
+            words = words[2:]
+        if words[:1] == ['--']:
+            words = words[1:]
+        if name == 'env':
+            while words and re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', words[0]):
+                words = words[1:]
+        if words and words[0].startswith('-'):
+            return []  # unknown wrapper option, including env -S / command -v
+    return []
+
+
+def _wrapped_heredoc_reader(header: str) -> bool:
+    try:
+        words = _unwrap_reader(_reader_words(header))
+        if not words:
+            return False
+        if os.path.basename(words[0]) == 'ssh':
+            words = words[1:]
+            while words and words[0].startswith('-') and words[0] != '--':
+                options = words.pop(0)[1:]
+                while options:
+                    option, options = options[0], options[1:]
+                    if option in 'nfNsWOQ':
+                        return False  # no stdin reader / no remote command
+                    if option in 'opilFJELRDWbcmSOQwBeI':
+                        value = options or (words.pop(0) if words else '')
+                        if not value or (option == 'o' and re.match(r'(?i)(RemoteCommand|StdinNull|SessionType)\b', value)):
+                            return False
+                        break
+                    if option not in '46AaCfGgKkqTtVvXxYy':
+                        return False
+            if words[:1] == ['--']:
+                words = words[1:]
+            if len(words) != 2 or not words[0]:
+                return False  # login shell or multiple remote arguments
+            words = _unwrap_reader(_reader_words(words[1]))
+        if not words:
+            return False
+        name = os.path.basename(words[0])
+        # Remote literal file writes are data too. Refuse all other redirects.
+        if name == 'cat':
+            return len(words) == 3 and words[1] in {'>', '>>'} and bool(re.fullmatch(r'[\w./~-]+', words[2]))
+        return name in _HEREDOC_INTERPRETERS and not any(
+            any(c in word for c in ';&|()<>') for word in words
+        )
+    except ValueError:
+        return False
 
 
 def _is_data_command(words: list[str]) -> bool:
@@ -347,7 +434,7 @@ def shell_text_without_heredoc_bodies(
             if parsed:
                 delimiter, quoted, word_end = parsed
                 segment_start = max(
-                    line.rfind(separator, 0, match.start())
+                    header_scan.rfind(separator, 0, match.start())
                     for separator in (";", "|", "&")
                 )
                 segment_end = _simple_command_end(line, word_end)

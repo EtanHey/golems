@@ -195,6 +195,11 @@ def block(reason):
             operation = name
             break
     result_reason = f"Blocked: this git command can destroy work ({operation}). Use a safe alternative, or ask the lead."
+    if reason == "security policy could not evaluate command safely":
+        result_reason = (
+            "Blocked: the golems safety check couldn't parse this command, so it can't confirm it's safe. "
+            "Simplify it (for example, put the script in a file), or ask the lead."
+        )
     json.dump({"decision": "block", "reason": result_reason}, sys.stdout)
     sys.exit(2)
 
