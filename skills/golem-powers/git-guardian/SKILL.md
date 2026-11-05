@@ -189,6 +189,12 @@ interpreter deletion one-liners and filesystem changes between evaluation and
 execution remain outside its boundary. The lead tracks interpreter deletion
 as a separate issue; passing this policy is not permission to delete.
 
+Heredoc data masking also recognizes known stdin-preserving wrappers and one
+simple SSH remote interpreter or literal cat/tee file write. Shell readers,
+compound/uncertain remote commands and piped output retain body scanning;
+unquoted heredocs retain executable substitutions. Parse failures deny with a
+parse-failure explanation, without claiming a destructive git operation.
+
 Wrapper evaluation is capped at 64 nested commands. Deeper input and any
 `RecursionError` fail closed with a value-free reason. The hook also converts
 unexpected policy-evaluation exceptions to a value-free block. The installed
