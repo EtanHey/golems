@@ -87,3 +87,6 @@ test('backfill cannot substitute the built file for missing prepared source', ()
 });
 
 test('the existing-empty-field probe is valid', () => { const e = fixture(); e.delivery.accountProof.probe = 'existing-empty-field'; expect(validateAudioDashboardEvidence(e).verdict).toBe('PASS'); });
+
+test('deprecated runtime cannot return acceptance PASS', () => { const e = fixture(); e.delivery.admission.answerRuntime = 'deprecated'; expect(validateAudioDashboardEvidence(e).verdict).toBe('PASS_DEPRECATED_RUNTIME'); });
+for (const answerRuntime of [undefined, 'other']) test(`invalid runtime admission ${answerRuntime}`, () => { const e = fixture(); e.delivery.admission.answerRuntime = answerRuntime; expect(validateAudioDashboardEvidence(e).violations.map(v => v.code)).toContain('DELIVERY_ADMISSION_MISMATCH'); });

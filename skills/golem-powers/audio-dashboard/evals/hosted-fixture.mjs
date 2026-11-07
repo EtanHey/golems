@@ -7,7 +7,7 @@ export function hostedEvidence(evidence) {
     delivery: { schema: 'audio-dashboard.delivery.v2', host: 'lakebed', url: 'https://example.com/?d=example',
       dashboardId: 'example', sourceHtmlSha256, servedShellSha256: 'b'.repeat(64), artifactSha256: 'a'.repeat(64),
       staging: { mode: 'unlisted-candidate', servedShellSha256: 'b'.repeat(64) },
-      admission: { design: 'COMPARED', answerIdentity: 'PASS', providerReady: true, gateVersion: 'fixture-v2' },
+      admission: { design: 'COMPARED', answerRuntime: 'current', answerIdentity: 'PASS', providerReady: true, gateVersion: 'fixture-v2' },
       accountProof: { probe: 'dedicated-key', signedIn: true, independentClient: true, serverAck: true, mutationDelta: 0, existingRowsPreserved: 0, method: 'note-roundtrip', markerSaved: true,
         restoredAfterLocalKeysCleared: true, cleanedUp: true, disposableRecord: true, at }, publishedAt: at } };
 }

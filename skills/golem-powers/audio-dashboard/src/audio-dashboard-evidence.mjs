@@ -409,7 +409,7 @@ export function validateAudioDashboardEvidence(evidence = {}) {
   }
 
   return {
-    verdict: violations.length > 0 ? "REJECTED" : evidence.stage === "pre-publish" ? "READY_FOR_HOSTED_PUBLISH" : evidence.delivery?.backfilled === true ? "BACKFILL_ACCOUNT_PROVEN" : "PASS",
+    verdict: violations.length > 0 ? "REJECTED" : evidence.stage === "pre-publish" ? "READY_FOR_HOSTED_PUBLISH" : evidence.delivery?.backfilled === true ? "BACKFILL_ACCOUNT_PROVEN" : evidence.delivery?.admission?.answerRuntime === "deprecated" ? "PASS_DEPRECATED_RUNTIME" : "PASS",
     violations,
     realWordTiming,
     realTranscript,
@@ -424,6 +424,7 @@ export function formatReport(result) {
   }
   if (result.verdict === "READY_FOR_HOSTED_PUBLISH") return "READY_FOR_HOSTED_PUBLISH: hand off to NarrationLayer; delivery is unverified";
   if (result.verdict === "BACKFILL_ACCOUNT_PROVEN") return "BACKFILL_ACCOUNT_PROVEN: account round trip recorded; publish admission did not run; not accepted";
+  if (result.verdict === "PASS_DEPRECATED_RUNTIME") return "PASS_DEPRECATED_RUNTIME: rebuild with the current answer runtime; not acceptance PASS";
   const codes = result.violations.map((v) => v.code).join(", ");
   return `audio-dashboard evidence REJECTED: ${codes}\n${result.violations
     .map((v) => `- ${v.code}: ${v.evidence}`)

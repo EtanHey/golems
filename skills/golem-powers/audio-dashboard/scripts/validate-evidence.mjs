@@ -92,7 +92,7 @@ if (sha256(readFileSync(outPath)) !== sha256(html) || sourceFile && sourceHtml !
 }
 result.designPreservation = preservation;
 if (!backfilled && preservation.verdict !== "PASS") { result.verdict = "REJECTED"; result.violations.push(...preservation.violations); }
-if (result.verdict === "PASS") {
+if (["PASS", "PASS_DEPRECATED_RUNTIME"].includes(result.verdict)) {
   const receipts = readFileSync(outPath.replace(/\.html$/i, '') + '.receipts.json');
   if (evidence.handoff?.buildReceiptsSha256 !== sha256(receipts)) {
     result.verdict = "REJECTED"; result.violations.push({ code: "BUILD_RECEIPTS_SHA_MISMATCH", evidence: "BUILD receipts changed after the handoff." });
@@ -104,4 +104,4 @@ else {
   console.log(`\nflags: realWordTiming=${result.realWordTiming} realTranscript=${result.realTranscript} wordClickSeek=${result.wordClickSeek} hostedDelivery=${result.hostedDelivery}`);
   console.log(`scenes validated: ${perScene.length} (words: ${perScene.map((s) => `${s.id}=${s.words.length}`).join(", ")})`);
 }
-process.exit(result.verdict === "BACKFILL_ACCOUNT_PROVEN" ? 4 : ["PASS", "READY_FOR_HOSTED_PUBLISH"].includes(result.verdict) ? 0 : 3);
+process.exit(result.verdict === "PASS_DEPRECATED_RUNTIME" ? 5 : result.verdict === "BACKFILL_ACCOUNT_PROVEN" ? 4 : ["PASS", "READY_FOR_HOSTED_PUBLISH"].includes(result.verdict) ? 0 : 3);

@@ -31,14 +31,14 @@ export function hostedDeliveryViolations({ delivery: d, handoff: h, html, source
   const sourceHash = typeof sourceHtml === 'string' ? sha256(sourceHtml) : null;
   if (d.sourceHtmlSha256 !== sourceHash || (h && (h.sourceHtmlSha256 !== sourceHash || h.builtHtmlSha256 !== sha256(html))) || !hash(d.servedShellSha256) || !hash(d.artifactSha256) ||
       d.staging?.servedShellSha256 !== d.servedShellSha256)
-    fail('DELIVERY_SHA_MISMATCH', 'Built HTML must match both source hashes; staging and promotion must bind the same artifact.');
+    fail('DELIVERY_SHA_MISMATCH', 'Bind builtHtmlSha256 to BUILD output and sourceHtmlSha256 to prepared input; preserve the staged served shell hash.');
   const p = d.accountProof;
   if (!p || p.method !== 'note-roundtrip' || !['existing-empty-field', 'dedicated-key'].includes(p.probe) || !['mutationDelta', 'existingRowsPreserved'].every(k => Number.isInteger(p[k]) && p[k] >= 0) ||
       !['signedIn', 'independentClient', 'serverAck', 'markerSaved', 'restoredAfterLocalKeysCleared', 'cleanedUp', 'disposableRecord'].every(k => p[k] === true))
     fail('MISSING_ACCOUNT_SYNC_PROOF', 'Require a signed-in disposable note save, restore after local pending keys are cleared, and cleanup.');
   const a = d.admission;
   if (!a || (backfilled ? a.design !== 'UNKNOWN_BACKFILL' : !['COMPARED', 'REDESIGN_APPROVED', 'FIRST_IN_LINEAGE'].includes(a.design) || a.design !== h?.design?.admission) ||
-      a.answerIdentity !== 'PASS' || a.providerReady !== true || typeof a.gateVersion !== 'string' || !a.gateVersion.trim())
+      !['current', 'deprecated'].includes(a.answerRuntime) || a.answerIdentity !== 'PASS' || a.providerReady !== true || typeof a.gateVersion !== 'string' || !a.gateVersion.trim())
     fail('DELIVERY_ADMISSION_MISMATCH', 'Require the design echo, PASS answer identity, ready provider and a nonempty gate version.');
   return violations;
 }

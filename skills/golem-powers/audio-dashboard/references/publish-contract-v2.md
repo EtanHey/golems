@@ -15,6 +15,7 @@ skill-creator writes the handoff after BUILD, QA and pre-publish evidence. Narra
   "sourceHtmlSha256": "<64 hex of sourcePath/index.html>",
   "buildReceiptsSha256": "<64 lowercase hex of BUILD receipts>",
   "answerPersistence": "PASS",
+  "answerRuntimeSha256": "<sha of exactly one trimmed installAnswerPersistence block>",
   "design": {
     "admission": "COMPARED | REDESIGN_APPROVED | FIRST_IN_LINEAGE",
     "lineage": "<existing design series>",
@@ -41,7 +42,7 @@ The inline manifest contains per-clip `{file,size,sha256}` records relative to s
     "signedIn": true, "independentClient": true, "serverAck": true, "mutationDelta": 0, "existingRowsPreserved": 0, "method": "note-roundtrip", "probe": "existing-empty-field | dedicated-key", "markerSaved": true,
     "restoredAfterLocalKeysCleared": true, "cleanedUp": true, "disposableRecord": true, "at": "<ISO timestamp>"
   },
-  "admission": { "design": "<handoff.design.admission>", "answerIdentity": "PASS", "providerReady": true, "gateVersion": "<nonempty version>" },
+  "admission": { "design": "<handoff.design.admission>", "answerIdentity": "PASS", "providerReady": true, "answerRuntime": "current | deprecated", "gateVersion": "<nonempty version>" },
   "publishedAt": "<ISO timestamp>"
 }
 ```
@@ -53,3 +54,5 @@ builtHtmlSha256 binds the BUILD-gated file; sourceHtmlSha256 binds the prepared 
 The publisher stages with the real bridge and a disposable record, saves a note with server acknowledgement, reloads with browser-local pending keys removed, confirms account restoration, cleans up, then promotes the same candidate. Preserve existing user answers. Embedded consumers and BUILD PASS prove no account provider. The validator verifies a publisher attestation; it neither authenticates the issuer nor repeats a live account test. READY_FOR_HOSTED_PUBLISH is pre-publish only; final PASS requires `validate-evidence --delivery <receipt.json>`.
 
 Backfilled deliveries use all three markers together: `backfilled: true`, `staging.mode: "none-backfill"`, `admission.design: "UNKNOWN_BACKFILL"`. Every other delivery/account check remains; without a handoff `--source-dir` supplies the prepared index.html for the source hash check. A matching handoff, if supplied, must still bind id/source. A valid backfill returns BACKFILL_ACCOUNT_PROVEN with exit 4, never PASS: it records real account proof for a page published outside admission, not acceptance. Design preservation is NOT_RUN and no design sidecar/history is advanced. Mixed markers are BACKFILL_MARKERS_MISMATCH (exit 3). probe is existing-empty-field or dedicated-key. cleanedUp means the probe value was restored; an empty probe row may remain until row deletion is supported.
+
+PASS requires admission.answerRuntime=current. Deprecated gives PASS_DEPRECATED_RUNTIME (exit 5), telling the caller to rebuild; it is not acceptance. BACKFILL_ACCOUNT_PROVEN takes precedence for historical backfills. The handoff hashes exactly one trimmed `(function installAnswerPersistence() {` … `\n})();` block from the built page; zero/multiple blocks refuse. Runtime sha allowlisting belongs to NarrationLayer config, never this validator.
