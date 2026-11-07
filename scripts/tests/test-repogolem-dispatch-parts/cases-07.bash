@@ -163,8 +163,8 @@ function split_case_129() {
           eval "$3"
         ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$launch"
         [ "$status" -eq 2 ]
-        [[ "$output" == *"low, medium, high, xhigh, max, ultra"* ]]
-        [[ "$output" == *"choose per plan phase (see /agent-routing)"* ]]
+        [[ "$output" == *"low, medium, high, xhigh, max, ultra"* ]] || false
+        [[ "$output" == *"choose per plan phase (see /agent-routing)"* ]] || false
         refute_contains UNEXPECTED_CODEX "$output"
     done
 }
@@ -181,7 +181,7 @@ function split_case_130() {
           eval "$3"
         ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER" "$launch"
         [ "$status" -eq 0 ]
-        [[ "$output" == *'model_reasoning_effort="high"'* ]]
+        [[ "$output" == *'model_reasoning_effort="high"'* ]] || false
     done
 }
 
@@ -191,7 +191,7 @@ function split_case_131() {
       source "$2"
       testrepoCodex --help || exit $?
       _golem_parse_codex_flags -E high || exit $?
-      [[ "$_flag_codex_effort" == high ]]
+      [[ "$_flag_codex_effort" == high ]] || false
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Codex launcher options:"* ]]
@@ -232,7 +232,7 @@ function split_case_134() {
     for ambient in low bogus; do
       run_codex_ambient_effort "$ambient"
       [ "$status" -eq 0 ] || return 1
-      [[ "$output" == *CODEX_ARGS=* ]]
+      [[ "$output" == *CODEX_ARGS=* ]] || false
       refute_contains 'model_reasoning_effort=' "$output" || return 1
     done
 }
@@ -240,6 +240,6 @@ function split_case_134() {
 function split_case_135() {
     run_codex_ambient_effort bogus "task"
     [ "$status" -eq 2 ]
-    [[ "$output" == *"Invalid Codex effort: bogus"* ]]
+    [[ "$output" == *"Invalid Codex effort: bogus"* ]] || false
     refute_contains CODEX_ARGS= "$output"
 }

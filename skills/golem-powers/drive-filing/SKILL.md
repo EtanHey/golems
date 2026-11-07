@@ -48,7 +48,21 @@ Legacy `Brain Drive/Research/<project>/` folders are being moved under 03_RESEAR
 6. **Lightweight, session-scoped scratch?** → fine to leave in `docs.local/` — but if anyone else (or future-you) needs it, FILE it per 1–5.
 
 ## Naming convention
-`YYYY-MM-DD-<topic>[-<surface/agent>].<ext>` — date-prefixed, kebab-case, topic-first. Folders: `<topic>-<domain>/` (e.g. `weave-eval/`). Keep the local mirror name identical to the Drive name so the ledger maps 1:1.
+New standalone artifacts: `YYYY-MM-DD-<project>-<topic>-<kind>[-by-<producer>].<ext>`, lowercase kebab-case. Example: `2026-11-04-voicebar-focus-audit-by-author.md`. Topic must describe the work; `Theo.md`, `Model.md` and `2026-11-04-golems-theo-report.md` fail. Put a person/model attribution in `by-<producer>` (exactly one lowercase token), never in the project, topic or kind slots. Kinds: report, prompt, result, transcript, recording, audit, plan, review, frame, image, notes, receipt, manifest, data, archive, index, dashboard, summary, eval, log.
+
+Before uploading a new standalone artifact, set `GOLEMS_ROOT` to the absolute golems checkout (normally `$HOME/Gits/golems`) and run `node "$GOLEMS_ROOT/scripts/drive/lint-name.mjs" <basename>` from any repo; nonzero blocks filing until renamed. Existing files and preserved archive members (including `MANIFEST.json` and frame names) are grandfathered: `--existing` reports issues without blocking or renaming. Research-lifecycle's sequential context/R-number names keep their own contract. Folders retain `<topic>-<domain>/`; keep local mirror and Drive names identical for 1:1 ledger mapping.
+
+## Verify the ledger after uploads
+
+Use one bullet per file: `- <local path> → Brain Drive/<exact path>/<name> | bytes=<integer> | SHA256=<64 hex> | account=<expected-email> | cloud=pending`. SHA256 is mandatory: missing or invalid hashes are malformed rows. Bare `Brain Drive/` paths require `account=<expected-email>`; mount paths derive it from `GoogleDrive-<account>` (an explicit account, if provided, must agree). Record hashes from the source manifest; metadata such as Drive ID/URL and manifest pointer may follow as extra pipe fields. Absolute Drive-for-Desktop paths containing `/My Drive/Brain Drive/` are also accepted. Old Markdown tables remain readable history; add a machine-readable pending row for verification.
+
+```bash
+GOLEMS_ROOT="${GOLEMS_ROOT:-$HOME/Gits/golems}"
+node "$GOLEMS_ROOT/scripts/drive/verify-ledger.mjs" <ledger.md>            # dry-run; no ledger write
+node "$GOLEMS_ROOT/scripts/drive/verify-ledger.mjs" <ledger.md> --apply    # only verified rows change
+```
+
+Run after each upload batch from any repo using the absolute `GOLEMS_ROOT`. The token has full Drive scope; the verifier only reads, using GET requests through the existing outside-repo OAuth guard. It checks the recorded account for every path, resolves every exact path (duplicates fail), compares bytes and the mandatory recorded SHA-256 (downloads remote bytes if Drive omits the checksum), and alone writes `cloud=verified <ISO timestamp>`. A local mount/cache is not sync proof. Missing, malformed, mismatched or unauthenticated rows remain pending with a reason on stdout; exit 1 means some rows remain, exit 2 is usage/ledger failure. Names in old rows are report-only. `--apply` is idempotent and never uploads or deletes. Deletion still requires the full preservation and authorization gates below.
 
 ## Machine hygiene: no ad-hoc home folders
 
@@ -113,7 +127,7 @@ add a destructive home-wide reaper.
 **Before you finish a task that produced a durable artifact: did you FILE it in its home, or leave it scattered in `docs.local/`?** Use the § Machine hygiene table: code and harnesses go to a repo, personal or client documents to iCloud, other durable artifacts to the right Brain Drive folder. If durable and still only local → file it now (the decision tree above, or § Archive a heavy artifact) and drop a one-line `_DRIVE-LEDGER.md` pointer. "It's in docs.local" is not "it's saved."
 
 ## Quick reference (MCP)
-- Upload: `mcp__google-drive__uploadFile(localPath, parentFolderId=<resolved private ID>)`.
+- Upload: `mcp__google-drive__uploadFile(localPath, parentFolderId=<resolved private ID>)`. For text, pass `mimeType` from the extension (`.md` → `text/markdown`, `.txt` → `text/plain`, `.json` → `application/json`); a `.md` starting with `<!--` otherwise lands as `text/html`.
 - New topic folder: `mcp__google-drive__createFolder(name, parent=<resolved private ID>)`.
 - Find: `mcp__google-drive__search(query="'<RESOLVED_PRIVATE_PARENT_ID>' in parents", rawQuery=true)`.
 - Heavy/forever: § Archive a heavy artifact.
@@ -131,7 +145,7 @@ or a `/tmp` cleanup that may hold forever-knowledge. The eight steps, in short:
    `repos`, `voice`); `mcp__google-drive__search` for precedent first.
 3. `createFolder` per level, keeping every ID. 4. `uploadFile`; keep `id`, `link`, `size`.
 5. `brain_digest` every text file (a background agent for >150KB).
-6. Write `docs.local/<area>/<topic>/_DRIVE-LEDGER.md` (never committed).
+6. Write `docs.local/<area>/<topic>/_DRIVE-LEDGER.md` (never committed) with pending rows, then run § Verify the ledger after uploads. Never mark rows verified by hand.
 7. Write the ledger, then apply § Machine hygiene rules 2 and 5 as the single deletion gate:
    manifest hashes must match verified archive bytes, a one-file restore test must pass,
    and Etan must authorize deletion (or have already opened that door for this work, quoted).
@@ -143,15 +157,27 @@ uploading, upload without a ledger row, re-upload what Drive already has.
 
 ## docs.local lifecycle
 
+### Monthly qa-video archive
+
+Job `monthly-qa-video-drive-archive`: first day of each month, Asia/Jerusalem, ONLY on the skill-creator lead's scheduling child (seat/role resolution: /agent-routing). The lead creates it after merge. Exact scheduled command: `node "$HOME/Gits/golems/scripts/drive/archive-qa-video.mjs" --apply`. Never add pruning to the scheduled command.
+
+Configure `~/.config/golems/qa-video-archive.json` outside repos: `{"account":"<expected-email>","repos":[{"path":"<absolute-repo-root>","owner":"<producer>","harvestedRuns":["<completed-run-name>"]}]}`. The scheduled job reports a missing config path and these required fields on stderr (exit 2). Before activation, create the config and run a configured `--dry-run` with eligible runs. Owners register only harvested runs; unknown ownership/harvest state stays held. Default command (or `--dry-run`) reports counts/bytes without writes or Drive calls. For unconfigured read-only inventory, repeat `--repo <absolute-repo-root>` with `--dry-run`; those units remain held until owners register them. `--apply` uploads preserved members plus MANIFEST.json to `Brain Drive/06_ARCHIVE/docs-local/<repo>/qa-video/<YYYY-MM>/<run>/`, writes pending member rows, restores one image (or a member if no image), checks its bytes/hash, then runs the verifier. Existing members and MANIFEST.json keep their names. No derivative is omitted.
+
+Old means newest member mtime before the first day of the preceding calendar month (Asia/Jerusalem month); current/previous months stay local. Producer holds (`active`, `pinned`, `hold`, `latest`, `partial`, `unharvested`), credentials/content scans, symlinks, unknown ownership and regenerable directories hold the whole run. Manifests and the ledger stay outside the run. Re-runs reuse matching remote files/rows; conflicts stop. The existing outside-repo OAuth guard provides authentication; never call `op`. The token has full scope; image fetch uses only GETs.
+
+Local pruning is optional, never implied by archive success: only `--apply --prune-verified`, with ownership and explicit deletion authority under Machine hygiene rule 5, may remove unchanged members after every row is verified, every remote hash matches and a restore drill passes. It preserves the ledger/manifests; logical bytes are not physical disk recovery. An existing `.archive-lock` holds only that repo; other repos continue. The job names the lock on stderr and exits nonzero. Confirm no archive process is active, then clear only the empty lock directory with `rmdir` and rerun; never automatically delete it. Pending counts include each remaining ledger row once across runs. Pruning removes empty nested directories; any newly nonempty directories remain intact without a cleanup error.
+
+For a missing cited image, use `node "$HOME/Gits/golems/scripts/drive/fetch-qa-image.mjs" <ledger.md> <original-image-path>`; it restores exact verified ledger bytes into `~/.cache/qa-video/`, reports the Drive path/ID/URL/hash, and never changes Drive or the ledger. Open that returned image before making a visual claim; ambiguity, missing bytes or hash/auth failure stays NOT DETERMINED.
+
 `docs.local/` stays legible, "not just walls of MD files": daily items (`YYYY-MM-DD-*`) roll up into
 monthly folders (`YYYY-MM/`), and months older than N go to Brain Drive through § Archive a heavy
 artifact, with a `_DRIVE-LEDGER.md` pointer left behind. `/fleet-wrap` is to run it at sprint close
 (skillcreator owns that call site; golems owns this skill).
 
 ```bash
-node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N            # dry-run (default): report only
-node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N --json     # the full plan
-node <drive-filing-dir>/scripts/rollup.mjs --repo <path> --keep-months N --apply    # month moves + plan file
+node "$GOLEMS_ROOT/skills/golem-powers/drive-filing/scripts/rollup.mjs" --repo <path> --keep-months N            # dry-run (default): report only
+node "$GOLEMS_ROOT/skills/golem-powers/drive-filing/scripts/rollup.mjs" --repo <path> --keep-months N --json     # the full plan
+node "$GOLEMS_ROOT/skills/golem-powers/drive-filing/scripts/rollup.mjs" --repo <path> --keep-months N --apply    # month moves + plan file
 ```
 
 The last stdout line is the one-line summary `/fleet-wrap` records: `drive-filing rollup: mode=… files=…

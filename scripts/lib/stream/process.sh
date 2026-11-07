@@ -79,12 +79,14 @@ stalker_watch_file_growth() {
 # recorder output during yt-dlp/ffmpeg shutdown.
 stalker_terminate_scorer_tree() {
     local root_pid="${1:-}"
-    local child_pid children
+    local child_pid children lookup_status
 
     [[ "$root_pid" =~ ^[0-9]+$ ]] || return 2
     [ "$root_pid" -gt 1 ] || return 2
-    children=$(ps -eo pid=,ppid= 2>/dev/null \
-        | awk -v parent="$root_pid" '$2 == parent { print $1 }') || children=""
+    children=$(/usr/bin/pgrep -P "$root_pid" 2>/dev/null) || {
+        lookup_status=$?
+        [ "$lookup_status" -eq 1 ] || return "$lookup_status"
+    }
 
     kill -TERM "$root_pid" 2>/dev/null || true
     for child_pid in $children; do
@@ -97,13 +99,8 @@ stalker_terminate_scorer_tree() {
 
 stalker_process_start_identity() {
     local pid="${1:-}"
-    local process_start
     [[ "$pid" =~ ^[0-9]+$ ]] || return 2
-    process_start="$(LC_ALL=C ps -p "$pid" -o lstart= 2>/dev/null \
-        | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
-        | head -n 1)" || return 1
-    [ -n "$process_start" ] || return 1
-    printf '%s\n' "$process_start"
+    python3 "$STREAM_HELPERS_DIR/../hooks/proc_identity.py" start "$pid"
 }
 
 # Select the chronologically newest timestamped recording directory. Directory

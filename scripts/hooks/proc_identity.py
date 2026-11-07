@@ -120,6 +120,17 @@ class _ProcBsdShortInfo(ctypes.Structure):
 
 assert ctypes.sizeof(_ProcBsdShortInfo) == 64
 
+
+class _KinfoProcPrefix(ctypes.Structure):
+    # Darwin sys/proc.h extern_proc, the prefix of sysctl's kinfo_proc.
+    _fields_ = [("seconds", ctypes.c_int64), ("microseconds", ctypes.c_int32),
+                ("time_padding", ctypes.c_int32), ("vmspace", ctypes.c_uint64),
+                ("sigacts", ctypes.c_uint64), ("flags", ctypes.c_int32),
+                ("status", ctypes.c_char), ("pid", ctypes.c_int32)]
+
+
+assert _KinfoProcPrefix.pid.offset == 40
+
 if sys.platform == "darwin":
     _libproc = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
     _libc = ctypes.CDLL(None, use_errno=True)
@@ -214,6 +225,39 @@ def _scope_hint(pid: int) -> dict[str, int]:
     return {}
 
 
+def _darwin_birth(pid: int) -> StartKey | None:
+    # KERN_PROC_PID is readable across UIDs; unlike PIDTBSDINFO it does not
+    # turn an ordinary child's setuid exec into an unobservable lifetime.
+    mib = (ctypes.c_int * 4)(CTL_KERN, 14, 1, pid)  # KERN_PROC, KERN_PROC_PID
+    buffer = ctypes.create_string_buffer(4096)  # SDK kinfo_proc is 648 bytes on 64-bit Darwin.
+    size = ctypes.c_size_t(len(buffer))
+    if _libc.sysctl(mib, 4, buffer, ctypes.byref(size), None, 0) != 0:
+        raise _native_error()
+    if size.value == 0: return None
+    if size.value < ctypes.sizeof(_KinfoProcPrefix):
+        raise ValueError("short kinfo_proc")
+    info = _KinfoProcPrefix.from_buffer_copy(buffer)
+    if info.pid != pid or info.seconds <= 0 or not 0 <= info.microseconds < 1000000:
+        raise ValueError("invalid kinfo_proc identity")
+    return info.seconds, info.microseconds
+
+
+def _darwin_unprivileged_identity(pid: int) -> ProcIdentity | None:
+    before = _darwin_birth(pid)
+    if before is None: return None
+    info = _ProcBsdShortInfo()
+    count = _libproc.proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, ctypes.byref(info), ctypes.sizeof(info))
+    if count <= 0: raise _native_error()
+    if count != ctypes.sizeof(info) or info.pbsi_pid != pid:
+        raise ValueError("short or mismatched proc_bsdshortinfo")
+    after = _darwin_birth(pid)
+    if after is None: return None
+    if before != after:
+        raise ProcIdentityUnavailable("PID changed during kernel identity read", reason="changed",
+                                      uid=info.pbsi_uid, ruid=info.pbsi_ruid)
+    return ProcIdentity(pid, info.pbsi_ppid, info.pbsi_pgid, info.pbsi_uid, info.pbsi_ruid, before)
+
+
 def identity(pid: int) -> ProcIdentity | None:
     """Return metadata, None only for gone PIDs, or a typed inspection failure."""
     if type(pid) is not int or not 0 < pid <= 2**31 - 1:
@@ -227,7 +271,9 @@ def identity(pid: int) -> ProcIdentity | None:
         ctypes.set_errno(0)
         count = _libproc.proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, ctypes.byref(info), ctypes.sizeof(info))
         if count <= 0:
-            raise _native_error()
+            error = _native_error()
+            if isinstance(error, PermissionError): return _darwin_unprivileged_identity(pid)
+            raise error
         if count != ctypes.sizeof(info) or info.pbi_pid != pid:
             raise ValueError("short or mismatched proc_bsdinfo")
         return ProcIdentity(pid, info.pbi_ppid, info.pbi_pgid, info.pbi_uid, info.pbi_ruid,
@@ -238,6 +284,17 @@ def identity(pid: int) -> ProcIdentity | None:
         reason = "permission" if isinstance(error, PermissionError) else "other"
         raise ProcIdentityUnavailable(f"cannot inspect PID {pid}", reason=reason,
                                       **_scope_hint(pid)) from error
+
+
+def start_token(pid: int) -> str | None:
+    """Canonical persisted owner incarnation; None only when gone, never spawn ps."""
+    observed = identity(pid)
+    if observed is None:
+        return None
+    first, second = observed.start
+    if isinstance(first, bytes):
+        return f"v2:linux:{first.hex()}:{second}"
+    return f"v2:darwin:{first}.{second:06d}"
 
 
 def _parse_procargs2(data: bytes) -> tuple[list[bytes], list[bytes]]:
@@ -533,3 +590,25 @@ def children_snapshot() -> ChildrenSnapshot:
                 continue
             result[pid] = (observed.ppid, observed.pgid, observed.start, observed.uid, observed.ruid)
     return result
+
+
+def main(args=None) -> int:
+    """start PID: exits 0=printed, 1=gone, 2=unreadable, 64=usage."""
+    args = sys.argv[1:] if args is None else args
+    if (len(args) != 2 or args[0] != "start" or not re.fullmatch(r"[0-9]{1,10}", args[1])
+            or not 0 < int(args[1]) <= 2**31 - 1):
+        print("usage: proc_identity.py start <positive PID>", file=sys.stderr)
+        return 64
+    try:
+        token = start_token(int(args[1]))
+    except ProcIdentityUnavailable as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    if token is None:
+        return 1
+    print(token)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

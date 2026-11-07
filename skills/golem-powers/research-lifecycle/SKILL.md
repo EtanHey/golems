@@ -21,7 +21,7 @@ Every research dispatch — fleet-fired OR **Etan-fired in his own Gemini/Notebo
 | **harvest_trigger** | What event starts harvest (report complete, Drive export lands, cron poll, Etan says "it's done", etc.) |
 | **export_route** | Where results land for the fleet: Drive path, `docs.local/research/`, collab ack, brain_store digest — adapters must name this explicitly |
 
-**Research without all three = PARKED.** Do not mark done, do not brain_store conclusions, do not close the collab row until harvest completes or Etan explicitly parks it.
+**Research without all three = PARKED.** Do not mark done, do not brain_store conclusions, do not close the collab row until harvest completes and [VERIFY BEFORE STORE](#verify-before-store) passes for those conclusions, or Etan explicitly parks it.
 
 Applies to `/gemini-research`, `/claude-desktop-research`, and orc W5 research dispatches. The E07 integrity gate catches bad claims; this gate catches **throughput** — results sitting unharvested since morning.
 
@@ -29,17 +29,19 @@ Applies to `/gemini-research`, `/claude-desktop-research`, and orc W5 research d
 
 ## INCOMING RESEARCH DOC LINK — harvest before closing
 
-When a research docs link arrives (Google Docs link or Gemini Deep Research
-report URL), the lead has a gatherer read the report and locate its R-number
-prompt; the filing write goes to a Drive-write-capable sub-agent (or the lead)
-per `/agent-routing` § Execution capability. Use `/drive-filing` to resolve the
-project's research folder; file the report as `R{NN}-<slug>-result` in the
-`results/` folder beside the `prompts/` folder that holds its R-number prompt.
-Verify the filed document by readback and record the filed doc's link as the
-dispatch's `export_route` evidence before closing.
-If the prompt or R-number cannot be resolved, report the missing association to
-the lead and keep the harvest PARKED; do not guess a folder or claim completion.
-Then apply the existing harvest contract and lifecycle gates.
+When research links arrive, the receiver's **FIRST dispatch is ONE coordinator child** for the whole batch, including already-filed reports. Use `delegate_task` with `role: "research"`, `target.providerInstanceId: "codex-worker"`, high effort/default tier, and label its brief `codex.research.coordinator`. Pass [the workflow](references/coordinator.md), all links and the verifier parameter. Omit `isolation` (shared checkout). Then **end the turn**. The receiver does no harvesting, splitting, verifying or filing. A non-research link does not take this route. Children briefed by a coordinator (the coordinator itself and its Drive harvest child) skip this route.
+
+The coordinator skips intake dispatch. Per `/agent-routing` § Execution capability, delegate harvest/readback/filing/NotebookLM to a Drive-write-capable child; wait for its receipt while orchestrating verification. The workflow preserves `R{NN}-<slug>-result`, readback/`export_route` and PARKED-not-guessed associations.
+
+## VERIFY BEFORE STORE — coordinator-owned
+
+**Verifier parameter: `VERIFIER_ROLE=claude.research.verifier` (API key); one override to `codex.research.verifier` selects subscription dispatch.**
+
+1. Freeze numbered checkable claims per section (exact report quotes, locations, code/corpus revision). Fan out section verifiers using [the verifier rubric](references/verifier.md). For the Claude family, use [the API-key launcher](references/coordinator.md#api-key-section-verifiers), never a subscription `delegate_task`. Expect ~$0.21/section or ~$0.66/100 claims for verifiers; post the batch projection before fan-out.
+2. Send all WRONG/HALLUCINATED verdicts, a random audit of 85 VERIFIED claims (all if fewer), and a separate decision-critical UNVERIFIABLE queue to ONE adjudicator using [its rubric](references/adjudicator.md). Default adjudicator role: `codex.research.adjudicator`, effort high, service tier default. Use the other model family; Codex verifiers therefore switch it to `claude.judgment` (high, never fast). Only the lead named as step owner in the brief can override the cross-family rule, in which case double the VERIFIED audit to 170 (all if fewer).
+3. Write `VERIFY-SUMMARY.md` beside each report, with coverage, final verdict counts, hallucination/error rates and denominators, audit seed/IDs and evidence. Store only VERIFIED facts from completed audited sections or adjudication-resolved VERIFIED claims; WRONG/HALLUCINATED only as evidenced corrections. Never store UNVERIFIABLE as fact or report-authored PROPOSAL-OK as established fact. Partial work releases only the eligible subset; pending claims remain pending.
+
+Resolve roles from `standards/model-roles.json`; dispatch per `/agent-routing`. This gate applies to research conclusions, not ordinary non-research notes.
 
 ## THE LIFECYCLE
 
@@ -179,17 +181,16 @@ The local corpus is the source to push. Drive is where Gemini grounds, so the Dr
 1. **Prove Drive auth and account identity with real calls.** `"MCP connected"` is NOT evidence of Drive auth. Call `authGetStatus`; continue only when the real call succeeds and returns authed. Tool discovery or a connected-tool count does not pass this gate. Then verify the active account before any upload, replacement, or deletion:
    ```bash
    # Project has a NotebookLM notebook: verify both identities.
-   bash skills/golem-powers/_shared/research/verify-account.sh --expect research-account@example.com
+   bash skills/golem-powers/_shared/research/verify-account.sh
 
    # No project notebook: verify Drive without requiring NotebookLM auth state.
-   bash skills/golem-powers/_shared/research/verify-account.sh \
-     --expect research-account@example.com --drive-only
+   bash skills/golem-powers/_shared/research/verify-account.sh --drive-only
    ```
-   Save the successful JSON output in the lifecycle receipt. A call failure or account mismatch is blocking; switch profiles and rerun verification instead of reconciling the wrong Drive corpus.
+   The expected account is `RESEARCH_ACCOUNT` if set, else the `RESEARCH_ACCOUNT=<address>` line in `~/.config/research-lifecycle/research.env` (outside every repo; the completion gate reads the same source). If neither is set, verification and `DRIVE_ACCOUNT` fail and name that file. Save the successful JSON output in the lifecycle receipt. A call failure or account mismatch is blocking; switch profiles and rerun verification instead of reconciling the wrong Drive corpus.
 
 2. **Resolve the canonical destination.** Use `/drive-filing` for the correct numbered folder and naming convention (its folder model and decision tree own the Drive paths; this skill does not restate them). Use `/braindrive` to resolve current folder IDs and the Gemini-facing corpus; do not trust stale hard-coded IDs.
 
-3. **Reconcile the managed Drive corpus to local truth.** Upload or replace every current local context file under the canonical project corpus, keeping local and Drive relative names identical. Track the complete lifecycle-managed file set. Delete only previously managed Drive files that are absent locally; never delete unrelated Drive documents. Unexpected duplicate managed names fail the gate.
+3. **Reconcile the managed Drive corpus to local truth.** Upload or replace every current local context file under the canonical project corpus, keeping local and Drive relative names identical. Upload with `mcp__google-drive__uploadFile(localPath, name, parentFolderId, mimeType)` and set `mimeType` from the extension: `.md` → `text/markdown`, `.txt` → `text/plain`, `.json` → `application/json`. Without it, a markdown file whose first bytes are `<!--` lands as `text/html`. Do not use `createTextFile` or `updateTextFile` here: they take no `mimeType`. Track the complete lifecycle-managed file set. Delete only previously managed Drive files that are absent locally; never delete unrelated Drive documents. Unexpected duplicate managed names fail the gate.
 
 4. **Verify the refresh with a real Drive read.** List/search and download/read the destination after upload. Record every local and Drive relative name, `modifiedTime`, and SHA-256 content digest in a receipt. The completion command independently walks `--local-root`, hashes every regular file, and rejects a receipt that omits or changes any canonical local entry. `DRIVE_FILESET=PASS` requires the Drive names to equal that derived inventory with no duplicates. `DRIVE_FRESHNESS=PASS` requires every Drive digest to match its local source and every Drive `modifiedTime` to be at least as new. Missing or unverifiable content is `FAIL`.
 
@@ -217,6 +218,8 @@ The local corpus is the source to push. Drive is where Gemini grounds, so the Dr
 
 ## GEMINI RESEARCH PROMPT PREFLIGHT — BLOCKING
 
+Prepare the next prompt with [/gemini-research's template](../gemini-research/references/prompt-template.md) and its structural pre-fire gate.
+
 Before emitting any Gemini research prompt, require exactly one `# Grounding` block. That block must contain either a Drive document referenced by name or the exact line `None — web-only research`. Never instruct Etan to attach or upload Drive documents; his connected Drive workspace pulls named documents itself.
 
 Run the executable gate against the prompt file. It checks the block structure and invokes the shared no-attach gate:
@@ -241,9 +244,9 @@ Write the verification evidence to a receipt, then run the same executable gate:
   "driveAuth": {"callSucceeded": true, "authed": true},
   "accountVerification": {
     "callSucceeded": true,
-    "drive_account": "research-account@example.com",
-    "notebooklm_account": "research-account@example.com",
-    "expected": "research-account@example.com",
+    "drive_account": "<resolved research account>",
+    "notebooklm_account": "<resolved research account>",
+    "expected": "<resolved research account>",
     "match": true,
     "drive_only": false
   },
@@ -275,7 +278,7 @@ The lifecycle may be marked complete only when the command exits 0 and every row
 |-------|----------------|
 | `DRIVE_ROUTE` | Receipt names the canonical destination resolved through `/drive-filing` and `/braindrive` |
 | `DRIVE_AUTH` | A real `authGetStatus` call succeeds and returns authed |
-| `DRIVE_ACCOUNT` | `verify-account.sh` succeeds and records the intended active Drive identity |
+| `DRIVE_ACCOUNT` | `verify-account.sh` succeeds and records the active Drive identity, equal to `RESEARCH_ACCOUNT` or the account in `~/.config/research-lifecycle/research.env` |
 | `LOCAL_INVENTORY` | Receipt local names/digests/timestamps exactly equal the inventory derived from `--local-root` |
 | `DRIVE_FILESET` | Managed Drive names exactly equal the derived local inventory; no missing, extra, or duplicate managed file |
 | `DRIVE_FRESHNESS` | Every Drive SHA-256 matches local content and every Drive `modifiedTime` is at least as new |

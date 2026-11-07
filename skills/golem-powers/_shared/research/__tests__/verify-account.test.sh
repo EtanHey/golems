@@ -176,8 +176,52 @@ run_timeout_case() {
   rm -rf "$tmp_dir"
 }
 
+# Without --expect the account resolves from RESEARCH_ACCOUNT, then the
+# RESEARCH_ACCOUNT= line in $HOME/.config/research-lifecycle/research.env.
+# HOME is a throwaway fixture inside the worktree, never the real one.
+run_account_resolution_case() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d "$ROOT_DIR/__tests__/.home.XXXXXX")
+  trap 'rm -rf "$tmp_dir"' RETURN EXIT
+
+  local drive_cmd="$tmp_dir/drive.sh"
+  local config_dir="$tmp_dir/home/.config/research-lifecycle"
+  make_mock "$drive_cmd" '{"user":{"emailAddress":"research-account@example.com"}}'
+  mkdir -p "$tmp_dir/home"
+
+  local stdout_text stderr_file="$tmp_dir/stderr" exit_code
+
+  # Neither env nor config: fail with a message naming the config file.
+  set +e
+  stdout_text=$(env -u RESEARCH_ACCOUNT HOME="$tmp_dir/home" RESEARCH_VERIFY_DRIVE_CMD="$drive_cmd" \
+    bash "$SCRIPT" --drive-only 2>"$stderr_file")
+  exit_code=$?
+  set -e
+  [[ $exit_code -eq 2 ]] || fail "expected unconfigured exit 2, got $exit_code"
+  [[ -z "$stdout_text" ]] || fail "expected no JSON when unconfigured, got: $stdout_text"
+  assert_contains "$(cat "$stderr_file")" ".config/research-lifecycle/research.env"
+  [[ "$(cat "$stderr_file")" != *"research-account@example.com"* ]] || fail "unconfigured run fell back to the placeholder"
+
+  # Config file only.
+  mkdir -p "$config_dir"
+  printf '# research account\nRESEARCH_ACCOUNT="research-account@example.com"\n' >"$config_dir/research.env"
+  stdout_text=$(env -u RESEARCH_ACCOUNT HOME="$tmp_dir/home" RESEARCH_VERIFY_DRIVE_CMD="$drive_cmd" \
+    bash "$SCRIPT" --drive-only)
+  python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["expected"]=="research-account@example.com" and d["match"] is True, d' "$stdout_text"
+
+  # Env set: it wins over the config file.
+  printf 'RESEARCH_ACCOUNT=other-account@example.com\n' >"$config_dir/research.env"
+  stdout_text=$(HOME="$tmp_dir/home" RESEARCH_ACCOUNT=research-account@example.com RESEARCH_VERIFY_DRIVE_CMD="$drive_cmd" \
+    bash "$SCRIPT" --drive-only)
+  python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["expected"]=="research-account@example.com" and d["match"] is True, d' "$stdout_text"
+
+  trap - RETURN EXIT
+  rm -rf "$tmp_dir"
+}
+
 run_case
 run_drive_only_case
+run_account_resolution_case
 run_mismatch_case
 run_timeout_case
 

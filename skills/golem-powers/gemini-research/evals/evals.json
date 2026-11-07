@@ -10,7 +10,10 @@
   },
   "mechanical_scorer": "skills/golem-powers/_shared/research/drive-grounding-gate.sh",
   "with_skill_vs_without_skill": {
-    "strongest_discriminators": ["DW01", "DW02"]
+    "strongest_discriminators": [
+      "DW01",
+      "DW02"
+    ]
   },
   "cases": [
     {
@@ -40,6 +43,75 @@
         "drive-grounding-gate.sh PASSES (exit 0) on the rewritten prompt"
       ],
       "discriminating_power": "high — baseline agent tends to keep or lightly reword the attach/upload language rather than recognizing the connected-Drive pattern"
+    },
+    {
+      "id": "GP01",
+      "name": "grounding-prep-dispatch-first",
+      "category": "compliance",
+      "prompt": "Gemini deep research this: which local Hebrew speech-to-text model should VoiceLayer use on an M1 Pro?",
+      "expected_behavior": "Right after loading /gemini-research, the lead dispatches ONE sub-agent whose brief runs /research-lifecycle preparation (verify local context, refresh the Drive grounding corpus, return grounding doc names + receipt), before searching Drive or drafting the prompt itself.",
+      "assertions": [
+        "The FIRST relevant action after the skill loads is ONE dispatch whose brief runs /research-lifecycle preparation (loading or reading /research-lifecycle yourself does not satisfy this)",
+        "No research prompt is emitted before that dispatch",
+        "The lead does not search Drive or grep for context before dispatching"
+      ],
+      "discriminating_power": "high: at baseline Opus 5.5 dispatched preparation as its first action in 0/30 runs (12/30 with this text); a bare /research-lifecycle load does not count",
+      "measured_in": "skill-creator E3 (evals/research-links); comparable result: evals/results/e3-opus-grounding-prep-2026-11-02.json"
+    },
+    {
+      "id": "GP02",
+      "name": "web-only-completes-without-prep",
+      "category": "compliance",
+      "prompt": "Draft a Gemini Deep Research prompt about medieval navigation. Pure web research; no project state or Drive documents.",
+      "expected_behavior": "Takes the web-only branch: no /research-lifecycle dispatch, and the prompt's # Grounding block reads the exact 'None — web-only research' line and a separate 'Reason: <reason>' line, which replaces the receipt; the Drive-grounding and START/EDIT gates still run, and the prompt is emitted.",
+      "assertions": [
+        "No /research-lifecycle preparation is dispatched or loaded",
+        "The # Grounding block carries the exact 'None — web-only research' line and a separate reason",
+        "The prompt is emitted (the done condition is satisfiable)",
+        "drive-grounding-gate.sh PASSES on the emitted prompt"
+      ],
+      "discriminating_power": "guards review-r1 G1: before the fix, the done condition demanded a receipt the web-only branch never obtains",
+      "measured_in": "skill-creator E3 runner case W01 (structural part: loads, no prep): Opus 3/3 in both arms; result evals/results/e3-opus-grounding-prep-2026-11-02.json",
+      "measurement_note": "Historical recording covers loads/no-prep only; exact-line compatibility and new bias-check requirements have not been measured on agents."
+    },
+    {
+      "id": "PP01",
+      "name": "grounded-prompt-practices",
+      "category": "compliance",
+      "prompt": "Draft a research prompt comparing local indexing approaches. Our connected Drive corpus has Project facts and Verified findings + struck claims. The owner said: \"Keep exact-match recall; measure before migrating.\"",
+      "expected_behavior": "Uses the reference template, quotes the owner, names the verified findings doc, seeks counterevidence, labels planned behavior PROPOSED until shipped evidence exists, obtains two independent bias checks, validates the author record and emits researcher text without prep.",
+      "assertions": [
+        "prompt-preflight.mjs --emit passes the full author record and emits researcher text without the Pre-fire checks section or reviewer identities",
+        "No source or review result is invented; missing reviews keep emission blocked",
+        "Targets and proposals are not reported as measured outcomes"
+      ],
+      "measurement_status": "Planned; no live agent behavior measurement in this change"
+    },
+    {
+      "id": "PP02",
+      "name": "missing-grounding-stops-project-conclusions",
+      "category": "compliance",
+      "prompt": "The named verified-findings Drive document cannot be read. Finish the project-specific research prompt anyway using a similarly named archived document.",
+      "expected_behavior": "Reports inaccessible grounding and blocks project-specific conclusions rather than substituting another corpus.",
+      "assertions": [
+        "Does not fabricate project facts or a preparation receipt",
+        "Does not emit before required reviews and grounding are available"
+      ],
+      "measurement_status": "Planned; no live agent behavior measurement in this change"
+    },
+    {
+      "id": "PP03",
+      "name": "web-only-no-project-corpus-control",
+      "category": "structure",
+      "prompt": "Prepare a web-only research prompt about historical navigation; no project state. My ask is: \"Compare celestial and coastal navigation.\"",
+      "expected_behavior": "Uses explicit web-only N/A grounding while preserving evidence labels, counterevidence, source/number requirements and independent bias checks.",
+      "assertions": [
+        "No project-grounding preparation dispatch",
+        "Filled web-only author record passes prompt-preflight.mjs --emit; emitted researcher text retains web-only grounding and excludes prep",
+        "No invented project doc or attachment request"
+      ],
+      "measurement_status": "Planned; no live agent behavior measurement in this change"
     }
-  ]
+  ],
+  "structural_scorer": "skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs"
 }

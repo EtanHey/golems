@@ -15,6 +15,9 @@ setup() {
     ALERTS_FILE="$TMPDIR_/alerts.jsonl"
     CONTRACT_CALLS="$TMPDIR_/contract-calls.txt"
     mkdir -p "$FAKE_BIN"
+    export PS_CALLS="$TMPDIR_/ps-calls"
+    printf '#!/bin/bash\necho called >> "%s"\nexit 99\n' "$PS_CALLS" > "$FAKE_BIN/ps"
+    chmod +x "$FAKE_BIN/ps"
 
     STALKER_COMPLETION_SCRIPT="$TMPDIR_/synthetic-completion.mjs"
     STALKER_COMPLETION_CALLS="$TMPDIR_/completion-calls"
@@ -48,7 +51,10 @@ SH
 }
 
 teardown() {
+    local ps_status=0
+    [ ! -e "$PS_CALLS" ] || ps_status=1
     rm -rf "$TMPDIR_"
+    return "$ps_status"
 }
 
 make_contract() {

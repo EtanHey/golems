@@ -366,7 +366,7 @@ EOF
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *'WARNING: cleanup skipped - originals retained; Drive re-verify failed: examplechannel-2026-06-18-005309'* ]]
+    [[ "$output" == *'WARNING: cleanup skipped - originals retained; Drive re-verify failed: examplechannel-2026-06-18-005309'* ]] || false
     [ ! -f "$HTTP_CALLS" ]
 }
 
@@ -376,7 +376,7 @@ EOF
     run "$CONTRACT" digest "$STALKER_ROOT" 2026-06-18
 
     [ "$status" -eq 0 ]
-    [[ "$output" != *BrainLayer* ]]
+    [[ "$output" != *BrainLayer* ]] || false
     [ ! -f "$HTTP_CALLS" ]
 }
 

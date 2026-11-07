@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { median, parseRows, perfRepeats, validDiskMeasurement } from "./table.mjs";
+import { median, parseRows, perfRepeats, validDiskMeasurement, validRunsMeasurement } from "./table.mjs";
 
 const DEFAULT_TIMEOUT_S = 900;
 
@@ -44,10 +44,10 @@ export function runRows({ rows, head, cwd = process.cwd(), runner = null, log = 
       continue;
     }
     const { run, code } = runCommand(row, cwd, log);
-    if (row.id === "disk-free-floor" && row.report_only) {
+    if (["disk-free-floor", "ratchet-runs-size"].includes(row.id) && row.report_only) {
       try {
         const measurement = JSON.parse(String(run.stdout ?? "").trim().split("\n").pop());
-        if (validDiskMeasurement(measurement) && run.status === (measurement.health ? 0 : 1))
+        if ((row.id === "ratchet-runs-size" ? validRunsMeasurement(measurement) : validDiskMeasurement(measurement)) && run.status === (measurement.health ? 0 : 1))
           results[row.id] = { value: measurement.health, measurement };
       } catch {} // Malformed/missing measurement stays MISSING (FAIL), never WARN.
       continue;

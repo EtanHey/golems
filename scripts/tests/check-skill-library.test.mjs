@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -340,4 +340,26 @@ test("continues validating a block requires list after a blank line", () => {
   );
 
   assertOrdinaryRejection(result, value);
+});
+
+
+test("every golem-powers eval JSON file parses", () => {
+  const skillsRoot = fileURLToPath(new URL("../../skills/golem-powers/", import.meta.url));
+  const invalid = [];
+  let checked = 0;
+  for (const skill of readdirSync(skillsRoot, { withFileTypes: true })) {
+    if (!skill.isDirectory()) continue;
+    const evals = join(skillsRoot, skill.name, "evals");
+    let entries;
+    try { entries = readdirSync(evals, { withFileTypes: true }); }
+    catch (error) { if (error.code === "ENOENT") continue; throw error; }
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+      checked++;
+      try { JSON.parse(readFileSync(join(evals, entry.name), "utf8")); }
+      catch { invalid.push(`${skill.name}/evals/${entry.name}`); }
+    }
+  }
+  assert.ok(checked > 0, "eval JSON inventory must not be empty");
+  assert.deepEqual(invalid, [], "invalid JSON in skill eval files");
 });

@@ -94,11 +94,12 @@ layoutTest("page heading outranks card titles and, on desktop, shares the sideba
   expect(failures).toEqual([]);
 }, 30000);
 
-layoutTest("storage state is visually hidden until it reports an error", async () => {
+layoutTest("storage state stays visible for device-only fallback and errors", async () => {
   const browser = await chromium.launch();
   try { const page = await browser.newPage({ viewport: { width: 390, height: 844 } }); await page.goto(fixture());
     const size = () => page.locator("#df-storage-state").evaluate(node => { const r = node.getBoundingClientRect(); return r.width * r.height; });
-    expect(await size()).toBeLessThanOrEqual(1);
+    expect(await size()).toBeGreaterThan(100);
+    expect(await page.locator("#df-storage-state").textContent()).toContain("this device only");
     await page.evaluate(() => { const node = document.getElementById("df-storage-state"); node.textContent = "Storage unavailable · use Copy answers"; node.classList.add("is-error"); });
     expect(await size()).toBeGreaterThan(100);
     expect(await page.locator("#df-storage-state").isVisible()).toBe(true);

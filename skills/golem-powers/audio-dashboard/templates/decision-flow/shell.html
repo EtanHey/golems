@@ -2,6 +2,7 @@
 <html lang="en" data-dashboard-type="decision-flow">
 <head>
 <meta charset="utf-8">
+<meta name="dashboard-id" content="{{DASHBOARD_ID}}">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#101a2c">
 <title>{{TITLE}}</title>
@@ -14,7 +15,6 @@
       {{MODE_SWITCH}}
       <h1>{{HEADING}}</h1>
       {{CONTEXT}}
-      <p class="df-storage-state" id="df-storage-state" aria-live="polite"></p>
     </header>
     {{CONTROLLER}}
     <aside class="df-side">
@@ -43,6 +43,7 @@
   </dialog>
   {{COMPARE_DIALOG}}
   <script id="tpdata" type="application/json">{{TPDATA}}</script>
-  <script>{{SCRIPT}}</script>
+  {{COPY_BLOCK_ASSETS}}
+  <script data-answer-consumer="decision-flow">{{SCRIPT}}</script>
 </body>
 </html>

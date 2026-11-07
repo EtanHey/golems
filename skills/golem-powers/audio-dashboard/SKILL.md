@@ -56,9 +56,10 @@ card's audio. The card-local play button runs those clips in order, keeps the
 real-word-timed teleprompter open while playing or paused, and collapses it only
 when that decision's full section completes. Word clicks seek within the section
 and retain the normal clip-to-clip flow. Next and Skip acknowledge the action,
-advance to the following card, and autoplay it. Picks and free text persist under
-the per-dashboard key `dbx:<spec.id>`, so a new dashboard ID cannot inherit an
-older dashboard's answers; Copy answers exports paste-ready markdown.
+advance to the following card, and autoplay it. Picks and free text save through
+the account answer store. Without a bridge, the visible device-only fallback uses
+`dbx:<spec.id>` (or the spec's custom storage key). Copy answers exports paste-ready
+markdown. Playback rate and list/story preferences stay on this device.
 Each card also exposes **↻ Restart**, which restarts that decision's audio and
 teleprompter section from the beginning without advancing to another card.
 
@@ -86,6 +87,32 @@ must not repeat their text in a View details expander. Either offer no secondary
 action, or offer a **Listen deeper** button that opens an inline narrated section
 with real-word-timed read-along and word-click seek. Cards with a visualization
 may keep a View details expander that shows the visualization's underlying data.
+
+Answers save to the account through `window.__answerStore` (or the parent bridge),
+using a stable `dashboard-id` meta. localStorage is only a visible **device-only**
+fallback (the local keys described in this file are fallback keys); never ship
+device-only. Answer inputs require an explicit, stable `spec.id`.
+BUILD rejects missing identity or answer-store wiring.
+
+## Badge contrast
+Every badge/pill label (including recommended and REBOOT) must have WCAG AA text contrast of at least **4.5:1** against its effective fill, at every size and supported state/theme. Use `.ad-badge` in either template for dark text on a light fill; white text requires a sufficiently deep fill. Never use pale text on pale green or a 3:1 large-text exception for badges.
+Check browser-computed text/fill colors, composing transparency and inherited backgrounds/opacity before measuring; custom colors and states must also pass without rounding a value below 4.5 into a pass. This rule covers badge text, not all WCAG requirements.
+
+## Copyable instructions
+
+Attribution: Etan, 2026-11-03.
+Copy blocks are only for what the reader runs or pastes: terminal commands,
+CLI words, literal text to paste, and file paths to paste. Render these as code
+with a one-click **Copy** button and visible **Copied** confirmation. In either
+type, use a triple-backtick fence in `decision.body`; keep a multi-line command
+sequence in ONE fence, copied in order. Keyboard activation, clipboard fallback
+and resetting feedback are shared.
+URLs stay normal clickable links; never require or suggest a copy block for a
+link. Bare HTTP(S) URLs and `[label](https://example.com)` in card bodies render
+as links. A URL inside a shell command belongs in that command's copy block.
+BUILD rejects unprotected commands and pasteable paths on cards and the
+decision-flow header, records `COPY_BLOCK_REQUIRED` in `<output>.receipts.json`,
+and withholds HTML. Ordinary prose and links pass. There is no bypass.
 
 ## Issue and PR references
 
@@ -180,9 +207,9 @@ this skill dir):
    or if `abs(tpdata.total - ffprobe(mp3).duration) > 0.5s`.
    If the job spec includes a non-empty `decisions` array, this step also renders
    skill-local decision/answer boxes natively before writing HTML. The native
-   surface uses `dbx:<spec.id>` as its default localStorage key, persists radio
-   picks plus free text, and includes a Copy-answers markdown export so answers
-   are never localStorage-only. Optional answer harvest is exposed via
+   surface saves radio picks and free text through the account answer store;
+   `dbx:<spec.id>` is only its default visible localStorage fallback key. It also
+   includes a Copy-answers markdown export. Optional answer harvest is exposed via
    `spec.answerSink` or `spec.decisionSurface.answerSink`.
    BUILD runs four fail-closed gates before writing HTML: transcript fidelity
    compares RAW Whisper words to the script, the Acoustic Artifact Gate checks
@@ -217,7 +244,8 @@ this skill dir):
 
 The reference interaction shape is the cinema-with-answers lineage (Q/A section
 structure, Play-All, read-along teleprompter, `.note-area` response textareas with
-localStorage persistence so Wispr/VoiceBar can dictate into the focused input).
+account persistence and a visible device-only fallback when no bridge is available,
+so Wispr/VoiceBar can dictate into the focused input).
 
 ## Spoken-Form and Pronunciation Config
 
@@ -410,7 +438,8 @@ Before calling a dashboard done, verify these conditions (enforced by
   either type. Do not generate multiple replacement designs unless the operator
   explicitly asks for design exploration.
 - The HTML includes per-section response capture: `.note-area` textareas,
-  `data-note`/`data-title` metadata, localStorage save/restore, and copy/export.
+  `data-note`/`data-title` metadata, account save/restore with a visible device-only
+  fallback, and copy/export.
 - `words.raw.json` and `words.json` exist per segment. Every entry has a
   non-empty string `word` plus finite numeric `start` and `end`; raw words feed
   gates while repaired words feed display, and both timing series are monotonic.
@@ -513,7 +542,7 @@ scene never excuses another.
 `build-dashboard.mjs` writes one schema-v1 sidecar next to the intended HTML:
 `foo.html` pairs with `foo.receipts.json`. The writer owns the BUILD rows for
 `voice-role`, `transcript-fidelity`, `acoustic`, `onset-energy`, and
-`teleprompter-drift`, keyed by gate plus stage. `voice-role` is written first
+`teleprompter-drift`, plus `copy-blocks`, keyed by gate plus stage. `voice-role` is written first
 because it runs pre-synthesis. `onset-energy` is the
 fourth additive BUILD row; bridge admission's initial three-row expected set remains
 compatible until its per-install config opts into the new row. PASS HTML is

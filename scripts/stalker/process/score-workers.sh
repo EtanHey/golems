@@ -29,7 +29,7 @@
         # terminate_score_worker_groups — TERM every worker's process group,
         # poll up to <grace-secs> for all members to exit, then KILL the rest.
         # Needs no process-table access, unlike stalker_terminate_scorer_tree's
-        # ps walk, so it still reaps where ps is denied (the Codex seatbelt
+        # pgrep walk, so it still reaps where inspection is denied (the Codex seatbelt
         # sandbox, #323). A group ID cannot be reused while any member lives,
         # so a live group is still this run's worker tree.
         terminate_score_worker_groups() {
@@ -72,7 +72,7 @@
                     for pid in "${SCORE_PIDS[@]}"; do
                         stalker_terminate_scorer_tree "$pid" || true
                     done
-                    # The tree walk needs ps; each worker leads its own process
+                    # The tree walk needs pgrep; each worker leads its own process
                     # group (see dispatch_score_segment), so this sweep also
                     # reaps descendants the walk could not see (#323).
                     terminate_score_worker_groups 2 "${SCORE_PIDS[@]}" || true

@@ -48,11 +48,12 @@ else:
   const write = (key, data) => writeFileSync(files[key], JSON.stringify(data));
   write("prs", []); write("threads", []); write("config", { queries: ["fixture"], projects: ["/fixture"], escalate_thread: "orc", grace_minutes: 45, held_stale_hours: 72 }); chmodSync(files.config, 0o600);
   const run = (...extra) => Bun.spawnSync([cli, "scan", "--config", files.config, "--state", files.state, ...extra], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
-  const age = seconds => { const s = JSON.parse(readFileSync(files.state)); for (const row of Object.values(s)) row.since -= seconds; write("state", s); };
-  const lead = (...extra) => Bun.spawnSync([cli, "lead", "--thread", "lead-1", "--state", files.state, ...extra], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
+  const age = seconds => { const s = JSON.parse(readFileSync(files.state)); for (const row of Object.values(s)) { row.since -= seconds; for (const sent of Object.values(row.sent)) for (const key of Object.keys(sent)) sent[key] -= seconds; } write("state", s); };
+  const lead = (...extra) => Bun.spawnSync([cli, "lead", "--thread", "lead-1", "--config", files.config, "--state", files.state, ...extra], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
+  const leadDefault = (...extra) => Bun.spawnSync([cli, "lead", "--thread", "lead-1", "--state", files.state, ...extra], { env: { ...process.env, HOME: root, PATH: `${bin}:${process.env.PATH}`, FIXTURE: root } });
   const calls = () => existsSync(files.calls) ? readFileSync(files.calls, "utf8") : "";
   const sends = () => existsSync(files.sends) ? readFileSync(files.sends, "utf8").trim().split("\n").map(JSON.parse) : [];
-  try { fn({ root, files, write, run, lead, calls, age, sends }); } finally { rmSync(root, { recursive: true, force: true }); }
+  try { fn({ root, files, write, run, lead, leadDefault, calls, age, sends }); } finally { rmSync(root, { recursive: true, force: true }); }
 }
 test("classes, held freshness, cancelled success, owner selection and batching", () => fixture(({ write, run, age, sends }) => {
   const failure = { name: "build\ninjected", status: "COMPLETED", conclusion: "FAILURE", completedAt: old };
@@ -152,4 +153,196 @@ test("lead check fetches its PRs by number, so a capped repo search cannot hide 
   const out = lead("--grace-minutes", "0"); expect(out.exitCode, out.stderr.toString()).toBe(0);
   expect(sends()).toHaveLength(1); expect(sends()[0].message).toContain("#500 is GREEN");
   expect(calls()).not.toContain("count=");
+}));
+
+for (const kind of ["RED", "GREEN", "CONFLICT"]) test(`lead check: ignored live ${kind} escalates once two hours after its first nudge`, () => fixture(({ files, write, lead, age, sends }) => {
+  const p = kind === "RED" ? check(pr(1), [{ name: "build", status: "COMPLETED", conclusion: "FAILURE", completedAt: old }]) : pr(1, kind === "CONFLICT" ? { mergeable: "CONFLICTING" } : {});
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [p]);
+  expect(lead().exitCode).toBe(0); expect(sends()).toHaveLength(0);
+  age(11 * 60); expect(lead().exitCode).toBe(0);
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
+  age(119 * 60); expect(lead().exitCode).toBe(0);
+  expect(sends()).toHaveLength(1); // More than 2 h in this class, but not 2 h since the nudge.
+  age(61); expect(lead().exitCode).toBe(0);
+  expect(sends().map(s => s.target)).toEqual(["lead-1", "orc"]);
+  expect(sends()[0].message).toContain("— pr-sentinel (your 5-minute PR check)");
+  expect(sends()[1].message).toContain("— pr-sentinel (lead check for lead-1)");
+  expect(sends()[1].message).not.toContain("your 5-minute PR check");
+  expect(sends()[1].message).toContain(kind);
+  expect(sends()[1].message).toContain("#1");
+  lead(); expect(sends()).toHaveLength(2);
+  const row = JSON.parse(readFileSync(files.state))[url(1)];
+  expect(row.sent[`${head}:${kind}`]["2"]).toBeGreaterThan(0);
+}));
+
+test("lead escalation: dry-run is immutable and a failed send retries without renudging the lead", () => fixture(({ root, files, write, lead, age, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  lead("--grace-minutes", "0"); age(121 * 60);
+  const before = readFileSync(files.state, "utf8");
+  const dry = lead("--dry-run"); expect(dry.exitCode).toBe(0);
+  expect(dry.stdout.toString()).toContain("WOULD SEND to orc");
+  expect(readFileSync(files.state, "utf8")).toBe(before); expect(sends()).toHaveLength(1);
+  const t3 = join(root, "bin/t3"); writeFileSync(t3, readFileSync(t3, "utf8").replace("else:\n with", "else:\n if (r/'fail-send').exists(): sys.exit(1)\n with"));
+  writeFileSync(join(root, "fail-send"), "");
+  const failed = lead(); expect(failed.exitCode).toBe(0); expect(failed.stderr.toString()).toContain("failed");
+  expect(sends()).toHaveLength(1); expect(JSON.parse(readFileSync(files.state))).toEqual(JSON.parse(before));
+  rmSync(join(root, "fail-send")); lead(); lead();
+  expect(sends().map(s => s.target)).toEqual(["lead-1", "orc"]);
+}));
+
+for (const interruption of ["pending", "behind"]) test(`lead escalation: a new head and ${interruption} restart the second grace`, () => fixture(({ write, lead, age, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  lead("--grace-minutes", "0"); age(121 * 60);
+  const next = pr(1, { headRefOid: "b".repeat(40) }); write("prs", [next]);
+  lead("--grace-minutes", "0"); expect(sends().map(s => s.target)).toEqual(["lead-1", "lead-1"]);
+  age(121 * 60);
+  write("prs", [interruption === "behind" ? pr(1, { headRefOid: next.headRefOid, mergeStateStatus: "BEHIND", viewerCanUpdateBranch: true }) : check(pr(1, { headRefOid: next.headRefOid }), [{ name: "build", status: "QUEUED" }])]);
+  lead(); expect(sends()).toHaveLength(2);
+  age(121 * 60); write("prs", [next]); lead();
+  expect(sends()).toHaveLength(2); // No second lead message for this head/class; no immediate escalation.
+  age(121 * 60); lead(); lead();
+  expect(sends().map(s => s.target)).toEqual(["lead-1", "lead-1", "orc"]);
+}));
+
+for (const change of ["draft", "visible hold", "pending", "closed", "review"]) test(`lead escalation: ${change} suppresses the previous actionable state`, () => fixture(({ write, lead, age, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  lead("--grace-minutes", "0"); age(121 * 60);
+  const changed = pr(1);
+  if (change === "draft") changed.isDraft = true;
+  if (change === "visible hold") changed.comments.nodes = [{ body: "**Held on purpose** waiting on input", createdAt: newer }];
+  if (change === "pending") check(changed, [{ name: "build", status: "QUEUED" }]);
+  if (change === "closed") changed.state = "CLOSED";
+  if (change === "review") changed.reviewDecision = "CHANGES_REQUESTED";
+  write("prs", [changed]); lead(); age(121 * 60); lead();
+  expect(sends().filter(s => s.target === "orc")).toHaveLength(0);
+}));
+
+test("lead escalation: the second grace starts only after a successful first nudge", () => fixture(({ root, write, lead, age, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  const t3 = join(root, "bin/t3"); writeFileSync(t3, readFileSync(t3, "utf8").replace("else:\n with", "else:\n if (r/'fail-send').exists(): sys.exit(1)\n with"));
+  writeFileSync(join(root, "fail-send"), ""); lead("--grace-minutes", "0");
+  expect(sends()).toHaveLength(0); age(3 * 3600);
+  rmSync(join(root, "fail-send")); lead("--grace-minutes", "0"); lead();
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
+  age(121 * 60); lead();
+  expect(sends().map(s => s.target)).toEqual(["lead-1", "orc"]);
+}));
+
+// Public #1088 snapshot: two failures, one cancellation, then a successful rerun.
+const rollup1088 = JSON.parse(readFileSync(join(import.meta.dir, "fixtures/pr-sentinel-1088-rollup.json"), "utf8"));
+const checks1088 = () => structuredClone(rollup1088.nodes);
+for (const state of ["MERGED", "CLOSED"]) test(`stale rollup: scan skips ${state} #1088 despite an open T3 link`, () => fixture(({ files, write, run, sends }) => {
+  write("prs", [check(pr(1088, { state, headRefOid: rollup1088.headRefOid }), checks1088())]);
+  write("threads", [thread("stale-link", [1088], { settled: true })]);
+  const cfg = JSON.parse(readFileSync(files.config)); cfg.grace_minutes = 0; write("config", cfg);
+  const out = run(); expect(out.exitCode, out.stderr.toString()).toBe(0);
+  expect(out.stdout.toString()).not.toContain("#1088");
+  expect(sends()).toHaveLength(0);
+  expect(JSON.parse(readFileSync(files.state))).toEqual({});
+}));
+for (const state of ["MERGED", "CLOSED"]) test(`stale rollup: lead already skips ${state} #1088 from an open T3 link`, () => fixture(({ files, write, lead, sends }) => {
+  write("show", { thread: thread("lead-1", [1088]) });
+  write("prs", [check(pr(1088, { state, headRefOid: rollup1088.headRefOid }), checks1088())]);
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode, out.stderr.toString()).toBe(0);
+  expect(out.stdout.toString()).not.toContain("#1088"); expect(sends()).toHaveLength(0);
+  expect(JSON.parse(readFileSync(files.state))).toEqual({});
+}));
+test("stale rollup: #1088's exact four check runs reduce to the successful rerun", () => fixture(({ write, lead, sends }) => {
+  write("show", { thread: thread("lead-1", [1088]) });
+  write("prs", [check(pr(1088), checks1088())]);
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode).toBe(0);
+  expect(out.stdout.toString()).toContain("#1088 GREEN");
+  expect(sends()[0].message).not.toContain("RED");
+}));
+for (const oldResult of ["FAILURE", "CANCELLED"]) test(`stale rollup: superseded ${oldResult} finishing late cannot override #1088's newer run`, () => fixture(({ write, lead }) => {
+  const nodes = checks1088();
+  // Derived overlap: an older run finishes after the newer run succeeds.
+  nodes.find(n => n.conclusion === oldResult).completedAt = "2026-11-02T05:00:00Z";
+  write("show", { thread: thread("lead-1", [1088]) }); write("prs", [check(pr(1088), nodes)]);
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode).toBe(0);
+  expect(out.stdout.toString()).toContain("#1088 GREEN");
+}));
+test("stale rollup: superseded running check cannot leave a successful newer run pending", () => fixture(({ write, lead }) => {
+  const nodes = checks1088(); Object.assign(nodes[0], { status: "IN_PROGRESS", conclusion: null, completedAt: null });
+  write("show", { thread: thread("lead-1", [1088]) }); write("prs", [check(pr(1088), nodes)]);
+  expect(lead().stdout.toString()).toContain("#1088 GREEN");
+}));
+test("stale rollup: a newer queued rerun supersedes old failures and success", () => fixture(({ write, lead, sends }) => {
+  const nodes = checks1088(), latest = nodes.find(n => n.conclusion === "SUCCESS");
+  nodes.push({ ...latest, databaseId: latest.databaseId + 1, status: "QUEUED", conclusion: null, startedAt: null, completedAt: null });
+  write("show", { thread: thread("lead-1", [1088]) }); write("prs", [check(pr(1088), nodes)]);
+  expect(lead("--grace-minutes", "0").stdout.toString()).toContain("#1088 PENDING"); expect(sends()).toHaveLength(0);
+}));
+test("stale rollup: identical check names from different apps keep independent verdicts", () => fixture(({ write, lead }) => {
+  const nodes = checks1088().filter(n => n.conclusion === "FAILURE");
+  const success = checks1088().find(n => n.conclusion === "SUCCESS");
+  success.checkSuite = { app: { id: "synthetic-independent-app" } }; nodes.push(success);
+  write("show", { thread: thread("lead-1", [1088]) }); write("prs", [check(pr(1088), nodes)]);
+  expect(lead("--grace-minutes", "0").stdout.toString()).toContain("#1088 RED");
+}));
+test("stale rollup: legacy status contexts also reduce before deciding pending or red", () => fixture(({ write, lead }) => {
+  write("show", { thread: thread("lead-1", [1, 2]) });
+  write("prs", [check(pr(1), [{ context: "legacy", state: "FAILURE", createdAt: old }, { context: "legacy", state: "PENDING", createdAt: newer }]),
+    check(pr(2), [{ context: "legacy", state: "PENDING", createdAt: old }, { context: "legacy", state: "SUCCESS", createdAt: newer }])]);
+  const out = lead().stdout.toString(); expect(out).toContain("#1 PENDING"); expect(out).toContain("#2 GREEN");
+}));
+
+test("stale rollup: merged #1088 carrying its historical RED window sends no alert", () => fixture(({ files, write, run, lead, sends }) => {
+  // Derived stale snapshot: replay #1088's recorded failures before the 04:42 success.
+  const red = checks1088().filter(n => n.conclusion !== "SUCCESS");
+  write("prs", [check(pr(1088, { state: "MERGED", headRefOid: rollup1088.headRefOid }), red)]);
+  write("threads", [thread("stale-link", [1088], { settled: true })]);
+  write("show", { thread: thread("lead-1", [1088]) });
+  const cfg = JSON.parse(readFileSync(files.config)); cfg.grace_minutes = 0; write("config", cfg);
+  const sweep = run(); expect(sweep.exitCode).toBe(0); expect(sweep.stdout.toString()).not.toContain("#1088");
+  const ownerCheck = lead("--grace-minutes", "0"); expect(ownerCheck.exitCode).toBe(0);
+  expect(ownerCheck.stdout.toString()).not.toContain("#1088"); expect(sends()).toHaveLength(0);
+}));
+test("stale rollup: merged #1091 with all-green checks sends no ready-to-merge message", () => fixture(({ files, write, run, lead, sends }) => {
+  const green = JSON.parse(readFileSync(join(import.meta.dir, "fixtures/pr-sentinel-1091-rollup.json"), "utf8"));
+  write("prs", [check(pr(1091, { state: "MERGED", headRefOid: green.headRefOid }), green.nodes)]);
+  write("threads", [thread("stale-link", [1091], { settled: true })]);
+  write("show", { thread: thread("lead-1", [1091]) });
+  const cfg = JSON.parse(readFileSync(files.config)); cfg.grace_minutes = 0; write("config", cfg);
+  const sweep = run(); expect(sweep.exitCode).toBe(0); expect(sweep.stdout.toString()).not.toContain("#1091");
+  const ownerCheck = lead("--grace-minutes", "0"); expect(ownerCheck.exitCode).toBe(0);
+  expect(ownerCheck.stdout.toString()).not.toContain("#1091"); expect(sends()).toHaveLength(0);
+}));
+
+
+test("lead optional config: absent default file preserves nudges and warns once per run", () => fixture(({ root, write, leadDefault, age, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  const first = leadDefault("--grace-minutes", "0");
+  expect(first.exitCode, first.stderr.toString()).toBe(0);
+  expect(first.stderr.toString()).toContain(join(root, ".config/golems/pr-sentinel.json"));
+  expect(first.stderr.toString().trim().split("\n")).toHaveLength(1);
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
+  age(121 * 60); const due = leadDefault();
+  expect(due.exitCode).toBe(0); expect(due.stderr.toString().trim().split("\n")).toHaveLength(1);
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
+}));
+test("lead optional config: missing escalate_thread disables only escalation until restored", () => fixture(({ files, write, lead, age, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  write("config", {});
+  const first = lead("--grace-minutes", "0"); expect(first.exitCode, first.stderr.toString()).toBe(0);
+  expect(first.stderr.toString()).toContain(files.config); expect(first.stderr.toString()).toContain("escalate_thread");
+  expect(first.stderr.toString().trim().split("\n")).toHaveLength(1);
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
+  age(121 * 60); const due = lead(); expect(due.exitCode).toBe(0);
+  expect(due.stderr.toString().trim().split("\n")).toHaveLength(1); expect(sends()).toHaveLength(1);
+  // Lead escalation needs no scan-only projects or queries.
+  write("config", { escalate_thread: "orc" }); const restored = lead();
+  expect(restored.exitCode, restored.stderr.toString()).toBe(0); expect(restored.stderr.toString()).toBe("");
+  expect(sends().map(s => s.target)).toEqual(["lead-1", "orc"]);
+  expect(sends()[1].message).toContain("— pr-sentinel (lead check for lead-1)");
+}));
+for (const invalid of ["json", "mode", "object"]) test(`lead optional config: invalid ${invalid} preserves the first nudge`, () => fixture(({ files, write, lead, sends }) => {
+  write("show", { thread: thread("lead-1", [1]) }); write("prs", [pr(1)]);
+  if (invalid === "json") writeFileSync(files.config, "{");
+  if (invalid === "mode") chmodSync(files.config, 0o644);
+  if (invalid === "object") write("config", []);
+  const out = lead("--grace-minutes", "0"); expect(out.exitCode, out.stderr.toString()).toBe(0);
+  expect(out.stderr.toString()).toContain(files.config);
+  expect(out.stderr.toString().trim().split("\n")).toHaveLength(1);
+  expect(sends().map(s => s.target)).toEqual(["lead-1"]);
 }));

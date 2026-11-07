@@ -3,6 +3,7 @@
 import argparse
 import fcntl
 import hashlib
+from itertools import islice
 import json
 import math
 import os
@@ -151,12 +152,61 @@ def write_record(fd, record):
         notice(f"WARNING holder record unavailable: {error}")
 
 
+def cap_list(value):
+    return value if len(value) <= 200 else value[:100] + value[-100:]
+
+
+def cap_record(record):
+    """Cap diagnostic collections only; retain totals and cleanup authority."""
+    result = {}
+    for field, value in record.items():
+        if isinstance(value, (list, dict)):
+            result[field + "_total"] = len(value)
+            if isinstance(value, dict):
+                kept = dict(value.items() if len(value) <= 200 else
+                            list(islice(value.items(), 100)) +
+                            list(islice(value.items(), len(value) - 100, None)))
+                if any(isinstance(v, list) for v in kept.values()):
+                    result[field + "_totals"] = {k: len(v) for k, v in kept.items() if isinstance(v, list)}
+                    kept = {k: cap_list(v) if isinstance(v, list) else v for k, v in kept.items()}
+                value = kept
+            else:
+                value = cap_list(value)
+        result[field] = value
+    return result
+
+
 def save_run(path, record):
     temporary = path.with_name(path.name + "." + uuid.uuid4().hex)
     fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as stream:
-        json.dump(record, stream, default=lambda value: value.hex())
+        json.dump(cap_record(record), stream, default=lambda value: value.hex())
     os.replace(temporary, path)
+
+
+def save_inner_failure(record, tree, reason, survivors):
+    try:
+        directory = Path.home() / ".local/state/golems/runs"
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700); directory.chmod(0o700)
+        birth = hashlib.sha256(json.dumps(record["wrapper_birth"], default=lambda value: value.hex()).encode()).hexdigest()[:16]
+        path = directory / f"{record['suite_id']}.inner-{record['wrapper_pid']}-{birth}.json"
+        save_run(path, dict(record, nested=True, reason=reason, cleanup="failed",
+            members_seen=[vars(row) for row in tree.known.values()], members_seen_count=len(tree.known),
+            signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+            identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
+            unattributed_marker_processes=list(tree.unattributed.values())))
+    except Exception as error:
+        notice(f"WARNING inner failure record unavailable: {error}")
+
+
+def inner_failure_pointer(suite_id):
+    try:
+        directory = Path.home() / ".local/state/golems/runs"
+        count = sum(1 for _ in directory.glob(f"{suite_id}.inner-*.json"))
+    except Exception as error:
+        notice(f"WARNING inner failure pointer unavailable: {error}")
+        return ""
+    return f" inner_failures={count} (see {directory}/{suite_id}.inner-*.json)" if count else ""
 
 
 class SuiteTree:
@@ -164,17 +214,47 @@ class SuiteTree:
         self.leader, self.suite_id, self.nested = leader, suite_id.encode(), nested
         self.known = {} if leader is None else {(leader.pid, leader.start): leader}
         self.incomplete, self.signalled, self.unattributed = set(), [], {}
+        self.identity_reasons = {}
+        self.uid_filtered = set()
+
+    REREAD_LIMIT = 8  # per scan: at most 8 x 2 x 5 ms of waiting, however many reads fail
+
+    @staticmethod
+    def reread(pid, attempts=2):
+        # AIDEV-NOTE: never drop or skip an identity-unavailable entry on weaker evidence (Codex reviews 2026-11-02:
+        # an unreadable member can start a detached, env-reset child that no lineage or marker scan links, and a
+        # reused PID is a different process). scan() re-reads only KNOWN members and accepts the result only when it
+        # is the same incarnation (birth key already in `known`); everything else stays fail-closed.
+        for _ in range(attempts):
+            runtime_wait(.005)
+            try: observed = proc.identity(pid)
+            except proc.ProcIdentityUnavailable: continue
+            return observed
+        return None
 
     def scan(self, markers=True, cleanup=False):
         snapshot = proc.children_snapshot()
+        # A verified foreign incarnation blocks cleanup while alive. Unknown
+        # identity/lineage gaps remain sticky, even after the PID disappears.
+        self.incomplete.difference_update(self.uid_filtered)
+        self.uid_filtered.clear()
         rows = {pid: proc.ProcIdentity(pid, *row[:2], row[3], row[4], row[2]) for pid, row in snapshot.items()}
         leader = rows.get(self.leader.pid) if self.leader else None
         group_live = leader is not None and leader.key == self.leader.key and proc.same_process(leader)
+        rereads = 0
         for pid, error in snapshot.unavailable.items():
             scoped_unknown = cleanup and ((group_live and error.pgid == leader.pgid) or
                 any(key[0] == error.ppid for key in self.known))
             if error.reason != "gone" and (scoped_unknown or any(key[0] == pid for key in self.known)):
+                if rereads < self.REREAD_LIMIT and any(key[0] == pid for key in self.known):
+                    rereads += 1
+                    observed = self.reread(pid)
+                    if observed is not None and (observed.pid, observed.start) in self.known:
+                        rows[pid] = observed; continue
                 self.incomplete.add(f"identity-unavailable:{pid}")
+                seen = self.identity_reasons.setdefault(pid, [])
+                detail = {"reason": error.reason, "uid": error.uid}
+                if detail not in seen: seen.append(detail)
         found = {}
         for _ in range(len(rows) + 1):
             changed = False
@@ -188,7 +268,9 @@ class SuiteTree:
                 if proven:
                     if key not in self.known: self.known[key] = row; changed = True
                     if (row.uid, row.ruid) != (os.geteuid(), os.getuid()):
-                        self.incomplete.add(f"uid-filtered:{pid}")
+                        failure = f"uid-filtered:{pid}"
+                        self.uid_filtered.add(failure)
+                        self.incomplete.add(failure)
                     else: found[pid] = row
             if not changed: break
         if markers and not self.nested:
@@ -264,6 +346,19 @@ def private_pipe():
 
 
 def run_command(command, timeout=1800, grace=10, slot=None):
+    # AIDEV-NOTE: START records are best-effort: no consumer reads them; cleanup
+    # uses live process state. If a future guardian uses active records to find
+    # orphans, START writes must become fail-closed again.
+    record_warning = False
+    def outer_record(action, *args):
+        nonlocal record_warning
+        try:
+            action(*args)
+        except Exception as error:
+            if not record_warning:
+                notice(f"WARNING outer record unavailable: {error}")
+                record_warning = True
+
     child, pending, tree, path = None, [], None, None
     gate_read = gate_write = status_read = status_write = None
     suite_id = os.environ.get("GOLEMS_HEAVY_SUITE_ID", "")
@@ -280,8 +375,11 @@ def run_command(command, timeout=1800, grace=10, slot=None):
             cmd_sha256=hashlib.sha256(os.fsencode(" ".join(command))).hexdigest(), cwd=os.getcwd(), started_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
         if not nested:
             directory = Path.home() / ".local/state/golems/runs"
-            directory.mkdir(parents=True, exist_ok=True, mode=0o700); directory.chmod(0o700)
-            path = directory / (suite_id + ".json"); save_run(path, record)
+            def prepare_directory():
+                directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+                directory.chmod(0o700)
+            outer_record(prepare_directory)
+            path = directory / (suite_id + ".json"); outer_record(save_run, path, record)
             notice(f"SUITE START pid={os.getpid()} slot={slot} suite_id={suite_id} timeout={timeout:g}")
         if pending: raise InterruptedError()
         gate_read, gate_write = private_pipe()
@@ -308,7 +406,7 @@ os.read(control, 1)
         tree = SuiteTree(leader, suite_id, nested)
         os.write(gate_write, b"1")
         record.update(leader_pid=child.pid, leader_birth=leader.start if leader else None, pgid=child.pid)
-        if path: save_run(path, record)
+        if path: outer_record(save_run, path, record)
         while True:
             tree.scan(markers=False)  # Capture authority before reaping; marker inspection is cleanup-only.
             try: message = os.read(status_read, 64)
@@ -328,26 +426,28 @@ os.read(control, 1)
             notice(f"CLEANUP FAILED; suite process tree remains or is unverifiable (suite_id={suite_id})")
             if result == 0: result = 70
         if pending and reason != "timeout": result, reason = 128 + pending[0], "cancelled"
+        if nested and not ok: save_inner_failure(record, tree, reason, survivors)
         if path:
             record.update(reason=reason, cleanup="ok" if ok else "failed", members_seen=[vars(row) for row in tree.known.values()],
-                signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
                 unattributed_marker_processes=list(tree.unattributed.values()))
-            save_run(path, record); save_run(path.with_suffix(".cleanup.json"), record)
-            if ok: path.unlink()
-        if not nested: notice(f"SUITE DONE pid={os.getpid()} slot={slot} suite_id={suite_id} exit={result} reason={reason} cleanup={'ok' if ok else 'failed'}")
+            outer_record(save_run, path, record)
+            outer_record(save_run, path.with_suffix(".cleanup.json"), record)
+            if ok: outer_record(lambda: path.unlink(missing_ok=True))
+        if not nested: notice(f"SUITE DONE pid={os.getpid()} slot={slot} suite_id={suite_id} exit={result} reason={reason} cleanup={'ok' if ok else 'failed'}{inner_failure_pointer(suite_id)}")
     except (OSError, proc.ProcIdentityUnavailable):
         notice("supervision unavailable; refusing START" if child is None else "CLEANUP FAILED; supervision unavailable")
         if child is not None:
             tree = tree or SuiteTree(None, suite_id, nested)
             tree.incomplete.add("supervision-unavailable")
             ok, survivors = cleanup_tree(tree, child, grace)
+            if nested: save_inner_failure(record, tree, reason, survivors)
             if path:
                 record.update(reason=reason, cleanup="failed", members_seen=[vars(row) for row in tree.known.values()],
-                    signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete),
+                    signalled=tree.signalled, survivors=survivors, incomplete=sorted(tree.incomplete), identity_unavailable_reasons={str(k): v for k, v in tree.identity_reasons.items()},
                     unattributed_marker_processes=list(tree.unattributed.values()))
-                try: save_run(path, record)
-                except OSError: pass
-        elif path: path.unlink(missing_ok=True)
+                outer_record(save_run, path, record)
+        elif path: outer_record(lambda: path.unlink(missing_ok=True))
     finally:
         for fd in (gate_read, gate_write, status_read, status_write):
             if fd is not None: os.close(fd)

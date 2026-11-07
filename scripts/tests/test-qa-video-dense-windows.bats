@@ -83,7 +83,7 @@ setup() {
   for fps in 0 -1 121 1.5 invalid; do
     run "$DENSE" "$VIDEO" "$CUES" "$WORK/out" "$fps"
     [ "$status" -eq 2 ]
-    [[ "$output" == *"1-120"* ]]
+    [[ "$output" == *"1-120"* ]] || false
     [ ! -e "$WORK/out/index.tsv" ]
   done
 }
@@ -101,7 +101,7 @@ setup() {
   printf '1\t2\tclick\n' > "$WORK/one.tsv"
   run "$DENSE" "$VIDEO" "$WORK/one.tsv" "$WORK/out" 50 0 0
   [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
-  [[ "$output" == *"WARN: requested 50 fps exceeds source 30.000 fps; frames will repeat"* ]]
+  [[ "$output" == *"WARN: requested 50 fps exceeds source 30.000 fps; frames will repeat"* ]] || false
   [ "$(wc -l < "$WORK/out/frames.tsv" | tr -d ' ')" -eq 50 ]
   [ "$(awk -F'\t' '$9 != "" { n++ } END { print n+0 }' "$WORK/out/frames.tsv")" -ge 19 ]
 }

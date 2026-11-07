@@ -13,7 +13,7 @@
       ".stage-3-signals.done": "2026-06-25T01:02:03Z\n",
       ".stage-4-clips.done": "2026-06-25T01:02:03Z\n",
       ".stage-scoring.done": "2026-06-25T01:02:03Z\n",
-      ".stage-scoring.started": "status=STARTED\npid=<PID>\nstarted_at=2026-06-25T01:02:03Z\nprocess_start=Wed Jun 25 01:00:00 2026\n",
+      ".stage-scoring.started": "status=STARTED\npid=<PID>\nstarted_at=2026-06-25T01:02:03Z\nprocess_start=<PROCESS_START>\n",
       "chat-clip-markers.txt": "[00:00:10] a: wow !clip\n",
       "chat-velocity.txt": "# Chat velocity (msgs per 10s) | avg: 1.0\n0 1 [00:00] stream=71690 [1194:50]\n20 1 [00:20] stream=71710 [1195:10]\n",
       "chat.log": "[00:00:10] a: wow !clip\n[00:00:30] b: hype\n",

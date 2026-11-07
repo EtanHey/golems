@@ -2,10 +2,15 @@
 
 Read this when preparing the branch, commit, PR body, size label, or pre-review repository state.
 
+Choose the endpoint before the loop below: [full stop](full-stop.md) overrides its merge commands; the standing grant covers Etan’s repos and supplies no upstream merge authority.
+
 ## The Full Loop
 
 1. BRANCH    git checkout main && git pull && git checkout -b feat/name
-2. IMPLEMENT Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
+2. IMPLEMENT Prove it the cheapest real way, with the proof its change kind owes:
+             [Pick the proof](../SKILL.md#pick-the-proof) (prompt → eval table, motion UI →
+             recording + per-frame measurement, regression → ratchet row or fail-first test,
+             race → fail-first race test or TLA+/TLC). Mock-green is not live-green.
 3. TEST      Run the relevant fast checks (the repo's required PR suites
              plus tests touching the diff) — ALL must pass. Heavy/e2e
              suites run at the [feature-batch gate](merge-and-verification.md#feature-batch-gate),
@@ -20,7 +25,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
                hard timeout BEFORE committing. If the local CLI hangs or hits
                rate/review limits, stop it, record the limitation, and commit
                on fresh test evidence. After the PR exists, PR-level bots
-               are advisory: wait on one only when it flags something important.
+               are advisory: answer posted findings; never await a bot.
                If CRITICAL issues found → fix first. If minor → proceed.
                Ralph mode: `--story=ID --message=MSG` for atomic commit + criterion.
              ↳ Commit trailer = `Co-Authored-By: <Model>
@@ -30,7 +35,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 8. REVIEW    Fetch + read review comments (see [Reading Review Comments](review-loop.md#reading-review-comments))
              ↳ Every comment/reply you POST ends with the signature line
 9. FIX       Address real bugs from review
-10. MERGE    gh pr merge `<N>` --merge --admin --delete-branch
+10. MERGE    gh pr merge `<N>` --merge --admin --match-head-commit `<green head>` --delete-branch
              ↳ Leads are ADMINS on Etan's repos: `--admin` is the DEFAULT.
                `reviewDecision: REVIEW_REQUIRED` is a GitHub LABEL, never a
                stop condition. See "Merge Authority" below.
@@ -48,7 +53,7 @@ Read this when preparing the branch, commit, PR body, size label, or pre-review 
 > you're waiting for, it's my approval, and it's stupid."*
 
 1. **Branch protection exists to stop OUTSIDERS. Leads are not outsiders.** On Etan's repos,
-   leads merge with **`gh pr merge <N> --admin`** as the default. A protection rule is never a
+   leads merge with **`gh pr merge <N> --admin --match-head-commit <green head>`** as the default. A protection rule is never a
    reason to stop, wait, or report "blocked."
 2. **`reviewDecision: REVIEW_REQUIRED` is a GitHub label, not a refusal.** The ONLY real merge
    blockers are: **actual conflicts · failing CI · an unresolved review finding**. Nothing else.
@@ -116,6 +121,9 @@ gh pr create --draft --title "feat: description" --body-file - <<'EOF'
 ## Summary
 - What changed and why
 
+Fixes #N
+<!-- One line per resolved issue; omit when none. Partial work uses Refs #N. -->
+
 ## Test plan
 - [ ] Tests pass
 - [ ] Manual verification done
@@ -128,6 +136,8 @@ Loop-record: implementer=<vendor/model/effort> reviewer=<vendor/model|none> roun
 🤖 Generated with <live model> in <harness>
 EOF
 ```
+
+For every GitHub issue fully resolved by the PR, put `Fixes #N` (same repo) or `Fixes owner/repo#N` (cross-repo) in the **PR body**, one keyword line per issue. A bare mention does not close an issue. Cross-repo closing keywords work only where GitHub supports them; a non-default base may also leave an issue open. Partial work uses `Refs #N`, never `Fixes`. After merge, verify each issue with `gh issue view N --json state` (add `--repo owner/repo` for cross-repo issues); if still open, use `gh issue close N --comment "Resolved by <PR URL>"` with the same repo selector.
 
 A same-vendor review states its reason. Put the reason on its own line below Loop-record. Replace the Loop-record placeholders with observed values: rounds and defects are non-negative integers; reviewer is `none` until a review has occurred. The lane-approved Loop-record effort field supersedes the older public-effort restriction for this line only; identity signatures and commit trailers keep their existing schema. Model IDs use letters, digits, dots, underscores, plus or hyphen; no `[`, `:` or `@`. For example, write `claude/model-id`, not `claude-model-id[context]`; Cursor is `cursor/auto/default`.
 

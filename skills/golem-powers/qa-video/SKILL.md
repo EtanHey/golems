@@ -8,7 +8,16 @@ execute: scripts/default.sh
 
 > Record your screen while narrating, or provide a YouTube/local video for knowledge extraction. The pipeline extracts speech, pulls visual context, and produces either structured QA findings or durable gems.
 
-**Declare mode before dispatch.** **qa:** UI/app QA; mandatory 10 fps action-cue windows, scene cues, 30s coverage and refinement remain. **debrief / review / gems:** TRANSCRIPT-FIRST; transcribe, pick ≤12 moments (questions, claims, numbers, referenced slides), then one still or a ≤2 fps short window per moment. No blanket 30s coverage; no scene-cue sweep unless the transcript references visuals such as slides/code/screen share. Default budget: **max(600, 24 × video minutes) seconds total wall-clock**, including transcription and notes (25min → 600s; 90min → 2160s). An explicit parent remaining deadline wins. Preserve debrief.md whenever the transcript exists, even on budget/partial exits; unread visuals stay NOT DETERMINED.
+**Declare mode before dispatch.** **qa:** UI/app QA; mandatory 10 fps action-cue windows, scene cues, 30s coverage and refinement remain. **debrief / review / gems:** normally TRANSCRIPT-FIRST (the exhaustive override below wins); transcribe, pick ≤12 moments (questions, claims, numbers, referenced slides), then one still or a ≤2 fps short window per moment. No blanket 30s coverage; no scene-cue sweep unless the transcript references visuals such as slides/code/screen share. Default budget: **max(600, 24 × video minutes) seconds total wall-clock**, including transcription and notes (25min → 600s; 90min → 2160s). An explicit parent remaining deadline wins. Preserve debrief.md whenever the transcript exists, even on budget/partial exits; unread visuals stay NOT DETERMINED.
+
+## Visual-first exhaustive override (gems / debrief / review)
+
+"Full pass" / "full coverage" (including "Full /qa-video GEMS pass"),
+"rigorous", "exhaustive", a visual-reference/catalog goal, or a silent
+video (missing/empty transcript or no audio stream) selects **VISUAL-FIRST
+EXHAUSTIVE**. This overrides every ≤12-moment cap, transcript-only stop and
+early-context/PARTIAL exit below and in the runner. Ordinary debriefs retain
+the cheap transcript-first path; "full transcript debrief" alone stays there. See [gems.md](workflows/gems.md) § Visual-first exhaustive.
 
 ## How It Works — QA mode
 
@@ -17,14 +26,15 @@ Local recording / YouTube video (downloaded in the agent's own shell)
   → extract.sh: ffmpeg audio + whisper-cli SRT/TXT
     → Agent selects transcript hotspots + scene-cues.sh visual changes
       → coverage.sh: 30s coverage + run ledger; dense-windows.sh: 10 fps contact sheets
-        → Runner views the sheets itself, linking before/after across cues and windows
+        → The QA seat splits the windows across ≥2 helpers; each views its sheets itself,
+          linking before/after across cues and windows; a verifier re-reads each finding
           (optional: visual-batch.py pre-sorts bulk sheets; its text is a lead, not evidence)
           → Unclear? Re-densify at up to the source fps / tighter windows and view again
             → Resolved or NOT DETERMINED, citing full-size frames/crops before and after
               → QA findings, BrainLayer persistence, requested handoff
 ```
 
-**Parent progress contract:** dispatch the selected runner in the background. Pass mode, absolute workdir and total deadline; use run_in_background=true for Agent dispatch. The runner rewrites root `progress.txt` at every phase and appends `visual/findings.jsonl` as reads finish. When the user asks “what's taking so long”, read `progress.txt` and report its phase/count/ETA plus any blocker; never wait silently for the final note. A launch receipt is not completion: inspect the exit receipt and actual outputs.
+**Progress contract:** the QA seat rewrites root `progress.txt` at every phase (extraction, fan-out, helpers done/total, verification, synthesis); each helper brief carries mode, absolute workdir, its windows and the remaining deadline, and helpers append `visual/findings.jsonl` as reads finish. When the user asks “what's taking so long”, read `progress.txt` and report its phase/count/ETA plus any blocker; never wait silently for the final note. A launch receipt is not completion: inspect the exit receipt and actual outputs.
 
 ## The Cardinal Rule: Narrate Before You Act
 
@@ -44,7 +54,7 @@ Read the user's request and route to the right workflow:
 |-----------|----------|
 | "let's do QA", "test this", "QA round" | [workflows/record.md](workflows/record.md) — Pre-QA checklist + recording setup |
 | "I recorded QA", QA path to .mov file | [workflows/process.md](workflows/process.md) — Stalker pipeline processing |
-| "send fixes to Codex", "hand off findings" | [workflows/handoff.md](workflows/handoff.md) — Agent handoff pattern |
+| "send fixes to Codex", "hand off findings" | [workflows/handoff.md](workflows/handoff.md) — Agent handoff: T3 by default (findings doc, collab line, end task); cmux only on terminal seats |
 | "next round", "retest", "QA round N" | [workflows/iterate.md](workflows/iterate.md) — Multi-round QA cycle |
 | "set up click capture", "qa-record" | [references/click-capture.md](references/click-capture.md) — CGEventTap + qa-record.sh |
 | "debrief", "review this video" | [workflows/process.md](workflows/process.md) — transcript-first debrief/review |
@@ -56,42 +66,89 @@ Read the user's request and route to the right workflow:
 
 **Execution routing — ONE route per request:**
 
+**Run where the recording lives.** The QA seat (the thread or agent that invoked
+/qa-video) runs on the machine that holds the recording. If the recording is on
+another Mac, the lead launches the QA thread on that Mac (`t3_thread_launch` with
+its `environmentId`, per [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md)
+§ 2: its brief tells the QA thread to report back with `t3_thread_send`, and the lead settles it;
+admission (§ 5) applies). Never copy the recording to another machine.
+
+**Subagent routing — named requests first:** When the user names a model or
+subagent for the QA pass (a named model, or "use video-gems"), dispatch exactly
+that model or subagent **before any media probe, extraction, transcription or
+frame preparation**. The requesting seat only briefs and waits; never run the
+pipeline inline, including setup "for" the worker. The named worker owns the full
+/qa-video pipeline, including reader coordination. Authorize helper fan-out
+explicitly in its brief. A nested Agent profile without dispatch tools returns
+NEEDS_READERS with frame batches to its parent, which dispatches the readers
+and completes synthesis; this is a handoff, not a PARTIAL/completed audit. This overrides the default execution owner below.
+
+In T3, call `orchestrator_capabilities` then `delegate_task` with the model the
+user named and its provider, putting settings in `target.options`: Codex
+`serviceTier:"default"`, Claude `fastMode:false`. Match the named model against
+the live dispatch catalog (`orchestrator_capabilities`); if it isn't offered,
+report and stop. Claude seats outside T3 may use `Agent` with the named model/profile.
+Codex seats have no `Agent` tool: use `delegate_task`. If the profile or dispatch
+tool is unavailable, say so and stop. Never substitute, open a replacement pane,
+or fall back to inline execution. Brief the worker with the named profile, source,
+mode, absolute artifact directory, deadline and evidence rules; without dispatch
+tools it follows the single-reader runner contract below.
+
+**No model or subagent named:** Keep the default pipeline in this table.
+
 | Request | Execution owner | Image reader |
 |---|---|---|
-| QA a recording (default) | `Agent(qa-video-runner)` with video, project, artifact directory and round | The runner itself (Read on sheets/frames); `visual-batch.py` pre-sort optional |
-| Debrief/review (default) | `Agent(qa-video-runner)` with mode=debrief/review, source and artifact directory | The runner itself (Read on stills); `visual-batch.py` pre-sort optional |
-| Extract gems (default) | `Agent(video-gems)` with source and artifact directory | `video-gems` itself (Read on stills); `visual-batch.py` pre-sort optional |
+| QA a recording (default) | The QA seat itself: extraction, transcript, hotspots and contact sheets in its own shell, then the fan-out below | ≥2 `claude.judgment` helpers, each Reading its frame windows' sheets/frames; a `claude.subagent.mechanical` verifier re-reads each candidate finding's frames |
+| Debrief/review (default) | The QA seat itself (`debrief.py` in its own shell), mode=debrief/review | The same fan-out over the ≤12 moment stills (2 helpers is enough); verifier per kept visual claim |
+| Extract gems (default) | `Agent(video-gems)` with source and artifact directory | Ordinary gems: video-gems reads targeted stills; exhaustive: reader fan-out, single-reader fallback if dispatch is unavailable |
 | Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` and an explicit absolute `docs.local` workdir | That worker views sheets and runs the same iterative loop |
 
-**Subagent routing:** Dispatch the full pipeline once using this table. Do not
-open an unrequested Gemini pane or run the default pipeline in the lead.
-`qa-video-runner` is packaged in `agents/qa-video-runner.md`; install/link it into
-Claude's agent directory before dispatch using `orc/scripts/install.sh`
-(the existing installer discovers qa-video agents). `video-gems` currently lives in
-`~/.claude/agents/video-gems.md`; its packaging/helper update is a lead follow-up.
-If that local agent lacks the helper contract, include this workflow in its brief.
+**Default subagent routing:** Use this table once per unnamed request. Do not open an unrequested
+Gemini pane, and do not hand the QA pipeline to a single runner sub-agent.
+`video-gems` is managed at `agents/video-gems.md`, installed with the other
+qa-video agents by `skills/golem-powers/orc/scripts/install.sh`. Include the absolute skill and
+workflow paths in its brief; the installed agent delegates media policy there.
 
-Default pipeline: `Agent(qa-video-runner)` for QA/debrief/review, `Agent(video-gems)` for gems.
-The pipeline sub-agent owns the whole iterative loop in its **own shell**
-and **reads the images itself**: it opens the contact sheets and the frames
-behind every finding with Read, in its own context, and connects them over
-time: what changed between the before/after frames of a cue, and whether an
-element's state carries across windows. The lead stays text-only.
+Default pipeline (no named override): the QA seat for QA/debrief/review, `Agent(video-gems)` for gems.
+The QA seat runs extraction, transcript, hotspots and contact sheets in its **own shell**.
+After the transcript and hotspots it **fans out itself**: it splits the frame
+windows in time order (along the transcript's sections) across **several
+`claude.judgment` helpers**, roughly 10–15 sheets each and never fewer than 2
+(a short clip gets 2). In T3: `delegate_task` to `claudeAgent` with that role's
+model; on a Claude terminal seat: `Agent` with that role's alias (`node
+scripts/model-roles.mjs claude.judgment --field model|alias`). Each helper
+**reads the images itself**: it opens its sheets and the frames behind every
+finding with Read and connects them over time: what changed between the
+before/after frames of a cue, and whether an element's state carries across
+its windows (give each helper the adjacent window's last sheet). It returns text
+only. For each candidate finding the seat then dispatches a
+`claude.subagent.mechanical` verifier that re-reads that finding's before/after
+frames and returns CONFIRMED or NOT CONFIRMED. Helpers and verifiers log every
+frame with `scripts/inspected.sh`, `why` prefixed by their id (`h2: before F4`,
+`v-F4: verify`): their reads count as viewed, with that provenance. The seat
+stays text-only and synthesizes: it never opens a sheet or frame itself, not to
+plan the split (plan from `index.tsv`, cues and the transcript) and not to check
+a helper (a doubtful or failed read goes to a verifier or a re-dispatch, or is
+reported as TOOLING FAILURE). Gemini never forms a verdict.
 `scripts/visual-batch.py` (driving visual-gather.py) is OPTIONAL bulk
 pre-sorting, e.g. flagging candidate windows across hundreds of samples. Its
 text is a lead, never evidence: view the frames before reporting a finding.
-State how many samples you viewed directly versus pre-sorted only, and never
-claim coverage you did not view. NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
+State how many samples were viewed (by which helper or verifier) versus pre-sorted only, and never
+claim coverage nobody viewed. NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
 One absolute deadline bounds setup probes, helper calls and retry backoff. Each
 subprocess timeout is clamped to the remaining budget; expiry stops launches
 and terminates in-flight helpers. Output overflow is an explicit failed read.
-A sub-agent cannot dispatch another sub-agent: never use the Agent tool from
-inside the pipeline. The parent may use `Agent(visual-gatherer)` for ad-hoc
-screenshot questions outside this pipeline.
+Helpers and verifiers are sub-agents and cannot dispatch: they never use the
+Agent tool. That limit is theirs, not the QA seat's. The seat may use
+`Agent(visual-gatherer)` for ad-hoc screenshot questions outside this pipeline.
+`qa-video-runner` (`agents/qa-video-runner.md`, installed by `skills/golem-powers/orc/scripts/install.sh`)
+is off the default route: it is the single-reader contract for a QA seat with no
+dispatch tool at all (a sub-agent, or headless `claude -p` without Agent), which
+then runs the whole loop alone.
 
 Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
 Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
-same loop in its own shell and views the images itself, like the runner. Its profile permits
+same loop in its own shell and views the images itself, like the helpers. Its profile permits
 artifacts only in the assigned `docs.local` directory or engine report path;
 pass that absolute workdir explicitly. For QA, the parent persists the final note and
 cited evidence under the project `docs/` directory before BrainLayer storage.
@@ -109,7 +166,7 @@ Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
 **QA mode:** Extract/transcribe → transcript AND scene hotspots → 10 fps dense windows →
-view every sheet yourself (helper pre-sort optional) → **re-densify** unclear moments at
+every sheet viewed by its window's helper (pre-sort optional) → **re-densify** unclear moments at
 up to the source fps / tighter windows → re-fetch and view again until resolved or **NOT
 DETERMINED**. Cite full-size frames or crops with `pts_s` from `frames.tsv`; the
 sheet + tile only locates them. Scripts support judgement; an optional
@@ -119,7 +176,9 @@ convenience index never gates the loop.
 
 ## Evidence Rules (every mode)
 
-The runner is the reader; the tooling records provenance. Column and helper
+Completed `docs.local/qa-video` runs join drive-filing's monthly archive only after their owner registers them as harvested in the outside-repo archive config. Keep original member names, full-size cited frames/crops, decoded timestamps and inspection provenance. Leave `_DRIVE-LEDGER.md` pointers after archival; missing local proof is restored read-only with `$GOLEMS_ROOT/scripts/drive/fetch-qa-image.mjs` and inspected before a visual claim. See `/drive-filing` § Monthly qa-video archive; archive success alone grants no deletion authority.
+
+The helpers and verifiers are the readers; the tooling records provenance. Column and helper
 details: [references/provenance.md](references/provenance.md).
 If a provenance tool or column is missing, keep reading the frames directly, say
 "provenance unavailable", and never synthesize counts or timestamps.
@@ -160,8 +219,8 @@ If a provenance tool or column is missing, keep reading the frames directly, say
      - (b) `scripts/scene-cues.sh <video>` output — visual changes catch silent clicks and UI changes the narrator never mentions
      - (c) click logs, if `qa_click_logger` data exists for the session
    - **Run `scripts/dense-windows.sh <video> cues.tsv <outdir> [fps] [pre] [post]`** at 10 fps by default (1–120 accepted; it prints a WARN and repeats frames above `scripts/source-fps.sh`; use up to the source fps for animations). It merges overlapping `[start-1.0s, end+2.0s]` windows, tiles frames into 5x4 contact sheets, and writes `index.tsv` (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`) plus a headerless `frames.tsv` row per extracted frame (`sheet_file`, `tile`, `t_s`, `frame`, `pts_s`, `source`, `sheet`, `sha256`, `repeat_of`, `crop_of`; crop.sh rows use `source=crop` and fill `crop_of` with the parent frame; see [references/provenance.md](references/provenance.md)). Full-size frames stay beside the sheets as `window_N-f_*.png`. Times are the decoded pts, so `window_start_s` can be later than the padded cue start; take every timestamp from `frames.tsv`.
-   - **View every contact sheet yourself, in time order.** For each window, state: what the cursor targets, the before/after UI state, what carried over from the previous window or changed since it, and any visual defect. Work within the remaining wall-clock AND image-context budget: pick candidate windows before bulk image loading, keep the before/after and adjacent-window frames for each retained finding, append findings to the text ledger as you go, and stop with honest partial coverage before context runs out. If the budget forces a helper pre-sort, the sheets you did not view stay pre-sorted only, never confirmed.
-   - **Cite or label.** A visual finding cites the full-size frames or crops you viewed yourself, before and after, with `pts_s` (e.g. before `<frame> @ 12.600s`, after `<frame> @ 12.800s`, both `frame` paths from `frames.tsv`, located via `sheet_004.jpg` tile 6–8). A finding with no frame citation is transcript-only and must be labelled **transcript-only**.
+   - **Every contact sheet is viewed, in time order, by the helper that owns its window.** For each window, state: what the cursor targets, the before/after UI state, what carried over from the previous window or changed since it, and any visual defect. Work within the remaining wall-clock AND image-context budget: pick candidate windows before bulk image loading, keep the before/after and adjacent-window frames for each retained finding, append findings to the text ledger as you go, and stop with honest partial coverage before context runs out. If the budget forces a helper pre-sort, the sheets you did not view stay pre-sorted only, never confirmed.
+   - **Cite or label.** A visual finding cites the full-size frames or crops a helper or verifier viewed, before and after, with `pts_s` (e.g. before `<frame> @ 12.600s`, after `<frame> @ 12.800s`, both `frame` paths from `frames.tsv`, located via `sheet_004.jpg` tile 6–8). A finding with no frame citation is transcript-only and must be labelled **transcript-only**.
 
 3. **QA interval frames are a coverage pass only** — Still extract one frame every 30 seconds (`scripts/coverage.sh <video> <workdir>` → `frames/interval-<t>s.png`; run it first, since it creates the run ledger that dense and refine passes in child directories append to) so nothing between cues goes unseen, but never base a visual finding on an interval frame alone; if one shows something, add a cue there and re-run `dense-windows.sh`.
 
@@ -177,10 +236,13 @@ If a provenance tool or column is missing, keep reading the frames directly, say
 
 9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
-10. **One pipeline route** — QA uses `qa-video-runner`, gems uses `video-gems`.
-    Each owns mode-appropriate extraction, hotspots and refinement in its own Bash and
-    views the sheets/frames itself; `visual-batch.py` is optional pre-sorting and the
-    lead receives text only. A cmux `video-qa` worker is allowed only on Etan's explicit visible-worker
+10. **One pipeline route** — a named model/subagent owns the entire pass under
+    Subagent routing; otherwise debrief and review follow the default QA route. QA: the QA seat,
+    on the machine holding the recording, owns extraction, hotspots and refinement in its own Bash, then fans the
+    frame windows out to ≥2 `claude.judgment` helpers that view the sheets/frames
+    themselves, with a `claude.subagent.mechanical` verifier per candidate finding;
+    no single runner. Gems uses `video-gems`. `visual-batch.py` is optional
+    pre-sorting and the seat receives text only. A cmux `video-qa` worker is allowed only on Etan's explicit visible-worker
     request. This rule and the routing table are the same contract. Persistence
     and archival follow the evidence pass.
 
@@ -188,7 +250,7 @@ If a provenance tool or column is missing, keep reading the frames directly, say
 
 ## Prerequisites
 
-Running QA on the M1? Dispatch with `environmentId` per [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md); admission (§ 5) applies.
+The QA seat runs where the recording lives (see Execution routing): a recording on another Mac gets its QA thread launched there with `environmentId`, never a copy.
 
 | Tool | Check | Install |
 |------|-------|---------|
@@ -234,10 +296,10 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$
 # After logs/scene.exit exists and is 0, append the scene TSV output:
 cat "$WORKDIR/logs/scene.log" >> "$WORKDIR/cues.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
-# Wait for dense.exit=0. View the sheets yourself (process.md Phase 4; visual-batch.py pre-sort optional). If a moment is unclear, re-densify a single tighter window:
+# Wait for dense.exit=0. Fan the windows out: helpers view the sheets (process.md Phase 4; the seat never opens them; visual-batch.py pre-sort optional). If a helper reports a moment unclear, re-densify a single tighter window:
 printf '1.0\t1.5\tunclear-target\n' > "$WORKDIR/refine-cues.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
-# Wait for refine-01.exit=0. View the new sheets; repeat as needed, or mark NOT DETERMINED. Full workflow:
+# Wait for refine-01.exit=0. Send the new sheets to a helper; repeat as needed, or mark NOT DETERMINED. Full workflow:
 # inspected.sh per viewed frame, coverage-count.sh, full-size before/after findings.
 ```
 

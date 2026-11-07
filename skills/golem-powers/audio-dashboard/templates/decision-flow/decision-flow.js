@@ -24,19 +24,28 @@
   var progressFill=document.getElementById("df-progress-fill");
   var storyCount=document.getElementById("df-story-count");
   var backdrop=document.getElementById("df-sheet-backdrop");
+  var pendingPlays=new WeakMap();
   var totals={};try{var tp=JSON.parse(document.getElementById("tpdata").textContent||"{}");Object.keys(tp).forEach(function(id){totals[id]=Number(tp[id].total)||0;});}catch(error){totals={};}
-  var store={};
-  try{store=JSON.parse(localStorage.getItem(KEY)||"{}");}catch(error){store={};}
-  if(!store||typeof store!=="object")store={};
-  var prefs=store._prefs&&typeof store._prefs==="object"?store._prefs:{};
+  var persistence=document.defaultView.AudioDashboardAnswers({key:KEY,
+    status:function(text,error){storageState.textContent=text;storageState.classList.toggle("is-error",error);},
+    change:function(field,value){if(value==null)delete store[field];else store[field]=value;restoreAnswers();}
+  });
+  var store=persistence.values;
+  function restoreAnswers(){cards.forEach(function(card){card.querySelectorAll('input[type="radio"]').forEach(function(input){input.checked=store[input.name]===input.value;});checklistBoxes(card).forEach(function(box){box.checked=checksFor(card)[box.dataset.checkIndex]===true;});card.querySelector(".df-free").value=store[card.dataset.decision+"-free"]||"";});updateCounts();}
+  var prefs={};try{prefs=JSON.parse(localStorage.getItem(KEY)||"{}")._prefs||{};}catch(error){}
   var rate=RATES.indexOf(Number(prefs.rate))>=0?Number(prefs.rate):1;
   var view=prefs.view==="story"?"story":"list";
   function indexLink(card){return document.querySelector('[data-index-for="'+card.dataset.decision+'"]');}
   function chipFor(card){return document.querySelector('.df-chip[data-chip-for="'+card.dataset.decision+'"]');}
   function revealChip(chip){if(!chipStrip||!chip)return;var left=chip.offsetLeft,right=left+chip.offsetWidth;if(left<chipStrip.scrollLeft)chipStrip.scrollLeft=Math.max(0,left-12);else if(right>chipStrip.scrollLeft+chipStrip.clientWidth)chipStrip.scrollLeft=right-chipStrip.clientWidth+12;}
   function markIndex(card,name,on){var link=indexLink(card);if(link)link.classList.toggle(name,on);var chip=chipFor(card);if(!chip)return;chip.classList.toggle(name,on);if(name==="is-active"){if(on){chip.setAttribute("aria-current","true");revealChip(chip);}else chip.removeAttribute("aria-current");}}
-  function persist(){var saved=true;try{localStorage.setItem(KEY,JSON.stringify(store));storageState.textContent="Answers saved locally.";storageState.classList.remove("is-error");}catch(error){saved=false;storageState.textContent="Storage unavailable · use Copy answers";storageState.classList.add("is-error");}updateCounts();return saved;}
-  function savePrefs(){store._prefs={rate:rate,view:view};persist();}
+  function persist(){var saved=persistence.save(store);updateCounts();return saved;}
+  function savePrefs(){
+    var raw;try{raw=localStorage.getItem(KEY);}catch(error){return;}
+    var local={};try{local=JSON.parse(raw||"{}");}catch(error){}
+    if(!local||typeof local!=="object"||Array.isArray(local))local={};
+    local._prefs={rate:rate,view:view};try{localStorage.setItem(KEY,JSON.stringify(local));}catch(error){}
+  }
   function checklistBoxes(card){return Array.from(card.querySelectorAll(".df-checklist .df-check-input"));}
   function checksFor(card){var value=store[card.dataset.decision+"-checks"];return value&&typeof value==="object"?value:{};}
   function checkedCount(card){var checks=checksFor(card);return checklistBoxes(card).filter(function(box){return checks[box.dataset.checkIndex]===true;}).length;}
@@ -81,7 +90,8 @@
     audios.slice(0,index).forEach(function(audio){card.querySelectorAll('.df-word[data-scene="'+audio.dataset.audioScene+'"]').forEach(function(word){word.classList.remove("is-current");word.classList.add("is-read");});});
     card.dataset.audioIndex=String(index);setActive(card);markIndex(card,"is-playing",true);card.querySelector(".df-teleprompter").hidden=false;card.classList.add("is-playing");card.classList.remove("is-paused");card.querySelector(".df-play").textContent="⏸ Pause";card.querySelector(".df-player-state").textContent="Playing "+(index+1)+" of "+audios.length;
     audios[index].playbackRate=rate;
-    audios[index].play().catch(function(error){if(error&&error.name==="AbortError")return;card.classList.remove("is-playing");markIndex(card,"is-playing",false);card.classList.add("is-paused");card.querySelector(".df-play").textContent="▶ Resume full section";card.querySelector(".df-player-state").textContent=error&&error.name==="NotAllowedError"?"Tap play again to allow audio":"Playback failed · try again";updateTransport();});
+    var pending={audio:audios[index]};pendingPlays.set(card,pending);
+    audios[index].play().then(function(){if(pendingPlays.get(card)===pending)pendingPlays.delete(card);},function(error){if(pendingPlays.get(card)!==pending)return;pendingPlays.delete(card);if(error&&error.name==="AbortError")return;card.classList.remove("is-playing");markIndex(card,"is-playing",false);card.classList.add("is-paused");card.querySelector(".df-play").textContent="▶ Resume full section";card.querySelector(".df-player-state").textContent=error&&error.name==="NotAllowedError"?"Tap play again to allow audio":"Playback failed · try again";updateTransport();});
     updateTransport();startTicking();
   }
   function playCard(card,forcePlay){var audios=audiosFor(card);var playing=audios.find(function(audio){return !audio.paused;});if(playing){if(forcePlay)return;pauseCard(card);return;}var index=Number(card.dataset.audioIndex||0);if(index>=audios.length){audios.forEach(function(audio){audio.currentTime=0;});resetHighlights(card);index=0;}playAt(card,index);}
@@ -104,7 +114,7 @@
   function goTo(index,keepFocus){activate(index,allAudios().some(function(audio){return !audio.paused;}),keepFocus);}
   cards.forEach(function(card,index){
     var audios=audiosFor(card);
-    audios.forEach(function(audio,audioIndex){audio.onended=function(){clearHighlights(card,audio.dataset.audioScene);playAt(card,audioIndex+1);};audio.ontimeupdate=function(){if(audio.paused)return;setHighlight(card,audio.dataset.audioScene,audio.currentTime);updateProgress(card);};});
+    audios.forEach(function(audio,audioIndex){audio.addEventListener("play",function(){updateTransport();startTicking();});audio.addEventListener("pause",function(){if(card.classList.contains("is-playing")&&!audio.ended&&!pendingPlays.has(card)&&!isPlaying(card)){card.classList.remove("is-playing");markIndex(card,"is-playing",false);card.classList.add("is-paused");card.querySelector(".df-play").textContent="▶ Resume full section";card.querySelector(".df-player-state").textContent="Paused · resume where you left off";}updateTransport();});audio.onended=function(){clearHighlights(card,audio.dataset.audioScene);playAt(card,audioIndex+1);};audio.ontimeupdate=function(){if(audio.paused)return;setHighlight(card,audio.dataset.audioScene,audio.currentTime);updateProgress(card);};});
     card.querySelector(".df-play").addEventListener("click",function(){playCard(card);});
     card.querySelector(".df-restart").addEventListener("click",function(){restartCard(card);});
     function seekWord(word){var audioIndex=audios.findIndex(function(item){return item.dataset.audioScene===word.dataset.scene;});if(audioIndex<0)return;audios.forEach(function(audio,indexToReset){audio.pause();if(indexToReset>audioIndex){audio.currentTime=0;card.querySelectorAll('.df-word[data-scene="'+audio.dataset.audioScene+'"]').forEach(function(laterWord){laterWord.classList.remove("is-current","is-read");});}});clearHighlights(card);card.dataset.audioIndex=String(audioIndex);audios[audioIndex].currentTime=Number(word.dataset.wordStart);playAt(card,audioIndex);}

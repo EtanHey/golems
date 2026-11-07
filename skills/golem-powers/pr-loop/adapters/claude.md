@@ -16,7 +16,7 @@ Claude Code has everything needed for the complete loop:
 | PR | `gh pr create` via Bash | `gh` CLI available |
 | Review | `Agent(subagent_type="coderabbit:code-reviewer")` | Subagent spawning |
 | Wait | T3: `link_pull_request` + `watch_pull_request`, end the turn. Else one native `Monitor` on `pr-watch` | [Waiting policy](../references/review-loop.md#waiting-policy-no-polling-turns); never a polling turn |
-| Fix + merge | `gh pr merge <N> --merge --delete-branch` | |
+| Fix + merge | `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` | |
 | Post-merge | `brain_store(...)` via BrainLayer MCP | MCP access |
 
 ## Review Polling Options (Claude-specific)

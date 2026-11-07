@@ -2,6 +2,8 @@
 
 Read this when selecting PR-stage reviewers, waiting for them, classifying feedback, replying, fixing, or requesting re-review.
 
+[Full stop](full-stop.md) takes precedence over every green-wake merge and held-draft rule below: preserve no-merge on wakes, hand off verified readiness without drafting it, and unwatch at terminal handoff; pending CI/review remains parent-owned.
+
 ## Step 8: REVIEW (The Critical Step)
 
 **This is NOT optional. This is NOT "auto-merge."**
@@ -76,20 +78,24 @@ answered once + dup-links."*
 That quote is provenance. Today the bots are advisory and run after the inner loop, and who reviews
 and how many come from `/agent-routing` § Routing rules (SSOT), which wins on conflict.
 
-**Core = a daemon, engine, or transport diff.** No canonical path glob exists for this — the prose
-phrase is the whole definition, so judge the diff rather than pattern-match a list. On a core-path
-diff, add Bugbot to the panel:
+**Bugbot eligibility (Etan, 2026-11-04): an L PR or a very important/core-risk PR**
+(daemon/engine/transport, security, release). Never request it for routine XS/S/M PRs.
+Repo bans still win (8a.0). If eligible and available, request once, only when no
+current-head automatic review already exists:
 
 ```bash
-gh pr comment <N> --body "@cursor @bugbot review"   # core paths ONLY — opt-in
+gh pr comment <N> --body "@cursor @bugbot review"   # eligible L/core-risk PR only
 ```
 
-On a **non-core** diff — docs, skills, briefs, tests, config — do not summon Bugbot at all.
-Trigger: Bugbot answered `usage limit reached` on skill-creator #51, a non-core diff, 2026-09-05.
-
-> **Provenance:** this is *orc's* ruling, not an Etan ratification. Orc took it rather than ask Etan
-> to raise Cursor's cap, and offered him the reversal; no ratification or objection is on record.
-> If the cap is raised, this tiering is the clause to revisit.
+Record `Bugbot: unavailable (usage)` in the PR body only if Bugbot was actually
+requested and is unavailable, or it posted a real usage/rate/spend-limit notice
+on this PR. A routine XS/S/M PR with no Bugbot activity needs no request, wait,
+record or extra step. After the one eligible request, continue directly
+to exact-head merge checks in the same turn. No "awaiting Bugbot" state, watch,
+grace period, retry or re-review gate; never block on its availability/verdict.
+Actual findings still follow the normal finding rules; important findings must be
+investigated and resolved, including in a new PR if they arrive after merge.
+This replaces the 2026-09-05 core-path-only eligibility ruling.
 
 #### 8a.2 — The Cursor diff pass is READ-ONLY
 
@@ -105,7 +111,7 @@ cursor-agent -p --output-format text \
 ```
 
 - Because it spends no Bugbot quota, this pass is still available on a repo whose policy bans Bugbot
-  (8a.0) and on a non-core diff where Bugbot is correctly off the panel.
+  (8a.0) and on a routine (non-L, non-core-risk) diff where Bugbot is correctly off the panel.
 - If the pass exhausts Cursor's shared quota through its own dispatch, report **that dispatch** as the
   cause — never the resulting `resource_exhausted` as an external finding (canon #3).
 
@@ -115,7 +121,10 @@ ships; until then, sign them by hand like any other comment.
 
 Reviewer roster reality can degrade. If Greptile is unavailable, Cursor/Bugbot
 is billing-blocked, or CodeRabbit is rate-limited, do not burn dead mentions.
-Use the routing pointer in Step 8a.2 to select a replacement reviewer, retain the
+Bugbot unavailability needs no replacement bot and never delays merge; record
+`Bugbot: unavailable (usage)` in the PR body only for an actual request or real
+usage notice. For a missing routed reviewer, use
+the routing pointer in Step 8a.2 to select a replacement reviewer; retain the
 Macroscope + `cr review --plain` pre-commit checks (not a substitute for the routed
 pair review), and document which reviewers were unavailable in the PR.
 
@@ -134,8 +143,9 @@ coderabbit review --agent  # Codex env, bounded to ~3 minutes
 ### For public repos (bot reviewers configured):
 
 Bot reviewers post on the PR. They are advisory: wait on CI and the routed review with the waiting
-policy below, and on a bot only when it flags something important. A silent or rate-limited bot is
-recorded as unavailable, never awaited.
+policy below. Answer already-posted bot findings like any finding; never await
+a bot. Record unavailable bots only if actually requested or a real usage notice
+was posted; normal silence from a never-requested Bugbot needs no record.
 
 ### Waiting policy (no polling turns)
 
@@ -192,7 +202,7 @@ rearm an eligible parent; never automatically undo User Stop or settle/archive. 
 **Act on both PR-watch outcomes.** Red checks or conflicts mean fix now or route the fix now.
 For green, verify current required checks and the routed review at the exact latest head before an
 authorized merge; a completed notification is not approval. If blocked, report BLOCKED with a named blocker
-and next owner, mark the PR held (above), then hand off when appropriate. Always unwatch before handback or terminal completion.
+and next owner, mark the PR held (above), then hand off when appropriate. For [full stop](full-stop.md), report BLOCKED to the owner instead; never convert an upstream PR to draft or post hold comments. Always unwatch before handback or terminal completion.
 Do not leave ready work idle behind another PR's red checks.
 
 **Every wait needs an owned wake source.** Name the event and its owner before ending as WAITING.
@@ -252,9 +262,10 @@ Wait in this order. Take the first option that fits:
    - Codex collab-monitor wakes: a Codex seat never arms `/collab-monitor` or its packaged fallback.
    - `sleep N; gh pr view` loops and "watch #N" loops in a big-context lead session.
    - A duplicate watcher on the same PR: a T3 watch plus a `pr-watch`, or two `pr-watch` processes.
-   - Waiting on bot rate limits. Review bots run after the inner loop and are advisory. Wait on a bot
-     only when it flags something important. A rate-limited or silent bot is recorded as unavailable
-     in the PR body, and the loop proceeds on the routed review.
+   - Waiting on bots or their rate limits. Review bots run after the inner loop and are advisory.
+     Answer already-posted findings like any finding. For Bugbot, record
+     `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real
+     usage/rate/spend-limit notice. A routine PR with no Bugbot activity needs no entry or step.
 
 #### Watcher process: pr-watch
 
@@ -328,7 +339,7 @@ collection path does not reply to a thread; use `/replies` or the documented
 | CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |
 | Codex Cloud | AI code review | `gh pr comment <N> --body "@codex review"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md "Review guidelines". Flags P0/P1 by default. |
 | Cursor (diff pass) | Diff findings through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — see routing pointer in Step 8a.2. |
-| Cursor Bugbot | Bug detection — **opt-in, core paths only** | Not on the default panel (see Step 8a tiering) and never where repo policy bans it (Step 8a.0). On a daemon/engine/transport diff: `gh pr comment <N> --body "@cursor @bugbot review"`. Re-review after fixes: `gh pr comment <N> --body "@cursor @bugbot re-review"`. Bot responds as `cursor[bot]`. |
+| Cursor Bugbot | Bug detection — **opt-in, L or very important/core-risk PRs only** | Follow 8a.1 and repo bans (8a.0). Request once if available and not already covering the head: `gh pr comment <N> --body "@cursor @bugbot review"`. Record `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real usage notice; no activity on a routine PR needs no entry. Never wait or block. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | DeepSource findings: use `deepsource-issues <owner/repo> <pr>`, or the `deepsource-io[bot]` inline comments via `gh api`. The token comes from `DEEPSOURCE_TOKEN` or the 0600 file `~/.config/deepsource/deepsource.env` (override: `DEEPSOURCE_TOKEN_FILE`). Never a browser, never op |
 
@@ -337,12 +348,12 @@ collection path does not reply to a thread; use `/replies` or the documented
 ```bash
 gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@codex review"
-gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed round 1
+gh pr comment <N> --body "@cursor @bugbot re-review"   # only if eligible, available, reviewed round 1 and current-head coverage is stale
 ```
 
 Request re-review only for reviewers actually invoked whose current-head automatic review is
 missing or stale. A bot that was correctly left off the panel — by repo
-policy (8a.0) or by non-core tiering (8a.1) — does not get summoned at round 2 either.
+policy (8a.0) or by size/risk tiering (8a.1) — does not get summoned at round 2 either.
 
 **Codex Cloud is enabled on:** EtanHey/voicelayer, EtanHey/orchestrator, EtanHey/golems, EtanHey/brainlayer.
 
@@ -488,7 +499,7 @@ git push
 # Verify reviews are actually in before merging
 gh pr view <N> --json reviewDecision,comments
 
-gh pr merge <N> --merge --delete-branch
+gh pr merge <N> --merge --match-head-commit <green head> --delete-branch
 git checkout main && git pull
 ```
 

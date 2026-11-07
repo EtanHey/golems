@@ -30,6 +30,7 @@ const PAYLOADS = {
   "collab-guard": { tool_name: "Write", tool_input: { content: "short\n" }, deny: true, collab: true },
   "stamp-lint": { tool_name: "Write", tool_input: { file_path: "notes.md", content: "hello\n" }, hook_event_name: "PostToolUse" },
   "frustration-capture": { hook_event_name: "UserPromptSubmit", prompt: "no, that's wrong, I told you already" },
+  "research-link-reminder": { hook_event_name: "UserPromptSubmit", prompt: "https://docs.google.com/document/d/FIXTURE_DOC_ID_0001/edit" },
   "daemon-gate-precheck": { tool_name: "Bash", tool_input: { command: "ls" } },
 };
 

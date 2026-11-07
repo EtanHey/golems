@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-EXPECT="${RESEARCH_ACCOUNT:-research-account@example.com}"
+EXPECT=""
 REMEDIATION="Run: nlm login switch <profile> && mcp__google-drive__refresh_auth"
 DRIVE_ONLY=false
 
@@ -10,6 +10,8 @@ usage() {
 Usage: verify-account.sh [--expect <email>] [--drive-only]
 
 Checks the active Google account used by the local Drive and NotebookLM auth state.
+Without --expect, the expected account comes from resolve-account.sh: RESEARCH_ACCOUNT,
+then ~/.config/research-lifecycle/research.env.
 Use --drive-only when the project has no NotebookLM notebook.
 Outputs JSON to stdout:
   {"callSucceeded": true, "drive_account": "...", "notebooklm_account": "..."|null, "expected": "...", "match": true|false, "drive_only": true|false}
@@ -37,6 +39,10 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -z "$EXPECT" ]]; then
+  EXPECT=$(bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/resolve-account.sh") || exit 2
+fi
 
 run_override_or_fail() {
   local command_text="$1"

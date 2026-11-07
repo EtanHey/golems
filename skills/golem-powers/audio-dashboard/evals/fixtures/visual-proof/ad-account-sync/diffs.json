@@ -1,0 +1,62 @@
+[
+  {
+    "name": "cinema-1280-dark-diff.png",
+    "changedPixels": 159082,
+    "totalPixels": 1152000
+  },
+  {
+    "name": "cinema-1280-light-diff.png",
+    "changedPixels": 159082,
+    "totalPixels": 1152000
+  },
+  {
+    "name": "cinema-390-dark-diff.png",
+    "changedPixels": 156750,
+    "totalPixels": 351000
+  },
+  {
+    "name": "cinema-390-light-diff.png",
+    "changedPixels": 156750,
+    "totalPixels": 351000
+  },
+  {
+    "name": "decision-flow-1280-dark-diff.png",
+    "changedPixels": 127651,
+    "totalPixels": 1152000
+  },
+  {
+    "name": "decision-flow-1280-light-diff.png",
+    "changedPixels": 127651,
+    "totalPixels": 1152000
+  },
+  {
+    "name": "decision-flow-390-dark-diff.png",
+    "changedPixels": 88664,
+    "totalPixels": 351000
+  },
+  {
+    "name": "decision-flow-390-light-diff.png",
+    "changedPixels": 88664,
+    "totalPixels": 351000
+  },
+  {
+    "name": "decision-flow-story-1280-dark-diff.png",
+    "changedPixels": 179399,
+    "totalPixels": 1152000
+  },
+  {
+    "name": "decision-flow-story-1280-light-diff.png",
+    "changedPixels": 179399,
+    "totalPixels": 1152000
+  },
+  {
+    "name": "decision-flow-story-390-dark-diff.png",
+    "changedPixels": 56675,
+    "totalPixels": 351000
+  },
+  {
+    "name": "decision-flow-story-390-light-diff.png",
+    "changedPixels": 56675,
+    "totalPixels": 351000
+  }
+]

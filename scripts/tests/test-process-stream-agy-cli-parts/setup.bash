@@ -12,6 +12,9 @@ setup() {
     CODEX_ARGS_FILE="$TMPDIR_/codex-args.txt"
     CODEX_TIMEOUT_FILE="$TMPDIR_/codex-timeout.txt"
     mkdir -p "$FAKE_BIN"
+    export PS_CALLS="$TMPDIR_/ps-calls"
+    printf '#!/bin/bash\necho called >> "%s"\nexit 99\n' "$PS_CALLS" > "$FAKE_BIN/ps"
+    chmod +x "$FAKE_BIN/ps"
     node "$REPO_ROOT/scripts/model-roles.mjs" gemini.gather.text --field model > "$FAKE_BIN/expected-agy-model"
     mkdir -p "$TMPDIR_/home/Gits/golems"
     : > "$TMPDIR_/home/Gits/golems/.env"
@@ -61,7 +64,10 @@ SH
 }
 
 teardown() {
+    local ps_status=0
+    [ ! -e "$PS_CALLS" ] || ps_status=1
     rm -rf "$TMPDIR_"
+    return "$ps_status"
 }
 
 mark_stage_done() {
@@ -619,19 +625,6 @@ printf '%s %s\n' "$PPID" "$$" > "$SCORER_PIDS_FILE"
 while :; do
     sleep 1
 done
-SH
-
-    cat > "$FAKE_BIN/ps" <<'SH'
-#!/bin/bash
-case "$*" in
-    *"-o lstart="*) printf 'Thu Aug 20 01:00:00 2026\n' ;;
-    *)
-        if [ -s "$SCORER_PIDS_FILE" ]; then
-            read -r worker_pid scorer_pid < "$SCORER_PIDS_FILE"
-            printf '%s %s\n' "$scorer_pid" "$worker_pid"
-        fi
-        ;;
-esac
 SH
 
     cat > "$FAKE_BIN/codex" <<'SH'

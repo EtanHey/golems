@@ -6,6 +6,8 @@ Read this before an authorized merge and through remote verification, tracking, 
 For merge authority, the `--admin` default, and R-010, first read
 [Merge Authority](pr-creation.md#merge-authority).
 
+The merge paths, “mission is MERGED” example and alternative endings below apply only to merge-authorized endpoints; [full stop](full-stop.md) ends at verified unmerged PR handoff, retains its workspace and reports `ROOT-FF STOP: not merged`.
+
 ## Merge Receipts: commit message vs PR body (2026-09-08)
 
 > git log is where you look when you already know something is wrong; the PR page is where you look to find out.
@@ -58,7 +60,7 @@ RIGHT: Post structured verdict as a PR comment after a clean bot-reviewed loop
 Merge authority: [Merge Authority](pr-creation.md#merge-authority) (Etan's ruling; SSOT).
 
 After a clean other-vendor review at `headRefOid` and green required checks, leads merge now
-with `gh pr merge <N> --merge --admin` on EtanHey repos; `--admin` is the default. Never ask
+with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos; `--admin` is the default. Never ask
 Etan to approve or merge a PR; only true one-way doors wait for him. Workers follow the
 merge authority in their brief.
 
@@ -67,9 +69,34 @@ Self-approval is structurally blocked on EtanHey repos. A ruleset-only BLOCKED s
 checks, conflicts and unresolved findings; do not bypass them. Omit `--delete-branch`;
 branch retirement follows the workspace lifecycle contract and any stacked-PR holds.
 
+### BLOCKED with every check green
+
+`mergeStateStatus` can stay `BLOCKED` while `gh pr checks` shows every required check green.
+GitHub's `statusCheckRollup` still counts an older cancelled or failed run of a required check
+from a superseded workflow run (a body or label edit, or a new push, cancels the older run),
+even after a newer run of the same check passed. `gh pr checks` shows only the newest run, so it
+hides the stale entry (seen on golems #1095 and #1096, 2026-11-02, reported by ci-hygiene).
+`BLOCKED` alone does not diagnose this: on EtanHey repos the ruleset-only self-review block above
+also shows as `BLOCKED`. List the non-passing rollup entries:
+
+```bash
+gh pr view <N> --json statusCheckRollup --jq '.statusCheckRollup[]
+  | select((.conclusion // .state) | IN("SUCCESS","SKIPPED","NEUTRAL") | not)
+  | [(.name // .context), (.conclusion // .state // .status), (.detailsUrl // .targetUrl)] | @tsv'
+```
+
+1. Keep only required checks whose newest run passed and whose listed entry is an older
+   CANCELLED or FAILURE run. A required check whose newest run failed is a real failure: fix it.
+   A pending entry, or a status context with no Actions run URL, needs its own diagnosis.
+2. Take the run id from each kept URL (`.../actions/runs/<run id>/job/...`), de-duplicate the ids
+   (two stale jobs often share one run), and run `gh run rerun <run id> --failed` once per id.
+3. When those re-runs pass, re-check the required checks, findings and review at the unchanged
+   `headRefOid`, then merge under the rule above. The ruleset-only self-review `BLOCKED` still is
+   not a reason to wait.
+
 ### Worktree-Locked Local Merge
 
-In multi-worktree repos, `gh pr merge <N> --merge --delete-branch` can fail
+In multi-worktree repos, `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` can fail
 **locally** even though the PR is fully mergeable: the post-merge branch cleanup
 checks out the default branch, and git refuses when another worktree holds it
 (`failed to run git: fatal: 'main' is already used by worktree at
@@ -161,11 +188,12 @@ Deployment/live claims are governed by canon #4 and the Deploy Truth Gate above.
    - Exit 0 means guarded ("Mac rows required"): the lead dispatches this exact command, from the golems root
      checkout, to `deploy-local-prod` and verifies what it reports:
    ```bash
-   scripts/ratchet/post-merge-live.sh --merged-pr <N>
+   scripts/ratchet/post-merge-live.sh --merged-pr <N> --lease-pr <your open PR>
    ```
-   It updates the mbp hooks-live install, picks a clean exact-head open-PR worktree as the lease, runs the live
-   rows, posts the `golems-ratchet-live` receipt on #N, and prints the comment URL and the live-tier freshness
-   line. Optional `--lease-pr N --lease-repo <path>` constrains the lease. Done means a zero exit, a printed
+   `--lease-pr` is required: an open PR you own and won't push during the receipt (its clean exact-head worktree
+   is the token lease; add `--lease-repo <path>` to pick the worktree). It updates the mbp hooks-live install, runs
+   the live rows, posts the `golems-ratchet-live` receipt on #N, and prints the comment URL and the live-tier
+   freshness line. Never borrow another lead's PR: a branch that moves mid-receipt denies the token (#1007). Done means a zero exit, a printed
    receipt URL and a freshness PASS. Any nonzero exit or FAIL is a stop: report it rather than re-running
    blindly. After the receipt posts, re-run any failed master/PR `ratchet` jobs. A posted comment alone does
    not re-run CI. Rules and the 120-minute grace: `standards/ratchet.md`.
@@ -254,8 +282,10 @@ If you release, install, or claim done on a batch without the matching verify ar
 
 For non-VoiceLayer daemon PRs:
 
-1. Open a NEW cmux pane (`cmux new-split right`).
-2. Launch a fresh Claude Code session in that pane.
+1. Start a fresh session after the install. T3 (default): a NEW `delegate_task` child (never a reused
+   one), whose task calls the changed MCP tools and reports their raw output. cmux (terminal seats only):
+   open a NEW pane (`cmux new-split right`).
+2. In cmux, launch a fresh Claude Code session in that pane.
 3. Verify MCP tools are available AND return real results.
 4. If tools are unavailable or return errors, the PR is NOT done.
 

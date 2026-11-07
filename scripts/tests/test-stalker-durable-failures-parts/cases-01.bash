@@ -243,8 +243,8 @@ function split_case_016() {
     wait "$live_pid" 2>/dev/null || true
 
     [[ "$empty_status" -eq 0 \
-        && "$empty_gems" -eq 0 \
-        && "$empty_failed" -eq 1 \
+        && "$empty_gems" -eq 1 \
+        && "$empty_failed" -eq 0 \
         && "$alert_count" -eq 0 ]]
 }
 
@@ -253,14 +253,14 @@ function split_case_017() {
     mismatch_dir="$TMPDIR_/mismatched-live-identity"
     sleep 20 &
     live_pid=$!
-    if ! identity_c="$(LC_ALL=C stalker_process_start_identity "$live_pid")"; then
+    if ! identity_c="$(PATH="$FAKE_BIN:$PATH" LC_ALL=C stalker_process_start_identity "$live_pid")"; then
         kill "$live_pid" 2>/dev/null || true
         wait "$live_pid" 2>/dev/null || true
-        skip "process identity unavailable in this test environment"
+        return 1
     fi
     identity_he="$(LC_ALL=he_IL.UTF-8 stalker_process_start_identity "$live_pid")"
     write_scoring_marker "$matching_dir" "$live_pid" "$identity_c"
-    write_scoring_marker "$mismatch_dir" "$live_pid" "not-the-live-process-$identity_c"
+    write_scoring_marker "$mismatch_dir" "$live_pid" "v2:darwin:0.000000"
     printf '# partial matching gems\n' > "$matching_dir/gems.md"
     printf '# partial mismatched gems\n' > "$mismatch_dir/gems.md"
 
@@ -476,7 +476,7 @@ function split_case_027() {
 
     [[ "$output" == *'Stalker Morning Digest FAILED - 2026-08-19'* \
         && "$output" == *'etan-2026-08-19-2100'* \
-        && "$status" -eq 75 ]]
+        && "$status" -eq 75 ]] || false
     [ ! -s "$ALERTS_FILE" ]
 }
 
@@ -500,7 +500,7 @@ function split_case_028() {
         && "$body" == *"Found 20 matching run directories, but none were eligible for processing"* \
         && "$body" == *"details truncated:"* \
         && "$body" == *"20 total"* \
-        ]]
+        ]] || false
     [ ! -s "$ALERTS_FILE" ]
 }
 
@@ -529,7 +529,7 @@ function split_case_029() {
         && "$body" == *"DROPPED (not counted above):"* \
         && "$body" == *"details truncated:"* \
         && "$body" == *"20 total"* \
-        ]]
+        ]] || false
     [ ! -s "$ALERTS_FILE" ]
 }
 
@@ -560,7 +560,7 @@ function split_case_030() {
         && "$body" == *"examplechannel-2026-08-20-032309"* \
         && "$body" == *"digest truncated"* \
         && "$utf16_units" -le 2000 \
-        && "$output" == *"Stalker Morning Digest - 2026-08-20"* ]]
+        && "$output" == *"Stalker Morning Digest - 2026-08-20"* ]] || false
     [ ! -s "$ALERTS_FILE" ]
 }
 

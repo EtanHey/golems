@@ -2,7 +2,8 @@ import { test, expect } from 'bun:test';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-test('post-merge wrapper picks clean exact-head leases, prefers worker paths, and fails without one', () => {
+test('post-merge wrapper requires --lease-pr and picks only that PR\'s clean exact-head worktree', () => {
+  mkdirSync(resolve('docs.local/l3-tests'), { recursive: true }); // absent in a fresh CI checkout
   const dir = mkdtempSync(resolve('docs.local/l3-tests/post-merge-'));
   try {
     mkdirSync(join(dir, 'scripts/ratchet'), { recursive: true });
@@ -33,19 +34,45 @@ else process.exit(9);
     const run = (extra = {}, args = []) => spawnSync('node', [join(dir, 'scripts/ratchet/post-merge-live.mjs'), '--merged-pr', '42', ...args],
       { encoding: 'utf8', env: { ...process.env, PATH: join(dir, 'bin') + ':' + process.env.PATH,
         EXPECT_PATH: process.env.HOME + '/.t3/worktrees/golems/valid', ...extra } });
-    const picked = run();
+    // Never auto-pick (#1007; FV3 TLA+ LiveReceiptIsolated): no --lease-pr fails closed with the fix in the message.
+    const unpinned = run();
+    expect(unpinned.status).toBe(1);
+    expect(unpinned.stderr).toContain('--lease-pr is required');
+    expect(unpinned.stderr).toContain('docs/architecture/post-merge-live-lease.md');
+    const valid = process.env.HOME + '/.t3/worktrees/golems/valid';
+    const picked = run({}, ['--lease-pr', '7', '--lease-repo', valid]);
     expect(picked.status).toBe(0);
     expect(picked.stdout).toContain('https://example.invalid/comment\nfreshness PASS');
-    const none = run({ NO_LEASE: '1' });
+    // R14: retention runs here (master's code, after the receipt), and a refusal never fails the receipt.
+    const lease = ['--lease-pr', '7', '--lease-repo', valid];
+    const pruneLog = join(dir, 'prune-calls');
+    writeFileSync(join(dir, 'scripts/ratchet/prune-runs.mjs'),
+      `import { appendFileSync } from 'node:fs'; appendFileSync(${JSON.stringify(pruneLog)}, process.argv.slice(2).join(' ') + '\\n'); console.log('Apply: 0/0 entries'); process.exit(Number(process.env.PRUNE_EXIT || 0));`);
+    const pruned = run({}, lease);
+    expect(pruned.status).toBe(0);
+    expect(readFileSync(pruneLog, 'utf8')).toBe('--apply\n');
+    expect(pruned.stdout.indexOf('freshness PASS')).toBeLessThan(pruned.stdout.indexOf('Apply: 0/0 entries'));
+    const refused = run({ PRUNE_EXIT: '2' }, lease);
+    expect(refused.status).toBe(0);
+    expect(refused.stderr).toContain('retention refused (non-fatal)');
+    rmSync(join(dir, 'scripts/ratchet/prune-runs.mjs'));
+    expect(run({ EXPECT_PATH: '/ordinary' }, ['--lease-pr', '7', '--lease-repo', '/ordinary']).status).toBe(0);
+    for (const bad of ['dirty', 'mismatch']) {
+      const r = run({}, ['--lease-pr', '7', '--lease-repo', process.env.HOME + '/.t3/worktrees/golems/' + bad]);
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain('no valid lease: PR #7');
+    }
+    const none = run({ NO_LEASE: '1' }, ['--lease-pr', '7']);
     expect(none.status).toBe(1);
     expect(none.stderr).toContain('no valid lease');
-    expect(run({ EXPECT_PATH: '/ordinary' }, ['--lease-pr', '7', '--lease-repo', '/ordinary']).status).toBe(0);
     expect(run({}, ['--lease-pr', '8']).status).toBe(1);
+    expect(run({}, ['--lease-pr', 'x']).stderr).toContain('PR numbers must be positive integers');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 
 test('post-merge wrapper blocks missing Codex trust before lease selection or receipts', () => {
+  mkdirSync(resolve('docs.local/l3-tests'), { recursive: true });
   const dir = mkdtempSync(resolve('docs.local/l3-tests/post-merge-trust-'));
   try {
     mkdirSync(join(dir, 'scripts/ratchet'), { recursive: true });
@@ -66,14 +93,20 @@ process.exit(9);
 `;
     for (const name of ['bash', 'gh', 'git']) writeFileSync(join(dir, 'bin', name), fake, { mode: 0o755 });
     const log = join(dir, 'calls');
-    const run = trust => spawnSync('node', [join(dir, 'scripts/ratchet/post-merge-live.mjs'), '--merged-pr', '42'],
+    const run = (trust, args = ['--lease-pr', '7']) => spawnSync('node', [join(dir, 'scripts/ratchet/post-merge-live.mjs'), '--merged-pr', '42', ...args],
       { encoding: 'utf8', env: { ...process.env, PATH: join(dir, 'bin') + ':' + process.env.PATH, CALL_LOG: log, HOOK_TRUST: trust } });
+    // A missing --lease-pr fails before ANY side effect: no hook update, no status probe, no gh.
+    writeFileSync(log, '');
+    const unpinned = run('missing', []);
+    expect(unpinned.status).toBe(1);
+    expect(unpinned.stderr).toContain('--lease-pr is required');
+    expect(readFileSync(log, 'utf8')).toBe('');
     const missing = run('missing');
     expect(missing.status).toBe(3);
     expect(missing.stdout).toBe([
       'post-merge-live: BLOCKED — Codex hook trust missing (new or changed hook definitions).',
       'Owner step (Etan, on this Mac): open plain `codex` (no --profile), run /hooks, approve the changed definitions.',
-      'Then re-run: scripts/ratchet/post-merge-live.sh --merged-pr 42',
+      'Then re-run: scripts/ratchet/post-merge-live.sh --merged-pr 42 --lease-pr 7',
       "No receipt posted, so live-freshness's grace window still applies.",
       '',
     ].join('\n'));

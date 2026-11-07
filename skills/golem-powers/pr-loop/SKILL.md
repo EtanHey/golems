@@ -21,11 +21,19 @@ Who implements and who opens the inner-loop reviewer pane is owned by `/agent-ro
 
 This skill begins at branch preparation and ends at the authority-appropriate endpoint:
 
-- Lead: reviewed, latest-head-green PR merged, verified, root checkout fast-forwarded, and cleaned up; released/installed where applicable at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate), without asking Etan.
+- Lead, when the endpoint permits merge: reviewed, latest-head-green PR merged, verified, root checkout fast-forwarded, and cleaned up; released/installed where applicable at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate), without asking Etan.
 - Worker whose brief says the lead owns merge: ready-for-review PR, review responses addressed, URL handed to the lead, unmerged.
 - A worker must hand the reviewed PR to its lead unmerged.
 
 Run `scripts/ci/release-gate.mjs <repo>` at the feature-batch gate, not after every PR. At the batch endpoint, `MERGED_UNRELEASED`, `RELEASED_UNINSTALLED`, or `UNKNOWN` is a stop; release/install and rerun until `CLEAN`. A `MERGED_UNRELEASED` mid-batch is expected, not a stop: keep merging the batch.
+
+## Full stop endpoint
+
+Select **full stop** for a PR-workflow “full stop” command, an explicit no-merge request, or a third-party upstream base (for example, pingdotgg/t3code). Emphasis (“Full stop.”), quotations and questions about the phrase do not select it; read-only inspection does not start PR preparation.
+This endpoint overrides generic ship/merge rules for every role and survives handoffs and watch wakes until the user explicitly changes it. Confirm the live PR base, not the fork remote; see [full-stop rules](references/full-stop.md).
+Never merge, enable auto-merge, enqueue, push the default branch, or delegate those actions. Before work and each push, verify auto-merge/queue state; disarm only this account’s enrollment or our own PR’s setting we control, otherwise stop BLOCKED before a push that would merge.
+Keep the normal proof, draft-first, lead-routed review and latest-head checks. Finish with **READY UNMERGED**, **WAITING FOR MAINTAINER APPROVAL** (only a verified upstream human-approval requirement remains), or **BLOCKED**; use the [readiness and handoff contract](references/full-stop.md).
+Terminal readiness ends PR preparation unmerged; it is not a held draft or release/install/LIVE proof.
 
 ## Required Sequence
 
@@ -52,15 +60,15 @@ Run the loop in this order:
    When the inner reviewer APPROVEs and the local checks pass, run `gh pr ready <N>`. That flip
    starts the bots, once (Etan, 2026-11-01).
 6. After the flip, apply the target repo's bot policy (never request a bot review by hand when the flip already triggered one), invoke allowed PR reviewers, and wait for evidence per the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns): T3 parent watch and its receipt first; bounded reads for a decision, one cheap watcher only outside T3, never a polling turn.
-7. Classify every finding; fix real bugs, reply to every CRITICAL/MAJOR/HIGH finding, push, and request re-review.
-8. Confirm required checks and reviews are green on `headRefOid`, then either hand off unmerged or merge.
-9. After an authorized merge, verify the remote merge/content, fast-forward the root checkout ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory)), and update tracking; release/install/live-probe at the feature-batch gate, the deploy hop routed to `deploy-local-prod`. Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](../_shared/lifecycle/CONTRACT.md); record REMOVED, RETAINED or acknowledged TRANSFERRED. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
+7. Classify every finding; fix real bugs, reply to every CRITICAL/MAJOR/HIGH finding, push, and request re-review. **Every real bug you fix also gets a guard that stops its class coming back:** a lint rule, a ratchet row (repos with a ratchet table), a fail-first test on the real code (fails on base, passes on the branch), or, when the bug is about the order of events, a fail-first race test or a TLA+ property, chosen by the order-of-events row of [Pick the proof](#pick-the-proof). Name the guard in the PR body next to the Loop-record defect count. Skip it only for a concrete technical reason that none of these can catch this bug class; effort or time never counts. A finding in this PR's own change gets its guard in this PR. A defect found mid-PR outside its scope still opens a NEW PR with its fix and guard (canon #9), and the 2-review-round cap still holds (Etan, 2026-11-02, via orc: "we gotta implement this with more systems").
+8. An actual Bugbot usage/rate/spend-limit notice requires `Bugbot: unavailable (usage)` in the PR body, even on a routine PR where Bugbot was never requested. Cursor’s `cursor[bot]` spend-limit notice counts. Also record an actually requested Bugbot that is unavailable. A routine XS/S/M PR with no Bugbot activity has no Bugbot step: no request, wait or body entry. Never wait or retry Bugbot. Confirm required checks and the routed review are green on `headRefOid`, then either hand off unmerged or merge.
+9. After an authorized merge, verify the remote merge/content, fast-forward the root checkout ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory)), and update tracking. For each resolved issue, run `gh issue view N --json state` (add `--repo owner/repo` for cross-repo issues); if still open, close it with a comment linking the merged PR. Then release/install/live-probe at the feature-batch gate, the deploy hop routed to `deploy-local-prod`. Before allocating, handing off, settling or retiring a workspace, read and follow the [workspace lifecycle contract](../_shared/lifecycle/CONTRACT.md); record REMOVED, RETAINED or acknowledged TRANSFERRED. End the merge comment or DONE report with the [CLEANUP RECEIPT](references/merge-and-verification.md#cleanup-receipt).
 
 Every wait and PR-watch wake follows the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns).
 
 ## Merge Cadence (risk-sized)
 
-The rules this section lands, verbatim (Etan 2026-10-18, via orc collab):
+The risk-sized rulings (Etan 2026-10-18, via orc collab), with the bot clarification below:
 
 > **Merging:** small PRs merge right away on fast CI + 1 review. Heavy or e2e tests run per FEATURE BATCH (a full plan or feature change tested together), not per PR and not as a pre-merge gate.
 
@@ -68,7 +76,7 @@ The rules this section lands, verbatim (Etan 2026-10-18, via orc collab):
 
 > Full panel only for L, data or security paths, and that panel = [composition: `/agent-routing` § Routing rules (SSOT)].
 
-> **Review bots** (CodeRabbit/Bugbot) run only AFTER the inner loop, and they're advisory. Only wait on a bot when it flags something important. Never wait on rate limits.
+**Bot clarification (2026-11-04):** Review bots (CodeRabbit/Bugbot) run only AFTER the inner loop, and they're advisory. Answer an already-posted bot finding like any finding; never await a bot or rate-limit recovery.
 
 > Give each test/build its own ports and temp folders so they run in parallel.
 
@@ -81,8 +89,24 @@ The rules this section lands, verbatim (Etan 2026-10-18, via orc collab):
 Who reviews, how many, and the panel: `/agent-routing` § Routing rules (SSOT), which wins on conflict. Every size keeps the Hard Gates below: never zero reviews, exact-head green, no unreplied CRITICAL/MAJOR/HIGH finding, never a draft.
 
 - **Fast CI** is the repo's required PR checks. Heavy/e2e suites, daemon real-client runs, visual self-QA and the release gate run at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate): before the batch is released, installed or declared done. A PR that alone ships to users is a single-PR batch and runs that gate itself.
-- **Bots** run after the inner loop and are advisory. A silent or rate-limited bot is recorded as unavailable in the PR body, never awaited. When a bot flags something important, answer it like any finding before merge. A real bot finding still gets fixed, in a NEW PR (canon #9) if it lands after merge.
+- **Bots** run after the inner loop and are advisory. Record an unavailable bot only if it was actually requested or posted a usage notice; a never-requested, silent Bugbot needs no entry. Bots are never awaited. When a bot flags something important, answer it like any finding before merge. A real bot finding still gets fixed, in a NEW PR (canon #9) if it lands after merge.
 - **Parallel-safe:** tests and builds take their own ports and temp dirs per run; no global one-at-a-time locks.
+
+## Pick the proof
+
+Before opening the PR, name the change kind and put its proof in the body. The proof that counts **could have failed on the old behaviour**: show the old state failing, not only the new one passing. A PR that touches two kinds owes both proofs. Unit tests count when they are that fail-first check; no test file is required per edit. Mock-green is not live-green.
+
+| Change kind | Proof | Done when the body has |
+|---|---|---|
+| Prompt or instruction: skill text, CLAUDE.md/AGENTS.md rows, injected agent copy, tool descriptions | An eval table: the PR's text vs main's text on the same cases, run on the real agent ([/skill-creator](../skill-creator/SKILL.md) Core Loop, RED → GREEN). Include the cases meant to change, false triggers and an unchanged control. A sha256 byte pin, a token count, green unit tests or a reviewer approving the wording prove nothing about agent behaviour. | Pass counts per arm, n, model and cost; or `Proof: unmeasured: <reason>` |
+| UI, static (layout, spacing, colour, copy, breakpoints) | Before/after screenshots per [Visual proof](#visual-proof), at desktop and 390 px plus the states the change is about (the breakpoint boundary, light/dark) | The visual-proof template filled with attached artifacts |
+| UI, motion or timing (a one-frame flicker, a jump, a transition, scroll position) | A before/after recording plus a measurement per frame or step: frames showing the glitch, position or brightness per frame, or a real-browser test asserting the invariant (for example, the heading's offset stays put). Static screenshots cannot show a one-frame bug. | The recording in the GIF field and the measured numbers before and after |
+| Audio or timing the user hears | Live verification in a real client: play it and write what was heard and when | The observed result; "not verified live" is a caveat, never a pass |
+| Regression (a bug that came back, or could) | In a repo with a ratchet table (golems, skill-creator): a ratchet row through the real CLI, FAIL at the bug SHA and PASS at the fix SHA (`unit` rows never count). Elsewhere: a fail-first test on the real code with a real fixture, not a mock | The base failure output and the branch pass, or the row's FAIL/PASS SHAs |
+| Order of events (races, interleavings, retries, rollback) | In-process race over a few states: a fail-first race test that forces the interleaving with a latch, gate or injected delay (no sleep-and-hope). A multi-phase procedure or protocol with concurrent actors and crash or rollback points, too many states to cover by test: a TLA+/TLC spec whose bug configs violate and fixed configs pass | Base failure and branch pass, or the TLC run with each config's expected result |
+| Daemon, socket, MCP or protocol | A real client session on the real binary at the feature-batch gate; unit tests, `socat` and `curl` are insufficient | The real-client transcript |
+| CI workflow or hosted tooling | One real run on the hosted service (a real push, a real posted comment) beyond the unit tests | The run link, or `unverified until rollout: <what>` |
+| No behaviour change (docs, comments, typo, pure rename) | The repo's fast checks; nothing more | `Proof: none needed (no behaviour change)` |
 
 ## Visual proof
 
@@ -126,9 +150,9 @@ Rollout to other repos is a follow-up; this change wires golems only.
 - A green run on an older SHA is not green. Verify the PR head matches the latest pushed commit.
 - Never merge with an unreplied CRITICAL, MAJOR, or HIGH finding.
 - One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; round 3 only by a lead exception written in the PR body (canon #9).
-- After a clean other-vendor review at `headRefOid` and green required checks, leads merge now with `gh pr merge <N> --merge --admin` on EtanHey repos, per [Merge Authority](references/pr-creation.md#merge-authority); omit `--delete-branch`. Workers follow their brief's merge authority. Never ask Etan to approve or merge a PR; only true one-way doors wait for him. Failing/pending checks, conflicts and unresolved findings block merge.
+- For merge-authorized endpoints, after a clean other-vendor review at `headRefOid` and green required checks, leads merge now with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos (`--admin` skips required checks, so the head pin is what stops a later push merging unchecked), per [Merge Authority](references/pr-creation.md#merge-authority); omit `--delete-branch`. Workers follow their brief's merge authority. Never ask Etan to approve or merge a PR; only true one-way doors wait for him. Failing/pending checks, conflicts and unresolved findings block merge.
 - On EtanHey repos, bot verdicts are comments, not formal self-reviews.
-- Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for daemon/engine/transport diffs.
+- Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for an L PR or a very important/core-risk PR (daemon/engine/transport, security, release); never request it for routine XS/S/M PRs. Record `Bugbot: unavailable (usage)` in the PR body only when Bugbot was actually requested and is unavailable, or it posted a real usage/rate/spend-limit notice on this PR. An actual notice must be recorded even on a routine PR where Bugbot was never requested. Routine PRs with no Bugbot activity do nothing Bugbot-related. After an eligible request, continue directly to exact-head merge checks in the same turn: no "awaiting Bugbot", watch, grace period or re-review gate. Actual posted findings still follow the normal finding rules.
 - Cursor diff passes are read-only: findings only, never edit the PR branch. Routing: see `/agent-routing` § Routing rules (SSOT).
 - `--body` on `gh pr merge` sets the MERGE COMMIT message, **not** the PR description.
 - "git log is where you look when you already know something is wrong; the PR page is where you look to find out." Put actionable receipts in the PR body before merge.
@@ -154,19 +178,21 @@ starts the heavy CI suites, which skip drafts in golems.
 | Codex | Draft behavior unverified. | If it hasn't reviewed ~10 min after ready, comment `@codex review` once. |
 | Copilot | Reviews only on request; automatic review is not enabled. | Don't request it. |
 | Macroscope | Marking ready triggers a correctness check by design; set to manual-only, which should stop it (unverified). | Request it only for a core-risk PR. |
-| Bugbot | Silent on drafts; on ready it may post only a spend-limit notice until set to "run only when mentioned". | Ignore that notice; request it only for a core-risk PR. |
+| Bugbot | Runs only when mentioned for an L or very important/core-risk PR; routine XS/S/M PRs never request it. | Request once if eligible and available, unless current-head coverage exists, then continue to merge checks immediately. Record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage/rate/spend-limit notice. An actual notice is recorded even without a request. Routine PR with no activity: no Bugbot action or body entry. Never wait, retry, watch or set "awaiting Bugbot". |
 | Qodo, Greptile | Don't run automatically. | Request one only for a core-risk PR, per the repo's bot policy. |
 | DeepSource, CodeQL | CI-style checks on every push. | Nothing. |
 
 The 10-minute fallbacks above apply only while the PR is still blocked on something else anyway.
-Never hold a merge for a bot: follow [Merge Cadence](#merge-cadence-risk-sized), and record a silent
-bot as unavailable. A bot that reviews a draft anyway is a config
+Never hold a merge for a bot: follow [Merge Cadence](#merge-cadence-risk-sized), and record an unavailable
+bot only if it was requested or posted a usage notice. Never-requested Bugbot silence needs no record. A bot that reviews a draft anyway is a config
 bug: tell ci-hygiene.
 
 ## Decision Table
 
 | Situation | Action |
 |---|---|
+| Full stop selected (including a third-party upstream base) | Follow [full-stop rules](references/full-stop.md); no merge/auto-merge/queue/default-branch push, including on watch wakes |
+| Full-stop proof, checks and review pass at the final head | Hand off READY UNMERGED; keep it ready, never merge or convert the terminal handoff to a held draft |
 | Brief says lead owns merge | Worker stops at reviewed PR handoff; lead verifies latest head before merge |
 | Brief grants this seat merge authority | Complete review loop, merge with the required method, then verify and clean up |
 | PR is draft | Inner loop in progress: finish it, then `gh pr ready <N>`. Visibly held: follow the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns). Never merge a draft |
@@ -174,14 +200,15 @@ bug: tell ci-hygiene.
 | XS/S PR, fast CI green at head, one clean routed review | Merge now (seat with merge authority); no wait for bots or heavy gates |
 | PR touches daemon/socket/MCP/protocol | Merge on the size cadence; queue the real-client run for the feature-batch gate (run it now for a single-PR batch) |
 | PR changes a visible surface | Require per-PR visual proof before merge; queue builder visual self-QA for the feature-batch gate (run it now for a single-PR batch) |
-| Bot silent or rate-limited | Don't wait; record it unavailable in the PR body and proceed on the routed review |
+| Requested bot unavailable, or real usage notice posted | Never wait. For Bugbot, record exactly `Bugbot: unavailable (usage)` in the PR body only for an actual request or real usage/rate/spend-limit notice. Routine XS/S/M PR with no Bugbot activity: no request, wait, body entry or extra step; merge on the routed review |
 | Release gate says `MERGED_UNRELEASED` mid-batch | Expected; keep merging the batch |
 | PR merged; release + install pending; Etan away | Ship: tag, release, install now; route the hop to `deploy-local-prod` and verify its artifact. Never ask Etan |
 | Remote branch delete or force push | `human-confirm-gate` token required (one-way door: deletes data) |
 | Lead must deploy and probe a Mac | Dispatch `deploy-local-prod`; checks and waits go to the mechanical tier, not the lead |
 | You just merged #N | Fast-forward the root checkout (`merge --ff-only`); report if it fails; re-read AGENTS.md/CLAUDE.md if they changed |
-| You just merged a guarded golems PR (`guarded-paths.sh "<merge>^1" "<merge>"` exit 0) | After the root fast-forward, dispatch `scripts/ratchet/post-merge-live.sh --merged-pr N` to `deploy-local-prod` and verify its receipt URL and freshness PASS; exit 2 is a stop ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory) step 1b) |
+| You just merged a guarded golems PR (`guarded-paths.sh "<merge>^1" "<merge>"` exit 0) | After the root fast-forward, dispatch `scripts/ratchet/post-merge-live.sh --merged-pr N --lease-pr <your open PR>` to `deploy-local-prod` and verify its receipt URL and freshness PASS; exit 2 is a stop ([Update Tracking](references/merge-and-verification.md#after-merge-update-tracking-mandatory) step 1b) |
 | Last PR of the batch merged | Run the feature-batch gate (heavy/e2e, real-client, visual QA, release gate to `CLEAN`) before any done claim |
+| `BLOCKED` while `gh pr checks` is all green | A superseded run of a required check may still count: list and re-run it per [BLOCKED with every check green](references/merge-and-verification.md#blocked-with-every-check-green), re-check at the same head, then merge under Merge Authority (a ruleset-only self-review block never waits) |
 | Linked-worktree merge cleanup fails | Verify whether the remote merge already succeeded before any retry |
 | PR is stacked | Preserve the base branch until children are retargeted |
 | Work stops before endpoint | Report stop-state and next turn; do not say done |
@@ -203,5 +230,5 @@ bug: tell ci-hygiene.
 - `/coderabbit` owns receiving-side review technique; this skill owns advancement through the PR loop.
 - `/never-fabricate` owns verification receipts and claim discipline.
 - `/deploy-verify` owns post-merge deployed/live proof.
-- Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green.
+- Which proof each change kind owes: [Pick the proof](#pick-the-proof). Prove it the cheapest real way; mock-green is not live-green.
 - `/false-green-gate` and `/qa-verdict-gate` flag their respective stop conditions (advisory).

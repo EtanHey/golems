@@ -67,7 +67,9 @@ jobs:
   script-tests:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Script test suites (bun, node, sh)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, which has no Python 3.9 for
+    # hooks-interpreter-parity (macOS system python3 is 3.9).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -87,7 +89,7 @@ jobs:
             3.11
 
       # Installer integration tests execute the isolated regression runner.
-      - run: python -m pip install pytest pyflakes==4.0.0
+      - run: python -m pip install pytest pyflakes==4.0.0 PyYAML
 
       - name: Regression gate contracts
         run: python -m pytest scripts/tests/test_private_regression_gate.py -q
@@ -124,8 +126,55 @@ jobs:
           sudo CI_APT_ARCHIVES_DIR="${{ runner.temp }}/apt-archives" bash scripts/ci/apt-install.sh zsh
           git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
 
+      - name: Additional Python script suites
+        run: |
+          python -m pytest scripts/tests/test_agent_browser.py -q
+          python -m pytest scripts/tests/test_block_dangerous_commands.py -q
+          python -m pytest scripts/tests/test_canary_plugin.py -q
+          python -m pytest scripts/tests/test_cleanup_receipt_guidance.py -q
+          python -m pytest scripts/tests/test_cmuxlayer_off.py -q
+          python -m pytest scripts/tests/test_codex_hooks_native.py -q
+          python -m pytest scripts/tests/test_codex_hooks_required.py -q
+          python -m pytest scripts/tests/test_codex_policy_hook.py -q
+          python -m pytest scripts/tests/test_codex_worker_routing_guidance.py -q
+          python -m pytest scripts/tests/test_daemon_gate_precheck.py -q
+          python -m pytest scripts/tests/test_deepsource_issues.py -q
+          python -m pytest scripts/tests/test_disk_available.py -q
+          python -m pytest scripts/tests/test_frontend_proof_guidance.py -q
+          python -m pytest scripts/tests/test_gemini_brain_worker.py -q
+          python -m pytest scripts/tests/test_gemini_context.py -q
+          python -m pytest scripts/tests/test_gemini_templates.py -q
+          python -m pytest scripts/tests/test_gemini_video_qa.py -q
+          python -m pytest scripts/tests/test_heavy_suite_lock.py -q
+          python -m pytest scripts/tests/test_heavy_suite_nested_records.py -q
+          python -m pytest scripts/tests/test_heavy_suite_optin.py -q
+          python -m pytest scripts/tests/test_heavy_suite_setuid.py -q
+          python -m pytest scripts/tests/test_heavy_suite_timeout.py -q
+          python -m pytest scripts/tests/test_hook_import_fail_closed.py -q
+          python -m pytest scripts/tests/test_installed_skill_live_config.py -q
+          python -m pytest scripts/tests/test_installed_skill_parity.py -q
+          python -m pytest scripts/tests/test_lifecycle_no_temp_clones.py -q
+          python -m pytest scripts/tests/test_mutant_inputs_changed.py -q
+          python -m pytest scripts/tests/test_pr_watch.py -q
+          python -m pytest scripts/tests/test_pyyaml_runtime.py -q
+          python -m pytest scripts/tests/test_run_skill_tests.py -q
+          python -m pytest scripts/tests/test_stalker_admission.py -q
+          python -m pytest scripts/tests/test_stalker_runtime_context.py -q
+          python -m pytest scripts/tests/test_status_collab_settle_guidance.py -q
+          python -m pytest scripts/tests/test_t3_deep_scan_interim_guidance.py -q
+          python -m pytest scripts/tests/test_t3_settle_detach_guidance.py -q
+          python -m pytest scripts/tests/test_workspace_generation.py -q
+          python -m pytest scripts/tests/test_workspace_shared_holds.py -q
+          python -m pytest scripts/tests/test_worktree_deps_guidance.py -q
+          python -m pytest scripts/tests/test_worktree_disk_floor.py -q
+
       - name: bun suites
         run: |
+          bun test ./scripts/tests/ratchet-codex-native.test.mjs
+          bun test ./scripts/tests/ratchet-parity-expiry.test.mjs
+          bun test ./scripts/tests/stalker-launchd-adoption.test.mjs
+          bun test ./scripts/tests/t3-project-parity.test.mjs
+          bun test ./scripts/tests/t3-provider-parity.test.mjs
           bun --no-install test ./scripts/tests/repogolem-mcp-deny.test.ts
           bun --no-install test ./scripts/tests/worktree-census-core.test.ts
           bun --no-install test ./scripts/tests/worktree-census-lexical.test.ts
@@ -145,9 +194,11 @@ jobs:
                    ./scripts/tests/ratchet-run-rows.test.mjs \
                    ./scripts/tests/ratchet-check-comment.test.mjs \
                    ./scripts/tests/ratchet-mac.test.mjs \
+                   ./scripts/tests/hc-probe.test.mjs \
                    ./scripts/tests/ratchet-pre-push.test.mjs \
                    ./scripts/tests/ratchet-debt.test.mjs \
                    ./scripts/tests/ratchet-live-freshness.test.mjs \
+                   ./scripts/tests/ratchet-post-merge.test.mjs \
                    ./scripts/tests/ratchet-perf.test.mjs \
                    ./scripts/tests/repogolem-agents.test.ts \
                    ./scripts/tests/repogolem-managed-agents.test.ts \
@@ -177,7 +228,8 @@ jobs:
                    ./scripts/cc/cc-statusline.test.ts \
                    ./scripts/cc/cc-axiom-reporter.test.ts \
                    ./skills/golem-powers/never-fabricate/scripts/__tests__ \
-                   ./skills/golem-powers/drive-filing/scripts
+                   ./skills/golem-powers/drive-filing/scripts \
+                   ./skills/golem-powers/skill-creator/evals/eval-provenance.test.mjs
 
       - name: Check canon routing SSOT
         run: |
@@ -190,7 +242,28 @@ jobs:
 
       - name: node suites
         run: |
+          node --test scripts/tests/install-receipt-status.test.mjs
+          node --test scripts/tests/prepush-selection.test.mjs
+          node --test scripts/tests/skills-sync-receipt.test.mjs
+          node --test scripts/tests/stalker-card-media.test.mjs
+          node --test scripts/tests/stalker-complete-run.test.mjs
+          node --test scripts/tests/stalker-dashboard.test.mjs
+          node --test scripts/tests/stalker-digest-batches.test.mjs
+          node --test scripts/tests/stalker-digest-evidence.test.mjs
+          node --test scripts/tests/stalker-digest-runner.test.mjs
+          node --test scripts/tests/stalker-digest-text.test.mjs
+          node --test scripts/tests/drive-ledger.test.mjs
+          node --test scripts/tests/qa-video-archive.test.mjs
+          node --test scripts/tests/stalker-drive-archive.test.mjs
+          node --test scripts/tests/stalker-media-retention.test.mjs
+          node --test scripts/tests/stalker-morning-digest.test.mjs
+          node --test scripts/tests/stalker-pipeline-wiring.test.mjs
+          node --test scripts/tests/stalker-publish.test.mjs
+          node --test scripts/tests/stalker-run-contract.test.mjs
+          node --test scripts/vercel-budget.test.mjs
           node --test scripts/tests/prepush-touched.test.mjs
+          node --test scripts/tests/ratchet-guarded-set.test.mjs
+          node --test scripts/tests/prune-runs.test.mjs
           node --test scripts/tests/pr-wait-hygiene.test.mjs
           node --test scripts/tests/install-receipt.test.mjs \
                       scripts/tests/t3-mcp-holders.test.mjs \
@@ -205,6 +278,7 @@ jobs:
                       scripts/tests/stalker-model-roles.test.mjs \
                       scripts/tests/stalker-human-digest.test.mjs \
                       scripts/tests/stalker-digest-curation.test.mjs \
+                      skills/golem-powers/agent-routing/scripts/launch-guard.test.mjs \
                       scripts/tests/check-telegram-retirement.test.mjs
 
       - name: shell suites
@@ -256,11 +330,21 @@ jobs:
       - name: Run golem-powers Python skill suites
         run: scripts/ci/run-skill-tests.sh
 
+      - name: Install JEV test certificate dependency
+        run: python -m pip install certifi
+
+      - name: JEV Python package tests
+        run: python -m pytest packages/shared/src/__tests__/test_jev.py -q
+
       - name: Preserve split comments and their locations
         run: python scripts/ci/check-split-comments.py
 
       - name: Enforce Telegram retirement
         run: node scripts/ci/check-telegram-retirement.mjs
+
+      # These harness regressions belong with the full-history checkout above.
+      - name: Pristine harness regression suites
+        run: python -m pytest scripts/tests/test_pristine_deltas.py scripts/tests/test_pristine_tmpblock_api.py -q
 
       - name: Pristine split baseline gate
         run: python scripts/ci/pristine-harness.py check
@@ -321,6 +405,12 @@ jobs:
 
       - name: Guard scripts/tests Bats coverage
         run: node scripts/ci/run-bats-suites.mjs --check
+
+      - name: Lint Bash 3.2 assertions
+        run: node scripts/ci/check-bats-bash32.mjs
+
+      - name: Verify Bash 3.2 assertion checker
+        run: node --test scripts/tests/check-bats-bash32.test.mjs
 
       - name: Verify non-final Bats assertions fail
         run: node --test scripts/tests/bats-assertions.test.mjs

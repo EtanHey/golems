@@ -643,7 +643,7 @@ echo $! > "$STALKER_TEST_CHILD_PID"
 wait $!
 SH
     chmod +x "$TMPDIR_/early-parent"
-    run env STALKER_TEST_CHILD_PID="$TMPDIR_/child.pid" bash -c 'source "$1"; STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER=0; run_with_stalker_timeout "" 1s "$2"' bash "$TMPDIR_/timeout-functions.sh" "$TMPDIR_/early-parent"
+    run env STALKER_TEST_CHILD_PID="$TMPDIR_/child.pid" bash -c 'source "$3"; source "$1"; STALKER_BRAINLAYER_TIMEOUT_KILL_AFTER=0; run_with_stalker_timeout "" 1s "$2"' bash "$TMPDIR_/timeout-functions.sh" "$TMPDIR_/early-parent" "$REPO_ROOT/scripts/lib/stream-helpers.sh"
     [ "$status" -eq 124 ]
     child_pid="$(cat "$TMPDIR_/child.pid")"
     if kill -0 "$child_pid" 2>/dev/null; then

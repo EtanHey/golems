@@ -151,10 +151,10 @@ invoke_from_external_caller() {
 @test "actual Git and app-shaped external worktree resolve from external caller cwd" {
     run invoke_from_external_caller
     [ "$status" -eq 97 ]
-    [[ "$output" == *"FIXTURE_STOP_BEFORE_NETWORK_SIGNING_ROWS_RECEIPTS"* ]]
-    [[ "$output" == *"FIXTURE_STOP_BEFORE_GITHUB_BODY_FETCH"* ]]
+    [[ "$output" == *"FIXTURE_STOP_BEFORE_NETWORK_SIGNING_ROWS_RECEIPTS"* ]] || false
+    [[ "$output" == *"FIXTURE_STOP_BEFORE_GITHUB_BODY_FETCH"* ]] || false
     [ "$(cat "$FIXTURE_ROOT/observed-main")" = "$MAIN/.worktrees/hooks-live" ]
-    [[ "$(cat "$FIXTURE_ROOT/observed-run")" == "$MAIN/docs.local/ratchet-runs/live-pr1-"* ]]
+    [[ "$(cat "$FIXTURE_ROOT/observed-run")" == "$MAIN/docs.local/ratchet-runs/live-pr1-"* ]] || false
     [ "$(fixture_git -C "$MAIN" rev-parse HEAD)" = "$FIXED_HEAD" ]
     if [ "${LIVE_COMMONDIR_TRACE:-0}" = 1 ]; then
         printf 'SCRATCH_FIXED_HEAD=%s\n' "$FIXED_HEAD"
@@ -166,7 +166,7 @@ invoke_from_external_caller() {
 @test "supplemental relative-output shim exercises the relative common-dir contract" {
     COMMON_DIR_MODE=relative-shim run invoke_from_external_caller
     [ "$status" -eq 97 ]
-    [[ "$output" == *"FIXTURE_STOP_BEFORE_GITHUB_BODY_FETCH"* ]]
+    [[ "$output" == *"FIXTURE_STOP_BEFORE_GITHUB_BODY_FETCH"* ]] || false
     [ "$(cat "$FIXTURE_ROOT/observed-main")" = "$MAIN/.worktrees/hooks-live" ]
     [ "$(fixture_git -C "$MAIN" rev-parse HEAD)" = "$FIXED_HEAD" ]
 }
@@ -175,7 +175,7 @@ invoke_from_external_caller() {
     SCRIPT_TO_RUN="$MAIN/scripts/ratchet/live-rows.sh"
     run invoke_from_external_caller
     [ "$status" -eq 97 ]
-    [[ "$output" == *"FIXTURE_STOP_BEFORE_GITHUB_BODY_FETCH"* ]]
+    [[ "$output" == *"FIXTURE_STOP_BEFORE_GITHUB_BODY_FETCH"* ]] || false
     [ "$(cat "$FIXTURE_ROOT/observed-main")" = "$MAIN/.worktrees/hooks-live" ]
 }
 
@@ -205,8 +205,8 @@ PY
         printf 'LEGACY_NEGATIVE_EXIT=%s\n%s\n' "$status" "$output"
     fi
     [ "$status" -eq 1 ]
-    [[ "$output" == *"cd: "*"No such file or directory"* ]]
-    [[ "$output" == *"live-rows.sh: line 30"* ]]
+    [[ "$output" == *"cd: "*"No such file or directory"* ]] || false
+    [[ "$output" == *"live-rows.sh: line 30"* ]] || false
     [ ! -e "$FIXTURE_ROOT/observed-main" ]
     [ "$(fixture_git -C "$MAIN" rev-parse HEAD)" = "$FIXED_HEAD" ]
 }

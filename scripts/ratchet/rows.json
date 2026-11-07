@@ -56,6 +56,15 @@
       "command": "node --test scripts/tests/stalker-run-contract.test.mjs scripts/tests/stalker-publish.test.mjs scripts/tests/stalker-dashboard.test.mjs scripts/tests/stalker-digest-runner.test.mjs scripts/tests/stalker-digest-batches.test.mjs scripts/tests/stalker-digest-evidence.test.mjs scripts/tests/stalker-human-digest.test.mjs scripts/tests/stalker-complete-run.test.mjs scripts/tests/stalker-morning-digest.test.mjs scripts/tests/stalker-pipeline-wiring.test.mjs scripts/tests/stalker-digest-curation.test.mjs scripts/tests/stalker-digest-text.test.mjs scripts/tests/stalker-drive-archive.test.mjs scripts/tests/stalker-card-media.test.mjs scripts/tests/stalker-media-retention.test.mjs"
     },
     {
+      "id": "prepush-selection",
+      "metric": "pre-push selection collects tests and survives T3 checkout paths",
+      "kind": "unit",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "command": "node --test scripts/tests/prepush-selection.test.mjs"
+    },
+    {
       "id": "human-confirm-hook-code",
       "metric": "human-confirm hook code: no-token lease denied, lead token allowed once, replay denied, master denied (fixture keys)",
       "kind": "unit",
@@ -80,7 +89,7 @@
     },
     {
       "id": "human-confirm-installed",
-      "metric": "INSTALLED human-confirm hook: no-token lease denied, lead token allowed once, replay denied, master denied",
+      "metric": "INSTALLED human-confirm hook: own-branch lease allowed without token and on replay, plain force/foreign lease/master denied, lead issuance succeeds and token lease allowed",
       "kind": "real",
       "runner": "mac",
       "direction": "pass",
@@ -100,6 +109,18 @@
       "fix_sha": "bd8cd20b9924217bf9f2523592bdbe46fc7fbd7e",
       "command": "HOME=\"${RATCHET_HOME:?}\" CODEX_HOME=\"${RATCHET_HOME:?}/.codex\" GOLEMS_REQUIRE_CODEX=1 python3 \"${RATCHET_CLONE:?}/scripts/tests/test_codex_hooks_native.py\"",
       "timeout_s": 90
+    },
+    {
+      "id": "heavy-suite-setuid-lifetime",
+      "metric": "real Darwin setuid ps: completed child exits 0; detached live child still exits 70",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "0beff416515fb10d0545ee3f4b76de94c92d0fac",
+      "fix_sha": "74c40f59e009416b5bf38e9249d5e71f3771e32a",
+      "command": "test \"$(uname -s)\" = Darwin && test -u /bin/ps && python3 -m pytest -q scripts/tests/test_heavy_suite_setuid.py",
+      "timeout_s": 30
     },
     {
       "id": "hooks-status",
@@ -125,7 +146,7 @@
     },
     {
       "id": "live-human-confirm",
-      "metric": "LIVE human-confirm hook with a lead-issued token: deny / allow once / replay deny / master deny (post-merge, lead-run)",
+      "metric": "LIVE human-confirm hook: own-branch lease allowed without token and on replay, plain force/foreign lease/master denied, lead issuance succeeds and token lease allowed (post-merge, lead-run)",
       "kind": "real",
       "runner": "live",
       "direction": "pass",
@@ -229,6 +250,21 @@
       "bug_fixture": "42967711bc46af89c8eb9e184be34d4ecafa02fb4119f8d50c44c4d5ecf13a3c",
       "fix_fixture": "9f21c2ce1f5fbb7c50cd7ac05c77f43b306910a7a339f2f35d0611d8caa349c5",
       "command": "scripts/ratchet/mac/disk-free-floor.sh"
+    },
+    {
+      "id": "ratchet-runs-size",
+      "report_only": "retention-success-on-both-macs",
+      "metric": "REAL Mac: ratchet run evidence <= 10 decimal GB (allocated bytes)",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "ref_kind": "fixture-hash",
+      "bug_sha": "03c5cf8837cc5ede8d06aee456ea84df5f053469",
+      "fix_sha": "03c5cf8837cc5ede8d06aee456ea84df5f053469",
+      "bug_fixture": "2f4a3f8e232ae908bc6a0516b102001b8d946e3c4c9726f3b07251ca027f7688",
+      "fix_fixture": "5b01f0ceda336433b74a74283513a30913967fe2cf9a7f6d1ea124f3a4ef9cda",
+      "command": "node scripts/ratchet/mac/ratchet-runs-size.mjs"
     }
   ]
 }

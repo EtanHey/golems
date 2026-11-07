@@ -285,6 +285,13 @@ SH
 #!/bin/bash
 exit 0
 SH
+    export GUARD_PS_CALLS="$TMPDIR_/guard-ps-calls"
+    cat > "$fake_bin/ps" <<'SH'
+#!/bin/bash
+printf 'called\n' >> "$GUARD_PS_CALLS"
+exit 99
+SH
+    chmod +x "$fake_bin/ps"
     chmod +x "$fake_bin/yt-dlp" "$fake_bin/pgrep" "$fake_bin/launchctl" "$fake_bin/curl" "$fake_bin/sleep"
 
     env PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
@@ -302,6 +309,7 @@ SH
     kill -TERM "$guard_pid" 2>/dev/null || true
     wait "$guard_pid" 2>/dev/null || true
 
+    [ ! -e "$GUARD_PS_CALLS" ]
     grep -F -q "video has not grown for" "$guard_output"
     grep -F -q "$log_dir/examplechannel-2026-08-20-032309/video.ts" "$guard_output"
     grep -F -x -q "kickstart -k $expected_service" "$launchctl_calls"

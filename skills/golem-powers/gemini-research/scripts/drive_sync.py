@@ -23,9 +23,19 @@ STATE_FILE = pathlib.Path(os.environ.get("GEMINI_RESEARCH_STATE_FILE", pathlib.P
 # The nlm profile every live NotebookLM call runs under. No default: main()
 # refuses to run live mode without it.
 NLM_PROFILE = os.environ.get("GEMINI_RESEARCH_PROFILE", "")
-# The Google account live mode must be signed in as; verify-account.sh reads
-# the same variable. No default: a placeholder would fail every real account.
-RESEARCH_ACCOUNT = os.environ.get("RESEARCH_ACCOUNT", "")
+RESOLVE_ACCOUNT_SCRIPT = SHARED_RESEARCH_DIR / "resolve-account.sh"
+
+
+def _resolve_research_account() -> str:
+    # Same resolution as verify-account.sh: RESEARCH_ACCOUNT, then
+    # ~/.config/research-lifecycle/research.env. Empty when neither is set.
+    result = subprocess.run(["bash", str(RESOLVE_ACCOUNT_SCRIPT)], capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+# The Google account live mode must be signed in as. No default: a placeholder
+# would fail every real account.
+RESEARCH_ACCOUNT = _resolve_research_account()
 
 
 def _load_drive_module():
@@ -422,7 +432,8 @@ def main() -> int:
         return 1
     if fixture is None and not RESEARCH_ACCOUNT:
         print(
-            "RESEARCH_ACCOUNT is not set: export it as the Google account Drive and "
+            "RESEARCH_ACCOUNT is not set: export it, or add a RESEARCH_ACCOUNT=<address> line to "
+            "~/.config/research-lifecycle/research.env, naming the Google account Drive and "
             "NotebookLM should be signed in as.",
             file=sys.stderr,
         )
@@ -432,9 +443,18 @@ def main() -> int:
         verify_account(fixture)
         state = load_state()
         folders, context_files, prompt, prompt_content = load_project_assets(args.project, args.prompt, fixture)
+        try:
+            preflight = subprocess.run(
+                ["node", str(SCRIPT_DIR / "prompt-preflight.mjs"), "--emit", "-"],
+                input=prompt_content, capture_output=True, text=True, check=False,
+            )
+        except FileNotFoundError as exc:
+            raise GeminiDriveSyncError("prompt preflight needs node") from exc
+        if preflight.returncode != 0:
+            raise GeminiDriveSyncError("prompt preflight failed: " + (preflight.stdout or preflight.stderr).strip())
         notebook_id = ensure_notebook(args.project, state, fixture)
         add_context_sources(notebook_id, context_files, fixture)
-        task_id = run_research(notebook_id, prompt_content, fixture)
+        task_id = run_research(notebook_id, preflight.stdout, fixture)
         result_number = parse_result_number(prompt["name"])
         result_name = f"R{result_number}-gemini-result.md"
         summary = query_summary(notebook_id, prompt["name"], fixture)

@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+// Heuristic for conventional Bats blocks and split test/helper functions. Their
+// closing brace is at column zero. Checks multiline assertions and commands
+// after semicolons, do/then keywords and case-arm patterns. && lists are
+// excluded: conditional predicates cannot be distinguished from assertions
+// without a shell parser. else, brace groups and negated assertions are not
+// recognized. Quoted/evaluated snippets and a bare ) before [[ can produce
+// false positives; complex heredocs and generated shell are out of scope.
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+
+// A closing token must be unquoted and separated from the expression.
+function assertionEnd(command, from) {
+  let quote = null;
+  for (let i = from; i < command.length; i++) {
+    const char = command[i];
+    if (char === "\\" && quote !== "'") { i++; continue; }
+    if (quote) {
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "'" || char === '"') { quote = char; continue; }
+    if (command.startsWith(']]', i) && /\s/.test(command[i - 1] || '') &&
+        /^(?:\s|;|&|\||$)/.test(command.slice(i + 2))) return i + 2;
+  }
+  return -1;
+}
+
+export function assertions(source) {
+  const lines = source.split('\n');
+  const findings = [];
+  let inTest = false;
+  let heredoc = null;
+  for (let i = 0; i < lines.length; i++) {
+    if (heredoc) {
+      if (lines[i].trim() === heredoc) heredoc = null;
+      continue;
+    }
+    const delimiter = lines[i].match(/(?<!<)<<(?!<)-?\s*['"]?([A-Za-z_][A-Za-z0-9_]*)['"]?/);
+    if (delimiter) { heredoc = delimiter[1]; continue; }
+    if (/^(?:@test\b.*|(?:function\s+)?[a-zA-Z_][a-zA-Z0-9_]*\s*\(\))\s*\{\s*$/.test(lines[i])) inTest = true;
+    if (/^}\s*$/.test(lines[i])) inTest = false;
+    if (!inTest) continue;
+    const start = i;
+    let command = lines[i];
+    const opener = /(?:^|;|&&|\b(?:do|then)\b|\))\s*\[\[\s/.exec(command);
+    if (!opener) continue;
+    while ((assertionEnd(command, opener.index + opener[0].length) === -1 || /(?:\\|&&)\s*$/.test(command)) &&
+        i + 1 < lines.length && !/^}\s*$/.test(lines[i + 1])) command += '\n' + lines[++i];
+    const next = lines.slice(i + 1).find(line => !/^\s*(?:#.*)?$/.test(line));
+    for (const match of command.matchAll(/(?:^|;|&&|\b(?:do|then)\b|\))\s*\[\[\s/g)) {
+      const end = assertionEnd(command, match.index + match[0].length);
+      if (end === -1) continue;
+      const suffix = command.slice(end).trim();
+      if (suffix.startsWith('||') || /^\\?\s*&&/.test(suffix)) continue;
+      const trailing = suffix.replace(/^;\s*/, '').replace(/#.*$/, '').trim();
+      if (trailing || (next && !/^}\s*$/.test(next))) findings.push(start + 1);
+    }
+  }
+  return findings;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const files = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).split('\0')
+    .filter(path => path.endsWith('.bats') || /-parts\/.*\.bash$/.test(path));
+  const findings = files.flatMap(path => assertions(readFileSync(path, 'utf8'))
+    .map(line => `${path}:${line}: non-final [[ ]] needs || false on Bash 3.2`));
+  if (findings.length) {
+    console.error(findings.join('\n'));
+    process.exitCode = 1;
+  }
+}

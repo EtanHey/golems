@@ -64,12 +64,79 @@ load 'test-stalker-durable-failures-parts/cases-02.bash'
     split_case_015
 }
 
-@test "empty scoring identity fails closed even while the recorded PID is alive" {
+@test "empty scoring identity preserves a live owner" {
     split_case_016
 }
 
 @test "live scoring identity is locale-stable, spares a match, and reconciles a mismatch" {
     split_case_017
+}
+
+@test "legacy partial garbled and unreadable live identities survive a new invocation" {
+    for token in '' 'Thu Aug 20 01:00:00 2026' 'garbled' 'v2:darwin:' 'v2:linux:a:0' 'v2:darwin:1.000000' 'v2:darwin:2.000000' 'v2:darwin:3.000000'; do
+        dir="$TMPDIR_/migration"
+        write_scoring_marker "$dir" "$$" "$token"
+        printf 'partial gems\n' > "$dir/gems.md"
+        run env PATH="$FAKE_BIN:$PATH" bash -c '
+            source "$1"
+            if [ "$3" = v2:darwin:1.000000 ]; then
+                stalker_process_start_identity() { return 2; }
+            elif [ "$3" = v2:darwin:2.000000 ]; then
+                kill() { return 1; }
+                stalker_process_start_identity() { return 2; }
+            elif [ "$3" = v2:darwin:3.000000 ]; then
+                stalker_process_start_identity() { return 0; }
+            fi
+            stalker_reconcile_interrupted_scoring_run "$2"
+        ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$dir" "$token"
+        [ "$status" -eq 0 ]
+        [ -f "$dir/gems.md" ]
+        [ ! -f "$dir/.stage-scoring.failed" ]
+    done
+}
+
+@test "scorer child enumeration errors propagate before signaling" {
+    run bash -c '
+        source "$1"
+        function /usr/bin/pgrep() { return 2; }
+        stalker_terminate_scorer_tree "$$"
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh"
+    [ "$status" -eq 2 ]
+}
+
+@test "gone scoring owners lose incomplete gems" {
+    write_dead_scoring_marker "$TMPDIR_/gone"
+    echo partial > "$TMPDIR_/gone/gems.md"
+    run stalker_reconcile_interrupted_scoring_run "$TMPDIR_/gone"
+    [ "$status" -eq 0 ]
+    [ ! -f "$TMPDIR_/gone/gems.md" ] && [ -f "$TMPDIR_/gone/.stage-scoring.failed" ]
+}
+
+@test "post-stream watchdog uses native identities for TERM and KILL without ps" {
+    python3 - "$POST_STREAM" "$TMPDIR_/watchdog-function.sh" <<'PY'
+import pathlib, re, sys
+source = pathlib.Path(sys.argv[1]).read_text()
+functions = re.findall(r"^stalker_(?:process_tree|terminate_full_process_tree)\(\) \{\n.*?^\}", source, re.M | re.S)
+assert len(functions) == 2
+pathlib.Path(sys.argv[2]).write_text("\n".join(functions) + "\n")
+PY
+    mkfifo "$TMPDIR_/ready"
+    exec 9<> "$TMPDIR_/ready"
+    python3 -u -c 'import signal; signal.signal(signal.SIGTERM, signal.SIG_IGN); print("ready", flush=True); signal.pause()' > "$TMPDIR_/ready" &
+    child_pid=$!
+    read -r -t 5 ready <&9 || ready=""
+    run env PATH="$FAKE_BIN:$PATH" bash -c '
+        source "$1"; source "$2"
+        stalker_terminate_full_process_tree "$3" 0
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/watchdog-function.sh" "$child_pid"
+    survived=0
+    kill -0 "$child_pid" 2>/dev/null && survived=1
+    kill -KILL "$child_pid" 2>/dev/null || true
+    wait "$child_pid" 2>/dev/null || true
+    exec 9>&-
+    printf 'ready=%s status=%s survived=%s output=%s\n' "$ready" "$status" "$survived" "$output"
+    [ ! -e "$PS_CALLS" ]
+    [ "$ready" = ready ] && [ "$status" -eq 0 ] && [ "$survived" -eq 0 ]
 }
 
 @test "reconcile backfills scoring done without deleting complete gems" {
@@ -188,4 +255,138 @@ SH
     ' bash "$TMPDIR_/watcher-function.sh" "$TMPDIR_"
     [ "$status" -eq 0 ]
     [[ "$output" =~ RAN\ [0-9]+ ]]
+}
+
+@test "readable scoring owner survives EPERM from kill zero" {
+    dir="$TMPDIR_/eperm"
+    write_scoring_marker "$dir" 424242 'v2:darwin:1.000000'
+    echo partial > "$dir/gems.md"
+    run bash -c '
+        source "$1"
+        kill() { echo "Operation not permitted" >&2; return 1; }
+        stalker_process_start_identity() { echo v2:darwin:1.000000; }
+        stalker_reconcile_interrupted_scoring_run "$2"
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$dir"
+    [ "$status" -eq 0 ]
+    [ -f "$dir/.stage-scoring.started" ]
+    [ "$(cat "$dir/gems.md")" = partial ]
+    [ ! -f "$dir/.stage-scoring.failed" ]
+}
+
+extract_termination_functions() {
+    python3 - "$POST_STREAM" "$TMPDIR_/termination.sh" <<'PYTHON'
+import pathlib, re, sys
+source = pathlib.Path(sys.argv[1]).read_text()
+functions = re.findall(r"^stalker_(?:process_tree|terminate_full_process_tree)\(\) \{\n.*?^\}", source, re.M | re.S)
+assert len(functions) == 2
+pathlib.Path(sys.argv[2]).write_text("\n".join(functions) + "\n")
+PYTHON
+}
+
+@test "unverifiable identity after TERM never receives KILL" {
+    extract_termination_functions
+    run bash -c '
+        source "$1"
+        stalker_process_tree() { echo 424242; }
+        # Identity reads happen in subshells, so persist the read counter.
+        stalker_process_start_identity() {
+            if [ -e "$READ_MARKER" ]; then return 2; fi
+            : > "$READ_MARKER"
+            echo v2:darwin:1.000000
+        }
+        kill() { echo "$*" >> "$SIGNALS"; }
+        sleep() { :; }
+        export READ_MARKER="$2/read" SIGNALS="$2/signals"
+        stalker_terminate_full_process_tree 424242 0
+        cat "$SIGNALS"
+    ' _ "$TMPDIR_/termination.sh" "$TMPDIR_"
+    [ "$status" -eq 0 ]
+    [ "$output" = '-TERM 424242' ]
+}
+
+@test "missing native identity helper makes watchdog failure loud" {
+    extract_termination_functions
+    run bash -c '
+        source "$1"; source "$2"
+        STREAM_HELPERS_DIR="$3/missing/lib"
+        sleep 60 &
+        live_pid=$!
+        cleanup() { builtin kill "$live_pid"; wait "$live_pid" 2>/dev/null || true; }
+        trap cleanup EXIT
+        stalker_process_tree() { echo "$live_pid"; }
+        export SIGNALS="$3/signals"
+        kill() { echo "$*" >> "$SIGNALS"; }
+        sleep() { :; }
+        log() { echo "$*"; }
+        stalker_terminate_full_process_tree "$live_pid" 0
+        builtin kill -0 "$live_pid"
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/termination.sh" "$TMPDIR_"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *WARNING*proc_identity.py* ]] || false
+    [ ! -e "$TMPDIR_/signals" ]
+}
+
+extract_timeout_functions() {
+    sed -n '/^stalker_timeout_seconds()/,/^queue_brainlayer_replay()/p' "$POST_STREAM" | sed '$d' > "$TMPDIR_/timeout.sh"
+}
+
+@test "watchdog refuses to launch without runnable identities and no external timeout" {
+    extract_timeout_functions
+    for failure in missing broken python; do
+        run /bin/bash -c '
+            source "$1"; source "$2"
+            log() { echo "$*"; }
+            stalker_resolve_command() { return 1; }
+            case "$4" in
+                missing) STREAM_HELPERS_DIR="$3/missing/lib" ;;
+                broken)
+                    mkdir -p "$3/tree/lib" "$3/tree/hooks"
+                    echo "invalid python !" > "$3/tree/hooks/proc_identity.py"
+                    STREAM_HELPERS_DIR="$3/tree/lib" ;;
+                python) python3() { return 127; } ;;
+            esac
+            run_with_stalker_timeout "" 1s touch "$3/started"
+        ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/timeout.sh" "$TMPDIR_" "$failure"
+        [ "$status" -eq 125 ]
+        [[ "$output" == *ERROR*proc_identity.py* ]] || false
+        [ ! -e "$TMPDIR_/started" ]
+    done
+}
+
+@test "missing identities use external timeout with one startup warning" {
+    extract_timeout_functions
+    run /bin/bash -c '
+        source "$1"; source "$2"
+        STREAM_HELPERS_DIR="$3/missing/lib"
+        log() { echo "$*"; }
+        stalker_resolve_command() { echo external_timeout; }
+        external_timeout() {
+            echo "external:$1:$2"
+            shift 2
+            "$@"
+        }
+        run_with_stalker_timeout "" 1s touch "$3/started"
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/timeout.sh" "$TMPDIR_"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *WARNING*proc_identity.py*external* ]] || false
+    [[ "$output" == *external:--kill-after=1s:1s* ]] || false
+    [ -e "$TMPDIR_/started" ]
+}
+
+@test "dead pid with installed identity helper receives no signal" {
+    extract_termination_functions
+    run /bin/bash -c '
+        source "$1"; source "$2"
+        sleep 0 &
+        dead_pid=$!
+        wait "$dead_pid"
+        stalker_process_tree() { echo "$dead_pid"; }
+        kill() { echo "unexpected signal"; return 1; }
+        sleep() { :; }
+        log() { echo "$*"; }
+        stalker_terminate_full_process_tree "$dead_pid" 0
+    ' _ "$SCRIPT_DIR/lib/stream-helpers.sh" "$TMPDIR_/termination.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"unexpected signal"* ]] || false
+    [[ "$output" != *proc_identity.py* ]] || false
 }

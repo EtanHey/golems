@@ -1,0 +1,37 @@
+{
+  "source": "https://github.com/EtanHey/golems/pull/1091",
+  "headRefOid": "1c9ad0eed43041bf44a0c09002954169deaff091",
+  "observedState": "MERGED",
+  "mergedAt": "2026-11-02T06:32:24Z",
+  "nodes": [
+    {
+      "name": "Loop-record",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "startedAt": "2026-11-02T04:50:03Z",
+      "completedAt": "2026-11-02T04:50:12Z",
+      "databaseId": 125100965450,
+      "checkSuite": {
+        "app": {
+          "id": "MDM6QXBwMTUzNjg=",
+          "slug": "github-actions"
+        }
+      }
+    },
+    {
+      "name": "Package test suite (bun)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "startedAt": "2026-11-02T04:50:05Z",
+      "completedAt": "2026-11-02T04:50:28Z",
+      "databaseId": 125100969980,
+      "checkSuite": {
+        "app": {
+          "id": "MDM6QXBwMTUzNjg=",
+          "slug": "github-actions"
+        }
+      }
+    }
+  ],
+  "selection": "Two recorded SUCCESS contexts form an all-green test projection, not the full rollup."
+}

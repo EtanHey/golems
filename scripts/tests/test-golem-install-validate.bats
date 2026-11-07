@@ -105,8 +105,8 @@ fake_op() {
   printf 'K=x\n' > "$FAKE_HOME/.config/golems/openai-api.env"; chmod 644 "$FAKE_HOME/.config/golems/openai-api.env"
   run bash -c "PATH='$FAKE_HOME/bin':\$PATH bash '$SCRIPT' 2>&1 | sed \$'s/\033\\[[0-9;]*m//g'"
   [ ! -e "$FAKE_HOME/op-calls" ]
-  [[ "$output" == *"[PASS] anthropic-api.env present, mode 0600"* ]]
-  [[ "$output" != *"[PASS] openai-api.env present, mode 0600"* ]]
+  [[ "$output" == *"[PASS] anthropic-api.env present, mode 0600"* ]] || false
+  [[ "$output" != *"[PASS] openai-api.env present, mode 0600"* ]] || false
   [[ "$output" != *"=== 1Password"* ]]
 }
 

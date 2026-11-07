@@ -141,6 +141,21 @@ def test_skill_owns_iterative_loop():
         assert 'ready: true' not in text and 'prepare.sh' not in text
 
 
+def test_qa_seat_fans_out_where_the_recording_lives():
+    # 2026-11-02 rule: the QA seat runs where the recording lives and fans out itself;
+    # the single qa-video-runner route is retired from the default.
+    root = SCRIPT.parents[1]
+    skill = (root/'SKILL.md').read_text()
+    for term in ('Run where the recording lives', 'Never copy the recording', 'fans out itself',
+                 'claude.judgment', 'claude.subagent.mechanical', 'never fewer than 2',
+                 'their reads count as viewed', 'Gemini never forms a verdict', 'no single runner'):
+        assert term in skill, term
+    assert 'Agent(qa-video-runner)' not in skill
+    for f in ('workflows/process.md', 'workflows/gems.md'):
+        assert 'Agent(qa-video-runner)' not in (root/f).read_text(), f
+    assert 'Not the default /qa-video route' in (root/'agents/qa-video-runner.md').read_text()
+
+
 def test_qa_pipeline_agent_contract():
     root = SCRIPT.parents[1]
     agent = (root/'agents/qa-video-runner.md').read_text()

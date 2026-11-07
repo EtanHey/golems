@@ -21,10 +21,19 @@ description: "Invoke before any git/gh/grep, even for context: make a plan, plan
 - Standing ask: "Once its PRs land, invoke the updated skills at the start of each plan, dispatch or PR action." (Etan 2026-10-18, via orc collab)
 - Why: Claude T3 leads made 0 Skill calls on Oct 16–18 while all three lead skills sat in their catalog (skill-edits audit, 2026-10-18).
 
+## Before every dispatch
+Check this at each dispatch, not only at scaffold time: a lane added later counts the same as a planned round.
+When a worker, lane or sub-agent is already running, or this turn dispatches 2+:
+1. `collab.md` exists at the plan root. If not, write it now from [workflows/collab.md](workflows/collab.md); a short plan's collab is a few lines.
+2. This brief contains `Report to <collab path>, not to the lead thread.`
+3. STATUS.md lists the new lane.
+Done = all three are true before the `delegate_task` / `t3_thread_launch` / `Agent` call. Otherwise, don't dispatch yet.
+
 ## Quick Actions
 
 | What you want to do | Workflow |
 |---------------------|----------|
+| Plan any visible front-end change | [workflows/ux-ui.md](workflows/ux-ui.md) |
 | Create a new plan from a description | [workflows/scaffold.md](workflows/scaffold.md) |
 | Execute the next phase in a plan | [workflows/execute-phase.md](workflows/execute-phase.md) |
 | Start async collab on a phase | [workflows/collab.md](workflows/collab.md) |
@@ -42,6 +51,8 @@ description: "Invoke before any git/gh/grep, even for context: make a plan, plan
 ## Core Concept
 
 ALWAYS use `/large-plan` for planning, including short work. A short plan is a few lines with the same skeleton: Goal, Time, Round, Tools (model, effort and why), Steps, Depends On, Status, and verification. Keep it inline or in one plan file; phase folders are for larger work.
+
+When planning phases for any visible front-end change, read [workflows/ux-ui.md](workflows/ux-ui.md) and name every stage in the plan, even while app details are pending.
 
 Each slice of a multi-PR plan declares its invariant test: name the behavior that must hold and the test command or case that proves it before READY. Fill this in even when using the scaffold script or workflow templates.
 
@@ -277,7 +288,7 @@ Fleet law for claim/guard/DONE/harvest-close lives in canon #7; this workflow ke
 | Skill | When | Why |
 |-------|------|-----|
 | `/pr-loop` | A bounded phase ends there | Procedural branch-to-merge checklist. |
-| Proof | All implementation | Prove it the cheapest real way: e2e on the real binary, a TLA+/TLC spec for order-of-events logic, a ratchet row for regressions. Unit tests only where they are the clearest proof. No test file is required per edit. Mock-green is not live-green. |
+| Proof | All implementation | Prove it the cheapest real way, with the proof its change kind owes: [Pick the proof](../pr-loop/SKILL.md#pick-the-proof) (prompt or skill text → eval table, regression → a real-CLI ratchet row in repos with a ratchet table, otherwise a fail-first test on real code, race → fail-first race test or TLA+/TLC, daemon or protocol → real-client session on the real binary). The proof must be able to fail on the old behaviour. No test file is required per edit. Mock-green is not live-green. |
 | `/never-fabricate` | Before claiming "done" or reporting results | Evidence before assertions: Read() files before summarizing them, verify before claiming. Enforced by the false-green-gate hook. |
 | `/plan-council` | Review one authored plan/spec | Declared cross-family judges, live validation, measured bias, and lift round. |
 

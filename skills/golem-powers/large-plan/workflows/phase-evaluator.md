@@ -8,11 +8,11 @@ After the last code/config-producing phase of a /large-plan, BEFORE the producin
 
 ## Hard rules
 
-1. **Different agent invocation.** The evaluator MUST be a fresh `Agent(...)` dispatch — not the producing agent reflecting on its own output. Use `subagent_type=evaluator` (or a fresh `skillCreatorClaude` / `claude-code-guide` / `coderabbit` agent if no evaluator exists).
+1. **Different agent invocation.** The evaluator MUST be a fresh evaluator: a `delegate_task` child with `role: "review"` in T3; `Agent(...)` on a Claude terminal seat; a fresh CLI pane otherwise — not the producing agent reflecting on its own output. For `Agent(...)`, use `subagent_type=evaluator` (or a fresh `skillCreatorClaude` / `claude-code-guide` / `coderabbit` agent if no evaluator exists).
 2. **Verbatim pass criteria.** Copy every "Pass criterion" string from the /goal hook into the evaluator prompt. No paraphrasing.
 3. **Live citations.** The evaluator MUST `Read()` each file:line the producing agent cited and confirm the cited content exists. Per /never-fabricate.
 4. **Score gate.** Evaluator MUST emit a numeric score (0–10) and a verdict in `{SHIP, ITERATE, BLOCK, REJECT}`. SHIP requires ≥8/10.
-5. **No self-grading.** If the producing agent's transcript contains "evaluator replay PASS" or similar without a sub-Agent call, the /goal hook FAILS.
+5. **No self-grading.** If the producing agent's transcript contains "evaluator replay PASS" or similar without a fresh evaluator dispatch, the /goal hook FAILS.
 
 ## Dispatch template
 
@@ -82,4 +82,4 @@ See `skills/golem-powers/skill-creator/references/scoring-rubric.md` (4 weighted
 
 ## Universal fallback (no Agent tool)
 
-On Codex/Cursor or any non-Claude-Code platform without `Agent(...)`, spawn a fresh CLI agent in an adjacent pane (cmux split, `codex --full-auto`, etc.) with the same prompt template. The hard rule is "different process, fresh context". A different terminal pane in the same shell session counts; the same conversation continuing does not.
+On Codex/Cursor or any non-Claude-Code platform without `Agent(...)`, spawn a fresh evaluator with the same prompt template. In a T3 thread (default) that is a new `delegate_task` child (`role: "review"`); on a terminal seat, a fresh CLI agent in an adjacent pane (cmux split, `codex --full-auto`, etc.). The hard rule is "different process, fresh context". A different terminal pane in the same shell session counts; the same conversation continuing does not.

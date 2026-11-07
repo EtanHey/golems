@@ -129,7 +129,7 @@ PYTHON
       _golem_launch_gemini a "$2/a" --worker -p "ok"
     ' _ "$BATS_TEST_DIRNAME/../repogolem/golem-dispatch.zsh" "$ROOT"
     [ "$status" -ne 0 ]
-    [[ "$output" != *AGY_MUST_NOT_RUN* ]]
+    [[ "$output" != *AGY_MUST_NOT_RUN* ]] || false
     [ "$(cat "$HOME/.gemini/config/mcp_config.json")" = 'not JSON' ]
 }
 

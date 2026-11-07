@@ -118,7 +118,32 @@ terminal `<suite_id>.cleanup.json` receipts retain identities seen, signals,
 survivors and incomplete evidence, without command/environment contents. The
 active record is removed only after verified cleanup. Unreadable processes
 outside the observed tree do not become members or signal targets. Known members
-with unavailable identity or changed UIDs prevent successful cleanup. A detached
+with unavailable identity prevent successful cleanup, even after disappearing:
+they could have spawned an unobserved detached child. On Darwin, permission-denied
+full BSD reads fall back to short BSD metadata bracketed by matching
+`KERN_PROC_PID` birth timestamps. This covers transient setuid children such as
+`/bin/ps` without an executable allowlist. Verified foreign-UID members prevent
+successful cleanup while alive and remain excluded from individual signals;
+their verified lifetimes still supply lineage for discovering descendants. A detached
 branch escaping its original group before any lineage observation cannot be
 signalled safely, even if it retains the marker. Wrapper SIGKILL, owner-exit supervision and inherited
 root deadlines need A2; this change does not install a guardian or update hooks-live.
+
+Nested cleanup failures additionally write private
+`<suite_id>.inner-<wrapper_pid>-<birth_hash>.json` records in the same directory;
+successful nested cleanup writes no record. The outer `SUITE DONE` notice adds
+`inner_failures=<count> (see <directory>/<suite_id>.inner-*.json)` when present,
+even if outer cleanup succeeds. All outer record operations (directory creation, START and terminal writes, and
+successful-cleanup unlink), inner diagnostics writes and pointer discovery are
+best-effort: exceptions preserve the command result. Outer record failures emit
+at most one warning per wrapper run. Since #1118, a failed START write lets the
+suite run instead of refusing with exit 70: nothing reads these records, and
+cleanup decides from live process state. If a future guardian reads the active
+record to find orphans, the START write must become fail-closed again.
+Both outer records (including `.cleanup.json`) and inner records cap diagnostic
+lists and dictionaries at 200 entries, with `<field>_total` retaining the original
+size. Collections longer than 200 keep the first 100 and last 100 entries
+(in insertion order for dictionaries); shorter collections remain intact.
+Identity-reason lists per retained PID are also capped at 200, with counts
+in `identity_unavailable_reasons_totals`. Caps affect stored diagnostics only,
+never cleanup decisions. The existing inner `members_seen_count` remains available.

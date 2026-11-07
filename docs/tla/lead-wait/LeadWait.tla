@@ -4,7 +4,7 @@
    The three flags switch the 2026-11-01 fixes on and off:
      EndTurnCheck - the lead reads its open PRs before every turn ends (rule)
      Handoff      - a settle hands the PR's watch to a live lead (rule)
-     Sentinel     - pr-sentinel nudges the owner, then moves the PR to orc (tool)
+     Sentinel     - one live-owner nudge, then orc after 2 h; orphans go directly to orc
    A rule is only as good as compliance, so lead actions that skip a rule stay
    possible (and unfair) whenever the rule is off. *)
 EXTENDS Naturals

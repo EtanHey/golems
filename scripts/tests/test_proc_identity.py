@@ -188,12 +188,18 @@ def test_snapshot_distinguishes_gone_permission_and_other_with_uid(spawn, monkey
     assert snapshot.unavailable[pids[1]].uid == os.geteuid()
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="Darwin denies system PID metadata")
-def test_snapshot_retains_real_system_pid_denial():
+@pytest.mark.skipif(sys.platform != "darwin", reason="Darwin kernel metadata")
+def test_snapshot_can_identify_system_pid_without_treating_it_as_ours():
     snapshot = proc.children_snapshot()
-    assert 1 not in snapshot
-    assert snapshot.unavailable[1].reason == "permission"
-    assert snapshot.unavailable[1].uid == 0
+    assert snapshot[1][3:] == (0, 0)
+    assert proc.identity(1).start == proc._darwin_birth(1)
+    with pytest.raises(proc.ProcIdentityUnavailable):
+        proc.environ(1)
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Darwin independent birth-key observations")
+def test_kernel_fallback_matches_full_native_identity():
+    assert proc._darwin_unprivileged_identity(os.getpid()).key == proc.identity(os.getpid()).key
 
 
 def test_entry_read_rejects_pid_reuse_and_uid_changes(spawn, monkeypatch):
@@ -219,6 +225,10 @@ def test_native_permission_and_short_reads_are_not_absence(spawn, monkeypatch):
         proc.ctypes.set_errno(1)
         return 0
     monkeypatch.setattr(proc._libproc, "proc_pidinfo", denied)
+    def denied_sysctl(*_):
+        proc.ctypes.set_errno(1)
+        return -1
+    monkeypatch.setattr(proc._libc, "sysctl", denied_sysctl)
     with pytest.raises(proc.ProcIdentityUnavailable) as caught:
         proc.identity(child.pid)
     assert caught.value.reason == "permission" and caught.value.uid == os.geteuid()
@@ -227,6 +237,34 @@ def test_native_permission_and_short_reads_are_not_absence(spawn, monkeypatch):
     monkeypatch.setattr(proc._libproc, "proc_pidinfo", lambda *_: 12)
     with pytest.raises(proc.ProcIdentityUnavailable):
         proc.identity(child.pid)
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Darwin kernel identity fallback")
+@pytest.mark.parametrize('case', ['changed', 'denied', 'short', 'wrong-pid', 'invalid-time'])
+def test_kernel_identity_fallback_rejects_unverified_reads(monkeypatch, case):
+    if case == 'changed':
+        births = iter([(100, 1), (100, 2)])
+        monkeypatch.setattr(proc, '_darwin_birth', lambda _: next(births))
+        with pytest.raises(proc.ProcIdentityUnavailable, match='changed'):
+            proc._darwin_unprivileged_identity(os.getpid())
+        return
+
+    def sysctl(_, __, buffer, size, *rest):
+        if case == 'denied':
+            proc.ctypes.set_errno(1)
+            return -1
+        info = proc._KinfoProcPrefix()
+        info.pid, info.seconds, info.microseconds = os.getpid(), 100, 1
+        if case == 'wrong-pid': info.pid += 1
+        if case == 'invalid-time': info.microseconds = 1000000
+        proc.ctypes.memmove(buffer, proc.ctypes.byref(info), proc.ctypes.sizeof(info))
+        proc.ctypes.cast(size, proc.ctypes.POINTER(proc.ctypes.c_size_t))[0] = (
+            12 if case == 'short' else proc.ctypes.sizeof(info))
+        return 0
+
+    monkeypatch.setattr(proc._libc, 'sysctl', sysctl)
+    with pytest.raises((OSError, ValueError)):
+        proc._darwin_birth(os.getpid())
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="Darwin list buffer growth")
@@ -778,3 +816,35 @@ def test_pinned_process_closes_on_changed_identity(spawn, monkeypatch):
         with proc.pinned_process(original):
             pytest.fail('changed incarnation must never yield a handle')
     assert closed == [12345]
+
+
+def test_start_cli_matches_gate_without_ps(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location(
+        'start_gate', Path(__file__).resolve().parents[1] / 'hooks/private-regression-gate.py')
+    gate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gate)
+    called = tmp_path / 'ps-called'
+    poison = tmp_path / 'ps'
+    poison.write_text(f'#!/bin/sh\necho called >> "{called}"\nexit 99\n')
+    poison.chmod(0o755)
+    monkeypatch.setenv('PATH', f"{tmp_path}:{os.environ['PATH']}")
+    result = subprocess.run([sys.executable, SPEC.origin, 'start', str(os.getpid())],
+                            capture_output=True, text=True, cwd=tmp_path)
+    assert result.returncode == 0 and result.stdout == gate.start_token(os.getpid()) + '\n'
+    assert not called.exists()
+
+
+@pytest.mark.parametrize('args,code', [(['start', '99999999'], 1), ([], 64),
+    (['start', '0'], 64), (['start', '-1'], 64), (['start', 'x'], 64),
+    (['start', '2147483648'], 64), (['other', '1'], 64), (['start', '1', '2'], 64)])
+def test_start_cli_exit_contract(args, code):
+    result = subprocess.run([sys.executable, SPEC.origin, *args], capture_output=True)
+    assert result.returncode == code and result.stdout == b''
+
+
+def test_start_cli_unreadable_identity(monkeypatch, capsys):
+    def unreadable(pid):
+        raise proc.ProcIdentityUnavailable('injected permission failure', reason='permission')
+    monkeypatch.setattr(proc, 'identity', unreadable)
+    assert proc.main(['start', str(os.getpid())]) == 2
+    assert capsys.readouterr().out == ''

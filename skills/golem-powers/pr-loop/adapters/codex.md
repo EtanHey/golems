@@ -13,9 +13,9 @@
 | Push | `git push -u origin feat/name` | |
 | PR | `gh pr create ...` | If `gh` is installed + authenticated |
 | Trigger review bots | `gh pr comment <N> --body "@codex review"` | Shell path, not a native reviewer tool |
-| Trigger Bugbot | `gh pr comment <N> --body "@cursor @bugbot review"` | **Opt-in, core paths only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and never where the repo's `AGENTS.md` bans it (§ 8a.0). Not part of the default panel. Re-review with `@cursor @bugbot re-review` |
+| Trigger Bugbot | `gh pr comment <N> --body "@cursor @bugbot review"` | **Opt-in, L or very important/core-risk PRs only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and never where the repo's `AGENTS.md` bans it (§ 8a.0). Not part of the default panel. Never wait or block; record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage notice; routine/no activity → no entry |
 | Read comments | `gh api --paginate repos/{owner}/{repo}/issues/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments`; `gh api --paginate repos/{owner}/{repo}/pulls/{N}/reviews` | Fetch once on a wake that shows a change — never in a poll loop |
-| Merge | `gh pr merge <N> --merge --delete-branch` | See worktree note below |
+| Merge | `gh pr merge <N> --merge --match-head-commit <green head> --delete-branch` | See worktree note below |
 
 ## Critical Gaps
 
@@ -56,13 +56,16 @@ gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@codex review"
 ```
 
-**Bugbot is not on this list.** It is opt-in on core paths only — a daemon, engine, or transport diff
-— and stays off entirely on docs/skills/tests/config diffs and in any repo whose `AGENTS.md` bans it
-(e.g. brainlayer: *"do not route mandatory reviews to Bugbot or Greptile"*). Where it does apply:
+**Bugbot is not on this list.** Request it only for an L PR or a very important/core-risk PR
+(daemon/engine/transport, security, release), never for routine XS/S/M PRs or where repo policy
+bans it. Record `Bugbot: unavailable (usage)` in the PR body only for an actual request
+that is unavailable or a real usage/rate/spend-limit notice on this PR. Routine PR
+with no Bugbot activity: no request, wait, body entry or extra step. Never wait, retry or block merge.
+If eligible and available, with no current-head coverage:
 
 ```bash
-gh pr comment <N> --body "@cursor @bugbot review"      # core paths ONLY — opt-in
-gh pr comment <N> --body "@cursor @bugbot re-review"   # only if Bugbot reviewed round 1
+gh pr comment <N> --body "@cursor @bugbot review"      # eligible L/core-risk PR only — once
+gh pr comment <N> --body "@cursor @bugbot re-review"   # only if eligible, available and round-1 coverage is stale
 ```
 
 Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).

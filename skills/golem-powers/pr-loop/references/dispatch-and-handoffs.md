@@ -2,12 +2,14 @@
 
 Read this when a PR loop starts, stops early, runs autonomously, or has separate worker and lead ownership.
 
+[Full stop](full-stop.md) constrains every role: carry the endpoint and PR URL to the lead/successor; neither handoff nor “merge only on instruction” restores merge authority. Its verified terminal handoff is an end state, not the early stop described below.
+
 ## Stop-State and End-State
 
 **End state, precisely:** done = required checks GREEN and the routed review clean on the **LATEST**
 commit. Not "a green run exists" — green on the commit that is actually at the head of the PR. Review
 bots are advisory: answer a bot that flags something important, but a silent or rate-limited bot is
-recorded as unavailable in the PR body, never awaited ([Merge Cadence](../SKILL.md#merge-cadence-risk-sized)).
+recorded as unavailable in the PR body only if actually requested or a real usage notice was posted; normal Bugbot silence on a routine PR needs no entry. Bots are never awaited ([Merge Cadence](../SKILL.md#merge-cadence-risk-sized)).
 
 **The four explicit turns**, in order, none skipped and none merged into a neighbour:
 1. fix

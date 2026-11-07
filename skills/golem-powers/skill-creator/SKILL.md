@@ -36,6 +36,9 @@ Every skill change goes through this pipeline. No exceptions.
 - Identify: what does this skill claim to do? What's the baseline without it?
 - Document intent, inputs, outputs, edge cases
 - Classify: **capability uplift** (may become obsolete) vs **encoded preference** (durable)
+- **Load first, then follow** ([references/placement-vs-wording.md](references/placement-vs-wording.md)):
+  - If the user never says the trigger words, the skill needs placement to load: a ROUTE row, or a hook for a deterministic input shape (a link, a file type). Description wording alone barely moved it in E2/E3 (cheaper-tier 0/30); results are model-specific (skill study 2026-11-02: on the Claude lead tier, /large-plan loaded 10/30 with the old ROUTE row and 30/30 with R3's precisely rewritten row).
+  - Once the text is loaded, precise, case-specific wording is the lever. Measure it per case.
 
 ### 2. EVAL DESIGN — Create Structured Test Cases
 
@@ -225,6 +228,7 @@ with a why and pass explicitly at dispatch. Never use the mechanical candidate b
 | Reference | Content |
 |-----------|---------|
 | [scoring-rubric.md](references/scoring-rubric.md) | Full scoring methodology and rubric |
+| [placement-vs-wording.md](references/placement-vs-wording.md) | Which lever moves a skill: placement (ROUTE row, hook) to get it LOADED; precise wording once loaded. E2/E3 numbers and T3 Code PR #27368 (closed; eval table in its body). **READ BEFORE** any trigger or description change. |
 | [subagent-vs-skill.md](references/subagent-vs-skill.md) | Classification reference — **READ BEFORE SCAFFOLDING** any new capability. Distinguishes skill (slash-triggered, parent-context) from sub-agent (name-spawned, isolated-context). Documents the misroute pattern (GitHub openai/codex#18823) that even Codex itself routinely makes. |
 
 ## Integration with Other Skills

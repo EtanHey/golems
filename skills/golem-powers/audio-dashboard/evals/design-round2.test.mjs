@@ -77,3 +77,13 @@ test('real-markup reduction rejects a lost transport and transcript', async () =
   expect(result.violations.map(v => v.code)).toContain('STICKY_PLAYER');
   expect(result.violations.map(v => v.code)).toContain('READ_ALONG');
 });
+
+for (const cssPath of ['templates/decision-flow/decision-flow.css', 'vendor/agent-html/templates/v4-story-mode/cinema.css']) test(`badge AA contrast: ${cssPath}`, async () => {
+  const page = await browser.newPage();
+  try { await page.setContent(`<style>${readFileSync(new URL('../' + cssPath, import.meta.url), 'utf8')}</style><div style="color:#eee;background:#79cfc2"><span class="ad-badge">recommended</span><span class="ad-badge">REBOOT</span></div>`);
+    const luminance = rgb => rgb.slice(0, 3).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0);
+    const contrast = (a, b) => (Math.max(luminance(a), luminance(b)) + .05) / (Math.min(luminance(a), luminance(b)) + .05);
+    for (const width of [390, 1280]) { await page.setViewportSize({ width, height: 800 }); for (const badge of await page.locator('.ad-badge').all()) { const colors = await badge.evaluate(el => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor].map(c => c.match(/[\d.]+/g).map(Number))); expect(colors[1][3] ?? 1).toBe(1); expect(contrast(...colors)).toBeGreaterThanOrEqual(4.5); } }
+    expect(contrast([119, 119, 119], [255, 255, 255])).toBeLessThan(4.5); expect(contrast([238, 238, 238], [121, 207, 194])).toBeLessThan(4.5); expect(contrast([255, 255, 255], [16, 26, 44])).toBeGreaterThanOrEqual(4.5);
+  } finally { await page.close(); }
+});

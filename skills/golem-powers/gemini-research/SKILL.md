@@ -11,15 +11,28 @@ Triggers on: gemini research, Gemini Deep Research, NotebookLM, notebook researc
 
 > **🔑 DRIVE-WORKSPACE RULE (Etan, standing — never violate):** Etan's Gemini has his Google Drive workspace CONNECTED. Every deep-research prompt must REFERENCE the relevant Google Doc(s) by NAME (e.g. *"ground this in my 'Context Strategy' doc in my Drive"*) so Gemini pulls them itself via the Drive connector. **NEVER instruct Etan to attach/upload files** — he should never have to attach anything. Reference doc names, not attachments.
 
-## Grounding prep
+## Grounding prep — your FIRST action, before any search or draft
 
-When asked to research this, find out what's current, or compare options, check
-whether the question needs current project state. If it does, the lead dispatches
-a sub-agent to run `/research-lifecycle` preparation first: verify local context,
-refresh the Drive grounding corpus, and return exact grounding doc names and the
-lifecycle receipt. Pick its execution profile per `/agent-routing` § Execution
-capability (Drive write + shell); a read-only gatherer may only report staleness.
-Do not emit the prompt while preparation is blocked.
+Done condition: no research prompt leaves this skill until ONE of these is true:
+- **Project-grounded** (the default): a `/research-lifecycle` preparation receipt is
+  back, naming the grounding docs.
+- **Web-only** (only when the user says the question needs no project state): the
+  prompt's `# Grounding` block has the exact line `None — web-only research`
+  and a separate `Reason: <the user's reason>` line. These replace the receipt.
+
+1. Right after loading this skill, dispatch ONE sub-agent. Do not search Drive, grep
+   or draft the prompt yourself first. Its brief says: "Run `/research-lifecycle`
+   preparation for <project>: verify local context, refresh the Drive grounding
+   corpus, and return the exact grounding doc names and the lifecycle receipt."
+   Pick its execution profile per `/agent-routing` § Execution capability (Drive
+   write + shell); a read-only gatherer may only report staleness.
+2. Web-only branch: when the user says the question needs no project state, skip
+   step 1, write the exact web-only line and separate reason,
+   and go straight to the emit gate below. The Drive-grounding and START/EDIT gates
+   still apply.
+3. Project-grounded: draft the prompt from the receipt's doc names. While
+   preparation runs or is blocked, tell Etan the prompt follows the receipt; never
+   emit it before.
 
 Include one line in the hand-off to Etan: "Before Start Research, check that Drive
 is on as a Deep Research source so it reads the named grounding docs."
@@ -59,34 +72,18 @@ Keep the existing grounding and prompt-author START/EDIT gates below.
 - **gemini.google.com** → one-shot broad web research, won't revisit, want the plan-review step, want to edit the research plan before it runs
 - **NotebookLM** → persistent notebook, curated sources, repeat queries, generate artifacts (audio overview, slides, quizzes, etc.)
 
-**Prompt template for gemini.google.com Deep Research:**
+**Prompt template (Gemini and NotebookLM):** Fill [references/prompt-template.md](references/prompt-template.md): named verified-findings + struck-claims grounding, owner asks verbatim, evidence against, DOCUMENTED / OBSERVED / CLAIMED / PROPOSED / TARGET labels, sourced measurements and two independent bias checks. Web-only research uses the template's explicit N/A branch. Do not emit an unfilled template.
+
+Before emitting or firing, validate the author record and produce the researcher text (also enforced by `drive-sync.sh` before notebook creation). Exit nonzero means rewrite and rerun; a pass proves sections contain the required instruction terms and review records, not that their claims are true. Free-text sections need a phrase, not a single token:
+
+```bash
+node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --emit /path/to/R{NN}-prompt.md > /path/to/R{NN}-research.md
 ```
-# Research goal
-<one-sentence what you need to learn>
 
-# Grounding (Drive workspace — CONNECTED; REQUIRED block)
-Ground this research in the following docs from my Google Drive — pull them
-yourself via the connected Drive workspace; do NOT ask me to attach anything:
-- "<Exact Google Doc name 1>"
-- "<Exact Google Doc name 2>"
-<If no Drive doc applies, write "None — web-only research" so the omission is
-deliberate, not an oversight. Never replace this block with an attach/upload ask.>
-
-# Scope
-<what TO include — specific domains, timeframes, primary vs secondary sources>
-
-# Anti-scope
-<what NOT to include — common tangents, outdated info, marketing content>
-
-# Evaluation criteria
-<how I'll judge the findings — what makes a good source, what's disqualifying>
-
-# Prior art I already have
-<optional: what BrainLayer / local context already says so the research doesn't re-cover it>
-
-# Desired output
-<structure: executive summary, N findings, confidence level, sources, etc.>
-```
+Keep the author record locally. Paste/send only the emitted `-research.md` text
+to Gemini/NotebookLM, including `research_start` queries; it excludes the entire
+author-only `# Pre-fire checks` section. Do not send reviewer identities or prep
+instructions. The wrapper accepts the author record and strips prep itself.
 
 ### 🔒 EMIT-GATE — Drive-Workspace compliance (BLOCKING — run before emitting ANY prompt)
 
@@ -174,8 +171,8 @@ If you get authentication errors, run `nlm login` via Bash first — this is the
 Drive is the source of truth. NotebookLM consumes the same Drive project that `/claude-desktop-research` uses.
 
 ```
-1. Verify account first:
-   bash skills/golem-powers/_shared/research/verify-account.sh --expect research-account@example.com
+1. Verify account first (expects RESEARCH_ACCOUNT, else the one in ~/.config/research-lifecycle/research.env):
+   bash skills/golem-powers/_shared/research/verify-account.sh
 
 2. Ensure Drive folders exist:
    python3 skills/golem-powers/_shared/research/drive-paths.py ensure-project-folders <project>
@@ -190,8 +187,8 @@ Drive is the source of truth. NotebookLM consumes the same Drive project that `/
    - add each file into the notebook
    - for raw markdown/text files, download from Drive then upload as file sources
 
-5. Run Drive-backed research:
-   research_start(query=<prompt from Drive/prompts/>, source="drive", notebook_id=<id>)
+5. Run the prompt-preflight.mjs gate above, then Drive-backed research:
+   research_start(query=<emitted researcher text, without pre-fire checks>, source="drive", notebook_id=<id>)
    - if the tool/UI returns a research PLAN before execution, return that PLAN
      to the prompt author and wait for `START` / `EDIT` before firing
    research_status(notebook_id, task_id=<task>, max_wait=60)
@@ -201,13 +198,14 @@ Drive is the source of truth. NotebookLM consumes the same Drive project that `/
 
 7. Write the result to:
    Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-gemini-result.md
+   (uploadFile with mimeType="text/markdown"; never content-sniffed)
 ```
 
-Wrapper (live mode needs both variables, and stops with an error if either is unset):
+Wrapper (live mode needs both values, and stops with an error if either is unset):
 
 ```bash
 export GEMINI_RESEARCH_PROFILE=<nlm profile>   # the name you gave `nlm login --profile`
-export RESEARCH_ACCOUNT=<google account>       # Drive/NotebookLM must be signed in as this
+export RESEARCH_ACCOUNT=<google account>       # optional when ~/.config/research-lifecycle/research.env has RESEARCH_ACCOUNT=<address>
 bash skills/golem-powers/gemini-research/scripts/drive-sync.sh --project cmux --prompt R36-R38-cmux-mobile-prompts.md
 ```
 
