@@ -10,7 +10,9 @@ import { designTestCell } from './design-test-cell.mjs';
 import { sha256, handoffPath } from '../src/hosted-delivery.mjs';
 import { writePublishHandoff, prepareHostedInput } from '../src/prepare-hosted.mjs';
 const cell = designTestCell();
-test('real BUILD and QA produce a handoff; only delivery receipt earns PASS', () => {
+// The real BUILD needs ffmpeg/ffprobe; skip (like the browser suites without Chromium) where they are absent.
+const mediaTools = ['ffmpeg', 'ffprobe'].every(bin => spawnSync(bin, ['-version']).status === 0);
+(mediaTools ? test : test.skip)('real BUILD and QA produce a handoff; only delivery receipt earns PASS', () => {
   const jobDir = mkdtempSync(path.join(tmpdir(), 'handoff-job-'));
   const seg = path.join(jobDir, 'segments/one'); mkdirSync(seg, { recursive: true });
   const wav = path.join(seg, 'one.wav'), mp3 = path.join(seg, 'one.mp3');
