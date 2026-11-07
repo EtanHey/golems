@@ -8,6 +8,18 @@ export function dashboardId(value, storageKey = 'dbx:audio-dashboard') {
 export const ANSWER_RUNTIME = readFileSync(new URL('../templates/answer-persistence.js', import.meta.url), 'utf8');
 export const ANSWER_ASSETS = `<script data-answer-persistence>${ANSWER_RUNTIME}</script>`;
 
+
+function runtimeBlock(sources) {
+  const blocks = sources.flatMap(source => [...source.matchAll(/\(function installAnswerPersistence\(\) \{[\s\S]*?\n\}\)\(\);/g)].map(match => match[0].trim()));
+  if (blocks.length !== 1) throw Error('ANSWER_RUNTIME_BLOCK_COUNT');
+  return blocks[0];
+}
+export function extractAnswerRuntime(html) {
+  const scripts = [];
+  const walk = node => { if (node.tagName === 'script') scripts.push((node.childNodes || []).map(n => n.value || '').join('')); for (const child of node.childNodes || []) walk(child); };
+  walk(parse(html)); return runtimeBlock(scripts);
+}
+
 export function analyzeAnswerPersistence(html, specId) {
   const nodes = [];
   function walk(node) { nodes.push(node); for (const child of node.childNodes || []) walk(child); }
@@ -18,6 +30,7 @@ export function analyzeAnswerPersistence(html, specId) {
   const source = node => (node.childNodes || []).map(n => n.value || '').join('');
   const violations = [];
   if (inputs.length) {
+    try { runtimeBlock(scripts.map(source)); } catch { violations.push({ metric: 'ANSWER_RUNTIME_BLOCK_COUNT', evidence: 'Require exactly one embedded answer runtime block.' }); }
     if (typeof specId !== 'string' || !specId.trim()) violations.push({ metric: 'SPEC_ID_REQUIRED', evidence: 'Set spec.id to a stable dashboard id before building answer inputs.' });
     const metas = nodes.filter(n => n.tagName === 'meta' && attr(n, 'name') === 'dashboard-id');
     if (metas.length !== 1 || metas[0].parentNode?.tagName !== 'head' || !attr(metas[0], 'content')?.trim()) violations.push({ metric: 'DASHBOARD_ID_REQUIRED', evidence: 'Declare one stable dashboard-id meta.' });

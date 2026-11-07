@@ -1,9 +1,18 @@
 ---
 name: audio-dashboard
-description: "Build audio narration dashboards. Triggers: STT-after-TTS exact word-timing, real word-click-seek read-along dashboard, AfterCode workflow, publish-to-tailnet delivery."
+description: "Build audio narration dashboards. Triggers: STT-after-TTS exact word-timing, real word-click-seek read-along dashboard, AfterCode workflow, Lakebed delivery."
 ---
 
 # Audio Dashboard
+
+## Ownership and delivery
+
+skill-creator owns this skill, templates and BUILD gates. NarrationLayer owns the
+Lakebed app, relay/media server, account answer sync and UploadThing, and is the
+ONLY publisher. Builders never deploy a dashboard shell themselves. Audio may use
+CDN/relay or tailnet media fallback (8447); tailnet may host redirects, not the shell.
+Audio delivery follows the html-dashboard Lakebed/allowedEmails standard through
+NarrationLayer; see [publish contract v2](references/publish-contract-v2.md).
 
 ## Purpose
 
@@ -14,7 +23,7 @@ do NOT clone or reach into `$NARRATIONLAYER_ROOT`, `$AGENT_HTML_ROOT`, or
 `$SKILL_CREATOR_ROOT`; the opt-in maintenance lint reads only the checkout named
 explicitly by `NARRATIONLAYER_UPSTREAM`.
 The only external requirements are machine-local binaries/daemon (verified by
-`scripts/bootstrap.mjs`) and the environment-specific tailnet publish/probe step.
+`scripts/bootstrap.mjs`) and the NarrationLayer Lakebed publish handoff.
 
 The invariant: never ship read-along timing from WPM math, line duration, fake
 words, placeholder recap text, or old GolemPlaylist generators. A correct
@@ -29,25 +38,27 @@ Use this for:
 - Narration dashboards that need exact word highlights or word-click seeking.
 - Regenerating a broken audio dashboard that drifted, restarted, or showed
   placeholder/meta transcript text.
-- Publishing an audio dashboard to the tailnet hub.
+- Delivering an audio dashboard on Lakebed through NarrationLayer.
 
 Do not use this for listen-only podcasts with no teleprompter requirement.
 
 ## Dashboard Types
 
 The skill exposes two separate types through the same timing, evidence, and
-tailnet pipeline. They share audio primitives, not presentation templates.
+Lakebed delivery pipeline. They share audio primitives, not presentation templates.
 
 ### Type: `cinema`
 
-Use the default cinema type for narrated digests and story-mode briefings. Omit
-`spec.type` or set `"type": "cinema"`. It stays on the vendored V4 renderer at
+Use cinema only when the request explicitly asks for it. Set `"type": "cinema"`.
+It stays on the vendored V4 renderer at
 `vendor/agent-html/templates/v4-story-mode/`: a global Play-All story surface,
 Q/A scenes, read-along teleprompter, and optional decision boxes appended below.
 
 ### Type: `decision-flow` — audio decision dashboard
 
-Use decision-flow for questionnaires and batches of decisions. Its user-facing
+Decision-flow is the default for decision batches and briefings carrying decisions
+or answers, including eod, huddle and commute. Explicitly set spec.type; never let
+an omitted type select the legacy renderer default. Its user-facing
 name is **audio decision dashboard**. Set
 `"type": "decision-flow"`. Its standalone template lives in
 `templates/decision-flow/` and does not render or overwrite cinema. Each
@@ -92,7 +103,8 @@ Answers save to the account through `window.__answerStore` (or the parent bridge
 using a stable `dashboard-id` meta. localStorage is only a visible **device-only**
 fallback (the local keys described in this file are fallback keys); never ship
 device-only. Answer inputs require an explicit, stable `spec.id`.
-BUILD rejects missing identity or answer-store wiring.
+BUILD rejects missing identity or answer-store wiring. Embedded consumer code is
+NOT an account provider: BUILD PASS proves static wiring, not authenticated sync.
 
 ## Badge contrast
 Every badge/pill label (including recommended and REBOOT) must have WCAG AA text contrast of at least **4.5:1** against its effective fill, at every size and supported state/theme. Use `.ad-badge` in either template for dark text on a light fill; white text requires a sufficiently deep fill. Never use pale text on pale green or a 3:1 large-text exception for badges.
@@ -196,7 +208,7 @@ this skill dir):
    atomically only after the selected take validates, so a failed reroll cannot
    rebind stale audio to a new cache key.
 3. **Render** — `bun scripts/build-dashboard.mjs --spec <job.json>` routes by
-   `spec.type`. The default `cinema` path renders the vendored `render-v4.mjs`
+   `spec.type`. The explicitly requested `cinema` path renders the vendored `render-v4.mjs`
    cinema-with-answers; `decision-flow` renders the separate skill-local ledger
    template. Both use real
    per-word timing (`realWordTiming: true`), embedding each mp3 as a data URI,
@@ -227,25 +239,29 @@ this skill dir):
    coverage and monotonicity; decision-flow additionally verifies exact scene
    ownership, card-local controls, answer persistence, and the absence of a
    cinema/global Play-All surface.
-5. **Evidence gate** — `bun scripts/validate-evidence.mjs --spec <job.json>
-   [--published "<sync cmd>"]` runs `src/audio-dashboard-evidence.mjs` against the
-   real rendered dashboard + job dir. `validate-evidence` also enforces the
-   text-only card rule in [card-format.md](references/card-format.md). Note: the gate only returns **PASS** once
-   publish evidence is supplied via `--published` (the tailnet-sync invariant);
-   without it the gate correctly reports `REJECTED: MISSING_TAILNET_SYNC` with
-   every other invariant passing. Run it after step 6, or pass `--published`
-   with the sync command you will run / did run.
-6. **Publish + probe (env-specific)** — write stays in the repo
-   `docs.local/dashboards/`, then run the tailnet sync
-   (`$ORCHESTRATOR_ROOT/scripts/sync-tailnet-dashboards.mjs`) and immediately
-   verify the served artifact with `scripts/verify-tailnet-publish.mjs --spec
-   <job.json> --base-url <tailnet dashboards URL>`. The probe requires HTTP 200
-   and matching served HTML bytes. Never copy into `dashboards-serve` directly.
+5. **Prepare handoff** — `bun scripts/validate-evidence.mjs --spec <job.json>
+   --prepare-publish` runs pre-publish evidence plus QA and writes
+   `<output-basename>.publish-handoff.json` and its media manifest. The outcome is
+   **READY_FOR_HOSTED_PUBLISH**, never delivery PASS. The handoff carries the
+   source directory, persisted answerKeys and inline mediaManifest; see the contract.
+6. **Hosted delivery (NarrationLayer only)** — hand off those files, the built
+   HTML, BUILD receipts, job and media. NarrationLayer stages the real account
+   provider, proves a disposable note round trip, promotes that same candidate,
+   and returns `<output-basename>.delivery.json`. Run
+   `bun scripts/validate-evidence.mjs --spec <job.json> --delivery <receipt.json>`.
+   Only this final check can return delivery **PASS**. Tailnet sync strings and
+   HTTP 200/byte probes cannot substitute for authenticated account proof.
+   Backfilled pages use `--source-dir` and return BACKFILL_ACCOUNT_PROVEN (exit 4),
+   never acceptance. Deprecated runtimes return PASS_DEPRECATED_RUNTIME (exit 5);
+   rebuild with the current runtime. The publisher owns its runtime sha allowlist.
+   Historical pages published outside admission may receive BACKFILL_ACCOUNT_PROVEN
+   (exit 4): an honest account-proof record, never acceptance or PASS. Backfill
+   requires the contract's three markers and full account proof; mixed claims reject.
 
-The reference interaction shape is the cinema-with-answers lineage (Q/A section
-structure, Play-All, read-along teleprompter, `.note-area` response textareas with
+The default interaction shape is decision-flow with card-local audio, real-word
+read-along and `.note-area` response textareas with
 account persistence and a visible device-only fallback when no bridge is available,
-so Wispr/VoiceBar can dictate into the focused input).
+so Wispr/VoiceBar can dictate into the focused input.
 
 ## Spoken-Form and Pronunciation Config
 
@@ -301,12 +317,12 @@ bun scripts/audio-dashboard-generator.mjs --workflow aftercode --dry-run
 ```
 
 Run it in a persistent session after setting the machine-local environment (for
-example `NARRATIONLAYER_PROFILES_FILE`, qwen3 daemon token, and the tailnet
-dashboard base URL), and only when bun, whisper CLI, the qwen3 daemon, and the
+example `NARRATIONLAYER_PROFILES_FILE` and qwen3 daemon token), and only when bun, whisper CLI,
+the qwen3 daemon, and the
 job spec are ready:
 
 ```bash
-bun scripts/audio-dashboard-generator.mjs --workflow aftercode --run --spec <job.json> --tailnet-base-url <tailnet dashboards URL>
+bun scripts/audio-dashboard-generator.mjs --workflow aftercode --run --spec <job.json> --job-dir <job directory>
 ```
 
 The wrapper stays thin. It delegates to the **vendored** engine + skill-local
@@ -316,11 +332,16 @@ orchestration scripts, never to private engine checkouts.
 
 For decision-flow dashboards, `heading` is a title of at most 8 words. Put status and context in `subtitle`, which the decision-flow template renders collapsed under Details.
 
+The job must carry the latest accepted spec/design receipt as its baseline:
+`acceptedBaseline: { path: "<receipt path>", sha256: "<receipt sha256>" }`.
+The path is relative to the job file (or absolute). Read and verify that receipt before building; select its accepted type and design.
+This source receipt complements the existing design-preservation predecessor.
+
 `--spec` points at a JSON job (see `examples/job.json`):
 
 ```json
 {
-  "id": "my-dashboard",
+  "id": "my-dashboard", "type": "decision-flow",
   "title": "…", "kicker": "…", "heading": "…", "subtitle": "…",
   "outputPath": "$REPO_ROOT/docs.local/dashboards/my-dashboard.html",
   "scenes": [
@@ -448,8 +469,8 @@ Before calling a dashboard done, verify these conditions (enforced by
   segment or reload the audio).
 - The visible transcript is the real script/transcript, not placeholder text.
 - The durable output path is a repo `docs.local/dashboards/*.html` file.
-- Tailnet publication happens through sync, not direct writes to
-  `dashboards-serve`.
+- Delivery requires the NarrationLayer Lakebed receipt, approved local origin,
+  matching id/source hash and authenticated note round-trip proof.
 
 ## Preserve the published design
 Preserve pinned controls, labelled read-along, transcript at playback end, native
@@ -645,7 +666,7 @@ bun test evals/audio-dashboard.test.mjs
 Reject any dashboard with WPM/even-split/estimated timing, placeholder recap
 copy, `build-aftercode-cinema.mjs`, `golemplaylist-base.js`, direct
 `dashboards-serve` output, empty words, missing word-click seek, or missing
-tailnet sync evidence.
+hosted delivery or authenticated account-sync proof.
 
 ## Transfer & Update (getting this skill to another machine)
 

@@ -231,8 +231,9 @@ ${DECISION_MARK_CLOSE}`;
 }
 
 export function injectDecisionSurfaceIntoHtml(html, decisions, opts = {}) {
-  const block = renderDecisionSurface(decisions, opts);
+  let block = renderDecisionSurface(decisions, opts);
   let withoutExisting = String(html).replace(markerRegex(), "");
+  if (withoutExisting.includes(ANSWER_ASSETS)) block = block.replace(ANSWER_ASSETS, "");
   if (!/<meta\s+name=["']dashboard-id["']/i.test(withoutExisting)) {
     const id = dashboardId(opts.dashboardId || opts.id, normalizeStorageKey(opts.storageKey, opts.title));
     withoutExisting = withoutExisting.replace(/<head\b[^>]*>/i, head => `${head}\n<meta name="dashboard-id" content="${escapeHtml(id)}">`);
