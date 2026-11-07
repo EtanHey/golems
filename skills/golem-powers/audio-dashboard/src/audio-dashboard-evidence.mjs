@@ -1,5 +1,6 @@
 import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
+import { hostedDeliveryViolations } from "./hosted-delivery.mjs";
 import { designReportFailure } from "./design-history.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -13,8 +14,6 @@ const PLACEHOLDER_RE =
   /(no gist available yet|real \w+ stream audio for|placeholder|recap pending|TODO recap|lorem ipsum|meta[- ]copy)/i;
 const DOCSLOCAL_DASHBOARD_RE = /\/docs\.local\/dashboards\/.+\.html$/i;
 const SERVE_TREE_RE = /\/dashboards-serve\/dashboards\//i;
-const TAILNET_SYNC_RE =
-  /(sync-tailnet-dashboards\.mjs|tailnet\s+sync|launchd\s+sync|launchctl[\s\S]{0,120}tailnet)/i;
 const WORD_TIMESTAMP_REF_RE =
   /(dataset\.(ws|start|wordStart)|getAttribute\s*\(\s*["']data-(ws|start|word-start)["']\s*\)|\.closest\s*\(\s*["'][^"']*data-(ws|start|word-start)|\[\s*["'](ws|start|wordStart)["']\s*\])/i;
 const SEEK_RE = /(currentTime\s*=|seekTo(?:Time)?\s*\()/i;
@@ -144,32 +143,6 @@ function detectsWordClickSeek(html) {
   if (clickHandlerBodies(html).some((body) => SEEK_RE.test(body) && WORD_TIMESTAMP_REF_RE.test(body))) return true;
   const decisionWordBinding = /querySelectorAll\s*\(\s*["']\.df-word["']\s*\)[\s\S]{0,240}addEventListener\s*\(\s*["']click["']/i;
   return decisionWordBinding.test(html) && SEEK_RE.test(html) && WORD_TIMESTAMP_REF_RE.test(html);
-}
-
-function completedSyncStatus(value) {
-  return /^(ran|complete|completed|synced|launchd|launchd-waited)$/i.test(String(value ?? ""));
-}
-
-function detectsTailnetSync(evidence) {
-  if (evidence.tailnetSync === true || evidence.publish?.tailnetSync === true) return true;
-  if (completedSyncStatus(evidence.tailnetSync?.status) || completedSyncStatus(evidence.publish?.tailnetSync?.status)) {
-    return true;
-  }
-  const publishEvidence = [
-    evidence.tailnetSync,
-    evidence.publish,
-    evidence.publishCommand,
-    evidence.syncCommand,
-    evidence.publishLog,
-    evidence.syncLog,
-    evidence.commands,
-    evidence.publishSteps,
-    evidence.steps,
-    evidence.plan,
-  ]
-    .map(textOf)
-    .join("\n");
-  return TAILNET_SYNC_RE.test(publishEvidence);
 }
 
 function collectTimingRecords(evidence, html) {
@@ -325,7 +298,7 @@ export function validateAudioDashboardEvidence(evidence = {}) {
   const outputPath = textOf(evidence.outputPath);
   const wordsJson = Array.isArray(evidence.wordsJson) ? evidence.wordsJson : [];
   const violations = [];
-  const designFailure = designReportFailure(outputPath, html);
+  const designFailure = evidence.delivery?.backfilled === true ? null : designReportFailure(outputPath, html);
   if (designFailure) addViolation(violations, designFailure, "Final HTML requires a matching PASS design sidecar; rerun check-design-preservation after any post-processing.");
   const textOnlyCard = hasTextOnlyDetails(html, outputPath);
   if (textOnlyCard) {
@@ -357,14 +330,7 @@ export function validateAudioDashboardEvidence(evidence = {}) {
     );
   }
 
-  const tailnetSync = detectsTailnetSync(evidence);
-  if (!tailnetSync) {
-    addViolation(
-      violations,
-      "MISSING_TAILNET_SYNC",
-      "publish evidence must show sync-tailnet-dashboards.mjs ran or launchd tailnet sync was explicitly awaited",
-    );
-  }
+  if (evidence.stage !== "pre-publish") violations.push(...hostedDeliveryViolations(evidence));
 
   const wordsJsonFailure = wordArrayFailure(wordsJson);
   if (wordsJsonFailure === "missing") {
@@ -443,19 +409,22 @@ export function validateAudioDashboardEvidence(evidence = {}) {
   }
 
   return {
-    verdict: violations.length > 0 ? "REJECTED" : "PASS",
+    verdict: violations.length > 0 ? "REJECTED" : evidence.stage === "pre-publish" ? "READY_FOR_HOSTED_PUBLISH" : evidence.delivery?.backfilled === true ? "BACKFILL_ACCOUNT_PROVEN" : evidence.delivery?.admission?.answerRuntime === "deprecated" ? "PASS_DEPRECATED_RUNTIME" : "PASS",
     violations,
     realWordTiming,
     realTranscript,
     wordClickSeek,
-    tailnetSync,
+    hostedDelivery: evidence.stage !== "pre-publish" && evidence.delivery?.backfilled !== true && violations.length === 0,
   };
 }
 
 export function formatReport(result) {
   if (result.verdict === "PASS") {
-    return "audio-dashboard evidence PASS: real words.json, real transcript, word-click seek, canonical generator, docs.local publish source, tailnet sync";
+    return "audio-dashboard evidence PASS: real words.json, real transcript, word-click seek, canonical generator, docs.local publish source, hosted delivery and authenticated account proof";
   }
+  if (result.verdict === "READY_FOR_HOSTED_PUBLISH") return "READY_FOR_HOSTED_PUBLISH: hand off to NarrationLayer; delivery is unverified";
+  if (result.verdict === "BACKFILL_ACCOUNT_PROVEN") return "BACKFILL_ACCOUNT_PROVEN: account round trip recorded; publish admission did not run; not accepted";
+  if (result.verdict === "PASS_DEPRECATED_RUNTIME") return "PASS_DEPRECATED_RUNTIME: rebuild with the current answer runtime; not acceptance PASS";
   const codes = result.violations.map((v) => v.code).join(", ");
   return `audio-dashboard evidence REJECTED: ${codes}\n${result.violations
     .map((v) => `- ${v.code}: ${v.evidence}`)

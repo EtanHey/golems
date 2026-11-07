@@ -86,7 +86,7 @@ test("word-click seek must use the clicked word timestamp in the click handler",
   expect(result.violations.map((v) => v.code)).toContain("MISSING_WORD_CLICK_SEEK");
 });
 
-test("docs.local output without tailnet sync evidence is rejected", () => {
+test("docs.local output without hosted delivery evidence is rejected", () => {
   const evidence = {
     generator: "agent-html/host/build-aftercode-tonight.mjs",
     outputPath: "/opt/private/skill-tools/docs.local/dashboards/example.html",
@@ -105,7 +105,7 @@ test("docs.local output without tailnet sync evidence is rejected", () => {
 
   const result = validateAudioDashboardEvidence(evidence);
   expect(result.verdict).toBe("REJECTED");
-  expect(result.violations.map((v) => v.code)).toContain("MISSING_TAILNET_SYNC");
+  expect(result.violations.map((v) => v.code)).toContain("MISSING_HOSTED_DELIVERY");
 });
 
 test("overlapping or backward word timings are rejected", () => {

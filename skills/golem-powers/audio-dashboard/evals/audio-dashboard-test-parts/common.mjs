@@ -1,3 +1,4 @@
+import { hostedEvidence } from "../hosted-fixture.mjs";
 import { designTestCell } from "../design-test-cell.mjs";
 const designCell = designTestCell();
 // Deterministic two-sided eval for the canonical audio-dashboard skill.
@@ -241,10 +242,10 @@ function buildDashboard(spec, jobDir, name = spec.id, extraEnv = {}, options = {
 
 export { test, expect, spawnSync, createHash, chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, tmpdir, fileURLToPath, path, performance, validateAudioDashboardEvidence, analyzeAcousticArtifacts, analyzeOnsetEnergy, formatOnsetEnergyReport, ONSET_ENERGY_DEFAULTS, analyzeTeleprompterDrift, formatTeleprompterDriftReport, analyzeTranscriptFidelity, formatTranscriptFidelityReport, TRANSCRIPT_FIDELITY_DEFAULTS, createBuildReceipts, readNarrationVendorStamp, writeBuildReceipts, clearTakeCacheReceiptForByo, writeWordTimingArtifacts, formatCachePurgeReceipt, purgeRejectedTakeCaches, answersMarkdown, injectDecisionSurfaceIntoHtml, buildAfterCodeDashboardPlan, renderV4, clearTakeCacheReceipt, writeTakeCacheReceipt, loadPronunciationRules, normalizeForSpeech, here, redDir, greenDir, transcriptCalibrationPath, onsetEnergyCalibrationPath, skillPath, skillRoot, placeholderMp3, placeholderMp3Duration, loadFixtures, reds, greens, evidenceReds, evidenceGreens, driftReds, driftGreens, acousticReds, onsetEnergyReds, transcriptReds, publishDriftReds, tpdataFromHtml, writeFixtureFfprobe, writeSegment, writeToneWav, writeStereoToneWav, wordsForDuration, writeAcousticSegment, acousticFixtureSegments, buildDashboard };
 
-// Timing-only unit fixtures still supply the final-HTML design evidence contract.
+// Timing-only unit fixtures supply synthetic design and hosted receipt evidence.
 export function withDesignEvidence(evidence) {
   const outputPath = path.join(designCell.root, 'docs.local/dashboards/adp-unit', createHash('sha256').update(evidence.html).digest('hex') + '.html');
   mkdirSync(path.dirname(outputPath), { recursive: true });
   writeFileSync(outputPath.replace(/\.html$/, '.design.json'), JSON.stringify({ verdict: 'PASS', artifactSha256: createHash('sha256').update(evidence.html).digest('hex') }));
-  return { ...evidence, outputPath };
+  return hostedEvidence({ ...evidence, outputPath });
 }
