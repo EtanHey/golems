@@ -81,7 +81,7 @@ test("a checklist card with a pick and no ticks counts as answered", () => {
 });
 
 test("review: a cited selection excludes speaker labels", () => {
-  const run = boot({ scenes: [{ ...scene("a1"), speaker: "ben", role: "host" }, scene("a2"), scene("b1")] });
+  const run = boot({ scenes: [{ ...scene("a1"), speaker: "ben", role: "host" }, { ...scene("a2"), role: "expert" }, scene("b1")] });
   selectText(run, run.document.querySelector(".df-speaker"), run.document.querySelectorAll(".df-word")[1]);
   run.document.getElementById("df-cite").click();
   expect(run.document.getElementById("df-note-quote").textContent.trim()).toBe("one two");

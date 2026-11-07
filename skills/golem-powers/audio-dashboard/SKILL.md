@@ -543,6 +543,21 @@ the drift gate.
 
 ## Voice Roles — Ben HOSTS, the stream author EXPLAINS
 
+**Two voices are the default for every briefing: eod, commute, huddle and nightly.**
+The host (`ben-c1`) asks a short question; the expert (`<expert>-c4s`, with the
+person from `GOLEMS_EXPERT_VOICE`) explains in a separate segment. Never put
+role announcements in spoken text: no "Ben asks:", "Expert:", or "Q:" / "A:".
+BUILD rejects single-voice or expert-free declared-voice builds with
+`SINGLE_VOICE_BUILD`, spoken announcements with `ROLE_LABEL_SPOKEN`, and rendered
+role labels on cards without both roles with `ROLE_LABEL_MISMATCH`.
+Decision-flow shows speaker role labels only when that card has both roles.
+BYO scenes with no declared voice retain their existing unverifiable treatment.
+
+A deliberate single-narrator listen-only piece may set job-level
+`voiceRoles: { "single": { "reason": "deliberate single-narrator listening piece" } }`.
+The reason must be a nonblank string; this exception is stated in the job, never
+inferred. It excuses only the single-voice check, never inversion or role labels.
+
 > Public voice-role contract: **Ben is the HOST. The stream author is the EXPERT.
 > Ben asks, the stream author explains unless a job explicitly overrides the roles.**
 

@@ -1,7 +1,8 @@
 import { test, expect, describe } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { spawnSync } from "node:child_process";
 import hostOnlyCommute from "./fixtures/voice-role/commute-host-only.json";
 import { renderDecisionFlow } from "../src/decision-flow.mjs";
 
@@ -125,18 +126,20 @@ describe("override — stated in the job file, never inferred", () => {
   test("a scene-level override with a reason allows the swap", () => {
     const result = analyzeVoiceRoles([
       { id: "s1q", role: "host", reference: "examplechannel-c4s", voiceRoleOverride: "cold open: the stream author asks the framing question" },
+      { id: "s1a", role: "expert", reference: "ben-c1", voiceRoleOverride: "guest answer" },
     ]);
     expect(result.verdict).toBe("PASS");
-    expect(result.overridden).toHaveLength(1);
+    expect(result.overridden).toHaveLength(2);
     expect(result.overridden[0].reason).toContain("cold open");
   });
 
   test("a job-level override keyed by scene id allows the swap", () => {
     const result = analyzeVoiceRoles([{ id: "s1q", role: "host", reference: "examplechannel-c4s" }], {
       overrides: { s1q: "guest-hosted episode" },
+      voiceRoles: { single: { reason: "deliberate single-narrator listening piece" } },
     });
     expect(result.verdict).toBe("PASS");
-    expect(result.overridden[0].source).toBe("job");
+    expect(result.overridden.every(row => row.source === "job")).toBe(true);
   });
 
   test("an empty or whitespace override is NOT an override — it still rejects", () => {
@@ -152,8 +155,8 @@ describe("override — stated in the job file, never inferred", () => {
       { id: "s2q", role: "host", reference: "examplechannel-c4s" },
     ]);
     expect(result.verdict).toBe("REJECT");
-    expect(result.violations).toHaveLength(1);
-    expect(result.violations[0].segment).toBe("s2q");
+    expect(result.violations.filter(v => v.metric === "voice-role-inverted")).toHaveLength(1);
+    expect(result.violations.find(v => v.metric === "voice-role-inverted").segment).toBe("s2q");
   });
 });
 
@@ -196,12 +199,112 @@ describe("RED control — the two dashboards that shipped inverted", () => {
 });
 
 // SYNTHETIC shape-only regression, never acoustic or private-job evidence.
-test("7 Nov commute shape: old gate is blind to 26 host-only cards", () => {
+test("7 Nov commute shape: rejects 26 host-only cards and omits misleading labels", () => {
   expect(hostOnlyCommute.scenes).toHaveLength(26);
   expect(hostOnlyCommute.decisions).toHaveLength(26);
-  expect(analyzeVoiceRoles(hostOnlyCommute.scenes).verdict).toBe("PASS");
+  const result = analyzeVoiceRoles(hostOnlyCommute.scenes);
+  expect(result.verdict).toBe("REJECT");
+  expect(result.violations.map(v => v.metric)).toContain("SINGLE_VOICE_BUILD");
   const html = renderDecisionFlow({ ...hostOnlyCommute, scenes: hostOnlyCommute.scenes.map(scene => ({
     ...scene, speaker: "ben", words: [], duration: 0, audioUrl: "synthetic.mp3",
   })) });
-  expect(html.match(/>Ben asks<\/span>/g)).toHaveLength(26);
+  expect(html).not.toContain(">Ben asks</span>");
+});
+
+const PAIR = [
+  { id: "q", role: "host", reference: "ben-c1", script: "What changed?" },
+  { id: "a", role: "expert", reference: "examplechannel-c4s", script: "The agent asks for approval before publishing." },
+];
+const SINGLE = { single: { reason: "deliberate single-narrator listening piece" } };
+
+test("two-voice defaults pass, including ordinary prose with asks", () => {
+  for (const script of [PAIR[1].script, "The host says hello.", "The expert explains the decision.", "This answer asks for a choice."]) {
+    expect(analyzeVoiceRoles([PAIR[0], { ...PAIR[1], script }]).verdict).toBe("PASS");
+  }
+});
+
+test("single narration requires a job-level nonblank string reason, retained in config", () => {
+  const scenes = hostOnlyCommute.scenes;
+  const result = analyzeVoiceRoles(scenes, { voiceRoles: SINGLE });
+  expect(result.verdict).toBe("PASS");
+  expect(result.thresholds.singleVoiceOverrideReason).toBe(SINGLE.single.reason);
+  for (const reason of ["", "   ", null, true, 42, {}]) {
+    expect(analyzeVoiceRoles(scenes, { voiceRoles: { single: { reason } } }).verdict).toBe("REJECT");
+  }
+  expect(analyzeVoiceRoles(scenes, { overrides: { s1: "deliberate" } }).verdict).toBe("REJECT");
+});
+
+test("role overrides cannot disguise one voice person as two roles", () => {
+  const scenes = [PAIR[0], { ...PAIR[1], reference: "ben-c2", voiceRoleOverride: "deliberate" }];
+  expect(analyzeVoiceRoles(scenes).violations.map(v => v.metric)).toEqual(["SINGLE_VOICE_BUILD"]);
+});
+
+for (const script of ["Ben asks: what changed?", "Ben says yes.", "Examplechannel explains the change.",
+  "Alex answers: yes.", "Intro.\nHost: question", "Expert: answer", "Q: question", "A: answer"]) {
+  test(`rejects spoken role announcement: ${script}`, () => {
+    const result = analyzeVoiceRoles([{ ...PAIR[0], script }, PAIR[1]]);
+    expect(result.violations.map(v => v.metric)).toEqual(["ROLE_LABEL_SPOKEN"]);
+  });
+}
+
+test("single override never excuses spoken announcements or inverted voices", () => {
+  const result = analyzeVoiceRoles([{ ...PAIR[0], reference: "examplechannel-c4s", script: "Ben asks: why?" }], { voiceRoles: SINGLE });
+  expect(result.violations.map(v => v.metric)).toEqual(["voice-role-inverted", "ROLE_LABEL_SPOKEN"]);
+});
+
+test("rendered role labels require an expert answer on the same card, not elsewhere", () => {
+  const decisions = [{ id: "host", sceneIds: ["q"] }, { id: "expert", sceneIds: ["a"] }];
+  const renderedHtml = '<article data-decision="host"><span class="df-speaker" data-role="host">Ben asks</span></article>';
+  expect(analyzeVoiceRoles(PAIR, { decisions, renderedHtml }).violations.map(v => v.metric)).toEqual(["ROLE_LABEL_MISMATCH"]);
+  expect(analyzeVoiceRoles(PAIR, { decisions: [{ id: "host", sceneIds: ["q", "a"] }], renderedHtml }).verdict).toBe("PASS");
+  expect(analyzeVoiceRoles(hostOnlyCommute.scenes, { voiceRoles: SINGLE, decisions: [{ id: "host", sceneIds: ["s1"] }], renderedHtml }).verdict).toBe("REJECT");
+});
+
+for (const [label, job, verdict] of [
+  ["host-only", hostOnlyCommute, "REJECT"],
+  ["blank override", { ...hostOnlyCommute, voiceRoles: { single: { reason: "   " } } }, "REJECT"],
+  ["deliberate single", { ...hostOnlyCommute, voiceRoles: SINGLE }, "PASS"],
+  ["two voices", { ...hostOnlyCommute, scenes: PAIR }, "PASS"],
+]) test(`BUILD CLI ${label}: persists voice-role ${verdict} before media work`, () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "voice-role-build-"));
+  try {
+    const specPath = path.join(root, "job.json"), outPath = path.join(root, "dashboard.html");
+    writeFileSync(outPath, "stale HTML");
+    writeFileSync(specPath, JSON.stringify(job));
+    const run = spawnSync(process.execPath, [path.resolve(import.meta.dir, "../scripts/build-dashboard.mjs"),
+      "--spec", specPath, "--out", outPath], { encoding: "utf8", env: { ...process.env, GOLEMS_EXPERT_VOICE: "examplechannel" } });
+    expect(run.status).toBe(1);
+    if (verdict === "REJECT") expect(run.stderr).toContain("SINGLE_VOICE_BUILD");
+    expect(existsSync(outPath)).toBe(false);
+    const receipts = JSON.parse(readFileSync(path.join(root, "dashboard.receipts.json"), "utf8"));
+    expect(receipts.gates[0]).toMatchObject({ gate: "voice-role", verdict });
+    if (verdict === "REJECT") {
+      expect(receipts.gates).toHaveLength(1);
+      expect(receipts.gates[0].violations[0].metric).toBe("SINGLE_VOICE_BUILD");
+    } else {
+      // No media supplied: voice PASS is scoped; the next BUILD gate rejects.
+      expect(receipts.gates[1].verdict).toBe("REJECT");
+      if (job.voiceRoles) expect(receipts.gates[0].config.singleVoiceOverrideReason).toBe(SINGLE.single.reason);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("authored role title cannot reintroduce a misleading label on a host-only card", () => {
+  const scenes = [{ ...PAIR[0], title: "Ben asks", words: [], speaker: "ben" }];
+  const decisions = [{ id: "only", title: "Synthetic", sceneIds: ["q"] }];
+  const renderedHtml = renderDecisionFlow({ scenes, decisions });
+  const result = analyzeVoiceRoles(scenes, { voiceRoles: SINGLE, decisions, renderedHtml });
+  expect(result.violations.map(v => v.metric)).toEqual(["ROLE_LABEL_MISMATCH"]);
+});
+
+test("ordinary rendered title ending in asks is not a role label", () => {
+  const scenes = [{ ...PAIR[0], title: "What the agent asks", words: [], speaker: "ben" }];
+  const decisions = [{ id: "only", title: "Synthetic", sceneIds: ["q"] }];
+  expect(analyzeVoiceRoles(scenes, { voiceRoles: SINGLE, decisions,
+    renderedHtml: renderDecisionFlow({ scenes, decisions }) }).verdict).toBe("PASS");
+});
+
+test("mixed declared host and undeclared BYO expert does not infer a single voice", () => {
+  const scenes = [PAIR[0], { id: "a", role: "expert", audioWav: "synthetic.wav" }];
+  expect(analyzeVoiceRoles(scenes).verdict).toBe("PASS");
 });

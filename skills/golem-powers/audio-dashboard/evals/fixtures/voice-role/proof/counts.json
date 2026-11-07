@@ -1,0 +1,26 @@
+{
+  "proof": "SYNTHETIC static paused transcript staging; no audio played; no timing validated",
+  "beforeCommit": "89afe6eb",
+  "rows": [
+    {
+      "width": 1280,
+      "arm": "before",
+      "labels": 26
+    },
+    {
+      "width": 1280,
+      "arm": "after",
+      "labels": 0
+    },
+    {
+      "width": 390,
+      "arm": "before",
+      "labels": 26
+    },
+    {
+      "width": 390,
+      "arm": "after",
+      "labels": 0
+    }
+  ]
+}

@@ -289,17 +289,21 @@ async function main() {
   // Runs on the SPEC, before any synthesis: a role/voice inversion is knowable from
   // the job file alone, so there is no reason to spend a full TTS render discovering
   // it. Fail-closed — a contradiction rejects, it does not warn.
-  const voiceRoles = analyzeVoiceRoles(spec.scenes, { overrides: spec.voiceRoleOverrides ?? {} });
-  upsertBuildGate(buildReceipts, {
-    gate: "voice-role",
-    result: voiceRoles,
-    config: voiceRoles.thresholds,
-    runbook: voiceRoleRunbook(voiceRoles),
-  });
-  if (voiceRoles.verdict !== "PASS") {
-    writeBuildReceipts(outPath, buildReceipts, "");
-    fail(formatVoiceRoleReport(voiceRoles));
-  }
+  const checkVoiceRoles = (renderedHtml = "") => {
+    const voiceRoles = analyzeVoiceRoles(spec.scenes, { overrides: spec.voiceRoleOverrides ?? {},
+      voiceRoles: spec.voiceRoles, decisions: spec.decisions, renderedHtml });
+    upsertBuildGate(buildReceipts, {
+      gate: "voice-role",
+      result: voiceRoles,
+      config: voiceRoles.thresholds,
+      runbook: voiceRoleRunbook(voiceRoles),
+    });
+    if (voiceRoles.verdict !== "PASS") {
+      writeBuildReceipts(outPath, buildReceipts, renderedHtml);
+      fail(formatVoiceRoleReport(voiceRoles));
+    }
+  };
+  checkVoiceRoles();
 
   const scenes = [];
   const artifacts = [];
@@ -510,6 +514,8 @@ async function main() {
       answerSink: decisionSurface.answerSink || spec.answerSink || spec.decisionAnswerSink,
     }).html;
   }
+
+  checkVoiceRoles(html);
 
   const transcriptFidelity = analyzeTranscriptFidelity({
     segments: artifacts.map((artifact) => ({
