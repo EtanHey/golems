@@ -423,7 +423,7 @@ Example: `brainlayer-v2-launch/collab.md` + `v2-fix-sprint/collab.md`
 Full watch lifecycle: `/collab-monitor`. The short form, which a plan's collab
 section MUST state so every joining agent inherits it:
 
-- **T3 (default in T3): no watcher.** A child appends its status and DONE lines here, then
+- **T3 (default in T3): no per-child watcher.** A child appends its status and DONE lines here, then
   ends its task; the `delegate_task` completion notification wakes the lead, whose one name
   waiter reads this file for awareness only. "Codex seats
   must not poll collabs; T3 delegate completions already wake you." (Etan 2026-10-18, via orc collab)

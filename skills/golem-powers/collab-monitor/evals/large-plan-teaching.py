@@ -84,7 +84,7 @@ REQUIRED = {
         'routing': ('/collab-monitor', 'Claude: native Monitor', 'Codex: no collab watcher'),
         'attachment': ('engine-issued mailbox contract',),
         'lifecycle': ('Re-arm on expiry and after every compaction', 'Stop the watcher'),
-        't3': ('no watcher', 'completion notification wakes the lead', 'then ends its task', 'for awareness only'),
+        't3': ('no per-child watcher', 'completion notification wakes the lead', 'then ends its task', 'for awareness only'),
     },
     'kickoff': {
         't3': ('write your report and DONE line to this collab, then end your task', 'one line pointing at that collab entry', 'completion notification wakes the lead'),
