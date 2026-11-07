@@ -2,6 +2,8 @@ import { test, expect, describe } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import hostOnlyCommute from "./fixtures/voice-role/commute-host-only.json";
+import { renderDecisionFlow } from "../src/decision-flow.mjs";
 
 // These fixtures use the neutral expert; the gates capture env at import time.
 const gate = await (async () => {
@@ -191,4 +193,15 @@ describe("RED control — the two dashboards that shipped inverted", () => {
       expect(formatVoiceRoleReport(result)).toContain("voice-role gate REJECT");
     });
   }
+});
+
+// SYNTHETIC shape-only regression, never acoustic or private-job evidence.
+test("7 Nov commute shape: old gate is blind to 26 host-only cards", () => {
+  expect(hostOnlyCommute.scenes).toHaveLength(26);
+  expect(hostOnlyCommute.decisions).toHaveLength(26);
+  expect(analyzeVoiceRoles(hostOnlyCommute.scenes).verdict).toBe("PASS");
+  const html = renderDecisionFlow({ ...hostOnlyCommute, scenes: hostOnlyCommute.scenes.map(scene => ({
+    ...scene, speaker: "ben", words: [], duration: 0, audioUrl: "synthetic.mp3",
+  })) });
+  expect(html.match(/>Ben asks<\/span>/g)).toHaveLength(26);
 });
