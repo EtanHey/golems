@@ -21,7 +21,7 @@ for (const [name, change, code] of [
   ['id mismatch', e => { e.delivery.dashboardId = 'other'; }, 'DELIVERY_ID_MISMATCH'],
   ['sha mismatch', e => { e.delivery.sourceHtmlSha256 = 'c'.repeat(64); }, 'DELIVERY_SHA_MISMATCH'],
   ['missing account proof', e => { delete e.delivery.accountProof; }, 'MISSING_ACCOUNT_SYNC_PROOF'],
-  ['malformed config', e => { e.approvedDeliveryOrigins = ['https://delivery.example/path']; }, 'MISSING_DELIVERY_CONFIG'],
+  ['malformed config', e => { e.approvedDeliveryOrigins = ['https://example.com/path']; }, 'MISSING_DELIVERY_CONFIG'],
   ['missing config', e => { delete e.approvedDeliveryOrigins; }, 'MISSING_DELIVERY_CONFIG'],
   ['different promoted candidate', e => { e.delivery.staging.servedShellSha256 = 'c'.repeat(64); }, 'DELIVERY_SHA_MISMATCH'],
 ]) test(`hosted delivery refuses ${name}`, () => {
@@ -71,3 +71,19 @@ for (const marker of ['staging', 'design']) test(`a lone ${marker} backfill mark
   const e = fixture(); if (marker === 'staging') e.delivery.staging.mode = 'none-backfill'; else e.delivery.admission.design = 'UNKNOWN_BACKFILL';
   expect(validateAudioDashboardEvidence(e).violations.map(v => v.code)).toContain('BACKFILL_MARKERS_MISMATCH');
 });
+
+for (const value of [undefined, 'unknown']) test(`probe=${value} fails closed`, () => {
+  const e = fixture(); e.delivery.accountProof.probe = value;
+  expect(validateAudioDashboardEvidence(e).violations.map(v => v.code)).toContain('MISSING_ACCOUNT_SYNC_PROOF');
+});
+test('built and prepared hashes have separate custody', () => {
+  const e = fixture(); expect(validateAudioDashboardEvidence(e).verdict).toBe('PASS');
+  e.handoff.builtHtmlSha256 = e.delivery.sourceHtmlSha256;
+  expect(validateAudioDashboardEvidence(e).violations.map(v => v.code)).toContain('DELIVERY_SHA_MISMATCH');
+});
+test('backfill cannot substitute the built file for missing prepared source', () => {
+  const e = backfill(); delete e.sourceHtml;
+  expect(validateAudioDashboardEvidence(e).violations.map(v => v.code)).toContain('MISSING_PREPARED_SOURCE');
+});
+
+test('the existing-empty-field probe is valid', () => { const e = fixture(); e.delivery.accountProof.probe = 'existing-empty-field'; expect(validateAudioDashboardEvidence(e).verdict).toBe('PASS'); });

@@ -4,8 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 
-import { spawnSync } from "node:child_process";
-import { deliveryOrigins, handoffPath, sha256, writePublishHandoff } from "../src/hosted-delivery.mjs";
+import { deliveryOrigins, handoffPath, sha256 } from "../src/hosted-delivery.mjs";
 import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 import { validateAudioDashboardEvidence, formatReport } from "../src/audio-dashboard-evidence.mjs";
 
@@ -27,7 +26,7 @@ function parseArgs(argv) {
     else if (x === "--job-dir") a.jobDir = argv[++i];
     else if (x === "--out") a.out = argv[++i];
     else if (x === "--delivery") a.delivery = argv[++i];
-    else if (x === "--prepare-publish") a.prepare = true;
+    else if (x === "--source-dir") a.sourceDir = argv[++i];
     else if (x === "--published") a.published = argv[++i];
     else if (x === "--json") a.json = true;
     else if (x === "-h" || x === "--help") a.help = true;
@@ -44,7 +43,7 @@ function loadWords(p) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-if (args.help) { console.log("usage: bun scripts/validate-evidence.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>] [--prepare-publish | --delivery <receipt.json>] [--json]"); process.exit(0); }
+if (args.help) { console.log("usage: bun scripts/validate-evidence.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>] [--delivery <receipt.json>] [--source-dir <prepared directory>] [--json]"); process.exit(0); }
 if (!args.spec) fail("--spec is required");
 const specPath = path.resolve(expandHome(args.spec));
 if (!existsSync(specPath)) fail(`spec not found: ${specPath}`);
@@ -63,6 +62,10 @@ for (const s of spec.scenes) {
 }
 const first = perScene.find((s) => s.words.length) || perScene[0];
 
+const handoff = existsSync(handoffPath(outPath)) ? JSON.parse(readFileSync(handoffPath(outPath), "utf8")) : null;
+const sourceDir = args.sourceDir ? path.resolve(expandHome(args.sourceDir)) : handoff?.sourcePath ? path.resolve(path.dirname(outPath), handoff.sourcePath) : null;
+const sourceFile = sourceDir && path.join(sourceDir, 'index.html');
+const sourceHtml = sourceFile && existsSync(sourceFile) ? readFileSync(sourceFile, 'utf8') : null;
 const evidence = {
   generator: `skills/golem-powers/audio-dashboard/vendor/agent-html/lib/render-v4.mjs (via build-dashboard.mjs)`,
   outputPath: outPath,
@@ -74,17 +77,17 @@ const evidence = {
   },
   html,
   dashboardId: spec.id,
-  stage: args.prepare ? "pre-publish" : "delivery",
+  stage: "delivery", sourceHtml,
   approvedDeliveryOrigins: deliveryOrigins(),
   delivery: args.delivery ? JSON.parse(readFileSync(expandHome(args.delivery), "utf8")) : null,
-  handoff: existsSync(handoffPath(outPath)) ? JSON.parse(readFileSync(handoffPath(outPath), "utf8")) : null,
+  handoff,
 };
 
 const backfilled = evidence.delivery?.backfilled === true;
 const preservation = backfilled ? { verdict: "NOT_RUN", status: "BACKFILL" } : await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
 if (!backfilled) writeDesignReport(outPath, html, preservation);
 const result = validateAudioDashboardEvidence(evidence);
-if (sha256(readFileSync(outPath)) !== sha256(html)) {
+if (sha256(readFileSync(outPath)) !== sha256(html) || sourceFile && sourceHtml !== null && sha256(readFileSync(sourceFile)) !== sha256(sourceHtml)) {
   result.verdict = "REJECTED"; result.violations.push({ code: "EVIDENCE_SOURCE_CHANGED", evidence: "HTML changed during design verification; rerun evidence." });
 }
 result.designPreservation = preservation;
@@ -94,13 +97,6 @@ if (result.verdict === "PASS") {
   if (evidence.handoff?.buildReceiptsSha256 !== sha256(receipts)) {
     result.verdict = "REJECTED"; result.violations.push({ code: "BUILD_RECEIPTS_SHA_MISMATCH", evidence: "BUILD receipts changed after the handoff." });
   }
-}
-if (args.prepare && args.delivery) fail("--prepare-publish and --delivery are mutually exclusive");
-if (result.verdict === "READY_FOR_HOSTED_PUBLISH") {
-  const qa = spec.type === "decision-flow" ? "verify-decision-flow.mjs" : "verify-cinema.mjs";
-  const checked = spawnSync("bun", [path.join(SKILL_ROOT, "vendor/qa", qa), outPath], { encoding: "utf8" });
-  if (checked.status !== 0) fail(`QA_REJECTED: ${checked.stderr || checked.stdout}`);
-  writePublishHandoff({ spec, specPath, outputPath: outPath, jobDir, html, firstBuild: args.firstBuild });
 }
 if (args.json) console.log(JSON.stringify(result, null, 2));
 else {
