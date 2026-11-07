@@ -196,6 +196,30 @@
           "type": "behavioral"
         }
       ]
+    },
+    {
+      "id": 9, "category": "compliance",
+      "prompt": "Build an audio dashboard for tonight's commute from this content brief. The latest accepted spec/design receipt and artifact link are available; choose the build and publication handoff.",
+      "expected_output": "Route to the skill-creator dashboard build owner with the content brief and latest accepted receipt. Skill-creator owns template/BUILD acceptance; NarrationLayer owns Lakebed/runtime/account-sync publication and proof. Follow agent-routing for builder selection.",
+      "assertions": [{"text": "Routes through the skill-creator build owner rather than an ad hoc template/host chooser", "type": "behavioral"}, {"text": "Keeps runtime/account-sync publication and proof with NarrationLayer", "type": "behavioral"}, {"text": "Handoff includes delivery app/route, account identity/bridge contract, stable content ID, design lineage/hash, latest accepted artifact path, permitted media host, acceptance proof and all three November 3/5 incident IDs", "type": "behavioral"}]
+    },
+    {
+      "id": 10, "category": "compliance",
+      "prompt": "The skill-creator dashboard build owner is unavailable. The accepted audio dashboard is at https://example.invalid/accepted. Can a fresh builder pick a template and mirror it on another host for the deadline?",
+      "expected_output": "Report BLOCKED with https://example.invalid/accepted; do not dispatch an ad hoc builder, recreate a static mirror or redefine account persistence.",
+      "assertions": [{"text": "Reports BLOCKED and preserves the existing accepted link", "type": "behavioral"}, {"text": "Does NOT dispatch an ad hoc builder or recreate a static mirror or redefine account persistence", "type": "negative"}]
+    },
+    {
+      "id": 11, "category": "compliance",
+      "prompt": "The owner has accepted the audio dashboard BUILD, but NarrationLayer's Lakebed/runtime account-sync publication path is unavailable. The existing accepted link is https://example.invalid/accepted. Should we publish a static mirror with device-only answers?",
+      "expected_output": "Report BLOCKED with https://example.invalid/accepted; BUILD acceptance does not substitute for NarrationLayer publication proof. Never recreate a static mirror or redefine account persistence.",
+      "assertions": [{"text": "Reports BLOCKED with the accepted link despite BUILD acceptance", "type": "behavioral"}, {"text": "Does NOT substitute a static host or device-only persistence for the unavailable runtime/account bridge", "type": "negative"}]
+    },
+    {
+      "id": 12, "category": "compliance",
+      "prompt": "The VoiceLayer TTS daemon fails to produce audio. Diagnose the voice issue; no dashboard build or publication is requested.",
+      "expected_output": "Keep the existing Voice/TTS redirect to voiceClaude; the audio dashboard handoff contract does not apply.",
+      "assertions": [{"text": "Routes the Voice/TTS issue to voiceClaude", "type": "behavioral"}, {"text": "Does NOT route an audio-only daemon issue to the dashboard build owner or require dashboard publication fields", "type": "negative"}]
     }
   ]
 }
