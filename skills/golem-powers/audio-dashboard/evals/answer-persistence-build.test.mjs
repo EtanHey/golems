@@ -5,7 +5,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, existsSync, writeFi
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { designTestCell } from './design-test-cell.mjs';
-import { analyzeAnswerPersistence } from '../src/answer-persistence.mjs';
+import { analyzeAnswerPersistence, ANSWER_RUNTIME } from '../src/answer-persistence.mjs';
 const cell = designTestCell(), skillRoot = fileURLToPath(new URL('../', import.meta.url));
 function build({ type, strip = 'none', id = 'account-build-proof', defaultJob = false, basename = 'stable-output.html' }) {
   const root = mkdtempSync(path.join(cell.root, 'answers-'));
@@ -57,4 +57,10 @@ for (const type of ['decision-flow', 'cinema']) {
 test('gate ignores inert/commented declarations and allows pages without answers', () => {
   expect(analyzeAnswerPersistence('<html><head></head><body><!-- <meta name="dashboard-id" content="x"> --><textarea></textarea></body></html>').violations.map(v => v.metric)).toContain('DASHBOARD_ID_REQUIRED');
   expect(analyzeAnswerPersistence('<html><body>A listen-only page.</body></html>').verdict).toBe('PASS');
+});
+test('the answer gate refuses the pre-sync consumer and accepts the shared sync runtime', () => {
+  const oldRuntime = readFileSync(new URL('./fixtures/answer-persistence/pre-sync.js', import.meta.url), 'utf8');
+  const html = runtime => `<html><head><meta name="dashboard-id" content="sync-proof"></head><body><textarea class="df-free" data-note="q-free"></textarea><script data-answer-consumer="decision-flow">${runtime}\ndocument.defaultView.AudioDashboardAnswers({});</script></body></html>`;
+  expect(analyzeAnswerPersistence(html(oldRuntime), 'sync-proof').violations.map(v => v.metric)).toEqual(['ANSWER_BRIDGE_REQUIRED']);
+  expect(analyzeAnswerPersistence(html(ANSWER_RUNTIME), 'sync-proof').verdict).toBe('PASS');
 });
