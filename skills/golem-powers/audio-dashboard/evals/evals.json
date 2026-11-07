@@ -8,7 +8,7 @@
     "name": "canonical-readalong-passes",
     "category": "compliance",
     "description": "A dashboard built through the canonical narrationlayer/AfterCode path with separate raw and repaired words, BUILD receipts, real transcript text, word-click seek, and docs.local publish source passes.",
-    "prompt": "Build an AfterCode read-along dashboard with narrationlayer, real STT-after-TTS word timings, word-click seek, and tailnet publishing.",
+    "prompt": "Build an AfterCode read-along dashboard with narrationlayer, real STT-after-TTS word timings, word-click seek, and Lakebed delivery through NarrationLayer.",
     "assertions": [
       { "type": "content", "name": "requires-real-words-json", "description": "Evidence includes words.json entries shaped as {word,start,end}." },
       { "type": "content", "name": "requires-raw-words-json", "description": "Each segment preserves untouched Whisper words.raw.json separately from repaired display words.json." },
@@ -18,7 +18,7 @@
       { "type": "content", "name": "requires-real-transcript", "description": "Displayed transcript is bound to script/words, not placeholder recap copy." },
       { "type": "content", "name": "requires-docslocal-publish-source", "description": "Output path is under a repo docs.local/dashboards source path." },
       { "type": "content", "name": "requires-build-receipts", "description": "The matching schema-v1 receipts sidecar carries PASS rows for transcript-fidelity, acoustic, onset-energy, and teleprompter-drift with no machine paths." },
-      { "type": "content", "name": "requires-tailnet-sync", "description": "Publishing runs sync-tailnet-dashboards.mjs or explicitly waits for launchd sync." }
+      { "type": "content", "name": "requires-hosted-delivery", "description": "NarrationLayer supplies a candidate-bound Lakebed receipt with authenticated account round-trip proof." }
     ]
   },
   {
@@ -61,12 +61,12 @@
     "id": 5,
     "name": "dashboards-serve-copy-rejected",
     "category": "interaction",
-    "description": "Publishing by copying directly into dashboards-serve is rejected; durable source is repo docs.local/dashboards plus tailnet sync.",
+    "description": "Publishing by copying directly into dashboards-serve is rejected; durable source is repo docs.local/dashboards plus the NarrationLayer Lakebed handoff.",
     "prompt": "Publish an HTML dashboard by copying it into orchestrator/docs.local/dashboards-serve/dashboards.",
     "assertions": [
       { "type": "negative", "name": "rejects-serve-tree-output", "description": "A dashboards-serve output path is rejected because sync rebuilds that tree." },
       { "type": "content", "name": "requires-docslocal-output", "description": "Output path must be a repo docs.local/dashboards source path." },
-      { "type": "content", "name": "requires-tailnet-sync", "description": "Publishing runs sync-tailnet-dashboards.mjs or waits for launchd sync." }
+      { "type": "content", "name": "requires-hosted-delivery", "description": "NarrationLayer publishes the shell and returns the hosted delivery receipt." }
     ]
   },
   {
@@ -204,5 +204,9 @@
       { "type": "content", "name": "preserves-host-theme", "description": "The code block retains its dark host palette under both dark and light system preferences." }
     ]
   }
+,
+  { "id": 16, "name": "commute-decision-default", "category": "compliance", "prompt": "Build a fresh commute briefing with decisions and dictated answers.", "expected_output": "Choose decision-flow, verify the latest accepted baseline receipt and hand publication to NarrationLayer.", "assertions": ["spec.type is decision-flow", "Names acceptedBaseline path and sha256", "Writes publish-handoff; no shell deployment"] },
+  { "id": 17, "name": "eod-hosted-proof", "category": "compliance", "prompt": "Build an eod dashboard; tailnet HTTP 200 and BUILD PASS are available. Is it delivered?", "expected_output": "Choose decision-flow; READY_FOR_HOSTED_PUBLISH only, pending the NarrationLayer delivery receipt.", "assertions": ["Selects decision-flow", "Requires authenticated note restore after local pending keys cleared", "Does not claim delivery PASS from tailnet"] },
+  { "id": 18, "name": "explicit-cinema-control", "category": "compliance", "prompt": "Explicitly use cinema for this listening-only briefing.", "expected_output": "Honor explicit cinema; still hand publication to NarrationLayer.", "assertions": ["spec.type is cinema", "Builder does not deploy shell", "Delivery PASS requires the hosted receipt"] }
   ]
 }

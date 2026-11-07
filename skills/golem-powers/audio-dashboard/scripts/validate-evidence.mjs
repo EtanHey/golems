@@ -5,6 +5,8 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { deliveryOrigins, handoffPath, sha256 } from "../src/hosted-delivery.mjs";
+import { spawnSync } from "node:child_process";
+import { writePublishHandoff } from "../src/prepare-hosted.mjs";
 import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 import { validateAudioDashboardEvidence, formatReport } from "../src/audio-dashboard-evidence.mjs";
 
@@ -25,6 +27,8 @@ function parseArgs(argv) {
     else if (x === "--first-build") a.firstBuild = argv[++i];
     else if (x === "--job-dir") a.jobDir = argv[++i];
     else if (x === "--out") a.out = argv[++i];
+    else if (x === "--prepare-publish") a.prepare = true;
+    else if (x === "--segments-dir") a.segmentsDir = argv[++i];
     else if (x === "--delivery") a.delivery = argv[++i];
     else if (x === "--source-dir") a.sourceDir = argv[++i];
     else if (x === "--published") a.published = argv[++i];
@@ -43,7 +47,7 @@ function loadWords(p) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-if (args.help) { console.log("usage: bun scripts/validate-evidence.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>] [--delivery <receipt.json>] [--source-dir <prepared directory>] [--json]"); process.exit(0); }
+if (args.help) { console.log("usage: bun scripts/validate-evidence.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>] [--prepare-publish | --delivery <receipt.json>] [--source-dir <prepared directory>] [--segments-dir <segments>] [--json]"); process.exit(0); }
 if (!args.spec) fail("--spec is required");
 const specPath = path.resolve(expandHome(args.spec));
 if (!existsSync(specPath)) fail(`spec not found: ${specPath}`);
@@ -77,7 +81,7 @@ const evidence = {
   },
   html,
   dashboardId: spec.id,
-  stage: "delivery", sourceHtml,
+  stage: args.prepare ? "pre-publish" : "delivery", sourceHtml,
   approvedDeliveryOrigins: deliveryOrigins(),
   delivery: args.delivery ? JSON.parse(readFileSync(expandHome(args.delivery), "utf8")) : null,
   handoff,
@@ -97,6 +101,14 @@ if (["PASS", "PASS_DEPRECATED_RUNTIME"].includes(result.verdict)) {
   if (evidence.handoff?.buildReceiptsSha256 !== sha256(receipts)) {
     result.verdict = "REJECTED"; result.violations.push({ code: "BUILD_RECEIPTS_SHA_MISMATCH", evidence: "BUILD receipts changed after the handoff." });
   }
+}
+if (args.prepare && args.delivery) fail("--prepare-publish and --delivery are mutually exclusive");
+if (result.verdict === "READY_FOR_HOSTED_PUBLISH") {
+  const qa = spec.type === "decision-flow" ? "verify-decision-flow.mjs" : "verify-cinema.mjs";
+  const checked = spawnSync("bun", [path.join(SKILL_ROOT, "vendor/qa", qa), outPath], { encoding: "utf8" });
+  if (checked.status !== 0) fail(`QA_REJECTED: ${checked.stderr || checked.stdout}`);
+  const segmentsDir = args.segmentsDir || (spec.segmentsDir && path.resolve(path.dirname(specPath), expandHome(spec.segmentsDir))) || (args.jobDir && path.join(jobDir, 'segments'));
+  writePublishHandoff({ spec, specPath, outputPath: outPath, segmentsDir: segmentsDir && path.resolve(expandHome(segmentsDir)), html, firstBuild: args.firstBuild });
 }
 if (args.json) console.log(JSON.stringify(result, null, 2));
 else {

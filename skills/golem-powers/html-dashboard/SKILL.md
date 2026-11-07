@@ -75,6 +75,7 @@ Attach the screenshot + `/never-fabricate` verification receipt before merge.
 ## Publishing standard — Lakebed (account-auth ONLY)
 
 Dashboards consolidate/publish to **Lakebed** via **agent-html-publisher MCP**:
+Audio narration dashboards use the NarrationLayer Lakebed runtime per /audio-dashboard; this Lakebed/allowedEmails standard still applies.
 
 - **allowedEmails = `maintainer@example.com`** — the ONLY allowed value. **NEVER `research-account@example.com`**:
   that gmail is Etan's general account and the harness injects it as "the user's email" — publishing
