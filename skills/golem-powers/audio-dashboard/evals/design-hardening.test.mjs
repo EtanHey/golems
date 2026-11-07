@@ -16,7 +16,7 @@ test('N1 carried first-build spec fails closed in an empty registry', async () =
   expect(result.violations.map(v => v.code)).toContain('PREVIOUS_BUILD_MISSING');
 });
 test('N1 per-invocation firstBuild and N3 injected registry preserve migration custody', () => {
-  const spec = { series: 'isolated', design: { lineage: 'isolated' } }, output = path.join(cell.root, 'first.html');
+  const spec = { series: 'isolated', design: { lineage: 'isolated', firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } } }, output = path.join(cell.root, 'first.html');
   expect(loadPublishedDesign(spec, output, { ...options, firstBuild: 'Initial publication.' }).previousHtml).toBeNull();
   recordPublishedDesign(spec, output, html, { ...options, acceptedBy: 'fixture-owner' });
   const record = loadPublishedDesign(spec, path.join(cell.root, 'other', 'next.html'), options);
@@ -54,7 +54,7 @@ test('all four entry points require a per-invocation --first-build, and publishe
   copyFileSync(new URL('./fixtures/design-preservation/hardening-tone.wav', import.meta.url), path.join(segment, 'sample.wav'));
   copyFileSync(new URL('../vendor/agent-html/templates/v4-story-mode/_placeholder.mp3', import.meta.url), path.join(segment, 'sample.mp3'));
   for (const file of ['words.json', 'words.raw.json']) writeFileSync(path.join(segment, file), JSON.stringify([{ word: 'alpha', start: 0.05, end: 0.42 }, { word: 'beta', start: 0.45, end: 0.8 }]));
-  writeFileSync(specPath, JSON.stringify({ id: 'first', series: 'first-cli', outputPath, designPreservation: { baseline: { reason: 'Carried from an old spec.' } }, scenes: [{ id: 'sample', audioWav: 'fixture.wav', role: 'host', script: 'alpha beta' }] }));
+  writeFileSync(specPath, JSON.stringify({ id: 'first', design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, series: 'first-cli', outputPath, designPreservation: { baseline: { reason: 'Carried from an old spec.' } }, scenes: [{ id: 'sample', audioWav: 'fixture.wav', role: 'host', script: 'alpha beta' }] }));
   // Match the suite's ffprobe convention for this known one-second fixture.
   const bin = path.join(cell.root, 'bin'); mkdirSync(bin, { recursive: true });
   writeFileSync(path.join(bin, 'ffprobe'), "#!/usr/bin/env sh\nprintf '1.000000\\n'\n", { mode: 0o755 });

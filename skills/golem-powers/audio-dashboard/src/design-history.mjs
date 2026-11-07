@@ -13,6 +13,11 @@ function location(spec, { registryRoot = defaultRegistryRoot } = {}) {
   return { lineage, registryRoot, directory, index: path.join(directory, 'accepted.json') };
 }
 export const validApprover = value => typeof value === 'string' && !!value.trim() && !/[\r\n]/.test(value) && value.trim().toUpperCase() !== 'UNRECORDED';
+export function firstInLineageApproval(value) {
+  if (!value || typeof value.reason !== 'string' || !value.reason.trim() || /[\r\n]/.test(value.reason) || !validApprover(value.approvedBy))
+    throw Object.assign(new Error('FIRST_IN_LINEAGE_UNAPPROVED'), { code: 'FIRST_IN_LINEAGE_UNAPPROVED' });
+  return { reason: value.reason, approvedBy: value.approvedBy };
+}
 export function recordPublishedDesign(spec, outputPath, html, options = {}) {
   const { lineage, directory, index } = location(spec, options), sha256 = designHash(html), filename = `${sha256}.html`;
   const approver = options.acceptedBy;
@@ -25,12 +30,15 @@ export function recordPublishedDesign(spec, outputPath, html, options = {}) {
     if (!['FIRST_IN_LINEAGE', 'COMPARED', 'REDESIGN_APPROVED'].includes(expected.admission) ||
         (expected.admission === 'FIRST_IN_LINEAGE' ? expected.predecessorSha256 !== null : !/^[a-f0-9]{64}$/.test(expected.predecessorSha256)) ||
         (expected.admission === 'REDESIGN_APPROVED' && (!validApprover(expected.redesign?.approvedBy) || expected.redesign.from !== expected.predecessorSha256))) throw new Error('DESIGN_ADMISSION_INVALID');
+    if (expected.admission === 'FIRST_IN_LINEAGE' && JSON.stringify(firstInLineageApproval(expected.firstInLineage)) !== JSON.stringify(firstInLineageApproval(spec.design?.firstInLineage))) throw new Error('DESIGN_NEW_LINEAGE_APPROVAL_MISMATCH');
     if (expected.lineage !== lineage) throw new Error('DESIGN_LINEAGE_MISMATCH');
-    const current = loadPublishedDesign(spec, outputPath, { ...options, firstBuild: existsSync(index) || spec.designPreservation?.previousPublished !== undefined ? undefined : 'Delivered initial lineage' });
     // Replaying the same delivery is idempotent; a different delivery cannot replace a newer head.
     const receiptSha256 = options.delivery && designHash(JSON.stringify(options.delivery));
     const existing = existsSync(index) && JSON.parse(readFileSync(index, 'utf8'));
-    if (!(receiptSha256 && existing?.sha256 === sha256 && existing.deliverySha256 === receiptSha256) &&
+    const repeated = receiptSha256 && existing?.sha256 === sha256 && existing.deliverySha256 === receiptSha256;
+    const comparisonSpec = repeated ? { ...spec, designPreservation: undefined } : spec;
+    const current = loadPublishedDesign(comparisonSpec, outputPath, { ...options, firstBuild: existsSync(index) || spec.designPreservation?.previousPublished !== undefined ? undefined : 'Delivered initial lineage' });
+    if (!repeated &&
         (expected.predecessorSha256 !== (current.previousHtml === null ? null : designHash(current.previousHtml)))) throw new Error('DESIGN_PREDECESSOR_CHANGED');
   }
 
@@ -49,6 +57,12 @@ export function loadPublishedDesign(spec, outputPath, options = {}) {
       const previousPath = path.join(directory, record.filename), previousHtml = readFileSync(previousPath, 'utf8');
       if (designHash(previousHtml) !== record.sha256) throw Error();
       refuseReset();
+      const supplied = spec.designPreservation?.previousPublished;
+      if (supplied !== undefined) {
+        let matches = false;
+        try { matches = typeof supplied === 'string' && !!supplied.trim() && designHash(readFileSync(path.resolve(path.dirname(outputPath), supplied))) === record.sha256; } catch {}
+        if (!matches) throw Object.assign(new Error('DESIGN_PREDECESSOR_CONFLICT'), { code: 'DESIGN_PREDECESSOR_CONFLICT' });
+      }
       return { lineage, series: spec.series, previousHtml, previousPath };
     }
     if (existsSync(directory)) throw Error();
@@ -64,8 +78,8 @@ export function loadPublishedDesign(spec, outputPath, options = {}) {
     if (lineage === 'briefings' && existsSync(registryRoot) && readdirSync(registryRoot).some(name => existsSync(path.join(registryRoot, name, 'published.json')))) throw Error();
     const reason = options.firstBuild;
     if (typeof reason !== 'string' || !reason.trim() || /[\r\n]/.test(reason)) throw Error();
-    return { lineage, series: spec.series, previousHtml: null, baseline: { reason } };
-  } catch (error) { if (error.code === 'DESIGN_LINEAGE_RESET_REFUSED') throw error; throw new Error('previous build missing: migrate the served predecessor with previousPublished; initial publication alone may use --first-build'); }
+    return { lineage, series: spec.series, previousHtml: null, baseline: { reason }, firstInLineage: firstInLineageApproval(spec.design?.firstInLineage) };
+  } catch (error) { if (['DESIGN_LINEAGE_RESET_REFUSED', 'FIRST_IN_LINEAGE_UNAPPROVED', 'DESIGN_PREDECESSOR_CONFLICT'].includes(error.code)) throw error; throw new Error('previous build missing: migrate the served predecessor with previousPublished; approved initial publication alone may use --first-build'); }
 }
 export function writeDesignReport(outputPath, html, result) {
   mkdirSync(path.dirname(outputPath), { recursive: true });

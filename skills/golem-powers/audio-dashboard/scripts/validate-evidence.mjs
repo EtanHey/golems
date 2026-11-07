@@ -105,6 +105,7 @@ if (["PASS", "PASS_DEPRECATED_RUNTIME"].includes(result.verdict)) {
   }
 }
 if (args.delivery && !backfilled && (preservation.lineage !== handoff?.design?.lineage || preservation.predecessorSha256 !== handoff?.design?.predecessorSha256 || preservation.admission !== handoff?.design?.admission ||
+    (preservation.admission === "FIRST_IN_LINEAGE" && ["reason", "approvedBy"].some(k => preservation.firstInLineage?.[k] !== handoff?.design?.firstInLineage?.[k])) ||
     (preservation.admission === "REDESIGN_APPROVED" && ["reason", "approvedBy", "from"].some(k => preservation.redesign?.[k] !== handoff?.design?.redesign?.[k])))) {
   result.verdict = "REJECTED"; result.violations.push({ code: "DELIVERY_DESIGN_MISMATCH", evidence: "Design report must bind the handoff lineage, admission and predecessor." });
 }

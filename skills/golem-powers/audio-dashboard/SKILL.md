@@ -478,12 +478,20 @@ width/centering by role and parent geometry. Set `spec.design.lineage` for a
 separate product; nightly/eod/commute/huddle default to the shared `briefings`
 lineage. Changing `spec.id` or `spec.series` never resets accepted design.
 History is per-machine under `~/.local/share/audio-dashboard/design-history/lineages/<lineage>/`.
-Only a genuinely new lineage may use per-invocation `--first-build <reason>`;
+Every initial lineage, including `briefings` on a fresh machine, requires the job
+to carry `design.firstInLineage: { reason, approvedBy }`: nonblank one-line reason
+and a named approver (never UNRECORDED). Missing/invalid approval rejects with
+FIRST_IN_LINEAGE_UNAPPROVED. Per-invocation `--first-build <reason>`
+alone is insufficient; it must accompany that approval. The handoff carries
+`design.firstInLineage` for NarrationLayer to validate. Even with approval,
 an accepted registry entry or `previousPublished` refuses DESIGN_LINEAGE_RESET_REFUSED.
 On another machine or after registry loss, copy the accepted served predecessor
 and set `designPreservation: { previousPublished: "served-copy.html" }`; absence
-rejects without an explicit initial-lineage declaration. Old series-keyed history
-must be migrated the same way. NarrationLayer owns the authoritative deliveries.json;
+rejects without an approved initial-lineage declaration. Old series-keyed history
+must be migrated the same way. Without a lineage record, previousPublished wins
+over legacy series history. With an accepted lineage head, that head is used; a
+conflicting supplied previousPublished rejects DESIGN_PREDECESSOR_CONFLICT.
+NarrationLayer owns the authoritative deliveries.json;
 the publisher must independently refuse FIRST_IN_LINEAGE for an already delivered lineage.
 A waiver needs `redesign: { reason, approvedBy, invariants: ["LAYOUT"], from: "previous sha256" }`;
 blank or UNRECORDED approval rejects. Only fired codes may be listed, never on a

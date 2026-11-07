@@ -22,7 +22,7 @@ function buildDashboard(spec, jobDir) {
   const root = mkdtempSync(path.join(cell.root, 'copy-')), outputPath = path.join(root, 'docs.local/dashboards/proof.html');
   const specPath = path.join(root, 'job.json'), bin = path.join(root, 'bin'); mkdirSync(bin);
   writeFileSync(path.join(bin, 'ffprobe'), "#!/usr/bin/env sh\nprintf '1.000000\\n'\n", { mode: 0o755 });
-  writeFileSync(specPath, JSON.stringify({ series: path.basename(root), ...spec, outputPath }));
+  writeFileSync(specPath, JSON.stringify({ design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, series: path.basename(root), ...spec, outputPath }));
   const result = spawnSync(process.execPath, cell.command(path.join(skillRoot, 'scripts/build-dashboard.mjs'), ['--spec', specPath, '--job-dir', jobDir, '--first-build', 'Isolated copy-block fixture.']).slice(1),
     { cwd: skillRoot, encoding: 'utf8', env: { ...process.env, PATH: bin + path.delimiter + process.env.PATH } });
   return { result, outputPath };

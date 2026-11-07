@@ -17,7 +17,7 @@ beforeAll(async () => { browser = await chromium.launch(); });
 afterAll(async () => { await browser.close(); });
 const check = (next, extra = {}) => checkDesignPreservation({ html: next, previousHtml: html, browser, ...extra });
 test('missing history is not a first-build declaration; series survives a directory and id change', () => {
-  const spec = { series: 'adp-r2-' + crypto.randomUUID() }, first = path.join(root, 'one.html');
+  const spec = { design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, series: 'adp-r2-' + crypto.randomUUID() }, first = path.join(root, 'one.html');
   expect(() => loadPublishedDesign(spec, first)).toThrow('previous build missing');
   expect(loadPublishedDesign(spec, first, { firstBuild: 'New series.' }).previousHtml).toBeNull();
   recordPublishedDesign(spec, first, html);

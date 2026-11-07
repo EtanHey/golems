@@ -19,7 +19,7 @@ function build({ type, strip = 'none', id = 'account-build-proof', defaultJob = 
   copyFileSync(new URL('./fixtures/design-preservation/hardening-tone.wav', import.meta.url), path.join(segment, 's1.wav'));
   copyFileSync(new URL('../vendor/agent-html/templates/v4-story-mode/_placeholder.mp3', import.meta.url), path.join(segment, 's1.mp3'));
   const spec = path.join(root, 'spec.json');
-  writeFileSync(spec, JSON.stringify({ ...(id ? { id } : {}), type, series: path.basename(root), outputPath, scenes: [{ id: 's1', script: 'alpha beta', audioWav: 'fixture.wav' }], decisions: [{ id: 'choice', title: 'A neutral choice', options: ['Keep', 'Change'], sceneIds: ['s1'] }] }));
+  writeFileSync(spec, JSON.stringify({ ...(id ? { id } : {}), design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, type, series: path.basename(root), outputPath, scenes: [{ id: 's1', script: 'alpha beta', audioWav: 'fixture.wav' }], decisions: [{ id: 'choice', title: 'A neutral choice', options: ['Keep', 'Change'], sceneIds: ['s1'] }] }));
   const preload = path.join(root, 'strip.mjs');
   writeFileSync(preload, `import { mock } from 'bun:test';
 const modulePath=${JSON.stringify(path.join(skillRoot, type === 'cinema' ? 'src/decision-surface.mjs' : 'src/decision-flow.mjs'))};

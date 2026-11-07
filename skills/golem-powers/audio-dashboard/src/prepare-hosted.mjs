@@ -24,6 +24,10 @@ export function writePublishHandoff({ spec, specPath, outputPath, segmentsDir, h
   if (report.lineage !== previous.lineage || report.predecessorSha256 !== (previous.previousHtml === null ? null : sha256(previous.previousHtml)) || (report.status === 'BASELINE') !== (previous.previousHtml === null)) throw Error('PUBLISH_HANDOFF_DESIGN_CHANGED');
   const design = { admission: { BASELINE: 'FIRST_IN_LINEAGE', COMPARED: 'COMPARED', REDESIGN: 'REDESIGN_APPROVED' }[report.status],
     lineage: previous.lineage, predecessorSha256: previous.previousHtml === null ? null : sha256(previous.previousHtml) };
+  if (design.admission === 'FIRST_IN_LINEAGE') {
+    if (JSON.stringify(report.firstInLineage) !== JSON.stringify(previous.firstInLineage)) throw Error('PUBLISH_HANDOFF_FIRST_LINEAGE_APPROVAL_CHANGED');
+    design.firstInLineage = previous.firstInLineage;
+  }
   if (report.status === 'REDESIGN') {
     if (!validApprover(report.redesign?.approvedBy) || report.redesign.from !== design.predecessorSha256 || JSON.stringify(report.redesign) !== JSON.stringify(spec.redesign)) throw Error('PUBLISH_HANDOFF_REDESIGN_APPROVAL_REQUIRED');
     design.redesign = { reason: report.redesign.reason, approvedBy: report.redesign.approvedBy, from: report.redesign.from };

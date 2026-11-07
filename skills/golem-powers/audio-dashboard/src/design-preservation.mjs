@@ -159,5 +159,5 @@ export async function checkPublishedDesign(spec, outputPath, html, options = {})
   try { previous = loadPublishedDesign(spec, outputPath, options); }
   catch (error) { const code = error.code || (error.message === 'DESIGN_LINEAGE_INVALID' ? error.message : 'PREVIOUS_BUILD_MISSING'); return { verdict: 'REJECTED', violations: [{ code, metric: code, segment: 'dashboard', evidence: error.message }] }; }
   const result = await checkDesignPreservation({ ...previous, html, redesign: spec.redesign, ...options });
-  return { ...result, lineage: previous.lineage, predecessorSha256: previous.previousHtml === null ? null : hash(previous.previousHtml), admission: { BASELINE: 'FIRST_IN_LINEAGE', REDESIGN: 'REDESIGN_APPROVED', COMPARED: 'COMPARED' }[result.status], series: previous.series, ...(previous.baseline ? { baseline: previous.baseline } : {}) };
+  return { ...result, lineage: previous.lineage, predecessorSha256: previous.previousHtml === null ? null : hash(previous.previousHtml), admission: { BASELINE: 'FIRST_IN_LINEAGE', REDESIGN: 'REDESIGN_APPROVED', COMPARED: 'COMPARED' }[result.status], series: previous.series, ...(previous.baseline ? { baseline: previous.baseline, firstInLineage: previous.firstInLineage } : {}) };
 }

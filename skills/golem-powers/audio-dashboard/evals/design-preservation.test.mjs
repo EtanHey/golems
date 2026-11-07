@@ -90,7 +90,7 @@ test('real CLI and render-done gate reject every regression and allow an explici
 test('publish probe never advances accepted history, even after byte equality and preservation pass', async () => {
   const dir = path.join(cell.root, 'publish');
   mkdirSync(dir, { recursive: true });
-  const outputPath = path.join(dir, 'new.html'), specPath = path.join(dir, 'job.json'), spec = { id: 'weekly', design: { lineage: 'probe-fixture' }, series: 'probe-fixture', outputPath, designPreservation: { baseline: { reason: 'New fixture series.' } } };
+  const outputPath = path.join(dir, 'new.html'), specPath = path.join(dir, 'job.json'), spec = { id: 'weekly', design: { lineage: 'probe-fixture', firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, series: 'probe-fixture', outputPath, designPreservation: { baseline: { reason: 'New fixture series.' } } };
   let served = fixture('previous');
   const server = Bun.serve({ port: 0, fetch: () => new Response(served, { headers: { 'content-type': 'text/html' } }) });
   const probe = async (firstBuild = false) => {
