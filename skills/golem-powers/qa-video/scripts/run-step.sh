@@ -7,13 +7,25 @@ ARTIFACT="$1"; STEP="$2"; shift 3
 mkdir -p "$ARTIFACT/logs"
 LOGDIR="$(cd "$ARTIFACT/logs" && pwd -P)"
 LOCK="$LOGDIR/$STEP.lock"
-mkdir "$LOCK" 2>/dev/null || { echo "run-step: already running: $STEP" >&2; exit 1; }
+if ! mkdir "$LOCK" 2>/dev/null; then
+  owner=$(cat "$LOCK/pid" 2>/dev/null || true)
+  if [[ "$owner" =~ ^[0-9]+$ ]] && ! kill -0 "$owner" 2>/dev/null && mkdir "$LOCK/reclaim" 2>/dev/null; then
+    rm -f "$LOCK/pid"
+    rmdir "$LOCK/reclaim" "$LOCK"
+    mkdir "$LOCK" 2>/dev/null || { echo "run-step: already running: $STEP" >&2; exit 1; }
+  else
+    echo "run-step: already running: $STEP" >&2; exit 1
+  fi
+fi
+# Protect the handoff to the detached helper while this launcher is alive.
+printf '%s\n' "$$" > "$LOCK/pid"
 rm -f "$LOGDIR/$STEP.exit" "$LOGDIR/$STEP.exit.tmp" "$LOGDIR/$STEP.pid"
 # nohup keeps the helper alive after run_command returns. Commands retain argv;
 # no interpolated command string, terminal surface, or status-tool dependency.
 nohup bash -c '
   receipt=$1; lock=$2; shift 2
-  trap '\''status=$?; printf "%s\n" "$status" > "$receipt.tmp"; mv "$receipt.tmp" "$receipt"; rmdir "$lock"'\'' EXIT
+  printf "%s\n" "$$" > "$lock/pid"
+  trap '\''status=$?; printf "%s\n" "$status" > "$receipt.tmp"; mv "$receipt.tmp" "$receipt"; rm -f "$lock/pid"; rmdir "$lock"'\'' EXIT
   trap "exit 130" INT
   trap "exit 143" TERM
   "$@"
