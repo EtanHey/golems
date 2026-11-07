@@ -5,14 +5,14 @@
  * After sync-tailnet-dashboards.mjs runs, this checks that the rendered
  * docs.local dashboard is reachable from the tailnet hub with HTTP 200 and that
  * the served HTML bytes match the local artifact. No caller should print a
- * "published" or "live" success line unless this script exits 0.
+ * delivery success line from this probe: it never proves delivery or advances history.
  */
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-import { checkPublishedDesign, recordPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
+import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 
 function expandHome(value) {
   if (value === "~") return os.homedir();
@@ -118,8 +118,7 @@ async function main() {
     const preservation = await checkPublishedDesign(spec, outPath, localBytes.toString("utf8"), { firstBuild: args.firstBuild });
     writeDesignReport(outPath, localBytes.toString("utf8"), preservation);
     if (preservation.verdict !== "PASS") fail("design-preservation: " + preservation.violations.map(v => v.code).join(", "));
-    recordPublishedDesign(spec, outPath, localBytes.toString("utf8"));
-  } else fail("--spec is required to record series publication history");
+  } else fail("--spec is required for the design comparison");
   console.log(`[verify-tailnet-publish] TAILNET_OK ${tailnetUrl} HTTP 200 sha256=${localHash}`);
 }
 

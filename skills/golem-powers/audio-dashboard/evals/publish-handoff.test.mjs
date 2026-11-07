@@ -7,6 +7,7 @@ import { hostedEvidence } from './hosted-fixture.mjs';
 import { fileURLToPath } from 'node:url';
 const skillRoot = fileURLToPath(new URL('../', import.meta.url));
 import { designTestCell } from './design-test-cell.mjs';
+import { loadPublishedDesign } from '../src/design-history.mjs';
 import { sha256, handoffPath } from '../src/hosted-delivery.mjs';
 import { writePublishHandoff, prepareHostedInput } from '../src/prepare-hosted.mjs';
 const cell = designTestCell();
@@ -41,6 +42,8 @@ const mediaTools = ['ffmpeg', 'ffprobe'].every(bin => spawnSync(bin, ['-version'
   expect(h.builtHtmlSha256).toBe(sha256(html));
   expect(h.buildReceiptsSha256).toBe(sha256(readFileSync(outputPath.replace('.html', '.receipts.json'))));
   expect(h.design.admission).toBe('FIRST_IN_LINEAGE');
+  expect(h.design.lineage).toBe('briefings');
+  expect(() => loadPublishedDesign({ series: 'another-series' }, outputPath, cell.options)).toThrow('previous build missing');
   expect(h.design.predecessorSha256).toBeNull();
   expect(h.sourcePath).toBe('example.publish-source/' + sha256(html));
   const sourceDir = path.join(path.dirname(outputPath), h.sourcePath), sourceHtml = readFileSync(path.join(sourceDir, 'index.html'), 'utf8');
@@ -61,6 +64,8 @@ const mediaTools = ['ffmpeg', 'ffprobe'].every(bin => spawnSync(bin, ['-version'
   const delivered = run(['--delivery', receiptPath]);
   expect(delivered.status, delivered.stderr).toBe(0);
   expect(JSON.parse(delivered.stdout).verdict).toBe('PASS');
+  expect(loadPublishedDesign({ series: 'another-series' }, outputPath, cell.options).previousHtml).toBe(html);
+  expect(run(['--delivery', receiptPath]).status).toBe(0);
   const receiptsPath = outputPath.replace('.html', '.receipts.json'), receipts = readFileSync(receiptsPath);
   writeFileSync(receiptsPath, Buffer.concat([receipts, Buffer.from(' ')]));
   expect(run(['--delivery', receiptPath]).stdout).toContain('BUILD_RECEIPTS_SHA_MISMATCH');
@@ -74,7 +79,7 @@ const mediaTools = ['ffmpeg', 'ffprobe'].every(bin => spawnSync(bin, ['-version'
   writeFileSync(predecessor, html); spec.designPreservation = { previousPublished: predecessor };
   for (const [status, admission] of [['COMPARED', 'COMPARED'], ['REDESIGN', 'REDESIGN_APPROVED']]) {
     const redesign = { reason: 'Fixture ruling', approvedBy: 'fixture-owner', from: sha256(html) };
-    spec.redesign = redesign; writeFileSync(reportPath, JSON.stringify({ ...report, status, ...(status === 'REDESIGN' ? { redesign } : {}) }));
+    spec.redesign = redesign; writeFileSync(reportPath, JSON.stringify({ ...report, status, predecessorSha256: sha256(html), admission, ...(status === 'REDESIGN' ? { redesign } : {}) }));
     const mapped = writePublishHandoff({ spec, specPath, outputPath, segmentsDir: path.join(jobDir, 'segments'), html });
     expect([mapped.design.admission, mapped.design.predecessorSha256]).toEqual([admission, sha256(html)]);
   }

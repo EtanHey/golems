@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { compareDesignBehavior, probeDesignBehavior } from './design-behavior.mjs';
-import { designHash as hash, loadPublishedDesign } from './design-history.mjs';
+import { designHash as hash, loadPublishedDesign, validApprover } from './design-history.mjs';
 export { loadPublishedDesign, recordPublishedDesign, writeDesignReport } from './design-history.mjs';
 
 // Runs after load without interactions, in a clean context with external requests blocked.
@@ -91,8 +91,8 @@ export async function checkDesignPreservation({ html, previousHtml, redesign, br
   const violations = [], screenshots = [], behavior = [], invariants = [], detail = [], baseline = previousHtml === null;
   const flag = (code, width) => violations.push({ code, metric: code, segment: 'dashboard', value: 0, threshold: 1, evidence: `${code} at ${width}px` });
   if (previousHtml === undefined) return { verdict: 'REJECTED', violations: [{ code: 'PREVIOUS_BUILD_MISSING', evidence: 'previous build missing' }], screenshots };
-  if (redesign !== undefined && (baseline || !redesign || typeof redesign.reason !== 'string' || !redesign.reason.trim() || /[\r\n]/.test(redesign.reason) || !Array.isArray(redesign.invariants) || !redesign.invariants.length || redesign.invariants.some(code => !DESIGN_CODES.includes(code)) || redesign.from !== hash(previousHtml || ''))) {
-    return { verdict: 'REJECTED', violations: [{ code: 'REDESIGN_SCOPE_MISMATCH', evidence: 'redesign requires a one-line reason, named invariants and the current predecessor hash' }], screenshots };
+  if (redesign !== undefined && (baseline || !redesign || !validApprover(redesign.approvedBy) || typeof redesign.reason !== 'string' || !redesign.reason.trim() || /[\r\n]/.test(redesign.reason) || !Array.isArray(redesign.invariants) || !redesign.invariants.length || redesign.invariants.some(code => !DESIGN_CODES.includes(code)) || redesign.from !== hash(previousHtml || ''))) {
+    return { verdict: 'REJECTED', violations: [{ code: 'REDESIGN_SCOPE_MISMATCH', evidence: 'redesign requires approvedBy, a one-line reason, named invariants and the current predecessor hash' }], screenshots };
   }
   const owned = !browser;
   browser ||= await chromium.launch();
@@ -157,6 +157,7 @@ export async function checkDesignPreservation({ html, previousHtml, redesign, br
 export async function checkPublishedDesign(spec, outputPath, html, options = {}) {
   let previous;
   try { previous = loadPublishedDesign(spec, outputPath, options); }
-  catch { return { verdict: 'REJECTED', violations: [{ code: 'PREVIOUS_BUILD_MISSING', metric: 'PREVIOUS_BUILD_MISSING', segment: 'dashboard', evidence: 'previous build missing' }] }; }
-  return { ...await checkDesignPreservation({ ...previous, html, redesign: spec.redesign, ...options }), series: previous.series, ...(previous.baseline ? { baseline: previous.baseline } : {}) };
+  catch (error) { const code = error.code || (error.message === 'DESIGN_LINEAGE_INVALID' ? error.message : 'PREVIOUS_BUILD_MISSING'); return { verdict: 'REJECTED', violations: [{ code, metric: code, segment: 'dashboard', evidence: error.message }] }; }
+  const result = await checkDesignPreservation({ ...previous, html, redesign: spec.redesign, ...options });
+  return { ...result, lineage: previous.lineage, predecessorSha256: previous.previousHtml === null ? null : hash(previous.previousHtml), admission: { BASELINE: 'FIRST_IN_LINEAGE', REDESIGN: 'REDESIGN_APPROVED', COMPARED: 'COMPARED' }[result.status], series: previous.series, ...(previous.baseline ? { baseline: previous.baseline } : {}) };
 }

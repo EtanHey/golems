@@ -1,30 +1,55 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { hostedDeliveryViolations } from './hosted-delivery.mjs';
 export const designHash = value => createHash('sha256').update(value).digest('hex');
 export const designReportPath = output => output.replace(/\.html$/i, '') + '.design.json';
-function location(spec, { registryRoot = path.join(os.homedir(), ".local", "share", "audio-dashboard", "design-history") } = {}) {
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(spec.series || '')) throw new Error('previous build missing: explicit slug-safe series required');
-  const directory = path.resolve(registryRoot, spec.series);
-  return { directory, index: path.join(directory, 'published.json') };
+const defaultRegistryRoot = path.join(os.homedir(), '.local', 'share', 'audio-dashboard', 'design-history');
+function location(spec, { registryRoot = defaultRegistryRoot } = {}) {
+  const lineage = spec.design?.lineage ?? 'briefings';
+  if (typeof lineage !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(lineage)) throw new Error('DESIGN_LINEAGE_INVALID');
+  const directory = path.resolve(registryRoot, 'lineages', lineage);
+  return { lineage, registryRoot, directory, index: path.join(directory, 'accepted.json') };
 }
+export const validApprover = value => typeof value === 'string' && !!value.trim() && !/[\r\n]/.test(value) && value.trim().toUpperCase() !== 'UNRECORDED';
 export function recordPublishedDesign(spec, outputPath, html, options = {}) {
-  const { directory, index } = location(spec, options), sha256 = designHash(html), filename = `${sha256}.html`;
+  const { lineage, directory, index } = location(spec, options), sha256 = designHash(html), filename = `${sha256}.html`;
+  const approver = options.acceptedBy;
+  if (!validApprover(approver)) {
+    if (!options.delivery || options.delivery.backfilled || options.delivery.admission?.answerRuntime !== 'current' ||
+        hostedDeliveryViolations({ ...options, html, dashboardId: spec.id }).length) throw new Error('DESIGN_ACCEPTANCE_REQUIRED');
+  }
+  const expected = options.handoff?.design || options.design;
+  if (expected) {
+    if (!['FIRST_IN_LINEAGE', 'COMPARED', 'REDESIGN_APPROVED'].includes(expected.admission) ||
+        (expected.admission === 'FIRST_IN_LINEAGE' ? expected.predecessorSha256 !== null : !/^[a-f0-9]{64}$/.test(expected.predecessorSha256)) ||
+        (expected.admission === 'REDESIGN_APPROVED' && (!validApprover(expected.redesign?.approvedBy) || expected.redesign.from !== expected.predecessorSha256))) throw new Error('DESIGN_ADMISSION_INVALID');
+    if (expected.lineage !== lineage) throw new Error('DESIGN_LINEAGE_MISMATCH');
+    const current = loadPublishedDesign(spec, outputPath, { ...options, firstBuild: existsSync(index) || spec.designPreservation?.previousPublished !== undefined ? undefined : 'Delivered initial lineage' });
+    // Replaying the same delivery is idempotent; a different delivery cannot replace a newer head.
+    const receiptSha256 = options.delivery && designHash(JSON.stringify(options.delivery));
+    const existing = existsSync(index) && JSON.parse(readFileSync(index, 'utf8'));
+    if (!(receiptSha256 && existing?.sha256 === sha256 && existing.deliverySha256 === receiptSha256) &&
+        (expected.predecessorSha256 !== (current.previousHtml === null ? null : designHash(current.previousHtml)))) throw new Error('DESIGN_PREDECESSOR_CHANGED');
+  }
+
   mkdirSync(directory, { recursive: true });
   writeFileSync(path.join(directory, filename), html);
-  writeFileSync(`${index}.new-${process.pid}`, JSON.stringify({ series: spec.series, filename, sha256 }));
+  writeFileSync(`${index}.new-${process.pid}`, JSON.stringify({ lineage, series: spec.series, filename, sha256, ...(options.delivery ? { deliverySha256: designHash(JSON.stringify(options.delivery)) } : { acceptedBy: approver }) }));
   renameSync(`${index}.new-${process.pid}`, index);
 }
 export function loadPublishedDesign(spec, outputPath, options = {}) {
-  const { directory, index } = location(spec, options);
+  const { lineage, registryRoot, directory, index } = location(spec, options);
+  const refuseReset = () => { if (options.firstBuild !== undefined) throw Object.assign(new Error('DESIGN_LINEAGE_RESET_REFUSED'), { code: 'DESIGN_LINEAGE_RESET_REFUSED' }); };
   try {
     if (existsSync(index)) {
       const record = JSON.parse(readFileSync(index, 'utf8'));
-      if (record.series !== spec.series || !/^[a-f0-9]{64}\.html$/.test(record.filename)) throw Error();
+      if (record.lineage !== lineage || !/^[a-f0-9]{64}\.html$/.test(record.filename)) throw Error();
       const previousPath = path.join(directory, record.filename), previousHtml = readFileSync(previousPath, 'utf8');
       if (designHash(previousHtml) !== record.sha256) throw Error();
-      return { series: spec.series, previousHtml, previousPath };
+      refuseReset();
+      return { lineage, series: spec.series, previousHtml, previousPath };
     }
     if (existsSync(directory)) throw Error();
     const previous = spec.designPreservation?.previousPublished;
@@ -32,12 +57,15 @@ export function loadPublishedDesign(spec, outputPath, options = {}) {
       if (typeof previous !== 'string' || !previous.trim()) throw Error();
       const previousPath = path.resolve(path.dirname(outputPath), previous), previousHtml = readFileSync(previousPath, 'utf8');
       if (!previousHtml.trim()) throw Error();
-      return { series: spec.series, previousHtml, previousPath };
+      refuseReset();
+      return { lineage, series: spec.series, previousHtml, previousPath };
     }
+    // Old series history is acceptance evidence requiring migration, never a fresh briefing lineage.
+    if (lineage === 'briefings' && existsSync(registryRoot) && readdirSync(registryRoot).some(name => existsSync(path.join(registryRoot, name, 'published.json')))) throw Error();
     const reason = options.firstBuild;
     if (typeof reason !== 'string' || !reason.trim() || /[\r\n]/.test(reason)) throw Error();
-    return { series: spec.series, previousHtml: null, baseline: { reason } };
-  } catch { throw new Error('previous build missing: migrate the served predecessor with previousPublished; initial publication alone may use --first-build'); }
+    return { lineage, series: spec.series, previousHtml: null, baseline: { reason } };
+  } catch (error) { if (error.code === 'DESIGN_LINEAGE_RESET_REFUSED') throw error; throw new Error('previous build missing: migrate the served predecessor with previousPublished; initial publication alone may use --first-build'); }
 }
 export function writeDesignReport(outputPath, html, result) {
   mkdirSync(path.dirname(outputPath), { recursive: true });

@@ -16,14 +16,14 @@ test('N1 carried first-build spec fails closed in an empty registry', async () =
   expect(result.violations.map(v => v.code)).toContain('PREVIOUS_BUILD_MISSING');
 });
 test('N1 per-invocation firstBuild and N3 injected registry preserve migration custody', () => {
-  const spec = { series: 'isolated' }, output = path.join(cell.root, 'first.html');
+  const spec = { series: 'isolated', design: { lineage: 'isolated' } }, output = path.join(cell.root, 'first.html');
   expect(loadPublishedDesign(spec, output, { ...options, firstBuild: 'Initial publication.' }).previousHtml).toBeNull();
-  recordPublishedDesign(spec, output, html, options);
+  recordPublishedDesign(spec, output, html, { ...options, acceptedBy: 'fixture-owner' });
   const record = loadPublishedDesign(spec, path.join(cell.root, 'other', 'next.html'), options);
   expect(record.previousPath.startsWith(options.registryRoot + path.sep)).toBe(true);
   expect(record.previousHtml).toBe(html);
   writeFileSync(output, html);
-  expect(loadPublishedDesign({ series: 'migrated', designPreservation: { previousPublished: output } }, output, options).previousHtml).toBe(html);
+  expect(loadPublishedDesign({ series: 'migrated', design: { lineage: 'migrated' }, designPreservation: { previousPublished: output } }, output, options).previousHtml).toBe(html);
 });
 const layout = '<style>.df-layout{max-width:1000px;margin:auto;padding:20px;display:grid;grid-template-columns:200px 1fr;gap:20px}.df-ledger{grid-column:2;max-width:540px;width:100%;margin:0 auto}</style><div class="df-layout"><aside>Index</aside><main class="df-ledger"><p>Review the next step.</p></main></div>';
 test('N2 reading-column width and parent-relative centering are gated separately from the outer grid', async () => {
@@ -41,7 +41,7 @@ test('N4 controls without a foundational design signal reject', async () => {
   expect(result.violations.map(v => v.code)).toContain('NO_DESIGN_SIGNAL');
 });
 test('N6 baseline waivers and unused waiver entries reject', async () => {
-  const redesign = { reason: 'Intentional layout change.', from: designHash(html), invariants: ['LAYOUT', 'STICKY_PLAYER'] };
+  const redesign = { reason: 'Intentional layout change.', approvedBy: 'fixture-owner', from: designHash(html), invariants: ['LAYOUT', 'STICKY_PLAYER'] };
   const result = await checkDesignPreservation({ html: html.replace('max-width:920px', 'max-width:1100px'), previousHtml: html, redesign, browser });
   expect(result.verdict).toBe('REJECTED');
   expect(result.violations.map(v => v.code)).toContain('REDESIGN_UNUSED_INVARIANT');
@@ -75,6 +75,6 @@ test('all four entry points require a per-invocation --first-build, and publishe
   try {
     expect((await run('verify-tailnet-publish', ['--url', server.url.href])).text).toContain('PREVIOUS_BUILD_MISSING');
     expect((await run('verify-tailnet-publish', ['--url', server.url.href, ...first])).code).toBe(0);
-    expect(loadPublishedDesign({ series: 'first-cli' }, outputPath, options).previousHtml).toBe(readFileSync(outputPath, 'utf8'));
+    expect(() => loadPublishedDesign({ series: 'first-cli' }, outputPath, options)).toThrow('previous build missing');
   } finally { server.stop(true); }
 }, 60000);

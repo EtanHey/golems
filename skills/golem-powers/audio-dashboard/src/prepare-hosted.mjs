@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { parse } from 'parse5';
 import path from 'node:path';
 import { sha256, handoffPath } from './hosted-delivery.mjs';
-import { loadPublishedDesign, designReportPath } from './design-history.mjs';
+import { loadPublishedDesign, designReportPath, validApprover } from './design-history.mjs';
 import { buildReceiptsPath } from './build-receipts.mjs';
 import { analyzeAnswerPersistence, extractAnswerRuntime } from './answer-persistence.mjs';
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -21,10 +21,13 @@ export function writePublishHandoff({ spec, specPath, outputPath, segmentsDir, h
   if (report.verdict !== 'PASS' || report.artifactSha256 !== sha256(html) || !['BASELINE', 'COMPARED', 'REDESIGN'].includes(report.status))
     throw Error('PUBLISH_HANDOFF_DESIGN_REJECTED');
   const previous = loadPublishedDesign(spec, outputPath, { firstBuild });
-  if ((report.status === 'BASELINE') !== (previous.previousHtml === null)) throw Error('PUBLISH_HANDOFF_DESIGN_CHANGED');
+  if (report.lineage !== previous.lineage || report.predecessorSha256 !== (previous.previousHtml === null ? null : sha256(previous.previousHtml)) || (report.status === 'BASELINE') !== (previous.previousHtml === null)) throw Error('PUBLISH_HANDOFF_DESIGN_CHANGED');
   const design = { admission: { BASELINE: 'FIRST_IN_LINEAGE', COMPARED: 'COMPARED', REDESIGN: 'REDESIGN_APPROVED' }[report.status],
-    lineage: previous.series, predecessorSha256: previous.previousHtml === null ? null : sha256(previous.previousHtml) };
-  if (report.redesign) design.redesign = { reason: report.redesign.reason, approvedBy: spec.redesign?.approvedBy || 'UNRECORDED', from: report.redesign.from };
+    lineage: previous.lineage, predecessorSha256: previous.previousHtml === null ? null : sha256(previous.previousHtml) };
+  if (report.status === 'REDESIGN') {
+    if (!validApprover(report.redesign?.approvedBy) || report.redesign.from !== design.predecessorSha256 || JSON.stringify(report.redesign) !== JSON.stringify(spec.redesign)) throw Error('PUBLISH_HANDOFF_REDESIGN_APPROVAL_REQUIRED');
+    design.redesign = { reason: report.redesign.reason, approvedBy: report.redesign.approvedBy, from: report.redesign.from };
+  }
   const { sourcePath, sourceHtmlSha256, media } = prepareHostedInput({ spec, html, segmentsDir, outputPath });
   const handoff = { schema: 'audio-dashboard.publish-handoff.v2', dashboardId: spec.id, type: spec.type || 'cinema',
     sourcePath, builtHtmlSha256: sha256(html), answerRuntimeSha256: sha256(extractAnswerRuntime(html)), answerKeys: persistedAnswerKeys(html), sourceHtmlSha256, buildReceiptsSha256: sha256(receiptsBytes), answerPersistence: 'PASS', design,
