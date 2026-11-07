@@ -17,7 +17,7 @@ export const DEFAULT_DECISIONS = [
   { id: "b", title: "B", options: ["One", "Two"], sceneIds: ["b1"] },
 ];
 
-export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard, storageError = () => false, touch = false, clock = Date, schedule = setTimeout, runtimeTransform = source => source, renderOptions = {}, url } = {}) {
+export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), scene("a2"), scene("b1")], seed, clipboard, answerStore, storageError = () => false, touch = false, clock = Date, schedule = setTimeout, runtimeTransform = source => source, renderOptions = {}, url } = {}) {
   const html = renderDecisionFlow({
     title: "Audio decision dashboard",
     kicker: "Audio decision dashboard",
@@ -32,6 +32,7 @@ export function boot({ decisions = DEFAULT_DECISIONS, scenes = [scene("a1"), sce
   // Keep iframe outcomes under test control. Disabling page loading makes happy-dom
   // raise its error synchronously on insertion instead of starting a real navigation.
   const window = new Window({ ...(url ? { url } : {}), settings: { disableIframePageLoading: true } });
+  if (answerStore) window.__answerStore = answerStore;
   const nativeMatchMedia = window.matchMedia.bind(window);
   window.matchMedia = query => query === "(pointer: coarse)" ? { matches: touch } : nativeMatchMedia(query);
   if (seed) window.localStorage.setItem("dbx:interaction-test", JSON.stringify(seed));
