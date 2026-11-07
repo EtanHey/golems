@@ -34,6 +34,13 @@ does not rewrite legacy metadata while holding a shared lock.
 The private regression installer gate uses this same semaphore; the ratchet's
 `GOLEMS_HEAVY_LOCK` override continues to select the real user's namespace.
 
+Never wrap `install-hooks`, `post-merge-live` or `local-run` in an outer heavy-suite
+lock or wrapper: they queue their own slots, so an outer lock can make them wait
+on their own parent. Run them plainly (detached if needed).
+`GOLEMS_HEAVY_SUITE_HELD` is only for `heavy-suite.py`'s own children; exporting
+it is not a workaround, and the installer rejects it with
+`run installer outside an existing heavy suite`.
+
 Before acquiring a slot, the wrapper waits until free + inactive RAM reaches
 6 GiB. `GOLEMS_HEAVY_MIN_FREE_GB` / `--min-free-gb` changes this floor (0 disables
 it). macOS uses `vm_stat`; Linux uses `/proc/meminfo`. Memory is checked again
