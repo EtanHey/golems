@@ -210,7 +210,7 @@ function buildDashboard(spec, jobDir, name = spec.id, extraEnv = {}, options = {
   const pronunciationRules = loadPronunciationRules({ env: invocationEnv });
   const specPath = path.join(root, "job.json");
   const outputPath = spec.outputPath ?? path.join(root, "repo", "docs.local", "dashboards", `${name}.html`);
-  const fullSpec = { series: `eval-${path.basename(root)}`, ...spec, outputPath };
+  const fullSpec = { design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, series: `eval-${path.basename(root)}`, ...spec, outputPath };
   if (!options.omitSynthSidecars) {
     for (const scene of fullSpec.scenes ?? []) {
       if (scene.audioWav) continue;

@@ -162,7 +162,7 @@ Everything the pipeline needs is inside the skill:
 | BUILD receipts sidecar | `src/build-receipts.mjs` |
 | Rejected-take cache purge | `src/take-cache.mjs` |
 | Narration vendor provenance + two-way drift lint | `vendor/narrationlayer/VENDOR-VERSION` + `scripts/lint-narration-vendor-drift.mjs` |
-| Orchestration | `scripts/synth-segments.mjs`, `scripts/build-dashboard.mjs`, `scripts/bootstrap.mjs`, `scripts/validate-evidence.mjs`, `scripts/verify-tailnet-publish.mjs`, `scripts/audio-dashboard-generator.mjs` |
+| Orchestration | `scripts/synth-segments.mjs`, `scripts/build-dashboard.mjs`, `scripts/bootstrap.mjs`, `scripts/validate-evidence.mjs`, `scripts/audio-dashboard-generator.mjs` |
 
 ## Canonical Pipeline
 
@@ -251,8 +251,7 @@ this skill dir):
    `bun scripts/validate-evidence.mjs --spec <job.json> --delivery <receipt.json>`.
    Only this final check can return delivery **PASS**. Tailnet sync strings and
    HTTP 200/byte probes cannot substitute for authenticated account proof.
-   Backfilled pages use `--source-dir` and return BACKFILL_ACCOUNT_PROVEN (exit 4),
-   never acceptance. Deprecated runtimes return PASS_DEPRECATED_RUNTIME (exit 5);
+   Deprecated runtimes return PASS_DEPRECATED_RUNTIME (exit 5);
    rebuild with the current runtime. The publisher owns its runtime sha allowlist.
    Historical pages published outside admission may receive BACKFILL_ACCOUNT_PROVEN
    (exit 4): an honest account-proof record, never acceptance or PASS. Backfill
@@ -475,18 +474,35 @@ Before calling a dashboard done, verify these conditions (enforced by
 ## Preserve the published design
 Preserve pinned controls, labelled read-along, transcript at playback end, native
 answers, code-only copy, focus, seeking and resets. Gate both outer and reading-column
-width/centering by role and parent geometry. Require stable explicit `spec.series`.
-History is per-machine: `~/.local/share/audio-dashboard/design-history/<series>/`.
-For the initial publication only, pass `--first-build <reason>` separately to BUILD,
-done-gate, evidence and publish CLIs; no persistent spec declaration is honored.
-On another machine or after registry loss, copy the served predecessor and set
-`designPreservation: { previousPublished: "served-copy.html" }`; absence rejects.
-A waiver needs `redesign: { reason, invariants: ["LAYOUT"], from: "previous sha256" }`;
-only fired codes may be listed, never on a baseline. It expires with its predecessor.
+width/centering by role and parent geometry. Set `spec.design.lineage` for a
+separate product; nightly/eod/commute/huddle default to the shared `briefings`
+lineage. Changing `spec.id` or `spec.series` never resets accepted design.
+History is per-machine under `~/.local/share/audio-dashboard/design-history/lineages/<lineage>/`.
+Every initial lineage, including `briefings` on a fresh machine, requires the job
+to carry `design.firstInLineage: { reason, approvedBy }`: nonblank one-line reason
+and a named approver (never UNRECORDED). Missing/invalid approval rejects with
+FIRST_IN_LINEAGE_UNAPPROVED. Per-invocation `--first-build <reason>`
+alone is insufficient; it must accompany that approval. The handoff carries
+`design.firstInLineage` for NarrationLayer to validate. Even with approval,
+an accepted registry entry or `previousPublished` refuses DESIGN_LINEAGE_RESET_REFUSED.
+On another machine or after registry loss, copy the accepted served predecessor
+and set `designPreservation: { previousPublished: "served-copy.html" }`; absence
+rejects without an approved initial-lineage declaration. Old series-keyed history
+must be migrated the same way. Without a lineage record, previousPublished wins
+over legacy series history. With an accepted lineage head, that head is used; a
+conflicting supplied previousPublished rejects DESIGN_PREDECESSOR_CONFLICT.
+NarrationLayer owns the authoritative deliveries.json;
+the publisher must independently refuse FIRST_IN_LINEAGE for an already delivered lineage.
+A waiver needs `redesign: { reason, approvedBy, invariants: ["LAYOUT"], from: "previous sha256" }`;
+blank or UNRECORDED approval rejects. Only fired codes may be listed, never on a
+baseline. The waiver expires with its predecessor.
 Run `bun scripts/check-design-preservation.mjs --spec job.json --screenshots proof/`.
-BUILD/evidence prevent drift; the library checks the caller's HTML and PASS sidecar.
-Only the publish probe binds served bytes (`--spec` required); it cannot prevent
-exposure already published. A shared served-host registry is a follow-up, not built.
+BUILD/evidence compare design; handoffs carry lineage, admission and predecessorSha256.
+Only `validate-evidence --delivery` with verdict PASS advances accepted history;
+backfill, deprecated runtime, BUILD and preparation never do. An explicit owner
+acceptance is also available with `check-design-preservation --accept <approvedBy>`
+after its comparison passes. `scripts/verify-tailnet-publish.mjs` is a media/redirect
+probe only, never delivery proof, never advances design history.
 
 ## Transcript Fidelity and Teleprompter Drift BUILD Gates
 

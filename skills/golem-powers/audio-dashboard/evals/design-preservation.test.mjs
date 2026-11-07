@@ -7,13 +7,13 @@ import { checkDesignPreservation, loadPublishedDesign as loadRegistry, recordPub
 
 import { designTestCell } from './design-test-cell.mjs';
 const cell = designTestCell();
-const loadPublishedDesign = (spec, output, options) => loadRegistry(spec, output, { ...options, ...cell.options });
-const recordPublishedDesign = (spec, output, html) => recordRegistry(spec, output, html, cell.options);
+const loadPublishedDesign = (spec, output, options) => loadRegistry({ ...spec, design: { lineage: spec.series } }, output, { ...options, ...cell.options });
+const recordPublishedDesign = (spec, output, html) => recordRegistry({ ...spec, design: { lineage: spec.series } }, output, html, { ...cell.options, acceptedBy: 'fixture-owner' });
 const fixture = name => readFileSync(new URL(`./fixtures/design-preservation/${name}.html`, import.meta.url), 'utf8');
 let browser;
 beforeAll(async () => { browser = await chromium.launch(); });
 afterAll(async () => { await browser?.close(); });
-const waiver = invariants => ({ reason: 'New transport requested.', invariants, from: createHash('sha256').update(fixture('previous')).digest('hex') });
+const waiver = invariants => ({ reason: 'New transport requested.', approvedBy: 'fixture-owner', invariants, from: createHash('sha256').update(fixture('previous')).digest('hex') });
 const check = (html, extra = {}) => checkDesignPreservation({ browser, html, previousHtml: fixture('previous'), ...extra });
 for (const code of ['STICKY_PLAYER', 'READ_ALONG', 'SPEAKER_LABELS', 'FULL_TRANSCRIPT', 'LAYOUT', 'ANSWER_CONTROLS', 'COPY_BUTTONS']) {
   test(`removed invariant rejects by name: ${code}`, async () => {
@@ -55,7 +55,7 @@ test('computed cascade, toggles, segment labels and input types cannot fake pres
     [html.replace('>Host</span>', '> </span>'), 'SPEAKER_LABELS'],
   ]) expect((await check(changed)).violations.some(v => v.code === code)).toBe(true);
 });
-test('published history is series-specific, immutable on rebuild, and fails closed on loss', () => {
+test('accepted history is lineage-specific, immutable on rebuild, and fails closed on loss', () => {
   const dir = path.join(cell.root, 'history');
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, 'v1.html'), spec = { id: 'v1', series: 'adp-fixture-' + crypto.randomUUID() };
@@ -87,10 +87,10 @@ test('real CLI and render-done gate reject every regression and allow an explici
   expect(run('check-design-preservation').stdout.toString()).toContain('PREVIOUS_BUILD_MISSING');
 }, 30000);
 
-test('publish probe advances history only after byte equality and preservation pass', async () => {
+test('publish probe never advances accepted history, even after byte equality and preservation pass', async () => {
   const dir = path.join(cell.root, 'publish');
   mkdirSync(dir, { recursive: true });
-  const outputPath = path.join(dir, 'new.html'), specPath = path.join(dir, 'job.json'), spec = { id: 'weekly', series: 'adp-publish-' + crypto.randomUUID(), outputPath, designPreservation: { baseline: { reason: 'New fixture series.' } } };
+  const outputPath = path.join(dir, 'new.html'), specPath = path.join(dir, 'job.json'), spec = { id: 'weekly', design: { lineage: 'probe-fixture', firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, series: 'probe-fixture', outputPath, designPreservation: { baseline: { reason: 'New fixture series.' } } };
   let served = fixture('previous');
   const server = Bun.serve({ port: 0, fetch: () => new Response(served, { headers: { 'content-type': 'text/html' } }) });
   const probe = async (firstBuild = false) => {
@@ -100,6 +100,8 @@ test('publish probe advances history only after byte equality and preservation p
   try {
     writeFileSync(specPath, JSON.stringify(spec)); writeFileSync(outputPath, served);
     expect((await probe(true)).code).toBe(0);
+    expect(() => loadPublishedDesign(spec, outputPath)).toThrow('previous build missing');
+    recordPublishedDesign(spec, outputPath, served);
     writeFileSync(outputPath, fixture('preserved'));
     expect((await probe()).stderr).toContain('hash mismatch');
     served = fixture('sticky_player'); writeFileSync(outputPath, served);

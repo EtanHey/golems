@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { deliveryOrigins, handoffPath, sha256 } from "../src/hosted-delivery.mjs";
 import { spawnSync } from "node:child_process";
 import { writePublishHandoff } from "../src/prepare-hosted.mjs";
+import { designReportPath, recordPublishedDesign } from "../src/design-history.mjs";
 import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 import { validateAudioDashboardEvidence, formatReport } from "../src/audio-dashboard-evidence.mjs";
 
@@ -48,6 +49,7 @@ function loadWords(p) {
 
 const args = parseArgs(process.argv.slice(2));
 if (args.help) { console.log("usage: bun scripts/validate-evidence.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>] [--prepare-publish | --delivery <receipt.json>] [--source-dir <prepared directory>] [--segments-dir <segments>] [--json]"); process.exit(0); }
+if (args.prepare && args.delivery) fail("--prepare-publish and --delivery are mutually exclusive");
 if (!args.spec) fail("--spec is required");
 const specPath = path.resolve(expandHome(args.spec));
 if (!existsSync(specPath)) fail(`spec not found: ${specPath}`);
@@ -88,8 +90,8 @@ const evidence = {
 };
 
 const backfilled = evidence.delivery?.backfilled === true;
-const preservation = backfilled ? { verdict: "NOT_RUN", status: "BACKFILL" } : await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
-if (!backfilled) writeDesignReport(outPath, html, preservation);
+const preservation = backfilled ? { verdict: "NOT_RUN", status: "BACKFILL" } : args.delivery ? JSON.parse(readFileSync(designReportPath(outPath), "utf8")) : await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
+if (!backfilled && !args.delivery) writeDesignReport(outPath, html, preservation);
 const result = validateAudioDashboardEvidence(evidence);
 if (sha256(readFileSync(outPath)) !== sha256(html) || sourceFile && sourceHtml !== null && sha256(readFileSync(sourceFile)) !== sha256(sourceHtml)) {
   result.verdict = "REJECTED"; result.violations.push({ code: "EVIDENCE_SOURCE_CHANGED", evidence: "HTML changed during design verification; rerun evidence." });
@@ -102,13 +104,21 @@ if (["PASS", "PASS_DEPRECATED_RUNTIME"].includes(result.verdict)) {
     result.verdict = "REJECTED"; result.violations.push({ code: "BUILD_RECEIPTS_SHA_MISMATCH", evidence: "BUILD receipts changed after the handoff." });
   }
 }
-if (args.prepare && args.delivery) fail("--prepare-publish and --delivery are mutually exclusive");
+if (args.delivery && !backfilled && (preservation.lineage !== handoff?.design?.lineage || preservation.predecessorSha256 !== handoff?.design?.predecessorSha256 || preservation.admission !== handoff?.design?.admission ||
+    (preservation.admission === "FIRST_IN_LINEAGE" && ["reason", "approvedBy"].some(k => preservation.firstInLineage?.[k] !== handoff?.design?.firstInLineage?.[k])) ||
+    (preservation.admission === "REDESIGN_APPROVED" && ["reason", "approvedBy", "from"].some(k => preservation.redesign?.[k] !== handoff?.design?.redesign?.[k])))) {
+  result.verdict = "REJECTED"; result.violations.push({ code: "DELIVERY_DESIGN_MISMATCH", evidence: "Design report must bind the handoff lineage, admission and predecessor." });
+}
 if (result.verdict === "READY_FOR_HOSTED_PUBLISH") {
   const qa = spec.type === "decision-flow" ? "verify-decision-flow.mjs" : "verify-cinema.mjs";
   const checked = spawnSync("bun", [path.join(SKILL_ROOT, "vendor/qa", qa), outPath], { encoding: "utf8" });
   if (checked.status !== 0) fail(`QA_REJECTED: ${checked.stderr || checked.stdout}`);
   const segmentsDir = args.segmentsDir || (spec.segmentsDir && path.resolve(path.dirname(specPath), expandHome(spec.segmentsDir))) || (args.jobDir && path.join(jobDir, 'segments'));
   writePublishHandoff({ spec, specPath, outputPath: outPath, segmentsDir: segmentsDir && path.resolve(expandHome(segmentsDir)), html, firstBuild: args.firstBuild });
+}
+if (result.verdict === "PASS") {
+  try { recordPublishedDesign(spec, outPath, html, evidence); }
+  catch (error) { result.verdict = "REJECTED"; result.violations.push({ code: error.message, evidence: "Accepted lineage was not advanced." }); }
 }
 if (args.json) console.log(JSON.stringify(result, null, 2));
 else {

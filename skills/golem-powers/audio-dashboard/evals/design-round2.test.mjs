@@ -8,7 +8,7 @@ import { validateAudioDashboardEvidence } from '../src/audio-dashboard-evidence.
 import { designTestCell } from './design-test-cell.mjs';
 const cell = designTestCell();
 const loadPublishedDesign = (spec, output, options) => loadRegistry(spec, output, { ...options, ...cell.options });
-const recordPublishedDesign = (spec, output, html) => recordRegistry(spec, output, html, cell.options);
+const recordPublishedDesign = (spec, output, html) => recordRegistry(spec, output, html, { ...cell.options, acceptedBy: 'fixture-owner' });
 const html = readFileSync(new URL('./fixtures/design-preservation/previous.html', import.meta.url), 'utf8');
 const hash = value => createHash('sha256').update(value).digest('hex');
 const root = cell.root;
@@ -17,13 +17,13 @@ beforeAll(async () => { browser = await chromium.launch(); });
 afterAll(async () => { await browser.close(); });
 const check = (next, extra = {}) => checkDesignPreservation({ html: next, previousHtml: html, browser, ...extra });
 test('missing history is not a first-build declaration; series survives a directory and id change', () => {
-  const spec = { series: 'adp-r2-' + crypto.randomUUID() }, first = path.join(root, 'one.html');
+  const spec = { design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, series: 'adp-r2-' + crypto.randomUUID() }, first = path.join(root, 'one.html');
   expect(() => loadPublishedDesign(spec, first)).toThrow('previous build missing');
   expect(loadPublishedDesign(spec, first, { firstBuild: 'New series.' }).previousHtml).toBeNull();
   recordPublishedDesign(spec, first, html);
   expect(loadPublishedDesign({ ...spec, id: 'different' }, path.join(root, 'other', 'two.html')).previousHtml).toBe(html);
   expect(loadPublishedDesign({ ...spec, designPreservation: { baseline: { reason: 'Cannot reset history.' } } }, first).previousHtml).toBe(html);
-  expect(() => loadPublishedDesign({ id: spec.series }, first)).toThrow();
+  expect(() => loadPublishedDesign({ design: { lineage: 'unknown' } }, first)).toThrow();
 });
 test('content reconciliation preserves design even with changed ids, labels, groups and counts', async () => {
   const next = html.replaceAll('intro', 'new-scene').replace('>Host<', '>Presenter<').replaceAll('choice', 'new-answer');
@@ -31,7 +31,7 @@ test('content reconciliation preserves design even with changed ids, labels, gro
 });
 test('waiver is limited to invariant and predecessor hash', async () => {
   const changed = html.replace('max-width:920px', 'max-width:1100px');
-  const redesign = { reason: 'Wider reading column.', invariants: ['LAYOUT'], from: hash(html) };
+  const redesign = { reason: 'Wider reading column.', approvedBy: 'fixture-owner', invariants: ['LAYOUT'], from: hash(html) };
   expect((await check(changed, { redesign })).verdict).toBe('PASS');
   expect((await check(changed.replace('position:sticky', 'position:static'), { redesign })).verdict).toBe('REJECTED');
   expect((await check(changed, { redesign: { ...redesign, from: hash(changed) } })).verdict).toBe('REJECTED');

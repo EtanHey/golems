@@ -18,9 +18,10 @@ skill-creator writes the handoff after BUILD, QA and pre-publish evidence. Narra
   "answerRuntimeSha256": "<sha of exactly one trimmed installAnswerPersistence block>",
   "design": {
     "admission": "COMPARED | REDESIGN_APPROVED | FIRST_IN_LINEAGE",
-    "lineage": "<existing design series>",
+    "lineage": "<design lineage, independent of spec.series>",
     "predecessorSha256": "<64 hex; null only for FIRST_IN_LINEAGE>",
-    "redesign": { "reason": "<reason>", "approvedBy": "<approver or UNRECORDED>", "from": "<predecessor sha>" }
+    "firstInLineage": { "reason": "<required for FIRST_IN_LINEAGE>", "approvedBy": "<required named approver; never UNRECORDED>" },
+    "redesign": { "reason": "<reason>", "approvedBy": "<required approver; never UNRECORDED>", "from": "<predecessor sha>" }
   },
   "jobPath": "<job path relative to handoff directory>",
   "mediaManifest": [{ "file": "assets/clip.mp3", "size": 1, "sha256": "<64 hex>" }],
@@ -28,7 +29,7 @@ skill-creator writes the handoff after BUILD, QA and pre-publish evidence. Narra
 }
 ```
 
-The inline manifest contains per-clip `{file,size,sha256}` records relative to sourcePath. The local source directory contains prepared index.html and extracted media; external HTTP(S) links open in a new tab. The prepared input copies index.receipts.json and index.design.json and includes asset-manifest.json with per-clip duration and both HTML hashes. answerKeys comes from persisted page controls, including radio names, grouped checklist indices, free text, per-card citation notes and cinema `_notes:` keys; playback preferences and editor drafts are excluded. `jobPath` is additive local custody metadata. `redesign` is omitted unless the existing design report records a redesign. Admission maps existing report statuses COMPARED/REDESIGN/BASELINE respectively; UNRECORDED never invents human approval. This mapping does not add the separate cross-series lineage-reset rule. The publisher must refuse FIRST_IN_LINEAGE when an accepted predecessor exists, missing approval where required, bad schemas, changed identity/source bytes, non-PASS answers, or an unavailable account provider.
+The inline manifest contains per-clip `{file,size,sha256}` records relative to sourcePath. The local source directory contains prepared index.html and extracted media; external HTTP(S) links open in a new tab. The prepared input copies index.receipts.json and index.design.json and includes asset-manifest.json with per-clip duration and both HTML hashes. answerKeys comes from persisted page controls, including radio names, grouped checklist indices, free text, per-card citation notes and cinema `_notes:` keys; playback preferences and editor drafts are excluded. `jobPath` is additive local custody metadata. `redesign` is omitted unless the existing design report records a redesign. Admission maps report statuses COMPARED/REDESIGN/BASELINE respectively. spec.design.lineage defaults to briefings across nightly/eod/commute/huddle series. Accepted local history is keyed by lineage, advances only on delivery PASS or explicit owner acceptance, and refuses --first-build when an accepted predecessor exists. When no accepted lineage record exists, `previousPublished` supplies the predecessor even if legacy per-series history exists. Once a lineage has an accepted head, that head wins; a conflicting supplied previousPublished rejects DESIGN_PREDECESSOR_CONFLICT. FIRST_IN_LINEAGE additionally requires `spec.design.firstInLineage: { reason, approvedBy }` in the job for every lineage, including fresh-machine briefings. The reason must be nonblank and one line; approvedBy must pass validApprover (nonblank, one line, never UNRECORDED). `--first-build` alone refuses with FIRST_IN_LINEAGE_UNAPPROVED. The handoff carries the validated approval in `design.firstInLineage` only for FIRST_IN_LINEAGE, and must match the comparison report and job. NarrationLayer must validate that approval before admitting a new lineage. Redesign requires approvedBy and the predecessor hash; UNRECORDED is refused. The publisher must refuse FIRST_IN_LINEAGE when an accepted predecessor exists, missing approval where required, bad schemas, changed identity/source bytes, non-PASS answers, or an unavailable account provider.
 
 ## `<output-basename>.delivery.json` (NarrationLayer → skill)
 

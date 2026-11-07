@@ -22,7 +22,7 @@ test('preserved behavior passes with decoded media and measured seek evidence', 
   expect(result.behavior.every(row => row.previous.scrub && row.new.scrub && row.new.seek.after > row.new.seek.before)).toBe(true);
 });
 test('explicit redesign waives behavior regressions but keeps their evidence', async () => {
-  const result = await check('scrub', { redesign: { reason: 'Requested transport replacement.', invariants: ['SCRUB'], from: createHash('sha256').update(fixture('previous')).digest('hex') } });
+  const result = await check('scrub', { redesign: { reason: 'Requested transport replacement.', approvedBy: 'fixture-owner', invariants: ['SCRUB'], from: createHash('sha256').update(fixture('previous')).digest('hex') } });
   expect(result.verdict).toBe('PASS');
   expect(result.violations[0].code).toBe('SCRUB');
 });
