@@ -6,6 +6,8 @@ import { spawn } from "node:child_process";
 
 const MAX_CAPTURE_BYTES = 512 * 1024;
 const USE_PROCESS_GROUP = process.platform !== "win32";
+// Installed Stop hooks have a 5s harness timeout; leave time to reap and log.
+const MAX_TIMEOUT_MS = 4000;
 
 function usage() {
   process.stderr.write("usage: stop-telemetry.mjs <hook_name> -- <command> [args...]\n");
@@ -71,13 +73,16 @@ const args = process.argv.slice(separator + 2);
 if (!hookName || !command) usage();
 
 const startedAtMs = Date.now();
-const timeoutMs = Number(process.env.STOP_TELEMETRY_TIMEOUT_MS ?? 30000);
+const requestedTimeoutMs = Number(process.env.STOP_TELEMETRY_TIMEOUT_MS ?? MAX_TIMEOUT_MS);
+const timeoutMs = Number.isFinite(requestedTimeoutMs) && requestedTimeoutMs > 0
+  ? Math.min(requestedTimeoutMs, MAX_TIMEOUT_MS) : MAX_TIMEOUT_MS;
 const logPath =
   process.env.STOP_TELEMETRY_LOG_PATH ??
   join(homedir(), ".claude", "hooks", "stop-decisions.jsonl");
 
 let timedOut = false;
 let spawnError = null;
+let terminationExitCode = null;
 let stdinBytes = 0;
 let stdoutBytes = 0;
 let receiptBytes = 0;
@@ -107,17 +112,35 @@ child.stdio[3].on("data", (chunk) => {
   receiptBytes = appendBounded(receiptChunks, receiptBytes, chunk);
 });
 
-const killTimer = setTimeout(() => {
-  timedOut = true;
+function signalChild(signal) {
   if (USE_PROCESS_GROUP && Number.isInteger(child.pid)) {
     try {
-      process.kill(-child.pid, "SIGKILL");
+      process.kill(-child.pid, signal);
       return;
     } catch {
       // Fall back to the direct child if the process group already disappeared.
     }
   }
-  child.kill("SIGKILL");
+  child.kill(signal);
+}
+
+for (const [signal, exitCode] of [["SIGTERM", 143], ["SIGINT", 130], ["SIGHUP", 129]]) {
+  process.on(signal, () => {
+    if (terminationExitCode !== null) return;
+    terminationExitCode = exitCode;
+    signalChild(signal);
+    process.stdin.unpipe(child.stdin);
+    process.stdin.destroy();
+    child.stdin.end();
+    // Keep this timer alive even if the direct child closes its pipes first:
+    // a descendant may ignore the forwarded signal without holding a pipe.
+    setTimeout(() => signalChild("SIGKILL"), 100);
+  });
+}
+
+const killTimer = setTimeout(() => {
+  timedOut = true;
+  signalChild("SIGKILL");
 }, timeoutMs);
 killTimer.unref();
 
@@ -162,7 +185,7 @@ child.on("error", (error) => {
 
 child.on("close", (code, signal) => {
   clearTimeout(killTimer);
-  const exitCode = timedOut ? 124 : code ?? 1;
+  const exitCode = terminationExitCode ?? (timedOut ? 124 : code ?? 1);
   writeTelemetry(exitCode, signal);
   process.exitCode = exitCode;
 });

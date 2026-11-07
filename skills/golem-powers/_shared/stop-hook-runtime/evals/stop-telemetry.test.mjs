@@ -3,7 +3,8 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
 
 import { materializeOversizeTranscript, readFixture } from "./helpers.mjs";
 
@@ -22,6 +23,58 @@ const falseGreenHook = path.join(
 );
 const fixtureRoot = path.join(here, "fixtures");
 const scratch = [];
+
+test("the default watchdog and oversized override finish before every manifest harness timeout", () => {
+  const manifest = JSON.parse(readFileSync(path.resolve(powersRoot, "../../scripts/hooks/manifest.json"), "utf8"));
+  const rows = Object.values(manifest.hosts).flat().filter((row) => row.command?.includes("stop-telemetry.mjs"));
+  expect(rows.length).toBeGreaterThan(0);
+  const outerMs = Math.min(...rows.map((row) => row.timeout)) * 1000 - 200;
+  const root = mkdtempSync(path.join(tmpdir(), "stop-deadline-"));
+  scratch.push(root);
+  for (const override of [undefined, "30000"]) {
+    const logPath = path.join(root, `decisions-${override}.jsonl`);
+    const pidPath = path.join(root, "child.pid");
+    const source = 'require("node:fs").writeFileSync(process.env.PID_PATH, String(process.pid)); setInterval(() => {}, 1000);';
+    const env = { ...process.env, STOP_TELEMETRY_LOG_PATH: logPath, PID_PATH: pidPath };
+    delete env.STOP_TELEMETRY_TIMEOUT_MS;
+    if (override) env.STOP_TELEMETRY_TIMEOUT_MS = override;
+    try {
+      const result = spawnSync("node", [telemetry, "deadline-hook", "--", "node", "-e", source], { input: "{}", encoding: "utf8", env, timeout: outerMs });
+      expect(result.status, String(result.error ?? result.stderr)).toBe(124);
+      expect(JSON.parse(readFileSync(logPath, "utf8")).timedOut).toBe(true);
+    } finally {
+      try { process.kill(-Number(readFileSync(pidPath, "utf8")), "SIGKILL"); } catch {}
+    }
+  }
+});
+
+for (const [signal, exitCode] of [["SIGTERM", 143], ["SIGINT", 130], ["SIGHUP", 129]]) {
+  test(`outer ${signal} reaches the child group and reaps a resistant child`, async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "stop-termination-"));
+    scratch.push(root);
+    const pidPath = path.join(root, "child.pid");
+    const marker = path.join(root, "signal.txt");
+    const descendant = `process.on(${JSON.stringify(signal)}, () => { require("node:fs").writeFileSync(process.env.MARKER, ${JSON.stringify(signal)}); process.exit(0); }); process.stdout.write("ready"); setInterval(() => {}, 1000);`;
+    const source = `require("node:fs").writeFileSync(process.env.PID_PATH, String(process.pid)); process.on(${JSON.stringify(signal)}, () => {}); require("node:child_process").spawn(process.execPath, ["-e", ${JSON.stringify(descendant)}], {stdio: ["ignore", "inherit", "inherit"]}); setInterval(() => {}, 1000);`;
+    const wrapper = spawn("node", [telemetry, "signal-hook", "--", "node", "-e", source], {
+      env: { ...process.env, PID_PATH: pidPath, MARKER: marker, STOP_TELEMETRY_LOG_PATH: path.join(root, "decisions.jsonl") },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const guard = setTimeout(() => wrapper.kill("SIGKILL"), 2000);
+    try {
+      await once(wrapper.stdout, "data");
+      const closed = once(wrapper, "close");
+      wrapper.kill(signal);
+      expect((await closed)[0]).toBe(exitCode);
+      expect(readFileSync(marker, "utf8")).toBe(signal);
+      expect(() => process.kill(Number(readFileSync(pidPath, "utf8")), 0)).toThrow();
+    } finally {
+      clearTimeout(guard);
+      wrapper.kill("SIGKILL");
+      try { process.kill(-Number(readFileSync(pidPath, "utf8")), "SIGKILL"); } catch {}
+    }
+  });
+}
 
 afterEach(() => {
   while (scratch.length > 0) rmSync(scratch.pop(), { recursive: true, force: true });

@@ -33,6 +33,12 @@ transcript, state, and total bytes read. Receipt lines merge in order; a `{}`
 whose receipt says `advisoryRendered: false` is still an `advisory`, and the row
 carries `advisoryRendered` when a gate reported it.
 
+The watchdog defaults to 4 seconds, below the manifest's 5-second harness
+timeout. `STOP_TELEMETRY_TIMEOUT_MS` can shorten that budget; larger or invalid
+values cannot extend it. Timeout kills the child process group. SIGTERM, SIGINT,
+and SIGHUP are forwarded to that group, followed by SIGKILL after 100 ms to reap
+children that ignore termination.
+
 The installed layout must preserve the relative imports:
 
 ```text

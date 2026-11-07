@@ -8,12 +8,26 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
+import { spawnSync } from "node:child_process";
 
 import { detectModelPin, weeklyResetPassed } from "../src/model-pin-gate.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const redDir = path.join(here, "fixtures", "red");
 const greenDir = path.join(here, "fixtures", "green");
+
+test("hook failures allow with a visible advisory and no exception details", () => {
+  for (const input of ["{broken-json", JSON.stringify({ transcript_path: path.join(here, "missing-private-transcript.jsonl") })]) {
+    const result = spawnSync("node", [path.join(here, "../scripts/model-pin-gate-hook.mjs")], { input, encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
+    const output = JSON.parse(result.stdout);
+    expect(output.systemMessage).toContain("MODEL-PIN-GATE advisory");
+    expect(output.systemMessage).toContain("could not run");
+    expect(output.systemMessage).toContain("allowing");
+    expect(result.stdout).not.toContain("missing-private-transcript");
+    expect(output.decision).toBeUndefined();
+  }
+});
 
 function loadFixtures(dir) {
   return readdirSync(dir)

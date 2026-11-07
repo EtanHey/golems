@@ -116,7 +116,9 @@ function main() {
     if (result.verdict === "ADVISORY") return advisory(result);
     return allow();
   } catch {
-    return allow();
+    process.stdout.write(JSON.stringify({
+      systemMessage: "MODEL-PIN-GATE advisory: the model safety check could not run; allowing this action. Ask the lead to check the hook installation and transcript input.",
+    }));
   }
 }
 
