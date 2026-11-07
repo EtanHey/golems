@@ -22,6 +22,14 @@ export function hostedDeliveryViolations({ delivery: d, handoff: h, html, source
   const url = httpsUrl(d.url);
   if (!url || !Array.isArray(origins) || !origins.includes(url.origin)) fail('UNAPPROVED_DELIVERY_ORIGIN', 'Delivery URL must use an approved HTTPS origin.');
   const backfilled = d.backfilled === true;
+  if (!['unlisted-candidate', 'in-place-maintenance', 'none-backfill'].includes(d.staging?.mode))
+    fail('INVALID_STAGING_MODE', 'staging.mode must be unlisted-candidate, in-place-maintenance or none-backfill.');
+  if (d.staging?.mode === 'in-place-maintenance') {
+    if (!hash(d.staging.previousServedShellSha256))
+      fail('INVALID_STAGING_MODE', 'in-place-maintenance requires a 64-hex staging.previousServedShellSha256 rollback target.');
+    if (![d.admission?.design, h?.design?.admission].every(design => ['COMPARED', 'REDESIGN_APPROVED'].includes(design)))
+      fail('INVALID_STAGING_MODE', 'in-place-maintenance requires admission.design and handoff.design.admission to be COMPARED or REDESIGN_APPROVED, never FIRST_IN_LINEAGE.');
+  }
   if (backfilled ? d.staging?.mode !== 'none-backfill' || d.admission?.design !== 'UNKNOWN_BACKFILL'
     : d.staging?.mode === 'none-backfill' || d.admission?.design === 'UNKNOWN_BACKFILL') fail('BACKFILL_MARKERS_MISMATCH', 'Backfill flag, none-backfill staging and UNKNOWN_BACKFILL must occur together.');
   if (!backfilled && (!h || h.schema !== 'audio-dashboard.publish-handoff.v2')) fail('MISSING_PUBLISH_HANDOFF', 'Delivery requires the original publish handoff.');
