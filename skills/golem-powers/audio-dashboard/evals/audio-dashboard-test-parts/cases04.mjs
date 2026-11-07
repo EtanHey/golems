@@ -287,8 +287,8 @@ test("AfterCode wrapper emits the SKILL-LOCAL command chain and no external-repo
   expect(commands).toContain(`cd ${skillRoot} && bun scripts/bootstrap.mjs`);
   expect(commands).toContain(`cd ${skillRoot} && bun scripts/synth-segments.mjs --spec`);
   expect(commands).toContain(`cd ${skillRoot} && bun scripts/build-dashboard.mjs --spec`);
-  expect(commands).toContain(`cd ${skillRoot} && bun vendor/qa/verify-cinema.mjs`);
-  expect(commands).toContain(`cd ${skillRoot} && bun scripts/verify-tailnet-publish.mjs --spec`);
+  expect(commands).toContain(`cd ${skillRoot} && bun vendor/qa/verify-decision-flow.mjs`);
+  expect(commands).toContain(`cd ${skillRoot} && bun scripts/validate-evidence.mjs --spec`);
   // The old external one-off scripts must be GONE from the plan.
   expect(commands).not.toContain("bin/aftercode-tonight-synth.ts");
   expect(commands).not.toContain("regen-aftercode-tonight-real-word-timings.ts");
@@ -296,16 +296,15 @@ test("AfterCode wrapper emits the SKILL-LOCAL command chain and no external-repo
   expect(commands).not.toContain("build-aftercode-tonight.mjs");
   // The default spec is skill-local, not a /opt/private/skill-tools doc.
   expect(commands).toContain(`${skillRoot}/examples/job.json`);
-  // Publish is the one env-specific step; it resolves from the env and must be probed.
-  expect(commands).toContain("/tmp/Gits/orchestrator/scripts/sync-tailnet-dashboards.mjs");
-  expect(plan.steps.at(-2).name).toBe("publish-tailnet");
-  expect(plan.steps.at(-1).name).toBe("verify-tailnet-http-200");
+  expect(commands).not.toContain("sync-tailnet-dashboards.mjs");
+  expect(plan.steps.at(-1).name).toBe("prepare-hosted-publish");
+  expect(plan.steps.at(-1).args).toContain("--prepare-publish");
   expect(plan.steps.some((step) => step.optional)).toBe(false);
   expect(commands).not.toContain("cp ");
   expect(commands).not.toContain("dashboards-serve/");
   expect(plan.notes.join("\n")).toContain("local-tts-runner.ts");
   expect(plan.notes.join("\n")).toContain("splitForBreathing");
-  expect(plan.notes.join("\n")).toContain("HTTP 200");
+  expect(plan.notes.join("\n")).toContain("READY_FOR_HOSTED_PUBLISH");
   for (const step of plan.steps) {
     expect(step.cwd).toBeString();
     expect(step.command).toBeString();
@@ -325,21 +324,10 @@ test("AfterCode wrapper display commands are shell-safe for paths with spaces", 
   expect(synth.command).toContain("'/opt/skills/audio dashboard/examples/job.json'");
 });
 
-test("tailnet publish verifier derives the dashboard URL from docs.local output paths", () => {
-  const plan = buildAfterCodeDashboardPlan({
-    skillRoot: "/opt/skills/audio-dashboard",
-    specPath: "/tmp/job.json",
-    env: {
-      HOME: "/Users/tester",
-      GITS_ROOT: "/tmp/Gits",
-      AUDIO_DASHBOARD_TAILNET_BASE_URL: "https://tailnet.example/dashboards"
-    }
-  });
-  const verify = plan.steps.find((step) => step.name === "verify-tailnet-http-200");
-
-  expect(verify).toBeDefined();
-  expect(verify.command).toContain("scripts/verify-tailnet-publish.mjs --spec /tmp/job.json");
-  expect(verify.command).toContain("--base-url https://tailnet.example/dashboards");
+test("tailnet environment cannot re-enable shell publication", () => {
+  const plan = buildAfterCodeDashboardPlan({ env: { AUDIO_DASHBOARD_TAILNET_BASE_URL: "https://tailnet.example" } });
+  expect(plan.steps.some(s => /tailnet/.test(s.command))).toBe(false);
+  expect(plan.steps.at(-1).name).toBe("prepare-hosted-publish");
 });
 
 test("SKILL.md exposes the canonical trigger language and consolidation boundaries", () => {

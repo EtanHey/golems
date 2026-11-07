@@ -1,29 +1,11 @@
 #!/usr/bin/env bun
-/**
- * validate-evidence — run the shipped evidence gate (src/audio-dashboard-evidence.mjs)
- * against a REAL rendered dashboard + its job dir. This closes the acceptance loop:
- * the same validator the eval unit-tests with fixtures is here pointed at actual
- * on-disk artifacts, so "it passed the gate" is a runnable claim, not a fixture.
- *
- * It assembles the evidence record the validator expects from the real artifacts:
- *   - wordsJson    : first scene's real words.json (monotonic {word,start,end})
- *   - timingData   : per-scene {realWordTiming, script, words} from every words.json
- *   - html         : the rendered dashboard (for word-click-seek detection)
- *   - generator    : the skill-local render-v4 path (canonical)
- *   - outputPath   : the docs.local/dashboards/*.html source
- *   - tailnetSync  : ONLY when --published is passed (publish is the env-specific,
- *                    optional last step; without it the gate correctly REJECTS with
- *                    MISSING_TAILNET_SYNC, proving the gate is live).
- *
- * Usage:
- *   bun scripts/validate-evidence.mjs --spec <job.json> [--job-dir <dir>] [--out <html>] \
- *        [--published "<sync command or log line>"] [--json]
- */
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 
+import { spawnSync } from "node:child_process";
+import { deliveryOrigins, handoffPath, sha256, writePublishHandoff } from "../src/hosted-delivery.mjs";
 import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 import { validateAudioDashboardEvidence, formatReport } from "../src/audio-dashboard-evidence.mjs";
 
@@ -44,6 +26,8 @@ function parseArgs(argv) {
     else if (x === "--first-build") a.firstBuild = argv[++i];
     else if (x === "--job-dir") a.jobDir = argv[++i];
     else if (x === "--out") a.out = argv[++i];
+    else if (x === "--delivery") a.delivery = argv[++i];
+    else if (x === "--prepare-publish") a.prepare = true;
     else if (x === "--published") a.published = argv[++i];
     else if (x === "--json") a.json = true;
     else if (x === "-h" || x === "--help") a.help = true;
@@ -60,7 +44,7 @@ function loadWords(p) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-if (args.help) { console.log("usage: bun scripts/validate-evidence.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>] [--published \"<cmd>\"] [--json]"); process.exit(0); }
+if (args.help) { console.log("usage: bun scripts/validate-evidence.mjs --spec <job.json> [--first-build <reason>] [--job-dir <dir>] [--out <html>] [--prepare-publish | --delivery <receipt.json>] [--json]"); process.exit(0); }
 if (!args.spec) fail("--spec is required");
 const specPath = path.resolve(expandHome(args.spec));
 if (!existsSync(specPath)) fail(`spec not found: ${specPath}`);
@@ -89,18 +73,39 @@ const evidence = {
     scenes: perScene.map((s) => ({ realWordTiming: true, script: s.script, words: s.words })),
   },
   html,
-  ...(args.published ? { publishCommand: args.published } : {}),
+  dashboardId: spec.id,
+  stage: args.prepare ? "pre-publish" : "delivery",
+  approvedDeliveryOrigins: deliveryOrigins(),
+  delivery: args.delivery ? JSON.parse(readFileSync(expandHome(args.delivery), "utf8")) : null,
+  handoff: existsSync(handoffPath(outPath)) ? JSON.parse(readFileSync(handoffPath(outPath), "utf8")) : null,
 };
 
-const preservation = await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
-writeDesignReport(outPath, html, preservation);
+const backfilled = evidence.delivery?.backfilled === true;
+const preservation = backfilled ? { verdict: "NOT_RUN", status: "BACKFILL" } : await checkPublishedDesign(spec, outPath, html, { firstBuild: args.firstBuild });
+if (!backfilled) writeDesignReport(outPath, html, preservation);
 const result = validateAudioDashboardEvidence(evidence);
+if (sha256(readFileSync(outPath)) !== sha256(html)) {
+  result.verdict = "REJECTED"; result.violations.push({ code: "EVIDENCE_SOURCE_CHANGED", evidence: "HTML changed during design verification; rerun evidence." });
+}
 result.designPreservation = preservation;
-if (preservation.verdict !== "PASS") { result.verdict = "REJECTED"; result.violations.push(...preservation.violations); }
+if (!backfilled && preservation.verdict !== "PASS") { result.verdict = "REJECTED"; result.violations.push(...preservation.violations); }
+if (result.verdict === "PASS") {
+  const receipts = readFileSync(outPath.replace(/\.html$/i, '') + '.receipts.json');
+  if (evidence.handoff?.buildReceiptsSha256 !== sha256(receipts)) {
+    result.verdict = "REJECTED"; result.violations.push({ code: "BUILD_RECEIPTS_SHA_MISMATCH", evidence: "BUILD receipts changed after the handoff." });
+  }
+}
+if (args.prepare && args.delivery) fail("--prepare-publish and --delivery are mutually exclusive");
+if (result.verdict === "READY_FOR_HOSTED_PUBLISH") {
+  const qa = spec.type === "decision-flow" ? "verify-decision-flow.mjs" : "verify-cinema.mjs";
+  const checked = spawnSync("bun", [path.join(SKILL_ROOT, "vendor/qa", qa), outPath], { encoding: "utf8" });
+  if (checked.status !== 0) fail(`QA_REJECTED: ${checked.stderr || checked.stdout}`);
+  writePublishHandoff({ spec, specPath, outputPath: outPath, jobDir, html, firstBuild: args.firstBuild });
+}
 if (args.json) console.log(JSON.stringify(result, null, 2));
 else {
   console.log(formatReport(result));
-  console.log(`\nflags: realWordTiming=${result.realWordTiming} realTranscript=${result.realTranscript} wordClickSeek=${result.wordClickSeek} tailnetSync=${result.tailnetSync}`);
+  console.log(`\nflags: realWordTiming=${result.realWordTiming} realTranscript=${result.realTranscript} wordClickSeek=${result.wordClickSeek} hostedDelivery=${result.hostedDelivery}`);
   console.log(`scenes validated: ${perScene.length} (words: ${perScene.map((s) => `${s.id}=${s.words.length}`).join(", ")})`);
 }
-process.exit(result.verdict === "PASS" ? 0 : 3);
+process.exit(result.verdict === "BACKFILL_ACCOUNT_PROVEN" ? 4 : ["PASS", "READY_FOR_HOSTED_PUBLISH"].includes(result.verdict) ? 0 : 3);

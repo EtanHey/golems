@@ -1,29 +1,18 @@
 #!/usr/bin/env bun
 
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 
-// SKILL-LOCAL ROOT. Every engine step below runs against the vendored code in
-// this skill (scripts/ + vendor/), NOT against ~/Gits/{narrationlayer,agent-html,
-// skill-creator}. The skill is self-contained and transferable; the only external
-// touch points are (a) machine-local binaries/daemon verified by bootstrap.mjs,
-// and (b) the tailnet publish + same-run HTTP 200 probe, which is the one
-// genuinely environment-specific action (resolved from ORCHESTRATOR_ROOT and
-// AUDIO_DASHBOARD_TAILNET_BASE_URL if present).
+// Local BUILD and QA only. NarrationLayer owns hosted publication.
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function expandHome(value, env = process.env) {
   if (value === "~") return env.HOME ?? os.homedir();
   if (value?.startsWith?.("~/")) return path.join(env.HOME ?? os.homedir(), value.slice(2));
   return value;
-}
-
-function orchestratorRoot(env = process.env) {
-  if (env.ORCHESTRATOR_ROOT) return expandHome(env.ORCHESTRATOR_ROOT, env);
-  const gitsRoot = env.GITS_ROOT ?? path.join(env.HOME ?? os.homedir(), "Gits");
-  return path.join(gitsRoot, "orchestrator");
 }
 
 function shellQuote(value) {
@@ -44,16 +33,9 @@ export function buildAfterCodeDashboardPlan(options = {}) {
     ? path.resolve(expandHome(options.specPath, env))
     : path.join(skillRoot, "examples", "job.json");
   const jobDirArgs = options.jobDir ? ["--job-dir", path.resolve(expandHome(options.jobDir, env))] : [];
-  const publishScript = path.join(orchestratorRoot(env), "scripts", "sync-tailnet-dashboards.mjs");
-  const tailnetUrl = options.tailnetUrl ?? env.AUDIO_DASHBOARD_TAILNET_URL;
-  const tailnetBaseUrl = options.tailnetBaseUrl ?? env.AUDIO_DASHBOARD_TAILNET_BASE_URL ?? env.TAILNET_DASHBOARD_BASE_URL;
-  const verifyTailnetArgs = [
-    "scripts/verify-tailnet-publish.mjs",
-    "--spec", specPath,
-    ...(tailnetUrl ? ["--url", tailnetUrl] : []),
-    ...(!tailnetUrl && tailnetBaseUrl ? ["--base-url", tailnetBaseUrl] : []),
-  ];
-
+  const spec = existsSync(specPath) ? JSON.parse(readFileSync(specPath, "utf8")) : {};
+  const type = spec.type || "decision-flow";
+  const firstBuildArgs = options.firstBuild ? ["--first-build", options.firstBuild] : [];
   const steps = [
     {
       name: "bootstrap-verify-deps",
@@ -71,27 +53,19 @@ export function buildAfterCodeDashboardPlan(options = {}) {
       name: "build-readalong-dashboard",
       cwd: skillRoot,
       bin: "bun",
-      args: ["scripts/build-dashboard.mjs", "--spec", specPath, ...jobDirArgs],
+      args: ["scripts/build-dashboard.mjs", "--spec", specPath, ...jobDirArgs, ...firstBuildArgs],
     },
     {
-      name: "qa-cinema",
+      name: `qa-${type}`,
       cwd: skillRoot,
       bin: "bun",
-      // Pass the spec so verify-cinema resolves the rendered dashboard's
-      // outputPath and QAs the actual HTML (not a missing default).
-      args: [path.join("vendor", "qa", "verify-cinema.mjs"), "--spec", specPath],
+      args: [path.join("vendor", "qa", type === "decision-flow" ? "verify-decision-flow.mjs" : "verify-cinema.mjs"), expandHome(spec.outputPath || "<built.html>", env)],
     },
     {
-      name: "publish-tailnet",
-      cwd: skillRoot,
-      bin: "node",
-      args: [publishScript],
-    },
-    {
-      name: "verify-tailnet-http-200",
+      name: "prepare-hosted-publish",
       cwd: skillRoot,
       bin: "bun",
-      args: verifyTailnetArgs,
+      args: ["scripts/validate-evidence.mjs", "--spec", specPath, ...jobDirArgs, ...firstBuildArgs, "--prepare-publish"],
     },
   ].map((step) => ({
     ...step,
@@ -104,18 +78,18 @@ export function buildAfterCodeDashboardPlan(options = {}) {
       "Fully SKILL-LOCAL: synth-segments.mjs + build-dashboard.mjs + vendor/ replace the old ~/Gits/{narrationlayer,agent-html} scripts.",
       "synth-segments.mjs runs the vendored local-tts-runner.ts (splitForBreathing cadence, fail-closed voice-profile gate) then the vendored whisper-cli word-timing + DP alignment — the exact STT-after-TTS step. It refuses to ship estimated/even-split timing.",
       "TTS needs a live qwen3 daemon; bootstrap.mjs verifies bun/whisper/ffmpeg/daemon and FAILS LOUD. A bring-your-own-WAV run (scene.audioWav) needs no daemon.",
-      "build-dashboard.mjs renders the vendored render-v4 cinema (Q/A, Play-All, read-along teleprompter, .note-area response boxes) to a repo docs.local/dashboards/*.html source.",
-      "Publishing writes stay in repo docs.local/dashboards; the tailnet sync (ORCHESTRATOR_ROOT/scripts/sync-tailnet-dashboards.mjs) rebuilds dashboards-serve, then verify-tailnet-publish.mjs requires a same-run HTTP 200 + matching bytes before the run can report live.",
+      "build-dashboard.mjs renders the selected decision-flow or explicit cinema type to a repo docs.local/dashboards/*.html source.",
+      "BUILD + QA + pre-publish evidence write a publish-handoff for NarrationLayer. READY_FOR_HOSTED_PUBLISH is not delivery PASS; validate-evidence --delivery is required after publication.",
     ],
     steps,
   };
 }
 
 function usage() {
-  return `usage: audio-dashboard-generator.mjs [--workflow aftercode] [--dry-run|--run] [--json] [--spec <job.json>] [--job-dir <dir>] [--tailnet-url <url>|--tailnet-base-url <url>]
+  return `usage: audio-dashboard-generator.mjs [--workflow aftercode] [--dry-run|--run] [--json] [--spec <job.json>] [--job-dir <dir>] [--first-build <reason>]
 
 Default: --dry-run. The wrapper emits the canonical SKILL-LOCAL AfterCode read-along
-pipeline (bootstrap -> synth+time -> render -> qa -> tailnet sync -> HTTP 200 probe) and
+pipeline (bootstrap -> synth+time -> render -> qa -> publish handoff) and
 only executes it when --run is explicitly present.`;
 }
 
@@ -129,8 +103,7 @@ function parseArgs(argv) {
     else if (arg === "--json") args.json = true;
     else if (arg === "--spec") args.specPath = argv[++i];
     else if (arg === "--job-dir") args.jobDir = argv[++i];
-    else if (arg === "--tailnet-url") args.tailnetUrl = argv[++i];
-    else if (arg === "--tailnet-base-url") args.tailnetBaseUrl = argv[++i];
+    else if (arg === "--first-build") args.firstBuild = argv[++i];
     else if (arg === "-h" || arg === "--help") args.help = true;
     else args.error = `unknown argument: ${arg}`;
   }
@@ -178,9 +151,11 @@ if (import.meta.main) {
   const plan = buildAfterCodeDashboardPlan({
     specPath: args.specPath,
     jobDir: args.jobDir,
-    tailnetUrl: args.tailnetUrl,
-    tailnetBaseUrl: args.tailnetBaseUrl,
+    firstBuild: args.firstBuild,
   });
+  if (!args.dryRun && !["decision-flow", "cinema"].includes(JSON.parse(readFileSync(expandHome(args.specPath || path.join(SKILL_ROOT, "examples/job.json")), "utf8")).type)) {
+    console.error("Set spec.type explicitly: decision-flow for decision briefings; cinema only on explicit request."); process.exit(2);
+  }
   if (args.json) console.log(JSON.stringify(plan, null, 2));
   else printPlan(plan);
   if (!args.dryRun) runPlan(plan);

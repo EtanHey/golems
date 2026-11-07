@@ -67,7 +67,9 @@ test('all four entry points require a per-invocation --first-build, and publishe
   const first = ['--first-build', 'Initial publication.'];
   for (const [script, flags] of [['build-dashboard', ['--job-dir', jobDir]], ['render-done-gate-cli', []], ['validate-evidence', ['--job-dir', jobDir, '--published', 'sync-tailnet-dashboards.mjs']]]) {
     expect((await run(script, flags)).text).toContain('PREVIOUS_BUILD_MISSING');
-    expect((await run(script, [...flags, ...first])).code).toBe(0);
+    const admitted = await run(script, [...flags, ...first]);
+    expect(admitted.code).toBe(script === 'validate-evidence' ? 3 : 0);
+    if (script === 'validate-evidence') expect(admitted.text).toContain('MISSING_HOSTED_DELIVERY');
   }
   const server = Bun.serve({ port: 0, fetch: () => new Response(readFileSync(outputPath), { headers: { 'content-type': 'text/html' } }) });
   try {
