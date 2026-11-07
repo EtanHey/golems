@@ -37,7 +37,7 @@ The inline manifest contains per-clip `{file,size,sha256}` records relative to s
   "schema": "audio-dashboard.delivery.v2", "host": "lakebed",
   "url": "https://example.com/?d=<dashboardId>", "dashboardId": "<spec.id>",
   "sourceHtmlSha256": "<same as handoff and prepared index.html>", "servedShellSha256": "<expanded served shell sha>", "artifactSha256": "<whole shared bundle sha>",
-  "staging": { "mode": "unlisted-candidate", "servedShellSha256": "<same as servedShellSha256>" },
+  "staging": { "mode": "unlisted-candidate | in-place-maintenance", "servedShellSha256": "<same as servedShellSha256>", "previousServedShellSha256": "<64 hex, in-place-maintenance only>" },
   "accountProof": {
     "signedIn": true, "independentClient": true, "serverAck": true, "mutationDelta": 0, "existingRowsPreserved": 0, "method": "note-roundtrip", "probe": "existing-empty-field | dedicated-key", "markerSaved": true,
     "restoredAfterLocalKeysCleared": true, "cleanedUp": true, "disposableRecord": true, "at": "<ISO timestamp>"
@@ -51,7 +51,25 @@ Configure `approvedDeliveryOrigins` as a nonempty array of exact HTTPS origins i
 
 builtHtmlSha256 binds the BUILD-gated file; sourceHtmlSha256 binds the prepared index.html. servedShellSha256 and artifactSha256 must be 64-hex, without comparison to the source.
 
-The publisher stages with the real bridge and a disposable record, saves a note with server acknowledgement, reloads with browser-local pending keys removed, confirms account restoration, cleans up, then promotes the same candidate. Preserve existing user answers. Embedded consumers and BUILD PASS prove no account provider. The validator verifies a publisher attestation; it neither authenticates the issuer nor repeats a live account test. READY_FOR_HOSTED_PUBLISH is pre-publish only; final PASS requires `validate-evidence --delivery <receipt.json>`.
+The publisher uses the real bridge and a disposable record, saves a note with server acknowledgement, reloads with browser-local pending keys removed, confirms account restoration and cleans up. Promotion or rollback follows the staging mode below. Preserve existing user answers. Embedded consumers and BUILD PASS prove no account provider. The validator verifies a publisher attestation; it neither authenticates the issuer nor repeats a live account test. READY_FOR_HOSTED_PUBLISH is pre-publish only; final PASS requires `validate-evidence --delivery <receipt.json>`.
+
+### Staging modes (enumerated)
+
+`staging.mode` is exactly one of:
+
+- `unlisted-candidate`: a NEW dashboard id, staged unlisted, then promoted by metadata only.
+- `in-place-maintenance`: an id that already has an accepted delivery (NL's deliveries.json decides).
+  - The candidate is deployed under the same id, with the previous shell retained for instant rollback.
+  - The account proof runs on a probe field that is empty at that moment, plus a clear-persists check.
+  - Any failure rolls back.
+  - Required: `staging.previousServedShellSha256` (64 hex, the rollback target), and both `admission.design` and the handoff's `design.admission` COMPARED or REDESIGN_APPROVED (never FIRST_IN_LINEAGE).
+  - Known limit: no pre-exposure window. The candidate is visible for the minute or two of the proof.
+  - Graded **PASS**: the account proof is the same as for a new id.
+- `none-backfill`: only with `backfilled: true` (see Backfilled deliveries below).
+
+In every mode, `staging.servedShellSha256 == servedShellSha256`. Any other mode value, including missing, is refused (`INVALID_STAGING_MODE`). Missing or invalid maintenance rollback hashes or design admissions are also `INVALID_STAGING_MODE`.
+
+### Backfilled deliveries
 
 Backfilled deliveries use all three markers together: `backfilled: true`, `staging.mode: "none-backfill"`, `admission.design: "UNKNOWN_BACKFILL"`. Every other delivery/account check remains; without a handoff `--source-dir` supplies the prepared index.html for the source hash check. A matching handoff, if supplied, must still bind id/source. A valid backfill returns BACKFILL_ACCOUNT_PROVEN with exit 4, never PASS: it records real account proof for a page published outside admission, not acceptance. Design preservation is NOT_RUN and no design sidecar/history is advanced. Mixed markers are BACKFILL_MARKERS_MISMATCH (exit 3). probe is existing-empty-field or dedicated-key. cleanedUp means the probe value was restored; an empty probe row may remain until row deletion is supported.
 
