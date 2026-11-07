@@ -136,11 +136,16 @@
             values = clone(next); snapshot = clone(next); localError = ''; report(); return true;
           } catch { localError = 'Storage unavailable · use Copy answers'; report(); return false; }
         }
+        let clearing = false;
         for (const field of new Set([...Object.keys(snapshot), ...Object.keys(next)])) {
           if (!owns(prefix + field) || JSON.stringify(snapshot[field]) === JSON.stringify(next[field])) continue;
           touched.add(field); pending.set(field, { value: clone(next[field] ?? null) });
+          if (next[field] == null || next[field] === '') clearing = true;
         }
-        values = clone(next); snapshot = clone(next); report(); enqueue(); return true;
+        values = clone(next); snapshot = clone(next); report();
+        // A clear is a discrete action; do not leave it behind the typing window.
+        if (clearing) void flush(); else enqueue();
+        return true;
       },
     };
   };
