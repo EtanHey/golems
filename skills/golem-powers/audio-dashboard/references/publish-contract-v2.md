@@ -2,6 +2,12 @@
 
 skill-creator writes the handoff after BUILD, QA and pre-publish evidence. NarrationLayer is the sole Lakebed publisher and writes the delivery receipt. These local artifacts can contain private deployment details; never commit populated receipts, host config or media URLs.
 
+## Who owns what
+
+- skill-creator owns the skill, template and BUILD/evidence gates.
+- NarrationLayer owns the Lakebed runtime, account sync and publishing (`narrationlayer/packages/dashboard-publish`).
+- This contract is the only interface between the two owners.
+
 ## `<output-basename>.publish-handoff.json` (skill → NarrationLayer)
 
 ```json
@@ -29,7 +35,7 @@ skill-creator writes the handoff after BUILD, QA and pre-publish evidence. Narra
 }
 ```
 
-The inline manifest contains per-clip `{file,size,sha256}` records relative to sourcePath. The local source directory contains prepared index.html and extracted media; external HTTP(S) links open in a new tab. The prepared input copies index.receipts.json and index.design.json and includes asset-manifest.json with per-clip duration and both HTML hashes. answerKeys comes from persisted page controls, including radio names, grouped checklist indices, free text, per-card citation notes and cinema `_notes:` keys; playback preferences and editor drafts are excluded. `jobPath` is additive local custody metadata. `redesign` is omitted unless the existing design report records a redesign. Admission maps report statuses COMPARED/REDESIGN/BASELINE respectively. spec.design.lineage defaults to briefings across nightly/eod/commute/huddle series. Accepted local history is keyed by lineage, advances only on delivery PASS or explicit owner acceptance, and refuses --first-build when an accepted predecessor exists. When no accepted lineage record exists, `previousPublished` supplies the predecessor even if legacy per-series history exists. Once a lineage has an accepted head, that head wins; a conflicting supplied previousPublished rejects DESIGN_PREDECESSOR_CONFLICT. FIRST_IN_LINEAGE additionally requires `spec.design.firstInLineage: { reason, approvedBy }` in the job for every lineage, including fresh-machine briefings. The reason must be nonblank and one line; approvedBy must pass validApprover (nonblank, one line, never UNRECORDED). `--first-build` alone refuses with FIRST_IN_LINEAGE_UNAPPROVED. The handoff carries the validated approval in `design.firstInLineage` only for FIRST_IN_LINEAGE, and must match the comparison report and job. NarrationLayer must validate that approval before admitting a new lineage. Redesign requires approvedBy and the predecessor hash; UNRECORDED is refused. The publisher must refuse FIRST_IN_LINEAGE when an accepted predecessor exists, missing approval where required, bad schemas, changed identity/source bytes, non-PASS answers, or an unavailable account provider.
+The inline manifest contains per-clip `{file,size,sha256}` records relative to sourcePath. The local source directory contains prepared index.html and extracted media; external HTTP(S) links open in a new tab. The prepared input copies index.receipts.json and index.design.json and includes asset-manifest.json with per-clip duration and both HTML hashes. answerKeys comes from persisted page controls, including radio names, grouped checklist indices, free text, per-card citation notes and cinema `_notes:` keys; playback preferences and editor drafts are excluded. `jobPath` is additive local custody metadata. `redesign` is omitted unless the existing design report records a redesign. Admission maps report statuses COMPARED/REDESIGN/BASELINE respectively. spec.design.lineage defaults to briefings across nightly/eod/commute/huddle series. Accepted local history is keyed by lineage, advances only on delivery PASS or explicit owner acceptance, and refuses --first-build when an accepted predecessor exists. When no accepted lineage record exists, `previousPublished` supplies the predecessor even if legacy per-series history exists. Once a lineage has an accepted head, that head wins; a conflicting supplied previousPublished rejects DESIGN_PREDECESSOR_CONFLICT. FIRST_IN_LINEAGE additionally requires `spec.design.firstInLineage: { reason, approvedBy }` in the job for every lineage, including fresh-machine briefings. The reason must be nonblank and one line; approvedBy must pass validApprover (nonblank, one line, never UNRECORDED, compared case-insensitively on both the skill and NarrationLayer sides). `--first-build` alone refuses with FIRST_IN_LINEAGE_UNAPPROVED. The handoff carries the validated approval in `design.firstInLineage` only for FIRST_IN_LINEAGE, and must match the comparison report and job. NarrationLayer must validate that approval before admitting a new lineage. Redesign requires approvedBy and the predecessor hash; UNRECORDED is refused. The publisher must refuse FIRST_IN_LINEAGE when an accepted predecessor exists, missing approval where required, bad schemas, changed identity/source bytes, non-PASS answers, or an unavailable account provider.
 
 ## `<output-basename>.delivery.json` (NarrationLayer → skill)
 
@@ -67,6 +73,8 @@ The publisher uses the real bridge and a disposable record, saves a note with se
   - Known limit: no pre-exposure window. The candidate is visible for the minute or two of the proof.
   - Graded **PASS**: the account proof is the same as for a new id.
 - `none-backfill`: only with `backfilled: true` (see Backfilled deliveries below).
+
+A dashboardId that already has an accepted delivery MUST use `in-place-maintenance`; NarrationLayer refuses `unlisted-candidate` for it with `MAINTENANCE_REQUIRED`, so maintenance can't skip the rollback/design rules. Only NarrationLayer's deliveries.json knows "already accepted", so the skill documents this rather than enforcing it.
 
 In every mode, `staging.servedShellSha256 == servedShellSha256`. Any other mode value, including missing, is refused (`INVALID_STAGING_MODE`). Missing or invalid maintenance rollback hashes or design admissions are also `INVALID_STAGING_MODE`.
 
