@@ -35,7 +35,7 @@ export function writePublishHandoff({ spec, specPath, outputPath, segmentsDir, h
   const { sourcePath, sourceHtmlSha256, media } = prepareHostedInput({ spec, html, segmentsDir, outputPath });
   const handoff = { schema: 'audio-dashboard.publish-handoff.v2', dashboardId: spec.id, type: spec.type || 'cinema',
     sourcePath, builtHtmlSha256: sha256(html), answerRuntimeSha256: sha256(extractAnswerRuntime(html)), answerKeys: persistedAnswerKeys(html), sourceHtmlSha256, buildReceiptsSha256: sha256(receiptsBytes), answerPersistence: 'PASS', design,
-    jobPath: path.relative(path.dirname(outputPath), specPath), mediaManifest: media.map(({ file, size, sha256 }) => ({ file, size, sha256 })), createdAt: new Date().toISOString() };
+    mediaManifest: media.map(({ file, size, sha256 }) => ({ file, size, sha256 })), createdAt: new Date().toISOString() };
   for (const [file, value] of [[handoffPath(outputPath), handoff]]) {
     const temporary = `${file}.new-${process.pid}`; writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n'); renameSync(temporary, file);
   }
