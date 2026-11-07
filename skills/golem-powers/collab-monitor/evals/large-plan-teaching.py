@@ -9,6 +9,7 @@ def sections(repo):
     skill = (plan / 'SKILL.md').read_text()
     claude = (plan / 'adapters/claude.md').read_text()
     collab = (plan / 'workflows/collab.md').read_text()
+    scaffold = (plan / 'workflows/scaffold.md').read_text()
 
     def between(text, start, end):
         # A removed section fails closed instead of searching unrelated prose.
@@ -22,6 +23,7 @@ def sections(repo):
         'guard': between(collab, '### WATCH RULE', '### TASK USAGE'),
         'participation': collab.partition('## Participation law')[2],
         'table': between(skill, '| **Collab file monitoring** |', '| **Worker liveness** |'),
+        'kickoff': between(scaffold, '### Kickoff Prompt:', 'Start now.'),
     }
     return {name: ' '.join(text.split()) for name, text in scopes.items()}
 
@@ -35,7 +37,9 @@ REQUIRED = {
         'readiness': ('native Monitor returns its task ID', 'Codex seats: once the process-exit watch is attached'),
         'liveness': ('MUST NOT be the only worker-liveness guard', 'separate liveness watchers are armed'),
         # 2026-11-02 ruling: the lead's one name waiter watches the lane collab; no second monitor.
-        't3': ('T3-native execution', 'completion notification is the liveness guard', 'one name waiter also watches it', 'Arm no second collab monitor', "Don't relay worker updates into chat"),
+        't3': ('T3-native execution', 'completion notification is the liveness guard', 'one name waiter also watches it', 'Arm no second collab monitor', "Don't relay worker updates into chat",
+                # 2026-11-02 refinement: workers end the task; the waiter is awareness only; dispatch on the completion wake.
+                'then end your task.', 'for awareness only', "on the child's completion wake", 'never from a waiter-woken turn'),
     },
     'parallel': {
         'routing': ('Claude uses native Monitor', 'Codex seats arm no collab monitor'),
@@ -64,26 +68,31 @@ REQUIRED = {
         'state': ('routing state', 'avoid duplicate streams'),
         'liveness': ('separate process-exit', 'liveness watcher before dispatch'),
         'evidence': ('unique ISO timestamp', 'requested artifact before advancing'),
-        't3': ('**T3 (default in T3):** arm nothing', 'completion notification is the guard'),
+        't3': ('**T3 (default in T3):** arm nothing', 'completion notification is the guard and the dispatch wake', 'for awareness only'),
     },
     'guard': {
         'routing': ('/collab-monitor', 'native Monitor (Claude)', 'Codex seats arm none'),
         'liveness': ('Before sending a task, arm a process-exit', 'MUST NOT be the only worker-liveness guard'),
         'lifecycle': ('lifecycle in step 4', 'expiry, compaction re-arm and cleanup'),
-        't3': ('completion notification is the guard; arm no monitor',),
+        't3': ('completion notification is the guard and the dispatch wake', "beyond the lead's one name waiter", 'for awareness only'),
     },
     'table': {
         # 2026-11-02 ruling: the T3 column matches step 2's lane-collab waiter (review r1, #1083).
-        't3': ("the lead's one name waiter also watches `collab.md`", 'not a polling turn'),
+        't3': ("the lead's one name waiter also watches `collab.md`", 'not a polling turn', 'awareness only', 'dispatch and verify the artifact on the completion wake'),
     },
     'participation': {
         'routing': ('/collab-monitor', 'Claude: native Monitor', 'Codex: no collab watcher'),
         'attachment': ('engine-issued mailbox contract',),
         'lifecycle': ('Re-arm on expiry and after every compaction', 'Stop the watcher'),
-        't3': ('no watcher', 'completion notification wakes the lead'),
+        't3': ('no per-child watcher', 'completion notification wakes the lead', 'then ends its task', 'for awareness only'),
+    },
+    'kickoff': {
+        't3': ('write your report and DONE line to this collab, then end your task', 'one line pointing at that collab entry', 'completion notification wakes the lead'),
     },
 }
-FORBIDDEN = ('run --once @<listen-name>', '/loop ', 'tail -n0 -F', 'grep done collab.md', 'Codex uses packaged', 'collab-monitor.sh follow')
+# #1083 wording that the end-the-task refinement replaced (2026-11-02).
+FORBIDDEN = ('run --once @<listen-name>', '/loop ', 'tail -n0 -F', 'grep done collab.md', 'Codex uses packaged', 'collab-monitor.sh follow',
+             'your final message is the report', 'A child reports in its final message', 'is the guard; arm no monitor')
 
 
 def failures(texts):
@@ -138,6 +147,13 @@ NEGATIVE_CONTROLS = (
     ('participation', 'completion notification wakes the lead', 't3'),
     ('participation', 'Re-arm on expiry and after every compaction', 'lifecycle'),
     ('table', "the lead's one name waiter also watches `collab.md`", 't3'),
+    ('round', 'then end your task.', 't3'),
+    ('round', 'never from a waiter-woken turn', 't3'),
+    ('arm', 'for awareness only', 't3'),
+    ('guard', 'completion notification is the guard and the dispatch wake', 't3'),
+    ('table', 'dispatch and verify the artifact on the completion wake', 't3'),
+    ('participation', 'then ends its task', 't3'),
+    ('kickoff', 'one line pointing at that collab entry', 't3'),
 )
 
 
@@ -158,13 +174,20 @@ def main():
         if f'{scope}:{name}' not in failures(mutant):
             raise RuntimeError(f'negative control falsely passed: {scope}:{fragment}')
         print(f'PASS negative control {scope}:{name} remove={fragment}')
+    # #1083's wording, restored into each scope, must fail the refined contract.
+    for scope, old in (('kickoff', 'T3: your final message is the report; its completion notification wakes the lead.'),
+                       ('participation', 'A child reports in its final message and appends its status line here'),
+                       ('guard', 'the `delegate_task` completion notification is the guard; arm no monitor or liveness watcher.')):
+        mutant = dict(texts, **{scope: texts[scope] + ' ' + old})
+        assert f'{scope}:obsolete-recipe' in failures(mutant), scope
+        print(f'PASS negative control {scope}:pr1083-wording')
     # Old recipe alone must not satisfy the replacement assertions.
     for scope in ('claude', 'arm'):
         mutant = dict(texts, **{scope: 'collab-monitor/scripts/collab-monitor.sh run --once @<listen-name>'})
         assert f'{scope}:routing' in failures(mutant)
         assert f'{scope}:obsolete-recipe' in failures(mutant)
         print(f'PASS negative control {scope}:obsolete-only')
-    print(f'PASS teaching contract; negative_controls={len(NEGATIVE_CONTROLS) + 2}; native delivery untested')
+    print(f'PASS teaching contract; negative_controls={len(NEGATIVE_CONTROLS) + 5}; native delivery untested')
     return 0
 
 

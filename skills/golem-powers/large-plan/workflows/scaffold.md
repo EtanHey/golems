@@ -290,7 +290,7 @@ Rules:
 7. Full PR loop: push → create PR → wait for reviews on a notification, never a polling loop (T3: the parent's `watch_pull_request`; cmux adapter: addressed watch per `/collab-monitor`) → fix issues → merge → clean branch → CLEANUP RECEIPT in your done message.
 8. If blocked, append `blocked:reason` with exactly what's needed and from whom. Routing questions go to the lead, never Etan.
 9. When done with all your phases, append `done` with your CLEANUP RECEIPT, then `signed-off`.
-10. Do not poll this collab file. Read it at kickoff and at every Update Gate. T3: your final message is the report; its completion notification wakes the lead. cmux adapter: arm the addressed watch per `/collab-monitor` (Claude seats; Codex seats arm none).
+10. Do not poll this collab file. Read it at kickoff and at every Update Gate. T3: write your report and DONE line to this collab, then end your task; your final message is one line pointing at that collab entry, and its completion notification wakes the lead. cmux adapter: arm the addressed watch per `/collab-monitor` (Claude seats; Codex seats arm none).
 
 Start now.
 ```

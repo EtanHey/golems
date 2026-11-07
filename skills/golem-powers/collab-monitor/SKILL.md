@@ -51,15 +51,26 @@ another 201M across 729 turns." (Etan 2026-10-18, via orc collab)
 > "when there is a collab the message shouldn't travel through the chat, but have
 > the monitor on the […] collab damn it" (Etan 2026-11-02, via orc)
 
-- Every worker brief says `Report to <collab path>, not to the lead thread.`
-  Workers append their status, DONE and BLOCKED lines to the collab.
+- Every worker brief says `Report to <collab path>, not to the lead thread, then end your task.`
+  Workers append their status, DONE and BLOCKED lines to the collab, then end the task.
+- In T3, the task's end is the real wake. Workers send no separate thread message;
+  they end normally (with the report pointer), and the completion notification
+  wakes the lead, whose turn from it can dispatch the next step.
 - The lead keeps ONE live monitor on the collab, for lines addressed to it. A
   Claude seat in a cmux fleet uses native Monitor (§ Collab tail with a lead
   filter), re-armed at expiry. A T3 lead (any vendor) extends the one name waiter
   above to the lane collab, so it adds no second waiter and no polling turns.
-- The completion notification stays the liveness guard. The collab monitor
-  carries the messages.
-- Don't relay worker updates into chat. Chat is for Etan and orc's routing.
+- In T3, that name waiter is for awareness only. A waiter wake can arrive as a
+  background-task turn, and T3 can refuse `delegate_task` from it
+  (`parent_not_active`, reproduced twice on 2026-11-02; once it did dispatch).
+  Don't dispatch from a waiter-woken T3 turn: a next step follows on the
+  completion wake. Task-completion and PR-watch wakes can dispatch. In T3 the
+  completion notification stays the liveness guard and the dispatch wake; the
+  collab waiter carries the messages.
+- On a Claude cmux seat, the native Monitor is the completion watch too (§ Native
+  Monitor first): act on an addressed BLOCKED/DONE line from its wake, including
+  dispatching the next step.
+- Don't relay worker updates into chat; chat is for Etan and orc's routing. No polling turns.
 
 ## Native Monitor first
 

@@ -285,7 +285,7 @@ test('large-plan defaults to T3-native execution and keeps cmux monitors as an a
   assert.ok(t3, 'T3-native execution section precedes the cmux adapter');
   for (const rule of [
     'agent-routing/references/t3-native.md', '`delegate_task`', '`taskId`', 'completion notification is the liveness guard',
-    'one name waiter also watches it', 'no second collab monitor', `Don't relay worker updates into chat`, '`ScheduleWakeup`', '`CronCreate`', 'end the turn', 'verify the artifact',
+    'one name waiter also watches it', 'no second collab monitor', `Don't relay worker updates into chat`, 'then end your task.', 'for awareness only', 'never from a waiter-woken turn', '`ScheduleWakeup`', '`CronCreate`', 'end the turn', 'verify the artifact',
     '`watch_pull_request`', '`codex.subagent.mechanical`', 'deadline', 'one terminal report',
     'No routine list or rearm', 'child for PR waiting', 'outside T3 only',
     '`task_cancel`', '`unwatch_pull_request`', '(Etan 2026-10-18, via orc collab)',
