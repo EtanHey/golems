@@ -33,6 +33,37 @@ for (const [name, change, code] of [
 test('hosted delivery accepts a complete bound account receipt', () => {
   expect(validateAudioDashboardEvidence(fixture()).verdict).toBe('PASS');
 });
+for (const mode of ['unlisted-candiate', undefined, null, '', 42]) test(`hosted delivery refuses staging mode ${mode}`, () => {
+  const e = fixture(); e.delivery.staging.mode = mode;
+  const result = validateAudioDashboardEvidence(e);
+  expect(result.verdict).toBe('REJECTED');
+  expect(result.violations.map(v => v.code)).toContain('INVALID_STAGING_MODE');
+});
+test('hosted delivery refuses missing staging', () => {
+  const e = fixture(); delete e.delivery.staging;
+  expect(validateAudioDashboardEvidence(e).violations.map(v => v.code)).toContain('INVALID_STAGING_MODE');
+});
+const maintenance = () => {
+  const e = fixture(); Object.assign(e.delivery.staging, { mode: 'in-place-maintenance', previousServedShellSha256: 'c'.repeat(64) }); return e;
+};
+for (const previousServedShellSha256 of [undefined, 'bad', 'c'.repeat(63), 'g'.repeat(64), 42]) test(`maintenance refuses rollback hash ${previousServedShellSha256}`, () => {
+  const e = maintenance(); e.delivery.staging.previousServedShellSha256 = previousServedShellSha256;
+  const result = validateAudioDashboardEvidence(e);
+  expect(result.verdict).toBe('REJECTED');
+  expect(result.violations).toContainEqual({ code: 'INVALID_STAGING_MODE', evidence: expect.stringContaining('previousServedShellSha256') });
+});
+for (const [deliveryDesign, handoffDesign] of [
+  ['FIRST_IN_LINEAGE', 'FIRST_IN_LINEAGE'], ['FIRST_IN_LINEAGE', 'COMPARED'], ['COMPARED', 'FIRST_IN_LINEAGE'],
+]) test(`maintenance refuses design ${deliveryDesign}/${handoffDesign}`, () => {
+  const e = maintenance(); e.delivery.admission.design = deliveryDesign; e.handoff.design.admission = handoffDesign;
+  const result = validateAudioDashboardEvidence(e);
+  expect(result.verdict).toBe('REJECTED');
+  expect(result.violations).toContainEqual({ code: 'INVALID_STAGING_MODE', evidence: expect.stringContaining('COMPARED or REDESIGN_APPROVED') });
+});
+for (const design of ['COMPARED', 'REDESIGN_APPROVED']) test(`maintenance accepts ${design} with a rollback hash`, () => {
+  const e = maintenance(); e.delivery.admission.design = design; e.handoff.design.admission = design;
+  expect(validateAudioDashboardEvidence(e).verdict).toBe('PASS');
+});
 for (const field of ['signedIn', 'independentClient', 'serverAck', 'markerSaved', 'restoredAfterLocalKeysCleared', 'cleanedUp', 'disposableRecord']) {
   test(`hosted delivery refuses accountProof.${field}=false`, () => {
     const evidence = fixture(); evidence.delivery.accountProof[field] = false;
