@@ -231,8 +231,14 @@ export function withoutHooks(hooks, refused) {
 // and only dangling links into hooks-live that no entry links, are removed;
 // foreign files, links and anything named *.bak* stay.
 const INTERPRETER = /^(python[0-9.]*|node|bun|bash|sh|zsh)$/;
+function unwrapFailClosed(command) {
+  const body = /^\/bin\/sh -c '([\s\S]*)'$/.exec(command)?.[1]?.replaceAll("'\\''", "'");
+  const run = /^out=\$\(([\s\S]*)\); s=\$\?;/.exec(body ?? "")?.[1];
+  // Only our exact generated guard grants ownership of its inner command.
+  return run && failClosedCommand(run) === command ? run : command;
+}
 function executedPaths(command) {
-  const tokens = String(command ?? "").trim().split(/\s+/).map((t) => t.replace(/^['"]|['"]$/g, "")).filter(Boolean);
+  const tokens = unwrapFailClosed(String(command ?? "")).trim().split(/\s+/).map((t) => t.replace(/^['"]|['"]$/g, "")).filter(Boolean);
   if (!tokens.length) return [];
   if (!INTERPRETER.test(path.basename(tokens[0]))) return [tokens[0]];
   const script = tokens.slice(1).find((t) => !t.startsWith("-"));
@@ -256,9 +262,9 @@ function intoLive(ctx, at) {
 }
 // A readable name: the launcher's target under hooks/, else the executed path under hooks/ or hooks-live.
 function retiredName(ctx, command) {
-  const tokens = String(command).split(/\s+/).map((t) => t.replace(/^['"]|['"]$/g, ""));
+  const tokens = unwrapFailClosed(String(command)).split(/\s+/).map((t) => t.replace(/^['"]|['"]$/g, ""));
   const launcher = tokens.indexOf(path.join(ctx.hooksDir, "golems-fail-open.py"));
-  const target = launcher >= 0 ? tokens.slice(launcher + 1).find((t) => !t.startsWith("-")) : null;
+  const target = launcher >= 0 ? tokens.slice(launcher + 1).find((t, i, args) => !t.startsWith("-") && args[i - 1] !== "--budget") : null;
   const p = target ?? executedPaths(command).find((x) => ownedPath(ctx, x)) ?? tokens.at(-1);
   for (const root of [ctx.hooksDir, ctx.live]) if (p.startsWith(`${root}/`)) return p.slice(root.length + 1);
   return p;

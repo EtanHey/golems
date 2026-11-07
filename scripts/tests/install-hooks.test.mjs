@@ -1392,6 +1392,42 @@ function closedFixture() {
 }
 const closedCommand = (fx) => JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.PreToolUse[0].hooks[0].command;
 
+test("retired fail-closed hook: dry-run and status detect the guard; apply removes it and preserves foreign commands", () => {
+  const fx = closedFixture();
+  expect(run(fx, "--apply").status).toBe(0);
+  const command = closedCommand(fx);
+  const launcher = `${fx.home}/.claude/hooks/golems-fail-open.py`;
+  const foreign = [
+    hookCmd(failClosedCommand(`python3 /elsewhere/tool.py ${launcher}`)),
+    hookCmd(`/bin/sh -c 'echo ${launcher}'`),
+    hookCmd(`${command}; echo foreign`),
+  ];
+  const settings = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  settings.hooks.PreToolUse[0].hooks.push(...foreign);
+  const before = `${JSON.stringify(settings, null, 2)}\n`;
+  writeFileSync(fx.settingsPath, before);
+  const manifest = JSON.parse(readFileSync(fx.manifest, "utf8"));
+  manifest.hosts.mbp.shift();
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  rmSync(path.join(fx.repo, "skills/golem-powers/demo-gate"), { recursive: true });
+  git(fx.repo, "add", "-A"); git(fx.repo, "commit", "-qm", "retire gate"); git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const dry = run(fx, "--update");
+  expect(dry.status).toBe(0);
+  expect(dry.out).toContain("would remove retired registration: demo-gate/hooks/demo-gate.py (PreToolUse)");
+  const status = run(fx, "--status");
+  expect(status.status).toBe(1);
+  expect(status.out).toContain("retired-registered: demo-gate/hooks/demo-gate.py (PreToolUse)");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+  expect(run(fx, "--update", "--apply").status).toBe(0);
+  expect(callHook(fx, command).status).toBe(2); // the stale command would still deny
+  const after = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  expect(after.hooks.PreToolUse[0].hooks).toEqual(foreign);
+  expect(after.hooks.SessionStart).toEqual(settings.hooks.SessionStart);
+  const once = readFileSync(fx.settingsPath, "utf8");
+  expect(run(fx, "--apply").out).not.toContain("retired registration");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(once);
+});
+
 test("a fail-closed gate registers inside the /bin/sh guard; its copied launcher denies a vanished hooks-live target", () => {
   const fx = closedFixture();
   expect(run(fx, "--apply").status).toBe(0);
