@@ -27,7 +27,7 @@ def load_identities(path, require_label=False):
             row = json.loads(line)
             if require_label and "calibration_note" in row and "query_id" not in row and "chunk_id" not in row:
                 continue
-            pair = (int(row["query_id"]), row["chunk_id"])
+            pair = (row["query_id"], row["chunk_id"])
             pairs[pair] = row.get("label") if require_label else True
     return {pair for pair, label in pairs.items() if label not in (None, "")}
 

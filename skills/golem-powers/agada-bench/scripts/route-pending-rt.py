@@ -4,7 +4,9 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import sys
+import time
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -143,7 +145,11 @@ def write_queues(gold_path, routed, dry_run):
                 row = item["gold_row"]
                 lines.append(f"| {row['query_id']} | `{row['chunk_id']}` | "
                              f"{item.get('suggested_label')} | {item['rationale']} |")
-        (gold_dir / name).write_text("\n".join(lines) + "\n")
+        path = gold_dir / name
+        content = "\n".join(lines) + "\n"
+        if name == "ETAN_QUEUE.md" and path.exists() and path.read_text() != content:
+            shutil.copy2(path, path.with_name(f"{name}.prev-{time.time_ns()}"))
+        path.write_text(content)
 
 
 def main():

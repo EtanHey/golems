@@ -40,7 +40,7 @@ class ArtifactTruthTests(unittest.TestCase):
         cases += [([{**row, "label": None} for row in self.rows], False)]
         cases += [([{k: v for k, v in row.items() if k != "label"} for row in self.rows], False),
                   (self.rows, True), (self.rows + [{**self.rows[0], "label": 3}], True),
-                  ([{**row, "query_id": "1"} for row in self.rows], True),
+                  ([{**row, "query_id": "1"} for row in self.rows], False),
                   (self.rows + [{"calibration_note": "revised a"}], True),
                   (self.rows + [{"query_id": 1, "chunk_id": "a", "calibration_note": "revised a"}], False)]
         for rows, complete in cases:
@@ -64,11 +64,14 @@ class ArtifactTruthTests(unittest.TestCase):
         self.write(gold, pending)
         self.write(consensus, [{**self.rows[0], "labels_by_judge": {"a": 0, "b": 3, "c": 3},
                                 "failure_modes_union": ["FM6"], "avg_confidence": 90}])
+        (self.root / "ETAN_QUEUE.md").write_text("Your verdict: 3\n")
         snapshots = []
         for mode, count in (("opus-4-7", 1), ("discard-fm14", 0), ("opus-4-7", 0)):
             self.run_cli("route-pending-rt.py", *args, "--cascade", mode)
             queues = [(self.root / name).read_text() for name in ("ETAN_QUEUE.md", "cascade-queue.md")]
             snapshots.append((count, queues, hashlib.sha256(gold.read_bytes()).hexdigest()))
+        self.assertTrue(any(p.read_text() == "Your verdict: 3\n"
+                            for p in self.root.glob("ETAN_QUEUE.md.prev-*")))
         self.assertNotIn("Row 1:", snapshots[-1][1][0])
         self.assertNotIn("single outlier", snapshots[-1][1][1])
         generations = []
