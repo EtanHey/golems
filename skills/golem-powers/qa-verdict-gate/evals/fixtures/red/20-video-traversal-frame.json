@@ -31,7 +31,7 @@
     },
     {
       "role": "tool",
-      "text": "{\"id\": \"F1\", \"verdict\": \"CONFIRMED\"}"
+      "text": "{\"id\": \"F1\", \"result\": \"CONFIRMED\", \"verifier\": \"v-F1\", \"frames_viewed\": [\"/qa-fixtures/qa-video/synthetic-run/dense/window_1-f_00001.png\", \"/qa-fixtures/qa-video/synthetic-run/dense/window_1-f_00003.png\"]}"
     },
     {
       "role": "assistant",

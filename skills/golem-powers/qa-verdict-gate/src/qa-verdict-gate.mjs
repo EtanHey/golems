@@ -26,6 +26,7 @@
 // replayable gate (R-003/R-014 pattern).
 
 import { normalizeTranscript, currentTurn, claimSearchText } from "../lib/transcript.mjs";
+import { posix as path } from "node:path";
 
 // ── A QA verdict in the turn ────────────────────────────────────────────────
 // The agent's stated verdict. We read the explicit tri-state token first, then
@@ -159,6 +160,7 @@ function buildEvidence(turn) {
   const cmd = [];
   const out = [];
   const reportPieces = [];
+  const reportPaths = [];
   let hasBash = false;
   let hasBrowser = false;
   let wroteReport = false;
@@ -189,6 +191,7 @@ function buildEvidence(turn) {
         REPORT_PATH_RE.test(t.input.file_path)
       ) {
         wroteReport = true;
+        reportPaths.push(t.input.file_path);
         const body =
           (typeof t.input.content === "string" && t.input.content) ||
           (typeof t.input.new_string === "string" && t.input.new_string) ||
@@ -206,6 +209,7 @@ function buildEvidence(turn) {
     out: outBlob,
     all: `${cmdBlob}\n${outBlob}`,
     reportText,
+    reportPaths,
     hasBash,
     hasBrowser,
     wroteReport,
@@ -228,8 +232,40 @@ function observedError(ev) {
 }
 // A FAIL is legitimate only with observed evidence the failing path was reached:
 // either the surface was reached (screenshot/click) OR an error was observed.
-function failObserved(ev) {
-  return reachedSurface(ev) || observedError(ev);
+function failObserved(ev, claimText) {
+  return reachedSurface(ev) || observedError(ev) || videoFramesObserved(ev, claimText);
+}
+
+// qa-video's readers inspect recorded full-size frames, then log four-column
+// TSV rows: pts, absolute frame path, reader: why, finding id. Only tool OUTPUT
+// rows count, bound to the written report's run and every named FAIL finding.
+// CONFIRMED prose/JSON alone is not an inspection receipt.
+function videoFramesObserved(ev, claimText) {
+  const roots = new Set(ev.reportPaths
+    .filter((p) => p.startsWith("/") && p === path.normalize(p) && /\/qa-video\/[^/]+\/qa-report\.md$/.test(p))
+    .map((p) => path.dirname(p)));
+  if (roots.size !== 1) return false;
+  const [root] = roots;
+  const id = "(?=[A-Za-z0-9-]*[0-9])[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*";
+  const failures = new Set();
+  const text = `${claimSearchText(claimText)}\n${ev.reportText}`;
+  // Structured finding verdicts: `F1 FAIL` or `### F1: title — **FAIL**`.
+  for (const m of text.matchAll(new RegExp(`\\b(${id})\\s+\\**FAIL\\b`, "g"))) failures.add(m[1]);
+  for (const m of text.matchAll(new RegExp(`^\\s*#{1,6}\\s+(${id}):[^\\n]*\\bFAIL\\b`, "gm"))) failures.add(m[1]);
+  if (failures.size === 0) return false;
+
+  const inspected = new Set();
+  for (const line of ev.out.split(/\r?\n/)) {
+    const cols = line.split("\t");
+    if (cols.length !== 4) continue;
+    const [pts, frame, why, finding] = cols;
+    if (
+      /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(pts) && Number.isFinite(Number(pts)) &&
+      frame.startsWith(`${root}/`) && frame === path.normalize(frame) && /\.(png|jpe?g)$/i.test(frame) &&
+      /^[^:\s][^:]*:\s*\S/.test(why) && failures.has(finding)
+    ) inspected.add(finding);
+  }
+  return [...failures].every((finding) => inspected.has(finding));
 }
 // The transcript shows the path could not be reached: an unreachability token in
 // a tool_result OUTPUT, OR the agent itself acknowledged unreachability in prose.
@@ -356,11 +392,11 @@ export function detectQaVerdict(transcript) {
   //    error). Only raised when the path was NOT already flagged as unreached
   //    (that case is covered by #1; this one is the reach-but-no-evidence false
   //    FAIL, codex 019ee5ea#1).
-  if (qaVerdict === "FAIL" && !unreached && !failObserved(ev)) {
+  if (qaVerdict === "FAIL" && !unreached && !failObserved(ev, claimText)) {
     violations.push({
       code: "QA_FAIL_WITHOUT_OBSERVATION",
       evidence:
-        "a FAIL verdict with no same-turn observed-failure evidence (no screenshot, no click that reached the surface, no observed error in a tool_result) — the failing path was not shown to be exercised, so this should be INCONCLUSIVE.",
+        "a FAIL verdict with no same-turn observed-failure evidence (no screenshot, no click that reached the surface, no observed error or matching qa-video inspected-frame rows in a tool_result) — the failing path was not shown to be exercised, so this should be INCONCLUSIVE.",
     });
   }
 
