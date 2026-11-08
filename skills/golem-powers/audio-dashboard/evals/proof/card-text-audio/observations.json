@@ -1,0 +1,30 @@
+[
+  {
+    "width": 1280,
+    "state": "before",
+    "visibleLabel": false,
+    "label": null,
+    "mediaPlays": 0
+  },
+  {
+    "width": 1280,
+    "state": "after",
+    "visibleLabel": true,
+    "label": "Audio is a summary of this card",
+    "mediaPlays": 0
+  },
+  {
+    "width": 390,
+    "state": "before",
+    "visibleLabel": false,
+    "label": null,
+    "mediaPlays": 0
+  },
+  {
+    "width": 390,
+    "state": "after",
+    "visibleLabel": true,
+    "label": "Audio is a summary of this card",
+    "mediaPlays": 0
+  }
+]

@@ -31,7 +31,8 @@ function buildDashboard(spec, jobDir) {
 // Mirrors a real two-line re-authorisation instruction using neutral fixtures.
 const commands = 'cd ~/projects/demo-app\n./scripts/auth.sh login';
 const fenced = '```sh\n' + commands + '\n```';
-const decision = body => ({ id: 'drive', title: 'Re-authorise demo access', body, options: [], sceneIds: ['s1'] });
+// Copy tests use placeholder narration; disclose it rather than imply prose parity.
+const decision = body => ({ audioSummary: true, id: 'drive', title: 'Re-authorise demo access', body, options: [], sceneIds: ['s1'] });
 const scene = { id: 's1', title: 'Next step', script: 'alpha beta', words: [{ word: 'alpha', start: 0.05, end: 0.42 }, { word: 'beta', start: 0.45, end: 0.8 }], duration: 1 };
 const render = (type, body, extra = {}) => type === 'decision-flow'
   ? renderDecisionFlow({ scenes: [scene], decisions: [{ ...decision(body), ...extra }] })

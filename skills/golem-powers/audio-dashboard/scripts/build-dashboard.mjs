@@ -67,6 +67,7 @@ import { analyzeTeleprompterDrift, formatTeleprompterDriftReport } from "../src/
 import { injectDecisionSurfaceIntoHtml } from "../src/decision-surface.mjs";
 import { comparisonPages, findBareReferences, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
 
+import { analyzeCardTextAudio, CARD_TEXT_AUDIO_RUNBOOK } from "../src/card-text-audio-gate.mjs";
 import { analyzeCopyBlocks, COPY_BLOCK_RUNBOOK } from "../src/copy-blocks.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -516,6 +517,13 @@ async function main() {
     }).html;
   }
 
+  if (dashboardType === "decision-flow") {
+    const parity = analyzeCardTextAudio({ html, decisions: spec.decisions, scenes: spec.scenes });
+    upsertBuildGate(buildReceipts, { gate: "card-text-audio", result: parity,
+      config: parity.thresholds, runbook: CARD_TEXT_AUDIO_RUNBOOK });
+    writeBuildReceipts(outPath, buildReceipts, html);
+    if (parity.verdict !== "PASS") fail(`CARD_TEXT_AUDIO_MISMATCH: ${parity.violations.map(v => `${v.segment}: ${v.evidence}`).join("; ")}. ${CARD_TEXT_AUDIO_RUNBOOK}`);
+  }
   checkVoiceRoles(html);
 
   const transcriptFidelity = analyzeTranscriptFidelity({
