@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Route unresolved agada-bench gold rows through W3.3 pending-RT decisions."""
 import argparse
+import hashlib
 import json
 import os
 import sys
+import uuid
 from collections import Counter
-from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -120,44 +121,29 @@ def write_queues(gold_path, routed, dry_run):
     cascade_rows = [item for item in routed if item["route"] == "cascade-opus"]
     if dry_run:
         return
-    if etan_rows:
-        lines = [
-            f"# Etan Adjudication Queue - {gold_dir}",
-            "",
-            f"Generated: {datetime.now(timezone.utc).replace(microsecond=0).isoformat()}",
-            "",
-        ]
-        for idx, item in enumerate(etan_rows, 1):
-            row = item["gold_row"]
-            lines.extend(
-                [
-                    f"## Row {idx}: (qid={row['query_id']}, chunk_id={row['chunk_id']})",
-                    "",
-                    f"**Routing rationale**: {item['rationale']}",
-                    "",
-                    "**Your verdict**: __",
-                    "",
-                    "---",
-                    "",
-                ]
-            )
-        (gold_dir / "ETAN_QUEUE.md").write_text("\n".join(lines))
-    if cascade_rows:
-        lines = [
-            f"# Cascade Queue - {gold_dir}",
-            "",
-            "These rows need Opus cascade adjudication. v1 only queues them; it does not call Opus.",
-            "",
-            "| qid | chunk_id | suggested_label | rationale |",
-            "|---:|---|---:|---|",
-        ]
-        for item in cascade_rows:
-            row = item["gold_row"]
-            suggestion = item.get("suggested_label")
-            lines.append(
-                f"| {row['query_id']} | `{row['chunk_id']}` | {suggestion} | {item['rationale']} |"
-            )
-        (gold_dir / "cascade-queue.md").write_text("\n".join(lines) + "\n")
+    generation = uuid.uuid4().hex
+    digest = hashlib.sha256(gold_path.read_bytes()).hexdigest()
+    for name, title, rows in (("ETAN_QUEUE.md", "Etan Adjudication Queue", etan_rows),
+                              ("cascade-queue.md", "Cascade Queue", cascade_rows)):
+        lines = [f"# {title} - {gold_dir}", "", f"Generation: {generation}",
+                 f"Gold SHA-256: {digest}", f"Rows: {len(rows)}", ""]
+        if not rows:
+            lines.append("No rows pending.")
+        elif name == "ETAN_QUEUE.md":
+            for idx, item in enumerate(rows, 1):
+                row = item["gold_row"]
+                lines.extend([f"## Row {idx}: (qid={row['query_id']}, chunk_id={row['chunk_id']})",
+                              "", f"**Routing rationale**: {item['rationale']}", "",
+                              "**Your verdict**: __", "", "---", ""])
+        else:
+            lines.extend(["These rows need Opus cascade adjudication. v1 only queues them; it does not call Opus.",
+                          "", "| qid | chunk_id | suggested_label | rationale |",
+                          "|---:|---|---:|---|"])
+            for item in rows:
+                row = item["gold_row"]
+                lines.append(f"| {row['query_id']} | `{row['chunk_id']}` | "
+                             f"{item.get('suggested_label')} | {item['rationale']} |")
+        (gold_dir / name).write_text("\n".join(lines) + "\n")
 
 
 def main():
@@ -250,9 +236,9 @@ def main():
     if not args.dry_run:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text("\n".join(lines))
-        write_queues(gold_path, routed, args.dry_run)
         if discard_rows:
             write_jsonl_atomic(gold_path, keep_rows)
+        write_queues(gold_path, routed, args.dry_run)
     print(
         "route-pending-rt.py: "
         f"pending={len(routed)} cascade={counts.get('cascade-opus', 0)} "

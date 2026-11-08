@@ -18,15 +18,18 @@ def fail(message, code=1):
     return code
 
 
-def count_jsonl(path):
-    count = 0
+def load_identities(path):
+    pairs = set()
     with path.open() as f:
         for line in f:
             if not line.strip():
                 continue
-            json.loads(line)
-            count += 1
-    return count
+            row = json.loads(line)
+            pair = (row["query_id"], row["chunk_id"])
+            if pair in pairs:
+                raise ValueError(f"duplicate row identity: {pair}")
+            pairs.add(pair)
+    return pairs
 
 
 def parse_capabilities():
@@ -90,8 +93,9 @@ def main():
     if not judges:
         return fail("--judges resolved to empty")
     try:
-        corpus_rows = count_jsonl(corpus)
-    except (OSError, json.JSONDecodeError) as exc:
+        corpus_pairs = load_identities(corpus)
+        corpus_rows = len(corpus_pairs)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
         return fail(f"cannot read corpus: {exc}")
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -99,7 +103,6 @@ def main():
     capabilities = parse_capabilities()
     written = []
     skipped = []
-    tolerance = 0.05
 
     if not args.dry_run:
         brief_dir.mkdir(parents=True, exist_ok=True)
@@ -112,11 +115,11 @@ def main():
         output_path = out_dir / f"{judge}.jsonl"
         if args.resume and output_path.exists():
             try:
-                existing = count_jsonl(output_path)
-            except Exception:
-                existing = 0
-            if existing >= int((1 - tolerance) * corpus_rows):
-                skipped.append((judge, output_path, existing))
+                existing = load_identities(output_path)
+            except (OSError, ValueError, KeyError, TypeError):
+                existing = None
+            if corpus_pairs and existing == corpus_pairs:
+                skipped.append((judge, output_path, len(existing)))
                 continue
             if not args.dry_run:
                 dead = output_path.with_suffix(
@@ -164,7 +167,7 @@ def main():
     if not args.dry_run:
         plan_path.write_text("\n".join(plan_lines) + "\n")
 
-    print("dispatch-judges.py: dispatched")
+    print("dispatch-judges.py: prepared; launched=0 (operator must spawn panes)")
     for judge, judge_name, brief_path, output_path, launcher, timeout in written:
         print(f"- {judge_name} brief written: {brief_path}")
         print(f"  launcher: {launcher}; timeout_min={timeout}; output={output_path}")
@@ -172,8 +175,8 @@ def main():
         print(f"- {judge}Judge skipped by --resume: {existing} rows in {output_path}")
     print(f"spawn the panes via cmux MCP using the brief paths above.")
     print(
-        f"poll each {out_dir}/<judge>.jsonl for completion "
-        f"(row count >= {int((1 - tolerance) * corpus_rows)} of {corpus_rows})."
+        f"validate each {out_dir}/<judge>.jsonl against all {corpus_rows} unique corpus pairs; "
+        "row coverage alone does not prove judge completion or input provenance."
     )
     print(
         f"dispatch-judges.py: briefs={len(written)} skipped={len(skipped)} "
