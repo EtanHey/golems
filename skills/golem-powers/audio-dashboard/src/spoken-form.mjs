@@ -68,11 +68,11 @@ function normalizeProse(text, aliases = []) {
   replace(/\bi\.e\./gi, "that is");
   replace(/(?<![\w-])vs\b\.?(?!-)/g, "versus");
   replace(/\bapprox\./gi, "approximately");
-  replace(/(?<!\w)~(\d{1,6})(?:\.(\d+))?(%)?(?!\w|\.\d)/g,
-      (_, n, fraction, percent) => `about ${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""}${percent ? " percent" : ""}`);
+  replace(/(?<![\w:/–—-])~(\d{1,6})(?:(?:\.(\d+))?(%)|(?![\w:/–—-]|\.\d))/g,
+      (_, n, fraction, percent) => `about ${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""}${percent ? " percent" : ""}`, true);
   replace(/(?<![\w.])(\d{1,6})(?:\.(\d+))?%/g,
       (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} percent`, true);
-  replace(/%/g, "percent", true);
+  replace(/%/g, (_, offset, source) => `${/[\p{L}\p{N}]$/u.test(source.slice(0, offset)) ? " " : ""}percent`, true);
   replace(/(?<![\w.])(\d{1,6})(?:\.(\d+))?x(?!\w)/gi,
       (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} times`);
   replace(/(?<![\w.])v(\d{1,6}(?:\.\d{1,6})+)(?!\w|\.\d)/gi,
