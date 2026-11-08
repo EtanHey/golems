@@ -276,6 +276,7 @@ async function main() {
   const buildReceipts = createBuildReceipts({
     outputPath: outPath,
     jobId,
+    segmentsDir: path.join(jobDir, "segments"),
     spec: normalizedSpec,
     vendorStamp: readNarrationVendorStamp(SKILL_ROOT),
     whisperModel: resolveWhisperModelBasename(),
