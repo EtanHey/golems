@@ -1,6 +1,6 @@
 {
   "source": "EtanHey/narrationlayer#34",
-  "head": "7947ea2ef95940867f6760b9381b0b8d2959eaa2",
+  "head": "e2533960663e93e43260e86865d51985e3078cf5",
   "cases": [
     [
       "~21:00Z",
@@ -158,11 +158,23 @@
   ],
   "knownLimits": [
     [
+      "50%off",
+      "fifty percentoff"
+    ],
+    [
+      "%5",
+      "percent5"
+    ],
+    [
+      "~5x",
+      "~five times"
+    ],
+    [
       "9-10pm",
       "9-ten p m"
     ]
   ],
-  "nl35Head": "116b87f2855c81a63e3525bf40b2d704eaf426fe",
+  "nl35Head": "99589a47fbb07c88f9a7facf81d229bb9647fdcc",
   "nl35Cases": [
     [
       "~5%",
@@ -195,6 +207,30 @@
     [
       "5pm-6pm-7pm-mini",
       "5pm-6pm-7pm-mini"
+    ],
+    [
+      "~5%-10%",
+      "about five percent-ten percent"
+    ],
+    [
+      "~5%/10%",
+      "about five percent/ten percent"
+    ],
+    [
+      "~5%\u201310%",
+      "about five percent\u2013ten percent"
+    ],
+    [
+      "~5%:",
+      "about five percent:"
+    ],
+    [
+      "~5%-ish",
+      "about five percent-ish"
+    ],
+    [
+      "~98.5%-99%",
+      "about ninety-eight point five percent-ninety-nine percent"
     ]
   ],
   "ordinaryCases": [
