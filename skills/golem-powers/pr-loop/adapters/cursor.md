@@ -64,7 +64,7 @@ Use the PR's actual base branch and head SHA:
 
 ```bash
 cursor-agent -p --trust --mode ask --output-format text \
-  "Review this branch's diff against <base> at head <sha> for bugs and security issues. @codebase \
+  "Review this branch's diff against <base> at head <sha> for correctness bugs and security issues. \
    Report findings only. Do NOT edit, create, or delete any file. Do NOT push."
 ```
 

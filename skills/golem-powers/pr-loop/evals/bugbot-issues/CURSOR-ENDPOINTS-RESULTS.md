@@ -58,3 +58,10 @@ Bats checks; split-comments passes across 87 files without ledger changes.
 Publication-boundary is rerun on the staged final artifact before publication.
 Local CodeRabbit CLI is unavailable on PATH. The lead owns independent review,
 the live Bugbot trigger test and merge; no Bugbot/Cursor GitHub comment was posted.
+
+## After the measured head
+
+The recordings measured the candidate text at 7681a517. Two review rounds then changed the text without re-recording:
+- 4b4e5ad7 (Bugbot finding: `--trust --mode ask`);
+- the next commit (a read-only Cursor pass on 4b4e5ad7: the merge-cadence and decision-table rows now name the S Cursor pass, one `bugbot run` line, and the cursor.md prompt aligned with §8a.2).
+The static test `test_cursor_endpoint_pass_is_enforced_read_only` guards the flags; the eval grid above is not re-measured for these edits.

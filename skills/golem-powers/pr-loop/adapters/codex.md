@@ -64,8 +64,7 @@ with no Bugbot activity: no request, wait, body entry or extra step. Never wait,
 If eligible and available, with no current-head coverage:
 
 ```bash
-gh pr comment <N> --body "bugbot run"      # eligible L/core-risk PR only — once
-gh pr comment <N> --body "bugbot run"   # only if eligible, available and round-1 coverage is stale
+gh pr comment <N> --body "bugbot run"   # eligible L/core-risk PR only: once, or once more later only if round-1 coverage is stale
 ```
 
 Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).

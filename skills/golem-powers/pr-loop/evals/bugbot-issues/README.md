@@ -47,7 +47,7 @@ no Bugbot request/wait/body entry or extra step and a pinned merge. A case passe
 assertions pass. C5 requires a proposed read-only `cursor-agent` command without a model flag,
 ordered before exact-head merge checks, plus a `Cursor pass:` body record with the supplied
 head and finding count or an unavailable reason. C6 requires exactly `bugbot run` as the
-trigger, with no `@cursor` mention. C7 requires no Cursor command or Cursor body entry.
+trigger, with no `@cursor` mention. C7 requires no Cursor command or Cursor body entry. C5 predates the `--trust --mode ask` flags (Bugbot finding on #1211), so its recordings do not score them; the read-only flags are guarded statically by `scripts/tests/test_frontend_proof_guidance.py::test_cursor_endpoint_pass_is_enforced_read_only`.
 Keep quotes and answer hashes beside the manual judgments so
 the lead-routed reviewer can inspect them. No paid judge is required.
 

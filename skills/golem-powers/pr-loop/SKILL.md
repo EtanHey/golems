@@ -83,7 +83,7 @@ The risk-sized rulings (Etan 2026-10-18, via orc collab), with the bot clarifica
 
 | PR | Merge when (everything at `headRefOid`) |
 |---|---|
-| XS/S | Fast CI green + one clean review round from the routed reviewer → merge promptly |
+| XS/S | Fast CI green + one clean review round from the routed reviewer (+ the Cursor endpoint pass for S, step 8) → merge promptly |
 | M | Same, up to 2 rounds; round 2 only for BLOCKING findings |
 | L, data or security paths | Full panel, same round cap |
 
@@ -199,7 +199,7 @@ bug: tell ci-hygiene.
 | Brief grants this seat merge authority | Complete review loop, merge with the required method, then verify and clean up |
 | PR is draft | Inner loop in progress: finish it, then `gh pr ready <N>`. Visibly held: follow the [waiting policy](references/review-loop.md#waiting-policy-no-polling-turns). Never merge a draft |
 | Review conflicts with design | Read the cited design and investigate; dismiss only with explicit evidence |
-| XS/S PR, fast CI green at head, one clean routed review | Merge now (seat with merge authority); no wait for bots or heavy gates |
+| XS/S PR, fast CI green at head, one clean routed review (S: Cursor endpoint pass recorded, step 8) | Merge now (seat with merge authority); no wait for bots or heavy gates |
 | PR touches daemon/socket/MCP/protocol | Merge on the size cadence; queue the real-client run for the feature-batch gate (run it now for a single-PR batch) |
 | PR changes a visible surface | Require per-PR visual proof before merge; queue builder visual self-QA for the feature-batch gate (run it now for a single-PR batch) |
 | Requested bot unavailable, or real usage notice posted | Never wait. For Bugbot, record exactly `Bugbot: unavailable (usage)` in the PR body only for an actual request or real usage/rate/spend-limit notice. Routine XS/S/M PR with no Bugbot activity: no request, wait, body entry or extra step; merge on the routed review |
