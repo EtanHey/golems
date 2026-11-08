@@ -2,19 +2,20 @@ import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 
-// VENDORED: all three types resolve to the local schema.ts shim (type-only,
-// erased at runtime by bun). The upstream renderer type modules are NOT
-// vendored because they belong to the non-portable engine.
-import type {
-  RendererName,
-  ExternalCommandConfig,
-  VoiceLayerQwen3Config,
-} from "./schema.js";
+import type { RendererName } from "./schema.js";
+import type { ExternalCommandConfig } from "./schema.js";
+import type { VoiceLayerQwen3Config } from "./schema.js";
 
 export interface NarrationProfile {
   id: string;
   name?: string;
   renderer?: RendererName;
+  speaker?: string;
+  profile_version?: string;
+  accepted?: boolean;
+  aliases?: string[];
+  superseded_by?: string;
+  reference_clip_sha?: string;
   voice_profile_id?: string;
   render: Record<string, string | string[]>;
   source_path?: string;
@@ -37,17 +38,11 @@ function stripComment(value: string): string {
 }
 
 function cleanValue(value: string): string {
-  return stripComment(value)
-    .trim()
-    .replace(/^["']|["']$/g, "");
+  return stripComment(value).trim().replace(/^["']|["']$/g, "");
 }
 
 function isRenderer(value: string): value is RendererName {
-  return (
-    value === "fake" ||
-    value === "voicelayer-qwen3" ||
-    value === "external-command"
-  );
+  return value === "fake" || value === "voicelayer-qwen3" || value === "external-command";
 }
 
 function parsePositiveNumber(value: unknown): number | undefined {
@@ -76,12 +71,14 @@ function parseBoolean(value: unknown): boolean | undefined {
   return undefined;
 }
 
-function setField(
-  profile: NarrationProfile,
-  section: string | null,
-  key: string,
-  value: string,
-) {
+function parseProfileBoolean(value: string): boolean | undefined {
+  const normalized = value.trim().toLowerCase();
+  if (["true", "yes", "1", "accepted"].includes(normalized)) return true;
+  if (["false", "no", "0", "rejected", "superseded"].includes(normalized)) return false;
+  return undefined;
+}
+
+function setField(profile: NarrationProfile, section: string | null, key: string, value: string) {
   if (!section) {
     if (key === "id") {
       profile.id = value;
@@ -89,6 +86,16 @@ function setField(
       profile.name = value;
     } else if (key === "renderer" && isRenderer(value)) {
       profile.renderer = value;
+    } else if (key === "speaker") {
+      profile.speaker = value;
+    } else if (key === "profile_version") {
+      profile.profile_version = value;
+    } else if (key === "accepted") {
+      profile.accepted = parseProfileBoolean(value);
+    } else if (key === "superseded_by") {
+      profile.superseded_by = value;
+    } else if (key === "reference_clip_sha") {
+      profile.reference_clip_sha = value;
     }
     return;
   }
@@ -103,10 +110,7 @@ function setField(
   }
 }
 
-export function parseProfilesYaml(
-  content: string,
-  sourcePath?: string,
-): NarrationProfile[] {
+export function parseProfilesYaml(content: string, sourcePath?: string): NarrationProfile[] {
   const profiles: NarrationProfile[] = [];
   let current: NarrationProfile | null = null;
   let section: string | null = null;
@@ -119,11 +123,7 @@ export function parseProfilesYaml(
   }
 
   for (const rawLine of content.split(/\r?\n/)) {
-    if (
-      !rawLine.trim() ||
-      rawLine.trim().startsWith("#") ||
-      rawLine.trim() === "profiles:"
-    ) {
+    if (!rawLine.trim() || rawLine.trim().startsWith("#") || rawLine.trim() === "profiles:") {
       continue;
     }
 
@@ -145,16 +145,25 @@ export function parseProfilesYaml(
     }
 
     const trimmed = rawLine.trim();
-    if (section === "render" && arrayKey && trimmed.startsWith("- ")) {
-      const existing = current.render[arrayKey];
+    const indent = rawLine.match(/^\s*/)?.[0].length ?? 0;
+    const keyValueMatch = trimmed.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    const sectionMatch = trimmed.match(/^([A-Za-z0-9_-]+):\s*$/);
+    if (section && indent <= 4 && (keyValueMatch || sectionMatch)) {
+      section = null;
+      arrayKey = null;
+    }
+
+    if (arrayKey && trimmed.startsWith("- ")) {
       const next = cleanValue(trimmed.slice(2));
-      current.render[arrayKey] = Array.isArray(existing)
-        ? [...existing, next]
-        : [next];
+      if (section === "render") {
+        const existing = current.render[arrayKey];
+        current.render[arrayKey] = Array.isArray(existing) ? [...existing, next] : [next];
+      } else if (section === "aliases") {
+        current.aliases = [...(current.aliases ?? []), next];
+      }
       continue;
     }
 
-    const keyValueMatch = trimmed.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
     if (section === "render" && keyValueMatch) {
       const [, key, rawValue] = keyValueMatch;
       const value = cleanValue(rawValue);
@@ -168,10 +177,12 @@ export function parseProfilesYaml(
       continue;
     }
 
-    const sectionMatch = trimmed.match(/^([A-Za-z0-9_-]+):\s*$/);
     if (sectionMatch) {
       section = sectionMatch[1];
       arrayKey = null;
+      if (section === "aliases") {
+        arrayKey = "aliases";
+      }
       continue;
     }
 
@@ -203,28 +214,21 @@ async function fileExists(pathName: string): Promise<boolean> {
   }
 }
 
-function configuredProfileFiles(
-  cwd = process.cwd(),
-): Array<{ pathName: string; source: ProfileSource }> {
+function configuredProfileFiles(cwd = process.cwd()): Array<{ pathName: string; source: ProfileSource }> {
   const files: Array<{ pathName: string; source: ProfileSource }> = [
     { pathName: path.join(cwd, "profiles.example.yaml"), source: "example" },
     { pathName: path.join(cwd, "profiles.local.yaml"), source: "local" },
   ];
   const envFiles = process.env.NARRATIONLAYER_PROFILES_FILE;
   if (envFiles) {
-    for (const filePath of envFiles
-      .split(path.delimiter)
-      .map((item) => item.trim())
-      .filter(Boolean)) {
+    for (const filePath of envFiles.split(path.delimiter).map((item) => item.trim()).filter(Boolean)) {
       files.push({ pathName: path.resolve(filePath), source: "env" });
     }
   }
   return files;
 }
 
-export async function loadProfiles(
-  cwd = process.cwd(),
-): Promise<NarrationProfile[]> {
+export async function loadProfiles(cwd = process.cwd()): Promise<NarrationProfile[]> {
   const loaded = new Map<string, NarrationProfile>();
   for (const candidate of configuredProfileFiles(cwd)) {
     if (!(await fileExists(candidate.pathName))) {
@@ -238,9 +242,7 @@ export async function loadProfiles(
   return Array.from(loaded.values());
 }
 
-export async function getProfileSummary(
-  cwd = process.cwd(),
-): Promise<ProfileSummary> {
+export async function getProfileSummary(cwd = process.cwd()): Promise<ProfileSummary> {
   const files: string[] = [];
   const profiles: ProfileSummary["profiles"] = [];
   for (const candidate of configuredProfileFiles(cwd)) {
@@ -260,66 +262,64 @@ export async function getProfileSummary(
   return { files, profiles };
 }
 
-export async function findProfile(
-  profileId: string,
-  cwd = process.cwd(),
-): Promise<NarrationProfile | undefined> {
+export async function findProfile(profileId: string, cwd = process.cwd()): Promise<NarrationProfile | undefined> {
   const profiles = await loadProfiles(cwd);
-  return profiles.find(
-    (profile) =>
-      profile.id === profileId || profile.voice_profile_id === profileId,
+  const normalized = profileId.trim().toLowerCase();
+  const direct = profiles.find((profile) => profile.id === profileId || profile.voice_profile_id === profileId);
+  if (direct) return direct;
+  return profiles
+    .filter((profile) => profile.accepted === true)
+    .filter((profile) => {
+      if (profile.speaker?.trim().toLowerCase() === normalized) return true;
+      return profile.aliases?.some((alias) => alias.trim().toLowerCase() === normalized) ?? false;
+    })
+    .sort((a, b) => {
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+      const version = collator.compare(a.profile_version ?? "", b.profile_version ?? "");
+      if (version !== 0) return version;
+      return collator.compare(a.id, b.id);
+    })
+    .at(-1);
+}
+
+export function warnIfNonAcceptedProfile(profile: NarrationProfile | undefined, requestedId: string): void {
+  if (!profile || (profile.accepted !== false && !profile.superseded_by)) return;
+  const target = profile.superseded_by ? ` superseded_by="${profile.superseded_by}"` : "";
+  console.error(
+    `[narrationlayer] VOICE PROFILE DRIFT: requested "${requestedId}" uses non-accepted profile "${profile.id}"${target}. Use the latest accepted speaker alias/profile instead.`,
   );
 }
 
-export function qwenConfigFromProfile(
-  profile: NarrationProfile | undefined,
-): Partial<VoiceLayerQwen3Config> {
+export function qwenConfigFromProfile(profile: NarrationProfile | undefined): Partial<VoiceLayerQwen3Config> {
   if (!profile) {
     return {};
   }
-  const resolveProfilePath = (
-    value: string | undefined,
-  ): string | undefined => {
-    if (
-      !value ||
-      value.startsWith("~/") ||
-      path.isAbsolute(value) ||
-      !profile.source_path
-    ) {
+  const resolveProfilePath = (value: string | undefined): string | undefined => {
+    if (!value || value.startsWith("~/") || path.isAbsolute(value) || !profile.source_path) {
       return value;
     }
     return path.resolve(path.dirname(profile.source_path), value);
   };
   return {
-    daemon_url:
-      typeof profile.render.daemon_url === "string"
-        ? profile.render.daemon_url
-        : undefined,
+    profile_id: profile.id || profile.voice_profile_id,
+    profile_version: profile.profile_version,
+    reference_clip_sha: profile.reference_clip_sha,
+    model: typeof profile.render.model === "string" ? profile.render.model : undefined,
+    daemon_url: typeof profile.render.daemon_url === "string" ? profile.render.daemon_url : undefined,
     timeout_ms: parsePositiveNumber(profile.render.timeout_ms),
     auth_token_file:
-      typeof profile.render.auth_token_file === "string"
-        ? resolveProfilePath(profile.render.auth_token_file)
-        : undefined,
+      typeof profile.render.auth_token_file === "string" ? resolveProfilePath(profile.render.auth_token_file) : undefined,
     reference_clip:
-      typeof profile.render.reference_clip === "string"
-        ? resolveProfilePath(profile.render.reference_clip)
-        : undefined,
-    reference_text:
-      typeof profile.render.reference_text === "string"
-        ? profile.render.reference_text
-        : undefined,
+      typeof profile.render.reference_clip === "string" ? resolveProfilePath(profile.render.reference_clip) : undefined,
+    reference_text: typeof profile.render.reference_text === "string" ? profile.render.reference_text : undefined,
     reference_text_path:
       typeof profile.render.reference_text_path === "string"
         ? resolveProfilePath(profile.render.reference_text_path)
         : undefined,
     reference_clips: Array.isArray(profile.render.reference_clips)
-      ? profile.render.reference_clips
-          .map(resolveProfilePath)
-          .filter((value): value is string => Boolean(value))
+      ? profile.render.reference_clips.map(resolveProfilePath).filter((value): value is string => Boolean(value))
       : typeof profile.render.reference_clips === "string"
-        ? [resolveProfilePath(profile.render.reference_clips)].filter(
-            (value): value is string => Boolean(value),
-          )
+        ? [resolveProfilePath(profile.render.reference_clips)].filter((value): value is string => Boolean(value))
         : undefined,
     lora_adapter_path:
       typeof profile.render.lora_adapter_path === "string"
@@ -327,70 +327,41 @@ export function qwenConfigFromProfile(
         : undefined,
     lora_scale: parsePositiveNumber(profile.render.lora_scale),
     timing_backend:
-      profile.render.timing_backend === "whisper-cli" ||
-      profile.render.timing_backend === "none"
+      profile.render.timing_backend === "whisper-cli" || profile.render.timing_backend === "none"
         ? profile.render.timing_backend
         : undefined,
     pause_strategy:
-      profile.render.pause_strategy === "punctuation" ||
-      profile.render.pause_strategy === "none"
+      profile.render.pause_strategy === "punctuation" || profile.render.pause_strategy === "none"
         ? profile.render.pause_strategy
         : undefined,
-    max_utterance_words: parsePositiveNumber(
-      profile.render.max_utterance_words,
-    ),
-    min_utterance_words: parsePositiveNumber(
-      profile.render.min_utterance_words,
-    ),
-    sentence_pause_seconds: parsePositiveNumber(
-      profile.render.sentence_pause_seconds,
-    ),
-    comma_pause_seconds: parsePositiveNumber(
-      profile.render.comma_pause_seconds,
-    ),
+    max_utterance_words: parsePositiveNumber(profile.render.max_utterance_words),
+    min_utterance_words: parsePositiveNumber(profile.render.min_utterance_words),
+    sentence_pause_seconds: parsePositiveNumber(profile.render.sentence_pause_seconds),
+    comma_pause_seconds: parsePositiveNumber(profile.render.comma_pause_seconds),
     trim_silence: parseBoolean(profile.render.trim_silence),
     silence_threshold_db: parseNumber(profile.render.silence_threshold_db),
     eq_highshelf_hz: parseNumber(profile.render.eq_highshelf_hz),
     eq_highshelf_gain_db: parseNumber(profile.render.eq_highshelf_gain_db),
     loudness_target_db: parseNumber(profile.render.loudness_target_db),
     atempo: parsePositiveNumber(profile.render.atempo),
-    silence_padding_seconds: parsePositiveNumber(
-      profile.render.silence_padding_seconds,
-    ),
+    silence_padding_seconds: parsePositiveNumber(profile.render.silence_padding_seconds),
     repair_word_timings: parseBoolean(profile.render.repair_word_timings),
-    max_chunk_duration_seconds: parsePositiveNumber(
-      profile.render.max_chunk_duration_seconds,
-    ),
-    max_chunk_seconds_per_word: parsePositiveNumber(
-      profile.render.max_chunk_seconds_per_word,
-    ),
+    max_chunk_duration_seconds: parsePositiveNumber(profile.render.max_chunk_duration_seconds),
+    max_chunk_seconds_per_word: parsePositiveNumber(profile.render.max_chunk_seconds_per_word),
     max_chunk_retries: parsePositiveNumber(profile.render.max_chunk_retries),
     whisper_binary:
-      typeof profile.render.whisper_binary === "string"
-        ? resolveProfilePath(profile.render.whisper_binary)
-        : undefined,
+      typeof profile.render.whisper_binary === "string" ? resolveProfilePath(profile.render.whisper_binary) : undefined,
     whisper_model:
-      typeof profile.render.whisper_model === "string"
-        ? resolveProfilePath(profile.render.whisper_model)
-        : undefined,
+      typeof profile.render.whisper_model === "string" ? resolveProfilePath(profile.render.whisper_model) : undefined,
   };
 }
 
-export function externalCommandConfigFromProfile(
-  profile: NarrationProfile | undefined,
-): Partial<ExternalCommandConfig> {
+export function externalCommandConfigFromProfile(profile: NarrationProfile | undefined): Partial<ExternalCommandConfig> {
   if (!profile) {
     return {};
   }
-  const resolveProfilePath = (
-    value: string | undefined,
-  ): string | undefined => {
-    if (
-      !value ||
-      value.startsWith("~/") ||
-      path.isAbsolute(value) ||
-      !profile.source_path
-    ) {
+  const resolveProfilePath = (value: string | undefined): string | undefined => {
+    if (!value || value.startsWith("~/") || path.isAbsolute(value) || !profile.source_path) {
       return value;
     }
     return path.resolve(path.dirname(profile.source_path), value);
@@ -401,35 +372,20 @@ export function externalCommandConfigFromProfile(
       ? [profile.render.args]
       : undefined;
   return {
-    command:
-      typeof profile.render.command === "string"
-        ? profile.render.command
-        : undefined,
+    command: typeof profile.render.command === "string" ? profile.render.command : undefined,
     args,
-    cwd:
-      typeof profile.render.cwd === "string"
-        ? resolveProfilePath(profile.render.cwd)
-        : undefined,
+    cwd: typeof profile.render.cwd === "string" ? resolveProfilePath(profile.render.cwd) : undefined,
     timeout_ms: parsePositiveNumber(profile.render.timeout_ms),
-    output_ext:
-      typeof profile.render.output_ext === "string"
-        ? profile.render.output_ext
-        : undefined,
+    output_ext: typeof profile.render.output_ext === "string" ? profile.render.output_ext : undefined,
     reference_clip:
-      typeof profile.render.reference_clip === "string"
-        ? resolveProfilePath(profile.render.reference_clip)
-        : undefined,
-    reference_text:
-      typeof profile.render.reference_text === "string"
-        ? profile.render.reference_text
-        : undefined,
+      typeof profile.render.reference_clip === "string" ? resolveProfilePath(profile.render.reference_clip) : undefined,
+    reference_text: typeof profile.render.reference_text === "string" ? profile.render.reference_text : undefined,
     reference_text_path:
       typeof profile.render.reference_text_path === "string"
         ? resolveProfilePath(profile.render.reference_text_path)
         : undefined,
     timing_backend:
-      profile.render.timing_backend === "estimated" ||
-      profile.render.timing_backend === "none"
+      profile.render.timing_backend === "estimated" || profile.render.timing_backend === "none"
         ? profile.render.timing_backend
         : undefined,
   };

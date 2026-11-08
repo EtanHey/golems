@@ -5,7 +5,8 @@
 // `bun test` and `node --test`.
 
 import { test, expect } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -83,5 +84,29 @@ test("video inspection receipts preserve the other four checks", () => {
     const fx = structuredClone(earned);
     mutate(fx);
     expect(detectQaVerdict(fx).violations.map((v) => v.code)).toContain(code);
+  }
+});
+
+test("real qa-video inspection rows earn observed FAIL evidence", () => {
+  const repo = path.resolve(here, "../../../..");
+  const scratch = mkdtempSync(path.join(repo, "docs.local", "p14-cross-skill-"));
+  const run = path.join(scratch, "qa-video", "run");
+  mkdirSync(run, { recursive: true });
+  try {
+    const frame = path.join(run, "frame.png");
+    writeFileSync(frame, "synthetic frame bytes");
+    const scripts = path.join(repo, "skills/golem-powers/qa-video/scripts");
+    execFileSync("python3", ["-c",
+      'import sys; sys.path.insert(0,sys.argv[1]); import provenance as p; p.record(sys.argv[2],[(sys.argv[3],0,"coverage","","","")])',
+      scripts, run, frame], { env: { ...process.env, QA_RUN_DIR: run } });
+    execFileSync("bash", [path.join(scripts, "inspected.sh"), run, frame, "h2: observed overlap", "F1"]);
+    const fx = structuredClone(greens.find((f) => f.file === "10-video-inspected-frames.json"));
+    fx.events = JSON.parse(JSON.stringify(fx.events).replaceAll("/qa-fixtures/qa-video/synthetic-run", run));
+    writeFileSync(path.join(run, "qa-report.md"), fx.events[4].tools[0].input.content);
+    fx.events[2].text = execFileSync("bash", [path.join(scripts, "fail-evidence.sh"), run], { encoding: "utf8" });
+    expect(fx.events[2].text.trim().split("\t")).toHaveLength(5);
+    expect(detectQaVerdict(fx).verdict).toBe("PASS");
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
   }
 });

@@ -5,6 +5,14 @@ description: "Build audio narration dashboards. Triggers: STT-after-TTS exact wo
 
 # Audio Dashboard
 
+## Building a dashboard?
+
+Run `/audio-dashboard creation-steps`: read and follow
+[workflows/creation-steps.md](workflows/creation-steps.md), the ordered procedure
+from intake to delivery. This is a workflow argument to the skill, not a separate
+catalog command. This skill owns all build instructions; orc only relays the
+filled intake block and Etan's extra instructions.
+
 ## Ownership and delivery
 
 skill-creator owns this skill, templates and BUILD gates. NarrationLayer owns the
@@ -92,6 +100,15 @@ This keeps audio and questions woven together and prevents a cinema-style global
 audio strip / separate question list from reappearing.
 
 ## Card detail format
+
+BUILD rejects `CARD_TEXT_AUDIO_MISMATCH` when more than 10% of rendered card
+prose or owned scenes' authored script words lack an ordered match in the other
+(longest common subsequence, normalized case, punctuation and whitespace).
+It compares summary plus body; titles, rail metadata, controls, options,
+Sources/copyPrompt and code blocks are excluded. The one threshold lives in
+`src/card-text-audio-gate.mjs`. An honest summary declares `audioSummary: true`
+or a nonblank `summary`; the renderer visibly labels it **Audio is a summary of
+this card**, and BUILD requires that label outside the collapsed answer sheet.
 
 Follow [Card detail affordances](references/card-format.md): text-only cards
 must not repeat their text in a View details expander. Either offer no secondary
@@ -305,11 +322,20 @@ may enter the daemon input and `.spoken.txt`, but `P R` or `live` remains on
 screen exactly as authored.
 
 The skill-local `src/spoken-form.mjs` prepares clock times and a small abbreviation
-set before synthesis: `9pm` / `9 p.m.` / `21:00` → `nine p m`, `9:05pm` →
+set before synthesis: `9pm` / `9 p.m.` → `nine p m`, `at 21:00` →
+`at nine p m`, `9:05pm` →
 `nine oh five p m`, and `11:30am` → `eleven thirty a m`. Lowercase spaced letters
-avoid the dotted-identifier rule. `PR #123`, `PR 123`, and `#123` say `pull request
-one twenty-three`; `e.g.`, `i.e.`, `vs.`, `approx.`, `~5`, `5%`, `x2` / `2x`, and
-`v2.3` expand to ordinary speech. Complete backtick code spans/fences, tilde fences
+avoid the dotted-identifier rule. Bare `HH:MM` reads as plain numbers unless
+preceded by at/by/until/from; only clock contexts infer am/pm. `PR #123`,
+`PR 123`, and `pull request #123` say `pull request one twenty-three`.
+Other `#N` references say `number`: `issue #12` becomes `issue number twelve`.
+`e.g.`, `i.e.`, `vs.`, `approx.`, `~5`, `5%`, `2x`, and `v2.3` expand to ordinary
+speech; `2.5x` says `two point five times`. Prefix forms such as `x2` and `x86`
+stay unchanged. Ambiguous compound clock, PR, range and multiplier tokens stay
+literal rather than expanding a prefix or suffix. Explicit am/pm ranges expand
+both ends; `~98.5%` says `about ninety-eight point five percent`. Only lowercase `vs` expands. Timing aliases use comparison-form deduplication and keep
+independent changed terms separate, without single-digit partial aliases.
+Complete backtick code spans/fences, tilde fences
 and HTTP(S) URLs stay verbatim through both normalization layers; standalone PM
 names stay unchanged. `scripts/local-tts.mjs` supplies this preparation to the
 vendored runner; BUILD recomputes the same bytes before trusting `.spoken.txt`.
@@ -391,6 +417,15 @@ for free-text-only decisions.
 For decision-flow, `decisions` is required and must be a non-empty array. Add
 the type plus explicit scene ownership: every scene must appear in exactly one
 decision's non-empty `sceneIds` array.
+
+Attach a dependent decision with `after: "<explainer-card-id>"` in `decisions`.
+Unattached cards retain authored order; attached decisions follow their explainer
+immediately, in their authored relative order, across cards, chips and index.
+BUILD refuses unknown/cyclic references or separated final attachments with
+`DECISION_SEPARATED_FROM_EXPLAINER`. An exact explicit `topic` match to an earlier
+`status: "INFO"` card requires `after` (`DECISION_AFTER_REQUIRED`); legacy cards
+without topics retain their order. Titles are never guessed. IDs and persisted
+answer keys, kinds and options stay unchanged.
 
 ```json
 {
@@ -758,7 +793,7 @@ This skill travels as **files only** — do NOT clone `narrationlayer` / `agent-
    NARRATIONLAYER_UPSTREAM=/path/to/narrationlayer bun scripts/lint-narration-vendor-drift.mjs
    ```
 
-   Resolve a stamped vendor-first debt only from a clean committed upstream.
+   Resolve stamped debts only from a clean committed upstream.
    The refresh command checks every required source marker, runs each debt's
    targeted upstream test, recomputes both sides of every pair, preflights the
    resulting manifest, and then replaces the stamp atomically:
@@ -768,6 +803,12 @@ This skill travels as **files only** — do NOT clone `narrationlayer` / `agent-
    ```bash
    NARRATIONLAYER_UPSTREAM=/path/to/narrationlayer bun scripts/lint-narration-vendor-drift.mjs --refresh-stamp --resolve-open-debt
    ```
+
+   Upstream-first closures also require the selected vendor files to be committed;
+   `resolvedVendorCommit` identifies those exact bytes. To leave an unmet debt
+   visible while closing supported debts, append `--keep-open-debt <debt-id>`
+   (repeat for multiple debts). A deferred debt stays OPEN and REJECTED. Only
+   selected, declared debt pairs may move; unrelated drift still refuses refresh.
 
    If the upstream path is missing, the lint emits a typed
    `UPSTREAM_UNAVAILABLE` record with value `stamp-only` and verdict `DEGRADED`.

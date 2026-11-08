@@ -199,8 +199,15 @@ with its size, and the summary adds `regenerable-skipped=N bytes=B`. A credentia
 the upload plan, one unit per folder, targeting `Brain Drive/06_ARCHIVE/docs-local/<repo>/<area>/<YYYY-MM>`
 (the one named exception to the `YYYY-MM-DD` date level: a rollup unit is a month).
 `--apply` moves items into their month folders (never overwriting; a clash is reported as `conflict:`)
-and writes `docs.local/_drive-filing/rollup-plan-<date>.json`. **The script never uploads or deletes.**
-Upload exactly the files in that plan through the [archive procedure](references/archive-procedure.md)
+and first saves immutable `docs.local/_drive-filing/rollup-plan-<date>-<uuid>.json` intent.
+A separate `rollup-progress-<date>-<uuid>.json` records source/destination locations (both during a move).
+Reruns reconcile file identities before publishing `rollup-handoff-<date>-<uuid>.json` (`planFile` in `--json`);
+conflicting or missing files stop with a progress path. Earlier plans stay intact. **The script never uploads or deletes.**
+Newly held sources remain in place as `not-moved` with a reason. Safety checks run before the first move.
+After the handoff is saved, completion markers keep settled intents out of future reads. With no moves or
+unfinished intents, `--apply` writes nothing and prints the current inventory (`--json` has no `planFile`).
+Human output names a saved handoff before its final summary. Receipts store absolute paths: resume at the same repo path.
+Upload exactly the files in that handoff through the [archive procedure](references/archive-procedure.md)
 (ledger + `brain_digest`), and nothing that is not in it. The plan is **not** a manifest (it lists paths
 and sizes, with no hashes, host, producer or restore command): until `rollup.mjs` emits one, write each
 unit's `MANIFEST.json` by hand before its upload and upload it with the unit.

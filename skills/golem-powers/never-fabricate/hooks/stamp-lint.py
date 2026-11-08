@@ -54,6 +54,9 @@ _HOOK_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) != _HOOK_DIR] + [_HOOK_DIR]
 
 import hashlib
+import fcntl
+import tempfile
+import time
 import json
 import os
 import re
@@ -142,16 +145,25 @@ def _read_cache(state_dir, file_path):
 
 
 def _write_cache(state_dir, file_path, lines):
+    temporary = None
     try:
         counts = {}
         for ln in lines:
             h = _line_hash(ln)
             counts[h] = counts.get(h, 0) + 1
         os.makedirs(state_dir, exist_ok=True)
-        with open(_cache_path(state_dir, file_path), "w") as f:
+        with tempfile.NamedTemporaryFile(mode="w", dir=state_dir, delete=False) as f:
+            temporary = f.name
             f.write("\n".join(f"{h} {c}" for h, c in sorted(counts.items())))
+        os.replace(temporary, _cache_path(state_dir, file_path))
     except OSError:
         pass  # cache is best-effort; never fail the hook over it
+    finally:
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except OSError:
+                pass
 
 
 def _multiset_new(lines, old_counts):
@@ -246,6 +258,36 @@ def main():
         "STAMP_LINT_STATE_DIR",
         os.path.expanduser("~/.claude/hooks/state/stamp-lint"),
     )
+    lock = None
+    cache_available = False
+    lock_timed_out = False
+    try:
+        os.makedirs(state_dir, exist_ok=True)
+        lock = open(_cache_path(state_dir, file_path) + ".lock", "a")
+        # Keep the per-target lock file: unlinking it races with other flock users.
+        deadline = time.monotonic() + 0.35
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    lock_timed_out = True
+                    raise
+                time.sleep(min(0.01, remaining))
+        cache_available = True
+    except OSError:
+        pass
+    try:
+        _lint(payload, tool_input, file_path, state_dir, cache_available, lock_timed_out)
+    finally:
+        if lock is not None:
+            lock.close()
+
+
+def _lint(payload, tool_input, file_path, state_dir, cache_available, lock_timed_out):
+    cached = _read_cache(state_dir, file_path) if cache_available else None
     try:
         with open(file_path, encoding="utf-8", errors="replace") as f:
             current_lines = f.read().splitlines()
@@ -263,16 +305,14 @@ def main():
             (tool_input.get("new_string") or "").splitlines(), old_counts
         )
     else:  # Write
-        cached = _read_cache(state_dir, file_path)
         created = _was_create(payload)
         if cached is not None and not created:
             new_lines = _multiset_new(current_lines, cached)
         else:
             new_lines = current_lines
-            # no cache + not a fresh create => lines may be old: future-only
-            provenance_known = created
-
-    _write_cache(state_dir, file_path, current_lines)
+            # Only a timed-out lock warrants full advisory checks. Unusable
+            # state storage retains the usual unknown-provenance behaviour.
+            provenance_known = created or lock_timed_out
 
     now_min, now_str = _now_minutes()
     findings = _stamp_findings(new_lines, provenance_known, now_min, now_str)
@@ -282,6 +322,8 @@ def main():
         # expired must not warn (Codex review, PR #502)
         findings += _artifact_findings(new_lines)
     if not findings:
+        if cache_available:
+            _write_cache(state_dir, file_path, current_lines)
         return
 
     context = (
@@ -297,7 +339,9 @@ def main():
             "hookEventName": "PostToolUse",
             "additionalContext": context,
         }
-    }))
+    }), flush=True)
+    if cache_available:
+        _write_cache(state_dir, file_path, current_lines)
 
 
 if __name__ == "__main__":

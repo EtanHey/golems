@@ -35,6 +35,16 @@ This section is the single source of truth for fleet routing. Fleet canon, globa
 
 ### Gathering
 
+**Antigravity is an underused pool (2026-11-08, Etan, via orc; corrected ruling).**
+
+> "we gotta be using agy much more, … y'all arent doing what I asked for."
+>
+> "ummm I never said all these need to go there??"
+>
+> "claude usage through agy is now natively supported in t3 code, so we can use this too. we now have 2 percent of it left for the next 15 hours so we should deplete it but also from now on we can utilize it (and maybe bench it against normal claude? to see if its on par with normal claude code same models?)"
+
+Draw on Antigravity much more where it fits: Gemini Flash/Argon AND Claude via agy, now natively supported in T3 Code. There is no blanket Gemini-first routing and no ban on agy Claude/GPT. The 2026-11-01 agy-Claude rule and all existing routing guardrails stand unchanged. The quoted quota/window is the dated snapshot. A same-model bench of agy-Claude versus native Claude Code is pending, owned by orc; no result is claimed.
+
 Easy gathers go to Antigravity Flash-high at any depth (the 2026-11-02 rule below); Codex Luna/Terra or Claude Haiku are the fallback when Antigravity is out (the 2026-10-28 rule below). Other gathers go to Antigravity first when Gemini Argon is out (the 2026-11-01 rule below). Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field; pinned Cursor drains its subscription pool.
 
 ### Execution capability

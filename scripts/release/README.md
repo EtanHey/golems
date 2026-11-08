@@ -124,6 +124,11 @@ two previous installed versions are retained; pruning follows the install histor
 not lexical SHA order. A release referenced by the client hook receipt is also
 retained in the history until a later update no longer needs it. Untracked
 release directories are left alone.
+Cleanup commits a `release-prune-plan` before deleting directories and replays
+it on the next invocation, including a same-version retry. History is replaced
+only after all planned deletions succeed; already-absent directories are safe
+to replay. The installed generation at entry and the generation executing the
+installer are also retained.
 
 Only the entries in `skills/catalog.json` are linked into `~/.claude/skills`
 and `~/.agents/skills`, using their separate lists; `~/.codex/skills` is linked
