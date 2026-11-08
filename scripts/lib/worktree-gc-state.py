@@ -108,6 +108,25 @@ def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
                                  birth_epoch=birth)) + "\n")
 
 
+def orphaned_removals(log_directory):
+    """Read historical intent logs; never reconcile by deleting a worktree."""
+    orphaned = []
+    for log in sorted(Path(log_directory).glob("worktree-gc-*.log")):
+        intents = {}
+        for line in log.read_text().splitlines():
+            fields = line.split(" · ", 6)
+            if len(fields) != 7:
+                continue
+            repo, path, branch, _, _, verdict, detail = fields
+            if verdict == "REMOVING":
+                intents[path] = dict(repo=repo, path=path, branch=branch,
+                                     detail=detail, log=str(log))
+            elif verdict == "REMOVED":
+                intents.pop(path, None)
+        orphaned.extend(intents.values())
+    return orphaned
+
+
 def finish_report(journal, directory, run_status, publish):
     import fcntl
     directory = Path(directory)
@@ -120,13 +139,16 @@ def finish_report(journal, directory, run_status, publish):
             t3_managed_skips[row["repo"]] = row["count"]
         else:
             owners.setdefault(row.pop("owner"), []).append(row)
+    orphans = orphaned_removals(Path(journal).parent)
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     error_count = sum(row["reason"] == "ERROR" for rows in owners.values() for row in rows)
     status = "partial" if error_count or int(run_status) not in (0, 3) else "complete"
     report = dict(generated_at=now, status=status, error_count=error_count,
                   exit_status=int(run_status), owners=owners,
-                  t3_managed_skips=t3_managed_skips)
+                  t3_managed_skips=t3_managed_skips, orphaned_removals=orphans)
     md = [f"# Worktree GC owner report\n\n{now}; status={status}; errors={error_count}; exit={run_status}\n"]
+    for row in orphans:
+        md.append(f"- REMOVING-without-REMOVED: `{row['path']}` ({row['branch']}); intent log `{row['log']}`; manual review required\n")
     for repo, count in sorted(t3_managed_skips.items()):
         md.append(f"- `{repo}`: {count} skip - t3-managed (T3 storageCleanup owns it)\n")
     for owner, rows in sorted(owners.items()):

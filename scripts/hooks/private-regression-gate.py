@@ -255,6 +255,34 @@ def prune_fixtures(keep=5):
         shutil.rmtree(p)
 
 
+def prune_runs(repo, keep=5):
+    """Prune only completed gate receipts; surviving worktrees are report-only."""
+    root = repo / "docs.local/hooks-private-gate-runs"
+    if not root.exists():
+        return
+    if root.resolve() != root:
+        raise ValueError("run retention root must not be symlinked")
+    # Pending receipts have no shared schema: conservatively retain every run
+    # named by any pending file under this checkout's private records.
+    pending = []
+    for path in (repo / "docs.local").rglob("*"):
+        if "pending" in str(path.relative_to(repo / "docs.local")).lower() and path.is_file():
+            pending.append(path.read_text())
+    runs = sorted((p for p in root.iterdir()
+                   if re.fullmatch(r"[0-9a-f]{32}", p.name)
+                   and not p.is_symlink() and p.is_dir()),
+                  key=lambda p: p.stat().st_mtime, reverse=True)
+    for path in runs[keep:]:
+        tree = repo / ".worktrees" / ("hooks-private-gate-" + path.name)
+        if tree.exists() or tree.is_symlink():
+            print(f"private regression gate: retained worktree (manual review): {tree}", flush=True)
+            continue
+        if (active_fixture(path) or not ((path / "candidate.json").is_file() or (path / ".finished").is_file())
+                or any(path.name in text for text in pending)):
+            continue
+        shutil.rmtree(path)
+
+
 @contextmanager
 def slot():
     # The install gate cannot nest inside a full suite that already owns this lock.
@@ -347,9 +375,11 @@ def run(repo, sha, required=False):
     with slot():
         if load_manifest(repo, sha, required, False) != manifest:
             raise ValueError("private manifest changed while queued")
+        prune_runs(repo)
         run_id = uuid.uuid4().hex
         out = repo / "docs.local/hooks-private-gate-runs" / run_id
         out.mkdir(parents=True, mode=0o700)
+        write_owner_marker(out, os.getpid(), start_token(os.getpid()))
         (out / "pytest.ini").write_text("[pytest]\n")
         tree = repo / ".worktrees" / f"hooks-private-gate-{run_id}"
         subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "repogolem/worktree-disk-floor.py"), str(tree)], check=True)
@@ -382,11 +412,17 @@ def run(repo, sha, required=False):
             print(f"private regression gate: {outcome}; receipt: {out}")
         finally:
             try:
-                git(repo, "worktree", "remove", "--force", str(tree))
+                if git(tree, "rev-parse", "HEAD") == sha and not git(tree, "status", "--porcelain"):
+                    git(repo, "worktree", "remove", str(tree))
+                else:
+                    print(f"private regression gate: retained changed worktree: {tree}", flush=True)
             finally:
                 fixtures = Path.home() / "docs.local/golems-guard-fixtures" / run_id
                 (fixtures / ".active").unlink(missing_ok=True)
+                (out / ".finished").touch()
+                (out / ".active").unlink(missing_ok=True)
                 prune_fixtures()
+                prune_runs(repo)
 
 
 def main():
