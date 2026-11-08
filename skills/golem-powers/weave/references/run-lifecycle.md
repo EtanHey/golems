@@ -276,6 +276,8 @@ python3 scripts/weave_loop.py status --workdir "$WD"
 `loop/state.json` persists scheduled stable keys, rounds, parent yields, the dry
 streak, pending work, question growth and unresolved claims. `next` emits a flat
 items list; `mine` targets index the original manifest data in `state.sessions`.
+The brief adapter keeps that session's `src`/`ctx` and sidecar paths, overrides
+findings `out` with the round item's `out`, and supplies the complete bank.
 Findings go to `loop/round-N/<key>.jsonl`, including an empty file for no findings.
 Ingest requires every planned output; missing or malformed receipts fail without
 advancing state. Round-1 mine items follow the batch plan, centerpieces first.
@@ -294,6 +296,9 @@ updates or carried work prevent a dry stop. Two consecutive dry rounds set
 confirmation round is ingested without dispatch, not substituted for missing work.
 Synthesize only after DRY_STOP. This planner does not grant the final-boss approval
 or replace the post-synthesis Red/Blue/Red fact-check.
+Before `weave-run.py aggregate`, harvest each `loop/round-N/<key>.jsonl` as
+`findings/round-N-<key>.jsonl`, retaining every round and the session sidecars;
+the existing ledger reads that flat directory, not the nested loop directories.
 
 Backstops are opt-in at `init`: `--max-items-per-round N` records overflow as
 `carried` for later rounds. `--max-rounds N` makes `next` set `BACKSTOP_HIT` and
