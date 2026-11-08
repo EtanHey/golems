@@ -39,19 +39,22 @@ function mapProse(text, transform) {
   return output + transform(text.slice(cursor));
 }
 
+const CLOCK_TIME = String.raw`(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)`;
 function normalizeProse(text, aliases = []) {
-  const replace = (pattern, replacement) => {
+  const replace = (pattern, replacement, allowAdjacent = false) => {
     text = text.replace(pattern, (...args) => {
       const offset = args.at(-2), source = args.at(-1);
-      if (/[\w:/–—-]$/.test(source.slice(0, offset)) || /^(?:[\w:/–—-]|\.\d)/.test(source.slice(offset + args[0].length))) return args[0];
+      if (!allowAdjacent && (/[\w:/–—-]$/.test(source.slice(0, offset)) || /^(?:[\w:/–—-]|\.\d)/.test(source.slice(offset + args[0].length)))) return args[0];
       const spoken = typeof replacement === "function" ? replacement(...args) : replacement;
       aliases.push({ term: args[0], spoken });
       return spoken;
     });
   };
-  replace(/(?<![\w:.])(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)[ \t]*-[ \t]*(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)(?!\w)/gi,
-      (_, h, m, p, endH, endM, endP) => `${clock(h, m, p.toLowerCase())}-${clock(endH, endM, endP.toLowerCase())}`);
-  replace(/(?<![\w:.])(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)(?!\w)/gi,
+  replace(new RegExp(String.raw`(?<![\w:.])${CLOCK_TIME}([ \t]*[-–—][ \t]*)${CLOCK_TIME}(?!\w)`, "gi"),
+      (_, h, m, p, separator, endH, endM, endP) => `${clock(h, m, p.toLowerCase())}${separator}${clock(endH, endM, endP.toLowerCase())}`);
+  replace(new RegExp(String.raw`(?<![\w:.])(\d+)([ \t]*[-–—][ \t]*)${CLOCK_TIME}(?!\w)`, "gi"),
+      (_, n, separator, h, m, p) => `${n}${separator}${clock(h, m, p.toLowerCase())}`);
+  replace(new RegExp(String.raw`(?<![\w:.])${CLOCK_TIME}(?!\w)`, "gi"),
       (_, h, m, p) => clock(h, m, p.toLowerCase()));
   replace(/(?<![\w:.])([01]?\d|2[0-3]):([0-5]\d)(?![\w:]|[ \t]*[ap]\.?m)/gi,
       (_, h, m, offset, source) => /\b(?:at|by|until|from)[ \t]+$/i.test(source.slice(0, offset))
@@ -68,8 +71,8 @@ function normalizeProse(text, aliases = []) {
   replace(/(?<!\w)~(\d{1,6})(?:\.(\d+))?(%)?(?!\w|\.\d)/g,
       (_, n, fraction, percent) => `about ${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""}${percent ? " percent" : ""}`);
   replace(/(?<![\w.])(\d{1,6})(?:\.(\d+))?%/g,
-      (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} percent`);
-  replace(/%/g, "percent");
+      (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} percent`, true);
+  replace(/%/g, "percent", true);
   replace(/(?<![\w.])(\d{1,6})(?:\.(\d+))?x(?!\w)/gi,
       (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} times`);
   replace(/(?<![\w.])v(\d{1,6}(?:\.\d{1,6})+)(?!\w|\.\d)/gi,
