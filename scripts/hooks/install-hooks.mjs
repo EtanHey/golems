@@ -185,7 +185,7 @@ export function readSettings(settingsPath) {
 export function hookSpec(e) {
   let command = e.cmd;
   if (e.event === "Stop" && command.includes("stop-telemetry.mjs ")) {
-    if (!Number.isInteger(e.timeout) || e.timeout < 1) throw new Error("Stop telemetry requires a manifest timeout");
+    if (!Number.isInteger(e.timeout) || e.timeout < 1) throw new Error(`Stop telemetry ${e.id} requires a manifest timeout`);
     const outerMs = e.timeout * 1000;
     const budgetMs = e.async === true ? 30000 : outerMs - Math.min(2000, outerMs / 2);
     command = command.replace(`stop-telemetry.mjs ${e.id} --`, `stop-telemetry.mjs ${e.id} --timeout-ms ${budgetMs} --`);
