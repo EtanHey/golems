@@ -66,3 +66,22 @@ test("a QA-done claim with no qa-report.md artifact is always a FLAG", () => {
   expect(result.verdict).toBe("FLAG");
   expect(result.violations.map((v) => v.code)).toContain("QA_NO_REPORT_ARTIFACT");
 });
+
+test("video inspection receipts preserve the other four checks", () => {
+  const earned = greens.find((fx) => fx.file === "10-video-inspected-frames.json");
+  for (const [code, mutate] of [
+    ["QA_UNREACHED_NOT_INCONCLUSIVE", (fx) => fx.events.splice(4, 0, { role: "tool", text: "element not found" })],
+    ["QA_NO_REPORT_ARTIFACT", (fx) => { fx.events[4].tools[0].input.content = "QA report stub"; }],
+    ["QA_DECISION_CLAIM_NO_VISUAL_EVIDENCE", (fx) => {
+      fx.events[0].text = "Is this ready to ship?";
+      fx.events.at(-1).text = "Verdict: FAIL — F1 FAIL.";
+    }],
+    ["QA_USER_VISIBLE_WITHOUT_RENDERED_EVIDENCE", (fx) => {
+      fx.events.at(-1).text = "Verdict: PASS — the app is ready; visual evidence: recording.png.";
+    }],
+  ]) {
+    const fx = structuredClone(earned);
+    mutate(fx);
+    expect(detectQaVerdict(fx).violations.map((v) => v.code)).toContain(code);
+  }
+});
