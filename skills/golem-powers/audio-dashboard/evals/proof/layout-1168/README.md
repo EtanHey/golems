@@ -13,8 +13,9 @@ switched off, so the classic scrollbars Etan sees on a desktop are actually draw
 | 1920 | [dark](1920-dark-before.png) · [light](1920-light-before.png) | [dark](1920-dark-after.png) · [light](1920-light-after.png) | [diff](1920-diff.png) |
 
 - **Width.** At ≥1440 px the layout grows from 1120 to 1680 px. The rail grows from 260 px to
-  `clamp(280px,17vw,340px)` and the cards from 740 to 1250 px at 1920. Prose stays 594 px wide
-  (64ch) at every width; [index.json](index.json) has the measured boxes, including 2560 px.
+  `clamp(280px,17vw,340px)` and the cards from 740 to 1250 px at 1920. Prose keeps a 64ch maximum
+  (about 594 px on desktop) and shrinks to fit the phone; [index.json](index.json) has the measured
+  boxes, including 2560 px.
 - **Rail gap.** 56 → 32 px at ≥1040 px, 40 px at ≥1440 px. At 1280 the 24 px goes to the cards (740 → 764).
 - **Scrollbars.** Thin, palette-tinted and transparent-tracked. The rail list and read-along keep a
   stable gutter and brighten on hover or keyboard focus. Rail thumb on the ink background:
@@ -26,6 +27,9 @@ switched off, so the classic scrollbars Etan sees on a desktop are actually draw
   captures are pixel-identical to the dark ones (before 390 px: 17 anti-aliased pixels off by 1).
 - **Design preservation.** Without a waiver the BUILD rejects `LAYOUT` at 1280 px only. A scoped
   `redesign` naming only `LAYOUT`, bound to the predecessor hash, passes (`REDESIGN_APPROVED`).
+  That admission is an isolated synthetic-fixture result in a throwaway design registry, not a live
+  publishing approval. Its approver is `requested by Etan (#1168, via orc); exact design not
+  separately approved`: Etan asked for these changes, and nobody signed off the exact design.
   No gate code or threshold changed.
 
 Not proven here: live narration, Whisper timing, hosted publish, account sync, or the Safari
