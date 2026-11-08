@@ -25,6 +25,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 try:
     from rich.console import Console, Group
@@ -311,6 +312,7 @@ class MinerStatus:
 
 @dataclass
 class WeaveState:
+    run_id: str = field(default_factory=lambda: uuid4().hex)
     phase: str = "init"
     message: str = ""
     concurrency: int = DEFAULT_CONCURRENCY
@@ -449,22 +451,34 @@ Write markdown to {out_path} with sections:
 ## Pain-Points Ledger (ranked) — top 20, frequency×severity table
 ## Plan for Next orcClaude — 5 parallel tracks, mined actions only
 
+Start the file with this exact run marker: <!-- weave-run: {run_id} -->
 Then reply: WEAVE_SYNTH_DONE
 """
 
 
 def synthesize(wd: Path, out_retro: Path, state: WeaveState) -> bool:
     state.set_phase("synthesize", f"writing {out_retro.name}")
+    candidate = out_retro.with_name(f".{out_retro.name}.{state.run_id}.pending")
+    marker = f"<!-- weave-run: {state.run_id} -->"
     prompt = SYNTH_PROMPT.format(
         ledger_path=wd / "ACTION-LEDGER.md",
         ledger_json=wd / "ledger.json",
-        out_path=out_retro,
+        out_path=candidate,
+        run_id=state.run_id,
     )
     try:
-        _spawn_cursor_agent(prompt, timeout=600)
-    except Exception:
-        pass
-    return out_retro.exists()
+        result = _spawn_cursor_agent(prompt, timeout=600)
+        if result.returncode != 0 or not candidate.is_file():
+            return False
+        report = candidate.read_text()
+        if not report.startswith(marker + "\n") or not report[len(marker):].strip():
+            return False
+        candidate.replace(out_retro)
+        return True
+    except (OSError, UnicodeError, subprocess.SubprocessError):
+        return False
+    finally:
+        candidate.unlink(missing_ok=True)
 
 
 def _fresh_workdir(wd: Path):
@@ -502,11 +516,30 @@ def cmd_discover(args) -> int:
 def cmd_run(args) -> int:
     wd = Path(args.workdir)
     wd.mkdir(parents=True, exist_ok=True)
+    state = WeaveState(concurrency=max(MIN_CONCURRENCY, min(MAX_CONCURRENCY, args.concurrency)))
+    summary = {"run_id": state.run_id, "result": "FAILED", "sessions": [],
+               "ledger_success": False, "report_success": False, "report": args.retro_out}
+    code = 1
+    try:
+        code = _cmd_run(args, state, summary)
+        summary["result"] = {0: "DONE", 2: "PARTIAL"}.get(code, "FAILED")
+    except (Exception, KeyboardInterrupt) as exc:
+        state.set_phase("failed", f"{type(exc).__name__}: {exc}")
+        code = 130 if isinstance(exc, KeyboardInterrupt) else 1
+    finally:
+        summary["message"] = state.message
+        (wd / "run-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    print(f"{summary['result']} WIDE weave → {wd} ({state.message})")
+    return code
+
+
+def _cmd_run(args, state: WeaveState, summary: dict) -> int:
+    wd = Path(args.workdir)
+    wd.mkdir(parents=True, exist_ok=True)
     if args.fresh:
         _fresh_workdir(wd)
 
     concurrency = max(MIN_CONCURRENCY, min(MAX_CONCURRENCY, args.concurrency))
-    state = WeaveState(concurrency=concurrency)
     console = Console()
     sources = set(args.sources.split(","))
     cutoff_ts = _parse_cutoff(args.cutoff)
@@ -518,7 +551,9 @@ def cmd_run(args) -> int:
         state.set_phase("discover", f"scanning {','.join(sorted(sources))} since {args.cutoff}")
         refresh()
         sessions = discover_sessions(cutoff_ts, args.centerpiece_repo, sources)
+        summary["sessions"] = [{"label": s["label"], "status": "unresolved"} for s in sessions]
         manifest = {
+            "run_id": state.run_id,
             "cutoff": args.cutoff,
             "cutoff_ts": cutoff_ts,
             "sources": sorted(sources),
@@ -530,11 +565,6 @@ def cmd_run(args) -> int:
             "sessions": sessions,
         }
         (wd / "corpus-manifest.json").write_text(json.dumps(manifest, indent=2))
-
-        if not sessions:
-            state.set_phase("done", "no sessions in window")
-            refresh()
-            return 0
 
         state.set_phase("prepare", f"mine-context for {len(sessions)} sessions")
         refresh()
@@ -558,8 +588,19 @@ def cmd_run(args) -> int:
                 results.append(fut.result())
                 refresh()
 
+        terminal = {"done", "fail", "timeout", "error"}
+        for disposition in summary["sessions"]:
+            matches = [r for r in results if r.get("label") == disposition["label"]]
+            if len(matches) == 1 and matches[0].get("status") in terminal:
+                disposition.update(matches[0])
+            else:
+                disposition["status"] = "missing-or-invalid"
+        if (len(results) != len(sessions)
+                or any(r["status"] == "missing-or-invalid" for r in summary["sessions"])):
+            raise RuntimeError("Every admitted session requires one explicit terminal disposition")
+
         done_n = sum(1 for r in results if r["status"] == "done")
-        if done_n == 0:
+        if sessions and done_n == 0:
             state.set_phase("failed", f"0/{len(chunks)} miners succeeded")
             refresh()
             console.print("[red]Mining failed — check miners table for errors[/]")
@@ -567,7 +608,7 @@ def cmd_run(args) -> int:
 
         state.set_phase("aggregate", "weave-ledger.py")
         refresh()
-        subprocess.run(
+        ledger_result = subprocess.run(
             [sys.executable, str(LEDGER),
              "--findings-dir", str(wd / "findings"),
              "--out-dir", str(wd),
@@ -575,12 +616,17 @@ def cmd_run(args) -> int:
              "--tokens", str(state.tokens_total)],
             capture_output=True, text=True,
         )
+        summary["ledger_success"] = ledger_result.returncode == 0
+        if not summary["ledger_success"]:
+            raise RuntimeError(f"Ledger failed (exit {ledger_result.returncode}): {ledger_result.stderr[:240]}")
 
         retro_path = Path(args.retro_out)
         retro_path.parent.mkdir(parents=True, exist_ok=True)
         state.set_phase("synthesize", retro_path.name)
         refresh()
-        synthesize(wd, retro_path, state)
+        summary["report_success"] = synthesize(wd, retro_path, state)
+        if not summary["report_success"]:
+            raise RuntimeError("Fresh matching final report was not published")
 
         if args.eval_out:
             eval_path = Path(args.eval_out)
@@ -593,14 +639,15 @@ def cmd_run(args) -> int:
                 parts.append("\n---\n\n" + ledger.read_text())
             eval_path.write_text("\n".join(parts))
 
-        state.set_phase("done", f"{done_n}/{len(chunks)} miners · {state.findings_total} findings")
+        partial = done_n != len(sessions)
+        state.set_phase("partial" if partial else "done",
+                        f"{done_n}/{len(sessions)} miners · {state.findings_total} findings")
         refresh()
 
-    console.print(f"\n[green]✓[/] WIDE weave → {wd}")
     console.print(f"  Retro: {args.retro_out}")
     if args.eval_out:
         console.print(f"  Eval:  {args.eval_out}")
-    return 0
+    return 2 if partial else 0
 
 
 def main() -> int:
