@@ -99,14 +99,11 @@ cmd_sandbox() {
       exit 1
     fi
 
-    cd "${REPOS_PATH}/golems"
-    python3 "${REPOS_PATH}/golems/scripts/repogolem/worktree-disk-floor.py" "$sandbox_path" || exit $?
-    git worktree add -b "${sandbox_name}" "${sandbox_path}" HEAD 2>/dev/null || {
-      # Branch may already exist
-      git worktree add "${sandbox_path}" "${sandbox_name}" 2>/dev/null || {
-        echo "Error: Could not create worktree" >&2
-        exit 1
-      }
+    cd "${REPOS_PATH}/golems" || { echo "Sandbox creation refused: repository unavailable" >&2; return 1; }
+    python3 "${REPOS_PATH}/golems/scripts/repogolem/worktree-disk-floor.py" "$sandbox_path" || { local floor_rc=$?; echo "Sandbox creation refused: disk-floor check failed" >&2; return "$floor_rc"; }
+    git worktree add -b "${sandbox_name}" "${sandbox_path}" HEAD || {
+      printf 'Sandbox creation refused: inspect and preserve work, then discard the retained branch: git branch -D %q\n' "$sandbox_name" >&2
+      return 1
     }
     echo "Sandbox created: ${sandbox_path}"
     echo "Branch: ${sandbox_name}"
@@ -117,10 +114,55 @@ cmd_sandbox() {
       exit 0
     fi
 
-    cd "${REPOS_PATH}/golems"
-    git worktree remove "${sandbox_path}" --force 2>/dev/null || true
-    git branch -D "${sandbox_name}" 2>/dev/null || true
+    case "$(pwd -P)/" in
+      "$sandbox_path/"*) echo "Sandbox retained: caller is inside ${sandbox_path}" >&2; return 1 ;;
+    esac
+    cd "${REPOS_PATH}/golems" || { echo "Sandbox retained: repository unavailable" >&2; return 1; }
+    local common sandbox_common branch head status index base_ref listed remove_rc=0 branch_outcome=deleted
+    common=$(git rev-parse --path-format=absolute --git-common-dir) || { echo "Sandbox retained: repository identity unavailable" >&2; return 1; }
+    sandbox_common=$(git -C "$sandbox_path" rev-parse --path-format=absolute --git-common-dir) || { echo "Sandbox retained: worktree identity unavailable" >&2; return 1; }
+    branch=$(git -C "$sandbox_path" symbolic-ref --short HEAD) || { echo "Sandbox retained: branch unavailable or HEAD detached" >&2; return 1; }
+    if [[ -L "$sandbox_path" || "$sandbox_common" != "$common" || "$branch" != "$sandbox_name" ]]; then
+      echo "Sandbox retained: worktree identity mismatch: ${sandbox_path}" >&2
+      return 1
+    fi
+    status=$(git -C "$sandbox_path" status --porcelain --untracked-files=all --ignored) || { echo "Sandbox retained: status unavailable" >&2; return 1; }
+    [[ -z "$status" ]] || { echo "Sandbox retained: tracked, untracked or ignored changes: ${sandbox_path}" >&2; return 1; }
+    index=$(git -C "$sandbox_path" ls-files -v) || { echo "Sandbox retained: index unavailable" >&2; return 1; }
+    if [[ $'\n'"$index" =~ $'\n'[a-zS]\  ]]; then
+      echo "Sandbox retained: index flags can hide tracked changes: ${sandbox_path}" >&2
+      return 1
+    fi
+    base_ref=$(git symbolic-ref refs/remotes/origin/HEAD) || { echo "Sandbox retained: origin default branch unavailable" >&2; return 1; }
+    git fetch --quiet origin "refs/heads/${base_ref#refs/remotes/origin/}:${base_ref}" || { echo "Sandbox retained: fresh remote coverage unavailable" >&2; return 1; }
+    head=$(git -C "$sandbox_path" rev-parse HEAD) || { echo "Sandbox retained: HEAD unavailable" >&2; return 1; }
+    if ! git merge-base --is-ancestor "$head" "$base_ref"; then
+      echo "Sandbox retained: HEAD is not merged into ${base_ref}: ${sandbox_path}" >&2
+      printf 'Inspect and preserve work before explicitly discarding it: git worktree remove --force %q\n' "$sandbox_path" >&2
+      return 1
+    fi
+    git worktree remove "$sandbox_path" || remove_rc=$?
+    if [[ "$remove_rc" -ne 0 ]]; then
+      echo "Sandbox retained: removal failed (rc=${remove_rc}): ${sandbox_path}" >&2
+      return "$remove_rc"
+    fi
+    listed=$(git worktree list --porcelain) || { echo "Cleanup unverified: worktree list unavailable" >&2; return 1; }
+    if [[ $'\n'"$listed"$'\n' == *$'\n'"worktree $sandbox_path"$'\n'* ]]; then
+      echo "Cleanup unverified: sandbox is still registered: ${sandbox_path}" >&2
+      return 1
+    fi
+    python3 - "$sandbox_path" <<'PY_ABSENT' || { echo "Cleanup unverified: physical absence check failed" >&2; return 1; }
+import os, sys
+try:
+    os.lstat(sys.argv[1])
+except FileNotFoundError:
+    sys.exit(0)
+print("Cleanup unverified: sandbox path still exists", file=sys.stderr)
+sys.exit(1)
+PY_ABSENT
+    git update-ref -d "refs/heads/${sandbox_name}" "$head" || { branch_outcome='retained: tip changed or deletion failed'; echo "Sandbox branch ${branch_outcome}: ${sandbox_name}" >&2; }
     echo "Sandbox cleaned up: ${sandbox_path}"
+    echo "Cleanup receipt: remove_rc=0; registered=false; physical=false; branch=${branch_outcome}"
   fi
 }
 
