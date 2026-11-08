@@ -102,7 +102,7 @@ cmd_sandbox() {
     cd "${REPOS_PATH}/golems" || { echo "Sandbox creation refused: repository unavailable" >&2; return 1; }
     python3 "${REPOS_PATH}/golems/scripts/repogolem/worktree-disk-floor.py" "$sandbox_path" || { local floor_rc=$?; echo "Sandbox creation refused: disk-floor check failed" >&2; return "$floor_rc"; }
     git worktree add -b "${sandbox_name}" "${sandbox_path}" HEAD || {
-      echo "Sandbox creation refused: could not create a fresh branch; inspect any retained branch: ${sandbox_name}" >&2
+      printf 'Sandbox creation refused: inspect and preserve work, then discard the retained branch: git branch -D %q\n' "$sandbox_name" >&2
       return 1
     }
     echo "Sandbox created: ${sandbox_path}"
@@ -129,7 +129,7 @@ cmd_sandbox() {
     status=$(git -C "$sandbox_path" status --porcelain --untracked-files=all --ignored) || { echo "Sandbox retained: status unavailable" >&2; return 1; }
     [[ -z "$status" ]] || { echo "Sandbox retained: tracked, untracked or ignored changes: ${sandbox_path}" >&2; return 1; }
     index=$(git -C "$sandbox_path" ls-files -v) || { echo "Sandbox retained: index unavailable" >&2; return 1; }
-    if grep -Eq '^[a-zS] ' <<<"$index"; then
+    if [[ $'\n'"$index" =~ $'\n'[a-zS]\  ]]; then
       echo "Sandbox retained: index flags can hide tracked changes: ${sandbox_path}" >&2
       return 1
     fi
@@ -147,7 +147,7 @@ cmd_sandbox() {
       return "$remove_rc"
     fi
     listed=$(git worktree list --porcelain) || { echo "Cleanup unverified: worktree list unavailable" >&2; return 1; }
-    if grep -Fxq -- "worktree $sandbox_path" <<<"$listed"; then
+    if [[ $'\n'"$listed"$'\n' == *$'\n'"worktree $sandbox_path"$'\n'* ]]; then
       echo "Cleanup unverified: sandbox is still registered: ${sandbox_path}" >&2
       return 1
     fi
