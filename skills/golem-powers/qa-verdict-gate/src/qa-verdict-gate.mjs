@@ -257,7 +257,7 @@ function videoFramesObserved(ev, claimText) {
   const inspected = new Set();
   for (const line of ev.out.split(/\r?\n/)) {
     const cols = line.split("\t");
-    if (cols.length !== 4) continue;
+    if (cols.length !== 4 && (cols.length !== 5 || !/^[a-f0-9]{64}$/i.test(cols[4]))) continue;
     const [pts, frame, why, finding] = cols;
     if (
       /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(pts) && Number.isFinite(Number(pts)) &&

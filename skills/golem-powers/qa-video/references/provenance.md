@@ -43,8 +43,9 @@ when the parent has `frames.tsv`; `QA_RUN_DIR` explicitly selects another run ro
 This shares repeat detection across coverage, dense, refinement and crops.
 Directories named `refine*` default to source=refine; `QA_FRAME_SOURCE` overrides.
 Each dense directory retains a local ledger for visual-batch.py. Do not sum both
-local and root ledgers: the root contains each frame once. Record writers sharing a run serialize ledger checks and appends with a run-level
-`fcntl` lock. `inspected.sh` accepts only existing frames registered in that ledger.
+local and root ledgers: the root contains each frame once. Record writers sharing
+a run serialize ledger checks and appends with a run-level `fcntl` lock held on
+`.provenance.lock` in the run root. `inspected.sh` accepts only existing frames registered in that ledger.
 It appends headerless `pts_s, frame, why, finding, sha256` to `inspected.tsv`; use it only
 after actually viewing the full-size image or crop, never for merely extracting it.
 
