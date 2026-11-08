@@ -87,7 +87,7 @@ class RunStepTests(unittest.TestCase):
             pipe.write("continue\n")
         step_pid = int(self.wait_file(ready))
         worker_pid = int(self.wait_file(self.work / "logs/test.pid"))
-        worker_group, step_group = os.getpgid(worker_pid), os.getpgid(step_pid)
+        worker_ids = os.getsid(worker_pid), os.getpgid(worker_pid), os.getpgid(step_pid)
         duplicate = subprocess.run(["bash", str(RUN_STEP), str(self.work), "test", "--", "true"],
                                    capture_output=True, timeout=5)
         self.assertEqual(duplicate.returncode, 1)
@@ -97,7 +97,7 @@ class RunStepTests(unittest.TestCase):
             pipe.write("continue\n")
         self.assertEqual(self.wait_file(self.receipt), "0")
         self.assertEqual((self.work / "logs/test.log").read_text(), "completed with spaces; $literal\n")
-        self.assertEqual((worker_group, step_group), (worker_pid, worker_pid))
+        self.assertEqual(worker_ids, (worker_pid,) * 3)
         self.assertEqual((self.work / "logs/test.lock/pgid").read_text().strip(), str(worker_pid))
         self.assertFalse((self.work / "logs/test.exit.tmp").exists())
         self.wait_group_dead(worker_pid)
