@@ -34,7 +34,7 @@ class FailEvidence(unittest.TestCase):
                       'file_path': str(self.run / 'qa-report.md'), 'content': self.report}}]},
                   {'role': 'tool', 'text': output},
                   {'role': 'assistant', 'text': 'Verdict: FAIL — F1 FAIL; S1-F6r FAIL.'}]
-        return subprocess.run(['bun', str(GATE), '-'], input=json.dumps({'events': events}),
+        return subprocess.run(['node', str(GATE), '-'], input=json.dumps({'events': events}),
                               capture_output=True, text=True)
 
     def test_exact_rows_clear_gate_and_summaries_do_not(self):
