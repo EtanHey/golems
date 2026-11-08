@@ -11,6 +11,7 @@ import json
 import re
 import sys
 import uuid
+from collections import Counter
 from pathlib import Path
 
 KINDS = {"mine", "redteam", "regather", "verify", "widen"}
@@ -54,7 +55,14 @@ def init(args):
     sessions = [s for b in plan["batches"] for s in b["sessions"]]
     state = dict(status="RUNNING", run_id=uuid.uuid4().hex, rounds=[], scheduled={}, pending=[], yields={},
                  dry_streak=0, questions={}, bank_growth=0, unverified={}, mined=[],
-                 sessions={}, max_items=args.max_items_per_round, max_rounds=args.max_rounds)
+                 sessions={}, finding_counts={}, confirmation_top_n=args.confirmation_top_n,
+                 confirmation_spot_checks=args.confirmation_spot_checks,
+                 max_items=args.max_items_per_round, max_rounds=args.max_rounds)
+    corpus = args.workdir / "corpus-manifest.json"
+    if corpus.exists():
+        raw = json.loads(corpus.read_text())
+        for session in raw if isinstance(raw, list) else raw["sessions"]:
+            state["sessions"][text(session["label"])] = session
     for session in sorted(sessions, key=lambda s: not s.get("centerpiece", False)):
         label = text(session["label"])
         state["sessions"][label] = session
@@ -62,6 +70,36 @@ def init(args):
     if not state["pending"]:
         raise ValueError("empty batch plan: coverage defect")
     return state
+
+
+def confirm(state):
+    why = "confirmation sweep"
+    candidates = [item for item in state["scheduled"].values()
+                  if item["round"] is not None and item["why"] != why
+                  and key_for("redteam", item["key"], why) not in state["scheduled"]]
+    candidates.sort(key=lambda item: -state["yields"].get(item["key"], 0))
+    for item in candidates[:state.get("confirmation_top_n", 5)]:
+        enqueue(state, "redteam", item["key"], why, item["key"])
+    labels = sorted(state["sessions"], key=lambda label: label in state["mined"])
+    labels = [label for label in labels
+              if (label not in state["mined"] or state["finding_counts"].get(label, 0) == 0)
+              and key_for("widen", label, why) not in state["scheduled"]]
+    for label in labels[:state.get("confirmation_spot_checks", 3)]:
+        parent = key_for("mine", label, "Initial batch plan")
+        enqueue(state, "widen", label, why, parent if parent in state["scheduled"] else "root")
+
+
+def restore_counts(state):
+    # Older state files lack counts: reconstruct them from actual receipts.
+    if "finding_counts" not in state:
+        state["finding_counts"] = {}
+        for prior in state["rounds"]:
+            if not prior["ingested"]:
+                continue
+            for item in prior["items"]:
+                count = sum(bool(line.strip()) for line in Path(item["out"]).read_text().splitlines())
+                target = item["target"]
+                state["finding_counts"][target] = state["finding_counts"].get(target, 0) + count
 
 
 def next_round(state, args):
@@ -73,6 +111,12 @@ def next_round(state, args):
     for key in state["unverified"]:
         if key not in state["pending"]:
             state["pending"].append(key)
+    if not state["pending"]:
+        restore_counts(state)
+        confirm(state)
+        if not state["pending"]:
+            state.update(status="DRY_STOP", stop_reason="confirmation-exhausted")
+            return
     if state["max_rounds"] and len(state["rounds"]) >= state["max_rounds"] and state["pending"]:
         state["status"] = "BACKSTOP_HIT"
         return
@@ -101,7 +145,11 @@ def ingest(state, number):
     # Read every receipt before mutating; missing/malformed output never means DRY.
     rows = [(item, json.loads(line)) for item in current["items"]
             for line in Path(item["out"]).read_text().splitlines() if line.strip()]
+    counts = Counter(item["key"] for item, _ in rows)
+    restore_counts(state)
     for item in current["items"]:
+        totals = state["finding_counts"]
+        totals[item["target"]] = totals.get(item["target"], 0) + counts[item["key"]]
         if item["kind"] == "mine" and item["target"] not in state["mined"]:
             state["mined"].append(item["target"])
     for item, finding in rows:
@@ -128,14 +176,14 @@ def ingest(state, number):
                     processed=False)
     current.update(ingested=True, new_keys=len(state["scheduled"]) - before,
                    unverified=len(state["unverified"]))
-    dry = current["new_keys"] == 0 and not state["unverified"]
+    dry = bool(current["items"]) and current["new_keys"] == 0 and not state["unverified"]
     # A question awaiting the bank and carried work both prevent premature synthesis.
     if any(not q["processed"] for q in state["questions"].values()) or state["pending"]:
         dry = False
     current["dry"] = dry
     state["dry_streak"] = state["dry_streak"] + 1 if dry else 0
     if state["dry_streak"] >= 2:
-        state["status"] = "DRY_STOP"
+        state.update(status="DRY_STOP", stop_reason="two-dry-rounds")
 
 
 def questions(state, bank):
@@ -174,6 +222,8 @@ def main():
     parser.add_argument("--bank", type=Path)
     parser.add_argument("--max-items-per-round", type=int, default=0)
     parser.add_argument("--max-rounds", type=int, default=0)
+    parser.add_argument("--confirmation-top-n", type=int, default=5)
+    parser.add_argument("--confirmation-spot-checks", type=int, default=3)
     args = parser.parse_args()
     args.workdir = args.workdir.resolve()
     loop = args.workdir / "loop"
@@ -185,6 +235,8 @@ def main():
             if args.command == "init":
                 if path.exists() or min(args.max_items_per_round, args.max_rounds) < 0:
                     raise ValueError("already initialized or negative backstop")
+                if min(args.confirmation_top_n, args.confirmation_spot_checks) < 1:
+                    raise ValueError("confirmation sizes must be positive")
                 state = init(args)
             else:
                 state = json.loads(path.read_text())
