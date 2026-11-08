@@ -62,6 +62,8 @@ Output schema:
 
 The hook is local-only: no network, no BrainLayer, no subprocesses, bounded
 stdin/transcript reads, and fail-open on malformed input or internal errors.
+Caught failures emit a visible advisory that the check could not run; the action
+is still allowed and exception details are omitted.
 
 `install-snippet.json` pins the absolute Node path:
 `$HOME/.nvm/versions/node/v22.22.0/bin/node`.

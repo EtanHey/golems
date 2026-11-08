@@ -7,7 +7,7 @@
 //   advisory: {"systemMessage":"..."}
 //
 // Hang-safety contract: no network, no BrainLayer, no subprocesses, bounded
-// stdin/transcript reads, and fail-open on malformed input or internal errors.
+// stdin/transcript reads. Errors allow with a {"systemMessage":"..."} failure advisory.
 
 import { closeSync, openSync, readSync, statSync } from "node:fs";
 import { detectModelPin } from "../src/model-pin-gate.mjs";
@@ -116,7 +116,9 @@ function main() {
     if (result.verdict === "ADVISORY") return advisory(result);
     return allow();
   } catch {
-    return allow();
+    process.stdout.write(JSON.stringify({
+      systemMessage: "MODEL-PIN-GATE advisory: the model safety check could not run; allowing this action. Ask the lead to check the hook installation and transcript input.",
+    }));
   }
 }
 
