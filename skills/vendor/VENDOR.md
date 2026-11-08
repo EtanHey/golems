@@ -47,4 +47,9 @@ Manual check: `node skills/golem-powers/golem-install/scripts/vendor-skills.mjs
 <anthropic-clone> <emil-clone> <expected-sha-A> <expected-sha-E> [--apply]`;
 without --apply it writes nothing. Proposed bytes are not approval to install.
 Owned vendor links move to the verified new payload on apply; old snapshots stay.
+Refreshes stage complete payloads, then atomically publish `manifest.json`. Its
+`generation` selects `generations/<id>/`, including the current `VENDOR.md` and
+matching manifest; absent `generation` means this legacy directory. Old generations
+stay for readers; garbage collection and a single transaction across all provider
+links are deferred. Each owned link is replaced atomically.
 Foreign links and directories still require explicit retirement. Claude's official frontend-design plugin updates independently.
