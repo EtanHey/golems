@@ -57,7 +57,8 @@ test('only a current, validated delivery advances acceptance; stale receipts can
   const changedApproval = structuredClone(e); changedApproval.handoff.design.firstInLineage.approvedBy = 'other-owner';
   expect(() => recordPublishedDesign(spec, output, html, { ...changedApproval, ...options })).toThrow('DESIGN_NEW_LINEAGE_APPROVAL_MISMATCH');
   const missingApproval = structuredClone(e); delete missingApproval.handoff.design.firstInLineage;
-  expect(() => recordPublishedDesign(spec, output, html, { ...missingApproval, ...options })).toThrow('FIRST_IN_LINEAGE_UNAPPROVED');
+  expect(() => recordPublishedDesign(spec, output, html, { ...missingApproval, ...options })).toThrow('DESIGN_ACCEPTANCE_REQUIRED');
+  expect(() => recordPublishedDesign(spec, output, html, { ...missingApproval, ...options, acceptedBy: 'fixture-owner' })).toThrow('FIRST_IN_LINEAGE_UNAPPROVED');
   expect(() => loadPublishedDesign(spec, output, options)).toThrow('previous build missing');
   record(); record();
   expect(loadPublishedDesign({ ...spec, series: 'new-series' }, output, options).previousHtml).toBe(html);

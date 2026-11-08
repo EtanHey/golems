@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
+import { validApprover, firstInLineageApproval } from './design-history.mjs';
 export const sha256 = value => createHash('sha256').update(value).digest('hex');
 export const handoffPath = output => output.replace(/\.html$/i, '') + '.publish-handoff.json';
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -26,13 +27,22 @@ export function hostedDeliveryViolations({ delivery: d, handoff: h, html, source
     fail('INVALID_STAGING_MODE', 'staging.mode must be unlisted-candidate, in-place-maintenance or none-backfill.');
   if (d.staging?.mode === 'in-place-maintenance') {
     if (!hash(d.staging.previousServedShellSha256))
-      fail('INVALID_STAGING_MODE', 'in-place-maintenance requires a 64-hex staging.previousServedShellSha256 rollback target.');
+      fail('MAINTENANCE_PREVIOUS_SHELL', 'in-place-maintenance requires a 64-hex staging.previousServedShellSha256 rollback target.');
     if (![d.admission?.design, h?.design?.admission].every(design => ['COMPARED', 'REDESIGN_APPROVED'].includes(design)))
-      fail('INVALID_STAGING_MODE', 'in-place-maintenance requires admission.design and handoff.design.admission to be COMPARED or REDESIGN_APPROVED, never FIRST_IN_LINEAGE.');
+      fail('MAINTENANCE_DESIGN', 'in-place-maintenance requires admission.design and handoff.design.admission to be COMPARED or REDESIGN_APPROVED, never FIRST_IN_LINEAGE.');
   }
   if (backfilled ? d.staging?.mode !== 'none-backfill' || d.admission?.design !== 'UNKNOWN_BACKFILL'
     : d.staging?.mode === 'none-backfill' || d.admission?.design === 'UNKNOWN_BACKFILL') fail('BACKFILL_MARKERS_MISMATCH', 'Backfill flag, none-backfill staging and UNKNOWN_BACKFILL must occur together.');
   if (!backfilled && (!h || h.schema !== 'audio-dashboard.publish-handoff.v2')) fail('MISSING_PUBLISH_HANDOFF', 'Delivery requires the original publish handoff.');
+  const design = h?.design;
+  if (design && Object.hasOwn(design, 'redesign') &&
+      (design.redesign?.from !== design.predecessorSha256 || !validApprover(design.redesign?.approvedBy)))
+    fail('HANDOFF_REDESIGN_INVALID', 'handoff.design.redesign must bind from to predecessorSha256 and name a valid approvedBy.');
+  if (design?.admission === 'FIRST_IN_LINEAGE') {
+    try { firstInLineageApproval(design.firstInLineage); }
+    catch { fail('FIRST_IN_LINEAGE_UNAPPROVED', 'FIRST_IN_LINEAGE requires handoff.design.firstInLineage with a one-line reason and valid approvedBy.'); }
+  } else if (design && Object.hasOwn(design, 'firstInLineage'))
+    fail('HANDOFF_FIRST_LINEAGE_MISPLACED', 'handoff.design.firstInLineage is allowed only for FIRST_IN_LINEAGE admission.');
   if (!dashboardId || d.dashboardId !== dashboardId || (h && h.dashboardId !== dashboardId) || url?.searchParams.get('d') !== dashboardId)
     fail('DELIVERY_ID_MISMATCH', 'Receipt, handoff, route and spec.id must identify the same dashboard.');
   if (typeof sourceHtml !== 'string') fail('MISSING_PREPARED_SOURCE', 'Supply the prepared source directory containing index.html.');
