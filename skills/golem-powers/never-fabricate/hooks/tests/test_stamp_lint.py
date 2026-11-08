@@ -361,3 +361,97 @@ def test_malformed_payload_failsafe(tmp_path):
     r = subprocess.run([sys.executable, str(HOOK)], input="not json", text=True,
                        capture_output=True, timeout=5, check=False, env=env)
     assert r.returncode == 0, "hook must fail open-and-silent on bad input (advisory)"
+
+
+def load_hook():
+    import runpy
+    import types
+    return types.SimpleNamespace(**runpy.run_path(str(HOOK)))
+
+
+def test_failed_cache_write_preserves_history(tmp_path, monkeypatch):
+    import builtins
+    hook = load_hook()
+    state = str(tmp_path / 'state')
+    path = str(collab(tmp_path))
+    hook._write_cache(state, path, ['old'])
+    cache = Path(hook._cache_path(state, path))
+    before = cache.read_bytes()
+    real_open = builtins.open
+
+    class FailedWrite:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def write(self, value):
+            raise OSError('disk full')
+
+    def failing_open(name, mode='r', *args, **kwargs):
+        if mode == 'w':
+            real_open(name, mode).close()
+            return FailedWrite()
+        return real_open(name, mode, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, 'open', failing_open)
+    def failed_replace(*args):
+        raise OSError('disk full')
+    monkeypatch.setattr(hook._write_cache.__globals__['os'], 'replace', failed_replace)
+    hook._write_cache(state, path, ['new'])
+    assert cache.read_bytes() == before
+
+
+def test_concurrent_update_cannot_regress_cache(tmp_path, monkeypatch, capsys):
+    import io
+    import threading
+    hook = load_hook()
+    path = collab(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text('### seat (15:45)\n')
+    monkeypatch.setenv('STAMP_LINT_STATE_DIR', str(tmp_path / 'state'))
+    monkeypatch.setenv('STAMP_LINT_NOW', '15:00')
+    payload = json.dumps({'tool_name': 'Write', 'tool_input': {'file_path': str(path)}})
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(payload))
+    entered = threading.Event()
+    release = threading.Event()
+    real_read = hook.main.__globals__['_read_cache']
+
+    def paused_read(*args):
+        entered.set()
+        assert release.wait(3)
+        return real_read(*args)
+
+    monkeypatch.setitem(hook.main.__globals__, '_read_cache', paused_read)
+    worker = threading.Thread(target=hook.main)
+    worker.start()
+    assert entered.wait(3)
+    # A second invocation encounters the first invocation's held path lock.
+    result = run_hook(tmp_path, path, '15:00', content='### seat (15:45)\nnew\n')
+    release.set()
+    worker.join(3)
+    assert not worker.is_alive()
+    assert warning_text(result).count('FUTURE STAMP:') == 1
+    assert 'FUTURE STAMP:' in capsys.readouterr().out
+    cached = hook._read_cache(str(tmp_path / 'state'), str(path))
+    assert cached == {hook._line_hash(line): 1 for line in path.read_text().splitlines()}
+
+
+def test_failed_cache_replace_does_not_change_advisory(tmp_path, monkeypatch, capsys):
+    import io
+    hook = load_hook()
+    path = collab(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text('### seat (15:45)\n')
+    monkeypatch.setenv('STAMP_LINT_STATE_DIR', str(tmp_path / 'state'))
+    monkeypatch.setenv('STAMP_LINT_NOW', '15:00')
+    def fail(*args):
+        raise OSError('disk full')
+    monkeypatch.setattr(hook._write_cache.__globals__['os'], 'replace', fail)
+    payload = {'tool_name': 'Write', 'tool_input': {'file_path': str(path)}}
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(json.dumps(payload)))
+    hook.main()
+    output = capsys.readouterr().out
+    assert len(output.splitlines()) == 1
+    assert json.loads(output)['hookSpecificOutput']['additionalContext'].count('FUTURE STAMP:') == 1
+    assert not list((tmp_path / 'state').glob('*.lines'))
+    assert len(list((tmp_path / 'state').iterdir())) == 1  # persistent lock only
