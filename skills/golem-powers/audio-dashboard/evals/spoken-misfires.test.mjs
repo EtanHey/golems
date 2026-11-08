@@ -61,7 +61,7 @@ test("each changed display token owns only its spoken timing span", () => {
   ]);
 });
 
-const boundaryCases = [...boundary.cases, ...boundary.agreedCases, ...boundary.followupCases, ...boundary.knownLimits.map(row => [...row, "known limit"])];
+const boundaryCases = [...boundary.cases, ...boundary.agreedCases, ...boundary.followupCases, ...boundary.nl35Cases, ...boundary.knownLimits.map(row => [...row, "known limit"])];
 for (const [input, expected, kind = "contract"] of boundaryCases) {
   test(`${kind} speech: ${input}`, () => {
     for (const rules of [[], [{ term: "PR", spoken: "pull request" }]]) {
