@@ -69,7 +69,7 @@ python scripts/route-pending-rt.py \
 Outputs:
 
 1. `pending-rt-routing.md` — per-row routing decision with rationale citation.
-2. `ETAN_QUEUE.md` (if any `etan-adjudicate` rows) — Etan's manual queue.
+2. `ETAN_QUEUE.md` and `cascade-queue.md` on every run, including explicit empty queues. Both carry one generation ID and the final gold digest. A filled `**Your verdict**:` blocks a rerun before any writes.
 3. Updates `gold.jsonl` in place for `cascade-opus` and `discard-fm14` routes.
 
 ---
@@ -114,8 +114,9 @@ Anything else (custom cascade model, conditional routing) is a v2 feature — no
 ```markdown
 # Etan Adjudication Queue — <run dir>
 
-Generated: <timestamp>
-Source: scripts/route-pending-rt.py from <run dir>
+Generation: <shared generation ID>
+Gold SHA-256: <final gold digest>
+Rows: <pending count>
 
 ## Row 1: (qid=7, chunk_id=rt-abc...)
 
