@@ -12,6 +12,17 @@ import { writePublishHandoff, prepareHostedInput } from '../src/prepare-hosted.m
 const cell = designTestCell(), migrationCell = designTestCell();
 // The real BUILD needs ffmpeg/ffprobe; skip (like the browser suites without Chromium) where they are absent.
 const mediaTools = ['ffmpeg', 'ffprobe'].every(bin => spawnSync(bin, ['-version']).status === 0);
+function expectHandoffKeys(handoff) {
+  expect(Object.keys(handoff).sort()).toEqual([
+    'schema', 'dashboardId', 'type', 'sourcePath', 'builtHtmlSha256', 'sourceHtmlSha256',
+    'buildReceiptsSha256', 'answerPersistence', 'answerRuntimeSha256', 'answerKeys',
+    'design', 'mediaManifest', 'createdAt',
+  ].sort());
+  const designKeys = ['admission', 'lineage', 'predecessorSha256'];
+  if (handoff.design.admission === 'FIRST_IN_LINEAGE') designKeys.push('firstInLineage');
+  if (handoff.design.admission === 'REDESIGN_APPROVED') designKeys.push('redesign');
+  expect(Object.keys(handoff.design).sort()).toEqual(designKeys.sort());
+}
 function hostedJob(testCell) {
   const jobDir = mkdtempSync(path.join(testCell.root, 'handoff-job-'));
   const seg = path.join(jobDir, 'segments/one'); mkdirSync(seg, { recursive: true });
@@ -40,6 +51,7 @@ function hostedJob(testCell) {
   expect(prepared.status, prepared.stderr).toBe(0);
   expect(JSON.parse(prepared.stdout).verdict).toBe('READY_FOR_HOSTED_PUBLISH');
   const h = JSON.parse(readFileSync(handoffPath(outputPath))), html = readFileSync(outputPath, 'utf8');
+  expectHandoffKeys(h);
   expect(h.answerRuntimeSha256).toMatch(/^[a-f0-9]{64}$/);
   expect(h.schema).toBe('audio-dashboard.publish-handoff.v2');
   expect(h.builtHtmlSha256).toBe(sha256(html));
@@ -88,6 +100,7 @@ function hostedJob(testCell) {
     const redesign = { reason: 'Fixture ruling', approvedBy: 'fixture-owner', from: sha256(html) };
     spec.redesign = redesign; writeFileSync(reportPath, JSON.stringify({ ...report, status, predecessorSha256: sha256(html), admission, ...(status === 'REDESIGN' ? { redesign } : {}) }));
     const mapped = writePublishHandoff({ spec, specPath, outputPath, segmentsDir: path.join(jobDir, 'segments'), html });
+    expectHandoffKeys(mapped);
     expect([mapped.design.admission, mapped.design.predecessorSha256]).toEqual([admission, sha256(html)]);
   }
   Object.assign(delivery, { backfilled: true, staging: { mode: 'none-backfill', servedShellSha256: delivery.servedShellSha256 } }); delivery.admission.design = 'UNKNOWN_BACKFILL';
@@ -119,6 +132,7 @@ function hostedJob(testCell) {
   expect([report.admission, report.lineage, report.predecessorSha256]).toEqual(['COMPARED', 'briefings', sha256(y)]);
   const prepared = run('validate-evidence', ['--prepare-publish', '--json']); expect(prepared.status, prepared.stderr).toBe(0);
   const handoff = JSON.parse(readFileSync(handoffPath(outputPath)));
+  expectHandoffKeys(handoff);
   expect(handoff.design).toEqual({ admission: 'COMPARED', lineage: 'briefings', predecessorSha256: sha256(y) });
   const reset = run('build-dashboard', ['--first-build', 'Attempted migration reset']);
   expect(reset.status).not.toBe(0); expect(reset.stderr).toContain('DESIGN_LINEAGE_RESET_REFUSED');
