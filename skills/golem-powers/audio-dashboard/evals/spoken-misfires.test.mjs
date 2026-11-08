@@ -65,3 +65,10 @@ test("each changed display token owns only its spoken timing span", () => {
 for (const [display, spoken] of parity.cases) test(`NL33 shared case: ${display}`, () => {
   expect(prepareSpeechChannels(display)).toEqual({ displayText: display, synthInput: spoken });
 });
+
+for (const token of ["~21:00Z", "21:5x", "PR 1/2", "PR 2026-10-22", "~200–400ms", "6pm-mini", "PR #275/#276"]) {
+  test(`compound token stays literal: ${token}`, () => {
+    expect(prepareSpeechChannels(token)).toEqual({ displayText: token, synthInput: token });
+    expect(deriveSpeechAliases(token, token)).toEqual([]);
+  });
+}
