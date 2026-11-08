@@ -28,13 +28,13 @@ test('optional closed Sources disclosure has safe new-tab links and an exact, es
 });
 test('sources only, prompt only, and neither render the correct optional drawer', () => {
   for (const [extra, count] of [[{ copyPrompt: undefined }, 1], [{ sources: [] }, 1], [{ sources: [], copyPrompt: undefined }, 0]]) {
-    const w = parse(render(extra)); try { expect(w.document.querySelectorAll('.df-sources').length).toBe(count); } finally { w.close(); }
+    const w = parse(render(extra)); try { expect(w.document.querySelectorAll('.df-sources').length).toBe(count); expect(detailsRejected(render(extra))).toBe(false); } finally { w.close(); }
   }
 });
 for (const url of ['javascript:alert(1)', 'java\nscript:alert(1)', 'data:text/html,x', 'http://example.com', '//evil.test', '\\evil.test', 'https://', '../outside.html', '%2e%2e/out.html']) {
   test(`sources refuse unsafe URL ${JSON.stringify(url)}`, () => expect(() => render({ sources: [{ label: 'Source', url }] })).toThrow(/sources/));
 }
-for (const extra of [{ sources: {} }, { sources: [{ label: '', url: './ok.html' }] }, { sources: Array(13).fill(sourcesCard.sources[0]) },
+for (const extra of [{ sources: null }, { sources: {} }, { sources: [{ label: '', url: './ok.html' }] }, { sources: Array(13).fill(sourcesCard.sources[0]) },
   { sources: [{ label: 'x'.repeat(161), url: './ok.html' }] }, { copyPrompt: { text: 'x' } }, { copyPrompt: { label: 'Copy', text: '' } },
   { copyPrompt: { label: 'Copy', text: 'x', notes: 'x'.repeat(281) } }]) {
   test(`invalid sources/prompt shape rejects ${JSON.stringify(extra).slice(0, 70)}`, () => expect(() => render(extra)).toThrow());
@@ -45,7 +45,12 @@ test('the evidence exemption cannot hide repeated prose, nested details or hosti
     expect(detailsRejected(html.replace('<div class="df-sources-body">', '<div class="df-sources-body">' + injected))).toBe(true);
   }
   expect(detailsRejected(html.replace('https://example.com/research?a=1&amp;b=2', 'javascript:alert(1)'))).toBe(true);
+  expect(detailsRejected(html.replace('https://example.com/research?a=1&amp;b=2', '&#106;avascript:alert(1)'))).toBe(true);
   expect(detailsRejected('<article class="df-card"><details><summary>Sources</summary><p>Prose</p></details></article>')).toBe(true);
+});
+test('maximum-length escaped labels and notes remain evidence-valid', () => {
+  expect(detailsRejected(render({ sources: [{ label: '&'.repeat(160), url: './ok.html' }],
+    copyPrompt: { label: '&'.repeat(80), text: 'Exact & < > " text', notes: '&'.repeat(280) } }))).toBe(false);
 });
 
 let chromium;
@@ -62,9 +67,9 @@ for (const width of [1280, 390]) browserTest(`Sources keyboard, exact clipboard 
         await page.addInitScript(mode => {
           window.copies = [];
           Object.defineProperty(navigator, 'clipboard', { value: mode === 'absent' ? undefined : { writeText: async text => {
-            if (mode !== 'clipboard') throw Error('denied'); window.copies.push(text);
+            if (mode !== 'clipboard' || window.failCopy) throw Error('denied'); window.copies.push(text);
           } } });
-          document.execCommand = () => { if (mode === 'failed') return false; window.copies.push(document.activeElement.value); return true; };
+          document.execCommand = () => { if (mode === 'failed' || window.failCopy) return false; window.copies.push(document.getSelection().toString()); return true; };
         }, mode);
         await page.goto('data:text/html,' + encodeURIComponent(render()));
         if (story) { await page.locator('#df-view-toggle').click(); await page.locator('.df-answer-open').click(); }
@@ -82,6 +87,15 @@ for (const width of [1280, 390]) browserTest(`Sources keyboard, exact clipboard 
           expect(await page.evaluate(() => window.copies)).toEqual([promptText]);
           expect(await button.textContent()).toBe('Copied');
           expect(await button.evaluate(el => el === document.activeElement)).toBe(true);
+          if (mode === 'clipboard') {
+            // A second denied click must not leave stale Copied feedback from the first.
+            await page.evaluate(() => { window.failCopy = true; });
+            await button.click();
+            expect(await button.textContent()).toBe(sourcesCard.copyPrompt.label);
+            expect(await page.locator('.df-prompt-status').textContent()).toContain('Select');
+            await page.evaluate(() => { window.failCopy = false; });
+            await button.click();
+          }
           await page.clock.fastForward(1600);
           expect(await button.textContent()).toBe(sourcesCard.copyPrompt.label);
         }

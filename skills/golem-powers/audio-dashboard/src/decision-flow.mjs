@@ -1,5 +1,6 @@
 import { ANSWER_RUNTIME, dashboardId } from './answer-persistence.mjs';
 import { COPY_BLOCK_ASSETS, renderCardBody } from './copy-blocks.mjs';
+import { validateSources } from './decision-sources.mjs';
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -135,6 +136,16 @@ function renderRail(rows = []) {
   return `<dl class="df-rail">${rows.map((row) =>
     `<div><dt>${escapeHtml(row.label)}</dt><dd>${renderRailValue(row)}</dd></div>`,
   ).join("")}</dl>`;
+}
+
+function renderSources(decision) {
+  validateSources(decision);
+  const sources = decision.sources || [], prompt = decision.copyPrompt;
+  if (!sources.length && !prompt) return '';
+  const links = sources.length ? `<ul class="df-source-links">${sources.map(source => `<li><a class="df-rail-link" href="${escapeHtml(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.label)}</a></li>`).join('')}</ul>` : '';
+  // JSON inside the escaped attribute preserves CR/LF, tabs and literal template tokens exactly.
+  const copy = prompt ? `<div class="df-copy-prompt">${prompt.notes ? `<p class="df-source-note">${escapeHtml(prompt.notes)}</p>` : ''}<button type="button" data-copy-prompt="${escapeHtml(JSON.stringify(prompt.text))}">${escapeHtml(prompt.label)}</button><span class="df-prompt-status" role="status" aria-live="polite"></span><pre class="df-prompt-manual" tabindex="0" hidden></pre></div>` : '';
+  return `<details class="df-sources"><summary>Sources</summary><div class="df-sources-body">${links}${copy}</div></details>`;
 }
 
 // Producer check: every "#N" a card shows must be linked on that card by a repository-qualified href.
@@ -419,6 +430,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
     <div class="df-question">${renderCardBody(decision.body)}</div>
     ${renderRail(decision.rail)}
+    ${renderSources(decision)}
     <div class="df-answer">
       ${renderChecklist(decision)}
       ${optionBlocks ? `<fieldset class="df-options"><legend class="df-sr-only">${escapeHtml(decision.title)} options</legend>${optionBlocks}</fieldset>` : ""}
