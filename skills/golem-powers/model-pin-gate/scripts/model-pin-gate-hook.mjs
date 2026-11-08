@@ -7,7 +7,7 @@
 //   advisory: {"systemMessage":"..."}
 //
 // Hang-safety contract: no network, no BrainLayer, no subprocesses, bounded
-// stdin/transcript reads, and fail-open on malformed input or internal errors.
+// stdin/transcript reads. Errors allow with a {"systemMessage":"..."} failure advisory.
 
 import { closeSync, openSync, readSync, statSync } from "node:fs";
 import { detectModelPin } from "../src/model-pin-gate.mjs";

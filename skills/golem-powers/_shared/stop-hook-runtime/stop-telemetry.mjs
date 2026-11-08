@@ -6,11 +6,9 @@ import { spawn } from "node:child_process";
 
 const MAX_CAPTURE_BYTES = 512 * 1024;
 const USE_PROCESS_GROUP = process.platform !== "win32";
-// Installed Stop hooks have a 5s harness timeout; leave time to reap and log.
-const MAX_TIMEOUT_MS = 4000;
 
 function usage() {
-  process.stderr.write("usage: stop-telemetry.mjs <hook_name> -- <command> [args...]\n");
+  process.stderr.write("usage: stop-telemetry.mjs <hook_name> [--timeout-ms <ms>] -- <command> [args...]\n");
   process.exit(64);
 }
 
@@ -71,11 +69,15 @@ const hookName = process.argv[2];
 const command = process.argv[separator + 1];
 const args = process.argv.slice(separator + 2);
 if (!hookName || !command) usage();
+// Installer passes the manifest row budget; unconfigured calls retain 30s.
+if (separator !== 3 && !(separator === 5 && process.argv[3] === "--timeout-ms")) usage();
+const rowTimeoutMs = separator === 5 ? Number(process.argv[4]) : 30000;
+if (!Number.isFinite(rowTimeoutMs) || rowTimeoutMs <= 0) usage();
 
 const startedAtMs = Date.now();
-const requestedTimeoutMs = Number(process.env.STOP_TELEMETRY_TIMEOUT_MS ?? MAX_TIMEOUT_MS);
+const requestedTimeoutMs = Number(process.env.STOP_TELEMETRY_TIMEOUT_MS ?? rowTimeoutMs);
 const timeoutMs = Number.isFinite(requestedTimeoutMs) && requestedTimeoutMs > 0
-  ? Math.min(requestedTimeoutMs, MAX_TIMEOUT_MS) : MAX_TIMEOUT_MS;
+  ? Math.min(requestedTimeoutMs, rowTimeoutMs) : rowTimeoutMs;
 const logPath =
   process.env.STOP_TELEMETRY_LOG_PATH ??
   join(homedir(), ".claude", "hooks", "stop-decisions.jsonl");
