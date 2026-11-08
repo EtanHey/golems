@@ -25,7 +25,7 @@ T6 deterministic smoke-spec shape). Sibling of `/false-green-gate` — same `lib
 
 | Detector code | Fires when | The honest verdict instead |
 |---|---|---|
-| `QA_FAIL_WITHOUT_OBSERVATION` | a **FAIL** with no same-turn observed-failure evidence (no screenshot, no click that reached the surface, no observed error in a `tool_result`) — the failing path was never shown to be exercised | `INCONCLUSIVE` |
+| `QA_FAIL_WITHOUT_OBSERVATION` | a **FAIL** with no same-turn observed-failure evidence (screenshot, click that reached the surface, observed error, or matching qa-video inspected-ledger rows in `tool_result` outputs) | `INCONCLUSIVE` |
 | `QA_UNREACHED_NOT_INCONCLUSIVE` | the transcript shows the path **couldn't be reached** ("couldn't load", "element not found", "blocked at step 0", `net::ERR_*`), but the verdict is **FAIL or PASS** | `INCONCLUSIVE` |
 | `QA_NO_REPORT_ARTIFACT` | a QA **"done/complete"** claim with no `qa-report.md` written this turn carrying the checklist items (≥2) | write the report first |
 | `QA_DECISION_CLAIM_NO_VISUAL_EVIDENCE` | a terminal QA/completion answer that feeds an Etan merge/ship/QA decision has no screenshot/dashboard/rendered-state reference embedded in that same answer | embed the visual evidence reference where Etan answers |
@@ -35,6 +35,23 @@ PASS = the stated verdict matches the observed evidence **and** the `qa-report.m
 "Same turn" = the events since the last human message — the probe tool calls **and their results** the
 agent ran before its verdict. Negated/in-progress statements ("not done yet") are not verdicts. An explicit
 `Verdict: INCONCLUSIVE` line is authoritative over loose pass/fail words elsewhere in the prose.
+
+### Recorded-frame observation
+
+For qa-video, same-turn tool outputs may supply headerless inspected-ledger rows:
+`pts<TAB>absolute frame path<TAB>reader: why<TAB>finding-id`. Read the run's
+`inspected.tsv` (or `logs/inspected*.tsv`) and include its rows in the tool output.
+PTS must be finite and nonnegative; the canonical absolute `.png`/`.jpg`/`.jpeg`
+path must stay under the run directory of a same-turn Write/Edit/MultiEdit to
+`/…/qa-video/<run>/qa-report.md` (namespaced tool names are supported).
+There must be exactly one such run root. Every named FAIL in assistant text or
+the report needs a matching row: `F1 FAIL` or `### F1: title — **FAIL**`, with
+case-sensitive alphanumeric/hyphen IDs containing a digit (e.g. `S1-F6r`).
+Rows for another finding/run, earlier-turn rows, assistant prose, and CONFIRMED
+records or verification summaries alone do not count. This checks inspection
+receipts, not image contents, before/after sufficiency, or verifier correctness.
+Only the FAIL observation check accepts these receipts; the other four checks
+remain unchanged, including the requirement to write the report this turn.
 
 ## Why FAIL is reserved
 
@@ -69,6 +86,7 @@ Programmatic: `import { detectQaVerdict } from "./src/qa-verdict-gate.mjs"` → 
 - "Same turn" is bounded by the last human message; a probe run two turns earlier does not count (by design).
 - Observed-error / screenshot tokens in a `tool_result` only count when a Bash command or a browser tool
   actually drove a surface this turn — a passive `Read` of an old log cannot supply them (same-turn-scope).
+  The recorded-frame route instead accepts a same-turn ledger Read under the contract above.
 - Decision-feeding evidence is checked on the terminal answer text: a screenshot mentioned only earlier in
   the turn does not help Etan answer the decision prompt.
 

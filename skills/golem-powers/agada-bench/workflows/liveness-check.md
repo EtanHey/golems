@@ -89,7 +89,7 @@ python scripts/dispatch-judges.py \
   --resume
 ```
 
-`--resume` makes dispatch-judges skip judges whose `<judge>.jsonl` already passes liveness; for the failing judge, it `mv`s the old file to `<judge>.jsonl.dead-<timestamp>` and re-dispatches fresh.
+`--resume` skips a judge only when its final labelled rows cover exactly the corpus identities. Revisions use the last row per identity; identity-less calibration notes are ignored. Other files move to `<judge>.jsonl.dead-<timestamp>`, and fresh briefs are prepared. The operator launches the panes. Digest-bound completion receipts remain deferred.
 
 ---
 

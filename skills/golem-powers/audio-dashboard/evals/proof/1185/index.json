@@ -1,0 +1,55 @@
+{
+  "kind": "synthetic-ui-only",
+  "base": "6002e3bd074b2a33d081570f0fd3e24514b0c6e9",
+  "beforeSha256": "c92515f5d71f465fe8c81e9be2d97adfaef646c614aa6247df1af420b3dfaff7",
+  "afterSha256": "4e0274f3cbb6ca08adaa3015c0a0fb086bd372601525c609d892dd76614455ec",
+  "results": [
+    {
+      "width": 1280,
+      "drawerOpenByKeyboard": true,
+      "exactClipboard": true,
+      "copiedState": "Copied",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "drawerOpenByKeyboard": true,
+      "exactClipboard": true,
+      "copiedState": "Copied",
+      "overflow": false
+    }
+  ],
+  "design": {
+    "verdict": "PASS",
+    "status": "REDESIGN",
+    "fired": [
+      "COPY_BUTTONS"
+    ],
+    "redesign": {
+      "reason": "Add the requested per-card Sources drawer and research prompt copy control.",
+      "approvedBy": "Etan via orc 2026-11-08 (sources drawer request)",
+      "invariants": [
+        "COPY_BUTTONS"
+      ],
+      "from": "c92515f5d71f465fe8c81e9be2d97adfaef646c614aa6247df1af420b3dfaff7"
+    }
+  },
+  "excludes": [
+    "live narration",
+    "production delivery",
+    "account synchronization"
+  ],
+  "candidateSourceCommit": "40028d53",
+  "artifacts": {
+    "1280-before.png": "4f64ab917020a1c6f7e2aeb31dc605ca4541cd70538a004e463f42e69a60096c",
+    "1280-after.png": "821ff1f01c6921a704b026d70b6e7b8387ad1cc8d24f8e21a516b6f7e774dc5b",
+    "1280-after-closed.png": "948e9118944adcec0a2ad6852f8d1ede92665346c19e0814c1fcf6c5738866a7",
+    "1280-diff.png": "f69e55e32f0bf26dd4a3acca2f802d1d29d4eb2ddf442005ca77e30671a9102d",
+    "1280-interaction.gif": "003f637443ec3876eceb8488cbcd5ed54dcbe62b2b26ac0bf1e190d19b461104",
+    "390-before.png": "17865b362fc11245e79a9c45b498fc4991368d1a5442e0f4bd5a6ea9b3b10a1a",
+    "390-after.png": "10cdbf9ee672eb38744ba1d89ccb8e2644e9ba7f30051cce87a315e09bffb5e3",
+    "390-after-closed.png": "0b62333d05ddb2093b0a3a8a7fdd9389590711a1d6c2a2a7dcd12688b5a7268a",
+    "390-diff.png": "b7aa5a13c09e47283bbb2b1484710c51996d974f49661dd4c1c8211c79fc57e1",
+    "390-interaction.gif": "1f0675c72053bd3addfe088e2ea6ad6e611ff2f5f7a67d0007a9af73ffacfc33"
+  }
+}

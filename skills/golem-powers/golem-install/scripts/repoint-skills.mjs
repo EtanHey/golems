@@ -9,8 +9,8 @@
 // For each entry:
 //   ok       a link that resolves into --source
 //   repoint  a link into ~/.golems/skills/<name> whose <name> exists in --source
-//   dangling a link whose target is gone and whose name is not in --source (removed with --apply);
-//            a dangling link whose name IS in --source is a repoint (repaired, never deleted)
+//   dangling a known golems link whose target is gone and whose name is not in --source (removed with --apply);
+//            a known golems dangling link whose name IS in --source is a repoint (repaired, never deleted)
 //   other    anything else (real dirs, links elsewhere, retired names), left alone
 // Dry-run is the default; --apply rewrites repoint links and removes dangling ones.
 //
@@ -46,6 +46,24 @@ function classify(entry, sourceReal, staleRoot) {
   if (!stat.isSymbolicLink()) return { kind: "other" };
   const target = path.resolve(path.dirname(entry), readlinkSync(entry));
   if (!existsSync(entry)) {
+    // Resolve chains before deciding ownership; a matching skill name is not ownership.
+    let destination = target;
+    const seen = new Set([entry]);
+    while (lexists(destination) && lstatSync(destination).isSymbolicLink()) {
+      if (seen.has(destination)) return { kind: "other" };
+      seen.add(destination);
+      destination = path.resolve(path.dirname(destination), readlinkSync(destination));
+    }
+    const home = path.dirname(path.dirname(staleRoot));
+    // linkMissing owns this exact mirror even after the agents entry is removed.
+    const missingMirror = path.dirname(entry) === path.join(home, GEMINI_SKILLS_ROOT)
+      && readlinkSync(entry) === path.join("..", "..", "..", ".agents", "skills", path.basename(entry))
+      && destination === target && !lexists(destination);
+    const owned = missingMirror || destination.startsWith(`${staleRoot}${path.sep}`)
+      || destination.startsWith(`${sourceReal}${path.sep}`)
+      || destination.includes(`${path.sep}skills${path.sep}golem-powers${path.sep}`);
+    if (!owned) return { kind: "other" };
+
     // r7 on #232: a dangling link whose NAME exists in the clone is repaired,
     // never deleted (the MBP's collab-monitor pointed into a deleted worktree).
     const byName = path.join(sourceReal, path.basename(entry));

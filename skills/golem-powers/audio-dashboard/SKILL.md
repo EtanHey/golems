@@ -126,6 +126,20 @@ BUILD rejects unprotected commands and pasteable paths on cards and the
 decision-flow header, records `COPY_BLOCK_REQUIRED` in `<output>.receipts.json`,
 and withholds HTML. Ordinary prose and links pass. There is no bypass.
 
+## Per-card Sources and research prompts (decision-flow)
+
+Add optional `sources: [{ label, url }]` (up to 12 links, labels up to 160 characters)
+and/or `copyPrompt: { label, text, notes? }` to a decision. Sources uses one native
+disclosure, closed by default and keyboard accessible; links open a new tab with
+noopener/noreferrer. URLs must be HTTPS or relative inside the dashboard directory;
+schemes such as javascript/data/http, protocol-relative URLs and directory escapes reject.
+`copyPrompt.label` names the button (up to 80 characters); `text` is copied exactly,
+including whitespace. `notes` is visible above the button (up to 280 characters):
+state whether Google Docs must be enabled in Gemini and whether research lifecycle
+has run. Successful copies show Copied; unavailable clipboard access offers a
+selection-copy fallback and, if that fails, the selectable prompt with a failure message.
+These fields are reference material, never narration/teleprompter text or saved answers.
+
 ## Issue and PR references
 
 Attribution: Etan, 2026-10-28 dashboard feedback (AD-16).
@@ -289,6 +303,18 @@ Expansions and respells ride the ENGINE channel only. The renderer, repaired
 original scene script. This is the B11 two-channel law: `pull request` or `lyve`
 may enter the daemon input and `.spoken.txt`, but `P R` or `live` remains on
 screen exactly as authored.
+
+The skill-local `src/spoken-form.mjs` prepares clock times and a small abbreviation
+set before synthesis: `9pm` / `9 p.m.` / `21:00` → `nine p m`, `9:05pm` →
+`nine oh five p m`, and `11:30am` → `eleven thirty a m`. Lowercase spaced letters
+avoid the dotted-identifier rule. `PR #123`, `PR 123`, and `#123` say `pull request
+one twenty-three`; `e.g.`, `i.e.`, `vs.`, `approx.`, `~5`, `5%`, `x2` / `2x`, and
+`v2.3` expand to ordinary speech. Complete backtick code spans/fences, tilde fences
+and HTTP(S) URLs stay verbatim through both normalization layers; standalone PM
+names stay unchanged. `scripts/local-tts.mjs` supplies this preparation to the
+vendored runner; BUILD recomputes the same bytes before trusting `.spoken.txt`.
+These deterministic forms have offline timing/gate coverage; qwen3 voice quality
+is verified at the next real build, not inferred from unit tests.
 
 The TTS runner persists `.spoken.txt` as required provenance containing the exact
 synth-input bytes. STT repair derives only the lexical spans that differ between

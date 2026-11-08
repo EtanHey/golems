@@ -43,7 +43,7 @@ import { spawn } from "node:child_process";
 // skill-local vendor copies (siblings in this dir), not the narrationlayer repo.
 import { findProfile, qwenConfigFromProfile } from "./profiles.js";
 import { loadPronunciationRules } from "./pronunciation-config.js";
-import { prepareSpeechChannels } from "./text-normalize.js";
+import { prepareSpeechChannels as defaultPrepareSpeechChannels } from "./text-normalize.js";
 
 interface Args {
   text?: string;
@@ -870,7 +870,7 @@ async function loudnessNormalizeInPlace(
   return { applied: true, measuredDb, gainDb };
 }
 
-async function main(): Promise<void> {
+export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!args.text || !args.text.trim())
     fail("--text is required and must be non-empty");

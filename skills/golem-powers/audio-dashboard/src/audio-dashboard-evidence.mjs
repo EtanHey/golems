@@ -1,6 +1,7 @@
 import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { hostedDeliveryViolations } from "./hosted-delivery.mjs";
+import { isSourcesDrawer } from "./decision-sources.mjs";
 import { designReportFailure } from "./design-history.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -183,7 +184,7 @@ function hasTextOnlyDetails(html, outputPath) {
       // Decorative control icons do not make a card a visualization.
       const visual = nodes.some(n => ["svg", "canvas", "img", "figure", "video"].includes(n.tagName) &&
         !isControlIcon(n, node)) || nodes.some(opensVisual);
-      const details = nodes.filter(n => !inNarratedDetails(n, node)).some(n => n.tagName === "details" ||
+      const details = nodes.filter(n => !inNarratedDetails(n, node) && !inSources(n, node)).some(n => n.tagName === "details" ||
         (isDetailsControl(n) && detailsLabel(n)) ||
         /view\s+details/i.test(normalize(attrs(n)["aria-label"])));
       if (!visual && details) return cardName(node);
@@ -209,6 +210,15 @@ function hasTextOnlyDetails(html, outputPath) {
     const narrated = Boolean(audio && (timed || labelled));
     narratedCache.set(details, narrated);
     return narrated;
+  }
+  const sourceCache = new WeakMap();
+  function inSources(node, card) {
+    for (let n = node; n && n !== card; n = n.parentNode) {
+      if (n.tagName !== 'details') continue;
+      if (!sourceCache.has(n)) sourceCache.set(n, isSourcesDrawer(n, { attrs, children, text }));
+      return sourceCache.get(n);
+    }
+    return false;
   }
   function inNarratedDetails(node, card) {
     for (let n = node; n && n !== card; n = n.parentNode) {

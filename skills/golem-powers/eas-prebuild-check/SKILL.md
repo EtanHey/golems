@@ -26,6 +26,8 @@ Runs 9 discrete checks against an Expo project, each reporting PASS / FAIL / WAR
 
 **Bonus warnings:** P8 APNs key presence (if push enabled), active `eas whoami` matches `app.json` owner, managed vs bare workflow detection.
 
+Remote commands and the CLI version query have bounded deadlines via `timeout`, `gtimeout`, or a macOS-compatible Perl alarm fallback that kills the child process group (exit 124 on timeout). If none is available, the check reports FAIL.
+
 ## When to use
 
 - **Before the first EAS build** on any new Expo project
