@@ -10,7 +10,7 @@ Every collab declares the route before spawning:
 ## Agent Routing
 | Task | Tool | Agent ID | Surface/Workspace | Goal File | Report Path | DONE Marker | Status |
 |---|---|---|---|---|---|---|---|
-| Scan schema | Cursor | agent:abc | surface:XX / workspace:1 | goals/schema.md | reports/schema.md | DONE_SCHEMA | PENDING |
+| Scan schema | Gemini (quota check first) | agent:abc | surface:XX / workspace:1 | goals/schema.md | reports/schema.md | DONE_SCHEMA | PENDING |
 | Implement fix | Codex | agent:def | surface:YY / workspace:1 | goals/fix.md | reports/fix.md | DONE_FIX | PENDING |
 | Coordinate | Claude | self | self | collab.md | final-report.md | DONE_ORC | IN_PROGRESS |
 ```
@@ -21,7 +21,7 @@ If a row points at an existing managed worker, supersede only within the same PR
 
 1. Claude context above 50% while workers are idle -> route remaining gather/implementation work now.
 2. Dead Cursor/Codex surface -> recover the managed lane within 60 seconds and redeliver its file-backed goal.
-3. Claude running bulk SQL, grep, scans, or git-history analysis -> Cursor-work violation.
+3. Claude running bulk SQL, grep, scans, or git-history analysis -> gather-routing violation; use § Gathering (Gemini-first with quota check).
 4. Dispatching lead with no fleet-canon-#7 guard -> fired-and-forgot violation; flag the lead.
 5. Repeated large scrollback reads despite a report/DONE contract -> wait on the artifact instead.
 6. Goal narrowed from the user mission to one issue/PR -> restore the full mission in the file-backed goal; supersede only within the same PR, and any additional PR gets a fresh implementer with a compact checkpoint.
@@ -63,7 +63,7 @@ PAUSE. Am I about to change code or files?
 - Coordinating Claude? Route it to Codex unless `/agent-routing` § Lead Topology authorizes its tiny-lead exception.
 - Domain agent with no assigned Codex? It may be the implementer.
 - Domain agent with assigned Codex? Send it to that Codex.
-- Read-only scan/query? Cursor.
+- Read-only scan/query? Follow SKILL.md § Gathering: Gemini-first after its three-window quota check, with its fallback and agy Claude/GPT ban.
 - SkillCreator-domain path without skillCreator? Stop and route for audit.
 ```
 
@@ -77,14 +77,14 @@ crossing it as a routing smell and inspect whether the lead absorbed worker work
 
 | Task | Tool | Rationale |
 |---|---|---|
-| [gathering task] | Cursor (read-only) | Scanning, no changes |
+| [gathering task] | Gemini (read-only) | SKILL.md § Gathering owns quota check, model choice and fallback |
 | [implementation task] | Codex | File changes |
 | [coordination task] | Claude | Orchestration and user interaction |
 
 Rules:
-- Cursor prompts include "READ-ONLY: Do NOT modify any files" and name where the coordinator will record the returned findings.
+- Gather prompts include "READ-ONLY: Do NOT modify any files" and name where the coordinator will record returned findings. Gemini never runs commands or gives verdicts; a judge confirms load-bearing claims.
 - Cursor model selection: fleet canon #1.
-- Codex consumes Cursor's distilled findings, not raw data.
+- The implementer consumes judge-confirmed gather findings, not raw data.
 - Visible launch: fleet canon #6; invocation details: `/repogolem`.
 - One PR = one fresh implementer; supersede a changed mission within the same PR with one full file-backed goal (`/agent-routing` § Lead Topology #5).
 - Monitor/close lifecycle: fleet canon #7; worker-state detail: [delegation operations](delegation-operations.md#goal-delegation-contract).

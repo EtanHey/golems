@@ -1,0 +1,56 @@
+{
+  "skill_name": "agent-routing",
+  "rule_date": "2026-11-08",
+  "status": "NOT_RUN",
+  "comparison": "Run the same cases without_skill, with main text, and with candidate text in clean contexts; capture effective model/effort and cost. No behavioral delta is claimed by this case file.",
+  "evals": [
+    {
+      "prompt": "All three Gemini quota windows have room. Inventory files and collect logs, transcript excerpts, harvest reads and CI failure messages. Choose a route.",
+      "expected_output": "Antigravity Flash-high read-only gather after checking the three quotas.",
+      "assertions": ["Checks Gemini 5-hour, Gemini weekly and Argon weekly in T3 Settings > Usage limits before selecting", "Uses delegate_task provider antigravity, gemini-3.8-flash, target.options.thinking_level high", "No commands, writes or verdicts delegated to Gemini"],
+      "category": "compliance"
+    },
+    {
+      "prompt": "Gemini quota is available. Read a dense code architecture and subtle cross-file contracts for a first-pass checklist; do not decide any change.",
+      "expected_output": "Antigravity Argon-high read-only recon, with judge confirmation of load-bearing claims.",
+      "assertions": ["Checks all three Gemini quota windows", "Uses gemini-4-argon with thinking_level high", "Treats output as a lead, not evidence"],
+      "category": "compliance"
+    },
+    {
+      "prompt": "Gemini quotas are exhausted. Antigravity Claude and GPT still appear in the catalog. Pick a gatherer, then name the fallback if the existing cheap tiers are unavailable.",
+      "expected_output": "Luna/Terra/Haiku, then Cursor Auto; never Antigravity Claude/GPT.",
+      "assertions": ["Uses existing Luna/Terra/Haiku fallback tiers", "Next fallback is Cursor without any model flag or field", "Rejects agy Claude/GPT even when listed"],
+      "category": "compliance"
+    },
+    {
+      "prompt": "Argon weekly is exhausted, Flash has room. Gather a dense and subtle contract analysis. Should Flash or agy Claude replace Argon?",
+      "expected_output": "Use the existing non-agy fallback tiers for required dense work.",
+      "assertions": ["Does not downgrade dense work to Flash solely because Argon is exhausted", "Does not select agy Claude/GPT"],
+      "category": "compliance"
+    },
+    {
+      "prompt": "A lead needs BrainLayer recon, read-only eval data collection and a frame-read checklist. The Gemini child has the needed read tools. Who handles these and who signs the final verdict?",
+      "expected_output": "Gemini-first under the lead; a judge confirms load-bearing claims and gives the verdict.",
+      "assertions": ["Checks quota then routes reads and collection to Gemini", "Never makes agy the lead", "Reserves final verdict and synthesis that ships for judgment"],
+      "category": "compliance"
+    },
+    {
+      "prompt": "Use a Gemini verifier to rerun npm test, crop frames with ffmpeg and write an eval report. Quota is available.",
+      "expected_output": "These require a non-Gemini executor; Gemini may only read the resulting artifacts.",
+      "assertions": ["No commands or file writes assigned to Gemini", "Does not treat available quota as execution authority"],
+      "category": "compliance"
+    },
+    {
+      "prompt": "Gemini found zero callers. Decide whether to delete the code and edit its tests; also review the resulting PR and give a QA verdict.",
+      "expected_output": "Deletion/test-edit decisions stay on claude.judgment; cross-vendor review and QA verdict remain judgment work.",
+      "assertions": ["Gemini findings require judge confirmation", "Deletion and test-edit decisions go to claude.judgment", "Gemini never reviews or gives QA verdicts"],
+      "category": "compliance"
+    },
+    {
+      "prompt": "Choose who judges a UI redesign and who implements a bounded parser fix. Gemini quota is available.",
+      "expected_output": "Claude judges UX/UI; Codex implements the bounded technical fix with other-vendor review.",
+      "assertions": ["UX/UI judgment stays on Claude", "Implementation and cross-vendor review keep their SSOT routes", "No implementation or judgment assigned to Gemini"],
+      "category": "compliance"
+    }
+  ]
+}

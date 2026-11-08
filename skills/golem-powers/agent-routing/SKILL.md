@@ -35,7 +35,22 @@ This section is the single source of truth for fleet routing. Fleet canon, globa
 
 ### Gathering
 
-Easy gathers go to Antigravity Flash-high at any depth (the 2026-11-02 rule below); Codex Luna/Terra or Claude Haiku are the fallback when Antigravity is out (the 2026-10-28 rule below). Other gathers go to Antigravity first when Gemini Argon is out (the 2026-11-01 rule below). Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field; pinned Cursor drains its subscription pool.
+**Gemini first (2026-11-08, Etan, via orc):**
+
+> "we gotta be using agy much more" (excerpt)
+
+Before picking a gatherer, check T3 **Settings > Usage limits**: Gemini 5-hour, Gemini weekly and Argon weekly. Use `delegate_task`, provider `antigravity`, model `gemini-3.8-flash` for bulk or `gemini-4-argon` for dense or subtle work, with `target.options: {thinking_level: "high"}`. This widens the 2026-11-02 Flash-high easy-work rule at every depth (leads, their sub-agents and theirs) to:
+
+- gathers, inventories and repo/code recon;
+- frame, transcript and harvest reads;
+- first-pass read-only verification sweeps and checklists;
+- BrainLayer recon;
+- read-only eval orchestration and data collection, as a sub-agent under a lead;
+- log and CI triage.
+
+**Never use Antigravity's Claude or GPT models.** If Gemini quota is out for the required work, fall back to the existing Luna/Terra/Haiku tiers (2026-10-28), then Cursor Auto. Argon exhaustion does not make Flash suitable for dense work. Claude and Codex handle judgment: implementation per the table below, cross-vendor review, final verdicts and synthesis that ships. A lead seat is never agy.
+
+**Gemini output is a lead, not evidence.** A judge model confirms anything load-bearing before anyone acts on it. Gemini never implements, runs commands, writes files, reviews, decides (including deletion or test edits), or gives QA verdicts. UX/UI judgment stays on Claude. Eval collection here never authorizes executing a harness or writing results; those require an executor. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field.
 
 ### Execution capability
 
@@ -54,13 +69,13 @@ Historical quote (superseded by the 2026-10-28 default):
 - Historical metrics remain: "Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)
 Etan (2026-10-28, via orc/PHX): use Sol/Terra/Luna for more of the work so the Claude 5-hour window survives; not all work needs Claude.
 
-- Default implementers (2026-10-29, replaces the 2026-10-28 Sol/Terra default; Etan, via fleet control: Claude quality is generally higher on holistic work, Codex stays heavy on recon): holistic/product work (skill and doc text, UX/UI, product behaviour, multi-file feature work, anything where judgment and coherence matter) → Claude Opus implements. Sonnet/Haiku never implement; they are sub-agents only for trivial edits (changing some words). Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump) → Codex implements (Sol hard, Terra bounded). Claude also holds the leads. Codex workers keep fresh context, bounded lifetime (one PR or ~100 turns), explicit effort and `serviceTier:"default"`.
+- Default implementers (2026-10-29, replaces the 2026-10-28 Sol/Terra default; Etan, via fleet control: Claude quality is generally higher on holistic work, read-only recon follows § Gathering): holistic/product work (skill and doc text, UX/UI, product behaviour, multi-file feature work, anything where judgment and coherence matter) → Claude Opus implements. Sonnet/Haiku never implement; they are sub-agents only for trivial edits (changing some words). Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump) → Codex implements (Sol hard, Terra bounded). Claude also holds the leads. Codex workers keep fresh context, bounded lifetime (one PR or ~100 turns), explicit effort and `serviceTier:"default"`.
 - Reviewers (2026-10-29) are always the other vendor: Sol reviews a Claude implementation, `claude.judgment` reviews a Codex implementation, with no exception. Gemini/Antigravity gather and never review.
 - UI/UX (2026-10-28): Claude Opus implements and reviews taste; Codex handles only mechanical parts. A fresh taste reviewer and the other-vendor reviewer remain required.
 - Leads are Claude only; Codex never holds a lead seat or long context. "I think codexes should just be workers and not leads and not hold long context." (Etan, 2026-10-28)
-- **Easy work goes to Flash-high, at any depth (2026-11-02, Etan, via orc):** "really got to put them(agy) in use, at least for the most easy tasks...... 3.8 flash high" / "either leads, subagents or subagents of subagents should use them, not lead being agy". Easy work is a `delegate_task` on provider `antigravity`, model `gemini-3.8-flash`, `options: {thinking_level: "high"}`, from a lead, its sub-agents and theirs. Easy work means ONLY gathers, reads, greps, inventories, log/screen reads, simple read-only checks and summaries. Flash NEVER implements, builds, fixes, edits files or gives QA verdicts (2026-11-02, Etan, via orc, after a lane had Gemini implement); those keep their implementation and review routes. It excludes judgment recon and hazard recon: anything that decides a deletion or a test edit stays on `claude.judgment` (decision rule 2). The evidence below is why: Flash-High was 20/20 on mixed gathers and 44/44 on visual reads with 0 fabrications, but 0/3 on deletion hazards. Claude verifies a Flash claim before anyone acts on it. Judgment, implementation and review keep their routes in this section. A lead seat is never agy.
-- Luna/Terra/Haiku (2026-10-28): the fallback for easy work when Antigravity is out, and the tier for mechanical edits at any time (never Flash); Sonnet 5.5 is a valid worker tier between Haiku and Opus.
-- **When Gemini Argon is out (2026-11-01, Etan, via orc):** gathers that are not easy work (easy work: the 2026-11-02 rule above) go to `antigravity` with `claude-opus-5-5` or `claude-sonnet-5-5` (Flash is only for easy gathers), never to Codex by default. Antigravity's Claude & GPT pool is separate from the Codex weekly pool and sat unused while Codex drained. Before picking a gatherer, check T3 **Settings > Usage limits**; a Codex gather is the fallback only when Antigravity is out too.
+- **Flash-high easy-work rule (2026-11-02):** widened by § Gathering's 2026-11-08 Gemini-first rule. The read-only, no-judgment boundary remains: Flash-High was 20/20 on mixed gathers and 44/44 on visual reads with 0 fabrications, but 0/3 on deletion hazards. Deletion and test-edit decisions stay on `claude.judgment` (decision rule 2).
+- Luna/Terra/Haiku (2026-10-28): fallback when Gemini quota is out, then Cursor Auto; mechanical edits keep their existing executor tiers (never Gemini). Sonnet 5.5 is a valid worker tier between Haiku and Opus.
+- **Superseded 2026-11-08: "When Gemini Argon is out" (2026-11-01).** The former Antigravity Claude fallback is withdrawn. Antigravity's Claude/GPT models are never used; check the three Gemini quota windows and follow § Gathering's fallback instead.
 - Keep the Claude 5h window alive (2026-10-28). Never fast/priority: explicitly pass `fastMode:false` / `serviceTier:"default"`. This supersedes the dated budget-pacing note; it does not revert at a window reset.
 
 | Work | Implements | Reviews | Plus |
@@ -158,19 +173,19 @@ Read every reference triggered by the mission before dispatch. The live referenc
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
 | **`codex.implement`** | Implement / review | Narrow technical implementation (Sol hard, Terra bounded) and cross-vendor review per SSOT (2026-10-29) | Research, data gathering, orchestration |
 | **`codex.security`** | Implement (security) | Security implementation per SSOT | Gathering, orchestration, reviewing its own work |
-| **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Running commands, implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
-| **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, optional bulk pre-sorting for `/qa-video` (its `claude.judgment` helpers view the frames behind its findings themselves) | Running commands, implementing, reviewing, deciding, UX/UI judgment |
+| **`gemini.gather.text` gatherer** (T3: § Gathering; packaged launcher: `{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Running commands, implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
+| **`gemini.gather.visual` gatherer** (T3: § Gathering; packaged launcher: `{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`) | Gather (visual) | Frame/screenshot reads, OCR, video state changes, optional bulk pre-sorting for `/qa-video` (its `claude.judgment` helpers view the frames behind its findings themselves) | Running commands, implementing, reviewing, deciding, UX/UI judgment |
 | **`claude.judgment`** | Orchestrate / judgment | Coordinates, talks to users, decides, synthesizes, monitors, queries BrainLayer; holistic/product and UX/UI implementation and other-vendor pair review per SSOT | Bulk reads/SQL; narrow technical implementation (Codex's lane) |
 
 Decision rules:
 
-1. Read-only query, scan, search, audit, or lookup -> Antigravity Flash-high per the 2026-11-02 SSOT rule when it is easy work (fallback: the 2026-10-28 tiers or Cursor; hazard recon: rule 2); for docs/link/copy/inventory gathers only, a `gemini.gather.text` gatherer; Pro-High only when explicitly requested; never a Low tier; single-fact sub-agent lookups follow the bounded exception below.
+1. Read-only query, scan, search, audit, or lookup -> Gemini-first per § Gathering (2026-11-08): check Gemini 5-hour, Gemini weekly and Argon weekly in T3 Settings > Usage limits, then Flash-high for bulk or Argon-high for dense/subtle work. Quota fallback: Luna/Terra/Haiku, then Cursor Auto; never agy Claude/GPT or a Low tier. Hazard decisions: rule 2; missing-tool exceptions: § Cheap sub-agents.
 2. Anything that decides a code deletion or a test edit (callers=0, dispatch sites, tool→test maps, "safe to delete") -> `claude.judgment`. A gatherer's grep may feed it; the gatherer never concludes it. This applies to Cursor gathers too.
 3. Code or file changes follow the Routing rules (SSOT) table: UX/UI -> `claude.judgment`; security -> `codex.security`; holistic/product work (skill and doc text, product behaviour, multi-file features) -> Claude Opus (Sonnet/Haiku only as sub-agents for trivial wording edits); narrow technical work (bounded fix, parser/guard/CI script, mechanical refactor, dependency bump) -> Codex Sol (hard) / Terra (bounded); ratchets and TLC/TLA+ specs -> Opus designs and builds (the table's ratchet row owns the tiny exception); the reviewer is always the other vendor (2026-10-29).
-4. Coordination, synthesis, monitoring, or decisions -> `claude.judgment`; pane mechanics and bounded verifiers follow the cheap sub-agent rule below.
+4. Lead coordination, synthesis that ships, final verdicts and decisions -> `claude.judgment`. Read-only eval orchestration/data collection and first-pass verification -> Gemini-first per § Gathering, under a lead; pane mechanics and command verifiers follow the execution exceptions below.
 5. Mixed gather + implement work -> the gatherer (Cursor or Gemini) returns read-only findings; coordinating Claude records them under `docs.local/`; the implementer selected by Routing rules (SSOT) implements from that handoff. A deletion or test edit gets its `claude.judgment` decision (rule 2) before implementation.
 6. Independent parallel units -> § Fan-out engine chooses the engine; Routing rules (SSOT) owns Cursor model selection.
-7. For video extraction/processing that runs commands, select the execution profile under § Execution capability first. Video QA, debrief or review -> `/qa-video`, run by a QA seat on the machine that holds the recording: after the transcript it fans out `claude.judgment` helpers over the frame windows (they view the contact sheets and frames themselves) and `claude.subagent.mechanical` verifiers per finding, then connects them over time; a `gemini.gather.visual` gatherer may pre-sort bulk frames, but its text is a lead, never evidence. Standalone frame OCR or bulk screenshot reads outside that pipeline -> a `gemini.gather.visual` gatherer; from an Agent-tool context, dispatch `visual-gatherer`; it runs `gemini.gather.visual` headless; use Pro-High only when explicitly requested.
+7. For video extraction/processing that runs commands, select the execution profile under § Execution capability first. Video QA, debrief or review -> `/qa-video`, run by a QA seat on the machine that holds the recording: after the transcript it fans out `claude.judgment` helpers over the frame windows (they view the contact sheets and frames themselves) and `claude.subagent.mechanical` verifiers per finding, then connects them over time; a `gemini.gather.visual` gatherer may pre-sort bulk frames, but its text is a lead, never evidence. Standalone frame OCR or bulk screenshot reads outside that pipeline -> Gemini-first with § Gathering's quota check and model selection; the packaged `visual-gatherer` is a tool-access exception when a delegate cannot read the frames.
 8. UX/UI and design judgment stays on `claude.judgment`. Open-ended research: a Gemini gatherer may draft; the lead verifies before it reaches Etan. A gatherer never implements, reviews, merges, or decides.
 
 **Evidence (skill-creator eval, 2026-09-25; visible cmux workers, mechanical answer keys, lead-scored):** 40 bounded text-gather tasks: Flash-Low 40/40 and Opus 5.5 40/40, 0 fabricated claims each; higher Gemini effort on text gave the same accuracy 2.8–4.7× slower. 20 mixed tasks (8 image reads, 4 video): Opus 20/20, Pro-High 20/20 (2:35), Flash-High 20/20 (6:17), Flash-Low 19/20 (missed counting distinct screens across a video). An open-ended Pro research draft had a dead citation, a stale "recent" item, and missed the key release. Limits: screening sample (n=60) on one Mac; not evidence for judgment, design, review, or code. 2026-09-25 ruling: Low tiers are not used for gathering. On a real narrated QA review Flash-Low found 15–16/22 vs Flash-High 21/22, with an invented quote.
@@ -183,16 +198,17 @@ Visual re-bench 2026-09-30 (22 visual items incl. 10 harder: near-dup screens, o
 
 ## Cheap sub-agents
 
-Easy work goes to Antigravity Flash-high first (the 2026-11-02 rule above), including one-shot
-read-only verifiers. This section covers two cases: the fallback when Antigravity is out, and the packaged
-agents below whose own tools (BrainLayer MCP, cmux MCP, deploy steps) a `delegate_task` child may not
-carry. In those cases every `claude.judgment` seat (leads and workers) delegates parity tasks to
+Read-only gathers and first-pass verifiers go Gemini-first after the three-window quota check in
+§ Gathering (2026-11-08): Flash-high for bulk, Argon-high for dense/subtle work. This section covers
+quota fallback (§ Gathering) separately from execution/tool-access exceptions. Packaged
+agents below may carry tools (BrainLayer MCP, cmux MCP, deploy steps) a `delegate_task` child lacks.
+For those tool-access/execution exceptions, every `claude.judgment` seat (leads and workers) delegates parity tasks to
 `claude.subagent.cheap`; pass its resolved alias as the Agent tool's `model`:
 `node scripts/model-roles.mjs claude.subagent.cheap --field alias`.
 
-- **brain-worker:** single-fact recall ("when did X merge", "what did Etan rule on Y"); use one cheap child instead of the judgment seat's own context.
+- **brain-worker:** single-fact recall ("when did X merge", "what did Etan rule on Y"); Gemini-first if its child has BrainLayer access, otherwise the packaged cheap child, instead of the judgment seat's own context.
 - **orc-helper:** spawn/resume/send/read/wait/close pane mechanics; the packaged agent's `role:` pins its alias through the drift lint.
-- **Verifiers (one-shot), when Antigravity is out:** rerun a claimed command once, check now whether an artifact exists, or read a report's DONE marker.
+- **Verifiers (one-shot):** read-only artifact/report checks use Gemini-first with the quota check. Rerunning a claimed command requires a non-Gemini executor even with quota available; when Gemini quota is out, read checks follow § Gathering's fallback. Final or QA verdicts remain judgment work.
 - **Deploy hops:** release → install → restart → live probe → seat reconnect go to the
   `deploy-local-prod` sub-agent (Agent tool `subagent_type: "deploy-local-prod"`, model pinned to the
   resolved `claude.subagent.cheap` alias). The lead routes the hop and verifies the artifact it reports.
@@ -202,7 +218,7 @@ Anything that sits, polls or waits (CI, a PR, a file appearing, a sleep-then-che
 tier, never the lead; a one-shot check stays a cheap verifier above. From a Claude seat, pass
 `node scripts/model-roles.mjs claude.subagent.mechanical --field alias` as the Agent tool's `model`; for
 a Codex watcher, use `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher --field model`.
-`claude.subagent.cheap` keeps brain-worker recall and orc-helper, plus verifiers when Antigravity is out, per its 2026-09-29 evidence.
+`claude.subagent.cheap` keeps orc-helper and execution/tool-access exceptions; brain-worker recall and read-only verifiers otherwise follow Gemini-first and its quota fallback. Its 2026-09-29 evidence remains historical.
 
 Keep `claude.judgment` for multi-source or decision-grade history, deletion decisions,
 PR-gating reviews, and UX/UI judgment. Reserve judgment → 3× cheap fan-out for
@@ -239,7 +255,7 @@ Visible cmux fleets: § Dispatch Boundaries › cmux adapter.
 A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The lifecycle, as rules: [references/t3-native.md](references/t3-native.md).
 
 1. **Discover:** call `orchestrator_capabilities` first; pin provider, model and effort in `target` from its live catalog (canon #5).
-   For ordinary Codex implementers, recon and reviewers, explicitly name `target.providerInstanceId: "codex-worker"` every time.
+   For ordinary Codex implementers, recon and reviewers (recon only as § Gathering's quota fallback), explicitly name `target.providerInstanceId: "codex-worker"` every time.
    `codex` stays for: security (implementers + scans), UI / computer-use recorders, browser / web-QA workers and Etan (Codex has no lead seats).
    A Codex child inherits its parent's Codex instance. A Claude lead naming only the codex driver gets whichever codex instance T3 lists first; always name the instance.
    Remember: the role picks the model, the work type picks the instance. Codex reviewers on security or full-panel PRs stay on `codex`; ordinary Codex reviewers use `codex-worker`.
@@ -260,7 +276,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 - Cursor model selection lives in Routing rules (SSOT).
 - Claude Workflow/Agent-tool fan-out is read-only recon, verification, or synthesis except audio-dashboard builds.
 - T3 child work follows § T3-native dispatch.
-- Easy standalone read-only lanes go to Antigravity Flash-high (the 2026-11-02 rule in Routing rules (SSOT)); the 2026-10-28 tiers or Cursor are the fallback.
+- Standalone read-only lanes follow § Gathering's 2026-11-08 Gemini-first rule and quota check; Luna/Terra/Haiku, then Cursor Auto, are the fallback. Never use agy Claude/GPT.
 - Skills, hooks, agent definitions, and global agent settings are skillCreator-domain work. If skillCreator is not already in the loop, stop and request its audit before patching.
 
 - Superseded placement: "**The M1 Pro becomes a TEST RIG only.** Development stays on the MBP. … Nothing changes on the M1 for this yet." (Etan 2026-10-18, via orc collab) The 2026-10-28 placement below now governs.

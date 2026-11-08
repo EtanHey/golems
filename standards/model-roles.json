@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-11-03",
+  "updated": "2026-11-08",
   "swap_rule": "A model change = bench it with the skill-creator harness, then edit ONE line here. No skill/agent file names a role-owned model directly (drift lint).",
   "roles": {
     "claude.judgment": {
@@ -12,7 +12,7 @@
     "claude.subagent.cheap": {
       "model": "claude-sonnet-5-5",
       "alias": "sonnet",
-      "use_for": "single-fact brain-worker lookups, orc-helper pane mechanics, verifiers",
+      "use_for": "orc-helper pane mechanics; brain-worker/verifier tool-access or execution exceptions; read-only recall/verification otherwise follows /agent-routing Gemini-first quota policy (2026-11-08)",
       "evidence": "2026-09-29 subagent-routing: brain-worker recall parity at 0.46x; orc-helper 4/4 parity at 0.47x; verifiers 0 wrong at 0.55x",
       "never_for": "deletion decisions, PR-gating review, multi-source history"
     },
@@ -42,14 +42,15 @@
     "gemini.gather.text": {
       "model": "Gemini 3.8 Flash (High)",
       "launcher_tier": "flash-high",
-      "use_for": "doc/link/copy audits, inventories, doc fetch+quote, BrainLayer recall",
-      "never_for": "deletion decisions, implementing, reviewing"
+      "use_for": "Gemini-first bulk read-only gathers, inventories, repo/code recon, transcript/harvest reads, BrainLayer recon, first-pass verification, eval orchestration/data collection under a lead, log/CI triage; dense/subtle work uses Argon-high per /agent-routing after its quota check (2026-11-08)",
+      "never_for": "commands, file writes, implementing, reviewing, deletion/test-edit decisions, UX/UI judgment, QA/final verdicts, lead seats"
     },
     "gemini.gather.visual": {
       "model": "Gemini 3.8 Flash (High)",
       "launcher_tier": "flash-high",
-      "use_for": "frames, screenshots, OCR, video state changes, /qa-video",
-      "evidence": "2026-09-30 visual re-bench: 44/44 vs Pro-High 43/44 + fabricated timing"
+      "use_for": "Gemini-first bulk frame/screenshot reads, OCR, video state changes, /qa-video pre-sorting; dense/subtle reads use Argon-high per /agent-routing after its quota check (2026-11-08)",
+      "evidence": "2026-09-30 visual re-bench: 44/44 vs Pro-High 43/44 + fabricated timing",
+      "never_for": "commands, file writes, implementing, reviewing, deciding, UX/UI judgment, QA/final verdicts, lead seats"
     },
     "claude.research.verifier": {
       "model": "claude-haiku-5-5",
