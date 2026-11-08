@@ -42,15 +42,25 @@ sample without independently establishing that it is the original worker.
 |---|---|---|
 | `preparing` | no | Branch/worktree/log setup is underway. |
 | `running` | no | Startup verification saw a valid Codex event or the process remained alive through the grace period. |
-| `watch_timeout` | no | The watch deadline elapsed; the process and log remain intact for a later watch. |
 | `failed_launch` | yes | The process died before activity or launcher diagnostics showed an executable/command/fetch failure. |
-| `completed` | yes | After process exit, an assistant message contained exact `TASK_DONE`. |
+| `completed` | yes | After process exit, the final turn completed and its last assistant message ended with exact `TASK_DONE` on its own line. |
 | `failed` | yes | A structured Codex error or turn failure was present. |
 | `parser_failed` | yes | A recognized JSONL record was malformed or could not be interpreted safely. |
 | `incomplete` | yes | The process exited without a structured failure and without exact `TASK_DONE`. |
 
 `TASK_DONE` and PR URLs are read only from `agent_message` events. Tool output is
 ignored because it may contain copied skill docs and false marker text.
+Messages and PR URLs from earlier turns remain available as evidence, but earlier
+done markers cannot complete a later turn.
+
+A watch timeout returns 124 and records `watch_timeout_at` without changing the
+worker's phase. Run-level `completion_state: watch_timeout` is an observer outcome,
+not a worker state. A later watch rechecks the process before parsing its log.
+
+`preparing` records include the launcher's `preparation_process` identity. Watch
+waits while that owner is alive; a dead or missing owner (including legacy records)
+requires explicit reconciliation. Setup may have spawned a child before recording
+its identity, so the launcher's exit alone cannot prove that the worker exited.
 
 ## Harvest and Cleanup
 

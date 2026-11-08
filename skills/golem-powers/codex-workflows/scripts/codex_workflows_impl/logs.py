@@ -43,6 +43,8 @@ def _recognized_event(event: dict[str, Any]) -> bool:
 def parse_finished_log(path: Path | str) -> dict[str, Any]:
     """Parse a completed Codex JSONL log without trusting tool-output prose."""
     assistant_messages: list[str] = []
+    final_turn_messages: list[str] = []
+    turn_completed = False
     failure_signatures: list[str] = []
     output_tokens = 0
     parser_error: str | None = None
@@ -63,22 +65,32 @@ def parse_finished_log(path: Path | str) -> dict[str, Any]:
             continue
         codex_activity = True
         event_type = event.get("type")
+        if event_type in {"thread.started", "turn.started"} or (
+            turn_completed and event_type in {"item.started", "item.completed"}
+        ):
+            final_turn_messages = []
+            turn_completed = False
+            output_tokens = 0
         if event_type == "item.completed":
             item = event.get("item", {})
             if item.get("type") == "agent_message" and isinstance(item.get("text"), str):
                 assistant_messages.append(item["text"])
+                final_turn_messages.append(item["text"])
         elif event_type == "turn.completed":
+            turn_completed = True
             usage = event.get("usage")
             if isinstance(usage, dict) and isinstance(usage.get("output_tokens"), int):
                 output_tokens = usage["output_tokens"]
         elif event_type in {"turn.failed", "error"}:
+            turn_completed = False
             detail = event.get("message") or event.get("error") or event
             failure_signatures.append(str(detail))
 
-    task_done = any(
-        line == "TASK_DONE"
-        for message in assistant_messages
-        for line in message.splitlines()
+    final_result = final_turn_messages[-1] if final_turn_messages else ""
+    task_done = (
+        turn_completed
+        and bool(final_result.splitlines())
+        and final_result.splitlines()[-1] == "TASK_DONE"
     )
     pr_urls: list[str] = []
     for message in assistant_messages:
@@ -88,7 +100,7 @@ def parse_finished_log(path: Path | str) -> dict[str, Any]:
 
     return {
         "assistant_messages": assistant_messages,
-        "assistant_result": assistant_messages[-1] if assistant_messages else "",
+        "assistant_result": final_result,
         "task_done": task_done,
         "pr_urls": pr_urls,
         "failure_signatures": failure_signatures,

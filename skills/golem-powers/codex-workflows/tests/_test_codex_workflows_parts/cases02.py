@@ -10,6 +10,7 @@ class Cases02:
             "worker-a",
             {
                 "status": "preparing",
+                "preparation_process": module.capture_process_identity(os.getpid()),
                 "log": str(self.temp_dir / "missing.log"),
             },
         )
@@ -18,7 +19,8 @@ class Cases02:
 
         self.assertEqual(code, 124)
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
-        self.assertEqual(data["workers"]["worker-a"]["status"], "watch_timeout")
+        self.assertEqual(data["workers"]["worker-a"]["status"], "preparing")
+        self.assertIn("watch_timeout_at", data["workers"]["worker-a"])
 
 
     def test_pipeline_stops_before_next_stage_after_failure(self):

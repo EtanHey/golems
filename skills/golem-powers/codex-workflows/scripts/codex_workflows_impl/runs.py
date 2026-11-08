@@ -29,6 +29,14 @@ def watch_manifest(
             if status in TERMINAL_STATES:
                 continue
             if status == "preparing":
+                owner = worker.get("preparation_process")
+                if not isinstance(owner, dict) or not process_identity_alive(owner):
+                    # Setup may have spawned a child before publishing its identity.
+                    # Never infer worker exit from the launcher's exit alone.
+                    raise CodexWorkflowError(
+                        f"worker preparation owner missing or exited: {name}; "
+                        "reconcile the manifest and any child process before watching"
+                    )
                 active.append(name)
                 continue
             identity = worker.get("process")
@@ -46,7 +54,7 @@ def watch_manifest(
                 update_worker(
                     manifest_path,
                     name,
-                    {"status": "watch_timeout", "watch_timeout_at": utc_now()},
+                    {"watch_timeout_at": utc_now()},
                 )
             return 124
         time.sleep(max(0.05, interval))

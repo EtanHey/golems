@@ -82,7 +82,7 @@
       "output_tokens": 0,
       "parser_error": null,
       "pr_urls": [],
-      "task_done": true
+      "task_done": false
     },
     "status": "failed"
   },
