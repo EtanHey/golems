@@ -96,20 +96,15 @@ Other-Mac (M1) launches go direct with `environmentId`, no m1-router: [agent-rou
 
 ### Audio dashboard handoffs
 
-Route audio dashboard requests to the skill-creator dashboard build owner with
-the content brief and latest accepted spec/design receipt. That owner owns the
-template and BUILD acceptance; NarrationLayer owns Lakebed, the runtime,
-account-sync publication and its proof. Builder selection follows
+Hand the skill-creator dashboard build owner `/audio-dashboard creation-steps`
+and its [creation workflow](../audio-dashboard/workflows/creation-steps.md) with
+the filled relay block from Intake. Orc relays content and Etan's verbatim extras;
+it adds no build instructions of its own. skill-creator owns the skill, template
+and BUILD gates; NarrationLayer owns Lakebed publishing. Builder selection follows
 [/agent-routing § Routing rules (SSOT)](../agent-routing/SKILL.md#routing-rules-ssot).
-Orc never dispatches an ad hoc builder to choose its own template or deployment host.
 
 If the owner or runtime path is unavailable, report BLOCKED with the existing
 accepted link. Never recreate a static mirror or redefine account persistence.
-
-Every handoff carries the delivery app/route, account identity/bridge contract,
-stable content ID, accepted design lineage/hash, latest accepted artifact path,
-permitted media host, acceptance proof, and November 3/5 incident pointers:
-`brainbar-bf7853fc-254`, `brainbar-9b87737d-7ed`, `brainbar-edea631e-dcd`.
 
 ---
 
