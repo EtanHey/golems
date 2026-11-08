@@ -68,8 +68,24 @@ if (( check_only )); then
   # real drift — transfers (>), creations (c), deletions (*deleting), and
   # content/size changes (itemize columns 3-4 = c/s) — dropping lines that
   # differ only in mtime or permissions.
-  drift="$(rsync -rin --checksum --delete "${EXCLUDES[@]}" "$SRC/" "$DEST/" \
-    | awk '/^\*deleting/ || /^[>c]/ || substr($1,3,2) ~ /[cs]/')"
+  drift="$(
+    {
+      rsync -rin --checksum --delete "${EXCLUDES[@]}" "$SRC/" "$DEST/"
+      # Compare exactly the shared dependencies installed below. Do not compare
+      # the entire _shared directory: other installers own its remaining files.
+      for module in shell_parse.py harness_paths.py shell_parse_impl; do
+        if [[ ! -e "$HOOKS_ROOT/_shared/$module" ]]; then
+          echo "c missing _shared/$module"
+        elif [[ "$module" == shell_parse_impl ]]; then
+          rsync -rin --checksum --delete "${EXCLUDES[@]}" \
+            "$SHARED_DIR/$module/" "$HOOKS_ROOT/_shared/$module/"
+        else
+          cmp -s "$SHARED_DIR/$module" "$HOOKS_ROOT/_shared/$module" \
+            || echo "c changed _shared/$module"
+        fi
+      done
+    } | awk '/^\*deleting/ || /^[>c]/ || substr($1,3,2) ~ /[cs]/'
+  )"
   if [[ -n "$drift" ]]; then
     echo "DRIFT: installed copy is stale relative to $SRC"
     echo "$drift"

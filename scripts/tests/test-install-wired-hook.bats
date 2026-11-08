@@ -21,3 +21,31 @@ teardown() {
     [[ "$output" == *"install-hooks.sh"* ]] &&
     [ "$(ls "$TEST_ROOT/hooks-live/tmp-block")" = "marker" ]
 }
+
+@test "check detects shared-only content, missing-file and extra-package drift" {
+  export WIRED_HOOKS_ROOT="$TEST_ROOT/hooks"
+  run "$INSTALLER" --skill tmp-block --hook hooks/tmp-block-pretooluse.py
+  [ "$status" -eq 0 ]
+  for path in shell_parse.py harness_paths.py shell_parse_impl/tokens.py; do
+    run "$INSTALLER" --skill tmp-block --hook hooks/tmp-block-pretooluse.py --check
+    [ "$status" -eq 0 ] || { echo "$output" >&3; false; }
+    printf '\n# drift\n' >> "$TEST_ROOT/hooks/_shared/$path"
+    run "$INSTALLER" --skill tmp-block --hook hooks/tmp-block-pretooluse.py --check
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"DRIFT:"* ]] || false
+    cp "$REPO_ROOT/skills/golem-powers/_shared/$path" "$TEST_ROOT/hooks/_shared/$path"
+    rm "$TEST_ROOT/hooks/_shared/$path"
+    run "$INSTALLER" --skill tmp-block --hook hooks/tmp-block-pretooluse.py --check
+    [ "$status" -eq 1 ]
+    cp "$REPO_ROOT/skills/golem-powers/_shared/$path" "$TEST_ROOT/hooks/_shared/$path"
+  done
+  touch "$TEST_ROOT/hooks/_shared/shell_parse_impl/extra.py"
+  run "$INSTALLER" --skill tmp-block --hook hooks/tmp-block-pretooluse.py --check
+  [ "$status" -eq 1 ]
+  rm "$TEST_ROOT/hooks/_shared/shell_parse_impl/extra.py"
+  mkdir -p "$TEST_ROOT/hooks/_shared/shell_parse_impl/__pycache__"
+  touch "$TEST_ROOT/hooks/_shared/shell_parse_impl/__pycache__/ignored.pyc"
+  touch "$TEST_ROOT/hooks/_shared/shell_parse.py"
+  run "$INSTALLER" --skill tmp-block --hook hooks/tmp-block-pretooluse.py --check
+  [ "$status" -eq 0 ]
+}
