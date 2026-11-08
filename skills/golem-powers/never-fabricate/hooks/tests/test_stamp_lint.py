@@ -361,3 +361,131 @@ def test_malformed_payload_failsafe(tmp_path):
     r = subprocess.run([sys.executable, str(HOOK)], input="not json", text=True,
                        capture_output=True, timeout=5, check=False, env=env)
     assert r.returncode == 0, "hook must fail open-and-silent on bad input (advisory)"
+
+
+def load_hook():
+    import runpy
+    import types
+    return types.SimpleNamespace(**runpy.run_path(str(HOOK)))
+
+
+def test_failed_cache_write_preserves_history(tmp_path, monkeypatch):
+    import tempfile
+    hook = load_hook()
+    state = str(tmp_path / 'state')
+    path = str(collab(tmp_path))
+    hook._write_cache(state, path, ['old'])
+    cache = Path(hook._cache_path(state, path))
+    before = cache.read_bytes()
+    real_temporary = tempfile.NamedTemporaryFile
+    def failing_temporary(*args, **kwargs):
+        result = real_temporary(*args, **kwargs)
+        def fail(value):
+            raise OSError('disk full')
+        result.write = fail
+        return result
+    monkeypatch.setattr(tempfile, 'NamedTemporaryFile', failing_temporary)
+    hook._write_cache(state, path, ['new'])
+    assert cache.read_bytes() == before
+    assert list(cache.parent.iterdir()) == [cache]
+
+
+def contended_write(tmp_path, release_early):
+    import os
+    hook = load_hook()
+    path = collab(tmp_path)
+    run_hook(tmp_path, path, '15:00', content='old\n')
+    state = tmp_path / 'state'
+    lock = hook._cache_path(str(state), str(path)) + '.lock'
+    holder_code = "import fcntl,sys; f=open(sys.argv[1],'a'); fcntl.flock(f,fcntl.LOCK_EX); print('ready',flush=True); sys.stdin.readline()"
+    holder = subprocess.Popen([sys.executable, '-c', holder_code, lock],
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    contender = None
+    try:
+        assert holder.stdout.readline().strip() == 'ready'
+        path.write_text(f'old\n### seat (14:00)\nDONE 3 {tmp_path}/missing/artifact\n')
+        # Signal the precise lock attempt before releasing the other process.
+        wrapper = """
+import fcntl,runpy,sys
+real = fcntl.flock
+first = True
+def attempt(*args):
+    global first
+    try:
+        return real(*args)
+    except BlockingIOError:
+        if first:
+            print('attempt', flush=True)
+            first = False
+        raise
+fcntl.flock = attempt
+runpy.run_path(sys.argv[1], run_name='__main__')
+"""
+        env = dict(os.environ, STAMP_LINT_STATE_DIR=str(state), STAMP_LINT_NOW='15:00')
+        contender = subprocess.Popen([sys.executable, '-c', wrapper, str(HOOK)],
+                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, text=True, env=env)
+        contender.stdin.write(json.dumps({'tool_name': 'Write', 'tool_input': {'file_path': str(path)}}))
+        contender.stdin.close()
+        contender.stdin = None
+        assert contender.stdout.readline().strip() == 'attempt'
+        if release_early:
+            holder.communicate('release\n', timeout=2)
+        output, errors = contender.communicate(timeout=2)
+        assert contender.returncode == 0, errors
+        context = json.loads(output)['hookSpecificOutput']['additionalContext']
+        assert 'BACKFILLED HEADER STAMP:' in context
+        assert 'NONEXISTENT ARTIFACT:' in context
+        cached = hook._read_cache(str(state), str(path))
+        if release_early:
+            assert hook._line_hash('### seat (14:00)') in cached
+        else:
+            assert cached == {hook._line_hash('old'): 1}
+    finally:
+        if contender is not None and contender.poll() is None:
+            contender.kill()
+            contender.communicate()
+        if holder.poll() is None:
+            holder.communicate('release\n', timeout=2)
+
+
+def test_concurrent_write_waits_for_other_process(tmp_path):
+    contended_write(tmp_path, True)
+
+
+def test_held_lock_falls_back_to_full_checks_within_bound(tmp_path):
+    contended_write(tmp_path, False)
+
+
+def test_failed_cache_replace_does_not_change_advisory(tmp_path, monkeypatch, capsys):
+    import io
+    hook = load_hook()
+    path = collab(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text('### seat (15:45)\n')
+    monkeypatch.setenv('STAMP_LINT_STATE_DIR', str(tmp_path / 'state'))
+    monkeypatch.setenv('STAMP_LINT_NOW', '15:00')
+    def fail(*args):
+        raise OSError('disk full')
+    monkeypatch.setattr(hook._write_cache.__globals__['os'], 'replace', fail)
+    payload = {'tool_name': 'Write', 'tool_input': {'file_path': str(path)}}
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(json.dumps(payload)))
+    hook.main()
+    output = capsys.readouterr().out
+    assert len(output.splitlines()) == 1
+    assert json.loads(output)['hookSpecificOutput']['additionalContext'].count('FUTURE STAMP:') == 1
+    assert not list((tmp_path / 'state').glob('*.lines'))
+    assert len(list((tmp_path / 'state').iterdir())) == 1  # persistent lock only
+
+
+def test_read_only_state_dir_does_not_flood_old_warnings(tmp_path):
+    path = collab(tmp_path)
+    state = tmp_path / 'state'
+    state.mkdir()
+    state.chmod(0o500)
+    try:
+        result = run_hook(tmp_path, path, '15:00',
+                          content=f'### seat (14:00)\nDONE 3 {tmp_path}/missing/artifact\n')
+        assert warning_text(result) == ''
+    finally:
+        state.chmod(0o700)
