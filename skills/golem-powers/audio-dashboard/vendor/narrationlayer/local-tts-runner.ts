@@ -39,11 +39,8 @@ import path from "node:path";
 import os from "node:os";
 import { spawn } from "node:child_process";
 
-// VENDORED: profile resolution + speech normalization now resolve to the
-// skill-local vendor copies (siblings in this dir), not the narrationlayer repo.
-import { findProfile, qwenConfigFromProfile } from "./profiles.js";
-import { loadPronunciationRules } from "./pronunciation-config.js";
-import { prepareSpeechChannels as defaultPrepareSpeechChannels } from "./text-normalize.js";
+import { findProfile, qwenConfigFromProfile, warnIfNonAcceptedProfile } from "../src/profiles.js";
+import { prepareSpeechChannels as prepareDefaultChannels, type TermRule, type SpeechChannels } from "../src/text-normalize.js";
 
 interface Args {
   text?: string;
@@ -189,6 +186,9 @@ export function computeContentHashKey(input: {
   spokenText: string;
   referenceClip: string;
   referenceText: string;
+  profileId?: string;
+  profileVersion?: string;
+  model?: string;
   params: CacheKeyParams;
 }): string {
   // Stable, explicit param ordering — never rely on object key insertion order.
@@ -206,35 +206,43 @@ export function computeContentHashKey(input: {
     spokenText: input.spokenText,
     referenceClip: input.referenceClip,
     referenceText: input.referenceText,
+    profileId: input.profileId,
+    profileVersion: input.profileVersion,
+    model: input.model,
     params: orderedParams,
   });
   return createHash("sha256").update(payload, "utf8").digest("hex");
 }
 
+/**
+ * Persist the cache decision that produced a take. The sidecar is replaced
+ * atomically so downstream consumers never observe a partial receipt.
+ */
 export async function writeTakeCacheReceipt(
   output: string,
   cacheKey: string,
   options: { cacheEnabled: boolean },
 ): Promise<string> {
   if (!/^[a-f0-9]{64}$/.test(cacheKey)) {
-    throw new Error(`refusing to write cache receipt with unsafe key: ${cacheKey || "<empty>"}`);
+    throw new Error(`invalid cache key for take receipt: ${cacheKey}`);
   }
   const receiptPath = `${output}.cache.json`;
   const temporaryPath = `${receiptPath}.tmp-${process.pid}`;
   await writeFile(
     temporaryPath,
-    `${JSON.stringify({ version: 1, cacheKey, cacheEnabled: Boolean(options.cacheEnabled) }, null, 2)}\n`,
+    `${JSON.stringify({ version: 1, cacheKey, cacheEnabled: options.cacheEnabled })}\n`,
     "utf8",
   );
   await rename(temporaryPath, receiptPath);
   return receiptPath;
 }
 
+/** Clear stale evidence before beginning a new attempt. Missing receipts are fine. */
 export async function clearTakeCacheReceipt(output: string): Promise<void> {
   try {
     await unlink(`${output}.cache.json`);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") throw error;
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }
 
@@ -244,6 +252,9 @@ async function resolveReference(args: Args): Promise<{
   daemonUrl: string;
   authTokenFile: string;
   source: string;
+  profileId?: string;
+  profileVersion?: string;
+  model?: string;
   eqHighshelfHz?: number;
   eqHighshelfGainDb?: number;
   loudnessTargetDb?: number;
@@ -293,21 +304,10 @@ async function resolveReference(args: Args): Promise<{
   }
 
   // Case 2: registered profile name. GATE: profile must exist and be a clone.
-  // VENDORED PORTABILITY: voice profiles + their reference clones are inherently
-  // machine-local (they can't ship inside the skill). Resolve the profiles cwd
-  // from env so a packaged skill can point at wherever the host keeps them:
-  //   - NARRATIONLAYER_PROFILES_FILE (path-list) is honored by profiles.ts
-  //     regardless of cwd — the preferred, repo-free mechanism; OR
-  //   - NARRATIONLAYER_ROOT points at a checkout holding profiles.local.yaml.
-  // With neither set (and no repo), pass a registered profile is unsupported —
-  // use a direct .wav --reference path (Case 1 above), which needs no profiles.
-  const profilesCwd = process.env.NARRATIONLAYER_ROOT
-    ? path.resolve(expandHome(process.env.NARRATIONLAYER_ROOT))
-    : path.resolve(import.meta.dir, "..");
-  const profile = await findProfile(ref, profilesCwd);
+  const profile = await findProfile(ref, path.resolve(import.meta.dir, ".."));
   if (!profile) {
     fail(
-      `voice profile "${ref}" is not registered (looked in ${profilesCwd} + NARRATIONLAYER_PROFILES_FILE). Set NARRATIONLAYER_PROFILES_FILE / NARRATIONLAYER_ROOT, or pass a direct .wav --reference (fail-closed; will NOT fall back to system TTS)`,
+      `voice profile "${ref}" is not registered in profiles.local.yaml (fail-closed; will NOT fall back to system TTS)`,
     );
   }
   if (profile.renderer && profile.renderer !== "voicelayer-qwen3") {
@@ -315,6 +315,7 @@ async function resolveReference(args: Args): Promise<{
       `voice profile "${ref}" uses renderer "${profile.renderer}", not the qwen3 clone engine — refusing (fail-closed)`,
     );
   }
+  warnIfNonAcceptedProfile(profile, ref);
   const cfg = qwenConfigFromProfile(profile);
   const referenceClip = cfg.reference_clip || cfg.reference_clips?.[0];
   if (!referenceClip) {
@@ -350,6 +351,9 @@ async function resolveReference(args: Args): Promise<{
     daemonUrl,
     authTokenFile,
     source: `profile:${ref}`,
+    profileId: profile.id,
+    profileVersion: profile.profile_version,
+    model: cfg.model,
     eqHighshelfHz: cfg.eq_highshelf_hz,
     eqHighshelfGainDb: cfg.eq_highshelf_gain_db,
     loudnessTargetDb: cfg.loudness_target_db,
@@ -364,6 +368,7 @@ async function synthesize(opts: {
   authToken: string;
   referenceClip: string;
   referenceText: string;
+  model?: string;
   text: string;
   timeoutMs: number;
 }): Promise<Buffer> {
@@ -382,6 +387,7 @@ async function synthesize(opts: {
         text: opts.text,
         reference_wav: opts.referenceClip,
         reference_text: opts.referenceText,
+        ...(opts.model ? { model: opts.model } : {}),
       }),
       signal: controller.signal,
     });
@@ -870,6 +876,9 @@ async function loudnessNormalizeInPlace(
   return { applied: true, measuredDb, gainDb };
 }
 
+export type SpeechPreparation = (text: string, pronunciationRules: TermRule[]) => SpeechChannels;
+const defaultPrepareSpeechChannels: SpeechPreparation = prepareDefaultChannels;
+
 export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!args.text || !args.text.trim())
@@ -880,9 +889,6 @@ export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)
 
   const output = path.resolve(expandHome(args.output));
   await mkdir(path.dirname(output), { recursive: true });
-  // Invalidate any binding to a previous WAV before this attempt can fail. A
-  // fresh receipt is committed only after the selected/synthesized WAV passes
-  // the non-empty validation below.
   await clearTakeCacheReceipt(output);
 
   const resolved = await resolveReference(args);
@@ -893,13 +899,13 @@ export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)
   const authToken = (await readFile(authTokenPath, "utf8")).trim();
   if (!authToken) fail(`daemon auth token file is empty: ${authTokenPath}`);
 
-  // Pronunciation normalization MUST happen here, before the daemon. The
-  // two-channel result makes the boundary explicit: only synthInput feeds the
-  // engine/cache/breathing path; dashboard rendering still reads the untouched
-  // scene script. A missing/malformed configured overlay throws and main's
-  // fail-loud boundary rejects the synthesis attempt.
-  const pronunciationRules = loadPronunciationRules();
-  const { synthInput: spokenText } = prepareSpeechChannels(args.text, pronunciationRules);
+  // Pronunciation normalization (the TERM_MAP respellings) MUST happen here,
+  // before the daemon, exactly as renderSegment does. The DISPLAY is unaffected:
+  // the build reads the script .md, not this runner's TTS-feed text.
+  const channels = prepareSpeechChannels(args.text, []);
+  const spokenText = channels?.synthInput;
+  if (typeof spokenText !== "string" || !spokenText.trim())
+    fail("speech preparation must return a nonblank synthInput string synchronously");
 
   // CONTENT-HASH FREEZE (determinism layer). The key is computed over the literal
   // spoken text + reference identity + the OUTPUT-affecting synth params. On a HIT
@@ -921,6 +927,9 @@ export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)
     spokenText,
     referenceClip: resolved.referenceClip,
     referenceText: resolved.referenceText,
+    profileId: resolved.profileId,
+    profileVersion: resolved.profileVersion,
+    model: resolved.model,
     params: cacheParams,
   });
   const cachePath = path.join(cacheDir, `${cacheKey}.wav`);
@@ -945,6 +954,7 @@ export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)
     authToken,
     referenceClip: resolved.referenceClip,
     referenceText: resolved.referenceText,
+    model: resolved.model,
     text: spokenText,
     timeoutMs: args.timeoutMs,
   });
@@ -1040,9 +1050,10 @@ export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)
   const info = await stat(output).catch(() => undefined);
   if (!info || info.size === 0)
     fail(`output WAV is empty or missing: ${output}`);
+
   // Persist the literal daemon input only after every output-affecting pass and
-  // final non-empty validation has succeeded. BUILD derives aliases from these
-  // bytes, so publishing them before the WAV is accepted would be unsafe.
+  // final non-empty validation has succeeded. Downstream gates derive approved
+  // aliases from these bytes, so publishing them before the WAV is accepted is unsafe.
   await writeFile(`${output}.spoken.txt`, spokenText, "utf8");
   await writeTakeCacheReceipt(output, cacheKey, { cacheEnabled: args.cache });
 

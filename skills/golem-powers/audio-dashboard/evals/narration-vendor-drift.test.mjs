@@ -701,7 +701,7 @@ test("CLI stamp-only mode remains rejected while upstream-first debt is open", (
     expect.objectContaining({
       pairId: "local-tts-runner",
       metric: "BIDIRECTIONAL_DRIFT",
-      value: "vendor=open-debt:SKILL_SPEECH_PREPARATION_CALLBACK;source=open-debt:VOICE_SSOT_PROFILE_CACHE_KEY",
+      value: "vendor=open-debt:SKILL_REPO_FREE_RUNNER_BRIDGES;source=open-debt:VOICE_SSOT_PROFILE_CACHE_KEY",
       evidence: expect.stringContaining("VOICE_SSOT_PROFILE_CACHE_KEY"),
     }),
   );
@@ -709,8 +709,8 @@ test("CLI stamp-only mode remains rejected while upstream-first debt is open", (
     records
       .filter((row) => row.metric === "VENDOR_AHEAD" && row.value === "open")
       .map((row) => row.pairId),
-  ).toEqual(["text-normalize", "word-timing-repair", "word-timings"]);
-  expect(records.at(-1)).toMatchObject({ metric: "SUMMARY", verdict: "REJECTED", value: 4 });
+  ).toEqual(["profiles", "text-normalize", "word-timing-repair", "word-timings"]);
+  expect(records.at(-1)).toMatchObject({ metric: "SUMMARY", verdict: "REJECTED", value: 6 });
 });
 
 test("CLI treats an exported non-checkout with every mapped file as upstream unavailable", async () => {
@@ -735,7 +735,7 @@ test("CLI treats an exported non-checkout with every mapped file as upstream una
       expect.objectContaining({
         pairId: "local-tts-runner",
         metric: "BIDIRECTIONAL_DRIFT",
-        value: "vendor=open-debt:SKILL_SPEECH_PREPARATION_CALLBACK;source=open-debt:VOICE_SSOT_PROFILE_CACHE_KEY",
+        value: "vendor=open-debt:SKILL_REPO_FREE_RUNNER_BRIDGES;source=open-debt:VOICE_SSOT_PROFILE_CACHE_KEY",
       }),
     );
   } finally {
@@ -752,7 +752,7 @@ test("CLI rejects a missing mapped file in a real NarrationLayer checkout as dri
     expect(result.status).toBe(1);
     const records = result.stdout.trim().split("\n").map((line) => JSON.parse(line));
     expect(records.some((row) => row.metric === "UPSTREAM_UNAVAILABLE")).toBe(false);
-    expect(records.some((row) => row.metric === "VENDOR_BEHIND" && row.value === "missing")).toBe(
+    expect(records.some((row) => row.pairId === "schema" && row.metric === "VENDOR_BEHIND" && row.value === "open-debt:SCHEMA_REFRESH_REFUSED;source=missing")).toBe(
       true,
     );
   } finally {
