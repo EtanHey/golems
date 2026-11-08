@@ -6,7 +6,9 @@ references and CLI adapters. The same neutral seat and prompts reach
 both arms. `cases.json` expectations and assertions are never sent to the model.
 C1 is the routine-PR false-trigger probe; C2 preserves the core-risk request path;
 C3 scores only literal `Fixes #42` in the body; C4 is the routine/no-activity
-negative control. Three fresh repetitions per arm.
+negative control. C5 requires the S endpoint Cursor pass before merge checks, C6 the exact
+`bugbot run` trigger on an eligible PR, and C7 skips both passes on XS.
+Three fresh repetitions per arm.
 
 Run from the golems worktree:
 
@@ -42,13 +44,18 @@ explicit merge action tied to the supplied head. Count one Bugbot review request
 for C2. C3 requires only literal `Fixes #42` in the body; it does not score
 issue-state checks or closure, which master already demonstrated. C4 requires
 no Bugbot request/wait/body entry or extra step and a pinned merge. A case passes only if all its
-assertions pass. Keep quotes and answer hashes beside the manual judgments so
+assertions pass. C5 requires a proposed read-only `cursor-agent` command without a model flag,
+ordered before exact-head merge checks, plus a `Cursor pass:` body record with the supplied
+head and finding count or an unavailable reason. C6 requires exactly `bugbot run` as the
+trigger, with no `@cursor` mention. C7 requires no Cursor command or Cursor body entry. C5 predates the `--trust --mode ask` flags (Bugbot finding on #1211), so its recordings do not score them; the read-only flags are guarded statically by `scripts/tests/test_frontend_proof_guidance.py::test_cursor_endpoint_pass_is_enforced_read_only`.
+Keep quotes and answer hashes beside the manual judgments so
 the lead-routed reviewer can inspect them. No paid judge is required.
 
 The result artifact retains all repetitions, runtime provenance and source
 hashes; failed iterations remain recorded. These are implementer-scored probes,
 not an independent review. No live GitHub action runs. Baseline is master text,
-not a skill-free arm. Pre-review evidence remains historical; see RESULTS.md for
+not a skill-free arm. The Cursor endpoint extension is measured in [CURSOR-ENDPOINTS-RESULTS.md](CURSOR-ENDPOINTS-RESULTS.md).
+Pre-review evidence remains historical; see RESULTS.md for
 the corrected scope and the reviewer finding.
 
 Runner guard tests (synthetic transport/validator, no model calls):

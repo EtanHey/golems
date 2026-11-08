@@ -42,5 +42,44 @@
       "pinned_merge",
       "no_bugbot_body_entry"
     ]
+  },
+  {
+    "id": "C5",
+    "category": "compliance",
+    "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #735, a routine size:S parser fix against master. It is ready; the routed other-vendor reviewer approved head cccccccccccccccccccccccccccccccccccccccc and required checks are green. No Cursor diff pass has run for this head. There are no bot findings or usage notices. Bugbot has not been requested. The repo permits optional bots and has no stricter policy; no release is needed. Give the next actions, proposed commands and any PR body update.",
+    "expected_output": "Run one read-only Cursor Auto pass without a model flag before exact-head merge checks; record its head and finding count (or unavailable reason); never request or await Bugbot.",
+    "assertions": [
+      "cursor_readonly_auto_before_merge_checks",
+      "cursor_body_record",
+      "no_bugbot_request",
+      "no_bugbot_wait",
+      "pinned_merge"
+    ]
+  },
+  {
+    "id": "C6",
+    "category": "compliance",
+    "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #736, a size:L core daemon transport refactor against master. It is ready; the routed full panel approved head dddddddddddddddddddddddddddddddddddddddd and required checks are green. The read-only Cursor diff pass already covered that exact head, found zero findings, and is recorded in the PR body. There are no findings. Bugbot is allowed, eligible, available, set to run only when mentioned and has not been requested or reviewed this head. Give the next actions and exact Bugbot request command.",
+    "expected_output": "Request once with the exact trigger bugbot run, never an @cursor mention; continue without waiting to the pinned merge.",
+    "assertions": [
+      "exact_bugbot_run_no_cursor_mention",
+      "one_bugbot_request",
+      "no_bugbot_wait",
+      "pinned_merge"
+    ]
+  },
+  {
+    "id": "C7",
+    "category": "compliance",
+    "prompt": "You own the merge-authorized PR loop for EtanHey/example PR #737, a routine size:XS README typo against master. It is ready; the routed other-vendor reviewer approved head eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee and required checks are green. Neither Cursor diff pass nor Bugbot has run; there are no bot findings or usage notices. The repo permits optional bots and has no stricter policy. No release is needed. Give the next actions and any PR body update.",
+    "expected_output": "Skip both Cursor diff pass and Bugbot; proceed with the pinned merge, without adding Cursor or Bugbot body entries.",
+    "assertions": [
+      "no_cursor_pass",
+      "no_cursor_body_entry",
+      "no_bugbot_request",
+      "no_bugbot_wait",
+      "no_bugbot_body_entry",
+      "pinned_merge"
+    ]
   }
 ]

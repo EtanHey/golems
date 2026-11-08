@@ -84,14 +84,16 @@ Repo bans still win (8a.0). If eligible and available, request once, only when n
 current-head automatic review already exists:
 
 ```bash
-gh pr comment <N> --body "@cursor @bugbot review"   # eligible L/core-risk PR only
+gh pr comment <N> --body "bugbot run"   # eligible L/core-risk PR only
 ```
+
+[Cursor documents this trigger](https://cursor.com/docs/bugbot); commands posted by bot accounts or GitHub Apps are ignored. Eligibility remains L/core-risk only.
 
 Record `Bugbot: unavailable (usage)` in the PR body only if Bugbot was actually
 requested and is unavailable, or it posted a real usage/rate/spend-limit notice
 on this PR. A routine XS/S/M PR with no Bugbot activity needs no request, wait,
 record or extra step. After the one eligible request, continue directly
-to exact-head merge checks in the same turn. No "awaiting Bugbot" state, watch,
+to the Cursor endpoint pass if owed (8a.2), then exact-head merge checks in the same turn. No "awaiting Bugbot" state, watch,
 grace period, retry or re-review gate; never block on its availability/verdict.
 Actual findings still follow the normal finding rules; important findings must be
 investigated and resolved, including in a new PR if they arrive after merge.
@@ -99,21 +101,32 @@ This replaces the 2026-09-05 core-path-only eligibility ruling.
 
 #### 8a.2 — The Cursor diff pass is READ-ONLY
 
-A Cursor pass reports findings only; it never edits files or pushes to the PR branch.
-
-Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
+For every **S-or-larger PR**, run one pass per head after the routed inner-loop review
+and before exact-head merge checks. **XS skips it.** This is an advisory bot-tier pass,
+like CodeRabbit; it never replaces the routed reviewer. Cursor Auto only: no model flag.
+It reports findings only and never edits files or pushes to the PR branch.
 
 ```bash
-# Read-only Cursor review — costs no Bugbot quota, needs no @mention
-cursor-agent -p --output-format text \
-  "Review this branch's diff against main for correctness bugs and security issues. \
-   Report findings only. Do NOT edit, create, or delete any file."
+# Use the PR's actual base branch and head SHA, not a presumed main branch.
+cursor-agent -p --trust --mode ask --output-format text \
+  "Review this branch's diff against <base> at head <sha> for correctness bugs and security issues. \
+   Report findings only. Do NOT edit, create, or delete any file. Do NOT push."
 ```
 
-- Because it spends no Bugbot quota, this pass is still available on a repo whose policy bans Bugbot
-  (8a.0) and on a routine (non-L, non-core-risk) diff where Bugbot is correctly off the panel.
-- If the pass exhausts Cursor's shared quota through its own dispatch, report **that dispatch** as the
-  cause — never the resulting `resource_exhausted` as an external finding (canon #3).
+- `--mode ask` is what makes the pass read-only: Ask mode has no write tools, and the prompt
+  alone does not enforce that. `--trust` lets a headless run start in a fresh worktree; without it,
+  the CLI stops at a "Workspace Trust Required" prompt and exits 1. Never add `--force` / `--yolo`.
+- Answer every finding like any other finding before merge. A real finding arriving after merge
+  goes into a NEW PR (canon #9).
+- Record `Cursor pass: head=<sha> findings=<count>` in the PR body. Reuse coverage only for that head.
+- Never block on availability: on an error or quota exhaustion, record
+  `Cursor pass: unavailable (<reason>)` and proceed to merge checks without retries or a quota wait.
+  If this pass's dispatch exhausted the shared quota, name **that dispatch** as the cause, never
+  the resulting `resource_exhausted` as an external finding (canon #3).
+- This uses the Cursor subscription, not Bugbot quota, and applies even where Bugbot is banned.
+  Bugbot eligibility remains unchanged (8a.1).
+
+A GitHub `cursor[bot]` usage/rate/spend-limit notice is Bugbot activity, even on XS: record `Bugbot: unavailable (usage)` in the PR body; it is never a local `Cursor pass:` failure. Routing: `/agent-routing` § Routing rules (SSOT).
 
 Bot-invocation comments are agent-authored PR comments, so the signature block
 applies to them too — the `gh()` wrapper will append it automatically once it
@@ -340,8 +353,8 @@ collection path does not reply to a thread; use `/replies` or the documented
 |--------|------|----------------------|
 | CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |
 | Codex Cloud | AI code review | `gh pr comment <N> --body "@codex review"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md "Review guidelines". Flags P0/P1 by default. |
-| Cursor (diff pass) | Diff findings through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — see routing pointer in Step 8a.2. |
-| Cursor Bugbot | Bug detection — **opt-in, L or very important/core-risk PRs only** | Follow 8a.1 and repo bans (8a.0). Request once if available and not already covering the head: `gh pr comment <N> --body "@cursor @bugbot review"`. Record `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real usage notice; no activity on a routine PR needs no entry. Never wait or block. Bot responds as `cursor[bot]`. |
+| Cursor (diff pass) | Standard S-or-larger endpoint pass, once per head after routed inner review; XS skips. Advisory diff findings through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --trust --mode ask --output-format text "…report findings only, do NOT edit any file"` — see routing pointer in Step 8a.2. |
+| Cursor Bugbot | Bug detection — **opt-in, L or very important/core-risk PRs only** | Follow 8a.1 and repo bans (8a.0). Request once if available and not already covering the head: `gh pr comment <N> --body "bugbot run"`. Record `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real usage notice; no activity on a routine PR needs no entry. Never wait or block. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | DeepSource findings: use `deepsource-issues <owner/repo> <pr>`, or the `deepsource-io[bot]` inline comments via `gh api`. The token comes from `DEEPSOURCE_TOKEN` or the 0600 file `~/.config/deepsource/deepsource.env` (override: `DEEPSOURCE_TOKEN_FILE`). Never a browser, never op |
 
@@ -350,7 +363,7 @@ collection path does not reply to a thread; use `/replies` or the documented
 ```bash
 gh pr comment <N> --body "@coderabbitai review"
 gh pr comment <N> --body "@codex review"
-gh pr comment <N> --body "@cursor @bugbot re-review"   # only if eligible, available, reviewed round 1 and current-head coverage is stale
+gh pr comment <N> --body "bugbot run"   # only if eligible, available, reviewed round 1 and current-head coverage is stale
 ```
 
 Request re-review only for reviewers actually invoked whose current-head automatic review is
