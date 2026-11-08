@@ -1,0 +1,2 @@
+# Interrupted refresh temp siblings must never enter an upstream proposal.
+.golems-vendor-*

@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -314,8 +314,17 @@ test("updater dry-run is inert, apply proposes pinned bytes, and mismatched SHA 
   expect(readFileSync(path.join(fx.vendor, fx.file), "utf8")).toBe(before);
   expect(() => refreshVendor({ ...options, expected: [old], apply: true })).toThrow("expected SHA");
   refreshVendor({ ...options, apply: true });
-  expect(readFileSync(path.join(fx.vendor, fx.file), "utf8")).toBe(text);
-  expect(readFileSync(path.join(fx.vendor, "VENDOR.md"), "utf8")).toBe(commit);
+  const root = fx.vendor;
+  expect(readFileSync(path.join(root, fx.file), "utf8")).toBe(text);
+  expect(readFileSync(path.join(root, "VENDOR.md"), "utf8")).toBe(commit);
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  expect(readFileSync(path.join(fx.codex, "emil-design-eng/SKILL.md"), "utf8")).toBe(text);
+  expect(refreshVendor({ ...options, apply: true }).changed).toBe(false);
+  const manifest = JSON.parse(readFileSync(path.join(fx.vendor, "manifest.json")));
+  manifest.providers.push("cursor");
+  writeFileSync(path.join(fx.vendor, "manifest.json"), JSON.stringify(manifest));
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  expect(readFileSync(path.join(fx.home, ".cursor/skills/emil-design-eng/SKILL.md"), "utf8")).toBe(text);
 });
 
 test("a Codex root symlink into agents refuses before writes, preventing Gemini exposure", () => {
@@ -401,6 +410,94 @@ function refreshFixture() {
   const git = (_, args) => ({ status: 0, stdout: args.includes("rev-parse") ? expected[clones.indexOf(args[1])] : "" });
   return { ...fx, clones, expected, git };
 }
+
+function interruptedVendor(fx, operation) {
+  return spawnSync("node", ["--input-type=module", "-e", `
+    import fs from 'node:fs';
+    import { syncBuiltinESMExports } from 'node:module';
+    const fx = JSON.parse(fs.readFileSync(0, 'utf8'));
+    const operation = ${JSON.stringify(operation)};
+    const primitive = operation === 'manifest' ? 'renameSync' : operation;
+    const original = fs[primitive];
+    fs[primitive] = (...args) => {
+      if (operation === 'symlinkSync') throw new Error('injected before symlinkSync');
+      if (operation === 'manifest' && args[1] !== fx.vendor + '/manifest.json') return original(...args);
+      if (operation !== 'manifest') original(...args);
+      process.kill(process.pid, 'SIGKILL');
+    };
+    syncBuiltinESMExports();
+    const { refreshVendor } = await import(${JSON.stringify(new URL("./refresh-vendor.mjs", import.meta.url).href)});
+    const { installVendorSkills } = await import(${JSON.stringify(new URL("./vendor-skills.mjs", import.meta.url).href)});
+    if (operation !== 'symlinkSync') refreshVendor({ ...fx, apply: true,
+      git: (_, args) => ({ status: 0, stdout: args.includes('rev-parse') ? fx.expected[fx.clones.indexOf(args[1])] : '' }) });
+    else installVendorSkills({ ...fx, apply: true });
+  `], { input: JSON.stringify(fx), encoding: "utf8" });
+}
+
+test("successive refreshes keep one flat payload and stage modifications instead of additions", async () => {
+  const fx = refreshFixture(), { refreshVendor } = await import("./refresh-vendor.mjs");
+  writeFileSync(path.join(fx.vendor, ".gitignore"), readFileSync(new URL("../../../vendor/.gitignore", import.meta.url)));
+  const git = (...args) => {
+    const result = spawnSync("git", ["-C", fx.vendor, ...args], { encoding: "utf8" });
+    expect(result.status).toBe(0);
+    return result.stdout.trim();
+  };
+  git("init"); git("add", ".");
+  git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "commit", "-m", "baseline");
+  const tracked = git("ls-files");
+  for (const text of ["first edit", "second edit", "third edit"]) {
+    writeFileSync(path.join(fx.clones[0], "skills/emil-design-eng/SKILL.md"), text);
+    refreshVendor({ ...fx, apply: true });
+    git("add", ".");
+    expect(git("ls-files")).toBe(tracked);
+    expect(git("diff", "--cached", "--name-status").split("\n").every(line => line.startsWith("M\t"))).toBe(true);
+    expect(readFileSync(path.join(fx.vendor, fx.file), "utf8")).toBe(text);
+    git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "commit", "-m", text);
+  }
+  writeFileSync(path.join(fx.clones[0], "skills/emil-design-eng/SKILL.md"), "killed edit");
+  expect(interruptedVendor(fx, "cpSync").signal).toBe("SIGKILL");
+  expect(readdirSync(path.dirname(path.join(fx.vendor, fx.file))).some(name => name.startsWith(".golems-vendor-"))).toBe(true);
+  git("add", ".");
+  expect(git("ls-files")).toBe(tracked);
+  expect(git("status", "--porcelain", "--untracked-files=all")).toBe("");
+});
+
+for (const operation of ["cpSync", "renameSync", "manifest"]) test(`interrupted flat refresh at ${operation} is hash-gated and retryable`, async () => {
+  const fx = refreshFixture();
+  const { refreshVendor } = await import("./refresh-vendor.mjs");
+  const manifestBefore = readFileSync(path.join(fx.vendor, "manifest.json"), "utf8");
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  const entry = path.join(fx.codex, "emil-design-eng"), target = realpathSync(entry);
+  const oldBytes = readFileSync(path.join(entry, "SKILL.md"), "utf8");
+  for (const clone of fx.clones) writeFileSync(path.join(clone, "skills", clone === fx.clones[0] ? "emil-design-eng" : "animate", "SKILL.md"), "updated payload");
+  const result = interruptedVendor(fx, operation);
+  expect(result.signal).toBe("SIGKILL");
+  expect(readFileSync(path.join(fx.vendor, "manifest.json"), "utf8")).toBe(manifestBefore);
+  expect(realpathSync(entry)).toBe(target);
+  expect(readFileSync(path.join(entry, "SKILL.md"), "utf8")).toBe(oldBytes);
+  const install = run(fx, "--vendor-skills", "--apply");
+  if (operation === "cpSync") expect(install.status).toBe(0);
+  else { expect(install.status).not.toBe(0); expect(install.out).toContain("vendor hash/type drift"); }
+  refreshVendor({ ...fx, apply: true });
+  expect(readFileSync(path.join(fx.vendor, fx.file), "utf8")).toBe("updated payload");
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  expect(readFileSync(path.join(entry, "SKILL.md"), "utf8")).toBe("updated payload");
+});
+
+test("interrupted link promotion keeps old links resolving and retry promotes complete snapshots", () => {
+  const fx = vendorFixture();
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  const entry = path.join(fx.claude, "emil-design-eng"), target = realpathSync(entry);
+  writeFileSync(path.join(fx.vendor, fx.file), "new generation");
+  fx.manifest.files[fx.file] = createHash("sha256").update("new generation").digest("hex");
+  writeFileSync(path.join(fx.vendor, "manifest.json"), JSON.stringify(fx.manifest));
+  const result = interruptedVendor(fx, "symlinkSync");
+  expect(result.stderr).toContain("injected before symlinkSync");
+  expect(realpathSync(entry)).toBe(target);
+  expect(run(fx, "--vendor-skills", "--apply").status).toBe(0);
+  expect(realpathSync(entry)).not.toBe(target);
+  expect(readFileSync(path.join(entry, "SKILL.md"), "utf8")).toBe("new generation");
+});
 
 for (const shape of ["skill-directory", "skill-file", "root-license"]) {
   test(`copier refuses a symlinked ${shape} before changing vendor data`, async () => {

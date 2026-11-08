@@ -1,7 +1,7 @@
 // Copy expected upstream commits as inert PR data; review before merge/install.
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { cpSync, lstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { cpSync, lstatSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,12 +58,21 @@ export function refreshVendor({ vendor, clones, expected, apply = false, git = s
   if (!versionChanged && Object.keys(files).length === Object.keys(manifest.files).length && Object.entries(files).every(([file, sum]) => manifest.files[file] === sum)) return { apply: false, changed: false, changes: [], files: Object.keys(files).length };
   manifest.files = { ...manifest.files, ...files };
   if (apply) {
-    for (const { src, file } of copies) cpSync(src, path.join(vendor, file));
+    const replace = (file, write) => {
+      const temporary = path.join(path.dirname(file), `.golems-vendor-${randomUUID()}`);
+      try { write(temporary); renameSync(temporary, file); }
+      finally { rmSync(temporary, { force: true }); }
+    };
+    for (const { src, file } of copies) replace(path.join(vendor, file), (temporary) => {
+      cpSync(src, temporary);
+      if (createHash("sha256").update(readFileSync(temporary)).digest("hex") !== files[file]) throw new Error(`source changed during copy: ${file}`);
+    });
     const provenance = path.join(vendor, "VENDOR.md");
     let text = readFileSync(provenance, "utf8");
     for (const change of changes) text = text.replaceAll(change.from, change.to);
-    writeFileSync(provenance, text);
-    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+    replace(provenance, (temporary) => writeFileSync(temporary, text));
+    // The installer's hash check refuses torn updates until this last rename.
+    replace(manifestPath, (temporary) => writeFileSync(temporary, JSON.stringify(manifest, null, 2) + "\n"));
   }
   return { apply, changed: true, changes, files: Object.keys(files).length };
 }

@@ -47,4 +47,9 @@ Manual check: `node skills/golem-powers/golem-install/scripts/vendor-skills.mjs
 <anthropic-clone> <emil-clone> <expected-sha-A> <expected-sha-E> [--apply]`;
 without --apply it writes nothing. Proposed bytes are not approval to install.
 Owned vendor links move to the verified new payload on apply; old snapshots stay.
+Refreshes keep this flat layout: each file is written to a temporary sibling and
+renamed into place; the manifest is replaced last. An interrupted update may leave
+mixed source files, which the installer's manifest hash check refuses. Retry the
+refresh to finish it. Leftover `.golems-vendor-*` files from a kill are gitignored.
+Installed snapshots remain intact; each owned link is replaced atomically.
 Foreign links and directories still require explicit retirement. Claude's official frontend-design plugin updates independently.

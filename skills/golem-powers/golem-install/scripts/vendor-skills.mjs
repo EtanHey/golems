@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, renameSync, symlinkSync, unlinkSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,8 +19,7 @@ function verify(root, files) {
 export function installVendorSkills({ home, source, apply = false }) {
   home = realpathSync(home);
   const vendor = path.resolve(source, "..", "vendor");
-  const bytes = readFileSync(path.join(vendor, "manifest.json"));
-  const manifest = JSON.parse(bytes);
+  const bytes = readFileSync(path.join(vendor, "manifest.json")), manifest = JSON.parse(bytes);
   if (manifest.schema !== 1) throw new Error("unsupported vendor manifest");
   verify(vendor, manifest.files);
   const ownedRoot = path.join(home, ".golems/vendor/design-skills");
@@ -50,21 +49,26 @@ export function installVendorSkills({ home, source, apply = false }) {
   if (existsSync(snapshot)) verify(snapshot, manifest.files);
   if (apply && !existsSync(snapshot)) {
     mkdirSync(path.dirname(snapshot), { recursive: true });
-    const staging = `${snapshot}.staging-${process.pid}`;
-    mkdirSync(staging);
-    for (const file of Object.keys(manifest.files)) {
-      const dest = path.join(staging, file);
-      mkdirSync(path.dirname(dest), { recursive: true });
-      copyFileSync(path.join(vendor, file), dest);
-    }
-    verify(staging, manifest.files);
-    renameSync(staging, snapshot);
+    const staging = mkdtempSync(`${snapshot}.staging-`);
+    try {
+      for (const file of Object.keys(manifest.files)) {
+        const dest = path.join(staging, file);
+        mkdirSync(path.dirname(dest), { recursive: true });
+        copyFileSync(path.join(vendor, file), dest);
+      }
+      verify(staging, manifest.files);
+      writeFileSync(path.join(staging, "manifest.json"), bytes);
+      renameSync(staging, snapshot);
+    } finally { rmSync(staging, { recursive: true, force: true }); }
   }
   for (const link of links) {
     if (apply && (!existsSync(link.entry) || realpathSync(link.entry) !== realpathSync(link.target))) {
-      if (present(link.entry)) unlinkSync(link.entry);
       mkdirSync(path.dirname(link.entry), { recursive: true });
-      symlinkSync(link.target, link.entry);
+      const temporary = path.join(path.dirname(link.entry), `.${link.name}.staging-${randomUUID()}`);
+      try {
+        symlinkSync(link.target, temporary);
+        renameSync(temporary, link.entry);
+      } finally { rmSync(temporary, { force: true }); }
     }
   }
   return links.map(({ provider, name }) => `vendor ${provider}: ${name} ${apply ? "linked" : "verified (dry-run)"}`);
