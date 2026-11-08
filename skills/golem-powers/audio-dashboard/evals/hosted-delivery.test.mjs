@@ -64,6 +64,7 @@ for (const [deliveryDesign, handoffDesign] of [
 });
 for (const design of ['COMPARED', 'REDESIGN_APPROVED']) test(`maintenance accepts ${design} with a rollback hash`, () => {
   const e = maintenance(); e.delivery.admission.design = design; e.handoff.design.admission = design;
+  if (design === 'REDESIGN_APPROVED') Object.assign(e.handoff.design, redesign().handoff.design);
   expect(validateAudioDashboardEvidence(e).verdict).toBe('PASS');
 });
 for (const field of ['signedIn', 'independentClient', 'serverAck', 'markerSaved', 'restoredAfterLocalKeysCleared', 'cleanedUp', 'disposableRecord']) {
@@ -126,17 +127,23 @@ for (const answerRuntime of [undefined, 'other']) test(`invalid runtime admissio
 
 const redesign = () => {
   const e = fixture();
-  Object.assign(e.handoff.design, { predecessorSha256: 'c'.repeat(64), redesign: { from: 'c'.repeat(64), approvedBy: 'Design owner' } });
+  e.handoff.design.admission = e.delivery.admission.design = 'REDESIGN_APPROVED';
+  Object.assign(e.handoff.design, { predecessorSha256: 'c'.repeat(64), redesign: { reason: 'Owner requested a redesign', from: 'c'.repeat(64), approvedBy: 'Design owner' } });
   return e;
 };
 for (const admission of ['COMPARED', 'REDESIGN_APPROVED']) {
-  test(`handoff accepts a bound, approved redesign under ${admission}`, () => {
+  test(`handoff ${admission === 'REDESIGN_APPROVED' ? 'accepts' : 'refuses'} a bound, approved redesign under ${admission}`, () => {
     const e = redesign(); e.handoff.design.admission = e.delivery.admission.design = admission;
-    expect(validateAudioDashboardEvidence(e).verdict).toBe('PASS');
+    const result = validateAudioDashboardEvidence(e);
+    expect(result.verdict).toBe(admission === 'REDESIGN_APPROVED' ? 'PASS' : 'REJECTED');
+    if (admission !== 'REDESIGN_APPROVED') expect(result.violations.map(v => v.code)).toContain('REDESIGN_UNAPPROVED');
   });
   for (const [name, change] of [
     ['wrong predecessor', d => { d.redesign.from = 'd'.repeat(64); }],
     ['missing from', d => { delete d.redesign.from; }],
+    ...(admission === 'REDESIGN_APPROVED' ? [['missing redesign', d => { delete d.redesign; }]] : []),
+    ...[undefined, null, '', ' ', 'Reason\nOther', 'Reason\rOther', 42, {}, []].map(reason =>
+      [`reason ${JSON.stringify(reason)}`, d => { d.redesign.reason = reason; }]),
     ...[undefined, null, '', ' ', 'UNRECORDED', ' unrecorded ', 'Owner\nOther', 'Owner\rOther', 42].map(approvedBy =>
       [`approver ${JSON.stringify(approvedBy)}`, d => { d.redesign.approvedBy = approvedBy; }]),
     ...[undefined, null, false, {}].map(value => [`redesign ${JSON.stringify(value)}`, d => { d.redesign = value; }]),
@@ -144,12 +151,12 @@ for (const admission of ['COMPARED', 'REDESIGN_APPROVED']) {
     const e = redesign(); e.handoff.design.admission = e.delivery.admission.design = admission; change(e.handoff.design);
     const result = validateAudioDashboardEvidence(e);
     expect(result.verdict).toBe('REJECTED');
-    expect(result.violations.map(v => v.code)).toContain('HANDOFF_REDESIGN_INVALID');
+    expect(result.violations.map(v => v.code)).toContain('REDESIGN_UNAPPROVED');
   });
 }
 for (const admission of ['COMPARED', 'REDESIGN_APPROVED']) for (const firstInLineage of [null, false, {}, { reason: 'New lineage', approvedBy: 'Design owner' }]) {
   test(`handoff refuses misplaced firstInLineage ${JSON.stringify(firstInLineage)} under ${admission}`, () => {
-    const e = fixture(); e.handoff.design.admission = e.delivery.admission.design = admission;
+    const e = admission === 'REDESIGN_APPROVED' ? redesign() : fixture(); e.handoff.design.admission = e.delivery.admission.design = admission;
     e.handoff.design.firstInLineage = firstInLineage;
     const result = validateAudioDashboardEvidence(e);
     expect(result.verdict).toBe('REJECTED');
@@ -176,4 +183,19 @@ for (const [name, change] of [
   const result = validateAudioDashboardEvidence(e);
   expect(result.verdict).toBe('REJECTED');
   expect(result.violations.map(v => v.code)).toContain('FIRST_IN_LINEAGE_UNAPPROVED');
+});
+
+for (const admission of ['COMPARED', 'FIRST_IN_LINEAGE', 'OTHER', undefined]) for (const value of [undefined, null, false, {}, { reason: 'Owner requested a redesign', from: 'c'.repeat(64), approvedBy: 'Design owner' }]) {
+  test(`handoff refuses present redesign ${JSON.stringify(value)} outside REDESIGN_APPROVED (${admission})`, () => {
+    const e = admission === 'FIRST_IN_LINEAGE' ? firstLineage() : fixture();
+    e.handoff.design.admission = e.delivery.admission.design = admission;
+    e.handoff.design.redesign = value;
+    const result = validateAudioDashboardEvidence(e);
+    expect(result.verdict).toBe('REJECTED');
+    expect(result.violations.map(v => v.code)).toContain('REDESIGN_UNAPPROVED');
+  });
+}
+test('handoff accepts a nonblank one-line redesign reason with surrounding spaces', () => {
+  const e = redesign(); e.handoff.design.redesign.reason = '  Owner requested a redesign  ';
+  expect(validateAudioDashboardEvidence(e).verdict).toBe('PASS');
 });
