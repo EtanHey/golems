@@ -163,6 +163,36 @@ class KnownAnswerEvalTest(unittest.TestCase):
 
 
 class RunnerContractTest(unittest.TestCase):
+    def test_unexpected_errors_checkpoint_failed_and_preserve_original(self) -> None:
+        for error in (ValueError("unexpected"), OSError("disk"),
+                      KeyboardInterrupt(), SystemExit(23), RuntimeError("known")):
+            for checkpoint_error in (None, OSError("checkpoint disk"), SystemExit(99)):
+                with self.subTest(error=type(error).__name__, checkpoint=checkpoint_error):
+                    runner = load_runner()
+                    with tempfile.TemporaryDirectory() as temporary:
+                        root = Path(temporary)
+                        repo = root / "repo"
+                        repo.mkdir()
+                        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+                        args = SimpleNamespace(repo=repo, output_dir=root / "output",
+                                               codex_binary=sys.executable, timeout=1,
+                                               concurrency=1, no_effort_fallback=True)
+                        audit = runner._impl.audit
+                        write_log = audit._write_run_log
+                        def write_checkpoint(directory, log):
+                            if log["status"] == "failed" and checkpoint_error:
+                                raise checkpoint_error
+                            return write_log(directory, log)
+                        with mock.patch.object(runner, "preflight_pin", side_effect=error), \
+                             mock.patch.object(audit, "_write_run_log", side_effect=write_checkpoint):
+                            with self.assertRaises(BaseException) as caught:
+                                runner.run_audit(args)
+                        self.assertIs(caught.exception, error)
+                        log = json.loads(next(args.output_dir.glob("*/run-log.json")).read_text())
+                        if checkpoint_error is None:
+                            self.assertEqual(log["status"], "failed")
+                            self.assertEqual(log["failure"]["type"], type(error).__name__)
+
     def test_real_finding_zero_mismatch_reaches_strict_synthesis(self) -> None:
         runner = load_runner()
         self.assertIsNotNone(runner, "convention-audit runner is not implemented")

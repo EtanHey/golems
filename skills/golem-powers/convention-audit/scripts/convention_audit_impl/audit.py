@@ -259,21 +259,25 @@ def run_audit(args: argparse.Namespace, *, skill_dir: Path, preflight: Callable,
         )
         _write_run_log(run_dir, run_log)
         return report, run_log
-    except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
-        target_git_state_unchanged: bool | None = None
-        failure = {
-            "stage": stage,
-            "type": type(exc).__name__,
-            "message": str(exc),
-        }
-        if before is not None:
-            try:
-                target_git_state_unchanged = before == _git_state(repo)
-            except RuntimeError as state_exc:
-                failure["target_state_error"] = str(state_exc)
-        checkpoint(
-            status="failed",
-            target_git_state_unchanged=target_git_state_unchanged,
-            failure=failure,
-        )
+    except BaseException as exc:
+        try:
+            target_git_state_unchanged: bool | None = None
+            failure = {
+                "stage": stage,
+                "type": type(exc).__name__,
+                "message": str(exc),
+            }
+            if before is not None:
+                try:
+                    target_git_state_unchanged = before == _git_state(repo)
+                except RuntimeError as state_exc:
+                    failure["target_state_error"] = str(state_exc)
+            checkpoint(
+                status="failed",
+                target_git_state_unchanged=target_git_state_unchanged,
+                failure=failure,
+            )
+        except BaseException:
+            # Failure reporting must never replace the original error or exit signal.
+            pass
         raise
