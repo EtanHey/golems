@@ -304,6 +304,18 @@ original scene script. This is the B11 two-channel law: `pull request` or `lyve`
 may enter the daemon input and `.spoken.txt`, but `P R` or `live` remains on
 screen exactly as authored.
 
+The skill-local `src/spoken-form.mjs` prepares clock times and a small abbreviation
+set before synthesis: `9pm` / `9 p.m.` / `21:00` → `nine p m`, `9:05pm` →
+`nine oh five p m`, and `11:30am` → `eleven thirty a m`. Lowercase spaced letters
+avoid the dotted-identifier rule. `PR #123`, `PR 123`, and `#123` say `pull request
+one twenty-three`; `e.g.`, `i.e.`, `vs.`, `approx.`, `~5`, `5%`, `x2` / `2x`, and
+`v2.3` expand to ordinary speech. Complete backtick code spans/fences, tilde fences
+and HTTP(S) URLs stay verbatim through both normalization layers; standalone PM
+names stay unchanged. `scripts/local-tts.mjs` supplies this preparation to the
+vendored runner; BUILD recomputes the same bytes before trusting `.spoken.txt`.
+These deterministic forms have offline timing/gate coverage; qwen3 voice quality
+is verified at the next real build, not inferred from unit tests.
+
 The TTS runner persists `.spoken.txt` as required provenance containing the exact
 synth-input bytes. STT repair derives only the lexical spans that differ between
 that transcript and the authored display script, then treats those spans as

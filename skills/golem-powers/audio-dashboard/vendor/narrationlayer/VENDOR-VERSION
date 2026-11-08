@@ -12,7 +12,7 @@
       "id": "local-tts-runner",
       "vendorPath": "vendor/narrationlayer/local-tts-runner.ts",
       "sourcePath": "bin/local-tts-runner.ts",
-      "vendorSha256": "4f572f9643f9ff843e8acc473b89e2ff0492da66aca6057b01437703c850bba1",
+      "vendorSha256": "5ae52fa6099aac5870a64d11dcf0bb53527ee68e7e2d3551b0a16592c8ab9d0b",
       "sourceSha256": "f367be380ea63401cd3c0e499cdf249d726e826ce7401ee5395971ef298d990b"
     },
     {
@@ -170,6 +170,20 @@
         "bun",
         "test",
         "tests/word-timings.test.ts"
+      ]
+    },
+    {
+      "id": "SKILL_SPEECH_PREPARATION_CALLBACK",
+      "pairId": "local-tts-runner",
+      "status": "open",
+      "aidevNote": "The runner exports main with an optional speech preparation callback so skill-local normalization can protect URLs and code without a second legacy pass. NarrationLayer owns this engine seam; the lead must route the generic export/callback upstream. All spoken-form rules remain skill-local.",
+      "requiredUpstreamPatterns": [
+        "export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/local-tts-runner.test.ts"
       ]
     }
   ],

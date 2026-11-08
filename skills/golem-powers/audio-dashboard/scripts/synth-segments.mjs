@@ -41,11 +41,11 @@ import { fileURLToPath } from "node:url";
 
 import { runWhisperCliWordTimings } from "../vendor/narrationlayer/word-timings.ts";
 import { normalizeWordTimingsForScript } from "../vendor/narrationlayer/word-timing-repair.ts";
-import { deriveSpeechAliases } from "../vendor/narrationlayer/text-normalize.ts";
+import { deriveSpeechAliases } from "../src/spoken-form.mjs";
 import { clearTakeCacheReceiptForByo, writeWordTimingArtifacts } from "../src/word-timing-artifacts.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const TTS_RUNNER = path.join(SKILL_ROOT, "vendor", "narrationlayer", "local-tts-runner.ts");
+const TTS_RUNNER = path.join(SKILL_ROOT, "scripts", "local-tts.mjs");
 
 function expandHome(value) {
   if (value === "~") return os.homedir();

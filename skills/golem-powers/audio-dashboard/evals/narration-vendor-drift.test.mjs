@@ -700,8 +700,8 @@ test("CLI stamp-only mode remains rejected while upstream-first debt is open", (
   expect(records).toContainEqual(
     expect.objectContaining({
       pairId: "local-tts-runner",
-      metric: "VENDOR_BEHIND",
-      value: "open",
+      metric: "BIDIRECTIONAL_DRIFT",
+      value: "vendor=open-debt:SKILL_SPEECH_PREPARATION_CALLBACK;source=open-debt:VOICE_SSOT_PROFILE_CACHE_KEY",
       evidence: expect.stringContaining("VOICE_SSOT_PROFILE_CACHE_KEY"),
     }),
   );
@@ -734,8 +734,8 @@ test("CLI treats an exported non-checkout with every mapped file as upstream una
     expect(records).toContainEqual(
       expect.objectContaining({
         pairId: "local-tts-runner",
-        metric: "VENDOR_BEHIND",
-        value: "open",
+        metric: "BIDIRECTIONAL_DRIFT",
+        value: "vendor=open-debt:SKILL_SPEECH_PREPARATION_CALLBACK;source=open-debt:VOICE_SSOT_PROFILE_CACHE_KEY",
       }),
     );
   } finally {
