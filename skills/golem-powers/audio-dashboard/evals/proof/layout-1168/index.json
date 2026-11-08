@@ -1,0 +1,29 @@
+{
+ "kind": "real BUILD (scripts/build-dashboard.mjs) of examples/job.json with synthetic, script-exact segments",
+ "base": "e92f73ec",
+ "beforeHtmlSha256": "c4fe732274a90c62b17ae2c0f8bc7e2d91e35f3d16f6c629111e82b29f34ba82",
+ "afterHtmlSha256": "1909a479463ab39c867a7fd9b4a7a32e2b7fb84eca18c479fcdb13f97e98b9e9",
+ "browser": "Playwright Chromium, --disable-features=OverlayScrollbar,OverlayScrollbars,MacOverlayScrollbars so classic scrollbars render",
+ "designPreservation": {"withoutWaiver":{"verdict":"REJECTED","fired":["LAYOUT at 1280px"]},"withWaiver":{"scope":"isolated synthetic-fixture admission (proof BUILD in a throwaway design registry); not a live publishing approval","verdict":"PASS","status":"REDESIGN","admission":"REDESIGN_APPROVED","redesign":{"reason":"Isolated synthetic-fixture proof for issue 1168 (wider desktop layout, closer rail, quieter scrollbars); not a live publishing approval.","approvedBy":"requested by Etan (#1168, via orc); exact design not separately approved","invariants":["LAYOUT"],"from":"c4fe732274a90c62b17ae2c0f8bc7e2d91e35f3d16f6c629111e82b29f34ba82"}}},
+ "pixelDiffs": {"390":{"changedPixelRatio":0.071,"beforeDarkEqualsLight":false,"afterDarkEqualsLight":true},"1280":{"changedPixelRatio":0.0792,"beforeDarkEqualsLight":true,"afterDarkEqualsLight":true},"1920":{"changedPixelRatio":0.2673,"beforeDarkEqualsLight":true,"afterDarkEqualsLight":true}},
+ "railScrollbarThumbRGB": {"background":[16,26,44],"rest":[58,68,88],"hoverOrFocus":[98,110,131],"sample":"rail-1920 after, x=475..480 y=200"},
+ "metrics": {
+  "before": [
+   {"fixture":"examples/job.json BUILD","width":390,"layout":{"left":0,"width":375},"side":{"left":16,"width":343},"ledger":{"left":16,"width":343},"railGap":-343,"prose":{"selector":"df-question","width":309,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"auto","color":"auto","gutter":"auto"}},
+   {"fixture":"examples/job.json BUILD","width":1280,"layout":{"left":73,"width":1120},"side":{"left":105,"width":260},"ledger":{"left":421,"width":740},"railGap":56,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"auto","color":"auto","gutter":"auto"}},
+   {"fixture":"examples/job.json BUILD","width":1920,"layout":{"left":393,"width":1120},"side":{"left":425,"width":260},"ledger":{"left":741,"width":740},"railGap":56,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"auto","color":"auto","gutter":"auto"}},
+   {"fixture":"examples/job.json BUILD","width":2560,"layout":{"left":713,"width":1120},"side":{"left":745,"width":260},"ledger":{"left":1061,"width":740},"railGap":56,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"auto","color":"auto","gutter":"auto"}},
+   {"fixture":"14-card rail fixture","width":1280,"layout":{"left":73,"width":1120},"side":{"left":105,"width":260},"ledger":{"left":421,"width":740},"railGap":56,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"auto","color":"auto","gutter":"auto"}},
+   {"fixture":"14-card rail fixture","width":1920,"layout":{"left":393,"width":1120},"side":{"left":425,"width":260},"ledger":{"left":741,"width":740},"railGap":56,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"auto","color":"auto","gutter":"auto"}}
+  ],
+  "after": [
+   {"fixture":"examples/job.json BUILD","width":390,"layout":{"left":0,"width":379},"side":{"left":16,"width":347},"ledger":{"left":16,"width":347},"railGap":-347,"prose":{"selector":"df-question","width":313,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"thin","color":"rgba(154, 166, 188, 0.3) rgba(0, 0, 0, 0)","gutter":"auto"}},
+   {"fixture":"examples/job.json BUILD","width":1280,"layout":{"left":75,"width":1120},"side":{"left":107,"width":260},"ledger":{"left":399,"width":764},"railGap":32,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"thin","color":"rgba(154, 166, 188, 0.3) rgba(0, 0, 0, 0)","gutter":"auto"}},
+   {"fixture":"examples/job.json BUILD","width":1920,"layout":{"left":115,"width":1680},"side":{"left":147,"width":326},"ledger":{"left":513,"width":1250},"railGap":40,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"thin","color":"rgba(154, 166, 188, 0.3) rgba(0, 0, 0, 0)","gutter":"auto"}},
+   {"fixture":"examples/job.json BUILD","width":2560,"layout":{"left":435,"width":1680},"side":{"left":467,"width":340},"ledger":{"left":847,"width":1236},"railGap":40,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"thin","color":"rgba(154, 166, 188, 0.3) rgba(0, 0, 0, 0)","gutter":"auto"}},
+   {"fixture":"14-card rail fixture","width":1280,"layout":{"left":75,"width":1120},"side":{"left":107,"width":260},"ledger":{"left":399,"width":764},"railGap":32,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"thin","color":"rgba(154, 166, 188, 0.3) rgba(0, 0, 0, 0)","gutter":"auto"}},
+   {"fixture":"14-card rail fixture","width":1920,"layout":{"left":115,"width":1680},"side":{"left":147,"width":326},"ledger":{"left":513,"width":1250},"railGap":40,"prose":{"selector":"df-question","width":594,"maxWidth":"593.92px"},"hScroll":false,"scrollbar":{"width":"thin","color":"rgba(154, 166, 188, 0.3) rgba(0, 0, 0, 0)","gutter":"auto"}}
+  ]
+ },
+ "excludes": ["live narration/TTS","Whisper timing","hosted publish","account sync","Safari ::-webkit-scrollbar fallback (not rendered here)"]
+}
