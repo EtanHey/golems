@@ -50,7 +50,7 @@ after compaction. Query slim state/activity counts and fetch full review bodies 
 
 ## Cursor's Unique Advantage in the Loop
 
-For every S-or-larger PR, run the read-only `cursor-agent -p --output-format text` diff pass
+For every S-or-larger PR, run the read-only `cursor-agent -p --trust --mode ask --output-format text` diff pass
 once per head after routed inner review and before exact-head merge checks; XS skips it.
 Cursor Auto only (no model flag). Findings only, never edit or push; this advisory bot-tier
 pass never replaces the routed reviewer. Answer every finding before merge; real findings
@@ -63,7 +63,7 @@ A GitHub `cursor[bot]` usage/rate/spend-limit notice is Bugbot activity, even on
 Use the PR's actual base branch and head SHA:
 
 ```bash
-cursor-agent -p --output-format text \
+cursor-agent -p --trust --mode ask --output-format text \
   "Review this branch's diff against <base> at head <sha> for bugs and security issues. @codebase \
    Report findings only. Do NOT edit, create, or delete any file. Do NOT push."
 ```

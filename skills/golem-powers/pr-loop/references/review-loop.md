@@ -108,11 +108,14 @@ It reports findings only and never edits files or pushes to the PR branch.
 
 ```bash
 # Use the PR's actual base branch and head SHA, not a presumed main branch.
-cursor-agent -p --output-format text \
+cursor-agent -p --trust --mode ask --output-format text \
   "Review this branch's diff against <base> at head <sha> for correctness bugs and security issues. \
    Report findings only. Do NOT edit, create, or delete any file. Do NOT push."
 ```
 
+- `--mode ask` is what makes the pass read-only: Ask mode has no write tools, and the prompt
+  alone does not enforce that. `--trust` lets a headless run start in a fresh worktree; without it,
+  the CLI stops at a "Workspace Trust Required" prompt and exits 1. Never add `--force` / `--yolo`.
 - Answer every finding like any other finding before merge. A real finding arriving after merge
   goes into a NEW PR (canon #9).
 - Record `Cursor pass: head=<sha> findings=<count>` in the PR body. Reuse coverage only for that head.
@@ -350,7 +353,7 @@ collection path does not reply to a thread; use `/replies` or the documented
 |--------|------|----------------------|
 | CodeRabbit | AI review + auto-summaries | Auto on PR. Also: CodeRabbit plugin or `coderabbit review --agent` in Codex env (`cr review --plain` for human terminal use) |
 | Codex Cloud | AI code review | `gh pr comment <N> --body "@codex review"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md "Review guidelines". Flags P0/P1 by default. |
-| Cursor (diff pass) | Standard S-or-larger endpoint pass, once per head after routed inner review; XS skips. Advisory diff findings through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --output-format text "…report findings only, do NOT edit any file"` — see routing pointer in Step 8a.2. |
+| Cursor (diff pass) | Standard S-or-larger endpoint pass, once per head after routed inner review; XS skips. Advisory diff findings through the Cursor subscription — spends no Bugbot quota | `cursor-agent -p --trust --mode ask --output-format text "…report findings only, do NOT edit any file"` — see routing pointer in Step 8a.2. |
 | Cursor Bugbot | Bug detection — **opt-in, L or very important/core-risk PRs only** | Follow 8a.1 and repo bans (8a.0). Request once if available and not already covering the head: `gh pr comment <N> --body "bugbot run"`. Record `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real usage notice; no activity on a routine PR needs no entry. Never wait or block. Bot responds as `cursor[bot]`. |
 | Greptile | AI review + codebase understanding | Comment `@greptileai review`. Needs OSS activation. |
 | DeepSource | Static analysis | DeepSource findings: use `deepsource-issues <owner/repo> <pr>`, or the `deepsource-io[bot]` inline comments via `gh api`. The token comes from `DEEPSOURCE_TOKEN` or the 0600 file `~/.config/deepsource/deepsource.env` (override: `DEEPSOURCE_TOKEN_FILE`). Never a browser, never op |

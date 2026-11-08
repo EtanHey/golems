@@ -70,7 +70,7 @@ gh pr comment <N> --body "bugbot run"   # only if eligible, available and round-
 
 Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
 
-For every S-or-larger PR, run the read-only `cursor-agent -p --output-format text` diff pass
+For every S-or-larger PR, run the read-only `cursor-agent -p --trust --mode ask --output-format text` diff pass
 once per head after routed inner review and before exact-head merge checks; XS skips it.
 Cursor Auto only (no model flag). Findings only, never edit or push; this advisory bot-tier
 pass never replaces the routed reviewer. Answer every finding before merge; real findings
