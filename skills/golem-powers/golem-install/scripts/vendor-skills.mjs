@@ -16,23 +16,10 @@ function verify(root, files) {
   }
 }
 
-export function readVendor(vendor) {
-  const bytes = readFileSync(path.join(vendor, "manifest.json")), manifest = JSON.parse(bytes);
-  let root = vendor;
-  if (manifest.generation !== undefined) {
-    if (!/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(manifest.generation)) throw new Error("unsafe vendor generation");
-    root = path.join(vendor, "generations", manifest.generation);
-    if (lstatSync(path.dirname(root)).isSymbolicLink() || lstatSync(root).isSymbolicLink()) throw new Error("symlinked vendor generation");
-    const staged = JSON.parse(readFileSync(path.join(root, "manifest.json")));
-    // Provider selection stays editable without rewriting immutable payloads.
-    if (JSON.stringify({ ...staged, providers: manifest.providers }) !== JSON.stringify(manifest)) throw new Error("vendor generation manifest drift");
-  }
-  return { bytes, manifest, root };
-}
-
 export function installVendorSkills({ home, source, apply = false }) {
   home = realpathSync(home);
-  const { bytes, manifest, root: vendor } = readVendor(path.resolve(source, "..", "vendor"));
+  const vendor = path.resolve(source, "..", "vendor");
+  const bytes = readFileSync(path.join(vendor, "manifest.json")), manifest = JSON.parse(bytes);
   if (manifest.schema !== 1) throw new Error("unsupported vendor manifest");
   verify(vendor, manifest.files);
   const ownedRoot = path.join(home, ".golems/vendor/design-skills");
@@ -77,7 +64,7 @@ export function installVendorSkills({ home, source, apply = false }) {
   for (const link of links) {
     if (apply && (!existsSync(link.entry) || realpathSync(link.entry) !== realpathSync(link.target))) {
       mkdirSync(path.dirname(link.entry), { recursive: true });
-      const temporary = `${link.entry}.staging-${randomUUID()}`;
+      const temporary = path.join(path.dirname(link.entry), `.${link.name}.staging-${randomUUID()}`);
       try {
         symlinkSync(link.target, temporary);
         renameSync(temporary, link.entry);
@@ -102,8 +89,8 @@ export function checkUpstream(manifest, query = (url, ref) => {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const vendor = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../vendor");
-    const { manifest, root } = readVendor(vendor);
-    verify(root, manifest.files);
+    const manifest = JSON.parse(readFileSync(path.join(vendor, "manifest.json")));
+    verify(vendor, manifest.files);
     if (process.argv[2] === "--check-upstream") {
       const results = checkUpstream(manifest);
       console.log(JSON.stringify(results, null, 2));

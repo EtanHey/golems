@@ -1,14 +1,13 @@
 // Copy expected upstream commits as inert PR data; review before merge/install.
 import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, lstatSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readVendor } from "./vendor-skills.mjs";
 
 export function refreshVendor({ vendor, clones, expected, apply = false, git = spawnSync }) {
   const manifestPath = path.join(vendor, "manifest.json");
-  const { manifest, root } = readVendor(vendor);
+  const manifest = JSON.parse(readFileSync(manifestPath));
   const copies = [], changes = [];
   let versionChanged = false;
   if (clones.length !== manifest.upstreams.length || expected.length !== clones.length) throw new Error("provide one clone and expected SHA per upstream");
@@ -59,30 +58,21 @@ export function refreshVendor({ vendor, clones, expected, apply = false, git = s
   if (!versionChanged && Object.keys(files).length === Object.keys(manifest.files).length && Object.entries(files).every(([file, sum]) => manifest.files[file] === sum)) return { apply: false, changed: false, changes: [], files: Object.keys(files).length };
   manifest.files = { ...manifest.files, ...files };
   if (apply) {
-    let text = readFileSync(path.join(root, "VENDOR.md"), "utf8");
+    const replace = (file, write) => {
+      const temporary = path.join(path.dirname(file), `.golems-vendor-${randomUUID()}`);
+      try { write(temporary); renameSync(temporary, file); }
+      finally { rmSync(temporary, { force: true }); }
+    };
+    for (const { src, file } of copies) replace(path.join(vendor, file), (temporary) => {
+      cpSync(src, temporary);
+      if (createHash("sha256").update(readFileSync(temporary)).digest("hex") !== files[file]) throw new Error(`source changed during copy: ${file}`);
+    });
+    const provenance = path.join(vendor, "VENDOR.md");
+    let text = readFileSync(provenance, "utf8");
     for (const change of changes) text = text.replaceAll(change.from, change.to);
-    const generations = path.join(vendor, "generations");
-    mkdirSync(generations, { recursive: true });
-    const staging = mkdtempSync(path.join(generations, ".staging-"));
-    const pending = path.join(vendor, `.manifest-${randomUUID()}`);
-    try {
-      for (const { src, file } of copies) {
-        const destination = path.join(staging, file);
-        mkdirSync(path.dirname(destination), { recursive: true });
-        cpSync(src, destination);
-        if (createHash("sha256").update(readFileSync(destination)).digest("hex") !== files[file]) throw new Error(`source changed during copy: ${file}`);
-      }
-      writeFileSync(path.join(staging, "VENDOR.md"), text);
-      manifest.generation = randomUUID();
-      const bytes = JSON.stringify(manifest, null, 2) + "\n";
-      writeFileSync(path.join(staging, "manifest.json"), bytes);
-      renameSync(staging, path.join(generations, manifest.generation));
-      writeFileSync(pending, bytes);
-      renameSync(pending, manifestPath);
-    } finally {
-      rmSync(staging, { recursive: true, force: true });
-      rmSync(pending, { force: true });
-    }
+    replace(provenance, (temporary) => writeFileSync(temporary, text));
+    // The installer's hash check refuses torn updates until this last rename.
+    replace(manifestPath, (temporary) => writeFileSync(temporary, JSON.stringify(manifest, null, 2) + "\n"));
   }
   return { apply, changed: true, changes, files: Object.keys(files).length };
 }
