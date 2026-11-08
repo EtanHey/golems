@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import boundary from "./fixtures/nl34-spoken-form.json";
 import parity from "./fixtures/nl33-spoken-form.json";
 import { prepareSpeechChannels, deriveSpeechAliases } from "../src/spoken-form.mjs";
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
@@ -66,7 +67,7 @@ for (const [display, spoken] of parity.cases) test(`NL33 shared case: ${display}
   expect(prepareSpeechChannels(display)).toEqual({ displayText: display, synthInput: spoken });
 });
 
-for (const token of ["~21:00Z", "21:5x", "PR 1/2", "PR 2026-10-22", "~200–400ms", "6pm-mini", "PR #275/#276"]) {
+for (const token of new Set([...boundary.cases.map(([input]) => input), "PR 2026-10-22", "PR #275/#276"])) {
   test(`compound token stays literal: ${token}`, () => {
     for (const rules of [[], [{ term: "PR", spoken: "pull request" }]]) {
       expect(prepareSpeechChannels(token, rules)).toEqual({ displayText: token, synthInput: token });
