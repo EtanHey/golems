@@ -198,6 +198,13 @@ If a provenance tool or column is missing, keep reading the frames directly, say
 - **Inspected ledger.** Log every frame you look at with
   `scripts/inspected.sh <workdir> <frame> <why> [finding-id]`. The report's
   coverage line is the pasted output of `scripts/coverage-count.sh <workdir>`.
+- **One image per read.** Helpers and verifiers read frames and sheets
+  one image per tool call, sequentially; never parallel or batched image reads in one turn.
+  On `[media removed …]` (including `[media removed: request limit]`) or a
+  request-limit result, treat that read as NOT inspected.
+  Do not log it to the inspected ledger (`scripts/inspected.sh`); retry it serially.
+  If the retry still fails, mark the item INCONCLUSIVE with a tooling note;
+  never record a verdict from the failed read. Single-reader fallbacks follow this rule too.
 - **Narration vs screen.** The report keeps **Narration / user says** (speech,
   described physical input such as trackpad gestures) apart from
   **Screen shows**. Input is usually invisible in a screen recording; narration alone
