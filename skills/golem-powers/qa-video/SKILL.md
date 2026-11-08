@@ -163,6 +163,12 @@ For a legacy lock without `pgid` (including old pid-only locks), verify no step 
 `logs/`. Poll `.exit` via own Bash or agy `run_command`/`view_file`; require numeric
 `0` and verify outputs before continuing. Read `.log` on failure. agy 1.2.14 has
 no `command_status`/`send_command_input`; a launch return is not completion.
+Workers use Python 3 sessions; background launches wait for `logs/<step>.lock/pgid`
+before returning. `.pid` identifies the worker/session leader; locks persist and are reclaimed
+only after the whole group dies. If a runner kills detached sessions or a launch leaves no receipt,
+use `RUN_STEP_FOREGROUND=1 bash run-step.sh <artifact-dir> <fresh-step> -- <command> [args...]`
+attached. It waits, returns the step's status and writes the same `.pid`, `.log`, atomic `.exit`
+and pgid receipts with `/dev/null` stdin. Preserve failed launch artifacts first.
 Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
