@@ -78,7 +78,8 @@ if (( check_only )); then
           echo "c missing _shared/$module"
         elif [[ "$module" == shell_parse_impl ]]; then
           rsync -rin --checksum --delete "${EXCLUDES[@]}" \
-            "$SHARED_DIR/$module/" "$HOOKS_ROOT/_shared/$module/"
+            "$SHARED_DIR/$module/" "$HOOKS_ROOT/_shared/$module/" \
+            | sed 's|^\([^ ]*\) |\1 _shared/shell_parse_impl/|'
         else
           cmp -s "$SHARED_DIR/$module" "$HOOKS_ROOT/_shared/$module" \
             || echo "c changed _shared/$module"
@@ -87,7 +88,7 @@ if (( check_only )); then
     } | awk '/^\*deleting/ || /^[>c]/ || substr($1,3,2) ~ /[cs]/'
   )"
   if [[ -n "$drift" ]]; then
-    echo "DRIFT: installed copy is stale relative to $SRC"
+    echo "DRIFT: installed copy is stale relative to $SRC and shared dependencies in $SHARED_DIR"
     echo "$drift"
     echo "Fix: $0 --skill $skill --hook $hook_rel${legacy:+ --legacy $legacy}"
     exit 1

@@ -33,6 +33,7 @@ teardown() {
     run "$INSTALLER" --skill tmp-block --hook hooks/tmp-block-pretooluse.py --check
     [ "$status" -eq 1 ]
     [[ "$output" == *"DRIFT:"* ]] || false
+    [[ "$output" == *"_shared/$path"* ]] || false
     cp "$REPO_ROOT/skills/golem-powers/_shared/$path" "$TEST_ROOT/hooks/_shared/$path"
     rm "$TEST_ROOT/hooks/_shared/$path"
     run "$INSTALLER" --skill tmp-block --hook hooks/tmp-block-pretooluse.py --check
