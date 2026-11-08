@@ -16,9 +16,6 @@
  * must not be touched, "Statton" must stay intact).
  */
 
-// AIDEV-NOTE: This vendored two-channel sanitizer lands vendor-side first;
-// upstream NarrationLayer synchronization is still owed and must preserve it.
-
 export interface TermRule {
   /** The literal token (case-insensitive) to replace. */
   term: string;
@@ -79,13 +76,6 @@ const COMPILED_TERMS: { regexp: RegExp; spoken: string }[] = TERM_MAP.map(
 
 // General rules.
 
-// Authored initialisms such as `P R`, `Q A`, and `M C P` are one acronym on the
-// synth channel. Newlines are deliberately excluded so separate lines cannot be
-// fused accidentally. A configured PR/QA entry can expand the collapsed token;
-// an unmapped sequence remains the compact acronym rather than disfluent words.
-const SPACED_CAPITALS_RULE =
-  /(?<![A-Za-z0-9])([A-Z](?:[ \t]+[A-Z]){1,})(?![A-Za-z0-9])/g;
-
 // `at @word` -> `at word`, preserving the already-spoken preposition.
 const AT_PREPOSITION_RULE =
   /(?<![A-Za-z0-9])(\bat)\s+@([A-Za-z][A-Za-z0-9]*)/gi;
@@ -111,38 +101,6 @@ const SNAKE_RULE =
 // Leading `@word` -> `at word`. The `@` must NOT be preceded by a token char,
 // so emails like `user@example` are left alone.
 const AT_RULE = /(?<![A-Za-z0-9@])@([A-Za-z][A-Za-z0-9]*)/g;
-
-function compileConfiguredTerms(rules: TermRule[]): {
-  regexp: RegExp;
-  spokenByTerm: Map<string, string>;
-} | null {
-  const spokenByTerm = new Map<string, string>();
-  for (const rule of rules) {
-    if (rule.term && rule.spoken) {
-      spokenByTerm.set(rule.term.toLocaleLowerCase("en-US"), rule.spoken);
-    }
-  }
-  if (spokenByTerm.size === 0) return null;
-
-  const alternatives = [...spokenByTerm.keys()]
-    .sort((left, right) => right.length - left.length)
-    .map(escapeRegExp)
-    .join("|");
-  return {
-    regexp: new RegExp(
-      `(?<![${TOKEN_CHAR}])(?:${alternatives})(?![${TOKEN_CHAR}])`,
-      "gi",
-    ),
-    spokenByTerm,
-  };
-}
-
-export interface SpeechChannels {
-  /** Original author text. This is the only value display/renderers may consume. */
-  displayText: string;
-  /** Normalized engine text. This is the only value TTS/cache/breathing may consume. */
-  synthInput: string;
-}
 
 interface SpeechAliasToken {
   word: string;
@@ -179,19 +137,21 @@ export function deriveSpeechAliases(displayText: string, synthInput: string): Te
   }
 
   const aliases = new Map<string, TermRule>();
+  const addAlias = (term: string, spoken: string) => {
+    const displayKey = term.toLocaleLowerCase("en-US").replace(/[^\p{L}\p{N}]+/gu, "");
+    const spokenKey = spoken.toLocaleLowerCase("en-US").replace(/[^\p{L}\p{N}]+/gu, "");
+    if (!displayKey || !spokenKey || /^\d$/.test(displayKey) || (/\s/.test(term) && !/^[A-Z](?: [A-Z])+$/.test(term))) return;
+    aliases.set(`${displayKey}\u0000${spokenKey}`, { term, spoken });
+  };
   let displayIndex = 0;
   let synthIndex = 0;
   let displayGap: SpeechAliasToken[] = [];
   let synthGap: SpeechAliasToken[] = [];
   const flushGap = () => {
-    if (displayGap.length && synthGap.length) {
+    if ((displayGap.length === 1 || /^[A-Z](?: [A-Z])+$/.test(displayGap.map(token => token.word).join(" "))) && synthGap.length) {
       const term = displayGap.map((token) => token.word).join(" ");
       const spoken = synthGap.map((token) => token.word).join(" ");
-      const key = displayGap.map((token) => token.comparable).join("");
-      aliases.set(`${key}\u0000${synthGap.map((token) => token.comparable).join("")}`, {
-        term,
-        spoken,
-      });
+      addAlias(term, spoken);
     }
     displayGap = [];
     synthGap = [];
@@ -213,28 +173,29 @@ export function deriveSpeechAliases(displayText: string, synthInput: string): Te
   displayGap.push(...display.slice(displayIndex));
   synthGap.push(...synth.slice(synthIndex));
   flushGap();
+  mapProse(displayText, prose => {
+    for (const term of prose.match(/\S+/g) ?? []) {
+      const spoken = normalizeSpokenRules(term);
+      if (spoken !== term && synthInput.includes(spoken)) addAlias(term, spoken);
+    }
+    return prose;
+  });
   return [...aliases.values()].sort((left, right) => right.term.length - left.term.length);
 }
 
-export function normalizeForSpeech(text: string, configuredRules: TermRule[] = []): string {
+// Skill adaptation: the callback runs its own spoken-form rules exactly once.
+export function normalizeLegacy(text: string, configuredRules: TermRule[] = []): string {
   if (!text) {
     return text;
   }
 
-  let result = text.replace(
-    SPACED_CAPITALS_RULE,
-    (match) => match.replace(/[ \t]+/g, ""),
-  );
-
-  // Install overlays win by running before the legacy static term map. Phrase
-  // rules are sorted longest-first so a contextual entry cannot be pre-empted by
-  // a shorter token from the same overlay.
-  const configuredTerms = compileConfiguredTerms(configuredRules);
-  if (configuredTerms) {
-    result = result.replace(
-      configuredTerms.regexp,
-      (match) => configuredTerms.spokenByTerm.get(match.toLocaleLowerCase("en-US")) ?? match,
-    );
+  // Skill adaptation: collapse same-line authored initialisms before overlays.
+  let result = text.replace(/(?<![A-Za-z0-9])([A-Z](?:[ \t]+[A-Z]){1,})(?![A-Za-z0-9])/g, match => match.replace(/[ \t]+/g, ""));
+  const rules = [...configuredRules].filter(rule => rule.term && rule.spoken).sort((a, b) => b.term.length - a.term.length);
+  if (rules.length) {
+    const byTerm = new Map(rules.map(rule => [rule.term.toLocaleLowerCase("en-US"), rule.spoken]));
+    const pattern = new RegExp(`(?<![${TOKEN_CHAR}])(?:${rules.map(rule => escapeRegExp(rule.term)).join("|")})(?![${TOKEN_CHAR}])`, "gi");
+    result = result.replace(pattern, match => byTerm.get(match.toLocaleLowerCase("en-US")) ?? match);
   }
 
   result = result.replace(
@@ -265,16 +226,64 @@ export function normalizeForSpeech(text: string, configuredRules: TermRule[] = [
   return result;
 }
 
-/**
- * Make the display/engine separation explicit at the preprocessing seam.
- * Callers must render displayText and send only synthInput to the TTS engine.
- */
-export function prepareSpeechChannels(
-  displayText: string,
-  configuredRules: TermRule[] = [],
-): SpeechChannels {
-  return {
-    displayText,
-    synthInput: normalizeForSpeech(displayText, configuredRules),
-  };
+const SMALL = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split(" ");
+const TENS = "zero ten twenty thirty forty fifty sixty seventy eighty ninety".split(" ");
+
+function cardinal(value: string | number): string {
+  const n = Number(value);
+  if (n < 20) return SMALL[n];
+  if (n < 100) return TENS[Math.floor(n / 10)] + (n % 10 ? `-${SMALL[n % 10]}` : "");
+  if (n < 1000) return `${SMALL[Math.floor(n / 100)]} hundred${n % 100 ? ` ${cardinal(n % 100)}` : ""}`;
+  return `${cardinal(Math.floor(n / 1000))} thousand${n % 1000 ? ` ${cardinal(n % 1000)}` : ""}`;
+}
+
+function referenceNumber(value: string): string {
+  if (value.startsWith("0")) return [...value].map(digit => SMALL[Number(digit)]).join(" ");
+  const n = Number(value);
+  if (n >= 100 && n < 1000 && n % 100) return `${SMALL[Math.floor(n / 100)]} ${n % 100 < 10 ? "oh " : ""}${cardinal(n % 100)}`;
+  return cardinal(n);
+}
+
+function clock(hour: string | number, minute: string | undefined, period: string): string {
+  const minutes = Number(minute || 0);
+  return `${cardinal(hour)}${minutes ? ` ${minutes < 10 ? "oh " : ""}${cardinal(minutes)}` : ""} ${period} m`;
+}
+
+const PROTECTED = /(`+)[\s\S]*?\1(?!`)|(~{3,})[\s\S]*?\2|https?:\/\/[^\s<>`]+/gi;
+function mapProse(text: string, transform: (prose: string) => string): string {
+  let output = "";
+  let cursor = 0;
+  for (const match of text.matchAll(PROTECTED)) {
+    output += transform(text.slice(cursor, match.index)) + match[0];
+    cursor = match.index + match[0].length;
+  }
+  return output + transform(text.slice(cursor));
+}
+
+const SPOKEN_RULES: Array<[RegExp, (...args: string[]) => string]> = [
+  [/(?<![\w:.])((?:1[0-2]|0?[1-9])(?::[0-5]\d)?[ \t]*[ap](?:\.m\.?|m)(?!\w)(?:-[ \t]*(?:1[0-2]|0?[1-9])(?::[0-5]\d)?[ \t]*[ap](?:\.m\.?|m)(?!\w))*)(-\w+)?/gi,
+    (match, times, suffix) => suffix ? match : times.replace(/(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)/gi, (_: string, h: string, m: string, p: string) => clock(h, m, p.toLowerCase()))],
+  [/\b(at|by|until|from)([ \t]+)([01]\d|2[0-3]):([0-5]\d)(?![\w:]|-\w|[ \t]*[ap]\.?m)/gi, (_, prefix, space, h, m) => `${prefix}${space}${clock(Number(h) % 12 || 12, m, Number(h) < 12 ? "a" : "p")}`],
+  [/(?<![\w#])(?:PR|pull[ \t]+request)[ \t]+#?(\d{1,6})(?![\w/]|-\d|[ \t]*[+&,][ \t]*#\d)/gi, (_, n) => `pull request ${referenceNumber(n)}`],
+  [/\be\.g\./gi, () => "for example"], [/\bi\.e\./gi, () => "that is"],
+  [/(?<![\w-])vs\b\.?(?!-)/g, () => "versus"], [/\bapprox\./gi, () => "approximately"],
+  [/(?<![\w:])~(\d{1,6})(?:(?:\.(\d+))?(%)|(?![\w:/–—%-]|\.\d))/g, (_, n, fraction, percent) => `about ${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""}${percent ? " percent" : ""}`],
+  [/(?<![\w.])(\d{1,6})(?:\.(\d+))?%/g, (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} percent`],
+  [/(\p{L}|\p{N})?%/gu, (_, preceding) => preceding ? `${preceding} percent` : "percent"],
+  [/(?<![\w.:–—-])(?<!\|[ \t])(\d{1,6})(?:\.(\d+))?x(?![\w:–—-]|\s+(?:high|max|medium|low)\b)/gi, (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} times`],
+  [/(?<![\w./-])v(\d{1,6}(?:\.\d{1,6})+)(?![\w/-]|\.\d)/gi, (_, version) => `version ${version.split(".").map(cardinal).join(" point ")}`],
+];
+
+function normalizeSpokenRules(text: string): string {
+  return SPOKEN_RULES.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), text);
+}
+
+export function normalizeForSpeech(text: string, pronunciationRules: TermRule[] = []): string {
+  return normalizeLegacy(mapProse(text, normalizeSpokenRules), pronunciationRules);
+}
+
+export interface SpeechChannels { displayText: string; synthInput: string }
+
+export function prepareSpeechChannels(displayText: string, pronunciationRules: TermRule[] = []): SpeechChannels {
+  return { displayText, synthInput: normalizeForSpeech(displayText, pronunciationRules) };
 }

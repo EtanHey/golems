@@ -1,4 +1,4 @@
-import { normalizeForSpeech, deriveSpeechAliases as deriveLegacyAliases } from "../vendor/narrationlayer/text-normalize.ts";
+import { normalizeLegacy as normalizeForSpeech, deriveSpeechAliases as deriveLegacyAliases } from "../vendor/narrationlayer/text-normalize.ts";
 
 const SMALL = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split(" ");
 const TENS = "zero ten twenty thirty forty fifty sixty seventy eighty ninety".split(" ");

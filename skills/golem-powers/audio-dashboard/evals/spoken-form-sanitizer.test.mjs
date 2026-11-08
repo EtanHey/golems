@@ -22,6 +22,7 @@ const runnerSource = readFileSync(
   path.join(here, "..", "vendor", "narrationlayer", "local-tts-runner.ts"),
   "utf8",
 );
+const wrapperSource = readFileSync(path.join(here, "..", "scripts", "local-tts.mjs"), "utf8");
 const synthSegmentsSource = readFileSync(path.join(here, "..", "scripts", "synth-segments.mjs"), "utf8");
 const buildDashboardSource = readFileSync(path.join(here, "..", "scripts", "build-dashboard.mjs"), "utf8");
 const skillText = readFileSync(path.join(here, "..", "SKILL.md"), "utf8");
@@ -171,11 +172,12 @@ test("approved synth/display aliases keep real STT timing on expanded display to
 
 test("local TTS runtime loads config and sends only synthInput into the engine path", () => {
   const mainSource = runnerSource.slice(runnerSource.indexOf("async function main"));
-  expect(runnerSource).toContain("loadPronunciationRules");
+  expect(wrapperSource).toContain("loadPronunciationRules");
   expect(runnerSource).toContain("prepareSpeechChannels");
-  expect(runnerSource).toMatch(/const pronunciationRules = loadPronunciationRules\(\)/);
+  expect(wrapperSource).toContain("prepareSkillSpeechChannels(text, loadPronunciationRules())");
+  expect(wrapperSource).toContain("main(prepareSpeechChannels)");
   expect(runnerSource).toMatch(
-    /const \{ synthInput: spokenText \} = prepareSpeechChannels\(args\.text, pronunciationRules\)/,
+    /const channels = prepareSpeechChannels\(args\.text, \[\]\)/,
   );
   expect(runnerSource).not.toContain("normalizeForSpeech(args.text)");
   expect(mainSource).not.toMatch(/args\.text\s*=/);
