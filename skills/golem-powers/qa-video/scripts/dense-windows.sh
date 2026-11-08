@@ -12,7 +12,7 @@
 #              sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label
 #              and frames.tsv, one row per tile:
 #              sheet_file<TAB>tile<TAB>t_s + appended provenance columns
-#              (see references/provenance.md); full-size frames are retained.
+#              (see references/provenance.md); registered full-size frames are durable inspection targets.
 #              Times are the real presentation timestamps of the extracted
 #              frames (ffmpeg showinfo), not the requested window start: input
 #              seeking can leave the first output frame later than the window
@@ -34,12 +34,18 @@ ROWS=4
 PER_SHEET=$((COLS * ROWS))
 
 usage() {
-  echo "usage: dense-windows.sh <video> <cues.tsv> <outdir> [fps=10] [pre=1.0] [post=2.0] (fps: integer 1-120)" >&2
+  echo "usage: dense-windows.sh <video> <cues.tsv> <outdir> [fps=10] [pre=1.0] [post=2.0] [--keep-frames] (fps: integer 1-120)" >&2
   exit 2
 }
 die() { echo "dense-windows: $*" >&2; exit 1; }
 is_num() { printf '%s' "$1" | grep -Eq '^[0-9]+([.][0-9]+)?$'; }
 
+KEEP_FRAMES="${DENSE_KEEP_FRAMES:-0}"
+# Rotate the original arguments, removing the optional flag without losing spaces.
+for arg do
+  shift
+  case "$arg" in --keep-frames) KEEP_FRAMES=1 ;; *) set -- "$@" "$arg" ;; esac
+done
 [ $# -ge 3 ] && [ $# -le 6 ] || usage
 VIDEO="$1"; CUES="$2"; OUTDIR="$3"
 FPS="${4:-10}"; PRE="${5:-1.0}"; POST="${6:-2.0}"
@@ -48,6 +54,14 @@ printf '%s' "$FPS" | grep -Eq '^[0-9]+$' || { echo "dense-windows: fps must be a
 [ "$FPS" -ge 1 ] && [ "$FPS" -le 120 ] || { echo "dense-windows: fps must be 1-120: $FPS" >&2; exit 2; }
 is_num "$PRE" || { echo "dense-windows: pre must be seconds >= 0: $PRE" >&2; exit 2; }
 is_num "$POST" || { echo "dense-windows: post must be seconds >= 0: $POST" >&2; exit 2; }
+
+FRAME_FORMAT="${DENSE_FRAME_FORMAT:-jpg}"
+case "$FRAME_FORMAT" in jpg|png) ;; *) die "DENSE_FRAME_FORMAT must be jpg or png" ;; esac
+MAX_GB="${DENSE_MAX_GB:-5}"
+is_num "$MAX_GB" || die "DENSE_MAX_GB must be GB >= 0: $MAX_GB"
+MAX_KIB="$(awk -v g="$MAX_GB" 'BEGIN { printf "%.6f", g * 1024 * 1024 }')"
+KEEP_LIST="${DENSE_KEEP_LIST:-}"
+[ -z "$KEEP_LIST" ] || [ -f "$KEEP_LIST" ] || die "DENSE_KEEP_LIST not found: $KEEP_LIST"
 
 TILE_W="${DENSE_TILE_WIDTH:-480}"
 printf '%s' "$TILE_W" | grep -Eq '^[0-9]+$' || die "DENSE_TILE_WIDTH must be an integer: $TILE_W"
@@ -72,6 +86,22 @@ case "$(basename "$OUTDIR")" in refine*) DEFAULT_SOURCE=refine ;; *) DEFAULT_SOU
 SOURCE="${QA_FRAME_SOURCE:-$DEFAULT_SOURCE}"
 case "$SOURCE" in dense|refine) ;; *) die "QA_FRAME_SOURCE must be dense or refine" ;; esac
 mkdir -p "$OUTDIR"
+# The trap owns only the active window, never another job's output.
+FRAME_PREFIX=""
+cleanup_failed_window() {
+  rc=$?
+  trap - EXIT
+  if [ -n "$FRAME_PREFIX" ]; then
+    if [ "$KEEP_FRAMES" != 1 ]; then
+      python3 "$SCRIPTS/provenance.py" cleanup "$OUTDIR" "$FRAME_PREFIX" "$KEEP_LIST" || rc=1
+    fi
+  fi
+  exit "$rc"
+}
+trap cleanup_failed_window EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 WINDOWS="$OUTDIR/.windows.tsv"
 # Pad each cue to [start-pre, end+post], clamp to the video, sort, and merge
 # overlapping windows. Output: start<TAB>end<TAB>label (labels joined " | ").
@@ -116,22 +146,29 @@ while IFS="$TAB" read -r ws we label; do
   frames="$(awk -v s="$ws" -v e="$we" -v f="$FPS" 'BEGIN { printf "%d", (e - s) * f + 0.5 }')"
   [ "$frames" -gt 0 ] || continue
 
+  disk_usage="$(du -sk "$OUTDIR")" || die "DENSE_BUDGET_MEASURE_FAILED outdir=$OUTDIR"
+  used_kib="$(printf '%s\n' "$disk_usage" | awk '{print $1}')"
+  awk -v used="$used_kib" -v max="$MAX_KIB" 'BEGIN { exit !(used > max) }' &&
+    die "DENSE_BUDGET_EXCEEDED used_kib=$used_kib max_kib=$MAX_KIB max_gb=$MAX_GB outdir=$OUTDIR"
   window_no=$((window_no + 1))
+  # Refuse collisions before assigning trap ownership.
+  [ -z "$(find "$OUTDIR" -maxdepth 1 -name "window_$window_no-f_*")" ] || die "frame prefix already exists"
   FRAME_PREFIX="$OUTDIR/window_$window_no"
   # showinfo logs each output frame's pts_time, relative to the seek point.
   # AIDEV-NOTE: never index from $ws + i/fps alone; the first frame's PTS can
   # be > 0 after input seeking (#279 review), shifting every tile's time.
   # AIDEV-NOTE: -fps_mode passthrough keeps PNGs and showinfo rows one-to-one.
+  # This applies to JPEG intermediates too.
   # The image2 muxer's default cfr sync pads the gap before a late first frame
   # with duplicates emitted after showinfo (VFR recordings with an audio track),
   # so PNG n would no longer be showinfo row n. The fps filter already makes
   # the stream constant-rate; the muxer must not add or drop frames.
   ffmpeg -hide_banner -loglevel info -nostdin -ss "$ws" -i "$VIDEO" -t "$(awk -v s="$ws" -v e="$we" 'BEGIN { printf "%.3f", e - s }')" \
-    -vf "fps=$FPS,showinfo" -fps_mode passthrough -frames:v "$frames" "$FRAME_PREFIX-f_%05d.png" \
+    -vf "fps=$FPS,showinfo" -fps_mode passthrough -frames:v "$frames" -q:v 3 "$FRAME_PREFIX-f_%05d.$FRAME_FORMAT" \
     2> "$FRAME_PREFIX-showinfo.log" \
     || { tail -5 "$FRAME_PREFIX-showinfo.log" >&2; die "frame extraction failed for window $ws-$we"; }
 
-  got="$(find "$OUTDIR" -maxdepth 1 -name "window_$window_no-f_*.png" | wc -l | tr -d ' ')"
+  got="$(find "$OUTDIR" -maxdepth 1 -name "window_$window_no-f_*.$FRAME_FORMAT" | wc -l | tr -d ' ')"
   [ "$got" -gt 0 ] || die "no frames extracted for window $ws-$we"
 
   # Absolute time of each extracted frame, one per line, in output order.
@@ -147,13 +184,17 @@ while IFS="$TAB" read -r ws we label; do
     sheet_no=$((sheet_no + 1))
     sheet="$(printf 'sheet_%03d.jpg' "$sheet_no")"
     ffmpeg -hide_banner -loglevel error -nostdin -y -start_number $((first + 1)) \
-      -i "$FRAME_PREFIX-f_%05d.png" -frames:v 1 -vf "scale=$TILE_W:-2,tile=${COLS}x${ROWS}" -q:v 3 "$OUTDIR/$sheet" \
+      -i "$FRAME_PREFIX-f_%05d.$FRAME_FORMAT" -frames:v 1 -vf "scale=$TILE_W:-2,tile=${COLS}x${ROWS}" -q:v 3 "$OUTDIR/$sheet" \
       || die "tiling failed for $sheet"
     start="$(sed -n "$((first + 1))p" "$FRAME_PREFIX-pts.txt")"
     printf '%s\t%s\t%s\t%s\t%s\n' "$sheet" "$start" "$FPS" "$tiles" "$label" >> "$INDEX.tmp"
     python3 "$SCRIPTS/provenance.py" sheet "$OUTDIR" "$FRAME_PREFIX" "$SOURCE" "$sheet" "$first" "$tiles"
     chunk=$((chunk + 1))
   done
+  if [ "$KEEP_FRAMES" != 1 ]; then
+    python3 "$SCRIPTS/provenance.py" cleanup "$OUTDIR" "$FRAME_PREFIX" "$KEEP_LIST"
+  fi
+  FRAME_PREFIX=""
 done < "$WINDOWS"
 
 mv "$INDEX.tmp" "$INDEX"

@@ -20,8 +20,23 @@ Coverage selects a full-resolution still at 0, 30, 60… seconds before duration
 its PTS comes from decoded `showinfo` with `-copyts`, not the requested seek.
 Dense/refine keep their existing fps-filter/showinfo timestamps plus seek offset;
 these are sampled output presentation times, including duplicated samples.
-Full-resolution PNGs survive as `window_N-f_*.png` directly in the output
-directory; only sheets are scaled. Logs (`window_N-showinfo.log`) and decoded
+Full-resolution JPEGs (`-q:v 3`) are written directly as `window_N-f_*.jpg`;
+`DENSE_FRAME_FORMAT=png` explicitly selects lossless `window_N-f_*.png` instead.
+The selected file is the durable inspection target: its own absolute path,
+SHA256 and PTS are registered, with source=dense/refine and empty crop_of.
+Only sheets are scaled. After each window and on failure, cleanup removes only
+unregistered per-frame files; any local/run ledger reference always survives.
+A failed window can therefore retain already-registered frames. `--keep-frames`
+(trailing flag) or `DENSE_KEEP_FRAMES=1` also retains unregistered intermediates.
+`DENSE_KEEP_LIST=<file>` protects additional absolute frame paths or output-relative
+basenames, or `sheet<TAB>tile` rows (zero-based tile; sheet relative to this outdir).
+A keep list supplements ledger retention; it never prunes referenced frames.
+Before each window, `du -sk` checks this outdir against `DENSE_MAX_GB` (default 5,
+1 GB = 1048576 KiB). Exceeding it refuses with `DENSE_BUDGET_EXCEEDED` and exact
+used/max KiB before starting that window. This is a pre-window check, so a single
+window can exceed the budget; it is not a global disk or concurrent-job limit.
+Below 100 GB free (`df -g` / `df -k`), cap parallel dense-window jobs at 2;
+this is a caller rule, with no slot-lock implementation. Logs (`window_N-showinfo.log`) and decoded
 PTS (`window_N-pts.txt`) also stay flat beside them. Use fresh directories for retries.
 
 `frames.tsv` remains **headerless** for existing positional readers. Columns:

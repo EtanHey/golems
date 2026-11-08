@@ -144,12 +144,44 @@ def counts(work):
     print(f'extracted={len(data)} unique={len(data)-repeated} repeated={repeated} '
           f'inspected={len(read)} pre-sorted-only={len((only & known)-read)}')
 
+def window_frames(prefix):
+    prefix = Path(prefix)
+    return sorted(frame for ext in ('jpg', 'png')
+                  for frame in prefix.parent.glob(prefix.name+'-f_*.'+ext))
+
+def cleanup(work, prefix, keep_list):
+    work = Path(work).resolve()
+    # A failed sheet may already have registered some frames in either ledger.
+    # Those paths remain valid for inspect/crop/counts and #1182 evidence.
+    keep = {Path(r[key]) for root in {work, run_root(work)} for r in rows(root)
+            for key in ('frame', 'crop_of', 'repeat_of') if r[key]}
+    if keep_list:
+        for line in Path(keep_list).read_text().splitlines():
+            if not line:
+                continue
+            fields = line.split('\t')
+            if len(fields) == 1:
+                path = Path(fields[0])
+                keep.add((work/path if path.parent == Path('.') else path).resolve())
+            elif len(fields) == 2 and fields[1].isdigit():
+                sheet, tile = fields
+                keep.update(Path(r['frame']) for r in rows(work)
+                            if (work/r['sheet']).resolve() == (work/sheet).resolve()
+                            and r['tile'] == str(int(tile)))
+            else:
+                raise ValueError('DENSE_KEEP_LIST expects frame path or sheet<TAB>tile')
+    for frame in window_frames(prefix):
+        if frame.resolve() not in keep:
+            frame.unlink()
+
 def main():
     action, *args = sys.argv[1:]
-    if action == 'sheet':
+    if action == 'cleanup':
+        cleanup(*args)
+    elif action == 'sheet':
         work, prefix, source, sheet, first, n = args
         prefix = Path(prefix)
-        frames = sorted(prefix.parent.glob(prefix.name+'-f_*.png'))
+        frames = window_frames(prefix)
         pts = prefix.with_name(prefix.name+'-pts.txt').read_text().splitlines()
         a, n = int(first), int(n)
         record(work, [(frames[i], pts[i], source, sheet, i-a, '') for i in range(a, a+n)])
