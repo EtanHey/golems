@@ -56,6 +56,7 @@ sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) != _HOOK_DIR] + 
 import hashlib
 import fcntl
 import tempfile
+import time
 import json
 import os
 import re
@@ -262,9 +263,17 @@ def main():
     try:
         os.makedirs(state_dir, exist_ok=True)
         lock = open(_cache_path(state_dir, file_path) + ".lock", "a")
-        # Never wait behind a stuck hook. Without custody, lint but do not
-        # read or advance the cache; the holder reads the latest file state.
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # Keep the per-target lock file: unlinking it races with other flock users.
+        deadline = time.monotonic() + 0.35
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise
+                time.sleep(min(0.01, remaining))
         cache_available = True
     except OSError:
         pass
@@ -299,8 +308,9 @@ def _lint(payload, tool_input, file_path, state_dir, cache_available):
             new_lines = _multiset_new(current_lines, cached)
         else:
             new_lines = current_lines
-            # no cache + not a fresh create => lines may be old: future-only
-            provenance_known = created
+            # Missing history is normally future-only. If cache custody failed,
+            # run full advisory checks instead of losing warnings under contention.
+            provenance_known = created or not cache_available
 
     now_min, now_str = _now_minutes()
     findings = _stamp_findings(new_lines, provenance_known, now_min, now_str)
