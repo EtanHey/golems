@@ -73,3 +73,45 @@ test('summary opt-in is literal: false, blank summary and string true do not lab
     expect(renderDecisionFlow(fixture(long, [short], extra))).not.toContain(`class="df-audio-summary"`);
   }
 });
+
+test('coverage is ordered, counts repeated words, and has one symmetric 10% limit', async () => {
+  const { analyzeCardTextAudio } = await import('../src/card-text-audio-gate.mjs');
+  const analyze = (body, scripts, extra = {}, transform = html => html) => {
+    const data = fixture(body, scripts, extra);
+    return analyzeCardTextAudio({ html: transform(renderDecisionFlow(data)), ...data });
+  };
+  expect(analyze('one two three four five six seven eight nine ten', ['one two three four five six seven eight nine']).verdict).toBe('PASS');
+  expect(analyze('one two three four five six seven eight nine', ['one two three four five six seven eight nine ten']).verdict).toBe('PASS');
+  expect(analyze('one two three four five six seven eight nine ten', ['one two three four five six seven eight']).verdict).toBe('REJECTED');
+  expect(analyze('one two three four five six seven eight', ['one two three four five six seven eight nine ten']).verdict).toBe('REJECTED');
+  expect(analyze('alpha beta gamma delta', ['delta gamma beta alpha']).verdict).toBe('REJECTED');
+  expect(analyze('alpha alpha alpha alpha beta', ['alpha beta']).verdict).toBe('REJECTED');
+  expect(analyze('Read [the guide](https://example.com/guide).', ['Read the guide.']).verdict).toBe('PASS');
+  expect(analyze(long, [short], { audioSummary: true }, html => html.replace('class="df-audio-summary"', 'class="removed"')).verdict).toBe('REJECTED');
+  expect(analyze(long, [short], { summary: 'Overview' }, html => html.replace('class="df-audio-summary"', 'hidden class="df-audio-summary"')).verdict).toBe('REJECTED');
+});
+
+test('cards cannot borrow another card narration to satisfy coverage', async () => {
+  const { analyzeCardTextAudio } = await import('../src/card-text-audio-gate.mjs');
+  const data = fixture(short);
+  data.scenes.push({ ...data.scenes[0], id: 'other', script: long });
+  data.decisions.push({ id: 'other', title: 'Other card', body: long, sceneIds: ['other'] });
+  data.decisions[0].body = long;
+  const result = analyzeCardTextAudio({ ...data, html: renderDecisionFlow(data) });
+  expect(result.violations.map(v => v.segment)).toEqual(['card']);
+});
+
+test('the comparison reads authored scripts, never spoken-form or timed display words', async () => {
+  const { analyzeCardTextAudio } = await import('../src/card-text-audio-gate.mjs');
+  const data = fixture('Review at 9pm.', ['Review at 9pm.']);
+  data.scenes[0].synthScript = 'Review at nine p m.';
+  data.scenes[0].words = [{ word: 'unrelated', start: 0, end: 1 }];
+  expect(analyzeCardTextAudio({ ...data, html: renderDecisionFlow(data) }).verdict).toBe('PASS');
+});
+
+test('the checked-in decision-flow example covers its authored narration', async () => {
+  const { analyzeCardTextAudio } = await import('../src/card-text-audio-gate.mjs');
+  const data = JSON.parse(readFileSync(new URL('../examples/job.json', import.meta.url), 'utf8'));
+  const scenes = data.scenes.map(s => ({ ...s, words: [], duration: 1 }));
+  expect(analyzeCardTextAudio({ ...data, html: renderDecisionFlow({ ...data, scenes }) }).verdict).toBe('PASS');
+});

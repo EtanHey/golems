@@ -1,5 +1,6 @@
 import { ANSWER_RUNTIME, dashboardId } from './answer-persistence.mjs';
 import { COPY_BLOCK_ASSETS, renderCardBody } from './copy-blocks.mjs';
+import { AUDIO_SUMMARY_LABEL, hasAudioSummary } from './card-text-audio-gate.mjs';
 import { validateSources } from './decision-sources.mjs';
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -422,6 +423,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
       <span class="df-player-state" aria-live="polite">Ready · ${clips} clip${clips === 1 ? "" : "s"}, ${listenTime}</span>
       ${audio}
     </div>
+    ${hasAudioSummary(decision) ? `<p class="df-audio-summary">${AUDIO_SUMMARY_LABEL}</p>` : ""}
     <div class="df-teleprompter" hidden aria-live="off">${transcript}</div>
     <button type="button" class="df-answer-open" aria-haspopup="dialog" aria-controls="sheet-${escapeHtml(decision.id)}"><span class="df-ao-todo">Answer this card</span><span class="df-ao-offer">Your turn: answer this card</span><span class="df-ao-done">Answered, review</span></button>
     ${renderComparisonOpener(comparison)}

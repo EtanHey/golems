@@ -356,7 +356,7 @@ test("build-dashboard renders decision-flow as a distinct card-local audio type"
         rank: 2,
         title: "Path B",
         status: "READY",
-        body: "Choose the second path.",
+        body: "Play All decision-b-alpha decision-b-beta",
         options: ["One", "Two"],
         sceneIds: ["decision-b"]
       }
@@ -415,7 +415,7 @@ test("decision-flow defaults omitted options to a free-text-only answer", () => 
     type: "decision-flow",
     id: "free-text-only",
     scenes: [{ id: "only", script: "alpha beta" }],
-    decisions: [{ id: "free", title: "Free text", sceneIds: ["only"] }]
+    decisions: [{ id: "free", title: "Free text", body: "alpha beta", sceneIds: ["only"] }]
   }, jobDir, "free-text-only");
 
   expect(result.status).toBe(0);
@@ -437,7 +437,7 @@ test("decision-flow build passes each scene's speaker and role into the read-alo
       { id: "ask", title: "The question", role: "host", reference: "ben-c1", script: "why now" },
       { id: "answer", title: "The answer", role: "expert", speaker: "Theo", script: "because proof" },
     ],
-    decisions: [{ id: "d1", title: "Two voices", options: ["Yes"], sceneIds: ["ask", "answer"] }],
+    decisions: [{ id: "d1", title: "Two voices", body: "why now because proof", options: ["Yes"], sceneIds: ["ask", "answer"] }],
   }, jobDir, "two-voices");
   expect(result.status).toBe(0);
   const html = readFileSync(outputPath, "utf8");
@@ -485,7 +485,7 @@ test("decision-flow build passes a comparison and its timeout into the rendered 
     id: "decision-flow-comparison",
     scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
     comparisonTimeoutMs: 4000,
-    decisions: [{ id: "gate", title: "Gate", body: "Compare the takes.", sceneIds: ["only"], comparison: { url: "visuals/gate.html" } }]
+    decisions: [{ id: "gate", title: "Gate", body: "alpha beta", sceneIds: ["only"], comparison: { url: "visuals/gate.html" } }]
   }, jobDir, "decision-flow-comparison");
   expect(result.status).toBe(0);
   const html = readFileSync(outputPath, "utf8");
@@ -511,7 +511,7 @@ test("decision-flow build accepts only the canonical comparison ready marker", a
     id: "decision-flow-comparison-ready",
     outputPath,
     scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
-    decisions: [{ id: "gate", title: "Gate", body: "Compare the takes.", sceneIds: ["only"], comparison: { url: "visuals/gate.html#chart" } }]
+    decisions: [{ id: "gate", title: "Gate", body: "alpha beta", sceneIds: ["only"], comparison: { url: "visuals/gate.html#chart" } }]
   };
   const build = html => { writeFileSync(page, html); return buildDashboard(spec, jobDir, "decision-flow-comparison-ready").result; };
 
@@ -708,7 +708,7 @@ test("decision-flow build rejects a bare #number until the card links a reposito
     type: "decision-flow",
     id: "decision-flow-bare-ref",
     scenes: [{ id: "only", title: "Only", script: "alpha beta" }],
-    decisions: [{ id: "gate", title: "Gate", body: "Merged in #39.", sceneIds: ["only"], rail }]
+    decisions: [{ id: "gate", title: "Gate", audioSummary: true, body: "Merged in #39.", sceneIds: ["only"], rail }]
   });
 
   const bare = buildDashboard(spec([{ label: "PR", value: "#39" }]), jobDir, "decision-flow-bare-ref").result;

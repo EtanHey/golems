@@ -36,7 +36,7 @@ function hostedJob(testCell) {
   const outputPath = path.join(jobDir, 'docs.local/dashboards/example.html'), specPath = path.join(jobDir, 'job.json');
   writeFileSync(specPath, JSON.stringify({ id: 'example', design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, series: 'isolated-handoff-fixture', type: 'decision-flow', outputPath,
     acceptedBaseline: { path: baselinePath, sha256: sha256(readFileSync(baselinePath)) },
-    scenes: [{ id: 'one', script: 'real timing', audioWav: wav }], decisions: [{ id: 'd', title: 'Decision', body: 'Read [guide](https://example.com/guide).', sceneIds: ['one'], options: ['Keep', 'Change'], checklist: ['First', 'Second'] }] }));
+    scenes: [{ id: 'one', script: 'real timing', audioWav: wav }], decisions: [{ id: 'd', title: 'Decision', body: 'real timing', sources: [{ label: 'guide', url: 'https://example.com/guide' }], sceneIds: ['one'], options: ['Keep', 'Change'], checklist: ['First', 'Second'] }] }));
   return { jobDir, outputPath, specPath };
 }
 (mediaTools ? test : test.skip)('real BUILD and QA produce a handoff; only delivery receipt earns PASS', () => {

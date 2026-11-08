@@ -93,6 +93,15 @@ audio strip / separate question list from reappearing.
 
 ## Card detail format
 
+BUILD rejects `CARD_TEXT_AUDIO_MISMATCH` when more than 10% of rendered card
+prose or owned scenes' authored script words lack an ordered match in the other
+(longest common subsequence, normalized case, punctuation and whitespace).
+It compares summary plus body; titles, rail metadata, controls, options,
+Sources/copyPrompt and code blocks are excluded. The one threshold lives in
+`src/card-text-audio-gate.mjs`. An honest summary declares `audioSummary: true`
+or a nonblank `summary`; the renderer visibly labels it **Audio is a summary of
+this card**, and BUILD requires that label outside the collapsed answer sheet.
+
 Follow [Card detail affordances](references/card-format.md): text-only cards
 must not repeat their text in a View details expander. Either offer no secondary
 action, or offer a **Listen deeper** button that opens an inline narrated section
