@@ -518,13 +518,28 @@ function identity(path) {
   return `${stat.dev}:${stat.ino}`;
 }
 
-function reconcile(intent) {
+function readJson(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    throw new Error(`cannot read rollup JSON: ${path}`);
+  }
+}
+
+function completionFile(planFile) {
+  return planFile.replace(/rollup-plan-([^/]+)$/, "rollup-complete-$1");
+}
+
+function reconcile(intent, eligible) {
   const moves = intent.moves.map((move) => {
     const locations = [move.from, move.to].filter((p) => existsSync(join(intent.repo, p)));
     const matches = locations.length === 1 && identity(join(intent.repo, locations[0])) === move.identity;
-    return { ...move, locations, state: !matches ? "conflict" : locations[0] === move.to ? "moved" : "pending" };
+    const state = !matches ? "conflict" : locations[0] === move.to ? "moved"
+      : eligible.has(move.from) ? "pending" : "not-moved";
+    return { ...move, locations, state,
+      ...(state === "not-moved" ? { reason: "no longer eligible under current credential/safety checks" } : {}) };
   });
-  const progress = { planFile: intent.planFile, complete: moves.every((m) => m.state === "moved"), moves };
+  const progress = { planFile: intent.planFile, complete: false, moves };
   saveProgress(intent, progress);
   if (moves.some((m) => m.state === "conflict")) throw new Error(`rollup recovery conflict: ${intent.progressFile}`);
   return progress;
@@ -532,23 +547,34 @@ function reconcile(intent) {
 
 function apply(plan) {
   const dir = join(plan.repo, "docs.local", PLAN_DIR);
+  const pending = (existsSync(dir) ? readdirSync(dir) : [])
+    .filter((name) => /^rollup-plan-.*\.json$/.test(name))
+    // Completion markers only appear after both handoff and final progress.
+    .filter((name) => {
+      if (existsSync(completionFile(join(dir, name)))) return false;
+      const handoff = join(dir, name.replace("rollup-plan-", "rollup-handoff-"));
+      const progress = join(dir, name.replace("rollup-plan-", "rollup-progress-"));
+      return !existsSync(handoff) || !existsSync(progress) || !readJson(progress).complete;
+    })
+    .map((name) => readJson(join(dir, name)))
+    .filter((saved) => saved.phase === "intent");
+  if (plan.moves.length === 0 && pending.length === 0) return plan;
   mkdirSync(dir, { recursive: true });
-  const read = (path) => JSON.parse(readFileSync(path, "utf8"));
-  const pending = readdirSync(dir).filter((name) => /^rollup-plan-.*\.json$/.test(name))
-    .map((name) => read(join(dir, name)))
-    .filter((saved) => saved.phase === "intent" && (!existsSync(saved.progressFile) || !read(saved.progressFile).complete));
-  // Reconcile previous crash gaps before any move; do not replay stale plans.
-  for (const saved of pending) reconcile(saved);
+  // buildPlan ran all credential/content checks; reconcile old sources and
+  // destinations before the first new move, retaining newly held sources.
+  const eligible = new Set(plan.moves.map((m) => m.from));
+  for (const saved of pending) reconcile(saved, eligible);
   const id = `${plan.now}-${randomUUID()}`;
-  const intent = {
+  const intent = plan.moves.length === 0 ? pending[0] : {
     ...plan, phase: "intent", planFile: join(dir, `rollup-plan-${id}.json`),
     progressFile: join(dir, `rollup-progress-${id}.json`), handoffFile: join(dir, `rollup-handoff-${id}.json`),
     moves: plan.moves.map((m) => ({ ...m, identity: identity(join(plan.repo, m.from)) })),
   };
   // Exclusive creation before even creating a move's parent directory.
-  saveJson(intent.planFile, intent);
-  const progress = reconcile(intent);
+  if (plan.moves.length > 0) saveJson(intent.planFile, intent);
+  const progress = reconcile(intent, eligible);
   for (const [i, move] of intent.moves.entries()) {
+    if (progress.moves[i].state !== "pending") continue;
     const to = join(plan.repo, move.to);
     mkdirSync(join(to, ".."), { recursive: true });
     if (existsSync(to)) throw new Error(`rollup destination exists: ${move.to}`);
@@ -560,14 +586,19 @@ function apply(plan) {
     progress.moves[i].locations = [move.to];
     saveProgress(intent, progress);
   }
-  for (const saved of [...pending, intent]) {
-    if (!reconcile(saved).complete) throw new Error(`rollup source no longer eligible: ${saved.progressFile}`);
-  }
+  const settled = [...new Set([...pending, intent])].map((saved) => [saved, reconcile(saved, eligible)]);
   // Fresh inventory resolves all upload paths to actual destinations once.
-  const handoff = { ...buildPlan(plan), phase: "handoff", moves: intent.moves,
-    intentFile: intent.planFile, progressFile: intent.progressFile, planFile: intent.handoffFile };
-  handoff.totals.monthlyMoves = intent.moves.length;
-  saveJson(intent.handoffFile, handoff);
+  const handoff = { ...buildPlan(plan), phase: "handoff", moves: plan.moves,
+    intentFile: intent.planFile, progressFile: intent.progressFile,
+    reconciledIntents: settled.map(([saved]) => ({ planFile: saved.planFile, progressFile: saved.progressFile })),
+    planFile: existsSync(intent.handoffFile) ? join(dir, `rollup-handoff-${id}.json`) : intent.handoffFile };
+  handoff.totals.monthlyMoves = plan.moves.length;
+  saveJson(handoff.planFile, handoff);
+  for (const [saved, status] of settled) {
+    status.complete = true;
+    saveProgress(saved, status);
+    saveJson(completionFile(saved.planFile), { handoffFile: handoff.planFile });
+  }
   return handoff;
 }
 
@@ -597,6 +628,7 @@ function main(argv) {
       ...(h.content ?? []).map((c) => `  content: ${c.path} (${c.shape})`),
     ]),
     ...plan.conflicts.map((c) => `conflict: ${c.from} -> ${c.to} exists`),
+    ...(plan.planFile ? [`handoff: ${plan.planFile}`] : []),
     summaryLine(plan),
   ];
   process.stdout.write(`${lines.join("\n")}\n`);
