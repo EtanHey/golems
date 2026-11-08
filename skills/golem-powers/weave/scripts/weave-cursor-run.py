@@ -476,7 +476,7 @@ def synthesize(wd: Path, out_retro: Path, state: WeaveState) -> bool:
         report = candidate.read_text(encoding="utf-8-sig")
         if not re.sub(r"<!-- weave-run: [^>]* -->", "", report).strip():
             return False
-        stamped.write_text(marker + "\n" + report)
+        stamped.write_text(marker + "\n" + report, encoding="utf-8")
         stamped.replace(out_retro)
         candidate.unlink()
         return True
@@ -491,6 +491,7 @@ def synthesize(wd: Path, out_retro: Path, state: WeaveState) -> bool:
                 state.rejected_report = str(rejected)
             except OSError as exc:
                 print(f"WARNING: rejected synthesis kept at {candidate}: {exc}", file=sys.stderr)
+        stamped.unlink(missing_ok=True)
 
 
 def _fresh_workdir(wd: Path):

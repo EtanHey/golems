@@ -26,7 +26,9 @@ else:
             text += "\n# Fixture report\nFresh synthesis.\n"
         if mode == "heading":
             text = "# Weave Retro\n" + text
-        out.write_text(text)
+        if mode == "unicode":
+            text += "\nUnicode report — preserved.\n"
+        out.write_text(text, encoding="utf-8")
     if mode == "exit-failure":
         sys.exit(7)
 print("{}")

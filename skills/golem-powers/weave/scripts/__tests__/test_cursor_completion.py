@@ -132,3 +132,28 @@ class CursorCompletion(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("original failure", stderr.getvalue())
         self.assertIn("summary blocked", stderr.getvalue())
+
+    def test_report_uses_utf8_under_a_non_utf8_default_encoding(self):
+        original_write = Path.write_text
+        def ascii_default(path, *args, **kwargs):
+            kwargs.setdefault("encoding", "ascii")
+            return original_write(path, *args, **kwargs)
+        os.environ["SYNTH_MODE"] = "unicode"
+        self.args.eval_out = ""  # Isolate report publication from the optional evaluation bundle.
+        with patch.object(Path, "write_text", ascii_default):
+            code, summary = self.run_fixture()
+        self.assertEqual((code, summary["result"]), (0, "DONE"))
+        self.assertIn("Unicode report — preserved.", Path(self.args.retro_out).read_text(encoding="utf-8"))
+
+    def test_partial_stamped_file_is_removed_while_paid_output_is_preserved(self):
+        original_write = Path.write_text
+        def fail_stamp(path, *args, **kwargs):
+            if path.suffix == ".stamped":
+                original_write(path, "half-written stamp", encoding="utf-8")
+                raise OSError("injected partial stamp")
+            return original_write(path, *args, **kwargs)
+        with patch.object(Path, "write_text", fail_stamp):
+            code, summary = self.run_fixture()
+        self.assertEqual(code, 1)
+        self.assertIn("Fresh synthesis.", Path(summary["rejected_report"]).read_text())
+        self.assertFalse(list(self.root.glob("*.stamped")))
