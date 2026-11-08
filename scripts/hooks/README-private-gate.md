@@ -55,7 +55,7 @@ Suite sources, manifests and receipts stay in the repository; no OS temp staging
 is used.
 Completed fixture directories are pruned after each run, retaining the latest five
 and preserving active runs identified by PID and process start time. Dead or
-PID-reused markers do not prevent retention cleanup. Durable suite sources and receipt logs are not pruned.
+PID-reused markers do not prevent retention cleanup. Durable suite sources are not pruned. Gate run records retain the newest 20 plus live or undetermined owners; dirty or moved-HEAD worktrees and their records are retained for manual review.
 Isolated Python requires pytest in that interpreter's own site-packages, including
 on M1; installing it only in the user site does not make it available to the gate.
 
@@ -80,7 +80,7 @@ before relocking. Cache symlinks and tracked changes still refuse. New hooks use
 `-B`; legacy hooks can recreate bytecode during the gate, so both purge points
 are required. Dry-run and status never purge.
 
-Private logs, XML, candidate SHA and exercised guard/adapter hashes remain in
+Private logs, XML, candidate SHA and exercised guard/adapter hashes are retained with the policy above in
 `docs.local/hooks-private-gate-runs`. No private specimens go into tracked files
 or public CI. A source-gate pass does not prove host wiring or provider enforcement;
 verify those separately after installation.
@@ -91,3 +91,5 @@ while other verified hooks install. Source verification never grants owner appro
 Status retains recorded-pin, master ancestry, index/replace-ref and byte-for-byte
 import checks; its Git subprocesses use the same scrubbed environment as apply.
 One bytecode purge covers launcher import directories and the legacy hook roots.
+
+Run-record retention inspects only 32-hex directories directly under `docs.local/hooks-private-gate-runs`, skipping symlink entries. Dead owners (including SIGKILL and PID reuse, checked by process start identity) do not pin old records. Before creating a candidate worktree the gate records its original revision in `source.json`. An old dead run with a surviving worktree is reported and removed only when clean and still at that revision, using non-force `git worktree remove`. Retention failures warn and keep remaining records without failing the gate.

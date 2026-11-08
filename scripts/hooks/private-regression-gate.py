@@ -255,6 +255,38 @@ def prune_fixtures(keep=5):
         shutil.rmtree(p)
 
 
+def prune_runs(repo, keep=20):
+    """Best-effort retention of the newest 20 records plus live/unknown owners."""
+    root = repo / "docs.local/hooks-private-gate-runs"
+    try:
+        if not root.exists() or root.is_symlink():
+            return
+        runs = sorted((p for p in root.iterdir()
+                       if re.fullmatch(r"[0-9a-f]{32}", p.name)
+                       and not p.is_symlink() and p.is_dir()),
+                      key=lambda p: p.stat().st_mtime, reverse=True)
+        for path in runs[keep:]:
+            if active_fixture(path):
+                continue
+            tree = repo / ".worktrees" / ("hooks-private-gate-" + path.name)
+            if tree.exists() or tree.is_symlink():
+                print(f"private regression gate: stale worktree (manual review unless clean and unchanged): {tree}", flush=True)
+                # A hard kill predates candidate.json. source.json binds the
+                # original HEAD before worktree creation, outside candidate code.
+                source = path / "source.json"
+                data = json.loads(source.read_text()) if source.is_file() else {}
+                sha = data.get("candidateRevision") if isinstance(data, dict) else None
+                if (tree.is_symlink() or not isinstance(sha, str)
+                        or not re.fullmatch(r"[0-9a-f]{40}", sha)
+                        or git(tree, "rev-parse", "HEAD") != sha
+                        or git(tree, "status", "--porcelain")):
+                    continue
+                git(repo, "worktree", "remove", str(tree))
+            shutil.rmtree(path)
+    except (OSError, ValueError, TypeError, subprocess.SubprocessError) as error:
+        print(f"private regression gate: WARN retention stopped; remaining records retained: {error}", flush=True)
+
+
 @contextmanager
 def slot():
     # The install gate cannot nest inside a full suite that already owns this lock.
@@ -347,15 +379,21 @@ def run(repo, sha, required=False):
     with slot():
         if load_manifest(repo, sha, required, False) != manifest:
             raise ValueError("private manifest changed while queued")
+        prune_runs(repo)
         run_id = uuid.uuid4().hex
         out = repo / "docs.local/hooks-private-gate-runs" / run_id
         out.mkdir(parents=True, mode=0o700)
-        (out / "pytest.ini").write_text("[pytest]\n")
         tree = repo / ".worktrees" / f"hooks-private-gate-{run_id}"
-        subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "repogolem/worktree-disk-floor.py"), str(tree)], check=True)
-        tree.parent.mkdir(exist_ok=True)
-        git(repo, "worktree", "add", "--detach", str(tree), sha)
         try:
+            token = start_token(os.getpid())
+            if not token:
+                raise ValueError("cannot identify run owner process")
+            write_owner_marker(out, os.getpid(), token)
+            (out / "source.json").write_text(json.dumps({"candidateRevision": sha}))
+            (out / "pytest.ini").write_text("[pytest]\n")
+            subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "repogolem/worktree-disk-floor.py"), str(tree)], check=True)
+            tree.parent.mkdir(exist_ok=True)
+            git(repo, "worktree", "add", "--detach", str(tree), sha)
             suites = public_suites(tree)
             if manifest is not None:
                 if load_manifest(repo, sha, required, False) != manifest:
@@ -382,11 +420,18 @@ def run(repo, sha, required=False):
             print(f"private regression gate: {outcome}; receipt: {out}")
         finally:
             try:
-                git(repo, "worktree", "remove", "--force", str(tree))
+                if not tree.exists():
+                    pass
+                elif git(tree, "rev-parse", "HEAD") == sha and not git(tree, "status", "--porcelain"):
+                    git(repo, "worktree", "remove", str(tree))
+                else:
+                    print(f"private regression gate: retained changed worktree: {tree}", flush=True)
             finally:
                 fixtures = Path.home() / "docs.local/golems-guard-fixtures" / run_id
                 (fixtures / ".active").unlink(missing_ok=True)
+                (out / ".active").unlink(missing_ok=True)
                 prune_fixtures()
+                prune_runs(repo)
 
 
 def main():

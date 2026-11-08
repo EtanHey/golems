@@ -237,14 +237,17 @@ def test_timeout_cleans_candidate_worktree(tmp_path, monkeypatch):
     calls = []
     def fake_git(repo, *args):
         calls.append(args)
-        return ""
+        if args[:2] == ("worktree", "add"):
+            Path(args[3]).mkdir(parents=True)
+        return SHA if args == ("rev-parse", "HEAD") else ""
     monkeypatch.setattr(gate, "git", fake_git)
     def timeout(*args, **kwargs):
         raise subprocess.TimeoutExpired("synthetic", 300)
     monkeypatch.setattr(gate, "execute_suite", timeout)
     with pytest.raises(subprocess.TimeoutExpired):
         gate.run(repo, SHA)
-    assert calls[-1][:3] == ("worktree", "remove", "--force")
+    assert calls[-1][:2] == ("worktree", "remove")
+    assert "--force" not in calls[-1]
 
 
 def test_symlink_manifest_refuses(manifest):
