@@ -54,7 +54,12 @@ function classify(entry, sourceReal, staleRoot) {
       seen.add(destination);
       destination = path.resolve(path.dirname(destination), readlinkSync(destination));
     }
-    const owned = destination.startsWith(`${staleRoot}${path.sep}`)
+    const home = path.dirname(path.dirname(staleRoot));
+    // linkMissing owns this exact mirror even after the agents entry is removed.
+    const missingMirror = path.dirname(entry) === path.join(home, GEMINI_SKILLS_ROOT)
+      && readlinkSync(entry) === path.join("..", "..", "..", ".agents", "skills", path.basename(entry))
+      && destination === target && !lexists(destination);
+    const owned = missingMirror || destination.startsWith(`${staleRoot}${path.sep}`)
       || destination.startsWith(`${sourceReal}${path.sep}`)
       || destination.includes(`${path.sep}skills${path.sep}golem-powers${path.sep}`);
     if (!owned) return { kind: "other" };

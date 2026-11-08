@@ -498,3 +498,40 @@ for (const name of ["pr-loop", "foreign-only"]) {
     expect(() => lstatSync(path.join(fx.gemini, name))).toThrow();
   });
 }
+
+for (const agentsState of ["already absent", "removed during apply"]) {
+  test(`retired Gemini mirror is removed when agents entry is ${agentsState}`, () => {
+    const fx = geminiFixture();
+    expect(run(fx, "--link-missing", "--apply").status).toBe(0);
+    const agentsEntry = path.join(fx.agents, "eli5");
+    const mirror = path.join(fx.gemini, "eli5");
+    expect(readlinkSync(mirror)).toBe("../../../.agents/skills/eli5");
+    rmSync(path.join(fx.source, "eli5"), { recursive: true });
+    rmSync(agentsEntry);
+    if (agentsState === "removed during apply") {
+      symlinkSync(path.join(fx.home, "golems.wt/dead/skills/golem-powers/eli5"), agentsEntry);
+    }
+    const dry = run(fx, "--link-missing");
+    expect(dry.status).toBe(0);
+    expect(lstatSync(mirror).isSymbolicLink()).toBe(true);
+    const applied = run(fx, "--link-missing", "--apply");
+    expect(applied.status).toBe(0);
+    expect(applied.out.match(/^~\/\.gemini\/config\/skills:.*$/m)?.[0])
+      .toBe(dry.out.match(/^~\/\.gemini\/config\/skills:.*$/m)?.[0]);
+    expect(() => lstatSync(agentsEntry)).toThrow();
+    expect(() => lstatSync(mirror)).toThrow();
+    expect(run(fx, "--link-missing", "--apply").status).toBe(0);
+  });
+}
+
+test("Gemini mirror reaching a foreign dangling target remains untouched", () => {
+  const fx = geminiFixture();
+  expect(run(fx, "--link-missing", "--apply").status).toBe(0);
+  const entry = path.join(fx.agents, "eli5"), mirror = path.join(fx.gemini, "eli5");
+  rmSync(entry);
+  const foreign = path.join(fx.home, "other-tool/eli5");
+  symlinkSync(foreign, entry);
+  expect(run(fx, "--link-missing", "--apply").status).toBe(0);
+  expect(readlinkSync(entry)).toBe(foreign);
+  expect(readlinkSync(mirror)).toBe("../../../.agents/skills/eli5");
+});
