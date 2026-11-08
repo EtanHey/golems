@@ -1,0 +1,51 @@
+{
+  "proof": "SYNTHETIC deterministic gate behavior only; not a real-agent skill-text eval",
+  "beforeCommit": "89afe6eb",
+  "cases": [
+    {
+      "label": "host-only commute",
+      "expected": "REJECT",
+      "before": "PASS",
+      "after": "REJECT"
+    },
+    {
+      "label": "two voices",
+      "expected": "PASS",
+      "before": "PASS",
+      "after": "PASS"
+    },
+    {
+      "label": "explicit single override",
+      "expected": "PASS",
+      "before": "PASS",
+      "after": "PASS"
+    },
+    {
+      "label": "blank single reason",
+      "expected": "REJECT",
+      "before": "PASS",
+      "after": "REJECT"
+    },
+    {
+      "label": "spoken announcement",
+      "expected": "REJECT",
+      "before": "PASS",
+      "after": "REJECT"
+    },
+    {
+      "label": "ordinary asks prose",
+      "expected": "PASS",
+      "before": "PASS",
+      "after": "PASS"
+    },
+    {
+      "label": "rendered mismatch",
+      "expected": "REJECT",
+      "before": "PASS",
+      "after": "REJECT"
+    }
+  ],
+  "withoutFix": 3,
+  "withFix": 7,
+  "n": 7
+}

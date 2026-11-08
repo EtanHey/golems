@@ -101,10 +101,44 @@ export function resolveVoiceRoleOverride(scene, jobOverrides = {}) {
  * A scene with no reference/profile is BYO audio: there is no voice choice
  * recorded in the job, so there is nothing to contradict and nothing to verify.
  */
-export function analyzeVoiceRoles(scenes = [], { overrides = {} } = {}) {
+// Tight announcement syntax: dialogue prefixes, named line labels, configured people.
+export const ROLE_ANNOUNCEMENT_PATTERNS = Object.freeze([
+  /^[ \t]*(?:host|expert|q|a)[ \t]*:/im,
+  /^[ \t]*[A-Z][\p{L}\p{N}_]*(?:[ \t]+[A-Z][\p{L}\p{N}_]*){0,2}[ \t]+(?:asks|says|explains|answers)[ \t]*:/mu,
+  new RegExp(`\\b(?:${HOST_VOICE}|${EXPERT_VOICE})[ \\t]+(?:asks|says|explains|answers)\\b`, "i"),
+]);
+
+function renderedRoleMismatches(html, scenes, decisions) {
+  const sceneById = new Map(scenes.map(scene => [scene.id, scene]));
+  const cardById = new Map((Array.isArray(decisions) ? decisions : []).map(card => [card.id, card]));
+  const violations = [];
+  // Inspect only renderer-owned label spans within their owning card, never script/style text.
+  for (const card of html.matchAll(/<article\b[^>]*data-decision="([^"]+)"[^>]*>([\s\S]*?)<\/article>/g)) {
+    const roles = new Set((cardById.get(card[1])?.sceneIds ?? []).map(id => sceneById.get(id)?.role));
+    if (roles.has("host") && roles.has("expert")) continue;
+    for (const label of card[2].matchAll(/<span\b[^>]*class="df-(speaker|scene-title)"[^>]*>([^<]*)<\/span>/g)) {
+      const roleLabel = label[1] === "speaker"
+        ? /\b(?:asks|says|explains|answers)\s*:?\s*$/i.test(label[2])
+        : ROLE_ANNOUNCEMENT_PATTERNS.some(pattern => pattern.test(label[2]));
+      if (!roleLabel) continue;
+      violations.push({ segment: card[1], role: "card", metric: "ROLE_LABEL_MISMATCH",
+        detail: "rendered role label requires both host and expert scenes on this card" });
+    }
+  }
+  return violations;
+}
+
+export function analyzeVoiceRoles(scenes = [], { overrides = {}, voiceRoles = {}, decisions = [], renderedHtml = "" } = {}) {
   const violations = [];
   const checked = [];
   const overridden = [];
+  const roleScenes = scenes.filter(scene => GATED_ROLES.includes(String(scene?.role ?? "").trim().toLowerCase()));
+  const declared = roleScenes.filter(scene => String(scene?.reference ?? scene?.profile ?? "").trim());
+  const people = new Set(declared.map(scene => voicePersonFromProfile(scene.reference ?? scene.profile)).filter(Boolean));
+  const needsSingleOverride = declared.length > 0 && ((declared.length === roleScenes.length && people.size === 1)
+    || !scenes.some(scene => String(scene?.role ?? "").trim().toLowerCase() === "expert"));
+  const singleReason = voiceRoles?.single?.reason;
+  const singleOverride = typeof singleReason === "string" && singleReason.trim();
 
   for (const scene of scenes) {
     const role = String(scene?.role ?? "").trim().toLowerCase();
@@ -154,12 +188,26 @@ export function analyzeVoiceRoles(scenes = [], { overrides = {} } = {}) {
     checked.push({ segment: scene?.id, role, voice: person });
   }
 
+  if (needsSingleOverride) {
+    if (singleOverride) overridden.push({ segment: "job", role: "build", reason: singleReason.trim(), source: "job" });
+    else violations.push({ segment: "job", role: "build", metric: "SINGLE_VOICE_BUILD",
+      detail: "briefings require an expert scene and two voice people; deliberate single narration requires job.voiceRoles.single.reason" });
+  }
+  for (const scene of scenes) {
+    if (ROLE_ANNOUNCEMENT_PATTERNS.some(pattern => pattern.test(String(scene?.script ?? "")))) {
+      violations.push({ segment: scene?.id, role: scene?.role, metric: "ROLE_LABEL_SPOKEN",
+        detail: "remove the role announcement from spoken text; keep the question and answer in separate segments" });
+    }
+  }
+  violations.push(...renderedRoleMismatches(renderedHtml, scenes, decisions));
+
   return {
     verdict: violations.length === 0 ? "PASS" : "REJECT",
     violations,
     checked,
     overridden,
-    thresholds: { hostVoice: HOST_VOICE, expertVoice: EXPERT_VOICE, gatedRoles: [...GATED_ROLES] },
+    thresholds: { hostVoice: HOST_VOICE, expertVoice: EXPERT_VOICE, gatedRoles: [...GATED_ROLES],
+      singleVoiceOverrideReason: needsSingleOverride && singleOverride ? singleReason.trim() : null },
   };
 }
 
@@ -173,6 +221,12 @@ export function voiceRoleRunbook(result) {
     lines.push(
       `Swap the reference/profile on ${inverted.length} scene(s): host scenes -> a ${HOST_VOICE}-* profile, expert scenes -> a ${EXPERT_VOICE}-* profile.`,
     );
+  }
+  if (result.violations.some(v => v.metric === "SINGLE_VOICE_BUILD")) {
+    lines.push("Add separate host questions and expert answers, or state job.voiceRoles.single.reason for a deliberate single-narrator listen-only piece.");
+  }
+  if (result.violations.some(v => v.metric.startsWith("ROLE_LABEL_"))) {
+    lines.push("Remove spoken role announcements; render role labels only on cards containing both roles.");
   }
   lines.push(
     `If this job genuinely needs the other voice, state it in the job file: set scene.voiceRoleOverride ` +
