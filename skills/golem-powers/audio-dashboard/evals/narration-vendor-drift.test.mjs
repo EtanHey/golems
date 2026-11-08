@@ -142,12 +142,12 @@ test("the RED fixture remains the immutable real pre-sync snapshot after stamp r
     current.vendorSideFirst
       .filter((debt) => ["B13_SPEECH_SANITIZER", "B13_TIMING_ALIASES"].includes(debt.id))
       .map((debt) => debt.status),
-  ).toEqual(["open", "open"]);
+  ).toEqual(["resolved", "resolved"]);
   expect(current.vendorSideFirst).toContainEqual(
     expect.objectContaining({
       id: "B13_SPOKEN_PROVENANCE_AFTER_WAV",
       status: "resolved",
-      resolvedUpstreamCommit: current.upstream.commit,
+      resolvedUpstreamCommit: "b8bd6407b420d8b807df3c82599c43a7f3d4d9f8",
     }),
   );
 });
@@ -518,7 +518,7 @@ test("stamp refresh refuses a checkout that changes while paired hashes are read
   }
 });
 
-test("debt-resolution refresh refuses a stamp with no open vendor-first debt", async () => {
+test("debt-resolution refresh refuses a stamp with no open debt", async () => {
   const refreshVendorStamp = await subjectFunction("refreshVendorStamp");
   if (!refreshVendorStamp) return;
   const harness = await makeRefreshHarness();
@@ -539,7 +539,7 @@ test("debt-resolution refresh refuses a stamp with no open vendor-first debt", a
         runTest: async () => ({ status: 0, stdout: "pass", stderr: "" }),
         vendorDate: "2026-07-17",
       }),
-    ).rejects.toThrow("no open vendor-first debt");
+    ).rejects.toThrow("no open debt");
   } finally {
     rmSync(harness.root, { recursive: true, force: true });
   }
@@ -644,6 +644,7 @@ test("stamp refresh resolves vendor-first debt while preserving declared upstrea
       upstreamRoot: harness.upstream,
       stampPath: harness.manifestPath,
       stamp: harness.stamp,
+      keepOpenDebtIds: ["VOICE_SSOT_PROFILE_CACHE_KEY"],
       inspectUpstream: async () => cleanUpstream,
       runTest: async () => ({ status: 0, stdout: "pass", stderr: "" }),
       vendorDate: "2026-07-17",
@@ -686,9 +687,14 @@ test("refresh CLI flags must be paired and reject unknown arguments", async () =
   expect(() => parseVendorDriftArgs(["--refresh-stamp"])).toThrow("must be used together");
   expect(() => parseVendorDriftArgs(["--resolve-open-debt"])).toThrow("must be used together");
   expect(() => parseVendorDriftArgs(["--surprise"])).toThrow("unknown argument");
+  expect(parseVendorDriftArgs(["--refresh-stamp", "--resolve-open-debt", "--keep-open-debt", "BRIDGES"]))
+    .toEqual({ refreshStamp: true, keepOpenDebtIds: ["BRIDGES"] });
+  expect(() => parseVendorDriftArgs(["--keep-open-debt", "BRIDGES"])).toThrow("requires both refresh flags");
+  expect(() => parseVendorDriftArgs(["--refresh-stamp", "--resolve-open-debt", "--keep-open-debt"]))
+    .toThrow("requires a unique debt id");
 });
 
-test("CLI stamp-only mode remains rejected while upstream-first debt is open", () => {
+test("CLI stamp-only mode keeps the remaining runner-bridge debt rejected", () => {
   const env = { ...process.env };
   delete env.NARRATIONLAYER_UPSTREAM;
   const result = spawnSync("bun", [cliPath], { cwd: skillRoot, encoding: "utf8", env });
@@ -700,17 +706,17 @@ test("CLI stamp-only mode remains rejected while upstream-first debt is open", (
   expect(records).toContainEqual(
     expect.objectContaining({
       pairId: "local-tts-runner",
-      metric: "BIDIRECTIONAL_DRIFT",
-      value: "vendor=open-debt:SKILL_SPEECH_PREPARATION_CALLBACK;source=open-debt:VOICE_SSOT_PROFILE_CACHE_KEY",
-      evidence: expect.stringContaining("VOICE_SSOT_PROFILE_CACHE_KEY"),
+      metric: "VENDOR_AHEAD",
+      value: "open",
+      evidence: expect.stringContaining("SKILL_REPO_FREE_RUNNER_BRIDGES"),
     }),
   );
   expect(
     records
       .filter((row) => row.metric === "VENDOR_AHEAD" && row.value === "open")
       .map((row) => row.pairId),
-  ).toEqual(["text-normalize", "word-timing-repair", "word-timings"]);
-  expect(records.at(-1)).toMatchObject({ metric: "SUMMARY", verdict: "REJECTED", value: 4 });
+  ).toEqual(["local-tts-runner"]);
+  expect(records.at(-1)).toMatchObject({ metric: "SUMMARY", verdict: "REJECTED", value: 1 });
 });
 
 test("CLI treats an exported non-checkout with every mapped file as upstream unavailable", async () => {
@@ -734,8 +740,8 @@ test("CLI treats an exported non-checkout with every mapped file as upstream una
     expect(records).toContainEqual(
       expect.objectContaining({
         pairId: "local-tts-runner",
-        metric: "BIDIRECTIONAL_DRIFT",
-        value: "vendor=open-debt:SKILL_SPEECH_PREPARATION_CALLBACK;source=open-debt:VOICE_SSOT_PROFILE_CACHE_KEY",
+        metric: "VENDOR_AHEAD",
+        value: "open",
       }),
     );
   } finally {
@@ -752,10 +758,82 @@ test("CLI rejects a missing mapped file in a real NarrationLayer checkout as dri
     expect(result.status).toBe(1);
     const records = result.stdout.trim().split("\n").map((line) => JSON.parse(line));
     expect(records.some((row) => row.metric === "UPSTREAM_UNAVAILABLE")).toBe(false);
-    expect(records.some((row) => row.metric === "VENDOR_BEHIND" && row.value === "missing")).toBe(
+    expect(records.some((row) => row.pairId === "schema" && row.metric === "VENDOR_BEHIND" && row.value === "missing")).toBe(
       true,
     );
   } finally {
     rmSync(checkout, { recursive: true, force: true });
   }
+});
+
+// RV2: the original refresh could not admit a declared upstream-first schema pair.
+test("refresh closes declared upstream-first debt and keeps an explicitly deferred debt open", async () => {
+  const refreshVendorStamp = await subjectFunction("refreshVendorStamp");
+  const h = await makeRefreshHarness();
+  const debt = { id: "SCHEMA_REFRESH_REFUSED", pairId: "schema", status: "open",
+    aidevNote: "Copy the real upstream schema.", requiredUpstreamPatterns: ["export type Config"],
+    testCommand: ["bun", "test", "tests/profiles.test.ts"] };
+  h.stamp.upstreamSideFirst = [debt];
+  h.stamp.vendorSideFirst.push({ ...clone(h.stamp.vendorSideFirst[0]), id: "RUNNER_BRIDGES",
+    requiredUpstreamPatterns: ["missing portable bridge"] });
+  h.stamp.pairs.push({ id: "schema", vendorPath: "vendor/narrationlayer/schema.ts",
+    sourcePath: "src/schema.ts", vendorSha256: sha256("old shim"), sourceSha256: sha256("old source") });
+  await Bun.write(path.join(h.skill, "vendor/narrationlayer/schema.ts"), "export type Config = {};\n");
+  await Bun.write(path.join(h.upstream, "src/schema.ts"), "export type Config = {};\n");
+  initNarrationGit(h.skill);
+  spawnSync("git", ["add", "."], { cwd: h.skill });
+  const committed = spawnSync("git", ["commit", "-m", "re-vendored schema"], { cwd: h.skill });
+  expect(committed.status).toBe(0);
+  const vendorHead = spawnSync("git", ["rev-parse", "HEAD"], { cwd: h.skill, encoding: "utf8" }).stdout.trim();
+  const calls = [];
+  const refresh = () => refreshVendorStamp({ skillRoot: h.skill, upstreamRoot: h.upstream,
+    stampPath: h.manifestPath, stamp: h.stamp, inspectUpstream: async () => cleanUpstream,
+    keepOpenDebtIds: ["RUNNER_BRIDGES"], runTest: async command => {
+      calls.push(command); return { status: 0, stdout: "pass", stderr: "" };
+    } });
+  try {
+    // A commit id must identify the exact vendor bytes being accepted.
+    await Bun.write(path.join(h.skill, "vendor/narrationlayer/schema.ts"), "uncommitted schema");
+    await expect(refresh()).rejects.toThrow("vendor bytes are not committed");
+    await Bun.write(path.join(h.skill, "vendor/narrationlayer/schema.ts"), "export type Config = {};\n");
+    const result = await refresh();
+    expect(result.stamp.upstreamSideFirst[0]).toMatchObject({ status: "resolved", resolvedVendorCommit: vendorHead });
+    expect(result.stamp.vendorSideFirst.at(-1).status).toBe("open");
+    expect(result.stamp.vendorSideFirst.slice(0, -1).every(d => d.status === "resolved")).toBe(true);
+    expect(calls).toContainEqual(debt.testCommand);
+    expect(result.verdict).toBe("REJECTED");
+    expect(classifyRemaining(result.stamp)).toEqual(["RUNNER_BRIDGES"]);
+  } finally { rmSync(h.root, { recursive: true, force: true }); }
+});
+
+function classifyRemaining(stamp) {
+  return [...stamp.vendorSideFirst, ...stamp.upstreamSideFirst].filter(d => d.status === "open").map(d => d.id);
+}
+
+test("refresh never implicitly defers a missing marker and rejects unknown explicit deferrals", async () => {
+  const refreshVendorStamp = await subjectFunction("refreshVendorStamp");
+  const h = await makeRefreshHarness({ omitPattern: fixture.stamp.vendorSideFirst[0].requiredUpstreamPatterns[0] });
+  const before = readFileSync(h.manifestPath, "utf8");
+  const args = { skillRoot: h.skill, upstreamRoot: h.upstream, stampPath: h.manifestPath,
+    stamp: h.stamp, inspectUpstream: async () => cleanUpstream,
+    runTest: async () => ({ status: 0, stdout: "pass", stderr: "" }) };
+  try {
+    await expect(refreshVendorStamp(args)).rejects.toThrow("required upstream pattern missing");
+    await expect(refreshVendorStamp({ ...args, keepOpenDebtIds: ["TYPO"] })).rejects.toThrow("unknown open debt");
+    expect(readFileSync(h.manifestPath, "utf8")).toBe(before);
+  } finally { rmSync(h.root, { recursive: true, force: true }); }
+});
+
+test("explicit deferral cannot bless drift on a pair without a selected debt", async () => {
+  const { refreshVendorStamp } = await loadSubject();
+  const h = await makeRefreshHarness();
+  const deferred = h.stamp.vendorSideFirst[0];
+  const before = readFileSync(h.manifestPath, "utf8");
+  try {
+    await expect(refreshVendorStamp({ skillRoot: h.skill, upstreamRoot: h.upstream,
+      stampPath: h.manifestPath, stamp: h.stamp, inspectUpstream: async () => cleanUpstream,
+      keepOpenDebtIds: [deferred.id], runTest: async () => ({ status: 0, stdout: "pass", stderr: "" })
+    })).rejects.toThrow("unexpected drift outside open debt pairs");
+    expect(readFileSync(h.manifestPath, "utf8")).toBe(before);
+  } finally { rmSync(h.root, { recursive: true, force: true }); }
 });

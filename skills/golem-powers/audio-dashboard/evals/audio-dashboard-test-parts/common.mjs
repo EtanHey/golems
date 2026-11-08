@@ -39,6 +39,7 @@ import { renderV4 } from "../../vendor/agent-html/lib/render-v4.mjs";
 import { clearTakeCacheReceipt, writeTakeCacheReceipt } from "../../vendor/narrationlayer/local-tts-runner.ts";
 import { loadPronunciationRules } from "../../vendor/narrationlayer/pronunciation-config.ts";
 import { normalizeForSpeech } from "../../vendor/narrationlayer/text-normalize.ts";
+import { prepareSpeechChannels } from "../../src/spoken-form.mjs";
 
 const here = path.dirname(fileURLToPath(new URL("../audio-dashboard.test.mjs", import.meta.url).href));
 const redDir = path.join(here, "fixtures", "red");
@@ -219,7 +220,7 @@ function buildDashboard(spec, jobDir, name = spec.id, extraEnv = {}, options = {
         mkdirSync(path.dirname(spokenPath), { recursive: true });
         writeFileSync(
           spokenPath,
-          normalizeForSpeech(String(scene.script ?? ""), pronunciationRules),
+          prepareSpeechChannels(String(scene.script ?? ""), pronunciationRules).synthInput,
         );
       }
     }

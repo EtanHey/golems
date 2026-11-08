@@ -12,7 +12,10 @@
   "outputPath": "~/Gits/<repo>/docs.local/dashboards/audio-dashboard-example.html",
   "language": "en",
   "_note_reference": "`reference` is a PLACEHOLDER — use ben-c1 for the host and replace examplechannel-c4s with <expert>-c4s from GOLEMS_EXPERT_VOICE (see NARRATIONLAYER_PROFILES_FILE) or a direct path to a reference .wav clip. Voice clones are machine-local and are not shipped with the skill. A scene may instead carry `audioWav` (existing WAV) for a daemon-free bring-your-own-audio run.",
-  "decisions": [{ "id": "review", "title": "Review the briefing", "sceneIds": ["c1q", "c1a"],
+  "decisions": [{ "id": "overview", "title": "Briefing overview", "status": "INFO", "topic": "read-along", "sceneIds": ["c1q"],
+    "body": "So what exactly are we looking at here, and why does the read-along matter?" },
+  { "id": "review", "title": "Review the briefing", "after": "overview", "topic": "read-along", "sceneIds": ["c1a"],
+    "body": "This is a read-along dashboard. Every word you see is timed to the audio, so clicking a word seeks straight to that moment.",
     "sources": [{ "label": "Research overview", "url": "https://example.com/research" }],
     "copyPrompt": { "label": "Copy research prompt", "text": "Compare the proposed options using the linked research. Explain trade-offs and recommend the next step.",
       "notes": "Enable Google Docs in Gemini. Research lifecycle run: no; run it before using this prompt." }

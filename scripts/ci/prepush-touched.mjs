@@ -255,8 +255,10 @@ async function main() {
     inventory.push({ command: [python, path], path });
   // Include new test files before the CI inventory learns their name.
   for (const path of changed) {
-    if (/^scripts\/.*\.test\.mjs$/.test(path) && existsSync(path) && !inventory.some(s => s.path === path))
-      inventory.push({ command: ['node', '--test', path], path });
+    if (/^scripts\/.*\.test\.mjs$/.test(path) && existsSync(path) && !inventory.some(s => s.path === path)) {
+      const usesBun = /\bfrom\s*(['"])bun:test\1/.test(readFileSync(path, 'utf8'));
+      inventory.push({ command: usesBun ? ['bun', 'test', `./${path}`] : ['node', '--test', path], path });
+    }
   }
   const manifest = JSON.parse(readFileSync('scripts/ci/bats-suites.json', 'utf8'));
   const bats = manifest.run.map(name => `scripts/tests/${name}`);

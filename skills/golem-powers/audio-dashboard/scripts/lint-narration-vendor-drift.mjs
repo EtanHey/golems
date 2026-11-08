@@ -72,6 +72,7 @@ if (cliArgs.refreshStamp) {
         upstreamRoot,
         stampPath,
         stamp,
+        keepOpenDebtIds: cliArgs.keepOpenDebtIds,
       });
       stamp = refreshed.stamp;
       refreshRecords.push({
@@ -84,7 +85,7 @@ if (cliArgs.refreshStamp) {
         metric: "STAMP_REFRESHED",
         value: stamp.upstream.commit,
         threshold: "clean committed upstream + required patterns + targeted tests",
-        evidence: `${refreshed.tests.length} vendor-first debt test command(s) passed before atomic replacement.`,
+        evidence: `${refreshed.tests.length} debt test command(s) passed before atomic replacement.`,
         runbook: "Commit the refreshed stamp with the reconciled vendored runtime.",
       });
     } catch (error) {

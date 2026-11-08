@@ -225,13 +225,13 @@ describe("lifecycle plan", () => {
   test("--apply moves into month folders, writes the plan, and deletes nothing", () => {
     const repo = fixture(tree);
     const count = listFiles(join(repo, "docs.local")).length;
-    const result = rollup(repo, "--apply");
+    const result = rollup(repo, "--apply", "--json");
     expect(result.status).toBe(0);
     expect(existsSync(join(repo, "docs.local/2026-05/2026-05-03-a.md"))).toBe(true);
     expect(existsSync(join(repo, "docs.local/2026-06-01-current.md"))).toBe(true);
     const planDir = join(repo, "docs.local/_drive-filing");
-    expect(readdirSync(planDir)).toEqual([`rollup-plan-${NOW}.json`]);
-    expect(listFiles(join(repo, "docs.local")).length).toBe(count + 1);
+    expect(readdirSync(planDir)).toContain(basename(JSON.parse(result.stdout).planFile));
+    expect(listFiles(join(repo, "docs.local")).filter((p) => !p.startsWith(`${planDir}/`)).length).toBe(count);
   });
 
   test("a move never overwrites an existing target", () => {

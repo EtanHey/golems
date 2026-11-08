@@ -1,5 +1,6 @@
 import { ANSWER_RUNTIME, dashboardId } from './answer-persistence.mjs';
 import { COPY_BLOCK_ASSETS, renderCardBody } from './copy-blocks.mjs';
+import { AUDIO_SUMMARY_LABEL, hasAudioSummary } from './card-text-audio-gate.mjs';
 import { validateSources } from './decision-sources.mjs';
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -81,6 +82,44 @@ function assertSceneOwnership(decisions, scenes) {
   const missing = scenes.map((scene) => scene.id).filter((sceneId) => !owners.has(sceneId));
   if (missing.length) {
     throw new Error(`decision-flow scene ownership: unassigned scenes: ${missing.join(", ")}`);
+  }
+}
+
+function orderDecisions(decisions) {
+  decisions = decisions.map(card => ({ ...card, id: String(card.id) }));
+  const ids = new Set(decisions.map(card => card.id)), attached = new Map(), topics = new Set();
+  for (const card of decisions) {
+    if (card.after !== undefined) {
+      if (typeof card.after !== 'string' || !ids.has(card.after) || card.after === card.id) {
+        throw new Error(`DECISION_SEPARATED_FROM_EXPLAINER: ${card.id} after must name another card`);
+      }
+      if (!attached.has(card.after)) attached.set(card.after, []);
+      attached.get(card.after).push(card);
+    } else if (String(card.status).toUpperCase() !== 'INFO' && topics.has(card.topic)) {
+      throw new Error(`DECISION_AFTER_REQUIRED: ${card.id} needs after for its earlier INFO topic`);
+    }
+    if (String(card.status).toUpperCase() === 'INFO' && typeof card.topic === 'string' && card.topic.trim()) topics.add(card.topic);
+  }
+  const ordered = [];
+  const append = card => { ordered.push(card); for (const child of attached.get(card.id) || []) append(child); };
+  for (const card of decisions) if (card.after === undefined) append(card);
+  if (ordered.length !== decisions.length) throw new Error('DECISION_SEPARATED_FROM_EXPLAINER: cyclic after references');
+  return ordered;
+}
+
+function assertRenderedDecisionOrder(html, decisions) {
+  const byId = new Map(decisions.map(card => [card.id, card]));
+  const rendered = [...html.matchAll(/<article\b[^>]*data-decision="([^"]+)"/g)].map(match => byId.get(match[1]));
+  if (rendered.length !== decisions.length || rendered.some(card => !card)) {
+    throw new Error('DECISION_SEPARATED_FROM_EXPLAINER: final rendered cards do not match the job');
+  }
+  const seen = new Set();
+  for (const [index, card] of rendered.entries()) {
+    if (card.after !== undefined && (!seen.has(card.after) ||
+      (rendered[index - 1]?.id !== card.after && rendered[index - 1]?.after !== card.after))) {
+      throw new Error(`DECISION_SEPARATED_FROM_EXPLAINER: ${card.id} must immediately follow ${card.after} or its attached decisions`);
+    }
+    seen.add(card.id);
   }
 }
 
@@ -422,6 +461,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
       <span class="df-player-state" aria-live="polite">Ready · ${clips} clip${clips === 1 ? "" : "s"}, ${listenTime}</span>
       ${audio}
     </div>
+    ${hasAudioSummary(decision) ? `<p class="df-audio-summary">${AUDIO_SUMMARY_LABEL}</p>` : ""}
     <div class="df-teleprompter" hidden aria-live="off">${transcript}</div>
     <button type="button" class="df-answer-open" aria-haspopup="dialog" aria-controls="sheet-${escapeHtml(decision.id)}"><span class="df-ao-todo">Answer this card</span><span class="df-ao-offer">Your turn: answer this card</span><span class="df-ao-done">Answered, review</span></button>
     ${renderComparisonOpener(comparison)}
@@ -446,6 +486,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
   if (!Array.isArray(scenes) || scenes.length === 0) throw new Error("decision-flow: scenes must be non-empty");
   if (!Array.isArray(decisions) || decisions.length === 0) throw new Error("decision-flow: decisions must be non-empty");
   assertSceneOwnership(decisions, scenes);
+  decisions = orderDecisions(decisions);
   const timeoutMs = comparisonTimeout(comparisonTimeoutMs, "comparisonTimeoutMs");
 
   const sceneById = new Map(scenes.map((scene) => [scene.id, scene]));
@@ -479,5 +520,7 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
     ["{{SCRIPT}}", ANSWER_RUNTIME + "\n" + script],
     ["{{COPY_BLOCK_ASSETS}}", COPY_BLOCK_ASSETS],
   ]);
-  return shell.replace(/\{\{[A-Z_]+\}\}/g, token => String(values.get(token) ?? token));
+  const html = shell.replace(/\{\{[A-Z_]+\}\}/g, token => String(values.get(token) ?? token));
+  assertRenderedDecisionOrder(html, decisions);
+  return html;
 }

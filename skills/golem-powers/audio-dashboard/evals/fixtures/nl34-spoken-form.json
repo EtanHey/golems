@@ -1,0 +1,329 @@
+{
+  "source": "EtanHey/narrationlayer#34",
+  "head": "e2533960663e93e43260e86865d51985e3078cf5",
+  "cases": [
+    [
+      "~21:00Z",
+      "~21:00Z"
+    ],
+    [
+      "21:5x",
+      "21:5x"
+    ],
+    [
+      "~21:0x",
+      "~21:0x"
+    ],
+    [
+      "PR 1/2",
+      "PR 1/2"
+    ],
+    [
+      "PR 2026-10-22]",
+      "PR 2026-10-22]"
+    ],
+    [
+      "~2026-11-01",
+      "~2026-11-01"
+    ],
+    [
+      "4b-1x",
+      "4b-1x"
+    ],
+    [
+      "PR #275/#276/#277",
+      "PR #275/#276/#277"
+    ],
+    [
+      "~200\u2013400ms",
+      "~200\u2013400ms"
+    ],
+    [
+      "6pm-mini",
+      "6pm-mini"
+    ],
+    [
+      "9am-5pm",
+      "nine a m-five p m"
+    ],
+    [
+      "9 a.m.-5 p.m.",
+      "nine a m-five p m"
+    ],
+    [
+      "9:30pm-10pm",
+      "nine thirty p m-ten p m"
+    ],
+    [
+      "10am-12pm",
+      "ten a m-twelve p m"
+    ],
+    [
+      "from 9pm-11pm",
+      "from nine p m-eleven p m"
+    ],
+    [
+      "1am-2am",
+      "one a m-two a m"
+    ],
+    [
+      "9am - 5pm",
+      "nine a m - five p m"
+    ],
+    [
+      "9pm\u201310pm",
+      "nine p m\u2013ten p m"
+    ],
+    [
+      "6 p.m.-mini",
+      "6 p dot m.-mini"
+    ],
+    [
+      "~98.5%",
+      "about ninety-eight point five percent"
+    ],
+    [
+      "VS",
+      "VS"
+    ],
+    [
+      "Vs.",
+      "Vs."
+    ]
+  ],
+  "agreedSource": "Lead update to brief P; NL34 final round pending merge SHA",
+  "agreedCases": [
+    [
+      "9am-5pm",
+      "nine a m-five p m"
+    ],
+    [
+      "9 a.m.-5 p.m.",
+      "nine a m-five p m"
+    ],
+    [
+      "9:30pm-10pm",
+      "nine thirty p m-ten p m"
+    ],
+    [
+      "10am-12pm",
+      "ten a m-twelve p m"
+    ],
+    [
+      "~98.5%",
+      "about ninety-eight point five percent"
+    ],
+    [
+      "vs",
+      "versus"
+    ],
+    [
+      "vs.",
+      "versus"
+    ],
+    [
+      "VS",
+      "VS"
+    ],
+    [
+      "Vs.",
+      "Vs."
+    ]
+  ],
+  "followupCases": [
+    [
+      "~5%",
+      "about five percent"
+    ],
+    [
+      "~50% of users",
+      "about fifty percent of users"
+    ],
+    [
+      "9am-5pm-ish",
+      "9am-5pm-ish"
+    ],
+    [
+      "1pm-2pm-mini",
+      "1pm-2pm-mini"
+    ],
+    [
+      "PR 2026-10-22",
+      "PR 2026-10-22"
+    ],
+    [
+      "PR #275/#276",
+      "PR #275/#276"
+    ]
+  ],
+  "knownLimits": [
+    [
+      "50%off",
+      "fifty percentoff"
+    ],
+    [
+      "%5",
+      "percent5"
+    ],
+    [
+      "~5x",
+      "~five times"
+    ],
+    [
+      "9-10pm",
+      "9-ten p m"
+    ]
+  ],
+  "nl35Head": "99589a47fbb07c88f9a7facf81d229bb9647fdcc",
+  "nl35Cases": [
+    [
+      "~5%",
+      "about five percent"
+    ],
+    [
+      "~50% of users",
+      "about fifty percent of users"
+    ],
+    [
+      "~100%",
+      "about one hundred percent"
+    ],
+    [
+      "~98.5%",
+      "about ninety-eight point five percent"
+    ],
+    [
+      "9am-5pm-ish",
+      "9am-5pm-ish"
+    ],
+    [
+      "1pm-2pm-mini",
+      "1pm-2pm-mini"
+    ],
+    [
+      "5pm-6pm-7pm",
+      "five p m-six p m-seven p m"
+    ],
+    [
+      "5pm-6pm-7pm-mini",
+      "5pm-6pm-7pm-mini"
+    ],
+    [
+      "~5%-10%",
+      "about five percent-ten percent"
+    ],
+    [
+      "~5%/10%",
+      "about five percent/ten percent"
+    ],
+    [
+      "~5%\u201310%",
+      "about five percent\u2013ten percent"
+    ],
+    [
+      "~5%:",
+      "about five percent:"
+    ],
+    [
+      "~5%-ish",
+      "about five percent-ish"
+    ],
+    [
+      "~98.5%-99%",
+      "about ninety-eight point five percent-ninety-nine percent"
+    ]
+  ],
+  "ordinaryCases": [
+    [
+      "Fix the #1 priority",
+      "Fix the number one priority"
+    ],
+    [
+      "See issue #12",
+      "See issue number twelve"
+    ],
+    [
+      "Runs on x86",
+      "Runs on x86"
+    ],
+    [
+      "The video is 12:34 long",
+      "The video is twelve thirty-four long"
+    ],
+    [
+      "10:30 meeting",
+      "ten thirty meeting"
+    ],
+    [
+      "2.5x",
+      "two point five times"
+    ],
+    [
+      "x2",
+      "x2"
+    ],
+    [
+      "2x",
+      "two times"
+    ],
+    [
+      "at 21:00",
+      "at nine p m"
+    ],
+    [
+      "by 00:00",
+      "by twelve a m"
+    ],
+    [
+      "until 12:00",
+      "until twelve p m"
+    ],
+    [
+      "from 09:05",
+      "from nine oh five a m"
+    ],
+    [
+      "21:00",
+      "twenty-one zero"
+    ],
+    [
+      "#123",
+      "number one twenty-three"
+    ],
+    [
+      "pull request #123",
+      "pull request one twenty-three"
+    ]
+  ],
+  "percentContextCases": [
+    [
+      "~5%-10%",
+      "about five percent-ten percent"
+    ],
+    [
+      "~5%:",
+      "about five percent:"
+    ],
+    [
+      "~5%-ish",
+      "about five percent-ish"
+    ],
+    [
+      "~5%/10%",
+      "about five percent/ten percent"
+    ],
+    [
+      "~5%\u201310%",
+      "about five percent\u2013ten percent"
+    ],
+    [
+      "cache%",
+      "cache percent"
+    ],
+    [
+      "~98.5%-99%",
+      "about ninety-eight point five percent-ninety-nine percent"
+    ]
+  ],
+  "percentContextSource": "Latest lead lockstep: ~N% ALWAYS consumes percent, whatever follows; supersedes prior stray-tilde limit"
+}

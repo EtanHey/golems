@@ -3,9 +3,11 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
 
 import { materializeOversizeTranscript, readFixture } from "./helpers.mjs";
+import { hookSpec } from "../../../../../scripts/hooks/install-hooks.mjs";
 
 // These tests spawn node/bun; a cold CI runner can exceed bun's 5s default.
 setDefaultTimeout(15_000);
@@ -22,6 +24,82 @@ const falseGreenHook = path.join(
 );
 const fixtureRoot = path.join(here, "fixtures");
 const scratch = [];
+
+test("an async manifest row may finish after its harness timeout without being killed", () => {
+  const manifest = JSON.parse(readFileSync(path.resolve(powersRoot, "../../scripts/hooks/manifest.json"), "utf8"));
+  const row = Object.values(manifest.hosts).flat().find((row) => row.async && row.command?.includes("stop-telemetry.mjs"));
+  expect(row).toBeDefined();
+  const registered = hookSpec({ ...row, cmd: row.command });
+  const budget = registered.command.match(/--timeout-ms (\d+)/);
+  const root = mkdtempSync(path.join(tmpdir(), "stop-async-deadline-"));
+  scratch.push(root);
+  const logPath = path.join(root, "decisions.jsonl");
+  const durationMs = row.timeout * 1000 + 500;
+  const env = { ...process.env, STOP_TELEMETRY_LOG_PATH: logPath, DURATION_MS: String(durationMs) };
+  delete env.STOP_TELEMETRY_TIMEOUT_MS;
+  const result = spawnSync("node", [telemetry, row.id, ...(budget ? ["--timeout-ms", budget[1]] : []), "--", "node", "-e",
+    'process.stdin.resume(); setTimeout(() => process.stdout.write("{}"), Number(process.env.DURATION_MS));'],
+    { input: "{}", encoding: "utf8", env, timeout: durationMs + 5000 });
+  expect(result.status, String(result.error ?? result.stderr)).toBe(0);
+  const decision = JSON.parse(readFileSync(logPath, "utf8"));
+  expect(decision.decision).toBe("allow");
+  expect(decision.timedOut).toBe(false);
+  expect(decision.durationMs).toBeGreaterThan(row.timeout * 1000);
+  expect(budget?.[1]).toBe("30000");
+});
+
+test("sync row watchdogs and oversized overrides finish before their manifest harness timeout", () => {
+  const manifest = JSON.parse(readFileSync(path.resolve(powersRoot, "../../scripts/hooks/manifest.json"), "utf8"));
+  const rows = Object.values(manifest.hosts).flat().filter((row) => !row.async && row.command?.includes("stop-telemetry.mjs"));
+  expect(rows.length).toBeGreaterThan(0);
+  const root = mkdtempSync(path.join(tmpdir(), "stop-deadline-"));
+  scratch.push(root);
+  for (const row of rows) for (const override of [undefined, "30000"]) {
+    const budget = hookSpec({ ...row, cmd: row.command }).command.match(/--timeout-ms (\d+)/)?.[1];
+    expect(Number(budget)).toBeLessThan(row.timeout * 1000);
+    const logPath = path.join(root, `decisions-${row.id}-${override}.jsonl`);
+    const pidPath = path.join(root, "child.pid");
+    const source = 'require("node:fs").writeFileSync(process.env.PID_PATH, String(process.pid)); setInterval(() => {}, 1000);';
+    const env = { ...process.env, STOP_TELEMETRY_LOG_PATH: logPath, PID_PATH: pidPath };
+    delete env.STOP_TELEMETRY_TIMEOUT_MS;
+    if (override) env.STOP_TELEMETRY_TIMEOUT_MS = override;
+    try {
+      const result = spawnSync("node", [telemetry, row.id, "--timeout-ms", budget, "--", "node", "-e", source], { input: "{}", encoding: "utf8", env, timeout: row.timeout * 1000 - 200 });
+      expect(result.status, String(result.error ?? result.stderr)).toBe(124);
+      expect(JSON.parse(readFileSync(logPath, "utf8")).timedOut).toBe(true);
+    } finally {
+      try { process.kill(-Number(readFileSync(pidPath, "utf8")), "SIGKILL"); } catch {}
+    }
+  }
+}, 30_000);
+
+for (const [signal, exitCode] of [["SIGTERM", 143], ["SIGINT", 130], ["SIGHUP", 129]]) {
+  test(`outer ${signal} reaches the child group and reaps a resistant child`, async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "stop-termination-"));
+    scratch.push(root);
+    const pidPath = path.join(root, "child.pid");
+    const marker = path.join(root, "signal.txt");
+    const descendant = `process.on(${JSON.stringify(signal)}, () => { require("node:fs").writeFileSync(process.env.MARKER, ${JSON.stringify(signal)}); process.exit(0); }); process.stdout.write("ready"); setInterval(() => {}, 1000);`;
+    const source = `require("node:fs").writeFileSync(process.env.PID_PATH, String(process.pid)); process.on(${JSON.stringify(signal)}, () => {}); require("node:child_process").spawn(process.execPath, ["-e", ${JSON.stringify(descendant)}], {stdio: ["ignore", "inherit", "inherit"]}); setInterval(() => {}, 1000);`;
+    const wrapper = spawn("node", [telemetry, "signal-hook", "--", "node", "-e", source], {
+      env: { ...process.env, PID_PATH: pidPath, MARKER: marker, STOP_TELEMETRY_LOG_PATH: path.join(root, "decisions.jsonl") },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const guard = setTimeout(() => wrapper.kill("SIGKILL"), 2000);
+    try {
+      await once(wrapper.stdout, "data");
+      const closed = once(wrapper, "close");
+      wrapper.kill(signal);
+      expect((await closed)[0]).toBe(exitCode);
+      expect(readFileSync(marker, "utf8")).toBe(signal);
+      expect(() => process.kill(Number(readFileSync(pidPath, "utf8")), 0)).toThrow();
+    } finally {
+      clearTimeout(guard);
+      wrapper.kill("SIGKILL");
+      try { process.kill(-Number(readFileSync(pidPath, "utf8")), "SIGKILL"); } catch {}
+    }
+  });
+}
 
 afterEach(() => {
   while (scratch.length > 0) rmSync(scratch.pop(), { recursive: true, force: true });

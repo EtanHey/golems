@@ -280,6 +280,74 @@ test('second install is a no-op, including through the installed update wrapper'
   const update = spawnSync(join(dir, '.golems/bin/golems-cli'), ['update', '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], { env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8' });
   ok(update); expect(update.stdout).toContain('already current');
 });
+test('prune replay recovers an actual unlink interrupted before history replacement', () => {
+  const dir = home(), prefix = join(dir, '.golems'), bin = join(dir, 'bin');
+  const old = ['aaaaaaa', 'bbbbbbb', 'ccccccc', 'ddddddd'].map(sha => `2026.01.01-${sha}`);
+  mkdirSync(bin); mkdirSync(join(prefix, 'releases'), { recursive: true });
+  for (const version of old) mkdirSync(join(prefix, 'releases', version));
+  const history = `${old.join('\n')}\n`, target = join(prefix, 'releases', old[2]);
+  writeFileSync(join(prefix, 'release-history'), history);
+  for (const name of readdirSync(minimal).filter(name => name !== 'rm')) symlinkSync(join(minimal, name), join(bin, name));
+  writeFileSync(join(bin, 'rm'), `#!/bin/sh
+"${join(minimal, 'rm')}" "$@" || exit
+for arg do
+  if [ "$arg" = '${target}' ]; then
+    cp '${prefix}/release-history' '${dir}/history-at-unlink'
+    [ ! -f '${prefix}/release-prune-plan' ] || cp '${prefix}/release-prune-plan' '${dir}/plan-at-unlink'
+    exit 77
+  fi
+done
+`); chmodSync(join(bin, 'rm'), 0o755);
+  const result = spawnSync('/bin/bash', [installer, '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], {
+    env: { ...process.env, HOME: dir, PATH: bin }, encoding: 'utf8',
+  });
+  expect(result.status).toBe(77);
+  expect(existsSync(target)).toBe(false);
+  expect(readFileSync(join(dir, 'history-at-unlink'), 'utf8')).toBe(history);
+  expect(existsSync(join(dir, 'plan-at-unlink'))).toBe(true);
+  expect(readFileSync(join(dir, 'plan-at-unlink'), 'utf8')).toContain(`prune\t${old[2]}\n`);
+  ok(install(dir)); // Same-version retry must finish only the committed cleanup.
+  expect(readFileSync(join(prefix, 'release-history'), 'utf8')).toBe(`${release.version}\n${old.slice(0, 2).join('\n')}\n`);
+  expect(existsSync(join(prefix, 'releases', old[3]))).toBe(false);
+  expect(existsSync(join(prefix, 'release-prune-plan'))).toBe(false);
+  expect(existsSync(join(prefix, 'current/scripts/release/install.sh'))).toBe(true);
+});
+test('pruning retains the installed generation and the generation running this installer', () => {
+  const dir = home(), prefix = join(dir, '.golems');
+  const old = ['aaaaaaa', 'bbbbbbb', 'ccccccc', 'ddddddd', 'eeeeeee'].map(sha => `2026.01.01-${sha}`);
+  for (const version of old) mkdirSync(join(prefix, 'releases', version), { recursive: true });
+  const running = join(prefix, 'releases', old[3], 'scripts/release/install.sh');
+  mkdirSync(dirname(running), { recursive: true }); copyFileSync(installer, running);
+  symlinkSync(`releases/${old[4]}`, join(prefix, 'current'));
+  writeFileSync(join(prefix, 'release-history'), `${old.join('\n')}\n`);
+  ok(spawnSync('/bin/bash', [running, '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], {
+    env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8',
+  }));
+  expect(existsSync(join(prefix, 'releases', old[2]))).toBe(false);
+  for (const version of [release.version, old[3], old[4]]) {
+    expect(existsSync(join(prefix, 'releases', version))).toBe(true);
+    expect(readFileSync(join(prefix, 'release-history'), 'utf8')).toContain(`${version}\n`);
+  }
+});
+test('prune replay rechecks protected generations and validates every row before deleting', () => {
+  const dir = home(), prefix = join(dir, '.golems'), old = '2026.01.01-aaaaaaa'; ok(install(dir));
+  const running = join(prefix, 'releases', old, 'scripts/release/install.sh');
+  mkdirSync(dirname(running), { recursive: true }); copyFileSync(installer, running);
+  const plan = join(prefix, 'release-prune-plan'), metadata = readFileSync(join(prefix, 'release.json'));
+  writeFileSync(plan, `prune\t${old}\nprune\t../invalid\n`);
+  const invalid = install(dir);
+  expect(invalid.status).not.toBe(0); expect(invalid.stderr).toContain('invalid release prune plan');
+  expect(existsSync(running)).toBe(true);
+  writeFileSync(plan, `prune\t${release.version}\nprune\t${old}\n`);
+  ok(spawnSync('/bin/bash', [running, '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], {
+    env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8',
+  }));
+  expect(existsSync(running)).toBe(true);
+  expect(existsSync(join(prefix, 'current/scripts/release/install.sh'))).toBe(true);
+  expect(readFileSync(join(prefix, 'release-history'), 'utf8')).toBe(`${release.version}\n${old}\n`);
+  expect(readFileSync(join(prefix, 'release.json'))).toEqual(metadata);
+  expect(existsSync(plan)).toBe(false);
+});
 test('tarball checksum mismatch refuses before extraction or activation', () => {
   const dir = home(), tampered = join(root, 'tampered', basename(release.tarball)); mkdirSync(dirname(tampered));
   writeFileSync(tampered, Buffer.concat([readFileSync(release.tarball), Buffer.from('tampered')]));
@@ -324,7 +392,7 @@ test('custom prefix with spaces works and an in-progress install refuses cleanly
   expect(existsSync(join(prefix, '.install-lock'))).toBe(true);
 });
 test('symlinked install and client directories refuse without touching their targets', () => {
-  for (const path of ['.golems/releases', '.golems/bin', '.claude/skills', '.agents/skills', '.codex']) {
+  for (const path of ['.golems/releases', '.golems/bin', '.golems/release-prune-plan', '.claude/skills', '.agents/skills', '.codex']) {
     const dir = home(), target = join(dir, 'external'); mkdirSync(target); writeFileSync(join(target, 'sentinel'), 'untouched');
     mkdirSync(dirname(join(dir, path)), { recursive: true }); symlinkSync(target, join(dir, path));
     const result = install(dir); expect(result.status).not.toBe(0); expect(result.stderr).toContain('symlink');
