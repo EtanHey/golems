@@ -103,6 +103,10 @@ record_result() {
   local status="$2"
   local message="$3"
   local fix="${4:-}"
+  case "$status" in
+    PASS|FAIL|WARN|SKIP|INFO) ;;
+    *) message="Invalid check status '$status': $message"; status="FAIL" ;;
+  esac
   CHECK_NAMES+=("$name")
   CHECK_STATUSES+=("$status")
   CHECK_MESSAGES+=("$message")
@@ -124,7 +128,8 @@ run_with_timeout() {
     return $?
   fi
 
-  "$@"
+  echo "timeout unavailable: install coreutils (timeout or gtimeout)" >&2
+  return 127
 }
 
 # shellcheck disable=SC2329
@@ -177,9 +182,13 @@ run_check() {
       record_result "$script" "FAIL" "Check script crashed: $script" "Inspect script output and re-run"
     fi
   else
-    record_result "$script" "SKIP" "Check script not found: $script" ""
+    record_result "$script" "FAIL" "Required check script not found: $script" "Restore the required module"
   fi
 }
+
+if ! command -v timeout >/dev/null 2>&1 && ! command -v gtimeout >/dev/null 2>&1; then
+  record_result "Bounded command execution" "FAIL" "timeout unavailable; remote checks cannot run safely" "Install coreutils (timeout or gtimeout)"
+fi
 
 run_check "01-easignore.sh"
 run_check "02-archive-size.sh"
