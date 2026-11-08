@@ -4,6 +4,7 @@ import argparse
 import fcntl
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -300,7 +301,7 @@ def watch(args):
     # The watcher itself owns the fd; process exit releases it without PID recovery.
     try:
         args.state_file.parent.mkdir(parents=True, exist_ok=True)
-        lock = Path(str(args.state_file) + '.lock').open('a')
+        lock = Path(str(args.state_file) + '.lock').open('a+')
     except OSError as error:
         sys.stderr.write(str(error) + '\n')
         return emit('GH_ERROR', args)
@@ -308,8 +309,23 @@ def watch(args):
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            sys.stderr.write('state file already watched: ' + str(args.state_file) + '\n')
+            try:
+                lock.seek(0)
+                holder = lock.read(64).strip()
+            except (OSError, UnicodeError):
+                holder = ''
+            holder = holder if holder.isascii() and holder.isdigit() else 'unknown'
+            sys.stderr.write(f'state file already watched: {args.state_file} (holder pid={holder})\n')
             return emit('GH_ERROR', args)
+        except OSError as error:
+            sys.stderr.write(str(error) + '\n')
+            return emit('GH_ERROR', args)
+        try:
+            # Diagnostic only: flock, never this PID, determines ownership.
+            lock.seek(0)
+            lock.truncate()
+            lock.write(str(os.getpid()) + '\n')
+            lock.flush()
         except OSError as error:
             sys.stderr.write(str(error) + '\n')
             return emit('GH_ERROR', args)

@@ -281,7 +281,9 @@ and the default 180s settle window must stay quiet. See the
 Handle every terminal exit: 0 READY: proceed to the exact-head review and authorized merge path;
 10 FAILED: fix the failure; on exit 11 HEAD_MOVED, read the new head and re-arm with that SHA;
 12 MERGED: stop; on exit 20 DEADLINE: re-arm if waiting continues or escalate;
-30 GH_ERROR: back off and report stderr.
+30 GH_ERROR: back off and report stderr. If stderr says `state file already watched`,
+another watcher already holds this state file: a watcher is already armed; do not
+re-arm. The message includes its PID (or `unknown`) for diagnosis only.
 The 30-minute Monitor expiry precedes the 2h --deadline; re-arm on expiry, since
 re-arming restarts the deadline and the settle window. Cancel the old Monitor with TaskStop
 before re-arming at expiry or after compaction. Never raise `timeout_ms` past 50 min (3000000) on a

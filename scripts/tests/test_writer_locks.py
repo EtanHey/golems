@@ -38,15 +38,21 @@ class WriterLocks(unittest.TestCase):
         gh.chmod(0o755)
         state = self.home / 'state.json'
         state.write_text('{"retries_by_sha": {"head": 2}}')
-        with Path(str(state) + '.lock').open('a') as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            result = subprocess.run([str(ROOT / 'scripts/pr-watch'), 'o/r', '1',
-                                     '--head', 'a' * 40, '--state-file', str(state), '--deadline', '1s'],
-                                    env=dict(os.environ, PATH=f'{self.home}:/usr/bin:/bin'),
-                                    capture_output=True, text=True, timeout=15)
-        self.assertEqual(result.returncode, 30, result.stdout + result.stderr)
-        self.assertIn('state file already watched', result.stderr)
-        self.assertEqual(state.read_text(), '{"retries_by_sha": {"head": 2}}')
+        for holder in ('', str(os.getpid())):
+            with self.subTest(holder=holder):
+                with Path(str(state) + '.lock').open('w') as lock:
+                    fcntl.flock(lock, fcntl.LOCK_EX)
+                    lock.write(holder)
+                    lock.flush()
+                    result = subprocess.run([str(ROOT / 'scripts/pr-watch'), 'o/r', '1',
+                                             '--head', 'a' * 40, '--state-file', str(state), '--deadline', '1s'],
+                                            env=dict(os.environ, PATH=f'{self.home}:/usr/bin:/bin'),
+                                            capture_output=True, text=True, timeout=15)
+                self.assertEqual(result.returncode, 30, result.stdout + result.stderr)
+                self.assertIn('state file already watched', result.stderr)
+                self.assertIn(f'holder pid={holder or "unknown"}', result.stderr)
+                self.assertEqual(state.read_text(), '{"retries_by_sha": {"head": 2}}')
+
 
 
 if __name__ == '__main__':
