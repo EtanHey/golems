@@ -20,7 +20,7 @@ spec.loader.exec_module(runner)
 
 class CursorCompletion(unittest.TestCase):
     def setUp(self):
-        scratch = SCRIPT.parents[4] / "docs.local" / "p11-test-scratch"
+        scratch = SCRIPT.parents[4] / "docs.local" / "weave-test-scratch"
         scratch.mkdir(parents=True, exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(dir=scratch)
         self.addCleanup(self.temp.cleanup)
@@ -37,17 +37,25 @@ class CursorCompletion(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
 
-    def run_fixture(self):
+    def run_fixture(self, read_summary=True):
+        argv = [str(SCRIPT), "run"]
+        for key, value in vars(self.args).items():
+            if value is not False:
+                argv.append("--" + key.replace("_", "-"))
+                if value is not True:
+                    argv.append(str(value))
         with patch.object(runner, "discover_sessions", return_value=self.sessions), \
              patch.object(runner, "prepare_contexts", return_value=len(self.sessions)), \
+             patch.object(sys, "argv", argv), \
              contextlib.redirect_stdout(io.StringIO()):
-            code = runner.cmd_run(self.args)
-        summary = json.loads((Path(self.args.workdir) / "run-summary.json").read_text())
+            code = runner.main()
+        summary = json.loads((Path(self.args.workdir) / "run-summary.json").read_text()) if read_summary else None
         return code, summary
 
     def test_completion_matrix(self):
         for synth, miner, expected, result in [("good", "none", 0, "DONE"),
-                ("missing", "none", 1, "FAILED"), ("wrong", "none", 1, "FAILED"),
+                ("no-marker", "none", 0, "DONE"),
+                ("missing", "none", 1, "FAILED"), ("wrong", "none", 0, "DONE"),
                 ("empty", "none", 1, "FAILED"), ("exit-failure", "none", 1, "FAILED"),
                 ("good", "codex/session-1", 2, "PARTIAL"), ("good", "all", 1, "FAILED")]:
             with self.subTest(synth=synth, miner=miner):
@@ -60,7 +68,8 @@ class CursorCompletion(unittest.TestCase):
                                  0 if miner == "all" else 1 if miner != "none" else 2)
                 if code in (0, 2):
                     self.assertTrue(summary["ledger_success"] and summary["report_success"])
-                    self.assertIn(summary["run_id"], Path(self.args.retro_out).read_text())
+                    self.assertTrue(Path(self.args.retro_out).read_text().startswith(
+                        f"<!-- weave-run: {summary['run_id']} -->\n"))
 
     def test_synthesis_rejects_an_earlier_report_when_agent_writes_nothing(self):
         _, first = self.run_fixture()
@@ -83,3 +92,43 @@ class CursorCompletion(unittest.TestCase):
                 self.assertEqual((code, summary["result"]), (1, "FAILED"))
                 self.assertFalse(summary["report_success"])
                 self.assertTrue(summary["message"])
+
+    def test_heading_before_marker_is_accepted(self):
+        os.environ["SYNTH_MODE"] = "heading"
+        code, summary = self.run_fixture()
+        self.assertEqual((code, summary["result"]), (0, "DONE"))
+        self.assertTrue(Path(self.args.retro_out).read_text().startswith(
+            f"<!-- weave-run: {summary['run_id']} -->\n"))
+
+    def test_rejected_paid_output_is_preserved_and_named_in_summary(self):
+        os.environ["SYNTH_MODE"] = "exit-failure"
+        code, summary = self.run_fixture()
+        self.assertEqual(code, 1)
+        rejected = Path(summary["rejected_report"])
+        self.assertEqual(rejected.suffix, ".rejected")
+        self.assertIn("Fresh synthesis.", rejected.read_text())
+        self.assertIn(str(rejected), summary["message"])
+
+    def test_empty_window_does_not_prepare_aggregate_or_synthesize(self):
+        self.sessions = []
+        with patch.object(runner, "_spawn_cursor_agent", side_effect=AssertionError("paid call")), \
+             patch.object(runner, "subprocess") as process:
+            code, summary = self.run_fixture()
+        self.assertEqual((code, summary["result"]), (0, "EMPTY"))
+        self.assertFalse(summary["report_success"] or summary["ledger_success"])
+        process.run.assert_not_called()
+
+    def test_summary_write_failure_keeps_original_error_and_exit(self):
+        original_write = Path.write_text
+        def fail_summary(path, *args, **kwargs):
+            if path.name == "run-summary.json":
+                raise OSError("summary blocked")
+            return original_write(path, *args, **kwargs)
+        stderr = io.StringIO()
+        with patch.object(Path, "write_text", fail_summary), \
+             patch.object(runner, "_cmd_run", side_effect=RuntimeError("original failure")), \
+             contextlib.redirect_stderr(stderr):
+            code, _ = self.run_fixture(read_summary=False)
+        self.assertEqual(code, 1)
+        self.assertIn("original failure", stderr.getvalue())
+        self.assertIn("summary blocked", stderr.getvalue())

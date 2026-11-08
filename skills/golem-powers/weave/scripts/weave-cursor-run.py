@@ -9,6 +9,9 @@ Usage:
   python3 weave-cursor-run.py run --cutoff 2026-06-14T05:30:00Z \\
       --workdir <repo>/docs.local/weave-2026-06-18-cursor-wide \\
       --concurrency 16 --fresh
+
+Exit codes: 0 = DONE or EMPTY, 1 = FAILED, 2 = PARTIAL (also argparse usage
+errors). Read run-summary.json to distinguish PARTIAL from a usage error.
 """
 from __future__ import annotations
 
@@ -313,6 +316,7 @@ class MinerStatus:
 @dataclass
 class WeaveState:
     run_id: str = field(default_factory=lambda: uuid4().hex)
+    rejected_report: str = ""
     phase: str = "init"
     message: str = ""
     concurrency: int = DEFAULT_CONCURRENCY
@@ -451,7 +455,6 @@ Write markdown to {out_path} with sections:
 ## Pain-Points Ledger (ranked) — top 20, frequency×severity table
 ## Plan for Next orcClaude — 5 parallel tracks, mined actions only
 
-Start the file with this exact run marker: <!-- weave-run: {run_id} -->
 Then reply: WEAVE_SYNTH_DONE
 """
 
@@ -459,26 +462,35 @@ Then reply: WEAVE_SYNTH_DONE
 def synthesize(wd: Path, out_retro: Path, state: WeaveState) -> bool:
     state.set_phase("synthesize", f"writing {out_retro.name}")
     candidate = out_retro.with_name(f".{out_retro.name}.{state.run_id}.pending")
+    stamped = candidate.with_suffix(".stamped")
     marker = f"<!-- weave-run: {state.run_id} -->"
     prompt = SYNTH_PROMPT.format(
         ledger_path=wd / "ACTION-LEDGER.md",
         ledger_json=wd / "ledger.json",
         out_path=candidate,
-        run_id=state.run_id,
     )
     try:
         result = _spawn_cursor_agent(prompt, timeout=600)
         if result.returncode != 0 or not candidate.is_file():
             return False
-        report = candidate.read_text()
-        if not report.startswith(marker + "\n") or not report[len(marker):].strip():
+        report = candidate.read_text(encoding="utf-8-sig")
+        if not re.sub(r"<!-- weave-run: [^>]* -->", "", report).strip():
             return False
-        candidate.replace(out_retro)
+        stamped.write_text(marker + "\n" + report)
+        stamped.replace(out_retro)
+        candidate.unlink()
         return True
     except (OSError, UnicodeError, subprocess.SubprocessError):
         return False
     finally:
-        candidate.unlink(missing_ok=True)
+        if candidate.exists():
+            state.rejected_report = str(candidate)
+            try:
+                rejected = candidate.with_suffix(".rejected")
+                candidate.replace(rejected)
+                state.rejected_report = str(rejected)
+            except OSError as exc:
+                print(f"WARNING: rejected synthesis kept at {candidate}: {exc}", file=sys.stderr)
 
 
 def _fresh_workdir(wd: Path):
@@ -522,13 +534,22 @@ def cmd_run(args) -> int:
     code = 1
     try:
         code = _cmd_run(args, state, summary)
-        summary["result"] = {0: "DONE", 2: "PARTIAL"}.get(code, "FAILED")
+        summary["result"] = "EMPTY" if state.phase == "empty" else {0: "DONE", 2: "PARTIAL"}.get(code, "FAILED")
     except (Exception, KeyboardInterrupt) as exc:
         state.set_phase("failed", f"{type(exc).__name__}: {exc}")
         code = 130 if isinstance(exc, KeyboardInterrupt) else 1
     finally:
         summary["message"] = state.message
-        (wd / "run-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+        summary["rejected_report"] = state.rejected_report
+        try:
+            (wd / "run-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+        except OSError as exc:
+            print(f"ERROR: run summary write failed: {exc}; original result={summary['result']}: {state.message}",
+                  file=sys.stderr)
+            if code == 0:
+                code = 1
+                summary["result"] = "FAILED"
+                state.set_phase("failed", f"run summary write failed: {exc}")
     print(f"{summary['result']} WIDE weave → {wd} ({state.message})")
     return code
 
@@ -565,6 +586,11 @@ def _cmd_run(args, state: WeaveState, summary: dict) -> int:
             "sessions": sessions,
         }
         (wd / "corpus-manifest.json").write_text(json.dumps(manifest, indent=2))
+
+        if not sessions:
+            state.set_phase("empty", "no sessions in window")
+            refresh()
+            return 0
 
         state.set_phase("prepare", f"mine-context for {len(sessions)} sessions")
         refresh()
@@ -626,7 +652,7 @@ def _cmd_run(args, state: WeaveState, summary: dict) -> int:
         refresh()
         summary["report_success"] = synthesize(wd, retro_path, state)
         if not summary["report_success"]:
-            raise RuntimeError("Fresh matching final report was not published")
+            raise RuntimeError(f"Fresh final report was not published; rejected output: {state.rejected_report or 'none'}")
 
         if args.eval_out:
             eval_path = Path(args.eval_out)

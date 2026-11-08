@@ -17,11 +17,15 @@ else:
     out = Path(re.search(r"Write markdown to (.*?) with sections:", prompt)[1])
     marker = re.search(r"<!-- weave-run: [^>]+ -->", prompt)
     if mode != "missing":
-        text = marker[0] if marker else ""
+        text = marker[0] if marker else f"<!-- weave-run: {out.name.split('.')[-2]} -->"
+        if mode == "no-marker":
+            text = ""
         if mode == "wrong":
             text = "<!-- weave-run: previous-run -->"
         if mode != "empty":
             text += "\n# Fixture report\nFresh synthesis.\n"
+        if mode == "heading":
+            text = "# Weave Retro\n" + text
         out.write_text(text)
     if mode == "exit-failure":
         sys.exit(7)
