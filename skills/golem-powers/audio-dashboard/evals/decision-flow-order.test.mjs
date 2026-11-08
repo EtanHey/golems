@@ -22,13 +22,17 @@ test('three batched decisions follow their explainers in cards, chips and index 
   const before = JSON.stringify(batched), html = render(batched);
   const expected = ['rune', 'rune-pick', 'sync', 'sync-pick', 'release', 'release-pick'];
   expect(order(html)).toEqual(expected);
-  expect(order(html, /data-chip-for="([^"]+)"/g)).toEqual(expected);
-  expect(order(html, /data-index-for="([^"]+)"/g)).toEqual(expected);
+  expect(order(html, /<button\b[^>]*data-chip-for="([^"]+)"/g)).toEqual(expected);
+  expect(order(html, /<a\b[^>]*data-index-for="([^"]+)"/g)).toEqual(expected);
   expect(JSON.stringify(batched)).toBe(before);
 });
 test('two decisions attached to one explainer retain authored relative order, including forward references', () => {
   expect(order(render([choices[0], ...explainers, card('second', { after: 'rune' })])))
     .toEqual(['rune', 'rune-pick', 'second', 'sync', 'release']);
+});
+test('legacy numeric IDs retain their rendered string identity', () => {
+  expect(order(render([card(1), card(2)]))).toEqual(['1', '2']);
+  expect(order(render([card(2, { after: '1' }), card(1)]))).toEqual(['1', '2']);
 });
 test('unknown, empty, self and cyclic after references refuse with the named code', () => {
   for (const decisions of [[...explainers, card('pick', { after: 'absent' })], [card('pick', { after: '' })],
