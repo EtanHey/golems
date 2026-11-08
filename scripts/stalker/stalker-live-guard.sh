@@ -33,7 +33,14 @@ mkdir -p "$LOG_DIR"
 
 if [ -f "$PID_FILE" ]; then
   old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
-  if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+  # A PID alone is not ownership: launchd may restart us after PID reuse.
+  # Inspect the actual bash process, never a launcher/wrapper parent.
+  old_command=""
+  if [[ "$old_pid" =~ ^[0-9]+$ ]] && kill -0 "$old_pid" 2>/dev/null; then
+    old_command="$(ps -p "$old_pid" -o command= 2>/dev/null || true)"
+  fi
+  read -r old_executable old_script old_args <<< "$old_command"
+  if [[ "${old_executable##*/}" == bash && "${old_script##*/}" == stalker-live-guard.sh ]]; then
     echo "live guard already running as PID $old_pid"
     exit 0
   fi

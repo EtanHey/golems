@@ -24,6 +24,9 @@ FINDINGS_SCHEMA_MARKERS = (
     '"id":',
     '"evidence":',
     '"disposition":',
+    '"followups":',
+    '"verified":',
+    '"new_questions":',
 )
 
 
@@ -37,6 +40,9 @@ def validate_brief(text: str) -> list[str]:
         re.search(r'"id"\s*:\s*"<label>#N"|findings JSONL|JSON schema above', text, re.I)
     )
     if needs_schema:
+        for marker in ("question_bank:", "answers:"):
+            if marker not in text:
+                errors.append(f"missing miner input/output path: {marker}")
         fences = re.findall(r"```(?:json)?\s*\n(.*?)```", text, re.S)
         schema_ok = any(all(m in block for m in FINDINGS_SCHEMA_MARKERS) for block in fences)
         if not schema_ok:

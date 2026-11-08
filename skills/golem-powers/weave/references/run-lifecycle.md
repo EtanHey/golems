@@ -252,15 +252,75 @@ python3 scripts/weave-run.py aggregate --workdir "$WD" --tokens <N> # → ACTION
   first, map the generational chain against each other, THEN mine workers.**
   [g1:82 → 2026-06-05.md:14,48]
 - **Whole sessions, K per miner** (never shards of one session; centerpieces get a
-  dedicated miner). Parallelism = waves of ~5 miners. **Loop-until-dry** (see §2a phase-recursion) — stop
-  when a round surfaces nothing new.
+  dedicated miner). Parallelism = waves of ~5 miners. **Loop-until-dry** (see §2a) — stop
+  after two consecutive non-empty dry rounds with no pending work; synthesis is last.
 - Miners read the compact `mine-context/<label>.md` (digest + grep excerpts),
   then grep the raw JSONL only to quote verbatim. They never read a whole MB-scale
   JSONL into context.
 
 ### 2a. Phase-recursion loop — no fixed round cap (2026-07-10)
 
-> **DESIGN SPEC — harness implementation pending (ships with the substrate-law + phase-recursion + final-boss bundle).**
+Implemented by `scripts/weave_loop.py` (paths here are relative to this skill).
+It plans work; orc dispatches agents. After `weave-run.py batches`:
+
+```bash
+python3 scripts/weave_loop.py init --workdir "$WD" --confirmation-top-n 5 --confirmation-spot-checks 3
+python3 scripts/weave_loop.py next --workdir "$WD"    # first call emits round 1
+# Dispatch loop/state.json rounds[-1].items, writing each item's exact out file.
+python3 scripts/weave_loop.py ingest --workdir "$WD" --round 1
+# If still RUNNING, append newly discovered questions before next:
+python3 scripts/weave_loop.py questions --workdir "$WD" --bank "$BANK"
+python3 scripts/weave_loop.py status --workdir "$WD"
+```
+
+`loop/state.json` persists scheduled stable keys, rounds, parent yields, the dry
+streak, pending work, question growth and unresolved claims. `next` emits a flat
+items list; `mine` targets index the original manifest data in `state.sessions`.
+The brief adapter keeps that session's `src`/`ctx` and sidecar paths, overrides
+findings `out` with the round item's `out`, and supplies the complete bank.
+Findings go to `loop/round-N/<key>.jsonl`, including an empty file for no findings.
+Ingest requires every planned output; missing or malformed receipts fail without
+advancing state. Round-1 mine items follow the batch plan, centerpieces first.
+Later items deduplicate on SHA-256 of `(kind, target, normalized claim/question)`.
+Every unseen `followups` key creates work. `verified:false` creates `verify`;
+verification output sets `verified:true` with the same target and claim (a verify
+item defaults its claim to `item.why`). Unresolved verification retries under its
+existing key until resolved; retries are not new novelty.
+`questions --bank` appends normalized-unique questions with round/finding/session
+provenance, then queues `regather` for each already-mined session. It preserves
+existing bank bytes; pending questions block `next` until processed.
+
+A round is dry only when it dispatched real work and yielded no new keys or
+unresolved claims. Pending bank updates or carried work prevent a dry stop.
+After the first dry round, an empty queue makes `next` build a non-empty
+confirmation sweep: up to N prior ordinary work items by yield become `redteam`
+targets (their stable item keys), and up to K unmined or zero-finding sessions
+become `widen` targets (session labels, unmined first). The session pool includes
+`corpus-manifest.json` when present, alongside the batch plan. Brief adapters
+resolve red-team targets through `state.scheduled` to the original work and receipts.
+Both kinds use `why: "confirmation sweep"`; existing keys are skipped and
+confirmation items never seed recursive red-teams of themselves. Set positive N/K
+at init via `--confirmation-top-n` (default 5) and `--confirmation-spot-checks`
+(default 3). Counts and configuration persist in state. These are sweep widths,
+not a limit on subsequent findings-driven rounds.
+Two consecutive non-empty dry rounds, the second a confirmation sweep, set
+`DRY_STOP` with `stop_reason: "two-dry-rounds"` and print `SYNTHESIZE`.
+New evidence in confirmation resets the streak and the loop continues. `next`
+never creates an empty round; an old empty round cannot increment the streak.
+If all confirmation candidates have already been scheduled, `next` sets DRY_STOP
+with explicit `stop_reason: "confirmation-exhausted"`, also visible in `status`,
+without appending a no-op round. This is the explicit exhaustion exception.
+Synthesize only after DRY_STOP. This planner does not grant the final-boss approval
+or replace the post-synthesis Red/Blue/Red fact-check.
+Before `weave-run.py aggregate`, harvest each `loop/round-N/<key>.jsonl` as
+`findings/round-N-<key>.jsonl`, retaining every round and the session sidecars;
+the existing ledger reads that flat directory, not the nested loop directories.
+
+Backstops are opt-in at `init`: `--max-items-per-round N` records overflow as
+`carried` for later rounds. `--max-rounds N` makes `next` set `BACKSTOP_HIT` and
+exit 3 with every pending item listed if the bound is reached with work queued.
+`status` also exits 3 for BACKSTOP_HIT. Other invalid operations exit 2. Neither
+backstop authorizes synthesis; never swallow its nonzero exit.
 
 Loop-until-dry is specified as a **phase-recursion while-loop**, not a fixed round count:
 `gapN → verifyN` runs until **BOTH queues are dry** (no new gap-needs, no
@@ -276,7 +336,32 @@ feed shallow ones. [g3:25-29 → tree-wf-review-priorart.md:33-34,70]
 
 ### 2b. Fan-out primitive — one flat `parallel()` per depth, NEVER nested (structural law)
 
-> **DESIGN SPEC — harness implementation pending (ships with the substrate-law + phase-recursion + final-boss bundle).**
+The planner provides one flat frontier per round. The orchestrator recipe is
+`while status == RUNNING: next → one flat parallel() over items → ingest → questions`.
+Read status after next (which may report confirmation exhaustion) and after
+ingest; call questions only while still RUNNING. Optional
+Workflow sketch (adapter helpers run the CLI, propagate nonzero exits, read disk
+state, build briefs and check output files; this is not an installed dispatcher):
+
+```javascript
+await loop("init");
+while ((await readState()).status === "RUNNING") {
+  await loop("next");
+  const state = await readState();
+  if (state.status !== "RUNNING") break;
+  const round = state.rounds.at(-1);
+  if (!round.items.length) throw new Error("empty round: coverage loss");
+  await parallel(round.items.map(item => async () => {
+    const res = await agent(brief(item)); // file-writing miner, no return schema
+    if (res == null) throw new Error(`coverage loss: ${item.key}`);
+    await verifyOutput(item.out); // missing file aborts, never a childless leaf
+  }));
+  await loop("ingest", { round: round.number });
+  if ((await readState()).status === "RUNNING") await loop("questions", { bank });
+}
+if ((await readState()).status !== "DRY_STOP") throw new Error("not dry");
+await synthesize(); // always last in the mining loop
+```
 
 Expand a tree/frontier as **one flat `parallel()` per depth** over the whole
 frontier — collect `CHILD:` lines in plain JS, dedup, cap, reassign as the next
@@ -347,6 +432,9 @@ concurrency rule. [g3:66-75 → skills-audit-notes.md:180-181]
 Run `scripts/validate-dispatch-brief.py` on every rendered §EDITS worker brief **before**
 dispatch. It checks required sections (`Scope`, `Sources`, `Mechanics`) and that the
 findings JSON schema fence is intact — one brief shipped truncated (singles#3).
+Miner briefs also require `question_bank:` and `answers:` paths and the
+`followups`, `verified`, `new_questions` schema fields; the validator checks these
+literal contract markers, not whether an agent obeyed them.
 
 Briefs that point workers at skill files MUST use the real path: skills live at
 `$HOME/.golems/skills/golem-powers/` (registered via `~/.claude/skills/` symlinks);
@@ -449,8 +537,17 @@ Each miner emits a findings JSONL — one object per line — at
 `<WD>/findings/<label>.jsonl`:
 
 ```json
-{"id":"<label>#N","title":"...","detail":"...","evidence":"verbatim — source ref [line N]","type":"correction|frustration|anti-pattern|skill-gap|skill-candidate|decision|residual-bug|what-worked","track":"cmuxLayer|BrainLayer|VoiceLayer|MCL|MCP-layer|skill-creator|dashboard|plans|collab|cross-cutting","disposition":"MERGED-PR|PR-FILED|PR-FIX|SKILL-NEW|SKILL-EDIT|DEEP-RESEARCH|FOLLOW-UP|REJECTED|PARKED|KEEP|DUPLICATE","importance":1-10,"recurring":true|false,"session":"<required for correction>","model":"<required for correction>","bucket":"wrong-impl|taste|process|misread|tool-misuse|overbuild","ts":"<required for correction>"}
+{"id":"<label>#N","title":"...","detail":"...","evidence":"verbatim — source ref [line N]","type":"correction|frustration|anti-pattern|skill-gap|skill-candidate|decision|residual-bug|what-worked","track":"cmuxLayer|BrainLayer|VoiceLayer|MCL|MCP-layer|skill-creator|dashboard|plans|collab|cross-cutting","disposition":"MERGED-PR|PR-FILED|PR-FIX|SKILL-NEW|SKILL-EDIT|DEEP-RESEARCH|FOLLOW-UP|REJECTED|PARKED|KEEP|DUPLICATE","importance":1-10,"recurring":true|false,"session":"<required for correction>","model":"<required for correction>","bucket":"wrong-impl|taste|process|misread|tool-misuse|overbuild","ts":"<required for correction>","followups":[{"kind":"redteam|regather|verify|widen","target":"...","why":"..."}],"verified":true|false,"new_questions":["..."]}
 ```
+
+New miners emit `followups` and `new_questions` arrays (empty when none), plus
+boolean `verified` per load-bearing claim; split distinct claims into findings.
+These fields remain optional for old recorded findings. Each miner reads the
+whole question bank and writes `<label>.answers.json`: every question id (or text
+for an added question without an id) maps to finding ids or `"NO-EVIDENCE"`.
+Never skip a question. Rotate question order by miner index; for each failure seek
+the counter-case in the same session, quote the raw operator turn, and do not read
+prior-weave conclusions. The lead spot-checks sessions that no question flagged.
 
 For every `type:"correction"` finding, `session`, `model`, `bucket`, and `ts` are required;
 non-correction findings omit them. Every miner also writes
@@ -532,7 +629,12 @@ You mine weave sessions. For EACH item in ITEMS below, in order: read its exact 
 (digest + grep excerpts). For verbatim quotes, grep the raw JSONL
 by **jsonl_line=N** from the Grep excerpts section — never read the whole file. Digest §N is NOT
 a jsonl line. Emit findings (the JSON schema above), one per line, to
-the item's exact out path; every correction includes session/model/bucket/ts. Copy the exact
+the item's exact out path; every correction includes session/model/bucket/ts. Read the
+whole question_bank into your working context, answer EVERY question (NO-EVIDENCE when
+absent), and write the answers mapping to the item's answers path. For each failure seek
+its counter-case; rotate question order by miner index; never read prior-weave conclusions.
+Emit followups and new_questions arrays, and boolean verified on load-bearing claims.
+Copy the exact
 user_messages value from that context file's header into
 the item's denominator path with session/model/user_messages even when the findings file
 is empty. Never recount or estimate it. If you spawn ANY child agent (cmux spawn_agent, t3layer,
@@ -543,7 +645,7 @@ Write ALL files for a label before starting the next. When every label is done, 
 line per label: WEAVE_MINE_DONE <label> <count>.
 
 ITEMS:
-{label: ..., src: ..., ctx: ..., out: ..., denominator: ..., children: ...}
+{label: ..., src: ..., ctx: ..., out: ..., denominator: ..., children: ..., question_bank: ..., answers: ...}
 ... (K items, exact manifest paths and derived sidecar paths)
 ```
 [g1:66 → 2026-05-30.md:93-98; 2026-05-31.md:103; 2026-06-06.md:12]

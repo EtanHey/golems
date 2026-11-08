@@ -120,9 +120,9 @@ def verify_fail_open() -> tuple[bool, str]:
         parsed = json.loads(proc.stdout or "{}")
     except json.JSONDecodeError as exc:
         return False, f"malformed stdin stdout not JSON: {exc}: {proc.stdout!r}"
-    if parsed != {}:
-        return False, f"malformed stdin should fail-open with {{}}, got {parsed!r}"
-    return True, "allow"
+    if parsed.get("decision") == "block" or "could not run" not in parsed.get("systemMessage", ""):
+        return False, f"malformed stdin should allow with a failure advisory, got {parsed!r}"
+    return True, "allow with advisory"
 
 
 def verify_transcript_path_tail() -> tuple[bool, str]:

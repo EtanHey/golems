@@ -26,7 +26,7 @@ Each invocation emits exactly one terminal JSON line with `event`, pinned `sha`,
 | 11 | HEAD_MOVED | Head differs; re-arm with the new head |
 | 12 | MERGED | PR already merged on the pinned head; `checks` reports its CI verdict |
 | 20 | DEADLINE | Deadline reached, including while gh is blocked |
-| 30 | GH_ERROR | gh failed after the retry budget, malformed data, or state I/O failed |
+| 30 | GH_ERROR | gh failed after the retry budget, malformed data, state I/O failed, or another watcher already holds this state file |
 
 Usage errors exit 2; Ctrl-C exits 130. These emit no terminal JSON.
 READY is a CI fact, not merge authorization. Review decision is reported as a
@@ -78,7 +78,10 @@ failed invocation's stderr is forwarded unchanged, except for the expected
 head across restarts; a healthy poll resets that head's consumed budget to zero.
 State defaults to `~/.local/state/golems/pr-watch/<owner>/<repo>/<pr>-<sha>.json`;
 `--state-file` overrides it. Atomic writes retain the upstream state format.
-Use one watcher per PR/head/state file; concurrent writers are unsupported.
+Use one watcher per PR/head/state file. A concurrent invocation exits 30 with
+`state file already watched` and the holder PID (or `unknown`) on stderr: a
+watcher is already armed; do not re-arm. The PID is diagnostic only; the kernel
+lock determines ownership and is released when the watcher exits.
 The deadline bounds gh subprocesses as well as sleeps.
 
 Run fixtures: `python3 -m unittest discover -s scripts/tests -p test_pr_watch.py`.

@@ -26,7 +26,9 @@ function clock(hour, minute, period) {
 }
 
 // Protect complete code spans/fences and URLs before either speech layer runs.
-const PROTECTED = /(`+)[\s\S]*?\1(?!`)|(~{3,})[\s\S]*?\2|https?:\/\/[^\s<>`]+/gi;
+// Compound PR references also bypass install overlays that expand standalone PR.
+const PROTECTED =
+  /(`+)[\s\S]*?\1(?!`)|(~{3,})[\s\S]*?\2|https?:\/\/[^\s<>`]+|\b(?:PR|pull[ \t]+request)[ \t]+#?\d[\w#.:/–—-]*[:/–—-][\w#.:/–—-]*/gi;
 function mapProse(text, transform) {
   let output = "";
   let cursor = 0;
@@ -37,25 +39,45 @@ function mapProse(text, transform) {
   return output + transform(text.slice(cursor));
 }
 
-function normalizeProse(text) {
-  return text
-    .replace(/(?<![\w:.])(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)(?!\w)/gi,
-      (_, h, m, p) => clock(h, m, p.toLowerCase()))
-    .replace(/(?<![\w:.])([01]\d|2[0-3]):([0-5]\d)(?![\w:]|[ \t]*[ap]\.?m)/gi,
-      (_, h, m) => clock(Number(h) % 12 || 12, m, Number(h) < 12 ? "a" : "p"))
-    .replace(/(?<![\w#])(?:PR[ \t]+#?|#)(\d{1,6})(?!\w)/gi,
-      (_, n) => `pull request ${referenceNumber(n)}`)
-    .replace(/\be\.g\./gi, "for example")
-    .replace(/\bi\.e\./gi, "that is")
-    .replace(/\bvs\b\.?/gi, "versus")
-    .replace(/\bapprox\./gi, "approximately")
-    .replace(/(?<!\w)~(\d{1,6})(?!\w|\.\d)/g, (_, n) => `about ${cardinal(n)}`)
-    .replace(/(?<![\w.])(\d{1,6})(?:\.(\d+))?%/g,
-      (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} percent`)
-    .replace(/%/g, "percent")
-    .replace(/(?<!\w)(?:x(\d{1,6})|(\d{1,6})x)(?!\w)/gi, (_, a, b) => `${cardinal(a || b)} times`)
-    .replace(/(?<![\w.])v(\d{1,6}(?:\.\d{1,6})+)(?!\w|\.\d)/gi,
+const CLOCK_TIME = String.raw`(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)`;
+function normalizeProse(text, aliases = []) {
+  const replace = (pattern, replacement, allowAdjacent = false) => {
+    text = text.replace(pattern, (...args) => {
+      const offset = args.at(-2), source = args.at(-1);
+      if (!allowAdjacent && (/[\w:/–—-]$/.test(source.slice(0, offset)) || /^(?:[\w:/–—-]|\.\d)/.test(source.slice(offset + args[0].length)))) return args[0];
+      const spoken = typeof replacement === "function" ? replacement(...args) : replacement;
+      aliases.push({ term: args[0], spoken });
+      return spoken;
+    });
+  };
+  replace(new RegExp(String.raw`(?<![\w:.])${CLOCK_TIME}(?:[ \t]*[-–—][ \t]*${CLOCK_TIME})+(?!\w)`, "gi"),
+      match => match.replace(new RegExp(CLOCK_TIME, "gi"), (_, h, m, p) => clock(h, m, p.toLowerCase())));
+  replace(new RegExp(String.raw`(?<![\w:.])(\d+)([ \t]*[-–—][ \t]*)${CLOCK_TIME}(?!\w)`, "gi"),
+      (_, n, separator, h, m, p) => `${n}${separator}${clock(h, m, p.toLowerCase())}`);
+  replace(new RegExp(String.raw`(?<![\w:.])${CLOCK_TIME}(?!\w)`, "gi"),
+      (_, h, m, p) => clock(h, m, p.toLowerCase()));
+  replace(/(?<![\w:.])([01]?\d|2[0-3]):([0-5]\d)(?![\w:]|[ \t]*[ap]\.?m)/gi,
+      (_, h, m, offset, source) => /\b(?:at|by|until|from)[ \t]+$/i.test(source.slice(0, offset))
+        ? clock(Number(h) % 12 || 12, m, Number(h) < 12 ? "a" : "p")
+        : `${cardinal(h)} ${cardinal(m)}`);
+  replace(/(?<!\w)PR(?=[ \t]+#?\d{1,6}(?!\w))/gi, "pull request");
+  replace(/(?<=\bpull[ \t]+request[ \t]+)#?(\d{1,6})(?!\w)/gi,
+      (_, n) => referenceNumber(n));
+  replace(/(?<![\w#])#(\d{1,6})(?!\w)/g, (_, n) => `number ${referenceNumber(n)}`);
+  replace(/\be\.g\./gi, "for example");
+  replace(/\bi\.e\./gi, "that is");
+  replace(/(?<![\w-])vs\b\.?(?!-)/g, "versus");
+  replace(/\bapprox\./gi, "approximately");
+  replace(/(?<![\w:/–—-])~(\d{1,6})(?:(?:\.(\d+))?(%)|(?![\w:/–—-]|\.\d))/g,
+      (_, n, fraction, percent) => `about ${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""}${percent ? " percent" : ""}`, true);
+  replace(/(?<![\w.])(\d{1,6})(?:\.(\d+))?%/g,
+      (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} percent`, true);
+  replace(/%/g, (_, offset, source) => `${/[\p{L}\p{N}]$/u.test(source.slice(0, offset)) ? " " : ""}percent`, true);
+  replace(/(?<![\w.])(\d{1,6})(?:\.(\d+))?x(?!\w)/gi,
+      (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} times`);
+  replace(/(?<![\w.])v(\d{1,6}(?:\.\d{1,6})+)(?!\w|\.\d)/gi,
       (_, version) => `version ${version.split(".").map(cardinal).join(" point ")}`);
+  return text;
 }
 
 /** B11: only synthInput enters the engine; displayText stays byte-for-byte authored. */
@@ -67,16 +89,29 @@ export function prepareSpeechChannels(displayText, rules = []) {
 }
 
 export function deriveSpeechAliases(displayText, synthInput) {
-  // Preserve whitespace-token punctuation (21:15, 5%, #123) while reusing the
-  // existing LCS derivation. Its canonical comparison already ignores punctuation.
-  // Local explicit aliases avoid an LCS gap losing a shared digit or suffix.
-  const aliases = deriveLegacyAliases(displayText, synthInput);
+  const compare = text => text.toLocaleLowerCase("en-US").replace(/[^\p{L}\p{N}]+/gu, "");
+  const explicit = [];
   mapProse(displayText, text => {
+    normalizeProse(text, explicit);
     for (const term of text.match(/\S+/g) ?? []) {
-      const spoken = normalizeProse(term);
-      if (spoken !== term && synthInput.includes(spoken)) aliases.push({ term, spoken });
+      const spoken = normalizeForSpeech(term);
+      if (spoken !== term) explicit.push({ term, spoken });
     }
     return text;
   });
-  return [...new Map(aliases.map(alias => [`${alias.term}\0${alias.spoken}`, alias])).values()];
+  const accepted = explicit.filter(alias => synthInput.includes(alias.spoken));
+  const legacy = deriveLegacyAliases(displayText, synthInput).filter(alias => {
+    const key = compare(alias.term);
+    // LCS gaps may split a clock at its shared digit or merge adjacent terms.
+    return !/^\d$/.test(key) && (!/\s/.test(alias.term) || /^[A-Z](?:\s+[A-Z])+$/.test(alias.term)) && !explicit.some(known => {
+      const term = compare(known.term);
+      return key.includes(term) || term.includes(key);
+    });
+  });
+  const aliases = new Map();
+  for (const alias of [...accepted, ...legacy]) {
+    const key = `${compare(alias.term)}\0${compare(alias.spoken)}`;
+    if (!aliases.has(key)) aliases.set(key, alias);
+  }
+  return [...aliases.values()];
 }
