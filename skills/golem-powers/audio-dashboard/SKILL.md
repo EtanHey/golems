@@ -315,7 +315,8 @@ Other `#N` references say `number`: `issue #12` becomes `issue number twelve`.
 `e.g.`, `i.e.`, `vs.`, `approx.`, `~5`, `5%`, `2x`, and `v2.3` expand to ordinary
 speech; `2.5x` says `two point five times`. Prefix forms such as `x2` and `x86`
 stay unchanged. Ambiguous compound clock, PR, range and multiplier tokens stay
-literal rather than expanding a prefix or suffix. Timing aliases use comparison-form deduplication and keep
+literal rather than expanding a prefix or suffix. Explicit am/pm ranges expand
+both ends; `~98.5%` says `about ninety-eight point five percent`. Only lowercase `vs` expands. Timing aliases use comparison-form deduplication and keep
 independent changed terms separate, without single-digit partial aliases.
 Complete backtick code spans/fences, tilde fences
 and HTTP(S) URLs stay verbatim through both normalization layers; standalone PM

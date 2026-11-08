@@ -49,6 +49,8 @@ function normalizeProse(text, aliases = []) {
       return spoken;
     });
   };
+  replace(/(?<![\w:.])(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)[ \t]*-[ \t]*(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)(?!\w)/gi,
+      (_, h, m, p, endH, endM, endP) => `${clock(h, m, p.toLowerCase())}-${clock(endH, endM, endP.toLowerCase())}`);
   replace(/(?<![\w:.])(1[0-2]|0?[1-9])(?::([0-5]\d))?[ \t]*([ap])(?:\.m\.?|m)(?!\w)/gi,
       (_, h, m, p) => clock(h, m, p.toLowerCase()));
   replace(/(?<![\w:.])([01]?\d|2[0-3]):([0-5]\d)(?![\w:]|[ \t]*[ap]\.?m)/gi,
@@ -61,9 +63,10 @@ function normalizeProse(text, aliases = []) {
   replace(/(?<![\w#])#(\d{1,6})(?!\w)/g, (_, n) => `number ${referenceNumber(n)}`);
   replace(/\be\.g\./gi, "for example");
   replace(/\bi\.e\./gi, "that is");
-  replace(/(?<![\w-])vs\b\.?(?!-)/gi, "versus");
+  replace(/(?<![\w-])vs\b\.?(?!-)/g, "versus");
   replace(/\bapprox\./gi, "approximately");
-  replace(/(?<!\w)~(\d{1,6})(?!\w|\.\d)/g, (_, n) => `about ${cardinal(n)}`);
+  replace(/(?<!\w)~(\d{1,6})(?:\.(\d+))?(%)?(?!\w|\.\d)/g,
+      (_, n, fraction, percent) => `about ${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""}${percent ? " percent" : ""}`);
   replace(/(?<![\w.])(\d{1,6})(?:\.(\d+))?%/g,
       (_, n, fraction) => `${cardinal(n)}${fraction ? ` point ${[...fraction].map(d => SMALL[Number(d)]).join(" ")}` : ""} percent`);
   replace(/%/g, "percent");
