@@ -476,3 +476,16 @@ def test_failed_cache_replace_does_not_change_advisory(tmp_path, monkeypatch, ca
     assert json.loads(output)['hookSpecificOutput']['additionalContext'].count('FUTURE STAMP:') == 1
     assert not list((tmp_path / 'state').glob('*.lines'))
     assert len(list((tmp_path / 'state').iterdir())) == 1  # persistent lock only
+
+
+def test_read_only_state_dir_does_not_flood_old_warnings(tmp_path):
+    path = collab(tmp_path)
+    state = tmp_path / 'state'
+    state.mkdir()
+    state.chmod(0o500)
+    try:
+        result = run_hook(tmp_path, path, '15:00',
+                          content=f'### seat (14:00)\nDONE 3 {tmp_path}/missing/artifact\n')
+        assert warning_text(result) == ''
+    finally:
+        state.chmod(0o700)

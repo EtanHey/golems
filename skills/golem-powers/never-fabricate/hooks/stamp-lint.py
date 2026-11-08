@@ -260,6 +260,7 @@ def main():
     )
     lock = None
     cache_available = False
+    lock_timed_out = False
     try:
         os.makedirs(state_dir, exist_ok=True)
         lock = open(_cache_path(state_dir, file_path) + ".lock", "a")
@@ -272,19 +273,20 @@ def main():
             except BlockingIOError:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
+                    lock_timed_out = True
                     raise
                 time.sleep(min(0.01, remaining))
         cache_available = True
     except OSError:
         pass
     try:
-        _lint(payload, tool_input, file_path, state_dir, cache_available)
+        _lint(payload, tool_input, file_path, state_dir, cache_available, lock_timed_out)
     finally:
         if lock is not None:
             lock.close()
 
 
-def _lint(payload, tool_input, file_path, state_dir, cache_available):
+def _lint(payload, tool_input, file_path, state_dir, cache_available, lock_timed_out):
     cached = _read_cache(state_dir, file_path) if cache_available else None
     try:
         with open(file_path, encoding="utf-8", errors="replace") as f:
@@ -308,9 +310,9 @@ def _lint(payload, tool_input, file_path, state_dir, cache_available):
             new_lines = _multiset_new(current_lines, cached)
         else:
             new_lines = current_lines
-            # Missing history is normally future-only. If cache custody failed,
-            # run full advisory checks instead of losing warnings under contention.
-            provenance_known = created or not cache_available
+            # Only a timed-out lock warrants full advisory checks. Unusable
+            # state storage retains the usual unknown-provenance behaviour.
+            provenance_known = created or lock_timed_out
 
     now_min, now_str = _now_minutes()
     findings = _stamp_findings(new_lines, provenance_known, now_min, now_str)
