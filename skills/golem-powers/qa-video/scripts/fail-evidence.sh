@@ -22,9 +22,9 @@ try:
             continue
         for raw in ledger.read_bytes().splitlines(keepends=True):
             cols = raw.decode('utf-8').rstrip('\r\n').split('\t')
-            if len(cols) != 4:
+            if len(cols) != 4 and (len(cols) != 5 or not re.fullmatch(r'[a-fA-F0-9]{64}', cols[4])):
                 continue
-            pts, frame, why, finding = cols
+            pts, frame, why, finding = cols[:4]
             if (finding in failures and re.fullmatch(r'(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)', pts)
                     and math.isfinite(float(pts)) and frame.startswith(str(root) + '/')
                     and frame == posixpath.normpath(frame) and re.search(r'\.(png|jpe?g)$', frame, re.I)
