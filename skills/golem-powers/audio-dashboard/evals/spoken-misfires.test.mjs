@@ -17,13 +17,11 @@ export const cases = [
   ["until 12:00", "until twelve p m"], ["from 09:05", "from nine oh five a m"],
   ["21:00", "twenty-one zero"], ["#123", "number one twenty-three"],
   ["pull request #123", "pull request one twenty-three"],
-  ["9pm", "nine p m"], ["9 p.m.", "nine p m"],
-  ["11:30am", "eleven thirty a m"], ["PR #123", "pull request one twenty-three"],
-  ["e.g.", "for example"], ["vs.", "versus"], ["5%", "five percent"],
-  ["v2.3", "version two point three"],
+  ...parity.cases,
 ];
 for (const [display, spoken] of cases) test(`ordinary-text speech: ${display}`, () => {
   expect(prepareSpeechChannels(display)).toEqual({ displayText: display, synthInput: spoken });
+  if (display === "%") return; // No lexical display token exists to attach timing.
   const raw = spoken.split(/\s+/).map((word, i) => ({ word, start: i, end: i + 1 }));
   const snapshot = structuredClone(raw);
   const aligned = normalizeWordTimingsForScript(display, raw, raw.length, deriveSpeechAliases(display, spoken));
@@ -63,10 +61,6 @@ test("each changed display token owns only its spoken timing span", () => {
   ]);
 });
 
-for (const [display, spoken] of parity.cases) test(`NL33 shared case: ${display}`, () => {
-  expect(prepareSpeechChannels(display)).toEqual({ displayText: display, synthInput: spoken });
-});
-
 for (const token of new Set([...boundary.cases.map(([input]) => input), "PR 2026-10-22", "PR #275/#276"])) {
   test(`compound token stays literal: ${token}`, () => {
     for (const rules of [[], [{ term: "PR", spoken: "pull request" }]]) {
@@ -75,3 +69,7 @@ for (const token of new Set([...boundary.cases.map(([input]) => input), "PR 2026
     expect(deriveSpeechAliases(token, token)).toEqual([]);
   });
 }
+
+for (const [input, expected] of boundary.agreedCases) test(`agreed speech without half-expansion: ${input}`, () => {
+  expect(prepareSpeechChannels(input)).toEqual({ displayText: input, synthInput: expected });
+});

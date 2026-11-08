@@ -42,5 +42,44 @@
       "6pm-mini",
       "6pm-mini"
     ]
+  ],
+  "agreedSource": "Lead update to brief P; NL34 final round pending merge SHA",
+  "agreedCases": [
+    [
+      "9am-5pm",
+      "nine a m-five p m"
+    ],
+    [
+      "9 a.m.-5 p.m.",
+      "nine a m-five p m"
+    ],
+    [
+      "9:30pm-10pm",
+      "nine thirty p m-ten p m"
+    ],
+    [
+      "10am-12pm",
+      "ten a m-twelve p m"
+    ],
+    [
+      "~98.5%",
+      "about ninety-eight point five percent"
+    ],
+    [
+      "vs",
+      "versus"
+    ],
+    [
+      "vs.",
+      "versus"
+    ],
+    [
+      "VS",
+      "VS"
+    ],
+    [
+      "Vs.",
+      "Vs."
+    ]
   ]
 }
