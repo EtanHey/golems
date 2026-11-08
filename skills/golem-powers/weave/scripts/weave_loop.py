@@ -10,6 +10,7 @@ import hashlib
 import json
 import re
 import sys
+import uuid
 from pathlib import Path
 
 KINDS = {"mine", "redteam", "regather", "verify", "widen"}
@@ -51,7 +52,7 @@ def enqueue(state, kind, target, why, parent):
 def init(args):
     plan = json.loads((args.workdir / "batch-manifest.json").read_text())
     sessions = [s for b in plan["batches"] for s in b["sessions"]]
-    state = dict(status="RUNNING", rounds=[], scheduled={}, pending=[], yields={},
+    state = dict(status="RUNNING", run_id=uuid.uuid4().hex, rounds=[], scheduled={}, pending=[], yields={},
                  dry_streak=0, questions={}, bank_growth=0, unverified={}, mined=[],
                  sessions={}, max_items=args.max_items_per_round, max_rounds=args.max_rounds)
     for session in sorted(sessions, key=lambda s: not s.get("centerpiece", False)):
@@ -149,7 +150,7 @@ def questions(state, bank):
             if q["processed"]:
                 continue
             # The provenance marker also recovers an append before a state-save crash.
-            marker = "weave-question:" + key_for("regather", "bank", qkey)
+            marker = f"weave-question:{state['run_id']}:" + key_for("regather", "bank", qkey)
             if qkey not in known or marker in existing:
                 if marker not in existing:
                     additions.append(f"- {q['text']} <!-- {marker}; round={q['round']}; "

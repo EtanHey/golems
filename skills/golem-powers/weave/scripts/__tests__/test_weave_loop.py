@@ -151,6 +151,23 @@ class WeaveLoop(unittest.TestCase):
         self.assertEqual(self.state()["dry_streak"], 1)
         self.cli("ingest", "--round", "1", rc=2)
 
+    def test_bank_dedup_across_fresh_runs(self):
+        for _ in range(2):
+            self.cli("init")
+            items = self.next()
+            self.receipts(items, {items[0]["key"]: [dict(id="s#1", new_questions=["New question?"])]})
+            self.cli("ingest", "--round", "1")
+            self.cli("questions", "--bank", str(self.bank))
+            growth = self.state()["bank_growth"]
+            if self.wd.name == "fresh":
+                self.assertEqual(growth, 0)
+                break
+            self.assertEqual(growth, 1)
+            plan = (self.wd / "batch-manifest.json").read_text()
+            self.wd = self.wd / "fresh"
+            self.wd.mkdir()
+            (self.wd / "batch-manifest.json").write_text(plan)
+
 
 if __name__ == "__main__":
     unittest.main()
