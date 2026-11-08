@@ -89,9 +89,9 @@ test("video inspection receipts preserve the other four checks", () => {
 
 test("real qa-video inspection rows earn observed FAIL evidence", () => {
   const repo = path.resolve(here, "../../../..");
-  const scratch = path.join(repo, "docs.local", "p14-cross-skill", "qa-video");
-  mkdirSync(scratch, { recursive: true });
-  const run = mkdtempSync(path.join(scratch, "run-"));
+  const scratch = mkdtempSync(path.join(repo, "docs.local", "p14-cross-skill-"));
+  const run = path.join(scratch, "qa-video", "run");
+  mkdirSync(run, { recursive: true });
   try {
     const frame = path.join(run, "frame.png");
     writeFileSync(frame, "synthetic frame bytes");
@@ -102,10 +102,11 @@ test("real qa-video inspection rows earn observed FAIL evidence", () => {
     execFileSync("bash", [path.join(scripts, "inspected.sh"), run, frame, "h2: observed overlap", "F1"]);
     const fx = structuredClone(greens.find((f) => f.file === "10-video-inspected-frames.json"));
     fx.events = JSON.parse(JSON.stringify(fx.events).replaceAll("/qa-fixtures/qa-video/synthetic-run", run));
-    fx.events[2].text = readFileSync(path.join(run, "inspected.tsv"), "utf8");
+    writeFileSync(path.join(run, "qa-report.md"), fx.events[4].tools[0].input.content);
+    fx.events[2].text = execFileSync("bash", [path.join(scripts, "fail-evidence.sh"), run], { encoding: "utf8" });
     expect(fx.events[2].text.trim().split("\t")).toHaveLength(5);
     expect(detectQaVerdict(fx).verdict).toBe("PASS");
   } finally {
-    rmSync(run, { recursive: true, force: true });
+    rmSync(scratch, { recursive: true, force: true });
   }
 });
