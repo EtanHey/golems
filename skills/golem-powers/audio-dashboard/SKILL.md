@@ -5,6 +5,14 @@ description: "Build audio narration dashboards. Triggers: STT-after-TTS exact wo
 
 # Audio Dashboard
 
+## Building a dashboard?
+
+Run `/audio-dashboard creation-steps`: read and follow
+[workflows/creation-steps.md](workflows/creation-steps.md), the ordered procedure
+from intake to delivery. This is a workflow argument to the skill, not a separate
+catalog command. This skill owns all build instructions; orc only relays the
+filled intake block and Etan's extra instructions.
+
 ## Ownership and delivery
 
 skill-creator owns this skill, templates and BUILD gates. NarrationLayer owns the
