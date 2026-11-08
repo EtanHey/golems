@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { prepareSpeechChannels as baselineChannels, deriveSpeechAliases as baselineAliases } from "../vendor/narrationlayer/text-normalize.ts";
@@ -8,7 +9,42 @@ import { normalizeWordTimingsForScript } from "../vendor/narrationlayer/word-tim
 import { analyzeTranscriptFidelity } from "../src/transcript-fidelity-gate.mjs";
 import { analyzeTeleprompterDrift } from "../src/teleprompter-drift-gate.mjs";
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
-import { buildDashboard, writeSegment } from "./audio-dashboard-test-parts/common.mjs";
+import { designTestCell } from "./design-test-cell.mjs";
+import { writeWordTimingArtifacts } from "../src/word-timing-artifacts.mjs";
+
+const cell = designTestCell();
+const mediaTools = spawnSync("ffprobe", ["-version"], { stdio: "ignore" }).status === 0;
+
+function writeSegment(root, words, rawWords) {
+  const segment = path.join(root, "segments/clock");
+  mkdirSync(segment, { recursive: true });
+  writeWordTimingArtifacts(segment, { rawWords, repairedWords: words });
+  copyFileSync(new URL("../vendor/agent-html/templates/v4-story-mode/_placeholder.mp3", import.meta.url), path.join(segment, "clock.mp3"));
+  // Synthetic PCM fixture: one second of audible-energy tone, no TTS or ffmpeg.
+  const wav = Buffer.alloc(44 + 24000 * 2);
+  wav.write("RIFF"); wav.writeUInt32LE(wav.length - 8, 4); wav.write("WAVEfmt ", 8);
+  wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(24000, 24); wav.writeUInt32LE(48000, 28);
+  wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write("data", 36);
+  wav.writeUInt32LE(wav.length - 44, 40);
+  for (let i = 0; i < 24000; i++) wav.writeInt16LE(Math.round(16000 * Math.sin(2 * Math.PI * 140 * i / 24000)), 44 + i * 2);
+  writeFileSync(path.join(segment, "clock.wav"), wav);
+}
+
+function buildDashboard(root, display) {
+  const outputPath = path.join(root, "docs.local/dashboards/clock.html");
+  const specPath = path.join(root, "job.json");
+  writeFileSync(specPath, JSON.stringify({
+    id: "spoken-times", type: "cinema", outputPath, series: path.basename(root),
+    design: { firstInLineage: { reason: "Isolated spoken-form fixture", approvedBy: "fixture-owner" } },
+    scenes: [{ id: "clock", title: "Clock", script: display }],
+  }));
+  const build = new URL("../scripts/build-dashboard.mjs", import.meta.url).pathname;
+  const env = { ...process.env };
+  delete env.NARRATIONLAYER_PRONUNCIATION_FILE;
+  const result = spawnSync(process.execPath, cell.command(build, ["--spec", specPath, "--job-dir", root, "--first-build", "Isolated fixture"]).slice(1), { encoding: "utf8", env });
+  return { result, outputPath };
+}
 
 // The first test-only commit exercises the old runtime; no missing-module RED.
 const candidate = new URL("../src/spoken-form.mjs", import.meta.url);
@@ -36,7 +72,7 @@ for (const [input, expected] of cases) {
   });
 }
 
-for (const authored of ["9pm", "9 p.m."]) test(`BUILD preserves authored ${authored} while ENGINE says nine p m`, () => {
+for (const authored of ["9pm", "9 p.m."]) (mediaTools ? test : test.skip)(`BUILD preserves authored ${authored} while ENGINE says nine p m`, () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "spoken-times-build-"));
   try {
     const display = `by ${authored}`;
@@ -47,7 +83,7 @@ for (const authored of ["9pm", "9 p.m."]) test(`BUILD preserves authored ${autho
     const rawWords = ["by", "nine", "p", "m"].map((word, i) => ({ word, start: i * 0.25, end: (i + 1) * 0.25 }));
     const aliases = deriveSpeechAliases(display, synthInput);
     const aligned = normalizeWordTimingsForScript(display, rawWords, 1, aliases);
-    writeSegment(root, "clock", aligned.words, undefined, rawWords);
+    writeSegment(root, aligned.words, rawWords);
     const spokenPath = path.join(root, "segments/clock/clock.wav.spoken.txt");
     writeFileSync(spokenPath, synthInput);
     expect(readFileSync(spokenPath, "utf8")).toBe("by nine p m");
@@ -57,7 +93,7 @@ for (const authored of ["9pm", "9 p.m."]) test(`BUILD preserves authored ${autho
     expect(displayWords.map(w => w.word).join(" ")).not.toContain("p m");
     expect(displayWords[1].start).toBe(0.25);
     expect(displayWords.at(-1).end).toBe(1);
-    const { result, outputPath } = buildDashboard({ id: "spoken-times", scenes: [{ id: "clock", title: "Clock", script: display }] }, root);
+    const { result, outputPath } = buildDashboard(root, display);
     expect(result.status).toBe(0);
     const html = readFileSync(outputPath, "utf8");
     const tpdata = JSON.parse(html.match(/<script[^>]*id="tpdata"[^>]*>([\s\S]*?)<\/script>/)[1]);
@@ -75,7 +111,7 @@ for (const authored of ["9pm", "9 p.m."]) test(`BUILD preserves authored ${autho
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
-});
+}, 10000);
 for (const input of [
   "PM spoke with AM about the plan.", "13pm 24:00 9:65pm", "v2beta",
   "`9pm v2.3 PR #123 e.g. foo_bar`", "``v2.3 `9pm` ``",
