@@ -23,7 +23,7 @@
 | No `Agent()` tool | Can't spawn coderabbit:code-reviewer subagent | Use routed review handoffs |
 | No native `Monitor` | Needs an attached watch consumer | T3 `watch_pull_request` first; else `pr-watch` with a pinned head and exit code for CI; `/collab-monitor` only under the cmux adapter |
 | No BrainLayer MCP | Can't brain_store post-merge | Orchestrate from Claude session |
-| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, L or very important/core-risk PRs only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (§ 8a.0). Where eligible and available, request once with `@cursor @bugbot review`; never wait or block, and record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage notice; routine/no activity needs no entry |
+| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed — Bugbot is **opt-in, L or very important/core-risk PRs only** ([review loop § 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (§ 8a.0). Where eligible and available, request once with `bugbot run`; never wait or block, and record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage notice; routine/no activity needs no entry |
 
 ## CI and Review Waiting
 
@@ -50,19 +50,25 @@ after compaction. Query slim state/activity counts and fetch full review bodies 
 
 ## Cursor's Unique Advantage in the Loop
 
-Cursor exposes `@codebase` indexing. The diff pass is read-only (review loop § 8a.2).
-For role ownership, use the routing pointer above;
-for the diff-pass procedure, see [review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only).
+For every S-or-larger PR, run the read-only `cursor-agent -p --output-format text` diff pass
+once per head after routed inner review and before exact-head merge checks; XS skips it.
+Cursor Auto only (no model flag). Findings only, never edit or push; this advisory bot-tier
+pass never replaces the routed reviewer. Answer every finding before merge; real findings
+after merge open a NEW PR. Record `Cursor pass: head=<sha> findings=<count>` in the PR body,
+or `Cursor pass: unavailable (<reason>)` on errors/quota exhaustion and proceed without retry
+or blocking. If this dispatch exhausted quota, name it as the cause. Bugbot eligibility is unchanged.
+
+A GitHub `cursor[bot]` usage/rate/spend-limit notice is Bugbot activity, even on XS: record `Bugbot: unavailable (usage)` in the PR body; it is never a local `Cursor pass:` failure.
+
+Use the PR's actual base branch and head SHA:
 
 ```bash
-# Read-only pre-PR audit — report only, zero Bugbot quota
 cursor-agent -p --output-format text \
-  "Audit the staged changes for bugs and security issues. @codebase \
-   Report findings only. Do NOT edit, create, or delete any file."
+  "Review this branch's diff against <base> at head <sha> for bugs and security issues. @codebase \
+   Report findings only. Do NOT edit, create, or delete any file. Do NOT push."
 ```
 
-If this pass exhausts the shared quota, report the dispatch as the cause, not
-the resulting `resource_exhausted` as an external finding (canon #3).
+Full procedure: [review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only).
 
 **Bugbot** is a different thing and is **not** part of this pass: it is opt-in for L or very important/core-risk PRs
 (daemon/engine/transport, security, release), never routine XS/S/M PRs, and off where repo policy

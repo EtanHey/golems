@@ -11,7 +11,7 @@ adapters:
     review_polling: native_monitor   # T3 watch_pull_request first; else one Monitor on pr-watch, timeout_ms 1800000, TaskStop/re-arm
     brainlayer_postmerge: true       # brain_store after merge (mandatory)
     worktree_isolation: native       # claude --worktree feat/name
-    cursor_bugbot_trigger: true      # gh pr comment "@cursor @bugbot review"
+    cursor_bugbot_trigger: true      # gh pr comment "bugbot run"
     live_model_provenance: session-jsonl  # .message.model in ~/.claude/projects/**.jsonl (verified 2026-08-08)
     identity_signature: true         # can emit plain model + harness line
     full_loop: true
@@ -28,7 +28,7 @@ adapters:
     # Exit-code table: ../../../../scripts/pr-watch-lib/README.md#usage-and-exits
     brainlayer_postmerge: false      # No MCP access
     worktree_isolation: manual       # git worktree add required before spawning
-    cursor_bugbot_trigger: conditional # Needs gh installed + authenticated; use gh pr comment "@cursor @bugbot review"
+    cursor_bugbot_trigger: conditional # Needs gh installed + authenticated; use gh pr comment "bugbot run"
     live_model_provenance: session-jsonl  # LAST turn_context.model in ~/.codex/sessions/**/rollout-*.jsonl (verified 2026-08-08)
     identity_signature: true         # can emit plain model + harness line; effort in turn_context stays OFF GitHub
     full_loop: partial               # Missing native review tooling + post-merge tracking
