@@ -54,23 +54,23 @@
   "intentionalAdaptations": [
     {
       "pairId": "local-tts-runner",
-      "reason": "Vendored imports resolve to sibling modules and profile roots are env-configurable for repo-free runtime."
+      "reason": "Runner matches pendingRevendor.sourceCommit byte-for-byte. Skill-owned vendor/src import bridges preserve repo-free layout and env profile-root lookup; wrapper loads pronunciation overlays."
     },
     {
       "pairId": "profiles",
-      "reason": "Vendored profile type imports resolve to the local schema shim."
+      "reason": "Upstream voice-SSOT implementation; type imports use the existing local schema shim. OPEN SKILL_PROFILE_SCHEMA_IMPORTS; no accepted hash refresh."
     },
     {
       "pairId": "schema",
-      "reason": "Vendored schema is a minimal type-only portability shim."
+      "reason": "Unchanged minimal type-only portability shim; OPEN SCHEMA_REFRESH_REFUSED."
     },
     {
-      "pairId": "local-tts-runner",
-      "reason": "The vendored cache-receipt port is semantically equivalent but textually diverges from upstream in formatting, boolean coercion, and error messages; normalize it at the next re-vendor."
+      "pairId": "text-normalize",
+      "reason": "OPEN SKILL_SINGLE_SPOKEN_PASS_AND_INITIALISMS: export the legacy pass and preserve spaced-capital normalization/aliases. Runtime spoken forms remain solely in src/spoken-form.mjs."
     },
     {
-      "pairId": "local-tts-runner",
-      "reason": "The vendored runner consumes the skill-local B13/B11 two-channel pronunciation overlay while upstream keeps repo-generic normalization; the paired open text-normalize and timing-alias debts track the owed portable upstream ports."
+      "pairId": "word-timings",
+      "reason": "OPEN GOLEMS_SYNC_PORTABLE_WHISPER_DISCOVERY: retain path.join Homebrew fallback paths; upstream still embeds literal binary paths."
     }
   ],
   "vendorSideFirst": [
@@ -129,7 +129,7 @@
       "id": "B13_SPEECH_SANITIZER",
       "pairId": "text-normalize",
       "status": "open",
-      "aidevNote": "The vendored two-channel sanitizer and deterministic speech-alias derivation landed in golems PR #630 before the equivalent NarrationLayer source port.",
+      "aidevNote": "Upstream speech channels and alias support have been copied from pendingRevendor.sourceCommit. Closure remains OPEN pending atomic refresh; retained skill-only initialism and single-pass seams are named separately.",
       "requiredUpstreamPatterns": [
         "export interface SpeechChannels {",
         "export function deriveSpeechAliases(",
@@ -145,7 +145,7 @@
       "id": "B13_TIMING_ALIASES",
       "pairId": "word-timing-repair",
       "status": "open",
-      "aidevNote": "The vendored timing repair accepts deterministic speech aliases from golems PR #630 before the equivalent NarrationLayer source port.",
+      "aidevNote": "The timing module now matches pendingRevendor.sourceCommit byte-for-byte, including deterministic aliases. Closure remains OPEN pending documented atomic refresh, which refuses schema movement.",
       "requiredUpstreamPatterns": [
         "export interface WordTimingAlias {",
         "function compileAliasSignatures(",
@@ -176,7 +176,7 @@
       "id": "SKILL_SPEECH_PREPARATION_CALLBACK",
       "pairId": "local-tts-runner",
       "status": "open",
-      "aidevNote": "The runner exports main with an optional speech preparation callback so skill-local normalization can protect URLs and code without a second legacy pass. NarrationLayer owns this engine seam; the lead must route the generic export/callback upstream. All spoken-form rules remain skill-local.",
+      "aidevNote": "The upstream callback seam is present in the byte-identical runner copied from pendingRevendor.sourceCommit. The debt remains OPEN because atomic refresh refuses schema movement; no manual closure or hash acceptance is claimed.",
       "requiredUpstreamPatterns": [
         "export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)"
       ],
@@ -185,6 +185,57 @@
         "test",
         "tests/local-tts-runner.test.ts"
       ]
+    },
+    {
+      "id": "SKILL_PROFILE_SCHEMA_IMPORTS",
+      "pairId": "profiles",
+      "status": "open",
+      "aidevNote": "OPEN skill-side adaptation: upstream voice-SSOT profiles are copied, with renderer config type imports redirected to the portable schema shim. All acceptance hashes remain unchanged because documented atomic refresh refuses the schema pair.",
+      "requiredUpstreamPatterns": [
+        "import type { ExternalCommandConfig } from \"./schema.js\";",
+        "import type { VoiceLayerQwen3Config } from \"./schema.js\";"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/profiles.test.ts"
+      ]
+    },
+    {
+      "id": "SKILL_SINGLE_SPOKEN_PASS_AND_INITIALISMS",
+      "pairId": "text-normalize",
+      "status": "open",
+      "aidevNote": "OPEN skill-side adaptation: export normalizeLegacy for the skill callback so spoken-form rules run once; retain same-line capital collapsing and capital-sequence aliases. NL must expose this seam and retain B13 behavior before this adaptation can close.",
+      "requiredUpstreamPatterns": [
+        "export function normalizeLegacy(",
+        "SPACED_CAPITALS_RULE",
+        "/^[A-Z](?: [A-Z])+$/.test(term)"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/text-normalize.test.ts"
+      ]
+    },
+    {
+      "id": "SKILL_REPO_FREE_RUNNER_BRIDGES",
+      "pairId": "local-tts-runner",
+      "status": "open",
+      "aidevNote": "OPEN skill-side adaptation: runner bytes equal NL master; vendor/src bridges preserve upstream relative import paths and NARRATIONLAYER_ROOT lookup. scripts/local-tts.mjs loads pronunciation overlays in the callback. These files are skill-owned, not claimed upstream; NL needs equivalent portable profile-root and configurable pronunciation support.",
+      "requiredUpstreamPatterns": [
+        "process.env.NARRATIONLAYER_ROOT",
+        "loadPronunciationRules()"
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/local-tts-runner.test.ts"
+      ],
+      "skillPaths": [
+        "vendor/src/profiles.ts",
+        "vendor/src/text-normalize.ts",
+        "scripts/local-tts.mjs"
+      ]
     }
   ],
   "upstreamSideFirst": [
@@ -192,7 +243,7 @@
       "id": "VOICE_SSOT_PROFILE_CACHE_KEY",
       "pairId": "local-tts-runner",
       "status": "open",
-      "aidevNote": "The vendored runtime is behind upstream voice-SSOT: it omits profileId, profileVersion, and model from frozen-take content-hash cache keys and does not call warnIfNonAcceptedProfile. A fast-follow re-vendor lane is owed.",
+      "aidevNote": "Upstream profileId, profileVersion, model cache-key fields and warnIfNonAcceptedProfile are present in the byte-identical runner. The debt remains OPEN pending atomic refresh; schema movement prevents acceptance-hash replacement. Code convergence is verified offline, never treated as a closed stamp.",
       "requiredUpstreamPatterns": [
         "profileId?: string;",
         "profileVersion?: string;",
@@ -207,6 +258,26 @@
         "test",
         "tests/local-tts-runner.test.ts"
       ]
+    },
+    {
+      "id": "SCHEMA_REFRESH_REFUSED",
+      "pairId": "schema",
+      "status": "open",
+      "aidevNote": "OPEN documented drift: source schema moved; the skill retains its type-only portability shim. The unchanged refresh tool refuses schema outside an open vendor-first debt pair. No source or vendor hash was blessed.",
+      "requiredUpstreamPatterns": [
+        "export type VoiceLayerQwen3Config =",
+        "export type ExternalCommandConfig ="
+      ],
+      "testCommand": [
+        "bun",
+        "test",
+        "tests/profiles.test.ts"
+      ]
     }
-  ]
+  ],
+  "pendingRevendor": {
+    "sourceCommit": "99589a47fbb07c88f9a7facf81d229bb9647fdcc",
+    "status": "refresh-refused",
+    "aidevNote": "Documented refresh only; paired acceptance hashes and historical resolutions are unchanged. Callback and voice-SSOT code are present in the runner but their debt closures await atomic refresh. Schema/profile pairs remain documented drift. Lead routes all remaining upstream asks."
+  }
 }

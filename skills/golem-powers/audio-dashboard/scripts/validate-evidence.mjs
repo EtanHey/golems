@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
@@ -10,6 +10,7 @@ import { writePublishHandoff } from "../src/prepare-hosted.mjs";
 import { designReportPath, recordPublishedDesign } from "../src/design-history.mjs";
 import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 import { validateAudioDashboardEvidence, formatReport } from "../src/audio-dashboard-evidence.mjs";
+import { buildReceiptsPath } from "../src/build-receipts.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -56,14 +57,30 @@ if (!existsSync(specPath)) fail(`spec not found: ${specPath}`);
 const spec = JSON.parse(readFileSync(specPath, "utf8"));
 
 const jobId = spec.id || "audio-dashboard-job";
-const jobDir = path.resolve(expandHome(args.jobDir || path.join(os.homedir(), ".narrationlayer", "jobs", jobId)));
 const outPath = path.resolve(expandHome(args.out || spec.outputPath || ""));
 if (!existsSync(outPath)) fail(`rendered dashboard not found: ${outPath} (run build-dashboard.mjs first)`);
 
 const html = readFileSync(outPath, "utf8");
+const specRelative = value => path.resolve(path.dirname(specPath), expandHome(value));
+let segmentsDir;
+if (args.jobDir) segmentsDir = path.join(path.resolve(expandHome(args.jobDir)), "segments");
+else if (spec.segmentsDir) segmentsDir = specRelative(spec.segmentsDir);
+else if (spec.jobDir) segmentsDir = path.join(specRelative(spec.jobDir), "segments");
+else if (existsSync(buildReceiptsPath(outPath))) {
+  const receipts = JSON.parse(readFileSync(buildReceiptsPath(outPath), "utf8"));
+  if (receipts.artifactSha256 === sha256(html) && typeof receipts.segmentsDir === "string" && receipts.segmentsDir) {
+    segmentsDir = path.resolve(path.dirname(outPath), receipts.segmentsDir);
+  }
+}
+segmentsDir ||= path.join(os.homedir(), ".narrationlayer", "jobs", jobId, "segments");
+const matchedScenes = spec.scenes.filter(s => {
+  const dir = path.join(segmentsDir, s.id);
+  return existsSync(dir) && statSync(dir).isDirectory();
+}).length;
+if (!matchedScenes) fail(`JOB_DIR_SCENE_MISMATCH: ${segmentsDir} has 0 of ${spec.scenes.length} scene ids; pass --job-dir`);
 const perScene = [];
 for (const s of spec.scenes) {
-  const words = loadWords(path.join(jobDir, "segments", s.id, "words.json"));
+  const words = loadWords(path.join(segmentsDir, s.id, "words.json"));
   perScene.push({ id: s.id, script: s.script, words });
 }
 const first = perScene.find((s) => s.words.length) || perScene[0];
@@ -113,8 +130,7 @@ if (result.verdict === "READY_FOR_HOSTED_PUBLISH") {
   const qa = spec.type === "decision-flow" ? "verify-decision-flow.mjs" : "verify-cinema.mjs";
   const checked = spawnSync("bun", [path.join(SKILL_ROOT, "vendor/qa", qa), outPath], { encoding: "utf8" });
   if (checked.status !== 0) fail(`QA_REJECTED: ${checked.stderr || checked.stdout}`);
-  const segmentsDir = args.segmentsDir || (spec.segmentsDir && path.resolve(path.dirname(specPath), expandHome(spec.segmentsDir))) || (args.jobDir && path.join(jobDir, 'segments'));
-  writePublishHandoff({ spec, specPath, outputPath: outPath, segmentsDir: segmentsDir && path.resolve(expandHome(segmentsDir)), html, firstBuild: args.firstBuild });
+  writePublishHandoff({ spec, specPath, outputPath: outPath, segmentsDir: args.segmentsDir ? path.resolve(expandHome(args.segmentsDir)) : segmentsDir, html, firstBuild: args.firstBuild });
 }
 if (result.verdict === "PASS") {
   try { recordPublishedDesign(spec, outPath, html, evidence); }

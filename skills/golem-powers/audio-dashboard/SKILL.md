@@ -401,6 +401,15 @@ For decision-flow, `decisions` is required and must be a non-empty array. Add
 the type plus explicit scene ownership: every scene must appear in exactly one
 decision's non-empty `sceneIds` array.
 
+Attach a dependent decision with `after: "<explainer-card-id>"` in `decisions`.
+Unattached cards retain authored order; attached decisions follow their explainer
+immediately, in their authored relative order, across cards, chips and index.
+BUILD refuses unknown/cyclic references or separated final attachments with
+`DECISION_SEPARATED_FROM_EXPLAINER`. An exact explicit `topic` match to an earlier
+`status: "INFO"` card requires `after` (`DECISION_AFTER_REQUIRED`); legacy cards
+without topics retain their order. Titles are never guessed. IDs and persisted
+answer keys, kinds and options stay unchanged.
+
 ```json
 {
   "type": "decision-flow",

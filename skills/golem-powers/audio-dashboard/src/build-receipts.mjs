@@ -56,7 +56,7 @@ export function resolveWhisperModelBasename() {
   return portableIdentifier(candidates.find(existsSync), "unknown");
 }
 
-export function createBuildReceipts({ outputPath, jobId, spec, vendorStamp, whisperModel }) {
+export function createBuildReceipts({ outputPath, jobId, spec, vendorStamp, whisperModel, segmentsDir }) {
   const scenes = Array.isArray(spec?.scenes) ? spec.scenes : [];
   const allByo = scenes.length > 0 && scenes.every((scene) => scene.audioWav);
   const profiles = {};
@@ -78,6 +78,8 @@ export function createBuildReceipts({ outputPath, jobId, spec, vendorStamp, whis
     artifact: path.basename(outputPath),
     artifactSha256: sha256(""),
     jobId: portableIdentifier(jobId, "audio-dashboard-job"),
+    // Resolve against the sidecar's directory; absolute machine paths stay private.
+    ...(segmentsDir ? { segmentsDir: path.relative(path.dirname(outputPath), segmentsDir) || "." } : {}),
     pipeline: {
       name: "audio-dashboard",
       vendorStamp: portableIdentifier(vendorStamp, "unstamped"),
