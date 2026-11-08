@@ -402,16 +402,19 @@ test('symlinked install and client directories refuse without touching their tar
 test('nightly publication workflow marks releases as prereleases', () => {
   expect(readFileSync(join(repo, '.github/workflows/golems-release.yml'), 'utf8')).toContain('--prerelease');
 });
-test('nightly uses only page one and newest created_at including stable releases, with optional API auth', () => {
+test('nightly paginates to newest created_at including stable releases, with optional API auth', () => {
   const fixture = join(root, 'network'), bin = join(fixture, 'bin'); mkdirSync(bin, { recursive: true });
   for (const file of readdirSync(join(root, 'assets'))) copyFileSync(join(root, 'assets', file), join(fixture, file));
   for (const tool of readdirSync(minimal).filter(tool => tool !== 'curl')) symlinkSync(join(minimal, tool), join(bin, tool));
   const tag = `v${release.version}`, entry = (tag_name, created_at, extra = {}) => ({ tag_name, created_at, published_at: '2099-01-01T00:00:00Z', draft: false, prerelease: true, body: 'escaped "tag_name": fake\n' + 'x'.repeat(4000), ...extra });
-  // Deliberately larger than the requested page: stress the macOS awk parser.
+  // A full, deliberately stale first page; the newest published release is on page 2.
   writeFileSync(join(fixture, 'page1.json'), JSON.stringify([
     entry('v2026.10.14-abcdef0', '2026-10-14T00:00:00Z', { draft: true }),
+    ...Array.from({ length: 99 }, () => entry('v2026.01.01-deadbee', '2026-01-01T00:00:00Z')),
+  ]));
+  writeFileSync(join(fixture, 'page2.json'), JSON.stringify([
     entry(tag, '2026-10-12T00:00:00Z', { prerelease: false, published_at: '2000-01-01T00:00:00Z' }),
-    ...Array.from({ length: 100 }, () => entry('v2026.01.01-deadbee', '2026-01-01T00:00:00Z')),
+    entry('v2026.10.15-abcdef0', '2026-10-15T00:00:00Z', { draft: true }),
   ]));
   writeFileSync(join(fixture, 'release.json'), JSON.stringify(entry(tag, '2026-10-12T00:00:00Z')));
   writeFileSync(join(bin, 'curl'), `#!/bin/sh
@@ -419,7 +422,7 @@ printf '%s\\n' "$@" >> "$FIXTURE/args"
 while [ "$#" -gt 0 ]; do case "$1" in https://*) url=$1 ;; -o) shift; output=$1 ;; -w) shift ;; esac; shift; done
 printf '%s\\n' "$url" >> "$FIXTURE/requests"
 case "$url" in https://github.com/*) printf '302\\nhttps://release-assets.githubusercontent.com/fixture/%s' "$(basename "$url")"; exit ;; esac
-case "$url" in *'page=1') file=page1.json ;; *'/tags/'*) file=release.json ;; *) file=$(basename "$url") ;; esac
+case "$url" in *'?per_page='*) file=page\${url##*page=}.json ;; *'/tags/'*) file=release.json ;; *) file=$(basename "$url") ;; esac
 cp "$FIXTURE/$file" "$output"
 printf 200
 `); chmodSync(join(bin, 'curl'), 0o755);
@@ -432,9 +435,24 @@ printf 200
   }
   const requests = readFileSync(join(fixture, 'requests'), 'utf8').trim().split('\n');
   expect(requests.filter(url => url.startsWith('https://release-assets.githubusercontent.com/'))).toHaveLength(6);
-  expect(requests.filter(url => url.includes('?'))).toEqual(['https://api.github.com/repos/EtanHey/golems/releases?per_page=30&page=1']);
+  expect(requests.filter(url => url.includes('?'))).toEqual([1, 2].map(page => `https://api.github.com/repos/EtanHey/golems/releases?per_page=100&page=${page}`));
   const args = readFileSync(join(fixture, 'args'), 'utf8');
-  expect(args.split('Authorization: Bearer fixture-token').length - 1).toBe(3); // API only; never asset hosts.
+  expect(args.split('Authorization: Bearer fixture-token').length - 1).toBe(4); // Two pages + two tag lookups; never asset hosts.
+  writeFileSync(join(fixture, 'page1.json'), JSON.stringify(Array.from({ length: 100 }, () => entry(tag, '2026-10-12T00:00:00Z'))));
+  writeFileSync(join(fixture, 'page2.json'), '[]');
+  writeFileSync(join(fixture, 'requests'), '');
+  const boundaryHome = home();
+  ok(spawnSync('/bin/sh', [installer], { env: { ...process.env, HOME: boundaryHome, PATH: bin, FIXTURE: fixture }, encoding: 'utf8' }));
+  expect(readFileSync(join(fixture, 'requests'), 'utf8').trim().split('\n').filter(url => url.includes('?'))).toEqual(
+    [1, 2].map(page => `https://api.github.com/repos/EtanHey/golems/releases?per_page=100&page=${page}`));
+  for (let page = 2; page <= 10; page++) copyFileSync(join(fixture, 'page1.json'), join(fixture, `page${page}.json`));
+  writeFileSync(join(fixture, 'requests'), '');
+  const cappedHome = home(), capped = spawnSync('/bin/sh', [installer], { env: { ...process.env, HOME: cappedHome, PATH: bin, FIXTURE: fixture }, encoding: 'utf8' });
+  expect(capped.status).not.toBe(0); expect(capped.stderr).toContain('nightly release page cap (10) exceeded');
+  expect(readFileSync(join(fixture, 'requests'), 'utf8').trim().split('\n')).toEqual(
+    Array.from({ length: 10 }, (_, i) => `https://api.github.com/repos/EtanHey/golems/releases?per_page=100&page=${i + 1}`));
+  expect(existsSync(join(cappedHome, '.golems/current'))).toBe(false);
+  expect(existsSync(join(cappedHome, '.golems/.install-lock'))).toBe(false);
   writeFileSync(join(fixture, 'MANIFEST.json'), '{}');
   const dir = home(), refused = spawnSync('/bin/sh', [installer, '--channel', tag], { env: { ...process.env, HOME: dir, PATH: bin, FIXTURE: fixture }, encoding: 'utf8' });
   expect(refused.status).not.toBe(0); expect(refused.stderr).toContain('checksum');
