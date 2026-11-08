@@ -1,15 +1,18 @@
 import { expect, test } from "bun:test";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { prepareSpeechChannels as baselineChannels, deriveSpeechAliases as baselineAliases } from "../vendor/narrationlayer/text-normalize.ts";
 import { loadPronunciationRules } from "../vendor/narrationlayer/pronunciation-config.ts";
 import { normalizeWordTimingsForScript } from "../vendor/narrationlayer/word-timing-repair.ts";
 import { analyzeTranscriptFidelity } from "../src/transcript-fidelity-gate.mjs";
 import { analyzeTeleprompterDrift } from "../src/teleprompter-drift-gate.mjs";
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
+import { buildDashboard, writeSegment } from "./audio-dashboard-test-parts/common.mjs";
 
 // The first test-only commit exercises the old runtime; no missing-module RED.
 const candidate = new URL("../src/spoken-form.mjs", import.meta.url);
-const { prepareSpeechChannels, deriveSpeechAliases } = existsSync(candidate)
+const { prepareSpeechChannels, deriveSpeechAliases } = existsSync(candidate) && !process.env.AUDIO_DASHBOARD_SPOKEN_BASELINE
   ? await import(candidate.href)
   : { prepareSpeechChannels: baselineChannels, deriveSpeechAliases: baselineAliases };
 const rules = loadPronunciationRules({ env: {} });
@@ -25,12 +28,54 @@ const cases = [
   ["vs", "versus"], ["approx.", "approximately"], ["~5", "about five"],
   ["5%", "five percent"], ["%", "percent"], ["x2", "two times"],
   ["2x", "two times"], ["v2.3", "version two point three"],
+  ["Use v2.3. Try ~5.", "Use version two point three. Try about five."],
 ];
 for (const [input, expected] of cases) {
   test(`ENGINE spoken form: ${input}`, () => {
     expect(prepareSpeechChannels(input, rules)).toEqual({ displayText: input, synthInput: expected });
   });
 }
+
+for (const authored of ["9pm", "9 p.m."]) test(`BUILD preserves authored ${authored} while ENGINE says nine p m`, () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "spoken-times-build-"));
+  try {
+    const display = `by ${authored}`;
+    const channels = prepareSpeechChannels(display, rules);
+    expect(channels.displayText).toBe(display);
+    const { synthInput } = channels;
+    expect(synthInput).toBe("by nine p m");
+    const rawWords = ["by", "nine", "p", "m"].map((word, i) => ({ word, start: i * 0.25, end: (i + 1) * 0.25 }));
+    const aliases = deriveSpeechAliases(display, synthInput);
+    const aligned = normalizeWordTimingsForScript(display, rawWords, 1, aliases);
+    writeSegment(root, "clock", aligned.words, undefined, rawWords);
+    const spokenPath = path.join(root, "segments/clock/clock.wav.spoken.txt");
+    writeFileSync(spokenPath, synthInput);
+    expect(readFileSync(spokenPath, "utf8")).toBe("by nine p m");
+    const displayWords = JSON.parse(readFileSync(path.join(root, "segments/clock/words.json"), "utf8"));
+    expect(displayWords.map(w => w.word)).toEqual(display.split(" "));
+    expect(displayWords.map(w => w.word).join(" ")).not.toContain("nine");
+    expect(displayWords.map(w => w.word).join(" ")).not.toContain("p m");
+    expect(displayWords[1].start).toBe(0.25);
+    expect(displayWords.at(-1).end).toBe(1);
+    const { result, outputPath } = buildDashboard({ id: "spoken-times", scenes: [{ id: "clock", title: "Clock", script: display }] }, root);
+    expect(result.status).toBe(0);
+    const html = readFileSync(outputPath, "utf8");
+    const tpdata = JSON.parse(html.match(/<script[^>]*id="tpdata"[^>]*>([\s\S]*?)<\/script>/)[1]);
+    expect(tpdata.clock.cues[0].text).toBe(display);
+    expect(tpdata.clock.cues[0].words.map(w => w.word)).toEqual(display.split(" "));
+    expect(tpdata.clock.cues[0].text).not.toContain("nine");
+    expect(tpdata.clock.cues[0].text).not.toContain("p m");
+    expect(tpdata.clock.cues[0].words).toEqual(displayWords.map(({ word, start, end }) => ({ word, start, end })));
+    const build = readFileSync(new URL("../scripts/build-dashboard.mjs", import.meta.url), "utf8");
+    const synth = readFileSync(new URL("../scripts/synth-segments.mjs", import.meta.url), "utf8");
+    const wrapper = readFileSync(new URL("../scripts/local-tts.mjs", import.meta.url), "utf8");
+    expect(build).toContain('from "../src/spoken-form.mjs"');
+    expect(synth).toContain('"scripts", "local-tts.mjs"');
+    expect(wrapper).toContain("main(prepareSpeechChannels)");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 for (const input of [
   "PM spoke with AM about the plan.", "13pm 24:00 9:65pm", "v2beta",
   "`9pm v2.3 PR #123 e.g. foo_bar`", "``v2.3 `9pm` ``",
@@ -59,7 +104,7 @@ test("raw by nine p m maps to original by 9pm and passes both BUILD gates", () =
   expect(rawWords).toEqual(snapshot);
   expect(analyzeTranscriptFidelity({ segments: [{ id: "clock", script: synthInput, rawWords }] }).verdict).toBe("PASS");
   expect(analyzeTeleprompterDrift({ segments: [{ id: "clock", transcript: display, sourceWords: rawWords, renderedWords: aligned.words, aliases }] }).verdict).toBe("PASS");
-  const html = renderV4({ title: "Clock", scenes: [{ id: "clock", script: display, words: aligned.words, audioUrl: "data:audio/mpeg;base64,ZmFrZQ==" }] });
+  const html = renderV4({ title: "Clock", scenes: [{ id: "clock", title: "Clock", script: display, words: aligned.words, audioUrl: "data:audio/mpeg;base64,ZmFrZQ==" }] });
   const tpdata = JSON.parse(html.match(/<script[^>]*id="tpdata"[^>]*>([\s\S]*?)<\/script>/)[1]);
   expect(tpdata.clock.cues[0].text).toBe(display);
   expect(tpdata.clock.cues[0].words.map(w => w.word)).toEqual(["by", "9pm"]);

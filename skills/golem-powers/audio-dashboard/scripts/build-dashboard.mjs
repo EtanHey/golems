@@ -33,7 +33,7 @@ import { fileURLToPath } from "node:url";
 import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
 import { loadPronunciationRules } from "../vendor/narrationlayer/pronunciation-config.ts";
-import { deriveSpeechAliases, normalizeForSpeech } from "../vendor/narrationlayer/text-normalize.ts";
+import { deriveSpeechAliases, prepareSpeechChannels } from "../src/spoken-form.mjs";
 import {
   analyzeAcousticArtifacts,
   analyzeOnsetEnergy,
@@ -350,7 +350,7 @@ async function main() {
       let expectedSha256 = "UNAVAILABLE";
       if (typeof s.script === "string") {
         pronunciationRules ??= loadPronunciationRules();
-        const expectedSpokenText = normalizeForSpeech(s.script, pronunciationRules);
+        const { synthInput: expectedSpokenText } = prepareSpeechChannels(s.script, pronunciationRules);
         expectedSpokenBytes = Buffer.from(expectedSpokenText, "utf8");
         expectedSha256 = createHash("sha256").update(expectedSpokenBytes).digest("hex");
       }
