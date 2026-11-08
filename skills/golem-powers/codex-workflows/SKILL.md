@@ -113,7 +113,7 @@ lead-reachable-only; do not invent a pane, listen-name, or monitor.
 `parallel` without `--watch` proves launch only, records `completion_proven:
 false`, prints `LAUNCH_ONLY`, and exits 75 so it cannot be mistaken for completed
 work. With `--watch`, success requires every worker to reach `completed`.
-`failed_launch`, `failed`, `watch_timeout`, `parser_failed`, and `incomplete` all
+`failed_launch`, `failed`, run-level `watch_timeout`, `parser_failed`, and `incomplete` all
 return nonzero. A watch timeout preserves the live process and log so another
 watch can resume.
 

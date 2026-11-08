@@ -169,6 +169,7 @@ def launch_worker(
     initial_record = {
         "name": name,
         "status": "preparing",
+        "preparation_process": capture_process_identity(os.getpid()),
         "branch": branch,
         "worktree": str(worktree),
         "log": str(log_path),
