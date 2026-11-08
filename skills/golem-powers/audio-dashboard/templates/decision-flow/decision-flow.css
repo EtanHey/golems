@@ -9,13 +9,26 @@
   --serif:"Iowan Old Style","Charter","Palatino Linotype",Palatino,Georgia,serif;
   --ctrl-clearance:124px; /* sticky top controller height on the phone */
   --dock-clearance:88px; /* fixed phone dock height plus breathing room; focus scrolling and the last card clear it */
+  --scroll-thumb:rgba(154,166,188,.3);--scroll-thumb-hover:rgba(154,166,188,.6);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;scroll-padding-top:var(--ctrl-clearance);scroll-padding-bottom:calc(var(--dock-clearance) + env(safe-area-inset-bottom))}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;scrollbar-color:var(--scroll-thumb) transparent;scrollbar-width:thin;scroll-padding-top:var(--ctrl-clearance);scroll-padding-bottom:calc(var(--dock-clearance) + env(safe-area-inset-bottom))}
 body{margin:0;background:var(--ink);color:var(--moon);font:16px/1.55 var(--sans);padding-bottom:calc(var(--dock-clearance) + 24px + env(safe-area-inset-bottom))}
 button{font:inherit;color:inherit}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
+/* Scrollbars stay thin and quiet. The rail list and read-along keep their gutter so a scrollbar never moves text,
+   and they brighten on hover or keyboard focus. The colour is inherited from html. */
+.df-index,.df-teleprompter{scrollbar-width:thin;scrollbar-gutter:stable}
+.df-sheet,.df-note-dialog,#df-note-quote{scrollbar-width:thin}
+.df-index:is(:hover,:focus-within),.df-teleprompter:is(:hover,:focus-within){scrollbar-color:var(--scroll-thumb-hover) transparent}
+@supports not (scrollbar-color:auto){
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{border:3px solid transparent;border-radius:10px;background:var(--scroll-thumb) padding-box}
+  .df-index:is(:hover,:focus-within)::-webkit-scrollbar-thumb,.df-teleprompter:is(:hover,:focus-within)::-webkit-scrollbar-thumb{background-color:var(--scroll-thumb-hover)}
+}
 
 /* Layout: one column on the phone; setlist index beside the ledger on desktop. */
 .df-layout{max-width:1120px;margin:0 auto;padding:0 16px}
@@ -217,7 +230,7 @@ body:has(.df-card.is-active.is-playing) .df-tplay{background:transparent;color:v
 @media(min-width:1040px){
   html{scroll-padding-bottom:0}
   body{padding-bottom:0}
-  .df-layout{display:grid;grid-template-columns:260px minmax(0,740px);grid-template-areas:"side top" "side ctrl" "side ledger";column-gap:56px;justify-content:center}
+  .df-layout{display:grid;grid-template-columns:260px minmax(0,1fr);grid-template-areas:"side top" "side ctrl" "side ledger";column-gap:32px;justify-content:center}
   .df-top{grid-area:top}
   .df-controller{grid-area:ctrl;margin:0 0 16px;padding:12px 0}
   .df-ledger{grid-area:ledger;padding-bottom:96px}
@@ -233,6 +246,13 @@ body:has(.df-card.is-active.is-playing) .df-tplay{background:transparent;color:v
   .df-dock{position:static;margin-top:18px;padding:18px 0 0;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;grid-template-columns:1fr;grid-template-areas:"tally" "meter" "copy";row-gap:10px}
   #df-copy{width:100%;margin-top:4px}
   .df-copy-state{left:auto;right:28px;bottom:28px;transform:none}
+}
+
+/* Wide screens: the rail and cards grow; reading text keeps its measure, so lines never get longer. */
+@media(min-width:1440px){
+  .df-layout{max-width:1680px;grid-template-columns:clamp(280px,17vw,340px) minmax(0,1fr);column-gap:40px}
+  .df-top h1{max-width:48ch}
+  .df-option b,.df-option small,.df-check span,.df-rail dd,.df-source-note,.df-clear-confirm p{max-width:64ch}
 }
 
 /* ---- Story view: a full-screen listening stage built from the current card itself ----
