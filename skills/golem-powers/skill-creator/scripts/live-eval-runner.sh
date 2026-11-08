@@ -117,10 +117,58 @@ cmd_sandbox() {
       exit 0
     fi
 
+    case "$(pwd -P)/" in
+      "$sandbox_path/"*) echo "Sandbox retained: caller is inside ${sandbox_path}" >&2; return 1 ;;
+    esac
     cd "${REPOS_PATH}/golems"
-    git worktree remove "${sandbox_path}" --force 2>/dev/null || true
-    git branch -D "${sandbox_name}" 2>/dev/null || true
+    local common sandbox_common branch head status index base_ref listed remove_rc=0
+    common=$(git rev-parse --path-format=absolute --git-common-dir)
+    sandbox_common=$(git -C "$sandbox_path" rev-parse --path-format=absolute --git-common-dir) || return 1
+    branch=$(git -C "$sandbox_path" symbolic-ref --short HEAD) || return 1
+    if [[ -L "$sandbox_path" || "$sandbox_common" != "$common" || "$branch" != "$sandbox_name" ]]; then
+      echo "Sandbox retained: worktree identity mismatch: ${sandbox_path}" >&2
+      return 1
+    fi
+    status=$(git -C "$sandbox_path" status --porcelain --untracked-files=all --ignored) || return 1
+    if [[ -n "$status" ]]; then
+      echo "Sandbox retained: tracked, untracked or ignored changes: ${sandbox_path}" >&2
+      return 1
+    fi
+    index=$(git -C "$sandbox_path" ls-files -v) || return 1
+    if printf '%s\n' "$index" | grep -Eq '^[a-zS] '; then
+      echo "Sandbox retained: index flags can hide tracked changes: ${sandbox_path}" >&2
+      return 1
+    fi
+    # Fail closed without fresh remote coverage; retain the branch in all cases.
+    base_ref=$(git symbolic-ref refs/remotes/origin/HEAD) || return 1
+    git fetch --quiet origin "refs/heads/${base_ref#refs/remotes/origin/}:${base_ref}" || return 1
+    head=$(git -C "$sandbox_path" rev-parse HEAD) || return 1
+    if ! git merge-base --is-ancestor "$head" "$base_ref"; then
+      echo "Sandbox retained: HEAD is not merged into ${base_ref}: ${sandbox_path}" >&2
+      return 1
+    fi
+    [[ $(git -C "$sandbox_path" rev-parse HEAD) == "$head" ]] || return 1
+    git worktree remove "$sandbox_path" || remove_rc=$?
+    if [[ "$remove_rc" -ne 0 ]]; then
+      echo "Sandbox retained: removal failed (rc=${remove_rc}): ${sandbox_path}" >&2
+      return "$remove_rc"
+    fi
+    listed=$(git worktree list --porcelain) || return 1
+    if printf '%s\n' "$listed" | grep -Fxq -- "worktree $sandbox_path"; then
+      echo "Cleanup unverified: sandbox is still registered: ${sandbox_path}" >&2
+      return 1
+    fi
+    python3 - "$sandbox_path" <<'PY_ABSENT' || return 1
+import os, sys
+try:
+    os.lstat(sys.argv[1])
+except FileNotFoundError:
+    sys.exit(0)
+print("Cleanup unverified: sandbox path still exists", file=sys.stderr)
+sys.exit(1)
+PY_ABSENT
     echo "Sandbox cleaned up: ${sandbox_path}"
+    echo "Cleanup receipt: remove_rc=0; registered=false; physical=false; branch=retained"
   fi
 }
 
