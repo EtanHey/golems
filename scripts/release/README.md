@@ -50,12 +50,14 @@ pin Node to 22.22.0.
 
 Resolve nightly as the newest published release by `created_at`, **including
 prereleases** and excluding drafts. GitHub's `/releases/latest` endpoint omits
-prereleases, so the installer requests only page 1 (`per_page=30`) and selects
-the newest non-draft by `created_at` from that response:
+prereleases. The installer requests pages of 100 until an empty or short page,
+then selects the newest non-draft by `created_at` across all pages. It refuses
+to select a potentially stale release if page 10 is still full; pin an exact
+`--channel <tag>` in that case. The equivalent authenticated CLI query is:
 
 ```sh
-gh api 'repos/EtanHey/golems/releases?per_page=30&page=1' | \
-  jq -er 'map(select(.draft == false)) | max_by(.created_at) | .tag_name'
+gh api --paginate --slurp 'repos/EtanHey/golems/releases?per_page=100' | \
+  jq -er 'add | map(select(.draft == false)) | max_by(.created_at) | .tag_name'
 ```
 
 The `github-release` gate support requires a published release with all three

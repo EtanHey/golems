@@ -87,12 +87,12 @@ json_fields() {
     if (c=="{" || c=="[") {
       if(catalog=="true") print p "\t" (c=="{" ? "object" : "array")
       pos++; ws(); q=(c=="{" ? "}" : "]")
-      if (ch[pos]==q) {pos++; return}
+      if (ch[pos]==q) {pos++; if(p=="" && q=="]") print "length\t0"; return}
       n=0
       while (1) {
         ws(); if (c=="{") {k=str(1); ws(); if(ch[pos++]!=":") bad()} else k=n++
         v=(p=="" ? k : p "." k); if (seen[v]++) bad(); value(v); ws()
-        k=ch[pos++]; if(k==q) return; if(k!=",") bad()
+        k=ch[pos++]; if(k==q) {if(p=="" && q=="]") print "length\t" n; return}; if(k!=",") bad()
       }
     }
     if (c=="\"") v=str(selected(p))
@@ -142,9 +142,19 @@ else
   api=https://api.github.com/repos/EtanHey/golems/releases
   tag=$channel
   if [ "$channel" = nightly ]; then
-    download "$api?per_page=30&page=1" "$work/api.json"
-    json_fields "$work/api.json" "$work/api.tsv"
-    awk -F '\t' '{split($1,k,"."); a[k[1],k[2]]=$2; ids[k[1]]=1} END {for(i in ids) if(a[i,"draft"]=="false") print a[i,"created_at"] "\t" a[i,"tag_name"]}' "$work/api.tsv" > "$work/candidates"
+    page=1
+    : > "$work/candidates"
+    while :; do
+      download "$api?per_page=100&page=$page" "$work/api.json"
+      json_fields "$work/api.json" "$work/api.tsv"
+      count=$(awk -F '\t' '$1=="length" {print $2}' "$work/api.tsv")
+      case "$count" in ''|*[!0-9]*) fail 'invalid nightly release page' ;; esac
+      [ "$count" -le 100 ] || fail 'invalid nightly release page size'
+      awk -F '\t' '{split($1,k,"."); a[k[1],k[2]]=$2; ids[k[1]]=1} END {for(i in ids) if(a[i,"draft"]=="false") print a[i,"created_at"] "\t" a[i,"tag_name"]}' "$work/api.tsv" >> "$work/candidates"
+      [ "$count" -eq 100 ] || break
+      [ "$page" -lt 10 ] || fail 'nightly release page cap (10) exceeded; pin --channel <tag> instead'
+      page=$((page + 1))
+    done
     tag=$(sort -r "$work/candidates" | awk -F '\t' 'NR==1 {print $2}')
     [ -n "$tag" ] || fail 'no published nightly release found'
   fi
