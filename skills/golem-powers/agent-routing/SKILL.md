@@ -37,7 +37,7 @@ This section is the single source of truth for fleet routing. Fleet canon, globa
 
 **Antigravity is an underused pool (2026-11-08, Etan, via orc; corrected ruling).**
 
-> "we gotta be using agy much more, fucking insane y'all arent doing what I asked for."
+> "we gotta be using agy much more, … y'all arent doing what I asked for."
 >
 > "ummm I never said all these need to go there??"
 >
