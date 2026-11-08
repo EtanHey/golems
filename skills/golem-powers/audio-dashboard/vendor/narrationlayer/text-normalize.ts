@@ -183,14 +183,18 @@ export function deriveSpeechAliases(displayText: string, synthInput: string): Te
   return [...aliases.values()].sort((left, right) => right.term.length - left.term.length);
 }
 
-// Skill adaptation: the callback runs its own spoken-form rules exactly once.
+const SPACED_CAPITALS_RULE = /(?<![A-Za-z0-9])([A-Z](?:[ \t]+[A-Z]){1,})(?![A-Za-z0-9])/g;
+
 export function normalizeLegacy(text: string, configuredRules: TermRule[] = []): string {
+  return normalizeLegacyCore(text.replace(SPACED_CAPITALS_RULE, match => match.replace(/[ \t]+/g, "")), configuredRules);
+}
+
+function normalizeLegacyCore(text: string, configuredRules: TermRule[]): string {
   if (!text) {
     return text;
   }
 
-  // Skill adaptation: collapse same-line authored initialisms before overlays.
-  let result = text.replace(/(?<![A-Za-z0-9])([A-Z](?:[ \t]+[A-Z]){1,})(?![A-Za-z0-9])/g, match => match.replace(/[ \t]+/g, ""));
+  let result = text;
   const rules = [...configuredRules].filter(rule => rule.term && rule.spoken).sort((a, b) => b.term.length - a.term.length);
   if (rules.length) {
     const byTerm = new Map(rules.map(rule => [rule.term.toLocaleLowerCase("en-US"), rule.spoken]));
@@ -279,7 +283,7 @@ function normalizeSpokenRules(text: string): string {
 }
 
 export function normalizeForSpeech(text: string, pronunciationRules: TermRule[] = []): string {
-  return normalizeLegacy(mapProse(text, normalizeSpokenRules), pronunciationRules);
+  return normalizeLegacyCore(mapProse(text, normalizeSpokenRules), pronunciationRules);
 }
 
 export interface SpeechChannels { displayText: string; synthInput: string }

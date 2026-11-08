@@ -49,6 +49,27 @@
       "sourcePath": "src/word-timings.ts",
       "vendorSha256": "f6c0f928e5d09fc7e200ca6d8635a2041c44fc5341ec972b8549f0974cc812b3",
       "sourceSha256": "4feed16024248316625c2c772788e7a92c8cfd2637aa15922f814c604264da55"
+    },
+    {
+      "id": "profile-renderer-types",
+      "vendorPath": "vendor/narrationlayer/profile-renderer-types.ts",
+      "sourcePath": "src/profile-renderer-types.ts",
+      "vendorSha256": "080a576e98fcdf57d17b633ad1e11ae294ce02b007bc4cb4eccfe8bd0f277269",
+      "sourceSha256": "080a576e98fcdf57d17b633ad1e11ae294ce02b007bc4cb4eccfe8bd0f277269"
+    },
+    {
+      "id": "audio",
+      "vendorPath": "vendor/narrationlayer/audio.ts",
+      "sourcePath": "src/audio.ts",
+      "vendorSha256": "cb9d39fe0db450115d5b7c88594a822bd2327b30983eadba35522e8b4fa2b2a0",
+      "sourceSha256": "cd96a769e4544069a63ea6d6d8c75e7a4f0014e0bf966dd926a88b267ad96228"
+    },
+    {
+      "id": "narration-plan",
+      "vendorPath": "vendor/narrationlayer/narration-plan.ts",
+      "sourcePath": "src/narration-plan.ts",
+      "vendorSha256": "1f2bf5da4c0d48885a28998ba873ead4d2d13f8add317b2aff9f7dfd9d228dc6",
+      "sourceSha256": "2a04501ea2c8cd9a3dfdb95f6d8cc16cf2640b64091f1a3b82579293f657773d"
     }
   ],
   "intentionalAdaptations": [
@@ -71,6 +92,14 @@
     {
       "pairId": "word-timings",
       "reason": "OPEN GOLEMS_SYNC_PORTABLE_WHISPER_DISCOVERY: retain path.join Homebrew fallback paths; upstream still embeds literal binary paths."
+    },
+    {
+      "pairId": "audio",
+      "reason": "TYPE_ONLY_PROFILE_CLOSURE: copied only the exact upstream AudioAssemblyChunk interface; no ffmpeg runtime."
+    },
+    {
+      "pairId": "narration-plan",
+      "reason": "TYPE_ONLY_PROFILE_CLOSURE: copied only the exact upstream PauseStrategy and NarrationPacingConfig declarations; no utterance planner runtime."
     }
   ],
   "vendorSideFirst": [
