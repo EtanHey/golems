@@ -94,8 +94,13 @@ def test_tile_failure_cleans_partial_window(media):
                        'if any("tile=" in arg for arg in sys.argv): sys.exit(19)\n'
                        f'os.execv({real!r}, [{real!r}, *sys.argv[1:]])\n')
     wrapper.chmod(0o755)
-    result, out = run(media)
+    lock = Path(env['PATH'].split(os.pathsep)[0])/'slots'
+    (lock/'slot-1').mkdir(parents=True)
+    dead = subprocess.Popen(['true']); dead.wait()
+    (lock/'slot-1/pid').write_text(str(dead.pid))
+    result, out = run(media, DENSE_LOCK_DIR=str(lock), DENSE_SLOTS='1', DENSE_SLOT_FREE_GB='999999')
     assert result.returncode != 0 and 'tiling failed' in result.stderr
+    assert not list(lock.iterdir()), 'stale PID must be reclaimed and failed job releases its slot'
     assert not frames(out), 'failed windows must clean up too'
 
 
@@ -150,3 +155,36 @@ def test_failure_preserves_registered_frames_and_keep_list(media):
     rows = [r.split('\t') for r in (out/'frames.tsv').read_text().splitlines()]
     assert len(rows) == 20 and all(Path(r[3]).exists() for r in rows)
     assert {p.name for p in frames(out)} == {Path(r[3]).name for r in rows} | {'window_1-f_00022.jpg'}
+
+
+def test_third_dense_job_waits_for_slot(media):
+    import select
+    video, work, env = media
+    work.mkdir(); cues = work/'cues.tsv'; cues.write_text('0\t0.1\tshort\n')
+    bin = Path(env['PATH'].split(os.pathsep)[0]); real = shutil.which('ffmpeg')
+    ready_r, ready_w = os.pipe(); release_r, release_w = os.pipe()
+    wrapper = bin/'ffmpeg'
+    wrapper.write_text('#!/usr/bin/env python3\nimport os,sys\n'
+                       f'if "-ss" in sys.argv: os.write({ready_w}, b"."); os.read({release_r}, 1); sys.exit(19)\n'
+                       f'os.execv({real!r}, [{real!r}, *sys.argv[1:]])\n'); wrapper.chmod(0o755)
+    (bin/'df').write_text('#!/bin/sh\nprintf "fs 1 1 0 100%% /\\n"\n'); (bin/'df').chmod(0o755)
+    lock = work/'slots'; jobs = []
+    def received(fd):
+        assert select.select([fd], [], [], 10)[0], 'timed out at extraction latch'
+        assert os.read(fd, 1) == b'.'
+    try:
+        for i in range(3):
+            jobs.append(subprocess.Popen(['sh', str(SCRIPTS/'dense-windows.sh'), str(video), str(cues), str(work/f'out-{i}'), '10', '0', '0'],
+                        env=dict(env, DENSE_LOCK_DIR=str(lock)), pass_fds=(ready_w, release_r), stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            if i < 2: received(ready_r)
+        assert select.select([jobs[2].stderr], [], [], 10)[0]
+        assert b'waiting for dense slot (2 slots;' in jobs[2].stderr.readline()
+        assert not select.select([ready_r], [], [], 0)[0], 'third extractor bypassed the lock'
+        os.write(release_w, b'.'); received(ready_r)
+        os.write(release_w, b'..')
+        assert all(job.communicate(timeout=10) is not None and job.returncode == 1 for job in jobs)
+        assert not list(lock.iterdir())
+    finally:
+        for job in jobs:
+            if job.poll() is None: job.kill(); job.wait()
+        for fd in (ready_r, ready_w, release_r, release_w): os.close(fd)
