@@ -305,11 +305,18 @@ may enter the daemon input and `.spoken.txt`, but `P R` or `live` remains on
 screen exactly as authored.
 
 The skill-local `src/spoken-form.mjs` prepares clock times and a small abbreviation
-set before synthesis: `9pm` / `9 p.m.` / `21:00` → `nine p m`, `9:05pm` →
+set before synthesis: `9pm` / `9 p.m.` → `nine p m`, `at 21:00` →
+`at nine p m`, `9:05pm` →
 `nine oh five p m`, and `11:30am` → `eleven thirty a m`. Lowercase spaced letters
-avoid the dotted-identifier rule. `PR #123`, `PR 123`, and `#123` say `pull request
-one twenty-three`; `e.g.`, `i.e.`, `vs.`, `approx.`, `~5`, `5%`, `x2` / `2x`, and
-`v2.3` expand to ordinary speech. Complete backtick code spans/fences, tilde fences
+avoid the dotted-identifier rule. Bare `HH:MM` reads as plain numbers unless
+preceded by at/by/until/from; only clock contexts infer am/pm. `PR #123`,
+`PR 123`, and `pull request #123` say `pull request one twenty-three`.
+Other `#N` references say `number`: `issue #12` becomes `issue number twelve`.
+`e.g.`, `i.e.`, `vs.`, `approx.`, `~5`, `5%`, `2x`, and `v2.3` expand to ordinary
+speech; `2.5x` says `two point five times`. Prefix forms such as `x2` and `x86`
+stay unchanged. Timing aliases use comparison-form deduplication and keep
+independent changed terms separate, without single-digit partial aliases.
+Complete backtick code spans/fences, tilde fences
 and HTTP(S) URLs stay verbatim through both normalization layers; standalone PM
 names stay unchanged. `scripts/local-tts.mjs` supplies this preparation to the
 vendored runner; BUILD recomputes the same bytes before trusting `.spoken.txt`.

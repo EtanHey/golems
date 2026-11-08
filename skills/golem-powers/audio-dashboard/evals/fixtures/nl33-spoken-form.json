@@ -1,0 +1,110 @@
+{
+  "source": "EtanHey/narrationlayer#33",
+  "head": "6847637a518e67023656200986f8a03035f1c3d3",
+  "cases": [
+    [
+      "9pm",
+      "nine p m"
+    ],
+    [
+      "9 pm",
+      "nine p m"
+    ],
+    [
+      "9 p.m.",
+      "nine p m"
+    ],
+    [
+      "9PM",
+      "nine p m"
+    ],
+    [
+      "11:30am",
+      "eleven thirty a m"
+    ],
+    [
+      "11:30 a.m.",
+      "eleven thirty a m"
+    ],
+    [
+      "at 21:00",
+      "at nine p m"
+    ],
+    [
+      "by 21:15",
+      "by nine fifteen p m"
+    ],
+    [
+      "9:05pm",
+      "nine oh five p m"
+    ],
+    [
+      "at 00:00",
+      "at twelve a m"
+    ],
+    [
+      "at 12:00",
+      "at twelve p m"
+    ],
+    [
+      "PR #123",
+      "pull request one twenty-three"
+    ],
+    [
+      "PR 123",
+      "pull request one twenty-three"
+    ],
+    [
+      "pull request #123",
+      "pull request one twenty-three"
+    ],
+    [
+      "e.g.",
+      "for example"
+    ],
+    [
+      "i.e.",
+      "that is"
+    ],
+    [
+      "vs.",
+      "versus"
+    ],
+    [
+      "vs",
+      "versus"
+    ],
+    [
+      "approx.",
+      "approximately"
+    ],
+    [
+      "~5",
+      "about five"
+    ],
+    [
+      "5%",
+      "five percent"
+    ],
+    [
+      "%",
+      "percent"
+    ],
+    [
+      "2.5x",
+      "two point five times"
+    ],
+    [
+      "2x",
+      "two times"
+    ],
+    [
+      "v2.3",
+      "version two point three"
+    ],
+    [
+      "Use v2.3. Try ~5.",
+      "Use version two point three. Try about five."
+    ]
+  ]
+}
