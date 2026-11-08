@@ -246,6 +246,7 @@ test("D6d duplicate rejection records preserve BYO cache protection regardless o
   expect(receipts).toEqual([{
     segment: "scene",
     status: "SKIP",
+    deletionOutcome: "never-attempted",
     evidence: "BYO source is not managed by the TTS frozen-take cache",
   }]);
 });
