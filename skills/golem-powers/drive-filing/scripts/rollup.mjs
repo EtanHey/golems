@@ -6,7 +6,8 @@
 //   node rollup.mjs --repo <path> --keep-months N [--dry-run | --apply] [--json] [--now YYYY-MM-DD]
 //
 // --dry-run (the default) only reports. --apply performs the local month
-// moves and writes docs.local/_drive-filing/rollup-plan-<date>.json. This
+// moves with an immutable intent, progress journal and upload handoff under
+// docs.local/_drive-filing/. This
 // script never uploads or deletes anything: the upload itself runs through
 // references/archive-procedure.md from that plan, and nothing outside the
 // plan is uploaded.
@@ -18,7 +19,8 @@
 // ruling): every name rule matches anywhere in the name, and a (folder,
 // month) group -- the YYYY-MM/ folder plus that month's dated siblings --
 // holding ANY credential is held whole: no moves, no upload unit.
-import { closeSync, lstatSync, mkdirSync, openSync, readdirSync, readSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { closeSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { basename, join, relative, resolve, sep } from "node:path";
 
 const USAGE =
@@ -501,30 +503,103 @@ export function summaryLine(plan) {
   );
 }
 
+function saveJson(path, value) {
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { flag: "wx", flush: true });
+}
+
+function saveProgress(intent, progress) {
+  const staged = `${intent.progressFile}.${randomUUID()}.tmp`;
+  saveJson(staged, progress);
+  renameSync(staged, intent.progressFile);
+}
+
+function identity(path) {
+  const stat = lstatSync(path);
+  return `${stat.dev}:${stat.ino}`;
+}
+
+function readJson(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    throw new Error(`cannot read rollup JSON: ${path}`);
+  }
+}
+
+function completionFile(planFile) {
+  return planFile.replace(/rollup-plan-([^/]+)$/, "rollup-complete-$1");
+}
+
+function reconcile(intent, eligible) {
+  const moves = intent.moves.map((move) => {
+    const locations = [move.from, move.to].filter((p) => existsSync(join(intent.repo, p)));
+    const matches = locations.length === 1 && identity(join(intent.repo, locations[0])) === move.identity;
+    const state = !matches ? "conflict" : locations[0] === move.to ? "moved"
+      : eligible.has(move.from) ? "pending" : "not-moved";
+    return { ...move, locations, state,
+      ...(state === "not-moved" ? { reason: "no longer eligible under current credential/safety checks" } : {}) };
+  });
+  const progress = { planFile: intent.planFile, complete: false, moves };
+  saveProgress(intent, progress);
+  if (moves.some((m) => m.state === "conflict")) throw new Error(`rollup recovery conflict: ${intent.progressFile}`);
+  return progress;
+}
+
 function apply(plan) {
-  const root = plan.repo;
-  for (const move of plan.moves) {
-    const to = join(root, move.to);
-    mkdirSync(join(to, ".."), { recursive: true });
-    renameSync(join(root, move.from), to);
-  }
-  // After the moves, upload paths point at the month folders.
-  const moved = new Map(plan.moves.map((m) => [m.from, m.to]));
-  for (const unit of plan.upload) {
-    for (const file of unit.files) {
-      for (const [from, to] of moved) {
-        if (file.path === from || file.path.startsWith(`${from}/`)) {
-          file.path = to + file.path.slice(from.length);
-          break;
-        }
-      }
-    }
-  }
-  const dir = join(root, "docs.local", PLAN_DIR);
+  const dir = join(plan.repo, "docs.local", PLAN_DIR);
+  const pending = (existsSync(dir) ? readdirSync(dir) : [])
+    .filter((name) => /^rollup-plan-.*\.json$/.test(name))
+    // Completion markers only appear after both handoff and final progress.
+    .filter((name) => {
+      if (existsSync(completionFile(join(dir, name)))) return false;
+      const handoff = join(dir, name.replace("rollup-plan-", "rollup-handoff-"));
+      const progress = join(dir, name.replace("rollup-plan-", "rollup-progress-"));
+      return !existsSync(handoff) || !existsSync(progress) || !readJson(progress).complete;
+    })
+    .map((name) => readJson(join(dir, name)))
+    .filter((saved) => saved.phase === "intent");
+  if (plan.moves.length === 0 && pending.length === 0) return plan;
   mkdirSync(dir, { recursive: true });
-  const out = join(dir, `rollup-plan-${plan.now}.json`);
-  writeFileSync(out, `${JSON.stringify(plan, null, 2)}\n`);
-  return out;
+  // buildPlan ran all credential/content checks; reconcile old sources and
+  // destinations before the first new move, retaining newly held sources.
+  const eligible = new Set(plan.moves.map((m) => m.from));
+  for (const saved of pending) reconcile(saved, eligible);
+  const id = `${plan.now}-${randomUUID()}`;
+  const intent = plan.moves.length === 0 ? pending[0] : {
+    ...plan, phase: "intent", planFile: join(dir, `rollup-plan-${id}.json`),
+    progressFile: join(dir, `rollup-progress-${id}.json`), handoffFile: join(dir, `rollup-handoff-${id}.json`),
+    moves: plan.moves.map((m) => ({ ...m, identity: identity(join(plan.repo, m.from)) })),
+  };
+  // Exclusive creation before even creating a move's parent directory.
+  if (plan.moves.length > 0) saveJson(intent.planFile, intent);
+  const progress = reconcile(intent, eligible);
+  for (const [i, move] of intent.moves.entries()) {
+    if (progress.moves[i].state !== "pending") continue;
+    const to = join(plan.repo, move.to);
+    mkdirSync(join(to, ".."), { recursive: true });
+    if (existsSync(to)) throw new Error(`rollup destination exists: ${move.to}`);
+    progress.moves[i].state = "moving";
+    progress.moves[i].locations = [move.from, move.to];
+    saveProgress(intent, progress);
+    renameSync(join(plan.repo, move.from), to);
+    progress.moves[i].state = "moved";
+    progress.moves[i].locations = [move.to];
+    saveProgress(intent, progress);
+  }
+  const settled = [...new Set([...pending, intent])].map((saved) => [saved, reconcile(saved, eligible)]);
+  // Fresh inventory resolves all upload paths to actual destinations once.
+  const handoff = { ...buildPlan(plan), phase: "handoff", moves: plan.moves,
+    intentFile: intent.planFile, progressFile: intent.progressFile,
+    reconciledIntents: settled.map(([saved]) => ({ planFile: saved.planFile, progressFile: saved.progressFile })),
+    planFile: existsSync(intent.handoffFile) ? join(dir, `rollup-handoff-${id}.json`) : intent.handoffFile };
+  handoff.totals.monthlyMoves = plan.moves.length;
+  saveJson(handoff.planFile, handoff);
+  for (const [saved, status] of settled) {
+    status.complete = true;
+    saveProgress(saved, status);
+    saveJson(completionFile(saved.planFile), { handoffFile: handoff.planFile });
+  }
+  return handoff;
 }
 
 function main(argv) {
@@ -535,8 +610,8 @@ function main(argv) {
     console.error(`${error.message}\n${USAGE}`);
     return 2;
   }
-  const plan = buildPlan(args);
-  if (args.mode === "apply") plan.planFile = apply(plan);
+  let plan = buildPlan(args);
+  if (args.mode === "apply") plan = apply(plan);
   if (args.json) {
     process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
     return 0;
@@ -553,6 +628,7 @@ function main(argv) {
       ...(h.content ?? []).map((c) => `  content: ${c.path} (${c.shape})`),
     ]),
     ...plan.conflicts.map((c) => `conflict: ${c.from} -> ${c.to} exists`),
+    ...(plan.planFile ? [`handoff: ${plan.planFile}`] : []),
     summaryLine(plan),
   ];
   process.stdout.write(`${lines.join("\n")}\n`);
