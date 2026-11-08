@@ -72,7 +72,7 @@ def test_real_coverage_dense_refine_crop_and_inspection(media):
     for why in ('before', 'recheck'):
         assert call('inspected.sh', work, frame, why, 'F1').returncode == 0
     assert call('inspected.sh', work, work/'unknown.png', 'why').returncode != 0
-    assert (work/'inspected.tsv').read_text().splitlines()[0].split('\t') == [rows[0]['pts_s'], frame, 'before', 'F1']
+    assert (work/'inspected.tsv').read_text().splitlines()[0].split('\t') == [rows[0]['pts_s'], frame, 'before', 'F1', rows[0]['sha256']]
     visual = work/'visual'; visual.mkdir()
     import json
     (visual/'findings.jsonl').write_text(json.dumps({'ok': True, 'sheet': str(dense/'sheet_001.jpg')})+'\n')
@@ -96,3 +96,55 @@ def test_coverage_uses_decoded_timestamp_not_seek(media):
     rows = p.rows(work)
     assert len(rows) == 2
     assert rows[1]['pts_s'] == '30.030', 'requested seek=30 is not decoded PTS'
+
+
+def test_inspection_tracks_recorded_bytes(tmp_path, capsys):
+    frame = tmp_path/'frame.png'
+    frame.write_bytes(b'original')
+    p.record(tmp_path, [(frame, 0, 'coverage', '', '', '')])
+    p.inspect(tmp_path, frame, 'before')
+    assert (tmp_path/'inspected.tsv').read_text().split('\t')[-1].strip() == hashlib.sha256(b'original').hexdigest()
+    p.counts(tmp_path)
+    assert 'inspected=1 ' in capsys.readouterr().out
+    frame.write_bytes(b'overwritten')
+    p.counts(tmp_path)
+    assert 'inspected=0 ' in capsys.readouterr().out
+    with pytest.raises(ValueError, match='digest'):
+        p.inspect(tmp_path, frame, 'after')
+    frame.unlink()
+    p.counts(tmp_path)
+    assert 'inspected=0 ' in capsys.readouterr().out
+
+
+def test_legacy_inspection_is_not_verified(tmp_path, capsys):
+    frame = tmp_path/'frame.png'
+    frame.write_bytes(b'original')
+    p.record(tmp_path, [(frame, 0, 'coverage', '', '', '')])
+    (tmp_path/'inspected.tsv').write_text(f'0\t{frame}\tbefore\tF1\n')
+    p.counts(tmp_path)
+    assert 'inspected=0 ' in capsys.readouterr().out
+
+
+def test_record_waits_for_run_lock(tmp_path):
+    import fcntl
+    frame = tmp_path/'frame.png'
+    frame.write_bytes(b'original')
+    code = ('import importlib.util,sys; '
+            's=importlib.util.spec_from_file_location("p",sys.argv[1]); '
+            'p=importlib.util.module_from_spec(s); s.loader.exec_module(p); '
+            'print("ready",flush=True); '
+            'p.record(sys.argv[2],[(sys.argv[3],0,"coverage","","","")])')
+    import sys
+    with (tmp_path/'.provenance.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        child = subprocess.Popen([sys.executable, '-c', code, str(SCRIPTS/'provenance.py'),
+                                  str(tmp_path), str(frame)], stdout=subprocess.PIPE, text=True)
+        try:
+            assert child.stdout.readline().strip() == 'ready'
+            with pytest.raises(subprocess.TimeoutExpired):
+                child.wait(timeout=.2)
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+            child.wait(timeout=5)
+    assert child.returncode == 0
+    assert len(p.rows(tmp_path)) == 1

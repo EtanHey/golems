@@ -1,5 +1,6 @@
 """Append-only frame provenance; legacy first three columns remain headerless."""
 import csv
+import fcntl
 import hashlib
 import json
 import math
@@ -28,32 +29,36 @@ def append(path, values):
     if any('\t' in str(v) or '\n' in str(v) or '\r' in str(v) for v in values):
         raise ValueError('TSV values must be single-line and tab-free')
     with path.open('a') as stream:
+        fcntl.flock(stream, fcntl.LOCK_EX)
         stream.write('\t'.join(map(str, values))+'\n')
+        stream.flush()
 
 def record(work, entries):
     work = Path(work).resolve()
     root = run_root(work)
     root.mkdir(parents=True, exist_ok=True)
-    old = rows(root)
-    hashes = {}
-    for row in old:
-        hashes.setdefault(row['sha256'], row['frame'])
-    known = {r['frame'] for r in old}
-    for frame, pts, source, sheet, tile, crop_of in entries:
-        frame = str(Path(frame).resolve())
-        if frame in known:
-            raise ValueError('frame already recorded: '+frame)
-        digest = hashlib.sha256(Path(frame).read_bytes()).hexdigest()
-        stamp = f'{float(pts):.3f}'
-        if not math.isfinite(float(pts)):
-            raise ValueError('non-finite PTS')
-        values = [sheet, tile, stamp, frame, stamp, source, sheet, digest,
-                  hashes.get(digest, ''), crop_of]
-        append(root/'frames.tsv', values)
-        if work != root:
-            append(work/'frames.tsv', values)
-        known.add(frame)
-        hashes.setdefault(digest, frame)
+    with (root/'.provenance.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        old = rows(root)
+        hashes = {}
+        for row in old:
+            hashes.setdefault(row['sha256'], row['frame'])
+        known = {r['frame'] for r in old}
+        for frame, pts, source, sheet, tile, crop_of in entries:
+            frame = str(Path(frame).resolve())
+            if frame in known:
+                raise ValueError('frame already recorded: '+frame)
+            digest = hashlib.sha256(Path(frame).read_bytes()).hexdigest()
+            stamp = f'{float(pts):.3f}'
+            if not math.isfinite(float(pts)):
+                raise ValueError('non-finite PTS')
+            values = [sheet, tile, stamp, frame, stamp, source, sheet, digest,
+                      hashes.get(digest, ''), crop_of]
+            append(root/'frames.tsv', values)
+            if work != root:
+                append(work/'frames.tsv', values)
+            known.add(frame)
+            hashes.setdefault(digest, frame)
 
 def ffmpeg(args, log):
     with log.open('w') as stream:
@@ -103,14 +108,26 @@ def inspect(work, frame, why, finding=''):
     row = next((r for r in rows(work) if r['frame'] == frame), None)
     if row is None or not Path(frame).is_file():
         raise ValueError('inspect requires an existing recorded frame')
-    append(work/'inspected.tsv', [row['pts_s'], frame, why, finding])
+    if hashlib.sha256(Path(frame).read_bytes()).hexdigest() != row['sha256']:
+        raise ValueError('frame digest differs from recorded digest')
+    append(work/'inspected.tsv', [row['pts_s'], frame, why, finding, row['sha256']])
 
 def counts(work):
     work = Path(work).resolve()
     data = rows(work)
     inspected = set()
     if (work/'inspected.tsv').exists():
-        inspected = {r[1] for r in csv.reader((work/'inspected.tsv').open(), delimiter='\t')}
+        recorded = {r['frame']: r['sha256'] for r in data}
+        with (work/'inspected.tsv').open() as stream:
+            for r in csv.reader(stream, delimiter='\t'):
+                if len(r) != 5 or not r[4] or recorded.get(r[1]) != r[4]:
+                    continue
+                try:
+                    digest = hashlib.sha256(Path(r[1]).read_bytes()).hexdigest()
+                except OSError:
+                    continue
+                if digest == r[4]:
+                    inspected.add(r[1])
     presorted = set()
     for log in work.rglob('visual/findings.jsonl'):
         for line in log.read_text().splitlines():

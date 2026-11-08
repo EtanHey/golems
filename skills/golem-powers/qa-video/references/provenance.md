@@ -43,14 +43,17 @@ when the parent has `frames.tsv`; `QA_RUN_DIR` explicitly selects another run ro
 This shares repeat detection across coverage, dense, refinement and crops.
 Directories named `refine*` default to source=refine; `QA_FRAME_SOURCE` overrides.
 Each dense directory retains a local ledger for visual-batch.py. Do not sum both
-local and root ledgers: the root contains each frame once. Concurrent writers are
-unsupported. `inspected.sh` accepts only existing frames registered in that ledger.
-It appends headerless `pts_s, frame, why, finding` to `inspected.tsv`; use it only
+local and root ledgers: the root contains each frame once. Record writers sharing a run serialize ledger checks and appends with a run-level
+`fcntl` lock. `inspected.sh` accepts only existing frames registered in that ledger.
+It appends headerless `pts_s, frame, why, finding, sha256` to `inspected.tsv`; use it only
 after actually viewing the full-size image or crop, never for merely extracting it.
 
 `coverage-count.sh` prints exactly `extracted=N unique=N repeated=N inspected=N
 pre-sorted-only=N` on one line. Unique means non-repeat rows. Inspected counts
-distinct recorded frame paths in the ledger, so rechecks do not inflate it.
+distinct recorded frame paths whose inspection digest matches both the recorded
+digest and current file bytes, so rechecks do not inflate it. Missing or changed
+files and legacy inspection rows without a digest do not count; inspect again
+after viewing the recorded bytes.
 Pre-sorted-only counts recorded frames on successful (`ok: true`) helper sheets
 in `visual/findings.jsonl`, excluding inspected paths; unread/unprocessed frames
 are not called pre-sorted. These are artifact counts, not proof of human viewing.
