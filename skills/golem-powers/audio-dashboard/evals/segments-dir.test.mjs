@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -18,10 +18,10 @@ function setup() {
   const specPath = path.join(root, 'job.json'), spec = { id: path.basename(root), outputPath,
     scenes: [{ id: 'new-scene', script: 'Tonight we trace decisions' }] };
   const deliveryPath = path.join(root, 'delivery.json'); writeFileSync(deliveryPath, '{"backfilled":true}');
-  const run = (fields = {}, flags = []) => {
+  const run = (fields = {}, flags = [], env = {}) => {
     writeFileSync(specPath, JSON.stringify({ ...spec, ...fields }));
     return spawnSync('bun', cell.command('scripts/validate-evidence.mjs', ['--spec', specPath, '--delivery', deliveryPath, '--json', ...flags]).slice(1),
-      { cwd: skillRoot, encoding: 'utf8' });
+      { cwd: skillRoot, encoding: 'utf8', env: { ...process.env, ...env } });
   };
   const record = hash => writeFileSync(buildReceiptsPath(outputPath), JSON.stringify({ artifactSha256: hash,
     segmentsDir: path.relative(path.dirname(outputPath), segmentsDir) }));
@@ -48,9 +48,16 @@ test('evidence uses only a BUILD record bound to the current HTML hash', () => {
 });
 test('CLI and spec paths take precedence without searching lower-priority dirs', () => {
   const f = setup(); f.record(sha256(fixture.html));
+  mkdirSync(path.join(f.root, 'wrong/segments/old-scene'), { recursive: true });
   expectWords(f.run({ segmentsDir: 'wrong' }, ['--job-dir', f.jobDir]));
   expect(f.run({ segmentsDir: 'wrong' }).stderr).toContain('JOB_DIR_SCENE_MISMATCH');
   expect(f.run({}, ['--job-dir', path.join(f.root, 'wrong')]).stderr).toContain('JOB_DIR_SCENE_MISMATCH');
+});
+test('legacy jobs still resolve the default directory when no BUILD location is recorded', () => {
+  const f = setup(), home = path.join(f.root, 'home');
+  cpSync(f.segmentsDir, path.join(home, '.narrationlayer/jobs', f.spec.id, 'segments'), { recursive: true });
+  writeFileSync(buildReceiptsPath(f.outputPath), JSON.stringify({ artifactSha256: sha256(fixture.html) }));
+  expectWords(f.run({}, [], { HOME: home }));
 });
 test('zero matching scene ids names the directory mismatch rather than estimated timing', () => {
   const f = setup(), result = f.run();
