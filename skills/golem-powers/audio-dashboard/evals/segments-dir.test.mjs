@@ -67,7 +67,7 @@ test('a matching scene with missing words retains the actual timing rejection', 
 const mediaTools = ['ffmpeg', 'ffprobe'].every(bin => spawnSync(bin, ['-version']).status === 0);
 (mediaTools ? test : test.skip)('real BUILD records a portable segments dir bound to its HTML; evidence and prepare use it', () => {
   const f = setup(), wav = path.join(f.scene, 'new-scene.wav');
-  expect(spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=140:duration=2', wav]).status).toBe(0);
+  expect(spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=140:duration=1.8', wav]).status).toBe(0);
   expect(spawnSync('ffmpeg', ['-v', 'error', '-i', wav, path.join(f.scene, 'new-scene.mp3')]).status).toBe(0);
   writeFileSync(path.join(f.scene, 'words.raw.json'), JSON.stringify(fixture.wordsJson));
   const accepted = path.join(f.root, 'accepted.json'); writeFileSync(accepted, '{}');
@@ -75,7 +75,7 @@ const mediaTools = ['ffmpeg', 'ffprobe'].every(bin => spawnSync(bin, ['-version'
     acceptedBaseline: { path: accepted, sha256: sha256('{}') },
     design: { firstInLineage: { reason: 'Isolated synthetic fixture', approvedBy: 'fixture-owner' } },
     scenes: [{ ...f.spec.scenes[0], audioWav: wav }] }));
-  const run = (script, flags) => spawnSync('bun', cell.command(`scripts/${script}.mjs`, ['--spec', f.specPath, ...flags]).slice(1),
+  const run = (script, flags) => spawnSync('bun', cell.command(`scripts/${script}.mjs`, ['--spec', f.specPath, '--first-build', 'Isolated synthetic fixture', ...flags]).slice(1),
     { cwd: skillRoot, encoding: 'utf8' });
   const built = run('build-dashboard', ['--job-dir', f.jobDir]); expect(built.status, built.stderr).toBe(0);
   const receipts = JSON.parse(readFileSync(buildReceiptsPath(f.outputPath)));
