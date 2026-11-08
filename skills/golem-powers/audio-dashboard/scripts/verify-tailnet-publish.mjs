@@ -70,15 +70,30 @@ function deriveUrl(outPath, args, env = process.env) {
   return `${baseUrl.replace(/\/+$/, "")}/${rel}`;
 }
 
-async function fetchWithTimeout(url, timeoutMs) {
+async function fetchWithTimeout(url, timeoutMs, maxBytes) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, {
+    const response = await fetch(url, {
       signal: controller.signal,
       cache: "no-store",
       headers: { "cache-control": "no-cache" },
     });
+    if (response.status !== 200) {
+      controller.abort();
+      return { status: response.status };
+    }
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of response.body) {
+      size += chunk.byteLength;
+      if (size > maxBytes) {
+        controller.abort();
+        throw new Error(`response exceeds local artifact size limit (${maxBytes} bytes)`);
+      }
+      chunks.push(Buffer.from(chunk));
+    }
+    return { status: response.status, bytes: Buffer.concat(chunks, size) };
   } finally {
     clearTimeout(timer);
   }
@@ -98,7 +113,7 @@ async function main() {
 
   let response;
   try {
-    response = await fetchWithTimeout(probeUrl, args.timeoutMs);
+    response = await fetchWithTimeout(probeUrl, args.timeoutMs, localBytes.length);
   } catch (err) {
     fail(`tailnet probe failed for ${tailnetUrl}: ${err?.message || err}`);
   }
@@ -106,7 +121,7 @@ async function main() {
     fail(`tailnet probe returned HTTP ${response.status} for ${tailnetUrl}; expected HTTP 200`);
   }
 
-  const remoteBytes = Buffer.from(await response.arrayBuffer());
+  const remoteBytes = response.bytes;
   const localHash = sha256(localBytes);
   const remoteHash = sha256(remoteBytes);
   if (localHash !== remoteHash) {

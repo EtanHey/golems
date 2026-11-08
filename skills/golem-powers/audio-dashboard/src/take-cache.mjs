@@ -5,7 +5,10 @@ import path from "node:path";
 export const TAKE_CACHE_RECEIPT_VERSION = 1;
 
 function receiptFor(segment, status, extra = {}) {
-  return { segment, status, ...extra };
+  const deletionOutcome = status === "PURGED" ? "deleted"
+    : status === "MISSING" ? "already-absent"
+    : status === "ERROR" && extra.cachePath ? "failed" : "never-attempted";
+  return { segment, status, deletionOutcome, ...extra };
 }
 
 export function purgeRejectedTakeCaches({ artifacts = [], rejectedSegments = [], cacheDir } = {}) {
@@ -53,14 +56,14 @@ export function purgeRejectedTakeCaches({ artifacts = [], rejectedSegments = [],
     }
 
     const cachePath = path.join(resolvedCacheDir, `${cacheKey}.wav`);
-    if (!existsSync(cachePath)) {
-      receipts.push(receiptFor(segment, "MISSING", { cacheKey, cachePath, evidence: "frozen take already absent" }));
-      continue;
-    }
     try {
       unlinkSync(cachePath);
       receipts.push(receiptFor(segment, "PURGED", { cacheKey, cachePath, evidence: "rejected frozen take removed" }));
     } catch (error) {
+      if (error?.code === "ENOENT") {
+        receipts.push(receiptFor(segment, "MISSING", { cacheKey, cachePath, evidence: "frozen take already absent" }));
+        continue;
+      }
       receipts.push(
         receiptFor(segment, "ERROR", {
           cacheKey,
