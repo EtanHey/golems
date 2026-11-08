@@ -26,7 +26,9 @@ function clock(hour, minute, period) {
 }
 
 // Protect complete code spans/fences and URLs before either speech layer runs.
-const PROTECTED = /(`+)[\s\S]*?\1(?!`)|(~{3,})[\s\S]*?\2|https?:\/\/[^\s<>`]+/gi;
+// Compound PR references also bypass install overlays that expand standalone PR.
+const PROTECTED =
+  /(`+)[\s\S]*?\1(?!`)|(~{3,})[\s\S]*?\2|https?:\/\/[^\s<>`]+|\b(?:PR|pull[ \t]+request)[ \t]+#?\d[\w#.:/–—-]*[:/–—-][\w#.:/–—-]*/gi;
 function mapProse(text, transform) {
   let output = "";
   let cursor = 0;
@@ -40,6 +42,8 @@ function mapProse(text, transform) {
 function normalizeProse(text, aliases = []) {
   const replace = (pattern, replacement) => {
     text = text.replace(pattern, (...args) => {
+      const offset = args.at(-2), source = args.at(-1);
+      if (/[\w:/–—-]$/.test(source.slice(0, offset)) || /^(?:[\w:/–—-]|\.\d)/.test(source.slice(offset + args[0].length))) return args[0];
       const spoken = typeof replacement === "function" ? replacement(...args) : replacement;
       aliases.push({ term: args[0], spoken });
       return spoken;
