@@ -6,7 +6,7 @@ name="eas-cli version up to date"
 
 # `eas --version` format: "eas-cli/18.1.0 darwin-arm64 node-v22.22.0"
 # Parse: extract "18.1.0" from between "eas-cli/" and the next space.
-installed=$(eas --version 2>/dev/null | head -1 | sed -n 's|^eas-cli/\([^ ]*\).*|\1|p' || echo "unknown")
+installed=$(run_with_timeout 5 eas --version 2>/dev/null | head -1 | sed -n 's|^eas-cli/\([^ ]*\).*|\1|p' || echo "unknown")
 [[ -z "$installed" ]] && installed="unknown"
 
 if [[ "$installed" == "unknown" || -z "$installed" ]]; then

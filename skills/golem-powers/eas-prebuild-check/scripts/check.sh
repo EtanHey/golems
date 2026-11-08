@@ -128,7 +128,39 @@ run_with_timeout() {
     return $?
   fi
 
-  echo "timeout unavailable: install coreutils (timeout or gtimeout)" >&2
+  if command -v perl >/dev/null 2>&1; then
+    perl -e '
+      use strict;
+      use warnings;
+      use POSIX qw(setpgid);
+      my $seconds = shift @ARGV;
+      my $pid = fork();
+      defined $pid or die "fork: $!";
+      if ($pid == 0) {
+        setpgid(0, 0) == 0 or die "setpgid: $!";
+        exec { $ARGV[0] } @ARGV or die "exec: $!";
+      }
+      # Both sides establish the group before exec/alarm can race with setup.
+      setpgid($pid, $pid);
+      my $stop = sub {
+        my ($code) = @_;
+        kill "KILL", -$pid;
+        waitpid($pid, 0);
+        exit $code;
+      };
+      $SIG{ALRM} = sub { $stop->(124) };
+      $SIG{INT} = sub { $stop->(130) };
+      $SIG{TERM} = sub { $stop->(143) };
+      alarm $seconds;
+      waitpid($pid, 0);
+      my $status = $?;
+      alarm 0;
+      exit(($status & 127) ? 128 + ($status & 127) : $status >> 8);
+    ' "$seconds" "$@"
+    return $?
+  fi
+
+  echo "timeout unavailable: install perl or coreutils (timeout or gtimeout)" >&2
   return 127
 }
 
@@ -186,8 +218,8 @@ run_check() {
   fi
 }
 
-if ! command -v timeout >/dev/null 2>&1 && ! command -v gtimeout >/dev/null 2>&1; then
-  record_result "Bounded command execution" "FAIL" "timeout unavailable; remote checks cannot run safely" "Install coreutils (timeout or gtimeout)"
+if ! command -v timeout >/dev/null 2>&1 && ! command -v gtimeout >/dev/null 2>&1 && ! command -v perl >/dev/null 2>&1; then
+  record_result "Bounded command execution" "FAIL" "timeout unavailable; remote checks cannot run safely" "Install perl or coreutils (timeout or gtimeout)"
 fi
 
 run_check "01-easignore.sh"
