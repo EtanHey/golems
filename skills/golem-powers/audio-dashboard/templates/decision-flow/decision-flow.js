@@ -211,6 +211,19 @@
   document.getElementById("df-copy").addEventListener("click",copyAnswers);
   document.querySelectorAll(".df-story-copy").forEach(function(button){button.addEventListener("click",copyAnswers);});
   function fallback(text){var area=document.createElement("textarea");area.value=text;document.body.appendChild(area);area.select();document.execCommand("copy");area.remove();copied();}
+  // Sources are reference material only: no answer persistence and no narration.
+  document.querySelectorAll("[data-copy-prompt]").forEach(function(button){
+    var block=button.closest(".df-copy-prompt"),status=block.querySelector(".df-prompt-status"),manual=block.querySelector(".df-prompt-manual"),label=button.textContent,timer;
+    button.addEventListener("click",async function(){
+      var text=JSON.parse(button.dataset.copyPrompt);clearTimeout(timer);button.textContent=label;button.disabled=true;manual.hidden=true;status.textContent="";
+      try{
+        try{if(!navigator.clipboard||!navigator.clipboard.writeText)throw Error("Clipboard unavailable");await navigator.clipboard.writeText(text);}
+        catch(error){var area=document.createElement("pre"),selection=document.getSelection(),ranges=Array.from({length:selection.rangeCount},function(_,i){return selection.getRangeAt(i).cloneRange();});area.contentEditable="true";area.tabIndex=-1;area.textContent=text;area.style.cssText="position:fixed;opacity:0";block.appendChild(area);try{area.focus({preventScroll:true});var range=document.createRange();range.selectNodeContents(area);selection.removeAllRanges();selection.addRange(range);if(!document.execCommand("copy"))throw Error("Copy unavailable");}finally{area.remove();selection.removeAllRanges();ranges.forEach(function(range){selection.addRange(range);});}}
+        button.textContent="Copied";status.textContent="Prompt copied";timer=setTimeout(function(){button.textContent=label;status.textContent="";},1500);
+      }catch(error){manual.textContent=text;manual.hidden=false;status.textContent="Copy unavailable. Select the prompt below and copy it.";}
+      finally{button.disabled=false;button.focus({preventScroll:true});}
+    });
+  });
   // Citation: no selection -> Cite offered -> modal draft -> saved, cancelled, or retryable storage error.
   var noteDialog=document.getElementById("df-note-dialog"),noteText=document.getElementById("df-note-text"),noteQuote=document.getElementById("df-note-quote"),noteError=document.getElementById("df-note-error"),noteDelete=document.getElementById("df-note-delete"),draftCopy=document.getElementById("df-note-copy-draft"),cite=document.getElementById("df-cite"),touchCite=document.getElementById("df-controller-cite"),armedCitation=null,noteEditor=null;
   function selectionQuote(){

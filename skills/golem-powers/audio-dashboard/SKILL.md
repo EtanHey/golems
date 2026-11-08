@@ -126,6 +126,20 @@ BUILD rejects unprotected commands and pasteable paths on cards and the
 decision-flow header, records `COPY_BLOCK_REQUIRED` in `<output>.receipts.json`,
 and withholds HTML. Ordinary prose and links pass. There is no bypass.
 
+## Per-card Sources and research prompts (decision-flow)
+
+Add optional `sources: [{ label, url }]` (up to 12 links, labels up to 160 characters)
+and/or `copyPrompt: { label, text, notes? }` to a decision. Sources uses one native
+disclosure, closed by default and keyboard accessible; links open a new tab with
+noopener/noreferrer. URLs must be HTTPS or relative inside the dashboard directory;
+schemes such as javascript/data/http, protocol-relative URLs and directory escapes reject.
+`copyPrompt.label` names the button (up to 80 characters); `text` is copied exactly,
+including whitespace. `notes` is visible above the button (up to 280 characters):
+state whether Google Docs must be enabled in Gemini and whether research lifecycle
+has run. Successful copies show Copied; unavailable clipboard access offers a
+selection-copy fallback and, if that fails, the selectable prompt with a failure message.
+These fields are reference material, never narration/teleprompter text or saved answers.
+
 ## Issue and PR references
 
 Attribution: Etan, 2026-10-28 dashboard feedback (AD-16).

@@ -104,6 +104,21 @@ a{color:inherit}
 @media(hover:hover) and (pointer:fine){.df-rail-link:hover{color:var(--moon);text-decoration-color:currentColor}}
 .df-rail-ref{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 
+/* Native Sources disclosure, salvaged from 8435a635; closed until the reader asks. */
+.df-sources{margin:18px 0 0;border-top:1px solid var(--line)}
+.df-sources>summary{display:flex;align-items:center;min-height:48px;padding:0 2px;list-style:none;cursor:pointer;color:var(--muted);font-size:15px;font-weight:500}
+.df-sources>summary::-webkit-details-marker{display:none}
+.df-sources>summary::after{content:"";margin:0 6px 0 auto;width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg)}
+.df-sources[open]>summary{color:var(--moon)}.df-sources[open]>summary::after{transform:translateY(2px) rotate(225deg)}
+@media(hover:hover) and (pointer:fine){.df-sources>summary:hover{color:var(--moon)}}
+.df-sources-body{padding:2px 0 12px;overflow-wrap:anywhere}
+.df-source-links{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.df-source-links a{display:inline-block;padding:8px 0;font-size:15px}
+.df-source-note{margin:12px 0;color:var(--muted);font-size:14px;line-height:1.5;white-space:pre-line}
+.df-copy-prompt button{min-height:44px;margin-top:8px;padding:0 14px;border:1px solid var(--glass);border-radius:10px;background:transparent;color:var(--glass);cursor:pointer}
+.df-prompt-status{display:block;margin-top:6px;color:var(--muted);font-size:14px}
+.df-prompt-manual{padding:12px;background:var(--well);white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.5 monospace}.df-prompt-manual[hidden]{display:none}
+
 /* Answer. */
 .df-answer{margin:20px 0 0}
 .df-options{display:grid;gap:9px;margin:0;padding:0;border:0;min-width:0}
