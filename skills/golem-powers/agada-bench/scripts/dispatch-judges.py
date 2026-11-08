@@ -18,18 +18,18 @@ def fail(message, code=1):
     return code
 
 
-def load_identities(path):
-    pairs = set()
+def load_identities(path, require_label=False):
+    pairs = {}
     with path.open() as f:
         for line in f:
             if not line.strip():
                 continue
             row = json.loads(line)
-            pair = (row["query_id"], row["chunk_id"])
-            if pair in pairs:
-                raise ValueError(f"duplicate row identity: {pair}")
-            pairs.add(pair)
-    return pairs
+            if require_label and "calibration_note" in row and "query_id" not in row and "chunk_id" not in row:
+                continue
+            pair = (int(row["query_id"]), row["chunk_id"])
+            pairs[pair] = row.get("label") if require_label else True
+    return {pair for pair, label in pairs.items() if label not in (None, "")}
 
 
 def parse_capabilities():
@@ -115,7 +115,7 @@ def main():
         output_path = out_dir / f"{judge}.jsonl"
         if args.resume and output_path.exists():
             try:
-                existing = load_identities(output_path)
+                existing = load_identities(output_path, require_label=True)
             except (OSError, ValueError, KeyError, TypeError):
                 existing = None
             if corpus_pairs and existing == corpus_pairs:

@@ -165,6 +165,11 @@ def main():
     try:
         gold_rows = load_jsonl(gold_path)
         consensus = consensus_index(consensus_path)
+        queue = gold_path.parent / "ETAN_QUEUE.md"
+        if not args.dry_run and queue.exists():
+            for line in queue.read_text().splitlines():
+                if line.lstrip().startswith("**Your verdict**:") and line.split(":", 1)[1].strip() not in ("", "__"):
+                    return fail(f"refusing to overwrite {queue}: human verdict found; preserve it before rerouting")
     except (OSError, json.JSONDecodeError) as exc:
         return fail(str(exc))
 
