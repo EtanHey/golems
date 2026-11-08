@@ -96,6 +96,20 @@ test('script changes select importing node and bats suites', t => {
   assert.match(r.log, /run-bats-suites.mjs.*--run.*test-example.bats/);
   assert.doesNotMatch(r.log, /other.test.mjs/);
 });
+test('changed unlisted mjs tests select their static import runtime', t => {
+  const files = {
+    'scripts/tests/new-bun-single.test.mjs': "import { test } from 'bun:test';\n",
+    'scripts/tests/new-bun-double.test.mjs': 'import { test } from "bun:test";\n',
+    'scripts/tests/new-node.test.mjs': "import { test } from 'node:test';\n",
+  };
+  const r = fixture(t, Object.keys(files), { files, args: ['--list', 'base..head'] });
+  assert.equal(r.status, 0, r.stderr);
+  const suites = JSON.parse(r.stdout).suites;
+  for (const path of Object.keys(files)) {
+    assert.deepEqual(suites.find(s => s.path === path)?.command,
+      path.includes('new-bun-') ? ['bun', 'test', `./${path}`] : ['node', '--test', path]);
+  }
+});
 test('docs skip suites but retain cheap gates', t => {
   const r = fixture(t, ['README.md']);
   assert.equal(r.status, 0, r.stderr);
