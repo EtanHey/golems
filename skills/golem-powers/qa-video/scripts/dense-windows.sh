@@ -88,6 +88,7 @@ case "$SOURCE" in dense|refine) ;; *) die "QA_FRAME_SOURCE must be dense or refi
 mkdir -p "$OUTDIR"
 # The trap owns only the active window, never another job's output.
 FRAME_PREFIX=""
+SLOT=""
 cleanup_failed_window() {
   rc=$?
   trap - EXIT
@@ -96,12 +97,67 @@ cleanup_failed_window() {
       python3 "$SCRIPTS/provenance.py" cleanup "$OUTDIR" "$FRAME_PREFIX" "$KEEP_LIST" || rc=1
     fi
   fi
+  # Rename first (atomic), so the slot never sits pid-less under its shared name
+  # where a waiter could reclaim it and then lose its own new slot to our rmdir.
+  if [ -n "$SLOT" ] && mv "$SLOT" "$SLOT.release.$$" 2>/dev/null; then
+    rm -f "$SLOT.release.$$/pid"; rmdir "$SLOT.release.$$" || rc=1
+  fi
   exit "$rc"
 }
 trap cleanup_failed_window EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+SLOTS="${DENSE_SLOTS:-2}"
+printf '%s' "$SLOTS" | grep -Eq '^[0-9]+$' || die "DENSE_SLOTS must be an integer >= 0"
+if [ "$SLOTS" -gt 0 ]; then
+  FREE_GB="${DENSE_SLOT_FREE_GB:-100}"; is_num "$FREE_GB" || die "DENSE_SLOT_FREE_GB must be GB >= 0"
+  FREE_KIB="$(df -Pk "$OUTDIR" | awk 'END {print $4}')"
+  is_num "$FREE_KIB" || die "cannot measure free space on $OUTDIR"
+  if awk -v k="$FREE_KIB" -v g="$FREE_GB" 'BEGIN {exit !(k < g*1024*1024)}'; then
+    LOCK_ROOT="${DENSE_LOCK_DIR:-${HOME:?HOME is required}/.cache/golems/dense-slots}"
+    mkdir -p "$LOCK_ROOT"
+    WAIT_S="${DENSE_SLOT_WAIT_S:-3600}"
+    printf '%s' "$WAIT_S" | grep -Eq '^[0-9]+$' || die "DENSE_SLOT_WAIT_S must be an integer >= 0"
+    deadline=$(( $(date +%s) + WAIT_S )); delay=1
+    aged() {
+      modified=$(stat -f %m "$1" 2>/dev/null) || modified=$(stat -c %Y "$1" 2>/dev/null) || return 1
+      [ "$(( $(date +%s) - modified ))" -ge 60 ]
+    }
+    while [ -z "$SLOT" ]; do
+      n=1
+      while [ "$n" -le "$SLOTS" ]; do
+        candidate="$LOCK_ROOT/slot-$n"
+        if mkdir "$candidate" 2>/dev/null; then
+          SLOT="$candidate"; printf '%s\n' "$$" > "$SLOT/pid"; break
+        fi
+        reclaim="$LOCK_ROOT/reclaim-$n"
+        if aged "$reclaim"; then rmdir "$reclaim" 2>/dev/null || :; fi
+        if mkdir "$reclaim" 2>/dev/null; then
+          pid="$(cat "$candidate/pid" 2>/dev/null || :)"; stale=false
+          case "$pid" in
+            '') aged "$candidate" && stale=true ;;
+            0|*[!0-9]*) aged "$candidate" && stale=true ;;
+            *) kill -0 "$pid" 2>/dev/null || stale=true ;;
+          esac
+          if [ "$stale" = true ]; then
+            rm -f "$candidate/pid"
+            if rmdir "$candidate" 2>/dev/null; then rmdir "$reclaim"; continue; fi
+          fi
+          rmdir "$reclaim"
+        fi
+        n=$((n + 1))
+      done
+      [ -z "$SLOT" ] || break
+      remaining=$((deadline - $(date +%s)))
+      [ "$remaining" -gt 0 ] || die "DENSE_SLOT_WAIT_TIMEOUT wait_s=$WAIT_S lock_root=$LOCK_ROOT"
+      [ "$delay" -le "$remaining" ] || delay=$remaining
+      echo "dense-windows: waiting for dense slot ($SLOTS slots; retry in ${delay}s)" >&2
+      sleep "$delay"
+      [ "$delay" -ge 4 ] || delay=$((delay * 2))
+    done
+  fi
+fi
 WINDOWS="$OUTDIR/.windows.tsv"
 # Pad each cue to [start-pre, end+post], clamp to the video, sort, and merge
 # overlapping windows. Output: start<TAB>end<TAB>label (labels joined " | ").
