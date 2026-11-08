@@ -30,8 +30,7 @@ and verified change is not convergence.
   centerpieces first, in bounded waves. The existing cursor runner remains single-session
   and item-first; runtime migration is a follow-up (see run-lifecycle § Dispatch). Expand one
   flat frontier per depth; never nest `parallel()` calls.
-- Loop until both gap and verification queues are dry. Caps are runaway
-  backstops, never silent terminators. A zero-agent batch is a coverage defect.
+- Rounds create rounds; stop after 2 dry rounds; synthesis last; caps are backstops ([§2a](references/run-lifecycle.md#2a-phase-recursion-loop--no-fixed-round-cap-2026-07-10)). A zero-agent work batch is a coverage defect.
 - Disk artifacts outrank agent receipts. Missing miner outputs are re-mined.
 - Every finding needs cited evidence and a disposition. "Never landed" claims
   require live `gh`/git verification.
