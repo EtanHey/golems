@@ -26,7 +26,7 @@ function fixture() {
   symlinkSync(path.join(stale, "pr-loop"), path.join(claude, "pr-loop"));        // stale -> repoint
   symlinkSync(path.join(stale, "retired-skill"), path.join(claude, "retired"));  // stale, no source -> other
   symlinkSync(path.join(source, "eli5"), path.join(claude, "eli5"));             // already right -> ok
-  symlinkSync(path.join(home, "gone", "x"), path.join(claude, "dangling"));      // dangling -> removed
+  symlinkSync(path.join(stale, "gone"), path.join(claude, "dangling"));      // dangling -> removed
   mkdirSync(path.join(claude, "local-copy"));                                    // real dir -> other
   mkdirSync(path.join(home, "Gits", "other-repo", "skills", "orc"), { recursive: true });
   symlinkSync(path.join(home, "Gits", "other-repo", "skills", "orc"), path.join(claude, "other-orc")); // same name, not stale -> other
@@ -124,7 +124,7 @@ test("the Gemini root ~/.gemini/config/skills is walked with the same rules", ()
   mkdirSync(gemini, { recursive: true });
   const gone = path.join(fx.home, "Gits", "golems.wt", "dead", "skills", "golem-powers", "pr-loop");
   symlinkSync(gone, path.join(gemini, "pr-loop"));                                  // dangling, name in source -> repoint
-  symlinkSync(path.join(fx.home, "gone", "y"), path.join(gemini, "no-such-skill")); // dangling, no source -> removed
+  symlinkSync(path.join(fx.source, "gone"), path.join(gemini, "no-such-skill")); // dangling, no source -> removed
   symlinkSync(path.join(fx.source, "eli5"), path.join(gemini, "eli5"));             // already right -> ok
 
   const dry = run(fx);
@@ -475,5 +475,26 @@ for (const drift of ['hash', 'version', 'none']) {
     expect(refreshVendor({ ...fx, apply: true }).changed).toBe(drift !== 'none');
     if (drift === 'hash') expect(readFileSync(path.join(fx.vendor, fx.file), 'utf8')).toBe('new official instructions');
     if (drift === 'version') expect(JSON.parse(readFileSync(path.join(fx.vendor, 'manifest.json'))).upstreams[0].version).toBe('1.1.2');
+  });
+}
+
+for (const name of ["pr-loop", "foreign-only"]) {
+  test(`foreign dangling ${name} survives dry-run and apply without mirroring`, () => {
+    const fx = geminiFixture();
+    const entry = path.join(fx.agents, name);
+    if (existsSync(entry)) rmSync(entry);
+    const target = path.join(fx.home, "other-tool", name);
+    symlinkSync(target, entry);
+    const chained = path.join(fx.codex, name);
+    symlinkSync(entry, chained);
+    const dry = run(fx, "--link-missing");
+    expect(dry.status).toBe(0);
+    expect(dry.out).toMatch(/\.agents\/skills: .*other=1/);
+    expect(readlinkSync(entry)).toBe(target);
+    const applied = run(fx, "--link-missing", "--apply");
+    expect(applied.status).toBe(0);
+    expect(readlinkSync(entry)).toBe(target);
+    expect(readlinkSync(chained)).toBe(entry);
+    expect(() => lstatSync(path.join(fx.gemini, name))).toThrow();
   });
 }
