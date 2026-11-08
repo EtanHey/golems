@@ -88,3 +88,14 @@ test('authoring contract preserves the three operator rules and relay ownership'
   expect(orc).toContain('adds no build instructions of its own');
   expect(orc).not.toContain('scripts/build-dashboard.mjs');
 });
+
+test('orc handoff forbids bypassing the build owner and retains incident history', () => {
+  const orc = readFileSync(path.join(root, '../orc/SKILL.md'), 'utf8')
+    .split('### Audio dashboard handoffs\n')[1].split('\n---')[0];
+  const prose = orc.replace(/\s+/g, ' ');
+  expect(prose).toContain('Orc never builds a dashboard itself or through its own sub-agents, and never dispatches an ad hoc builder that chooses its own template, design or deployment host.');
+  expect(prose).toContain('Every audio-dashboard build or rebuild goes through the skill-creator build owner via `/audio-dashboard creation-steps`.');
+  for (const incident of ['brainbar-bf7853fc-254', 'brainbar-9b87737d-7ed', 'brainbar-edea631e-dcd']) {
+    expect(orc).toContain(incident);
+  }
+});

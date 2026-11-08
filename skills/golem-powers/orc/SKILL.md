@@ -103,6 +103,11 @@ it adds no build instructions of its own. skill-creator owns the skill, template
 and BUILD gates; NarrationLayer owns Lakebed publishing. Builder selection follows
 [/agent-routing § Routing rules (SSOT)](../agent-routing/SKILL.md#routing-rules-ssot).
 
+Orc never builds a dashboard itself or through its own sub-agents,
+and never dispatches an ad hoc builder that chooses its own template, design or deployment host.
+Every audio-dashboard build or rebuild goes through the skill-creator build owner via `/audio-dashboard creation-steps`.
+Nov 3/5 incident pointers: `brainbar-bf7853fc-254`, `brainbar-9b87737d-7ed`, `brainbar-edea631e-dcd`.
+
 If the owner or runtime path is unavailable, report BLOCKED with the existing
 accepted link. Never recreate a static mirror or redefine account persistence.
 
