@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import time
 
 import pytest
 from test_prepare import media
@@ -19,7 +20,7 @@ def run(media, name='dense', args=(), **overrides):
     out = work/'qa-video'/name
     result = subprocess.run(['sh', str(SCRIPTS/'dense-windows.sh'), str(video),
                              str(cues), str(out), '10', '0', '0', *args],
-                            env=dict(env, **overrides), capture_output=True, text=True)
+                            env=dict(env, **overrides), capture_output=True, text=True, timeout=8)
     return result, out
 
 
@@ -86,7 +87,8 @@ def test_budget_refuses_before_window(media):
     assert not list(out.glob('window_*'))
 
 
-def test_tile_failure_cleans_partial_window(media):
+@pytest.mark.parametrize('state', ['dead', 'empty', 'reclaim', 'young-empty', 'young-reclaim', 'live'])
+def test_tile_failure_cleans_partial_window(media, state):
     _, _, env = media
     wrapper = Path(env['PATH'].split(os.pathsep)[0])/'ffmpeg'
     real = shutil.which('ffmpeg')
@@ -97,10 +99,18 @@ def test_tile_failure_cleans_partial_window(media):
     lock = Path(env['PATH'].split(os.pathsep)[0])/'slots'
     (lock/'slot-1').mkdir(parents=True)
     dead = subprocess.Popen(['true']); dead.wait()
-    (lock/'slot-1/pid').write_text(str(dead.pid))
-    result, out = run(media, DENSE_LOCK_DIR=str(lock), DENSE_SLOTS='1', DENSE_SLOT_FREE_GB='999999')
-    assert result.returncode != 0 and 'tiling failed' in result.stderr
-    assert not list(lock.iterdir()), 'stale PID must be reclaimed and failed job releases its slot'
+    if 'empty' not in state: (lock/'slot-1/pid').write_text(str(os.getpid() if state == 'live' else dead.pid))
+    if 'reclaim' in state: (lock/'reclaim-1').mkdir()
+    age = time.time() - (120 if state in ('empty', 'reclaim') else 30)
+    if state != 'live': os.utime(lock/('reclaim-1' if 'reclaim' in state else 'slot-1'), (age, age))
+    result, out = run(media, DENSE_LOCK_DIR=str(lock), DENSE_SLOTS='1', DENSE_SLOT_FREE_GB='999999', DENSE_SLOT_WAIT_S='1')
+    if state.startswith('young') or state == 'live':
+        assert result.returncode != 0 and 'DENSE_SLOT_WAIT_TIMEOUT' in result.stderr and str(lock) in result.stderr
+        assert 'waiting for dense slot' in result.stderr
+        assert (lock/'slot-1').is_dir(), 'fresh/active locks must survive the timeout'
+    else:
+        assert result.returncode != 0 and 'tiling failed' in result.stderr
+        assert not list(lock.iterdir()), 'stale slot/reclaim must be recovered and failure releases the slot'
     assert not frames(out), 'failed windows must clean up too'
 
 
@@ -168,14 +178,14 @@ def test_third_dense_job_waits_for_slot(media):
                        f'if "-ss" in sys.argv: os.write({ready_w}, b"."); os.read({release_r}, 1); sys.exit(19)\n'
                        f'os.execv({real!r}, [{real!r}, *sys.argv[1:]])\n'); wrapper.chmod(0o755)
     (bin/'df').write_text('#!/bin/sh\nprintf "fs 1 1 0 100%% /\\n"\n'); (bin/'df').chmod(0o755)
-    lock = work/'slots'; jobs = []
+    lock = work/'home/.cache/golems/dense-slots'; jobs = []
     def received(fd):
         assert select.select([fd], [], [], 10)[0], 'timed out at extraction latch'
         assert os.read(fd, 1) == b'.'
     try:
         for i in range(3):
             jobs.append(subprocess.Popen(['sh', str(SCRIPTS/'dense-windows.sh'), str(video), str(cues), str(work/f'out-{i}'), '10', '0', '0'],
-                        env=dict(env, DENSE_LOCK_DIR=str(lock)), pass_fds=(ready_w, release_r), stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+                        env=dict(env, HOME=str(work/'home'), TMPDIR=str(work/f'tmp-{i}')), pass_fds=(ready_w, release_r), stdout=subprocess.PIPE, stderr=subprocess.PIPE))
             if i < 2: received(ready_r)
         assert select.select([jobs[2].stderr], [], [], 10)[0]
         assert b'waiting for dense slot (2 slots;' in jobs[2].stderr.readline()

@@ -111,9 +111,15 @@ if [ "$SLOTS" -gt 0 ]; then
   FREE_KIB="$(df -Pk "$OUTDIR" | awk 'END {print $4}')"
   is_num "$FREE_KIB" || die "cannot measure free space on $OUTDIR"
   if awk -v k="$FREE_KIB" -v g="$FREE_GB" 'BEGIN {exit !(k < g*1024*1024)}'; then
-    LOCK_ROOT="${DENSE_LOCK_DIR:-${TMPDIR:-/tmp}/golems-dense-slots}"
+    LOCK_ROOT="${DENSE_LOCK_DIR:-${HOME:?HOME is required}/.cache/golems/dense-slots}"
     mkdir -p "$LOCK_ROOT"
-    delay=1
+    WAIT_S="${DENSE_SLOT_WAIT_S:-3600}"
+    printf '%s' "$WAIT_S" | grep -Eq '^[0-9]+$' || die "DENSE_SLOT_WAIT_S must be an integer >= 0"
+    deadline=$(( $(date +%s) + WAIT_S )); delay=1
+    aged() {
+      modified=$(stat -f %m "$1" 2>/dev/null) || modified=$(stat -c %Y "$1" 2>/dev/null) || return 1
+      [ "$(( $(date +%s) - modified ))" -ge 60 ]
+    }
     while [ -z "$SLOT" ]; do
       n=1
       while [ "$n" -le "$SLOTS" ]; do
@@ -121,20 +127,27 @@ if [ "$SLOTS" -gt 0 ]; then
         if mkdir "$candidate" 2>/dev/null; then
           SLOT="$candidate"; printf '%s\n' "$$" > "$SLOT/pid"; break
         fi
-        pid="$(cat "$candidate/pid" 2>/dev/null || :)"
-        case "$pid" in ''|0|*[!0-9]*) ;; *)
-          if ! kill -0 "$pid" 2>/dev/null && mkdir "$LOCK_ROOT/reclaim-$n" 2>/dev/null; then
-            # Recheck under the reclaim lock; another waiter may have replaced it.
-            if [ "$(cat "$candidate/pid" 2>/dev/null || :)" = "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
-              rm -f "$candidate/pid"; rmdir "$candidate"
-              rmdir "$LOCK_ROOT/reclaim-$n"; continue
-            fi
-            rmdir "$LOCK_ROOT/reclaim-$n"
-          fi ;;
-        esac
+        reclaim="$LOCK_ROOT/reclaim-$n"
+        if aged "$reclaim"; then rmdir "$reclaim" 2>/dev/null || :; fi
+        if mkdir "$reclaim" 2>/dev/null; then
+          pid="$(cat "$candidate/pid" 2>/dev/null || :)"; stale=false
+          case "$pid" in
+            '') aged "$candidate" && stale=true ;;
+            0|*[!0-9]*) ;;
+            *) kill -0 "$pid" 2>/dev/null || stale=true ;;
+          esac
+          if [ "$stale" = true ]; then
+            rm -f "$candidate/pid"
+            if rmdir "$candidate" 2>/dev/null; then rmdir "$reclaim"; continue; fi
+          fi
+          rmdir "$reclaim"
+        fi
         n=$((n + 1))
       done
       [ -z "$SLOT" ] || break
+      remaining=$((deadline - $(date +%s)))
+      [ "$remaining" -gt 0 ] || die "DENSE_SLOT_WAIT_TIMEOUT wait_s=$WAIT_S lock_root=$LOCK_ROOT"
+      [ "$delay" -le "$remaining" ] || delay=$remaining
       echo "dense-windows: waiting for dense slot ($SLOTS slots; retry in ${delay}s)" >&2
       sleep "$delay"
       [ "$delay" -ge 4 ] || delay=$((delay * 2))
