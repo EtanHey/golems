@@ -7,32 +7,47 @@ ARTIFACT="$1"; STEP="$2"; shift 3
 mkdir -p "$ARTIFACT/logs"
 LOGDIR="$(cd "$ARTIFACT/logs" && pwd -P)"
 LOCK="$LOGDIR/$STEP.lock"
-mkdir "$LOCK" 2>/dev/null || { echo "run-step: already running: $STEP" >&2; exit 1; }
+if ! mkdir "$LOCK" 2>/dev/null; then
+  # Serialize reclamation before reading ownership; a contender may have
+  # replaced the old lock since our first mkdir failed.
+  mkdir "$LOCK/reclaim" 2>/dev/null || { echo "run-step: already running: $STEP" >&2; exit 1; }
+  group=$(cat "$LOCK/pgid" 2>/dev/null || true)
+  if [[ "$group" =~ ^[1-9][0-9]*$ ]] && ! kill -0 -- "-$group" 2>/dev/null; then
+    rm -f "$LOCK/pgid"
+    rmdir "$LOCK/reclaim" "$LOCK"
+    mkdir "$LOCK" 2>/dev/null || { echo "run-step: already running: $STEP" >&2; exit 1; }
+  else
+    rmdir "$LOCK/reclaim"
+    echo "run-step: already running: $STEP" >&2; exit 1
+  fi
+fi
 rm -f "$LOGDIR/$STEP.exit" "$LOGDIR/$STEP.exit.tmp" "$LOGDIR/$STEP.pid"
-# Commands retain argv; the worker owns its PID and atomic exit receipt.
+# nohup keeps the helper alive after run_command returns. Commands retain argv;
+# no interpolated command string, terminal surface, or status-tool dependency.
+# The wrapper and descendants share a private group. Publish it before starting
+# work; a missing pgid fails closed. Keep the lock after exit so background
+# descendants still prevent reclamation until the entire group is gone.
 worker='
   receipt=$1; lock=$2; pidfile=$3; shift 3
-  # Release the lock BEFORE publishing the receipt: .exit is the final write, so a
-  # reader that sees .exit never also sees a stale lock.
-  trap '\''status=$?; printf "%s\n" "$status" > "$receipt.tmp"; rmdir "$lock"; mv "$receipt.tmp" "$receipt"'\'' EXIT
+  trap '\''status=$?; printf "%s\n" "$status" > "$receipt.tmp"; mv "$receipt.tmp" "$receipt"'\'' EXIT
   trap "exit 130" INT
   trap "exit 143" TERM
   printf "%s\n" "$$" > "$pidfile"
+  printf "%s\n" "$$" > "$lock/pgid"
   "$@"
 '
+session='import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])'
 if [[ "${RUN_STEP_FOREGROUND:-0}" == 1 ]]; then
-  bash -c "$worker" bash "$LOGDIR/$STEP.exit" "$LOCK" "$LOGDIR/$STEP.pid" "$@" > "$LOGDIR/$STEP.log" 2>&1 < /dev/null
+  python3 -c "$session" bash -c "$worker" bash "$LOGDIR/$STEP.exit" "$LOCK" "$LOGDIR/$STEP.pid" "$@" > "$LOGDIR/$STEP.log" 2>&1 < /dev/null
 else
-  # nohup alone ignores HUP but leaves the worker in the caller's process group.
-  # macOS has no setsid binary; exec preserves the new session leader's PID.
-  nohup perl -MPOSIX -e 'defined(POSIX::setsid()) or die "setsid: $!"; exec @ARGV; die "exec: $!"' \
+  nohup python3 -c "$session" \
     bash -c "$worker" bash "$LOGDIR/$STEP.exit" "$LOCK" "$LOGDIR/$STEP.pid" "$@" > "$LOGDIR/$STEP.log" 2>&1 < /dev/null &
   launcher=$!
-  # Return only after setsid + exec + receipt traps, so caller teardown cannot
-  # race the detach. A failed launcher must not strand the lock.
-  until [[ -s "$LOGDIR/$STEP.pid" ]]; do
+  # The worker publishes pgid only after setsid + exec + receipt traps. Returning
+  # earlier lets caller-group teardown kill the launcher before it detaches.
+  until [[ -s "$LOCK/pgid" ]]; do
     if ! kill -0 "$launcher" 2>/dev/null; then
-      rmdir "$LOCK"
+      # Preserve the lock: a missing pgid fails closed under the reclaim policy.
       echo "run-step: worker failed to start; read $LOGDIR/$STEP.log" >&2
       exit 1
     fi

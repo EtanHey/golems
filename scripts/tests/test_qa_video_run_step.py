@@ -1,8 +1,11 @@
 """Real run-step processes, including caller process-group teardown."""
+import ctypes
 import os
+import select
 from pathlib import Path
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -19,6 +22,26 @@ class RunStepTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.work = Path(self.temp.name)
         self.receipt = self.work / "logs/test.exit"
+        # Linux CI may not reap orphans at PID 1; own and reap this test's group.
+        if sys.platform == "linux":
+            libc, previous = ctypes.CDLL(None, use_errno=True), ctypes.c_int()
+            self.assertEqual(libc.prctl(37, ctypes.byref(previous), 0, 0, 0), 0)
+            self.assertEqual(libc.prctl(36, 1, 0, 0, 0), 0)
+            self.addCleanup(lambda: libc.prctl(36, previous.value, 0, 0, 0))
+
+    def wait_group_dead(self, group):
+        deadline = time.monotonic() + 4
+        while time.monotonic() < deadline:
+            try:
+                os.waitpid(-group, os.WNOHANG)
+            except ChildProcessError:
+                pass
+            try:
+                os.killpg(group, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(0.01)
+        self.fail(f"group not reaped: {group}")
 
     def wait_file(self, path):
         deadline = time.monotonic() + 4
@@ -31,25 +54,39 @@ class RunStepTests(unittest.TestCase):
     def test_caller_process_group_kill(self):
         gate, ready = self.work / "gate", self.work / "ready"
         os.mkfifo(gate)
+        startup, before = self.work / "startup", self.work / "before"
+        os.mkfifo(startup)
+        shim = self.work / "bin/python3"
+        shim.parent.mkdir()
+        shim.write_text('#!/usr/bin/env bash\nprintf ready > "$BEFORE"\nread -r _ < "$STARTUP"\nexec "$REAL_PYTHON" "$@"\n')
+        shim.chmod(0o755)
         # The FIFO fixes the interleaving: teardown happens after the worker
         # starts and before it can finish. No sleep-and-hope survival test.
         caller = subprocess.Popen([
-            "bash", "-c", 'bash "$@"; exec sleep 30', "caller", str(RUN_STEP),
+            "bash", "-c", 'bash "$@" >/dev/null; printf "returned\\n"; exec sleep 30', "caller", str(RUN_STEP),
             str(self.work), "test", "--", "bash", "-c",
             'printf "%s\\n" "$$" > "$1"; read -r _ < "$2"; sleep 0.05; printf "%s\\n" "$3"',
             "step", str(ready), str(gate), "completed with spaces; $literal",
-        ], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ], start_new_session=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            env={**os.environ, "PATH": f"{shim.parent}:{os.environ['PATH']}",
+                 "STARTUP": str(startup), "BEFORE": str(before), "REAL_PYTHON": sys.executable})
         def cleanup():
-            if caller.poll() is None:
-                os.killpg(caller.pid, signal.SIGKILL)
-            caller.wait(timeout=5)
             pid_file = self.work / "logs/test.pid"
-            if pid_file.exists():
+            groups = {caller.pid, int(pid_file.read_text())} if pid_file.exists() else {caller.pid}
+            for group in groups:
                 try:
-                    os.kill(int(pid_file.read_text()), signal.SIGKILL)
+                    os.killpg(group, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+            caller.wait(timeout=5)
+            caller.stdout.close()
+            for group in groups:
+                self.wait_group_dead(group)
         self.addCleanup(cleanup)
+        self.wait_file(before)
+        self.assertFalse(select.select([caller.stdout], [], [], 0.2)[0], "returned before setsid")
+        with startup.open("w") as pipe:
+            pipe.write("continue\n")
         step_pid = int(self.wait_file(ready))
         worker_pid = int(self.wait_file(self.work / "logs/test.pid"))
         worker_group, step_group = os.getpgid(worker_pid), os.getpgid(step_pid)
@@ -64,8 +101,13 @@ class RunStepTests(unittest.TestCase):
         self.assertEqual(self.wait_file(self.receipt), "0")
         self.assertEqual((self.work / "logs/test.log").read_text(), "completed with spaces; $literal\n")
         self.assertEqual((worker_group, step_group), (worker_pid, worker_pid))
-        self.assertFalse((self.work / "logs/test.lock").exists())
+        self.assertEqual((self.work / "logs/test.lock/pgid").read_text().strip(), str(worker_pid))
         self.assertFalse((self.work / "logs/test.exit.tmp").exists())
+        self.wait_group_dead(worker_pid)
+        retry = subprocess.run(["bash", str(RUN_STEP), str(self.work), "test", "--", "true"],
+                               env={**os.environ, "RUN_STEP_FOREGROUND": "1"}, capture_output=True, timeout=5)
+        self.assertEqual(retry.returncode, 0)
+        self.assertNotEqual((self.work / "logs/test.lock/pgid").read_text().strip(), str(worker_pid))
 
     def test_foreground_receipts_argv_and_stdin(self):
         result = subprocess.run([
@@ -77,7 +119,7 @@ class RunStepTests(unittest.TestCase):
         self.assertEqual(self.receipt.read_text(), "0\n")
         worker_pid = (self.work / "logs/test.pid").read_text().strip()
         self.assertEqual((self.work / "logs/test.log").read_text(), f"\nspaces; $literal\n{worker_pid}\n")
-        self.assertFalse((self.work / "logs/test.lock").exists())
+        self.assertTrue((self.work / "logs/test.lock/pgid").is_file())
 
     def test_foreground_failure_status(self):
         result = subprocess.run(["bash", str(RUN_STEP), str(self.work), "test", "--", "bash", "-c",
@@ -86,7 +128,7 @@ class RunStepTests(unittest.TestCase):
         self.assertEqual(result.returncode, 23)
         self.assertEqual(self.receipt.read_text(), "23\n")
         self.assertEqual((self.work / "logs/test.log").read_text(), "failed\n")
-        self.assertFalse((self.work / "logs/test.lock").exists())
+        self.assertTrue((self.work / "logs/test.lock/pgid").is_file())
 
 
 if __name__ == "__main__":

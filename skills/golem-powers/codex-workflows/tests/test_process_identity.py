@@ -121,7 +121,7 @@ def test_sweep_does_not_finalize_live_worker_after_lstart_step(workflow, live_pi
     workflow.update_worker(manifest, "worker", {"status": "running", "process": workflow.capture_process_identity(live_pid)})
     monkeypatch.setattr(workflow._runs, "finalize_worker", lambda *_: pytest.fail("live worker finalized"))
     assert workflow.watch_manifest(manifest, timeout=0) == 124
-    assert workflow.load_manifest(manifest)["workers"]["worker"]["status"] == "watch_timeout"
+    assert workflow.load_manifest(manifest)["workers"]["worker"]["status"] == "running"
     assert workflow.verify_launch(pid=live_pid, log_path=tmp_path / "log", initial_size=0, timeout=0)["state"] == "running"
 
 
@@ -164,6 +164,7 @@ def test_legacy_ambiguous_start_refuses_finalization(workflow, live_pid, tmp_pat
 
 @pytest.mark.parametrize("phase", ["verify", "capture"])
 def test_launch_retains_uncertain_pid_and_blocks_sweep(workflow, live_pid, tmp_path, monkeypatch, phase):
+    preparation_owner = workflow.capture_process_identity(os.getpid())
     manifest = tmp_path / "manifest.json"
     workflow.create_manifest(manifest, "fixture", str(tmp_path), "lead")
     monkeypatch.setattr(workflow, "preflight_launch_inputs", lambda **_: None)
@@ -179,7 +180,8 @@ def test_launch_retains_uncertain_pid_and_blocks_sweep(workflow, live_pid, tmp_p
     def uncertain(*_, **__):
         raise workflow.CodexWorkflowError("cannot read process identity; reconcile the manifest")
     monkeypatch.setattr(workflow._workers, "verify_launch", uncertain if phase == "verify" else lambda **_: {"ok": True})
-    monkeypatch.setattr(workflow._workers, "capture_process_identity", uncertain)
+    monkeypatch.setattr(workflow._workers, "capture_process_identity",
+                        lambda pid: preparation_owner if pid == os.getpid() else uncertain(pid))
     result = workflow.launch_worker(manifest_path=manifest, repo=tmp_path, run_root=tmp_path, worker_name="worker", brief=tmp_path / "brief", lead="lead", model="fixture", effort="high", report_dirs=[], artifacts=[])
     assert not result["ok"]
     worker = workflow.load_manifest(manifest)["workers"]["worker"]

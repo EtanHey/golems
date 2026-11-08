@@ -32,7 +32,7 @@ def workflow(tmp_path):
         git('clone', '--bare', source, origin)
         git('clone', origin, repo)
         codex = tmp_path / 'codex'
-        codex.write_text('#!/bin/sh\nprintf \'%s\\n\' \'{"type":"item.completed","item":{"id":"a","type":"agent_message","text":"TASK_DONE"}}\'\nsleep 1\n')
+        codex.write_text('#!/bin/sh\nprintf \'%s\\n\' \'{"type":"item.completed","item":{"id":"a","type":"agent_message","text":"TASK_DONE"}}\'\nprintf \'%s\\n\' \'{"type":"turn.completed"}\'\nsleep 1\n')
         codex.chmod(0o755)
         env['CODEX_BIN'] = str(codex)
         brief = tmp_path / 'brief'
