@@ -87,7 +87,7 @@ def test_budget_refuses_before_window(media):
     assert not list(out.glob('window_*'))
 
 
-@pytest.mark.parametrize('state', ['dead', 'empty', 'reclaim', 'young-empty', 'young-reclaim', 'live'])
+@pytest.mark.parametrize('state', ['dead', 'empty', 'corrupt', 'reclaim', 'young-empty', 'young-reclaim', 'live'])
 def test_tile_failure_cleans_partial_window(media, state):
     _, _, env = media
     wrapper = Path(env['PATH'].split(os.pathsep)[0])/'ffmpeg'
@@ -99,9 +99,9 @@ def test_tile_failure_cleans_partial_window(media, state):
     lock = Path(env['PATH'].split(os.pathsep)[0])/'slots'
     (lock/'slot-1').mkdir(parents=True)
     dead = subprocess.Popen(['true']); dead.wait()
-    if 'empty' not in state: (lock/'slot-1/pid').write_text(str(os.getpid() if state == 'live' else dead.pid))
+    if 'empty' not in state: (lock/'slot-1/pid').write_text('0' if state == 'corrupt' else str(os.getpid() if state == 'live' else dead.pid))
     if 'reclaim' in state: (lock/'reclaim-1').mkdir()
-    age = time.time() - (120 if state in ('empty', 'reclaim') else 30)
+    age = time.time() - (120 if state in ('empty', 'corrupt', 'reclaim') else 30)
     if state != 'live': os.utime(lock/('reclaim-1' if 'reclaim' in state else 'slot-1'), (age, age))
     result, out = run(media, DENSE_LOCK_DIR=str(lock), DENSE_SLOTS='1', DENSE_SLOT_FREE_GB='999999', DENSE_SLOT_WAIT_S='1')
     if state.startswith('young') or state == 'live':

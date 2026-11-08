@@ -97,7 +97,11 @@ cleanup_failed_window() {
       python3 "$SCRIPTS/provenance.py" cleanup "$OUTDIR" "$FRAME_PREFIX" "$KEEP_LIST" || rc=1
     fi
   fi
-  if [ -n "$SLOT" ]; then rm -f "$SLOT/pid"; rmdir "$SLOT" || rc=1; fi
+  # Rename first (atomic), so the slot never sits pid-less under its shared name
+  # where a waiter could reclaim it and then lose its own new slot to our rmdir.
+  if [ -n "$SLOT" ] && mv "$SLOT" "$SLOT.release.$$" 2>/dev/null; then
+    rm -f "$SLOT.release.$$/pid"; rmdir "$SLOT.release.$$" || rc=1
+  fi
   exit "$rc"
 }
 trap cleanup_failed_window EXIT
@@ -133,7 +137,7 @@ if [ "$SLOTS" -gt 0 ]; then
           pid="$(cat "$candidate/pid" 2>/dev/null || :)"; stale=false
           case "$pid" in
             '') aged "$candidate" && stale=true ;;
-            0|*[!0-9]*) ;;
+            0|*[!0-9]*) aged "$candidate" && stale=true ;;
             *) kill -0 "$pid" 2>/dev/null || stale=true ;;
           esac
           if [ "$stale" = true ]; then
