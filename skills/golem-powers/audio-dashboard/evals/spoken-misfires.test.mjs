@@ -61,15 +61,12 @@ test("each changed display token owns only its spoken timing span", () => {
   ]);
 });
 
-for (const token of new Set([...boundary.cases.map(([input]) => input), "PR 2026-10-22", "PR #275/#276"])) {
-  test(`compound token stays literal: ${token}`, () => {
+const boundaryCases = [...boundary.cases, ...boundary.agreedCases, ...boundary.followupCases, ...boundary.knownLimits.map(row => [...row, "known limit"])];
+for (const [input, expected, kind = "contract"] of boundaryCases) {
+  test(`${kind} speech without half-expansion: ${input}`, () => {
     for (const rules of [[], [{ term: "PR", spoken: "pull request" }]]) {
-      expect(prepareSpeechChannels(token, rules)).toEqual({ displayText: token, synthInput: token });
+      expect(prepareSpeechChannels(input, rules)).toEqual({ displayText: input, synthInput: expected });
     }
-    expect(deriveSpeechAliases(token, token)).toEqual([]);
+    if (input === expected) expect(deriveSpeechAliases(input, input)).toEqual([]);
   });
 }
-
-for (const [input, expected] of boundary.agreedCases) test(`agreed speech without half-expansion: ${input}`, () => {
-  expect(prepareSpeechChannels(input)).toEqual({ displayText: input, synthInput: expected });
-});

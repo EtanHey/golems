@@ -1,6 +1,6 @@
 {
   "source": "EtanHey/narrationlayer#34",
-  "head": "158a8c11051ea67a59ab34881ff0f4335c30eb55",
+  "head": "7947ea2ef95940867f6760b9381b0b8d2959eaa2",
   "cases": [
     [
       "~21:00Z",
@@ -41,6 +41,54 @@
     [
       "6pm-mini",
       "6pm-mini"
+    ],
+    [
+      "9am-5pm",
+      "nine a m-five p m"
+    ],
+    [
+      "9 a.m.-5 p.m.",
+      "nine a m-five p m"
+    ],
+    [
+      "9:30pm-10pm",
+      "nine thirty p m-ten p m"
+    ],
+    [
+      "10am-12pm",
+      "ten a m-twelve p m"
+    ],
+    [
+      "from 9pm-11pm",
+      "from nine p m-eleven p m"
+    ],
+    [
+      "1am-2am",
+      "one a m-two a m"
+    ],
+    [
+      "9am - 5pm",
+      "nine a m - five p m"
+    ],
+    [
+      "9pm\u201310pm",
+      "nine p m\u2013ten p m"
+    ],
+    [
+      "6 p.m.-mini",
+      "6 p dot m.-mini"
+    ],
+    [
+      "~98.5%",
+      "about ninety-eight point five percent"
+    ],
+    [
+      "VS",
+      "VS"
+    ],
+    [
+      "Vs.",
+      "Vs."
     ]
   ],
   "agreedSource": "Lead update to brief P; NL34 final round pending merge SHA",
@@ -80,6 +128,42 @@
     [
       "Vs.",
       "Vs."
+    ]
+  ],
+  "followupCases": [
+    [
+      "~5%",
+      "about five percent"
+    ],
+    [
+      "~50% of users",
+      "about fifty percent of users"
+    ],
+    [
+      "9am-5pm-ish",
+      "9am-5pm-ish"
+    ],
+    [
+      "1pm-2pm-mini",
+      "1pm-2pm-mini"
+    ],
+    [
+      "PR 2026-10-22",
+      "PR 2026-10-22"
+    ],
+    [
+      "PR #275/#276",
+      "PR #275/#276"
+    ]
+  ],
+  "knownLimits": [
+    [
+      "9-10pm",
+      "9-ten p m"
+    ],
+    [
+      "~98.5%-99%",
+      "~ninety-eight point five percent-ninety-nine percent"
     ]
   ]
 }
