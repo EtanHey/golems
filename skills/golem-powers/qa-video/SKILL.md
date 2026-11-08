@@ -162,6 +162,13 @@ Long jobs use `run-step.sh <artifact-dir> <step> -- <command> [args...]`:
 `logs/`. Poll `.exit` via own Bash or agy `run_command`/`view_file`; require numeric
 `0` and verify outputs before continuing. Read `.log` on failure. agy 1.2.14 has
 no `command_status`/`send_command_input`; a launch return is not completion.
+Background workers start a new session (requires Perl POSIX on macOS), so killing
+the caller's process group leaves the step running. `.pid` identifies the receipt
+worker/session leader. If a runner also kills detached sessions or background
+launches leave no receipt, use `RUN_STEP_FOREGROUND=1 bash run-step.sh <artifact-dir>
+<fresh-step> -- <command> [args...]` in one attached command. It waits for completion,
+returns the step's status, and writes the same `.pid`, `.log`, atomic `.exit` and lock
+receipts with stdin from `/dev/null`. Preserve failed launch artifacts first.
 Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 

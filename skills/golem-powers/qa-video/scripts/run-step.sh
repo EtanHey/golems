@@ -9,14 +9,32 @@ LOGDIR="$(cd "$ARTIFACT/logs" && pwd -P)"
 LOCK="$LOGDIR/$STEP.lock"
 mkdir "$LOCK" 2>/dev/null || { echo "run-step: already running: $STEP" >&2; exit 1; }
 rm -f "$LOGDIR/$STEP.exit" "$LOGDIR/$STEP.exit.tmp" "$LOGDIR/$STEP.pid"
-# nohup keeps the helper alive after run_command returns. Commands retain argv;
-# no interpolated command string, terminal surface, or status-tool dependency.
-nohup bash -c '
-  receipt=$1; lock=$2; shift 2
+# Commands retain argv; the worker owns its PID and atomic exit receipt.
+worker='
+  receipt=$1; lock=$2; pidfile=$3; shift 3
   trap '\''status=$?; printf "%s\n" "$status" > "$receipt.tmp"; mv "$receipt.tmp" "$receipt"; rmdir "$lock"'\'' EXIT
   trap "exit 130" INT
   trap "exit 143" TERM
+  printf "%s\n" "$$" > "$pidfile"
   "$@"
-' bash "$LOGDIR/$STEP.exit" "$LOCK" "$@" > "$LOGDIR/$STEP.log" 2>&1 < /dev/null &
-printf '%s\n' "$!" > "$LOGDIR/$STEP.pid"
+'
+if [[ "${RUN_STEP_FOREGROUND:-0}" == 1 ]]; then
+  bash -c "$worker" bash "$LOGDIR/$STEP.exit" "$LOCK" "$LOGDIR/$STEP.pid" "$@" > "$LOGDIR/$STEP.log" 2>&1 < /dev/null
+else
+  # nohup alone ignores HUP but leaves the worker in the caller's process group.
+  # macOS has no setsid binary; exec preserves the new session leader's PID.
+  nohup perl -MPOSIX -e 'defined(POSIX::setsid()) or die "setsid: $!"; exec @ARGV; die "exec: $!"' \
+    bash -c "$worker" bash "$LOGDIR/$STEP.exit" "$LOCK" "$LOGDIR/$STEP.pid" "$@" > "$LOGDIR/$STEP.log" 2>&1 < /dev/null &
+  launcher=$!
+  # Return only after setsid + exec + receipt traps, so caller teardown cannot
+  # race the detach. A failed launcher must not strand the lock.
+  until [[ -s "$LOGDIR/$STEP.pid" ]]; do
+    if ! kill -0 "$launcher" 2>/dev/null; then
+      rmdir "$LOCK"
+      echo "run-step: worker failed to start; read $LOGDIR/$STEP.log" >&2
+      exit 1
+    fi
+    sleep 0.01
+  done
+fi
 printf 'run-step: %s -> %s/{%s.log,%s.pid,%s.exit}\n' "$STEP" "$LOGDIR" "$STEP" "$STEP" "$STEP"
