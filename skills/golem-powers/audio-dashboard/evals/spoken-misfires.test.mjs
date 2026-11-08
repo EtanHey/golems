@@ -5,20 +5,7 @@ import { prepareSpeechChannels, deriveSpeechAliases } from "../src/spoken-form.m
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
 import { normalizeWordTimingsForScript } from "../vendor/narrationlayer/word-timing-repair.ts";
 
-for (const [display, spoken] of [
-  ["Fix the #1 priority", "Fix the number one priority"],
-  ["See issue #12", "See issue number twelve"],
-  ["Runs on x86", "Runs on x86"],
-  ["The video is 12:34 long", "The video is twelve thirty-four long"],
-  ["10:30 meeting", "ten thirty meeting"],
-  ["2.5x", "two point five times"],
-  ["x2", "x2"], ["2x", "two times"],
-  ["at 21:00", "at nine p m"], ["by 00:00", "by twelve a m"],
-  ["until 12:00", "until twelve p m"], ["from 09:05", "from nine oh five a m"],
-  ["21:00", "twenty-one zero"], ["#123", "number one twenty-three"],
-  ["pull request #123", "pull request one twenty-three"],
-  ...parity.cases,
-]) test(`ordinary-text speech: ${display}`, () => {
+for (const [display, spoken] of [...boundary.ordinaryCases, ...parity.cases]) test(`ordinary-text speech: ${display}`, () => {
   expect(prepareSpeechChannels(display)).toEqual({ displayText: display, synthInput: spoken });
   if (display === "%") return; // No lexical display token exists to attach timing.
   const raw = spoken.split(/\s+/).map((word, i) => ({ word, start: i, end: i + 1 }));
@@ -60,7 +47,7 @@ test("each changed display token owns only its spoken timing span", () => {
   ]);
 });
 
-const boundaryCases = [...boundary.cases, ...boundary.agreedCases, ...boundary.followupCases, ...boundary.nl35Cases, ...boundary.knownLimits.map(row => [...row, "known limit"])];
+const boundaryCases = [...boundary.cases, ...boundary.agreedCases, ...boundary.followupCases, ...boundary.nl35Cases, ...boundary.percentContextCases, ...boundary.knownLimits.map(row => [...row, "known limit"])];
 for (const [input, expected, kind = "contract"] of boundaryCases) {
   test(`${kind} speech: ${input}`, () => {
     for (const rules of [[], [{ term: "PR", spoken: "pull request" }]]) {
@@ -69,3 +56,7 @@ for (const [input, expected, kind = "contract"] of boundaryCases) {
     if (input === expected) expect(deriveSpeechAliases(input, input)).toEqual([]);
   });
 }
+
+test("no fixture output glues percent to its preceding word", () => {
+  for (const [input] of boundaryCases) expect(prepareSpeechChannels(input).synthInput).not.toMatch(/[\p{L}\p{N}]percent\b/u);
+});

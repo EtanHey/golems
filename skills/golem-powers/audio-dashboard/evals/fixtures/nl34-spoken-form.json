@@ -160,10 +160,6 @@
     [
       "9-10pm",
       "9-ten p m"
-    ],
-    [
-      "~98.5%-99%",
-      "~ninety-eight point five percent-ninety-nine percent"
     ]
   ],
   "nl35Head": "116b87f2855c81a63e3525bf40b2d704eaf426fe",
@@ -200,5 +196,98 @@
       "5pm-6pm-7pm-mini",
       "5pm-6pm-7pm-mini"
     ]
-  ]
+  ],
+  "ordinaryCases": [
+    [
+      "Fix the #1 priority",
+      "Fix the number one priority"
+    ],
+    [
+      "See issue #12",
+      "See issue number twelve"
+    ],
+    [
+      "Runs on x86",
+      "Runs on x86"
+    ],
+    [
+      "The video is 12:34 long",
+      "The video is twelve thirty-four long"
+    ],
+    [
+      "10:30 meeting",
+      "ten thirty meeting"
+    ],
+    [
+      "2.5x",
+      "two point five times"
+    ],
+    [
+      "x2",
+      "x2"
+    ],
+    [
+      "2x",
+      "two times"
+    ],
+    [
+      "at 21:00",
+      "at nine p m"
+    ],
+    [
+      "by 00:00",
+      "by twelve a m"
+    ],
+    [
+      "until 12:00",
+      "until twelve p m"
+    ],
+    [
+      "from 09:05",
+      "from nine oh five a m"
+    ],
+    [
+      "21:00",
+      "twenty-one zero"
+    ],
+    [
+      "#123",
+      "number one twenty-three"
+    ],
+    [
+      "pull request #123",
+      "pull request one twenty-three"
+    ]
+  ],
+  "percentContextCases": [
+    [
+      "~5%-10%",
+      "about five percent-ten percent"
+    ],
+    [
+      "~5%:",
+      "about five percent:"
+    ],
+    [
+      "~5%-ish",
+      "about five percent-ish"
+    ],
+    [
+      "~5%/10%",
+      "about five percent/ten percent"
+    ],
+    [
+      "~5%\u201310%",
+      "about five percent\u2013ten percent"
+    ],
+    [
+      "cache%",
+      "cache percent"
+    ],
+    [
+      "~98.5%-99%",
+      "about ninety-eight point five percent-ninety-nine percent"
+    ]
+  ],
+  "percentContextSource": "Latest lead lockstep: ~N% ALWAYS consumes percent, whatever follows; supersedes prior stray-tilde limit"
 }
