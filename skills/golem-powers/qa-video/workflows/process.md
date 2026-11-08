@@ -162,13 +162,17 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" "dense${SUFFIX}" -- bash "$SCRIPTS/dense-
 
 Outputs `sheet_NNN.jpg` (5x4 contact sheets), `index.tsv`
 (`sheet_file<TAB>window_start_s<TAB>fps<TAB>tiles<TAB>label`), full-size frames
-as `window_N-f_*.png` beside the sheets, and one headerless `frames.tsv` row per
+as `window_N-f_*.jpg` (`-q:v 3`; explicit `DENSE_FRAME_FORMAT=png` uses `window_N-f_*.png`) beside the sheets, and one headerless `frames.tsv` row per
 extracted frame: `sheet_file`, `tile`, `t_s`, `frame`, `pts_s`, `source`, `sheet`, `sha256`, `repeat_of`, `crop_of`. The dir keeps a local ledger and mirrors each row
 into `$MEDIADIR/frames.tsv`; count from the root only. crop.sh rows use
 `source=crop` and fill `crop_of` with the parent frame. Take citation timestamps
 from `pts_s`. Check `scripts/source-fps.sh "$VIDEO"` first: dense-windows.sh
 accepts 1–120 fps, prints a WARN above the source fps and still runs, and the
 extra frames are repeats (`repeat_of` set) that add no information.
+Ledger-referenced files survive cleanup as durable inspection targets; only
+unregistered intermediates are deleted. Check `df -g` / `df -k` before launching:
+below 100 GB free, cap parallel dense-window jobs at 2. The per-outdir budget
+is `DENSE_MAX_GB=5` by default; see provenance.md for retention controls.
 
 ## Phase 4: View the Sheets Yourself, Connect Them Over Time, Then Re-Densify
 
