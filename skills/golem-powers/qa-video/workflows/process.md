@@ -12,7 +12,7 @@ early context/PARTIAL exit: continue unread batches while time remains.
 ## Inputs Required
 - `VIDEO` — path to the .mov screen recording
 - `PROJECT_ROOT` — project repo receiving the QA session artifacts
-- `WORKDIR` — optional existing session directory containing the recording and click log; defaults to a new timestamped directory under `$PROJECT_ROOT/docs/`
+- `WORKDIR` — optional existing session directory containing the recording and click log; QA defaults to `$PROJECT_ROOT/docs.local/qa-video/<run>/` so report and frame receipts share the gate's run root.
 - For an explicitly requested visible `video-qa` worker, set an absolute `WORKDIR` under
   `$PROJECT_ROOT/docs.local/qa-video/` to obey its profile artifact scope.
 - `ROUND` — round number for multi-round QA (default: 1)
@@ -77,7 +77,7 @@ support judgement; an optional convenience index never gates the loop.
 ```bash
 VIDEO="/path/to/recording.mov"
 : "${PROJECT_ROOT:?set PROJECT_ROOT to the project repo being tested}"
-WORKDIR="${WORKDIR:-$PROJECT_ROOT/docs/qa-session-$(date +%Y-%m-%d-%H%M)}"
+WORKDIR="${WORKDIR:-$PROJECT_ROOT/docs.local/qa-video/$(date +%Y-%m-%d-%H%M)}"
 ROUND=1
 SUFFIX=""
 [ "$ROUND" -gt 1 ] && SUFFIX="-round${ROUND}"
@@ -327,6 +327,18 @@ text paths to the parent, which copies the final note and cited evidence into
 - **Minor** — Label mismatch, small inconsistency, polish
 - **UX** — Not a bug but confusing, ugly, or hard to use
 - **Enhancement** — Feature idea, future improvement
+
+### Final report and verdict (mandatory before Phase 6)
+
+In the SAME turn that states the verdict, use Write/Edit with the absolute
+`$WORKDIR/qa-report.md` path under `/…/qa-video/<run>/`, including all checklist items
+and every FAIL id (`F1 FAIL` or `### F1: title — **FAIL**`). Frame paths stay under this run.
+Then run `bash "$SCRIPTS/fail-evidence.sh" "$WORKDIR"` and expose its tool output:
+unmodified TSV rows for every FAIL, not summaries. It reads only active files named
+`inspected.tsv` under the run, including `$MEDIADIR/inspected.tsv` and `logs/inspected.tsv`;
+`inspected-quarantine-*.tsv` is excluded. Keep `scripts/inspected.sh` as the only writer.
+If it exits nonzero, re-inspect or downgrade the named item to INCONCLUSIVE, rewrite
+the report and rerun in this turn; never fake a row. Run `/qa-verdict-gate` before the verdict.
 
 ## Phase 6: Parent Stores in BrainLayer
 
