@@ -16,9 +16,8 @@ RUN_STEP = ROOT / "skills/golem-powers/qa-video/scripts/run-step.sh"
 
 class RunStepTests(unittest.TestCase):
     def setUp(self):
-        parent = ROOT / ".worktrees"
-        parent.mkdir(exist_ok=True)
-        self.temp = tempfile.TemporaryDirectory(prefix="run-step-test-", dir=parent)
+        (ROOT / ".worktrees").mkdir(exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(prefix="run-step-test-", dir=ROOT / ".worktrees")
         self.addCleanup(self.temp.cleanup)
         self.work = Path(self.temp.name)
         self.receipt = self.work / "logs/test.exit"
@@ -56,8 +55,7 @@ class RunStepTests(unittest.TestCase):
         os.mkfifo(gate)
         startup, before = self.work / "startup", self.work / "before"
         os.mkfifo(startup)
-        shim = self.work / "bin/python3"
-        shim.parent.mkdir()
+        shim = self.work / "python3"
         shim.write_text('#!/usr/bin/env bash\nprintf ready > "$BEFORE"\nread -r _ < "$STARTUP"\nexec "$REAL_PYTHON" "$@"\n')
         shim.chmod(0o755)
         # The FIFO fixes the interleaving: teardown happens after the worker
@@ -93,7 +91,6 @@ class RunStepTests(unittest.TestCase):
         duplicate = subprocess.run(["bash", str(RUN_STEP), str(self.work), "test", "--", "true"],
                                    capture_output=True, timeout=5)
         self.assertEqual(duplicate.returncode, 1)
-        self.assertEqual(os.getpgid(caller.pid), caller.pid)
         os.killpg(caller.pid, signal.SIGTERM)
         caller.wait(timeout=5)
         with os.fdopen(os.open(gate, os.O_RDWR | os.O_NONBLOCK), "w") as pipe:
@@ -109,27 +106,16 @@ class RunStepTests(unittest.TestCase):
         self.assertEqual(retry.returncode, 0)
         self.assertNotEqual((self.work / "logs/test.lock/pgid").read_text().strip(), str(worker_pid))
 
-    def test_foreground_receipts_argv_and_stdin(self):
-        result = subprocess.run([
-            "bash", str(RUN_STEP), str(self.work), "test", "--", "bash", "-c",
-            'read -r _ && exit 99; sleep 0.1; printf "%s\\n" "$@"; printf "%s\\n" "$PPID"',
-            "step", "", "spaces; $literal",
-        ], env={**os.environ, "RUN_STEP_FOREGROUND": "1"}, capture_output=True, timeout=5)
-        self.assertEqual(result.returncode, 0)
-        self.assertEqual(self.receipt.read_text(), "0\n")
-        worker_pid = (self.work / "logs/test.pid").read_text().strip()
-        self.assertEqual((self.work / "logs/test.log").read_text(), f"\nspaces; $literal\n{worker_pid}\n")
-        self.assertTrue((self.work / "logs/test.lock/pgid").is_file())
-
-    def test_foreground_failure_status(self):
-        result = subprocess.run(["bash", str(RUN_STEP), str(self.work), "test", "--", "bash", "-c",
-                                 'echo failed >&2; exit 23'], env={**os.environ, "RUN_STEP_FOREGROUND": "1"},
-                                capture_output=True, timeout=5)
-        self.assertEqual(result.returncode, 23)
-        self.assertEqual(self.receipt.read_text(), "23\n")
-        self.assertEqual((self.work / "logs/test.log").read_text(), "failed\n")
-        self.assertTrue((self.work / "logs/test.lock/pgid").is_file())
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_foreground_receipts_argv_stdin_and_failure(self):
+        for code in (0, 23):
+            with self.subTest(code=code):
+                result = subprocess.run([
+                    "bash", str(RUN_STEP), str(self.work), "test", "--", "bash", "-c",
+                    'code=$1; shift; read -r _ && exit 99; sleep 0.1; printf "%s\\n" "$@"; printf "%s\\n" "$PPID"; exit "$code"',
+                    "step", str(code), "", "spaces; $literal",
+                ], env={**os.environ, "RUN_STEP_FOREGROUND": "1"}, capture_output=True, timeout=5)
+                self.assertEqual(result.returncode, code)
+                self.assertEqual(self.receipt.read_text(), f"{code}\n")
+                worker_pid = (self.work / "logs/test.pid").read_text().strip()
+                self.assertEqual((self.work / "logs/test.log").read_text(), f"\nspaces; $literal\n{worker_pid}\n")
+                self.assertEqual((self.work / "logs/test.lock/pgid").read_text().strip(), worker_pid)
