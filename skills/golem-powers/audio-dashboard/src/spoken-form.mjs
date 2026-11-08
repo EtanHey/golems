@@ -50,8 +50,8 @@ function normalizeProse(text, aliases = []) {
       return spoken;
     });
   };
-  replace(new RegExp(String.raw`(?<![\w:.])${CLOCK_TIME}([ \t]*[-–—][ \t]*)${CLOCK_TIME}(?!\w)`, "gi"),
-      (_, h, m, p, separator, endH, endM, endP) => `${clock(h, m, p.toLowerCase())}${separator}${clock(endH, endM, endP.toLowerCase())}`);
+  replace(new RegExp(String.raw`(?<![\w:.])${CLOCK_TIME}(?:[ \t]*[-–—][ \t]*${CLOCK_TIME})+(?!\w)`, "gi"),
+      match => match.replace(new RegExp(CLOCK_TIME, "gi"), (_, h, m, p) => clock(h, m, p.toLowerCase())));
   replace(new RegExp(String.raw`(?<![\w:.])(\d+)([ \t]*[-–—][ \t]*)${CLOCK_TIME}(?!\w)`, "gi"),
       (_, n, separator, h, m, p) => `${n}${separator}${clock(h, m, p.toLowerCase())}`);
   replace(new RegExp(String.raw`(?<![\w:.])${CLOCK_TIME}(?!\w)`, "gi"),

@@ -5,7 +5,7 @@ import { prepareSpeechChannels, deriveSpeechAliases } from "../src/spoken-form.m
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
 import { normalizeWordTimingsForScript } from "../vendor/narrationlayer/word-timing-repair.ts";
 
-export const cases = [
+for (const [display, spoken] of [
   ["Fix the #1 priority", "Fix the number one priority"],
   ["See issue #12", "See issue number twelve"],
   ["Runs on x86", "Runs on x86"],
@@ -18,8 +18,7 @@ export const cases = [
   ["21:00", "twenty-one zero"], ["#123", "number one twenty-three"],
   ["pull request #123", "pull request one twenty-three"],
   ...parity.cases,
-];
-for (const [display, spoken] of cases) test(`ordinary-text speech: ${display}`, () => {
+]) test(`ordinary-text speech: ${display}`, () => {
   expect(prepareSpeechChannels(display)).toEqual({ displayText: display, synthInput: spoken });
   if (display === "%") return; // No lexical display token exists to attach timing.
   const raw = spoken.split(/\s+/).map((word, i) => ({ word, start: i, end: i + 1 }));
