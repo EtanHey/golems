@@ -776,7 +776,7 @@ This skill travels as **files only** — do NOT clone `narrationlayer` / `agent-
    NARRATIONLAYER_UPSTREAM=/path/to/narrationlayer bun scripts/lint-narration-vendor-drift.mjs
    ```
 
-   Resolve a stamped vendor-first debt only from a clean committed upstream.
+   Resolve stamped debts only from a clean committed upstream.
    The refresh command checks every required source marker, runs each debt's
    targeted upstream test, recomputes both sides of every pair, preflights the
    resulting manifest, and then replaces the stamp atomically:
@@ -786,6 +786,12 @@ This skill travels as **files only** — do NOT clone `narrationlayer` / `agent-
    ```bash
    NARRATIONLAYER_UPSTREAM=/path/to/narrationlayer bun scripts/lint-narration-vendor-drift.mjs --refresh-stamp --resolve-open-debt
    ```
+
+   Upstream-first closures also require the selected vendor files to be committed;
+   `resolvedVendorCommit` identifies those exact bytes. To leave an unmet debt
+   visible while closing supported debts, append `--keep-open-debt <debt-id>`
+   (repeat for multiple debts). A deferred debt stays OPEN and REJECTED. Only
+   selected, declared debt pairs may move; unrelated drift still refuses refresh.
 
    If the upstream path is missing, the lint emits a typed
    `UPSTREAM_UNAVAILABLE` record with value `stamp-only` and verdict `DEGRADED`.
