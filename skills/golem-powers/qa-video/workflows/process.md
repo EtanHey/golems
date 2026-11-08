@@ -40,6 +40,15 @@ Helpers and verifiers are sub-agents and cannot dispatch: they never use the
 Agent tool (the QA seat can). The seat may use `Agent(visual-gatherer)` for ad-hoc
 screenshot questions outside this pipeline.
 
+**Include this rule in every helper and verifier brief** (and the single-reader fallback):
+
+> Helpers and verifiers read frames and sheets one image per tool call, sequentially;
+> never parallel or batched image reads in one turn. On `[media removed …]`
+> (including `[media removed: request limit]`) or a request-limit result, treat
+> that read as NOT inspected. Do not log it to the inspected ledger (`scripts/inspected.sh`);
+> retry it serially. If the retry still fails, mark the item INCONCLUSIVE with a tooling note;
+> never record a verdict from the failed read.
+
 Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
 Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
 same loop in its own shell and views the images itself, like the helpers. **Never open a terminal pane**
