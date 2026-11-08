@@ -12,6 +12,8 @@ import subprocess
 import sys
 import time
 
+DEFAULT_DRAIN_SECONDS = 2.0
+
 spec = importlib.util.spec_from_file_location('visual', Path(__file__).resolve().with_name('visual-gather.py'))
 visual = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(visual)
@@ -216,7 +218,7 @@ def run(args, sheets):
     started = time.monotonic()
     deadline = started + args.budget_seconds
     # Dispatch stops at deadline; allow only a separate cleanup grace after it.
-    drain_deadline = deadline + getattr(args, 'drain_seconds', 2.0)
+    drain_deadline = deadline + getattr(args, 'drain_seconds', DEFAULT_DRAIN_SECONDS)
     total, completed, launched = len(sheets), 0, 0
     status, cause, eta = 'RUNNING', '', None
     findings, active = [], {}
@@ -263,7 +265,7 @@ def run(args, sheets):
                 # Wake at the budget boundary; never start another wave after it.
                 delay = max(0, (deadline if status == 'RUNNING' else drain_deadline) - time.monotonic())
                 if time.monotonic() >= drain_deadline:
-                    cause = 'drain timeout'
+                    cause = cause or 'drain timeout'
                     break
                 done, _ = wait(active, timeout=delay, return_when=FIRST_COMPLETED)
                 for future in done:
@@ -334,7 +336,7 @@ def main():
     parser.add_argument('--workdir', required=True, type=Path)
     parser.add_argument('--concurrency', type=int, default=3)
     parser.add_argument('--budget-seconds', type=float, default=480)
-    parser.add_argument('--drain-seconds', type=float, default=2,
+    parser.add_argument('--drain-seconds', type=float, default=DEFAULT_DRAIN_SECONDS,
                         help='Cleanup grace after dispatch budget; no new reads start here')
     parser.add_argument('--timeout', type=float, default=90)
     parser.add_argument('--progress-prefix', default='', help='Parent phase context for progress.txt')
@@ -343,7 +345,7 @@ def main():
     parser.add_argument('sheets', nargs='*', type=Path)
     args = parser.parse_args()
     if not (0 < args.drain_seconds < float('inf') and args.concurrency > 0 and 0 < args.budget_seconds < float('inf') and 0 < args.timeout <= 120):
-        parser.error('positive concurrency/budget and timeout <=120 required')
+        parser.error('positive concurrency/budget/drain and timeout <=120 required')
     if bool(args.index) == bool(args.sheets):
         parser.error('supply either --index index.tsv or a list of sheets')
     if args.concurrency > 4:

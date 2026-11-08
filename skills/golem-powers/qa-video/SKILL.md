@@ -158,6 +158,7 @@ If the selected profile has no shell, stop and ask the lead for the shell-enable
 pipeline profile (or `video-qa` for the explicitly requested visible route).
 
 Long jobs use `run-step.sh <artifact-dir> <step> -- <command> [args...]`:
+For a legacy lock without `pgid` (including old pid-only locks), verify no step processes are running before manually removing `logs/<step>.lock`; ambiguous ownership fails closed.
 `logs/<step>.log`, `<step>.pid`, `<step>.exit` all live under the artifact directory's
 `logs/`. Poll `.exit` via own Bash or agy `run_command`/`view_file`; require numeric
 `0` and verify outputs before continuing. Read `.log` on failure. agy 1.2.14 has
