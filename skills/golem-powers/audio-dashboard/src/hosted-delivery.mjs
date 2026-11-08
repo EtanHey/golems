@@ -35,9 +35,13 @@ export function hostedDeliveryViolations({ delivery: d, handoff: h, html, source
     : d.staging?.mode === 'none-backfill' || d.admission?.design === 'UNKNOWN_BACKFILL') fail('BACKFILL_MARKERS_MISMATCH', 'Backfill flag, none-backfill staging and UNKNOWN_BACKFILL must occur together.');
   if (!backfilled && (!h || h.schema !== 'audio-dashboard.publish-handoff.v2')) fail('MISSING_PUBLISH_HANDOFF', 'Delivery requires the original publish handoff.');
   const design = h?.design;
-  if (design && Object.hasOwn(design, 'redesign') &&
-      (design.redesign?.from !== design.predecessorSha256 || !validApprover(design.redesign?.approvedBy)))
-    fail('HANDOFF_REDESIGN_INVALID', 'handoff.design.redesign must bind from to predecessorSha256 and name a valid approvedBy.');
+  if (design?.admission === 'REDESIGN_APPROVED') {
+    const redesign = design.redesign;
+    if (typeof redesign?.reason !== 'string' || !redesign.reason.trim() || /[\r\n]/.test(redesign.reason) ||
+        redesign.from !== design.predecessorSha256 || !validApprover(redesign.approvedBy))
+      fail('REDESIGN_UNAPPROVED', 'REDESIGN_APPROVED requires handoff.design.redesign with a nonblank one-line reason, from bound to predecessorSha256 and valid approvedBy.');
+  } else if (design && Object.hasOwn(design, 'redesign'))
+    fail('REDESIGN_UNAPPROVED', 'handoff.design.redesign is allowed only for REDESIGN_APPROVED admission.');
   if (design?.admission === 'FIRST_IN_LINEAGE') {
     try { firstInLineageApproval(design.firstInLineage); }
     catch { fail('FIRST_IN_LINEAGE_UNAPPROVED', 'FIRST_IN_LINEAGE requires handoff.design.firstInLineage with a one-line reason and valid approvedBy.'); }
