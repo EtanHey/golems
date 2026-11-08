@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import time
 from typing import Any, Callable
 
@@ -279,5 +280,8 @@ def run_audit(args: argparse.Namespace, *, skill_dir: Path, preflight: Callable,
             )
         except BaseException:
             # Failure reporting must never replace the original error or exit signal.
-            pass
+            try:
+                print("convention-audit: failed checkpoint could not be written", file=sys.stderr)
+            except BaseException:
+                pass
         raise
