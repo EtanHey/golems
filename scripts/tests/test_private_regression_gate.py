@@ -237,6 +237,8 @@ def test_timeout_cleans_candidate_worktree(tmp_path, monkeypatch):
     calls = []
     def fake_git(repo, *args):
         calls.append(args)
+        if args[:2] == ("worktree", "add"):
+            Path(args[3]).mkdir(parents=True)
         return SHA if args == ("rev-parse", "HEAD") else ""
     monkeypatch.setattr(gate, "git", fake_git)
     def timeout(*args, **kwargs):
