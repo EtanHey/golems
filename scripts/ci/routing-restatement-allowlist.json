@@ -969,13 +969,6 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/adapters/codex.md",
-      "marker": "gh pr comment <N> --body \"@cursor @bugbot review\"      # eligible L/core-risk PR only \u2014 once",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
       "marker": "## CI + Review Waiting (Codex \u2014 NO sleep-poll loops)",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
@@ -1007,13 +1000,6 @@
       "marker": "| No BrainLayer MCP | Can't brain_store post-merge | Orchestrate from Claude session |",
       "class": "FALSE POSITIVE",
       "reason": "Tool/path/capability or changelog mention; clause scanner pairs neighboring review/implementation prose.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/adapters/cursor.md",
-      "marker": "| No Cursor Bugbot auto-trigger | Cursor can comment via PR but not programmatically | Rarely needed \u2014 Bugbot is **opt-in, L or very important/core-risk PRs only** ([review loop \u00a7 8a](../references/review-loop.md#step-8a-invoke-reviewers)) and banned outright by some repos' `AGENTS.md` (\u00a7 8a.0). Where eligible and available, request once with `@cursor @bugbot review`; never wait or block, and record `Bugbot: unavailable (usage)` in the PR body only for an actual request that is unavailable or a real usage notice; routine/no activity needs no entry |",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1
     },
     {
@@ -1053,20 +1039,6 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/references/review-loop.md",
-      "marker": "gh pr comment <N> --body \"@cursor @bugbot review\"   # eligible L/core-risk PR only",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
-      "marker": "# Read-only Cursor review \u2014 costs no Bugbot quota, needs no @mention",
-      "class": "FUNCTIONAL",
-      "reason": "Read-only Cursor review command (Auto, no model flag per canon #1); review mechanics, not implementer/reviewer routing.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
       "marker": "coderabbit review --agent  # Codex env, bounded to ~3 minutes",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
@@ -1082,13 +1054,6 @@
     {
       "file": "skills/golem-powers/pr-loop/references/review-loop.md",
       "marker": "| Codex Cloud | AI code review | `gh pr comment <N> --body \"@codex review\"` or comment manually on GitHub. Auto-reviews if enabled in Codex settings. Reads AGENTS.md \"Review guidelines\". Flags P0/P1 by default. |",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
-      "marker": "| Cursor Bugbot | Bug detection \u2014 **opt-in, L or very important/core-risk PRs only** | Follow 8a.1 and repo bans (8a.0). Request once if available and not already covering the head: `gh pr comment <N> --body \"@cursor @bugbot review\"`. Record `Bugbot: unavailable (usage)` only for an actual request that is unavailable or a real usage notice; no activity on a routine PR needs no entry. Never wait or block. Bot responds as `cursor[bot]`. |",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1
@@ -1340,21 +1305,21 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "- One model: `🤖 Generated with Claude Opus 5.5 in T3 Code Nightly`",
+      "marker": "- One model: `\ud83e\udd16 Generated with Claude Opus 5.5 in T3 Code Nightly`",
       "class": "DATA",
       "reason": "Illustrative model and harness attribution; not dispatch selection.",
       "count": 1
     },
     {
       "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "- Both families did work: `🤖 Generated with Claude Opus 5.5 and GPT-6.1 Sol in T3 Code Nightly`",
+      "marker": "- Both families did work: `\ud83e\udd16 Generated with Claude Opus 5.5 and GPT-6.1 Sol in T3 Code Nightly`",
       "class": "DATA",
       "reason": "Illustrative model and harness attribution; not dispatch selection.",
       "count": 1
     },
     {
       "file": "skills/golem-powers/pr-loop/references/github-identity.md",
-      "marker": "- Outside T3: `🤖 Generated with GPT-6.1 Sol in Codex` / `… in Claude Code`",
+      "marker": "- Outside T3: `\ud83e\udd16 Generated with GPT-6.1 Sol in Codex` / `\u2026 in Claude Code`",
       "class": "DATA",
       "reason": "Illustrative model and harness attribution; not dispatch selection.",
       "count": 1
@@ -1372,13 +1337,90 @@
       "class": "DATA",
       "reason": "Illustrative model-only co-author attribution; not dispatch selection.",
       "count": 1
-    }
-,
+    },
     {
       "file": "skills/golem-powers/pr-loop/SKILL.md",
       "marker": "| Codex | Draft behavior unverified. | If it hasn't reviewed ~10 min after ready, comment `@codex review` once. |",
       "class": "FUNCTIONAL",
       "reason": "Names the Codex review bot and its @codex review trigger command; not implementer/reviewer routing.",
       "count": 1
-    }  ]
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/SKILL.md",
+      "marker": "8. For every S-or-larger PR, after the routed inner-loop review and before exact-head merge checks, run the read-only Cursor diff pass once per head ([\u00a78a.2](references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only)); XS skips it. Use Cursor Auto (no model flag), findings only: never edit or push. This advisory bot-tier pass never replaces the routed reviewer. Answer every finding before merge; a real finding arriving after merge opens a NEW PR. Record `Cursor pass: head=<sha> findings=<count>` in the PR body, or `Cursor pass: unavailable (<reason>)` on errors/quota exhaustion and proceed without retrying or blocking. If this dispatch exhausted quota, name that dispatch as the cause.",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/SKILL.md",
+      "marker": "| XS/S | Fast CI green + one clean review round from the routed reviewer (+ the Cursor endpoint pass for S, step 8) \u2192 merge promptly |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/SKILL.md",
+      "marker": "- Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for an L PR or a very important/core-risk PR (daemon/engine/transport, security, release); never request it for routine XS/S/M PRs. Record `Bugbot: unavailable (usage)` in the PR body only when Bugbot was actually requested and is unavailable, or it posted a real usage/rate/spend-limit notice on this PR. An actual notice must be recorded even on a routine PR where Bugbot was never requested. Routine PRs with no Bugbot activity do nothing Bugbot-related. After an eligible request, run any owed Cursor endpoint pass, then continue to exact-head merge checks in the same turn: no \"awaiting Bugbot\", watch, grace period or re-review gate. Actual posted findings still follow the normal finding rules.",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/SKILL.md",
+      "marker": "| Cursor diff pass | Standard endpoint step for every S-or-larger PR after routed inner review; XS skips. | Once per head, Cursor Auto (no model flag), read-only findings only, before exact-head merge checks. Advisory; never replaces the routed reviewer. Answer findings and record `Cursor pass: head=<sha> findings=<count>`, or `Cursor pass: unavailable (<reason>)` and proceed on errors/quota exhaustion. See [\u00a78a.2](references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only). |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/SKILL.md",
+      "marker": "| XS/S PR, fast CI green at head, one clean routed review (S: Cursor endpoint pass recorded, step 8) | Merge now (seat with merge authority); no wait for bots or heavy gates |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
+      "marker": "For every S-or-larger PR, run the read-only `cursor-agent -p --trust --mode ask --output-format text` diff pass",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/cursor.md",
+      "marker": "For every S-or-larger PR, run the read-only `cursor-agent -p --trust --mode ask --output-format text` diff pass",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/adapters/cursor.md",
+      "marker": "cursor-agent -p --trust --mode ask --output-format text \\",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/evals/bugbot-issues/CURSOR-ENDPOINTS-RESULTS.md",
+      "marker": "All 68 completed cells carry requested/effective `gpt-6-luna`, observed medium",
+      "class": "DATA",
+      "reason": "Preserve recorded run results, review evidence or worked example; not current routing policy.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "cursor-agent -p --trust --mode ask --output-format text \\",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    },
+    {
+      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
+      "marker": "| Cursor (diff pass) | Standard S-or-larger endpoint pass, once per head after routed inner review; XS skips. Advisory diff findings through the Cursor subscription \u2014 spends no Bugbot quota | `cursor-agent -p --trust --mode ask --output-format text \"\u2026report findings only, do NOT edit any file\"` \u2014 see routing pointer in Step 8a.2. |",
+      "class": "FALSE POSITIVE",
+      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
+      "count": 1
+    }
+  ]
 }
