@@ -225,6 +225,20 @@ async function writeStampAtomic(stampPath, stamp) {
   }
 }
 
+// Upstream-first resolution names a commit containing the actual re-vendored bytes.
+async function verifyVendorCommit(skillRoot, pairs) {
+  const head = runGit(skillRoot, ["rev-parse", "HEAD"]);
+  const prefix = runGit(skillRoot, ["rev-parse", "--show-prefix"]);
+  for (const pair of pairs) {
+    const committed = spawnSync("git", ["show", `${head}:${prefix}${pair.vendorPath}`], { cwd: skillRoot });
+    if (committed.status !== 0 || createHash("sha256").update(committed.stdout).digest("hex") !==
+      await sha256File(path.join(skillRoot, pair.vendorPath))) {
+      throw new Error(`vendor bytes are not committed for ${pair.id}`);
+    }
+  }
+  return head;
+}
+
 export async function refreshVendorStamp({
   skillRoot,
   upstreamRoot,
@@ -232,6 +246,7 @@ export async function refreshVendorStamp({
   stamp,
   inspectUpstream = defaultInspectUpstream,
   runTest = defaultRunTest,
+  keepOpenDebtIds = [],
   vendorDate = new Date().toISOString().slice(0, 10),
 }) {
   if (!isNonEmptyString(upstreamRoot)) throw new Error("upstream unavailable; stamp refresh requires a checkout");
@@ -250,10 +265,15 @@ export async function refreshVendorStamp({
   }
 
   const nextStamp = JSON.parse(JSON.stringify(stamp));
-  const openDebts = nextStamp.vendorSideFirst.filter((item) => item.status === "open");
-  if (openDebts.length === 0) {
-    throw new Error("no open vendor-first debt is available for debt-resolution refresh");
+  const allOpenDebts = [...nextStamp.vendorSideFirst, ...nextStamp.upstreamSideFirst]
+    .filter((item) => item.status === "open");
+  for (const id of keepOpenDebtIds) {
+    if (!allOpenDebts.some(debt => debt.id === id)) throw new Error(`unknown open debt: ${id}`);
   }
+  const openDebts = allOpenDebts.filter(debt => !keepOpenDebtIds.includes(debt.id));
+  if (openDebts.length === 0) throw new Error("no open debt is selected for debt-resolution refresh");
+  const upstreamDebts = openDebts.filter(debt => nextStamp.upstreamSideFirst.includes(debt));
+  const upstreamPairs = nextStamp.pairs.filter(pair => upstreamDebts.some(debt => debt.pairId === pair.id));
   const openPairIds = new Set(openDebts.map((debt) => debt.pairId));
   const beforeRefresh = await observeVendorState({ skillRoot, upstreamRoot, stamp: nextStamp });
   const beforeById = new Map(beforeRefresh.pairs.map((pair) => [pair.id, pair]));
@@ -270,6 +290,7 @@ export async function refreshVendorStamp({
       `unexpected drift outside open debt pairs: ${unexpectedDrift.map((pair) => pair.id).join(", ")}`,
     );
   }
+  const vendorHead = upstreamPairs.length ? await verifyVendorCommit(skillRoot, upstreamPairs) : undefined;
   const testResults = [];
   for (const debt of openDebts) {
     const pair = nextStamp.pairs.find((item) => item.id === debt.pairId);
@@ -288,7 +309,8 @@ export async function refreshVendorStamp({
       );
     }
     debt.status = "resolved";
-    debt.resolvedUpstreamCommit = inspected.head;
+    if (upstreamDebts.includes(debt)) debt.resolvedVendorCommit = vendorHead;
+    else debt.resolvedUpstreamCommit = inspected.head;
   }
 
   const finalInspection = await inspectUpstream(upstreamRoot);
@@ -311,6 +333,10 @@ export async function refreshVendorStamp({
       sourceSha256: await sha256File(path.join(upstreamRoot, pair.sourcePath)),
     })),
   );
+
+  if (upstreamPairs.length && await verifyVendorCommit(skillRoot, upstreamPairs) !== vendorHead) {
+    throw new Error("vendor HEAD changed during stamp refresh");
+  }
 
   const hashedInspection = await inspectUpstream(upstreamRoot);
   if (
@@ -335,20 +361,12 @@ export async function refreshVendorStamp({
     })),
   };
   const preflight = classifyVendorDrift(nextStamp, observed);
-  const openUpstreamDebtByPair = new Map(
-    nextStamp.upstreamSideFirst
-      .filter((debt) => debt.status === "open")
-      .map((debt) => [debt.pairId, debt]),
-  );
-  const unexpectedPreflightRecords = preflight.records.filter((record) => {
-    const debt = openUpstreamDebtByPair.get(record.pairId);
-    return !(
-      debt &&
-      record.metric === "VENDOR_BEHIND" &&
-      record.value === "open" &&
-      record.evidence.includes(`${debt.id}:`)
-    );
-  });
+  // Explicit deferral keeps the REJECTED receipt; it cannot admit unrelated drift.
+  const remainingDebts = [...nextStamp.vendorSideFirst, ...nextStamp.upstreamSideFirst]
+    .filter(debt => debt.status === "open");
+  const unexpectedPreflightRecords = preflight.records.filter(record => !remainingDebts.some(debt =>
+    debt.pairId === record.pairId && record.evidence.includes(`${debt.id}:`) &&
+    ["VENDOR_AHEAD", "VENDOR_BEHIND", "BIDIRECTIONAL_DRIFT"].includes(record.metric)));
   if (unexpectedPreflightRecords.length > 0) {
     throw new Error(
       `refreshed stamp preflight rejected ${unexpectedPreflightRecords.length} unexpected record(s)`,
@@ -359,15 +377,25 @@ export async function refreshVendorStamp({
 }
 
 export function parseVendorDriftArgs(argv) {
-  const known = new Set(["--refresh-stamp", "--resolve-open-debt"]);
-  const unknown = argv.find((argument) => !known.has(argument));
-  if (unknown) throw new Error(`unknown argument: ${unknown}`);
-  const refreshStamp = argv.includes("--refresh-stamp");
-  const resolveOpenDebt = argv.includes("--resolve-open-debt");
+  const keepOpenDebtIds = [];
+  const flags = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] === "--keep-open-debt") {
+      const id = argv[++i];
+      if (!id || id.startsWith("--") || keepOpenDebtIds.includes(id)) {
+        throw new Error("--keep-open-debt requires a unique debt id");
+      }
+      keepOpenDebtIds.push(id);
+    } else if (["--refresh-stamp", "--resolve-open-debt"].includes(argv[i])) flags.push(argv[i]);
+    else throw new Error(`unknown argument: ${argv[i]}`);
+  }
+  const refreshStamp = flags.includes("--refresh-stamp");
+  const resolveOpenDebt = flags.includes("--resolve-open-debt");
   if (refreshStamp !== resolveOpenDebt) {
     throw new Error("--refresh-stamp and --resolve-open-debt must be used together");
   }
-  return { refreshStamp };
+  if (keepOpenDebtIds.length && !refreshStamp) throw new Error("--keep-open-debt requires both refresh flags");
+  return { refreshStamp, ...(keepOpenDebtIds.length ? { keepOpenDebtIds } : {}) };
 }
 
 export async function observeVendorState({ skillRoot, upstreamRoot, stamp }) {

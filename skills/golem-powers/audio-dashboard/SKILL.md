@@ -5,6 +5,14 @@ description: "Build audio narration dashboards. Triggers: STT-after-TTS exact wo
 
 # Audio Dashboard
 
+## Building a dashboard?
+
+Run `/audio-dashboard creation-steps`: read and follow
+[workflows/creation-steps.md](workflows/creation-steps.md), the ordered procedure
+from intake to delivery. This is a workflow argument to the skill, not a separate
+catalog command. This skill owns all build instructions; orc only relays the
+filled intake block and Etan's extra instructions.
+
 ## Ownership and delivery
 
 skill-creator owns this skill, templates and BUILD gates. NarrationLayer owns the
@@ -92,6 +100,15 @@ This keeps audio and questions woven together and prevents a cinema-style global
 audio strip / separate question list from reappearing.
 
 ## Card detail format
+
+BUILD rejects `CARD_TEXT_AUDIO_MISMATCH` when more than 10% of rendered card
+prose or owned scenes' authored script words lack an ordered match in the other
+(longest common subsequence, normalized case, punctuation and whitespace).
+It compares summary plus body; titles, rail metadata, controls, options,
+Sources/copyPrompt and code blocks are excluded. The one threshold lives in
+`src/card-text-audio-gate.mjs`. An honest summary declares `audioSummary: true`
+or a nonblank `summary`; the renderer visibly labels it **Audio is a summary of
+this card**, and BUILD requires that label outside the collapsed answer sheet.
 
 Follow [Card detail affordances](references/card-format.md): text-only cards
 must not repeat their text in a View details expander. Either offer no secondary
@@ -776,7 +793,7 @@ This skill travels as **files only** — do NOT clone `narrationlayer` / `agent-
    NARRATIONLAYER_UPSTREAM=/path/to/narrationlayer bun scripts/lint-narration-vendor-drift.mjs
    ```
 
-   Resolve a stamped vendor-first debt only from a clean committed upstream.
+   Resolve stamped debts only from a clean committed upstream.
    The refresh command checks every required source marker, runs each debt's
    targeted upstream test, recomputes both sides of every pair, preflights the
    resulting manifest, and then replaces the stamp atomically:
@@ -786,6 +803,12 @@ This skill travels as **files only** — do NOT clone `narrationlayer` / `agent-
    ```bash
    NARRATIONLAYER_UPSTREAM=/path/to/narrationlayer bun scripts/lint-narration-vendor-drift.mjs --refresh-stamp --resolve-open-debt
    ```
+
+   Upstream-first closures also require the selected vendor files to be committed;
+   `resolvedVendorCommit` identifies those exact bytes. To leave an unmet debt
+   visible while closing supported debts, append `--keep-open-debt <debt-id>`
+   (repeat for multiple debts). A deferred debt stays OPEN and REJECTED. Only
+   selected, declared debt pairs may move; unrelated drift still refuses refresh.
 
    If the upstream path is missing, the lint emits a typed
    `UPSTREAM_UNAVAILABLE` record with value `stamp-only` and verdict `DEGRADED`.

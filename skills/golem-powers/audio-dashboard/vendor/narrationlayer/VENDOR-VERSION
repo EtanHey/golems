@@ -1,76 +1,89 @@
 {
   "schemaVersion": 1,
   "vendor": "narrationlayer",
-  "vendorDate": "2026-07-17",
+  "vendorDate": "2026-11-08",
   "upstream": {
     "repository": "EtanHey/narrationlayer",
-    "commit": "b8bd6407b420d8b807df3c82599c43a7f3d4d9f8",
-    "committedAt": "2026-07-17T23:22:50+03:00"
+    "commit": "c0fa324212eb9499c27c5b778bc39ff3da933b73",
+    "committedAt": "2026-11-08T05:31:41+02:00"
   },
   "pairs": [
     {
       "id": "local-tts-runner",
       "vendorPath": "vendor/narrationlayer/local-tts-runner.ts",
       "sourcePath": "bin/local-tts-runner.ts",
-      "vendorSha256": "5ae52fa6099aac5870a64d11dcf0bb53527ee68e7e2d3551b0a16592c8ab9d0b",
-      "sourceSha256": "f367be380ea63401cd3c0e499cdf249d726e826ce7401ee5395971ef298d990b"
+      "vendorSha256": "9255384b5c0437f98f93b15eee30653415a8a89c54b895d6a35312a3f79eb266",
+      "sourceSha256": "9255384b5c0437f98f93b15eee30653415a8a89c54b895d6a35312a3f79eb266"
     },
     {
       "id": "profiles",
       "vendorPath": "vendor/narrationlayer/profiles.ts",
       "sourcePath": "src/profiles.ts",
-      "vendorSha256": "b4630a31da38726b987a7aae1a05fb1010f6b027d3231630cd429ea4e5d6301a",
-      "sourceSha256": "e03fc506bd6a5bcaab9b730ace9d49c2a09bd31f1b23e65d6606327c2ca33056"
+      "vendorSha256": "00beafd92a22240f4a7bbc2d80e2e19b08601062f0959c640a7fc637756a0dcd",
+      "sourceSha256": "00beafd92a22240f4a7bbc2d80e2e19b08601062f0959c640a7fc637756a0dcd"
     },
     {
       "id": "schema",
       "vendorPath": "vendor/narrationlayer/schema.ts",
       "sourcePath": "src/schema.ts",
-      "vendorSha256": "e21463d518593ef136660fe1f3673d59307e1bedba1f86e252e577f49940fe43",
-      "sourceSha256": "0068b49b4ee2a96fd16598ccb85560c6179baa1b55b2af6be35aedca6d13afc5"
+      "vendorSha256": "503c685fa4b1c76235d7bfec9afc49c8fcdb2f65248e4de811358aa1c125c89f",
+      "sourceSha256": "503c685fa4b1c76235d7bfec9afc49c8fcdb2f65248e4de811358aa1c125c89f"
     },
     {
       "id": "text-normalize",
       "vendorPath": "vendor/narrationlayer/text-normalize.ts",
       "sourcePath": "src/text-normalize.ts",
-      "vendorSha256": "1dfa15cfe808e90c5461b9dc4928a340fe795ff54256286ee9e6d3778185329e",
-      "sourceSha256": "15632883848aaafc3d38a4935f87bebc2f2eb799c2adab2af050a32081c00dd2"
+      "vendorSha256": "c62c361b2ca6f518e18a214eda668aca5f24040ed7ae58d972271be83acf4087",
+      "sourceSha256": "c62c361b2ca6f518e18a214eda668aca5f24040ed7ae58d972271be83acf4087"
     },
     {
       "id": "word-timing-repair",
       "vendorPath": "vendor/narrationlayer/word-timing-repair.ts",
       "sourcePath": "src/word-timing-repair.ts",
-      "vendorSha256": "31a003bafaca943999a15aac49cda69e7ed48c1abcea35c606baa3c77bb64a6a",
-      "sourceSha256": "84251ae390ed90d5a70aa1e4530146204648bdafbcbb5d6f2a153ea06e64482a"
+      "vendorSha256": "55e150c980f2d6e6455d1fd0b79c815f935c8d8e376765e5b23e8f07ccd5ab0c",
+      "sourceSha256": "55e150c980f2d6e6455d1fd0b79c815f935c8d8e376765e5b23e8f07ccd5ab0c"
     },
     {
       "id": "word-timings",
       "vendorPath": "vendor/narrationlayer/word-timings.ts",
       "sourcePath": "src/word-timings.ts",
-      "vendorSha256": "f6c0f928e5d09fc7e200ca6d8635a2041c44fc5341ec972b8549f0974cc812b3",
-      "sourceSha256": "4feed16024248316625c2c772788e7a92c8cfd2637aa15922f814c604264da55"
+      "vendorSha256": "f6b4ba33773478fd8b7d64774a2baa59aca169c88c1f7d8a4f2db9b4f42fced5",
+      "sourceSha256": "f6b4ba33773478fd8b7d64774a2baa59aca169c88c1f7d8a4f2db9b4f42fced5"
+    },
+    {
+      "id": "profile-renderer-types",
+      "vendorPath": "vendor/narrationlayer/profile-renderer-types.ts",
+      "sourcePath": "src/profile-renderer-types.ts",
+      "vendorSha256": "080a576e98fcdf57d17b633ad1e11ae294ce02b007bc4cb4eccfe8bd0f277269",
+      "sourceSha256": "080a576e98fcdf57d17b633ad1e11ae294ce02b007bc4cb4eccfe8bd0f277269"
+    },
+    {
+      "id": "audio",
+      "vendorPath": "vendor/narrationlayer/audio.ts",
+      "sourcePath": "src/audio.ts",
+      "vendorSha256": "cb9d39fe0db450115d5b7c88594a822bd2327b30983eadba35522e8b4fa2b2a0",
+      "sourceSha256": "cd96a769e4544069a63ea6d6d8c75e7a4f0014e0bf966dd926a88b267ad96228"
+    },
+    {
+      "id": "narration-plan",
+      "vendorPath": "vendor/narrationlayer/narration-plan.ts",
+      "sourcePath": "src/narration-plan.ts",
+      "vendorSha256": "1f2bf5da4c0d48885a28998ba873ead4d2d13f8add317b2aff9f7dfd9d228dc6",
+      "sourceSha256": "2a04501ea2c8cd9a3dfdb95f6d8cc16cf2640b64091f1a3b82579293f657773d"
     }
   ],
   "intentionalAdaptations": [
     {
       "pairId": "local-tts-runner",
-      "reason": "Runner matches pendingRevendor.sourceCommit byte-for-byte. Skill-owned vendor/src import bridges preserve repo-free layout and env profile-root lookup; wrapper loads pronunciation overlays."
+      "reason": "SKILL_REPO_FREE_RUNNER_BRIDGES remains OPEN: runner bytes match upstream exactly; vendor/src import bridges and scripts/local-tts.mjs supply skill-owned profile-root lookup and pronunciation overlays."
     },
     {
-      "pairId": "profiles",
-      "reason": "Upstream voice-SSOT implementation; type imports use the existing local schema shim. OPEN SKILL_PROFILE_SCHEMA_IMPORTS; no accepted hash refresh."
+      "pairId": "audio",
+      "reason": "TYPE_ONLY_PROFILE_CLOSURE: copied only the exact upstream AudioAssemblyChunk interface; no ffmpeg runtime."
     },
     {
-      "pairId": "schema",
-      "reason": "Unchanged minimal type-only portability shim; OPEN SCHEMA_REFRESH_REFUSED."
-    },
-    {
-      "pairId": "text-normalize",
-      "reason": "OPEN SKILL_SINGLE_SPOKEN_PASS_AND_INITIALISMS: export the legacy pass and preserve spaced-capital normalization/aliases. Runtime spoken forms remain solely in src/spoken-form.mjs."
-    },
-    {
-      "pairId": "word-timings",
-      "reason": "OPEN GOLEMS_SYNC_PORTABLE_WHISPER_DISCOVERY: retain path.join Homebrew fallback paths; upstream still embeds literal binary paths."
+      "pairId": "narration-plan",
+      "reason": "TYPE_ONLY_PROFILE_CLOSURE: copied only the exact upstream PauseStrategy and NarrationPacingConfig declarations; no utterance planner runtime."
     }
   ],
   "vendorSideFirst": [
@@ -128,8 +141,8 @@
     {
       "id": "B13_SPEECH_SANITIZER",
       "pairId": "text-normalize",
-      "status": "open",
-      "aidevNote": "Upstream speech channels and alias support have been copied from pendingRevendor.sourceCommit. Closure remains OPEN pending atomic refresh; retained skill-only initialism and single-pass seams are named separately.",
+      "status": "resolved",
+      "aidevNote": "Upstream speech channels and aliases are vendored byte-for-byte; required patterns and targeted tests passed before atomic refresh.",
       "requiredUpstreamPatterns": [
         "export interface SpeechChannels {",
         "export function deriveSpeechAliases(",
@@ -139,13 +152,14 @@
         "bun",
         "test",
         "tests/text-normalize.test.ts"
-      ]
+      ],
+      "resolvedUpstreamCommit": "c0fa324212eb9499c27c5b778bc39ff3da933b73"
     },
     {
       "id": "B13_TIMING_ALIASES",
       "pairId": "word-timing-repair",
-      "status": "open",
-      "aidevNote": "The timing module now matches pendingRevendor.sourceCommit byte-for-byte, including deterministic aliases. Closure remains OPEN pending documented atomic refresh, which refuses schema movement.",
+      "status": "resolved",
+      "aidevNote": "Upstream deterministic timing aliases are vendored byte-for-byte; required patterns and targeted tests passed before atomic refresh.",
       "requiredUpstreamPatterns": [
         "export interface WordTimingAlias {",
         "function compileAliasSignatures(",
@@ -155,13 +169,14 @@
         "bun",
         "test",
         "tests/word-timing-repair.test.ts"
-      ]
+      ],
+      "resolvedUpstreamCommit": "c0fa324212eb9499c27c5b778bc39ff3da933b73"
     },
     {
       "id": "GOLEMS_SYNC_PORTABLE_WHISPER_DISCOVERY",
       "pairId": "word-timings",
-      "status": "open",
-      "aidevNote": "The vendored runtime constructs standard Homebrew fallback paths without embedding a machine-coupled /opt/homebrew/bin/<tool> literal, so the repo-free golems sync guard can reject literal tool paths. Port the same construction upstream before resolving this debt.",
+      "status": "resolved",
+      "aidevNote": "NL #37 supplies portable path.join Homebrew discovery, now vendored byte-for-byte and tested before atomic refresh.",
       "requiredUpstreamPatterns": [
         "path.join(\"/opt/homebrew\", \"bin\", \"whisper-cli\")",
         "path.join(\"/usr/local\", \"bin\", \"whisper-cli\")"
@@ -170,13 +185,14 @@
         "bun",
         "test",
         "tests/word-timings.test.ts"
-      ]
+      ],
+      "resolvedUpstreamCommit": "c0fa324212eb9499c27c5b778bc39ff3da933b73"
     },
     {
       "id": "SKILL_SPEECH_PREPARATION_CALLBACK",
       "pairId": "local-tts-runner",
-      "status": "open",
-      "aidevNote": "The upstream callback seam is present in the byte-identical runner copied from pendingRevendor.sourceCommit. The debt remains OPEN because atomic refresh refuses schema movement; no manual closure or hash acceptance is claimed.",
+      "status": "resolved",
+      "aidevNote": "Upstream callback seam is vendored byte-for-byte and tested before atomic refresh; the skill still supplies its one-pass callback.",
       "requiredUpstreamPatterns": [
         "export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)"
       ],
@@ -184,13 +200,14 @@
         "bun",
         "test",
         "tests/local-tts-runner.test.ts"
-      ]
+      ],
+      "resolvedUpstreamCommit": "c0fa324212eb9499c27c5b778bc39ff3da933b73"
     },
     {
       "id": "SKILL_PROFILE_SCHEMA_IMPORTS",
       "pairId": "profiles",
-      "status": "open",
-      "aidevNote": "OPEN skill-side adaptation: upstream voice-SSOT profiles are copied, with renderer config type imports redirected to the portable schema shim. All acceptance hashes remain unchanged because documented atomic refresh refuses the schema pair.",
+      "status": "resolved",
+      "aidevNote": "NL #38 exposes renderer configs through type-only schema imports. Real schema and profile-renderer-types were copied together; exact audio/pacing type shims are named adaptations.",
       "requiredUpstreamPatterns": [
         "import type { ExternalCommandConfig } from \"./schema.js\";",
         "import type { VoiceLayerQwen3Config } from \"./schema.js\";"
@@ -199,13 +216,14 @@
         "bun",
         "test",
         "tests/profiles.test.ts"
-      ]
+      ],
+      "resolvedUpstreamCommit": "c0fa324212eb9499c27c5b778bc39ff3da933b73"
     },
     {
       "id": "SKILL_SINGLE_SPOKEN_PASS_AND_INITIALISMS",
       "pairId": "text-normalize",
-      "status": "open",
-      "aidevNote": "OPEN skill-side adaptation: export normalizeLegacy for the skill callback so spoken-form rules run once; retain same-line capital collapsing and capital-sequence aliases. NL must expose this seam and retain B13 behavior before this adaptation can close.",
+      "status": "resolved",
+      "aidevNote": "NL #36 exports normalizeLegacy and retains same-line capitals and aliases; the skill spoken-form callback remains unchanged.",
       "requiredUpstreamPatterns": [
         "export function normalizeLegacy(",
         "SPACED_CAPITALS_RULE",
@@ -215,7 +233,8 @@
         "bun",
         "test",
         "tests/text-normalize.test.ts"
-      ]
+      ],
+      "resolvedUpstreamCommit": "c0fa324212eb9499c27c5b778bc39ff3da933b73"
     },
     {
       "id": "SKILL_REPO_FREE_RUNNER_BRIDGES",
@@ -242,8 +261,8 @@
     {
       "id": "VOICE_SSOT_PROFILE_CACHE_KEY",
       "pairId": "local-tts-runner",
-      "status": "open",
-      "aidevNote": "Upstream profileId, profileVersion, model cache-key fields and warnIfNonAcceptedProfile are present in the byte-identical runner. The debt remains OPEN pending atomic refresh; schema movement prevents acceptance-hash replacement. Code convergence is verified offline, never treated as a closed stamp.",
+      "status": "resolved",
+      "aidevNote": "Upstream profile identity/version/model cache-key fields and non-accepted profile warning are vendored byte-for-byte; patterns and targeted tests passed before atomic refresh.",
       "requiredUpstreamPatterns": [
         "profileId?: string;",
         "profileVersion?: string;",
@@ -257,13 +276,14 @@
         "bun",
         "test",
         "tests/local-tts-runner.test.ts"
-      ]
+      ],
+      "resolvedVendorCommit": "bac127cf402c81c118926e932743999a77013c3b"
     },
     {
       "id": "SCHEMA_REFRESH_REFUSED",
       "pairId": "schema",
-      "status": "open",
-      "aidevNote": "OPEN documented drift: source schema moved; the skill retains its type-only portability shim. The unchanged refresh tool refuses schema outside an open vendor-first debt pair. No source or vendor hash was blessed.",
+      "status": "resolved",
+      "aidevNote": "NL #38 real schema and type-only renderer config cycle are vendored together, replacing the old schema shim. Resolution pins the commit containing the exact vendor bytes.",
       "requiredUpstreamPatterns": [
         "export type VoiceLayerQwen3Config =",
         "export type ExternalCommandConfig ="
@@ -272,12 +292,13 @@
         "bun",
         "test",
         "tests/profiles.test.ts"
-      ]
+      ],
+      "resolvedVendorCommit": "bac127cf402c81c118926e932743999a77013c3b"
     }
   ],
   "pendingRevendor": {
-    "sourceCommit": "99589a47fbb07c88f9a7facf81d229bb9647fdcc",
-    "status": "refresh-refused",
-    "aidevNote": "Documented refresh only; paired acceptance hashes and historical resolutions are unchanged. Callback and voice-SSOT code are present in the runner but their debt closures await atomic refresh. Schema/profile pairs remain documented drift. Lead routes all remaining upstream asks."
+    "sourceCommit": "c0fa324212eb9499c27c5b778bc39ff3da933b73",
+    "status": "refreshed-with-open-debt",
+    "aidevNote": "Eight debts resolved by atomic refresh after targeted upstream tests; SKILL_REPO_FREE_RUNNER_BRIDGES stays OPEN because upstream lacks NARRATIONLAYER_ROOT and loadPronunciationRules(). No remaining byte drift; one named debt rejection."
   }
 }

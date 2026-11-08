@@ -39,7 +39,9 @@ agent ran before its verdict. Negated/in-progress statements ("not done yet") ar
 ### Recorded-frame observation
 
 For qa-video, same-turn tool outputs may supply headerless inspected-ledger rows:
-`pts<TAB>absolute frame path<TAB>reader: why<TAB>finding-id`. Read the run's
+`pts<TAB>absolute frame path<TAB>reader: why<TAB>finding-id[<TAB>sha256]`.
+Legacy four-column rows are accepted. Five-column rows require a 64-hex-digit
+SHA-256 field; other row shapes are rejected. Read the run's
 `inspected.tsv` (or `logs/inspected*.tsv`) and include its rows in the tool output.
 PTS must be finite and nonnegative; the canonical absolute `.png`/`.jpg`/`.jpeg`
 path must stay under the run directory of a same-turn Write/Edit/MultiEdit to

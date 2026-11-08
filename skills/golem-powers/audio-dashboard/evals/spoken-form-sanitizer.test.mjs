@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
+import { prepareSpeechChannels } from "../src/spoken-form.mjs";
 import { normalizeForSpeech } from "../vendor/narrationlayer/text-normalize.ts";
 import { normalizeWordTimingsForScript } from "../vendor/narrationlayer/word-timing-repair.ts";
 import { analyzeTeleprompterDrift } from "../src/teleprompter-drift-gate.mjs";
@@ -113,7 +114,7 @@ test("configured replacement output is not reprocessed by a later rule", () => {
 });
 
 test("two-channel preprocessing exposes the original display and isolated synth input", async () => {
-  const module = await import("../vendor/narrationlayer/text-normalize.ts");
+  const module = await import("../src/spoken-form.mjs");
   expect(module.prepareSpeechChannels).toBeFunction();
   if (typeof module.prepareSpeechChannels !== "function") return;
 
@@ -235,7 +236,7 @@ test("eval registry names the B13/B11 engine-channel guarantee", () => {
 
 test("B13 frame_0616 expands the synth input while the display stays verbatim", () => {
   const displayText = fixture.spokenForm.script;
-  const synthInput = normalizeForSpeech(displayText, shippedRules);
+  const { synthInput } = prepareSpeechChannels(displayText, shippedRules);
   const displayWordInput = timedScriptWords(displayText);
 
   expect(synthInput).toBe(
@@ -269,14 +270,14 @@ test("B13 frame_0616 expands the synth input while the display stays verbatim", 
 });
 
 test("B13 config terms and general spaced capitals normalize only the synth input", () => {
-  expect(normalizeForSpeech("your voice Q A list", shippedRules)).toBe("your voice quality assurance list");
-  expect(normalizeForSpeech("Route A B C through M C P.", shippedRules)).toBe("Route ABC through MCP.");
-  expect(normalizeForSpeech("Keep A\nB on separate lines.", shippedRules)).toBe("Keep A\nB on separate lines.");
+  expect(prepareSpeechChannels("your voice Q A list", shippedRules).synthInput).toBe("your voice quality assurance list");
+  expect(prepareSpeechChannels("Route A B C through M C P.", shippedRules).synthInput).toBe("Route ABC through MCP.");
+  expect(prepareSpeechChannels("Keep A\nB on separate lines.", shippedRules).synthInput).toBe("Keep A\nB on separate lines.");
 });
 
 test("B11 real s9q broadcast contexts respell live without changing the /lɪv/ sense", async () => {
   const displayText = fixture.heteronym.script;
-  const synthInput = normalizeForSpeech(displayText, shippedRules);
+  const { synthInput } = prepareSpeechChannels(displayText, shippedRules);
   const aliases = (await import("../vendor/narrationlayer/text-normalize.ts"))
     .deriveSpeechAliases(displayText, synthInput);
 

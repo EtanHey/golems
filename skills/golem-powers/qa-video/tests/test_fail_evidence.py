@@ -58,6 +58,19 @@ class FailEvidence(unittest.TestCase):
         (self.run / 'media/inspected.tsv').write_text(self.rows[0] + self.rows[1].replace('v-S1-F6r:', ''))
         self.assertNotEqual(self.helper().returncode, 0)
 
+    def test_digest_column_shapes(self):
+        for suffix, valid in [('a'*64, True), ('A'*64, True),
+                              ('a'*63, False), ('bad-digest', False),
+                              ('a'*64+'\textra', False)]:
+            with self.subTest(suffix=suffix):
+                rows = [row.rstrip('\n')+'\t'+suffix+'\n' for row in self.rows]
+                self.ledger.write_text(''.join(rows))
+                result = self.helper()
+                self.assertEqual(result.returncode == 0, valid, result.stderr)
+                if valid:
+                    self.assertEqual(result.stdout, ''.join(rows))
+                    self.assertEqual(self.gate(result.stdout).returncode, 0)
+
     def test_final_report_rules(self):
         for document in ('SKILL.md', 'workflows/process.md'):
             text = (SKILL / document).read_text()
