@@ -12,7 +12,9 @@ rm -f "$LOGDIR/$STEP.exit" "$LOGDIR/$STEP.exit.tmp" "$LOGDIR/$STEP.pid"
 # Commands retain argv; the worker owns its PID and atomic exit receipt.
 worker='
   receipt=$1; lock=$2; pidfile=$3; shift 3
-  trap '\''status=$?; printf "%s\n" "$status" > "$receipt.tmp"; mv "$receipt.tmp" "$receipt"; rmdir "$lock"'\'' EXIT
+  # Release the lock BEFORE publishing the receipt: .exit is the final write, so a
+  # reader that sees .exit never also sees a stale lock.
+  trap '\''status=$?; printf "%s\n" "$status" > "$receipt.tmp"; rmdir "$lock"; mv "$receipt.tmp" "$receipt"'\'' EXIT
   trap "exit 130" INT
   trap "exit 143" TERM
   printf "%s\n" "$$" > "$pidfile"
