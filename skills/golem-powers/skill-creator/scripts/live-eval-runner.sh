@@ -100,7 +100,7 @@ cmd_sandbox() {
     fi
 
     cd "${REPOS_PATH}/golems" || { echo "Sandbox creation refused: repository unavailable" >&2; return 1; }
-    python3 "${REPOS_PATH}/golems/scripts/repogolem/worktree-disk-floor.py" "$sandbox_path" || { echo "Sandbox creation refused: disk-floor check failed" >&2; return 1; }
+    python3 "${REPOS_PATH}/golems/scripts/repogolem/worktree-disk-floor.py" "$sandbox_path" || { local floor_rc=$?; echo "Sandbox creation refused: disk-floor check failed" >&2; return "$floor_rc"; }
     git worktree add -b "${sandbox_name}" "${sandbox_path}" HEAD || {
       echo "Sandbox creation refused: could not create a fresh branch; inspect any retained branch: ${sandbox_name}" >&2
       return 1
