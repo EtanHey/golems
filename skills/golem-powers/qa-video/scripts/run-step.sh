@@ -27,13 +27,31 @@ rm -f "$LOGDIR/$STEP.exit" "$LOGDIR/$STEP.exit.tmp" "$LOGDIR/$STEP.pid"
 # The wrapper and descendants share a private group. Publish it before starting
 # work; a missing pgid fails closed. Keep the lock after exit so background
 # descendants still prevent reclamation until the entire group is gone.
-nohup python3 -c 'import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' bash -c '
-  receipt=$1; lock=$2; shift 2
-  printf "%s\n" "$$" > "$lock/pgid"
+worker='
+  receipt=$1; lock=$2; pidfile=$3; shift 3
   trap '\''status=$?; printf "%s\n" "$status" > "$receipt.tmp"; mv "$receipt.tmp" "$receipt"'\'' EXIT
   trap "exit 130" INT
   trap "exit 143" TERM
+  printf "%s\n" "$$" > "$pidfile"
+  printf "%s\n" "$$" > "$lock/pgid"
   "$@"
-' bash "$LOGDIR/$STEP.exit" "$LOCK" "$@" > "$LOGDIR/$STEP.log" 2>&1 < /dev/null &
-printf '%s\n' "$!" > "$LOGDIR/$STEP.pid"
+'
+session='import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])'
+if [[ "${RUN_STEP_FOREGROUND:-0}" == 1 ]]; then
+  python3 -c "$session" bash -c "$worker" bash "$LOGDIR/$STEP.exit" "$LOCK" "$LOGDIR/$STEP.pid" "$@" > "$LOGDIR/$STEP.log" 2>&1 < /dev/null
+else
+  nohup python3 -c "$session" \
+    bash -c "$worker" bash "$LOGDIR/$STEP.exit" "$LOCK" "$LOGDIR/$STEP.pid" "$@" > "$LOGDIR/$STEP.log" 2>&1 < /dev/null &
+  launcher=$!
+  # The worker publishes pgid only after setsid + exec + receipt traps. Returning
+  # earlier lets caller-group teardown kill the launcher before it detaches.
+  until [[ -s "$LOCK/pgid" ]]; do
+    if ! kill -0 "$launcher" 2>/dev/null; then
+      # Preserve the lock: a missing pgid fails closed under the reclaim policy.
+      echo "run-step: worker failed to start; read $LOGDIR/$STEP.log" >&2
+      exit 1
+    fi
+    sleep 0.01
+  done
+fi
 printf 'run-step: %s -> %s/{%s.log,%s.pid,%s.exit}\n' "$STEP" "$LOGDIR" "$STEP" "$STEP" "$STEP"

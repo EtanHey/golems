@@ -357,7 +357,7 @@ test("wrapped external Stop hook replaces the hand-placed command once and keeps
   expect(stopHooks).toHaveLength(2);
   expect(stopHooks[1]).toEqual(sibling);
   const node = spawnSync("sh", ["-c", "command -v node"], { encoding: "utf8" }).stdout.trim();
-  expect(stopHooks[0]).toEqual({ type: "command", command: `${node} ${live(fx)}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python ${fx.home}/Gits/brainlayer/hooks/brainbar-stop-index.py`, timeout: 5, async: true });
+  expect(stopHooks[0]).toEqual({ type: "command", command: `${node} ${live(fx)}/skills/golem-powers/_shared/stop-hook-runtime/stop-telemetry.mjs brainbar-stop-index --timeout-ms 30000 -- /opt/homebrew/opt/brainlayer/libexec/venv/bin/python ${fx.home}/Gits/brainlayer/hooks/brainbar-stop-index.py`, timeout: 5, async: true });
   expect(existsSync(path.join(fx.home, ".claude/hooks/brainbar-stop-index.py"))).toBe(false);
   expect(bakFiles(fx)).toHaveLength(1);
   expect(run(fx, "--apply").status).toBe(0);

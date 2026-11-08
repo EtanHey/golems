@@ -85,27 +85,29 @@ night's decisions, corrections, and failures that no single worker saw. Always:
 `weave-run.py discover` tags centerpiece sessions (default: the `orchestrator`
 repo) and sorts them first in the batch plan.
 
-## Round structure (loop-until-dry, cap ~9)
+## Round structure (loop-until-dry, dynamic frontier)
 
 "9 rounds" is Etan's **depth intent**, not a fixed structure. Define depth by the
-backtest, not by a number — stop early when a round surfaces nothing new.
+backtest, not by a number — stop after two non-empty dry rounds, the second a
+confirmation sweep, or explicit confirmation exhaustion (§2a).
 
 - **Rounds 1–3 (broad sweep):** anti-patterns, recurring frustrations,
   what-worked vs what-hurt — by agent and by topic. Centerpieces in round 1.
 - **Rounds 4–6 (drill):** skill gaps, capability-uplift vs encoded-preference
   candidates, cross-session patterns the sweep only hinted at.
-- **Rounds 7–9 (synthesize + adversarial):** a completeness critic ("what did we
+- **Later rounds (adversarial):** a completeness critic ("what did we
   miss — a session not mined, a claim unverified?"), dedup, then propose concrete
   skills/evals/PRs and score each.
 
-Each round is a fan-out (miners mine slices → synthesis merges). **If a round
-surfaces nothing new, stop — don't burn the cap.** The depth is only justified if
+These are example agendas; findings create later rounds dynamically. Each round
+is one flat fan-out, then ingest; synthesis follows DRY_STOP. The depth is justified if
 it converts (see the conversion-to-change metric in `weave-ledger.py`); the
 backtest decides whether 9 is right or whether it plateaus at 4–5.
 
 ## Where this maps in the harness
 
 - `weave-run.py discover|prepare|batches` = the fan-out plumbing (flat or staged).
+- `weave_loop.py init|next|ingest|questions|status` = the parent-yield frontier and real confirmation-sweep stop (§2a).
 - `prepare-mine-context.py` = the compact per-session context each miner reads.
 - `weave-ledger.py` = the synthesis/aggregation + conversion metric.
 - A Workflow (the `agent()`/`pipeline()` form) is the natural way to run staged

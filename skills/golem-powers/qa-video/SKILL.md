@@ -163,6 +163,12 @@ For a legacy lock without `pgid` (including old pid-only locks), verify no step 
 `logs/`. Poll `.exit` via own Bash or agy `run_command`/`view_file`; require numeric
 `0` and verify outputs before continuing. Read `.log` on failure. agy 1.2.14 has
 no `command_status`/`send_command_input`; a launch return is not completion.
+Workers use Python 3 sessions; background launches wait for `logs/<step>.lock/pgid`
+before returning. `.pid` identifies the worker/session leader; locks persist and are reclaimed
+only after the whole group dies. If a runner kills detached sessions or a launch leaves no receipt,
+use `RUN_STEP_FOREGROUND=1 bash run-step.sh <artifact-dir> <fresh-step> -- <command> [args...]`
+attached. It waits, returns the step's status and writes the same `.pid`, `.log`, atomic `.exit`
+and pgid receipts with `/dev/null` stdin. Preserve failed launch artifacts first.
 Use fresh step names/output directories for refinements. `video-qa` has no MCP
 or delegation; return text to the parent for persistence and archival.
 
@@ -174,6 +180,15 @@ sheet + tile only locates them. Scripts support judgement; an optional
 convenience index never gates the loop.
 
 **Verdict integrity (before emitting a QA verdict or "QA complete"):** Run `/qa-verdict-gate` over the run. It enforces tri-state **PASS / FAIL / INCONCLUSIVE** — `FAIL` is reserved for a *confirmed-observed* failure (a screenshot/click that reached the surface or an observed error in a tool result); a path you **couldn't reach** ("couldn't load", "element not found", blocked at step 0) is `INCONCLUSIVE`, never FAIL or PASS — and a QA run only counts when a `qa-report.md` with all the checklist items exists. `bun skills/golem-powers/qa-verdict-gate/scripts/qa-verdict-gate-cli.mjs <transcript|->` (exit 3 = FLAG = the verdict isn't earned yet). Composes with `/false-green-gate` and `/never-fabricate`.
+
+**Final report and verdict:** In the SAME turn that writes `qa-report.md` and states the verdict,
+run `bash "$SCRIPTS/fail-evidence.sh" "$WORKDIR"` and expose its tool output: unmodified TSV
+rows for every FAIL finding id, not verification summaries. Write the report via Write/Edit to
+the absolute `/…/qa-video/<run>/qa-report.md`; keep frame paths under that run.
+The helper reads active `inspected.tsv` files beneath it (including `logs/` and `media/`),
+never `inspected-quarantine-*.tsv`. Only `scripts/inspected.sh` writes inspection rows.
+On nonzero exit, re-inspect with a reader or downgrade the named item to INCONCLUSIVE,
+rewrite the report and rerun the helper in this turn; never fake a row. Then run the verdict gate.
 
 ## Evidence Rules (every mode)
 
@@ -292,7 +307,7 @@ bash "$ORCHESTRATOR_REPO/scripts/qa/qa-record.sh" ~/Gits/<project>/docs/
 **Process a QA video:**
 ```bash
 VIDEO="/path/to/recording.mov"
-WORKDIR="$HOME/Gits/<project>/docs/qa-session-$(date +%Y-%m-%d-%H%M)"
+WORKDIR="$HOME/Gits/<project>/docs.local/qa-video/$(date +%Y-%m-%d-%H%M)"
 SCRIPTS="<qa-video skill dir>/scripts"
 # Run each command in YOUR OWN shell. After EACH launch, poll its logs/*.exit
 # and require 0 before continuing; read logs/*.log on failure.

@@ -26,7 +26,7 @@ function fixture() {
   symlinkSync(path.join(stale, "pr-loop"), path.join(claude, "pr-loop"));        // stale -> repoint
   symlinkSync(path.join(stale, "retired-skill"), path.join(claude, "retired"));  // stale, no source -> other
   symlinkSync(path.join(source, "eli5"), path.join(claude, "eli5"));             // already right -> ok
-  symlinkSync(path.join(home, "gone", "x"), path.join(claude, "dangling"));      // dangling -> removed
+  symlinkSync(path.join(stale, "gone"), path.join(claude, "dangling"));      // dangling -> removed
   mkdirSync(path.join(claude, "local-copy"));                                    // real dir -> other
   mkdirSync(path.join(home, "Gits", "other-repo", "skills", "orc"), { recursive: true });
   symlinkSync(path.join(home, "Gits", "other-repo", "skills", "orc"), path.join(claude, "other-orc")); // same name, not stale -> other
@@ -124,7 +124,7 @@ test("the Gemini root ~/.gemini/config/skills is walked with the same rules", ()
   mkdirSync(gemini, { recursive: true });
   const gone = path.join(fx.home, "Gits", "golems.wt", "dead", "skills", "golem-powers", "pr-loop");
   symlinkSync(gone, path.join(gemini, "pr-loop"));                                  // dangling, name in source -> repoint
-  symlinkSync(path.join(fx.home, "gone", "y"), path.join(gemini, "no-such-skill")); // dangling, no source -> removed
+  symlinkSync(path.join(fx.source, "gone"), path.join(gemini, "no-such-skill")); // dangling, no source -> removed
   symlinkSync(path.join(fx.source, "eli5"), path.join(gemini, "eli5"));             // already right -> ok
 
   const dry = run(fx);
@@ -477,3 +477,61 @@ for (const drift of ['hash', 'version', 'none']) {
     if (drift === 'version') expect(JSON.parse(readFileSync(path.join(fx.vendor, 'manifest.json'))).upstreams[0].version).toBe('1.1.2');
   });
 }
+
+for (const name of ["pr-loop", "foreign-only"]) {
+  test(`foreign dangling ${name} survives dry-run and apply without mirroring`, () => {
+    const fx = geminiFixture();
+    const entry = path.join(fx.agents, name);
+    if (existsSync(entry)) rmSync(entry);
+    const target = path.join(fx.home, "other-tool", name);
+    symlinkSync(target, entry);
+    const chained = path.join(fx.codex, name);
+    symlinkSync(entry, chained);
+    const dry = run(fx, "--link-missing");
+    expect(dry.status).toBe(0);
+    expect(dry.out).toMatch(/\.agents\/skills: .*other=1/);
+    expect(readlinkSync(entry)).toBe(target);
+    const applied = run(fx, "--link-missing", "--apply");
+    expect(applied.status).toBe(0);
+    expect(readlinkSync(entry)).toBe(target);
+    expect(readlinkSync(chained)).toBe(entry);
+    expect(() => lstatSync(path.join(fx.gemini, name))).toThrow();
+  });
+}
+
+for (const agentsState of ["already absent", "removed during apply"]) {
+  test(`retired Gemini mirror is removed when agents entry is ${agentsState}`, () => {
+    const fx = geminiFixture();
+    expect(run(fx, "--link-missing", "--apply").status).toBe(0);
+    const agentsEntry = path.join(fx.agents, "eli5");
+    const mirror = path.join(fx.gemini, "eli5");
+    expect(readlinkSync(mirror)).toBe("../../../.agents/skills/eli5");
+    rmSync(path.join(fx.source, "eli5"), { recursive: true });
+    rmSync(agentsEntry);
+    if (agentsState === "removed during apply") {
+      symlinkSync(path.join(fx.home, "golems.wt/dead/skills/golem-powers/eli5"), agentsEntry);
+    }
+    const dry = run(fx, "--link-missing");
+    expect(dry.status).toBe(0);
+    expect(lstatSync(mirror).isSymbolicLink()).toBe(true);
+    const applied = run(fx, "--link-missing", "--apply");
+    expect(applied.status).toBe(0);
+    expect(applied.out.match(/^~\/\.gemini\/config\/skills:.*$/m)?.[0])
+      .toBe(dry.out.match(/^~\/\.gemini\/config\/skills:.*$/m)?.[0]);
+    expect(() => lstatSync(agentsEntry)).toThrow();
+    expect(() => lstatSync(mirror)).toThrow();
+    expect(run(fx, "--link-missing", "--apply").status).toBe(0);
+  });
+}
+
+test("Gemini mirror reaching a foreign dangling target remains untouched", () => {
+  const fx = geminiFixture();
+  expect(run(fx, "--link-missing", "--apply").status).toBe(0);
+  const entry = path.join(fx.agents, "eli5"), mirror = path.join(fx.gemini, "eli5");
+  rmSync(entry);
+  const foreign = path.join(fx.home, "other-tool/eli5");
+  symlinkSync(foreign, entry);
+  expect(run(fx, "--link-missing", "--apply").status).toBe(0);
+  expect(readlinkSync(entry)).toBe(foreign);
+  expect(readlinkSync(mirror)).toBe("../../../.agents/skills/eli5");
+});
