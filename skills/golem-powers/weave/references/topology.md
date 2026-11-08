@@ -88,7 +88,8 @@ repo) and sorts them first in the batch plan.
 ## Round structure (loop-until-dry, dynamic frontier)
 
 "9 rounds" is Etan's **depth intent**, not a fixed structure. Define depth by the
-backtest, not by a number — stop after two dry rounds with no pending work (§2a).
+backtest, not by a number — stop after two non-empty dry rounds, the second a
+confirmation sweep, or explicit confirmation exhaustion (§2a).
 
 - **Rounds 1–3 (broad sweep):** anti-patterns, recurring frustrations,
   what-worked vs what-hurt — by agent and by topic. Centerpieces in round 1.
@@ -106,7 +107,7 @@ backtest decides whether 9 is right or whether it plateaus at 4–5.
 ## Where this maps in the harness
 
 - `weave-run.py discover|prepare|batches` = the fan-out plumbing (flat or staged).
-- `weave_loop.py init|next|ingest|questions|status` = the parent-yield frontier and two-dry-round stop.
+- `weave_loop.py init|next|ingest|questions|status` = the parent-yield frontier and real confirmation-sweep stop (§2a).
 - `prepare-mine-context.py` = the compact per-session context each miner reads.
 - `weave-ledger.py` = the synthesis/aggregation + conversion metric.
 - A Workflow (the `agent()`/`pipeline()` form) is the natural way to run staged

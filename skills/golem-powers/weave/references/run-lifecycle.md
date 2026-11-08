@@ -253,7 +253,7 @@ python3 scripts/weave-run.py aggregate --workdir "$WD" --tokens <N> # → ACTION
   [g1:82 → 2026-06-05.md:14,48]
 - **Whole sessions, K per miner** (never shards of one session; centerpieces get a
   dedicated miner). Parallelism = waves of ~5 miners. **Loop-until-dry** (see §2a) — stop
-  after two consecutive dry rounds with no pending work; synthesis is last.
+  after two consecutive non-empty dry rounds with no pending work; synthesis is last.
 - Miners read the compact `mine-context/<label>.md` (digest + grep excerpts),
   then grep the raw JSONL only to quote verbatim. They never read a whole MB-scale
   JSONL into context.
@@ -264,7 +264,7 @@ Implemented by `scripts/weave_loop.py` (paths here are relative to this skill).
 It plans work; orc dispatches agents. After `weave-run.py batches`:
 
 ```bash
-python3 scripts/weave_loop.py init --workdir "$WD"
+python3 scripts/weave_loop.py init --workdir "$WD" --confirmation-top-n 5 --confirmation-spot-checks 3
 python3 scripts/weave_loop.py next --workdir "$WD"    # first call emits round 1
 # Dispatch loop/state.json rounds[-1].items, writing each item's exact out file.
 python3 scripts/weave_loop.py ingest --workdir "$WD" --round 1
@@ -290,10 +290,26 @@ existing key until resolved; retries are not new novelty.
 provenance, then queues `regather` for each already-mined session. It preserves
 existing bank bytes; pending questions block `next` until processed.
 
-A round is dry when there are no new keys and no unresolved claims. Pending bank
-updates or carried work prevent a dry stop. Two consecutive dry rounds set
-`DRY_STOP` and print `SYNTHESIZE`; non-dry rounds reset the streak. An empty
-confirmation round is ingested without dispatch, not substituted for missing work.
+A round is dry only when it dispatched real work and yielded no new keys or
+unresolved claims. Pending bank updates or carried work prevent a dry stop.
+After the first dry round, an empty queue makes `next` build a non-empty
+confirmation sweep: up to N prior ordinary work items by yield become `redteam`
+targets (their stable item keys), and up to K unmined or zero-finding sessions
+become `widen` targets (session labels, unmined first). The session pool includes
+`corpus-manifest.json` when present, alongside the batch plan. Brief adapters
+resolve red-team targets through `state.scheduled` to the original work and receipts.
+Both kinds use `why: "confirmation sweep"`; existing keys are skipped and
+confirmation items never seed recursive red-teams of themselves. Set positive N/K
+at init via `--confirmation-top-n` (default 5) and `--confirmation-spot-checks`
+(default 3). Counts and configuration persist in state. These are sweep widths,
+not a limit on subsequent findings-driven rounds.
+Two consecutive non-empty dry rounds, the second a confirmation sweep, set
+`DRY_STOP` with `stop_reason: "two-dry-rounds"` and print `SYNTHESIZE`.
+New evidence in confirmation resets the streak and the loop continues. `next`
+never creates an empty round; an old empty round cannot increment the streak.
+If all confirmation candidates have already been scheduled, `next` sets DRY_STOP
+with explicit `stop_reason: "confirmation-exhausted"`, also visible in `status`,
+without appending a no-op round. This is the explicit exhaustion exception.
 Synthesize only after DRY_STOP. This planner does not grant the final-boss approval
 or replace the post-synthesis Red/Blue/Red fact-check.
 Before `weave-run.py aggregate`, harvest each `loop/round-N/<key>.jsonl` as
@@ -322,7 +338,8 @@ feed shallow ones. [g3:25-29 → tree-wf-review-priorart.md:33-34,70]
 
 The planner provides one flat frontier per round. The orchestrator recipe is
 `while status == RUNNING: next → one flat parallel() over items → ingest → questions`.
-Read status after ingest; call questions only while still RUNNING. Optional
+Read status after next (which may report confirmation exhaustion) and after
+ingest; call questions only while still RUNNING. Optional
 Workflow sketch (adapter helpers run the CLI, propagate nonzero exits, read disk
 state, build briefs and check output files; this is not an installed dispatcher):
 
@@ -330,14 +347,15 @@ state, build briefs and check output files; this is not an installed dispatcher)
 await loop("init");
 while ((await readState()).status === "RUNNING") {
   await loop("next");
-  const round = (await readState()).rounds.at(-1);
-  if (round.items.length) {
-    await parallel(round.items.map(item => async () => {
-      const res = await agent(brief(item)); // file-writing miner, no return schema
-      if (res == null) throw new Error(`coverage loss: ${item.key}`);
-      await verifyOutput(item.out); // missing file aborts, never a childless leaf
-    }));
-  }
+  const state = await readState();
+  if (state.status !== "RUNNING") break;
+  const round = state.rounds.at(-1);
+  if (!round.items.length) throw new Error("empty round: coverage loss");
+  await parallel(round.items.map(item => async () => {
+    const res = await agent(brief(item)); // file-writing miner, no return schema
+    if (res == null) throw new Error(`coverage loss: ${item.key}`);
+    await verifyOutput(item.out); // missing file aborts, never a childless leaf
+  }));
   await loop("ingest", { round: round.number });
   if ((await readState()).status === "RUNNING") await loop("questions", { bank });
 }
