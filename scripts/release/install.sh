@@ -32,7 +32,7 @@ for name in releases bin; do
   [ ! -L "$prefix/$name" ] || fail "$prefix/$name must not be a symlink"
   mkdir -p "$prefix/$name"
 done
-for name in current release.json release-history; do
+for name in current release.json release-history release-prune-plan; do
   [ ! -e "$prefix/$name" ] || [ -L "$prefix/$name" ] || [ "$name" != current ] || fail 'current exists and is not a symlink'
   [ "$name" = current ] || [ ! -L "$prefix/$name" ] || fail "$name must not be a symlink"
   [ "$name" = current ] || [ ! -e "$prefix/$name" ] || [ -f "$prefix/$name" ] || fail "$name must be a regular file"
@@ -55,6 +55,8 @@ cleanup() {
 trap cleanup 0
 trap 'exit 1' 1 2 3 15
 work=$(mktemp -d "$prefix/.install-XXXXXXXX")
+installed_release=$(CDPATH='' cd -P "$prefix/current" 2>/dev/null && pwd) || installed_release=''
+running_release=$(CDPATH='' cd -P "$(dirname "$0")/../.." 2>/dev/null && pwd) || running_release=''
 
 # Parse JSON without a runtime dependency. Only selected scalar fields are
 # emitted; scan a character array so macOS awk does not repeatedly copy the
@@ -204,6 +206,35 @@ awk -F '\t' '
 while IFS="$(printf '\t')" read -r client name; do
   [ -f "$work/payload/skills/golem-powers/$name/SKILL.md" ] || fail "skill catalog entry has no SKILL.md: $name"
 done < "$work/catalog"
+# GNU -T and BSD -h both replace the symlink itself, including directory targets.
+atomic_move() { mv -fT "$1" "$2" 2> "$work/mv-error" || mv -fh "$1" "$2"; }
+replay_prune() {
+  [ -f "$prefix/release-prune-plan" ] || return 0
+  # Validate the whole journal before any deletion, including on a retry.
+  awk -F '\t' 'NF!=2 || ($1!="keep" && $1!="prune") || length($2)!=18 || $2 !~ /^[0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+$/ || seen[$2]++ {exit 1} END {if(!NR) exit 1}' "$prefix/release-prune-plan" || fail 'invalid release prune plan'
+  prune_hook_source=''
+  if [ -f "$HOME/.claude/hooks/golems-hooks-release.json" ]; then
+    json_fields "$HOME/.claude/hooks/golems-hooks-release.json" "$work/prune-hooks.tsv"
+    prune_hook_source=$(awk -F '\t' '$1=="source" {print $2}' "$work/prune-hooks.tsv")
+  fi
+  active_release=$(CDPATH='' cd -P "$prefix/current" 2>/dev/null && pwd) || active_release=''
+  : > "$work/release-history"
+  while IFS="$(printf '\t')" read -r action old; do
+    generation=$prefix/releases/$old
+    if [ "$action" = keep ] || [ "$preserve_releases" = true ] || [ "$old" = "$version" ] ||
+      [ "$generation" = "$active_release" ] || [ "$generation" = "$installed_release" ] ||
+      [ "$generation" = "$running_release" ] || [ "$generation" = "$prune_hook_source" ]; then
+      printf '%s\n' "$old" >> "$work/release-history"
+    else
+      [ ! -L "$generation" ] || fail 'refusing to prune a release symlink'
+      rm -rf "$generation" # Already-absent generations are safe to replay.
+    fi
+  done < "$prefix/release-prune-plan"
+  atomic_move "$work/release-history" "$prefix/release-history"
+  rm "$prefix/release-prune-plan"
+}
+# Recovery is independent of activation; the ordinary already-current check stays unchanged.
+replay_prune
 destination=$prefix/releases/$version
 if [ -e "$destination" ] || [ -L "$destination" ]; then
   [ -d "$destination" ] && [ ! -L "$destination" ] || fail 'existing release is not a directory'
@@ -219,8 +250,6 @@ fi
 already=false
 [ "$(readlink "$prefix/current" 2>/dev/null || :)" != "releases/$version" ] || already=true
 if [ "$already" = true ] && [ "$replace" = false ]; then printf 'golems %s already current\ncommit: %s\ntarball sha256: %s\n' "$version" "$commit" "$tarball_sha256"; exit 0; fi
-# GNU -T and BSD -h both replace the symlink itself, including directory targets.
-atomic_move() { mv -fT "$1" "$2" 2> "$work/mv-error" || mv -fh "$1" "$2"; }
 # Client hooks stay pinned to verified releases. Fail before other host writes
 # if a client receipt cannot be interpreted or its runtime is unavailable.
 hook_source='' hook_receipt=$HOME/.claude/hooks/golems-hooks-release.json
@@ -356,19 +385,19 @@ if [ "$already" = false ]; then
     atomic_move "$work/release.json" "$prefix/release.json"
   fi
   { printf '%s\n' "$version"; [ ! -f "$prefix/release-history" ] || cat "$prefix/release-history"; } | awk '!seen[$0]++' > "$work/history"
-  : > "$work/release-history"
+  : > "$work/release-prune-plan"
   retained=0
   while IFS= read -r old; do
     printf '%s\n' "$old" | awk 'length($0)!=18 || !/^[0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+$/ {exit 1}' || fail 'invalid release history'
     retained=$((retained + 1))
     if [ "$preserve_releases" = true ] || [ "$retained" -le 3 ] || [ "$prefix/releases/$old" = "$hook_source" ]; then
-      printf '%s\n' "$old" >> "$work/release-history"
+      printf 'keep\t%s\n' "$old" >> "$work/release-prune-plan"
     else
-      [ ! -L "$prefix/releases/$old" ] || fail 'refusing to prune a release symlink'
-      rm -rf "$prefix/releases/$old"
+      printf 'prune\t%s\n' "$old" >> "$work/release-prune-plan"
     fi
   done < "$work/history"
-  atomic_move "$work/release-history" "$prefix/release-history"
+  atomic_move "$work/release-prune-plan" "$prefix/release-prune-plan"
+  replay_prune
 fi
 # shellcheck disable=SC2016 # The PATH hint intentionally prints a literal $PATH.
 case :${PATH-}: in *:"$prefix/bin":*) ;; *) printf 'Add to PATH: export PATH="%s/bin:$PATH"\n' "$prefix" ;; esac
