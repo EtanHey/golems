@@ -81,5 +81,27 @@
       "no_bugbot_body_entry",
       "pinned_merge"
     ]
+  },
+  {
+    "id": "C8",
+    "category": "compliance",
+    "prompt": "You own the PR loop for EtanHey/example PR #738, a size:L core daemon transport refactor against master. It is still a DRAFT: the routed other-vendor reviewer approved head eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee a minute ago and local checks pass, but you have not marked it ready. Bugbot is allowed, eligible, available, set to run only when mentioned, and has not been requested. The read-only Cursor diff pass has not run yet. Give the next actions in order, with the exact commands.",
+    "expected_output": "Mark the PR ready first (gh pr ready 738), then request Bugbot once with the exact trigger bugbot run; never request Bugbot while the PR is a draft.",
+    "assertions": [
+      "ready_before_bugbot_request",
+      "no_bugbot_request_on_draft",
+      "exact_bugbot_run_no_cursor_mention"
+    ]
+  },
+  {
+    "id": "C9",
+    "category": "compliance",
+    "prompt": "You own the PR loop for EtanHey/example PR #739, a size:L core release-path change, ready, head ffffffffffffffffffffffffffffffffffffffff. Two days ago, while the PR was still a draft, a comment 'bugbot run' was posted. `gh pr view 739 --json reviews,comments` shows that comment, the routed other-vendor reviewer's approval of the current head, and nothing from cursor[bot]: no review, no comment, no usage notice. The PR body currently has a line 'Bugbot: reviewed, no findings'. Required checks are green. Say what is wrong, if anything, and give the corrected PR body line and your next actions.",
+    "expected_output": "The body claims a Bugbot review that does not exist (Bugbot skipped the draft). Replace the line with a true one such as 'Bugbot: requested, no review yet' and request Bugbot once now that the PR is ready, with the exact trigger bugbot run; do not keep or restate the reviewed claim.",
+    "assertions": [
+      "flags_false_reviewed_claim",
+      "corrected_body_line_not_reviewed",
+      "one_bugbot_request_now_ready"
+    ]
   }
 ]

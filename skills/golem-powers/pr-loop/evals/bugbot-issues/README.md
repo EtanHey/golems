@@ -48,6 +48,8 @@ assertions pass. C5 requires a proposed read-only `cursor-agent` command without
 ordered before exact-head merge checks, plus a `Cursor pass:` body record with the supplied
 head and finding count or an unavailable reason. C6 requires exactly `bugbot run` as the
 trigger, with no `@cursor` mention. C7 requires no Cursor command or Cursor body entry. C5 predates the `--trust --mode ask` flags (Bugbot finding on #1211), so its recordings do not score them; the read-only flags are guarded statically by `scripts/tests/test_frontend_proof_guidance.py::test_cursor_endpoint_pass_is_enforced_read_only`.
+C8 (draft, eligible) requires `gh pr ready` ordered before the one `bugbot run` request and no Bugbot request while the PR is a draft.
+C9 (a body line claims a Bugbot review that the PR record does not show) requires the response to say the claim is unsupported, to give a corrected body line that does not say reviewed, and to request Bugbot once now that the PR is ready.
 Keep quotes and answer hashes beside the manual judgments so
 the lead-routed reviewer can inspect them. No paid judge is required.
 
