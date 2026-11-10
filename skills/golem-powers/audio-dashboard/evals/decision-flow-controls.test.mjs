@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { boot, scene, selectText } from "./decision-flow-harness.mjs";
 
-const decisions = ["a", "b", "c"].map(id => ({ id, title: id.toUpperCase(), body: "A briefing to cite.", options: ["Keep", "Change"], sceneIds: [id + "1", id + "2"], checklist: [{ title: "Check", items: ["First", "Second"] }] }));
+const decisions = ["a", "b", "c"].map(id => ({ id, title: id.toUpperCase(), body: "A briefing to cite.", ask: "A briefing to cite.", options: ["Keep", "Change"], sceneIds: [id + "1", id + "2"], checklist: [{ title: "Check", items: ["First", "Second"] }] }));
 function setup(touch = false, runtimeTransform) {
   let now = 0;
   const timers = [], run = boot({ decisions, scenes: decisions.flatMap(d => d.sceneIds.map(id => scene(id))), touch, runtimeTransform, clock: { now: () => now }, schedule: fn => timers.push(fn) });

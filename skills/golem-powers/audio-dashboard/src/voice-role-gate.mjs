@@ -63,6 +63,12 @@ export const VOICE_PERSON_BY_ROLE = Object.freeze({
 /** Only these roles carry a voice-identity claim; "default" and friends do not. */
 const GATED_ROLES = Object.freeze(["host", "expert"]);
 
+/** The scene's gated role ("host" | "expert"), or "" when it carries no voice-identity claim. */
+export function sceneVoiceRole(scene) {
+  const role = String(scene?.role ?? "").trim().toLowerCase();
+  return GATED_ROLES.includes(role) ? role : "";
+}
+
 /**
  * Voice profile ids are `<person>-<variant>` by convention (examplechannel-c4s, ben-c1).
  * Returns the lowercased person segment, or "" when there is nothing to read.

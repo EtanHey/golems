@@ -11,8 +11,8 @@ const cell = designTestCell(), skill = fileURLToPath(new URL('../', import.meta.
 const short = 'The local build is ready for review.';
 const long = short + ' The release still needs account verification. The operator must compare the retained evidence before publishing. A successful build alone does not prove delivery.';
 const label = 'Audio is a summary of this card';
-function fixture(body, scripts = [short], extra = {}) {
-  const scenes = scripts.map((script, i) => ({ id: `s${i}`, role: `fixture-${i}`, title: 'Narration', script, audioWav: 'fixture.wav', duration: 1,
+function fixture(body, scripts = [short], { roles = [], ...extra } = {}) {
+  const scenes = scripts.map((script, i) => ({ id: `s${i}`, role: roles[i] ?? `fixture-${i}`, title: 'Narration', script, audioWav: 'fixture.wav', duration: 1,
     words: script.split(/\s+/).map((word, j, all) => ({ word, start: j / all.length, end: (j + 1) / all.length })) }));
   const decisions = [{ id: 'card', title: 'Review this card', body, sceneIds: scenes.map(s => s.id), ...extra }];
   return { scenes, decisions };
@@ -50,7 +50,7 @@ for (const [name, body, scripts, extra] of [
   ['owned scripts in order', long, [short, long.slice(short.length).trim()], {}],
   ['explicit summary', long, [short], { audioSummary: true }],
   ['summary field', long, [short], { summary: 'Build review overview.' }],
-  ['excluded title sources controls options and code', short + '\n```sh\ngit status\n```', [short], { options: ['Approve', 'Wait'], sources: [{ label: 'Full evidence', url: 'https://example.com/evidence' }], copyPrompt: { label: 'Research', text: 'Find more context.' } }],
+  ['excluded title sources controls options and code', short + '\n```sh\ngit status\n```', ['The local build is ready', 'for review.'], { roles: ['host', 'expert'], ask: 'The local build is ready', options: ['Approve', 'Wait'], sources: [{ label: 'Full evidence', url: 'https://example.com/evidence' }], copyPrompt: { label: 'Research', text: 'Find more context.' } }],
 ]) {
   test(`BUILD passes ${name}`, () => {
     const { result, outputPath, row } = build(body, scripts, extra);

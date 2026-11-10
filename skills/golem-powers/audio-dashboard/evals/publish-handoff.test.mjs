@@ -25,18 +25,21 @@ function expectHandoffKeys(handoff) {
 }
 function hostedJob(testCell) {
   const jobDir = mkdtempSync(path.join(testCell.root, 'handoff-job-'));
-  const seg = path.join(jobDir, 'segments/one'); mkdirSync(seg, { recursive: true });
-  const wav = path.join(seg, 'one.wav'), mp3 = path.join(seg, 'one.mp3');
-  for (const flags of [['-f', 'lavfi', '-i', 'sine=frequency=140:duration=1', wav], ['-i', wav, mp3]]) {
-    const encoded = spawnSync('ffmpeg', ['-v', 'error', ...flags]); expect(encoded.status).toBe(0);
+  // A decision card has a host question and an expert answer (DECISION_SINGLE_VOICE).
+  const wavs = {};
+  for (const [id, word, hz] of [['one', 'real', 140], ['two', 'timing', 180]]) {
+    const seg = path.join(jobDir, 'segments', id); mkdirSync(seg, { recursive: true });
+    const wav = wavs[id] = path.join(seg, `${id}.wav`), mp3 = path.join(seg, `${id}.mp3`);
+    for (const flags of [['-f', 'lavfi', '-i', `sine=frequency=${hz}:duration=1`, wav], ['-i', wav, mp3]]) {
+      const encoded = spawnSync('ffmpeg', ['-v', 'error', ...flags]); expect(encoded.status).toBe(0);
+    }
+    for (const file of ['words.json', 'words.raw.json']) writeFileSync(path.join(seg, file), JSON.stringify([{ word, start: 0.05, end: 0.8 }]));
   }
-  for (const file of ['words.json', 'words.raw.json']) writeFileSync(path.join(seg, file), JSON.stringify([
-    { word: 'real', start: 0.05, end: 0.4 }, { word: 'timing', start: 0.45, end: 0.8 }]));
   const baselinePath = path.join(jobDir, 'accepted-design.json'); writeFileSync(baselinePath, '{"accepted":true}');
   const outputPath = path.join(jobDir, 'docs.local/dashboards/example.html'), specPath = path.join(jobDir, 'job.json');
   writeFileSync(specPath, JSON.stringify({ id: 'example', design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, series: 'isolated-handoff-fixture', type: 'decision-flow', outputPath,
     acceptedBaseline: { path: baselinePath, sha256: sha256(readFileSync(baselinePath)) },
-    scenes: [{ id: 'one', script: 'real timing', audioWav: wav }], decisions: [{ id: 'd', title: 'Decision', body: 'real timing', sources: [{ label: 'guide', url: 'https://example.com/guide' }], sceneIds: ['one'], options: ['Keep', 'Change'], checklist: ['First', 'Second'] }] }));
+    scenes: [{ id: 'one', role: 'host', script: 'real', audioWav: wavs.one }, { id: 'two', role: 'expert', script: 'timing', audioWav: wavs.two }], decisions: [{ id: 'd', title: 'Decision', body: 'real timing', ask: 'real', sources: [{ label: 'guide', url: 'https://example.com/guide' }], sceneIds: ['one', 'two'], options: ['Keep', 'Change'], checklist: ['First', 'Second'] }] }));
   return { jobDir, outputPath, specPath };
 }
 (mediaTools ? test : test.skip)('real BUILD and QA produce a handoff; only delivery receipt earns PASS', () => {
