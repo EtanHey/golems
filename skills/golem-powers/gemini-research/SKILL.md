@@ -1,13 +1,13 @@
 ---
 name: gemini-research
-description: "Deep research, compare options: Gemini Deep Research, NotebookLM. NOT for Exa web search, drive-filing or report links."
+description: "Deep research, compare options: Gemini Deep Research. NOT for Exa web search, drive-filing or report links."
 ---
 
-# Gemini Deep Research — MCP-Native Workflow
+# Gemini Deep Research
 
-Create notebooks, add sources, run research, query content, and generate artifacts using the NotebookLM MCP server (`mcp__notebooklm-mcp__*`). This is a direct API approach — no browser automation needed.
+Default: prepare a grounded prompt for Gemini Deep Research at gemini.google.com.
 
-Triggers on: gemini research, Gemini Deep Research, NotebookLM, notebook research, add sources to notebook, generate podcast, create audio overview, study materials, slides, quizzes, and source-grounded reports.
+Triggers on: gemini research, Gemini Deep Research, deep research, compare research options.
 
 > **🔑 DRIVE-WORKSPACE RULE (Etan, standing — never violate):** Etan's Gemini has his Google Drive workspace CONNECTED. Every deep-research prompt must REFERENCE the relevant Google Doc(s) by NAME (e.g. *"ground this in my 'Context Strategy' doc in my Drive"*) so Gemini pulls them itself via the Drive connector. **NEVER instruct Etan to attach/upload files** — he should never have to attach anything. Reference doc names, not attachments.
 
@@ -38,52 +38,28 @@ Include one line in the hand-off to Etan: "Before Start Research, check that Dri
 is on as a Deep Research source so it reads the named grounding docs."
 Keep the existing grounding and prompt-author START/EDIT gates below.
 
-## ROUTING — Three Gemini/NotebookLM UIs (READ FIRST)
+## ROUTING — Gemini Deep Research by default
 
-**This skill owns TWO of three distinct Gemini research UIs.** Picking the wrong one silently burns a session — they look similar but have incompatible prompting styles.
+- Research and comparisons → **gemini.google.com → Deep Research**. Use a structured prompt, review the generated plan, then obtain the prompt author's START / EDIT verdict.
+- Quick lookups or summaries of content already in Drive → `/braindrive`.
+- **NotebookLM on request:** only for an explicit notebook, podcast/audio overview, slides or quizzes request, read [the opt-in workflows](references/notebooklm-workflows.md).
 
-| UI | Access | Use when | Prompt style | Skill |
-|---|---|---|---|---|
-| **Brain Drive side-panel Gemini** | drive.google.com → "Ask Gemini" button | Quick lookups across files ALREADY in Drive, session mining, folder summaries | **Short** (3–8 lines), `@filename` / `@folder` syntax, one question at a time, sequential chains | **/braindrive** |
-| **Gemini Deep Research** (standalone UI) | gemini.google.com → "Deep Research" mode | Broad WEB research, one-shot comprehensive synthesis, plan-review editable before execution | **Long structured prompts fine** (1000+ words). Plan-review → Edit → Start Research. Model tier: Fast / Thinking / Pro 3.1. Drive connector. | **/gemini-research** (§ below) |
-| **NotebookLM Deep Research** | notebooklm.google.com OR `mcp__notebooklm-mcp__*` | Persistent notebook with curated sources, repeat queries, artifacts (audio / slides / quizzes / reports) | API-first via MCP. `notebook_create` + `source_add` + `research_start(mode="deep")`. Best when revisiting same sources. | **/gemini-research** (default workflow) |
+## Default workflow: Gemini Deep Research
 
-**Decision tree:**
-- Content is ALREADY in Drive → **Brain Drive side panel** (`/braindrive`)
-- Need broad WEB research, one-shot → **gemini.google.com Deep Research** (see "Gemini Deep Research (Standalone UI)" section below)
-- Need persistent notebook + artifacts → **NotebookLM MCP** (rest of this skill)
+Drive remains the source of truth for project context. Use the preparation receipt's exact document names from `Brain Drive/03_RESEARCH/Active/<project>/context/`; Gemini reads them through its connected Drive workspace. Number context files per `skills/golem-powers/_shared/research/context-numbering.md`.
 
-**Anti-patterns observed (2026-04-11):** a 1800-word structured prompt wasted on the side panel (truncated); a 5-line short prompt wasted on gemini.google.com Deep Research (missed context); NotebookLM MCP setup run for a task that only needed a 3-line side-panel query. Match the prompt length and setup cost to the UI.
+**Prompt template:** Fill [references/prompt-template.md](references/prompt-template.md): named verified-findings + struck-claims grounding, owner asks verbatim, evidence against, DOCUMENTED / OBSERVED / CLAIMED / PROPOSED / TARGET labels, sourced measurements and two independent bias checks. Web-only research uses the template's explicit N/A branch. Do not emit an unfilled template.
 
-## Gemini Deep Research (Standalone UI at gemini.google.com)
-
-**Separate from NotebookLM.** Distinct interaction model. Use this when you need broad WEB research with source gathering and a plan-review flow BEFORE the research runs.
-
-| Feature | Details |
-|---|---|
-| **Access** | gemini.google.com → model picker → "Deep Research" mode |
-| **Model tier** | Fast (fewest sources, minutes) / Thinking (deeper, ~5 min) / Pro 3.1 (most comprehensive, 10–15 min) |
-| **Prompt style** | **Long structured prompts encouraged.** 1000+ words with sections, constraints, and desired output format all work. The research planner reads the whole thing. |
-| **Flow** | Paste prompt → Gemini produces a research PLAN → **review + Edit the plan** → **Start Research** → wait → read report |
-| **Drive connector** | Etan's Drive workspace is **already connected**. The prompt must REFERENCE the grounding doc(s) by NAME (Gemini pulls them itself). NEVER tell Etan to attach/upload — see the DRIVE-WORKSPACE RULE at the top and the emit-gate below. |
-| **Output** | Long-form report with inline citations. Exportable to Google Doc. |
-
-**When to use gemini.google.com Deep Research vs NotebookLM:**
-- **gemini.google.com** → one-shot broad web research, won't revisit, want the plan-review step, want to edit the research plan before it runs
-- **NotebookLM** → persistent notebook, curated sources, repeat queries, generate artifacts (audio overview, slides, quizzes, etc.)
-
-**Prompt template (Gemini and NotebookLM):** Fill [references/prompt-template.md](references/prompt-template.md): named verified-findings + struck-claims grounding, owner asks verbatim, evidence against, DOCUMENTED / OBSERVED / CLAIMED / PROPOSED / TARGET labels, sourced measurements and two independent bias checks. Web-only research uses the template's explicit N/A branch. Do not emit an unfilled template.
-
-Before emitting or firing, validate the author record and produce the researcher text (also enforced by `drive-sync.sh` before notebook creation). Exit nonzero means rewrite and rerun; a pass proves sections contain the required instruction terms and review records, not that their claims are true. Free-text sections need a phrase, not a single token:
+Before emitting or firing, validate the author record and produce the researcher text. Exit nonzero means rewrite and rerun; a pass proves sections contain the required instruction terms and review records, not that their claims are true. Free-text sections need a phrase, not a single token:
 
 ```bash
 node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --emit /path/to/R{NN}-prompt.md > /path/to/R{NN}-research.md
 ```
 
 Keep the author record locally. Paste/send only the emitted `-research.md` text
-to Gemini/NotebookLM, including `research_start` queries; it excludes the entire
+to Gemini Deep Research; it excludes the entire
 author-only `# Pre-fire checks` section. Do not send reviewer identities or prep
-instructions. The wrapper accepts the author record and strips prep itself.
+instructions.
 
 ### 🔒 EMIT-GATE — Drive-Workspace compliance (BLOCKING — run before emitting ANY prompt)
 
@@ -127,155 +103,15 @@ dispatch records at dispatch time:
 | Field | Example |
 |-------|---------|
 | `harvest_owner` | `@brainlayerClaude-LEAD` |
-| `harvest_trigger` | `research_status complete` / Drive export lands / Etan says done |
+| `harvest_trigger` | Drive export lands / Etan says done |
 | `export_route` | `Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-gemini-result.md` → brain_store |
 
-Includes researches **Etan fires himself** in gemini.google.com or NotebookLM UI
+Includes researches **Etan fires himself** in gemini.google.com
 (fire=Etan standing rule) — adapters name who harvests and where results export back
 to the fleet. Research without a harvest path = **parked**, not done.
 
 **Anti-patterns:**
 - **Telling Etan to attach/upload a doc** — his Drive workspace is CONNECTED; the prompt must reference the doc by NAME so Gemini pulls it itself. This is gate-enforced (`drive-grounding-gate.sh`) — a prompt with attach/upload language does not get emitted.
 - Skipping the prompt-author START/EDIT gate → the research runs on the raw plan, often with blind spots you could have caught
-- Treating this like NotebookLM — it's NOT a persistent notebook, the research run is ephemeral unless you export
+- Leaving results unexported when they need to persist in Drive
 - Using for content already in Drive — that's /braindrive territory, cheaper and faster
-- Using `gemini.google.com` for a task that will need multiple follow-up queries on the same sources — use NotebookLM instead
-
-## Quick Reference
-
-| Task | Tool | Key Args |
-|------|------|----------|
-| Create notebook | `notebook_create` | `title` |
-| Add URL/YouTube | `source_add` | `source_type="url"`, `url=` or `urls=[]` |
-| Add local file | `source_add` | `source_type="file"`, `file_path=` |
-| Add text | `source_add` | `source_type="text"`, `text=`, `title=` |
-| Add Drive doc | `source_add` | `source_type="drive"`, `document_id=`, `doc_type=` |
-| Query notebook | `notebook_query` | `notebook_id`, `query` |
-| Deep research | `research_start` | `query`, `mode="deep"`, `source="web"` |
-| Fast research | `research_start` | `query`, `mode="fast"`, `source="web"` |
-| Drive search | `research_start` | `query`, `source="drive"` |
-| Create podcast | `studio_create` | `artifact_type="audio"`, `confirm=True` |
-| Create slides | `studio_create` | `artifact_type="slide_deck"`, `confirm=True` |
-| Create report | `studio_create` | `artifact_type="report"`, `confirm=True` |
-| Download artifact | `download_artifact` | `artifact_type=`, `output_path=` |
-| Set chat instructions | `chat_configure` | `goal="custom"`, `custom_prompt=` |
-
-## Auth
-
-If you get authentication errors, run `nlm login` via Bash first — this is the automated method. Only use `save_auth_tokens` as a fallback if the CLI fails. To switch Google accounts: `nlm login switch <profile>`.
-
-## Core Workflows
-
-### Default Workflow: Drive-Sync Research
-
-Drive is the source of truth. NotebookLM consumes the same Drive project that `/claude-desktop-research` uses.
-
-```
-1. Verify account first (expects RESEARCH_ACCOUNT, else the one in ~/.config/research-lifecycle/research.env):
-   bash skills/golem-powers/_shared/research/verify-account.sh
-
-2. Ensure Drive folders exist:
-   python3 skills/golem-powers/_shared/research/drive-paths.py ensure-project-folders <project>
-
-3. Resolve notebook state:
-   ~/.golems/research-state.json maps <project> -> notebook_id
-   - reuse the notebook when it already exists
-   - create a new notebook when the project is new
-
-4. Load Drive context into NotebookLM:
-   - list context files from Brain Drive/03_RESEARCH/Active/<project>/context/
-   - add each file into the notebook
-   - for raw markdown/text files, download from Drive then upload as file sources
-
-5. Run the prompt-preflight.mjs gate above, then Drive-backed research:
-   research_start(query=<emitted researcher text, without pre-fire checks>, source="drive", notebook_id=<id>)
-   - if the tool/UI returns a research PLAN before execution, return that PLAN
-     to the prompt author and wait for `START` / `EDIT` before firing
-   research_status(notebook_id, task_id=<task>, max_wait=60)
-   research_import(notebook_id, task_id=<task>) when sources are found
-
-6. Query the notebook for the synthesized answer
-
-7. Write the result to:
-   Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-gemini-result.md
-   (uploadFile with mimeType="text/markdown"; never content-sniffed)
-```
-
-Wrapper (live mode needs both values, and stops with an error if either is unset):
-
-```bash
-export GEMINI_RESEARCH_PROFILE=<nlm profile>   # the name you gave `nlm login --profile`
-export RESEARCH_ACCOUNT=<google account>       # optional when ~/.config/research-lifecycle/research.env has RESEARCH_ACCOUNT=<address>
-bash skills/golem-powers/gemini-research/scripts/drive-sync.sh --project cmux --prompt R36-R38-cmux-mobile-prompts.md
-```
-
-### Notebook workflows and patterns
-
-Create a notebook, run Deep Research, generate artifacts, manage sources, keep notes, share, plus
-the end-to-end pipeline, the proven 96-file local-context pattern and batch source addition:
-[references/notebooklm-workflows.md](references/notebooklm-workflows.md).
-Number local context files per the shared scheme in
-`skills/golem-powers/_shared/research/context-numbering.md` (never restate it here).
-
-## Critical Gotchas (from real session failures, April 4 2026)
-
-### Sources ≠ Prompts (NP1 — #1 mistake)
-
-**Sources are CONTEXT. Queries are QUESTIONS.** Never upload a research prompt as a source.
-
-- A research prompt (e.g., "Investigate BrainLayer search improvements") is a QUERY you send to `notebook_query` or `research_start`
-- Context files (architecture docs, code samples, prior research) are SOURCES you upload via `source_add`
-- Evidence: orcClaude uploaded R75 research prompts as NotebookLM sources. User: "Why did you upload this file? That's something you send to research on Notebook LM."
-
-### Account Verification Before Creation (NP4)
-
-**Check which Google account the MCP is connected to BEFORE creating notebooks.**
-
-The MCP may be connected to a different Google account than the one with the AI Pro subscription. Evidence: notebook created on `maintainer@example.com` instead of `research-account@example.com`, causing sources to silently fail. To check: `server_info()` or `notebook_list()` — verify the account matches the intended user. To switch: `nlm login switch <profile>` (or `nlm login --clear --profile <name>` for fresh auth).
-
-### File Type Restrictions (NP3 — complete list)
-
-| Accepted | Blocked |
-|----------|---------|
-| pdf, txt, md, docx, csv, pptx, epub, images, audio/video | **.py, .json, .swift, .yaml, .ts, .js** |
-
-**Workaround for blocked types:** Rename to `.txt` (e.g., `search.py` → `search.py.txt`) or use `source_type="text"` via MCP to paste file contents directly. Evidence: 52 code files had to be renamed during April 4 session.
-
-### Deep Research — shared engine, different UIs (NP5 — updated 2026-04-11)
-
-NotebookLM Deep Research and gemini.google.com Deep Research share the underlying research engine, but they are **distinct UIs with different interaction models**. The old claim "you never need to go to gemini.google.com separately" was wrong — each UI has real advantages:
-
-| | NotebookLM Deep Research | gemini.google.com Deep Research |
-|---|---|---|
-| **Access** | `research_start(mode="deep")` via MCP, or notebooklm.google.com | gemini.google.com → Deep Research mode |
-| **Persistence** | Runs into a persistent notebook — sources stay, can re-query | Ephemeral run, export to Drive/Doc to keep |
-| **Plan review** | No plan-review step | **Plan-review → Edit → Start Research** flow |
-| **Model tier** | Single mode | **Fast / Thinking / Pro 3.1** selectable |
-| **Prompt style** | Shorter queries (character limit on "Search the web" bar) | Long structured prompts fine |
-| **Artifacts** | Audio / slides / quiz / report generation after import | Long-form report only (export to Doc) |
-| **Best for** | Repeat queries on curated sources, artifact generation | One-shot broad web research with plan-review |
-
-- **NotebookLM Fast:** ~30s, ~10 sources (quick directional checks)
-- **NotebookLM Deep:** ~5 min, ~40 sources (comprehensive, web-crawling)
-- **gemini.google.com Pro 3.1:** 10–15 min (most comprehensive single run)
-
-**Long-prompt workaround for NotebookLM:** The "Search the web" bar has character limits. Add the prompt as a `note()` in the notebook, then send a shorter query referencing it. Or use gemini.google.com Deep Research instead (no char limit).
-
-**Brain Drive side panel is a THIRD UI** — see the "ROUTING" section at the top of this skill. It's NOT Deep Research — it's cross-file summarization against files already in Drive. Owned by `/braindrive`.
-
-## Important Notes
-
-- **Source limits:** 50 sources per notebook, 500K words total. Plan source selection carefully.
-- **Confirm required:** Destructive operations (delete, share, studio_create) require `confirm=True`. Always ask the user before confirming.
-- **Studio polling:** After `studio_create`, the artifact generates asynchronously. Poll `studio_status` — audio takes 1-3 min, video takes 3-10 min.
-- **Query vs Research:** `notebook_query` asks about EXISTING sources in the notebook. `research_start` searches the WEB or DRIVE for NEW sources.
-- **File types:** See "File Type Restrictions" section above for complete list and workarounds.
-- **Drive doc types:** When adding Drive docs, specify `doc_type`: doc, slides, sheets, or pdf.
-- **Language:** Most tools accept a `language` parameter (BCP-47 code: en, he, es, fr, de, ja).
-- **Silent failures:** `source_add` may return success but sources don't persist if the MCP is connected to the wrong Google account. Always verify after upload.
-
-## Workflows and references
-
-- [references/notebooklm-workflows.md](references/notebooklm-workflows.md): every notebook workflow
-  (create, Deep Research, artifacts, sources, notes, sharing) and the common patterns.
-- Drive sync: `scripts/drive-sync.sh` / `scripts/drive_sync.py` (tests in `scripts/__tests__/`).

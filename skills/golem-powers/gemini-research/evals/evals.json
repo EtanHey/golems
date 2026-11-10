@@ -111,6 +111,32 @@
         "No invented project doc or attachment request"
       ],
       "measurement_status": "Planned; no live agent behavior measurement in this change"
+    },
+    {
+      "id": "RT01",
+      "name": "ordinary-research-default-gemini",
+      "category": "compliance",
+      "prompt": "Research local speech recognition options for VoiceLayer using Gemini Deep Research.",
+      "expected_behavior": "Runs grounding preparation first, then prepares the validated prompt for Gemini Deep Research at gemini.google.com without notebook setup.",
+      "assertions": [
+        "Uses Gemini Deep Research at gemini.google.com",
+        "Makes no NotebookLM calls and does not run drive-sync.sh",
+        "Preserves grounding receipt, preflight, Drive gate and START / EDIT requirements"
+      ],
+      "measurement_status": "Planned; no paid live calls authorized"
+    },
+    {
+      "id": "RT02",
+      "name": "explicit-audio-overview-opt-in",
+      "category": "compliance",
+      "prompt": "Make me a NotebookLM audio overview from my research sources.",
+      "expected_behavior": "Reads the opt-in reference and may use NotebookLM to create the requested audio overview.",
+      "assertions": [
+        "Reads references/notebooklm-workflows.md",
+        "May create or reuse a notebook and generate audio with studio_create",
+        "Does not force the request into a Gemini text-only report"
+      ],
+      "measurement_status": "Planned; no paid live calls authorized"
     }
   ],
   "structural_scorer": "skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs"

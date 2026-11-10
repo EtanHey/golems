@@ -106,7 +106,8 @@ test("every pinned exception names a real skill", () => {
 test("Gemini deep research requests name the research skill and exclude quick search/filing", () => {
   const description = parseDescription(path.join(skillsDir, "gemini-research/SKILL.md"));
   expect(description).toMatch(/Gemini Deep Research/);
-  expect(description).toContain("NotebookLM");
+  // NotebookLM left the default flow (Etan, 2026-11-10: "Drop it"); it is an opt-in reference, not a trigger.
+  expect(description).not.toContain("NotebookLM");
   expect(description).toContain("compare options");
   expect(description).not.toContain("docs link");
   expect(description).toContain("or report links");
