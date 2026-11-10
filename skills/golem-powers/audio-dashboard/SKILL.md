@@ -126,8 +126,9 @@ details; letter/number options he couldn't decode; a single voice saying 'look b
   options or a checklist and no `ask`) and `ASK_NOT_SPOKEN`.
 - **Option and checklist labels are plain words a listener understands without a
   legend; no letter or number codes.** BUILD rejects `OPTION_LABEL_CODE` when a label,
-  checklist item or group title begins with a code (`A: …`, `R2 · …`, `1) …`) or maps
-  codes (`B3→J6`). An opening "No." ("No. Keep it") is a word, not a code. `value` stays free-form.
+  checklist item or group title begins with a code (a single letter, one or two letters
+  with one to three digits, or digits alone, then a separator: `A: …`, `R2 · …`, `1) …`) or maps
+  codes (`B3→J6`); two letters with no digit are a word (`No: keep it`, `OK: ship it`). `value` stays free-form.
 - **Every decision card has the host ask and the expert explain; the audio must make
   sense with the screen off, so it never says "below", "above" or "tick".** BUILD rejects
   `DECISION_SINGLE_VOICE` (a decision with options or a checklist lacking a host or an

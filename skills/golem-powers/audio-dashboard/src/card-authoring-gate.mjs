@@ -7,7 +7,8 @@
  *
  *   ASK_MISSING           a decision with options or a checklist has no `ask`
  *   ASK_NOT_SPOKEN        the `ask` is not an ordered subsequence of one of its own scene scripts
- *   OPTION_LABEL_CODE     an option label, checklist item or group title begins with a bare code,
+ *   OPTION_LABEL_CODE     an option label, checklist item or group title begins with a bare code
+ *                         (one letter, 1-2 letters + 1-3 digits, or digits, then a separator),
  *                         or maps one code to another anywhere ("B3→J6", "C2+J14")
  *   DECISION_SINGLE_VOICE a decision with options or a checklist lacks a host or an expert scene
  *   SCREEN_REFERENCE      a scene script points at the screen ("below", "tick", "on screen", ...)
@@ -20,11 +21,12 @@ import { sceneVoiceRole } from "./voice-role-gate.mjs";
 /** Words and phrases that only make sense while looking at the page. Whole words, any case. */
 export const SCREEN_REFERENCE_WORDS = Object.freeze(["below", "above", "tick", "ticked", "scroll", "on screen", "on this card"]);
 
-// A bare code: one or two letters with up to three digits, or digits alone, then a separator.
+// A bare code prefix (lead ruling, r2): a single letter, one or two letters followed by one to
+// three digits, or digits alone; then a separator. Two letters with no digit are a word, not a code
+// ("No: keep it", "OK: ship it", "Go: start now").
 // "." and "-" count only when followed by whitespace ("A. Move", "1 - Merge"), so "Re-run",
 // "1.5x" and "No." stay words; ":" never before a digit, so "10:30" stays a time.
-// A sentence opening with the word "No." ("No. Keep it") is ordinary prose, never a code.
-const LABEL_CODE = /^\s*(?![Nn][Oo]\.(?:\s|$))(?:[A-Za-z]{1,2}\d{0,3}|\d+)\s*(?:[·)–—→]|:(?!\d)|[.-](?=\s))/;
+const LABEL_CODE = /^\s*(?:[A-Za-z]{1,2}\d{1,3}|[A-Za-z]|\d+)\s*(?:[·)–—→]|:(?!\d)|[.-](?=\s))/;
 
 // A code-to-code mapping anywhere in a label ("7 merges: B3→J6, C2+J14") is the same legend problem.
 const CODE_PAIR = /(?<![\p{L}\p{N}])[A-Za-z]{1,2}\d{1,3}\s*[→+]\s*[A-Za-z]{1,2}\d{1,3}(?![\p{L}\p{N}])/u;

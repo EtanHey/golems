@@ -89,7 +89,9 @@ source, never a served tree; author `scenes` and `decisions` using SKILL.md's jo
     (`audioSummary: true` or a `summary`) is the exception: its body prose is not the
     narration, so the sheet shows it in full.
   - Option and checklist labels are plain words a listener understands without a legend;
-    no letter or number codes ("A:", "R2 ·", "1)", "B3→J6").
+    no letter or number codes: a label may not start with a single letter, one or two letters
+    with digits, or digits alone, then a separator ("A:", "R2 ·", "1)"), nor map codes ("B3→J6");
+    two-letter words such as "No:" or "OK:" are fine.
   - Every decision card has the host ask and the expert explain. The audio must make sense
     with the screen off, so no script says any word in `SCREEN_REFERENCE_WORDS`
     (`src/card-authoring-gate.mjs`): below, above, tick, ticked, scroll, on screen,

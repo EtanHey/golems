@@ -53,19 +53,27 @@ test('ASK_NOT_SPOKEN: the ask must be said, in order, by one of the card\'s own 
 });
 
 test('OPTION_LABEL_CODE: labels that begin with a bare code are rejected; ordinary words pass', () => {
-  for (const label of ['A: move pages', 'B3→J6', 'R2 · Done means', 'T10 · Do offline', '1) Merge', '7 merges: B3→J6, C1→J2', 'C2+J14 into one', 'C2+J14 merged', 'A. Move', '2. Merge']) {
-    expect(labelHasCode(label), label).toBe(true);
+  // Lead ruling (r2): a code prefix is one letter, 1-2 letters + 1-3 digits, or digits; two letters
+  // with no digit are a word. Code pairs anywhere in a label stay codes.
+  const REJECT = ['A: move pages', 'B3→J6', 'R2 · Done means', 'T10 · Do offline', '1) Merge', '7 merges: B3→J6, C1→J2',
+    'C2+J14 merged', 'C2+J14 into one', 'No5: Keep', 'NO5 · Keep', 'N. Keep', 'A. Move', '2. Merge', 'AB1: variant'];
+  const PASS = ['No: keep it', 'NO: KEEP IT', 'No. Keep it', 'no. keep it', 'OK: ship it', 'Go: start now', 'No', 'No.',
+    'Keep all four', 'Use it', 'A new page', '3 merges and 2 splits', 'Re-run', 'Re-run the tests', '1.5x speed', '1.5x faster',
+    '10:30 standup', 'Start at 10:30', 'Option A', 'I agree', 'OK', 'A/B test it', 'Plan B', 'Wait for Etan', '2 of 3 pass'];
+  for (const label of REJECT) expect(labelHasCode(label), label).toBe(true);
+  for (const label of PASS) expect(labelHasCode(label), label).toBe(false);
+  // Through the full gate, as option labels and as checklist group titles and items.
+  for (const label of REJECT) {
+    expect(metrics(job({ options: [label, 'Keep it'] })), label).toEqual(['OPTION_LABEL_CODE']);
+    expect(metrics(job({ options: undefined, checklist: [{ title: label, items: [label] }] })), label).toEqual(['OPTION_LABEL_CODE', 'OPTION_LABEL_CODE']);
   }
-  // r1 (B1): "No. Keep it" is an ordinary sentence; plus the reviewer's other pass rows.
-  for (const label of ['Keep all four', 'Use it', 'A new page', '3 merges and 2 splits', 'No', 'No.', 'No. Keep it', 'no. keep it', 'Re-run the tests', 'Re-run',
-    '1.5x speed', '1.5x faster', '10:30 standup', 'Start at 10:30', 'Option A', 'I agree', 'OK', 'A/B test it', 'Plan B', 'Wait for Etan', '2 of 3 pass']) {
-    expect(labelHasCode(label), label).toBe(false);
+  for (const label of PASS) {
+    expect(metrics(job({ options: [label, 'Keep it'] })), label).toEqual([]);
+    expect(metrics(job({ options: undefined, checklist: [{ title: label, items: [label] }] })), label).toEqual([]);
   }
   expect(metrics(job({ options: ['A: move pages', { value: 'b', label: 'B: keep as is' }] }))).toEqual(['OPTION_LABEL_CODE', 'OPTION_LABEL_CODE']);
   expect(metrics(job({ options: undefined, checklist: [{ title: 'T1 · Asks', items: ['R2 · Done means', 'Keep it'] }] })))
     .toEqual(['OPTION_LABEL_CODE', 'OPTION_LABEL_CODE']);
-  expect(metrics(job({ options: ['No. Keep it', 'Yes. Move it'] }))).toEqual([]);
-  expect(metrics(job({ options: undefined, checklist: [{ title: 'No. Not yet', items: ['No. Keep it'] }] }))).toEqual([]);
   // `value` stays free-form.
   expect(metrics(job({ options: [{ value: 'A1', label: 'Move it' }, { value: 'B2', label: 'Keep it' }] }))).toEqual([]);
 });
