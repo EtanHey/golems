@@ -36,14 +36,21 @@ export const renderInlineProse = text => renderProse(String(text ?? '').replace(
 // (the decision-flow answer sheet, which never repeats the narration).
 export function renderCardBody(text = '', { prose: withProse = true } = {}) {
   const source = String(text ?? '').replace(/\r\n?/g, '\n');
-  const fence = /^```[^\n`]*\n([\s\S]*?)\n```[ \t]*(?=\n|$)/gm;
+  const fence = /^```([^\n`]*)\n([\s\S]*?)\n```[ \t]*(?=\n|$)/gm;
   let html = '', offset = 0;
   const prose = text => text.split(/\n+/).filter(line => line.trim())
     .map(line => withProse ? `<p>${renderProse(line)}</p>` : renderProse(line, { linksOnly: true }))
     .filter(Boolean).map(line => withProse ? line : `<p class="df-body-links">${line}</p>`).join('');
   for (const match of source.matchAll(fence)) {
     html += prose(source.slice(offset, match.index));
-    html += `<div class="ad-copy-block"><pre><code>${escapeHtml(match[1].replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g, ''))}</code></pre><button type="button" data-copy-block aria-label="Copy code block">Copy</button><span role="status" aria-live="polite"></span></div>`;
+    const isDiff = match[1].trim() === 'diff';
+    const raw = match[2];
+    const code = isDiff ? raw.split('\n').map(line => {
+      const kind = line.startsWith('+') ? 'added' : line.startsWith('-') ? 'removed'
+        : line.startsWith('@@') ? 'hunk' : 'context';
+      return `<span class="ad-diff-${kind}">${escapeHtml(line)}</span>`;
+    }).join('\n') : escapeHtml(raw.replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g, ''));
+    html += `<div class="ad-copy-block"><pre><code>${code}</code></pre><button type="button" data-copy-block aria-label="Copy code block">Copy</button><span role="status" aria-live="polite"></span></div>`;
     offset = match.index + match[0].length;
   }
   return html + prose(source.slice(offset));
@@ -87,6 +94,11 @@ export const COPY_BLOCK_ASSETS = `<style>
 .ad-copy-block{position:relative;margin:12px 0;color:#edf2fa;background:#111b2d;border:1px solid #64748b;border-radius:8px;min-width:0}
 .ad-copy-block pre{margin:0;padding:52px 16px 16px;overflow:auto;white-space:pre;text-align:left}
 .ad-copy-block code{font:13px/1.6 ui-monospace,monospace;color:inherit;background:transparent}
+/* Opaque dark well stays fixed in light/dark hosts. All four text pairs exceed AA. */
+.ad-copy-block .ad-diff-added{color:#96e6a1;background:#163322}
+.ad-copy-block .ad-diff-removed{color:#ffb4b4;background:#3d2029}
+.ad-copy-block .ad-diff-hunk{color:#a8d4ff}
+.ad-copy-block .ad-diff-context{color:#aab7cb}
 .ad-copy-block button{position:absolute;top:8px;right:8px;padding:6px 12px;min-height:32px;color:inherit;background:transparent;border:1px solid currentColor;border-radius:5px;cursor:pointer}
 .ad-copy-block button:hover{background:#64748b33}.ad-copy-block button:focus-visible{outline:3px solid #50b7ff;outline-offset:3px}
 .ad-copy-block [role=status]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
