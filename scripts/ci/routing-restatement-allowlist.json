@@ -436,13 +436,6 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/gemini-research/SKILL.md",
-      "marker": "| **Flow** | Paste prompt \u2192 Gemini produces a research PLAN \u2192 **review + Edit the plan** \u2192 **Start Research** \u2192 wait \u2192 read report |",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
       "file": "skills/golem-powers/golem-install/SKILL.md",
       "marker": "`bun <golem-install-dir>/scripts/install-codex-config.mjs --source-dir <source>/config/codex`",
       "class": "FUNCTIONAL",

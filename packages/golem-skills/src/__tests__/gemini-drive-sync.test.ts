@@ -20,16 +20,21 @@ const SCRIPT = join(
 );
 
 describe("gemini drive sync", () => {
-  test("documents Drive-sync as the default workflow", async () => {
+  test("defaults to Gemini and confines notebook setup to the opt-in reference", async () => {
     const content = await readFile(SKILL, "utf8");
-    expect(content).not.toMatch(/Brain Drive\/Research\//);
-
-    expect(content).toContain("Default Workflow: Drive-Sync Research");
-    expect(content).toContain("_shared/research/verify-account.sh");
-    expect(content).toContain("_shared/research/drive-paths.py ensure-project-folders");
-    expect(content).toContain("~/.golems/research-state.json");
-    expect(content).toContain("Brain Drive/03_RESEARCH/Active/<project>/results/R{NN}-gemini-result.md");
-    expect(content).toContain("source=\"drive\"");
+    expect(content).toContain("Default workflow: Gemini Deep Research");
+    expect(content).toContain("gemini.google.com");
+    expect(content.match(/^.*notebook.*$/gim)).toHaveLength(1);
+    expect(content).toContain("NotebookLM on request");
+    expect(content).not.toContain("research_start");
+    expect(content).not.toContain("drive-sync.sh");
+    expect(content).toContain("prompt-preflight.mjs --emit");
+    expect(content).toContain("drive-grounding-gate.sh");
+    const reference = await readFile(join(REPO_ROOT, "skills/golem-powers/gemini-research/references/notebooklm-workflows.md"), "utf8");
+    expect(reference).toContain("# Opt-in: only when the user asks for NotebookLM");
+    expect(reference).toContain("~/.golems/research-state.json");
+    expect(reference).toContain("drive-sync.sh");
+    expect(reference).toContain('artifact_type="audio"');
   });
 
   test("drive sync script exists", async () => {
