@@ -110,6 +110,30 @@ Sources/copyPrompt and code blocks are excluded. The one threshold lives in
 or a nonblank `summary`; the renderer visibly labels it **Audio is a summary of
 this card**, and BUILD requires that label outside the collapsed answer sheet.
 
+### Answer sheet, labels and voices (Etan, 2026-11-10)
+
+Etan, via orc, about the 03:00 dashboard: "the full transcript repeated inside card
+details; letter/number options he couldn't decode; a single voice saying 'look below'".
+
+- **The answer sheet shows only the card's `ask`; never repeat the narration there.**
+  `ask` is one short sentence, the question the card puts to Etan, and must be said
+  word for word, in order, by one of the card's own scenes. The sheet renders `ask`,
+  then the code fences from `body`; `body` prose is not shown, but the card-text gate
+  still checks it against the audio. BUILD rejects `ASK_MISSING` (a decision with
+  options or a checklist and no `ask`) and `ASK_NOT_SPOKEN`.
+- **Option and checklist labels are plain words a listener understands without a
+  legend; no letter or number codes.** BUILD rejects `OPTION_LABEL_CODE` when a label,
+  checklist item or group title begins with a code (`A: …`, `R2 · …`, `1) …`) or maps
+  codes (`B3→J6`). `value` stays free-form.
+- **Every decision card has the host ask and the expert explain; the audio must make
+  sense with the screen off, so it never says "below", "above" or "tick".** BUILD rejects
+  `DECISION_SINGLE_VOICE` (a decision with options or a checklist lacking a host or an
+  expert scene) and `SCREEN_REFERENCE` (a script saying a word from
+  `SCREEN_REFERENCE_WORDS`: below, above, tick, ticked, scroll, on screen, on this card).
+  A scene may set `screenWordsOk: true` for a non-screen use ("below the limit").
+
+All five live in `src/card-authoring-gate.mjs`; BUILD runs them on the job file right after render, before the card-text gate.
+
 Follow [Card detail affordances](references/card-format.md): text-only cards
 must not repeat their text in a View details expander. Either offer no secondary
 action, or offer a **Listen deeper** button that opens an inline narrated section
@@ -403,7 +427,8 @@ This source receipt complements the existing design-preservation predecessor.
   ],
   "decisions": [
     { "id": "ship-path", "title": "Ship path", "deadline": "today",
-      "body": "Choose the path forward.", "options": ["Option A", "Option B"] }
+      "sceneIds": ["c1q", "c1a"], "body": "…", "ask": "Which path do we take?",
+      "options": ["Ship it now", "Wait a week"] }
   ]
 }
 ```
@@ -435,12 +460,13 @@ answer keys, kinds and options stay unchanged.
   "outputPath": "$REPO_ROOT/docs.local/dashboards/six-decisions.html",
   "cinemaUrl": "./six-decisions-audio.html",
   "scenes": [
-    { "id": "d1q", "title": "Question", "script": "…" },
-    { "id": "d1a", "title": "Trade-off", "script": "…" }
+    { "id": "d1q", "title": "Question", "role": "host", "reference": "ben-c1", "script": "…" },
+    { "id": "d1a", "title": "Trade-off", "role": "expert", "reference": "<expert>-c4s", "script": "…" }
   ],
   "decisions": [
     { "id": "d1", "rank": 1, "title": "Decision one", "status": "OPEN",
-      "body": "Choose the path.", "options": ["Option A", "Option B"],
+      "body": "Choose the path.", "ask": "Choose the path.",
+      "options": ["Ship it now", "Wait a week"],
       "sceneIds": ["d1q", "d1a"],
       "rail": [{ "label": "Owner", "value": "Operator" }],
       "comparison": { "url": "visuals/d1.html", "label": "View comparison", "timeoutMs": 10000 } }

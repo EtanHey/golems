@@ -13,13 +13,16 @@ function build({ type, strip = 'none', id = 'account-build-proof', defaultJob = 
   const bin = path.join(root, 'bin'); mkdirSync(bin);
   writeFileSync(path.join(bin, 'ffprobe'), "#!/usr/bin/env sh\nprintf '1.000000\\n'\n", { mode: 0o755 });
   const job = defaultJob ? path.join(root, '.narrationlayer/jobs', id || 'audio-dashboard-job') : root;
-  const segment = path.join(job, 'segments/s1'); mkdirSync(segment, { recursive: true });
-  const words = [{ word: 'alpha', start: 0.05, end: 0.42 }, { word: 'beta', start: 0.45, end: 0.8 }];
-  for (const name of ['words.json', 'words.raw.json']) writeFileSync(path.join(segment, name), JSON.stringify(words));
-  copyFileSync(new URL('./fixtures/design-preservation/hardening-tone.wav', import.meta.url), path.join(segment, 's1.wav'));
-  copyFileSync(new URL('../vendor/agent-html/templates/v4-story-mode/_placeholder.mp3', import.meta.url), path.join(segment, 's1.mp3'));
+  // A decision card has a host question and an expert answer (DECISION_SINGLE_VOICE).
+  for (const [id, word] of [['s1', 'alpha'], ['s2', 'beta']]) {
+    const segment = path.join(job, 'segments', id); mkdirSync(segment, { recursive: true });
+    const words = [{ word, start: 0.05, end: 0.8 }];
+    for (const name of ['words.json', 'words.raw.json']) writeFileSync(path.join(segment, name), JSON.stringify(words));
+    copyFileSync(new URL('./fixtures/design-preservation/hardening-tone.wav', import.meta.url), path.join(segment, `${id}.wav`));
+    copyFileSync(new URL('../vendor/agent-html/templates/v4-story-mode/_placeholder.mp3', import.meta.url), path.join(segment, `${id}.mp3`));
+  }
   const spec = path.join(root, 'spec.json');
-  writeFileSync(spec, JSON.stringify({ ...(id ? { id } : {}), design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, type, series: path.basename(root), outputPath, scenes: [{ id: 's1', script: 'alpha beta', audioWav: 'fixture.wav' }], decisions: [{ id: 'choice', title: 'A neutral choice', body: 'alpha beta', options: ['Keep', 'Change'], sceneIds: ['s1'] }] }));
+  writeFileSync(spec, JSON.stringify({ ...(id ? { id } : {}), design: { firstInLineage: { reason: 'Approved isolated fixture lineage', approvedBy: 'fixture-owner' } }, type, series: path.basename(root), outputPath, scenes: [{ id: 's1', role: 'host', script: 'alpha', audioWav: 'fixture.wav' }, { id: 's2', role: 'expert', script: 'beta', audioWav: 'fixture.wav' }], decisions: [{ id: 'choice', title: 'A neutral choice', body: 'alpha beta', ask: 'alpha', options: ['Keep', 'Change'], sceneIds: ['s1', 's2'] }] }));
   const preload = path.join(root, 'strip.mjs');
   writeFileSync(preload, `import { mock } from 'bun:test';
 const modulePath=${JSON.stringify(path.join(skillRoot, type === 'cinema' ? 'src/decision-surface.mjs' : 'src/decision-flow.mjs'))};

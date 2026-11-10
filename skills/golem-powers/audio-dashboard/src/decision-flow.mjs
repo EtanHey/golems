@@ -1,5 +1,5 @@
 import { ANSWER_RUNTIME, dashboardId } from './answer-persistence.mjs';
-import { COPY_BLOCK_ASSETS, renderCardBody } from './copy-blocks.mjs';
+import { COPY_BLOCK_ASSETS, renderCardBody, renderInlineProse } from './copy-blocks.mjs';
 import { AUDIO_SUMMARY_LABEL, hasAudioSummary } from './card-text-audio-gate.mjs';
 import { validateSources } from './decision-sources.mjs';
 import { readFileSync } from "node:fs";
@@ -206,6 +206,7 @@ export function findBareReferences(decisions = []) {
       ["title", decision.title],
       ["summary", decision.summary],
       ["body", decision.body],
+      ["ask", decision.ask],
       ...(decision.options || []).flatMap((option, index) => typeof option === "string"
         ? [[`option ${index}`, option]]
         : [[`option ${index}`, option?.label ?? option?.title], [`option ${index} summary`, option?.summary]]),
@@ -425,6 +426,13 @@ const COMPARE_DIALOG = `<dialog class="df-compare" id="df-compare" aria-labelled
     <div class="df-compare-status" role="status" aria-live="polite"><span class="df-compare-spinner" aria-hidden="true"></span><p id="df-compare-message"></p><div class="df-compare-actions"><button type="button" id="df-compare-retry" hidden>Retry</button><button type="button" id="df-compare-close" hidden>Back to the card</button></div></div>
   </dialog>`;
 
+// The answer sheet never repeats the narration (Etan, 2026-11-10): it shows the card's spoken
+// `ask`, and only the copy blocks from `body`. The card-text gate still checks `body` against the audio.
+function renderAsk(decision) {
+  const ask = typeof decision.ask === "string" ? decision.ask.trim() : "";
+  return ask ? `<p class="df-ask">${renderInlineProse(ask)}</p>` : "";
+}
+
 function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
   const options = (decision.options || []).map(normalizeOption);
   const comparison = normalizeComparison(decision, comparisonTimeoutMs);
@@ -468,7 +476,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
     <div class="df-sheet" id="sheet-${escapeHtml(decision.id)}">
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
-    <div class="df-question">${renderCardBody(decision.body)}</div>
+    <div class="df-question">${renderAsk(decision)}${renderCardBody(decision.body, { prose: false })}</div>
     ${renderRail(decision.rail)}
     ${renderSources(decision)}
     <div class="df-answer">

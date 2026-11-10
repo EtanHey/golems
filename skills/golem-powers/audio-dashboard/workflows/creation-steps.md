@@ -80,6 +80,15 @@ source, never a served tree; author `scenes` and `decisions` using SKILL.md's jo
 - The card’s visible prose is what the audio says, or the card says plainly that
   the audio is a summary. Compare the entire visible prose to its owned scripts;
   do not silently shorten the narration. Reference-only sources/prompts stay separate.
+- Card writing rules (Etan, 2026-11-10, via orc, after "the full transcript repeated inside
+  card details; letter/number options he couldn't decode; a single voice saying 'look below'"):
+  - The answer sheet shows only the card's `ask`: one short sentence, said word for word in
+    one of the card's scenes. Never repeat the narration there; `body` stays for the
+    text/audio check and code fences only.
+  - Option and checklist labels are plain words a listener understands without a legend;
+    no letter or number codes ("A:", "R2 ·", "B3→J6").
+  - Every decision card has the host ask and the expert explain. The audio must make sense
+    with the screen off, so it never says "below", "above" or "tick".
 - Put research prompts in `copyPrompt.text`, with a descriptive `label` and
   `notes` stating whether Google Docs/Drive must be on and whether research-lifecycle has run.
   Add `sources: [{ label, url }]` links so the Sources drawer is available.
@@ -93,7 +102,8 @@ prose/scripts, voice profiles and research fields, and existing answer identitie
 Stop: `AUTHORING_REVIEW_FAILED` (workflow check) requires fixing the specific
 order, text/audio or research-note mismatch before synthesis. `SINGLE_VOICE_BUILD`,
 `voice-role-inverted`, `ROLE_LABEL_SPOKEN`, `ROLE_LABEL_MISMATCH`,
-`COPY_BLOCK_REQUIRED` require correcting the job, never bypassing the gate.
+`COPY_BLOCK_REQUIRED`, `ASK_MISSING`, `ASK_NOT_SPOKEN`, `OPTION_LABEL_CODE`,
+`DECISION_SINGLE_VOICE`, `SCREEN_REFERENCE` require correcting the job, never bypassing the gate.
 Enforcement forward pointer: X2 owns decision-after-explainer gates; X3 owns card-text/audio gates (separate PRs).
 
 ## 4. Synthesize
@@ -124,7 +134,7 @@ Command: `bun scripts/build-dashboard.mjs --spec <job.json> --job-dir <job-dir>`
 `bun scripts/check-design-preservation.mjs --spec <job.json> --screenshots <proof-dir>`.
 
 Pass: every BUILD gate is PASS in `<output-basename>.receipts.json`, bound to
-the current HTML, including voice-role, transcript-fidelity, acoustic,
+the current HTML, including voice-role, card-authoring, transcript-fidelity, acoustic,
 onset-energy, teleprompter-drift, answer-persistence, copy-blocks and
 design-preservation. For the accepted briefing design, the design report is
 PASS with status COMPARED, never BASELINE. An explicitly approved redesign uses

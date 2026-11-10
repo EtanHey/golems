@@ -9,9 +9,10 @@ function httpHref(value) {
   } catch { return ''; }
 }
 
-function renderProse(text) {
+function renderProse(text, { linksOnly = false } = {}) {
   const links = /\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()<>"']|\([^\s()<>"']*\))+)\)|(https?:\/\/[^\s<>"']+)/gi;
   let html = '', offset = 0;
+  const kept = [];
   for (const match of text.matchAll(links)) {
     let raw = match[2] || match[3];
     if (match[3]) {
@@ -19,20 +20,27 @@ function renderProse(text) {
         && raw.split(close).length > raw.split(['(', '['][i]).length)) raw = raw.slice(0, -1);
     }
     const href = httpHref(raw);
+    if (href) kept.push(`<a href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(match[1] || raw)}</a>`);
     html += escapeHtml(text.slice(offset, match.index));
     html += href ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(match[1] || raw)}</a>` : escapeHtml(match[0]);
     if (match[3] && href) html += escapeHtml(match[3].slice(raw.length));
     offset = match.index + match[0].length;
   }
-  return html + escapeHtml(text.slice(offset));
+  return linksOnly ? kept.join(' ') : html + escapeHtml(text.slice(offset));
 }
 
+export const renderInlineProse = text => renderProse(String(text ?? '').replace(/\s+/g, ' ').trim());
+
 // Only HTTP(S) prose becomes links; fenced payloads remain escaped literal text.
-export function renderCardBody(text = '') {
-  const source = String(text).replace(/\r\n?/g, '\n');
+// `{ prose: false }` keeps the fenced copy blocks and the prose's links, never the prose itself
+// (the decision-flow answer sheet, which never repeats the narration).
+export function renderCardBody(text = '', { prose: withProse = true } = {}) {
+  const source = String(text ?? '').replace(/\r\n?/g, '\n');
   const fence = /^```[^\n`]*\n([\s\S]*?)\n```[ \t]*(?=\n|$)/gm;
   let html = '', offset = 0;
-  const prose = text => text.split(/\n+/).filter(line => line.trim()).map(line => `<p>${renderProse(line)}</p>`).join('');
+  const prose = text => text.split(/\n+/).filter(line => line.trim())
+    .map(line => withProse ? `<p>${renderProse(line)}</p>` : renderProse(line, { linksOnly: true }))
+    .filter(Boolean).map(line => withProse ? line : `<p class="df-body-links">${line}</p>`).join('');
   for (const match of source.matchAll(fence)) {
     html += prose(source.slice(offset, match.index));
     html += `<div class="ad-copy-block"><pre><code>${escapeHtml(match[1].replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g, ''))}</code></pre><button type="button" data-copy-block aria-label="Copy code block">Copy</button><span role="status" aria-live="polite"></span></div>`;
@@ -126,7 +134,9 @@ function pathLike(line) {
 const BLOCK = new Set(['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'dt', 'dd', 'pre', 'br', 'label']);
 export const COPY_BLOCK_RUNBOOK = 'Put terminal commands and literal text or file paths to paste in a fenced code block in the card body. Keep a multi-line sequence in one fence. URLs remain clickable links, never copy blocks. No bypass.';
 
-export function analyzeCopyBlocks(html) {
+// `decisions` (decision-flow): each body is also checked as fully rendered prose, because the answer
+// sheet no longer shows body prose; an unfenced command there must still fail, never just disappear.
+export function analyzeCopyBlocks(html, { decisions = [] } = {}) {
   const violations = [];
   const attr = (node, name) => node?.attrs?.find(a => a.name === name)?.value;
   const hasClass = (node, name) => (attr(node, 'class') || '').split(/\s+/).includes(name);
@@ -155,5 +165,9 @@ export function analyzeCopyBlocks(html) {
     } else children(node).forEach(walk);
   };
   walk(parse(String(html)));
+  for (const decision of Array.isArray(decisions) ? decisions : []) {
+    if (typeof decision?.body !== 'string' || !decision.body.trim()) continue;
+    walk(parse(`<article class="df-card" data-decision="${escapeHtml(decision.id ?? 'card')}">${renderCardBody(decision.body)}</article>`));
+  }
   return { verdict: violations.length ? 'REJECTED' : 'PASS', violations };
 }

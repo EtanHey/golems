@@ -1,4 +1,5 @@
-import { parse } from 'parse5';
+import { parse, parseFragment } from 'parse5';
+import { renderCardBody } from './copy-blocks.mjs';
 
 // Ordered coverage: the longest common subsequence cannot reuse repeated words.
 // Both directions use this one limit; there is no per-job threshold override.
@@ -16,7 +17,7 @@ function prose(node) {
   if (['pre', 'code', 'button', 'script', 'style'].includes(node.tagName) || hasClass(node, 'ad-copy-block')) return '';
   return node.nodeName === '#text' ? node.value : children(node).map(prose).join(' ');
 }
-const tokens = value => String(value ?? '').normalize('NFKC').toLowerCase().replace(/['’]/g, '').match(/[\p{L}\p{N}]+/gu) || [];
+export const tokens = value => String(value ?? '').normalize('NFKC').toLowerCase().replace(/['’]/g, '').match(/[\p{L}\p{N}]+/gu) || [];
 function commonWords(left, right) {
   let prefix = 0;
   while (prefix < left.length && left[prefix] === right[prefix]) prefix++;
@@ -40,14 +41,16 @@ function visibleNotice(card) {
   return true;
 }
 
-// Inspect the renderer's actual prose, not markdown source or the teleprompter.
+// Inspect the renderer's prose (rendered summary, renderCardBody(body)), not markdown source or the teleprompter.
 // Rail metadata, controls, options, Sources and copyPrompt are not prose bodies.
 export function analyzeCardTextAudio({ html, decisions, scenes }) {
   const document = parse(String(html)), sceneById = new Map(scenes.map(s => [s.id, s]));
   const violations = [], stats = [];
   for (const decision of decisions) {
     const card = find(document, n => hasClass(n, 'df-card') && attr(n, 'data-decision') === String(decision.id));
-    const roots = card ? [find(card, n => hasClass(n, 'df-summary')), find(card, n => hasClass(n, 'df-question'))].filter(Boolean) : [];
+    // The answer sheet no longer renders body prose (it shows the spoken `ask`), so the body is
+    // taken from the same renderer output the sheet used to show; the summary stays the rendered one.
+    const roots = card ? [find(card, n => hasClass(n, 'df-summary')), parseFragment(renderCardBody(decision.body))].filter(Boolean) : [];
     const visible = tokens(roots.map(prose).join(' '));
     const scripts = tokens(decision.sceneIds.map(id => sceneById.get(id)?.script ?? '').join(' '));
     const matched = commonWords(visible, scripts);

@@ -68,6 +68,7 @@ import { injectDecisionSurfaceIntoHtml } from "../src/decision-surface.mjs";
 import { comparisonPages, findBareReferences, hasComparisonReadyMarker, renderDecisionFlow } from "../src/decision-flow.mjs";
 
 import { analyzeCardTextAudio, CARD_TEXT_AUDIO_RUNBOOK } from "../src/card-text-audio-gate.mjs";
+import { analyzeCardAuthoring, CARD_AUTHORING_RUNBOOK, formatCardAuthoringReport } from "../src/card-authoring-gate.mjs";
 import { analyzeCopyBlocks, COPY_BLOCK_RUNBOOK } from "../src/copy-blocks.mjs";
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -518,6 +519,16 @@ async function main() {
   }
 
   if (dashboardType === "decision-flow") {
+    // CARD-AUTHORING gate (Etan, 2026-11-10): the sheet shows a spoken `ask`, labels carry no codes,
+    // decision cards have two voices, narration never points at the screen. Reads the job only;
+    // it runs after render so ownership and id errors keep their own names.
+    const authoring = analyzeCardAuthoring({ decisions: spec.decisions, scenes: spec.scenes });
+    upsertBuildGate(buildReceipts, { gate: "card-authoring", result: authoring,
+      config: authoring.thresholds, runbook: CARD_AUTHORING_RUNBOOK });
+    if (authoring.verdict !== "PASS") {
+      writeBuildReceipts(outPath, buildReceipts, html);
+      fail(formatCardAuthoringReport(authoring));
+    }
     const parity = analyzeCardTextAudio({ html, decisions: spec.decisions, scenes: spec.scenes });
     upsertBuildGate(buildReceipts, { gate: "card-text-audio", result: parity,
       config: parity.thresholds, runbook: CARD_TEXT_AUDIO_RUNBOOK });
@@ -654,7 +665,7 @@ async function main() {
   writeBuildReceipts(outPath, buildReceipts, html);
   if (answerPersistence.verdict !== "PASS") fail(`answer-persistence: ${answerPersistence.violations.map(v => v.metric).join(", ")}. ${ANSWER_RUNBOOK}`);
 
-  const copyBlocks = analyzeCopyBlocks(html);
+  const copyBlocks = analyzeCopyBlocks(html, { decisions: dashboardType === "decision-flow" ? spec.decisions : [] });
   upsertBuildGate(buildReceipts, { gate: "copy-blocks", result: copyBlocks,
     config: {}, runbook: COPY_BLOCK_RUNBOOK });
   writeBuildReceipts(outPath, buildReceipts, html);

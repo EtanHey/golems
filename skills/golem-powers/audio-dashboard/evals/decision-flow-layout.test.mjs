@@ -36,8 +36,8 @@ function fixture(ids = ["v00", "d00", "d01", "d02", "d03", "d04", "d05", "d06"],
     scenes: ids.map(scene),
     decisions: ids.map((id, index) => ({
       id, rank: index === 0 ? "✓" : index - 1, title: index === 0 ? "Check VoiceBar 2.2.57" : `Pristine sprints with new leads ${index}`,
-      options: ["A. Keep going", "B. Stop"], sceneIds: [id],
-      body: "A written briefing to cite while deciding.",
+      options: ["Keep going", "Stop"], sceneIds: [id],
+      body: "A written briefing to cite while deciding.", ask: "A written briefing to cite while deciding.",
       ...(index === 0 ? { checklist: [{ title: "Fixed", items: ["History row", "Pauses"] }] } : {}),
     })),
   });

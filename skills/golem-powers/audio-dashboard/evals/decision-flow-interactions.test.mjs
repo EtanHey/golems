@@ -424,18 +424,20 @@ test("setlist index links every card and tracks answered and active state", () =
   expect(links[0].classList.contains("is-active")).toBe(false);
 });
 
-test("card keeps line breaks, shows listening time, and omits empty option sets", () => {
+test("card shows only the ask (never the narration body), listening time, and omits empty option sets", () => {
   const html = renderDecisionFlow({
     scenes: [scene("brief"), scene("pick")],
     decisions: [
       { id: "brief", title: "Brief", status: "INFO", body: "Done: one.\nOpen: two.", sceneIds: ["brief"] },
-      { id: "pick", title: "Pick", options: ["Yes", "No"], sceneIds: ["pick"] },
+      { id: "pick", title: "Pick", body: "Done: one.\nOpen: two.", ask: "One two?", options: ["Yes", "No"], sceneIds: ["pick"] },
     ],
   });
   const window = new Window();
   window.document.write(html);
   const brief = window.document.querySelector('[data-decision="brief"]');
-  expect([...brief.querySelectorAll(".df-question p")].map((p) => p.textContent)).toEqual(["Done: one.", "Open: two."]);
+  expect(brief.querySelectorAll(".df-question p")).toHaveLength(0);
+  expect(brief.querySelector(".df-sheet").textContent).not.toContain("Open: two.");
+  expect([...window.document.querySelectorAll('[data-decision="pick"] .df-question p')].map((p) => p.textContent)).toEqual(["One two?"]);
   expect(brief.querySelector(".df-status").textContent).toBe("Info");
   expect(brief.querySelector(".df-player-state").textContent).toBe("Ready · 1 clip, 0:01");
   expect(brief.querySelector(".df-options")).toBeNull();

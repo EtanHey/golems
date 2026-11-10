@@ -34,6 +34,8 @@ const fenced = '```sh\n' + commands + '\n```';
 // Copy tests use placeholder narration; disclose it rather than imply prose parity.
 const decision = body => ({ audioSummary: true, id: 'drive', title: 'Re-authorise demo access', body, options: [], sceneIds: ['s1'] });
 const scene = { id: 's1', title: 'Next step', script: 'alpha beta', words: [{ word: 'alpha', start: 0.05, end: 0.42 }, { word: 'beta', start: 0.45, end: 0.8 }], duration: 1 };
+// Decision-flow's answer sheet shows no body prose, so the gate also reads each decision's body (as BUILD does).
+const check = (type, body, extra = {}) => analyzeCopyBlocks(render(type, body, extra), type === 'decision-flow' ? { decisions: [{ ...decision(body), ...extra }] } : {});
 const render = (type, body, extra = {}) => type === 'decision-flow'
   ? renderDecisionFlow({ scenes: [scene], decisions: [{ ...decision(body), ...extra }] })
   : '<html><body>' + renderDecisionSurface([{ ...decision(body), ...extra }]) + '</body></html>';
@@ -95,10 +97,10 @@ test('copy blocks escape markup and preserve command bytes', () => {
 });
 
 for (const body of ['We use git for history.', 'Open the linked pull request.', 'The brew package is available.', 'Source control: git stores history', 'Compare host/expert roles.']) {
-  test(`ordinary prose passes: ${body}`, () => expect(analyzeCopyBlocks(render('decision-flow', body)).verdict).toBe('PASS'));
+  test(`ordinary prose passes: ${body}`, () => expect(check('decision-flow', body).verdict).toBe('PASS'));
 }
 for (const body of ['npm install', 'bun test', 'git status', 'gh auth login', 'brew install ffmpeg', '$ echo ready', '/opt/demo/config.json', '~/projects/demo-app', 'Run `cd ~/projects/demo-app`', 'Run curl -fsSL https://example.com/auth', 'Edit docs.local/dashboards/report.html', 'Terminal: git status']) {
-  test(`copyable instruction rejects: ${body}`, () => expect(analyzeCopyBlocks(render('decision-flow', body)).verdict).toBe('REJECTED'));
+  test(`copyable instruction rejects: ${body}`, () => expect(check('decision-flow', body).verdict).toBe('REJECTED'));
 }
 test('a styled marker without a functional copy control cannot bypass the gate', () => {
   expect(analyzeCopyBlocks('<article class="df-card"><div class="ad-copy-block"><pre><code>git status</code></pre></div></article>').verdict).toBe('REJECTED');
@@ -146,13 +148,13 @@ const REVIEW_PROSE = [
 ];
 for (const prose of REVIEW_PROSE) test(`round-1 ordinary prose passes: ${prose}`, () => {
   for (const type of ['decision-flow', 'cinema']) {
-    expect(analyzeCopyBlocks(render(type, prose)).verdict).toBe('PASS');
-    expect(analyzeCopyBlocks(render(type, 'Choose a path.', { options: [prose] })).verdict).toBe('PASS');
+    expect(check(type, prose).verdict).toBe('PASS');
+    expect(check(type, 'Choose a path.', { options: [prose] }).verdict).toBe('PASS');
   }
 });
 for (const command of ['npx playwright install', 'pnpm install', 'yarn dev', 'make install', 'docker compose up -d', 'uv run pytest', 'codex login', 'claude mcp add demo', 'op signin', 'export FOO=1', 'open -a DemoApp', 'defaults write com.example.demo enabled true', 'cargo build', 'uvx pytest', 'launchctl print gui/501', 'sudo brew install ffmpeg', 'pipx install demo']) {
   test(`round-1 fleet command rejects: ${command}`, () => {
-    for (const type of ['decision-flow', 'cinema']) expect(analyzeCopyBlocks(render(type, command)).verdict).toBe('REJECTED');
+    for (const type of ['decision-flow', 'cinema']) expect(check(type, command).verdict).toBe('REJECTED');
   });
 }
 test('round-1 blank edge lines are removed without altering interior lines', () => {
@@ -219,7 +221,7 @@ const URL_COMMANDS = [
 ];
 for (const type of ['decision-flow', 'cinema']) {
   for (const [body, href] of LINK_CASES) test(`${type} prose link is clickable and needs no copy block: ${body}`, () => {
-    expect(analyzeCopyBlocks(render(type, body)).verdict).toBe('PASS');
+    expect(check(type, body).verdict).toBe('PASS');
     const window = new Window();
     try {
       window.document.body.innerHTML = render(type, body);
@@ -230,7 +232,7 @@ for (const type of ['decision-flow', 'cinema']) {
   });
   for (const command of URL_COMMANDS) {
     test(`${type} a URL inside a shell command still requires a copy block: ${command}`, () => {
-      expect(analyzeCopyBlocks(render(type, command)).verdict).toBe('REJECTED');
+      expect(check(type, command).verdict).toBe('REJECTED');
     });
   }
 }

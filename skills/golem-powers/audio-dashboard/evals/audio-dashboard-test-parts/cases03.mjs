@@ -322,7 +322,7 @@ test("build-dashboard renders native decision boxes from spec.decisions with a c
 test("build-dashboard renders decision-flow as a distinct card-local audio type", () => {
   const root = mkdtempSync(path.join(tmpdir(), "audio-dashboard-decision-flow-"));
   const jobDir = path.join(root, "job");
-  for (const sceneId of ["intro", "decision-a", "decision-b"]) {
+  for (const sceneId of ["intro", "decision-a", "decision-b", "decision-b-answer"]) {
     writeSegment(jobDir, sceneId, [
       { word: `${sceneId}-alpha`, start: 0.05, end: 0.42 },
       { word: `${sceneId}-beta`, start: 0.45, end: 0.80 }
@@ -335,9 +335,10 @@ test("build-dashboard renders decision-flow as a distinct card-local audio type"
     title: "Decision flow",
     kicker: "Six calls · one clean pass",
     scenes: [
-      { id: "intro", title: "Context", script: "intro-alpha intro-beta" },
-      { id: "decision-a", title: "Decision A", script: "decision-a-alpha decision-a-beta" },
-      { id: "decision-b", title: "Decision B", script: "Play All decision-b-alpha decision-b-beta" }
+      { id: "intro", title: "Context", role: "host", script: "intro-alpha intro-beta" },
+      { id: "decision-a", title: "Decision A", role: "expert", script: "decision-a-alpha decision-a-beta" },
+      { id: "decision-b", title: "Decision B", role: "host", script: "Play All decision-b-alpha decision-b-beta" },
+      { id: "decision-b-answer", title: "Decision B", role: "expert", script: "decision-b-answer-alpha decision-b-answer-beta" }
     ],
     decisions: [
       {
@@ -347,6 +348,7 @@ test("build-dashboard renders decision-flow as a distinct card-local audio type"
         status: "OPEN",
         body: "Choose the first path.",
         summary: "The first decision owns the context and its answer clip.",
+        ask: "intro-alpha intro-beta",
         options: ["Keep", "Change"],
         sceneIds: ["intro", "decision-a"],
         rail: [{ label: "Owner", value: "Etan" }]
@@ -356,9 +358,10 @@ test("build-dashboard renders decision-flow as a distinct card-local audio type"
         rank: 2,
         title: "Path B",
         status: "READY",
-        body: "Play All decision-b-alpha decision-b-beta",
+        body: "Play All decision-b-alpha decision-b-beta decision-b-answer-alpha decision-b-answer-beta",
+        ask: "decision-b-alpha decision-b-beta",
         options: ["One", "Two"],
-        sceneIds: ["decision-b"]
+        sceneIds: ["decision-b", "decision-b-answer"]
       }
     ]
   }, jobDir, "decision-flow-contract");
@@ -370,7 +373,7 @@ test("build-dashboard renders decision-flow as a distinct card-local audio type"
   expect(html).not.toContain('id="pa-bar"');
   expect((html.match(/<article class="df-card/g) || []).length).toBe(2);
   expect((html.match(/class="df-play"/g) || []).length).toBe(2);
-  expect((html.match(/data-audio-scene=/g) || []).length).toBe(3);
+  expect((html.match(/data-audio-scene=/g) || []).length).toBe(4);
   expect(html).toContain('data-audio-scene="intro"');
   expect(html).toContain("Path $&amp; costs $$");
   expect(html).toContain('class="df-teleprompter"');
@@ -400,8 +403,8 @@ test("build-dashboard renders decision-flow as a distinct card-local audio type"
   const qaReport = JSON.parse(qa.stdout);
   expect(qaReport.pass).toBe(true);
   expect(qaReport.cards).toBe(2);
-  expect(qaReport.audioDataUris).toBe(3);
-  expect(qaReport.scenesWithWords).toBe("3/3");
+  expect(qaReport.audioDataUris).toBe(4);
+  expect(qaReport.scenesWithWords).toBe("4/4");
 });
 
 test("decision-flow defaults omitted options to a free-text-only answer", () => {
@@ -437,7 +440,7 @@ test("decision-flow build passes each scene's speaker and role into the read-alo
       { id: "ask", title: "The question", role: "host", reference: "ben-c1", script: "why now" },
       { id: "answer", title: "The answer", role: "expert", speaker: "Theo", script: "because proof" },
     ],
-    decisions: [{ id: "d1", title: "Two voices", body: "why now because proof", options: ["Yes"], sceneIds: ["ask", "answer"] }],
+    decisions: [{ id: "d1", title: "Two voices", body: "why now because proof", ask: "why now", options: ["Yes"], sceneIds: ["ask", "answer"] }],
   }, jobDir, "two-voices");
   expect(result.status).toBe(0);
   const html = readFileSync(outputPath, "utf8");
