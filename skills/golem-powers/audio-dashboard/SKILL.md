@@ -116,15 +116,18 @@ Etan, via orc, about the 03:00 dashboard: "the full transcript repeated inside c
 details; letter/number options he couldn't decode; a single voice saying 'look below'".
 
 - **The answer sheet shows only the card's `ask`; never repeat the narration there.**
-  `ask` is one short sentence, the question the card puts to Etan, and must be said
-  word for word, in order, by one of the card's own scenes. The sheet renders `ask`,
-  then the code fences from `body`; `body` prose is not shown, but the card-text gate
-  still checks it against the audio. BUILD rejects `ASK_MISSING` (a decision with
+  `ask` is one short sentence, the question the card puts to Etan. Its words must appear,
+  in the same order, in ONE of the card's own scenes (normalised like the card-text gate:
+  case, punctuation and apostrophes ignored; other words may sit between them). The sheet
+  renders `ask`, then the code fences and links from `body`; `body` prose is not shown,
+  but the card-text gate still checks it against the audio. A summary card
+  (`audioSummary: true` or a `summary`) is the exception: its body is not the narration,
+  so the sheet shows its prose in full. BUILD rejects `ASK_MISSING` (a decision with
   options or a checklist and no `ask`) and `ASK_NOT_SPOKEN`.
 - **Option and checklist labels are plain words a listener understands without a
   legend; no letter or number codes.** BUILD rejects `OPTION_LABEL_CODE` when a label,
   checklist item or group title begins with a code (`A: …`, `R2 · …`, `1) …`) or maps
-  codes (`B3→J6`). `value` stays free-form.
+  codes (`B3→J6`). An opening "No." ("No. Keep it") is a word, not a code. `value` stays free-form.
 - **Every decision card has the host ask and the expert explain; the audio must make
   sense with the screen off, so it never says "below", "above" or "tick".** BUILD rejects
   `DECISION_SINGLE_VOICE` (a decision with options or a checklist lacking a host or an

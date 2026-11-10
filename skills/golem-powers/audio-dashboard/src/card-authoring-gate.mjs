@@ -23,7 +23,8 @@ export const SCREEN_REFERENCE_WORDS = Object.freeze(["below", "above", "tick", "
 // A bare code: one or two letters with up to three digits, or digits alone, then a separator.
 // "." and "-" count only when followed by whitespace ("A. Move", "1 - Merge"), so "Re-run",
 // "1.5x" and "No." stay words; ":" never before a digit, so "10:30" stays a time.
-const LABEL_CODE = /^\s*(?:[A-Za-z]{1,2}\d{0,3}|\d+)\s*(?:[·)–—→]|:(?!\d)|[.-](?=\s))/;
+// A sentence opening with the word "No." ("No. Keep it") is ordinary prose, never a code.
+const LABEL_CODE = /^\s*(?![Nn][Oo]\.(?:\s|$))(?:[A-Za-z]{1,2}\d{0,3}|\d+)\s*(?:[·)–—→]|:(?!\d)|[.-](?=\s))/;
 
 // A code-to-code mapping anywhere in a label ("7 merges: B3→J6, C2+J14") is the same legend problem.
 const CODE_PAIR = /(?<![\p{L}\p{N}])[A-Za-z]{1,2}\d{1,3}\s*[→+]\s*[A-Za-z]{1,2}\d{1,3}(?![\p{L}\p{N}])/u;

@@ -53,15 +53,19 @@ test('ASK_NOT_SPOKEN: the ask must be said, in order, by one of the card\'s own 
 });
 
 test('OPTION_LABEL_CODE: labels that begin with a bare code are rejected; ordinary words pass', () => {
-  for (const label of ['A: move pages', 'B3→J6', 'R2 · Done means', 'T10 · Do offline', '1) Merge', '7 merges: B3→J6, C1→J2', 'C2+J14 into one']) {
+  for (const label of ['A: move pages', 'B3→J6', 'R2 · Done means', 'T10 · Do offline', '1) Merge', '7 merges: B3→J6, C1→J2', 'C2+J14 into one', 'C2+J14 merged', 'A. Move', '2. Merge']) {
     expect(labelHasCode(label), label).toBe(true);
   }
-  for (const label of ['Keep all four', 'Use it', 'A new page', '3 merges and 2 splits', 'No', 'No.', 'Re-run the tests', '1.5x speed', '10:30 standup', 'Option A']) {
+  // r1 (B1): "No. Keep it" is an ordinary sentence; plus the reviewer's other pass rows.
+  for (const label of ['Keep all four', 'Use it', 'A new page', '3 merges and 2 splits', 'No', 'No.', 'No. Keep it', 'no. keep it', 'Re-run the tests', 'Re-run',
+    '1.5x speed', '1.5x faster', '10:30 standup', 'Start at 10:30', 'Option A', 'I agree', 'OK', 'A/B test it', 'Plan B', 'Wait for Etan', '2 of 3 pass']) {
     expect(labelHasCode(label), label).toBe(false);
   }
   expect(metrics(job({ options: ['A: move pages', { value: 'b', label: 'B: keep as is' }] }))).toEqual(['OPTION_LABEL_CODE', 'OPTION_LABEL_CODE']);
   expect(metrics(job({ options: undefined, checklist: [{ title: 'T1 · Asks', items: ['R2 · Done means', 'Keep it'] }] })))
     .toEqual(['OPTION_LABEL_CODE', 'OPTION_LABEL_CODE']);
+  expect(metrics(job({ options: ['No. Keep it', 'Yes. Move it'] }))).toEqual([]);
+  expect(metrics(job({ options: undefined, checklist: [{ title: 'No. Not yet', items: ['No. Keep it'] }] }))).toEqual([]);
   // `value` stays free-form.
   expect(metrics(job({ options: [{ value: 'A1', label: 'Move it' }, { value: 'B2', label: 'Keep it' }] }))).toEqual([]);
 });
@@ -116,6 +120,27 @@ test('the answer sheet shows the ask once and never the narration body; code blo
     expect(bare.document.querySelector('.df-question').textContent).toBe('');
     expect(bare.document.querySelector('.df-sheet').textContent).not.toContain(ANSWER);
   } finally { bare.close(); }
+});
+
+test('r1 (B2): a summary card keeps its unspoken body prose; an ordinary card never repeats its narration', () => {
+  const unique = 'The recovery phrase must be retained for thirty days.';
+  for (const extra of [{ audioSummary: true }, { summary: 'Storage overview.' }]) {
+    const data = job({ body: `${BODY} ${unique}`, ...extra });
+    const html = renderDecisionFlow(data);
+    const window = new Window();
+    try {
+      window.document.write(html);
+      expect(window.document.querySelector('.df-sheet').textContent).toContain(unique);
+      expect(window.document.querySelector('.df-audio-summary')?.textContent).toBe('Audio is a summary of this card');
+    } finally { window.close(); }
+    expect(analyzeCardTextAudio({ ...data, html }).verdict).toBe('PASS');
+  }
+  const ordinary = new Window();
+  try {
+    ordinary.document.write(renderDecisionFlow(job()));
+    const outside = [...ordinary.document.querySelectorAll('.df-card > :not(.df-teleprompter)')].map(node => node.textContent).join(' ');
+    expect(outside).not.toContain(ANSWER);
+  } finally { ordinary.close(); }
 });
 
 test('the card-text gate still checks body against the audio after the sheet stopped rendering it', () => {

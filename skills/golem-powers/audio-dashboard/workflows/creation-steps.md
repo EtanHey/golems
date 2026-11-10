@@ -82,13 +82,19 @@ source, never a served tree; author `scenes` and `decisions` using SKILL.md's jo
   do not silently shorten the narration. Reference-only sources/prompts stay separate.
 - Card writing rules (Etan, 2026-11-10, via orc, after "the full transcript repeated inside
   card details; letter/number options he couldn't decode; a single voice saying 'look below'"):
-  - The answer sheet shows only the card's `ask`: one short sentence, said word for word in
-    one of the card's scenes. Never repeat the narration there; `body` stays for the
-    text/audio check and code fences only.
+  - The answer sheet shows only the card's `ask`: one short sentence whose words appear, in
+    the same order, in ONE of the card's scenes (case, punctuation and apostrophes ignored;
+    other words may sit between them). Never repeat the narration there; `body` stays for
+    the text/audio check, and the sheet shows only its code fences and links. A summary card
+    (`audioSummary: true` or a `summary`) is the exception: its body prose is not the
+    narration, so the sheet shows it in full.
   - Option and checklist labels are plain words a listener understands without a legend;
-    no letter or number codes ("A:", "R2 ·", "B3→J6").
+    no letter or number codes ("A:", "R2 ·", "1)", "B3→J6").
   - Every decision card has the host ask and the expert explain. The audio must make sense
-    with the screen off, so it never says "below", "above" or "tick".
+    with the screen off, so no script says any word in `SCREEN_REFERENCE_WORDS`
+    (`src/card-authoring-gate.mjs`): below, above, tick, ticked, scroll, on screen,
+    on this card. Only a non-screen use ("below the limit") may set `screenWordsOk: true`
+    on that scene.
 - Put research prompts in `copyPrompt.text`, with a descriptive `label` and
   `notes` stating whether Google Docs/Drive must be on and whether research-lifecycle has run.
   Add `sources: [{ label, url }]` links so the Sources drawer is available.

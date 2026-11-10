@@ -427,10 +427,16 @@ const COMPARE_DIALOG = `<dialog class="df-compare" id="df-compare" aria-labelled
   </dialog>`;
 
 // The answer sheet never repeats the narration (Etan, 2026-11-10): it shows the card's spoken
-// `ask`, and only the copy blocks from `body`. The card-text gate still checks `body` against the audio.
+// `ask`, and only the copy blocks and links from `body`. The card-text gate still checks `body`
+// against the audio. A summary card (audioSummary / summary) is the exception: its body is NOT
+// what the audio says, so its prose is unique text and still renders in full (lead ruling, r1).
 function renderAsk(decision) {
   const ask = typeof decision.ask === "string" ? decision.ask.trim() : "";
   return ask ? `<p class="df-ask">${renderInlineProse(ask)}</p>` : "";
+}
+
+function renderSheetBody(decision) {
+  return renderCardBody(decision.body, { prose: hasAudioSummary(decision) });
 }
 
 function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
@@ -476,7 +482,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
     <div class="df-sheet" id="sheet-${escapeHtml(decision.id)}">
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
     ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
-    <div class="df-question">${renderAsk(decision)}${renderCardBody(decision.body, { prose: false })}</div>
+    <div class="df-question">${renderAsk(decision)}${renderSheetBody(decision)}</div>
     ${renderRail(decision.rail)}
     ${renderSources(decision)}
     <div class="df-answer">
