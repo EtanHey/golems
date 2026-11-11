@@ -1,4 +1,4 @@
-# W30 route eval
+# Evidence: W30 route eval
 
 Status: ITERATE / draft review. One positive case, five reps per arm; Sonnet 5.5, medium, API-key auth. Every startup audit PASS. Stubs dispatched nothing.
 
