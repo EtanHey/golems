@@ -265,11 +265,11 @@ paths from bare names — until then, briefs must inline absolute verified paths
 
 ### Scripted one-shot (NOT agent sessions; scope under review)
 ```bash
-brainlayerCursor -s -p "Audit all .py files for stubs"
-# → runs cursor agent --yolo --approve-mcps --print --output-format text "prompt"
+# For Cursor, follow /agent-routing and /cursor-workflows.
+# Historical launcher only; do not select this route. In T3 use /cursor-workflows.
 ```
 
-Do not use this form for workers, leads, or verification gates. Those are interactive repoGolem launcher sessions (`brainlayerCursor -s`, then send the prompt). Whether `-p` should remain for non-agent scripted one-shots is an open scope question for Etan; keep the flag documented, but do not apply it to agent sessions.
+Do not use this form for workers, leads, or verification gates. Cursor work uses T3 children through `/cursor-workflows`. Whether `-p` should remain for non-agent scripted one-shots is an open scope question for Etan; keep the flag documented, but do not apply it to agent sessions.
 
 ### Model policy
 ```bash
@@ -367,7 +367,7 @@ values from Codex session metadata rather than the agent's self-description.
 Cursor model selection is owned by fleet canon #1.
 
 ### `-p` is NOT for agent sessions
-For interactive agents (monitored via cmux), launch WITHOUT `-p`: `brainlayerCursor -s`. Then send prompt separately. This includes verification gates. `-p` remains documented only for possible non-agent scripted one-shots; that scope needs Etan confirmation before automation depends on it.
+For Cursor work, use T3 `delegate_task` through `/cursor-workflows`, with one pointer brief per child and a collab report. This includes verification gates. `-p` remains documented only for possible non-agent scripted one-shots; that scope needs Etan confirmation before automation depends on it.
 
 ## TROUBLESHOOTING
 

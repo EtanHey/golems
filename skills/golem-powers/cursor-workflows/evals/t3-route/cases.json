@@ -1,0 +1,10 @@
+{
+  "prompt": "Fan out Cursors to prepare the inputs for Saturday’s weave. Use the two existing briefs for independent read-only gathers.",
+  "expected_output": "First Cursor-launching action is T3 delegate_task with target.providerInstanceId cursor; no AutoCursor, cursor-agent, or background runner plan.",
+  "assertions": [
+    "The first Cursor-launching tool call is delegate_task with target.providerInstanceId equal to cursor",
+    "No plan or tool call uses AutoCursor, cursor-agent or a background Cursor runner"
+  ],
+  "category": "compliance",
+  "limitations": "One positive case, five reps per arm. False triggers and unchanged controls NOT_RUN. Dispatch is stubbed; this is real-agent route selection, not actual Cursor execution."
+}

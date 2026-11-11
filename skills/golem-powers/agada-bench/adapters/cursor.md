@@ -17,22 +17,13 @@
 
 ---
 
-## Launcher
+## Dispatch
 
-```
-cursorJudge -s
-```
-
-If not in shell:
-
-```bash
-cursor-agent --model auto \
-             --system "You are cursorJudge, a relevance judge for agada-bench. Read rubric and corpus from paths given; emit JSONL to output path."
-```
+T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
 
 ---
 
-## Spawn brief template (sent via `mcp__cmuxlayer__send_to` after pane boot)
+## Spawn brief template (one file per T3 child)
 
 Written to disk at `<output_dir>/spawn-briefs/cursorJudge-<run-id>.md`. Dispatcher sends:
 
@@ -104,8 +95,8 @@ Same as other judges. `--judge-timeout`: 30 min for cursorJudge.
 
 ```yaml
 adapter: cursor
-model: cursor-agent-auto      # routes to whichever model cursor-agent picks; in v1.1 this was a frontier model
-launcher: cursorJudge -s
+model: default                # T3 Auto sentinel
+launcher: T3 delegate_task
 mcp_required: none
 input_format: jsonl-pointer
 output_format: jsonl

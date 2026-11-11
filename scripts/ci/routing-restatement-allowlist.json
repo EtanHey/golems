@@ -205,13 +205,6 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/cmux-agents/adapters/cursor.md",
-      "marker": "- PR review bot (`@cursor @bugbot review`)",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
       "file": "skills/golem-powers/cmux-agents/references/delivery-and-recovery.md",
       "marker": "> when they're Fable, make sure they're not creating Fable sub-agents and workflows full of Fables",
       "class": "DATA",
@@ -305,20 +298,6 @@
     {
       "file": "skills/golem-powers/coderabbit/workflows/blue-team.md",
       "marker": "# Blue Team Review Workflow",
-      "class": "FALSE POSITIVE",
-      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/coderabbit/workflows/blue-team.md",
-      "marker": "- `cursor` CLI installed and authenticated",
-      "class": "FALSE POSITIVE",
-      "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/coderabbit/workflows/red-team.md",
-      "marker": "- `cursor` CLI installed and authenticated",
       "class": "FALSE POSITIVE",
       "reason": "Blue means adversarial Blue Team; no model/vendor assignment.",
       "count": 1
@@ -1361,35 +1340,7 @@
     },
     {
       "file": "skills/golem-powers/pr-loop/SKILL.md",
-      "marker": "| Cursor diff pass | Standard endpoint step for every S-or-larger PR after routed inner review; XS skips. | Once per head, Cursor Auto (no model flag), read-only findings only, before exact-head merge checks. Advisory; never replaces the routed reviewer. Answer findings and record `Cursor pass: head=<sha> findings=<count>`, or `Cursor pass: unavailable (<reason>)` and proceed on errors/quota exhaustion. See [\u00a78a.2](references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only). |",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/SKILL.md",
       "marker": "| XS/S PR, fast CI green at head, one clean routed review (S: Cursor endpoint pass recorded, step 8) | Merge now (seat with merge authority); no wait for bots or heavy gates |",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/adapters/codex.md",
-      "marker": "For every S-or-larger PR, run the read-only `cursor-agent -p --trust --mode ask --output-format text` diff pass",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/adapters/cursor.md",
-      "marker": "For every S-or-larger PR, run the read-only `cursor-agent -p --trust --mode ask --output-format text` diff pass",
-      "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
-      "count": 1
-    },
-    {
-      "file": "skills/golem-powers/pr-loop/adapters/cursor.md",
-      "marker": "cursor-agent -p --trust --mode ask --output-format text \\",
       "class": "FALSE POSITIVE",
       "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1
@@ -1402,17 +1353,17 @@
       "count": 1
     },
     {
-      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
-      "marker": "cursor-agent -p --trust --mode ask --output-format text \\",
+      "file": "skills/golem-powers/coderabbit/workflows/blue-team.md",
+      "marker": "- Access to `references/blue-team-prompt.md`",
+      "reason": "Blue-team template path is a review input, not role selection.",
       "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1
     },
     {
-      "file": "skills/golem-powers/pr-loop/references/review-loop.md",
-      "marker": "| Cursor (diff pass) | Standard S-or-larger endpoint pass, once per head after routed inner review; XS skips. Advisory diff findings through the Cursor subscription \u2014 spends no Bugbot quota | `cursor-agent -p --trust --mode ask --output-format text \"\u2026report findings only, do NOT edit any file\"` \u2014 see routing pointer in Step 8a.2. |",
+      "file": "skills/golem-powers/repogolem/SKILL.md",
+      "marker": "# For Cursor, follow /agent-routing and /cursor-workflows.",
+      "reason": "Routing pointer replaces the removed headless launcher example.",
       "class": "FALSE POSITIVE",
-      "reason": "Review command, bot invocation or harness capability; not implementer/reviewer role selection.",
       "count": 1
     }
   ]

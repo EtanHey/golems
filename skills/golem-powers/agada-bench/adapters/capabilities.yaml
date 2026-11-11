@@ -51,9 +51,9 @@ adapters:
     reliability_concern: "FM13 risk — liveness gate mandatory"
 
   cursor:
-    launcher: "cursorJudge -s"
+    launcher: "T3 delegate_task (providerInstanceId: cursor)"
     mcp_required: false
-    model: cursor-agent-auto
+    model: default  # T3 Auto sentinel
     typical_runtime_min: 10
     judge_timeout_min: 30
     in_default_panel: false           # dropped per W3.2 κ matrix

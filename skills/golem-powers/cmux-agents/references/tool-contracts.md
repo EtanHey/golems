@@ -87,9 +87,9 @@ Use `spawn_agent` for full worker lifecycle. Keep `send_to` surface/key modes fo
 
 **New `crash_recover: boolean` param on `spawn_agent` (default `false`).** When `true`:
 
-1. **Boot capture window** — for the first 30 seconds after spawn, the engine scans up to 80 lines of terminal output on each sweep tick for a UUID pattern (`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`). This is what every major CLI prints as its session header (`claude --session-id`, `codex session`, `cursor agent --session`). **First UUID seen wins** — the engine does not currently match against CLI-specific context markers, so any earlier UUID in boot output (e.g., a log line printing a workspace UUID, a trace ID, or a dependency version string) can steal the slot. Engine persists the first-seen UUID as `cli_session_id` on the agent record.
+1. **Boot capture window** — for the first 30 seconds after spawn, the engine scans up to 80 lines of terminal output on each sweep tick for a UUID pattern (`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`). This is what every major CLI prints as its session header (`claude --session-id`, `codex session`). **First UUID seen wins** — the engine does not currently match against CLI-specific context markers, so any earlier UUID in boot output (e.g., a log line printing a workspace UUID, a trace ID, or a dependency version string) can steal the slot. Engine persists the first-seen UUID as `cli_session_id` on the agent record.
 2. **Crash detection** — when the PTY dies with a recoverable error (surface disappeared, shell exited unexpectedly) AND `crash_recover=true` AND `user_killed !== true` AND `cli_session_id` is set, the next sweep attempts respawn.
-3. **Respawn path** — new surface created, same launcher with the per-CLI resume command appended: `<repo>Claude -s --resume <id>` / `<repo>Codex -s resume <id>` / `cursor agent --session <id>`. Up to `MAX_RESPAWN_ATTEMPTS = 10` attempts before giving up.
+3. **Respawn path** — new surface created, same launcher with the per-CLI resume command appended: `<repo>Claude -s --resume <id>` / `<repo>Codex -s resume <id>`. Up to `MAX_RESPAWN_ATTEMPTS = 10` attempts before giving up.
 4. **`user_killed` guard** — if the user explicitly killed the agent, `crash_recover` will NOT respawn it. **Caveat since v0.4.35:** `close_surface` cannot preserve recovery eligibility. The `user_killed` record field still exists and is still honoured; there is just no supported tool call that sets it to `false`.
 
 **When to pass `crash_recover: true`:**
@@ -166,12 +166,7 @@ non-agent terminal or a launcher invocation that isn't a `cli` enum value.
 
 | WRONG | RIGHT | Why |
 |-------|-------|-----|
-| `cursor-cli "prompt"` | `cursor agent --trust "prompt"` | `cursor-cli` does not exist as a command |
-| `cursor --print --output-format text` | `cursor agent --output-format text` | `--print` is not a cursor flag |
-| `cursor agent --output-format` (in cmux) | `cursor agent --trust` (in cmux) | Interactive cmux agents need `--trust` for permissions, not piped/batch output |
 
-**For visible Cursor agents:** Use `spawn_agent({cli:"cursor"})` from the parent orchestrator. These workers should boot as addressable `agent_id`s, not as manually typed launchers.
-**For batch/piped output:** Use `cursor agent --output-format text "PROMPT"` directly. Cursor model selection is owned by fleet canon #1.
 **For repoGolem launchers:** see **repogolem** (canonical).
 
 ### Cursor `/auto-run` fallback
@@ -187,3 +182,6 @@ send_to({ agent_id, text: "<task prompt>", press_enter: true })
 ```
 
 If FR-06 blocks `send_to` in agent mode, confirm the raw pane with `read_screen` and use one `send_to({mode:"surface"})` fallback.
+
+
+Cursor dispatch: T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.

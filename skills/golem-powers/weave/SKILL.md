@@ -24,11 +24,11 @@ and verified change is not convergence.
   may be regenerated; conclusions may not live only in `docs.local/`.
 - Gather runs off-Claude; Claude performs judgment. `/agent-routing`
   `references/model-and-effort.md` § Decide From the Mission owns model/effort choice; quota-probe before launch,
-  preserve worker lineage, and announce headless fan-out.
+  preserve worker lineage. For Cursor, use T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). One pointer brief per child; each reports to the collab. No AutoCursor, headless CLI fan-out or background Cursor loops.
 - New/manual dispatches give each miner K sessions with a STATIC-first prompt (centerpieces
   keep a dedicated miner; [cache shape](references/topology.md#fan-out-prompt-shape-cache-economics)),
-  centerpieces first, in bounded waves. The existing cursor runner remains single-session
-  and item-first; runtime migration is a follow-up (see run-lifecycle § Dispatch). Expand one
+  centerpieces first, in bounded waves. The retained legacy cursor runner is not a route
+  for new work (see `/cursor-workflows`). Expand one
   flat frontier per depth; never nest `parallel()` calls.
 - Rounds create rounds; stop after 2 non-empty dry rounds, the second a confirmation sweep (or explicit confirmation exhaustion); synthesis last; caps are backstops ([§2a](references/run-lifecycle.md#2a-phase-recursion-loop--no-fixed-round-cap-2026-07-10)). A zero-agent work batch is a coverage defect.
 - Disk artifacts outrank agent receipts. Missing miner outputs are re-mined.

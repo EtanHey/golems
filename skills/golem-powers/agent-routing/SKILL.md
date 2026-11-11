@@ -45,7 +45,7 @@ This section is the single source of truth for fleet routing. Fleet canon, globa
 
 Draw on Antigravity much more where it fits: Gemini Flash/Argon AND Claude via agy, now natively supported in T3 Code. There is no blanket Gemini-first routing and no ban on agy Claude/GPT. The 2026-11-01 agy-Claude rule and all existing routing guardrails stand unchanged. The quoted quota/window is the dated snapshot. A same-model bench of agy-Claude versus native Claude Code is pending, owned by orc; no result is claimed.
 
-Easy gathers go to Antigravity Flash-high at any depth (the 2026-11-02 rule below); Codex Luna/Terra or Claude Haiku are the fallback when Antigravity is out (the 2026-10-28 rule below). Other gathers go to Antigravity first when Gemini Argon is out (the 2026-11-01 rule below). Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or model field; pinned Cursor drains its subscription pool.
+Easy gathers go to Antigravity Flash-high at any depth (the 2026-11-02 rule below); Codex Luna/Terra or Claude Haiku are the fallback when Antigravity is out (the 2026-10-28 rule below). Other gathers go to Antigravity first when Gemini Argon is out (the 2026-11-01 rule below). Cursor or a `gemini.gather.*` gatherer gathers and verifies; Gemini handles the helper-eligible shapes described in the Role Matrix and decision rules below. A gatherer never implements, reviews or decides. T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
 
 ### Execution capability
 
@@ -236,7 +236,7 @@ parallel. A terminal/cmux orchestrator never uses it.
 | Task shape | Engine |
 |---|---|
 | Human in the Cursor editor, independent read-heavy prompts | Cursor `/multitask` (GUI; `\|\|\|`-separated; no write locking) |
-| Headless / scripted / CI / terminal orchestrator; want determinism + per-agent tokens | `cursor-agent -p --force --output-format json … &` + `wait` (Auto model, never `-m`) |
+| Cursor child work | T3 `delegate_task`, `target: {providerInstanceId: "cursor", model: "default"}`; one pointer brief per child, report to collab |
 | Inside a Claude session; let the parent decide the split | Claude Workflow / Agent tools |
 | Lead in a T3 thread; child work (implement, review, recon) owned by that thread | T3 `delegate_task` (§ T3-native dispatch) |
 | One coherent edit, or step B needs step A's output | None: run serially in one agent |

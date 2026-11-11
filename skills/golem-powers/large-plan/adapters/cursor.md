@@ -6,24 +6,11 @@
 
 `@codebase` gives Cursor whole-repo semantic context — best for codebase-wide research phases:
 
-```bash
-cursor agent "
-@codebase Analyze <topic> across the codebase. Write findings to <plan-dir>/phase-N/findings.md.
-<output_contract>
-Include: current state, patterns found, gaps, recommendations, file:line references.
-</output_contract>
-"
-```
+T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
 
 ## Phase Audit (Before Push)
 
-```bash
-# Text output mode — read-only, no file edits
-cursor agent --output-format text "
-@codebase Audit files changed in phase N (diff the preflight receipt commit against HEAD).
-Report: file path, line number, severity (HIGH/MEDIUM/LOW), issue description.
-" > <plan-dir>/phase-<N>-audit.md
-```
+T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
 
 Cursor model selection is owned by fleet canon #1.
 
@@ -32,7 +19,7 @@ Cursor model selection is owned by fleet canon #1.
 Use the [canonical worktree launch guard](../../agent-routing/references/worktree-launch.md)
 to verify the actual project root and base commit. In T3 use managed isolation;
 outside T3 pass the receipt's commit OID to authorized manual worktree creation.
-Install dependencies from its lockfile, then launch Cursor in that checkout (Auto).
+For Cursor, use managed T3 isolation when needed; never launch a shell Cursor worker.
 
 ## PR Review (Bugbot)
 
