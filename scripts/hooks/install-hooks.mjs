@@ -674,6 +674,8 @@ async function install(o) {
     renameSync(tmp, ctx.settingsPath);
   }
   recordHookNode(ctx.hookNode);
+  const boundary = await import(pathToFileURL(path.join(ctx.live, 'scripts/ci/boundary-clones.mjs')).href);
+  boundary.syncClones({ apply: true });
   console.log("applied");
   if (ctx.codex) {
     ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py")) && existsSync(path.join(ctx.live, "scripts/hooks/codex-gate.sh"));
@@ -705,7 +707,7 @@ function registeredExactly(hooks, e) {
 // Use the registry itself so newly registered hook sources join the drift check.
 export { hookDriftPaths };
 
-function status(o) {
+async function status(o) {
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
   const ctx = context(o, sha);
   const current = liveHead(ctx.live);
@@ -826,6 +828,11 @@ function status(o) {
       console.log(`E1 ${name} PRESENT in settings.json`);
     }
   }
+  try {
+    const boundary = await import(pathToFileURL(path.join(ctx.live, 'scripts/ci/boundary-clones.mjs')).href);
+    if (boundary.syncClones()) bad = true;
+    if (current && master && git(o.repo, 'diff', '--name-only', current, master, '--', 'scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow')) bad = true;
+  } catch (error) { bad = true; console.log(`boundary-prepush drift: ${error.message}`); }
   return bad ? 1 : 0;
 }
 
@@ -833,5 +840,5 @@ function status(o) {
 // still match import.meta.url, which is the real path (#488-b N3).
 if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const o = parseArgs(process.argv.slice(2));
-  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? status(o) : await install(o));
+  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? await status(o) : await install(o));
 }

@@ -10,7 +10,7 @@ node "$HOME/.golems/current/scripts/hooks/install-hooks.mjs" \
 ```
 
 Omit `--apply` for a dry-run. Python 3.11+ and Node are required. The client
-installer makes no git calls and creates no worktree. It refuses an existing
+installer discovers clones under ~/Gits through Git and creates no worktree. It refuses an existing
 owner pin or hooks linked into `.worktrees/hooks-live`. When `scutil` is available,
 it also refuses the owner's MBP hostname; other hosts and absent `scutil`
 remain supported. It verifies P1's `MANIFEST.json` hashes and modes and, when
@@ -50,3 +50,14 @@ The owner `mbp` profile also includes `m1-window-gate`, configured privately in
 allows calls; an open registry window blocks unrelated M1 dispatch. Claude
 covers Bash and selected T3 environment calls; Codex covers Bash only. See the
 [gate contract](../../skills/golem-powers/m1-window-gate/SKILL.md) for boundaries.
+
+Both owner and client apply runs synchronize a lightweight publication pre-push
+across clones under ~/Gits and their shared worktree configuration. Existing
+hooks remain in place and are chained through a managed hooks directory. Status
+fails on missing or changed wrappers, policy versions or clone configuration.
+The opt-in heavy suite remains chained when previously configured.
+
+Rollout: the lead runs the existing client install command above on M1 after
+merge, recording before/after core.hooksPath inventory and a refused push to a
+throwaway local bare remote. M4 installation waits for explicit clearance.
+Local fixtures are not machine rollout evidence.

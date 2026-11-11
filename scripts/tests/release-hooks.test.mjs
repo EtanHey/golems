@@ -20,7 +20,7 @@ function fixture() {
   const root = mkdtempSync(path.join(scratch, 'client-')); roots.push(root);
   const candidate = path.join(root, 'candidate'), source = path.join(root, 'release'), home = path.join(root, 'home');
   mkdirSync(candidate); mkdirSync(source); mkdirSync(home);
-  for (const file of ['scripts/hooks', 'skills/golem-powers', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'package.json']) {
+  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow', 'scripts/hooks', 'skills/golem-powers', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'package.json']) {
     mkdirSync(path.dirname(path.join(candidate, file)), { recursive: true });
     cpSync(path.join(repo, file), path.join(candidate, file), { recursive: true, filter: p => !p.includes('__pycache__') });
   }
