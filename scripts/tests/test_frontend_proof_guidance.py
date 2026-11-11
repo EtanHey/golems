@@ -36,12 +36,16 @@ def test_cursor_endpoint_pass_is_enforced_read_only():
     docs = ['SKILL.md', 'adapters/codex.md', 'adapters/cursor.md', 'references/review-loop.md']
     texts = {name: (SKILLS / 'pr-loop' / name).read_text() for name in docs}
     # Any headless CLI form comes back -> fail: cursor-agent / cursor agent with any flag or argument.
-    headless = re.compile(r'\bcursor[- ]agent\b\s+(-|"|\'|[a-z])', re.I)
+    headless = re.compile(r'\bcursor(?:-|\s+)agent\b\s+(-|"|\'|[a-z])', re.I)
     for name, text in texts.items():
         assert not headless.search(text), f'{name}: headless Cursor CLI invocation'
-    # The T3 route pins the Auto sentinel, never a named model.
-    targets = re.findall(r'providerInstanceId:\s*"cursor",\s*model:\s*"([^"]+)"', '\n'.join(texts.values()))
-    assert targets and set(targets) == {'default'}, targets
+    # The T3 route pins the Auto sentinel, never a named model: check every target object that names
+    # the cursor provider, in any key order, independently.
+    targets = re.findall(r'\{[^{}]*providerInstanceId:\s*"cursor"[^{}]*\}', '\n'.join(texts.values()))
+    assert targets, 'no documented T3 cursor target'
+    for target in targets:
+        assert re.search(r'\bmodel:\s*"default"', target), target
+        assert len(re.findall(r'\bmodel:', target)) == 1, target
     # The read-only contract stays written: findings only, no edits, no push.
     loop = texts['references/review-loop.md']
     assert 'READ-ONLY' in loop
