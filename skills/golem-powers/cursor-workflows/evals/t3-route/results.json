@@ -1,0 +1,229 @@
+[
+  {
+    "arm": "baseline",
+    "rep": 1,
+    "pass_first_cursor_instance": false,
+    "first_target": {
+      "driverKind": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.0587788,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "aeb469a17429befb4babd9c4037ac8b07e3324886db52507bb70a908ba227409",
+    "result": "I started two Cursor gathers in parallel. Both are still running and neither has reported yet.\n\n| Task | ID | Brief |\n|---|---|---|\n| Weave gather A | `stub-task-1` | `/workspace/weave/briefs/a.md` |\n| Weave gather B | `stub-task-2` | `/workspace/weave/briefs/b.md` |\n\n- **Constraints:** Each task is read-only and shares the existing checkout. The only write allowed is the report the brief requires, posted to `/workspace/weave/collab.md`. I told them not to start threads or other agents. I did not read the briefs myself. The tasks read them directly, so I can't confirm their contents or the report format.\n- **Cursor settings:** Cursor offers only `auto`, so I passed no model.\n- **Not done yet:** I did not run the weave or its convergence gate. That is Saturday's job, and the gate should wait until these gathers land.\n\nWhen the completion notifications arrive, I'll check that both reports are in `collab.md`. Missing outputs would need a re-gather."
+  },
+  {
+    "arm": "baseline",
+    "rep": 2,
+    "pass_first_cursor_instance": false,
+    "first_target": {
+      "driverKind": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.038539500000000004,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "9b6d5b819b65d352191d958013bb07bcd17146ea9b0dab06db8a1cfc0c3f8e84",
+    "result": "I started two Cursor children, one per existing brief, and both are running now:\n\n| Task ID | Brief |\n|---|---|\n| `stub-task-1` | `/workspace/weave/briefs/a.md` |\n| `stub-task-2` | `/workspace/weave/briefs/b.md` |\n\n- **Read-only:** Each task is told not to edit, create or delete files, and not to start top-level threads. I didn't read the briefs myself. Each child opens its own brief and reports to `/workspace/weave/collab.md`.\n- **Provider settings:** I set `driverKind: \"cursor\"` and passed no model, because the capabilities list says Cursor is `auto` only.\n- **Isolation:** Both use shared isolation, since they only read.\n\nI'll pick this up when the completion notifications arrive. After that I'll check `collab.md` for both reports before calling the inputs ready for Saturday's weave."
+  },
+  {
+    "arm": "baseline",
+    "rep": 3,
+    "pass_first_cursor_instance": false,
+    "first_target": {
+      "driverKind": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.03942049999999999,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "ee99eaa18d99528909768d35ea6762fcb2298cd5a278d820d11bde64e5cf0501",
+    "result": "I started two read-only Cursor gathers for Saturday's weave. Both are running and neither has reported yet. I haven't read the briefs myself. Each Cursor reads its own brief and is told to report to `/workspace/weave/collab.md`.\n\n| Task ID | Brief | Title |\n|---|---|---|\n| `stub-task-1` | `/workspace/weave/briefs/a.md` | Weave gather A |\n| `stub-task-2` | `/workspace/weave/briefs/b.md` | Weave gather B |\n\nBoth run on the Cursor `auto` model with a shared checkout and the research role. Each task prompt says not to modify files beyond what the brief asks and not to start top-level threads.\n\nA completion notification will wake me when each one finishes. After both are done I'll check `collab.md` for the reports."
+  },
+  {
+    "arm": "baseline",
+    "rep": 4,
+    "pass_first_cursor_instance": false,
+    "first_target": {
+      "driverKind": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.039580399999999995,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "fb45928b325308bb995dbc9de9ddef91b696a4f723fc6b399b6bb79da7d41477",
+    "result": "I started two Cursor children, one per brief. Both are running and neither has reported yet, so there are no findings so far.\n\n| Task | Brief | Task ID |\n|---|---|---|\n| Weave gather A | `/workspace/weave/briefs/a.md` | `stub-task-1` |\n| Weave gather B | `/workspace/weave/briefs/b.md` | `stub-task-2` |\n\n- **Brief contents:** I didn't read the briefs myself. Each child was told to read its own brief and follow it. They report to `/workspace/weave/collab.md`.\n- **Constraints:** They're read-only gathers, run async in a shared checkout, and told not to start top-level threads. I didn't pass a Cursor model because only `auto` is available.\n\nA completion notification will wake me when each finishes. I'll check `/workspace/weave/collab.md` for both reports then."
+  },
+  {
+    "arm": "baseline",
+    "rep": 5,
+    "pass_first_cursor_instance": false,
+    "first_target": {
+      "driverKind": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.041291,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "ad9ba178f1cf1194582a9f1462f1a9d88d9cc22c6cab5466d6f58cd8599e2c16",
+    "result": "I started two Cursor child agents in parallel, one per brief. Neither has reported back yet, so I haven't checked their results.\n\n- **Gather A:** task `stub-task-1`, pointed at `/workspace/weave/briefs/a.md`.\n- **Gather B:** task `stub-task-2`, pointed at `/workspace/weave/briefs/b.md`.\n\nEach child is read-only and shared-checkout. Each was told to follow its brief and report to `/workspace/weave/collab.md`. I used the Cursor provider's `auto` model without passing one, since it's the only option. I didn't start any top-level threads.\n\nI haven't read the briefs or `collab.md` myself. I also launched an Explore subagent to read them, but its hook returned an \"eval harness stub\" message, so I don't know whether it ran. The children read the briefs directly, so nothing depends on it.\n\nCompletion notifications will wake me when the children finish. I'll then check what they wrote to `collab.md` before treating the Saturday inputs as ready."
+  },
+  {
+    "arm": "candidate",
+    "rep": 1,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.0357669,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "c48fc61fceda2090e126b47637806c41e2440cb6abf77283bec467cff9c31f67",
+    "result": "I dispatched two Cursor children, one per existing brief, and both are running. Neither has reported yet.\n\n| Task | Brief | Task ID |\n|---|---|---|\n| Weave gather A | `/workspace/weave/briefs/a.md` | `stub-task-1` |\n| Weave gather B | `/workspace/weave/briefs/b.md` | `stub-task-2` |\n\n- **Cursor setup:** Both children are research-role and use the shared checkout. I left the model unset because `orchestrator_capabilities` lists Cursor as \"auto only, never pass a model\". That differs from the skill text, which says to pass `default`.\n- **Where reports go:** The briefs direct reports to `/workspace/weave/collab.md`. I didn't open them, so I haven't confirmed that, and I haven't read either brief's contents.\n- **Next step:** A completion notification will wake me. I'll then check what each child wrote to the collab before relaying any findings."
+  },
+  {
+    "arm": "candidate",
+    "rep": 2,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.0359347,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "c4b6b289ec62e61b0cfa9b5659717cd9cf3bb7968f21057b1de836f31e87566b",
+    "result": "I started two Cursor children on Auto, one per existing brief. Both are running and neither has reported yet.\n\n- **A:** `stub-task-1` follows `/workspace/weave/briefs/a.md`.\n- **B:** `stub-task-2` follows `/workspace/weave/briefs/b.md`.\n\nBoth are read-only research tasks in the shared checkout, and each reports to `/workspace/weave/collab.md` rather than to this thread. I didn't start any top-level threads. I left the model unset because the capabilities listing says Cursor is Auto-only and never to pass a model. The skill's `model: \"default\"` sentinel would also have meant Auto, but I followed the listing.\n\nA completion notification will wake me when each child finishes. I'll check what they wrote to the collab before I relay any findings."
+  },
+  {
+    "arm": "candidate",
+    "rep": 3,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.034878000000000006,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "846d337e766fc0db095451aad00fdbc7da7ba69826875553488a85ec2026f64f",
+    "result": "I started two Cursor children, one on each existing brief, as read-only gathers. Neither has reported yet.\n\n- **Gather A:** task `stub-task-1`, running `/workspace/weave/briefs/a.md`.\n- **Gather B:** task `stub-task-2`, running `/workspace/weave/briefs/b.md`.\n\nEach child is dispatched with \"Read and follow <brief path>\". I didn't open the briefs, so I haven't confirmed they tell the child to report to `/workspace/weave/collab.md`. I also haven't confirmed the scope is read-only beyond how I framed the dispatch.\n\nCursor only offers Auto, so I didn't pass a model. I left `model` out of the target instead of using the `\"default\"` sentinel the skill names, because the capabilities listing says never to pass one.\n\nA completion notification will wake me. When it does, I'll check each report in the collab before relaying findings for Saturday's weave."
+  },
+  {
+    "arm": "candidate",
+    "rep": 4,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.034414099999999996,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "6a8e9a7c00ad4ffe16d03c34732d4a497c7ae7ba8167201948745a30ef1c857e",
+    "result": "I dispatched two Cursor children, both read-only and running now:\n\n- **Weave gather A** (`stub-task-1`) reads `/workspace/weave/briefs/a.md`.\n- **Weave gather B** (`stub-task-2`) reads `/workspace/weave/briefs/b.md`.\n\nEach is told to report to `/workspace/weave/collab.md`, not to this thread. I haven't opened either brief, so I don't know what they ask for.\n\nI didn't pass a model. The skill says to use `default`, but `orchestrator_capabilities` says Cursor is auto-only and to never pass one, so I left it out.\n\nCompletion will wake me. Once both finish, I'll check what they wrote to the collab file before relaying any findings."
+  },
+  {
+    "arm": "candidate",
+    "rep": 5,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor",
+      "model": "default"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.035085599999999995,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "bb824e94afbc3a9af8a85a34384cef68f7d72970e7e4bbf85322726e22265de8",
+    "result": "I dispatched two Cursor children, one per brief. Both are running, and neither has reported yet.\n\n- **Gather A:** `stub-task-1` runs `/workspace/weave/briefs/a.md`.\n- **Gather B:** `stub-task-2` runs `/workspace/weave/briefs/b.md`.\n\nBoth are read-only research roles in a shared checkout, targeting Cursor Auto. Each brief tells its child to report to `/workspace/weave/collab.md`, not to this thread. I didn't read the briefs myself, and I started no top-level threads.\n\nA completion notification will wake me. I'll check the collab file for each report before passing any findings on."
+  },
+  {
+    "arm": "candidate-final",
+    "rep": 1,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.033791,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "b45a027ee8802654922fea06741501a71e7ebe465e42122ee38435100c0f416e",
+    "result": "I dispatched two Cursor (Auto) children, one per existing brief. Both are running and neither has reported yet.\n\n- **Gather A:** task `stub-task-1`, running `/workspace/weave/briefs/a.md`.\n- **Gather B:** task `stub-task-2`, running `/workspace/weave/briefs/b.md`.\n\nEach brief says to report to `/workspace/weave/collab.md`, not to this thread. I didn't pass a named Cursor model, so they use Auto. I started no top-level threads.\n\nA completion notification will wake me. I'll then check what each child wrote in `collab.md` before relaying any findings."
+  },
+  {
+    "arm": "candidate-final",
+    "rep": 2,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.034731200000000004,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "647bbd34c79b848141a7659d4f1c82ba5214b67e994cb3115a718bbfd650f3a2",
+    "result": "I started two Cursor children, one per existing brief. Both are running, and I haven't read their reports yet.\n\n- **stub-task-1:** `/workspace/weave/briefs/a.md`\n- **stub-task-2:** `/workspace/weave/briefs/b.md`\n\nBoth are research-role, async, read-only gathers on the Cursor provider. Each brief tells its child to report to `/workspace/weave/collab.md`, not to this thread. I didn't open the briefs, so I haven't checked their contents.\n\nI left out the model setting. The skill says to pass `model: \"default\"`, but the capabilities listing says Cursor is \"auto only (never pass a model)\". Omitting it follows both.\n\nI'll wait for the completion notifications. Once they arrive, I'll check what each child wrote to the collab before relaying any findings."
+  },
+  {
+    "arm": "candidate-final",
+    "rep": 3,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.033543,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "05f6ca2b840d54869ce38140971effc7a7681c9a7baae1e53416f4e207d3d551",
+    "result": "I dispatched two Cursor children, both running asynchronously.\n\n- **Gather A:** `stub-task-1` reads `/workspace/weave/briefs/a.md`.\n- **Gather B:** `stub-task-2` reads `/workspace/weave/briefs/b.md`.\n\nBoth briefs tell the child to report to `/workspace/weave/collab.md`, so reports go there and not to this thread. I haven't opened the briefs or the collab file. I used the existing briefs as-is, with no new files and no top-level threads.\n\n`orchestrator_capabilities` lists Cursor as auto-only and says never to pass a model. So I passed only `providerInstanceId: \"cursor\"` and skipped the `model: \"default\"` that the skill text suggests.\n\nI'm ending my turn now, as the dispatch response instructed, and completion notifications will wake me. When they arrive I'll check what each child wrote to the collab file before relaying any findings."
+  },
+  {
+    "arm": "candidate-final",
+    "rep": 4,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor",
+      "model": "default"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.0342463,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "2189e17cdea6c88014f74b482b14ada156c7920dbd009c2b69ea534ea8f7af51",
+    "result": "I dispatched two Cursor children, both read-only:\n\n- **Gather A** (`stub-task-1`) is running `/workspace/weave/briefs/a.md`.\n- **Gather B** (`stub-task-2`) is running `/workspace/weave/briefs/b.md`.\n\nEach brief tells its child to report to `/workspace/weave/collab.md`. I haven't read either brief or any report yet. When the children finish, I'll check what they wrote in the collab file before passing any findings on.\n\nI didn't start any top-level threads."
+  },
+  {
+    "arm": "candidate-final",
+    "rep": 5,
+    "pass_first_cursor_instance": true,
+    "first_target": {
+      "providerInstanceId": "cursor"
+    },
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "usd": 0.035967,
+    "startup_audit": "PASS",
+    "auth": "ANTHROPIC_API_KEY",
+    "sha256": "976c7e8c197162357f6a9c78772d4f9935aa8b96d6d85b8a5e4ddbb78e9e7d11",
+    "result": "I dispatched two Cursor children for the read-only gathers, and both are running:\n\n- **`stub-task-1`:** told to read and follow `/workspace/weave/briefs/a.md`.\n- **`stub-task-2`:** told to read and follow `/workspace/weave/briefs/b.md`.\n\nBoth use the Cursor provider on Auto, with no model named. The capabilities listing says to never pass a model, so I left it out. They work in the shared checkout, with no worktrees and no top-level threads. Per the briefs, each reports to `/workspace/weave/collab.md`, not to this thread.\n\nI haven't opened the briefs or the collab, so nothing is verified yet. When the completion notifications arrive, I'll check the collab entries before relaying any findings for Saturday's weave."
+  }
+]

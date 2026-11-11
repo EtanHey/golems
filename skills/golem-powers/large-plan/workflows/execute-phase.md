@@ -60,22 +60,7 @@ bun test   # or npm test
 
 Run a CLI agent to audit your changes **before** pushing. This catches issues locally and saves PR review round-trips.
 
-```bash
-# Write audit prompt to file
-cat > /tmp/phase-audit-prompt.txt << 'EOF'
-Audit the files changed in this phase. Look for:
-1. Bugs, logic errors, edge cases
-2. Security risks (SQL injection, path traversal, etc.)
-3. Missing error handling
-4. Type safety issues
-5. Consistency with surrounding code patterns
-Be specific — file paths, line numbers, severity (HIGH/MEDIUM/LOW).
-EOF
-
-# Run a Cursor audit via /cmux-agents, or use the repoGolem headless launcher
-# from /repogolem for the target repo:
-golemsCursor -s -p "$(cat /tmp/phase-audit-prompt.txt)" > /tmp/phase-audit-result.md
-```
+The lead dispatches a read-only T3 Cursor child using `/cursor-workflows`. Write a pointer brief pinning the diff base/head, audit criteria and collab report path; one child per brief. Workers never launch their own reviewer.
 
 Review the output. Fix any HIGH/MEDIUM issues. Re-run tests after fixes.
 

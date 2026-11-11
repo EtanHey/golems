@@ -1061,7 +1061,7 @@
       "absorbed_id": 1,
       "name": "headless-orchestrator-wants-parallel",
       "prompt": "I'm running as an orchestrator in a cmux terminal pane (no Cursor editor open). I need to classify 40 files as relevant/irrelevant in parallel to save wall-clock time. Should I use Cursor's /multitask for this?",
-      "expected_output": "Must say NO — /multitask is an in-editor GUI command and silently no-ops in headless contexts. Should route to headless cursor-agent shell fan-out (background & + wait, or find|while read with --force --output-format json) OR the Claude Workflow tool. Should mention determinism / token accounting as the reason headless wins here.",
+      "expected_output": "Must say NO: /multitask is an in-editor GUI command, not a headless parallelism feature; sending it to a CLI can degrade into one agent answering a plain prompt. For Cursor work, use T3 delegate_task with target {providerInstanceId: \"cursor\", model: \"default\"} (Auto), one pointer brief per child and reports to the collab. For non-Cursor fan-out inside Claude, the Claude Workflow tool is an alternative. Never recommend headless Cursor CLI fan-out, an AutoCursor runner or background Cursor loops.",
       "root_cause_tested": "gui_misroute — the central mistake the skill exists to prevent",
       "assertions": [
         {
@@ -1070,13 +1070,18 @@
           "type": "content"
         },
         {
-          "name": "routes_to_headless_or_workflow",
-          "description": "Recommends headless cursor-agent shell fan-out or the Claude Workflow tool instead",
+          "name": "routes_to_t3_cursor_or_claude_workflow",
+          "description": "For Cursor work, recommends T3 delegate_task with providerInstanceId cursor and model default, one pointer brief per child and reports to the collab; alternatively uses the Claude Workflow tool for non-Cursor fan-out.",
           "type": "behavioral"
         },
         {
           "name": "no_blind_multitask_recipe",
           "description": "Does NOT hand the orchestrator a /multitask invocation as if it would run",
+          "type": "negative"
+        },
+        {
+          "name": "no_cursor_cli_runner",
+          "description": "Does NOT recommend headless Cursor CLI fan-out, AutoCursor runners or background Cursor loops",
           "type": "negative"
         }
       ]
@@ -1150,22 +1155,27 @@
       "absorbed_id": 5,
       "name": "ci-pipeline-batch",
       "prompt": "In our CI pipeline I want to run lint, type-check, and the test suite as three parallel passes and fail the build if any returns nonzero. Best way?",
-      "expected_output": "CI = headless, scriptable, deterministic, needs exit codes. Should recommend headless cursor-agent shell fan-out (& + wait, capture exit codes / --output-format json), NOT /multitask (no CI surface).",
+      "expected_output": "Use native parallel CI jobs or shell processes for lint, type-check and tests, collect every exit code and fail the build if any fails; no agent is required for these deterministic commands. /multitask is GUI-only and has no CI surface. Never route these commands through headless cursor-agent, AutoCursor or background Cursor loops. If separate Cursor analysis is needed from a T3 lead, use delegate_task with target {providerInstanceId: \"cursor\", model: \"default\"}, one pointer brief per child and collab reports; keep deterministic CI gating on command exit codes.",
       "root_cause_tested": "ci_misroute — /multitask has no headless/CI surface",
       "assertions": [
         {
-          "name": "routes_to_headless",
-          "description": "Recommends headless cursor-agent shell fan-out for CI",
+          "name": "routes_to_native_parallel_ci",
+          "description": "Runs the deterministic passes as native CI jobs or shell processes; any separately requested Cursor analysis from T3 uses delegate_task with providerInstanceId cursor and model default, pointer briefs and collab reports.",
           "type": "behavioral"
         },
         {
-          "name": "mentions_exit_or_json",
-          "description": "Mentions exit codes or --output-format json for deterministic CI gating",
+          "name": "collects_all_exit_codes",
+          "description": "Collects the exit code of every pass and fails the build if any is nonzero",
           "type": "content"
         },
         {
           "name": "not_multitask_ci",
           "description": "Does NOT recommend /multitask for CI",
+          "type": "negative"
+        },
+        {
+          "name": "no_cursor_cli_runner",
+          "description": "Does NOT recommend headless Cursor CLI fan-out, AutoCursor runners or background Cursor loops for CI",
           "type": "negative"
         }
       ]

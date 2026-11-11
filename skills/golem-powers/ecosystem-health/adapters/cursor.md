@@ -83,7 +83,7 @@ NOTE: For full fix (MCP disable, hooks disable), re-run /context-check in Claude
 
 - `@codebase` indexing — can use whole-repo context when generating rules
 - `.cursor/rules/` — Cursor-native rules enforced on every prompt
-- Text output mode — `cursor agent --output-format text` for piped audit reports
+- T3 child reports to a collab via a pointer brief; see `/cursor-workflows`.
 
 ## Limitations
 

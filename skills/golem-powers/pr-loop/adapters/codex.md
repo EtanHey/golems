@@ -69,9 +69,9 @@ gh pr comment <N> --body "bugbot run"   # eligible L/core-risk PR only: once, or
 
 Routing (who implements/reviews and model selection): see `/agent-routing` § Routing rules (SSOT).
 
-For every S-or-larger PR, run the read-only `cursor-agent -p --trust --mode ask --output-format text` diff pass
+For every S-or-larger PR, run the read-only diff pass via `/agent-routing` and the T3 child procedure below
 once per head after routed inner review and before exact-head merge checks; XS skips it.
-Cursor Auto only (no model flag). Findings only, never edit or push; this advisory bot-tier
+Cursor uses the T3 Auto sentinel `target: {providerInstanceId: "cursor", model: "default"}`. Findings only, never edit or push; this advisory bot-tier
 pass never replaces the routed reviewer. Answer every finding before merge; real findings
 after merge open a NEW PR. Record `Cursor pass: head=<sha> findings=<count>` in the PR body,
 or `Cursor pass: unavailable (<reason>)` on errors/quota exhaustion and proceed without retry

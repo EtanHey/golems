@@ -7,12 +7,12 @@
 
 ## Scope
 
-The engines in full: Cursor /multitask, headless cursor-agent, Claude Workflow, cmux.
-Measured evidence (the 14s vs 28s run, the headless `/multitask` pass-through): [fan-out-head-to-head.md](fan-out-head-to-head.md).
+The engines in full: Cursor /multitask, T3 Cursor children, Claude Workflow, cmux.
+Historical evidence only, never dispatch instructions; the T3 route in this file supersedes its recommendations. Measured evidence (the 14s vs 28s run, the headless `/multitask` pass-through): [fan-out-head-to-head.md](fan-out-head-to-head.md).
 
 ## TL;DR — the one decision
 
-**Cursor `/multitask` is an in-EDITOR (GUI) slash command. It is NOT invocable from the headless `cursor-agent` CLI.** (Verified 2026-06-05 on Cursor 3.3.2 / cursor-agent 2026.06.04: absent from `cursor-agent --help`, no flag. In `-p` print mode the `/multitask` text is passed through as a PLAIN PROMPT to a single agent — transcript JSONL confirms one thread, zero subagents — and the model answers all the parts inline while *claiming* "ran in parallel." It looks like it worked. It didn't.) So if you are an orchestrator running in a terminal/cmux and you want parallelism, `/multitask` is **not your tool** — it requires a human sitting in the Cursor Agents Window. Use headless shell fan-out, the Workflow tool, or the cmux fleet instead.
+**Cursor `/multitask` is an in-EDITOR (GUI) slash command. It is NOT invocable from the headless `cursor-agent` CLI.** (Verified 2026-06-05 on Cursor 3.3.2 / cursor-agent 2026.06.04: absent from `cursor-agent --help`, no flag. In `-p` print mode the `/multitask` text is passed through as a PLAIN PROMPT to a single agent — transcript JSONL confirms one thread, zero subagents — and the model answers all the parts inline while *claiming* "ran in parallel." It looks like it worked. It didn't.) So if you are an orchestrator running in a terminal/cmux and you want parallelism, `/multitask` is **not your tool** — it requires a human sitting in the Cursor Agents Window. For Cursor work use the T3 route below.
 
 Cursor model selection is owned by fleet canon #1.
 
@@ -38,7 +38,7 @@ Evidence: corrected twice in 3 min — *"I am using the GUI, give me a full prom
 | Task shape | Engine | Why |
 |------------|--------|-----|
 | Human is **in the Cursor editor**, wants the foreground free, has independent prompts | **Cursor `/multitask`** | Async subagents, Agents-panel visualization, shared parent context/rules/MCP, results aggregate back. v0 — no conflict locking; keep tasks read-heavy or non-overlapping. |
-| Headless / scripted / CI / orchestrator-in-terminal, N independent units, want **determinism + token accounting** | **Headless `cursor-agent` shell fan-out** (`&` + `wait`, or `find \| while read`) | You control concurrency, capture per-agent `usage` tokens via `--output-format json`, exit codes. ~2x wall-clock on 3 tasks (measured: 14s vs 28s). |
+| Cursor work in a T3 thread | T3 `delegate_task` Cursor child | One pointer brief per child; reports to collab. |
 | Inside a **Claude** session, work decomposes into independent subtasks, want the parent to make the parallelism call | **Claude Workflow / Agent tools** | Implicit fan-out, subagents share plan/rate-limit, summaries return to parent. Best when you want Claude to *decide* what's parallel. |
 | Need **visible, multi-vendor** workers (Cursor + Codex + Gemini side-by-side), long-running, human-watchable | **cmux fleet** (`/cmux-agents`, repoGolem launchers) | Etan wants to SEE agents working. Multi-vendor, persistent, monitorable. Heavier setup. |
 | Single coherent edit, OR step B needs step A's output | **None — run serially in one agent** | Parallelism wastes tokens on work that gets redone. |
@@ -58,20 +58,9 @@ Evidence: corrected twice in 3 min — *"I am using the GUI, give me a full prom
 4. **Controls (Settings → Subagents):** Leave the model control at Auto/default; never select a specific Explore model or enable Max Mode. Adjust only the concurrency cap and cost ceiling. Flags reported by users: `/multitask --max 3`, `/multitask --budget 50000`, `/multitask --resume`.
 5. **Gotchas:** v0 — no automatic write-conflict locking (Cursor's words: agents "done a pretty good job" but nothing formal). Subagents **cannot** nest another `/multitask` (blast radius capped at one fan-out level). Default 10-min per-subagent timeout. NOT scriptable, NOT headless.
 
-### B. Headless `cursor-agent` shell fan-out (the orchestrator's tool)
-```bash
-# N independent units in parallel; capture per-agent tokens + exit codes
-for item in "$@"; do
-  # Cursor stays on Auto: never add -m/--model.
-  cursor-agent -p --force --output-format json \
-    "Classify $item as POSITIVE/NEGATIVE, one word" > "out.$item.json" &
-done
-wait
-# each out.*.json has .result and .usage.{inputTokens,outputTokens}
-```
-- `--force`/`--yolo` is REQUIRED non-interactively (bypasses workspace-trust + approval prompts).
-- `--output-format json` → structured `result` + `usage` token accounting; `stream-json` for live progress.
-- Concurrency = how many `&` you launch (add a semaphore/`xargs -P N` to cap). Deterministic, CI-safe.
+### B. Cursor children in T3
+
+T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
 
 ### C. Claude Workflow tool / parallel subagents
 - Use the Claude Workflow/Agent tools when you have 2+ independent, no-shared-state tasks and want Claude to fan them out. Subagents return summaries to the parent; counts against your plan rate limit, not usage billing.
@@ -83,17 +72,17 @@ wait
 - **Do NOT** tell a headless agent or a terminal orchestrator to "use `/multitask`" — the slash command is not recognized; the text degrades to a plain prompt handled by ONE agent that may falsely report it parallelized. Success-looking output ≠ subagents ran. This is the #1 misroute this reference exists to prevent.
 - **Do NOT** model-pin any Cursor path, including internal/headless fan-out.
 - **Do NOT** parallelize sequentially-dependent steps — wasted tokens.
-- **`/multitask` v0 has no write-conflict locking** — keep parallel writes to disjoint files, or prefer worktrees (Cursor's own worktree feature, or headless fan-out into separate dirs).
-- Each subagent ≈ one parent-context-window of overhead. On usage-based pricing this adds up — cap with `--max`/`--budget` (GUI) or a `-P` semaphore (headless).
+- **`/multitask` v0 has no write-conflict locking** — keep parallel writes to disjoint files, or prefer worktrees (Cursor's own worktree feature, or managed T3 isolation).
+- Each subagent ≈ one parent-context-window of overhead. On usage-based pricing this adds up — cap with `--max`/`--budget` (GUI) or the lead's T3 dispatch cap.
 - Discovery-then-change pattern: fan out the *discovery* phase (read-heavy, naturally parallel), then make the *changes* in a single agent holding the whole picture.
 
 If this procedure's own dispatch exhausts a shared quota, report that dispatch as
 the cause; never relabel the resulting error as an external finding.
 
 ## Compact Instructions
-- **Preserve:** the GUI-only verdict for `/multitask`, the when-to-use matrix routing rules, the headless fan-out recipe (B), the measured 2x wall-clock figure, and the "headless agents silently ignore /multitask" gotcha.
+- **Preserve:** the GUI-only verdict for `/multitask`, the when-to-use matrix routing rules, the T3 child recipe (B), and the "headless agents silently ignore /multitask" gotcha.
 - **Discard:** raw `cursor-agent --help` dumps, per-run token JSON blobs, intermediate timing experiments, exact subagent model enum lists (they churn between Cursor versions — re-verify against `--help` / changelog when needed).
-- **Re-verify on Cursor version bump:** whether `/multitask` ever gains a headless CLI surface (`cursor-agent --help | grep -i multitask`). If it does, update the matrix.
+- CLI capability changes do not authorize a new route; T3 Cursor children remain the route.
 
 ## Integration Points
 - `/agent-routing` § Role Matrix — decides Cursor vs Codex vs Claude by task TYPE (gather/implement/orchestrate). This reference decides the PARALLELISM ENGINE once you know it's a fan-out.

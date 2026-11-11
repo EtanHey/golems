@@ -34,7 +34,7 @@ adapters:
     model_policy: "agent-routing/references/model-and-effort.md"
 
   cursor:
-    binary: cursor
+    binary: null  # Cursor work uses T3 delegate_task, not a CLI
     worktree: manual
     session_resume: false
     mcp_access: false
@@ -159,7 +159,7 @@ cli_commands:
       claude: "via prompt"     # No built-in command
       codex: "/review"         # Built-in code review
       gemini: null
-      cursor: "cursor agent --output-format text"  # Audit mode
+      cursor: "T3 delegate_task Cursor child; pointer brief; collab report"
     plan_mode:
       claude: "via prompt"     # No built-in plan mode
       codex: "/plan"           # Read-only exploration mode

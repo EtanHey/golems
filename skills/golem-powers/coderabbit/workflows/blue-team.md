@@ -4,7 +4,7 @@ Quality review focused on architecture, maintainability, testing, and UX.
 
 ## Prerequisites
 
-- `cursor` CLI installed and authenticated
+- T3 dispatch available; follow `/agent-routing` for provider selection
 - Git repo with changes to review (uncommitted diff or PR)
 - Access to `references/blue-team-prompt.md`
 
@@ -43,27 +43,9 @@ Use the repo context map below. Match the current repo name (from `basename $(gi
 
 ### 4. Build and Run the Prompt
 
-```bash
-REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-SKILL_DIR=$HOME/.golems/skills/golem-powers/coderabbit
+T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
 
-# Read the prompt template
-PROMPT=$(cat "$SKILL_DIR/references/blue-team-prompt.md")
-
-# Inject repo context (looked up from the map below)
-REPO_CTX="<repo context for $REPO_NAME from the map>"
-PROMPT="${PROMPT//\{\{REPO_CONTEXT\}\}/$REPO_CTX}"
-
-# Run with Cursor
-cursor agent --output-format text \
-  "$PROMPT
-
-## Code to Review
-
-\`\`\`diff
-$DIFF
-\`\`\`"
-```
+Put the relevant prompt template, diff/base/head, report path and read-only constraints in the brief. The lead routes review; workers do not start their own reviewers.
 
 ### 5. Parse Output
 
@@ -79,11 +61,9 @@ The prompt produces category-grouped findings. Triage:
 
 Save structured output:
 
-```bash
-# Save to docs.local/audits/ for traceability
-cursor agent --output-format text "$PROMPT ..." \
-  > "docs.local/audits/blue-team-$(date +%Y-%m-%d)-$(git rev-parse --short HEAD).md"
-```
+T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
+
+Put the relevant prompt template, diff/base/head, report path and read-only constraints in the brief. The lead routes review; workers do not start their own reviewers.
 
 ---
 
@@ -105,12 +85,8 @@ cursor agent --output-format text "$PROMPT ..." \
 
 For comprehensive coverage, run both reviews:
 
-```bash
-# Red team (security/reliability)
-cursor agent --output-format text "$RED_PROMPT" > red-findings.md
+T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
 
-# Blue team (quality/architecture)
-cursor agent --output-format text "$BLUE_PROMPT" > blue-findings.md
-```
+Put the relevant prompt template, diff/base/head, report path and read-only constraints in the brief. The lead routes review; workers do not start their own reviewers.
 
 Merge findings, deduplicate. Red team H findings override Blue team suggestions on the same code.

@@ -82,7 +82,6 @@ If a bug has appeared in multiple rounds, add root-cause context to the prompt:
 | Any | Claude subagent | `Agent` tool with full prompt | Include findings doc content inline |
 | Terminal (cmux) | Codex (cmux) | `mcp__cmuxlayer__send_to` with `agent_id` | Include full context — Codex has fresh context each prompt |
 | Terminal (cmux) | Claude worker (cmux) | `mcp__cmuxlayer__send_to` with `agent_id` | Can reference shared files since same filesystem |
-| Terminal (cmux) | Cursor CLI (cmux) | `mcp__cmuxlayer__send_to` with `agent_id` | Use the existing managed Cursor agent in Auto mode; do not pin a model |
 
 ## Terminal (cmux) seats only
 

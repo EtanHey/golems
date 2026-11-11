@@ -50,9 +50,9 @@ after compaction. Query slim state/activity counts and fetch full review bodies 
 
 ## Cursor's Unique Advantage in the Loop
 
-For every S-or-larger PR, run the read-only `cursor-agent -p --trust --mode ask --output-format text` diff pass
+For every S-or-larger PR, run the read-only diff pass via `/agent-routing` and the T3 child procedure below
 once per head after routed inner review and before exact-head merge checks; XS skips it.
-Cursor Auto only (no model flag). Findings only, never edit or push; this advisory bot-tier
+Cursor uses the T3 Auto sentinel `target: {providerInstanceId: "cursor", model: "default"}`. Findings only, never edit or push; this advisory bot-tier
 pass never replaces the routed reviewer. Answer every finding before merge; real findings
 after merge open a NEW PR. Record `Cursor pass: head=<sha> findings=<count>` in the PR body,
 or `Cursor pass: unavailable (<reason>)` on errors/quota exhaustion and proceed without retry
@@ -62,11 +62,9 @@ A GitHub `cursor[bot]` usage/rate/spend-limit notice is Bugbot activity, even on
 
 Use the PR's actual base branch and head SHA:
 
-```bash
-cursor-agent -p --trust --mode ask --output-format text \
-  "Review this branch's diff against <base> at head <sha> for correctness bugs and security issues. \
-   Report findings only. Do NOT edit, create, or delete any file. Do NOT push."
-```
+T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
+
+The brief pins the actual PR base and head SHA and requires findings only: do not edit, create or delete files; do not push.
 
 Full procedure: [review loop § 8a.2](../references/review-loop.md#8a2--the-cursor-diff-pass-is-read-only).
 
