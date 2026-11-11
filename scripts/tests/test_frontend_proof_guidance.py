@@ -30,12 +30,19 @@ def test_visual_flow_preserves_cross_vendor_review():
 
 def test_cursor_endpoint_pass_is_enforced_read_only():
     # PR #1211: Bugbot found the endpoint pass ran in default Agent mode (write tools).
-    # PR #1224 retired headless cursor-agent: the pr-loop Cursor pass is now a T3 delegate_task
-    # child (provider cursor, model default). No documented headless invocation may come back,
-    # and the T3 route must be documented.
+    # PR #1224 retired headless cursor-agent: the pr-loop Cursor pass is a T3 delegate_task
+    # child (provider cursor, model default) whose brief demands findings only.
     import re
     docs = ['SKILL.md', 'adapters/codex.md', 'adapters/cursor.md', 'references/review-loop.md']
     texts = {name: (SKILLS / 'pr-loop' / name).read_text() for name in docs}
+    # Any headless CLI form comes back -> fail: cursor-agent / cursor agent with any flag or argument.
+    headless = re.compile(r'\bcursor[- ]agent\b\s+(-|"|\'|[a-z])', re.I)
     for name, text in texts.items():
-        assert not re.findall(r'cursor-agent -p[^\n`"]*', text), f'{name}: headless cursor-agent invocation'
-    assert any('providerInstanceId: "cursor"' in t or "providerInstanceId: 'cursor'" in t for t in texts.values())
+        assert not headless.search(text), f'{name}: headless Cursor CLI invocation'
+    # The T3 route pins the Auto sentinel, never a named model.
+    targets = re.findall(r'providerInstanceId:\s*"cursor",\s*model:\s*"([^"]+)"', '\n'.join(texts.values()))
+    assert targets and set(targets) == {'default'}, targets
+    # The read-only contract stays written: findings only, no edits, no push.
+    loop = texts['references/review-loop.md']
+    assert 'READ-ONLY' in loop
+    assert re.search(r'findings only', loop, re.I) and re.search(r'do not edit', loop, re.I) and re.search(r'do not push', loop, re.I)
