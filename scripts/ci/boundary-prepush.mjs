@@ -10,6 +10,21 @@ const git = (...args) => {
   if (r.status !== 0) throw new Error('git evidence unavailable');
   return r.stdout;
 };
+function newRefExclusions() {
+  if (git('for-each-ref', '--format=%(refname)', 'refs/remotes/').trim()) return ['--not', '--remotes'];
+  const configured = spawnSync('git', ['config', '--get', 'init.defaultBranch'], { encoding: 'utf8' });
+  if (![0, 1].includes(configured.status)) throw new Error('default branch evidence unavailable');
+  const candidates = [...new Set([configured.status === 0 ? configured.stdout.trim() : '', 'main', 'master'].filter(Boolean))];
+  for (const branch of candidates) {
+    const ref = 'refs/heads/' + branch;
+    const found = spawnSync('git', ['show-ref', '--verify', '--quiet', ref]);
+    // --branches=<literal> implicitly adds /* in Git. Exclude the
+    // resolved default ref directly so the branch itself is excluded.
+    if (found.status === 0) return ['--not', ref];
+    if (found.status !== 1) throw new Error('default branch evidence unavailable');
+  }
+  throw new Error('no remote refs or identifiable local default branch');
+}
 // The public policy uses quoted scalars and POSIX ERE character classes.
 // Reject unknown classes rather than silently weakening their translation.
 function regex(value) {
@@ -59,9 +74,10 @@ try {
     const [, head, , remote] = fields;
     if (/^0+$/.test(head)) continue;
     git('cat-file', '-e', head + '^{commit}');
-    // New refs scan all reachable commits. Existing refs scan all new commits,
+    // New refs exclude history already on remote-tracking refs (or the local
+    // default branch when no remote refs exist). Existing refs scan new commits,
     // including side branches and merge resolutions; never assume ancestor base.
-    const commits = git('rev-list', head, ...(/^0+$/.test(remote) ? [] : ['^' + remote])).trim().split('\n').filter(Boolean);
+    const commits = git('rev-list', head, ...(/^0+$/.test(remote) ? newRefExclusions() : ['^' + remote])).trim().split('\n').filter(Boolean);
     const diffs = commits.map(commit => ['diff-tree', '--root', '-m', '-p', '--no-ext-diff', '--no-textconv', '--no-renames', '--unified=0', commit]);
     if (!/^0+$/.test(remote)) diffs.push(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--unified=0', remote, head]);
     for (const args of diffs) {
