@@ -34,10 +34,10 @@ test('real local push boundary, history, chain and drift', () => {
     writeFileSync(join(repo, 'leak'), bad[0]); git('add', 'leak'); git('commit', '-qm', 'baseline leak');
     git('push', baselineRemote, 'HEAD:refs/heads/main'); // RED: Git alone publishes it.
     git('reset', '--hard', clean);
-    const hooks = join(repo, '.git/hooks');
+    let hooks = join(repo, '.git/hooks');
     writeFileSync(join(hooks, 'pre-push'), '#!/bin/sh\ncat > chained-input\n', { mode: 0o755 });
     assert.equal(syncClones({ root, report() {} }), 1);
-    syncClones({ root, apply: true, report() {} }); assert.equal(syncClones({ root, report() {} }), 0);
+    syncClones({ root, apply: true, report() {} }); hooks = git('rev-parse', '--git-path', 'hooks'); assert.equal(syncClones({ root, report() {} }), 0);
     const remote = join(root, 'remote.git'); assert.equal(run(root, 'git', ['init', '--bare', '-q', remote]).status, 0);
     git('remote', 'add', 'fixture', remote);
     // New branch scan includes every commit; current history is clean/allowlisted.
@@ -45,7 +45,7 @@ test('real local push boundary, history, chain and drift', () => {
     writeFileSync(join(repo, 'leak'), bad[0]); git('add', 'leak'); git('commit', '-qm', 'reject');
     assert.notEqual(run(repo, 'git', ['push', 'fixture', 'HEAD:refs/heads/main']).status, 0);
     unlinkSync(join(hooks, 'pre-push')); assert.equal(syncClones({ root, report() {} }), 1);
-    syncClones({ root, apply: true, report() {} }); assert.equal(syncClones({ root, report() {} }), 0);
+    syncClones({ root, apply: true, report() {} }); hooks = git('rev-parse', '--git-path', 'hooks'); assert.equal(syncClones({ root, report() {} }), 0);
     syncClones({ root, apply: true, node: join(root, 'missing-node'), report() {} });
     const missing = run(repo, '/bin/sh', [join(hooks, 'pre-push')], '');
     assert.equal(missing.status, 1); assert.match(missing.stderr, /Node missing/);
