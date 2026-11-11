@@ -39,7 +39,6 @@ private repo: when no harness is found, the gate prints
 - `replay/cursor-agent.loop-until-dry.ndjson` is the GREEN replay.
 - `replay/cursor-agent.single-pass.ndjson` is the negative control.
 
-`green_autocursor_runner.py` import-guards
-`skills/golem-powers/cursor-workflows/lib/autocursor.py`. The library is being
-built in parallel, so the deterministic gate records whether it is available but
-does not require it in replay mode.
+The AutoCursor engine was retired. `green_autocursor_runner.py` parses historical
+recordings only and neither imports nor launches the engine. Replay scores those
+recordings; it does not establish current T3 behavior.

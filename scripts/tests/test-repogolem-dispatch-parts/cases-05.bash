@@ -485,7 +485,7 @@ function split_case_092() {
     PERSONA_REGISTRY="$TMPDIR_/registry-non-codex-agent.json"
 
     local cli
-    for cli in cursor gemini; do
+    for cli in gemini; do
       run_non_codex_persona_launch "$cli"
       [ "$status" -eq 0 ]
       grep -F -q -- "<agent_context>" <<< "$output"
@@ -504,7 +504,7 @@ function split_case_093() {
     PERSONA_REGISTRY="$TMPDIR_/registry-non-codex-worker.json"
 
     local cli
-    for cli in cursor gemini; do
+    for cli in gemini; do
       run_non_codex_persona_launch "$cli" worker
       [ "$status" -eq 0 ]
       assert_no_worker_persona_markers "$output"
