@@ -17,7 +17,7 @@ test('real local push boundary, history, chain and drift', () => {
     const base = git('rev-parse', 'HEAD');
     const check = () => run(repo, process.execPath, [checker], `refs/heads/main ${git('rev-parse', 'HEAD')} refs/heads/main ${base}\n`);
     // Each adverse revision must be rejected even after its content is removed.
-    const bad = ['/' + 'Users/someone/x', ['foo', 'tail1234', 'ts', 'net'].join('.'), 'ghp_' + 'z'.repeat(32), '10.' + '20.30.40', 'secret@' + 'private.invalid'];
+    const bad = ['/' + 'Users/someone/x', ['foo', 'tail1234', 'ts', 'net'].join('.'), 'ghp_' + 'z'.repeat(32), '10.' + '20.30.40', 'secret@' + 'private.invalid', ['127', '0', '0', '10'].join('.')];
     for (const value of bad) {
       git('reset', '--hard', base);
       writeFileSync(join(repo, 'bad'), value); git('add', '.'); git('commit', '-qm', 'adverse');
