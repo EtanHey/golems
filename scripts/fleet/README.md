@@ -27,6 +27,6 @@ plutil -lint "$HOME/Library/LaunchAgents/com.golems.ratchet-inbox-relay.plist"
 launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.golems.ratchet-inbox-relay.plist"
 ```
 
-Requires /opt/homebrew/bin/node, authenticated gh, and macbook-pro SSH alias.
+Requires /opt/homebrew/bin/node, authenticated gh, and an ssh host configured in ratchet-relay.json.
 Run offline checks with
 `node --test scripts/fleet/ratchet-inbox-relay.test.mjs`.

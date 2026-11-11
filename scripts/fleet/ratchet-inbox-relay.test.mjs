@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { planRelay, deliverPending } from './ratchet-inbox-relay.mjs';
 const now = Date.parse('2026-11-12T00:00:00Z');
 const incident = { active: true, causeKey: JSON.stringify(['a'.repeat(40), ['live-tier-freshness']]), firstRunUrl: 'https://github.com/EtanHey/golems/actions/runs/1' };
@@ -50,7 +52,7 @@ test('injected gh reads marker incident and log without network', async () => {
 test('stale lock recovery, young lock skip, and consecutive failure recovery', async () => {
   const { executeRelay } = await import('./ratchet-inbox-relay.mjs');
   const { mkdtempSync, writeFileSync, utimesSync, readFileSync, existsSync, rmSync } = await import('node:fs');
-  const root = mkdtempSync('docs.local/w33/health-');
+  const root = mkdtempSync(join(tmpdir(), 'ratchet-relay-'));
   const path = `${root}/state.json`; const posts = [];
   const options = { path, now, collect: () => input, fetch: () => {}, config: () => ({}),
     ssh: text => posts.push(text), outbox: () => {} };
@@ -70,7 +72,7 @@ test('stale lock recovery, young lock skip, and consecutive failure recovery', a
 test('missing config counts failures; SSH failures use OUTBOX and recover with exact count', async () => {
   const { executeRelay, readConfig } = await import('./ratchet-inbox-relay.mjs');
   const { mkdtempSync, readFileSync, rmSync } = await import('node:fs');
-  const root = mkdtempSync('docs.local/w33/config-'); const path = `${root}/state.json`;
+  const root = mkdtempSync(join(tmpdir(), 'ratchet-relay-')); const path = `${root}/state.json`;
   const posts = []; const outbox = [];
   const options = { path, now, collect: () => input, fetch: () => {}, config: () => readConfig(`${root}/absent`),
     ssh: text => posts.push(text), outbox: text => outbox.push(text) };
