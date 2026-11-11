@@ -1918,11 +1918,19 @@ test("M1 window gate registers both T3 spellings and status reports absent confi
 });
 
 test('boundary clone installer status is red after removal and green after repair', () => {
-  const fx = fixture({ ownerLayout: true });
-  expect(run(fx, '--apply').status).toBe(0);
+  const fx = fixture({ ownerLayout: true, privateSuite: false });
+  fx.host = 'm1';
+  const manifest = JSON.parse(readFileSync(fx.manifest, 'utf8'));
+  manifest.hosts.m1 = manifest.hosts.mbp;
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  // No public/private suites exist in this synthetic clone; test wiring only.
+  fx.env = { GOLEMS_HEAVY_MAX_LOAD: '1000' };
+  const applied = run(fx, '--apply');
+  expect(applied.status, applied.out).toBe(0);
   const hook = path.join(fx.repo, '.git/golems-boundary-hooks/pre-push');
   expect(existsSync(hook)).toBe(true);
   const green = run(fx, '--status');
+  expect(green.status, green.out).toBe(0);
   expect(green.out).toContain('boundary-prepush-drift=0');
   rmSync(hook);
   const red = run(fx, '--status');
@@ -1930,5 +1938,5 @@ test('boundary clone installer status is red after removal and green after repai
   expect(run(fx, '--apply').status).toBe(0);
   const repaired = run(fx, '--status');
   expect(repaired.out).toContain('boundary-prepush-drift=0');
-  expect(repaired.status).toBe(green.status);
+  expect(repaired.status, repaired.out).toBe(0);
 }, 180_000);
