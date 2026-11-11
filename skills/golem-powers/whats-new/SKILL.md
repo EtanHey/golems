@@ -1,6 +1,6 @@
 ---
 name: whats-new
-description: "Compare Claude/Codex/Cursor/Wispr changelogs to local setup. Triggers: whats new, changelog, updates."
+description: "Diff Claude/Codex/Cursor/Wispr/agy changelogs vs local setup. Triggers: whats new, changelog, version bump."
 ---
 
 # /whats-new — Changelog Cross-Reference
@@ -219,8 +219,7 @@ ls ~/.claude/hooks/
 cat ~/.claude/settings.json | python3 -c "import json,sys; d=json.load(sys.stdin); [print(k) for k in d.get('enabledPlugins', {}).keys()]"
 
 # repoGolem registry (launcher configs)
-: "${ORCHESTRATOR_REPO:?ORCHESTRATOR_REPO must be set}"
-cat "$ORCHESTRATOR_REPO/repoGolem/registry.json" 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'{len(d)} launchers registered')"
+cat "$HOME/.config/ralphtools/registry.json" 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'{len(d)} launchers registered')"
 ```
 
 ### Step 2: Check BrainLayer for Last Review

@@ -1,6 +1,6 @@
 ---
 name: qa-video
-description: "Video QA/extraction for screen, local video, YouTube. Triggers: narrated QA, bugs, QA checklist, video gems."
+description: "Video QA, debrief/review, gems/insights: QA recording, local video, YouTube. NOT still-image QA alone."
 execute: scripts/default.sh
 ---
 

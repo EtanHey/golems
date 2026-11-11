@@ -1,6 +1,6 @@
 ---
 name: git-guardian
-description: "Safety gate for destructive git/main commits. Triggers: force-push, reset, branch delete, clean, main commit."
+description: "Gate git/shell: force-push, reset/restore, rebase, branch delete, clean, main commit, --no-verify, rm/find/rsync delete."
 ---
 
 # Git Guardian

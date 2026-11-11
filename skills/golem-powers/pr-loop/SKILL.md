@@ -1,6 +1,6 @@
 ---
 name: pr-loop
-description: "Invoke before any git/gh: open a PR, merge, ship, fix CI, handle reviews/comments, finish work. Signs: 🤖 model + harness line, Co-Authored-By."
+description: "PR loop: open, draft, review, merge, ship, fix CI, comments, full-stop/READY UNMERGED, visual proof. Signs: 🤖 model+harness, Co-Authored-By."
 ---
 
 # PR Loop

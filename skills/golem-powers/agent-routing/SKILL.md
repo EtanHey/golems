@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Invoke before any git/gh/grep, even for context, to dispatch a worker/reviewer, hand off to Codex, delegate_task, fan out in parallel; who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, batch classify/audit. NOT for fanning out one edit or dependent steps."
+description: "Load BEFORE you start another agent (delegate_task, new thread, sub-agent): dispatch a worker/reviewer, pick provider instance, model and effort, worktree or shared. Also who gathers, Codex handoff, fan out, batch audit. NOT for one edit."
 ---
 
 # Agent Routing

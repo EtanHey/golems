@@ -1,6 +1,6 @@
 ---
 name: coach
-description: "Life admin for health, habits, jobs, clients, contracts, and scheduling. Triggers: daily plan, wearable data, outreach."
+description: "Life admin: daily plan, wearables, recruiting outreach, freelance invoices/contracts, Israel business admin."
 paths:
   - "packages/coach/**/*"
   - "skills/golem-powers/coach/**/*.md"
