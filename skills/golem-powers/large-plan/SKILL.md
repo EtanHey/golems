@@ -1,6 +1,6 @@
 ---
 name: large-plan
-description: "Load BEFORE you start another agent (delegate_task, t3_thread_launch, create_threads, Agent/Task): dispatch a worker, send a brief, launch a lane, fan out. Also: make a plan, lead kickoff, multi-PR. Holds the collab/brief/target/worktree checklist."
+description: "Invoke before any git/gh and before starting another agent (delegate_task, new thread, sub-agent): make a plan, plan next steps, lead kickoff, feature batch, multi-PR; dispatch a worker, send a brief, fan out."
 ---
 
 # /large-plan

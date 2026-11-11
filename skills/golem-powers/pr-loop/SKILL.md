@@ -1,6 +1,6 @@
 ---
 name: pr-loop
-description: "PR loop: open, draft, review, merge, ship, fix CI, comments, full-stop/READY UNMERGED, visual proof. Signs: 🤖 model+harness, Co-Authored-By."
+description: "Invoke before any git/gh or agent dispatch: open a PR, merge, ship, CI, full-stop/READY UNMERGED. Signs: 🤖 model + harness line, Co-Authored-By."
 ---
 
 # PR Loop

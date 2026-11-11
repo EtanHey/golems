@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Load BEFORE you start another agent (delegate_task, new thread, sub-agent): dispatch a worker/reviewer, pick provider instance, model and effort, worktree or shared. Also who gathers, Codex handoff, fan out, batch audit. NOT for one edit."
+description: "Invoke before any git/gh and before starting another agent: dispatch a worker/reviewer, delegate_task, hand off; who gathers, gemini gatherer, Codex model/effort, /multitask, fan out in parallel. Pick provider/worktree. NOT for one edit or dependent steps."
 ---
 
 # Agent Routing

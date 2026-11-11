@@ -1,52 +1,45 @@
-# W32 description trigger evaluation
+# W32 description trigger evaluation — lead r1 revision
 
 Waiting for Etan's approval (dashboard decision 2); do not merge
 
-The description truth pass narrows broad triggers and adds missing triggers in 14 golems skills. Library descriptions shrink from 8,202 to 8,163 characters (-39). The measured large-plan and agent-routing descriptions are used verbatim. Cursor keeps #1224's T3 route; Gemini keeps its no-NotebookLM description.
+The description truth pass rewrites 14 golems descriptions and repairs simple stale references. Library size is now **8,146 characters**, below the 8,202 budget by 56. Cursor retains #1224's T3 route; Gemini retains its no-NotebookLM description.
 
-**Cap-contract change:** large-plan gains a pinned exception of 250; CAP stays 120. Its measured text is 248 characters. Historical Opus 5.5 real-stub evidence was 0/18 → 8/18 before dispatch (W22, exploratory, startup audit UNMEASURED); this is not a shipping verdict. Etan approves the cap-contract change with dashboard decision 2, which remains pending. drive-filing now fits 120 and its obsolete exception is removed. No assertion is loosened.
+## Lead review r1 addressed
+The six failing kickoff assertions pin an earlier measured trigger contract; calling them “retired literal text” was wrong. large-plan, agent-routing and pr-loop now retain **every pinned phrase and the before-any-git/gh requirement**, plus a trigger before starting another agent/dispatch. The kickoff test is unchanged. All 43 kickoff/ruling tests now pass; the description-cap suite also passes (8/8).
 
-**NOT_GREEN:** six existing kickoff-contract tests still require the old literal descriptions/git-gh orientation trigger. They are preserved unchanged. This draft requires a lead ruling on those conflicting contracts before readiness, as well as decision 2. No reviewer was started; do not mark ready.
+large-plan is 209 characters (cap 250), agent-routing 256 (cap 278), and pr-loop 145 UTF-16 code units / 144 Unicode characters (cap 156). **The large-plan and agent-routing text now differs from the Opus-measured descriptions.diff version. The revised text was re-measured on Haiku 5.5; historical Opus results are not evidence for this new wording.**
 
-Proof: Haiku 5.5, API-key auth, one rep, same cases, catalog pinned to d6e82669fb231347945b49dc232a321e1174b3a4. Two report positives + one near-miss per rewritten skill, plus an unchanged arithmetic control: 86 cells. Positive loads 10/28 → 18/28 (+28.6pp); near-miss loads 2/14 → 0/14; control 0/1 → 0/1. All 86 have PASS startup audits, ANTHROPIC_API_KEY provenance and passed key-leak checks, with no execution errors. Total list cost including the preliminary smoke: $0.195905395, below $2.00.
+Cap-contract change retained: only large-plan gains a pinned exception at 250; default CAP remains 120. drive-filing's obsolete exception is removed because it fits 120. No assertion was loosened. Etan's decision 2 approval is still pending.
 
-This is catalog selection on real API calls with stubbed dispatch, not execution proof for the skill bodies. The hard child cap was visible at $0.05 on both batch arms ($0.10 smoke); effort was not pinned. The serial recorder transferred remaining identities to two concurrent cell runners; its duplicate-directory guard stopped the serial runner after its in-flight cell finished. No cell was repeated or lost. Near-miss labels come from the reports and admit interpretation; one rep is exploratory. large-plan remains 0/2 → 0/2 here. No SHIP verdict.
+## Fresh r1 trigger evaluation
+Haiku 5.5, API-key auth, one rep, catalog pinned to d6e82669fb231347945b49dc232a321e1174b3a4. Just these three skills were re-run: two original report positives and one near miss each, plus 16 full-turn kickoff/dispatch positives covering the pinned phrases. Baseline catalog versus final candidate catalog: 50 cells. Report-positive loads 1/6 → 2/6; report near-miss loads 0/3 → 0/3; added kickoff/dispatch-positive loads 13/16 → 13/16.
 
-The evaluated descriptions match the final descriptions. After evaluation, non-trigger one-line references were repaired: session-handoff's JSONL field-map path, whats-new's registry path, and dead /braindrive query pointers in drive-filing/gemini-research. Body execution was not evaluated. research-lifecycle retains its old route because its executable gate and fixtures require that exact receipt token; a prose-only replacement would be inconsistent.
+All 50 cells passed startup audit, API-key provenance and key-leak checks; no execution errors. r1 spend **$0.160830860**; mission cumulative **$0.356736255 / $2.00**, including initial smoke and the initial 86-cell run. The child-visible $0.05 cap was identical between batch arms; effort was not pinned. Admission reserved $0.10 per in-flight cell against cumulative spend. No real worker was dispatched.
 
-| Skill | Positive loads baseline → candidate | Near-miss loads baseline → candidate |
-|---|---:|---:|
-| agada-bench | 2/2 → 2/2 | 0/1 → 0/1 |
-| cmux-agents | 1/2 → 2/2 | 0/1 → 0/1 |
-| coach | 0/2 → 0/2 | 0/1 → 0/1 |
-| drive-filing | 2/2 → 2/2 | 1/1 → 0/1 |
-| git-guardian | 0/2 → 0/2 | 0/1 → 0/1 |
-| html-dashboard | 1/2 → 1/2 | 0/1 → 0/1 |
-| orc | 0/2 → 0/2 | 0/1 → 0/1 |
-| pr-loop | 0/2 → 2/2 | 0/1 → 0/1 |
-| qa-video | 1/2 → 2/2 | 0/1 → 0/1 |
-| repogolem | 2/2 → 2/2 | 0/1 → 0/1 |
-| session-handoff | 1/2 → 2/2 | 1/1 → 0/1 |
-| whats-new | 0/2 → 2/2 | 0/1 → 0/1 |
-| large-plan | 0/2 → 0/2 | 0/1 → 0/1 |
-| agent-routing | 0/2 → 1/2 | 0/1 → 0/1 |
+| Skill | Report positives before → after | Near misses before → after | Added kickoff/dispatch positives before → after |
+|---|---:|---:|---:|
+| large-plan | 1/2 → 1/2 | 0/1 → 0/1 | 4/5 → 4/5 |
+| agent-routing | 0/2 → 0/2 | 0/1 → 0/1 | 4/6 → 5/6 |
+| pr-loop | 0/2 → 1/2 | 0/1 → 0/1 | 5/5 → 4/5 |
 
-Local checks (final rerun recorded alongside this draft):
-- skill library: OK skills=59 description_chars=8163 estimated_tokens=2041 max_description=plan-council:455
-- description cap: 8 pass, 0 fail, 19 assertions
-- routing lint: in-sync, ok=true, routing hits=0, stale exemptions=0
-- v1 case schema: valid eval-case/v1
-- additional kickoff/ruling suites: 37 pass, 6 fail, 262 assertions. The six failures are the three descriptions' old literal phrases and their old competing-first-action requirements.
-- Full package suite, hosted checks and review: NOT_RUN at preparation; draft remains held. Local CodeRabbit CLI unavailable; no reviewer invoked.
+Trigger selection on real API calls with stub dispatch is measured; temporal ordering before actual git/gh execution and skill-body behavior are not measured. Near-miss labels come from the reports and may conflict with broad kickoff requirements. One rep is exploratory. Original cases are remeasurements, not independent additional observations to pool with the initial pass. The initial pass and adverse receipts remain in w32-* files; w32-r1-* files identify the revised three-skill evidence. The 11 other rewritten skills retain their initial-pass results; they were not re-run in the revised catalog.
 
-Packaging follow-ups (not repaired by a description): audio-dashboard eval/fixture trees; brain-store-fallback fixtures and missing pain-points pointer; false-green-gate eval trees; frustration-capture hook test corpus; install-runbook-linter tests/fixtures. deploy-verify also needs its missing Claude-catalog post-merge helper route resolved.
 
-Out of scope: anatomy and linear are local skills; emil-design-eng and improve-animations are vendored skills. cursor-workflows retains #1224's T3 text. gemini-research retains the current no-NotebookLM description. The optional accurate unslop trim is skipped.
+## Local verification
+- Kickoff/ruling suites: 43 pass, 0 fail, 278 assertions. Test file unchanged; prior six-failure receipt retained privately.
+- Description cap: 8 pass, 0 fail; 51/51 combined local tests, 297 assertions.
+- Skill library: OK skills=59 description_chars=8146 estimated_tokens=2037 max_description=plan-council:455
+- Routing lint: in-sync, ok=true, routing hits=0, stale exemptions=0.
+- Both v1 case files validate; git diff --check passes.
+- Full package suite and exact-head hosted CI: not claimed by these local checks. The PR remains a draft awaiting decision 2 and lead disposition; do not mark ready.
 
-Research-lifecycle description stays unchanged: its stale /braindrive route is an executable receipt contract, not a one-line path fix (scripts/lifecycle-gate.mjs requires /braindrive in resolvedWith; evals pin that contract). Repairing only its prose would leave a false gate. Route a separate repair of the gate, fixtures and prose together.
+## Scope and follow-ups
+Four non-golems skills remain out of scope: anatomy, linear, emil-design-eng, improve-animations. cursor-workflows retains #1224; optional accurate unslop trim is skipped. gemini-research keeps its no-NotebookLM description.
 
-Known red: six unmodified skill-kickoff-contract assertions demand the retired git/gh orientation wording and literal old trigger phrases. The measured large-plan and agent-routing text cannot satisfy those assertions. No assertions were weakened. pr-loop's new description also fails its two literal kickoff assertions. This draft is NOT ready to merge; a separate lead ruling is needed for those contracts.
+Packaging/helper follow-ups: audio-dashboard eval/fixtures; brain-store-fallback fixtures and pain-points pointer; false-green-gate evals; frustration-capture hook test corpus; install-runbook-linter tests/fixtures; deploy-verify's missing Claude-catalog helper route.
 
-Oracle limits: the truth pass supplies only two positive cases and one negative per skill. Some near misses admit reasonable alternative interpretations (an explicit context-% handoff request vs proactive handoff, force-push routing overlap). Results report the source labels; they are not definitive semantic judgments. One rep is exploratory. Trigger selection does not prove a skill body works, dispatches safely, publishes, or serves a native request.
+Simple reference fixes already included: session-handoff JSONL field-map path, whats-new registry path, dead query-only /braindrive pointers in drive-filing and gemini-research. research-lifecycle still needs a separate executable contract repair: lifecycle-gate.mjs and its fixtures require /braindrive in resolvedWith, so replacing only the prose would leave the gate inconsistent.
 
-Cases: `w32-cases.jsonl` (eval-case/v1). Results: `w32-results.jsonl` (generated reduced receipts; raw records retained privately). Each raw record is SHA-256 pinned. Public reduced data is an extracted observation, not a substitute for the private raw transcript custody.
+The existing unchanged kickoff assertions are the guard for the r1 defect: the prior candidate failed six; revised descriptions pass all 43. Verdict: ITERATE. Current trigger selection still has misses. pr-loop regressed on the added CI/review-comments kickoff turn (5/5 → 4/5 added positives overall); agent-routing gained one added dispatch load. Passing the static tests is not a SHIP verdict.
+
+Reduced receipts and source manifests: w32-r1-results.jsonl, w32-r1-surfaces.json. Cases: w32-r1-cases.jsonl. Initial artifacts remain historical. Raw transcripts are retained privately and SHA-256 pinned in reduced receipts; extracted public data is not independent custody proof.
