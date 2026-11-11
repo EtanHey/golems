@@ -2,6 +2,8 @@
 
 > Evidence backing [fan-out-engines.md](fan-out-engines.md) (formerly the cursor-multitask skill). Captured 2026-06-05, Cursor 3.3.2 (arm64, build 2026.06.03).
 
+> Historical probes and measurements below are retained as evidence, not launch instructions. Current dispatch policy is in the verdict section and [fan-out-engines.md](fan-out-engines.md).
+
 ## Q1: Is `/multitask` invocable headlessly via the `cursor-agent` / `cursor` CLI?
 
 **No. It is an in-editor (Agents Window) GUI slash command only.** Proven three ways:
@@ -21,7 +23,7 @@
 
 ## Q3: Head-to-head on a representative fan-out (3 independent classify tasks)
 
-Run via the **headless CLI shell fan-out** (the orchestrator's analog of the Workflow tool — explicit, scriptable parallelism). `/multitask` could not be run for this comparison because it is GUI-only (Q1).
+The historical comparison ran via **headless CLI shell fan-out**; this records its setup, not an authorized route for new work. `/multitask` could not be run for this comparison because it is GUI-only (Q1).
 
 | Metric | Headless parallel (`&` + `wait`) | Headless sequential | Cursor /multitask |
 |--------|----------------------------------|---------------------|-------------------|
@@ -34,15 +36,15 @@ Run via the **headless CLI shell fan-out** (the orchestrator's analog of the Wor
 | Setup cost | Low (shell loop) | Lowest | Low (but requires human in editor) |
 
 Notes:
-- Trust gate: headless non-interactive runs need `--force`/`--yolo` to bypass workspace-trust + approval prompts (first run in an untrusted dir returns a "Workspace Trust Required" banner and empty result otherwise).
+- Historical trust-gate observation: that probe used `--force`/`--yolo`; its first run in an untrusted directory returned a "Workspace Trust Required" banner and empty output. This is not a recommendation to bypass approval prompts.
 - JSON `result` field confirmed working: `{"type":"result","result":"POSITIVE","usage":{"inputTokens":17816,"outputTokens":20,...}}`.
 
 ## Verdict — when each wins
 
 - **Cursor `/multitask`:** a human is in the Cursor editor, has independent prompts, wants the foreground free. Best UX for interactive parallel work; weakest for automation.
-- **Headless `cursor-agent` shell fan-out:** orchestrator / CI / scripted; want determinism, exit codes, per-agent token accounting. The orchestrator's default for fan-out.
+- **Cursor work in a T3 thread:** use `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). One child per file-backed pointer brief; each brief requires a report to the collab. No headless CLI fan-out, AutoCursor runner or background Cursor loop. The historical timing comparison does not authorize those routes.
 - **Claude Workflow tool:** inside a Claude session; want the parent to *decide* the decomposition; summaries return to parent.
-- **cmux fleet:** visible, multi-vendor, long-running, human-watchable.
+- **cmux fleet:** visible, multi-vendor, long-running, human-watchable work outside T3; Cursor child work uses the T3 route above.
 - **Serial (no parallelism):** single coherent edit or sequentially-dependent steps.
 
 ## Sources
