@@ -29,17 +29,13 @@ def test_visual_flow_preserves_cross_vendor_review():
     assert 'Sequence (lead guidance):' in text
 
 def test_cursor_endpoint_pass_is_enforced_read_only():
-    # PR #1211: Bugbot found the endpoint pass ran in default Agent mode (write tools), and a live
-    # run in a fresh worktree stopped at "Workspace Trust Required". Every documented pr-loop
-    # invocation must carry --trust and --mode ask, and never --force/--yolo.
+    # PR #1211: Bugbot found the endpoint pass ran in default Agent mode (write tools).
+    # PR #1224 retired headless cursor-agent: the pr-loop Cursor pass is now a T3 delegate_task
+    # child (provider cursor, model default). No documented headless invocation may come back,
+    # and the T3 route must be documented.
     import re
     docs = ['SKILL.md', 'adapters/codex.md', 'adapters/cursor.md', 'references/review-loop.md']
-    found = 0
-    for name in docs:
-        text = (SKILLS / 'pr-loop' / name).read_text()
-        for invocation in re.findall(r'cursor-agent -p[^\n`"]*', text):
-            found += 1
-            assert '--mode ask' in invocation, f'{name}: {invocation}'
-            assert '--trust' in invocation, f'{name}: {invocation}'
-            assert '--force' not in invocation and '--yolo' not in invocation, f'{name}: {invocation}'
-    assert found >= 4
+    texts = {name: (SKILLS / 'pr-loop' / name).read_text() for name in docs}
+    for name, text in texts.items():
+        assert not re.findall(r'cursor-agent -p[^\n`"]*', text), f'{name}: headless cursor-agent invocation'
+    assert any('providerInstanceId: "cursor"' in t or "providerInstanceId: 'cursor'" in t for t in texts.values())
