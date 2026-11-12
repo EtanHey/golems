@@ -15,6 +15,8 @@ import subprocess
 import time
 from pathlib import Path
 
+import pytest
+
 HOOK = Path(__file__).resolve().parent.parent / "pre_tool_use.py"
 
 
@@ -42,6 +44,70 @@ def _run(home, command):
         ["python3", str(home / ".claude" / "hooks" / "pre_tool_use.py")],
         input=json.dumps(payload), capture_output=True, text=True, env=env, check=False,
     )
+
+
+@pytest.mark.parametrize("leading", ("", "cd . && "))
+@pytest.mark.parametrize("prefix,suffix", (
+    ("{ ", "cat x; } > report.md"), ("! ", ""), ("if true; then ", "fi"),
+))
+def test_prefixed_literal_heredoc_is_data_through_real_hook(tmp_path, leading, prefix, suffix):
+    command = leading + prefix + "cat" + (
+        " <<'EOF'\nprose: `git push origin --delete topic`\nEOF\n" + suffix
+    )
+    result = _run(_fake_home(tmp_path), command)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("command", (
+    "{ cat <<'EOF'\ngit push origin --delete topic\nEOF\n} | sh",
+    "{ cat <<'EOF'\ngit push origin --delete topic\nEOF\n} | xargs -0 sh -c",
+    "if true; then cat <<'EOF'\ngit push origin --delete topic\nEOF\nfi | sh",
+    "{ tee >(sh) <<'EOF'\ngit push origin --delete topic\nEOF\n}",
+))
+def test_r76_compound_output_readers_stay_blocked(tmp_path, command):
+    result = _run(_fake_home(tmp_path), command)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "remote branch" in json.loads(result.stdout)["reason"]
+
+
+@pytest.mark.parametrize("command", (
+    "{ cat <<'EOF' # don't\ngit push origin --delete topic\nEOF\n} | sh",
+    "if true; then cat <<'EOF' # it's\ngit push origin --delete topic\nEOF\nfi | sh",
+    "# don't\n{ cat <<'EOF'\ngit push origin --delete topic\nEOF\n} | sh",
+    "x=$'\\''; { cat <<'EOF'\ngit push origin --delete topic\nEOF\n} | sh",
+))
+def test_r76b_context_quotes_cannot_hide_compound_pipes(tmp_path, command):
+    result = _run(_fake_home(tmp_path), command)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "remote branch" in json.loads(result.stdout)["reason"]
+
+
+@pytest.mark.parametrize("header,body", (
+    ("bash <<'EOF'", "git push origin --delete topic"),
+    ("sh <<'EOF'", "git push origin --delete topic"),
+    ("cat <<'EOF' | sh", "git push origin --delete topic"),
+    ("tee report.md <<'EOF' | sh", "git push origin --delete topic"),
+    ("cat > >(sh) <<'EOF'", "git push origin --delete topic"),
+    ("cat <<EOF", "$(git push origin --delete topic)"),
+))
+@pytest.mark.parametrize("prefix,suffix", (
+    ("{ ", "} > report.md"), ("! ", ""), ("if true; then ", "fi"),
+))
+def test_prefixed_executable_heredoc_is_blocked_through_real_hook(tmp_path, header, body, prefix, suffix):
+    command = "cd . && " + prefix + header + "\n" + body + "\nEOF\n" + suffix
+    result = _run(_fake_home(tmp_path), command)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "remote branch" in json.loads(result.stdout)["reason"]
+
+
+@pytest.mark.parametrize("command", (
+    "{ $(cat <<'EOF'\ngit push origin --delete topic\nEOF\n)\n}",
+    "{ cat <<'EOF'\nprose\nEOF\ngit push origin --delete topic; } > report.md",
+))
+def test_executed_substitution_and_post_heredoc_commands_stay_blocked(tmp_path, command):
+    result = _run(_fake_home(tmp_path), command)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "remote branch" in json.loads(result.stdout)["reason"]
 
 
 def test_a_poisoned_main_checkout_does_not_reach_the_installed_hook(tmp_path):

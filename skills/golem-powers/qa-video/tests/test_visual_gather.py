@@ -140,17 +140,14 @@ def test_cli_adds_only_supplied_image_directories(monkeypatch, capsys):
     monkeypatch.setattr(v.sys, 'argv', ['visual', '--question', 'OCR', image])
     def check_output(args, **kwargs):
         lookups.append(args)
-        if args[0] == 'git':
-            return '/discovered-checkout\n'
-        return 'flash-high' if args[0] == 'node' else 'gemini-3.8-flash-high\tGemini 3.8 Flash (High)'
+        return 'gemini-3.8-flash-high\tGemini 3.8 Flash (High)'
     monkeypatch.setattr(v.subprocess, 'check_output', check_output)
     def run(args, **kwargs):
         commands.append(args)
         return result([{'path': image, 'finding': 'ALPHA'}])
     monkeypatch.setattr(v, 'bounded_run', run)
     assert v.main() == 0
-    assert lookups[0] == ['git', '-C', str((SKILL / 'scripts').resolve()), 'rev-parse', '--show-toplevel']
-    assert lookups[1][1] == '/discovered-checkout/scripts/model-roles.mjs'
+    assert lookups == [['agy', 'models']], 'no git or node probe: the installed release is not a checkout'
     assert commands[0][-2:] == ['--add-dir', str(Path(image).parent)]
     assert '--dangerously-skip-permissions' not in commands[0]
     assert 'Coverage: 1/1; complete' in capsys.readouterr().out
