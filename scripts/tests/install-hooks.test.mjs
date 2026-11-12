@@ -91,6 +91,10 @@ function fixture({ settings, privateSuite = true, ownerLayout = false } = {}) {
   mkdirSync(path.join(repo, "scripts/hooks"), { recursive: true });
   writeFileSync(path.join(repo, "scripts/hooks/codex-policy-hook.py"), "# synthetic candidate adapter\n");
   cpSync(path.join(here, "../hooks/codex-gate.sh"), path.join(repo, "scripts/hooks/codex-gate.sh"));
+  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow']) {
+    mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+    cpSync(path.join(here, '../..', file), path.join(repo, file));
+  }
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "seed");
   git(repo, "push", "-q", "origin", "HEAD:master");
@@ -1913,3 +1917,43 @@ test("M1 window gate registers both T3 spellings and status reports absent confi
   writeFileSync(fx.manifest, JSON.stringify(manifest));
   expect(run(fx, "--status").out).toContain("m1-window-gate seat (procedure lock checked per call)");
 });
+
+test('boundary clone installer status is red after removal and green after repair', () => {
+  const fx = fixture({ ownerLayout: true, privateSuite: false });
+  fx.host = 'm1';
+  const manifest = JSON.parse(readFileSync(fx.manifest, 'utf8'));
+  manifest.hosts.m1 = manifest.hosts.mbp;
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  // No public/private suites exist in this synthetic clone; test wiring only.
+  fx.env = { GOLEMS_HEAVY_MAX_LOAD: '1000' };
+  const beforeInstall = run(fx, '--status');
+  expect(beforeInstall.status).toBe(1);
+  expect(beforeInstall.out).toContain('boundary-prepush drift:');
+  const applied = run(fx, '--apply');
+  expect(applied.status, applied.out).toBe(0);
+  const hook = path.join(fx.repo, '.git/golems-boundary-hooks/pre-push');
+  expect(existsSync(hook)).toBe(true);
+  const green = run(fx, '--status');
+  expect(green.status, green.out).toBe(0);
+  expect(green.out).toContain('boundary-prepush-drift=0');
+  rmSync(hook);
+  const red = run(fx, '--status');
+  expect(red.status).not.toBe(0); expect(red.out).toContain('boundary-prepush-drift=1');
+  expect(run(fx, '--apply').status).toBe(0);
+  const repaired = run(fx, '--status');
+  expect(repaired.out).toContain('boundary-prepush-drift=0');
+  expect(repaired.status, repaired.out).toBe(0);
+  // A newer checkout/master policy does not change this selected live pin.
+  const policy = path.join(fx.repo, 'scripts/publish-boundary-policy.yaml');
+  writeFileSync(policy, readFileSync(policy, 'utf8') + '\n# newer checkout policy revision\n');
+  git(fx.repo, 'add', '.'); git(fx.repo, 'commit', '-qm', 'advance checkout policy');
+  git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  const selected = run(fx, '--status');
+  expect(selected.status, selected.out).toBe(0);
+  expect(selected.out).toContain('boundary-prepush-drift=0');
+  // The clone wrapper itself must still match the selected policy version.
+  writeFileSync(hook, readFileSync(hook, 'utf8') + '# actual clone drift\n');
+  const changed = run(fx, '--status');
+  expect(changed.status).toBe(1);
+  expect(changed.out).toContain('boundary-prepush-drift=1');
+}, 180_000);
