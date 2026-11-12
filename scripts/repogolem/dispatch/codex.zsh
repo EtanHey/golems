@@ -134,18 +134,17 @@ _golem_jq_drop_browser_tools() {
     | not)))'
 }
 
-# Resolves the codex.security role from standards/model-roles.json: the root is
+# Resolves a Codex role from standards/model-roles.json: the root is
 # GOLEMS_MODEL_ROLES_ROOT, else the registry's golems project. No fallback pin.
-_golem_codex_security_model() {
-  local roles_root="${GOLEMS_MODEL_ROLES_ROOT:-}" model=""
+_golem_codex_role_model() {
+  local role="$1" roles_root="${GOLEMS_MODEL_ROLES_ROOT:-}" model=""
   if [[ -z "$roles_root" ]]; then
     roles_root=$(jq -r '.projects.golems.path // empty' "${RALPH_REGISTRY_FILE:-$HOME/.config/ralphtools/registry.json}" 2>/dev/null)
   fi
   # The generated registry stores paths as `~/Gits/<repo>`.
   roles_root="${roles_root/#\~/$HOME}"
   [[ -n "$roles_root" && -f "$roles_root/standards/model-roles.json" ]] || return 1
-  model=$(jq -r '.roles["codex.security"] | select(.status != "candidate") | .model // empty' \
-    "$roles_root/standards/model-roles.json" 2>/dev/null)
+  model=$(jq -r --arg role "$role" '.roles[$role] | select(.status != "candidate") | .model | select(type == "string" and length > 0)' "$roles_root/standards/model-roles.json" 2>/dev/null)
   [[ -n "$model" ]] || return 1
   print -r -- "$model"
 }
@@ -248,20 +247,21 @@ _golem_launch_codex() {
     echo "Error: Cannot combine Codex resume with -p/--print; start an interactive resume instead." >&2
     return 2
   fi
-  # Pin the CURRENT top Sol on fresh boots so a prior session's model cannot leak into
-  # the next one. This is a moving fleet default, not a frozen version: bump it on each
-  # Sol release, and do not drop the --model flag. Resume paths recover their session model
-  # from the selected rollout unless the caller deliberately supplies -m/--model.
+  # Resolve the fresh-boot default at launch so role changes take effect immediately.
+  # Resume restores its selected rollout; explicit -m/--model remains authoritative.
   local model="${_flag_model:-}"
   # A scan seat runs on the codex.security role, resolved at launch: no pin here.
   if $_flag_codex_scan && [[ -z "$model" ]]; then
-    if ! model=$(_golem_codex_security_model); then
+    if ! model=$(_golem_codex_role_model codex.security); then
       print -u2 -- "repoGolem: --scan cannot resolve the codex.security model from standards/model-roles.json (set GOLEMS_MODEL_ROLES_ROOT or register the golems project, or pass -m explicitly)."
       return 2
     fi
   fi
   if [[ "$explicit_resume" == false && "$_flag_continue" == false && -z "$model" ]]; then
-    model="gpt-6.1-sol"
+    if ! model=$(_golem_codex_role_model codex.implement); then
+      print -u2 -- "repoGolem: cannot resolve the codex.implement model from standards/model-roles.json (set GOLEMS_MODEL_ROLES_ROOT or register the golems project, or pass -m explicitly)."
+      return 2
+    fi
   fi
   local worker_mode="${_golem_codex_worker_mode:-false}"
   $_flag_codex_worker && worker_mode=true

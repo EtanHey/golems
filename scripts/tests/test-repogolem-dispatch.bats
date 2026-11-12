@@ -777,3 +777,19 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
     grep -F -x -A1 'CODEX_ARG=--model' <<< "$output" | grep -F -x -q 'CODEX_ARG=explicit-model'
     codex_arg_pair_present 'model_reasoning_effort="high"' "$output"
 }
+
+@test "fresh Codex resolves changed implement role and explicit model wins" {
+    write_model_roles_fixture "$TMPDIR_/roles"
+    run_codex_scan_launch 'testrepoCodex -E high' "$TMPDIR_/roles"
+    [ "$status" -eq 0 ]
+    grep -F -x -q 'CODEX_ARG=fixture-implement-model' <<< "$output"
+    sed 's/fixture-implement-model/fixture-changed-model/' "$TMPDIR_/roles/standards/model-roles.json" > "$TMPDIR_/roles/standards/next.json"
+    mv "$TMPDIR_/roles/standards/next.json" "$TMPDIR_/roles/standards/model-roles.json"
+    run_codex_scan_launch 'testrepoCodex -E high' "$TMPDIR_/roles"
+    [ "$status" -eq 0 ]
+    grep -F -x -q 'CODEX_ARG=fixture-changed-model' <<< "$output"
+    run_codex_scan_launch 'testrepoCodex -E high --model explicit-model' "$TMPDIR_/roles"
+    [ "$status" -eq 0 ]
+    grep -F -x -q 'CODEX_ARG=explicit-model' <<< "$output"
+    refute_contains 'CODEX_ARG=fixture-changed-model' "$output"
+}

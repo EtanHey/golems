@@ -590,6 +590,12 @@ def capture(case, tree, scratch):
         (fixture / "project").mkdir()
         (fixture / "worktree").mkdir()
         (fixture / "runtime").mkdir()
+        # Supply the same deterministic role input to base and candidate. Kept
+        # outside launcher-fixture because input data is not a captured output.
+        roles_root = scratch / "model-roles-fixture"
+        (roles_root / "standards").mkdir(parents=True, exist_ok=True)
+        (roles_root / "standards/model-roles.json").write_text(json.dumps({
+            "roles": {"codex.implement": {"model": "gpt-6.1-sol"}}}))
         registry = fixture / "registry.json"
         project = {"path": str(fixture / "project"), "mcps": [],
                    "clis": ["codex", "claude", "cursor", "gemini"]}
@@ -635,6 +641,7 @@ def capture(case, tree, scratch):
                        for arg in case["args"]]
         env.update({"HOME": str(fixture / "home"),
                     "CODEX_HOME": str(fixture / "home/codex"),
+                    "GOLEMS_MODEL_ROLES_ROOT": str(roles_root),
                     "RALPH_REGISTRY_FILE": str(registry),
                     "CAPTURE_PROFILE": str(profile),
                     "XDG_RUNTIME_DIR": str(fixture / "runtime"),
