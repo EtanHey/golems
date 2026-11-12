@@ -3,17 +3,24 @@
 //   scripts/hooks/install-hooks.sh --host mbp|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--node <abs path>] [--restore-live]
 //   scripts/hooks/install-hooks.sh --host mbp --status [--python <abs path>]
 //   node scripts/hooks/install-hooks.mjs --host client --source <release dir> --migrate-owner-install [--apply]
-// Source: detached, LOCKED `<repo>/.worktrees/hooks-live`; only --update moves it
-// (default origin/master). Even dry-runs use its sources; --manifest overrides only the manifest.
-// Hooks are symlinked into ~/.claude/hooks (preserving ../../_shared imports) and registered
-// in settings.json. External entries stay byte-identical; wrapped-external entries register
-// a golems wrapper without linking the external script.
+// Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
+// `--update` moves it (default origin/master), so a `git checkout` in the main
+// checkout can never swap a live hook. Every golems hook in the host's manifest
+// entry is read from the selected commit (including dry-run updates), never
+// from the invoking checkout. --manifest is an explicit fixture/override path.
+// Each golems hook is SYMLINKED from hooks-live into ~/.claude/hooks (copies silently break
+// the gates' `../../_shared` imports) and registered in ~/.claude/settings.json.
+// `external` entries are owned by another repo and left byte-identical.
+// `wrapped-external` entries register a golems wrapper around another repo's
+// script, but never link that script into ~/.claude/hooks.
 //
 // Dry-run is the default; --apply writes: hooks-live, the fail-open wrapper
 // copy, the links (a real file/dir in the way is renamed to .bak-<stamp>), and
 // settings.json (dated .bak first, only when a byte would change).
 //
-// Supersedes _shared/install-wired-hook.sh's copies: the locked pin survives checkout changes.
+// AIDEV-NOTE: supersedes _shared/install-wired-hook.sh's copy contract. That
+// contract existed because symlinks into a WORKING tree got swapped by
+// checkouts; hooks-live is not a working tree anyone checks out.
 import { spawnSync } from "node:child_process";
 import {
   chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync,
@@ -22,12 +29,11 @@ import {
 import { homedir } from "node:os";
 import path from "node:path";
 import { hookDriftPaths } from "./hook-paths.mjs";
-import { installFleetJobs, fleetJobsStatus } from "./fleet-jobs.mjs";
+import { installContextFleetJobs, reportFleetJobsStatus } from "./fleet-jobs.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { machineHost } from "./machine-host.mjs";
 import { planCodexHooks, applyCodexHooks, codexStatus, CODEX_TRUST_HINT } from "./codex-hooks-install.mjs";
-
 import { MIN_HOOK_PYTHON, HOOK_PYTHON_CANDIDATES, pathPython, pythonProblem, resolveHookPython,
   resolveHookNode, recordHookNode } from "./hook-interpreters.mjs";
 export { MIN_HOOK_PYTHON, HOOK_PYTHON_CANDIDATES, pathPython, pythonVersion, resolveHookPython } from "./hook-interpreters.mjs";
@@ -133,8 +139,7 @@ function context(o, sha) {
       }
     }
   }
-  const manifestHost = o.host === "m1" && manifest.fleet_hosts?.includes("m1") && !hosts?.m1 ? "mbp" : o.host;
-  const entries = hosts?.[manifestHost];
+  const entries = hosts?.[o.host];
   if (!Array.isArray(entries)) die(`manifest ${o.manifest ?? sha} has no host "${o.host}"`);
   const hooksDir = path.join(homedir(), ".claude", "hooks");
   const live = path.join(o.repo, ".worktrees", "hooks-live");
@@ -160,10 +165,10 @@ function context(o, sha) {
   const wrapped = entries.filter((e) => e.kind === "wrapped-external").map((e) => ({ ...e, cmd: expand(e.command) }));
   // A pinned Codex gate (human-confirm) is refused, never registered, until its
   // anchor pin carries an owner fingerprint at the selected sha, as on Claude.
-  const codexRefused = (manifest.codex_hosts?.[manifestHost] ?? []).filter((e) => e.requiresPin && !pinReady(o, sha, e)).map((e) => e.gate);
+  const codexRefused = (manifest.codex_hosts?.[o.host] ?? []).filter((e) => e.requiresPin && !pinReady(o, sha, e)).map((e) => e.gate);
   // Without an acceptable interpreter (status only), the Codex config probe would
   // run an unvetted python3 and could crash --status; report it unchecked instead.
-  const codex = hookPython ? planCodexHooks({ manifest, host: manifestHost, live, python, refused: codexRefused,
+  const codex = hookPython ? planCodexHooks({ manifest, host: o.host, live, python, refused: codexRefused,
     codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) }) : undefined;
   return { fleetJobs: manifest.fleet_hosts?.includes(o.host) === true, entries, golems, wrapped, hooksDir, live, codex, hookPython, hookNode, settingsPath, driftPaths: hookDriftPaths(manifest) };
 }
@@ -680,7 +685,7 @@ async function install(o) {
     chmodSync(tmp, settings.mode);
     renameSync(tmp, ctx.settingsPath);
   }
-  if (ctx.fleetJobs) installFleetJobs(ctx.live);
+  installContextFleetJobs(ctx);
   recordHookNode(ctx.hookNode);
   await syncBoundaryClones(ctx, true);
   console.log("applied");
@@ -699,7 +704,6 @@ async function install(o) {
   } catch (error) { console.error(`SKILLS-SYNC RECEIPT FAILED (install succeeded): ${error.message}`); }
   return 0;
 }
-
 function registrationMatches(hooks, e) {
   return Object.entries(hooks).flatMap(([event, groups]) => groupsOf(groups).flatMap((group) => handlersOf(group)
     .filter((hook) => String(hook?.command ?? "").includes(e.match))
@@ -835,15 +839,12 @@ async function status(o) {
       console.log(`E1 ${name} PRESENT in settings.json`);
     }
   }
-  if (current && ctx.fleetJobs) {
-    for (const problem of fleetJobsStatus(ctx.live)) { console.log(problem); bad = true; }
-  }
+  if (reportFleetJobsStatus(ctx, current)) bad = true;
   try {
     if (await syncBoundaryClones(ctx)) bad = true;
   } catch (error) { bad = true; console.log(`boundary-prepush drift: ${error.message}`); }
   return bad ? 1 : 0;
 }
-
 // realpath: invoked through a symlinked path (~/Gits as a link), the guard must
 // still match import.meta.url, which is the real path (#488-b N3).
 if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {

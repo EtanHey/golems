@@ -133,7 +133,10 @@ function fixtureEnv(fx) {
   // The parent suite owns the real mutex; nested synthetic installs use fixture-only state.
   delete env.GOLEMS_HEAVY_SUITE_HELD;
   const bin = path.join(fx.root, "machine-bin"); mkdirSync(bin, { recursive: true });
-  writeFileSync(path.join(bin, "scutil"), `#!/bin/sh\nprintf '%s\\n' '${fx.machine ?? (fx.host === "m1" ? "Locals-MacBook-Pro" : "MacBook-Pro")}'\n`, { mode: 0o755 });
+  // macOS can SIGKILL an executed script after an in-place rewrite; use a fresh inode.
+  const scutil = path.join(bin, "scutil");
+  writeFileSync(scutil + '.new', `#!/bin/sh\nprintf '%s\\n' '${fx.machine ?? (fx.host === "m1" ? "Locals-MacBook-Pro" : "MacBook-Pro")}'\n`, { mode: 0o755 });
+  renameSync(scutil + '.new', scutil);
   env.PATH = `${bin}:${env.PATH}`;
   return env;
 }
@@ -1939,7 +1942,8 @@ test('boundary clone installer status is red after removal and green after repai
   rmSync(hook);
   const red = run(fx, '--status');
   expect(red.status).not.toBe(0); expect(red.out).toContain('boundary-prepush-drift=1');
-  expect(run(fx, '--apply').status).toBe(0);
+  const repairApply = run(fx, '--apply');
+  expect(repairApply.status, repairApply.out).toBe(0);
   const repaired = run(fx, '--status');
   expect(repaired.out).toContain('boundary-prepush-drift=0');
   expect(repaired.status, repaired.out).toBe(0);
@@ -1971,10 +1975,30 @@ test('scratch HOME fleet install never calls launchctl in the real user domain',
   const log = path.join(fx.root, 'launchctl.log');
   writeFileSync(path.join(bin, 'launchctl'), `#!/bin/sh\nprintf '%s\\n' "$*" >> '${log}'\n[ "$1" != print ]\n`, { mode: 0o755 });
   fx.env = { PATH: `${bin}:${process.env.PATH}` };
-  const result = run(fx, '--apply');
+  const stableNode = path.join(bin, 'node');
+  symlinkSync(spawnSync('node', ['-p', 'process.execPath'], { encoding: 'utf8' }).stdout.trim(), stableNode);
+  const result = run(fx, '--apply', '--node', stableNode);
   expect(result.status, result.out).toBe(0);
   const calls = existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [];
   expect(calls.filter(call => call.startsWith('bootstrap '))).toEqual([]);
   expect(calls).toEqual([]);
   expect(result.out).toContain('fleet launchd: skipped');
+  for (const name of ['worktree-sweeper', 'disk-guard']) {
+    expect(readFileSync(path.join(fx.home, `Library/LaunchAgents/com.golems.${name}.plist`), 'utf8')).toContain(`<string>${stableNode}</string>`);
+  }
+  const status = run(fx, '--status', '--node', stableNode);
+  expect(status.out).not.toContain('fleet job drift:');
+}, 180_000);
+
+test('fleet opt-in never aliases the retired M1 owner profile', () => {
+  const fx = fixture(); fx.host = 'm1';
+  const manifest = manifestFor(); manifest.fleet_hosts = ['m1'];
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const result = run(fx);
+  expect(result.status).not.toBe(0);
+  expect(result.out).toContain('has no host "m1"');
+});
+
+test('shipped fleet hosts stay disabled pending a separate rollout', () => {
+  expect(realManifest.fleet_hosts).toEqual([]);
 });
