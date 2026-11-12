@@ -1,0 +1,77 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { syncClones } from '../ci/boundary-clones.mjs';
+const checker = resolve('scripts/ci/boundary-prepush.mjs');
+const run = (cwd, cmd, args, input, env = process.env) => spawnSync(cmd, args, { cwd, input, env, encoding: 'utf8' });
+test('real local push boundary, history, chain and drift', () => {
+  const root = mkdtempSync(join(tmpdir(), 'boundary-test-'));
+  const repo = join(root, 'clone'); mkdirSync(repo);
+  const git = (...args) => { const r = run(repo, 'git', args); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
+  try {
+    git('init', '-q'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.com');
+    writeFileSync(join(repo, 'safe'), 'safe\n'); git('add', '.'); git('commit', '-qm', 'base');
+    const base = git('rev-parse', 'HEAD');
+    const check = () => run(repo, process.execPath, [checker], `refs/heads/main ${git('rev-parse', 'HEAD')} refs/heads/main ${base}\n`);
+    // Each adverse revision must be rejected even after its content is removed.
+    const bad = ['/' + 'Users/someone/x', ['foo', 'tail1234', 'ts', 'net'].join('.'), 'ghp_' + 'z'.repeat(32), '10.' + '20.30.40', 'secret@' + 'private.invalid', ['127', '0', '0', '10'].join('.')];
+    for (const value of bad) {
+      git('reset', '--hard', base);
+      writeFileSync(join(repo, 'bad'), value); git('add', '.'); git('commit', '-qm', 'adverse');
+      assert.equal(check().status, 1);
+      git('rm', 'bad'); git('commit', '-qm', 'remove'); assert.equal(check().status, 1);
+    }
+    git('reset', '--hard', base);
+    writeFileSync(join(repo, 'safe'), 'clean\n'); git('add', '.'); git('commit', '-qm', 'clean'); assert.equal(check().status, 0);
+    const allowed = 'scripts/tests/check-publish-boundary.test.sh'; mkdirSync(join(repo, 'scripts/tests'), { recursive: true });
+    writeFileSync(join(repo, allowed), bad[0]); git('add', '.'); git('commit', '-qm', 'allowed'); assert.equal(check().status, 0);
+    const baselineRemote = join(root, 'baseline.git');
+    assert.equal(run(root, 'git', ['init', '--bare', '-q', baselineRemote]).status, 0);
+    const clean = git('rev-parse', 'HEAD');
+    writeFileSync(join(repo, 'leak'), bad[0]); git('add', 'leak'); git('commit', '-qm', 'baseline leak');
+    git('push', baselineRemote, 'HEAD:refs/heads/main'); // RED: Git alone publishes it.
+    git('reset', '--hard', clean);
+    let hooks = join(repo, '.git/hooks');
+    writeFileSync(join(hooks, 'pre-push'), '#!/bin/sh\ncat > chained-input\n', { mode: 0o755 });
+    assert.equal(syncClones({ root, report() {} }), 1);
+    syncClones({ root, apply: true, report() {} }); hooks = git('rev-parse', '--git-path', 'hooks'); assert.equal(syncClones({ root, report() {} }), 0);
+    const remote = join(root, 'remote.git'); assert.equal(run(root, 'git', ['init', '--bare', '-q', remote]).status, 0);
+    git('remote', 'add', 'fixture', remote);
+    // New branch scan includes every commit; current history is clean/allowlisted.
+    git('push', 'fixture', 'HEAD:refs/heads/main'); assert.match(readFileSync(join(repo, 'chained-input'), 'utf8'), /refs\/heads\/main/);
+    writeFileSync(join(repo, 'leak'), bad[0]); git('add', 'leak'); git('commit', '-qm', 'reject');
+    assert.notEqual(run(repo, 'git', ['push', 'fixture', 'HEAD:refs/heads/main']).status, 0);
+    unlinkSync(join(hooks, 'pre-push')); assert.equal(syncClones({ root, report() {} }), 1);
+    syncClones({ root, apply: true, report() {} }); hooks = git('rev-parse', '--git-path', 'hooks'); assert.equal(syncClones({ root, report() {} }), 0);
+    syncClones({ root, apply: true, node: join(root, 'missing-node'), report() {} });
+    const missing = run(repo, '/bin/sh', [join(hooks, 'pre-push')], '');
+    assert.equal(missing.status, 1); assert.match(missing.stderr, /Node missing/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('new refs exclude remote history, or local default history without remotes', () => {
+  const root = mkdtempSync(join(tmpdir(), 'boundary-newref-'));
+  const git = (...args) => { const r = run(root, 'git', args); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
+  try {
+    git('init', '-q', '-b', 'main'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.com');
+    writeFileSync(join(root, 'old'), '/' + 'Users/someone/old\n');
+    git('add', '.'); git('commit', '-qm', 'already published history');
+    const published = git('rev-parse', 'HEAD');
+    git('update-ref', 'refs/remotes/origin/main', published);
+    git('switch', '-qc', 'candidate');
+    writeFileSync(join(root, 'clean'), 'clean\n'); git('add', '.'); git('commit', '-qm', 'clean new commit');
+    const clean = git('rev-parse', 'HEAD');
+    const check = head => run(root, process.execPath, [checker], `refs/heads/candidate ${head} refs/heads/candidate ${'0'.repeat(40)}\n`);
+    assert.equal(check(clean).status, 0, 'clean new branch must ignore old remote history');
+    writeFileSync(join(root, 'new'), '/' + 'Users/someone/new\n'); git('add', '.'); git('commit', '-qm', 'bad new commit');
+    const bad = git('rev-parse', 'HEAD');
+    assert.equal(check(bad).status, 1, 'new violation must be refused');
+    git('update-ref', '-d', 'refs/remotes/origin/main');
+    const fallback = check(clean);
+    assert.equal(fallback.status, 0, 'no-remotes fallback excludes default branch history: ' + fallback.stderr);
+    assert.equal(check(bad).status, 1, 'fallback still refuses new violations');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
