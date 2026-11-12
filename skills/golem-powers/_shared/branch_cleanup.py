@@ -35,8 +35,9 @@ def forced_local_delete(args):
         if arg in values:
             i += 1; continue
         if arg.startswith('--'):
-            delete |= arg == '--delete'
-            force |= arg == '--force'
+            option = arg.split('=', 1)[0]
+            delete |= len(option) >= 3 and '--delete'.startswith(option)
+            force |= len(option) >= 3 and '--force'.startswith(option)
         elif arg.startswith('-'):
             if 'D' in arg[1:]: return True
             delete |= 'd' in arg[1:]

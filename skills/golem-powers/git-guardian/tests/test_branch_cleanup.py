@@ -211,6 +211,7 @@ class BranchCleanup(unittest.TestCase):
         self.assertTrue(self.policy.allowed('git branch -D topic', self.repo))
 
     def test_r2_no_new_asks_and_pinned_merge(self):
+        sys.path.insert(0, str(ROOT / 'human-confirm-gate/hooks'))
         from commands import operations
         sha = 'a' * 40
         for command in ('git branch -d topic', 'git branch --delete topic',
@@ -224,6 +225,12 @@ class BranchCleanup(unittest.TestCase):
         self.assertTrue(operations('gh pr close 123 -d', self.repo))
         self.assertTrue(operations('git branch -d -f topic', self.repo))
         self.assertTrue(operations('git branch -D topic', self.repo))
+        for flags in ('-d --forc', '--delete --forc', '--del --forc'):
+            command = 'git branch ' + flags + ' topic'
+            with self.subTest(command=command, hook='guardian'):
+                self.assertFalse(self.verdict(command))
+            with self.subTest(command=command, hook='human-confirm'):
+                self.assertTrue(operations(command, self.repo))
 
     def test_r2_payload_cwd_on_all_entrypoints(self):
         command = 'git branch -D topic'
