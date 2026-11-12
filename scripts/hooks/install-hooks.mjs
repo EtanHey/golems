@@ -29,11 +29,11 @@ import {
 import { homedir } from "node:os";
 import path from "node:path";
 import { hookDriftPaths } from "./hook-paths.mjs";
+import { installContextFleetJobs, reportFleetJobsStatus } from "./fleet-jobs.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { machineHost } from "./machine-host.mjs";
 import { planCodexHooks, applyCodexHooks, codexStatus, CODEX_TRUST_HINT } from "./codex-hooks-install.mjs";
-
 import { MIN_HOOK_PYTHON, HOOK_PYTHON_CANDIDATES, pathPython, pythonProblem, resolveHookPython,
   resolveHookNode, recordHookNode } from "./hook-interpreters.mjs";
 export { MIN_HOOK_PYTHON, HOOK_PYTHON_CANDIDATES, pathPython, pythonVersion, resolveHookPython } from "./hook-interpreters.mjs";
@@ -170,7 +170,7 @@ function context(o, sha) {
   // run an unvetted python3 and could crash --status; report it unchecked instead.
   const codex = hookPython ? planCodexHooks({ manifest, host: o.host, live, python, refused: codexRefused,
     codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) }) : undefined;
-  return { entries, golems, wrapped, hooksDir, live, codex, hookPython, hookNode, settingsPath, driftPaths: hookDriftPaths(manifest) };
+  return { fleetJobs: manifest.fleet_hosts?.includes(o.host) === true, entries, golems, wrapped, hooksDir, live, codex, hookPython, hookNode, settingsPath, driftPaths: hookDriftPaths(manifest) };
 }
 
 export function readSettings(settingsPath) {
@@ -685,6 +685,7 @@ async function install(o) {
     chmodSync(tmp, settings.mode);
     renameSync(tmp, ctx.settingsPath);
   }
+  installContextFleetJobs(ctx);
   recordHookNode(ctx.hookNode);
   await syncBoundaryClones(ctx, true);
   console.log("applied");
@@ -703,7 +704,6 @@ async function install(o) {
   } catch (error) { console.error(`SKILLS-SYNC RECEIPT FAILED (install succeeded): ${error.message}`); }
   return 0;
 }
-
 function registrationMatches(hooks, e) {
   return Object.entries(hooks).flatMap(([event, groups]) => groupsOf(groups).flatMap((group) => handlersOf(group)
     .filter((hook) => String(hook?.command ?? "").includes(e.match))
@@ -839,12 +839,12 @@ async function status(o) {
       console.log(`E1 ${name} PRESENT in settings.json`);
     }
   }
+  if (reportFleetJobsStatus(ctx, current)) bad = true;
   try {
     if (await syncBoundaryClones(ctx)) bad = true;
   } catch (error) { bad = true; console.log(`boundary-prepush drift: ${error.message}`); }
   return bad ? 1 : 0;
 }
-
 // realpath: invoked through a symlinked path (~/Gits as a link), the guard must
 // still match import.meta.url, which is the real path (#488-b N3).
 if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
