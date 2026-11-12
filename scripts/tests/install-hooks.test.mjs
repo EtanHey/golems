@@ -91,7 +91,7 @@ function fixture({ settings, privateSuite = true, ownerLayout = false } = {}) {
   mkdirSync(path.join(repo, "scripts/hooks"), { recursive: true });
   writeFileSync(path.join(repo, "scripts/hooks/codex-policy-hook.py"), "# synthetic candidate adapter\n");
   cpSync(path.join(here, "../hooks/codex-gate.sh"), path.join(repo, "scripts/hooks/codex-gate.sh"));
-  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow']) {
+  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/ci/identity-precommit.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow']) {
     mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
     cpSync(path.join(here, '../..', file), path.join(repo, file));
   }
@@ -1917,7 +1917,7 @@ test("M1 window gate registers both T3 spellings and status reports absent confi
   expect(run(fx, "--status").out).toContain("m1-window-gate seat (procedure lock checked per call)");
 });
 
-test('boundary clone installer status is red after removal and green after repair', () => {
+test('identity clone installer status is red after removal and green after repair', () => {
   const fx = fixture({ ownerLayout: true, privateSuite: false });
   fx.host = 'm1';
   const manifest = JSON.parse(readFileSync(fx.manifest, 'utf8'));
@@ -1930,7 +1930,7 @@ test('boundary clone installer status is red after removal and green after repai
   expect(beforeInstall.out).toContain('boundary-prepush drift:');
   const applied = run(fx, '--apply');
   expect(applied.status, applied.out).toBe(0);
-  const hook = path.join(fx.repo, '.git/golems-boundary-hooks/pre-push');
+  const hook = path.join(fx.repo, '.git/golems-boundary-hooks/pre-commit');
   expect(existsSync(hook)).toBe(true);
   const green = run(fx, '--status');
   expect(green.status, green.out).toBe(0);

@@ -15,7 +15,7 @@ function git(repo, ...args) {
 }
 export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node = process.execPath, report = console.log } = {}) {
   const version = createHash('sha256');
-  for (const file of ['boundary-prepush.mjs', 'boundary-clones.mjs', '../publish-boundary-policy.yaml', '../../.publish-boundary-allow']) version.update(readFileSync(join(source, file)));
+  for (const file of ['boundary-prepush.mjs', 'identity-precommit.mjs', 'boundary-clones.mjs', '../publish-boundary-policy.yaml', '../../.publish-boundary-allow']) version.update(readFileSync(join(source, file)));
   const digest = version.digest('hex');
   const targets = new Set();
   let drift = 0;
@@ -42,7 +42,7 @@ export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node
       const prior = join(previous, name);
       const prefix = `#!/bin/sh\n# golems-boundary-managed-v1\n# source-sha256=${digest}\nset -eu\n`;
       const chain = `if [ -x ${quote(prior)} ]; then exec ${quote(prior)} "$@"; fi\n`;
-      const wrapper = name === 'pre-push' ? prefix + `command -v ${quote(node)} >/dev/null 2>&1 || { echo 'boundary-prepush: REFUSED: Node missing' >&2; exit 1; }\nupdates=$(cat)\nprintf '%s\\n' "$updates" | ${quote(node)} ${quote(join(source, 'boundary-prepush.mjs'))} "$@" || exit $?\nif [ -x ${quote(prior)} ]; then printf '%s\\n' "$updates" | ${quote(prior)} "$@"; fi\n` : prefix + chain;
+      const wrapper = name === 'pre-push' ? prefix + `command -v ${quote(node)} >/dev/null 2>&1 || { echo 'boundary-prepush: REFUSED: Node missing' >&2; exit 1; }\nupdates=$(cat)\nprintf '%s\\n' "$updates" | ${quote(node)} ${quote(join(source, 'boundary-prepush.mjs'))} "$@" || exit $?\nif [ -x ${quote(prior)} ]; then printf '%s\\n' "$updates" | ${quote(prior)} "$@"; fi\n` : name === 'pre-commit' ? prefix + `command -v ${quote(node)} >/dev/null 2>&1 || { echo 'identity-precommit: REFUSED: Node missing' >&2; exit 1; }\n${quote(node)} ${quote(join(source, 'identity-precommit.mjs'))} "$@" || exit $?\n` + chain : prefix + chain;
       const target = join(managed, name);
       const ok = existsSync(target) && readFileSync(target, 'utf8') === wrapper && (statSync(target).mode & 0o111) !== 0;
       bad ||= !ok;
