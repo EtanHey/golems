@@ -27,7 +27,10 @@ def _heredoc_word(raw: str) -> tuple[str, bool]:
 
 
 def _literal_file_heredoc_header(header: str, *, piped: bool = False) -> bool:
-    """True when `cat` consumes heredoc data without executing it as code."""
+    """True when `cat`/`tee` consumes data without executing it as code."""
+    # Strip only raw, standalone shell prefixes before shlex removes quoting.
+    # A quoted 'then'/'!'/'{' is a command word, not control/group syntax.
+    header = re.sub(r"^\s*(?:(?:\{|!|then)\s+)+", "", header)
     try:
         lexer = shlex.shlex(
             header,
@@ -49,7 +52,7 @@ def _literal_file_heredoc_header(header: str, *, piped: bool = False) -> bool:
         ),
         "",
     )
-    if os.path.basename(command) != "cat":
+    if os.path.basename(command) not in {"cat", "tee"}:
         return False
     literal_file_redirect = False
     safe_process_sink = False
