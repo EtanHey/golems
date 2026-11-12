@@ -18,6 +18,8 @@ test('symlink alias converges once and preserves custody and original hook chain
   };
   try {
     git('init', '-q');
+    git('config', 'user.name', 'Fixture');
+    git('config', 'user.email', 'fixture@example.com');
     const original = join(realpathSync(repo), '.git/hooks');
     writeFileSync(join(original, 'pre-commit'), '#!/bin/sh\nprintf original-chain\n', { mode: 0o755 });
     const hook = readFileSync(join(original, 'pre-commit'), 'utf8');
@@ -64,6 +66,8 @@ for (const poisonedRecord of [false, true]) {
     };
     try {
       git('init', '-q');
+      git('config', 'user.name', 'Fixture');
+      git('config', 'user.email', 'fixture@example.com');
       symlinkSync(repo, join(root, 'alias'), 'dir');
       syncClones({ root, apply: true, report() {} });
       const aliasHooks = join(root, 'alias/.git/golems-boundary-hooks');

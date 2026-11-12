@@ -6,7 +6,7 @@ export function hookDriftPaths(manifest) {
   // The launcher and Codex adapter live in scripts/hooks; Python hooks and
   // stop telemetry import shared modules whose paths aren't manifest entries.
   const dirs = new Set(["scripts/hooks/", "scripts/fleet/", "skills/golem-powers/_shared/",
-    "scripts/ci/boundary-clones.mjs", "scripts/ci/boundary-prepush.mjs", "scripts/publish-boundary-policy.yaml", ".publish-boundary-allow"]);
+    "scripts/ci/boundary-clones.mjs", "scripts/ci/boundary-prepush.mjs", "scripts/ci/identity-precommit.mjs", "scripts/publish-boundary-policy.yaml", ".publish-boundary-allow"]);
   for (const entries of Object.values(manifest.hosts ?? {})) {
     for (const e of entries) {
       if (e.kind !== "golems" || !e.source) continue;
