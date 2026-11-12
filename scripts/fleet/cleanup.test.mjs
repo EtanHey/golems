@@ -5,10 +5,13 @@ import { join, resolve } from 'node:path';
 import { sweep } from './worktree-sweeper.mjs';
 import { planDisk } from './disk-guard.mjs';
 import { execute, run } from './fleet-runtime.mjs';
+import { mockGh, rawPR } from './worktree-fixtures.mjs';
 const scratch = resolve('docs.local/fleet-tests');
 mkdirSync(scratch, { recursive: true });
 test('real git fixtures preserve root, dirty, unpushed and recent output', () => {
   const dir = mkdtempSync(join(scratch, 'run-'));
+  const oldPath = process.env.PATH, bin = join(dir, 'bin'); mkdirSync(bin);
+  const data=join(dir,'prs.json');mockGh(bin,data); process.env.PATH = bin + ':' + oldPath;
   const g = (p, ...args) => run('git', ['-C', p, ...args]);
   try {
     const remote = join(dir, 'remote.git'); run('git', ['init', '--bare', remote]);
@@ -16,6 +19,7 @@ test('real git fixtures preserve root, dirty, unpushed and recent output', () =>
     g(repo, 'init', '-b', 'master'); g(repo, 'config', 'user.name', 'Fixture'); g(repo, 'config', 'user.email', 'fixture.invalid');
     writeFileSync(join(repo, '.gitignore'), 'node_modules/\n');
     g(repo, 'add', '.'); g(repo, 'commit', '-m', 'base'); g(repo, 'remote', 'add', 'origin', remote); g(repo, 'push', '-u', 'origin', 'master'); g(repo, 'remote', 'set-head', 'origin', 'master');
+    writeFileSync(data,JSON.stringify([rawPR({head:'merged',base:'master',headSha:g(repo,'rev-parse','HEAD')})]));
     const trees = {};
     for (const name of ['idle', 'merged', 'dirty', 'unpushed', 'recent']) {
       const p = join(dir, name); trees[name] = p; g(repo, 'worktree', 'add', '-b', name, p);
@@ -35,7 +39,7 @@ test('real git fixtures preserve root, dirty, unpushed and recent output', () =>
     assert.ok(existsSync(join(repo, 'node_modules')));
     assert.equal(result.posts.length, 2);
     assert.equal(sweep([join(dir, 'repos')], result.state, now + 1000).posts.length, 0);
-  } finally { rmSync(dir, { recursive: true }); }
+  } finally { process.env.PATH = oldPath; rmSync(dir, { recursive: true }); }
 });
 test('disk crossing, daily repeat, recovery and recrossing', () => {
   const input = { free: 20, threshold: 40, sizes: { a: 5 }, host: 'fixture', now: 100000000 };
