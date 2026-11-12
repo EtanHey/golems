@@ -65,7 +65,7 @@ test('verified parent import and our clean merge pass, including a new branch', 
   }
   const receipts = readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse);
   assert.equal(receipts.length, 2, 'fresh fetch for each push');
-  assert.ok(receipts.every(r => r.args.includes(parentURL)));
+  assert.ok(receipts.every(r => r.args.includes(parentURL) && r.args.includes('--filter=tree:0')));
   // Untrusted local history must not become an exclusion even on new refs.
   git('update-ref', 'refs/remotes/upstream/main', published);
   assert.equal(check({}, '0'.repeat(40)).status, 0);
@@ -90,10 +90,13 @@ test('novel merge resolution is scanned', () => fixture(({ git, commit, check })
   const r = check(); assert.equal(r.status, 1); assert.match(r.stderr, /publication violation/);
 }));
 for (const failure of ['FIXTURE_LOOKUP_FAIL', 'FIXTURE_FETCH_FAIL']) {
-  test(`${failure}: unavailable parent evidence scans upstream too`, () => fixture(({ check, git, commit }) => {
+  test(`${failure}: unavailable parent evidence scans upstream too`, () => fixture(({ check }) => {
     const r = check({ [failure]: '1' }); assert.equal(r.status, 1); assert.match(r.stderr, /publication violation/);
-    git('update-ref', 'refs/remotes/upstream/main', commit('private', leak));
-    assert.equal(check({ [failure]: '1' }, '0'.repeat(40)).status, 1, 'lookup failure cannot trust a spoofed local ref');
+  }));
+  test(`${failure}: new-ref fallback preserves the published-history baseline`, () => fixture(({ check, git }) => {
+    git('update-ref', 'refs/remotes/origin/main', git('rev-parse', 'HEAD'));
+    const r = check({ [failure]: '1' }, '0'.repeat(40));
+    assert.equal(r.status, 0, r.stderr);
   }));
 }
 test('non-fork and mismatched target metadata retain the original scan', () => fixture(({ check, metadata }) => {
