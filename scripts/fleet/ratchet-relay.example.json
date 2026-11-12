@@ -1,0 +1,5 @@
+{
+  "sshHost": "relay-host.example",
+  "remoteInbox": "/srv/relay/inbox.md",
+  "localOutbox": "/var/lib/relay/outbox.md"
+}
