@@ -48,6 +48,7 @@ def approval_reason(ops):
              'delete': 'deleting a remote branch', 'rewrite': 'rewriting git history'}
     op = ops[0]
     action = names.get(op['class'], 'changing repo settings')
+    if op['class'] == 'delete' and op.get('local'): action = 'deleting a local branch'
     target = str(op.get('target', '')).casefold()
     if op['class'] == 'settings':
         if any(word in target for word in ('secret', 'ssh-key', 'gpg-key', '/keys')):
@@ -76,6 +77,9 @@ def evaluate(payload, home):
     from commands import operations, shell
     from tokens import authorize, own_lease_scope
     with shell.policy_evaluation_deadline(8):
+        from branch_cleanup import allowed as branch_cleanup_allowed
+        if branch_cleanup_allowed(args['command'], payload['cwd']):
+            return
         ops = operations(args['command'], payload['cwd'])
         if ops and not authorize(payload, ops, home):
             allowed, reason = own_lease_scope(payload, ops)

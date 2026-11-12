@@ -30,3 +30,5 @@ def _shared(name):
 
 harness_paths = _shared("harness_paths")
 shell_parse = _shared("shell_parse")
+
+branch_cleanup = _shared("branch_cleanup")

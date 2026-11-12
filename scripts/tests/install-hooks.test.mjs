@@ -504,7 +504,15 @@ test("every shipped host set carries the same heredoc-guard, git-guardian and tm
   for (const id of ["heredoc-guard", "pre_tool_use", "tmp-block"]) {
     const mbp = realManifest.hosts.mbp.filter((hook) => hook.id === id);
     expect(mbp).toHaveLength(1);
-    expect(mbp[0].timeout).toBe(5);
+    if (id === "pre_tool_use") {
+      const source = readFileSync(path.join(here, "../../skills/golem-powers/git-guardian/hooks/pre_tool_use.py"), "utf8");
+      const itimer = Number(source.match(/setitimer\(signal\.ITIMER_REAL,\s*(\d+)\)/)?.[1]);
+      expect(Number.isFinite(itimer)).toBe(true);
+      // Watchdog sits 1 s below the host; leave another 1 s after the itimer.
+      expect(mbp[0].timeout - 1).toBeGreaterThanOrEqual(itimer + 1);
+    } else {
+      expect(mbp[0].timeout).toBe(5);
+    }
     for (const [host, entries] of Object.entries(realManifest.hosts)) {
       expect(entries.filter((hook) => hook.id === id), `${host} ${id}`).toEqual(mbp);
     }

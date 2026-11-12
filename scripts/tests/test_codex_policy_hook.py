@@ -425,7 +425,7 @@ class CodexPolicyHookTests(unittest.TestCase):
                 "class PolicyEvaluationDeadlineExceeded(Exception): pass\n"
                 "policy_evaluation_deadline = nullcontext\n"
                 "cancel_policy_evaluation_deadline = lambda: None\n"
-                "dangerous_shell_reason = lambda text: None\n"
+                "dangerous_shell_reason = lambda text, **kwargs: None\n"
                 "policy_command_size_reason = lambda text: None\n"
                 "shell_text_without_heredoc_bodies = lambda text: text\n")
             env = clean_env(); env["GIT_GUARDIAN_LIB"] = str(lib)
