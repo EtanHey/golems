@@ -29,6 +29,7 @@ import {
 import { homedir } from "node:os";
 import path from "node:path";
 import { hookDriftPaths } from "./hook-paths.mjs";
+import { installFleetJobs, fleetJobsStatus } from "./fleet-jobs.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { machineHost } from "./machine-host.mjs";
@@ -140,7 +141,8 @@ function context(o, sha) {
       }
     }
   }
-  const entries = hosts?.[o.host];
+  const manifestHost = o.host === "m1" && manifest.fleet_hosts?.includes("m1") && !hosts?.m1 ? "mbp" : o.host;
+  const entries = hosts?.[manifestHost];
   if (!Array.isArray(entries)) die(`manifest ${o.manifest ?? sha} has no host "${o.host}"`);
   const hooksDir = path.join(homedir(), ".claude", "hooks");
   const live = path.join(o.repo, ".worktrees", "hooks-live");
@@ -169,9 +171,9 @@ function context(o, sha) {
   const codexRefused = (manifest.codex_hosts?.[o.host] ?? []).filter((e) => e.requiresPin && !pinReady(o, sha, e)).map((e) => e.gate);
   // Without an acceptable interpreter (status only), the Codex config probe would
   // run an unvetted python3 and could crash --status; report it unchecked instead.
-  const codex = hookPython ? planCodexHooks({ manifest, host: o.host, live, python, refused: codexRefused,
+  const codex = hookPython ? planCodexHooks({ manifest, host: manifestHost, live, python, refused: codexRefused,
     codexHome: path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex")) }) : undefined;
-  return { entries, golems, wrapped, hooksDir, live, codex, hookPython, hookNode, settingsPath, driftPaths: hookDriftPaths(manifest) };
+  return { fleetJobs: manifest.fleet_hosts?.includes(o.host) === true, entries, golems, wrapped, hooksDir, live, codex, hookPython, hookNode, settingsPath, driftPaths: hookDriftPaths(manifest) };
 }
 
 export function readSettings(settingsPath) {
@@ -673,6 +675,7 @@ async function install(o) {
     chmodSync(tmp, settings.mode);
     renameSync(tmp, ctx.settingsPath);
   }
+  if (ctx.fleetJobs) installFleetJobs(ctx.live);
   recordHookNode(ctx.hookNode);
   console.log("applied");
   if (ctx.codex) {
@@ -825,6 +828,9 @@ function status(o) {
       bad = true;
       console.log(`E1 ${name} PRESENT in settings.json`);
     }
+  }
+  if (current && ctx.fleetJobs) {
+    for (const problem of fleetJobsStatus(ctx.live)) { console.log(problem); bad = true; }
   }
   return bad ? 1 : 0;
 }
