@@ -55,6 +55,14 @@ export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node
       // Missing registered worktrees cannot serve pushes. Keep their metadata
       // untouched; the common hook config also covers them when restored.
       if (!existsSync(wt)) continue;
+      // Resolve repository metadata without reading config: config errors on a
+      // valid checkout must still fail below, never masquerade as a broken one.
+      const probe = spawnSync('git', ['rev-parse', '--resolve-git-dir', join(wt, '.git')], { encoding: 'utf8' });
+      if (probe.error || probe.signal) throw new Error('cannot probe worktree repository');
+      if (probe.status !== 0) {
+        report(`boundary-prepush warning: unusable worktree=${wt}`);
+        continue;
+      }
       const r = spawnSync('git', ['-C', wt, 'config', '--get', 'core.hooksPath'], { encoding: 'utf8' });
       if (![0, 1].includes(r.status)) throw new Error('cannot read worktree hooks config');
       if (r.status === 0 && r.stdout.trim() !== current && r.stdout.trim() !== managed) throw new Error('worktree-specific hooks override requires explicit reconciliation');
