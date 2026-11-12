@@ -1,6 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# AIDEV-NOTE: `plan` and `gather` are the gather-first execute route (Etan 2026-11-12: gatherers read
+# the frames, one Opus judge child judges their text). No args keeps the prerequisite status check.
+SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ "${1:-}" = "plan" ]; then
+  [ $# -ge 3 ] || { echo "usage: default.sh plan <video> <workdir> [qa|debrief|review]" >&2; exit 2; }
+  VIDEO="$2"; WORKDIR="$3"; MODE="${4:-qa}"
+  cat <<EOF
+## /qa-video plan — mode=$MODE, gather-first
+Requesting seat (lead, or whoever got the request): do no media work. Dispatch ONE Opus judge child and wait:
+  T3: delegate_task({title: "qa-video judge", role: "test", target: {providerInstanceId: "claudeAgent", model: "$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.judgment --field model 2>/dev/null || echo '<claude.judgment model>')", options: {fastMode: false}}, task: "Read and follow $WORKDIR/briefs/qa-judge.md"})
+  Claude terminal seat: Agent with that model and brief. Never t3_thread_launch/create_threads for QA.
+Judge (you, if you were dispatched) — run these scripts in your own shell, polling each logs/<step>.exit for 0:
+  bash "$SCRIPTS/run-step.sh" "$WORKDIR" extract -- bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"
+  bash "$SCRIPTS/run-step.sh" "$WORKDIR" coverage -- bash "$SCRIPTS/coverage.sh" "$VIDEO" "$WORKDIR"
+  bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
+  (read the SRT; write cues.tsv from transcript hotspots + logs/scene.log)
+  bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
+Gather (gatherers read every sheet; you never open one), first that works:
+  1. T3: per batch of <=15 sheets from dense/index.tsv, all in one turn:
+     delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "antigravity", model: "gemini-3.8-flash", options: {thinking_level: "high"}}, task: "Read and follow $WORKDIR/briefs/gather-bN.md"})
+  2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"   (visual-batch.py, headless Gemini via agy)
+  3. TOOLING FAILURE with the raw error path; unread windows stay NOT DETERMINED. Never read the frames instead.
+Judge the gatherer text; spot-check <=2 full-size frames per reported finding (inspected.sh 'spot: ...' <id>).
+Too small: crop.sh or re-densify, then gather again. Missing measurement script: NOT DETERMINED + file a row.
+EOF
+  exit 0
+fi
+
+if [ "${1:-}" = "gather" ]; then
+  [ $# -ge 2 ] || { echo "usage: default.sh gather <workdir> [index.tsv] [step]" >&2; exit 2; }
+  WORKDIR="$2"; INDEX="${3:-$WORKDIR/dense/index.tsv}"; STEP="${4:-gather-01}"
+  [ -f "$INDEX" ] || { echo "TOOLING FAILURE: no index at $INDEX (run dense-windows.sh first)" >&2; exit 3; }
+  exec bash "$SCRIPTS/run-step.sh" "$WORKDIR" "$STEP" -- python3 "$SCRIPTS/visual-batch.py" \
+    --index "$INDEX" --workdir "$WORKDIR/visual-$STEP" --budget-seconds "${GATHER_BUDGET_S:-480}" --question \
+    'Per tile: cursor target, before/after UI state, visible defects, with zero-based tile indexes. Mark unclear tiles NOT DETERMINED; never invent timestamps.'
+fi
+
 ORCHESTRATOR_REPO="${ORCHESTRATOR_REPO:-$HOME/Gits/orchestrator}"
 
 echo "## /qa-video — Video-Based QA Pipeline"
@@ -58,7 +96,7 @@ echo "### Available Workflows"
 echo ""
 echo "| Command | What it does |"
 echo "|---------|-------------|"
-echo "| \`/qa-video\` | This status check |"
+echo "| \`/qa-video\` | This status check; \`default.sh plan <video> <workdir>\` prints the gather-first route |"
 echo "| Load \`workflows/record.md\` | Pre-QA checklist + recording setup |"
 echo "| Load \`workflows/process.md\` | Process video → structured findings |"
 echo "| Load \`workflows/handoff.md\` | Send findings to implementing agent |"
@@ -67,5 +105,5 @@ echo ""
 echo "### Quick Start"
 echo ""
 echo "1. **Record:** \`bash \"$ORCHESTRATOR_REPO/scripts/qa/qa-record.sh\" ~/Gits/<project>/docs/\`"
-echo "2. **Process:** Give me the .mov path and I'll run the stalker pipeline"
+echo "2. **Process:** \`bash $SCRIPTS/default.sh plan <video> <workdir>\` — one Opus judge child, gatherers read the frames"
 echo "3. **Handoff:** I'll format findings and send to your implementing agent"

@@ -11,7 +11,7 @@ class SerialImageReadContract(unittest.TestCase):
             with self.subTest(document=relative):
                 text = (SKILL / relative).read_text()
                 for rule in (
-                    'Helpers and verifiers', 'one image per tool call, sequentially',
+                    'one image per tool call, sequentially',
                     'never parallel or batched image reads in one turn',
                     '[media removed', 'request-limit', 'NOT inspected',
                     'Do not log it to the inspected ledger', 'retry it serially',
@@ -19,6 +19,6 @@ class SerialImageReadContract(unittest.TestCase):
                     'never record a verdict from the failed read',
                 ):
                     self.assertTrue(rule in text, f'{relative}: missing {rule!r}')
-        self.assertTrue('Include this rule in every helper and verifier brief' in
+        self.assertTrue('Include this rule in every gatherer brief' in
                         (SKILL / 'workflows/process.md').read_text(),
                         'processing workflow must pass the rule to readers')

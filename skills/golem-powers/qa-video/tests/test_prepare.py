@@ -131,7 +131,14 @@ def test_skill_owns_iterative_loop():
         assert 'visual-gather.py' in text
         assert 'explicitly' in text and 'visible worker' in text
         assert 'never read images' not in text.lower() and 'for every sheet/frame' not in text
-        assert 'reads the images itself' in text and 'a lead, never evidence' in text
+        if relative == 'workflows/gems.md':
+            # Exhaustive gems keeps its reader fan-out (out of the 2026-11-12 QA split's scope).
+            assert 'reads the images itself' in text and 'a lead, never evidence' in text
+        else:
+            # 2026-11-12 (Etan via orc): gatherers read the frames; one Opus judge judges their text.
+            assert 'reads the images itself' not in text and 'a lead, never evidence' not in text
+            assert 'gemini-3.8-flash' in text and 'TOOLING FAILURE' in text
+            assert 'spot-check' in text.lower() and 'Never fall back to' in text
         assert 'run-step.sh' in text and '.log' in text and '.pid' in text and '.exit' in text
         assert 'run_command' in text and 'view_file' in text
         assert 'pending confirmation' not in text
@@ -141,15 +148,23 @@ def test_skill_owns_iterative_loop():
         assert 'ready: true' not in text and 'prepare.sh' not in text
 
 
-def test_qa_seat_fans_out_where_the_recording_lives():
-    # 2026-11-02 rule: the QA seat runs where the recording lives and fans out itself;
-    # the single qa-video-runner route is retired from the default.
+def test_one_judge_child_gatherers_read_the_frames():
+    # 2026-11-12 (Etan via orc): the requesting seat dispatches ONE Opus judge as a delegate child,
+    # never a top-level thread; gatherers read the frames; the judge judges text and spot-checks.
     root = SCRIPT.parents[1]
     skill = (root/'SKILL.md').read_text()
-    for term in ('Run where the recording lives', 'Never copy the recording', 'fans out itself',
-                 'claude.judgment', 'claude.subagent.mechanical', 'never fewer than 2',
-                 'their reads count as viewed', 'Gemini never forms a verdict', 'no single runner'):
+    head = '\n'.join(skill.split('\n')[:20])
+    for term in ('One Opus judge, gatherers under it', 'never a top-level thread', 'spot-checks at most 2 frames',
+                 'default.sh plan', 'read the frames yourself'):
+        assert term in head, term
+    for term in ('where the recording lives', 'Never copy the recording', 'environmentId',
+                 'providerInstanceId: "antigravity", model: "gemini-3.8-flash", options: {thinking_level: "high"}',
+                 'providerInstanceId: "claudeAgent"', 'fastMode: false', 'Never `t3_thread_launch`',
+                 'TOOLING FAILURE', 'missing measurement', 'scripts/crop.sh',
+                 'Gemini never forms a verdict', 'no single runner', 'NEEDS_READERS'):
         assert term in skill, term
+    for gone in ('fans out itself', 'their reads count as viewed', 'never fewer than 2', 'Each helper\n**reads'):
+        assert gone not in skill, gone
     assert 'Agent(qa-video-runner)' not in skill
     for f in ('workflows/process.md', 'workflows/gems.md'):
         assert 'Agent(qa-video-runner)' not in (root/f).read_text(), f
@@ -165,8 +180,9 @@ def test_qa_pipeline_agent_contract():
     assert '\nmodel: ' + roles['roles']['claude.subagent.cheap']['alias'] + '\n' in agent
     assert '\ntools: Bash, Write, Read\n' in agent
     assert 'never read images' not in agent.lower()
-    assert 'Read the images yourself' in agent and 'a lead, never evidence' in agent
-    assert 'never claim coverage you did not view' in agent
+    assert 'Read the images yourself' not in agent and 'a lead, never evidence' not in agent
+    assert 'Gatherers read the images' in agent and 'NEEDS_READERS' in agent
+    assert 'never claim coverage nobody read' in agent
     for text in [agent] + [(root/f).read_text() for f in ('workflows/process.md', 'workflows/gems.md')]:
         assert 'STILLS_READY' in text and '--presort' in text, 'debrief default is helper-free; pre-sort is opt-in'
     for text in [agent] + [(root/f).read_text() for f in ('SKILL.md', 'workflows/process.md')]:
