@@ -264,6 +264,7 @@ jobs:
           node --test scripts/tests/stalker-run-contract.test.mjs
           node --test scripts/vercel-budget.test.mjs
           node --test scripts/tests/prepush-touched.test.mjs
+          node --test scripts/tests/boundary-prepush.test.mjs scripts/tests/boundary-destination.test.mjs scripts/tests/boundary-upstream.test.mjs
           node --test scripts/tests/ratchet-guarded-set.test.mjs
           node --test scripts/tests/prune-runs.test.mjs
           node --test scripts/tests/pr-wait-hygiene.test.mjs

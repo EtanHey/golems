@@ -6,11 +6,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 const source = join(dirname(fileURLToPath(import.meta.url)), '..');
-const git = (...args) => {
-  const r = spawnSync('git', ['--no-replace-objects', ...args], { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
+const gitInput = (input, ...args) => {
+  const r = spawnSync('git', ['--no-replace-objects', ...args], { input, encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
   if (r.status !== 0) throw new Error('git evidence unavailable');
   return r.stdout;
 };
+const git = (...args) => gitInput(undefined, ...args);
 function parentHistory(pushURL) {
   // Bind metadata to Git's actual push URL, never origin/upstream names or gh's
   // cwd-selected repository. Unknown hosts/transports retain the original scan.
@@ -52,20 +53,51 @@ function parentHistory(pushURL) {
     return {};
   } finally { if (scratch) rmSync(scratch, { recursive: true, force: true }); }
 }
+let destinationExclusions, destinationEvidenceUnavailable = false;
 function newRefExclusions() {
-  if (git('for-each-ref', '--format=%(refname)', 'refs/remotes/').trim()) return ['--not', '--remotes'];
-  const configured = spawnSync('git', ['config', '--get', 'init.defaultBranch'], { encoding: 'utf8' });
-  if (![0, 1].includes(configured.status)) throw new Error('default branch evidence unavailable');
-  const candidates = [...new Set([configured.status === 0 ? configured.stdout.trim() : '', 'main', 'master'].filter(Boolean))];
-  for (const branch of candidates) {
-    const ref = 'refs/heads/' + branch;
-    const found = spawnSync('git', ['show-ref', '--verify', '--quiet', ref]);
-    // --branches=<literal> implicitly adds /* in Git. Exclude the
-    // resolved default ref directly so the branch itself is excluded.
-    if (found.status === 0) return ['--not', ref];
-    if (found.status !== 1) throw new Error('default branch evidence unavailable');
+  if (destinationExclusions) return destinationExclusions;
+  destinationExclusions = [];
+  // Check Git's second hook argument for another fetch-side URL rewrite before
+  // reading its advertisement. Configured transport helpers remain trusted.
+  // Local default branches and refs/remotes/* never prove publication there.
+  const destination = process.argv[3];
+  const resolved = destination && spawnSync('git', ['--no-replace-objects', 'ls-remote', '--get-url', '--', destination], {
+    encoding: 'utf8', timeout: 15_000, maxBuffer: 1024 * 1024,
+  });
+  if (!resolved || resolved.status !== 0 || resolved.stdout.trim() !== destination) {
+    destinationEvidenceUnavailable = true;
+    console.error('boundary-prepush: destination URL rewritten or unavailable; scanning full history');
+    return destinationExclusions;
   }
-  throw new Error('no remote refs or identifiable local default branch');
+  const advertised = spawnSync('git', ['--no-replace-objects', 'ls-remote', '--refs', '--', destination], {
+    encoding: 'utf8', timeout: 15_000, maxBuffer: 128 * 1024 * 1024,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+  });
+  const rows = advertised?.stdout?.trim().split('\n').filter(Boolean) ?? [];
+  if (!advertised || advertised.status !== 0 || rows.some(row => !/^[a-f0-9]{40,64}\trefs\/\S+$/.test(row))) {
+    destinationEvidenceUnavailable = true;
+    // Keep child output private. A failed/partial advertisement cannot exclude
+    // anything: large repos may rescan thousands of commits and fail on old PII.
+    console.error('boundary-prepush: destination advertisement unavailable; scanning full history (historical violations may refuse the push)');
+    return destinationExclusions;
+  }
+  const tips = [...new Set(rows.map(row => row.split('\t')[0]))];
+  if (!tips.length) return destinationExclusions;
+  // Batch the local check: large destinations can advertise thousands of refs.
+  // Disable promisor fetching so an absent tip remains absent, without network.
+  const local = spawnSync('git', ['--no-replace-objects', 'cat-file', '--batch-check=%(objectname) %(objecttype)'], {
+    input: tips.map(sha => sha + '^{commit}\n').join(''), encoding: 'utf8',
+    env: { ...process.env, GIT_NO_LAZY_FETCH: '1' }, timeout: 15_000, maxBuffer: 128 * 1024 * 1024,
+  });
+  if (local.status !== 0) return destinationExclusions;
+  const objects = local.stdout.trim().split('\n');
+  if (objects.length !== tips.length) return destinationExclusions;
+  for (const [index, sha] of tips.entries()) {
+    // Unknown remote objects cannot be rev-list boundaries. Never resolve the
+    // advertised names via local refs; annotated tags must peel to a commit.
+    if (/^[a-f0-9]{40,64} commit$/.test(objects[index])) destinationExclusions.push('^' + sha);
+  }
+  return destinationExclusions;
 }
 // The public policy uses quoted scalars and POSIX ERE character classes.
 // Reject unknown classes rather than silently weakening their translation.
@@ -117,11 +149,11 @@ try {
     const [, head, , remote] = fields;
     if (/^0+$/.test(head)) continue;
     git('cat-file', '-e', head + '^{commit}');
-    // Only fresh parent evidence changes the baseline. Non-forks, unsupported
-    // URLs and lookup/fetch failures retain the original new-ref exclusions.
+    // Destination advertisements define the new-ref baseline in both modes.
+    // Verified parent evidence can additionally exempt already-public history.
     // Existing refs use Git's advertised old tip, even for non-ancestor updates.
-    const exclusions = /^0+$/.test(remote) ? parent.commits ? [] : newRefExclusions() : ['^' + remote];
-    const commits = git('rev-list', head, ...exclusions).trim().split('\n').filter(Boolean).filter(commit => !parent.commits?.has(commit));
+    const exclusions = /^0+$/.test(remote) ? newRefExclusions() : ['^' + remote];
+    const commits = gitInput([head, ...exclusions].join('\n') + '\n', 'rev-list', '--stdin').trim().split('\n').filter(Boolean).filter(commit => !parent.commits?.has(commit));
     // Combined patches scan novel merge resolution lines against ALL parents.
     // Imported lines are scanned in their originating own commit, or exempted
     // only by the fresh parent graph. -m and the aggregate diff would rescan
@@ -148,4 +180,4 @@ try {
     checked += commits.length;
   }
   console.error(`boundary-prepush: PASS (${checked} commits)`);
-} catch (error) { console.error(`boundary-prepush: REFUSED: ${error.message}`); process.exitCode = 1; }
+} catch (error) { console.error(`boundary-prepush: REFUSED: ${error.message}${destinationEvidenceUnavailable ? '; retry or check destination access' : ''}`); process.exitCode = 1; }
