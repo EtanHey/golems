@@ -30,3 +30,40 @@ launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.golems.ratche
 Requires /opt/homebrew/bin/node, authenticated gh, and an ssh host configured in ratchet-relay.json.
 Run offline checks with
 `node --test scripts/fleet/ratchet-inbox-relay.test.mjs`.
+
+## Worktree closeout
+
+Run `node scripts/fleet/worktree-closeout.mjs <worktree-path> --json` to close a
+registered linked checkout. Root checkouts, locked worktrees, dirty state and
+commits absent from all local remote-tracking refs are refused. Fetch remote
+refs before using this tool when freshness matters. It performs no network access.
+
+Build directories are removed recursively by basename, without following
+symlinks. The defaults are `.build.noindex`, `node_modules`, `.test-tmp`, `dist`,
+`.build`, `target`, `__pycache__`, and `.venv`. A worktree-local
+`.golems-closeout.json` can add names with `{"outputs":["build-cache"]}`.
+Tracked files and nested repositories in those directories cause refusal.
+The receipt reports logical file bytes removed, not APFS physical space reclaimed.
+
+`<path> --keep "review pending"` cleans build output and retains the checkout.
+The reason is stored in the common Git directory, keyed by checkout, HEAD and
+status; a changed HEAD or dirty status invalidates it. Keep is an explicit
+exception for dirty or unpushed worktrees too. It does not alter their source.
+
+`--triage <repo> --json` lists all registered worktrees, their state, commit and
+filesystem timestamps, logical size, branch and retained reason. Dirty takes
+precedence over unpushed; both booleans remain visible. Exit 3 means at least one
+unresolved dirty/unpushed worktree has both timestamps older than 48 hours.
+An unavailable checkout also needs resolution. Missing `origin/HEAD` means merge
+status is unknown and clean pushed work is classified as pushed-clean.
+
+`--bundle <worktree-path>` archives HEAD and all refs in a verified Git bundle,
+a binary HEAD diff, untracked non-ignored files, and a receipt under the primary
+checkout's `docs.local/worktree-archive/`. Dirty state is also stashed before
+normal removal; neither stash nor unpushed branches are deleted. Ignored files
+are not archived: inspect them before choosing this operation. Removal never uses
+force. Branch deletion uses `git branch -d` only for fully pushed work; Git may
+retain it when its own merge check fails. Closeout failures retain the archive.
+
+Tests: `node --test scripts/fleet/worktree-closeout.test.mjs` (real temporary Git
+repositories and a local bare remote, no network or credentials).
