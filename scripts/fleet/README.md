@@ -58,8 +58,9 @@ Untracked ignored build contents are treated as regenerable by contract.
 State, locks, logs and default OUTBOX live under ~/.golems/fleet. Missing config
 still collects alerts into OUTBOX and returns exit 1. Pending posts retry until
 SSH succeeds (ambiguous delivery can duplicate). Self-health failures are counted
-and logged. Locks are never stolen: a crashed process leaves an explicit manual
-recovery gate. OUTBOX is an audit copy, not a separate queue.
+and logged. Locks older than 90 minutes are recovered and reported in the next post.
+The first successful delivery after three or more consecutive failures reports
+the failed-run count once. Replacement locks are preserved by inode checks. OUTBOX is an audit copy, not a separate queue.
 
 Offline verification: `node --test scripts/fleet/cleanup.test.mjs scripts/fleet/ratchet-inbox-relay.test.mjs`.
 Fixtures use real local repositories under ignored docs.local and remove only

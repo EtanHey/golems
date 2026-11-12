@@ -57,3 +57,22 @@ test('missing config and failed SSH persist pending and OUTBOX with unhealthy ex
     assert.equal(execute('fixture', () => ({ state: {}, posts: [] }), { dir, config, ssh() {} }), 0);
   } finally { rmSync(dir, { recursive: true }); }
 });
+test('stale lock recovery and consecutive failures are reported once on recovery', () => {
+  const dir = mkdtempSync(join(scratch, 'health-'));
+  const now = Date.now(); const path = join(dir, 'sweeper.json');
+  const config = () => ({ localOutbox: join(dir, 'outbox') });
+  const collect = s => ({ state: s, posts: [] }); const delivered = [];
+  try {
+    writeFileSync(path + '.lock', '');
+    assert.equal(execute('sweeper', collect, { dir, config, now, ssh: t => delivered.push(t) }), 0);
+    assert.equal(delivered.length, 0);
+    const old = new Date(now - 91 * 60000); utimesSync(path + '.lock', old, old);
+    assert.equal(execute('sweeper', collect, { dir, config, now, ssh: t => delivered.push(t) }), 0);
+    assert.match(delivered[0], /stale lock recovered/);
+    for (let i = 0; i < 3; i++) assert.equal(execute('sweeper', collect, { dir, now, config() { throw Error('missing'); } }), 1);
+    assert.equal(execute('sweeper', collect, { dir, config, now, ssh: t => delivered.push(t) }), 0);
+    assert.match(delivered[1], /SWEEPER was failing for 3 runs/);
+    assert.equal(execute('sweeper', collect, { dir, config, now, ssh: t => delivered.push(t) }), 0);
+    assert.equal(delivered.length, 2);
+  } finally { rmSync(dir, { recursive: true }); }
+});
