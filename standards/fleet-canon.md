@@ -1,7 +1,7 @@
 # Fleet Canon
 
-Source of truth for the golems fleet canon. Install to `$HOME/Gits/CLAUDE.md` only after Etan's
-plain-language canon-7 nod; until then this is staged source plus drift-linter substrate.
+Source of truth for the golems fleet canon. Install to `$HOME/Gits/CLAUDE.md` and `~/.codex/AGENTS.md`
+with `scripts/ci/canon-drift-lint.mjs --install` (canon-7 ratified by Etan via orc, 2026-11-12).
 
 <!-- FLEET_CANON_START -->
 # FLEET CANON - golems ecosystem law
@@ -12,7 +12,7 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    the security route): see `/agent-routing` (SSOT). Role→model: `standards/model-roles.json`.
    A gatherer never implements, reviews or decides. The reviewer is always the other vendor.
    The inner loop is sequential: the reviewer starts only after the implementer reports done;
-   a reviewer never reads a half-finished diff. Leads route work through visible panes.
+   a reviewer never reads a half-finished diff. Leads route work through delegated tasks.
    Each PR body records its implementer, review rounds and defects.
    Cursor, including `cursor-agent`, is Auto-only: never pass a model flag or field.
 
@@ -24,7 +24,7 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    its own dispatch reports that dispatch as the cause, never the resulting error as an external finding.
 
 4. **done = user-visible** - Done means the user can see or use the result.
-   Merged code, an unbumped cask, or an open worker pane is not completion evidence by itself.
+   Merged code, an unbumped cask, or an open worker thread is not completion evidence by itself.
    App-touching PRs merge only with an installed-proof release step in the same mission:
    done = the INSTALLED artifact carries the merge SHA, verified on the machine, not inferred.
 
@@ -46,18 +46,23 @@ plain-language canon-7 nod; until then this is staged source plus drift-linter s
    (`skill-creator` -> `skillcreatorClaude`); seat-registry `launcherPrefix` overrides are authoritative.
    Use `-s` for skip-perms where the launcher requires it.
 
-7. **monitors/collabs** - Claim on entry, arm a guard before delegating, checkpoint before commits,
-   write DONE to wake the lead, then harvest artifacts and close worker panes.
-   The cmux-agents operational law is folded here; Etan may split it back out after canon review.
-   Leads and workers drive panes only through the cmuxlayer MCP (`spawn_agent`, `send_to`,
-   `read_screen`, `list_surfaces`, `update_surface`, `close_surface`, `wait_for`), never the raw
-   `cmux` CLI (`send-key`, `close-surface`, `new-surface`, `tree`, etc.). The raw CLI bypasses
-   stable-UUID guards, draft ownership, delivery receipts, tailer reaping, and placement.
-   In cmux 0.64.22, every pane open/close leaks four file descriptors, including MCP operations;
-   minimize pane churn until the cmux upgrade. After a cmux restart, run
-   `/mcp reconnect cmuxlayer` before any pane operation. Exceptions are a documented emergency
-   while the MCP is down (say so in the collab), or read-only diagnostics the MCP cannot do yet
-   (file a cmuxlayer row).
+7. **tasks/collabs** - Claim on entry; write the collab and a file-backed brief before delegating
+   (the brief says `Report to <collab path>, not to the lead thread`; a worker on another machine
+   gets a collab file on its own machine); checkpoint before commits; DONE is the worker's last
+   collab write and carries its PR or receipt URL plus its close-out receipt.
+   In T3, child work goes through `delegate_task`; `t3_thread_launch` makes a new top-level thread
+   only when Etan asks for one, or when a child must be bound to a project/worktree the delegate
+   cannot reach. Bind editing children through the harness's worktree isolation, to the right
+   project. Delegate completion wakes the parent: never poll, sleep-loop or Monitor child progress.
+   A seat keeps one waiter for addressed collab mail (T3/Codex: one name waiter; Claude: one
+   Monitor). Verify each report and artifact before relaying or accepting it. At a child's terminal
+   state: harvest, then settle it; a child waiting on something is snoozed to when it is next needed,
+   with the reason in the plan; a failed or interrupted child is resumed at once.
+   After the PR loop (for a stacked PR, after the whole stack merges), move any docs.local worth
+   keeping into the main checkout's docs.local, then remove the worktree and its build output; the
+   receipt goes in DONE.
+   No fleet task, skill, launcher, gate, install or health check may require cmux or cmuxlayer.
+   The cmuxlayer repository stays as portfolio material; its history is kept.
 
 8. **orchestration** - Run one expanding workflow per cluster, route through leads, surface blockers with
    evidence, and execute approved queues instead of parking them behind permission questions.
@@ -89,7 +94,7 @@ routing rules, and the canon points to it.
 | done = user-visible | PR-loop deploy truth gate; `false-green-gate`; `qa-verdict-gate`; collab DONE markers | Canon owns the completion definition | Gates keep FP/FN mechanics; trim repeated "merged is not shipped" prose |
 | models | `standards/model-roles.json`; `/agent-routing`; launcher setup notes | `model-roles.json` owns role→model; `/agent-routing` owns routing rules; canon keeps pointers and generic pin/dispatch policy | Remove repeated model names and assignments; gates enforce the generic policy |
 | launchers | `repogolem` skill; launcher scripts; W0.2 seat registry | Canon owns default launcher naming, registry override precedence, and skip-perms law | Registry validates names; skill keeps invocation examples |
-| monitors/collabs | `cmux-agents`; `collab-monitor`; `fleet-wrap`; collab workflow docs | Canon owns claim/guard/DONE/harvest-close, with cmux-agents folded | cmux-agents keeps pane mechanics only unless Etan splits the contract back out |
+| tasks/collabs | `delegate_task`; `collab-monitor`; `fleet-wrap`; collab workflow docs | Canon owns claim/brief/DONE/harvest-settle and worktree close-out | Skills keep T3 task and addressed-mail mechanics |
 | orchestration | `orc`; `large-plan`; fleet-wrap guidance; hub collabs | Canon owns cluster workflow and lead-routing law | Skills keep workflows; trim generic "ask before acting" loops |
 
 ## Install And Drift Notes
