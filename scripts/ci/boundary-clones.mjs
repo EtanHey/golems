@@ -2,8 +2,8 @@
 // A managed hooks directory chains every existing hook; original files stay untouched.
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, chmodSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, chmodSync, realpathSync } from 'node:fs';
+import { resolve, dirname, join, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 const quote = s => "'" + s.replaceAll("'", "'\\''") + "'";
@@ -23,7 +23,7 @@ export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node
   for (const entry of existsSync(root) ? readdirSync(root) : []) {
     const repo = join(root, entry);
     if (!statSync(repo).isDirectory() || !existsSync(join(repo, '.git'))) continue;
-    const common = resolve(repo, git(repo, 'rev-parse', '--git-common-dir'));
+    const common = realpathSync.native(resolve(repo, git(repo, 'rev-parse', '--git-common-dir')));
     if (targets.has(common)) continue;
     targets.add(common);
     const managed = join(common, 'golems-boundary-hooks');
@@ -31,9 +31,11 @@ export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node
     const config = spawnSync('git', ['-C', repo, 'config', '--get', 'core.hooksPath'], { encoding: 'utf8' });
     if (![0, 1].includes(config.status)) throw new Error('cannot read hooks config');
     const current = config.status === 0 ? config.stdout.trim() : null;
+    // Alias spellings must not become custody pointing back to these wrappers.
+    const isManaged = p => p === managed || (typeof p === 'string' && isAbsolute(p) && existsSync(p) && existsSync(managed) && realpathSync.native(p) === managed);
     let original = existsSync(record) ? JSON.parse(readFileSync(record, 'utf8')).original : current;
-    if (current === managed && !existsSync(record)) throw new Error('managed hooks have no custody record');
-    if (original === managed || (original !== null && typeof original !== 'string')) throw new Error('invalid original hooks path');
+    if (isManaged(current) && !existsSync(record)) throw new Error('managed hooks have no custody record');
+    if (isManaged(original) || (original !== null && typeof original !== 'string')) throw new Error('invalid original hooks path');
     // Absolute original paths stay absolute; relative ones remain relative to
     // Git's hook cwd, so each worktree retains its own repository hooks.
     const previous = original ?? join(common, 'hooks');
@@ -55,6 +57,14 @@ export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node
       // Missing registered worktrees cannot serve pushes. Keep their metadata
       // untouched; the common hook config also covers them when restored.
       if (!existsSync(wt)) continue;
+      // Resolve repository metadata without reading config: config errors on a
+      // valid checkout must still fail below, never masquerade as a broken one.
+      const probe = spawnSync('git', ['rev-parse', '--resolve-git-dir', join(wt, '.git')], { encoding: 'utf8' });
+      if (probe.error || probe.signal) throw new Error('cannot probe worktree repository');
+      if (probe.status !== 0) {
+        report(`boundary-prepush warning: unusable worktree=${wt}`);
+        continue;
+      }
       const r = spawnSync('git', ['-C', wt, 'config', '--get', 'core.hooksPath'], { encoding: 'utf8' });
       if (![0, 1].includes(r.status)) throw new Error('cannot read worktree hooks config');
       if (r.status === 0 && r.stdout.trim() !== current && r.stdout.trim() !== managed) throw new Error('worktree-specific hooks override requires explicit reconciliation');
@@ -66,8 +76,12 @@ export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node
     if (bad) drift++;
     report(`boundary-prepush clone=${repo} ${bad ? apply ? 'repaired' : 'drift' : 'ok'}`);
   }
-  report(`boundary-prepush-drift=${apply ? 0 : drift} clones=${targets.size}`);
-  return apply ? 0 : drift;
+  // Verify the final state after all writes, including shared config changes.
+  if (apply) drift = syncClones({ root, node, report(line) {
+    if (line.startsWith('boundary-prepush clone=') && line.endsWith(' drift')) report(line);
+  } });
+  report(`boundary-prepush-drift=${drift} clones=${targets.size}`);
+  return drift;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {

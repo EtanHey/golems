@@ -28,23 +28,23 @@
     {
       "id": 2,
       "prompt": "I want to run a Cursor agent in headless mode to audit brainlayer code and get text output. How?",
-      "expected_output": "Should use -p flag with the prompt: brainlayerCursor -s -p 'audit prompt here'. Should mention this is headless/scripting mode, NOT interactive.",
+      "expected_output": "Cursor CLI launchers are retired. Use a T3 delegate_task child with providerInstanceId: \"cursor\" and model: \"default\"; follow /agent-routing for details.",
       "assertions": [
         {
-          "text": "Uses 'brainlayerCursor -s -p \"prompt\"' pattern",
+          "text": "States that Cursor CLI launchers are retired",
           "type": "behavioral"
         },
         {
-          "text": "Notes that -p is for headless/scripting mode, not interactive",
+          "text": "Uses T3 delegate_task with providerInstanceId: \"cursor\" and model: \"default\"",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT suggest -p for interactive use (interactive = launch without -p, send prompt separately)",
+          "text": "References /agent-routing for Cursor delegation details",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT recommend a Cursor launcher, raw cursor-agent CLI, or cmux Cursor launch sequence",
           "type": "negative"
-        },
-        {
-          "text": "Mentions that -p adds --print and --output-format text automatically",
-          "type": "behavioral"
         }
       ]
     },
@@ -74,22 +74,22 @@
     {
       "id": 4,
       "prompt": "I need a Cursor agent to do a read-only audit of the golems repo. Should I use golemsCursor -s or golemsCursor -s -p 'audit prompt'?",
-      "expected_output": "For INTERACTIVE use (monitoring via cmux, sending follow-ups): golemsCursor -s then send prompt separately. For HEADLESS/SCRIPTING (one-shot, get output): golemsCursor -s -p 'prompt'. Interactive is better for monitored agents.",
+      "expected_output": "Cursor CLI launchers are retired. Use a T3 delegate_task child with providerInstanceId: \"cursor\" and model: \"default\"; follow /agent-routing for details.",
       "assertions": [
         {
-          "text": "Distinguishes interactive (-s alone) from headless (-s -p)",
+          "text": "States that Cursor CLI launchers are retired",
           "type": "behavioral"
         },
         {
-          "text": "Recommends interactive for cmux-monitored agents (can send follow-ups)",
+          "text": "Uses T3 delegate_task with providerInstanceId: \"cursor\" and model: \"default\"",
           "type": "behavioral"
         },
         {
-          "text": "Recommends headless for scripted one-shot tasks",
+          "text": "References /agent-routing for Cursor delegation details",
           "type": "behavioral"
         },
         {
-          "text": "Does NOT suggest -p for all use cases indiscriminately",
+          "text": "Does NOT recommend a Cursor launcher, raw cursor-agent CLI, or cmux Cursor launch sequence",
           "type": "negative"
         }
       ]
@@ -97,7 +97,7 @@
     {
       "id": 5,
       "prompt": "I want to resume the last orcClaude session. What's the command?",
-      "expected_output": "orcClaude -s -c (continue last session). Or orcClaude --resume for the session picker. Should note that -c on Cursor is a no-op (not supported).",
+      "expected_output": "orcClaude -s -c (continue last session). Or orcClaude --resume for the session picker. If mentioning Cursor, states its launchers are retired and points to /agent-routing for T3 delegation.",
       "assertions": [
         {
           "text": "Uses 'orcClaude -s -c' for continuing the last session",
@@ -108,8 +108,8 @@
           "type": "behavioral"
         },
         {
-          "text": "Notes that -c is a no-op on Cursor (not supported)",
-          "type": "behavioral"
+          "text": "Does NOT teach Cursor -c as a supported launcher or no-op; Cursor launchers are retired",
+          "type": "negative"
         }
       ]
     },
@@ -158,26 +158,22 @@
     {
       "id": 8,
       "prompt": "The user said 'spawn a Cursor in brainlayer to scan for stubs'. Based on /agent-routing, Cursor is correct for read-only data gathering. Now, how do I actually launch it via cmux?",
-      "expected_output": "Should show the full cmux flow: new_split → send_input('brainlayerCursor -s') → send_key('return') → wait 8-10s → send_input(task prompt) → send_key('return'). Links /agent-routing (WHO) to /repogolem (HOW).",
+      "expected_output": "Cursor CLI launchers are retired. Use a T3 delegate_task child with providerInstanceId: \"cursor\" and model: \"default\"; follow /agent-routing for details.",
       "assertions": [
         {
-          "text": "Shows the full cmux spawn sequence (new_split → send_input → send_key → wait → send task)",
+          "text": "States that Cursor CLI launchers are retired",
           "type": "behavioral"
         },
         {
-          "text": "Uses the repoGolem launcher (brainlayerCursor -s), not raw CLI",
+          "text": "Uses T3 delegate_task with providerInstanceId: \"cursor\" and model: \"default\"",
           "type": "behavioral"
         },
         {
-          "text": "Includes the wait step between launcher and task prompt (8-10s for boot)",
+          "text": "References /agent-routing for Cursor delegation details",
           "type": "behavioral"
         },
         {
-          "text": "References /agent-routing for the routing decision (Cursor for data gathering)",
-          "type": "behavioral"
-        },
-        {
-          "text": "Does NOT send the task in the same send_input as the launcher (they're separate steps)",
+          "text": "Does NOT recommend a Cursor launcher, raw cursor-agent CLI, or cmux Cursor launch sequence",
           "type": "negative"
         }
       ]

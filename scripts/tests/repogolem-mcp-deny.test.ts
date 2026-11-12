@@ -16,9 +16,10 @@ const registry = () => ({ global: { mcps: servers }, mcpDefinitions: servers,
 beforeEach(() => {
   mkdirSync(join(root, "docs.local"), { recursive: true });
   dir = mkdtempSync(join(root, "docs.local/mcp-deny-"));
-  for (const part of ["project", "parent", "home/.codex", "home/.gemini/antigravity-cli/agents"]) {
+  for (const part of ["project", "parent", "standards", "home/.codex", "home/.gemini/antigravity-cli/agents"]) {
     mkdirSync(join(dir, part), { recursive: true });
   }
+  writeFileSync(join(dir, "standards/model-roles.json"), JSON.stringify({ roles: { "codex.implement": { model: "fixture-codex" } } }));
   writeFileSync(join(dir, "registry.json"), JSON.stringify(registry()));
   for (const part of ["project", "parent"]) writeFileSync(join(dir, part, ".mcp.json"), JSON.stringify({ mcpServers: servers }));
   writeFileSync(join(dir, "home/.gemini/antigravity-cli/agents/shell-worker.md"), "Fixture worker\n");
@@ -69,7 +70,7 @@ for (const deniedOnly of [false, true]) for (const sink of ["claude", "codex", "
     writeFileSync(join(dir, "raw.json"), JSON.stringify({ mcpServers: input }));
     const run = Bun.spawnSync(["zsh", "-f", "-c", script, "_", join(root, "scripts/repogolem/golem-dispatch.zsh"), sink], {
       env: { ...process.env, HOME: join(dir, "home"), CODEX_HOME: join(dir, "home/.codex"), CASE_DIR: dir,
-        RALPH_REGISTRY_FILE: join(dir, "registry.json"), GOLEM_ROLE: "", GOLEM_EFFORT: "", GOLEM_AGENT_ROLE: "", GOLEM_AGY_AGENT: "" },
+        RALPH_REGISTRY_FILE: join(dir, "registry.json"), GOLEMS_MODEL_ROLES_ROOT: dir, GOLEM_ROLE: "", GOLEM_EFFORT: "", GOLEM_AGENT_ROLE: "", GOLEM_AGY_AGENT: "" },
       stdout: "pipe", stderr: "pipe",
     });
     expect(run.exitCode, run.stderr.toString()).toBe(0);
