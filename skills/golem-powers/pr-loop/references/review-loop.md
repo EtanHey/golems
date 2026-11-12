@@ -108,7 +108,7 @@ It reports findings only and never edits files or pushes to the PR branch.
 
 T3 `delegate_task` with `target: {providerInstanceId: "cursor", model: "default"}` (Auto). Write one brief file per child; dispatch `Read and follow <absolute brief path>`. Each brief says `Report to <collab path>, not to the lead thread.` Never use a headless CLI, AutoCursor runner, or background Cursor loop. Never select a named Cursor model; `default` is the T3 Auto sentinel.
 
-The brief pins the actual PR base and head SHA and requires findings only: do not edit, create or delete files; do not push.
+The brief pins the actual PR base and head SHA and requires findings only, each labelled BLOCKING or NON-BLOCKING ([classify](#classify-each-review-comment)): do not edit, create or delete files; do not push.
 
 - Scope the child to read-only findings in its brief and verify its report and branch state. This is an instruction contract, not a CLI sandbox guarantee.
 - Answer every finding like any other finding before merge. A real finding arriving after merge
@@ -438,21 +438,23 @@ RIGHT: Every CRITICAL/HIGH comment gets one of:
 
 **Implementation order (multi-item feedback):**
 1. Clarify anything unclear FIRST
-2. Blocking issues (breaks, security)
-3. Simple fixes (typos, imports)
-4. Complex fixes (refactoring, logic)
-5. Test each fix individually
+2. BLOCKING findings only: simple fixes first, then complex ones
+3. Test each fix individually
+4. Row every NON-BLOCKING finding as a follow-up
 
 Max 2 review-fix rounds; round 3 requires a lead exception written in the PR body.
 
 ### Classify each review comment:
 
+Every reviewer brief (routed reviewer, panel, Cursor pass) says: "Label every finding BLOCKING or NON-BLOCKING. BLOCKING = correctness, security, data loss, a broken contract, or a missing required proof; everything else is NON-BLOCKING. Zero BLOCKING findings = APPROVE." A brief asking Opus for judgement adds: "If you think this is a good idea, do it. Otherwise, suggest something else." (Theo, 2026-11-12, via orc: nitpicky review turns a 30-line PR into "a thousand plus"; Opus is reluctant to say no.)
+
 | Type | Action |
 |------|--------|
-| **CRITICAL** (data loss, crash, security) | FIX. Blocks merge. Must reply. |
-| **MAJOR** (real bug) | FIX immediately. Push fix. Re-review. Must reply. |
-| **TRIVIAL** (style, nitpick) | Fix if genuinely better. Skip if bikeshed. |
+| **BLOCKING** (any CRITICAL/MAJOR/HIGH that is real lands here) | FIX, with its guard (SKILL step 7). Push. Re-review. Must reply. |
+| **NON-BLOCKING** (style, nitpick, naming, optional refactor) | Do not fix in this PR. Row it as a follow-up (PR body or collab) and reply with the row. Never opens another round. |
 | **CONFLICTS WITH DESIGN** | INVESTIGATE first. Only dismiss with explicit doc evidence. |
+
+An unlabelled finding: label it yourself by the BLOCKING definition above.
 
 When in doubt, the reviewer might be right. Push back only with explicit evidence.
 
@@ -477,8 +479,8 @@ Every PR is an opportunity to make reviewers smarter. Use the right format for e
 ### Review Loop (one clean exact-head review may merge)
 
 ```
-Round 1: Read review at headRefOid; required checks green + clean review may merge
-Round 2: Only for BLOCKING findings; push fixes and request re-review
+Round 1: Read review at headRefOid; zero BLOCKING findings = APPROVE; required checks green + APPROVE may merge
+Round 2: Only for BLOCKING findings; push fixes and request re-review (NON-BLOCKING never opens a round)
 ```
 
 Automatic re-review depends on effective bot settings; manually request only missing/stale
