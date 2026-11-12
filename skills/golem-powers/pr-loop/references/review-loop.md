@@ -442,11 +442,11 @@ RIGHT: Every CRITICAL/HIGH comment gets one of:
 3. Test each fix individually
 4. Row every NON-BLOCKING finding as a follow-up
 
-Max 2 review-fix rounds; round 3 requires a lead exception written in the PR body.
+Max 2 review-fix rounds (canon #9). There is no round 3: after round 2 the lead verifies the final fixes, or the PR is split or parked.
 
 ### Classify each review comment:
 
-Every reviewer brief (routed reviewer, panel, Cursor pass) says: "Label every finding BLOCKING or NON-BLOCKING. BLOCKING = correctness, security, data loss, a broken contract, or a missing required proof; everything else is NON-BLOCKING. Zero BLOCKING findings = APPROVE." A brief asking a `claude.judgment` reviewer for judgement adds: "If you think this is a good idea, do it. Otherwise, suggest something else." (Theo, 2026-11-12, via orc: nitpicky review turns a 30-line PR into "a thousand plus"; that reviewer is reluctant to say no.)
+Every reviewer brief, routed or panel, says: "Label every finding BLOCKING or NON-BLOCKING. BLOCKING = correctness, security, data loss, a broken contract, or a missing required proof; everything else is NON-BLOCKING. Zero BLOCKING findings = APPROVE." The Cursor pass gets the same line. A brief that asks for a judgement call adds: "If you think this is a good idea, do it. Otherwise, suggest something else." (Theo, 2026-11-12, via orc: nitpicky review turns a 30-line PR into "a thousand plus", and judges are reluctant to say no.)
 
 | Type | Action |
 |------|--------|
@@ -485,7 +485,7 @@ Round 2: Only for BLOCKING findings; push fixes and request re-review (NON-BLOCK
 
 Automatic re-review depends on effective bot settings; manually request only missing/stale
 current-head coverage from eligible reviewers.
-Round 3 requires a lead exception written in the PR body (canon #9). Never merge with open blocking issues.
+There is no round 3 (canon #9): after round 2 the lead verifies the final fixes, or the PR is split or parked. Never merge with open blocking issues.
 
 ### Sanitize Before PR (CRITICAL)
 
