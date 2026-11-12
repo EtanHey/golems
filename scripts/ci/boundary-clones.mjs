@@ -2,7 +2,7 @@
 // A managed hooks directory chains every existing hook; original files stay untouched.
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, chmodSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, chmodSync, realpathSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +23,7 @@ export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node
   for (const entry of existsSync(root) ? readdirSync(root) : []) {
     const repo = join(root, entry);
     if (!statSync(repo).isDirectory() || !existsSync(join(repo, '.git'))) continue;
-    const common = resolve(repo, git(repo, 'rev-parse', '--git-common-dir'));
+    const common = realpathSync(resolve(repo, git(repo, 'rev-parse', '--git-common-dir')));
     if (targets.has(common)) continue;
     targets.add(common);
     const managed = join(common, 'golems-boundary-hooks');
@@ -66,8 +66,10 @@ export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node
     if (bad) drift++;
     report(`boundary-prepush clone=${repo} ${bad ? apply ? 'repaired' : 'drift' : 'ok'}`);
   }
-  report(`boundary-prepush-drift=${apply ? 0 : drift} clones=${targets.size}`);
-  return apply ? 0 : drift;
+  // Verify the final state after all writes, including shared config changes.
+  if (apply) drift = syncClones({ root, node, report() {} });
+  report(`boundary-prepush-drift=${drift} clones=${targets.size}`);
+  return drift;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
