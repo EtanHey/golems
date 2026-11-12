@@ -221,10 +221,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"schema_valid={valid_count}")
     print(ledger)
-    print(
-        "autocursor_import="
-        f"{green['autocursor_import']['status']} path={green['autocursor_import']['path']}"
-    )
     print(f"smoke_replay_verdict={green['smoke_report']['verdict']['label']}")
     return 0
 

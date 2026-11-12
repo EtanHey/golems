@@ -3,15 +3,15 @@
 #
 # RESEARCH mode (default): capture agent text output to a file
 #   run.sh <agent> "<prompt>" [output-file]
-#   run.sh --workspace $HOME/Gits/golems cursor "<prompt>" [output-file]
+#   run.sh --workspace $HOME/Gits/golems codex "<prompt>" [output-file]
 #
-# WORK mode: agent modifies files in target workspace (cursor/codex only)
-#   run.sh --work --workspace $HOME/Gits/golems cursor "<prompt>" [log-file]
+# WORK mode: agent modifies files in target workspace (codex only)
+#   run.sh --work --workspace $HOME/Gits/golems codex "<prompt>" [log-file]
 #
 # PROMPT FROM FILE: use @filepath to read prompt from a file
-#   run.sh --workspace $HOME/Gits/golems cursor @/tmp/my-prompt.txt [output-file]
+#   run.sh --workspace $HOME/Gits/golems codex @/tmp/my-prompt.txt [output-file]
 #
-# Agents: gemini, cursor, codex, kilo
+# Agents: gemini, codex, kilo
 #
 # SAFETY: kilo has full file access — blocked from golems/personal dirs
 
@@ -71,22 +71,8 @@ case "$AGENT" in
     ;;
 
   cursor)
-    CURSOR_MODEL="${CURSOR_MODEL:-gpt-5.3-codex-xhigh}"
-    MODEL_FLAG="--model ${CURSOR_MODEL}"
-    if [[ "$FREE_MODE" == true ]]; then
-      MODEL_FLAG=""  # Use cursor's default auto-routing (included in subscription)
-    fi
-    WORKSPACE_FLAG=""
-    if [[ -n "$WORKSPACE" ]]; then
-      WORKSPACE_FLAG="--workspace $WORKSPACE"
-    fi
-    if [[ "$MODE" == "work" ]]; then
-      # Work mode: -p enables tools (write/bash), cursor modifies files directly
-      cursor agent -p ${MODEL_FLAG} ${WORKSPACE_FLAG} --trust "$PROMPT" > "$OUTPUT" 2>&1
-    else
-      # Research mode: -p with text output format
-      cursor agent -p --output-format text ${MODEL_FLAG} ${WORKSPACE_FLAG} --trust "$PROMPT" > "$OUTPUT" 2>&1
-    fi
+    echo 'Cursor CLI dispatch is retired. Use T3 delegate_task with target: {providerInstanceId: "cursor", model: "default"}.' >&2
+    exit 1
     ;;
 
   codex)
@@ -126,7 +112,7 @@ case "$AGENT" in
 
   *)
     echo "Unknown agent: ${AGENT}" >&2
-    echo "Available: gemini, cursor, codex, kilo" >&2
+    echo "Available: gemini, codex, kilo" >&2
     exit 1
     ;;
 esac
