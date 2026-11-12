@@ -7,22 +7,24 @@ description: "Launch repoGolem agents in any repo. Triggers: spawn agent, launch
 
 > Fleet law: canon #5 owns model policy; canon #6 owns launcher naming, registry override precedence, and skip-perms. This skill keeps invocation mechanics, examples, and troubleshooting.
 
-> Every project has launchers: `{name}Claude`, `{name}Codex`, `{name}Cursor`, `{name}Gemini`.
+> Every project has launchers: `{name}Claude`, `{name}Codex`, `{name}Gemini`.
 > The launcher handles EVERYTHING: cd to repo, MCP wiring, secrets, iTerm profile, badge.
 > You NEVER need `source ~/.zshrc && cd $HOME/Gits/X && claude -s`. Just: `brainlayerClaude -s`.
+
+Cursor launchers are retired; use T3 `delegate_task` (`providerInstanceId: "cursor"`, `model: "default"`) for Cursor work; see `/agent-routing` for details.
 
 ---
 
 ## UNIFIED FLAGS (same across ALL CLIs)
 
-| Flag | Short | What It Does | Claude | Codex | Cursor |
-|------|-------|-------------|--------|-------|--------|
-| Skip permissions | `-s` | Auto-approve tool calls | `--dangerously-skip-permissions` | Compatibility no-op; host config supplies the policy | `--yolo --approve-mcps` |
-| Continue/resume | `-c` | Resume last session | `--continue` | Resume the newest usable rollout for the launch cwd | (no-op, not supported) |
-| Model override | `-m <model>` | Explicit model selection | Judgment role for full panes; cheap role headless/subagent only | Any model string passes through | Refused for interactive agent sessions |
-| Reasoning effort | `-E <effort>` | Explicit Codex effort | — | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` | — |
-| Headless/print | `-p "prompt"` | Scripted one-shot only; NOT agent sessions or verification gates | `--print -p "prompt"` | Headless prompt | `--print --output-format text` |
-| Worktree | `-w <abs-path>` | Launch from pre-created git worktree cwd | `cd <path>` | `cd <path>` | `cd <path>` |
+| Flag | Short | What It Does | Claude | Codex |
+|------|-------|-------------|--------|-------|
+| Skip permissions | `-s` | Auto-approve tool calls | `--dangerously-skip-permissions` | Compatibility no-op; host config supplies the policy |
+| Continue/resume | `-c` | Resume last session | `--continue` | Resume the newest usable rollout for the launch cwd |
+| Model override | `-m <model>` | Explicit model selection | Judgment role for full panes; cheap role headless/subagent only | Any model string passes through |
+| Reasoning effort | `-E <effort>` | Explicit Codex effort | — | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
+| Headless/print | `-p "prompt"` | Scripted one-shot only; NOT agent sessions or verification gates | `--print -p "prompt"` | Headless prompt |
+| Worktree | `-w <abs-path>` | Launch from pre-created git worktree cwd | `cd <path>` | `cd <path>` |
 
 **CRITICAL:**
 - `-s` = skip permissions. For Codex it is a compatibility no-op; `golem-install` validates `approval_policy = "never"` and `sandbox_mode = "danger-full-access"` in host config. Capital `-S`/`--sonnet` is a separate Claude-only model request and is refused for full panes.
@@ -30,7 +32,6 @@ description: "Launch repoGolem agents in any repo. Triggers: spawn agent, launch
 - `-p` is NOT for agent sessions or verification gates. Open scope: it may survive for non-agent scripted one-shots; confirm with Etan before using it in automation.
 - Codex resume is fail-closed. `-c` requires at least one usable rollout for the launch cwd and skips malformed newer candidates; a fresh cwd with no usable rollout exits loudly. Bare `resume` picker mode is refused because the launcher cannot recover model/effort before the picker selects a session.
 - Codex `-p/--print` cannot be combined with `-c` or explicit `resume`; that combination exits loudly instead of silently starting a fresh headless session. A resumed session restores its recorded model and effort; explicit `-m` and/or `-E` override the recovered field, and when both are explicit the launcher skips rollout-state recovery and lets Codex validate the requested session.
-- `-c` on Cursor is a no-op (not supported yet)
 
 ---
 
@@ -40,11 +41,11 @@ description: "Launch repoGolem agents in any repo. Triggers: spawn agent, launch
 {projectName}{CLI}
 
 Examples:
-  brainlayerClaude    brainlayerCodex    brainlayerCursor
-  golemsClaude        golemsCodex        golemsCursor
-  orcClaude           orcCodex           orcCursor
-  6pmClaude           6pmCodex           6pmCursor
-  dashboardClaude     dashboardCodex     dashboardCursor
+  brainlayerClaude    brainlayerCodex
+  golemsClaude        golemsCodex
+  orcClaude           orcCodex
+  6pmClaude           6pmCodex
+  dashboardClaude     dashboardCodex
 ```
 
 The name is the project key from `~/.config/ralphtools/registry.json`, lowercased.
@@ -58,15 +59,15 @@ Registry entries can include an `agent` field:
   "yash": {
     "path": "$HOME/Gits/golems",
     "agent": "yash",
-    "clis": ["claude", "codex", "cursor", "gemini"]
+    "clis": ["claude", "codex", "gemini"]
   }
 }
 ```
 
 Claude launchers pass this through as `--agent <name>`.
-Codex, Cursor, and Gemini do not read Claude Agent SDK files directly, so repoGolem reads `~/.claude/agents/<name>.md` and injects it as the launcher's initial prompt.
+Codex and Gemini do not read Claude Agent SDK files directly, so repoGolem reads `~/.claude/agents/<name>.md` and injects it as the launcher's initial prompt.
 It preserves the frontmatter `initialPrompt` block when present, strips the rest of the YAML metadata, then appends the Markdown body.
-This is intentional: `yashCodex`, `yashCursor`, and `yashGemini` should inherit the same agent protocol instead of acting like generic shells in the project directory.
+This is intentional: `yashCodex` and `yashGemini` should inherit the same agent protocol instead of acting like generic shells in the project directory.
 
 ### Plain Codex worker mode
 
@@ -79,7 +80,7 @@ GOLEM_ROLE=worker orcCodex -s -E high -w $HOME/Gits/orchestrator.wt/my-lane # re
 ```
 
 The generated `*CodexWorker` aliases remain compatible and select the same mode.
-`--worker` is the one worker signal: on Codex, Cursor and Gemini it also exports
+`--worker` is the one worker signal: on Codex and Gemini it also exports
 `GOLEM_ROLE=worker` to the launched agent, for that call only. Claude is the
 exception: `--worker` there keeps the lead effort and sets no `GOLEM_ROLE`.
 Worker mode adds only a one-line role banner before an optional caller prompt; it
@@ -136,7 +137,6 @@ This matters when another tool tries to build a launcher name from `repo` direct
 ```bash
 which skillcreatorClaude
 which skillcreatorCodex
-which skillcreatorCursor
 ```
 
 If the launcher guess is wrong, use the verified repoGolem launcher manually until cmuxlayer normalizes `repo -> launcher` with the same hyphen-stripping rule.
@@ -147,34 +147,34 @@ If the launcher guess is wrong, use the verified repoGolem launcher manually unt
 
 | Project | Path | Launchers |
 |---------|------|-----------|
-| golems | $HOME/Gits/golems | golemsClaude, golemsCodex, golemsCursor |
-| brainlayer | $HOME/Gits/brainlayer | brainlayerClaude, brainlayerCodex, brainlayerCursor |
-| voicelayer | $HOME/Gits/voicelayer | voicelayerClaude, voicelayerCodex, voicelayerCursor |
-| orc (orchestrator) | $ORCHESTRATOR_REPO | orcClaude, orcCodex, orcCursor |
-| dashboard | $HOME/Gits/golems-dashboard | dashboardClaude, dashboardCodex, dashboardCursor |
-| 6pm | $HOME/Gits/6pm-mini | 6pmClaude, 6pmCodex, 6pmCursor |
-| portfolio | $HOME/Gits/etanheyman.com | portfolioClaude, portfolioCodex, portfolioCursor |
-| taskowl | $HOME/Gits/taskowl | taskowlClaude, taskowlCodex, taskowlCursor |
-| taskowl | $HOME/Gits/TaskOwl-app | taskowlClaude, taskowlCodex, taskowlCursor |
-| cmuxlayer | $HOME/Gits/cmuxlayer | cmuxlayerClaude, cmuxlayerCodex, cmuxlayerCursor |
-| mcplayer | $HOME/Gits/mcplayer | mcplayerClaude, mcplayerCodex, mcplayerCursor |
-| metacomlayer | $HOME/Gits/metacomlayer | metacomlayerClaude, metacomlayerCodex, metacomlayerCursor |
-| qwan | $HOME/Gits/qwan-drill | qwanClaude, qwanCodex, qwanCursor |
-| coach | $HOME/Gits/golems/packages/coach | coachClaude, coachCodex, coachCursor |
-| content | $HOME/Gits/golems/packages/content | contentClaude, contentCodex, contentCursor |
-| services | $HOME/Gits/golems/packages/services | servicesClaude, servicesCodex, servicesCursor |
-| skills | $HOME/Gits/golems | skillsClaude, skillsCodex, skillsCursor |
-| eval | $ORCHESTRATOR_REPO | evalClaude, evalCodex, evalCursor |
-| maintenance | $ORCHESTRATOR_REPO | maintenanceClaude, maintenanceCodex, maintenanceCursor |
-| teller | $HOME/Gits/tellerGolem | tellerClaude, tellerCodex, tellerCursor |
-| monitor | $HOME/Gits/monitorGolem | monitorClaude, monitorCodex, monitorCursor |
-| rudy | $HOME/Gits/rudy-monorepo | rudyClaude, rudyCodex, rudyCursor |
-| songscript | $HOME/Gits/songscript | songscriptClaude, songscriptCodex, songscriptCursor |
-| union | $HOME/Gits/union | unionClaude, unionCodex, unionCursor |
-| ralph | ~/.config/ralph | ralphClaude, ralphCodex, ralphCursor |
-| taba | $HOME/Gits/taba | tabaClaude, tabaCodex, tabaCursor |
-| project2 | ~/Desktop | project2Claude, project2Codex, project2Cursor |
-| maakaf | $HOME/Gits/maakaf_home | maakafClaude, maakafCodex, maakafCursor |
+| golems | $HOME/Gits/golems | golemsClaude, golemsCodex |
+| brainlayer | $HOME/Gits/brainlayer | brainlayerClaude, brainlayerCodex |
+| voicelayer | $HOME/Gits/voicelayer | voicelayerClaude, voicelayerCodex |
+| orc (orchestrator) | $ORCHESTRATOR_REPO | orcClaude, orcCodex |
+| dashboard | $HOME/Gits/golems-dashboard | dashboardClaude, dashboardCodex |
+| 6pm | $HOME/Gits/6pm-mini | 6pmClaude, 6pmCodex |
+| portfolio | $HOME/Gits/etanheyman.com | portfolioClaude, portfolioCodex |
+| taskowl | $HOME/Gits/taskowl | taskowlClaude, taskowlCodex |
+| taskowl | $HOME/Gits/TaskOwl-app | taskowlClaude, taskowlCodex |
+| cmuxlayer | $HOME/Gits/cmuxlayer | cmuxlayerClaude, cmuxlayerCodex |
+| mcplayer | $HOME/Gits/mcplayer | mcplayerClaude, mcplayerCodex |
+| metacomlayer | $HOME/Gits/metacomlayer | metacomlayerClaude, metacomlayerCodex |
+| qwan | $HOME/Gits/qwan-drill | qwanClaude, qwanCodex |
+| coach | $HOME/Gits/golems/packages/coach | coachClaude, coachCodex |
+| content | $HOME/Gits/golems/packages/content | contentClaude, contentCodex |
+| services | $HOME/Gits/golems/packages/services | servicesClaude, servicesCodex |
+| skills | $HOME/Gits/golems | skillsClaude, skillsCodex |
+| eval | $ORCHESTRATOR_REPO | evalClaude, evalCodex |
+| maintenance | $ORCHESTRATOR_REPO | maintenanceClaude, maintenanceCodex |
+| teller | $HOME/Gits/tellerGolem | tellerClaude, tellerCodex |
+| monitor | $HOME/Gits/monitorGolem | monitorClaude, monitorCodex |
+| rudy | $HOME/Gits/rudy-monorepo | rudyClaude, rudyCodex |
+| songscript | $HOME/Gits/songscript | songscriptClaude, songscriptCodex |
+| union | $HOME/Gits/union | unionClaude, unionCodex |
+| ralph | ~/.config/ralph | ralphClaude, ralphCodex |
+| taba | $HOME/Gits/taba | tabaClaude, tabaCodex |
+| project2 | ~/Desktop | project2Claude, project2Codex |
+| maakaf | $HOME/Gits/maakaf_home | maakafClaude, maakafCodex |
 
 ### brainlayer topology — bare-mirror-style hub, main lives elsewhere (2026-06-07 weave E12)
 
@@ -199,7 +199,6 @@ branches live in worktrees under `$HOME/Gits/brainlayer/.worktrees/`. Two rules:
 ```bash
 brainlayerClaude -s          # Claude in brainlayer repo, skip-permissions
 orcCodex -s                  # Codex in orchestrator repo, skip-permissions
-golemsCursor -s              # Cursor in golems repo, skip-permissions
 ```
 
 ### Continue/resume a session
@@ -263,14 +262,6 @@ launch-in-an-already-existing-worktree only.
 Alternative fix (not shipped here): teach the launcher to resolve/create worktree
 paths from bare names — until then, briefs must inline absolute verified paths.
 
-### Scripted one-shot (NOT agent sessions; scope under review)
-```bash
-# For Cursor, follow /agent-routing and /cursor-workflows.
-# Historical launcher only; do not select this route. In T3 use /cursor-workflows.
-```
-
-Do not use this form for workers, leads, or verification gates. Cursor work uses T3 children through `/cursor-workflows`. Whether `-p` should remain for non-agent scripted one-shots is an open scope question for Etan; keep the flag documented, but do not apply it to agent sessions.
-
 ### Model policy
 ```bash
 : "${phase_effort:?Choose effort per /large-plan phase before dispatch}"
@@ -327,7 +318,7 @@ send_to({ mode: "surface", surface, text: "source ~/.zshrc && cd $HOME/Gits/brai
     "mcps": [],
     "secrets": {},
     "created": "2026-04-05T00:00:00Z",
-    "clis": ["claude", "codex", "cursor"]
+    "clis": ["claude", "codex"]
 }
 ```
 
@@ -338,17 +329,6 @@ source ~/.config/ralphtools/launchers.zsh
 ```
 
 3. Verify: `which myprojectClaude` should resolve.
-
----
-
-## HOW TO ADD A NEW CLI TO ALL PROJECTS
-
-Example: adding `cursor` to all 27 projects (done April 4, 2026):
-
-1. Edit registry.json — add `"cursor"` to each project's `clis` array
-2. Regenerate: `_ralph_generate_launchers_from_registry`
-3. Source: `source ~/.config/ralphtools/launchers.zsh`
-4. Verify: `which brainlayerCursor` for a few projects
 
 ---
 
@@ -363,11 +343,8 @@ for `-E`; verify a bare launcher against the config before relying on its pin. c
 selection, while its current effort enum is the four-value subset documented above. Verify effective
 values from Codex session metadata rather than the agent's self-description.
 
-### Cursor model: expect default/Auto
-Cursor model selection is owned by fleet canon #1.
-
 ### `-p` is NOT for agent sessions
-For Cursor work, use T3 `delegate_task` through `/cursor-workflows`, with one pointer brief per child and a collab report. This includes verification gates. `-p` remains documented only for possible non-agent scripted one-shots; that scope needs Etan confirmation before automation depends on it.
+`-p` remains documented only for possible non-agent scripted one-shots; that scope needs Etan confirmation before automation depends on it.
 
 ## TROUBLESHOOTING
 
@@ -379,7 +356,6 @@ For Cursor work, use T3 `delegate_task` through `/cursor-workflows`, with one po
 | Wrong iTerm badge | Check `emoji` field in registry.json |
 | No launcher for a repo | Add to registry.json, regenerate (see above) |
 | `--agent` flag with `-s` | `-s` is a launcher flag, NOT a Claude flag. Use `--dangerously-skip-permissions` explicitly |
-| `-force` error on Cursor | Use `--force` (double dash), not `-force` |
 
 ---
 
@@ -387,7 +363,7 @@ For Cursor work, use T3 `delegate_task` through `/cursor-workflows`, with one po
 
 | Skill | How repoGolem Integrates |
 |-------|-------------------------|
-| `/agent-routing` | Routing says WHO (Cursor/Codex/Claude). repoGolem says HOW to launch them. |
+| `/agent-routing` | Routing owns provider selection and Cursor delegation; repoGolem defines the active CLI launchers. |
 | `/cmux-agents` | `spawn_agent` is the default visible-worker path; repoGolem still defines the launcher names underneath (R10) |
 | `/orc` | R10 iron rule: "Use repoGolem launcher functions. ALWAYS. NEVER raw CLI." |
 | `/session-handoff` | Agent resume table includes launcher commands for crash recovery |
