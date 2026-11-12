@@ -14,21 +14,25 @@ import shell_parse  # noqa: E402
 
 
 @pytest.mark.parametrize("leading", ("", "cd . && "))
-@pytest.mark.parametrize("reader", ("cat", "tee report.md"))
 @pytest.mark.parametrize("prefix,suffix", (
     ("{ ", "cat x; } > report.md"),
     ("! ", ""),
     ("if true; then ", "fi"),
     ("{ ! ", "} > report.md"),
 ))
-def test_prefixed_file_heredoc_masks_literal_data(leading, reader, prefix, suffix):
-    command = leading + prefix + reader + " <<'EOF'\n" + (
-        "prose: `git push origin --delete topic`\nEOF\n" + suffix
+def test_prefixed_file_heredoc_masks_literal_data(leading, prefix, suffix):
+    command = leading + prefix + "cat <<'EOF'\n" + (
+        "prose: `git push origin --delete topic` | $(git push origin --delete topic)\nEOF\n" + suffix
     )
     reduced = shell_parse.shell_text_without_heredoc_bodies(command)
     assert "git push" not in reduced
-    assert reader in reduced
+    assert "cat" in reduced
     assert reduced.endswith(suffix)
+
+
+def test_prefix_context_does_not_scan_a_quoted_heredoc_delimiter_as_shell():
+    command = "{ cat <<'E|OF'\ngit push origin --delete topic\nE|OF\n} > report.md"
+    assert "git push" not in shell_parse.shell_text_without_heredoc_bodies(command)
 
 
 @pytest.mark.parametrize("reader", (

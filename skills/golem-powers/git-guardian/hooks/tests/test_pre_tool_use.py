@@ -47,16 +47,27 @@ def _run(home, command):
 
 
 @pytest.mark.parametrize("leading", ("", "cd . && "))
-@pytest.mark.parametrize("reader", ("cat", "tee report.md"))
 @pytest.mark.parametrize("prefix,suffix", (
     ("{ ", "cat x; } > report.md"), ("! ", ""), ("if true; then ", "fi"),
 ))
-def test_prefixed_literal_heredoc_is_data_through_real_hook(tmp_path, leading, reader, prefix, suffix):
-    command = leading + prefix + reader + (
+def test_prefixed_literal_heredoc_is_data_through_real_hook(tmp_path, leading, prefix, suffix):
+    command = leading + prefix + "cat" + (
         " <<'EOF'\nprose: `git push origin --delete topic`\nEOF\n" + suffix
     )
     result = _run(_fake_home(tmp_path), command)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("command", (
+    "{ cat <<'EOF'\ngit push origin --delete topic\nEOF\n} | sh",
+    "{ cat <<'EOF'\ngit push origin --delete topic\nEOF\n} | xargs -0 sh -c",
+    "if true; then cat <<'EOF'\ngit push origin --delete topic\nEOF\nfi | sh",
+    "{ tee >(sh) <<'EOF'\ngit push origin --delete topic\nEOF\n}",
+))
+def test_r76_compound_output_readers_stay_blocked(tmp_path, command):
+    result = _run(_fake_home(tmp_path), command)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "remote branch" in json.loads(result.stdout)["reason"]
 
 
 @pytest.mark.parametrize("header,body", (
