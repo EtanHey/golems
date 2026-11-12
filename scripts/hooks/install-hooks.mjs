@@ -69,7 +69,6 @@ export function failClosedCommand(run, repair = REPAIR_REASON) {
 const commandPython = (command) => /(?:^|\s)(\S+)(?: -[A-Za-z]+)* \S*golems-fail-open\.py/
   .exec(String(command).replace(/'|\$\(/g, " "))?.[1] ?? String(command).split(" ")[0];
 
-
 function die(message, code = 1) {
   process.stderr.write(`install-hooks: ${message}\n`);
   process.exit(code);
