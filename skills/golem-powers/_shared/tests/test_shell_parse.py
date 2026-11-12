@@ -13,6 +13,58 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import shell_parse  # noqa: E402
 
 
+@pytest.mark.parametrize("leading", ("", "cd . && "))
+@pytest.mark.parametrize("prefix,suffix", (
+    ("{ ", "cat x; } > report.md"),
+    ("! ", ""),
+    ("if true; then ", "fi"),
+    ("{ ! ", "} > report.md"),
+))
+def test_prefixed_file_heredoc_masks_literal_data(leading, prefix, suffix):
+    command = leading + prefix + "cat <<'EOF'\n" + (
+        "prose: `git push origin --delete topic` | $(git push origin --delete topic)\nEOF\n" + suffix
+    )
+    reduced = shell_parse.shell_text_without_heredoc_bodies(command)
+    assert "git push" not in reduced
+    assert "cat" in reduced
+    assert reduced.endswith(suffix)
+
+
+def test_prefix_context_conservatively_keeps_quoted_pipe_delimiter_visible():
+    command = "{ cat <<'E|OF'\ngit push origin --delete topic\nE|OF\n} > report.md"
+    assert "git push" in shell_parse.shell_text_without_heredoc_bodies(command)
+
+
+@pytest.mark.parametrize("reader", (
+    "bash", "sh", "eval", "python3 -", "node -", "cat | sh", "tee report.md | sh", "cat > >(sh)",
+))
+@pytest.mark.parametrize("prefix,suffix", (
+    ("{ ", "} > report.md"), ("! ", ""), ("if true; then ", "fi"),
+))
+def test_prefixed_executable_heredoc_stays_visible(reader, prefix, suffix):
+    body = "git push origin --delete topic"
+    if reader == "python3 -":
+        body = 'import os\nos.system("' + body + '")'
+    elif reader == "node -":
+        body = 'require("child_process").execSync("' + body + '")'
+    command = "cd . && " + prefix + reader + (
+        " <<'EOF'\n" + body + "\nEOF\n" + suffix
+    )
+    assert "git push origin --delete topic" in shell_parse.shell_text_without_heredoc_bodies(command)
+
+
+@pytest.mark.parametrize("prefix", ("{ ", "! ", "if true; then "))
+def test_prefixed_unquoted_file_heredoc_keeps_executable_substitution(prefix):
+    command = prefix + "cat > report.md <<EOF\n$(git push origin --delete topic)\nEOF\n"
+    assert "git push origin --delete topic" in shell_parse.shell_text_without_heredoc_bodies(command)
+
+
+@pytest.mark.parametrize("prefix", ("'{' ", "'!' ", "'then' ", "{cat "))
+def test_quoted_or_attached_prefix_is_not_shell_syntax(prefix):
+    command = prefix + "cat <<'EOF'\ngit push origin --delete topic\nEOF\n"
+    assert "git push origin --delete topic" in shell_parse.shell_text_without_heredoc_bodies(command)
+
+
 def test_executable_shell_structure_masks_data_but_keeps_process_substitutions():
     command = (
         "bash <(echo safe); echo 'source <(quoted)' ; "

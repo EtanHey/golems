@@ -344,8 +344,8 @@ def main():
     parser.add_argument('--helper', type=Path, default=Path(__file__).with_name('visual-gather.py'))
     parser.add_argument('sheets', nargs='*', type=Path)
     args = parser.parse_args()
-    if not (0 < args.drain_seconds < float('inf') and args.concurrency > 0 and 0 < args.budget_seconds < float('inf') and 0 < args.timeout <= 120):
-        parser.error('positive concurrency/budget/drain and timeout <=120 required')
+    if not (0 < args.drain_seconds < float('inf') and args.concurrency > 0 and 0 < args.budget_seconds < float('inf') and 0 < args.timeout <= visual.MAX_TIMEOUT):
+        parser.error(f'positive concurrency/budget/drain and timeout <={visual.MAX_TIMEOUT:g} required')
     if bool(args.index) == bool(args.sheets):
         parser.error('supply either --index index.tsv or a list of sheets')
     if args.concurrency > 4:

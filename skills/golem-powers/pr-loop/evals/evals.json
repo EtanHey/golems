@@ -132,7 +132,7 @@
     {
       "id": 6,
       "prompt": "I pushed fixes for BLOCKING CodeRabbit findings on PR #215 after round 1. Can I merge now?",
-      "expected_output": "Agent requests round 2 review of the blocking fixes at headRefOid and checks required checks before merge. One clean initial review would have sufficed; no forced second clean round. Round 3 requires a lead exception written in the PR body.",
+      "expected_output": "Agent requests round 2 review of the blocking fixes at headRefOid and checks required checks before merge. One clean initial review would have sufficed; no forced second clean round. There is no round 3: after round 2 the lead verifies the final fixes.",
       "files": [],
       "assertions": [
         {
@@ -145,7 +145,7 @@
         },
         {
           "name": "canon-nine-round-cap",
-          "description": "Response limits round 2 to BLOCKING findings and requires a lead exception written in the PR body for round 3; never claims a minimum of two clean rounds."
+          "description": "Response limits round 2 to BLOCKING findings and allows no round 3 (the lead verifies final fixes after round 2); never claims a minimum of two clean rounds."
         }
       ]
     },

@@ -1,5 +1,6 @@
 {
   "about": "Per-host hook sets for scripts/hooks/install-hooks.sh (GO-5). kind=golems: linked from hooks-live + registered. kind=external: another repo owns it; registration left untouched, --status reports it. kind=wrapped-external: register a golems wrapper around an external owner's script without linking that script. Matcher and timeout values are managed here; timeout units are seconds.",
+  "fleet_hosts": [],
   "hosts": {
     "mbp": [
       {"id": "human-confirm-gate", "kind": "golems", "event": "PreToolUse", "matcher": "Bash|Monitor|Write|Edit|MultiEdit|NotebookEdit", "link": "human-confirm-gate", "source": "skills/golem-powers/human-confirm-gate", "match": "human-confirm-pretooluse.py", "requiresPin": "skills/golem-powers/human-confirm-gate/anchor.pins", "timeout": 10, "command": "{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/human-confirm-gate/hooks/human-confirm-pretooluse.py"},
