@@ -244,6 +244,7 @@ jobs:
       - name: node suites
         run: |
           node --test scripts/tests/boundary-prepush.test.mjs scripts/tests/boundary-upstream.test.mjs
+          node --test scripts/tests/boundary-clones-alias.test.mjs
           node --test scripts/tests/install-receipt-status.test.mjs
           node --test scripts/tests/prepush-selection.test.mjs
           node --test scripts/tests/skills-sync-receipt.test.mjs
