@@ -1925,6 +1925,9 @@ test('boundary clone installer status is red after removal and green after repai
   writeFileSync(fx.manifest, JSON.stringify(manifest));
   // No public/private suites exist in this synthetic clone; test wiring only.
   fx.env = { GOLEMS_HEAVY_MAX_LOAD: '1000' };
+  const beforeInstall = run(fx, '--status');
+  expect(beforeInstall.status).toBe(1);
+  expect(beforeInstall.out).toContain('boundary-prepush drift:');
   const applied = run(fx, '--apply');
   expect(applied.status, applied.out).toBe(0);
   const hook = path.join(fx.repo, '.git/golems-boundary-hooks/pre-push');

@@ -828,7 +828,9 @@ async function status(o) {
       console.log(`E1 ${name} PRESENT in settings.json`);
     }
   }
-  try {
+  if (!current && !existsSync(path.join(homedir(), 'Gits'))) {
+    console.log('boundary-prepush-drift=0 clones=0 (no clone directory)');
+  } else try {
     const boundary = await import(pathToFileURL(path.join(ctx.live, 'scripts/ci/boundary-clones.mjs')).href);
     if (boundary.syncClones()) bad = true;
     if (current && master && git(o.repo, 'diff', '--name-only', current, master, '--', 'scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow')) bad = true;
