@@ -99,3 +99,15 @@ forbidden_classes:
     indexed_rule: 'runner-package-exact-version'
   synthetic_personal_fixture:
     indexed_rule: 'synthetic-personal-fixture-header'
+
+# Additional added-line push protections. Documentation IPv4 blocks: RFC 5737.
+# Existing forbidden_classes and their exact-path exceptions apply as well.
+push_patterns:
+  push-credentials:
+    patterns:
+      - '(sk-|ghp_|github_pat_|xox[baprs]-|AKIA)[[:alnum:]_./+-]{16,}'
+  push-ipv4:
+    patterns:
+      - '([0-9]{1,3}[.]){3}[0-9]{1,3}'
+    allowed_patterns:
+      - '(^|[^0-9.])(127[.]0[.]0[.]1|192[.]0[.]2[.][0-9]{1,3}|198[.]51[.]100[.][0-9]{1,3}|203[.]0[.]113[.][0-9]{1,3})([^0-9.]|$)'
