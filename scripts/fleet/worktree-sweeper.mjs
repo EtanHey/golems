@@ -1,19 +1,23 @@
 #!/usr/bin/env node
-import { appendFileSync, existsSync, lstatSync, rmSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execute, fleetDir } from './fleet-runtime.mjs';
-import { repositories, worktrees, inspect, latest, builds, git } from './worktree-state.mjs';
+import { repositories, worktrees, inspect, latest, git } from './worktree-state.mjs';
+import { closeWorktree, cleanOutputs } from './worktree-closeout.mjs';
+import { stackHold, loadPullRequests, liveReferences } from './worktree-preservation.mjs';
 export function sweep(roots, state = {}, now = Date.now(), log = () => {}) {
   const next = structuredClone(state); next.warned ??= {}; const posts = [];
   for (const repo of repositories(roots)) {
     try { git(repo, 'fetch', '--prune', 'origin'); } catch { log('retained repo (fetch failed) ' + repo); continue; }
+    let prs; try {prs=loadPullRequests(repo);} catch {log('retained repo (PR lookup failed) '+repo);continue;}
     for (const tree of worktrees(repo)) {
     const path = tree.worktree;
     if (resolve(path) === resolve(repo) || tree.locked || tree.prunable) continue;
     try {
-      const before = inspect(path); const age = now - latest(path);
+      const hold=stackHold(path, tree.branch?.replace('refs/heads/', ''), prs);
+      const before = inspect(path, prs); const age = now - latest(path);
       if (before.dirty || !before.pushed) {
         if (age >= 48 * 3600000 && now - (next.warned[path] ?? 0) >= 86400000) {
           posts.push(`\n### worktree-sweeper → @orc — ${new Date(now).toISOString()} retained ${path}: ${before.dirty ? 'dirty' : 'unpushed'}\n`);
@@ -22,19 +26,18 @@ export function sweep(roots, state = {}, now = Date.now(), log = () => {}) {
         continue;
       }
       // Recheck immediately before mutation; git remove itself refuses concurrent dirt.
-      const current = inspect(path);
+      const current = inspect(path, prs);
       if (current.dirty || !current.pushed || current.head !== before.head) continue;
-      if (current.merged) { git(repo, 'worktree', 'remove', path); log('removed ' + path); continue; }
       if (age < 12 * 3600000) continue;
-      for (const name of builds) {
-        const target = join(path, name);
-        if (!existsSync(target) || lstatSync(target).isSymbolicLink()) continue;
-        // Delete only ignored output, never tracked files or arbitrary named directories.
-        if (git(path, 'ls-files', '--', name)) continue;
-        try { git(path, 'check-ignore', '--quiet', target); } catch { continue; }
-        if (inspect(path).dirty || latest(path) > now - 12 * 3600000) break;
-        rmSync(target, { recursive: true }); log('cleaned ' + target);
-      }
+      if (current.merged && !hold) { const receipt = closeWorktree(path, current.head, false, {prs,now}); log(receipt.receiptLine || receipt.reason); continue; }
+      if(hold)log(hold);
+      // An open stack keeps source/docs, but does not hold regenerable output.
+      const live=liveReferences(path); if(live){log(live);continue;}
+      cleanOutputs(path,true);
+      const final=inspect(path,prs);
+      if(final.dirty||!final.pushed||final.head!==before.head||latest(path)>now-12*3600000)continue;
+      const freed=cleanOutputs(path); if(freed)log('cleaned build bytes '+freed+' from '+path);
+
     } catch { log('retained (inspection/removal failed) ' + path); }
   }
   }

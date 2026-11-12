@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-const OUTPUTS = ['.build.noindex','node_modules','.test-tmp','dist','.build','target','__pycache__','.venv'];
+import { preserveDocs, stackHold, loadPullRequests, latestPR, liveReferences } from './worktree-preservation.mjs';
+import { worktreeStatus, inspect, latest, outputNames } from './worktree-state.mjs';
+export { worktreeStatus } from './worktree-state.mjs';
 const git = (cwd,...args) => execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 function bytes(p) { const s=fs.lstatSync(p); return s.isDirectory()&&!s.isSymbolicLink()?fs.readdirSync(p).reduce((n,x)=>n+bytes(path.join(p,x)),0):s.size; }
 function modified(p) { const s=fs.lstatSync(p); return s.isDirectory()&&!s.isSymbolicLink()?Math.max(s.mtimeMs,...fs.readdirSync(p).map(x=>modified(path.join(p,x)))):s.mtimeMs; }
@@ -22,20 +24,9 @@ function context(input) {
  if(!entry) throw Error('Not a registered worktree. Run git worktree list.');
  return {p,common,all,entry,primary:all[0].path};
 }
-export function worktreeStatus(worktreePath) {
- const w={path:worktreePath};
- const hidden=git(w.path,'ls-files','-v').split('\n').some(l=>/^[a-zS]/.test(l));
- const dirty=hidden||!!git(w.path,'status','--porcelain','--untracked-files=all');
- const unpushed=!!git(w.path,'rev-list','HEAD','--not','--remotes');
- let merged=false;
- try { const ref=git(w.path,'symbolic-ref','refs/remotes/origin/HEAD'); git(w.path,'merge-base','--is-ancestor','HEAD',ref); merged=true; } catch {}
- return {head:git(w.path,'rev-parse','HEAD'),dirty,unpushed,state:dirty?'dirty':unpushed?'unpushed':merged?'merged':'pushed-clean',merged};
-}
-function clean(p) {
- const config=path.join(p,'.golems-closeout.json'); const extra=fs.existsSync(config)?JSON.parse(fs.readFileSync(config,'utf8')).outputs||[]:[];
- if(!Array.isArray(extra)||extra.some(x=>typeof x!=='string'||!x||x==='.'||x==='..'||x.includes('/')||x.includes('\\')||x==='.git')) throw Error('outputs must contain directory basenames only, excluding .git.');
- const names=new Set([...OUTPUTS,...extra]); const targets=[];
- function walk(dir) { for(const name of fs.readdirSync(dir)) { if(name==='.git') continue; const q=path.join(dir,name), s=fs.lstatSync(q); if(s.isSymbolicLink()||!s.isDirectory()) continue; if(names.has(name)) targets.push(q); else walk(q); } }
+export function cleanOutputs(p, preflight = false) {
+ const names=new Set(outputNames(p)); const targets=[];
+ function walk(dir) { for(const name of fs.readdirSync(dir)) { if(name==='.git'||name==='docs.local') continue; const q=path.join(dir,name), s=fs.lstatSync(q); if(s.isSymbolicLink()||!s.isDirectory()) continue; if(names.has(name)) targets.push(q); else walk(q); } }
  walk(p);
  // A name alone is insufficient authority to delete tracked or nested repository data.
  const tracked=git(p,'ls-files','-z').split('\0').filter(Boolean);
@@ -44,7 +35,37 @@ function clean(p) {
   if(tracked.some(x=>x===relative||x.startsWith(relative+'/'))) throw Error(`Build output contains tracked files: ${relative}. Keep it or change the output list.`);
   function nested(dir) { if(fs.existsSync(path.join(dir,'.git'))) throw Error(`Nested repository in ${relative}; move it before cleanup.`); for(const n of fs.readdirSync(dir)) { const child=path.join(dir,n); if(fs.lstatSync(child).isDirectory()&&!fs.lstatSync(child).isSymbolicLink()) nested(child); } } nested(q);
  }
+ if(preflight)return 0;
  let freed=0; for(const q of targets) { freed+=bytes(q); fs.rmSync(q,{recursive:true}); } return freed;
+}
+function branchDisposition(c,s) {
+ let branchAction='kept', reason='detached HEAD or archived unpushed branch';
+ if(c.entry.branch&&!s.unpushed) { try {git(c.primary,'branch','-d',c.entry.branch);branchAction='deleted';reason='merged';} catch {reason='fully pushed; git branch -d requires merge into its upstream; branch retained without force';} }
+ return {branch:c.entry.branch,branchAction,reason};
+}
+export function closeWorktree(worktreePath, expectedHead, deleteBranch = true, {prs, now = Date.now()} = {}) {
+ const c=context(worktreePath), kept=reason=>({path:c.p,reason,worktree:'kept'});
+ if(c.p===fs.realpathSync(c.primary)||c.p===path.dirname(c.common)||c.entry.locked) throw Error('Root or locked worktree refused');
+ // No network after this point: admission uses one complete PR snapshot.
+ prs ??= loadPullRequests(c.p);
+ const hold=stackHold(c.p,c.entry.branch,prs); if(hold)return kept(hold);
+ const before=inspect(c.p,prs);
+ if(before.dirty||!before.pushed||before.branch!==c.entry.branch||expectedHead&&before.head!==expectedHead)throw Error('Dirty or unpushed worktree refused (including ignored private data)');
+ if(!before.merged)return kept('kept: no merged PR evidence for this HEAD');
+ if(now-latest(c.p)<12*3600000)return kept('kept: less than 12 quiet hours');
+ const live=liveReferences(c.p); if(live)return kept(live);
+ cleanOutputs(c.p,true); // Validate every output before moving any notes.
+ const bytesFreed=cleanOutputs(c.p), remaining=bytes(c.p);
+ const finalLive=liveReferences(c.p); if(finalLive)return kept(finalLive);
+ const current=inspect(c.p,prs);
+ if(current.dirty||!current.pushed||!current.merged||current.head!==before.head||current.branch!==before.branch)throw Error('Worktree changed before removal');
+ const docs=preserveDocs(c.p,c.primary,c.entry.branch,before.head,{pr:latestPR(prs,c.entry.branch)});
+ git(c.primary,'worktree','remove',c.p);
+ if(inventory(c.primary).some(w=>w.path===c.p))throw Error('Removal registration proof failed');
+ try {fs.lstatSync(c.p);throw Error('Removed worktree path still present');}catch(e){if(e.code!=='ENOENT')throw e;}
+ return {path:c.p,...(deleteBranch?branchDisposition(c,{unpushed:!before.pushed}):{branch:c.entry.branch,branchAction:'kept'}),bytesFreed:bytesFreed+remaining-docs.bytes,buildBytesFreed:bytesFreed,docs,worktree:'removed',
+  proof:'git worktree remove exit 0; git worktree list --porcelain path absent; filesystem path absent',
+  receiptLine:`moved ${docs.files.length} files / ${docs.bytes} bytes to ${docs.destination||'(none)'}${docs.collision?' (collision: suffixed)':''}; worktree removed; proof: git worktree list --porcelain path absent`};
 }
 function main() {
  const args=process.argv.slice(2); const take=k=>{const i=args.indexOf(k); if(i<0)return null; if(!args[i+1]||args[i+1].startsWith('--'))throw Error(`${k} requires a value`); const v=args[i+1];args.splice(i,2);return v;};
@@ -62,9 +83,11 @@ function main() {
  }
  if(c.p===fs.realpathSync(c.primary)||c.p===path.dirname(c.common))throw Error('Root checkout refused. Close a linked worktree instead.');
  if(c.entry.locked)throw Error('Worktree is locked. Resolve its lock explicitly before closeout.');
- const s=worktreeStatus(c.entry.path); let archive=null;
- if((s.dirty||s.unpushed)&&!bundle&&!keep)throw Error(`${s.dirty?'Dirty':'Unpushed'} worktree refused. Commit and push, use --bundle <path>, or --keep "reason".`);
+ if(!bundle&&!keep) { emit(closeWorktree(c.p)); return; }
+ let archive=null;
+ const live=liveReferences(c.p); if(live){emit({path:c.p,worktree:'kept',reason:live});return;}
  if(bundle) {
+  const hold=stackHold(c.p,c.entry.branch); if(hold){emit({path:c.p,reason:hold,worktree:'kept'});return;}
   const parent=path.join(c.primary,'docs.local','worktree-archive');
   git(c.primary,'check-ignore','--quiet','--',path.join(parent,'probe'));
   fs.mkdirSync(parent,{recursive:true}); archive=fs.mkdtempSync(path.join(parent,'closeout-'));
@@ -73,14 +96,9 @@ function main() {
   for(const file of untracked) {const dest=path.join(archive,'untracked',file);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.cpSync(path.join(c.p,file),dest,{dereference:false});}
   git(c.p,'bundle','create',path.join(archive,'work.bundle'),'HEAD','--all'); git(c.p,'bundle','verify',path.join(archive,'work.bundle'));
   fs.writeFileSync(path.join(archive,'receipt.json'),JSON.stringify({path:c.p,head:git(c.p,'rev-parse','HEAD'),untracked},null,2));
-  // Stash also retains the dirty state in Git; normal worktree removal still enforces cleanliness.
-  if(s.dirty)git(c.p,'stash','push','--include-untracked','-m','worktree-closeout archived state');
+  emit({path:c.p,archive,worktree:'kept',reason:'bundle saved; removal requires clean merged PR admission'});return;
  }
- const bytesFreed=clean(c.p);
- if(keep) { keeps[c.p]={reason:keep,head:git(c.p,'rev-parse','HEAD'),status:git(c.p,'status','--porcelain','--untracked-files=all')}; fs.writeFileSync(ledger,JSON.stringify(keeps,null,2)); emit({path:c.p,bytesFreed,branch:c.entry.branch,branchAction:'kept',reason:keep});return; }
- const remaining=bytes(c.p); git(c.primary,'worktree','remove',c.p);
- let branchAction='kept', reason='detached HEAD or archived unpushed branch';
- if(c.entry.branch&&!s.unpushed) { try {git(c.primary,'branch','-d',c.entry.branch);branchAction='deleted';reason='merged';} catch {reason='fully pushed; git branch -d requires merge into its upstream; branch retained without force';} }
- emit({path:c.p,bytesFreed:bytesFreed+remaining,branch:c.entry.branch,branchAction,reason,archive});
+ if(keep) { const bytesFreed=cleanOutputs(c.p); keeps[c.p]={reason:keep,head:git(c.p,'rev-parse','HEAD'),status:git(c.p,'status','--porcelain','--untracked-files=all')}; fs.writeFileSync(ledger,JSON.stringify(keeps,null,2)); emit({path:c.p,bytesFreed,branch:c.entry.branch,branchAction:'kept',reason:keep});return; }
+
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)) { try {main();} catch(e) {console.error(`closeout: ${e.message}`);process.exitCode=1;} }
