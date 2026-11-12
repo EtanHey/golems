@@ -5,6 +5,8 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execute, fleetDir } from './fleet-runtime.mjs';
 import { repositories, worktrees, inspect, latest, builds, git } from './worktree-state.mjs';
+import { closeWorktree } from './worktree-closeout.mjs';
+import { stackHold } from './worktree-preservation.mjs';
 export function sweep(roots, state = {}, now = Date.now(), log = () => {}) {
   const next = structuredClone(state); next.warned ??= {}; const posts = [];
   for (const repo of repositories(roots)) {
@@ -24,8 +26,10 @@ export function sweep(roots, state = {}, now = Date.now(), log = () => {}) {
       // Recheck immediately before mutation; git remove itself refuses concurrent dirt.
       const current = inspect(path);
       if (current.dirty || !current.pushed || current.head !== before.head) continue;
-      if (current.merged) { git(repo, 'worktree', 'remove', path); log('removed ' + path); continue; }
+      if (current.merged) { const receipt = closeWorktree(path, current.head, false); log(receipt.receiptLine || receipt.reason); continue; }
       if (age < 12 * 3600000) continue;
+      const hold = stackHold(path, tree.branch?.replace('refs/heads/', ''));
+      if (hold) { log(hold); continue; }
       for (const name of builds) {
         const target = join(path, name);
         if (!existsSync(target) || lstatSync(target).isSymbolicLink()) continue;

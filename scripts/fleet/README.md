@@ -46,9 +46,11 @@ successful scan; a first observation has UNKNOWN delta. du errors fail the run.
 
 Sweeping fetches origin before eligibility checks, protects root/locked trees,
 hidden index flags, detached trees, missing upstream/default refs, dirty files,
-unpushed commits and ignored data outside the five named output directories.
+unpushed commits and ignored data outside docs.local and the five named output directories.
 Only ignored, entirely untracked output directories are pruned after 12 idle
 hours; clean pushed merged worktrees can be removed without the idle delay.
+Merged trees first use the shared closeout archive and stack checks described below.
+Open stacks retain both docs and output, including on the idle-output path.
 No force removal. Freshness is a full recursive mtime scan without symlink
 traversal. Git state is rechecked immediately before deletion. This does not
 fence an external process starting a write after that check: rollout requires
@@ -70,7 +72,28 @@ their own test directories. No production sweep/install is part of this test.
 Run `node scripts/fleet/worktree-closeout.mjs <worktree-path> --json` to close a
 registered linked checkout. Root checkouts, locked worktrees, dirty state and
 commits absent from all local remote-tracking refs are refused. Fetch remote
-refs before using this tool when freshness matters. It performs no network access.
+refs before using this tool when freshness matters. Removal queries GitHub PR state
+with authenticated `gh api`; unavailable or invalid PR state refuses removal.
+
+Before removing a clean pushed worktree, closeout copies its untracked
+`docs.local/**` into the primary checkout's ignored
+`docs.local/worktree-archive/<encoded-branch>/`, verifies each file's SHA-256 and
+size and rechecks the full source inventory, then unlinks the originals. Tracked
+files are never moved. A sibling `.receipt.json` records HEAD, paths, sizes and
+hashes and is read back before unlinking. Existing destinations get `-2`, `-3`, etc.;
+the receipt reports the collision. Symlinks, special files, nested repositories
+and unsafe archive directories refuse archival. No files means no archive.
+
+The complete paginated PR history identifies open descendants (even through
+merged intermediate PRs) and an unmerged non-default base. Any open stack keeps
+the tree and prints `kept: stack <PRs> open`; a closed unmerged or unknown base
+also retains it. Once the full stack merges, ordinary closeout applies. A lone
+clean pushed PR based on the default branch can still be handed off explicitly;
+the sweeper removes only merged trees. The sweeper uses the same archival path.
+Receipts report moved file count/bytes, destination, removal and registration
+absence proof. Git state is rechecked before removal; external writers remain
+subject to the concurrency limitation above. This is local preservation, not a
+Brain Drive upload or native rollout receipt.
 
 Build directories are removed recursively by basename, without following
 symlinks. The defaults are `.build.noindex`, `node_modules`, `.test-tmp`, `dist`,
@@ -94,10 +117,13 @@ status is unknown and clean pushed work is classified as pushed-clean.
 `--bundle <worktree-path>` archives HEAD and all refs in a verified Git bundle,
 a binary HEAD diff, untracked non-ignored files, and a receipt under the primary
 checkout's `docs.local/worktree-archive/`. Dirty state is also stashed before
-normal removal; neither stash nor unpushed branches are deleted. Ignored files
-are not archived: inspect them before choosing this operation. Removal never uses
+normal removal; neither stash nor unpushed branches are deleted. Ignored docs.local
+also uses the shared archive; other ignored files are not archived: inspect them
+before choosing this operation. Removal never uses
 force. Branch deletion uses `git branch -d` only for fully pushed work; Git may
 retain it when its own merge check fails. Closeout failures retain the archive.
 
 Tests: `node --test scripts/fleet/worktree-closeout.test.mjs` (real temporary Git
 repositories and a local bare remote, no network or credentials).
+Also run `node --test scripts/fleet/worktree-preservation.test.mjs`; GitHub PR
+and stack responses are supplied by a fixture `gh` executable.

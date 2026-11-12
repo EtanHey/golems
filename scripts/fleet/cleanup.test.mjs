@@ -9,6 +9,8 @@ const scratch = resolve('docs.local/fleet-tests');
 mkdirSync(scratch, { recursive: true });
 test('real git fixtures preserve root, dirty, unpushed and recent output', () => {
   const dir = mkdtempSync(join(scratch, 'run-'));
+  const oldPath = process.env.PATH, bin = join(dir, 'bin'); mkdirSync(bin);
+  writeFileSync(join(bin, 'gh'), '#!/bin/sh\nprintf "[]"\n', { mode: 0o755 }); process.env.PATH = bin + ':' + oldPath;
   const g = (p, ...args) => run('git', ['-C', p, ...args]);
   try {
     const remote = join(dir, 'remote.git'); run('git', ['init', '--bare', remote]);
@@ -35,7 +37,7 @@ test('real git fixtures preserve root, dirty, unpushed and recent output', () =>
     assert.ok(existsSync(join(repo, 'node_modules')));
     assert.equal(result.posts.length, 2);
     assert.equal(sweep([join(dir, 'repos')], result.state, now + 1000).posts.length, 0);
-  } finally { rmSync(dir, { recursive: true }); }
+  } finally { process.env.PATH = oldPath; rmSync(dir, { recursive: true }); }
 });
 test('disk crossing, daily repeat, recovery and recrossing', () => {
   const input = { free: 20, threshold: 40, sizes: { a: 5 }, host: 'fixture', now: 100000000 };

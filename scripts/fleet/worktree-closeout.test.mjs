@@ -14,7 +14,8 @@ function fixture(t) {
   fs.writeFileSync(path.join(repo,'file'),'base'); fs.writeFileSync(path.join(repo,'.gitignore'),'node_modules/\ndocs.local/\n');
   git('add','.'); git('commit','-m','base'); git('init','--bare',path.join(dir,'remote')); git('remote','add','origin',path.join(dir,'remote')); git('push','-u','origin','main');
   git('symbolic-ref','refs/remotes/origin/HEAD','refs/remotes/origin/main'); git('worktree','add','-b','worker',wt);
-  const run = (...args) => spawnSync(process.execPath,[cli,...args],{encoding:'utf8'});
+  const bin=path.join(dir,'bin'); fs.mkdirSync(bin); fs.writeFileSync(path.join(bin,'gh'),'#!/bin/sh\nprintf "[]"\n',{mode:0o755});
+  const run = (...args) => spawnSync(process.execPath,[cli,...args],{encoding:'utf8',env:{...process.env,PATH:bin+path.delimiter+process.env.PATH}});
   return {repo,wt,git,run};
 }
 test('clean pushed external worktree removed with bytes receipt', t => {

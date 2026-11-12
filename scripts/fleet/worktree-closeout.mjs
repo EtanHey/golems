@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { preserveDocs, stackHold } from './worktree-preservation.mjs';
 const OUTPUTS = ['.build.noindex','node_modules','.test-tmp','dist','.build','target','__pycache__','.venv'];
 const git = (cwd,...args) => execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 function bytes(p) { const s=fs.lstatSync(p); return s.isDirectory()&&!s.isSymbolicLink()?fs.readdirSync(p).reduce((n,x)=>n+bytes(path.join(p,x)),0):s.size; }
@@ -46,6 +47,29 @@ function clean(p) {
  }
  let freed=0; for(const q of targets) { freed+=bytes(q); fs.rmSync(q,{recursive:true}); } return freed;
 }
+function branchDisposition(c,s) {
+ let branchAction='kept', reason='detached HEAD or archived unpushed branch';
+ if(c.entry.branch&&!s.unpushed) { try {git(c.primary,'branch','-d',c.entry.branch);branchAction='deleted';reason='merged';} catch {reason='fully pushed; git branch -d requires merge into its upstream; branch retained without force';} }
+ return {branch:c.entry.branch,branchAction,reason};
+}
+export function closeWorktree(worktreePath, expectedHead, deleteBranch = true) {
+ const c=context(worktreePath);
+ if(c.p===fs.realpathSync(c.primary)||c.p===path.dirname(c.common)||c.entry.locked) throw Error('Root or locked worktree refused');
+ const before=worktreeStatus(c.p);
+ if(before.dirty||before.unpushed||expectedHead&&before.head!==expectedHead) throw Error('Worktree changed or is dirty/unpushed');
+ const hold=stackHold(c.p,c.entry.branch);
+ if(hold)return {path:c.p,reason:hold,worktree:'kept'};
+ const docs=preserveDocs(c.p,c.primary,c.entry.branch,before.head);
+ const current=worktreeStatus(c.p);
+ if(current.dirty||current.unpushed||current.head!==before.head)throw Error('Worktree changed before removal; archive retained');
+ const bytesFreed=clean(c.p), remaining=bytes(c.p);
+ git(c.primary,'worktree','remove',c.p);
+ if(inventory(c.primary).some(w=>w.path===c.p))throw Error('Removal registration proof failed');
+ try {fs.lstatSync(c.p);throw Error('Removed worktree path still present');}catch(e){if(e.code!=='ENOENT')throw e;}
+ return {path:c.p,...(deleteBranch?branchDisposition(c,before):{branch:c.entry.branch,branchAction:'kept'}),bytesFreed:bytesFreed+remaining,buildBytesFreed:bytesFreed,docs,worktree:'removed',
+  proof:'git worktree remove exit 0; git worktree list --porcelain path absent; filesystem path absent',
+  receiptLine:`moved ${docs.files.length} files / ${docs.bytes} bytes to ${docs.destination||'(none)'}${docs.collision?' (collision: suffixed)':''}; worktree removed; proof: git worktree list --porcelain path absent`};
+}
 function main() {
  const args=process.argv.slice(2); const take=k=>{const i=args.indexOf(k); if(i<0)return null; if(!args[i+1]||args[i+1].startsWith('--'))throw Error(`${k} requires a value`); const v=args[i+1];args.splice(i,2);return v;};
  const json=args.includes('--json'); if(json)args.splice(args.indexOf('--json'),1);
@@ -64,7 +88,9 @@ function main() {
  if(c.entry.locked)throw Error('Worktree is locked. Resolve its lock explicitly before closeout.');
  const s=worktreeStatus(c.entry.path); let archive=null;
  if((s.dirty||s.unpushed)&&!bundle&&!keep)throw Error(`${s.dirty?'Dirty':'Unpushed'} worktree refused. Commit and push, use --bundle <path>, or --keep "reason".`);
+ if(!bundle&&!keep) { emit(closeWorktree(c.p)); return; }
  if(bundle) {
+  const hold=stackHold(c.p,c.entry.branch); if(hold){emit({path:c.p,reason:hold,worktree:'kept'});return;}
   const parent=path.join(c.primary,'docs.local','worktree-archive');
   git(c.primary,'check-ignore','--quiet','--',path.join(parent,'probe'));
   fs.mkdirSync(parent,{recursive:true}); archive=fs.mkdtempSync(path.join(parent,'closeout-'));
@@ -76,11 +102,10 @@ function main() {
   // Stash also retains the dirty state in Git; normal worktree removal still enforces cleanliness.
   if(s.dirty)git(c.p,'stash','push','--include-untracked','-m','worktree-closeout archived state');
  }
+ if(keep) { const bytesFreed=clean(c.p); keeps[c.p]={reason:keep,head:git(c.p,'rev-parse','HEAD'),status:git(c.p,'status','--porcelain','--untracked-files=all')}; fs.writeFileSync(ledger,JSON.stringify(keeps,null,2)); emit({path:c.p,bytesFreed,branch:c.entry.branch,branchAction:'kept',reason:keep});return; }
+ const docs=preserveDocs(c.p,c.primary,c.entry.branch,s.head);
  const bytesFreed=clean(c.p);
- if(keep) { keeps[c.p]={reason:keep,head:git(c.p,'rev-parse','HEAD'),status:git(c.p,'status','--porcelain','--untracked-files=all')}; fs.writeFileSync(ledger,JSON.stringify(keeps,null,2)); emit({path:c.p,bytesFreed,branch:c.entry.branch,branchAction:'kept',reason:keep});return; }
  const remaining=bytes(c.p); git(c.primary,'worktree','remove',c.p);
- let branchAction='kept', reason='detached HEAD or archived unpushed branch';
- if(c.entry.branch&&!s.unpushed) { try {git(c.primary,'branch','-d',c.entry.branch);branchAction='deleted';reason='merged';} catch {reason='fully pushed; git branch -d requires merge into its upstream; branch retained without force';} }
- emit({path:c.p,bytesFreed:bytesFreed+remaining,branch:c.entry.branch,branchAction,reason,archive});
+ emit({path:c.p,bytesFreed:bytesFreed+remaining,...branchDisposition(c,s),archive,docs});
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)) { try {main();} catch(e) {console.error(`closeout: ${e.message}`);process.exitCode=1;} }

@@ -34,6 +34,6 @@ export function inspect(path) {
   git(path, 'symbolic-ref', 'refs/remotes/origin/HEAD');
   const status = worktreeStatus(path);
   const ignored = git(path, 'ls-files', '--others', '--ignored', '--exclude-standard').split('\n').filter(Boolean);
-  const privateData = ignored.some(p => !builds.some(b => p.startsWith(b + '/')));
+  const privateData = ignored.some(p => !p.startsWith('docs.local/') && !builds.some(b => p.startsWith(b + '/')));
   return { dirty: status.dirty || privateData, pushed: !!upstream && !status.unpushed, merged: status.merged, head: status.head };
 }
