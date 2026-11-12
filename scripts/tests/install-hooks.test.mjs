@@ -1957,3 +1957,24 @@ test('boundary clone installer status is red after removal and green after repai
   expect(changed.status).toBe(1);
   expect(changed.out).toContain('boundary-prepush-drift=1');
 }, 180_000);
+
+test('scratch HOME fleet install never calls launchctl in the real user domain', () => {
+  const fx = fixture();
+  const manifest = manifestFor(); manifest.fleet_hosts = ['mbp'];
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const fleet = path.join(fx.repo, 'scripts/fleet'); mkdirSync(fleet, { recursive: true });
+  for (const name of ['worktree-sweeper', 'disk-guard']) {
+    cpSync(path.join(here, `../fleet/com.golems.${name}.plist.template`), path.join(fleet, `com.golems.${name}.plist.template`));
+  }
+  git(fx.repo, 'add', '.'); git(fx.repo, 'commit', '-qm', 'fleet fixture'); git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  const bin = path.join(fx.root, 'launchctl-bin'); mkdirSync(bin);
+  const log = path.join(fx.root, 'launchctl.log');
+  writeFileSync(path.join(bin, 'launchctl'), `#!/bin/sh\nprintf '%s\\n' "$*" >> '${log}'\n[ "$1" != print ]\n`, { mode: 0o755 });
+  fx.env = { PATH: `${bin}:${process.env.PATH}` };
+  const result = run(fx, '--apply');
+  expect(result.status, result.out).toBe(0);
+  const calls = existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [];
+  expect(calls.filter(call => call.startsWith('bootstrap '))).toEqual([]);
+  expect(calls).toEqual([]);
+  expect(result.out).toContain('fleet launchd: skipped');
+});

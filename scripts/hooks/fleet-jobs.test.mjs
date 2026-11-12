@@ -14,12 +14,25 @@ test('jobs render pinned paths, install idempotently, detect plist drift', () =>
   };
   try {
     assert.equal(fleetJobsStatus(live, { home }).length, 2);
-    installFleetJobs(live, { home, command, uid: 1 });
+    installFleetJobs(live, { home, accountHome: home, command, uid: 1 });
     assert.equal(fleetJobsStatus(live, { home }).length, 0);
     assert.equal(calls.filter(x => x === 'bootstrap').length, 2);
-    installFleetJobs(live, { home, command, uid: 1 });
+    installFleetJobs(live, { home, accountHome: home, command, uid: 1 });
     assert.equal(calls.filter(x => x === 'bootstrap').length, 2);
     const f = fleetJobFiles(live, home)[0]; assert.ok(f.text.includes(live));
     writeFileSync(f.path, 'drift'); assert.equal(fleetJobsStatus(live, { home }).length, 1);
+  } finally { rmSync(home, { recursive: true }); }
+});
+
+test('scratch homes and an unavailable account home never contact launchd', () => {
+  const scratch = resolve('docs.local/fleet-tests'); mkdirSync(scratch, { recursive: true });
+  const home = mkdtempSync(join(scratch, 'isolated-'));
+  try {
+    for (const accountHome of [scratch, join(home, 'missing-account')]) {
+      const calls = [];
+      installFleetJobs(resolve('.'), { home, accountHome, command: args => calls.push(args) });
+      assert.deepEqual(calls, []);
+      assert.deepEqual(fleetJobsStatus(resolve('.'), { home }), []);
+    }
   } finally { rmSync(home, { recursive: true }); }
 });

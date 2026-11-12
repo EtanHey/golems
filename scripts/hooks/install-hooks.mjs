@@ -3,24 +3,17 @@
 //   scripts/hooks/install-hooks.sh --host mbp|client [--source <release dir>] [--apply] [--update [<sha>]] [--python <abs path>] [--node <abs path>] [--restore-live]
 //   scripts/hooks/install-hooks.sh --host mbp --status [--python <abs path>]
 //   node scripts/hooks/install-hooks.mjs --host client --source <release dir> --migrate-owner-install [--apply]
-// Source: a detached, LOCKED worktree `<repo>/.worktrees/hooks-live`. Only
-// `--update` moves it (default origin/master), so a `git checkout` in the main
-// checkout can never swap a live hook. Every golems hook in the host's manifest
-// entry is read from the selected commit (including dry-run updates), never
-// from the invoking checkout. --manifest is an explicit fixture/override path.
-// Each golems hook is SYMLINKED from hooks-live into ~/.claude/hooks (copies silently break
-// the gates' `../../_shared` imports) and registered in ~/.claude/settings.json.
-// `external` entries are owned by another repo and left byte-identical.
-// `wrapped-external` entries register a golems wrapper around another repo's
-// script, but never link that script into ~/.claude/hooks.
+// Source: detached, LOCKED `<repo>/.worktrees/hooks-live`; only --update moves it
+// (default origin/master). Even dry-runs use its sources; --manifest overrides only the manifest.
+// Hooks are symlinked into ~/.claude/hooks (preserving ../../_shared imports) and registered
+// in settings.json. External entries stay byte-identical; wrapped-external entries register
+// a golems wrapper without linking the external script.
 //
 // Dry-run is the default; --apply writes: hooks-live, the fail-open wrapper
 // copy, the links (a real file/dir in the way is renamed to .bak-<stamp>), and
 // settings.json (dated .bak first, only when a byte would change).
 //
-// AIDEV-NOTE: supersedes _shared/install-wired-hook.sh's copy contract. That
-// contract existed because symlinks into a WORKING tree got swapped by
-// checkouts; hooks-live is not a working tree anyone checks out.
+// Supersedes _shared/install-wired-hook.sh's copies: the locked pin survives checkout changes.
 import { spawnSync } from "node:child_process";
 import {
   chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync,
