@@ -70,6 +70,18 @@ def test_r76_compound_output_readers_stay_blocked(tmp_path, command):
     assert "remote branch" in json.loads(result.stdout)["reason"]
 
 
+@pytest.mark.parametrize("command", (
+    "{ cat <<'EOF' # don't\ngit push origin --delete topic\nEOF\n} | sh",
+    "if true; then cat <<'EOF' # it's\ngit push origin --delete topic\nEOF\nfi | sh",
+    "# don't\n{ cat <<'EOF'\ngit push origin --delete topic\nEOF\n} | sh",
+    "x=$'\\''; { cat <<'EOF'\ngit push origin --delete topic\nEOF\n} | sh",
+))
+def test_r76b_context_quotes_cannot_hide_compound_pipes(tmp_path, command):
+    result = _run(_fake_home(tmp_path), command)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "remote branch" in json.loads(result.stdout)["reason"]
+
+
 @pytest.mark.parametrize("header,body", (
     ("bash <<'EOF'", "git push origin --delete topic"),
     ("sh <<'EOF'", "git push origin --delete topic"),

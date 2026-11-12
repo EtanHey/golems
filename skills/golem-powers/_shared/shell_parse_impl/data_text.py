@@ -402,7 +402,7 @@ def shell_text_without_heredoc_bodies(
     # Admit new prefixes only without outer pipes/substitutions; prose inside
     # heredoc bodies must not participate in this conservative context check.
     context = _mask_heredoc_body_lines(command)
-    allow_prefixes = not _has_unquoted_pipe(context) and not re.search(r"[<>$]\(", context)
+    allow_prefixes = not re.search(r"[|`]|[<>$]\(", context)
     output = []
     header_source = ''
     pending: list[tuple[str, bool, bool, bool]] = []

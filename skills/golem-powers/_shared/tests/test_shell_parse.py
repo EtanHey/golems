@@ -30,9 +30,9 @@ def test_prefixed_file_heredoc_masks_literal_data(leading, prefix, suffix):
     assert reduced.endswith(suffix)
 
 
-def test_prefix_context_does_not_scan_a_quoted_heredoc_delimiter_as_shell():
+def test_prefix_context_conservatively_keeps_quoted_pipe_delimiter_visible():
     command = "{ cat <<'E|OF'\ngit push origin --delete topic\nE|OF\n} > report.md"
-    assert "git push" not in shell_parse.shell_text_without_heredoc_bodies(command)
+    assert "git push" in shell_parse.shell_text_without_heredoc_bodies(command)
 
 
 @pytest.mark.parametrize("reader", (
