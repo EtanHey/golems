@@ -6,7 +6,9 @@ import { spawnSync } from 'node:child_process';
 import { syncClones } from '../ci/boundary-clones.mjs';
 
 test('installed identity guard refuses bad identities and preserves chaining and drift', () => {
-  const root = mkdtempSync(resolve('docs.local/w55/fixture-'));
+  const scratch = resolve('docs.local/identity-hook-fixtures');
+  mkdirSync(scratch, { recursive: true });
+  const root = mkdtempSync(join(scratch, 'fixture-'));
   const repo = join(root, 'clone'); mkdirSync(repo);
   const run = (args, env = process.env) => spawnSync('git', args, { cwd: repo, env, encoding: 'utf8' });
   const git = (...args) => { const r = run(args); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
@@ -24,6 +26,8 @@ test('installed identity guard refuses bad identities and preserves chaining and
       ['GIT_COMMITTER_EMAIL', '', 'committer'],
       ['GIT_AUTHOR_EMAIL', 'author@' + 'host.LoCaL', 'author'],
       ['GIT_COMMITTER_EMAIL', 'committer@' + 'host.LOCAL', 'committer'],
+      ['GIT_AUTHOR_EMAIL', 'author@' + 'host.local.', 'author'],
+      ['GIT_COMMITTER_EMAIL', 'committer@' + 'host.LoCaL.', 'committer'],
     ]) {
       const env = { ...process.env, GIT_AUTHOR_NAME: 'Fixture', GIT_COMMITTER_NAME: 'Fixture', GIT_AUTHOR_EMAIL: 'a@example.com', GIT_COMMITTER_EMAIL: 'c@example.com', [key]: value };
       const r = run(['commit', '--allow-empty', '-qm', 'refuse'], env);

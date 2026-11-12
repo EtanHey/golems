@@ -1917,7 +1917,8 @@ test("M1 window gate registers both T3 spellings and status reports absent confi
   expect(run(fx, "--status").out).toContain("m1-window-gate seat (procedure lock checked per call)");
 });
 
-test('identity clone installer status is red after removal and green after repair', () => {
+for (const hookName of ['pre-commit', 'pre-push']) {
+test(`${hookName} clone installer status is red after removal and green after repair`, () => {
   const fx = fixture({ ownerLayout: true, privateSuite: false });
   fx.host = 'm1';
   const manifest = JSON.parse(readFileSync(fx.manifest, 'utf8'));
@@ -1930,7 +1931,7 @@ test('identity clone installer status is red after removal and green after repai
   expect(beforeInstall.out).toContain('boundary-prepush drift:');
   const applied = run(fx, '--apply');
   expect(applied.status, applied.out).toBe(0);
-  const hook = path.join(fx.repo, '.git/golems-boundary-hooks/pre-commit');
+  const hook = path.join(fx.repo, '.git/golems-boundary-hooks', hookName);
   expect(existsSync(hook)).toBe(true);
   const green = run(fx, '--status');
   expect(green.status, green.out).toBe(0);
@@ -1956,3 +1957,4 @@ test('identity clone installer status is red after removal and green after repai
   expect(changed.status).toBe(1);
   expect(changed.out).toContain('boundary-prepush-drift=1');
 }, 180_000);
+}
