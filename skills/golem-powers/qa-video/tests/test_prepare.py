@@ -211,3 +211,26 @@ def test_qa_pipeline_agent_contract():
             assert (root/'scripts'/name).is_file(), (f, name)
         for name in set(re.findall(r'(?<![\w-]/)references/([\w.-]+\.md)', text)):
             assert (root/'references'/name).is_file(), (f, name)
+
+
+def test_extract_aligns_a_late_audio_track_to_the_frame_timeline(media, tmp_path):
+    # w70 2026-11-12: a real recording's audio started 0.159 s after the video; extract dropped that
+    # lead-in, so every transcript time sat early against frames.tsv pts_s.
+    _, work, env = media
+    video = tmp_path / 'late audio.mp4'
+    subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
+                    '-f', 'lavfi', '-i', 'testsrc=size=160x90:rate=10:duration=3',
+                    '-itsoffset', '0.5', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=16000:duration=2',
+                    '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac',
+                    str(video)], check=True)
+    result = subprocess.run(['bash', str(SCRIPT), str(video), str(work)], env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    offset = int((work / 'audio-offset-ms.txt').read_text())
+    assert 400 <= offset <= 600, offset
+    import wave, array
+    with wave.open(str(work / 'audio.wav')) as wav:
+        rate = wav.getframerate()
+        samples = array.array('h', wav.readframes(wav.getnframes()))
+    peak = lambda a, b: max(abs(s) for s in samples[int(a * rate):int(b * rate)])
+    assert peak(0.0, 0.35) < 200, 'the lead-in must be silence, not shifted speech'
+    assert peak(0.65, 1.0) > 2000, 'the tone starts where the video says it does'
