@@ -446,7 +446,7 @@ Max 2 review-fix rounds; round 3 requires a lead exception written in the PR bod
 
 ### Classify each review comment:
 
-Every reviewer brief (routed reviewer, panel, Cursor pass) says: "Label every finding BLOCKING or NON-BLOCKING. BLOCKING = correctness, security, data loss, a broken contract, or a missing required proof; everything else is NON-BLOCKING. Zero BLOCKING findings = APPROVE." A brief asking Opus for judgement adds: "If you think this is a good idea, do it. Otherwise, suggest something else." (Theo, 2026-11-12, via orc: nitpicky review turns a 30-line PR into "a thousand plus"; Opus is reluctant to say no.)
+Every reviewer brief (routed reviewer, panel, Cursor pass) says: "Label every finding BLOCKING or NON-BLOCKING. BLOCKING = correctness, security, data loss, a broken contract, or a missing required proof; everything else is NON-BLOCKING. Zero BLOCKING findings = APPROVE." A brief asking a `claude.judgment` reviewer for judgement adds: "If you think this is a good idea, do it. Otherwise, suggest something else." (Theo, 2026-11-12, via orc: nitpicky review turns a 30-line PR into "a thousand plus"; that reviewer is reluctant to say no.)
 
 | Type | Action |
 |------|--------|
