@@ -292,16 +292,14 @@ def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in 
             args[0] == 'workflow' and 'disable' in words):
         if any('$' in a or '`' in a for a in args): raise ValueError('dynamic settings scope')
         return [dict(class_='settings', repo=cwd, target=args[:2])]
-    if args[:2] in (['pr', 'close'], ['pr', 'merge']):
-        i, deletes, match_head = 2, False, None
+    # PR merge cleanup belongs to git-guardian, including unpinned merges.
+    # Keep close-with-delete gated without adding a second approval for merges.
+    if args[:2] == ['pr', 'close']:
+        i, deletes = 2, False
         while i < len(args):
             arg = args[i]; i += 1
             if arg == '--': break
-            if arg == '--match-head-commit':
-                match_head = args[i] if i < len(args) else None; i += 1
-            elif arg.startswith('--match-head-commit='):
-                match_head = arg.split('=', 1)[1]
-            elif arg in ('--body', '-b', '--body-file', '-F', '--subject', '-t',
+            if arg in ('--body', '-b', '--body-file', '-F', '--subject', '-t',
                        '--repo', '-R', '--author-email'):
                 i += 1
             elif arg.split('=', 1)[0] == '--delete-branch':
@@ -315,7 +313,7 @@ def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in 
                         if not cluster: i += 1
                         break
                     if char == 'd': deletes = True
-        if deletes and not (args[1] == 'merge' and match_head and re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', match_head)):
+        if deletes:
             return [dict(class_='delete', repo=cwd, refs=args)]
     if args[0] != 'api': return []
     method, positional, fields, source = parse_api(args[1:])

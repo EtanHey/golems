@@ -173,10 +173,11 @@ class BranchCleanup(unittest.TestCase):
             with patch.object(hook, '_verified_branch_cleanup', return_value=False), patch('sys.stdout'):
                 with self.assertRaises(SystemExit): hook.check_bash('git push origin --delete topic')
 
-    def test_pr_delete_flag_denied(self):
+    def test_pr_close_delete_flag_denied(self):
         policy = load('w68_gh', ROOT / 'human-confirm-gate/hooks/gh_policy.py')
         for flag in ('--delete-branch', '--delete-branch=true', '-sd'):
-            self.assertTrue(policy.operations(['pr', 'merge', '123', flag], self.repo))
+            self.assertTrue(policy.operations(['pr', 'close', '123', flag], self.repo))
+            self.assertEqual(policy.operations(['pr', 'merge', '123', flag], self.repo), [])
         self.assertEqual(policy.operations(['pr', 'merge', '123', '--body', '--delete-branch'], self.repo), [])
 
     def test_head_changes_during_metadata_denied(self):
@@ -223,14 +224,14 @@ class BranchCleanup(unittest.TestCase):
                 self.assertTrue(self.verdict(command))
                 self.assertEqual(operations(command, self.repo), [])
         self.assertTrue(operations('gh pr close 123 -d', self.repo))
-        self.assertTrue(operations('git branch -d -f topic', self.repo))
-        self.assertTrue(operations('git branch -D topic', self.repo))
+        self.assertEqual(operations('git branch -d -f topic', self.repo), [])
+        self.assertEqual(operations('git branch -D topic', self.repo), [])
         for flags in ('-d --forc', '--delete --forc', '--del --forc'):
             command = 'git branch ' + flags + ' topic'
             with self.subTest(command=command, hook='guardian'):
                 self.assertFalse(self.verdict(command))
             with self.subTest(command=command, hook='human-confirm'):
-                self.assertTrue(operations(command, self.repo))
+                self.assertEqual(operations(command, self.repo), [])
 
     def test_r2_payload_cwd_on_all_entrypoints(self):
         command = 'git branch -D topic'
@@ -269,7 +270,11 @@ class BranchCleanup(unittest.TestCase):
         self.addCleanup(setattr, sys, 'pycache_prefix', old_prefix)
         self.addCleanup(setattr, sys, 'dont_write_bytecode', old_bytecode)
         from commands import operations
-        self.assertIn('local branch', gate.approval_reason(operations('git branch -D topic', self.repo)))
+        self.moved()
+        color, reason = self.hook.classify_tool('Bash', {'command': 'git branch -D topic', 'cwd': self.repo})
+        self.assertEqual(color, 'RED')
+        self.assertIn('local branch', reason)
+        self.assertEqual(operations('git branch -D topic', self.repo), [])
         self.assertIn('remote branch', gate.approval_reason(operations('git push origin --delete topic', self.repo)))
 
     def test_verifier_gh_and_scope(self):
