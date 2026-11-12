@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Transcript-first debrief: <=12 stills, preserved evidence, length-aware budget.
 
-Default: extract the targeted stills and hand back for the runner to view them
-itself (no helper call). --presort adds the optional visual-batch.py pre-sort.
+Default: extract the targeted stills and hand back so gatherers read them (no
+helper call here). --presort runs the visual-batch.py gather inline.
 """
 import argparse
 import importlib.util
@@ -160,7 +160,7 @@ def main():
             citations.append(f'{image.name}\t0\t{pts[1]}')
             progress(prefix+f'extracted {i+1}/{len(selected["moments"])} stills · ETA unknown')
         if sheets and not args.presort:
-            status = 'STILLS_READY'  # the runner views them itself; no reserve, no helper
+            status = 'STILLS_READY'  # gatherers read them next; no reserve, no helper
         elif sheets:
             # Reserve 205s: N1 drain exceeds launch budget by <=200s at timeout=90.
             remaining = deadline-time.monotonic()-205

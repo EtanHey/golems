@@ -234,3 +234,41 @@ def test_extract_aligns_a_late_audio_track_to_the_frame_timeline(media, tmp_path
     peak = lambda a, b: max(abs(s) for s in samples[int(a * rate):int(b * rate)])
     assert peak(0.0, 0.35) < 200, 'the lead-in must be silence, not shifted speech'
     assert peak(0.65, 1.0) > 2000, 'the tone starts where the video says it does'
+
+
+def test_plan_prints_the_selected_modes_route():
+    # R70-5: `plan ... debrief|review` printed the QA sweep (coverage, scene cues, 10 fps dense).
+    plan = lambda mode: subprocess.run(['bash', str(SCRIPT.parent/'default.sh'), 'plan', '/f/clip.mp4', '/f/work', mode],
+                                       capture_output=True, text=True)
+    qa = plan('qa')
+    assert qa.returncode == 0 and 'dense-windows.sh' in qa.stdout and 'coverage.sh' in qa.stdout
+    assert 'debrief.py' not in qa.stdout
+    for mode in ('debrief', 'review'):
+        out = plan(mode)
+        assert out.returncode == 0, out.stderr
+        assert f'debrief.py" "/f/clip.mp4" --workdir "/f/work" --mode {mode}' in out.stdout
+        assert '<=12 moments' in out.stdout and 'moment-*.jpg' in out.stdout
+        for sweep in ('coverage.sh', 'scene-cues.sh', 'dense-windows.sh'):
+            assert sweep not in out.stdout, (mode, sweep)
+    for out in (qa, plan('debrief')):
+        assert 'gemini-3.8-flash' in out.stdout and 'TOOLING FAILURE' in out.stdout
+        assert '300 s per gatherer call' in out.stdout and 'PARTIAL' in out.stdout
+    assert plan('gems').returncode == 2
+
+
+def test_exhaustive_debrief_review_never_ends_in_a_self_reader():
+    # R70-1: process.md sends rigorous/silent debrief/review to gems.md § Visual-first exhaustive, whose
+    # no-dispatch fallback read every frame itself.
+    root = SCRIPT.parents[1]
+    gems = (root/'workflows/gems.md').read_text()
+    head = gems.split('## Visual-first exhaustive')[0]
+    for term in ('Debrief/review, including the exhaustive override', 'never Claude helpers or the runner',
+                 'visual-batch.py', 'NEEDS_READERS', 'TOOLING FAILURE', 'It never reads the\nframes itself',
+                 '**pure gems only**'):
+        assert term in head, term
+    exhaustive = gems.split('## Visual-first exhaustive')[1].split('## Steps')[0]
+    assert 'debrief/review seats\n   run `visual-batch.py`, else NEEDS_READERS / TOOLING FAILURE' in exhaustive
+    assert 'gems only: or read them in the no-dispatch fallback' in exhaustive
+    skill = (root/'SKILL.md').read_text()
+    assert 'Wait budgets' in skill and 'never block the QA on one slow child' in skill
+    assert 'not a\nguarantee of reader accuracy' in skill and 'not a misread' not in skill

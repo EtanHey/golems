@@ -141,13 +141,23 @@ and sends every batch to a gatherer. Gatherer order (the /agent-routing 2026-11-
    A quota stop from our own dispatch is reported as that. **Never fall back to the judge, or a Claude
    helper, reading the frames.**
 
+**Wait budgets — never block the QA on one slow child.** Each gatherer call has 300 s; the gather stage
+has the run budget, max(600, 24 × video minutes) s; the requesting seat waits for the judge that budget
+plus 300 s for synthesis. Why: a 48-frame Gemini pass took 16.8 min (≈21 s/frame) and real sheets needed
+more than 120 s, so 300 s gives a 6-frame call ≈2.5× headroom. `visual-batch.py` enforces its own
+(`--timeout`, `--budget-seconds`); for `delegate_task` batches the judge notes each dispatch time and, on
+the first wake past the stage deadline, cancels the stragglers (`task_cancel`). On expiry: name the missing
+windows NOT DETERMINED, continue with what arrived, and mark the report PARTIAL; a late result becomes a
+dated addendum, never a silent merge.
+
 **The judge judges.** Gatherer text with frame refs is the evidence the judge judges, not a verdict
 (Gemini never forms a verdict): the judge joins it with `frames.tsv` and the transcript, connects
 it over time (what changed across a cue, whether an element's state carries across windows) and
 decides each finding. **Spot-check:** for each finding it reports, the judge Reads at most 2 full-size
 frames — the cited before and after — one image per call, and logs each with
-`scripts/inspected.sh <workdir> <frame> 'spot: before' F4`. Why 2: Flash-high read 44/44 visual items with 0 fabrications, so the
-check catches a wrong frame reference, not a misread; more reads turn the judge back into the reader.
+`scripts/inspected.sh <workdir> <frame> 'spot: before' F4`. Why 2: a spot-check can catch a wrong frame reference
+or a misread; Flash-high's 44/44 visual bench (0 fabrications) supports trying this bounded policy, not a
+guarantee of reader accuracy, and more reads would turn the judge back into the reader.
 A spot-check that disagrees sends that window back to a gatherer (fresh batch, crop or refine); a second
 disagreement is NOT DETERMINED. The judge never opens contact sheets, never reads frames to plan the
 split (plan from `index.tsv`, cues and the transcript) and never reads past its 2-frame budget.

@@ -8,12 +8,19 @@ SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ "${1:-}" = "plan" ]; then
   [ $# -ge 3 ] || { echo "usage: default.sh plan <video> <workdir> [qa|debrief|review]" >&2; exit 2; }
   VIDEO="$2"; WORKDIR="$3"; MODE="${4:-qa}"
+  case "$MODE" in qa|debrief|review) ;; *) echo "plan: mode must be qa, debrief or review (gems: Agent(video-gems))" >&2; exit 2;; esac
+  JUDGE_MODEL="$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.judgment --field model 2>/dev/null || echo '<claude.judgment model>')"
   cat <<EOF
 ## /qa-video plan — mode=$MODE, gather-first
 Requesting seat (lead, or whoever got the request): do no media work. Dispatch ONE Opus judge child and wait:
-  T3: delegate_task({title: "qa-video judge", role: "test", target: {providerInstanceId: "claudeAgent", model: "$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.judgment --field model 2>/dev/null || echo '<claude.judgment model>')", options: {fastMode: false}}, task: "Read and follow $WORKDIR/briefs/qa-judge.md"})
+  T3: delegate_task({title: "qa-video judge", role: "test", target: {providerInstanceId: "claudeAgent", model: "$JUDGE_MODEL", options: {fastMode: false}}, task: "Read and follow $WORKDIR/briefs/qa-judge.md"})
   Claude terminal seat: Agent with that model and brief. Never t3_thread_launch/create_threads for QA.
+  Wait budget for the judge: the run budget, default max(600, 24 x video minutes) s + 300 s synthesis. On expiry report
+  PARTIAL from the judge's progress.txt and findings so far; never block on it.
 Judge (you, if you were dispatched) — run these scripts in your own shell, polling each logs/<step>.exit for 0:
+EOF
+  if [ "$MODE" = qa ]; then
+    cat <<EOF
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" extract -- bash "$SCRIPTS/extract.sh" "$VIDEO" "$WORKDIR"
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" coverage -- bash "$SCRIPTS/coverage.sh" "$VIDEO" "$WORKDIR"
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
@@ -21,9 +28,23 @@ Judge (you, if you were dispatched) — run these scripts in your own shell, pol
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
 Gather (gatherers read every sheet; you never open one), first that works:
   1. T3: per batch of <=15 sheets from dense/index.tsv, all in one turn:
+EOF
+  else
+    cat <<EOF
+  Transcript-first: <=12 moments, one still or a <=2 fps short window each; no 30 s coverage, no scene sweep.
+  (Rigorous/full/exhaustive or a silent video: workflows/gems.md § Visual-first exhaustive, same gatherers.)
+  bash "$SCRIPTS/run-step.sh" "$WORKDIR" $MODE -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode $MODE
+  (exit STILLS_READY: read transcript.srt, plan.json and debrief.md; the moment-NN.jpg stills go to gatherers)
+Gather (gatherers read every still; you never open one), first that works:
+  1. T3: the moment stills as one batch (<=15 per batch), all in one turn:
+EOF
+  fi
+  cat <<EOF
      delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "antigravity", model: "gemini-3.8-flash", options: {thinking_level: "high"}}, task: "Read and follow $WORKDIR/briefs/gather-bN.md"})
-  2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"   (visual-batch.py, headless Gemini via agy)
+  2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"$([ "$MODE" = qa ] || printf ' "" %s-gather "%s"/moment-*.jpg' "$MODE" "$WORKDIR")   (visual-batch.py, headless Gemini via agy)
   3. TOOLING FAILURE with the raw error path; unread windows stay NOT DETERMINED. Never read the frames instead.
+Wait budgets: 300 s per gatherer call; the gather stage gets max(600, 24 x video minutes) s. On expiry, cancel stragglers,
+  name their windows NOT DETERMINED, continue with what arrived and mark the report PARTIAL.
 Judge the gatherer text; spot-check <=2 full-size frames per reported finding (inspected.sh 'spot: ...' <id>).
 Too small: crop.sh or re-densify, then gather again. Missing measurement script: NOT DETERMINED + file a row.
 EOF
@@ -31,12 +52,23 @@ EOF
 fi
 
 if [ "${1:-}" = "gather" ]; then
-  [ $# -ge 2 ] || { echo "usage: default.sh gather <workdir> [index.tsv] [step]" >&2; exit 2; }
-  WORKDIR="$2"; INDEX="${3:-$WORKDIR/dense/index.tsv}"; STEP="${4:-gather-01}"
+  [ $# -ge 2 ] || { echo "usage: default.sh gather <workdir> [index.tsv|\"\"] [step] [image ...]" >&2; exit 2; }
+  WORKDIR="$2"; INDEX="${3:-}"; STEP="${4:-gather-01}"
+  [ $# -ge 4 ] && shift 4 || shift $#
+  # Wait budgets (w70, 2026-11-12): a 48-frame Gemini pass took 16.8 min (~21 s/frame), and real sheets needed
+  # more than 120 s; 300 s per call leaves ~2.5x headroom for a 6-frame call. The stage stops at its budget.
+  BUDGET="--budget-seconds ${GATHER_BUDGET_S:-600} --timeout ${GATHER_CALL_S:-300}"
+  QUESTION='Per tile: cursor target, before/after UI state, visible defects, with zero-based tile indexes. Mark unclear tiles NOT DETERMINED; never invent timestamps.'
+  if [ $# -gt 0 ]; then
+    # shellcheck disable=SC2086
+    exec bash "$SCRIPTS/run-step.sh" "$WORKDIR" "$STEP" -- python3 "$SCRIPTS/visual-batch.py" \
+      --workdir "$WORKDIR/visual-$STEP" $BUDGET --question "$QUESTION" "$@"
+  fi
+  INDEX="${INDEX:-$WORKDIR/dense/index.tsv}"
   [ -f "$INDEX" ] || { echo "TOOLING FAILURE: no index at $INDEX (run dense-windows.sh first)" >&2; exit 3; }
+  # shellcheck disable=SC2086
   exec bash "$SCRIPTS/run-step.sh" "$WORKDIR" "$STEP" -- python3 "$SCRIPTS/visual-batch.py" \
-    --index "$INDEX" --workdir "$WORKDIR/visual-$STEP" --budget-seconds "${GATHER_BUDGET_S:-480}" --question \
-    'Per tile: cursor target, before/after UI state, visible defects, with zero-based tile indexes. Mark unclear tiles NOT DETERMINED; never invent timestamps.'
+    --index "$INDEX" --workdir "$WORKDIR/visual-$STEP" $BUDGET --question "$QUESTION"
 fi
 
 ORCHESTRATOR_REPO="${ORCHESTRATOR_REPO:-$HOME/Gits/orchestrator}"
