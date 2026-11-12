@@ -1942,4 +1942,17 @@ test('boundary clone installer status is red after removal and green after repai
   const repaired = run(fx, '--status');
   expect(repaired.out).toContain('boundary-prepush-drift=0');
   expect(repaired.status, repaired.out).toBe(0);
+  // A newer checkout/master policy does not change this selected live pin.
+  const policy = path.join(fx.repo, 'scripts/publish-boundary-policy.yaml');
+  writeFileSync(policy, readFileSync(policy, 'utf8') + '\n# newer checkout policy revision\n');
+  git(fx.repo, 'add', '.'); git(fx.repo, 'commit', '-qm', 'advance checkout policy');
+  git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  const selected = run(fx, '--status');
+  expect(selected.status, selected.out).toBe(0);
+  expect(selected.out).toContain('boundary-prepush-drift=0');
+  // The clone wrapper itself must still match the selected policy version.
+  writeFileSync(hook, readFileSync(hook, 'utf8') + '# actual clone drift\n');
+  const changed = run(fx, '--status');
+  expect(changed.status).toBe(1);
+  expect(changed.out).toContain('boundary-prepush-drift=1');
 }, 180_000);

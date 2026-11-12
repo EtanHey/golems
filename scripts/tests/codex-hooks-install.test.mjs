@@ -235,7 +235,7 @@ require('node:module').syncBuiltinESMExports();\n`);
     const before = readFileSync(path.join(f.codexHome, "config.toml"));
     const dry = invoke("--update", selected); expect(dry.status).toBe(0);
     expect(readdirSync(f.codexHome)).toEqual(["config.toml"]);
-    const applied = invoke("--update", selected, "--apply"); expect(applied.status).toBe(0);
+    const applied = invoke("--update", selected, "--apply"); expect(applied.status, applied.stdout + applied.stderr).toBe(0);
     expect(readFileSync(probes, "utf8")).toBe("probe\n");
     expect(applied.stdout).toContain("plain codex with no --profile");
     const installed = JSON.parse(readFileSync(path.join(f.codexHome, "hooks.json")));

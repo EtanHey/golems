@@ -552,6 +552,19 @@ function purgeBytecode(live, dirs = []) {
   for (const rel of derived) rmSync(path.join(live, rel), { recursive: true, force: true });
 }
 
+// Clone expectations come from the selected live pin, never the invoking
+// checkout or origin/master. Empty clone sets need no boundary module.
+async function syncBoundaryClones(ctx, apply = false) {
+  const root = path.join(homedir(), 'Gits');
+  const hasClones = existsSync(root) && readdirSync(root).some(name => existsSync(path.join(root, name, '.git')));
+  if (!hasClones) {
+    console.log('boundary-prepush-drift=0 clones=0');
+    return 0;
+  }
+  const boundary = await import(pathToFileURL(path.join(ctx.live, 'scripts/ci/boundary-clones.mjs')).href);
+  return boundary.syncClones({ root, apply });
+}
+
 async function install(o) {
   const machine = o.apply ? machineHost() : o.host;
   if (!machine) die("machine identity unavailable or unmapped; refusing installation");
@@ -674,8 +687,7 @@ async function install(o) {
     renameSync(tmp, ctx.settingsPath);
   }
   recordHookNode(ctx.hookNode);
-  const boundary = await import(pathToFileURL(path.join(ctx.live, 'scripts/ci/boundary-clones.mjs')).href);
-  boundary.syncClones({ apply: true });
+  await syncBoundaryClones(ctx, true);
   console.log("applied");
   if (ctx.codex) {
     ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py")) && existsSync(path.join(ctx.live, "scripts/hooks/codex-gate.sh"));
@@ -828,12 +840,8 @@ async function status(o) {
       console.log(`E1 ${name} PRESENT in settings.json`);
     }
   }
-  if (!current && !existsSync(path.join(homedir(), 'Gits'))) {
-    console.log('boundary-prepush-drift=0 clones=0 (no clone directory)');
-  } else try {
-    const boundary = await import(pathToFileURL(path.join(ctx.live, 'scripts/ci/boundary-clones.mjs')).href);
-    if (boundary.syncClones()) bad = true;
-    if (current && master && git(o.repo, 'diff', '--name-only', current, master, '--', 'scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow')) bad = true;
+  try {
+    if (await syncBoundaryClones(ctx)) bad = true;
   } catch (error) { bad = true; console.log(`boundary-prepush drift: ${error.message}`); }
   return bad ? 1 : 0;
 }
