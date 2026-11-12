@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
+import { ageTree, mockGh, rawPR } from './worktree-fixtures.mjs';
 const cli = path.resolve('scripts/fleet/worktree-closeout.mjs');
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'closeout-'));
@@ -14,8 +15,9 @@ function fixture(t) {
   fs.writeFileSync(path.join(repo,'file'),'base'); fs.writeFileSync(path.join(repo,'.gitignore'),'node_modules/\ndocs.local/\n');
   git('add','.'); git('commit','-m','base'); git('init','--bare',path.join(dir,'remote')); git('remote','add','origin',path.join(dir,'remote')); git('push','-u','origin','main');
   git('symbolic-ref','refs/remotes/origin/HEAD','refs/remotes/origin/main'); git('worktree','add','-b','worker',wt);
-  const bin=path.join(dir,'bin'); fs.mkdirSync(bin); fs.writeFileSync(path.join(bin,'gh'),'#!/bin/sh\nprintf "[]"\n',{mode:0o755});
-  const run = (...args) => spawnSync(process.execPath,[cli,...args],{encoding:'utf8',env:{...process.env,PATH:bin+path.delimiter+process.env.PATH}});
+  const bin=path.join(dir,'bin'), data=path.join(dir,'prs.json');
+  fs.writeFileSync(data,JSON.stringify([rawPR({headSha:git('rev-parse','HEAD')})]));mockGh(bin,data);
+  const run = (...args) => {if(!args.includes('--triage'))ageTree(wt);return spawnSync(process.execPath,[cli,...args],{encoding:'utf8',env:{...process.env,PATH:bin+path.delimiter+process.env.PATH}});};
   return {repo,wt,git,run};
 }
 test('clean pushed external worktree removed with bytes receipt', t => {
@@ -34,14 +36,14 @@ test('triage flags 49-hour unpushed work and bundle preserves dirty state',t=>{
  fs.writeFileSync(path.join(f.wt,'file'),'dirty'); fs.writeFileSync(path.join(f.wt,'new'),'untracked');
  const old=new Date(Date.now()-49*3600000); function age(p){if(fs.lstatSync(p).isDirectory()) for(const n of fs.readdirSync(p)) age(path.join(p,n)); fs.utimesSync(p,old,old);} age(f.wt);
  const tri=f.run('--triage',f.repo,'--json'); assert.equal(tri.status,3,tri.stderr); assert.equal(JSON.parse(tri.stdout).find(x=>x.path===fs.realpathSync(f.wt)).state,'dirty');
- const r=f.run('--bundle',f.wt,'--json'); assert.equal(r.status,0,r.stderr); const receipt=JSON.parse(r.stdout); assert.ok(fs.existsSync(path.join(receipt.archive,'work.bundle'))); assert.ok(fs.readFileSync(path.join(receipt.archive,'dirty.patch'),'utf8').includes('dirty')); assert.ok(!fs.existsSync(f.wt));
+ const r=f.run('--bundle',f.wt,'--json'); assert.equal(r.status,0,r.stderr); const receipt=JSON.parse(r.stdout); assert.ok(fs.existsSync(path.join(receipt.archive,'work.bundle'))); assert.ok(fs.readFileSync(path.join(receipt.archive,'dirty.patch'),'utf8').includes('dirty')); assert.ok(fs.existsSync(f.wt));assert.equal(fs.readFileSync(path.join(f.wt,'file'),'utf8'),'dirty');
 });
 
 test('tracked build directory is preserved',t=>{const f=fixture(t);fs.mkdirSync(path.join(f.wt,'dist'));fs.writeFileSync(path.join(f.wt,'dist','source'),'keep');execFileSync('git',['add','.'],{cwd:f.wt});execFileSync('git',['commit','-m','tracked dist'],{cwd:f.wt});execFileSync('git',['push','origin','worker'],{cwd:f.wt});const r=f.run(f.wt);assert.equal(r.status,1);assert.ok(fs.existsSync(path.join(f.wt,'dist','source')));});
-test('build symlink target stays intact',t=>{const f=fixture(t);const external=path.join(path.dirname(f.repo),'external');fs.mkdirSync(external);fs.writeFileSync(path.join(external,'keep'),'keep');fs.symlinkSync(external,path.join(f.wt,'node_modules'));const r=f.run(f.wt);assert.equal(r.status,1,r.stderr);assert.match(r.stderr,/Dirty worktree refused/);assert.ok(fs.existsSync(path.join(external,'keep')));});
-test('triage distinguishes merged, pushed-clean and stale unpushed',t=>{
+test('build symlink target stays intact',t=>{const f=fixture(t);const external=path.join(path.dirname(f.repo),'external');fs.mkdirSync(external);fs.writeFileSync(path.join(external,'keep'),'keep');fs.symlinkSync(external,path.join(f.wt,'node_modules'));const r=f.run(f.wt);assert.equal(r.status,1,r.stderr);assert.match(r.stderr,/Dirty or unpushed worktree refused/);assert.ok(fs.existsSync(path.join(external,'keep')));});
+test('triage leaves ancestry-only trees pushed-clean and flags stale unpushed',t=>{
  const f=fixture(t); const gitWt=(...a)=>execFileSync('git',a,{cwd:f.wt,stdio:['ignore','pipe','pipe']});
- let r=f.run('--triage',f.repo,'--json'); assert.equal(JSON.parse(r.stdout).find(x=>x.branch==='worker').state,'merged');
+ let r=f.run('--triage',f.repo,'--json'); assert.equal(JSON.parse(r.stdout).find(x=>x.branch==='worker').state,'pushed-clean');
  gitWt('commit','--allow-empty','-m','pushed');gitWt('push','origin','worker');
  r=f.run('--triage',f.repo,'--json');assert.equal(JSON.parse(r.stdout).find(x=>x.branch==='worker').state,'pushed-clean');
  execFileSync('git',['commit','--allow-empty','-m','local'],{cwd:f.wt,env:{...process.env,GIT_COMMITTER_DATE:new Date(Date.now()-49*3600000).toISOString()}});

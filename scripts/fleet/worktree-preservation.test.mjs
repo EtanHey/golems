@@ -4,10 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { ageTree, mockGh, rawPR } from './worktree-fixtures.mjs';
 const closeout = path.resolve('scripts/fleet/worktree-closeout.mjs');
 const sweeper = path.resolve('scripts/fleet/worktree-sweeper.mjs');
 const g = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore','pipe','pipe'] }).trim();
-function fixture(t, prs = []) {
+function fixture(t, prs = null) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'preserve-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const repo = path.join(dir, 'repos', 'main'), wt = path.join(dir, 'worker'), bin = path.join(dir, 'bin');
@@ -19,12 +20,13 @@ function fixture(t, prs = []) {
   g(repo, 'init', '--bare', path.join(dir, 'remote')); g(repo, 'remote', 'add', 'origin', path.join(dir, 'remote'));
   g(repo, 'push', '-u', 'origin', 'main'); g(repo, 'remote', 'set-head', 'origin', 'main');
   g(repo, 'worktree', 'add', '-b', 'worker', wt); g(wt, 'push', '-u', 'origin', 'worker');
-  fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\ncat '${path.join(dir, 'prs.json')}'\n`, { mode: 0o755 });
-  fs.writeFileSync(path.join(dir, 'prs.json'), JSON.stringify(prs));
+  const headSha=g(wt,'rev-parse','HEAD');
+  fs.writeFileSync(path.join(dir, 'prs.json'), JSON.stringify((prs ?? [{headSha}]).map(p => rawPR({...p,headSha:p.headSha??headSha}))));
+  mockGh(bin,path.join(dir,'prs.json'));
   const env = { ...process.env, PATH: bin + path.delimiter + process.env.PATH };
-  const run = mode => mode === 'closeout'
+  const run = mode => {ageTree(wt); return mode === 'closeout'
     ? spawnSync(process.execPath, [closeout, wt, '--json'], { env, encoding: 'utf8' })
-    : spawnSync(process.execPath, ['--input-type=module', '-e', `import {sweep} from ${JSON.stringify('file://' + sweeper)}; sweep([process.argv[1]], {}, Date.now(), console.log);`, path.dirname(repo)], { env, encoding: 'utf8' });
+    : spawnSync(process.execPath, ['--input-type=module', '-e', `import {sweep} from ${JSON.stringify('file://' + sweeper)}; sweep([process.argv[1]], {}, Date.now(), console.log);`, path.dirname(repo)], { env, encoding: 'utf8' });};
   const put = (name = 'keep.bin', data = Buffer.from([0, 1, 255, 10])) => fs.writeFileSync(path.join(wt, 'docs.local', name), data);
   return { dir, repo, wt, run, put, archive: path.join(repo, 'docs.local', 'worktree-archive', 'worker') };
 }
@@ -36,6 +38,7 @@ for (const mode of ['closeout', 'sweeper']) {
     assert.ok(!fs.existsSync(f.wt)); assert.match(r.stdout, /moved 1 files \/ 4 bytes/);
     assert.match(r.stdout, /worktree removed.*proof/s);
     const receipt = JSON.parse(fs.readFileSync(f.archive + '.receipt.json'));
+    assert.equal(receipt.pr, 1); assert.equal(receipt.branch, 'worker'); assert.equal(receipt.headSha, g(f.repo,'rev-parse','HEAD')); assert.ok('threadId' in receipt);
     assert.equal(receipt.files[0].sha256.length, 64); assert.equal(receipt.files[0].bytes, 4);
     assert.ok(!fs.existsSync(path.join(f.archive, 'tracked')));
   });
@@ -55,7 +58,7 @@ for (const mode of ['closeout', 'sweeper']) {
     [{ number: 2, state: 'open', merged: false, head: 'child', base: 'worker' }, { number: 3, state: 'closed', merged: true, head: 'child', base: 'main' }]
   ]) test(`${mode}: open stack ${prs.at(-1).number} retains docs and output`, t => {
     const f = fixture(t, prs); f.put(); fs.mkdirSync(path.join(f.wt, 'node_modules'));
-    const r = f.run(mode); assert.equal(r.status, 0, r.stderr); assert.ok(fs.existsSync(f.wt)); assert.ok(fs.existsSync(path.join(f.wt, 'node_modules')));
+    const r = f.run(mode); assert.equal(r.status, 0, r.stderr); assert.ok(fs.existsSync(f.wt)); assert.equal(fs.existsSync(path.join(f.wt, 'node_modules')),mode==='closeout');
     assert.ok(!fs.existsSync(f.archive)); assert.match(r.stdout, /kept: stack .* open/);
   });
   test(`${mode}: dirty state is untouched`, t => {
