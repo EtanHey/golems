@@ -1,7 +1,7 @@
 # Fleet Canon
 
-Source of truth for the golems fleet canon. Install to `$HOME/Gits/CLAUDE.md` only after Etan's
-plain-language canon-7 nod; until then this is staged source plus drift-linter substrate.
+Source of truth for the golems fleet canon. Install to `$HOME/Gits/CLAUDE.md` and `~/.codex/AGENTS.md`
+with `scripts/ci/canon-drift-lint.mjs --install` (canon-7 ratified by Etan via orc, 2026-11-12).
 
 <!-- FLEET_CANON_START -->
 # FLEET CANON - golems ecosystem law
