@@ -131,7 +131,14 @@ def test_skill_owns_iterative_loop():
         assert 'visual-gather.py' in text
         assert 'explicitly' in text and 'visible worker' in text
         assert 'never read images' not in text.lower() and 'for every sheet/frame' not in text
-        assert 'reads the images itself' in text and 'a lead, never evidence' in text
+        if relative == 'workflows/gems.md':
+            # Exhaustive gems keeps its reader fan-out (out of the 2026-11-12 QA split's scope).
+            assert 'reads the images itself' in text and 'a lead, never evidence' in text
+        else:
+            # 2026-11-12 (Etan via orc): gatherers read the frames; one Opus judge judges their text.
+            assert 'reads the images itself' not in text and 'a lead, never evidence' not in text
+            assert 'gemini-3.8-flash' in text and 'TOOLING FAILURE' in text
+            assert 'spot-check' in text.lower() and 'Never fall back to' in text
         assert 'run-step.sh' in text and '.log' in text and '.pid' in text and '.exit' in text
         assert 'run_command' in text and 'view_file' in text
         assert 'pending confirmation' not in text
@@ -141,15 +148,23 @@ def test_skill_owns_iterative_loop():
         assert 'ready: true' not in text and 'prepare.sh' not in text
 
 
-def test_qa_seat_fans_out_where_the_recording_lives():
-    # 2026-11-02 rule: the QA seat runs where the recording lives and fans out itself;
-    # the single qa-video-runner route is retired from the default.
+def test_one_judge_child_gatherers_read_the_frames():
+    # 2026-11-12 (Etan via orc): the requesting seat dispatches ONE Opus judge as a delegate child,
+    # never a top-level thread; gatherers read the frames; the judge judges text and spot-checks.
     root = SCRIPT.parents[1]
     skill = (root/'SKILL.md').read_text()
-    for term in ('Run where the recording lives', 'Never copy the recording', 'fans out itself',
-                 'claude.judgment', 'claude.subagent.mechanical', 'never fewer than 2',
-                 'their reads count as viewed', 'Gemini never forms a verdict', 'no single runner'):
+    head = '\n'.join(skill.split('\n')[:20])
+    for term in ('One judge, gatherers under it', 'ONE `claude.judgment` judge', 'never a top-level thread', 'spot-checks at most 2 frames',
+                 'default.sh plan', 'read the frames yourself'):
+        assert term in head, term
+    for term in ('where the recording lives', 'Never copy the recording', 'environmentId',
+                 'providerInstanceId: "antigravity", model: "gemini-3.8-flash", options: {thinking_level: "high"}',
+                 'providerInstanceId: "claudeAgent"', 'fastMode: false', 'Never `t3_thread_launch`',
+                 'TOOLING FAILURE', 'missing measurement', 'scripts/crop.sh',
+                 'Gemini never forms a verdict', 'no single runner', 'NEEDS_READERS'):
         assert term in skill, term
+    for gone in ('fans out itself', 'their reads count as viewed', 'never fewer than 2', 'Each helper\n**reads'):
+        assert gone not in skill, gone
     assert 'Agent(qa-video-runner)' not in skill
     for f in ('workflows/process.md', 'workflows/gems.md'):
         assert 'Agent(qa-video-runner)' not in (root/f).read_text(), f
@@ -165,8 +180,9 @@ def test_qa_pipeline_agent_contract():
     assert '\nmodel: ' + roles['roles']['claude.subagent.cheap']['alias'] + '\n' in agent
     assert '\ntools: Bash, Write, Read\n' in agent
     assert 'never read images' not in agent.lower()
-    assert 'Read the images yourself' in agent and 'a lead, never evidence' in agent
-    assert 'never claim coverage you did not view' in agent
+    assert 'Read the images yourself' not in agent and 'a lead, never evidence' not in agent
+    assert 'Gatherers read the images' in agent and 'NEEDS_READERS' in agent
+    assert 'never claim coverage nobody read' in agent
     for text in [agent] + [(root/f).read_text() for f in ('workflows/process.md', 'workflows/gems.md')]:
         assert 'STILLS_READY' in text and '--presort' in text, 'debrief default is helper-free; pre-sort is opt-in'
     for text in [agent] + [(root/f).read_text() for f in ('SKILL.md', 'workflows/process.md')]:
@@ -195,3 +211,78 @@ def test_qa_pipeline_agent_contract():
             assert (root/'scripts'/name).is_file(), (f, name)
         for name in set(re.findall(r'(?<![\w-]/)references/([\w.-]+\.md)', text)):
             assert (root/'references'/name).is_file(), (f, name)
+
+
+def test_extract_aligns_a_late_audio_track_to_the_frame_timeline(media, tmp_path):
+    # w70 2026-11-12: a real recording's audio started 0.159 s after the video; extract dropped that
+    # lead-in, so every transcript time sat early against frames.tsv pts_s.
+    _, work, env = media
+    video = tmp_path / 'late audio.mp4'
+    subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
+                    '-f', 'lavfi', '-i', 'testsrc=size=160x90:rate=10:duration=3',
+                    '-itsoffset', '0.5', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=16000:duration=2',
+                    '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac',
+                    str(video)], check=True)
+    result = subprocess.run(['bash', str(SCRIPT), str(video), str(work)], env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    offset = int((work / 'audio-offset-ms.txt').read_text())
+    assert 400 <= offset <= 600, offset
+    import wave, array
+    with wave.open(str(work / 'audio.wav')) as wav:
+        rate = wav.getframerate()
+        samples = array.array('h', wav.readframes(wav.getnframes()))
+    peak = lambda a, b: max(abs(s) for s in samples[int(a * rate):int(b * rate)])
+    assert peak(0.0, 0.35) < 200, 'the lead-in must be silence, not shifted speech'
+    assert peak(0.65, 1.0) > 2000, 'the tone starts where the video says it does'
+
+
+def test_plan_prints_the_selected_modes_route():
+    # R70-5: `plan ... debrief|review` printed the QA sweep (coverage, scene cues, 10 fps dense).
+    plan = lambda mode: subprocess.run(['bash', str(SCRIPT.parent/'default.sh'), 'plan', '/f/clip.mp4', '/f/work', mode],
+                                       capture_output=True, text=True)
+    qa = plan('qa')
+    assert qa.returncode == 0 and 'dense-windows.sh' in qa.stdout and 'coverage.sh' in qa.stdout
+    assert 'debrief.py' not in qa.stdout
+    for mode in ('debrief', 'review'):
+        out = plan(mode)
+        assert out.returncode == 0, out.stderr
+        assert f'debrief.py" "/f/clip.mp4" --workdir "/f/work" --mode {mode}' in out.stdout
+        assert '<=12 moments' in out.stdout and 'moment-*.jpg' in out.stdout
+        for sweep in ('coverage.sh', 'scene-cues.sh', 'dense-windows.sh'):
+            assert sweep not in out.stdout, (mode, sweep)
+    for out in (qa, plan('debrief')):
+        assert 'gemini-3.8-flash' in out.stdout and 'TOOLING FAILURE' in out.stdout
+        assert '300 s per gatherer call' in out.stdout and 'PARTIAL' in out.stdout
+        assert 'timeoutMs:300000' in out.stdout and 'task_cancel' in out.stdout and 't3_thread_wait' in out.stdout
+        assert 'A fully stalled stage still yields PARTIAL at the deadline' in out.stdout
+    assert plan('gems').returncode == 2
+
+
+def test_exhaustive_debrief_review_never_ends_in_a_self_reader():
+    # R70-1: process.md sends rigorous/silent debrief/review to gems.md § Visual-first exhaustive, whose
+    # no-dispatch fallback read every frame itself.
+    root = SCRIPT.parents[1]
+    gems = (root/'workflows/gems.md').read_text()
+    head = gems.split('## Visual-first exhaustive')[0]
+    for term in ('Debrief/review, including the exhaustive override', 'never Claude helpers or the runner',
+                 'visual-batch.py', 'NEEDS_READERS', 'TOOLING FAILURE', 'It never reads the\nframes itself',
+                 '**pure gems only**'):
+        assert term in head, term
+    exhaustive = gems.split('## Visual-first exhaustive')[1].split('## Steps')[0]
+    assert 'debrief/review seats\n   run `visual-batch.py`, else NEEDS_READERS / TOOLING FAILURE' in exhaustive
+    assert 'gems only: or read them in the no-dispatch fallback' in exhaustive
+    skill = (root/'SKILL.md').read_text()
+    assert 'Wait budgets' in skill and 'never block the QA on one slow child' in skill
+    assert 'not a\nguarantee of reader accuracy' in skill and 'not a misread' not in skill
+
+
+def test_wait_budget_is_a_bounded_wait_not_a_wake():
+    # R70B-1: "cancel on the first wake past the deadline" gave a stalled stage no wake at all.
+    skill = (SCRIPT.parents[1]/'SKILL.md').read_text()
+    budget = skill.split('**Wait budgets')[1].split('**The judge judges.**')[0]
+    for term in ('bounded wait that always\nreturns', '`mode: "wait"`, `timeoutMs: 300000`', '`task_cancel`',
+                 '`t3_thread_wait({threadId: <childThreadId>, timeoutMs: <remaining>})`', 'earliest of the call, stage and parent deadlines',
+                 '`Monitor` with `timeout_ms`', 'clamps every call to its absolute deadline',
+                 'A fully stalled stage still produces PARTIAL at its deadline', 'NOT DETERMINED', 'dated addendum'):
+        assert term in budget, term
+    assert 'first wake past' not in skill

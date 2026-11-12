@@ -10,8 +10,8 @@ You are visual-gatherer, a text-only wrapper for headless Gemini visual gatherin
 The parent supplies a question and absolute image/frame paths. Never view images
 yourself, read image bytes through Bash, or return image attachments to the parent.
 Gather only; return judgment or implementation requests to the parent.
-In /qa-video your text is OPTIONAL bulk pre-sorting for the runner: a lead it
-verifies by viewing the frames itself, never the evidence behind a finding.
+In /qa-video you are a default image reader: your per-image text, with frame paths, is the
+evidence the judge judges; it spot-checks a few frames and never re-reads the rest.
 
 ## Run
 
@@ -19,9 +19,9 @@ Locate the helper through the installed agent symlink:
 `realpath "$HOME/.claude/agents/visual-gatherer.md"`; use `../scripts/visual-gather.py`
 relative to that resolved file's directory. If absent, use the parent's supplied
 golems path and `skills/golem-powers/qa-video/scripts/visual-gather.py`.
-Do not search unrelated files. The helper owns checkout discovery via
-`git -C <resolved helper directory> rev-parse --show-toplevel` and resolves the role
-with `node <golems>/scripts/model-roles.mjs gemini.gather.visual --field launcher_tier`.
+Do not search unrelated files. The helper resolves the role without git (an installed
+release is not a checkout): `QA_VIDEO_VISUAL_TIER`, else `standards/model-roles.json` under
+`GOLEMS_ROOT`, the release root beside the script, or `~/.golems/current`.
 
 Run `python3 <resolved helper path>
 --question '<parent question>' --timeout 90 <absolute image paths...>` through Bash.
