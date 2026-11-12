@@ -37,7 +37,7 @@ test("generated registry denies global and definition aliases despite project al
 test("stale runtime registry cannot restore forbidden global or project aliases", () => {
   expect(runtimeMcpConfig(registry(), "demo")).toEqual({ mcpServers: { safe: servers.safe } });
 });
-for (const deniedOnly of [false, true]) for (const sink of ["claude", "codex", "cursor", "gemini"]) {
+for (const deniedOnly of [false, true]) for (const sink of ["claude", "codex", "gemini"]) {
   test(`${sink} dispatch emits only allowed registrations (denied-only=${deniedOnly})`, () => {
     const input = deniedOnly ? { cmuxlayer: bad.cmuxlayer } : servers;
     const expected = deniedOnly ? [] : ["safe"];

@@ -219,13 +219,21 @@ JSON
     [[ "$output" == *"CODEX_PWD=$WT"* ]] || false
 }
 
-@test "testrepoCursor and testrepoGemini -w bootstrap the worktree too" {
+@test "testrepoCursor -w refuses the retired CLI without bootstrapping" {
     touch "$WT/package-lock.json"
-    launch 'testrepoCursor -s -w "$WT" task; testrepoGemini -s -w "$WT" task'
+    launch 'testrepoCursor -s -w "$WT" task'
+    [ "$status" -ne 0 ]
+    [ ! -s "$CALLS" ]
+    [[ "$output" == *"T3 delegate_task"* ]] || false
+    [[ "$output" != *"CURSOR_PWD="* ]] || false
+    [[ "$output" != *"[worktree-bootstrap]"* ]] || false
+}
+
+@test "testrepoGemini -w bootstraps the worktree too" {
+    touch "$WT/package-lock.json"
+    launch 'testrepoGemini -s -w "$WT" task'
     [ "$status" -eq 0 ]
     [ "$(sed -n 1p "$CALLS")" = "npm ci --prefer-offline @ $WT" ]
-    [ "$(sed -n 2p "$CALLS")" = "npm ci --prefer-offline @ $WT" ]
-    [[ "$output" == *"CURSOR_PWD=$WT"* ]] || false
     [[ "$output" == *"AGY_PWD=$WT"* ]] || false
 }
 

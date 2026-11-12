@@ -594,6 +594,33 @@
     "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
   },
   {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "launcher-025",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
+  },
+  {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "launcher-026",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
+  },
+  {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "launcher-027",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
+  },
+  {
     "authority": "golems#671",
     "candidate_sha256": {
       "darwin": "51940fa04e213e9cbc0dfb9c0efe9935962416372fc3fdce125cf3bf679246d1",
@@ -1233,6 +1260,42 @@
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "r2-launch-cursor-lead",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
+  },
+  {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "r2-launch-cursor-lead-s",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
+  },
+  {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "r2-launch-cursor-persona",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
+  },
+  {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "r2-launch-cursor-worker-s",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
+  },
+  {
     "authority": "golems#471",
     "candidate_sha256": {
       "darwin": "4b9f75c6077a2555fb62c87f426443e3be551116c6f5eb564c9e718eb7a74ad3",
@@ -1285,6 +1348,33 @@
     },
     "case": "r2-launch-persona-codex-lead",
     "reason": "Prompted or worker Codex launch without explicit effort is intentionally refused before setup"
+  },
+  {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "r2-launch-persona-cursor-continue",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
+  },
+  {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "r2-launch-persona-cursor-lead",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
+  },
+  {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "r2-launch-persona-cursor-worker-env",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
   },
   {
     "authority": "golems#471",
@@ -2806,6 +2896,15 @@
     },
     "case": "topup-r2-guardian-xargs-reset-hard",
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+  },
+  {
+    "authority": "golems#1225",
+    "candidate_sha256": {
+      "darwin": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913",
+      "linux": "dd0b67b2db2c507aa1bec9689b9514ff01625e1848162c5b086d57fd16065913"
+    },
+    "case": "topup-r2-launcher-cursor-worker-positional",
+    "reason": "Cursor CLI launcher retired; refuses with the T3 delegate_task route (Etan: remove autocursor as cli option)"
   },
   {
     "authority": "golems#1048",
