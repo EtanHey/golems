@@ -31,6 +31,40 @@ Requires /opt/homebrew/bin/node, authenticated gh, and an ssh host configured in
 Run offline checks with
 `node --test scripts/fleet/ratchet-inbox-relay.test.mjs`.
 
+## Worktree sweeper and disk guard
+
+Both run hourly via the adjacent launchd templates. The separate guarded hook
+installer integration installs and drift-checks these jobs; do not copy configs
+from a checkout. Neither job needs an LLM or a scheduled agent session.
+
+The existing relay config may additionally contain `repoRoots` (absolute paths)
+and `diskThresholdGiB` (hostname to positive GiB threshold). Defaults scan
+~/Gits and ~/.t3/worktrees; volumes below 1000 GiB default to 40 GiB, larger
+volumes to 60 GiB. Free space uses statfs bfree, excluding purgeable estimates.
+Largest immediate child directories are reported with deltas from the last
+successful scan; a first observation has UNKNOWN delta. du errors fail the run.
+
+Sweeping fetches origin before eligibility checks, protects root/locked trees,
+hidden index flags, detached trees, missing upstream/default refs, dirty files,
+unpushed commits and ignored data outside the five named output directories.
+Only ignored, entirely untracked output directories are pruned after 12 idle
+hours; clean pushed merged worktrees can be removed without the idle delay.
+No force removal. Freshness is a full recursive mtime scan without symlink
+traversal. Git state is rechecked immediately before deletion. This does not
+fence an external process starting a write after that check: rollout requires
+the lead to assess this remaining concurrency limitation before enabling.
+Untracked ignored build contents are treated as regenerable by contract.
+
+State, locks, logs and default OUTBOX live under ~/.golems/fleet. Missing config
+still collects alerts into OUTBOX and returns exit 1. Pending posts retry until
+SSH succeeds (ambiguous delivery can duplicate). Self-health failures are counted
+and logged. Locks older than 90 minutes are recovered and reported in the next post.
+The first successful delivery after three or more consecutive failures reports
+the failed-run count once. Replacement locks are preserved by inode checks. OUTBOX is an audit copy, not a separate queue.
+
+Offline verification: `node --test scripts/fleet/cleanup.test.mjs scripts/fleet/ratchet-inbox-relay.test.mjs`.
+Fixtures use real local repositories under ignored docs.local and remove only
+their own test directories. No production sweep/install is part of this test.
 ## Worktree closeout
 
 Run `node scripts/fleet/worktree-closeout.mjs <worktree-path> --json` to close a
