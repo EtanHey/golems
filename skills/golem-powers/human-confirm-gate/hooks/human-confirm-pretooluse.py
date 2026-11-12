@@ -76,6 +76,9 @@ def evaluate(payload, home):
     from commands import operations, shell
     from tokens import authorize, own_lease_scope
     with shell.policy_evaluation_deadline(8):
+        from branch_cleanup import allowed
+        if allowed(args['command'], payload['cwd']):
+            return
         ops = operations(args['command'], payload['cwd'])
         if ops and not authorize(payload, ops, home):
             allowed, reason = own_lease_scope(payload, ops)

@@ -84,12 +84,29 @@ def block(reason):
     sys.exit(2)
 
 
+def _verified_branch_cleanup(command):
+    # A default-checkout lead may delete a separately verified merged branch.
+    # Resolve only this hook's own release tree, never a main-checkout import.
+    import importlib.util
+    from pathlib import Path
+    try:
+        source = Path(__file__).resolve().parents[2] / 'skills/golem-powers/_shared/branch_cleanup.py'
+        spec = importlib.util.spec_from_file_location('_branch_cleanup', source)
+        policy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(policy)
+        return policy.allowed(command, os.getcwd())
+    except Exception:
+        pass  # Retain the existing denial if the verifier cannot load.
+    return False
+
+
 def check_bash(command):
     """Check Bash commands for blocked patterns."""
     stripped = command.strip()
 
     # 1. git push — block on main/master only (feature branches are autonomous)
     if re.match(r"git\s+push\b", stripped) and not AUTONOMOUS and _on_protected_branch():
+        if _verified_branch_cleanup(command): return
         block(
             "git push blocked on main/master — need explicit permission or AUTONOMOUS=1. "
             "Feature branches are allowed automatically."

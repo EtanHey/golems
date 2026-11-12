@@ -292,6 +292,25 @@ def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in 
             args[0] == 'workflow' and 'disable' in words):
         if any('$' in a or '`' in a for a in args): raise ValueError('dynamic settings scope')
         return [dict(class_='settings', repo=cwd, target=args[:2])]
+    if args[:2] in (['pr', 'close'], ['pr', 'merge']):
+        i = 2
+        while i < len(args):
+            arg = args[i]; i += 1
+            if arg == '--': break
+            if arg in ('--body', '-b', '--body-file', '-F', '--subject', '-t',
+                       '--repo', '-R', '--match-head-commit', '--author-email'):
+                i += 1
+            elif arg.split('=', 1)[0] == '--delete-branch':
+                if '=' not in arg or arg.split('=', 1)[1] in ('true', 'True', 'TRUE', '1', 't', 'T'):
+                    return [dict(class_='delete', repo=cwd, refs=args)]
+            elif arg.startswith('-') and not arg.startswith('--'):
+                cluster = arg[1:]
+                while cluster:
+                    char, cluster = cluster[0], cluster[1:]
+                    if char in 'bFtR':
+                        if not cluster: i += 1
+                        break
+                    if char == 'd': return [dict(class_='delete', repo=cwd, refs=args)]
     if args[0] != 'api': return []
     method, positional, fields, source = parse_api(args[1:])
     # gh defaults to POST once it has parameters or a body file.

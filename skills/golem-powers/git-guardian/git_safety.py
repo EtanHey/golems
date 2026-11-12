@@ -221,6 +221,8 @@ def _executed_payloads(command: str, active: str) -> list[str]:
     return _payloads._executed_payloads(command, active, api=globals())
 
 def dangerous_shell_reason(command: str, *, cwd: str | None = None, env=None, _depth: int = 0):
+    if _depth == 0 and _pkg.branch_cleanup.allowed(command, cwd or os.getcwd()):
+        return None
     try:
         results = _policy_readings(command,
             lambda: _shell.dangerous_shell_reason(command, cwd=cwd, env=env, _depth=_depth, api=globals()),
