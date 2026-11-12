@@ -168,7 +168,7 @@ function context(o, sha) {
   const wrapped = entries.filter((e) => e.kind === "wrapped-external").map((e) => ({ ...e, cmd: expand(e.command) }));
   // A pinned Codex gate (human-confirm) is refused, never registered, until its
   // anchor pin carries an owner fingerprint at the selected sha, as on Claude.
-  const codexRefused = (manifest.codex_hosts?.[o.host] ?? []).filter((e) => e.requiresPin && !pinReady(o, sha, e)).map((e) => e.gate);
+  const codexRefused = (manifest.codex_hosts?.[manifestHost] ?? []).filter((e) => e.requiresPin && !pinReady(o, sha, e)).map((e) => e.gate);
   // Without an acceptable interpreter (status only), the Codex config probe would
   // run an unvetted python3 and could crash --status; report it unchecked instead.
   const codex = hookPython ? planCodexHooks({ manifest, host: manifestHost, live, python, refused: codexRefused,
