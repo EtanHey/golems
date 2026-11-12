@@ -15,8 +15,9 @@ if [ "${1:-}" = "plan" ]; then
 Requesting seat (lead, or whoever got the request): do no media work. Dispatch ONE Opus judge child and wait:
   T3: delegate_task({title: "qa-video judge", role: "test", target: {providerInstanceId: "claudeAgent", model: "$JUDGE_MODEL", options: {fastMode: false}}, task: "Read and follow $WORKDIR/briefs/qa-judge.md"})
   Claude terminal seat: Agent with that model and brief. Never t3_thread_launch/create_threads for QA.
-  Wait budget for the judge: the run budget, default max(600, 24 x video minutes) s + 300 s synthesis. On expiry report
-  PARTIAL from the judge's progress.txt and findings so far; never block on it.
+  Wait for the judge with ONE bounded wait that always returns: t3_thread_wait({threadId: <childThreadId>, timeoutMs:
+  <judge budget left>}); budget = max(600, 24 x video minutes) s + 300 s synthesis. On timeout report PARTIAL from the
+  judge's progress.txt and findings so far; a late judge result becomes a dated addendum.
 Judge (you, if you were dispatched) — run these scripts in your own shell, polling each logs/<step>.exit for 0:
 EOF
   if [ "$MODE" = qa ]; then
@@ -43,8 +44,13 @@ EOF
      delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "antigravity", model: "gemini-3.8-flash", options: {thinking_level: "high"}}, task: "Read and follow $WORKDIR/briefs/gather-bN.md"})
   2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"$([ "$MODE" = qa ] || printf ' "" %s-gather "%s"/moment-*.jpg' "$MODE" "$WORKDIR")   (visual-batch.py, headless Gemini via agy)
   3. TOOLING FAILURE with the raw error path; unread windows stay NOT DETERMINED. Never read the frames instead.
-Wait budgets: 300 s per gatherer call; the gather stage gets max(600, 24 x video minutes) s. On expiry, cancel stragglers,
-  name their windows NOT DETERMINED, continue with what arrived and mark the report PARTIAL.
+Wait budgets, enforced by bounded waits (never by a completion wake): 300 s per gatherer call, the gather stage gets
+  max(600, 24 x video minutes) s, each timeout = the earliest of call/stage/parent deadline.
+  T3: delegate_task mode:"wait", timeoutMs:300000; on timeout task_cancel that child. Parallel: dispatch async, then one
+  t3_thread_wait({threadId: <childThreadId>, timeoutMs: <remaining>}) per child; task_cancel any child still running at
+  the stage deadline. Scripts: visual-batch.py clamps every call to its absolute deadline.
+  A fully stalled stage still yields PARTIAL at the deadline: name the missing windows NOT DETERMINED, continue with what
+  arrived, mark the report PARTIAL.
 Judge the gatherer text; spot-check <=2 full-size frames per reported finding (inspected.sh 'spot: ...' <id>).
 Too small: crop.sh or re-densify, then gather again. Missing measurement script: NOT DETERMINED + file a row.
 EOF

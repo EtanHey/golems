@@ -253,6 +253,8 @@ def test_plan_prints_the_selected_modes_route():
     for out in (qa, plan('debrief')):
         assert 'gemini-3.8-flash' in out.stdout and 'TOOLING FAILURE' in out.stdout
         assert '300 s per gatherer call' in out.stdout and 'PARTIAL' in out.stdout
+        assert 'timeoutMs:300000' in out.stdout and 'task_cancel' in out.stdout and 't3_thread_wait' in out.stdout
+        assert 'A fully stalled stage still yields PARTIAL at the deadline' in out.stdout
     assert plan('gems').returncode == 2
 
 
@@ -272,3 +274,15 @@ def test_exhaustive_debrief_review_never_ends_in_a_self_reader():
     skill = (root/'SKILL.md').read_text()
     assert 'Wait budgets' in skill and 'never block the QA on one slow child' in skill
     assert 'not a\nguarantee of reader accuracy' in skill and 'not a misread' not in skill
+
+
+def test_wait_budget_is_a_bounded_wait_not_a_wake():
+    # R70B-1: "cancel on the first wake past the deadline" gave a stalled stage no wake at all.
+    skill = (SCRIPT.parents[1]/'SKILL.md').read_text()
+    budget = skill.split('**Wait budgets')[1].split('**The judge judges.**')[0]
+    for term in ('bounded wait that always\nreturns', '`mode: "wait"`, `timeoutMs: 300000`', '`task_cancel`',
+                 '`t3_thread_wait({threadId: <childThreadId>, timeoutMs: <remaining>})`', 'earliest of the call, stage and parent deadlines',
+                 '`Monitor` with `timeout_ms`', 'clamps every call to its absolute deadline',
+                 'A fully stalled stage still produces PARTIAL at its deadline', 'NOT DETERMINED', 'dated addendum'):
+        assert term in budget, term
+    assert 'first wake past' not in skill

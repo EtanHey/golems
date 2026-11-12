@@ -144,11 +144,20 @@ and sends every batch to a gatherer. Gatherer order (the /agent-routing 2026-11-
 **Wait budgets — never block the QA on one slow child.** Each gatherer call has 300 s; the gather stage
 has the run budget, max(600, 24 × video minutes) s; the requesting seat waits for the judge that budget
 plus 300 s for synthesis. Why: a 48-frame Gemini pass took 16.8 min (≈21 s/frame) and real sheets needed
-more than 120 s, so 300 s gives a 6-frame call ≈2.5× headroom. `visual-batch.py` enforces its own
-(`--timeout`, `--budget-seconds`); for `delegate_task` batches the judge notes each dispatch time and, on
-the first wake past the stage deadline, cancels the stragglers (`task_cancel`). On expiry: name the missing
-windows NOT DETERMINED, continue with what arrived, and mark the report PARTIAL; a late result becomes a
-dated addendum, never a silent merge.
+more than 120 s, so 300 s gives a 6-frame call ≈2.5× headroom. Every wait is a **bounded wait that always
+returns**; never wait for a completion wake. Each timeout is the earliest of the call, stage and parent deadlines:
+- **T3 judge:** dispatch a gatherer with `delegate_task` `mode: "wait"`, `timeoutMs: 300000`. A timeout
+  returns without cancelling, so the judge calls `task_cancel` on that child, records its windows NOT
+  DETERMINED and continues. For parallel gatherers: dispatch them async, then one bounded
+  `t3_thread_wait({threadId: <childThreadId>, timeoutMs: <remaining>})` per child in turn; any child still
+  running at the stage deadline gets `task_cancel`.
+- **T3 requester:** one bounded `t3_thread_wait` on the judge's `childThreadId` (`timeoutMs` = the judge
+  budget left); on timeout it reports PARTIAL from the judge's `progress.txt` and findings so far.
+- **Claude terminal:** a background `Agent` plus `Monitor` with `timeout_ms`, or the gather script's own bound.
+- **Scripts:** `visual-batch.py` clamps every call to its absolute deadline (`--timeout`, `--budget-seconds`).
+A fully stalled stage still produces PARTIAL at its deadline, because the bounded wait returns. On expiry:
+name the missing windows NOT DETERMINED, continue with what arrived, and mark the report PARTIAL. A late
+result becomes a dated addendum, never a silent merge.
 
 **The judge judges.** Gatherer text with frame refs is the evidence the judge judges, not a verdict
 (Gemini never forms a verdict): the judge joins it with `frames.tsv` and the transcript, connects
