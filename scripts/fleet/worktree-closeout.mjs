@@ -2,6 +2,7 @@
 // Close only registered linked worktrees. No force removal, and no network fetch.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 const OUTPUTS = ['.build.noindex','node_modules','.test-tmp','dist','.build','target','__pycache__','.venv'];
 const git = (cwd,...args) => execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
@@ -21,12 +22,14 @@ function context(input) {
  if(!entry) throw Error('Not a registered worktree. Run git worktree list.');
  return {p,common,all,entry,primary:all[0].path};
 }
-function state(w) {
- const dirty=!!git(w.path,'status','--porcelain','--untracked-files=all');
+export function worktreeStatus(worktreePath) {
+ const w={path:worktreePath};
+ const hidden=git(w.path,'ls-files','-v').split('\n').some(l=>/^[a-zS]/.test(l));
+ const dirty=hidden||!!git(w.path,'status','--porcelain','--untracked-files=all');
  const unpushed=!!git(w.path,'rev-list','HEAD','--not','--remotes');
  let merged=false;
  try { const ref=git(w.path,'symbolic-ref','refs/remotes/origin/HEAD'); git(w.path,'merge-base','--is-ancestor','HEAD',ref); merged=true; } catch {}
- return {dirty,unpushed,state:dirty?'dirty':unpushed?'unpushed':merged?'merged':'pushed-clean',merged};
+ return {head:git(w.path,'rev-parse','HEAD'),dirty,unpushed,state:dirty?'dirty':unpushed?'unpushed':merged?'merged':'pushed-clean',merged};
 }
 function clean(p) {
  const config=path.join(p,'.golems-closeout.json'); const extra=fs.existsSync(config)?JSON.parse(fs.readFileSync(config,'utf8')).outputs||[]:[];
@@ -53,13 +56,13 @@ function main() {
  const keeps=fs.existsSync(ledger)?JSON.parse(fs.readFileSync(ledger,'utf8')):{};
  const emit=x=>console.log(json?JSON.stringify(x):JSON.stringify(x,null,2));
  if(triage) {
-  const rows=c.all.map(w=>{if(!fs.existsSync(w.path))return {...w,state:'missing',flagged:true}; const s=state(w),head=git(w.path,'rev-parse','HEAD'),lastCommit=Number(git(w.path,'show','-s','--format=%ct','HEAD'))*1000,lastMtime=modified(w.path); const kept=keeps[w.path]; const reason=kept?.head===head&&kept?.status===git(w.path,'status','--porcelain','--untracked-files=all')?kept.reason:null;
+  const rows=c.all.map(w=>{if(!fs.existsSync(w.path))return {...w,state:'missing',flagged:true}; const s=worktreeStatus(w.path),head=git(w.path,'rev-parse','HEAD'),lastCommit=Number(git(w.path,'show','-s','--format=%ct','HEAD'))*1000,lastMtime=modified(w.path); const kept=keeps[w.path]; const reason=kept?.head===head&&kept?.status===git(w.path,'status','--porcelain','--untracked-files=all')?kept.reason:null;
    return {...w,...s,lastCommit:new Date(lastCommit).toISOString(),lastMtime:new Date(lastMtime).toISOString(),bytes:bytes(w.path),keepReason:reason,flagged:(s.dirty||s.unpushed)&&Date.now()-Math.max(lastCommit,lastMtime)>48*3600000&&!reason,actions:['--bundle <path>','<path> --keep "reason"']};});
   emit(rows); process.exitCode=rows.some(x=>x.flagged)?3:0; return;
  }
  if(c.p===fs.realpathSync(c.primary)||c.p===path.dirname(c.common))throw Error('Root checkout refused. Close a linked worktree instead.');
  if(c.entry.locked)throw Error('Worktree is locked. Resolve its lock explicitly before closeout.');
- const s=state(c.entry); let archive=null;
+ const s=worktreeStatus(c.entry.path); let archive=null;
  if((s.dirty||s.unpushed)&&!bundle&&!keep)throw Error(`${s.dirty?'Dirty':'Unpushed'} worktree refused. Commit and push, use --bundle <path>, or --keep "reason".`);
  if(bundle) {
   const parent=path.join(c.primary,'docs.local','worktree-archive');
@@ -80,4 +83,4 @@ function main() {
  if(c.entry.branch&&!s.unpushed) { try {git(c.primary,'branch','-d',c.entry.branch);branchAction='deleted';reason='merged';} catch {reason='fully pushed; git branch -d requires merge into its upstream; branch retained without force';} }
  emit({path:c.p,bytesFreed:bytesFreed+remaining,branch:c.entry.branch,branchAction,reason,archive});
 }
-try {main();} catch(e) {console.error(`closeout: ${e.message}`);process.exitCode=1;}
+if(process.argv[1]===fileURLToPath(import.meta.url)) { try {main();} catch(e) {console.error(`closeout: ${e.message}`);process.exitCode=1;} }
