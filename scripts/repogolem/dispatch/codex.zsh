@@ -90,10 +90,6 @@ _golem_codex_args_config_match() {
   return 1
 }
 
-_golem_codex_security_model() {
-  _golem_codex_role_model codex.security
-}
-
 # True when a `-c` key would toggle a feature or touch the connectors. Codex
 # 0.160.1 accepts `connectors` as an alias of the `apps` feature; keys keep
 # their quotes as literal characters, so those are stripped before matching.
@@ -141,16 +137,14 @@ _golem_jq_drop_browser_tools() {
 # Resolves a Codex role from standards/model-roles.json: the root is
 # GOLEMS_MODEL_ROLES_ROOT, else the registry's golems project. No fallback pin.
 _golem_codex_role_model() {
-  local role="$1"
-  local roles_root="${GOLEMS_MODEL_ROLES_ROOT:-}" model=""
+  local role="$1" roles_root="${GOLEMS_MODEL_ROLES_ROOT:-}" model=""
   if [[ -z "$roles_root" ]]; then
     roles_root=$(jq -r '.projects.golems.path // empty' "${RALPH_REGISTRY_FILE:-$HOME/.config/ralphtools/registry.json}" 2>/dev/null)
   fi
   # The generated registry stores paths as `~/Gits/<repo>`.
   roles_root="${roles_root/#\~/$HOME}"
   [[ -n "$roles_root" && -f "$roles_root/standards/model-roles.json" ]] || return 1
-  model=$(jq -r --arg role "$role" '.roles[$role] | select(.status != "candidate") | .model | select(type == "string" and length > 0)' \
-    "$roles_root/standards/model-roles.json" 2>/dev/null)
+  model=$(jq -r --arg role "$role" '.roles[$role] | select(.status != "candidate") | .model | select(type == "string" and length > 0)' "$roles_root/standards/model-roles.json" 2>/dev/null)
   [[ -n "$model" ]] || return 1
   print -r -- "$model"
 }
@@ -258,7 +252,7 @@ _golem_launch_codex() {
   local model="${_flag_model:-}"
   # A scan seat runs on the codex.security role, resolved at launch: no pin here.
   if $_flag_codex_scan && [[ -z "$model" ]]; then
-    if ! model=$(_golem_codex_security_model); then
+    if ! model=$(_golem_codex_role_model codex.security); then
       print -u2 -- "repoGolem: --scan cannot resolve the codex.security model from standards/model-roles.json (set GOLEMS_MODEL_ROLES_ROOT or register the golems project, or pass -m explicitly)."
       return 2
     fi
