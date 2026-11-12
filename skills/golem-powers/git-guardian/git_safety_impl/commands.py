@@ -326,10 +326,8 @@ def _dangerous_non_rm_in_words(
     if parsed is None:
         return None
     subcommand, arguments = parsed
-    flag_args = arguments[:arguments.index("--")] if "--" in arguments else arguments
-    if subcommand == "branch" and any(a in {"--delete", "-d", "-D"} or
-            re.fullmatch(r"-[A-Za-z]*[dD][A-Za-z]*", a) for a in flag_args):
-        return "Dangerous command: branch deletion requires verified cleanup or confirmation"
+    if subcommand == "branch" and api['_pkg'].branch_cleanup.forced_local_delete(arguments):
+        return "Dangerous command: local branch deletion requires verified cleanup or confirmation"
     if subcommand == "push" and _push_deletes_remote_refs(arguments):
         return "Dangerous command: remote reference deletion requires explicit confirmation"
     short_force = any(

@@ -127,7 +127,7 @@ def classify_tool(tool_name, tool_input):
             size_reason = policy_command_size_reason(raw_command)
             if size_reason:
                 return "RED", size_reason
-            guardian_reason = dangerous_shell_reason(raw_command)
+            guardian_reason = dangerous_shell_reason(raw_command, cwd=tool_input.get("cwd", os.getcwd()))
             command = shell_text_without_heredoc_bodies(raw_command)
         except PolicyEvaluationDeadlineExceeded:
             raise
@@ -182,7 +182,7 @@ def classify_tool(tool_name, tool_input):
 def block(reason):
     cancel_policy_evaluation_deadline()
     operation = 'a destructive operation'
-    for needle, name in [('push --force', 'force-push'), ('reset --hard', 'reset --hard'),
+    for needle, name in [('local branch', 'deleting a local branch'), ('push --force', 'force-push'), ('reset --hard', 'reset --hard'),
                          ('clean', 'clean'), ('branch', 'deleting a branch'),
                          ('reference deletion', 'deleting a remote branch'),
                          ('restore', 'discarding changes'), ('checkout', 'discarding changes'),
@@ -218,6 +218,18 @@ def _main_under_deadline():
 
     tool_name = hook_input.get("tool_name", "")
     tool_input = hook_input.get("tool_input", {})
+    if tool_name == "Bash" and isinstance(tool_input, dict):
+        tool_input = {**tool_input, "cwd": hook_input.get("cwd", tool_input.get("cwd", os.getcwd()))}
+        # Literal cleanup may perform bounded network reads. Leave ordinary
+        # parsing at 3 s; the installed watchdog/host budgets are 9/10 s.
+        try:
+            candidate = _git_safety._pkg.branch_cleanup._plan(tool_input.get("command", ""), tool_input["cwd"])
+        except (ValueError, TypeError, AttributeError):
+            candidate = None
+        if candidate:
+            import signal
+            signal.setitimer(signal.ITIMER_REAL, 8)
+
 
     # Workers retain their historical policy exemption, but oversized input
     # must never skip the parser budget boundary that prevents hook timeout.

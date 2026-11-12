@@ -293,16 +293,20 @@ def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in 
         if any('$' in a or '`' in a for a in args): raise ValueError('dynamic settings scope')
         return [dict(class_='settings', repo=cwd, target=args[:2])]
     if args[:2] in (['pr', 'close'], ['pr', 'merge']):
-        i = 2
+        i, deletes, match_head = 2, False, None
         while i < len(args):
             arg = args[i]; i += 1
             if arg == '--': break
-            if arg in ('--body', '-b', '--body-file', '-F', '--subject', '-t',
-                       '--repo', '-R', '--match-head-commit', '--author-email'):
+            if arg == '--match-head-commit':
+                match_head = args[i] if i < len(args) else None; i += 1
+            elif arg.startswith('--match-head-commit='):
+                match_head = arg.split('=', 1)[1]
+            elif arg in ('--body', '-b', '--body-file', '-F', '--subject', '-t',
+                       '--repo', '-R', '--author-email'):
                 i += 1
             elif arg.split('=', 1)[0] == '--delete-branch':
                 if '=' not in arg or arg.split('=', 1)[1] in ('true', 'True', 'TRUE', '1', 't', 'T'):
-                    return [dict(class_='delete', repo=cwd, refs=args)]
+                    deletes = True
             elif arg.startswith('-') and not arg.startswith('--'):
                 cluster = arg[1:]
                 while cluster:
@@ -310,7 +314,9 @@ def operations(args, cwd, literal_names=frozenset(), splits=lambda word: '$' in 
                     if char in 'bFtR':
                         if not cluster: i += 1
                         break
-                    if char == 'd': return [dict(class_='delete', repo=cwd, refs=args)]
+                    if char == 'd': deletes = True
+        if deletes and not (args[1] == 'merge' and match_head and re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', match_head)):
+            return [dict(class_='delete', repo=cwd, refs=args)]
     if args[0] != 'api': return []
     method, positional, fields, source = parse_api(args[1:])
     # gh defaults to POST once it has parameters or a body file.

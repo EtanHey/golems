@@ -15,6 +15,7 @@ import forwarding
 import whole_command
 import gh_policy
 import git_config
+from branch_cleanup import forced_local_delete
 
 
 def literal(word):
@@ -349,8 +350,8 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                 for op in pushes:
                     if digest is not None: op['push_config_sha256'] = digest
                 result += pushes
-            elif sub == 'branch' and any(a in ('-d', '-D', '--delete') or re.fullmatch(r'-[A-Za-z]*[dD][A-Za-z]*', a) for a in (tail[:tail.index('--')] if '--' in tail else tail)):
-                result.append(dict(class_='delete', repo=repo, refs=tail))
+            elif sub == 'branch' and forced_local_delete(tail):
+                result.append(dict(class_='delete', repo=repo, refs=tail, local=True))
             elif sub in ('filter-repo', 'filter-branch', 'replace'):
                 result.append(dict(class_='rewrite', repo=repo, refs=tail))
             elif sub == 'rebase':

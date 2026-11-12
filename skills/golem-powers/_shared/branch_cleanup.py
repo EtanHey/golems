@@ -20,6 +20,30 @@ def _run(argv, cwd):
     return result.stdout.strip()
 
 
+def forced_local_delete(args):
+    """Only force-delete flags, honoring value options and end-of-options.
+
+    Non-force deletion keeps Git's own merged-work refusal, including compounds.
+    """
+    delete = force = False
+    values = {'--sort', '--format', '--contains', '--no-contains', '--merged',
+              '--no-merged', '--points-at', '--set-upstream-to', '-u'}
+    i = 0
+    while i < len(args):
+        arg = args[i]; i += 1
+        if arg == '--': break
+        if arg in values:
+            i += 1; continue
+        if arg.startswith('--'):
+            delete |= arg == '--delete'
+            force |= arg == '--force'
+        elif arg.startswith('-'):
+            if 'D' in arg[1:]: return True
+            delete |= 'd' in arg[1:]
+            force |= 'f' in arg[1:]
+    return delete and force
+
+
 def _plan(command, cwd):
     if not isinstance(command, str) or any(c in command for c in '$`\n\r;&|()<>{}\\*?[]~!^#'):
         return None
@@ -29,17 +53,27 @@ def _plan(command, cwd):
     if executable not in ('git', '/usr/bin/git', 'gh'): return None
     if executable != 'gh' and words[:1] == ['-C'] and len(words) > 2:
         cwd = os.path.realpath(os.path.join(cwd, words[1])); words = words[2:]
-    if executable != 'gh' and words[:1] == ['branch'] and len(words) >= 3 and words[1] in ('-d', '-D', '--delete'):
-        return cwd, 'local', None, words[2:]
+    if executable != 'gh' and words[:1] == ['branch'] and len(words) >= 3 and forced_local_delete(words[1:]):
+        if words[1] != '-D': return None  # Other force spellings retain confirmation.
+        return cwd, 'local', None, words[2:], {}
     if executable != 'gh' and words[:1] == ['push']:
         args = words[1:]
+        leases = {}
+        for arg in args:
+            if arg.startswith('--force-with-lease='):
+                lease = re.fullmatch(r'--force-with-lease=(?:refs/heads/)?([^:]+):([0-9a-f]{40}|[0-9a-f]{64})', arg)
+                if not lease or lease[1] in leases: return None
+                leases[lease[1]] = lease[2]
+        args = [a for a in args if not a.startswith('--force-with-lease=')]
         delete = '--delete' in args or '-d' in args
         args = [a for a in args if a not in ('--delete', '-d')]
         if len(args) < 2 or args[0] != 'origin': return None
         refs = args[1:]
         if not delete and not all(r.startswith(':') for r in refs): return None
         refs = [r if delete else r[1:] for r in refs]
-        return cwd, 'remote', None, [r.removeprefix('refs/heads/') for r in refs]
+        refs = [r.removeprefix('refs/heads/') for r in refs]
+        if leases and set(leases) != set(refs): return None
+        return cwd, 'remote', None, refs, leases
     if executable == 'gh' and words[:1] == ['api']:
         args = words[1:]
         if args[:2] in (['-X', 'DELETE'], ['--method', 'DELETE']): args = args[2:]
@@ -47,7 +81,7 @@ def _plan(command, cwd):
         else: return None
         if len(args) != 1: return None
         match = re.fullmatch(r'repos/(EtanHey/[A-Za-z0-9_.-]+)/git/refs/heads/(.+)', args[0])
-        if match: return cwd, 'remote', match[1], [match[2]]
+        if match: return cwd, 'remote', match[1], [match[2]], {}
     return None
 
 
@@ -67,14 +101,16 @@ def allowed(command, cwd):
     try:
         plan = _plan(command, cwd)
         if not plan: return False
-        cwd, kind, requested_repo, branches = plan
+        cwd, kind, requested_repo, branches, leases = plan
         if not branches or len(branches) > 10: return False
         for branch in branches:
             if branch.startswith(('-', 'refs/')) or not re.fullmatch(r'[A-Za-z0-9_./-]+', branch): return False
             run(['git', 'check-ref-format', 'refs/heads/' + branch], cwd)
+            if kind == 'local' and run(['git', 'for-each-ref', '--format=%(refname)',
+                    'refs/heads/' + branch], cwd).splitlines() != ['refs/heads/' + branch]: return False
         # Reject inherited repository/config/transport redirects, including gh's
         # alternate host/repo variables. get-url resolves Git insteadOf rules.
-        if any(k.startswith('GIT_') and k not in ('GIT_PAGER', 'GIT_TERMINAL_PROMPT') or k in ('GH_HOST', 'GH_REPO') for k in os.environ): return False
+        if any(k.startswith('GIT_') and k not in ('GIT_PAGER', 'GIT_TERMINAL_PROMPT', 'GIT_EDITOR', 'GIT_SEQUENCE_EDITOR') or k in ('GH_HOST', 'GH_REPO') for k in os.environ): return False
         urls = [run(['git', 'remote', 'get-url', *flags, 'origin'], cwd)
                 for flags in ([], ['--push', '--all'])]
         if urls[0] != urls[1]: return False
@@ -98,9 +134,9 @@ def allowed(command, cwd):
         protection = metadata['branchProtectionRules']
         if protection['pageInfo']['hasNextPage']: return False
         patterns = [rule['pattern'] for rule in protection['nodes']]
-        if any('\\' in p or fnmatchcase(b, p) for p in patterns for b in branches): return False
+        if any('\\' in p or fnmatchcase(b.casefold(), p.casefold()) for p in patterns for b in branches): return False
         run(['git', 'check-ref-format', 'refs/heads/' + default], cwd)
-        if any(b == default for b in branches): return False
+        if any(b.casefold() == default.casefold() for b in branches): return False
         # Explicit destination overrides stale or customized remote fetch mappings.
         run(['git', 'fetch', '--no-tags', 'origin',
               '+refs/heads/' + default + ':refs/remotes/origin/' + default], cwd)
@@ -119,9 +155,10 @@ def allowed(command, cwd):
                 return sha
             sha = head()
             if not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', sha): return False
+            if leases and leases.get(branch) != sha: return False
             prs = api('repos/' + repo + '/pulls?state=closed&head=EtanHey:' + quote(branch, safe='') + '&per_page=100')
             if not isinstance(prs, list): return False
-            merged = any(p.get('merged_at') and p['head']['sha'] == sha and
+            merged = any(p.get('merged_at') and p.get('base', {}).get('ref') == default and p['head']['sha'] == sha and
                          p['head']['ref'] == branch and
                          p['head']['repo']['full_name'] == repo for p in prs)
             if not merged and run(['git', 'rev-list', default_sha + '..' + sha], cwd): return False

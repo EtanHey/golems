@@ -23,6 +23,9 @@ def load(name, path):
 
 class BranchCleanup(unittest.TestCase):
     def setUp(self):
+        clean_env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_') and k not in ('GH_HOST', 'GH_REPO')}
+        env_patch = patch.dict(os.environ, clean_env, clear=True); env_patch.start()
+        self.addCleanup(env_patch.stop)
         self.temp = tempfile.TemporaryDirectory(dir=os.environ.get('W68_TEST_ROOT', '.'))
         self.addCleanup(self.temp.cleanup)
         self.repo = str(Path(self.temp.name).resolve())
@@ -67,7 +70,7 @@ class BranchCleanup(unittest.TestCase):
         return self.git(*args)
 
     def verdict(self, command):
-        with patch.dict(os.environ, {}, clear=False):
+        with patch.dict(os.environ, dict(os.environ), clear=True):
             previous = os.getcwd()
             try:
                 os.chdir(self.repo)
@@ -81,7 +84,7 @@ class BranchCleanup(unittest.TestCase):
         self.head = self.git('rev-parse', 'HEAD')
 
     def merged(self):
-        self.prs = [{'merged_at': '2026-11-01T00:00:00Z', 'head': {
+        self.prs = [{'merged_at': '2026-11-01T00:00:00Z', 'base': {'ref': self.default}, 'head': {
             'sha': self.head, 'ref': 'topic', 'repo': {'full_name': 'EtanHey/example'}}}]
 
     def test_contained_local(self):
@@ -107,7 +110,7 @@ class BranchCleanup(unittest.TestCase):
 
     def test_protected_denied(self):
         self.protected = True
-        self.assertFalse(self.verdict('git branch -d topic'))
+        self.assertFalse(self.verdict('git branch -D topic'))
 
     def test_ruleset_denied(self):
         self.rules = [{'type': 'deletion'}]
@@ -186,6 +189,81 @@ class BranchCleanup(unittest.TestCase):
             return result
         with patch.object(self.policy, '_run', side_effect=moving):
             self.assertFalse(self.verdict('git push origin --delete topic'))
+
+    def test_r2_casefold_default_protected_and_spelling(self):
+        self.assertFalse(self.policy.allowed('git branch -D MAIN', self.repo))
+        self.protected = True
+        self.assertFalse(self.policy.allowed('git branch -D TOPIC', self.repo))
+        self.protected = False
+        self.assertFalse(self.policy.allowed('git branch -D TOPIC', self.repo))
+
+    def test_r2_editor_variables_and_dangerous_git_env(self):
+        for key in ('GIT_EDITOR', 'GIT_SEQUENCE_EDITOR'):
+            with patch.dict(os.environ, {key: 'true'}):
+                self.assertTrue(self.policy.allowed('git branch -D topic', self.repo))
+        with patch.dict(os.environ, {'GIT_DIR': self.repo + '/.git'}):
+            self.assertFalse(self.policy.allowed('git branch -D topic', self.repo))
+
+    def test_r2_stacked_merge_needs_default_base_or_containment(self):
+        self.moved(); self.merged(); self.prs[0]['base']['ref'] = 'stack-base'
+        self.assertFalse(self.policy.allowed('git branch -D topic', self.repo))
+        self.git('update-ref', 'refs/remotes/origin/main', self.head)
+        self.assertTrue(self.policy.allowed('git branch -D topic', self.repo))
+
+    def test_r2_no_new_asks_and_pinned_merge(self):
+        from commands import operations
+        sha = 'a' * 40
+        for command in ('git branch -d topic', 'git branch --delete topic',
+                        'git status && git branch -d topic', 'git branch --sort -committerdate',
+                        'git branch --format -D',
+                        'gh pr merge 123 --squash --delete-branch --match-head-commit ' + sha,
+                        'gh pr merge 123 -sd --match-head-commit=' + sha):
+            with self.subTest(command=command):
+                self.assertTrue(self.verdict(command))
+                self.assertEqual(operations(command, self.repo), [])
+        self.assertTrue(operations('gh pr close 123 -d', self.repo))
+        self.assertTrue(operations('git branch -d -f topic', self.repo))
+        self.assertTrue(operations('git branch -D topic', self.repo))
+
+    def test_r2_payload_cwd_on_all_entrypoints(self):
+        command = 'git branch -D topic'
+        self.assertNotEqual(self.hook.classify_tool('Bash', {'command': command, 'cwd': self.repo})[0], 'RED')
+        block = load('w68_block_cwd', ROOT.parents[1] / '.claude/hooks/block-dangerous-commands.py')
+        with patch.object(block.subprocess if hasattr(block, 'subprocess') else subprocess, 'run', wraps=subprocess.run) as run:
+            block._on_protected_branch(self.repo)
+            self.assertEqual(run.call_args.kwargs['cwd'], self.repo)
+        with patch.object(block, '_on_protected_branch', return_value=True), patch.object(block, '_verified_branch_cleanup', return_value=True) as verify:
+            block.check_bash('git push origin --delete topic', self.repo)
+            verify.assert_called_once_with('git push origin --delete topic', self.repo)
+
+    def test_r2_force_with_lease_is_bound_to_verified_head(self):
+        prefix = 'git push origin --delete topic --force-with-lease=refs/heads/topic:'
+        self.assertTrue(self.policy.allowed(prefix + self.head, self.repo))
+        self.assertFalse(self.policy.allowed(prefix + 'b' * 40, self.repo))
+
+    def test_r2_native_remote_lease_stops_post_admission_move(self):
+        bare = self.repo + '/fixture.git'
+        self.git('init', '--bare', '-q', bare)
+        self.git('push', '-q', bare, 'HEAD:refs/heads/topic')
+        command = 'git push origin --delete topic --force-with-lease=topic:' + self.base
+        self.assertTrue(self.policy.allowed(command, self.repo))
+        self.moved()
+        self.git('push', '-q', bare, 'HEAD:refs/heads/topic')
+        stale = subprocess.run(['/usr/bin/git', '-C', self.repo, 'push',
+            '--force-with-lease=topic:' + self.base, bare, ':refs/heads/topic'], capture_output=True)
+        self.assertNotEqual(stale.returncode, 0)
+        self.assertEqual(subprocess.check_output(['/usr/bin/git', '--git-dir=' + bare,
+            'rev-parse', 'refs/heads/topic'], text=True).strip(), self.head)
+
+    def test_r2_local_and_remote_denials_named_correctly(self):
+        patch.dict(sys.modules, {'branch_cleanup': self.policy}).start()
+        old_prefix, old_bytecode = sys.pycache_prefix, sys.dont_write_bytecode
+        gate = load('w68_confirm_reason', ROOT / 'human-confirm-gate/hooks/human-confirm-pretooluse.py')
+        self.addCleanup(setattr, sys, 'pycache_prefix', old_prefix)
+        self.addCleanup(setattr, sys, 'dont_write_bytecode', old_bytecode)
+        from commands import operations
+        self.assertIn('local branch', gate.approval_reason(operations('git branch -D topic', self.repo)))
+        self.assertIn('remote branch', gate.approval_reason(operations('git push origin --delete topic', self.repo)))
 
     def test_verifier_gh_and_scope(self):
         if self.policy is None: self.skipTest('verifier not implemented on base')
