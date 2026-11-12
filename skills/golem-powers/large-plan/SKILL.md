@@ -400,7 +400,10 @@ User correction (April 5): "No, I'm saying it will take probably hours, not week
 | DRY | No duplicated logic |
 | Tests pass | `bun test` / `npm test` green |
 | Build passes | No compile errors |
+| Triage + disk/build budget | Triage every touched repo; resolve exit 3; free disk ≥60 GiB M4 / ≥40 GiB M1; inspect and budget each lane's build output (below) |
 | Cleanup receipts | One CLEANUP RECEIPT per worker PR, and the lead's prune step ran (below) |
+
+Before declaring phase done, run `node ~/Gits/golems/scripts/fleet/worktree-closeout.mjs --triage <repo> --json` for **each repo touched** (root checkout path: `scripts/fleet/` is absent from the installed release). Read its JSON and exit status: exit 3 means unresolved dirty/unpushed work older than 48 h or an unavailable checkout; block phase done until every flagged worktree is pushed, bundled to a safe ref with a patch of dirty state (`--bundle <path>`; inspect ignored files first), or explicitly kept with a reason in the collab (`<path> --keep "reason"`). Other errors also block; rerun triage after resolution. At phase exit **and before advancing a stacked-PR track**, check free disk against the disk-guard floors (60 GiB M4, 40 GiB M1) and measure each lane's build output; record a build-output budget and measured size in the collab, and hold advancement below the disk floor or above budget. A lane running the full suite N times in one worktree cleans regenerable output between runs, preserving source and evidence.
 
 **Phase exit:** a phase is not closed until every worker's CLEANUP RECEIPT is present (format: `/pr-loop`
 `references/merge-and-verification.md` § Cleanup Receipt) and the lead has run the prune step:
