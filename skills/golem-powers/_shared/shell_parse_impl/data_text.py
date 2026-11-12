@@ -8,7 +8,7 @@ import shlex
 
 
 from .substitutions import _dollar_substitution
-from .heredocs import _heredoc_delimiter_span
+from .heredocs import _heredoc_delimiter_span, _mask_heredoc_body_lines
 from .structure import structural_source_with_status
 
 
@@ -26,8 +26,14 @@ def _heredoc_word(raw: str) -> tuple[str, bool]:
     return parsed[:2] if parsed else ('', False)
 
 
-def _literal_file_heredoc_header(header: str, *, piped: bool = False) -> bool:
+def _literal_file_heredoc_header(
+    header: str, *, piped: bool = False, allow_prefixes: bool = False
+) -> bool:
     """True when `cat` consumes heredoc data without executing it as code."""
+    # Strip only raw, standalone shell prefixes before shlex removes quoting.
+    # A quoted 'then'/'!'/'{' is a command word, not control/group syntax.
+    if allow_prefixes:
+        header = re.sub(r"^\s*(?:(?:\{|!|then)\s+)+", "", header)
     try:
         lexer = shlex.shlex(
             header,
@@ -392,6 +398,11 @@ def shell_text_without_heredoc_bodies(
     commands. Scanning that prose blocks the act of reporting the bug. Quoted
     heredocs execute nothing; unquoted heredocs expose only `$()`/backticks.
     """
+    # A compound can pipe its output after the heredoc's closing delimiter.
+    # Admit new prefixes only without outer pipes/substitutions; prose inside
+    # heredoc bodies must not participate in this conservative context check.
+    context = _mask_heredoc_body_lines(command)
+    allow_prefixes = not re.search(r"[|`]|[<>$]\(", context)
     output = []
     header_source = ''
     pending: list[tuple[str, bool, bool, bool]] = []
@@ -442,7 +453,7 @@ def shell_text_without_heredoc_bodies(
                 header = line[segment_start + 1:match.start()] + line[word_end:segment_end]
                 piped = segment_end < len(line) and line[segment_end] == "|"
                 file_write = _literal_file_heredoc_header(
-                    header, piped=piped
+                    header, piped=piped, allow_prefixes=allow_prefixes
                 ) or _interpreter_heredoc_header(header, piped=piped)
                 pending.append(
                     (delimiter, quoted, bool(match.group(1)), file_write)
