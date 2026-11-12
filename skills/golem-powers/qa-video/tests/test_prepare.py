@@ -154,7 +154,7 @@ def test_one_judge_child_gatherers_read_the_frames():
     root = SCRIPT.parents[1]
     skill = (root/'SKILL.md').read_text()
     head = '\n'.join(skill.split('\n')[:20])
-    for term in ('One Opus judge, gatherers under it', 'never a top-level thread', 'spot-checks at most 2 frames',
+    for term in ('One judge, gatherers under it', 'ONE `claude.judgment` judge', 'never a top-level thread', 'spot-checks at most 2 frames',
                  'default.sh plan', 'read the frames yourself'):
         assert term in head, term
     for term in ('where the recording lives', 'Never copy the recording', 'environmentId',

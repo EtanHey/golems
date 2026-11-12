@@ -6,7 +6,7 @@ execute: scripts/default.sh
 
 # /qa-video — Video-Based QA + Gems Pipeline
 
-**One Opus judge, gatherers under it.** The seat that receives a QA request dispatches ONE Opus judge
+**One judge, gatherers under it.** The seat that receives a QA request dispatches ONE `claude.judgment` judge
 as a delegate child (T3 `delegate_task`; a Claude terminal seat `Agent`), never a top-level thread.
 The judge dispatches gatherers (Antigravity Flash-high, else `visual-batch.py`): scripts extract, crop
 and measure; gatherers read frames and return text with frame path, `pts_s` and coverage. The judge
@@ -77,7 +77,7 @@ Read the user's request and route to the right workflow:
 **Execution routing — ONE route per request:**
 
 **One judge, dispatched as a child, where the recording lives.** The requesting seat (a lead, or
-whoever received the request) does no media work: it briefs one Opus judge and waits. In T3:
+whoever received the request) does no media work: it briefs one `claude.judgment` judge and waits. In T3:
 `delegate_task({title: "qa-video judge: <run>", role: "test", target: {providerInstanceId: "claudeAgent", model: "<node scripts/model-roles.mjs claude.judgment --field model>", options: {fastMode: false}, environmentId: "<the Mac holding the recording, when not this one>"}, task: "Read and follow <WORKDIR>/briefs/qa-judge.md"})`
 (per [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md) § 1).
 On a Claude terminal seat: `Agent` with that model and the same brief. Never `t3_thread_launch` or
