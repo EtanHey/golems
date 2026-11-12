@@ -59,5 +59,12 @@ The opt-in heavy suite remains chained when previously configured.
 
 Rollout: the lead runs the existing client install command above on M1 after
 merge, recording before/after core.hooksPath inventory and a refused push to a
-throwaway local bare remote. M4 installation waits for explicit clearance.
+throwaway local bare remote. The M4 clearance hold is lifted; installations
+follow normal release verification.
 Local fixtures are not machine rollout evidence.
+
+Older releases without publication-boundary files remain installable: apply
+prints a loud sync-skipped warning and status reports
+`boundary-prepush drift: release lacks boundary files`. Releases declaring these
+files still fail closed on missing or changed content through manifest integrity
+checks; their boundary sync errors are not suppressed.
