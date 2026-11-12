@@ -69,7 +69,6 @@ export function failClosedCommand(run, repair = REPAIR_REASON) {
 const commandPython = (command) => /(?:^|\s)(\S+)(?: -[A-Za-z]+)* \S*golems-fail-open\.py/
   .exec(String(command).replace(/'|\$\(/g, " "))?.[1] ?? String(command).split(" ")[0];
 
-
 function die(message, code = 1) {
   process.stderr.write(`install-hooks: ${message}\n`);
   process.exit(code);
@@ -552,6 +551,19 @@ function purgeBytecode(live, dirs = []) {
   for (const rel of derived) rmSync(path.join(live, rel), { recursive: true, force: true });
 }
 
+// Clone expectations come from the selected live pin, never the invoking
+// checkout or origin/master. Empty clone sets need no boundary module.
+async function syncBoundaryClones(ctx, apply = false) {
+  const root = path.join(homedir(), 'Gits');
+  const hasClones = existsSync(root) && readdirSync(root).some(name => existsSync(path.join(root, name, '.git')));
+  if (!hasClones) {
+    console.log('boundary-prepush-drift=0 clones=0');
+    return 0;
+  }
+  const boundary = await import(pathToFileURL(path.join(ctx.live, 'scripts/ci/boundary-clones.mjs')).href);
+  return boundary.syncClones({ root, apply });
+}
+
 async function install(o) {
   const machine = o.apply ? machineHost() : o.host;
   if (!machine) die("machine identity unavailable or unmapped; refusing installation");
@@ -674,6 +686,7 @@ async function install(o) {
     renameSync(tmp, ctx.settingsPath);
   }
   recordHookNode(ctx.hookNode);
+  await syncBoundaryClones(ctx, true);
   console.log("applied");
   if (ctx.codex) {
     ctx.codex.source = existsSync(path.join(ctx.live, "scripts/hooks/codex-policy-hook.py")) && existsSync(path.join(ctx.live, "scripts/hooks/codex-gate.sh"));
@@ -705,7 +718,7 @@ function registeredExactly(hooks, e) {
 // Use the registry itself so newly registered hook sources join the drift check.
 export { hookDriftPaths };
 
-function status(o) {
+async function status(o) {
   const sha = selectedPin(o, path.join(o.repo, ".worktrees", "hooks-live"));
   const ctx = context(o, sha);
   const current = liveHead(ctx.live);
@@ -826,6 +839,9 @@ function status(o) {
       console.log(`E1 ${name} PRESENT in settings.json`);
     }
   }
+  try {
+    if (await syncBoundaryClones(ctx)) bad = true;
+  } catch (error) { bad = true; console.log(`boundary-prepush drift: ${error.message}`); }
   return bad ? 1 : 0;
 }
 
@@ -833,5 +849,5 @@ function status(o) {
 // still match import.meta.url, which is the real path (#488-b N3).
 if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const o = parseArgs(process.argv.slice(2));
-  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? status(o) : await install(o));
+  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? await status(o) : await install(o));
 }

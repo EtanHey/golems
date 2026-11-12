@@ -52,6 +52,9 @@ export function syncClones({ root = join(homedir(), 'Gits'), apply = false, node
     for (const line of git(repo, 'worktree', 'list', '--porcelain').split('\n')) {
       if (!line.startsWith('worktree ')) continue;
       const wt = line.slice(9);
+      // Missing registered worktrees cannot serve pushes. Keep their metadata
+      // untouched; the common hook config also covers them when restored.
+      if (!existsSync(wt)) continue;
       const r = spawnSync('git', ['-C', wt, 'config', '--get', 'core.hooksPath'], { encoding: 'utf8' });
       if (![0, 1].includes(r.status)) throw new Error('cannot read worktree hooks config');
       if (r.status === 0 && r.stdout.trim() !== current && r.stdout.trim() !== managed) throw new Error('worktree-specific hooks override requires explicit reconciliation');

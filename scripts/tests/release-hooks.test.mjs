@@ -20,7 +20,7 @@ function fixture() {
   const root = mkdtempSync(path.join(scratch, 'client-')); roots.push(root);
   const candidate = path.join(root, 'candidate'), source = path.join(root, 'release'), home = path.join(root, 'home');
   mkdirSync(candidate); mkdirSync(source); mkdirSync(home);
-  for (const file of ['scripts/hooks', 'skills/golem-powers', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'package.json']) {
+  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow', 'scripts/hooks', 'skills/golem-powers', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'package.json']) {
     mkdirSync(path.dirname(path.join(candidate, file)), { recursive: true });
     cpSync(path.join(repo, file), path.join(candidate, file), { recursive: true, filter: p => !p.includes('__pycache__') });
   }
@@ -287,4 +287,30 @@ for (const name of ['golems-fail-open.py', 'golems-hooks-release.json']) test(`P
   const before = snapshot(f.home), r = run(f, '--migrate-owner-install', '--apply');
   expect(r.status, r.out).not.toBe(0); expect(r.out).toContain('non-regular file');
   expect(snapshot(f.home)).toEqual(before); expect(readFileSync(foreign, 'utf8')).toBe('foreign bytes');
+});
+
+test('legacy release without boundary files applies loudly and status reports drift', () => {
+  const f = fixture();
+  const missing = ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow'];
+  const at = path.join(f.source, 'MANIFEST.json'), manifest = JSON.parse(readFileSync(at));
+  for (const file of missing) rmSync(path.join(f.source, file));
+  manifest.files = manifest.files.filter(row => !missing.includes(row.path));
+  writeFileSync(at, JSON.stringify(manifest));
+  const applied = run(f, '--apply');
+  expect(applied.status, applied.out).toBe(0);
+  expect(applied.out).toContain('boundary-prepush sync SKIPPED: release lacks boundary files');
+  const status = run(f, '--status');
+  expect(status.status).toBe(1);
+  expect(status.out).toContain('boundary-prepush drift: release lacks boundary files');
+  expect(status.out).not.toContain('ERR_MODULE_NOT_FOUND');
+});
+
+test('release declaring boundary files still refuses a missing file', () => {
+  const f = fixture();
+  rmSync(path.join(f.source, 'scripts/ci/boundary-clones.mjs'));
+  for (const flag of ['--apply', '--status']) {
+    const result = run(f, flag);
+    expect(result.status).not.toBe(0);
+    expect(result.out).toContain('release integrity: mismatch scripts/ci/boundary-clones.mjs');
+  }
 });
