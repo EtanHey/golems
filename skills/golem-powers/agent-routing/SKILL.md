@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Invoke before any git/gh/grep, even for context, to dispatch a worker/reviewer, hand off to Codex, delegate_task, fan out in parallel; who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, batch classify/audit. NOT for fanning out one edit or dependent steps."
+description: "Invoke before any git/gh and before starting another agent: dispatch a worker/reviewer, delegate_task, hand off; who gathers, gemini gatherer, Codex model/effort, /multitask, fan out in parallel. Pick provider/worktree. NOT for one edit or dependent steps."
 ---
 
 # Agent Routing
@@ -288,6 +288,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
    Messages to a RUNNING thread use `t3_thread_send` mode `auto`, never `queue`. Never settle, re-snooze or unsnooze a thread Etan snoozed himself.
 8. **PRs:** `link_pull_request` every PR; the parent owns `watch_pull_request`.
 9. **Who and how many:** Routing rules (SSOT) picks the vendors; fresh implementer per PR and the Codex cap live in § Lead Topology #5.
+10. **Scheduled tasks:** a thread that exists for a `schedule_task` run ends every run by snoozing itself to its next run time (`t3_thread_organize {action: "snooze", threadId: <its own threadId>, snoozedUntil: <next run, ISO>}`), so it never sits idle in Etan's sidebar between runs. Write that as the last step of the scheduled prompt. If Etan snoozed the thread himself, his snooze stands (#7). (Etan, 2026-11-13, via orc.)
 
 ## Dispatch Boundaries
 
@@ -296,6 +297,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 - T3 child work follows § T3-native dispatch.
 - Easy standalone read-only lanes go to Antigravity Flash-high (the 2026-11-02 rule in Routing rules (SSOT)); the 2026-10-28 tiers or Cursor are the fallback.
 - Skills, hooks, agent definitions, and global agent settings are skillCreator-domain work. If skillCreator is not already in the loop, stop and request its audit before patching.
+- **A lane blocked by a guard never changes that guard.** No edit to the gate, its allowlist, policy or tests to get its own action through. It reports the block (the exact command and the refusal) to its lead, and the gate's owner decides. (Etan, 2026-11-13, via orc, after a lane opened a PR widening the human-confirm gate to post its own approved comment.)
 
 - Superseded placement: "**The M1 Pro becomes a TEST RIG only.** Development stays on the MBP. … Nothing changes on the M1 for this yet." (Etan 2026-10-18, via orc collab) The 2026-10-28 placement below now governs.
 - M1 placement (Etan, 2026-10-28): "I want the m1 pro to be used for tests." Full suites, E2E and XCUITest default to M1 Pro: ≥10 GiB guard, max 3 heavy lanes, never during a sync window, PHX admission required. Quick focused unit tests stay local.
