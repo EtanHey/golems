@@ -9,6 +9,9 @@ const template = readFileSync(new URL('../../references/prompt-template.md', imp
 const filled = (template.split('For explicitly authorized web-only research,')[0]
   + '# Owner asks (verbatim)' + template.split('# Owner asks (verbatim)')[1])
   .replace('<reviewer-one>', 'reader-a').replace('<reviewer-two>', 'reader-b')
+  .replace('<exact verified answer>', 'Private verified value')
+  .replace('<exact current answer>', 'Private current value')
+  .replaceAll('<Current project facts document title>', 'Current facts')
   .replace(/<[^>]+>/g, 'Example statement').replaceAll('- [ ]', '- [x]');
 const legacy = '# Research goal\nCompare indexing.\n# Grounding\n- "Overview"\n# Scope\nLocal.\n# Desired output\nA table.\n';
 
@@ -103,7 +106,7 @@ test('--emit strips prep only, keeps researcher content and refuses invalid reco
 });
 
 test('explicit web-only branch needs N/A, preserves remaining requirements', () => {
-  const web = filled.replace(/# Grounding\n[\s\S]*?(?=# Owner asks)/,
+  const web = filled.replace(/```admission-key\n[\s\S]*?```\n?/g, '').replace(/# Grounding\n[\s\S]*?(?=# Owner asks)/,
     '# Grounding\nNone — web-only research\nVerified findings + struck claims: N/A — web-only\nReason: historical topic, no project state.\n\n');
   assert.equal(evaluatePrompt(web).pass, true);
   assert.equal(evaluatePrompt(web.replace('# Grounding\n', '# Grounding\n- "Project facts"\n')).pass, false);

@@ -42,6 +42,61 @@ export function researcherPrompt(text) {
   return lines.filter((_, index) => prepStart === undefined || index < prepStart || index >= prepEnd).join('\n').trim() + '\n';
 }
 
+// Strict Markdown tables: exact cells after trimming outer whitespace; no fuzzy answers.
+function tableRows(text, header) {
+  const lines = text.split(/\r?\n/);
+  const cells = line => line.trim().split('|').slice(1, -1).map(cell => cell.trim());
+  const starts = lines.flatMap((line, i) => JSON.stringify(cells(line)) === JSON.stringify(header) ? [i] : []);
+  if (starts.length !== 1 || !/^\s*\|(?:\s*:?-+:?\s*\|)+\s*$/.test(lines[starts[0] + 1] || '')) return null;
+  const rows = [];
+  for (let i = starts[0] + 2; i < lines.length && lines[i].trim().startsWith('|'); i++) {
+    const row = cells(lines[i]);
+    if (row.length !== header.length || row.some(cell => !cell)) return null;
+    rows.push(row);
+  }
+  return rows.length ? rows : null;
+}
+
+function admissionKey(text) {
+  const { sections } = parsePrompt(text);
+  const grounding = (sections.get('Grounding')?.[0] || []).join('\n');
+  const webOnly = grounding.split('\n').includes('None — web-only research');
+  const { lines, prepStart, prepEnd } = parsePrompt(text);
+  const prep = lines.slice(prepStart ?? lines.length, prepEnd).join('\n');
+  const blocks = [...prep.matchAll(/^```admission-key\r?\n([\s\S]*?)^```\s*$/gm)];
+  if (webOnly && blocks.length === 0) return { key: [], failures: [] };
+  try {
+    if (blocks.length !== 1) throw new Error();
+    const key = JSON.parse(blocks[0][1]);
+    const questions = tableRows(grounding, ['document', 'question']);
+    const docs = [...grounding.matchAll(/^- "([^"\n]+)"$/gm)].map(match => match[1]);
+    const identity = row => JSON.stringify([row.document, row.question]);
+    if (webOnly || !questions || !docs.length || !Array.isArray(key) || !key.length
+      || key.some(row => !row || ['document', 'question', 'answer', 'first_line'].some(field =>
+        typeof row[field] !== 'string' || !row[field].trim() || row[field] !== row[field].trim()))
+      || new Set(key.map(identity)).size !== key.length
+      || new Set(questions.map(row => JSON.stringify(row))).size !== questions.length
+      || key.length !== questions.length
+      || questions.some(row => !docs.includes(row[0]) || !key.some(k => identity(k) === JSON.stringify(row)))
+      || docs.some(doc => !key.some(row => row.document === doc))) throw new Error();
+    const emitted = researcherPrompt(text);
+    return { key, failures: key.some(row => emitted.includes(row.answer)) ? ['ADMISSION_KEY_LEAK'] : [] };
+  } catch {
+    return { key: [], failures: ['ADMISSION_KEY: one author-only JSON key covering every document/question is required'] };
+  }
+}
+
+export function evaluateHarvest(table, authorRecord) {
+  const { key, failures } = admissionKey(authorRecord);
+  const rows = tableRows(table, ['document', 'question', 'readable (yes/no)', 'first heading or line read', 'answer']);
+  if (!key.length || !rows || rows.length !== key.length || key.some(expected => {
+    const matches = rows.filter(row => row[0] === expected.document && row[1] === expected.question);
+    return matches.length !== 1 || matches[0][2] !== 'yes'
+      || matches[0][3] !== expected.first_line || matches[0][4] !== expected.answer;
+  })) failures.push('FABRICATED_READ: discard entire result; admission answers/first lines do not match the author key');
+  return { gate: 'research-admission-harvest', pass: failures.length === 0, failures };
+}
+
 // Check required instruction terms, never the truth of English claims or reviews.
 export function evaluatePrompt(text) {
   const { sections } = parsePrompt(text);
@@ -92,12 +147,19 @@ export function evaluatePrompt(text) {
     if (name !== 'NO_ATTACH_INSTRUCTION' && !check.pass) failures.push(name);
   }
   if (!groundingResult.checks.NO_ATTACH_INSTRUCTION.pass) failures.push('NO_ATTACH_INSTRUCTION');
+  failures.push(...admissionKey(text).failures);
   return { gate: 'research-prompt', pass: failures.length === 0, failures };
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const args = process.argv.slice(2);
+    if (args[0] === '--harvest-check') {
+      if (args.length !== 3) throw new Error('usage: prompt-preflight.mjs --harvest-check <admission.md> <author-record.md>');
+      const result = evaluateHarvest(readFileSync(args[1], 'utf8'), readFileSync(args[2], 'utf8'));
+      console.log(JSON.stringify(result, null, 2));
+      process.exit(result.pass ? 0 : 1);
+    }
     const emit = args[0] === '--emit';
     if (emit) args.shift();
     if (args.length !== 1) throw new Error('usage: prompt-preflight.mjs [--emit] <prompt.md | ->');
