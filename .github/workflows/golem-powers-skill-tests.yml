@@ -243,6 +243,7 @@ jobs:
 
       - name: node suites
         run: |
+          node --test skills/golem-powers/t3-visuals/evals/action-contract.test.mjs
           node --test scripts/tests/precommit-identity.test.mjs
           node --test scripts/tests/boundary-prepush.test.mjs scripts/tests/boundary-upstream.test.mjs
           node --test scripts/tests/boundary-clones-alias.test.mjs
