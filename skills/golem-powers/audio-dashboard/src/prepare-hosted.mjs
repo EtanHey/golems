@@ -1,3 +1,4 @@
+import { cardVisualBytes } from './card-visuals.mjs';
 import { readFileSync, writeFileSync, renameSync, mkdirSync, copyFileSync, existsSync, cpSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { parse } from 'parse5';
@@ -70,6 +71,7 @@ export function persistedAnswerKeys(html) {
 
 export function prepareHostedInput({ spec, html, segmentsDir, outputPath }) {
   if (!segmentsDir) throw Error('SEGMENTS_DIR_REQUIRED');
+  const visualPayloadBytes = cardVisualBytes(spec.decisions || []);
   let prepared = html;
   const sourcePath = path.basename(outputPath).replace(/\.html$/i, '') + '.publish-source/' + sha256(html), sourceDir = path.join(path.dirname(outputPath), sourcePath);
   mkdirSync(path.join(sourceDir, 'assets'), { recursive: true });
@@ -90,7 +92,7 @@ export function prepareHostedInput({ spec, html, segmentsDir, outputPath }) {
   for (const suffix of ['receipts.json', 'design.json']) copyFileSync(outputPath.replace(/html$/i, suffix), path.join(sourceDir, 'index.' + suffix));
   const visuals = path.join(path.dirname(outputPath), 'visuals');
   if (existsSync(visuals)) cpSync(visuals, path.join(sourceDir, 'visuals'), { recursive: true });
-  const manifest = { builtHtmlSha256: sha256(html), sourceHtmlSha256: sha256(prepared), assets: media };
+  const manifest = { builtHtmlSha256: sha256(html), sourceHtmlSha256: sha256(prepared), assets: media, visualPayloadBytes, htmlBytes: Buffer.byteLength(prepared) };
   writeFileSync(path.join(sourceDir, 'asset-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   return { sourcePath, sourceHtmlSha256: sha256(prepared), media };
 }
