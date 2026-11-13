@@ -271,3 +271,27 @@ const POINTER_MUTANTS = [
 for (const [check, label, read] of POINTER_MUTANTS) {
   test(`mutant caught by ${check.name}: ${label}`, () => expect(check(read).length).toBeGreaterThan(0));
 }
+
+// Card 5 (Etan, 2026-11-13, via orc): the default lead shape lives in /agent-routing § Lead Topology,
+// with his caveat, fitted to canon #5 without restating or changing its numbers. Presence lint, same LIMIT.
+const ROUTING = "skills/golem-powers/agent-routing/SKILL.md";
+function leadShape(read) {
+  const topology = flat(section(read(ROUTING), "## Lead Topology"));
+  const item = topology.split("8. **The lead shape (default, 2026-11-13).**")[1] ?? "";
+  if (!item) return ["Lead Topology has no lead-shape item"];
+  const errors = [];
+  for (const phrase of [
+    "Fable orchestrates a few Opus per domain; Opus hands reading and mechanical work to Sonnet or Haiku.",
+    "Sonnet (`claude.subagent.cheap`)", "Haiku (`claude.subagent.mechanical`)",
+    "Fable is selected explicitly at each lead launch", "fleet canon #5 owns the numbers; this shape changes none",
+    "it depends on the lead, and Saturday's weave should say whether Fables are better as advisers to Opus leads",
+    "\"Yeah, I think it depends on the lead,", "but for now I think we should adopt that default\" (Etan, 2026-11-13, dashboard card 5, via orc)",
+  ]) if (!item.includes(phrase)) errors.push(`lead shape lacks: ${phrase.slice(0, 50)}`);
+  if (/(?:<=|≤|at most|up to)\s*\d/.test(item)) errors.push("lead shape restates a canon #5 number");
+  return errors;
+}
+test("agent-routing adopts the card-5 lead shape with Etan's caveat", () => expect(leadShape(readRepo)).toEqual([]));
+for (const [label, read] of [
+  ["the caveat removed", withEdit(ROUTING, "it depends on the lead, and Saturday's weave", "Saturday's weave")],
+  ["a canon number restated", withEdit(ROUTING, "at most canon #5's `claude.judgment` worker cap", "at most 2")],
+]) test(`mutant caught by leadShape: ${label}`, () => expect(leadShape(read).length).toBeGreaterThan(0));
