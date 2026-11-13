@@ -27,7 +27,11 @@ When a worker, lane or sub-agent is already running, or this turn dispatches 2+:
 1. `collab.md` exists at the plan root. If not, write it now from [workflows/collab.md](workflows/collab.md); a short plan's collab is a few lines.
 2. This brief contains `Report to <collab path>, not to the lead thread.`
 3. STATUS.md lists the new lane.
-Done = all three are true before the `delegate_task` / `t3_thread_launch` / `Agent` call. Otherwise, don't dispatch yet.
+4. The brief's title starts with the seat prefix (e.g. `skillcreator-w93`), and its LAST step is on the worker's own thread: `t3_thread_organize` settle if its work is merged or handed back, or snooze to a stated time if its PR is still open, and its DONE line says which (`Thread: settled` or `Thread: snoozed until <ISO>`).
+Done = all four are true before the `delegate_task` / `t3_thread_launch` / `Agent` call. Otherwise, don't dispatch yet.
+
+## At every turn end (lead)
+Before ending a turn, on EACH Mac (`environmentId` for the other one): `t3_thread_list {allProjects: true, settled: false, snoozed: false, includeSubagents: true, titleContains: "<seat prefix>"}`. Delegated children count as subagents, so `includeSubagents: false` hides exactly the threads Etan sees idle. Every listed thread that is not running gets dealt with now: settle it (work merged, replaced or handed back; harvest its docs.local first) or snooze it to the time it is next needed, with the reason in the plan. Scheduled-task threads snooze themselves to their next run (`/agent-routing` § T3-native dispatch #10). (Etan, 2026-11-13, via orc: "So many woke threads"; a promise did not hold, so this is a check, not a promise.)
 
 ## Quick Actions
 
