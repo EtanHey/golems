@@ -38,6 +38,13 @@ Include one line in the hand-off to Etan: "Before Start Research, check that Dri
 is on as a Deep Research source so it reads the named grounding docs."
 Keep the existing grounding and prompt-author START/EDIT gates below.
 
+## Curated grounding set, admission stop, provenance
+
+- **Curated, bounded set:** project-grounded research gets its own Drive folder of only the documents it needs (`/drive-filing` § Research grounding folder contract). Agents prepare it, never Etan. The prompt names those documents and says to use ONLY them.
+- **Admission table with a HARD STOP:** before firing, the prompt's `# Grounding` block carries a read-check table, one row per grounding file, with `readable: yes/no`. Project-grounded runs only; web-only research keeps its own `None — web-only research` block and has no table. Any row that is not an affirmative verified read (no, blank, missing, empty, truncated, unreadable) stops the run: output only the table and a `MISSING FILES` list. The template holds the wording.
+- **Keep the stop in the plan:** when Gemini's generated plan drops the stop, return it for EDIT and paste this sentence: `If any read-check row is not an affirmative verified read (readable: no, blank, missing, empty, truncated or unreadable), output only the read-check table and a MISSING FILES list, and stop.`
+- **Provenance:** the harvest record names the model, the settings (Drive on/off, Search on/off, mode), the prompt sha256, the grounding `manifest_sha256` and the folder's link, so the run's identity survives later consolidation. Write `unknown` only for a field you could not read.
+
 ## ROUTING — Gemini Deep Research by default
 
 - Research and comparisons → **gemini.google.com → Deep Research**. Use a structured prompt, review the generated plan, then obtain the prompt author's START / EDIT verdict.
@@ -46,7 +53,7 @@ Keep the existing grounding and prompt-author START/EDIT gates below.
 
 ## Default workflow: Gemini Deep Research
 
-Drive remains the source of truth for project context. Use the preparation receipt's exact document names from `Brain Drive/03_RESEARCH/Active/<project>/context/`; Gemini reads them through its connected Drive workspace. Number context files per `skills/golem-powers/_shared/research/context-numbering.md`.
+Drive remains the source of truth for project context. Ground on the research's own curated folder `Brain Drive/03_RESEARCH/Active/<project>/R{NN}-grounding/` and the preparation receipt's exact document names in it; never on the shared `<project>/context/` corpus. Gemini reads them through its connected Drive workspace. Number context files per `skills/golem-powers/_shared/research/context-numbering.md`.
 
 **Prompt template:** Fill [references/prompt-template.md](references/prompt-template.md): named verified-findings + struck-claims grounding, owner asks verbatim, evidence against, DOCUMENTED / OBSERVED / CLAIMED / PROPOSED / TARGET labels, sourced measurements and two independent bias checks. Web-only research uses the template's explicit N/A branch. Do not emit an unfilled template.
 
