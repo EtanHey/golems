@@ -22,6 +22,13 @@ CDN/relay or tailnet media fallback (8447); tailnet may host redirects, not the 
 Audio delivery follows the html-dashboard Lakebed/allowedEmails standard through
 NarrationLayer; see [publish contract v2](references/publish-contract-v2.md).
 
+**Proof images in this repo are mock only.** golems is public. Every screenshot, diff, GIF or video committed
+under `evals/proof/` (or anywhere in golems) is rendered from a synthetic fixture such as
+`evals/fixtures/card-visuals.html`. Anything rendered from one of Etan's real pages (his words, his data, a
+real briefing) stays in the private skill-creator repo or in docs.local, never in a golems commit; a PR links
+to it there, it does not attach it. (Etan, 2026-11-13: "skillcreator is where we upload my own things
+modified since its private, golems is public and should have mock/censored versions".)
+
 ## Purpose
 
 This is the one canonical golem-powers skill for audio narration dashboards, and
