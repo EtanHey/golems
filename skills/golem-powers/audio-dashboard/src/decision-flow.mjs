@@ -522,13 +522,16 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
   const total = Math.round(durations.reduce((sum, seconds) => sum + seconds, 0));
   const sections = new Set(decisions.flatMap(card => (card.rail || []).filter(row => row.label === 'Section').map(row => String(row.value))));
   const audioTotal = durations.every(seconds => Number.isFinite(seconds) && seconds > 0)
-    ? `<p class="df-audio-total">Total audio ${Math.floor(total / 60)} min ${total % 60} s · ${sections.size} sections · ${decisions.length} cards.</p>` : '';
+    ? `<p class="df-audio-total">Total audio ${Math.floor(total / 60)} min ${total % 60} s · ${sections.size} section${sections.size === 1 ? '' : 's'} · ${decisions.length} card${decisions.length === 1 ? '' : 's'}.</p>` : '';
+
+  const detailsSubtitle = audioTotal && typeof subtitle === 'string'
+    ? subtitle.replace(/^Total audio \d+ min \d+ s · \d+ sections · \d+ cards\.\s*/, '') : subtitle;
 
   const values = new Map([
     ["{{TITLE}}", escapeHtml(title || "Decision flow")],
     ["{{KICKER}}", escapeHtml(kicker || "Decision flow")],
     ["{{HEADING}}", escapeHtml(heading || title || "Decisions")],
-    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${audioTotal}${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers are kept separately for each dashboard.</p></details>`],
+    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${audioTotal}${detailsSubtitle ? `<p class="df-subtitle">${escapeHtml(detailsSubtitle)}</p>` : ""}<p class="df-scope">Answers are kept separately for each dashboard.</p></details>`],
     ["{{DECISION_COUNT}}", decisions.length],
     ["{{SCENE_COUNT}}", scenes.length],
     ["{{DASHBOARD_ID}}", escapeHtml(dashboardId(accountId || id, storageKey || "dbx:decision-flow"))],

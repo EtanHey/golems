@@ -3,7 +3,7 @@
 Status: ready for the lead's independent review; no hosted/account/audio-delivery claim.
 Base: c6e47591c832219bd6fced5a44d4c5db87e47a37. Captured with real Chromium,
 1280×1100 and 390×1100, both system color schemes, reduced motion.
-The surrounding dashboard retains its existing dark design; new visual surfaces follow the system theme.
+The dashboard and new visual panels share the existing card theme tokens under both system color schemes (round-2 correction).
 
 ## Data contract
 
@@ -57,3 +57,37 @@ All owned browser contexts were closed. Independent video/taste review remains w
 `*-diff.png`: padded absolute RGB screenshot differences, expected to differ for added content.
 `interaction.webm` / `interaction.gif`: phone chart scrolling and Chart data open/close.
 `receipts.txt`: baseline, build and verification receipts. These are synthetic fixtures only.
+
+## Round 2: r1254 fixes
+
+B1 removes only the exact leading legacy manual total when the computed total
+exists; preserved subtitle text and no-duration behavior have regression checks.
+N3 renders singular section/card nouns. B2 fits 1–4 points into a 390 px card
+and retains local overflow for dense plots. N4 uses the existing card's `--moon`,
+`--panel`, `--line`, and `--line-strong` tokens under both system preferences;
+status and series colors keep the readable dark-page pairs. N1 documents fields
+and limits in references/card-format.md, linked from SKILL.md. N2 chooses the
+explicit producer rule: use `—` for blank cells; empty strings remain refused.
+
+Fail-first at b9e708ed with the added checks: 16 pass / 3 fail (manual duplicate,
+singular nouns, and small-chart overflow). See r2-red.txt. Before browser
+measurements in r2-before.json independently record the theme mismatch, two total
+lines, and phone chart 540/322 with the second bar outside the visible region.
+After: r2-after.json records one total, phone chart 322/322, both bars visible,
+and table/chart colors identical to their card in light and dark. Screenshots
+r2-390-light-after.png and r2-390-dark-after.png were inspected at full size.
+Desktop 1280 light/dark before/after captures are included too. Reproduce captures
+from the skill directory with `bun evals/proof/card-visuals/capture-r2.mjs after`.
+All owned Chromium contexts close in finally blocks.
+
+The full suite's previously reported publish-handoff failure remains unresolved;
+this round does not claim full-suite green, live narration, authenticated
+persistence, or hosted delivery. Producer-side audio-total.py retirement is
+outside this renderer checkout; producers must stop prepending manual totals.
+
+Round-2 validation: 200 pass / 0 fail, 657 assertions across card-visuals,
+copy-blocks, decision-flow-sources, and decision-flow-header (r2-green.txt and
+r2-related.txt). The renderer file contributes 19 tests, including real browser
+1–4-point phone-fit, dense scroll, both themes, and list/story reachability.
+`r2-*-diff.png` are padded RGB before/after screenshot differences.
+Documentation is schema/reference guidance; agent-behavior eval is unmeasured.

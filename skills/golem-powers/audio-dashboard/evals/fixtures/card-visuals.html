@@ -447,22 +447,17 @@ body[data-view="story"] .df-storage-state{order:4;margin:6px 0 0}
 .ad-badge{display:inline-block;padding:2px 9px;border-radius:999px;background:#79cfc2;color:#101a2c;font-size:12px;font-weight:600;line-height:1.5}
 
 /* Data visuals own their horizontal overflow; t3-visuals opaque AA status pairs. */
-.df-table-scroll,.df-chart{max-width:100%;min-width:0;margin:16px 0;color:#17212b;background:#fff;border:1px solid #64748b;border-radius:8px}
+.df-table-scroll,.df-chart{max-width:100%;min-width:0;margin:16px 0;color:var(--moon);background:var(--panel);border:1px solid var(--line-strong);border-radius:8px}
 .df-table-scroll,.df-chart-scroll{overflow-x:auto;overscroll-behavior-x:contain}
-.df-table-scroll:focus-visible,.df-chart-scroll:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+.df-table-scroll:focus-visible,.df-chart-scroll:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 .df-data-table{border-collapse:collapse;width:100%;font-size:14px}
 .df-data-table caption,.df-chart figcaption{font-weight:650;text-align:left;padding:12px}
-.df-data-table th,.df-data-table td{padding:10px 14px;border-bottom:1px solid #94a3b8;white-space:nowrap}
+.df-data-table th,.df-data-table td{padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
 .df-v-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:600}
-.df-v-ready{color:#166534;background:#dcfce7}.df-v-error{color:#991b1b;background:#fee2e2}.df-v-wait{color:#713f12;background:#fef3c7}
-.df-chart svg{display:block;width:100%;min-width:540px;fill:currentColor;font:13px system-ui}
+.df-chart svg{display:block;width:100%;fill:currentColor;font:13px system-ui}
 .df-chart-legend,.df-chart-data{margin:10px 12px;font-size:14px}.df-chart-data p{overflow-wrap:anywhere}
-.df-series-0{color:#1d4ed8}.df-series-1{color:#9d174d}.df-series-2{color:#166534}.df-series-3{color:#713f12}
-@media(prefers-color-scheme:dark){
-.df-table-scroll,.df-chart{color:#f8fafc;background:#111820}
 .df-v-ready{color:#86efac;background:#153526}.df-v-error{color:#fca5a5;background:#3d2024}.df-v-wait{color:#fde68a;background:#3c2d14}
 .df-series-0{color:#93c5fd}.df-series-1{color:#f9a8d4}.df-series-2{color:#86efac}.df-series-3{color:#fde68a}
-}
 </style>
 </head>
 <body data-storage-key="dbx:decision-flow" data-view="list">
@@ -471,7 +466,7 @@ body[data-view="story"] .df-storage-state{order:4;margin:6px 0 0}
       <p class="df-kicker">Decision flow</p>
       <p class="df-mode-label">Audio decision dashboard</p>
       <h1>Research briefing</h1>
-      <details class="df-context"><summary>Details</summary><p class="df-audio-total">Total audio 1 min 5 s · 1 sections · 1 cards.</p><p class="df-scope">Answers are kept separately for each dashboard.</p></details>
+      <details class="df-context"><summary>Details</summary><p class="df-audio-total">Total audio 1 min 5 s · 1 section · 1 card.</p><p class="df-scope">Answers are kept separately for each dashboard.</p></details>
     </header>
     <nav class="df-controller" aria-label="Card controller">
       <div class="df-transport">
@@ -514,7 +509,7 @@ body[data-view="story"] .df-storage-state{order:4;margin:6px 0 0}
     
     <div class="df-sheet" id="sheet-visual">
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-visual">Measured results</h3><button type="button" class="df-sheet-done">Done</button></div>
-    <div class="df-table-scroll" tabindex="0" role="region" aria-label="Checks &lt;now&gt;"><table class="df-data-table"><caption>Checks &lt;now&gt;</caption><thead><tr><th scope="col" style="text-align:left">Check</th><th scope="col" style="text-align:center">Result</th><th scope="col" style="text-align:right">Count</th></tr></thead><tbody><tr><td style="text-align:left">&lt;script&gt;bad&lt;/script&gt;</td><td style="text-align:center"><span class="df-v-pill df-v-ready">pass</span></td><td style="text-align:right">12</td></tr></tbody></table></div><figure class="df-chart"><figcaption>Throughput (jobs)</figcaption><div class="df-chart-scroll" tabindex="0" role="region" aria-label="Throughput chart"><svg viewBox="0 0 540 220" style="min-width:540px" role="img" aria-label="Throughput. Observed: Before: 2 jobs; After: 8 jobs"><path d="M55 180H525" stroke="currentColor" opacity=".5"/><text x="48" y="184" text-anchor="end">0</text><text x="48" y="34" text-anchor="end">8</text><g class="df-chart-series df-series-0"><rect x="155" y="142.5" width="40" height="37.5"><title>Observed, Before: 2 jobs</title></rect><rect x="385" y="30" width="40" height="150"><title>Observed, After: 8 jobs</title></rect></g><text x="175" y="205" text-anchor="middle">Before</text><text x="405" y="205" text-anchor="middle">After</text></svg></div><p class="df-chart-legend"><span class="df-chart-series df-series-0">Observed</span></p><details class="df-chart-data"><summary>Chart data</summary><p>Observed: Before: 2 jobs; After: 8 jobs</p></details></figure>
+    <div class="df-table-scroll" tabindex="0" role="region" aria-label="Checks &lt;now&gt;"><table class="df-data-table"><caption>Checks &lt;now&gt;</caption><thead><tr><th scope="col" style="text-align:left">Check</th><th scope="col" style="text-align:center">Result</th><th scope="col" style="text-align:right">Count</th></tr></thead><tbody><tr><td style="text-align:left">&lt;script&gt;bad&lt;/script&gt;</td><td style="text-align:center"><span class="df-v-pill df-v-ready">pass</span></td><td style="text-align:right">12</td></tr></tbody></table></div><figure class="df-chart"><figcaption>Throughput (jobs)</figcaption><div class="df-chart-scroll" tabindex="0" role="region" aria-label="Throughput chart"><svg viewBox="0 0 320 220" style="min-width:320px" role="img" aria-label="Throughput. Observed: Before: 2 jobs; After: 8 jobs"><path d="M55 180H305" stroke="currentColor" opacity=".5"/><text x="48" y="184" text-anchor="end">0</text><text x="48" y="34" text-anchor="end">8</text><g class="df-chart-series df-series-0"><rect x="100" y="142.5" width="40" height="37.5"><title>Observed, Before: 2 jobs</title></rect><rect x="220" y="30" width="40" height="150"><title>Observed, After: 8 jobs</title></rect></g><text x="120" y="205" text-anchor="middle">Before</text><text x="240" y="205" text-anchor="middle">After</text></svg></div><p class="df-chart-legend"><span class="df-chart-series df-series-0">Observed</span></p><details class="df-chart-data"><summary>Chart data</summary><p>Observed: Before: 2 jobs; After: 8 jobs</p></details></figure>
     
     <div class="df-question"></div>
     <dl class="df-rail"><div><dt>Section</dt><dd><a class="df-rail-link" href="https://example.com/" target="_blank" rel="noopener noreferrer">Results</a></dd></div></dl>

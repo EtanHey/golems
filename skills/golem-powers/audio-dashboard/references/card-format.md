@@ -88,3 +88,44 @@ attribute order or letter case, or a meta outside the head. Run the page through
 canonical marker right after the `<head>` start tag, creating `<head>` or
 `<html>` if missing, and never removes anything. From a
 `file:` dashboard the frame is unreadable and the dialog reports failure.
+
+## Tables, charts, new-tab links
+
+Decision-flow cards accept optional `tables` and `charts` arrays. Visuals appear
+inline in list mode and in the existing answer sheet in story mode. Text is
+escaped; authored HTML and unknown object keys are refused.
+
+- `tables: [{ caption, columns: [string], rows: [[cell]], align?: [alignment] }]`.
+  Each card allows 1–4 tables, each with 1–12 columns and 1–100 rows. Captions
+  and column names are nonblank strings up to 160 characters. Each row matches
+  the column count. A cell is a nonblank string up to 500 characters, a finite
+  number, or `{ status: "pass" }`. The closed status set is `works`, `fixed`,
+  `pass`, `bug`, `fail`, `open`. Use `—` for blank cells; `""` is refused.
+  Optional `align` matches the column count and uses only `left`, `center`,
+  or `right`.
+- `charts: [{ type: "bar" | "line", title, unit, series: [{ name,
+  values: [{ label, value }] }] }]`. Each card allows 1–4 charts, each with
+  1–4 series and 1–30 points per series. Title is nonblank, up to 160
+  characters; unit up to 40; series names and point labels up to 80. All
+  series share the same unique ordered labels. Values are finite numbers
+  with absolute magnitude at most 1e12, including negative and zero values.
+  Charts include an exact accessible data summary and a Chart data disclosure.
+  Small plots fit phone cards; dense plots and wide tables scroll locally.
+  Panels use the page's card theme tokens in both system color schemes.
+- `rail: [{ label, value, href, newTab: true }]` opens a separate tab with
+  `rel="noopener noreferrer"`. `newTab` is boolean; `false` or omission keeps
+  same-tab behavior. When supplied, the rail shape is strict: nonblank label
+  up to 160 characters, nonblank value up to 500, and an absolute HTTP(S)
+  href with a hostname, no credentials, whitespace, or backslash.
+
+Strings refuse control characters. Combined serialized tables, charts, and
+rails declaring `newTab` are capped at 256 KiB of UTF-8 per dashboard;
+renderer and hosted prepare enforce this. The prepare manifest records
+`visualPayloadBytes` and final `htmlBytes`. Flow/statecharts are unsupported.
+
+BUILD computes the Details total from final MP3 durations, distinct rail values
+labelled exactly `Section`, and final card count. Producers must not prepend
+manual totals to subtitles. An exact legacy leading `Total audio N min N s · N
+sections · N cards.` prefix is removed when the computed total is available;
+the remaining subtitle is retained. With no valid clip durations, direct
+renderer calls preserve the subtitle and omit the computed total.

@@ -51,7 +51,7 @@ export function renderCharts(charts = []) {
     const values = c.series.flatMap(s => s.values.map(p => p.value));
     const low = Math.min(0, ...values), high = Math.max(0, ...values), span = high - low || 1;
     const y = v => 180 - (v - low) / span * 150;
-    const count = c.series[0].values.length, chartWidth = Math.max(540, 80 + count * 80);
+    const count = c.series[0].values.length, chartWidth = count <= 4 ? 320 : 80 + count * 80;
     const step = (chartWidth - 80) / count, x = i => 60 + step * (i + .5);
     const baseline = y(0), width = Math.min(40, step * .7 / c.series.length);
     const summary = c.series.map(s => `${s.name}: ${s.values.map(p => `${p.label}: ${p.value} ${c.unit}`).join('; ')}`).join('. ');

@@ -23,8 +23,21 @@ test('bar and line SVG carry exact accessible data and negative values', () => {
     expect(html).not.toMatch(/(?:NaN|Infinity)/);
   }
 });
+test('computed Details total removes only the exact leading manual total', () => {
+  const subtitle = 'Total audio 22 min 31 s · 5 sections · 61 cards. Keep this context.';
+  const w = new Window(); try {
+    w.document.write(renderDecisionFlow({ ...spec, subtitle }));
+    expect(w.document.querySelector('.df-context').textContent.match(/Total audio/g)).toHaveLength(1);
+    expect(w.document.querySelector('.df-subtitle').textContent).toBe('Keep this context.');
+    for (const keep of ['Context. ' + subtitle, 'Total audio 22 minutes. Keep this context.']) {
+      expect(renderDecisionFlow({ ...spec, subtitle: keep })).toContain(keep);
+    }
+    expect(renderDecisionFlow({ ...spec, subtitle, scenes: spec.scenes.map(s => ({ ...s, duration: undefined })) })).toContain(subtitle);
+  } finally { w.close(); }
+});
+
 test('Details totals derive from final clips and unique Section rail values', () => {
-  expect(render()).toContain('Total audio 1 min 5 s · 1 sections · 1 cards.');
+  expect(render()).toContain('Total audio 1 min 5 s · 1 section · 1 card.');
 });
 for (const extra of [
   { tables: [{ ...card.tables[0], surprise: true }] }, { tables: [{ ...card.tables[0], rows: [[{ status: 'evil' }]] }] },
@@ -67,6 +80,16 @@ test('real Chromium keeps overflow local and opens the rail in another tab', asy
       const table = page.locator('.df-table-scroll'); await table.focus();
       expect(await table.evaluate(el => el === document.activeElement)).toBe(true);
       const chart = page.locator('.df-chart-scroll');
+      expect(await chart.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+      for (const panel of [table, page.locator('.df-chart')]) {
+        expect(await panel.evaluate(el => getComputedStyle(el).color)).toBe(await page.locator('.df-card').evaluate(el => getComputedStyle(el).color));
+        expect(await panel.evaluate(el => getComputedStyle(el).backgroundColor)).toBe(await page.locator('.df-card').evaluate(el => getComputedStyle(el).backgroundColor));
+      }
+      for (const count of [1, 3, 4]) {
+        await page.setContent(render({ charts: [{ ...card.charts[0], series: [{ name: 'Small', values: Array.from({length:count},(_,i)=>({label:'Point '+i,value:i})) }] }] }));
+        expect(await chart.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+      }
+      await page.setContent(render({ charts: [{ ...card.charts[0], series: [{ name: 'Dense', values: Array.from({length:30},(_,i)=>({label:'Point '+i,value:i})) }] }] }));
       expect(await chart.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
       await chart.evaluate(el => el.scrollLeft = el.scrollWidth);
       expect(await chart.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
