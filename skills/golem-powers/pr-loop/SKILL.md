@@ -19,6 +19,8 @@ description: "Invoke before any git/gh: open a PR, merge, ship, fix CI, handle r
 
 Who implements and who opens the inner-loop reviewer pane is owned by `/agent-routing` § Routing rules (SSOT). Never start that reviewer yourself unless that routing law makes you the owner.
 
+Every Codex dispatch in this loop (short seats, no waiting inside a turn, no reading or script runs, effort caps, the daily count) follows `/agent-routing` § Codex seats.
+
 This skill begins at branch preparation and ends at the authority-appropriate endpoint:
 
 - Lead, when the endpoint permits merge: reviewed, latest-head-green PR merged, verified, root checkout fast-forwarded, and cleaned up; released/installed where applicable at the [feature-batch gate](references/merge-and-verification.md#feature-batch-gate), without asking Etan.

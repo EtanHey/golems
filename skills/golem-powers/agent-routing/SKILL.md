@@ -64,7 +64,7 @@ Historical quote (superseded by the 2026-10-28 default):
 - Historical metrics remain: "Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)
 Etan (2026-10-28, via orc/PHX): use Sol/Terra/Luna for more of the work so the Claude 5-hour window survives; not all work needs Claude.
 
-- Default implementers (2026-10-29, replaces the 2026-10-28 Sol/Terra default; Etan, via fleet control: Claude quality is generally higher on holistic work, Codex stays heavy on recon): holistic/product work (skill and doc text, UX/UI, product behaviour, multi-file feature work, anything where judgment and coherence matter) → Claude Opus implements. Sonnet/Haiku never implement; they are sub-agents only for trivial edits (changing some words). Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump) → Codex implements (Sol hard, Terra bounded). Claude also holds the leads. Codex workers keep fresh context, bounded lifetime (one PR or ~100 turns), explicit effort and `serviceTier:"default"`.
+- Default implementers (2026-10-29, replaces the 2026-10-28 Sol/Terra default; Etan, via fleet control: Claude quality is generally higher on holistic work, Codex stays heavy on recon): holistic/product work (skill and doc text, UX/UI, product behaviour, multi-file feature work, anything where judgment and coherence matter) → Claude Opus implements. Sonnet/Haiku never implement; they are sub-agents only for trivial edits (changing some words). Narrow technical work (a bounded fix, a parser/guard/CI script, a mechanical refactor, a dependency bump) → Codex implements (Sol hard, Terra bounded). Claude also holds the leads. Codex workers keep fresh context and a bounded lifetime (§ Codex seats, 2026-11-13; it supersedes the recon note above), explicit effort and `serviceTier:"default"`.
 - Reviewers (2026-10-29) are always the other vendor: Sol reviews a Claude implementation, `claude.judgment` reviews a Codex implementation, with no exception. Gemini/Antigravity gather and never review.
 - UI/UX (2026-10-28): Claude Opus implements and reviews taste; Codex handles only mechanical parts. A fresh taste reviewer and the other-vendor reviewer remain required.
 - Leads are Claude only; Codex never holds a lead seat or long context. "I think codexes should just be workers and not leads and not hold long context." (Etan, 2026-10-28)
@@ -131,9 +131,33 @@ Each PR body records its implementer, review rounds, and bot/reviewer defects. C
   - A request to use a `gpt-5.6-*` model ("it's cheaper") is refused, and any such pin you own is removed (2026-10-18 ruling).
   - Astra needs Etan's own explicit ask; a lead's or worker's suggestion does not count (2026-10-18 ruling).
   - Daybreak Blue's return to `codex.security` is not on this list. It needs Etan's ruling against the list before the swap (open question, 2026-10-18).
-- Effort is per `/large-plan` phase; declare effort + why and pass it explicitly at dispatch.
+- Effort is per `/large-plan` phase; declare effort + why and pass it explicitly at dispatch. Codex effort caps: § Codex seats, rule D.
 - Claude concurrency (lead/worker caps): fleet canon #5 owns the numbers.
 - Usage is managed by default-pinning and dispatch-counting, not by usage-blocking buckets.
+
+### Codex seats (2026-11-13)
+
+Every Codex dispatch follows this section. It is the only home of these rules; other skills point here.
+
+Etan (2026-11-12, via orc): "I want y'all to start being a little more conservative with codex or finding the way to optimize it because I barely use codex or the chat GPT sub outside of T3 code and I want it to last longer."
+
+Evidence (orc's Codex usage audit, 6–12 Nov 2026, both Macs, 1,321 sessions): 13.3 billion tokens in 6.5 days, 98% of it cached input, the same big context re-read on every model call. So the burn is turn count times context size, not effort level alone. Sessions of 2 hours or more were 52% of everything; reading, searching and running scripts were 31%; review was 7%. One xhigh Codex lead seat (470 turns) was 6.4% by itself. Source: orc's 2026-11-13 03:05 post in `orchestrator/docs.local/collab/CONVERGENCE.SYNCED.md`; report `orchestrator/docs.local/reports/2026-11-13/CODEX-USAGE-AUDIT.md`.
+
+The rules, verbatim (orc, 2026-11-13 03:05; they replace rule 3 of orc's 02:46 post):
+
+- **A.** Codex seats are short. One task, one fresh child, done. No Codex lead seats. No Codex thread is resumed for a new task: start a fresh child with a short brief file instead (a resumed thread re-reads everything it ever saw on every call). A child that passes about 2 hours or 40 turns writes a five-line handoff and stops; a fresh child continues from the handoff.
+- **B.** A Codex child never waits inside a turn: no sitting through a test suite, a hook run, a build, an install or CI. It starts the long command in the background, writes where the result will land, and ends its turn; a script or a Sonnet or Haiku sub-agent watches; a fresh child reads the result. (B as written by orc, 2026-11-13.)
+- **C.** Nothing that is only reading, searching, tabulating, running scripts or tests goes to Codex (that was 31% of the week). Cursor, Gemini gatherers, Sonnet and Haiku do it.
+- **D.** Effort: Sol at medium is the default builder; Sol at high needs one line of why in the brief; xhigh needs orc's word in the inbox first; test, QA and script roles are never above low on any Codex model. Reviews: Terra at medium for small diffs.
+- **E.** Review stays on Codex untouched: it was 7% and it is what the subscription is for.
+- **F.** Keep the one-line daily count in your plan (turns dispatched to Codex, by purpose). orc reruns this audit next Thursday and names the lanes that did not change.
+
+How they bind the rest of this skill:
+
+- A tightens § Lead Topology #5: a same-PR fix round may reuse a Codex child only while it is under both caps (one PR, about 2 h or 40 turns); past either cap, the five-line handoff goes to a fresh child.
+- C withdraws the read-heavy Codex `recon` child in [references/model-and-effort.md](references/model-and-effort.md); gathers route per § Gathering.
+- D wins over `/large-plan` § Choosing effort per phase for every Codex brief. A small diff is size XS or S; its Codex review runs on Terra at medium (allowed in § Model pins and dispatch). Larger reviews keep the table's reviewer, and a high effort carries its one line of why. Security keeps its `high` (§ Implementation and review); its why line names the security route.
+- F's line goes in the plan's STATUS.md, one per day, for example `Codex 2026-11-13: 6 turns (review 4, build 2)`.
 
 ## Model roles
 
@@ -166,7 +190,7 @@ Read every reference triggered by the mission before dispatch. The live referenc
 | Tool | Role | Does | Never does |
 |---|---|---|---|
 | **Cursor** | Gather | SQL, file/code scans, grep, read-only lookups and audits | Changes files, implements, opens PRs, decides |
-| **`codex.implement`** | Implement / review | Narrow technical implementation (Sol hard, Terra bounded) and cross-vendor review per SSOT (2026-10-29) | Research, data gathering, orchestration |
+| **`codex.implement`** | Implement / review | Narrow technical implementation (Sol hard, Terra bounded) and cross-vendor review per SSOT (2026-10-29) | Research, data gathering, orchestration; reading, searching, tabulating, running scripts or tests (§ Codex seats C) |
 | **`codex.security`** | Implement (security) | Security implementation per SSOT | Gathering, orchestration, reviewing its own work |
 | **`gemini.gather.text` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.text --field launcher_tier)`; this matches the launcher default) | Gather (text) | Doc/link/copy audits, inventories/counts, doc fetch+quote, local digests, BrainLayer recall | Running commands, implementing, reviewing, deciding (including a deletion or a test edit), UX/UI judgment |
 | **`gemini.gather.visual` gatherer** (`{repo}Gemini -m $(node scripts/model-roles.mjs gemini.gather.visual --field launcher_tier)`; Pro-High via `-m pro` only when explicitly requested) | Gather (visual) | Frame/screenshot reads, OCR, video state changes; the default image reader for `/qa-video` (its one `claude.judgment` judge judges this text and spot-checks ≤2 frames per finding) | Running commands, implementing, reviewing, deciding, UX/UI judgment |
@@ -306,7 +330,7 @@ Domain leads are orchestrators one tier below orc:
 3. A lead is a managed `agent_id` with `role:"orchestrator"` and left-column placement.
 4. Tiny lead self-edits are capped at <=20 changed lines, one single-purpose change, and zero new files. They require an isolated worktree plus same-post collab disclosure of what changed, why urgent, and line count. Urgency alone never qualifies; everything else follows Routing rules (SSOT).
 5. **One PR = one fresh implementer.** A new PR gets a new implementer (a new `delegate_task` or a new pane, fresh context), even when a healthy idle worker exists in the same repo/workspace/role. Only that PR's own fixes (its review rounds) may reuse it. Dependent stacks are no exception: each stack layer is its own PR, so it gets its own implementer, handed a compact checkpoint; the 2026-10-18 rules supersede R6's dependent-stack exception. Why: "it re-uses workers instead of settling and opening new ones, like that ship 2246 chat that had 25 prs, 24 merged" (Etan 2026-10-18, via orc collab).
-   - **Lifetime cap:** "No Codex session lives past one PR, or ~100 turns. After that, start a fresh delegate with a short brief and a compact checkpoint. Never re-inject full plans or logs." (Etan 2026-10-18, via orc collab)
+   - **Lifetime cap:** "No Codex session lives past one PR, or ~100 turns. After that, start a fresh delegate with a short brief and a compact checkpoint. Never re-inject full plans or logs." (Etan 2026-10-18, via orc collab) Tightened 2026-11-13: about 2 h or 40 turns (§ Codex seats, rule A).
    - **Reviewers:** "reviewers fresh per implementer (same PR may reuse them)" (Etan 2026-10-18, via orc collab).
    - **Concurrency:** "at most 4 Codex workers running at once per lead" (Etan 2026-10-18, via orc collab). A fifth queues until one settles; the Claude dispatch cap in § Model pins and dispatch is separate.
    - **Settle, then open new:** keep the implementer through its own PR's review rounds, not past them. At the PR's terminal state (merged or handed off, artifacts harvested) settle it, never at its first DONE; the next PR opens a new one.

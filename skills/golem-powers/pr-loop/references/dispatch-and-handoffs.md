@@ -58,6 +58,7 @@ A lead writing a dispatch brief chooses effort per `/large-plan` phase and recor
 the brief and launch command must agree. The phase's acceptance boundary, ambiguity, and
 blockers inform the choice; a job category does not prescribe a fixed effort.
 If a brief names no effort or reason, the lead has not finished writing it.
+Codex effort caps and seat limits: `/agent-routing` § Codex seats (rule D for effort).
 
 ### Spawn Only What the Job Needs (Etan, 2026-09-05)
 

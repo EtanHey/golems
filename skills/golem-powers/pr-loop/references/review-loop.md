@@ -280,8 +280,9 @@ Wait in this order. Take the first option that fits:
 Outside T3 only, arm exactly one GitHub watch:
 `Monitor(command="pr-watch <owner/repo> <N> --head <sha> --deadline 2h", timeout_ms=1800000)`.
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
-Codex runs the same command and reads its exit code, with `--deadline 25m` so the blocked turn stays
-inside Codex's ~30-min cache window. The 2h deadline is Claude-only: it is safe there only because the
+A Codex seat never runs it inside its turn: it starts the watch in the background, writes where the
+exit will land, and ends its turn (`/agent-routing` § Codex seats, rule B). The 2h deadline is safe on a
+Claude seat only because the
 ≤30-min Monitor expiry, not the deadline, bounds the wake. pr-watch never merges.
 An empty rollup is never READY. Required contexts must be present and green,
 and the default 180s settle window must stay quiet. See the
