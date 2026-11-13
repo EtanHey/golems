@@ -30,6 +30,17 @@ Give data the surface: hairlines/space, dense aligned rows, right-aligned exact 
 Keep short identity, unit, population, period and denominator labels; distinguish build/test/merge/install.
 Show missing/estimated results honestly; never turn silence into success or a count into a version.
 No prose blocks inside or below the visual, expanded documents or explanatory lists; link long narrative separately.
+
+Every action item for Etan must have a copy button or link. Etan: "Whenever there's something for me to do, should have a button of copy the comment, open the link, whatever." The copy button copies the exact text he would paste (a command, a comment, a prompt); the link opens the exact page. A visual listing actions for him with neither is wrong.
+
+Etan: 'A "your note | what happens next" list must be a real two-column table, not rows with a count.' Keep each note paired with its next step; this compact table is allowed by the no-prose-block rule above. For example:
+```html
+<table>
+  <thead><tr><th>Your note</th><th>What happens next</th></tr></thead>
+  <tbody><tr><td>Show the failing case</td><td>Agent adds a regression check</td></tr></tbody>
+</table>
+```
+
 Put omitted per-item meaning/precision in immediate hover AND keyboard-focus tooltips: one concise visible line.
 Use custom tooltips, no native-title delay or entrance animation; copy `.tip,.tip::before,.tip::after{font-style:normal;white-space:nowrap;max-width:calc(100vw - 16px);transition:none;animation:none}` and clamp position to the viewport.
 Anchor near the mark, clamp to the viewport; shorten meaningfully rather than wrap, clip or hide essential detail.
