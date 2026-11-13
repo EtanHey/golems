@@ -11,6 +11,7 @@ import time
 from functools import lru_cache
 
 from . import shell_parse
+from .trash import trash_move, literal_trash_syntax
 from .paths import (
     _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason,
     _rm_exact_target_reason, _rm_allows_ignored_directory,
@@ -541,7 +542,7 @@ def _rm_reason_in_words(
     _depth: int = 0,
     _find_cache: dict[tuple, str | None] | None = None,
     _created_paths: list[CreatedPath] | None = None,
-    allow_ignored_directory: bool = True,
+    allow_ignored_directory: bool = True, trash_syntax_safe: bool = False,
 ) -> str | None:
     """Inspect command positions, including wrapper-owned nested commands."""
     if _depth > api["_MAX_WRAPPER_DEPTH"]:
@@ -818,8 +819,9 @@ def _rm_reason_in_words(
             if path is None:
                 _created_paths.append((None, 'directory'))
             while path and not os.path.exists(path):
-                if api['_rm_target_reason'](path, cwd, argument_variables, protected_cwd,
-                        protected_only=True, follow_symlinks=True, assume_directory=True):
+                if (api['_rm_target_reason'](path, cwd, argument_variables, protected_cwd,
+                        protected_only=True, follow_symlinks=True, assume_directory=True)
+                        or os.path.dirname(path) == os.path.join(os.path.expanduser('~'), '.Trash')):
                     _created_paths.append((path, 'directory'))
                 parent = os.path.dirname(path)
                 path = parent if parent != path else None
@@ -855,13 +857,19 @@ def _rm_reason_in_words(
         )
         if creates_path and operands:
             sources = operands if destination_option else operands[:-1]
+            trash_admitted = False
             if command_name == "mv":
+                trash_admitted, refusal = trash_move(api, args, sources,
+                    destination_option or operands[-1], cwd, argument_variables,
+                    protected_cwd, _created_paths, syntax_safe=trash_syntax_safe)
+                if refusal:
+                    return refusal
                 for source in sources:
                     reason = _created_target_reason(api, source, cwd, argument_variables, _created_paths)
                     if reason:
                         return reason
                     reason = api["_rm_target_reason"](source, cwd, argument_variables, protected_cwd, protected_only=True)
-                    if reason:
+                    if reason and not trash_admitted:
                         return "protected root used by move or symbolic link"
             destination_operand = destination_option or operands[-1]
             if command_name == "ln" and not destination_option and len(operands) == 1:
@@ -1061,7 +1069,7 @@ def is_dangerous_rm(
             protected_cwd=protected_cwd,
             _depth=_depth,
             _find_cache=_find_cache, _created_paths=_created_paths,
-            allow_ignored_directory=allow_ignored_directory,
+            allow_ignored_directory=allow_ignored_directory, trash_syntax_safe=literal_trash_syntax(active),
         )
         if reason:
             return True, reason

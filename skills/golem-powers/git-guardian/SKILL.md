@@ -182,7 +182,8 @@ waive nested metadata. Limit cleanup to literal subtrees and explicit depth limi
 when an unbounded repository walk exceeds the fixed policy budget.
 An over-budget refusal explains that the cleanup target is too large to verify
 and suggests `-maxdepth N` or a narrower root. It remains a normal policy deny.
-Moving protected roots is denied; deleting a path affected by an
+A literal single-source `mv` to a new direct entry in the real `~/.Trash` is allowed; existing destinations, symlink escapes, active checkouts and repository metadata stay denied.
+Other moves of protected roots are denied; deleting a path affected by an
 earlier `ln`, `mv` or recursive `cp` fails closed. Removing an existing symlink
 itself, safe deep cleanup and sanctioned disposable fixtures remain allowed.
 Earlier `mkdir` retains protected directory roles while permitting known deep cleanup.
