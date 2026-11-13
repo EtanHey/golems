@@ -1,0 +1,385 @@
+{
+  "date": "2026-11-13",
+  "skill": "agent-routing",
+  "kind": "red-green body eval (prompt-text proof, /pr-loop Pick the proof)",
+  "round": 2,
+  "eval_ids": [
+    106,
+    107,
+    108,
+    109
+  ],
+  "arms": {
+    "old": "origin/master 11632719af14762261205c2285cc9ba940aea8cb: agent-routing SKILL.md + references/model-and-effort.md (byte-identical to master, checked with cmp)",
+    "new": "branch skill/codex-rules-a-f round 2: same two files with § Codex seats, rule D builder default and rule C task scope"
+  },
+  "subject": {
+    "cli": "claude --bare -p --tools '' --output-format json",
+    "model_requested": "claude-opus-5-5",
+    "model_effective": "claude-opus-5-5",
+    "model_observation_source": "result.modelUsage and system init of every run",
+    "effort_effective": "NOT DETERMINED (CLI does not expose it)",
+    "system_prompt": "one-line lead framing + the arm's skill text",
+    "reps": 2
+  },
+  "grader": {
+    "model_effective": "claude-sonnet-5-5",
+    "blind": "each answer graded alone under a shuffled label (seed 83); the arm is not in the packet",
+    "note": "same-vendor grader; lead spot-checked 106-new child 2 (Sol medium) and 108-new rule C wording"
+  },
+  "assertion_106_2": "Child 2 is Codex Sol at medium effort, not Terra and not high or xhigh. (Round 1's relaxation to accept Terra is reverted per r1249.)",
+  "results": {
+    "changed_cases_106_108": {
+      "old": "3/18",
+      "new": "18/18"
+    },
+    "control_109": {
+      "old": "4/4",
+      "new": "4/4"
+    }
+  },
+  "cost_usd": {
+    "subject": 0.906,
+    "grader": 0.154,
+    "total": 1.06,
+    "stated_before_run": "about $1.5, cap $5"
+  },
+  "round_1": {
+    "results": {
+      "changed_cases_106_108": {
+        "old": "5/18",
+        "new": "18/18"
+      },
+      "control_109": {
+        "old": "4/4",
+        "new": "4/4"
+      }
+    },
+    "cost_usd": {
+      "subject": 1.239,
+      "grader": 0.148,
+      "total": 1.388,
+      "stated_before_run": "about $2, cap $5"
+    },
+    "superseded_because": "assertion 106.2 had been relaxed to accept Terra for the bounded builder; r1249 BLOCKING"
+  },
+  "caveats": [
+    "n=2 per arm per case; tools disabled, so this measures the routing answer, not a live dispatch; effective effort NOT DETERMINED.",
+    "Case 109 is the unchanged control (review stays on Codex).",
+    "Follow-up surfaced by 106-new-2: the M1 test-rig adapter allows only Codex workers while rule C keeps test-only tasks off Codex."
+  ],
+  "scores": [
+    {
+      "case": "106",
+      "arm": "new",
+      "rep": "1",
+      "label": "G08",
+      "passed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "why": [
+        "Child 1 goes to a Claude sub-agent; Codex explicitly excluded.",
+        "Child 2 is Sol at medium effort.",
+        "Child 3 is Terra at medium effort via codex-worker.",
+        "Child 4 is Codex Sol at low effort, which meets the bar.",
+        "Records a daily Codex count by purpose (build, test, review) in STATUS.md."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**Dispatch lines** (all `mode:\"async\"`; Codex children get `serviceTier:\"default\"`; Claude children get `fastMode:false`)\n\n1. **Full suite + failure table:** Claude Haiku/Sonnet sub-agent, model resolved via `scripts/model-roles.mjs`, with a shell-capable execution profile. Omit the effort flag so it inherits the session default. *Why:* this is only running and tabulating, so Codex is excluded (rule C). Gemini/Flash is excluded too, because it is read-only and can't run commands. Full suites default to the M1 Pro, but its adapter allows only Codex until a Claude-in-T3 proof passes. So this runs on the MBP unless that proof is recorded.\n\n2. **CSV off-by-one fix:** `codex-worker`, `codex.implement` (gpt-6.1-sol), effort **medium**, `isolation:\"worktree\"`. *Why:* bounded narrow technical work, and Sol at medium is the default builder (rule D). `claude.judgment` reviews it as the other vendor.\n\n3. **Review of the XS Claude diff:** `codex-worker`, gpt-6.1-terra, effort **medium**, one reviewer, one round. *Why:* the reviewer must be the other vendor, and an XS diff gets Terra at medium (rule D).\n\n4. **QA test-case writer:** `codex-worker`, gpt-6.1-sol, effort **low**, `isolation:\"worktree\"`.\n   - *Why:* writing tests is narrow technical work, and test/QA roles never go above low.\n   - Before dispatch, `claude.judgment` settles the test-edit scope (decision rule 2).\n   - The child must not wait inside its turn. It starts any test run in the background, writes the result path and ends its turn.\n   - `claude.judgment` reviews its output.\n\n**Recorded today**\n\n- **STATUS.md daily count (rule F):** `Codex <today>: 3 children (build 1, test 1, review 1)`, updated to actual turns at day end.\n- **Per child:** `role · effort · why` for each, and that the suite stayed on the MBP if the Claude-in-T3 M1 proof is absent.\n- **PR bodies:** implementer, review rounds and bot/reviewer defects."
+    },
+    {
+      "case": "106",
+      "arm": "new",
+      "rep": "2",
+      "label": "G11",
+      "passed": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "why": [
+        "Child 1 goes to a Claude Sonnet sub-agent, not Codex.",
+        "Child 2 is Sol at medium effort.",
+        "Child 3 is Terra at medium effort on Codex.",
+        "Child 4 is Codex at low effort.",
+        "STATUS.md daily Codex turn count by purpose (build, test, review) is recorded."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**Dispatch lines** (all `serviceTier:\"default\"` / `fastMode:false`; models resolved via `scripts/model-roles.mjs`)\n\n1. **Full test suite and failure table:** Claude Sonnet sub-agent with a shell profile. Haiku can watch the background run. Effort is the session default (omitted). Why: Codex seats rule C bars test-only tasks from Codex. Gemini and Flash gatherers have no shell, so they cannot run a suite.\n   - ⚠ Full suites default to the M1, but the M1 adapter allows only Codex workers. That conflicts with rule C, so I keep the run on the MBP and flag it to orc.\n\n2. **CSV off-by-one fix:** `codex-worker` instance, `codex.implement` (gpt-6.1-sol), effort `medium`, `isolation:\"worktree\"`, async. Why: this is bounded narrow technical work, and Sol at medium is the default builder under rule D. Per rule B, the child backgrounds any long run rather than waiting on it.\n   - Its reviewer is a fresh `claude.judgment`, dispatched only after it reports done.\n\n3. **Other-vendor review of the XS Claude diff:** `codex-worker` instance, gpt-6.1-terra, effort `medium`, one round. Why: rule D sends small XS/S diffs to Terra at medium for review. XS sizing allows one reviewer and one round.\n\n4. **QA child writing parser tests:** `codex-worker` instance, `codex.implement` (Sol), effort `low`, worktree. It is a fresh child, its own PR and implementer. Why: tests are narrow technical work, and rule D caps test/QA roles at low on any Codex model.\n   - It does not sit through the suite.\n   - Its reviewer is `claude.judgment`.\n\n**Recorded in the plan today**\n\n- **STATUS.md daily count (rule F):** `Codex <today>: 3 turns (build 1, test 1, review 1)`. I update this as the turns accrue.\n- **Per dispatch:** `role · effort · why`, the pinned model, and the instance.\n- **Open issue:** the M1/rule C conflict, flagged to orc.\n- **Each PR body:** the implementer, the review rounds, and the defects found."
+    },
+    {
+      "case": "106",
+      "arm": "old",
+      "rep": "1",
+      "label": "G10",
+      "passed": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "why": [
+        "Child 1 is dispatched to codex-worker (Terra, low), so it is a Codex dispatch.",
+        "Child 2 uses Terra at medium; the assertion requires Sol at medium.",
+        "Child 3 uses Sol at medium; the assertion requires Terra at medium.",
+        "Child 4 is on Codex at medium effort, not low or below, and not a non-Codex seat.",
+        "The plan record has no daily count of Codex turns by purpose."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**Dispatch lines** (all T3 `delegate_task`, `mode:\"async\"`, `serviceTier:\"default\"`, explicit effort; model resolved via `node scripts/model-roles.mjs codex.implement --field model`, never a hardcoded name)\n\n1. **Full suite + failure table:** `codex-worker` · `codex.implement` (Terra, bounded) · effort `low` · *Why:* it runs commands, so no read-only Gemini/agy gatherer. Full suites default to the M1 Pro, which takes Codex workers only. Prereqs: ≥10 GiB guard, ≤3 heavy lanes, no sync window, PHX admission and a same-turn BrainBar probe. If the probe fails, the run stays on the MBP.\n\n2. **CSV off-by-one fix:** `codex-worker` · `codex.implement` (Terra, bounded) · effort `medium` · `isolation:\"worktree\"` · *Why:* narrow technical work goes to Codex. Medium effort per the cleanup-routing evidence, never the default xhigh. Reviewer: a fresh `claude.judgment`.\n\n3. **Review of the XS Claude diff:** `codex-worker` · `codex.implement` (Sol) · effort `medium` · *Why:* the reviewer is always the other vendor. XS gets 1 reviewer and 1 round. The reviewer is spawned only after the implementer reports DONE.\n\n4. **QA test cases for the parser:** `codex-worker` · `codex.implement` (Terra) · effort `medium` · `isolation:\"worktree\"` · *Why:* tests are narrow technical work. A `claude.judgment` test-edit decision comes first (rule 2), and `claude.judgment` reviews. If this is its own PR, it gets a fresh implementer.\n\n**What I record in the plan today**\n- One line per phase: `role · effort · why`.\n- Instance `codex-worker` and the resolved model target, verified later from each child's `turn_context`.\n- `serviceTier:\"default\"` / `fastMode:false` for every child.\n- Placement: M1 admission and probe result.\n- Reviewer pairing and size tier.\n- Concurrency: ≤4 Codex workers.\n- Settle plan: `task_cancel`, unwatch, then settle with `threadId`.\n- In each PR body: implementer, review rounds and bot/reviewer defects."
+    },
+    {
+      "case": "106",
+      "arm": "old",
+      "rep": "2",
+      "label": "G02",
+      "passed": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "why": [
+        "Child 1 is dispatched to codex-worker on Terra at low effort, so it is a Codex model.",
+        "Child 2 uses Terra at medium, but the assertion requires Sol at medium.",
+        "Child 3 is labeled Sol, but the assertion requires Terra at medium.",
+        "Child 4 is on Codex at medium effort, which is above low, and it is not on a non-Codex seat.",
+        "The plan records no daily count of Codex turns by purpose."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "First call `orchestrator_capabilities` and pin `target` from its live catalog. Every child gets `serviceTier:\"default\"` and `mode:\"async\"`. Resolve models with `node scripts/model-roles.mjs codex.implement --field model`; never hardcode them.\n\n1. **Full test suite and failure table:** provider `codex-worker`, model `codex.implement` (Terra, bounded), effort `low`.\n   - Why: it runs commands, so it can't go to a read-only Flash or Gemini gatherer.\n   - Placement: the M1 Pro by default (≥10 GiB guard, max 3 heavy lanes, PHX admission, same-turn BrainBar probe). If the probe fails, it stays on the MBP.\n   - The brief names the shell execution profile.\n\n2. **Off-by-one CSV fix:** provider `codex-worker`, model Terra, effort `medium`.\n   - Why: bounded narrow technical work; Codex runs at medium effort, never xhigh.\n   - Isolation: `isolation:\"worktree\"`, a fresh implementer for this PR, opened as a draft.\n\n3. **XS review of the 30-line Claude diff:** provider `codex-worker`, model `codex.implement` (Sol), effort `medium`.\n   - Why: the reviewer must be the other vendor, and XS/S review is one reviewer, one round.\n   - Timing: spawned only after the implementer reports DONE.\n\n4. **QA child writing parser tests:** provider `codex-worker`, model Terra, effort `medium`.\n   - Why: tests are narrow technical work for Codex.\n   - Gate: a test-edit decision by `claude.judgment` comes first (rule 2).\n   - Review: `claude.judgment` reviews the result. If it's a separate PR, it gets its own fresh implementer.\n\n**Recorded in today's plan:**\n- Per phase: `role · effort · why`, with the effort passed explicitly at dispatch.\n- The mission-shape, choice, model target and dispatch block, with the resolved model checked against the runtime catalog.\n- How I'll verify each child: from its own `turn_context`, never from its self-report.\n- The `fastMode:false` / `serviceTier:\"default\"` pins.\n- Each PR body records its implementer, review rounds and bot/reviewer defects.\n- Settle each child at its PR's terminal state, with worktree-removal proof."
+    },
+    {
+      "case": "107",
+      "arm": "new",
+      "rep": "1",
+      "label": "G03",
+      "passed": [
+        true,
+        true
+      ],
+      "why": [
+        "Stops the child now, writes a five-line handoff, and a fresh child continues #412.",
+        "#413 goes to a new fresh implementer with a compact brief; the old child and the #412 successor are not reused."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**PR #412's current child** is past both caps (2.5 h > ~2 h and 45 turns > 40), so it can no longer be reused, even mid-round (§ Codex seats A; Lead Topology #5).\n\n1. **Hand off and stop.** It commits and pushes its partial round-1 fixes to the #412 branch. It then writes a five-line handoff covering what's fixed, what remains, the branch/head and where the results land, and stops.\n2. **Lead verifies, then dispatches a fresh child.** The lead checks the pushed head and the handoff. It then starts a new `delegate_task` to finish round 1:\n   - `codex-worker` instance, Sol at medium (high needs a one-line why), `serviceTier:\"default\"`\n   - `isolation:\"worktree\"`, a new `clientRequestId`\n   - a short brief file that points to the handoff and lists the prior findings\n   - no re-injected full plans or logs\n3. **Lead settles the old child.** The lane closes as `TRANSFERRED` with successor evidence. The lead runs `task_cancel` on its taskId, then `t3_thread_organize {action:\"settle\", threadId:<oldChildThreadId>}`, always naming the threadId. It keeps `watch_pull_request` on #412, because the PR isn't terminal. #412's reviewer may be reused, since it is the same PR.\n\n**PR #413** is a new PR, so it gets a new fresh implementer. It is neither the old child nor the #412 successor (§ Lead Topology #5).\n\n- **Who builds it:** if it's narrow technical work, a Codex Sol-medium `delegate_task` on `codex-worker`. If it's holistic or product work, Claude Opus.\n- **Brief:** a compact checkpoint plus its worktree.\n- **Review:** a fresh other-vendor reviewer, sized by #413's `size:*` label.\n- **PR links:** `link_pull_request` it; the lead owns the watch.\n- **Limits:**\n  - At most 4 Codex workers run at once per lead.\n  - No child waits on CI or tests inside a turn (rule B).\n  - Log the turns in STATUS.md's daily Codex count (rule F)."
+    },
+    {
+      "case": "107",
+      "arm": "new",
+      "rep": "2",
+      "label": "G06",
+      "passed": [
+        true,
+        true
+      ],
+      "why": [
+        "Stops old child now, five-line handoff, fresh child continues #412 from it; not left running.",
+        "#413 goes to separate fresh implementer with compact brief; old thread never reused."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**The #412 child: hand off and stop.** It is past both Codex caps: about 2 hours and 40 turns (§ Codex seats, rule A, which tightens Lead Topology #5).\n\n- A same-PR fix round may reuse a Codex child only while it is under both caps. This one is over both, so it stops reusing.\n- It writes a **five-line handoff** and stops. The handoff covers which findings are fixed, which remain, the branch and head, open checks, and next steps. It pushes its work first.\n- The lead dispatches a **fresh `delegate_task` child** to finish #412's round-1 fixes from that handoff.\n  - Target: `codex-worker`, Sol at medium, `serviceTier:\"default\"`, `isolation:\"worktree\"`, using a short brief file.\n  - The old thread is never resumed or sent a new task.\n- The old lane closes as `TRANSFERRED`, with the successor's evidence. The lead settles it with `task_cancel` plus `t3_thread_organize` settle, naming its explicit `threadId`.\n  - Settle only once nothing needs its worktree. The fix work must already be pushed, because T3 cleanup removes settled checkouts.\n- #412's fresh child then runs through #412's remaining review rounds and is settled when #412 merges or is handed off.\n\n**#413: a separate fresh implementer** (Lead Topology #5, \"one PR = one fresh implementer\").\n\n- It is not the old child and not #412's successor, even though the work is related.\n- The lead sends a new `delegate_task` with a compact checkpoint, never full plans or logs.\n- **Routing for narrow technical work:** Codex Sol at medium on `codex-worker`. High effort needs one line of why.\n- **Routing for holistic or product work:** Claude Opus implements instead.\n- **Reviewer:** a fresh reviewer from the other vendor (`claude.judgment` for a Codex build). The reviewer starts only after the implementer reports done.\n\n**Limits and records:**\n\n- The lead runs at most 4 Codex workers at once.\n- The daily STATUS Codex turn count records these dispatches."
+    },
+    {
+      "case": "107",
+      "arm": "old",
+      "rep": "1",
+      "label": "G09",
+      "passed": [
+        false,
+        true
+      ],
+      "why": [
+        "Says child stays and keeps going; does not stop it now for handoff to fresh child.",
+        "States a fresh implementer builds #413 with a compact brief; old thread not reused."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**The PR #412 child stays.** It is still in #412's review rounds, so it is not idle. The lifetime cap is one PR or about 100 turns. It is at 45 turns, and 2.5 hours does not count against the cap. Let it finish the round-1 fixes.\n\nRules while it keeps #412:\n- **New rounds:** each further review round is a new `delegate_task` that carries the prior findings. Never `t3_thread_send` to its `childThreadId`.\n- **Turn cap:** if it nears about 100 turns before #412 ends, replace it with a fresh delegate. Give that delegate a short brief and a compact checkpoint, not the full plans or logs.\n- **When to settle:** settle at #412's terminal state (merged or handed off), never at its first DONE. First verify the PR URL, head and files, and its worktree removal proof (path absent from `git worktree list --porcelain`). Then, in order:\n  1. Conclude the task.\n  2. `task_cancel` its `taskId`.\n  3. `unwatch_pull_request` #412.\n  4. Run `t3_thread_organize {action:\"settle\", threadId:<childThreadId>}`. Always pass the threadId; omitting it settles the lead.\n\n**A fresh implementer builds #413.** Each PR gets its own implementer, even when the work is related or a dependent stack. The lead dispatches a new `delegate_task` with a compact checkpoint from #412.\n- **Vendor:** narrow technical work goes to Codex. Use Sol for hard work or Terra for bounded work, with `providerInstanceId:\"codex-worker\"`, explicit effort, `serviceTier:\"default\"`, `isolation:\"worktree\"` and `mode:\"async\"`. Holistic or product work goes to Claude Opus with `fastMode:false` instead.\n- **Reviewer:** always the other vendor, and fresh for the new implementer.\n- **Concurrency:** at most 4 Codex workers run at once per lead; a fifth queues until one settles. #413 can start in parallel with #412's fixes if that limit allows.\n- **PR link:** `link_pull_request` #413; the lead owns `watch_pull_request`."
+    },
+    {
+      "case": "107",
+      "arm": "old",
+      "rep": "2",
+      "label": "G12",
+      "passed": [
+        false,
+        true
+      ],
+      "why": [
+        "Says the child keeps working until ~100 turns; no handoff now, contradicting the assertion.",
+        "States #413 gets a new fresh delegate with a compact brief; never reuses the #412 thread."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "## PR #412: the current child stays\n\n- **It keeps working.** Its PR is in review rounds, so it is not idle (§ Lead Topology #5). It is not settled at its first DONE.\n- **It is within its lifetime cap.** The cap is one PR or about 100 turns. At 45 turns it is fine, and 2.5 hours of wall-clock time is not a criterion. If it nears about 100 turns before #412 lands, start a fresh delegate with a short brief and a compact checkpoint, never the full plans or logs.\n- **Later rounds reuse it.** Each new review round is a new `delegate_task` that carries the prior findings. Never `t3_thread_send` to its `childThreadId`. Its reviewer may also be reused for #412's rounds.\n- **Settle it at #412's terminal state** (merged or handed off):\n  1. Verify the artifacts (PR URL, head, files).\n  2. Conclude the task and `task_cancel` its `taskId`.\n  3. `unwatch_pull_request` #412.\n  4. `t3_thread_organize {action:\"settle\", threadId:<childThreadId>}`. Always pass `threadId`; omitting it settles the lead.\n  5. Before closing the lane, require worktree-removal proof: the path is absent from `git worktree list --porcelain`.\n\n## PR #413: a fresh implementer\n\n- **One PR means one fresh implementer.** #413 gets a new `delegate_task` with fresh context, even though it is related and even if it stacks on #412. Dependent stacks are no exception. Hand it a compact checkpoint and use `isolation:\"worktree\"` with absolute paths.\n- **The vendor follows the routing table:**\n  - Narrow technical work goes to Codex: Sol for hard work, Terra for bounded work. Name `providerInstanceId:\"codex-worker\"`, set explicit effort and `serviceTier:\"default\"`.\n  - Holistic or product work goes to Claude Opus with `fastMode:false`.\n- **Review:** use a fresh reviewer from the other vendor.\n- **Who dispatches:** the lead, never the #412 child.\n- **Concurrency:** at most 4 Codex workers per lead. #413 queues if that cap is full."
+    },
+    {
+      "case": "108",
+      "arm": "new",
+      "rep": "1",
+      "label": "G07",
+      "passed": [
+        true,
+        true
+      ],
+      "why": [
+        "States child never waits inside its turn; background run, no blocking watch.",
+        "Background start, result path written, turn ends; script/Sonnet/Haiku watches; fresh child reads result."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "The child **never waits inside its turn** for the suite (§ Codex seats, rule B, 2026-11-13). The burn comes from turn count times context size, so sitting through 25 minutes of tests is exactly what the rule bans.\n\n**What the child does:**\n1. **Starts the suite in the background.** By default it goes on the M1 Pro, because full suites default there (2026-10-28 placement). That placement requires the ≥10 GiB guard, at most 3 heavy lanes, no sync window and PHX admission. On a Codex/M1 dispatch, the same-turn BrainBar probe must pass, or the run stays on the MBP.\n2. **Writes where the result will land**: the log/report path and the exit-status file.\n3. **Ends its turn.** It does not claim DONE, because the work only counts once the suite passes.\n\n**Who watches:**\n- A **script, or a Sonnet/Haiku sub-agent**, watches the run, never the Codex child and never the lead (Lead Topology #7).\n- From a Claude seat, the lead routes it as a mechanical-tier dispatch. Resolve the model with `node scripts/model-roles.mjs claude.subagent.mechanical --field alias`, or `codex.subagent.mechanical --use watcher` for a Codex watcher. Never hardcode model names.\n\n**After the run:**\n- **Green:** a fresh child, or the same PR's child if it is still under ~2 h / 40 turns, reads the result. The lead verifies the artifact (log, PR head) before treating the work as done. A DONE marker only triggers verification.\n- **Red:** the fix round goes to that PR's implementer. Past either cap, the child writes a five-line handoff and a fresh child continues from it (rule A).\n\n**Bookkeeping:** count the Codex turns in the plan's STATUS.md daily line (rule F). Any Codex test-role work stays at effort ≤ low (rule D)."
+    },
+    {
+      "case": "108",
+      "arm": "new",
+      "rep": "2",
+      "label": "G04",
+      "passed": [
+        true,
+        true
+      ],
+      "why": [
+        "Explicitly never sits through suite in a turn; launches detached, ends turn, no Codex polling.",
+        "Starts in background, records result location, ends turn; script or Claude mechanical sub-agent watches; fresh child reads."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**It never sits through the suite inside a turn (§ Codex seats, rule B).**\n\n1. **Placement first:** A 25-minute integration run is a full suite, so it defaults to the **M1 Pro** (2026-10-28 rule). That requires:\n   - the ≥10 GiB guard\n   - at most 3 heavy lanes\n   - no sync window\n   - PHX admission\n   - a same-turn BrainBar probe (socket accepts, `brain_search` answers)\n\n   If the probe fails, the child reports that to the lead and the run stays on the MBP.\n2. **Start it in the background:** The child launches the suite detached and writes the result location (log path, exit-code file, CI run URL) into its report.\n3. **End the turn:** The child stops there. Its work is not DONE yet. It reports something like \"suite running; result at <path>\".\n4. **Watching is mechanical-tier work, routed by the lead.** No Codex seat polls, and neither does the lead itself (§ Lead Topology #7). The watcher is a script, or one of these resolved through `scripts/model-roles.mjs`:\n   - `claude.subagent.mechanical` (Haiku/Sonnet tier) from a Claude seat\n   - `codex.subagent.mechanical --use watcher`\n5. **Read the result with a fresh child (rule A):** Once the result lands, a fresh Codex child reads it from a short brief plus the handoff. It does not resume the old thread.\n   - Green: the work proceeds to DONE, and the lead verifies the artifact.\n   - Red: the fresh child takes the fix round, staying within the same PR and under the ~2 h / 40-turn cap.\n6. **Effort:** Any Codex role that only runs or reads tests stays at effort **low** or below (rule D). The rest of the integration step goes to Cursor, Sonnet or Haiku, never Codex (rule C).\n\nLog the Codex turns in the day's STATUS line, per rule F."
+    },
+    {
+      "case": "108",
+      "arm": "old",
+      "rep": "1",
+      "label": "G00",
+      "passed": [
+        true,
+        false
+      ],
+      "why": [
+        "It says the child does not sit through the suite and delegates waiting to a watcher.",
+        "It never says the child starts it in the background, writes the result location, and ends its turn; it also holds DONE until the suite passes."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**It's a full suite, so it runs on the M1 Pro test rig. The child hands the waiting to a watcher.**\n\n1. **Placement (2026-10-28 M1 rule).** A 25-minute integration suite counts as a full suite, so it defaults to the M1 Pro. Quick focused unit tests are the only ones that stay local. Before dispatch, all of these must hold:\n   - at least 10 GiB free (the guard),\n   - no more than 3 heavy lanes running,\n   - no sync window in progress,\n   - PHX admission granted.\n\n   Transport and the admission ledger follow `references/cross-machine.md`, which replaced the m1-router.\n\n2. **Probe the M1 in the same turn.** The M1 rig only takes Codex workers, which this child is. In the same turn as dispatch, it checks that the BrainBar socket accepts and that `brain_search` answers. If the probe fails, the child reports that to its lead and the suite stays on the MBP.\n\n3. **Delegate the wait.** The child does not sit through the 25 minutes itself. Sitting, polling and waiting go to the mechanical tier: a Codex-internal watcher resolved with `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher --field model`, with effort passed explicitly and `serviceTier:\"default\"`. The watcher needs an execution profile with shell access, never a read-only gatherer.\n\n4. **DONE only after a green suite.** The child writes its DONE marker and report only once the suite passes. A red suite means another fix round on the same PR, with the same implementer. If the child can't reach the M1 or run the suite, it sends one line to its lead: `BLOCKED: integration suite needs <capability>; profile <x> lacks it`. It never asks Etan.\n\n5. **The lead's part.** The lead doesn't poll; the child's completion wakes it. It then verifies the suite result, PR head and files before relaying, and settles the child only when the PR reaches its terminal state."
+    },
+    {
+      "case": "108",
+      "arm": "old",
+      "rep": "2",
+      "label": "G05",
+      "passed": [
+        false,
+        false
+      ],
+      "why": [
+        "Hands the wait to a Codex watcher but never says the child ends its turn; ambiguous, and it writes DONE after green, implying it waits.",
+        "No background start, no result-location write, no ending turn; watcher is a Codex subagent, and no fresh child reads the result."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**A 25-minute integration suite is a full suite, so it defaults to the M1 Pro test rig, not the dev MBP** (M1 placement, Etan 2026-10-28).\n\n1. **Placement checks before dispatch.** Read `references/cross-machine.md` first; it owns the transport, project ids and admission ledger. The run needs all of these:\n   - PHX admission\n   - at least 10 GiB free (the guard)\n   - fewer than 3 heavy lanes already running on the M1\n   - not during a sync window\n   - a **same-turn BrainBar probe**: the socket accepts and `brain_search` answers\n\n   Codex workers are allowed on the M1, so this child qualifies.\n\n2. **Fallback.** If the probe fails, the child reports it to its lead and the suite runs on the MBP. If any other gate blocks the run, the child asks its lead. It never asks Etan about routing.\n\n3. **Waiting goes to a watcher.** Sitting through 25 minutes is mechanical work. The child hands the wait to a Codex watcher at the mechanical tier, resolved with:\n   `node scripts/model-roles.mjs codex.subagent.mechanical --use watcher --field model`\n   It never hardcodes the model, never uses `gpt-5.6-*`, and passes `serviceTier:\"default\"`.\n\n4. **Never a read-only gatherer.** Running tests is execution. It never goes to a Gemini, agy or Flash gatherer profile.\n\n5. **DONE only on green.** The child writes its DONE marker after the suite passes, with the result in its report. If the suite fails, it files `NOT_GREEN` or `BLOCKED` with evidence. The lead treats DONE as a prompt to verify the artifact, not as proof.\n\n6. **The implementer stays.** The child is not settled at DONE. It stays for its PR's review rounds and is settled only when the PR is merged or handed off."
+    },
+    {
+      "case": "109",
+      "arm": "new",
+      "rep": "1",
+      "label": "G01",
+      "passed": [
+        true,
+        true
+      ],
+      "why": [
+        "Names Codex (Sol) as reviewer, the other vendor from Claude Opus implementer.",
+        "Explicitly says audit doesn't change reviewer; Rule E keeps review on Codex."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**Reviewer: Codex Sol (`codex.implement`).**\n\n- **Why Codex reviews:** skill text counts as holistic/product work. Claude Opus implements it, and the reviewer is always the other vendor, so Codex reviews it. There is no exception.\n- **Round limit:** size M allows up to 2 rounds. Round 2 happens only for BLOCKING findings.\n- **Timing:** the review runs while the PR is still a draft. The lead routes the reviewer only after the implementer reports done, so the reviewer never sees a half-finished diff.\n- **Dispatch:** each round is a new T3 `delegate_task` that carries the prior findings. Settings:\n  - `target.providerInstanceId: \"codex-worker\"`, because this is an ordinary reviewer, not security or full-panel.\n  - `serviceTier: \"default\"` and an explicit effort.\n- **Re-check:** resolve the model through `node scripts/model-roles.mjs codex.implement --field model` rather than hardcoding it.\n\n**Does the November Codex audit change who reviews? No.** The 2026-11-13 Codex seat rules shape *how* the review runs, not who does it:\n\n- **Rule E:** review stays on Codex, untouched. It was only 7% of usage, and it is what the subscription is for.\n- **Rule D:** Terra at medium is only for small diffs (XS/S). An M PR keeps the table's reviewer, Sol. Run it at medium. High effort needs a one-line why in the brief, and xhigh needs orc's approval first.\n- **Rule A:** use a short, fresh child with a brief file, and never resume an old thread. The same PR may reuse its reviewer only while it is under about 2 hours or 40 turns. Past that, the reviewer writes a five-line handoff and a fresh child continues.\n- **Rule B:** the reviewer never sits through a long test, build or CI run inside a turn. It starts the run in the background and ends its turn.\n- **Rule F:** add these review turns to the plan's daily Codex count line in STATUS.md."
+    },
+    {
+      "case": "109",
+      "arm": "new",
+      "rep": "2",
+      "label": "G14",
+      "passed": [
+        true,
+        true
+      ],
+      "why": [
+        "Says Codex Sol reviews Claude-built PR; reviewer is other vendor.",
+        "States audit does not change reviewer; review stays on Codex untouched."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**Who reviews:** Skill text is holistic/product work, so Claude Opus implements and **Codex Sol (`codex.implement`) reviews**. The reviewer is always the other vendor, with no exception.\n\n- **Size M:** up to 2 rounds. Round 2 happens only for BLOCKING findings. There is no full panel unless the PR touches data or security paths.\n- **Timing:** the lead routes the reviewer only after the implementer reports DONE. The review runs on the draft, before `gh pr ready`.\n- **Dispatch:** in T3, use `delegate_task` with `target.providerInstanceId: \"codex-worker\"` and `serviceTier:\"default\"`. Pass effort explicitly.\n- **Freshness:** the reviewer is fresh per implementer, and each round is a new `delegate_task` carrying the prior findings.\n- **Deletions or test edits:** if the PR deletes code or edits tests, `claude.judgment` makes that decision first (rule 2).\n\n**Does the Nov 2026 Codex audit change it?** It does not change who reviews:\n\n- **Rule E:** review stays on Codex untouched. It was only 7% of usage and is what the subscription is for.\n- **Rule D:** Terra at medium applies only to small diffs (XS/S). An M PR keeps the table's reviewer, Sol. Medium effort is the default, and high effort needs one line of why in the brief.\n- **Rule A:** the reviewer is a short, fresh child. A round-2 child may be reused only if it is under about 2 h and 40 turns. Past either cap, it writes a five-line handoff and a fresh child takes over.\n- **Rule B:** the reviewer never sits inside its turn waiting on a test run, hook or CI.\n- **Rule F:** log the review turns in the plan's STATUS.md daily Codex count, for example `Codex 2026-11-13: 2 turns (review 2)`.\n\nThe PR body records the implementer, review rounds and defects found."
+    },
+    {
+      "case": "109",
+      "arm": "old",
+      "rep": "1",
+      "label": "G13",
+      "passed": [
+        true,
+        true
+      ],
+      "why": [
+        "Names Codex Sol as reviewer; excludes Gemini/Antigravity; Claude implements, other vendor reviews.",
+        "Says No change; cross-vendor requirement holds, doesn't switch reviewer away from Codex."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**Reviewer: Codex Sol (`codex.implement`).** Skill text is holistic/product work, so Claude Opus implements and the other vendor reviews. Routing rules (SSOT), 2026-10-29: \"Sol reviews a Claude implementation… with no exception.\"\n\n**How the round runs:**\n- **Sequential.** The reviewer is briefed only after the implementer reports done. The implementer may open the PR as a draft earlier, but the reviewer never reads a half-finished diff. The inner loop runs on the draft, before `gh pr ready`.\n- **The lead routes it.** The implementer never starts its own reviewer.\n- **T3 dispatch details:**\n  - Use `delegate_task` with `target.providerInstanceId: \"codex-worker\"`.\n  - Pass `serviceTier:\"default\"` and an explicit effort plus a one-line reason.\n  - Use a fresh reviewer per implementer.\n  - Each round is a new `delegate_task` that carries prior findings.\n- **Size M:** up to 2 rounds. Round 2 happens only for BLOCKING findings (canon #9).\n- **No Gemini/Antigravity reviewer.** They gather and never review.\n- **Deletion or test edit in the diff:** `claude.judgment` decides it first (decision rule 2).\n- **Records:** the PR body records the implementer, review rounds, and defects found.\n\n**Does a November Codex usage audit change this? No.** This skill contains no November Codex usage audit. Its November entries all concern gathering:\n- 2026-11-01: non-easy gathers go to Antigravity Claude when Argon is out.\n- 2026-11-02: easy work goes to Flash-high.\n- 2026-11-08: use Antigravity more.\n\nNone of these touches review ownership. The 2026-10-28 note about saving Claude's window also points work toward Codex, not away from it. If there is an audit outside this skill, it doesn't count until Etan rules on it and the SSOT is updated. `/whats-new`-style changes \"do not revise Routing rules (SSOT) by implication.\" If Codex quota is tight, the cross-vendor reviewer requirement still holds, so ask the lead or orc rather than switching to a different reviewer."
+    },
+    {
+      "case": "109",
+      "arm": "old",
+      "rep": "2",
+      "label": "G15",
+      "passed": [
+        true,
+        true
+      ],
+      "why": [
+        "Names Codex Sol as reviewer, cross-vendor from Claude implementer; excludes Gemini/Antigravity from review.",
+        "Says audit does not change reviewer; quota pressure doesn't waive cross-vendor Codex review."
+      ],
+      "grader": [
+        "claude-sonnet-5-5"
+      ],
+      "answer": "**Reviewer: Codex Sol (`codex.implement`).** Skill text counts as holistic/product work, so `claude.judgment` (Opus) implements it. The SSOT requires the reviewer to be the other vendor, \"with no exception.\"\n\n**How the inner loop runs:**\n- **Timing:** the lead spawns the reviewer only after the implementer reports DONE. The work is still a draft PR at this point, and the reviewer never reads a half-finished diff. The worker never starts its own reviewer.\n- **M sizing:** up to 2 rounds. Round 2 happens only for BLOCKING findings (canon #9).\n- **Fresh reviewer:** use a new reviewer per implementer. In T3, each round is a new `delegate_task` that carries the prior findings.\n- **Dispatch details (T3):**\n  - `target.providerInstanceId: \"codex-worker\"`, since this is an ordinary reviewer and not security or full-panel.\n  - Pass effort explicitly with a one-line reason.\n  - Set `serviceTier: \"default\"`.\n- **After review:** once both sides are satisfied, the implementer runs `gh pr ready`. The `/pr-loop` bot and PR reviews start at that ready flip.\n- **Extra gate:** skill edits are skillCreator-domain work. If skillCreator isn't already in the loop, request its audit before patching.\n\n**Does the November Codex usage audit change this? No, as far as this skill shows.** The skill doesn't mention any \"November Codex usage audit.\" Its November rulings cover only gathering:\n- **2026-11-01:** gathers go to Antigravity Claude when Gemini Argon is out.\n- **2026-11-02:** easy read-only work goes to Flash-high.\n- **2026-11-08:** use Antigravity much more.\n\nNone of these changes review routing. The skill states that Gemini/Antigravity never review.\n\nCodex quota pressure affects concurrency, not acceptance. It doesn't waive the cross-vendor reviewer. Only an Etan ruling written into the SSOT could change the reviewer. If you have a specific audit in mind, point me to it and I'll check whether it amends the SSOT."
+    }
+  ]
+}
