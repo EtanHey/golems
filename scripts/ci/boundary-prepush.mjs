@@ -116,8 +116,8 @@ function policy() {
     if (/^[a-z_]+:/.test(line)) section = line.split(':')[0];
     if (section !== 'forbidden_classes' && section !== 'push_patterns') continue;
     const c = /^  ([a-z0-9_-]+):/.exec(line);
-    if (c) { klass = c[1]; rules.set(klass, { patterns: [], allowed_patterns: [] }); kind = null; }
-    const k = /^    (patterns|allowed_patterns):/.exec(line);
+    if (c) { klass = c[1]; rules.set(klass, { patterns: [], allowed_patterns: [], allowed_versions: [] }); kind = null; }
+    const k = /^    (patterns|allowed_patterns|allowed_versions):/.exec(line);
     if (k) kind = k[1];
     const scalar = /^      - '(.*)'\s*$/.exec(line);
     if (scalar && kind) rules.get(klass)[kind].push(regex(scalar[1].replaceAll("''", "'")));
@@ -172,6 +172,16 @@ try {
           for (const [name, rule] of rules) {
             let text = line.slice(columns);
             for (const re of rule.allowed_patterns) text = text.replace(re, '');
+            for (const re of rule.allowed_versions) text = text.replace(re, token => {
+              // Inspect overlapping runs, including suffixes within an octet.
+              // A run may start inside the numeric tail of an identifier,
+              // but its first numeric component must be glued to letters.
+              const runs = token.matchAll(/(?=(([0-9]{1,3}\.){3}[0-9]{1,3}))/g);
+              for (const run of runs) {
+                if (!/[A-Za-z][A-Za-z0-9]*-$/.test(token.slice(0, run.index).replace(/[0-9]+$/, ''))) return token;
+              }
+              return '';
+            });
             if (rule.patterns.some(re => { re.lastIndex = 0; return re.test(text); })) throw new Error(`publication violation (${name}); content withheld`);
           }
         }
