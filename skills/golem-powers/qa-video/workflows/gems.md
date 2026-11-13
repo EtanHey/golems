@@ -16,6 +16,14 @@ or wants durable insights/takeaways from a video instead of QA findings.
 
 ## Execution Contract
 
+**Debrief/review, including the exhaustive override that process.md sends here:** the readers are
+gatherers, never Claude helpers or the runner: SKILL.md § Execution routing order (Antigravity `gemini.gather.visual`
+`delegate_task` → `visual-batch.py` / `visual-gatherer` → TOOLING FAILURE), with its wait budgets. A seat
+with no dispatch tool runs `visual-batch.py` in its own shell; if that fails it returns NEEDS_READERS with
+the ordered frame batches, or reports TOOLING FAILURE with the unread frame IDs. It never reads the
+frames itself; the judge spot-checks ≤2 frames per reported finding. The reader fan-out and single-reader
+fallback below apply to **pure gems only** (a follow-up moves gems to gatherers too).
+
 Default pipeline: `Agent(video-gems)` for gems, managed at
 `../agents/video-gems.md` and installed by `skills/golem-powers/orc/scripts/install.sh`. Include
 absolute skill/workflow paths, source, workdir and the remaining deadline.
@@ -65,7 +73,7 @@ empty transcript is a mode switch, not a reason to end the visual pass.
    first, then `scene-cues.sh` and `dense-windows.sh` over visual changes; for a
    short silent clip sample the whole duration at 2 fps initially. Plan from
    metadata, not image loading. List every extracted frame in ordered batches.
-3. Split across at least two image-reading helpers, **at most six full-size
+3. Split across gatherer batches (debrief/review) or at least two image-reading helpers (gems), **at most six full-size
    frames per helper task, including adjacent-boundary overlap**. Create more
    tasks, never larger batches; schedule waves within the parent's concurrency
    limit and use a fresh helper context per task. This conservative cap borrows
@@ -84,17 +92,18 @@ empty transcript is a mode switch, not a reason to end the visual pass.
    silently overwritten. Compare merged reads with the complete extracted-frame
    manifest; list missing/unread IDs and unresolved conflicts as coverage gaps.
    A sheet, planned batch or pre-sort is not a full-size read. Dispatch-unavailable
-   seats follow the single-reader fallback above without dropping frames.
+   gems seats follow the single-reader fallback above without dropping frames; debrief/review seats
+   run `visual-batch.py`, else NEEDS_READERS / TOOLING FAILURE with the unread IDs, never a self-read.
 4. Read all extracted frames, including new refinement frames. Densify scroll,
    hover, tooltip and transition windows at 10 fps up to source fps, using fresh
    `dense-windows.sh` output directories; use decoded PTS for before/after claims.
    Repeat unclear windows within the remaining budget. A source-resolution limit
    may stay NOT DETERMINED after inspection; an unread frame may not.
 5. While unread frames or resolvable windows remain and time remains, continue:
-   dispatch/rebatch unread IDs or read them in the no-dispatch fallback. Compact
+   dispatch/rebatch unread IDs (gems only: or read them in the no-dispatch fallback). Compact
    text findings and split smaller batches before context fills; context pressure
    alone does not authorize PARTIAL. Stop PARTIAL only on actual deadline expiry
-   or a hard error (including failed reads/dispatch); identify the cause, raw error
+   or a hard error (including failed reads/dispatch) or a spent wait budget; identify the cause, raw error
    path, unread IDs and remaining time. Never idle just to consume the budget.
 6. End with `frames read N/N, helpers K, budget used X/Y s, gaps [frame IDs/conflicts or none]`, computed from actual
    reader receipts and elapsed wall-clock, plus pasted `coverage-count.sh` output.

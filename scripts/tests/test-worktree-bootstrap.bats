@@ -176,13 +176,14 @@ assert_one_timed_line() {
 # agent CLI replaced by a function that prints its cwd, then run the commands.
 launch() {
     local cmds="$1"; shift
-    mkdir -p "$TMPDIR_/project"
+    mkdir -p "$TMPDIR_/project" "$TMPDIR_/standards"
+    printf '%s\n' '{"roles":{"codex.implement":{"model":"fixture-codex"}}}' > "$TMPDIR_/standards/model-roles.json"
     cat > "$TMPDIR_/registry.json" <<JSON
 { "projects": { "testrepo": { "path": "$TMPDIR_/project", "mcps": [], "mcpsLight": [],
   "secrets": {}, "disableChrome": true, "clis": ["codex", "claude"] } } }
 JSON
     run env PATH="$STUB_PATH" RALPH_REGISTRY_FILE="$TMPDIR_/registry.json" \
-        CODEX_HOME="$TMPDIR_/codex-home" WT="$WT" "$@" zsh -f -c '
+        GOLEMS_MODEL_ROLES_ROOT="$TMPDIR_" CODEX_HOME="$TMPDIR_/codex-home" WT="$WT" "$@" zsh -f -c '
       function _ralph_setup_mcps() { return 0; }
       function _ralph_setup_secrets() { return 0; }
       function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
@@ -219,13 +220,21 @@ JSON
     [[ "$output" == *"CODEX_PWD=$WT"* ]] || false
 }
 
-@test "testrepoCursor and testrepoGemini -w bootstrap the worktree too" {
+@test "testrepoCursor -w refuses the retired CLI without bootstrapping" {
     touch "$WT/package-lock.json"
-    launch 'testrepoCursor -s -w "$WT" task; testrepoGemini -s -w "$WT" task'
+    launch 'testrepoCursor -s -w "$WT" task'
+    [ "$status" -ne 0 ]
+    [ ! -s "$CALLS" ]
+    [[ "$output" == *"T3 delegate_task"* ]] || false
+    [[ "$output" != *"CURSOR_PWD="* ]] || false
+    [[ "$output" != *"[worktree-bootstrap]"* ]] || false
+}
+
+@test "testrepoGemini -w bootstraps the worktree too" {
+    touch "$WT/package-lock.json"
+    launch 'testrepoGemini -s -w "$WT" task'
     [ "$status" -eq 0 ]
     [ "$(sed -n 1p "$CALLS")" = "npm ci --prefer-offline @ $WT" ]
-    [ "$(sed -n 2p "$CALLS")" = "npm ci --prefer-offline @ $WT" ]
-    [[ "$output" == *"CURSOR_PWD=$WT"* ]] || false
     [[ "$output" == *"AGY_PWD=$WT"* ]] || false
 }
 

@@ -1,54 +1,16 @@
 #!/usr/bin/env python3
 """GREEN arm runner for AutoCursor parity.
 
-The deterministic gate uses replay fixtures. A future live calibration mode can
-switch this module to call skills/golem-powers/cursor-workflows/lib/autocursor.py
-directly; the import guard here keeps this eval runnable while Worker A lands the
-primitives library in parallel.
+Historical replay only. The AutoCursor engine was retired; this module never
+imports or launches it.
 """
 
 from __future__ import annotations
 
-import importlib
-import inspect
 import json
 import subprocess
 import sys
 from pathlib import Path
-
-
-def autocursor_import_status(eval_dir: Path) -> dict:
-    cursor_workflows_dir = eval_dir.parents[1]
-    repo_root = eval_dir.parents[4]
-    lib_dir = cursor_workflows_dir / "lib"
-    module_path = lib_dir / "autocursor.py"
-    status = {
-        "status": "missing",
-        "path": str(module_path.relative_to(repo_root)),
-        "signatures": {},
-    }
-    if not module_path.exists():
-        return status
-
-    sys.path.insert(0, str(lib_dir))
-    try:
-        autocursor = importlib.import_module("autocursor")
-    except Exception as exc:  # pragma: no cover - depends on parallel Worker A.
-        status["status"] = f"import_error:{type(exc).__name__}"
-        status["error"] = str(exc)
-        return status
-
-    expected = ("agent", "parallel", "pipeline", "phase", "loop_until_dry")
-    missing = [name for name in expected if not hasattr(autocursor, name)]
-    if missing:
-        status["status"] = "incomplete"
-        status["missing"] = missing
-        return status
-    status["status"] = "available"
-    status["signatures"] = {
-        name: str(inspect.signature(getattr(autocursor, name))) for name in expected
-    }
-    return status
 
 
 class SmokeReplaySkipped(Exception):
@@ -135,5 +97,4 @@ def load_green_replay(eval_dir: Path) -> dict:
     single_pass = parse_cursor_ndjson(without_text, label="cursor-agent.single-pass.ndjson")
     green["single_pass"] = single_pass
     green["smoke_report"] = smoke_report
-    green["autocursor_import"] = autocursor_import_status(eval_dir)
     return green

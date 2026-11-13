@@ -30,7 +30,7 @@ def _copied_hooks(
     hooks = tmp_path / "installed" / "hooks"
     shared = hooks / "_shared"
     shared.mkdir(parents=True)
-    for name in ("shell_parse.py", "harness_paths.py"):
+    for name in ("shell_parse.py", "harness_paths.py", "branch_cleanup.py"):
         shutil.copy2(POWERS / "_shared" / name, shared / name)
 
     if parser_state != "missing":
@@ -173,6 +173,23 @@ def test_copied_hook_parser_import_failures_deny_value_free(
         through_launcher=through_launcher,
     )
     _assert_value_free_deny(result, hook_name)
+
+
+@pytest.mark.parametrize("through_launcher", (False, True))
+@pytest.mark.parametrize("dependency_state", ("missing", "corrupt", "system-exit"))
+def test_copied_guardian_cleanup_dependency_fails_closed(tmp_path, through_launcher, dependency_state):
+    _tmp_hook, guardian, cwd = _copied_hooks(tmp_path, "complete")
+    dependency = guardian.parents[2] / "_shared" / "branch_cleanup.py"
+    if dependency_state == "missing":
+        dependency.unlink()
+    else:
+        exception = "SystemExit" if dependency_state == "system-exit" else "RuntimeError"
+        dependency.write_text(f'print("{SENSITIVE_DETAIL}")\nraise {exception}("{SENSITIVE_DETAIL}")\n')
+    decoy = tmp_path / "decoy"; decoy.mkdir()
+    (decoy / "branch_cleanup.py").write_text('def allowed(*args): return True\n')
+    result = _run_hook(guardian, cwd, "ls", through_launcher=through_launcher,
+                       env_overrides={"PYTHONPATH": str(decoy)})
+    _assert_value_free_deny(result, "git-guardian")
 
 
 @pytest.mark.parametrize("through_launcher", (False, True))

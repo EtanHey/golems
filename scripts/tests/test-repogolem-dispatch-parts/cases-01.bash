@@ -422,12 +422,10 @@ AGENT
 
       source "$3"
       testrepoCodex -c "Prep examplechannel voice pairs"
-      testrepoCursor -c "Prep examplechannel voice pairs"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
     [ "$status" -eq 0 ]
     grep -F -q -- "CODEX_ARGS=resume --last" <<< "$output"
-    grep -F -q -- "CURSOR_ARGS=agent --continue" <<< "$output"
     grep -F -q -- "BrainLayer-first ambiguity gate" <<< "$output"
     grep -F -q -- "BLOCKED_BRAINLAYER_UNAVAILABLE" <<< "$output"
     grep -F -q -- "resolve them from BrainLayer context and existing voice artifacts" <<< "$output"
@@ -450,12 +448,10 @@ function split_case_018() {
 
       source "$2"
       testrepoCodex -c -p "one shot"
-      testrepoCursor -c -p "one shot"
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
-    [ "$status" -eq 0 ]
+    [ "$status" -ne 0 ]
     grep -F -q -- "Cannot combine Codex resume with -p/--print" <<< "$output"
-    grep -F -q -- "CURSOR_ARGS=agent --print --output-format text" <<< "$output"
     ! grep -F -q -- "CODEX_ARGS=" <<< "$output" || false
     ! grep -F -q -- "CODEX_ARGS=resume --last" <<< "$output" || false
     ! grep -F -q -- "CURSOR_ARGS=agent --continue" <<< "$output"
@@ -502,16 +498,15 @@ function split_case_020() {
       function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
       function _golem_setup_env() { return 0; }
 
-      function cursor() { print -r -- "CURSOR_ARGS=$*"; }
+      function cursor() { print -r -- "CURSOR_MUST_NOT_RUN"; }
 
       source "$2"
       testrepoCursor -s -m auto
     ' _ "$REGISTRY_FILE" "$SOURCE_DISPATCHER"
 
-    [ "$status" -eq 2 ]
-    grep -F -q -- "repoGolem bare-launcher law" <<< "$output"
-    grep -F -q -- "REPOGOLEM_ALLOW_MODEL=1" <<< "$output"
-    ! grep -F -q -- "CURSOR_ARGS=" <<< "$output"
+    [ "$status" -ne 0 ]
+    grep -F -q -- "T3 delegate_task" <<< "$output"
+    ! grep -F -q -- "CURSOR_MUST_NOT_RUN" <<< "$output"
 }
 
 function split_case_021() {

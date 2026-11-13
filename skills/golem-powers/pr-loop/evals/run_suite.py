@@ -8,6 +8,8 @@ SKILL = Path(__file__).resolve().parents[1]
 REPO = SKILL.parents[2]
 COMMAND = "pr-watch <owner/repo> <N> --head <sha> --deadline 2h"
 # Codex blocks its turn on pr-watch with no shorter Monitor expiry, so its deadline is its cache limit.
+# AIDEV-NOTE: review-loop.md dropped this in-turn wait (2026-11-13, /agent-routing § Codex seats rule B:
+# a Codex child never waits inside a turn). adapters/codex.md still pins it; aligning that adapter is a follow-up.
 CODEX_COMMAND = "pr-watch <owner/repo> <N> --head <sha> --deadline 25m"
 TABLE = "../../../../scripts/pr-watch-lib/README.md#usage-and-exits"
 SURFACES = ["references/review-loop.md", "adapters/claude.md", "adapters/codex.md",
@@ -58,8 +60,15 @@ class ArmingContract(unittest.TestCase):
         self.assertIn("~30-min cache window", codex)
         self.assertIn("25-minute", codex)
         shared = " ".join(text("references/review-loop.md").split())
-        self.assertIn("`--deadline 25m`", shared)
         self.assertIn("The 30-minute Monitor expiry precedes the 2h --deadline", shared)
+
+    def test_review_loop_codex_seat_never_runs_pr_watch_inside_its_turn(self):
+        shared = " ".join(text("references/review-loop.md").split())
+        self.assertIn("A Codex seat never runs it inside its turn", shared)
+        self.assertIn("starts the watch in the background", shared)
+        self.assertIn("ends its turn (`/agent-routing` § Codex seats, rule B)", shared)
+        self.assertNotIn("--deadline 25m", shared)
+        self.assertNotIn("Codex runs the same command", shared)
 
     def test_rearming_preserves_settle_review_and_current_release_paths(self):
         content = " ".join(text("references/review-loop.md").split())

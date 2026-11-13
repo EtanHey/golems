@@ -60,16 +60,15 @@ function split_case_062() {
       function _golem_setup_env() { return 0; }
       function _golem_setup_title() { return 0; }
       function _golem_reset_title() { return 0; }
-      function cursor() { print -r -- "CURSOR_ARGS=$*"; }
+      function cursor() { print -r -- "CURSOR_MUST_NOT_RUN"; }
 
       source "$3"
       testrepoCursor --worker -s -p "Implement brief"
     ' _ "$fake_home" "$TMPDIR_/registry-with-agent.json" "$SOURCE_DISPATCHER"
 
-    [ "$status" -eq 0 ]
-    grep -F -q -- "CURSOR_ARGS=agent" <<< "$output"
-    grep -F -q -- "Implement brief" <<< "$output"
-    assert_no_worker_persona_markers "$output"
+    [ "$status" -ne 0 ]
+    grep -F -q -- "T3 delegate_task" <<< "$output"
+    ! grep -F -q -- "CURSOR_MUST_NOT_RUN" <<< "$output"
 }
 
 function split_case_063() {
@@ -474,17 +473,16 @@ function split_case_076() {
       function _ralph_setup_secrets() { return 0; }
       function _ralph_build_mcp_config() { print -r -- "{\"mcpServers\":{}}"; }
 
-      function cursor() { print -r -- "ARGS=$*"; }
+      function cursor() { print -r -- "CURSOR_MUST_NOT_RUN"; }
 
       source "$2"
       _golem_register_wrappers
       testrepoCursor -s -m auto
     ' _ "$REGISTRY_FILE" "$DISPATCHER"
 
-    [ "$status" -eq 2 ]
-    grep -F -q -- "repoGolem bare-launcher law" <<< "$output"
-    grep -F -q -- "REPOGOLEM_ALLOW_MODEL=1" <<< "$output"
-    ! grep -F -q -- "ARGS=" <<< "$output"
+    [ "$status" -ne 0 ]
+    grep -F -q -- "T3 delegate_task" <<< "$output"
+    ! grep -F -q -- "CURSOR_MUST_NOT_RUN" <<< "$output"
 }
 
 function split_case_077() {

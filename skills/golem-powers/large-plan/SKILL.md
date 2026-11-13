@@ -52,6 +52,8 @@ Done = all three are true before the `delegate_task` / `t3_thread_launch` / `Age
 
 ALWAYS use `/large-plan` for planning, including short work. A short plan is a few lines with the same skeleton: Goal, Time, Round, Tools (model, effort and why), Steps, Depends On, Status, and verification. Keep it inline or in one plan file; phase folders are for larger work.
 
+A plan that dispatches Codex keeps the daily one-line Codex count in its STATUS.md: `/agent-routing` § Codex seats, rule F.
+
 When planning phases for any visible front-end change, read [workflows/ux-ui.md](workflows/ux-ui.md) and name every stage in the plan, even while app details are pending.
 
 Each slice of a multi-PR plan declares its invariant test: name the behavior that must hold and the test command or case that proves it before READY. Fill this in even when using the scaffold script or workflow templates.
@@ -211,6 +213,7 @@ Low is only for known-output mechanical work; medium suits mechanical splits/ref
 High/xhigh suit open-ended implementation, hard debugging or contradictory evidence;
 security uses high. Evidence: skill-creator cleanup-routing R2 (2026-09-30, 48 verified runs): medium best-or-joint-best on mechanical cleanup; never default xhigh; a data point, not a ceiling.
 Every Codex dispatch passes `-E` / `effort:` explicitly with the phase's reason.
+Codex caps win over these rungs: `/agent-routing` § Codex seats, rule D.
 
 ## Invariant test
 - **Invariant:** [behavior this slice must preserve]

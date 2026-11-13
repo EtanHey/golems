@@ -137,6 +137,7 @@ Low is only for known-output mechanical work; medium suits mechanical splits/ref
 High/xhigh suit open-ended implementation, hard debugging or contradictory evidence;
 security uses high. Evidence: skill-creator cleanup-routing R2 (2026-09-30, 48 verified runs): medium best-or-joint-best on mechanical cleanup; never default xhigh; a data point, not a ceiling.
 Every Codex dispatch passes `-E` / `effort:` explicitly with the phase's reason.
+Codex caps win over these rungs: `/agent-routing` § Codex seats, rule D.
 
 ## Invariant test
 - **Invariant:** [behavior this slice must preserve]

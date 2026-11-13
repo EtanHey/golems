@@ -77,11 +77,11 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
     split_case_016
 }
 
-@test "tracked dispatcher source keeps ambiguity gate on Codex and Cursor continue prompts" {
+@test "tracked dispatcher source keeps ambiguity gate on Codex continue prompts" {
     split_case_017
 }
 
-@test "tracked dispatcher source refuses Codex resume plus print while Cursor keeps print precedence" {
+@test "tracked dispatcher source refuses Codex resume plus print" {
     split_case_018
 }
 
@@ -89,7 +89,7 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
     split_case_019
 }
 
-@test "tracked dispatcher source keeps Cursor model refusal for interactive agent sessions" {
+@test "tracked dispatcher source keeps retired Cursor CLI refusal for interactive agent sessions" {
     split_case_020
 }
 
@@ -257,7 +257,7 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
     split_case_061
 }
 
-@test "tracked dispatcher source keeps Cursor --worker boot payload persona-free" {
+@test "tracked dispatcher source keeps retired Cursor --worker refuses before launch" {
     split_case_062
 }
 
@@ -313,7 +313,7 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
     split_case_075
 }
 
-@test "testrepoCursor -m refuses agent sessions" {
+@test "testrepoCursor -m refuses the retired CLI route" {
     split_case_076
 }
 
@@ -377,11 +377,11 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
     split_case_091
 }
 
-@test "tracked dispatcher source keeps lead personas for Cursor and Gemini" {
+@test "tracked dispatcher source keeps lead personas for Gemini" {
     split_case_092
 }
 
-@test "tracked dispatcher source keeps inherited GOLEM_ROLE=worker launches persona-free for Cursor and Gemini" {
+@test "tracked dispatcher source keeps inherited GOLEM_ROLE=worker launches persona-free for Gemini" {
     split_case_093
 }
 
@@ -429,7 +429,7 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
     split_case_104
 }
 
-@test "--worker exports GOLEM_ROLE=worker to the launched Codex, Cursor and Gemini CLI" {
+@test "--worker exports GOLEM_ROLE=worker to the launched Codex and Gemini CLI" {
     split_case_105
 }
 
@@ -776,4 +776,20 @@ load 'test-repogolem-dispatch-parts/cases-10.bash'
     grep -F -x -q 'ALLOW_ENV=unset' <<< "$output"
     grep -F -x -A1 'CODEX_ARG=--model' <<< "$output" | grep -F -x -q 'CODEX_ARG=explicit-model'
     codex_arg_pair_present 'model_reasoning_effort="high"' "$output"
+}
+
+@test "fresh Codex resolves changed implement role and explicit model wins" {
+    write_model_roles_fixture "$TMPDIR_/roles"
+    run_codex_scan_launch 'testrepoCodex -E high' "$TMPDIR_/roles"
+    [ "$status" -eq 0 ]
+    grep -F -x -q 'CODEX_ARG=fixture-implement-model' <<< "$output"
+    sed 's/fixture-implement-model/fixture-changed-model/' "$TMPDIR_/roles/standards/model-roles.json" > "$TMPDIR_/roles/standards/next.json"
+    mv "$TMPDIR_/roles/standards/next.json" "$TMPDIR_/roles/standards/model-roles.json"
+    run_codex_scan_launch 'testrepoCodex -E high' "$TMPDIR_/roles"
+    [ "$status" -eq 0 ]
+    grep -F -x -q 'CODEX_ARG=fixture-changed-model' <<< "$output"
+    run_codex_scan_launch 'testrepoCodex -E high --model explicit-model' "$TMPDIR_/roles"
+    [ "$status" -eq 0 ]
+    grep -F -x -q 'CODEX_ARG=explicit-model' <<< "$output"
+    refute_contains 'CODEX_ARG=fixture-changed-model' "$output"
 }

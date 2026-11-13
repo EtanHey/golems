@@ -311,7 +311,7 @@ run_worker_role_launch() {
 function split_case_105() {
     [ -f "$SOURCE_DISPATCHER" ]
     local launcher stub
-    for launcher in testrepoCodex testrepoCursor testrepoGemini; do
+    for launcher in testrepoCodex testrepoGemini; do
       case "$launcher" in
         testrepoCodex) stub=CODEX ;;
         testrepoCursor) stub=CURSOR ;;
@@ -334,7 +334,7 @@ function split_case_106() {
 function split_case_107() {
     [ -f "$SOURCE_DISPATCHER" ]
     local launcher
-    for launcher in testrepoCodex testrepoCursor testrepoGemini testrepoCodexWorker; do
+    for launcher in testrepoCodex testrepoGemini testrepoCodexWorker; do
       run_worker_role_launch "" "$launcher" --worker -s
       [ "$status" -eq 0 ]
       grep -E -x -q -- "(CODEX|CURSOR|AGY)_ROLE_CHILD=worker" <<< "$output"
@@ -346,7 +346,7 @@ function split_case_107() {
 function split_case_108() {
     [ -f "$SOURCE_DISPATCHER" ]
     local launcher
-    for launcher in testrepoCodex testrepoCursor testrepoGemini; do
+    for launcher in testrepoCodex testrepoGemini; do
       run_worker_role_launch lead "$launcher" --worker -s
       [ "$status" -eq 0 ]
       grep -E -x -q -- "(CODEX|CURSOR|AGY)_ROLE_CHILD=worker" <<< "$output"
@@ -358,7 +358,7 @@ function split_case_108() {
 function split_case_109() {
     [ -f "$SOURCE_DISPATCHER" ]
     local launcher
-    for launcher in testrepoClaude testrepoCodex testrepoCursor testrepoGemini; do
+    for launcher in testrepoClaude testrepoCodex testrepoGemini; do
       run_worker_role_launch worker "$launcher" -s
       [ "$status" -eq 0 ]
       grep -E -x -q -- "(CLAUDE|CODEX|CURSOR|AGY)_ROLE_CHILD=worker" <<< "$output"
@@ -369,7 +369,7 @@ function split_case_109() {
 function split_case_110() {
     [ -f "$SOURCE_DISPATCHER" ]
     local launcher
-    for launcher in testrepoClaude testrepoCodex testrepoCursor testrepoGemini; do
+    for launcher in testrepoClaude testrepoCodex testrepoGemini; do
       run_worker_role_launch "" "$launcher" -s
       [ "$status" -eq 0 ]
       grep -E -x -q -- "(CLAUDE|CODEX|CURSOR|AGY)_ROLE_CHILD=" <<< "$output"
@@ -453,7 +453,7 @@ STUB
     ' _ "$registry" "$SOURCE_DISPATCHER" "$bin" "$TMPDIR_/home" "$@"
 }
 
-PRELAUNCH_LAUNCHERS=(testrepoClaude testrepoCodex testrepoCursor testrepoGemini)
+PRELAUNCH_LAUNCHERS=(testrepoClaude testrepoCodex testrepoGemini)
 
 function split_case_113() {
     [ -f "$SOURCE_DISPATCHER" ]

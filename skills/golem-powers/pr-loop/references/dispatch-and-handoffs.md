@@ -30,7 +30,7 @@ If you are running autonomously (no human in the loop), these rules are mandator
 2. **Waiting for reviews:** after invoking reviewers, wait per the [waiting policy](review-loop.md#waiting-policy-no-polling-turns): the T3 parent watch first, bounded reads for a decision, or one cheap watcher only outside T3, never a timed polling turn. Fifteen minutes with no response does not waive the review gate: a lead may merge only after at least one review and all required comment/review conditions pass; a worker hands off unmerged.
 3. **Post to collab** with PR number immediately after creation and after worker handoff or lead merge (with test counts).
 4. **CRITICAL/HIGH comments require reply** before handoff or merge — fix, or explicit "won't fix because X." Zero replies = cannot advance.
-5. **Max 2 review rounds.** One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings. Round 3 requires a lead exception written in the PR body (canon #9). A worker hands off unmerged.
+5. **Max 2 review rounds.** One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; NON-BLOCKING findings are rowed as follow-ups and never open a round. There is no round 3 (canon #9): after round 2 the lead verifies the final fixes, or the PR is split or parked. A worker hands off unmerged.
 
 ## Hierarchical Worker Mode
 
@@ -58,6 +58,7 @@ A lead writing a dispatch brief chooses effort per `/large-plan` phase and recor
 the brief and launch command must agree. The phase's acceptance boundary, ambiguity, and
 blockers inform the choice; a job category does not prescribe a fixed effort.
 If a brief names no effort or reason, the lead has not finished writing it.
+Codex effort caps and seat limits: `/agent-routing` § Codex seats (rule D for effort).
 
 ### Spawn Only What the Job Needs (Etan, 2026-09-05)
 

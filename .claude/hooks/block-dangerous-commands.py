@@ -46,23 +46,25 @@ import re
 
 AUTONOMOUS = os.environ.get("AUTONOMOUS") == "1"
 
-_branch_cache = {"branch": None, "checked": 0}
+_branch_cache = {"branch": None, "checked": 0, "cwd": None}
 
-def _on_protected_branch():
+def _on_protected_branch(cwd=None):
     """Check if current git branch is main/master (protected). Feature branches are safe.
     Caches result for 30 seconds to avoid spawning git subprocess on every tool call."""
     import time
     now = time.time()
-    if _branch_cache["branch"] is not None and (now - _branch_cache["checked"]) < 30:
+    cwd = cwd if cwd is not None else os.getcwd()
+    if _branch_cache["cwd"] == cwd and _branch_cache["branch"] is not None and (now - _branch_cache["checked"]) < 30:
         return _branch_cache["branch"] in ("main", "master", "")
     try:
         import subprocess
         result = subprocess.run(
             ["git", "branch", "--show-current"],
-            capture_output=True, text=True, timeout=5
+            capture_output=True, text=True, timeout=5, cwd=cwd
         )
         branch = result.stdout.strip()
         _branch_cache["branch"] = branch
+        _branch_cache["cwd"] = cwd
         _branch_cache["checked"] = now
         return branch in ("main", "master", "")
     except Exception:
@@ -84,19 +86,36 @@ def block(reason):
     sys.exit(2)
 
 
-def check_bash(command):
+def _verified_branch_cleanup(command, cwd=None):
+    # A default-checkout lead may delete a separately verified merged branch.
+    # Resolve only this hook's own release tree, never a main-checkout import.
+    import importlib.util
+    from pathlib import Path
+    try:
+        source = Path(__file__).resolve().parents[2] / 'skills/golem-powers/_shared/branch_cleanup.py'
+        spec = importlib.util.spec_from_file_location('_branch_cleanup', source)
+        policy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(policy)
+        return policy.allowed(command, cwd if cwd is not None else os.getcwd())
+    except Exception:
+        pass  # Retain the existing denial if the verifier cannot load.
+    return False
+
+
+def check_bash(command, cwd=None):
     """Check Bash commands for blocked patterns."""
     stripped = command.strip()
 
     # 1. git push — block on main/master only (feature branches are autonomous)
-    if re.match(r"git\s+push\b", stripped) and not AUTONOMOUS and _on_protected_branch():
+    if re.match(r"git\s+push\b", stripped) and not AUTONOMOUS and _on_protected_branch(cwd):
+        if _verified_branch_cleanup(command, cwd): return
         block(
             "git push blocked on main/master — need explicit permission or AUTONOMOUS=1. "
             "Feature branches are allowed automatically."
         )
 
     # 2. git commit — block on main/master only (feature branches are autonomous)
-    if re.match(r"git\s+commit\b", stripped) and not AUTONOMOUS and _on_protected_branch():
+    if re.match(r"git\s+commit\b", stripped) and not AUTONOMOUS and _on_protected_branch(cwd):
         block(
             "git commit blocked on main/master — need explicit permission or AUTONOMOUS=1. "
             "Feature branches are allowed automatically."
@@ -149,7 +168,7 @@ def main():
 
     # Bash commands — skip for workers (auto-approve-worker.sh handles these)
     if tool_name == "Bash" and not is_worker:
-        check_bash(tool_input.get("command", ""))
+        check_bash(tool_input.get("command", ""), hook_input.get("cwd", os.getcwd()))
 
     # Supabase execute_sql DDL check — ALWAYS active, even for workers
     if tool_name == "mcp__supabase__execute_sql":

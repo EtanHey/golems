@@ -15,6 +15,8 @@ from pathlib import Path
 
 # Six images leave room for per-image paths and compact findings under 2000 chars.
 FIRST_BATCH_SIZE = 6
+# Per-call cap; visual-batch.py still clamps each call to its absolute deadline (dictation lead needed 300 s).
+MAX_TIMEOUT = 600
 
 
 class DispatchError(RuntimeError):
@@ -137,16 +139,37 @@ def bounded_run(command, timeout, limit=OUTPUT_BYTE_LIMIT):
             signal.signal(signal.SIGTERM, previous_handler)
 
 
+def roles_file():
+    """standards/model-roles.json without git: the installed release (~/.golems/releases/<tag>) is no checkout."""
+    # AIDEV-NOTE: w70 2026-11-12 — `git rev-parse` here failed with exit 128 from every installed release,
+    # killing the gatherer route and pushing seats to read frames themselves. Never reintroduce a git probe.
+    here = Path(__file__).resolve()
+    candidates = [Path(os.environ['GOLEMS_ROOT']) / 'standards/model-roles.json'] if os.environ.get('GOLEMS_ROOT') else []
+    candidates += [here.parents[4] / 'standards/model-roles.json',  # <root>/skills/golem-powers/qa-video/scripts
+                   Path.home() / '.golems/current/standards/model-roles.json']
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise ValueError('model roles not found: set GOLEMS_ROOT or QA_VIDEO_VISUAL_TIER (looked in '
+                     + ', '.join(str(c) for c in candidates) + ')')
+
+
+def visual_tier():
+    if os.environ.get('QA_VIDEO_VISUAL_TIER'):
+        return os.environ['QA_VIDEO_VISUAL_TIER']
+    try:
+        return json.loads(roles_file().read_text())['roles']['gemini.gather.visual']['launcher_tier']
+    except (KeyError, TypeError) as error:
+        raise ValueError('model-roles.json has no gemini.gather.visual launcher_tier') from error
+
+
 def resolve_model(deadline=None):
     def probe(command, cap, **kwargs):
         remaining = cap if deadline is None else min(cap, deadline - time.monotonic())
         if remaining <= 0:
             raise subprocess.TimeoutExpired(command, 0)
         return subprocess.check_output(command, text=True, timeout=remaining, **kwargs).strip()
-    repo = Path(probe(['git', '-C', str(Path(__file__).resolve().parent),
-                       'rev-parse', '--show-toplevel'], 10))
-    tier = probe(['node', str(repo/'scripts/model-roles.mjs'),
-                  'gemini.gather.visual', '--field', 'launcher_tier'], 10)
+    tier = visual_tier()
     try:
         listing = probe(['agy', 'models'], 20, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as error:
@@ -235,8 +258,8 @@ def main():
     parser.add_argument('images', nargs='+')
     args = parser.parse_args()
     try:
-        if not 0 < args.timeout <= 120:
-            raise ValueError('timeout must be >0 and <=120 seconds')
+        if not 0 < args.timeout <= MAX_TIMEOUT:
+            raise ValueError(f'timeout must be >0 and <={MAX_TIMEOUT:g} seconds')
         paths = list(dict.fromkeys(args.images))
         if any(not Path(p).is_absolute() or not Path(p).is_file() for p in paths):
             raise ValueError('supply existing absolute image paths')

@@ -11,6 +11,18 @@ import { beginOwnerMigration, ownerInstallPaths } from './owner-install-migratio
 import { beginClientInstall } from './client-install-transaction.mjs';
 import { checkReleaseHooks } from './release-self-check.mjs';
 
+// Older release payloads predate publication hooks. A missing declared file
+// still fails releaseContext's integrity check; only legacy payloads may skip.
+const boundaryFiles = ['../ci/boundary-clones.mjs', '../ci/boundary-prepush.mjs', '../ci/identity-precommit.mjs', '../publish-boundary-policy.yaml', '../../.publish-boundary-allow'];
+const boundary = boundaryFiles.every(file => existsSync(new URL(file, import.meta.url)))
+  ? await import('../ci/boundary-clones.mjs') : null;
+function syncBoundary(apply = false) {
+  if (boundary) return boundary.syncClones({ apply });
+  if (apply) console.error('WARNING boundary-prepush sync SKIPPED: release lacks boundary files');
+  else console.log('boundary-prepush drift: release lacks boundary files');
+  return apply ? 0 : 1;
+}
+
 const digest = data => createHash('sha256').update(data).digest('hex');
 const quote = s => `'${s.replaceAll("'", "'\\''")}'`;
 const safe = p => typeof p === 'string' && p && !path.isAbsolute(p) && !p.split('/').some(s => !s || s === '.' || s === '..') && !/[\\\x00-\x1f]/.test(p);
@@ -80,7 +92,7 @@ function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFi
 
 function releaseStatus(ctx, { readSettings, linkState, hookSpec, retiredRegistrations }) {
   const settings = readSettings(ctx.settingsPath), hooks = settings.json.hooks ?? {};
-  let drift = 0, settingsDrift = 0;
+  let drift = syncBoundary(), settingsDrift = 0;
   const wrapper = path.join(ctx.hooksDir, 'golems-fail-open.py');
   if (!existsSync(wrapper) || !readFileSync(wrapper).equals(readFileSync(ctx.wrapper))) drift++;
   for (const e of ctx.golems) {
@@ -142,6 +154,7 @@ export function runReleaseHooks(o, helpers) {
     const receipt = path.join(ctx.hooksDir, 'golems-hooks-release.json');
     if (!existsSync(receipt) || readFileSync(receipt, 'utf8') !== receiptText(ctx)) writeFileSync(receipt, receiptText(ctx), { mode: 0o600 });
     applyCodexHooks(ctx.codex);
+    syncBoundary(true);
     migration?.commit();
     console.log(`applied release ${ctx.release.version}; ${CODEX_TRUST_HINT}`);
     return 0;

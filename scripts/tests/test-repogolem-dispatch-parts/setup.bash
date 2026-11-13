@@ -16,6 +16,10 @@ setup() {
     INSTALL_DISPATCHER="$BATS_TEST_DIRNAME/../repogolem/install-golem-dispatch.sh"
     GOLEM_VALIDATE="$BATS_TEST_DIRNAME/../../skills/golem-powers/golem-install/scripts/validate.sh"
     TMPDIR_="$(mktemp -d)"
+    # Isolate the role default from the host registry.
+    mkdir -p "$TMPDIR_/default-roles/standards"
+    printf '%s\n' '{"roles":{"codex.implement":{"model":"gpt-6.1-sol"}}}' > "$TMPDIR_/default-roles/standards/model-roles.json"
+    export GOLEMS_MODEL_ROLES_ROOT="$TMPDIR_/default-roles"
     PROJECT_DIR="$TMPDIR_/project"
     WORKTREE_DIR="$TMPDIR_/worktree"
     mkdir -p "$PROJECT_DIR" "$WORKTREE_DIR"
