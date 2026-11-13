@@ -216,6 +216,10 @@ The local corpus is the source to push. Drive is where Gemini grounds, so the Dr
 
 ---
 
+## CURATED GROUNDING FOLDER — one per research
+
+Prepare a bounded Drive folder `R{NN}-grounding/` holding only the curated documents the research needs, with a manifest (what and why, sha256, `manifest_sha256`); contract in `/drive-filing` § Research grounding folder contract. The preparation receipt names the folder and manifest. Admission stop, plan sentence and provenance fields: `/gemini-research` § Curated grounding set. After harvest, archive or consolidate the folder per the contract; the harvest record carries model, settings, prompt hash and manifest hash.
+
 ## GEMINI RESEARCH PROMPT PREFLIGHT — BLOCKING
 
 Prepare the next prompt with [/gemini-research's template](../gemini-research/references/prompt-template.md) and its structural pre-fire gate.

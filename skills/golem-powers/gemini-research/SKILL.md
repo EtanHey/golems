@@ -38,6 +38,13 @@ Include one line in the hand-off to Etan: "Before Start Research, check that Dri
 is on as a Deep Research source so it reads the named grounding docs."
 Keep the existing grounding and prompt-author START/EDIT gates below.
 
+## Curated grounding set, admission stop, provenance
+
+- **Curated, bounded set:** project-grounded research gets its own Drive folder of only the documents it needs (`/drive-filing` § Research grounding folder contract). Agents prepare it, never Etan. The prompt names those documents and says to use ONLY them.
+- **Admission table with a HARD STOP:** before firing, the prompt's `# Grounding` block carries a read-check table, one row per grounding file, with `readable: yes/no`. A missing or unreadable file stops the run: output only the table and a `MISSING FILES` list. The template holds the wording.
+- **Keep the stop in the plan:** when Gemini's generated plan drops the stop, return it for EDIT and paste this sentence: `If any read-check cell is blank or any grounding file is missing or unreadable, output only the read-check table and a MISSING FILES list, and stop.`
+- **Provenance:** the harvest record names the model, the settings (Drive on/off, Search on/off, mode), the prompt sha256 and the grounding `manifest_sha256`. Write `unknown` only for a field you could not read.
+
 ## ROUTING — Gemini Deep Research by default
 
 - Research and comparisons → **gemini.google.com → Deep Research**. Use a structured prompt, review the generated plan, then obtain the prompt author's START / EDIT verdict.

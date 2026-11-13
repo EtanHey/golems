@@ -132,6 +132,15 @@ add a destructive home-wide reaper.
 - Find: `mcp__google-drive__search(query="'<RESOLVED_PRIVATE_PARENT_ID>' in parents", rawQuery=true)`.
 - Heavy/forever: § Archive a heavy artifact.
 
+## Research grounding folder contract
+
+One folder per research holds only the curated documents that research needs, so the researcher reads a bounded set and not the whole project folder. Agents prepare it; Etan never attaches anything.
+
+- **Where:** `Brain Drive/03_RESEARCH/Active/<topic>/R{NN}-grounding/` (via `${BRAIN_DRIVE_RESEARCH_ACTIVE_FOLDER_ID}`), beside that research's prompt and results.
+- **Name:** `R{NN}-grounding` for the folder; files keep their `/research-lifecycle` context numbers. No duplicate document titles inside it (a duplicate makes "name the document" ambiguous).
+- **Manifest:** `00-GROUNDING-MANIFEST.md` in the folder: one row per file with `title | why it is here | bytes | SHA256`, plus a `manifest_sha256` line over the sorted rows. The prompt names exactly the manifest's files and says to use ONLY them.
+- **After harvest:** the folder is the research's record. Either (a) move it whole to `Brain Drive/06_ARCHIVE/research/<topic>/<YYYY-MM-DD>-R{NN}/` (§ Archive a heavy artifact), or (b) consolidate: fold lasting findings into the topic's `context/` files per `/research-lifecycle`, then archive the folder. Never leave a grounding folder in `Active/` after the harvest is recorded.
+
 ## Archive a heavy artifact
 
 Full procedure: [references/archive-procedure.md](references/archive-procedure.md) (was

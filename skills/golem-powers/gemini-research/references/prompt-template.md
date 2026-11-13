@@ -7,6 +7,11 @@ Pull these documents via the connected Drive workspace; never ask for attachment
 - "<Verified findings + struck claims document title>"
 - "<Current project facts document title>"
 Verified findings + struck claims: "<Verified findings + struck claims document title>"
+Admission check (hard stop). Before any analysis, output this table, one row per
+named document, and fill every cell from actually reading the file:
+| document | readable (yes/no) | first heading or line read |
+A blank cell means that file failed. If any named document is missing, empty,
+truncated or unreadable, output only this table and a MISSING FILES list, and stop.
 Read the verified findings and struck claims first. Do not revive struck claims
 without new primary evidence. If a named document is inaccessible, say so and
 leave project-specific conclusions unknown; do not substitute similarly named docs.
