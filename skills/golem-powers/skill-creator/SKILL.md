@@ -191,14 +191,25 @@ surface class as `delivered:true` or exit 0 without live verification.
 | 20% | Structure | Does the output match expected format? |
 | 10% | Quality | Is the output actually good/useful? |
 
+### Model floor: judge at the lowest passing tier
+
+"if a model cannot get past like what is it like 60% of completion rate then the model is probably too low and we should try a smarter model" (Etan, 2026-11-13, dashboard card 8, dictated, on golems #1226's "10 to 18 out of 28").
+
+A model that passes under about 60% of a skill's eval with the skill loaded is below that role's tier.
+Rerun the same cases one tier up (T1 Haiku → T2 Sonnet → T3 Opus; skill-creator `npm run eval -- run --tier`)
+before judging the skill text. Read every threshold below at the lowest tier where the with-skill arm passes
+at least 60%, and report that tier with the eval, beside the per-case lowest passing tier (LPT) from
+skill-creator `npm run eval:summarize -- --ladder`. Under 60% at T3 means the text is the problem: rewrite it.
+
 ### Scoring Thresholds
 
 | Condition | Action |
 |-----------|--------|
+| With-skill pass rate <60% below T3 | Model below the role's tier — rerun one tier up before judging the text |
 | Baseline >70% | Skill may not add value — flag and explain |
 | Delta <10% | Marginal — consider if complexity is worth it |
 | Delta >30% | Clearly valuable — ship with confidence |
-| Compliance <50% with skill | Instructions unclear — rewrite before shipping |
+| Compliance <50% with skill, at T3 or a tier that clears the floor | Instructions unclear — rewrite before shipping |
 
 ### Agent Routing for Live Evals
 
