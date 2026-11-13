@@ -1,6 +1,6 @@
 ---
 name: large-plan
-description: "Invoke before any git/gh/grep, even for context: make a plan, plan next steps, lead kickoff, feature batch, multi-PR."
+description: "Invoke before any git/gh and before starting another agent (delegate_task, new thread, sub-agent): make a plan, plan next steps, lead kickoff, feature batch, multi-PR; dispatch a worker, send a brief, fan out."
 ---
 
 # /large-plan

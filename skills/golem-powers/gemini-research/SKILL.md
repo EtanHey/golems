@@ -41,7 +41,7 @@ Keep the existing grounding and prompt-author START/EDIT gates below.
 ## ROUTING — Gemini Deep Research by default
 
 - Research and comparisons → **gemini.google.com → Deep Research**. Use a structured prompt, review the generated plan, then obtain the prompt author's START / EDIT verdict.
-- Quick lookups or summaries of content already in Drive → `/braindrive`.
+- Quick lookups or summaries of content already in Drive → connected Drive search tools.
 - **NotebookLM on request:** only for an explicit notebook, podcast/audio overview, slides or quizzes request, read [the opt-in workflows](references/notebooklm-workflows.md).
 
 ## Default workflow: Gemini Deep Research
@@ -114,4 +114,4 @@ to the fleet. Research without a harvest path = **parked**, not done.
 - **Telling Etan to attach/upload a doc** — his Drive workspace is CONNECTED; the prompt must reference the doc by NAME so Gemini pulls it itself. This is gate-enforced (`drive-grounding-gate.sh`) — a prompt with attach/upload language does not get emitted.
 - Skipping the prompt-author START/EDIT gate → the research runs on the raw plan, often with blind spots you could have caught
 - Leaving results unexported when they need to persist in Drive
-- Using for content already in Drive — that's /braindrive territory, cheaper and faster
+- Using for content already in Drive — use connected Drive search tools for those lookups
