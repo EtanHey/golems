@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-SKILL = Path(__file__).resolve().parents[1]
+SKILL = Path(__file__).resolve().parents[2] / 'skills/golem-powers/git-guardian'
 spec = importlib.util.spec_from_file_location('guardian_trash', SKILL / 'git_safety.py')
 guardian = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guardian)
