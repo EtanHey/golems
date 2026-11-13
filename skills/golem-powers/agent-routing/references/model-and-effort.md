@@ -9,8 +9,8 @@ Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort
 
 ## Model Roles
 
-Codex seat limits (short seats, no waiting inside a turn, no reading or script runs, effort caps,
-the daily count) live in SKILL.md § Codex seats; they win over anything below.
+Codex seat limits (short seats, no waiting inside a turn, no task that is only reading or running
+scripts or tests, effort caps, the daily count) live in SKILL.md § Codex seats; they win over anything below.
 
 Workers use `codex.implement`. Effort is chosen per `/large-plan` phase, recorded as
 `role · effort · why`, and passed explicitly at dispatch. Resume retains the selected
@@ -49,7 +49,8 @@ Read the seat's actual `info.model_context_window` from its session. Handoff tim
 2. **Phase effort:** choose effort per `/large-plan` phase and pass it explicitly at dispatch.
    Record the acceptance boundary, ambiguity, or specific blocker that justifies the choice.
 3. **Evaluation:** task importance alone does not establish the value of more reasoning.
-4. **Read-heavy work:** never a Codex child (SKILL.md § Codex seats, rule C). A read-only lane
+4. **Reading-only tasks:** never a Codex child (SKILL.md § Codex seats, rule C); a Codex builder or
+   reviewer still reads what its own task needs. A read-only lane
    routes per SKILL.md § Gathering (easy work: the 2026-11-02 Flash-high rule). The mechanical candidate cannot bypass its gate.
 5. **Coordination:** use `claude.judgment` under `/agent-routing`, not a separate literal Codex lead tier.
 
@@ -74,7 +75,7 @@ For the effort rungs, see `/large-plan` § "Choosing effort per phase".
 | Bounded or routine implementation | `codex.implement` | Record acceptance boundary and chosen phase effort. |
 | Open-ended implementation or review | `codex.implement` | Record ambiguity and chosen phase effort. |
 | One hard blocker | `codex.implement` | Name the blocker and why the chosen phase effort helps. |
-| Read-heavy work | not Codex | Withdrawn 2026-11-13 (SKILL.md § Codex seats, rule C). |
+| Reading-only task | not Codex | Withdrawn 2026-11-13 (SKILL.md § Codex seats, rule C). |
 | Internal mechanical child | `codex.subagent.mechanical` | Named `packet`; Etan-authorised internal use only, verify runtime. |
 
 ## Dispatch and Verification

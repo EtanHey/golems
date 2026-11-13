@@ -1983,14 +1983,14 @@
       "name": "codex-seats-dispatch-brief",
       "category": "codex-seats",
       "prompt": "You are a Claude lead in a T3 thread; Codex is available. Write one dispatch line (provider, model, effort, one-line why) for each child: (1) run the repo's full test suite and tabulate which tests fail; (2) a bounded off-by-one fix in a CSV parser (narrow technical work); (3) the other-vendor review of an XS, 30-line Claude-built diff; (4) a QA child that writes test cases for that parser. Then say what you record in your plan today.",
-      "expected_output": "(1) never Codex: running tests and tabulating goes to Cursor, a Gemini gatherer, Sonnet or Haiku. (2) Codex Sol at medium (high only with one line of why; xhigh only on orc's word). (3) Codex Terra at medium for a small diff. (4) a test/QA role is never above low on any Codex model (or goes to a non-Codex seat). The plan gets the one-line daily count of turns dispatched to Codex, by purpose.",
+      "expected_output": "(1) never Codex: a task that is only running tests and tabulating goes to Cursor, a Gemini gatherer, Sonnet or Haiku. (2) Codex Sol at medium, bounded work included (high only with one line of why; xhigh only on orc's word). (3) Codex Terra at medium for a small diff. (4) a test/QA role is never above low on any Codex model (or goes to a non-Codex seat). The plan gets the one-line daily count of turns dispatched to Codex, by purpose.",
       "assertions": [
         {
           "text": "Child 1 (run tests and tabulate) is not dispatched to any Codex model.",
           "type": "behavioral"
         },
         {
-          "text": "Child 2 is a Codex builder (Sol, or Terra for bounded work) at medium effort, not high or xhigh.",
+          "text": "Child 2 is Codex Sol at medium effort, not Terra and not high or xhigh.",
           "type": "behavioral"
         },
         {
