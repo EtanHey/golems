@@ -11,7 +11,7 @@ const version = '0.4.0+sdk-' + ip(1, 4, 341, 0);
 const cases = [
   ['Cargo build metadata', 'Cargo.lock', `version = "${version}"`, null],
   ['JSON build metadata', 'package-lock.json', `"version": "${version}"`, null],
-  ['prerelease build metadata', 'poetry.lock', `version = "1.2.3-rc.1+sdk-${ip(1, 2, 3, 4)}"`, null],
+  ['prerelease build metadata address', 'poetry.lock', `version = "1.2.3-rc.1+sdk-${ip(1, 2, 3, 4)}"`, 'push-ipv4'],
   ['source address names its class', 'source.js', `const HOST = "${ip(10, 20, 30, 40)}";`, 'push-ipv4'],
   ['ssh address', 'commands.sh', `ssh ${ip(192, 168, 1, 5)}`, 'push-ipv4'],
   ['fake version wrapper', 'source.js', `version = "${ip(10, 20, 30, 40)}"`, 'push-ipv4'],
@@ -56,6 +56,14 @@ const cases = [
   ['overlapping SDK run', 'Cargo.lock', `0.4.0+sdk-${ip(10, 0, 0, 1)}.2`, 'push-ipv4'],
   ['separate metadata run', 'Cargo.lock', `0.4.0+sdk-1.${ip(10, 0, 0, 1)}`, 'push-ipv4'],
   ['separate prerelease run', 'Cargo.lock', `1.2.3-sdk-1.${ip(10, 0, 0, 1)}+b`, 'push-ipv4'],
+
+  ['letter-glued SDK private address', 'Cargo.lock', `1.2.3+sdk-${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['letter-glued a private address', 'Cargo.lock', `1.2.3+a-${ip(192, 168, 1, 5)}`, 'push-ipv4'],
+  ['letter-glued SDK public address', 'Cargo.lock', `1.2.3+sdk-${ip(8, 8, 8, 8)}`, 'push-ipv4'],
+  ['letter-glued prerelease address', 'Cargo.lock', `1.2.3-sdk-${ip(10, 0, 0, 1)}+b`, 'push-ipv4'],
+  ['letter-glued nested identifier address', 'Cargo.lock', `1.2.3+a-b-${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['letter-glued address with suffix', 'Cargo.lock', `1.2.3+sdk-${ip(10, 0, 0, 1)}-b`, 'push-ipv4'],
+  ['digit-letter-glued address', 'Cargo.lock', `1.2.3+1sdk-${ip(10, 0, 0, 1)}`, 'push-ipv4'],
 
   ['projection function assignment', 'source.ts', 'const projection = projectStructured' + 'Speech("fixture");', null],
   ['projection awaited function', 'source.ts', 'const projection = await projectStructured' + 'Speech("fixture");', null],

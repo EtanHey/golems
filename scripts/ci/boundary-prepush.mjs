@@ -174,10 +174,11 @@ try {
             for (const re of rule.allowed_patterns) text = text.replace(re, '');
             for (const re of rule.allowed_versions) text = text.replace(re, token => {
               // Inspect overlapping runs, including suffixes within an octet.
-              // A run may start inside the numeric tail of an identifier,
-              // but its first numeric component must be glued to letters.
+              // A valid address is never a version exemption. Only invalid-octet
+              // runs glued to a letter-bearing identifier may be removed.
               const runs = token.matchAll(/(?=(([0-9]{1,3}\.){3}[0-9]{1,3}))/g);
               for (const run of runs) {
+                if (run[1].split('.').every(octet => Number(octet) <= 255)) return token;
                 if (!/[A-Za-z][A-Za-z0-9]*-$/.test(token.slice(0, run.index).replace(/[0-9]+$/, ''))) return token;
               }
               return '';
