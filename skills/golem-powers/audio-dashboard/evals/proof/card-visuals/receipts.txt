@@ -1,0 +1,41 @@
+PARITY
+BASE table: FAIL (expected)
+BASE chart: FAIL (expected)
+BASE newTab: FAIL (expected)
+BASE total: FAIL (expected)
+Legacy cards: byte-identical (sources/prompt/options and plain rail shapes)
+
+BUILD-TOTAL
+Real BUILD one: Total audio 0 min 1 s · 1 sections · 1 cards.
+Real BUILD two: Total audio 0 min 2 s · 1 sections · 1 cards.
+
+BROWSER
+1280 light {"page":1280,"viewport":1280,"table":704,"chart":704} pill contrast [ 6.4923831516894746 ]
+1280 dark {"page":1280,"viewport":1280,"table":704,"chart":704} pill contrast [ 9.531472637952326 ]
+390 light {"page":390,"viewport":390,"table":322,"chart":322} pill contrast [ 6.4923831516894746 ]
+390 dark {"page":390,"viewport":390,"table":322,"chart":322} pill contrast [ 9.531472637952326 ]
+
+SUITE
+(fail) real BUILD and QA produce a handoff; only delivery receipt earns PASS [3502.41ms]
+
+ 1099 pass
+ 5 skip
+ 1 fail
+ 38380 expect() calls
+Ran 1105 tests across 48 files. [266.63s]
+BASE-PUBLISH
+(fail) real BUILD and QA produce a handoff; only delivery receipt earns PASS [3385.41ms]
+(pass) BUILD and handoff migrate supplied page Y instead of legacy series page X; accepted conflicts refuse [5829.26ms]
+
+ 1 pass
+ 1 fail
+ 45 expect() calls
+Ran 2 tests across 1 file. [9.35s]
+VERIFIED
+(pass) Sources keyboard, exact clipboard and truthful fallback at 1280px, list and story [1705.92ms]
+(pass) Sources keyboard, exact clipboard and truthful fallback at 390px, list and story [1663.53ms]
+
+ 48 pass
+ 0 fail
+ 278 expect() calls
+Ran 48 tests across 4 files. [5.06s]

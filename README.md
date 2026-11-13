@@ -108,6 +108,11 @@ To count the skills, run the checker instead of trusting a number in a README:
 node scripts/ci/check-skill-library.mjs   # prints skills=<n> and description-size totals
 ```
 
+Description edits must pass `bun test ./scripts/tests/skill-description-cap.test.mjs`.
+The cap is 120 characters, with pinned exceptions; W32 adds `large-plan` at 250
+for its measured dispatch triggers. The W32 library budget remains at most 8,202
+characters.
+
 Some skills to start with:
 
 - `pr-loop`: branch, commit, PR, review, and merge, with agent attribution on commits

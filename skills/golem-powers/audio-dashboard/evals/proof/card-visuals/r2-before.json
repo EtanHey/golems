@@ -1,0 +1,110 @@
+[
+  {
+    "width": 390,
+    "colorScheme": "light",
+    "scrollWidth": 540,
+    "clientWidth": 322,
+    "panel": {
+      "color": "rgb(23, 33, 43)",
+      "background": "rgb(255, 255, 255)"
+    },
+    "table": {
+      "color": "rgb(23, 33, 43)",
+      "background": "rgb(255, 255, 255)"
+    },
+    "card": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "totalLines": 2,
+    "bars": [
+      {
+        "visible": true
+      },
+      {
+        "visible": false
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "colorScheme": "dark",
+    "scrollWidth": 540,
+    "clientWidth": 322,
+    "panel": {
+      "color": "rgb(248, 250, 252)",
+      "background": "rgb(17, 24, 32)"
+    },
+    "table": {
+      "color": "rgb(248, 250, 252)",
+      "background": "rgb(17, 24, 32)"
+    },
+    "card": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "totalLines": 2,
+    "bars": [
+      {
+        "visible": true
+      },
+      {
+        "visible": false
+      }
+    ]
+  },
+  {
+    "width": 1280,
+    "colorScheme": "light",
+    "scrollWidth": 704,
+    "clientWidth": 704,
+    "panel": {
+      "color": "rgb(23, 33, 43)",
+      "background": "rgb(255, 255, 255)"
+    },
+    "table": {
+      "color": "rgb(23, 33, 43)",
+      "background": "rgb(255, 255, 255)"
+    },
+    "card": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "totalLines": 2,
+    "bars": [
+      {
+        "visible": true
+      },
+      {
+        "visible": true
+      }
+    ]
+  },
+  {
+    "width": 1280,
+    "colorScheme": "dark",
+    "scrollWidth": 704,
+    "clientWidth": 704,
+    "panel": {
+      "color": "rgb(248, 250, 252)",
+      "background": "rgb(17, 24, 32)"
+    },
+    "table": {
+      "color": "rgb(248, 250, 252)",
+      "background": "rgb(17, 24, 32)"
+    },
+    "card": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "totalLines": 2,
+    "bars": [
+      {
+        "visible": true
+      },
+      {
+        "visible": true
+      }
+    ]
+  }
+]

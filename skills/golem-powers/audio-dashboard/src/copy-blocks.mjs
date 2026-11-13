@@ -143,7 +143,7 @@ function pathLike(line) {
   return LOCATION.test(line) || RELATIVE_PATH.test(line) || [...line.matchAll(BARE_FILE)]
     .some(match => /^[a-z_]/.test(match[1]) || match[1].split('/').length >= 3);
 }
-const BLOCK = new Set(['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'dt', 'dd', 'pre', 'br', 'label']);
+const BLOCK = new Set(['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'dt', 'dd', 'pre', 'br', 'label', 'td', 'th', 'caption', 'figcaption']);
 export const COPY_BLOCK_RUNBOOK = 'Put terminal commands and literal text or file paths to paste in a fenced code block in the card body. Keep a multi-line sequence in one fence. URLs remain clickable links, never copy blocks. No bypass.';
 
 // `decisions` (decision-flow): each body is also checked as fully rendered prose, because the answer

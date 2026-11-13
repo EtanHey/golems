@@ -1,6 +1,6 @@
 ---
 name: agada-bench
-description: "BrainLayer retrieval benchmark: recall@K, MRR, p@5, placebo. Triggers: agada bench, BL PR, embedder swap."
+description: "BrainLayer gold bench: agada bench, BL PR, embedder/enrichment change, weekly drift, gold build. NOT one-off search."
 ---
 
 # /agada-bench — Standing BrainLayer Quality Benchmark

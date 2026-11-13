@@ -1,14 +1,13 @@
 ---
 name: drive-filing
-description: "Brain Drive filing, archival, and docs.local lifecycle. Triggers: Drive/Brain Drive upload, archive this, post-digest archival, docs.local cleanup, docs.local artifacts, rollup, folders, prompts/results, audits, plans, transcripts, dashboards. NOT for Gemini Deep Research/queries."
+description: "Brain Drive upload, archive this, post-digest archival, docs.local cleanup/rollup. NOT for Gemini Deep Research/queries."
 ---
 
 # /drive-filing — filing, archival, and the docs.local lifecycle
 
 > One skill for everything that moves durable artifacts out of `docs.local/` (formerly `drive-usage`,
 > `google-drive-archive`, and the `archive` skill).
-> Named `drive-filing`, not `brain-drive`, so it is not one hyphen away from `/braindrive` (the Gemini
-> Drive query command).
+> Drive queries use connected Drive search tools; this skill owns filing.
 >
 > Etan's pain: agents (except researchers) don't use Drive right and **leave artifacts scattered in `docs.local/`**. This skill makes filing automatic. **Rule of thumb: if an artifact should outlive this session, file it by § Machine hygiene: code and harnesses in a repo, personal or client documents in iCloud, other durable artifacts in the RIGHT Brain Drive folder — `docs.local/` is a cache, not a home.**
 
@@ -19,7 +18,7 @@ description: "Brain Drive filing, archival, and docs.local lifecycle. Triggers: 
 | Keep `docs.local/` legible over time (daily → monthly → Drive) | § docs.local lifecycle |
 | Manifest schema, disk measurement commands, path reconciliation | [references/archiving-convention.md](references/archiving-convention.md) |
 
-Not this skill: `/braindrive` *queries* Drive via Gemini; `/gemini-research` does web research with Drive sources.
+Not this skill: connected Drive search tools query existing files; `/gemini-research` does web research with Drive sources.
 
 ## Brain Drive folder model
 

@@ -1,0 +1,5 @@
+{
+  "large-plan": "Invoke before any git/gh and before starting another agent (delegate_task, new thread, sub-agent): make a plan, plan next steps, lead kickoff, feature batch, multi-PR; dispatch a worker, send a brief, fan out.",
+  "agent-routing": "Invoke before any git/gh and before starting another agent: dispatch a worker/reviewer, delegate_task, hand off; who gathers, gemini gatherer, Codex model/effort, /multitask, fan out in parallel. Pick provider/worktree. NOT for one edit or dependent steps.",
+  "pr-loop": "Invoke before any git/gh or agent dispatch: open a PR, merge, ship, CI, full-stop/READY UNMERGED. Signs: \ud83e\udd16 model + harness line, Co-Authored-By."
+}

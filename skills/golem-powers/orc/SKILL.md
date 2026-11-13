@@ -1,6 +1,6 @@
 ---
 name: orc
-description: "Orchestrate multi-agent sprints/cmux/ecosystem work. Triggers: sprint, spawn, status, catch me up, delegate."
+description: "Multi-agent sprint coordination, ecosystem status, catch me up, fact propagation. NOT single-worker spawning."
 ---
 
 # orcClaude -- Orchestrator Skill

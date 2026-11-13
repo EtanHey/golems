@@ -1,6 +1,6 @@
 ---
 name: cmux-agents
-description: "Spawn AI workers in cmux via MCP/repoGolem. Triggers: visible workers, terminal agents, orchestration, audits."
+description: "cmux visible workers: spawn_agent, boot, deliver, harvest, close panes. NOT generic orchestration."
 ---
 
 # cmux-agents

@@ -1,6 +1,6 @@
 ---
 name: html-dashboard
-description: "Create static HTML dashboards from template. Triggers: dashboard, status, digest, compare, what changed."
+description: "Build static HTML dashboard pages: template, verify, tailnet publish. NOT T3 inline visuals or sprint status queries."
 execute: scripts/default.sh
 ---
 

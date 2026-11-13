@@ -1,0 +1,72 @@
+[
+  {
+    "skill": "agada-bench",
+    "old": "BrainLayer retrieval benchmark: recall@K, MRR, p@5, placebo. Triggers: agada bench, BL PR, embedder swap.",
+    "new": "BrainLayer gold bench: agada bench, BL PR, embedder/enrichment change, weekly drift, gold build. NOT one-off search."
+  },
+  {
+    "skill": "cmux-agents",
+    "old": "Spawn AI workers in cmux via MCP/repoGolem. Triggers: visible workers, terminal agents, orchestration, audits.",
+    "new": "cmux visible workers: spawn_agent, boot, deliver, harvest, close panes. NOT generic orchestration."
+  },
+  {
+    "skill": "coach",
+    "old": "Life admin for health, habits, jobs, clients, contracts, and scheduling. Triggers: daily plan, wearable data, outreach.",
+    "new": "Life admin: daily plan, wearables, recruiting outreach, freelance invoices/contracts, Israel business admin."
+  },
+  {
+    "skill": "drive-filing",
+    "old": "Brain Drive filing, archival, and docs.local lifecycle. Triggers: Drive/Brain Drive upload, archive this, post-digest archival, docs.local cleanup, docs.local artifacts, rollup, folders, prompts/results, audits, plans, transcripts, dashboards. NOT for Gemini Deep Research/queries.",
+    "new": "Brain Drive upload, archive this, post-digest archival, docs.local cleanup/rollup. NOT for Gemini Deep Research/queries."
+  },
+  {
+    "skill": "git-guardian",
+    "old": "Safety gate for destructive git/main commits. Triggers: force-push, reset, branch delete, clean, main commit.",
+    "new": "Gate git/shell: force-push, reset/restore, rebase, branch delete, clean, main commit, --no-verify, rm/find/rsync delete."
+  },
+  {
+    "skill": "html-dashboard",
+    "old": "Create static HTML dashboards from template. Triggers: dashboard, status, digest, compare, what changed.",
+    "new": "Build static HTML dashboard pages: template, verify, tailnet publish. NOT T3 inline visuals or sprint status queries."
+  },
+  {
+    "skill": "orc",
+    "old": "Orchestrate multi-agent sprints/cmux/ecosystem work. Triggers: sprint, spawn, status, catch me up, delegate.",
+    "new": "Multi-agent sprint coordination, ecosystem status, catch me up, fact propagation. NOT single-worker spawning."
+  },
+  {
+    "skill": "pr-loop",
+    "old": "Invoke before any git/gh: open a PR, merge, ship, fix CI, handle reviews/comments, finish work. Signs: 🤖 model + harness line, Co-Authored-By.",
+    "new": "PR loop: open, draft, review, merge, ship, fix CI, comments, full-stop/READY UNMERGED, visual proof. Signs: 🤖 model+harness, Co-Authored-By."
+  },
+  {
+    "skill": "qa-video",
+    "old": "Video QA/extraction for screen, local video, YouTube. Triggers: narrated QA, bugs, QA checklist, video gems.",
+    "new": "Video QA, debrief/review, gems/insights: QA recording, local video, YouTube. NOT still-image QA alone."
+  },
+  {
+    "skill": "repogolem",
+    "old": "Launch repoGolem agents in any repo. Triggers: spawn agent, launcher, brainlayerClaude, flags -s/-c/-w/--worker.",
+    "new": "repoGolem launchers: {repo}Claude/Codex, flags -s/-c/-w/--worker, regenerate launchers. NOT generic agent spawning."
+  },
+  {
+    "skill": "session-handoff",
+    "old": "Write handoff, spawn successor, answer grill, verify orientation. Triggers: hand off, context high.",
+    "new": "Write handoff, spawn successor, answer grill, verify orientation. Triggers: hand off, phase change. NOT on context%."
+  },
+  {
+    "skill": "whats-new",
+    "old": "Compare Claude/Codex/Cursor/Wispr changelogs to local setup. Triggers: whats new, changelog, updates.",
+    "new": "Diff Claude/Codex/Cursor/Wispr/agy changelogs vs local setup. Triggers: whats new, changelog, version bump."
+  },
+  {
+    "skill": "large-plan",
+    "old": "Invoke before any git/gh/grep, even for context: make a plan, plan next steps, lead kickoff, feature batch, multi-PR.",
+    "new": "Load BEFORE you start another agent (delegate_task, t3_thread_launch, create_threads, Agent/Task): dispatch a worker, send a brief, launch a lane, fan out. Also: make a plan, lead kickoff, multi-PR. Holds the collab/brief/target/worktree checklist."
+  },
+  {
+    "skill": "agent-routing",
+    "old": "Invoke before any git/gh/grep, even for context, to dispatch a worker/reviewer, hand off to Codex, delegate_task, fan out in parallel; who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, batch classify/audit. NOT for fanning out one edit or dependent steps.",
+    "new": "Load BEFORE you start another agent (delegate_task, new thread, sub-agent): dispatch a worker/reviewer, pick provider instance, model and effort, worktree or shared. Also who gathers, Codex handoff, fan out, batch audit. NOT for one edit."
+  }
+]
