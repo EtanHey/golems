@@ -84,11 +84,14 @@ def trash_move(api, args, sources, destination, cwd, variables, protected_cwd, c
                     return False, refusal
             if any(_within(physical, metadata) for metadata in paths[1:]):
                 return False, refusal
-        # Source metadata and global protected roots keep the old policy. The
-        # sole waived reason is an unrelated repository's root, moved intact.
+        # Source metadata and global protected roots keep the old policy.
+        # Waive unrelated repo roots and containers, moved intact. An unreadable
+        # child listing does not make the whole-folder move irreversible.
         reason = api['_rm_target_reason'](sources[0], cwd, variables,
             protected_cwd, protected_only=True)
-        if reason and reason != 'rm targeting repo root':
+        if reason and reason not in {
+                'rm targeting repo root',
+                'rm targeting nested repo container or uninspectable container'}:
             return False, refusal
         if '.git' in [part.casefold() for part in physical.split(os.sep)]:
             return False, refusal

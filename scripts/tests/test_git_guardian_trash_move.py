@@ -131,3 +131,70 @@ def test_unquoted_variable_splitting_cannot_gain_trash_exception(workspace):
     assert guardian.dangerous_shell_reason(
         'TARGET="$HOME/.Trash/new target"; mv ~/Gits/site-audit-assets $TARGET',
         cwd=str(repo), env={'HOME': str(home)})
+
+
+@pytest.fixture(params=['two-repos', 'deep-repo'])
+def container_workspace(workspace, request):
+    home, repo = workspace
+    source = home / 'Gits' / 'site-audit-assets'
+    (source / '.git').rmdir()
+    children = ['first', 'second'] if request.param == 'two-repos' else ['research/saved/clone']
+    for child in children:
+        (source / child / '.git').mkdir(parents=True)
+    return home, repo
+
+
+def assert_hook_decision(home, repo, command, cwd, allowed):
+    reason = guardian.dangerous_shell_reason(command, cwd=str(cwd), env={'HOME': str(home)})
+    env = {k: v for k, v in os.environ.items()
+           if k not in {'GIT_GUARDIAN_LIB', 'AUTONOMOUS', 'CLAUDE_WORKER'}}
+    result = subprocess.run([sys.executable, str(SKILL / 'hooks/pre_tool_use.py')], cwd=repo,
+        env=env, text=True, input=json.dumps({'tool_name': 'Bash',
+        'tool_input': {'command': command}, 'cwd': str(cwd)}), capture_output=True)
+    assert (reason is None) == allowed, reason
+    assert result.returncode == (0 if allowed else 2), (result.stdout, result.stderr)
+
+
+@pytest.mark.parametrize('command', ['mv site-audit-assets ~/.Trash/new', COMPOUND])
+def test_container_reversible_move_allows(container_workspace, command):
+    home, repo = container_workspace
+    assert_hook_decision(home, repo, command, repo if command == COMPOUND else repo.parent, True)
+
+
+@pytest.mark.parametrize('command', [
+    'mv ~/Gits/site-audit-assets ~/.Trash/new',
+    'cd ~/Gits && mv site-audit-assets ~/.Trash/new',
+    'mv ~/Gits ~/.Trash/new',
+    'mv ~ ~/.Trash/new',
+    'mv ~/Gits/site-audit-assets ~/.Trash/existing',
+    'mv .git ~/.Trash/new',
+    'rm -rf ~/Gits/site-audit-assets',
+])
+def test_container_controls_stay_denied(container_workspace, command):
+    home, repo = container_workspace
+    active = home / 'Gits' / 'site-audit-assets' / 'active'
+    (active / '.git').mkdir(parents=True)
+    (home / '.Trash' / 'existing').mkdir()
+    cwd = active if command in {
+        'mv ~/Gits/site-audit-assets ~/.Trash/new',
+        'cd ~/Gits && mv site-audit-assets ~/.Trash/new',
+    } else repo
+    assert_hook_decision(home, repo, command, cwd, False)
+
+
+def test_uninspectable_container_moves_intact_but_cannot_be_deleted(workspace, monkeypatch):
+    home, repo = workspace
+    source = home / 'Gits' / 'unreadable-container'
+    source.mkdir()
+    scandir = os.scandir
+
+    def unreadable(path):
+        if os.fspath(path) == str(source):
+            raise PermissionError('fixture cannot enumerate source')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', unreadable)
+    assert guardian.dangerous_shell_reason('rm -rf ~/Gits/unreadable-container',
+        cwd=str(repo), env={'HOME': str(home)})
+    assert guardian.dangerous_shell_reason('mv ~/Gits/unreadable-container ~/.Trash/new',
+        cwd=str(repo), env={'HOME': str(home)}) is None
