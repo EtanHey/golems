@@ -22,7 +22,7 @@ symlink_rule: 'tracked-symlinks-must-resolve-inside-repository'
 forbidden_classes:
   real-identifiers:
     patterns:
-      - '((project[ _-]?(id|ref)?|supabase[ _-]?project)[^[:cntrl:]]{0,40}[:=][^[:cntrl:]]{0,8}[a-z0-9]{20}([^a-z0-9=]|$)|supabase[^[:cntrl:]]{0,40}[^a-z0-9][a-z0-9]{20}([^a-z0-9=]|$)|[a-z0-9]{20}[.]supabase[.]co|postgres[.:][a-z0-9]{20}([^a-z0-9]|$)|supabase[.]com/dashboard/project/[a-z0-9]{20})'
+      - '((project[ _-]?(id|ref)?|supabase[ _-]?project)[^[:cntrl:]]{0,40}[:=][^[:alnum:][:cntrl:]]{0,8}[a-z0-9]{20}([^a-z0-9=]|$)|supabase[^[:cntrl:]]{0,40}[^a-z0-9][a-z0-9]{20}([^a-z0-9=]|$)|[a-z0-9]{20}[.]supabase[.]co|postgres[.:][a-z0-9]{20}([^a-z0-9]|$)|supabase[.]com/dashboard/project/[a-z0-9]{20})'
       - 'https://(docs[.]google[.]com/(document/d|spreadsheets/d|presentation/d|forms/d|drawings/d)|drive[.]google[.]com/(file/d|drive/folders))/[[:alnum:]_-]{20,}'
       - 'https://drive[.]google[.]com/open[?]id=[[:alnum:]_-]{20,}'
       - '[a-z0-9-]+[.][a-z0-9-]+[.]ts[.]net'

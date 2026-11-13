@@ -57,6 +57,13 @@ const cases = [
   ['separate metadata run', 'Cargo.lock', `0.4.0+sdk-1.${ip(10, 0, 0, 1)}`, 'push-ipv4'],
   ['separate prerelease run', 'Cargo.lock', `1.2.3-sdk-1.${ip(10, 0, 0, 1)}+b`, 'push-ipv4'],
 
+  ['projection function assignment', 'source.ts', 'const projection = projectStructured' + 'Speech("fixture");', null],
+  ['projection awaited function', 'source.ts', 'const projection = await projectStructured' + 'Speech("fixture");', null],
+  ['project named long function', 'source.ts', 'const project = projectStructured' + 'Speech("fixture");', null],
+  ['real shaped quoted project ref', 'config.env', 'project_ref = "' + 'abcdefghij' + '0123456789' + '"', 'real-identifiers'],
+  ['real shaped unquoted project id', 'config.env', 'SUPABASE_PROJECT_ID=' + 'abcdefghij' + 'klmnopqrst', 'real-identifiers'],
+  ['real shaped colon project id', 'config.json', '{"projectId":"' + 'abcdefghij' + 'klmnopqrst' + '"}', 'real-identifiers'],
+
 ];
 for (const [name, file, content, violation] of cases) {
   test(name, () => {
