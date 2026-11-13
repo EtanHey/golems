@@ -1,6 +1,6 @@
 ---
 name: repogolem
-description: "Launch repoGolem agents in any repo. Triggers: spawn agent, launcher, brainlayerClaude, flags -s/-c/-w/--worker."
+description: "repoGolem launchers: {repo}Claude/Codex, flags -s/-c/-w/--worker, regenerate launchers. NOT generic agent spawning."
 ---
 
 # repoGolem — Unified Launcher System

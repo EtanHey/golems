@@ -1,6 +1,6 @@
 ---
 name: session-handoff
-description: "Write handoff, spawn successor, answer grill, verify orientation. Triggers: hand off, context high."
+description: "Write handoff, spawn successor, answer grill, verify orientation. Triggers: hand off, phase change. NOT on context%."
 ---
 
 # Session Handoff — Structured Agent Continuation
@@ -156,7 +156,7 @@ Then: `brain_store("Handoff complete to {new-agent} ({thread id or agent_id}). V
 
 ### Measuring context
 
-For a saved Codex or Claude JSONL, run `scripts/context-occupancy.sh <session.jsonl>` from this skill directory. For a live pane, prefer cmuxlayer `read_screen(parsed_only)` and use its `context_pct` / `token_count`. Never use Codex `total_token_usage`: it is cumulative session input, not current occupancy. Canonical fields and model windows: sibling repo `cmuxlayer/docs/harness-jsonl-field-map.md`.
+For a saved Codex or Claude JSONL, run `scripts/context-occupancy.sh <session.jsonl>` from this skill directory. For a live pane, prefer cmuxlayer `read_screen(parsed_only)` and use its `context_pct` / `token_count`. Never use Codex `total_token_usage`: it is cumulative session input, not current occupancy. Canonical fields and model windows: sibling repo `cmuxlayer/docs/reference/harness-jsonl-field-map.md`.
 
 | Signal | Action |
 |--------|--------|

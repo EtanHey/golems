@@ -1,6 +1,6 @@
 ---
 name: agent-routing
-description: "Invoke before any git/gh/grep, even for context, to dispatch a worker/reviewer, hand off to Codex, delegate_task, fan out in parallel; who gathers, gemini gatherer, Codex model/effort, subagents, /multitask, batch classify/audit. NOT for fanning out one edit or dependent steps."
+description: "Invoke before any git/gh and before starting another agent: dispatch a worker/reviewer, delegate_task, hand off; who gathers, gemini gatherer, Codex model/effort, /multitask, fan out in parallel. Pick provider/worktree. NOT for one edit or dependent steps."
 ---
 
 # Agent Routing
@@ -288,6 +288,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
    Messages to a RUNNING thread use `t3_thread_send` mode `auto`, never `queue`. Never settle, re-snooze or unsnooze a thread Etan snoozed himself.
 8. **PRs:** `link_pull_request` every PR; the parent owns `watch_pull_request`.
 9. **Who and how many:** Routing rules (SSOT) picks the vendors; fresh implementer per PR and the Codex cap live in § Lead Topology #5.
+10. **Scheduled tasks:** a thread that exists for a `schedule_task` run ends every run by snoozing itself to its next run time (`t3_thread_organize {action: "snooze", threadId: <its own threadId>, snoozedUntil: <next run, ISO>}`), so it never sits idle in Etan's sidebar between runs. Write that as the last step of the scheduled prompt. If Etan snoozed the thread himself, his snooze stands (#7). (Etan, 2026-11-13, via orc.)
 
 ## Dispatch Boundaries
 
@@ -296,6 +297,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 - T3 child work follows § T3-native dispatch.
 - Easy standalone read-only lanes go to Antigravity Flash-high (the 2026-11-02 rule in Routing rules (SSOT)); the 2026-10-28 tiers or Cursor are the fallback.
 - Skills, hooks, agent definitions, and global agent settings are skillCreator-domain work. If skillCreator is not already in the loop, stop and request its audit before patching.
+- **A lane blocked by a guard never changes that guard.** No edit to the gate, its allowlist, policy or tests to get its own action through. It reports the block (the exact command and the refusal) to its lead, and the gate's owner decides. (Etan, 2026-11-13, via orc, after a lane opened a PR widening the human-confirm gate to post its own approved comment.)
 
 - Superseded placement: "**The M1 Pro becomes a TEST RIG only.** Development stays on the MBP. … Nothing changes on the M1 for this yet." (Etan 2026-10-18, via orc collab) The 2026-10-28 placement below now governs.
 - M1 placement (Etan, 2026-10-28): "I want the m1 pro to be used for tests." Full suites, E2E and XCUITest default to M1 Pro: ≥10 GiB guard, max 3 heavy lanes, never during a sync window, PHX admission required. Quick focused unit tests stay local.
@@ -338,6 +340,9 @@ Domain leads are orchestrators one tier below orc:
 
 6. A lead's model is written in its lane brief, signature line and claim post; a mid-sprint tier change names its reason (budget | quality | stall).
 7. **Leads never do ops themselves:** "Leads never do ops themselves: deploy hops go to the `deploy-local-prod` sub-agent; mechanical checks and waits go to Haiku or gpt-6-luna." (Etan 2026-10-19, via orc) A deploy, install, restart or reconnect hop is a `deploy-local-prod` dispatch; a sit/poll/wait task is a `claude.subagent.mechanical` or `codex.subagent.mechanical --use watcher` dispatch (§ Cheap sub-agents). Resolve both through `scripts/model-roles.mjs`; never write the model names. The lead's part is routing the hop and verifying the artifact it reports; the lead never runs the hop, the probe or the wait in its own session.
+8. **The lead shape (default, 2026-11-13).** Fable orchestrates a few Opus per domain; Opus hands reading and mechanical work to Sonnet or Haiku. A domain lead is a Fable seat that dispatches a few Opus (`claude.judgment`) workers for its domain's judgment and holistic work. Each Opus hands its reading to Sonnet (`claude.subagent.cheap`) and its mechanical work (sit, poll, wait, bounded checks) to Haiku (`claude.subagent.mechanical`), per § Cheap sub-agents. Fable is selected explicitly at each lead launch (§ Model pins and dispatch); the bare boot pin stays on `claude.judgment`, and #6 still records the lead's model. orc launches Fable leads: `model-pin-gate` allows a Fable target only from an apex seat, so a lead does not spawn Fable workers. The Routing rules (SSOT) table is unchanged: Codex keeps narrow technical work and other-vendor review, and gathers keep their routes.
+   - **Concurrency:** fleet canon #5 owns the numbers; this shape changes none. A Fable lead takes one of canon #5's Claude lead tracks and its place in the shared ceiling with leads. "A few Opus" means at most canon #5's `claude.judgment` worker cap running at once; the rest queue. Sonnet and Haiku draw on their own canon #5 caps.
+   - **Caveat:** it depends on the lead, and Saturday's weave should say whether Fables are better as advisers to Opus leads (orc's routing of card 5). Etan's words: "Yeah, I think it depends on the lead, but I think some leads could be opposes [Opuses]. Maybe most of them should be fable but I think the weave should help us figure out if maybe fables should be more of advisors that come in to correct or give extra insight to opus leads before they make opus workers or soul [Sol] workers as well as maybe sometimes they should utilize fable for workers so we’ll need to see, but for now I think we should adopt that default" (Etan, 2026-11-13, dashboard card 5, via orc). Until that weave (2026-11-14) rules, a lead may stay on Opus when its domain calls for it; the brief names why.
 
 ## Goal Contract
 

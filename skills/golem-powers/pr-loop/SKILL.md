@@ -1,6 +1,6 @@
 ---
 name: pr-loop
-description: "Invoke before any git/gh: open a PR, merge, ship, fix CI, handle reviews/comments, finish work. Signs: 🤖 model + harness line, Co-Authored-By."
+description: "Invoke before any git/gh or agent dispatch: open a PR, merge, ship, CI, full-stop/READY UNMERGED. Signs: 🤖 model + harness line, Co-Authored-By."
 ---
 
 # PR Loop
@@ -54,7 +54,7 @@ Run the loop in this order:
 2. Implement under repository law and run the relevant tests.
 3. Invoke `/never-fabricate`. Per-PR visual proof is required below; builder self-QA and real-client runs remain at the feature-batch gate.
 4. Run the bounded local CodeRabbit pre-commit pass when available, then commit with the ratified identity trailer.
-5. Push and open the PR as a **draft** (`gh pr create --draft`) with a signed body and exactly one
+5. Push and open the PR as a **draft** (`gh pr create --draft`) with a [plain-words title](references/pr-creation.md#pr-title), a signed body and exactly one
    `size:*` label (`scripts/ci/pr-size-labels.sh suggest` before opening, `compute` after; an L PR
    carries a `size-why:` line). In T3, immediately link every created/taken-over/pushed PR and every
    stack layer; linking does not arm a watch. The lead-routed other-vendor inner review runs on the
