@@ -115,7 +115,7 @@ function policy() {
   for (const line of readFileSync(join(source, 'publish-boundary-policy.yaml'), 'utf8').split('\n')) {
     if (/^[a-z_]+:/.test(line)) section = line.split(':')[0];
     if (section !== 'forbidden_classes' && section !== 'push_patterns') continue;
-    const c = /^  ([a-z_-]+):/.exec(line);
+    const c = /^  ([a-z0-9_-]+):/.exec(line);
     if (c) { klass = c[1]; rules.set(klass, { patterns: [], allowed_patterns: [] }); kind = null; }
     const k = /^    (patterns|allowed_patterns):/.exec(line);
     if (k) kind = k[1];
