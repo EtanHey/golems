@@ -13,7 +13,7 @@ const leak = '/' + 'Users/someone/private';
 const credential = 'ghp_' + 'z'.repeat(32);
 function fixture(fn) {
   const root = mkdtempSync(join(tmpdir(), 'boundary-parent-')), repo = join(root, 'repo');
-  const bin = join(root, 'bin'), parent = join(root, 'parent.git'), log = join(root, 'transport.jsonl');
+  const bin = join(root, 'bin'), parent = join(root, 'parent.git'), destination = join(root, 'destination.git'), log = join(root, 'transport.jsonl');
   mkdirSync(repo); mkdirSync(bin);
   const git = (...args) => {
     const r = spawnSync(realGit, args, { cwd: repo, encoding: 'utf8' });
@@ -25,6 +25,7 @@ function fixture(fn) {
     const shared = 'ours-base\n' + 'safe\n'.repeat(20) + 'upstream-base\n';
     commit('shared', shared);
     const base = commit('safe', 'base\n');
+    git('init', '--bare', '-q', destination); git('push', '-q', destination, 'HEAD:refs/heads/main');
     const upstreamPII = 'upstream@' + 'private.invalid';
     commit('shared', shared.replace('upstream-base', upstreamPII));
     const published = commit('upstream', upstreamPII + '\n');
@@ -33,7 +34,7 @@ function fixture(fn) {
     commit('shared', shared.replace('ours-base', 'ours-change')); commit('ours', 'safe\n');
     git('merge', '--no-ff', '-qm', 'import upstream', published);
     const metadata = { full_name: 'fixture/fork', fork: true, parent: { full_name: 'fixture/parent' } };
-    const env = { ...process.env, PATH: bin + ':' + process.env.PATH, FIXTURE_PARENT: parent, FIXTURE_LOG: log,
+    const env = { ...process.env, PATH: bin + ':' + process.env.PATH, FIXTURE_PARENT: parent, FIXTURE_DESTINATION: destination, FIXTURE_LOG: log,
       FIXTURE_METADATA: JSON.stringify(metadata) };
     writeFileSync(join(bin, 'gh'), `#!${process.execPath}
 if (JSON.stringify(process.argv.slice(2)) !== JSON.stringify(['api', '--hostname', 'github.com', 'repos/fixture/fork'])) process.exit(2);
@@ -44,6 +45,7 @@ process.stdout.write(process.env.FIXTURE_METADATA);
 const {spawnSync} = require('node:child_process');
 const {appendFileSync} = require('node:fs');
 const args = process.argv.slice(2);
+if (args.includes('ls-remote') && !args.includes('--get-url')) args[args.length - 1] = process.env.FIXTURE_DESTINATION;
 if (args.includes('fetch')) {
   appendFileSync(process.env.FIXTURE_LOG, JSON.stringify({args, gitEnv: Object.keys(process.env).filter(k => k.startsWith('GIT_'))}) + '\\n');
   if (process.env.FIXTURE_FETCH_FAIL || !args.includes(${JSON.stringify(parentURL)})) process.exit(1);
@@ -56,7 +58,7 @@ const r = spawnSync(${JSON.stringify(realGit)}, args, {stdio: 'inherit'}); proce
       cwd: repo, env: { ...env, ...overrides }, encoding: 'utf8',
       input: `refs/heads/candidate ${git('rev-parse', 'HEAD')} refs/heads/candidate ${remote}\n`,
     });
-    fn({ root, repo, git, commit, check, base, published, metadata, log });
+    fn({ root, repo, git, commit, check, base, published, metadata, log, destination });
   } finally { rmSync(root, { recursive: true, force: true }); }
 }
 test('verified parent import and our clean merge pass, including a new branch', () => fixture(({ check, git, log, published }) => {
@@ -93,10 +95,16 @@ for (const failure of ['FIXTURE_LOOKUP_FAIL', 'FIXTURE_FETCH_FAIL']) {
   test(`${failure}: unavailable parent evidence scans upstream too`, () => fixture(({ check }) => {
     const r = check({ [failure]: '1' }); assert.equal(r.status, 1); assert.match(r.stderr, /publication violation/);
   }));
-  test(`${failure}: new-ref fallback preserves the published-history baseline`, () => fixture(({ check, git }) => {
+  test(`${failure}: new-ref fallback requires advertised destination history`, () => fixture(({ check, git, commit, destination }) => {
     git('update-ref', 'refs/remotes/origin/main', git('rev-parse', 'HEAD'));
-    const r = check({ [failure]: '1' }, '0'.repeat(40));
-    assert.equal(r.status, 0, r.stderr);
+    const unpublished = check({ [failure]: '1' }, '0'.repeat(40));
+    assert.equal(unpublished.status, 1, unpublished.stderr);
+    git('push', '-q', destination, 'HEAD:refs/heads/main');
+    const published = check({ [failure]: '1' }, '0'.repeat(40));
+    assert.equal(published.status, 0, published.stderr);
+    const secret = commit('private', credential); git('update-ref', 'refs/remotes/origin/main', secret);
+    const refused = check({ [failure]: '1' }, '0'.repeat(40));
+    assert.equal(refused.status, 1, refused.stderr); assert.match(refused.stderr, /publication violation/);
   }));
 }
 test('non-fork and mismatched target metadata retain the original scan', () => fixture(({ check, metadata }) => {
