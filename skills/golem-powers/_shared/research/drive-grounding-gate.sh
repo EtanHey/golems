@@ -21,17 +21,22 @@ set -euo pipefail
 #
 # Exit codes: 0 = PASS (no attach/upload language), 1 = FAIL, 2 = usage error.
 
+NATIVE_DOCS=0
 JSON=0
 SRC=""
 
 usage() {
   cat <<'EOF'
-Usage: drive-grounding-gate.sh [--json] <prompt-file | ->
+Usage: drive-grounding-gate.sh [--json] [--native-docs] <prompt-file | ->
 
 Scans an emitted deep-research prompt for forbidden attach/upload/drag
 language. PASS means the prompt grounds itself by referencing Drive docs
 by NAME (the connected Drive workspace surfaces them), never by telling
 Etan to attach or upload files.
+
+--native-docs also requires RESEARCH_GROUNDING_RECEIPT metadata and successful
+content-read evidence for every named Gemini grounding Doc. Resolves the firing
+account with resolve-account.sh. Explicit web-only research needs no receipt.
 
 Exit: 0 PASS · 1 FAIL (violations printed) · 2 usage error
 EOF
@@ -39,6 +44,7 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --native-docs) NATIVE_DOCS=1; shift ;;
     --json) JSON=1; shift ;;
     --help|-h) usage; exit 0 ;;
     -) SRC="-"; shift ;;
@@ -70,7 +76,7 @@ fi
 #   - The only benign form of an attach-verb is STORAGE upload ("upload ... to
 #     Drive / to prompts/ / to results/"). `attach` and `drag` have no benign
 #     form in an emitted prompt, so they always violate unless negated.
-DGG_CONTENT="$CONTENT" python3 - "$JSON" <<'PY'
+DGG_CONTENT="$CONTENT" python3 - "$JSON" "$NATIVE_DOCS" "$(dirname "$0")/resolve-account.sh" <<'PY'
 import json, os, re, sys
 
 JSON = sys.argv[1] == "1"
@@ -165,16 +171,49 @@ for ln, clause in clauses_with_lineno(content):
             seen.add(key)
             viols.append(f"{ln}:{clause.strip()}")
 
+# Native-Doc admission is opt-in for Gemini; plain dispatch/no-attach scans and
+# other research surfaces keep their existing contract. Evidence is a real Drive
+# metadata + successful content-read receipt, not an online probe by this script.
+if sys.argv[2] == "1":
+    import subprocess
+    blocks = re.findall(r'^ {0,3}#[ \t]+Grounding(?:[ \t]+\([^\r\n)]+\))?(?:[ \t]+#+)?[ \t]*\n(.*?)(?=^ {0,3}# |\Z)', content, re.M | re.S)
+    names = re.findall(r'^-\s+"([^"\n]+)"(?:\s.*)?$', blocks[0], re.M) if len(blocks) == 1 else []
+    web_only = len(blocks) == 1 and "None — web-only research" in blocks[0].splitlines() and not names
+    if not web_only:
+        try:
+            if len(blocks) != 1 or not names or any('<' in name or '>' in name for name in names):
+                raise ValueError("one Grounding block with exact document names required")
+            account = subprocess.run(['bash', sys.argv[3]], text=True, capture_output=True, check=True).stdout.strip()
+            with open(os.environ.get('RESEARCH_GROUNDING_RECEIPT', ''), encoding='utf-8') as source:
+                receipt = json.load(source)
+            if receipt.get('firingAccount') != account:
+                raise ValueError("receipt firingAccount differs from resolved research account")
+            files = receipt.get('files')
+            if not isinstance(files, list) or not files or not all(isinstance(f, dict) for f in files):
+                raise ValueError("receipt files must be a nonempty list")
+            titles = [f.get('name') for f in files]
+            if len(set(titles)) != len(titles) or set(titles) != set(names):
+                raise ValueError("receipt must cover exactly the named grounding set without duplicates")
+            for f in files:
+                if f.get('mimeType') != 'application/vnd.google-apps.document':
+                    raise ValueError("grounding file is not a native Google Doc")
+                if not all(isinstance(f.get(k), str) and f[k].strip() for k in ['id', 'owner']):
+                    raise ValueError("grounding file lacks Drive id or owner")
+                if f.get('readBy') != account or f.get('readVerified') is not True:
+                    raise ValueError("grounding file lacks a verified content read by the firing account")
+        except (OSError, ValueError, TypeError, AttributeError, subprocess.SubprocessError) as error:
+            viols.append(f"NATIVE_DOCS: {error}")
+
 count = len(viols)
 if JSON:
     print(json.dumps({"gate": "drive-grounding", "pass": count == 0,
                       "violation_count": count, "violations": viols}))
 elif count == 0:
     print("✅ drive-grounding-gate PASS — no attach/upload/drag instruction; "
-          "prompt references Drive docs by name (prohibitions like 'do not attach' are fine).")
+          "native-Doc evidence checked when --native-docs is set (explicit web-only exempt).")
 else:
-    sys.stderr.write(f"❌ drive-grounding-gate FAIL — {count} clause(s) instruct attach/upload/drag.\n")
-    sys.stderr.write("   The Drive workspace is CONNECTED. Reference the doc(s) by NAME instead.\n")
+    sys.stderr.write(f"❌ drive-grounding-gate FAIL — {count} grounding violation(s).\n")
+    sys.stderr.write("   Reference Drive docs by NAME; for Gemini verify native MIME, owner and firing-account reads.\n")
     sys.stderr.write("   Offending clauses:\n")
     for v in viols:
         sys.stderr.write(f"     {v}\n")

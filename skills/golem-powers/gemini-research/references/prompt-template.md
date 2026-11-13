@@ -3,6 +3,7 @@
 
 # Grounding
 Use ONLY the documents named below, all in this research's own curated folder <Drive R{NN}-grounding folder>, for project facts. Do not read the shared project corpus.
+All named grounding files must be native Google Docs (`application/vnd.google-apps.document`), owned by or shared to the firing account; never raw markdown/text uploads.
 Pull these documents via the connected Drive workspace; never ask for attachments.
 - "<Verified findings + struck claims document title>"
 - "<Current project facts document title>"

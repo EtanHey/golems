@@ -40,6 +40,10 @@ Keep the existing grounding and prompt-author START/EDIT gates below.
 
 ## Curated grounding set, admission stop, provenance
 
+**Hard rule:** Gemini Deep Research grounding files must be native Google Docs (`application/vnd.google-apps.document`), never raw `.md` or other raw text uploads, owned by or shared to the account that fires. Results/context mirrors may remain `text/markdown`.
+Create a Doc directly, or upload `.docx` with conversion and rename the converted Doc to the exact title named in the prompt (conversion drops the extension). Verify Drive metadata and read the content as the firing account.
+Evidence (2026-11-13, NarrationLayer R01): admission stopped with all six files missing/inaccessible; all 20 files across three grounding folders were raw markdown, despite correct ownership/sharing. Raw format is the suspected connector cause; the next admission table must prove native-Doc readability. Metadata alone never proves Gemini read it.
+
 - **Curated, bounded set:** project-grounded research gets its own Drive folder of only the documents it needs (`/drive-filing` § Research grounding folder contract). Agents prepare it, never Etan. The prompt names those documents and says to use ONLY them.
 - **Admission table with a HARD STOP:** before firing, the prompt's `# Grounding` block carries a read-check table, one row per grounding file, with `readable: yes/no`. Project-grounded runs only; web-only research keeps its own `None — web-only research` block and has no table. Any row that is not an affirmative verified read (no, blank, missing, empty, truncated, unreadable) stops the run: output only the table and a `MISSING FILES` list. The template holds the wording.
 - **Keep the stop in the plan:** when Gemini's generated plan drops the stop, return it for EDIT and paste this sentence: `If any read-check row is not an affirmative verified read (readable: no, blank, missing, empty, truncated or unreadable), output only the read-check table and a MISSING FILES list, and stop.`
@@ -60,6 +64,7 @@ Drive remains the source of truth for project context. Ground on the research's 
 Before emitting or firing, validate the author record and produce the researcher text. Exit nonzero means rewrite and rerun; a pass proves sections contain the required instruction terms and review records, not that their claims are true. Free-text sections need a phrase, not a single token:
 
 ```bash
+RESEARCH_GROUNDING_RECEIPT=/path/to/grounding-receipt.json \
 node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --emit /path/to/R{NN}-prompt.md > /path/to/R{NN}-research.md
 ```
 
@@ -75,14 +80,16 @@ Drive-Workspace gate. The rule is mechanically enforced — do not eyeball it:
 
 ```bash
 # Scan the prompt you are about to emit (file or stdin). Exit 1 = FAIL.
-bash skills/golem-powers/_shared/research/drive-grounding-gate.sh /path/to/R{NN}-prompt.md
-# or:  printf '%s' "$PROMPT_TEXT" | bash skills/golem-powers/_shared/research/drive-grounding-gate.sh -
+RESEARCH_GROUNDING_RECEIPT=/path/to/grounding-receipt.json \
+bash skills/golem-powers/_shared/research/drive-grounding-gate.sh --native-docs /path/to/R{NN}-prompt.md
+# No-attach-only dispatch scan: printf '%s' "$PROMPT_TEXT" | bash skills/golem-powers/_shared/research/drive-grounding-gate.sh -
 ```
 
 - **FAIL** (gate finds `attach` / `upload` / `drag` / "add the file" aimed at Etan)
   → **do NOT emit.** Rewrite the offending lines to REFERENCE the doc(s) by NAME
   inside the `# Grounding` block, then re-run the gate. Repeat until it PASSes.
-- **PASS** → the prompt grounds itself by doc-name; safe to emit.
+- **FAIL** on missing receipt, non-native MIME type, missing owner, or absent verified read by the firing account → stop and repair the grounding set. Receipt schema: `/research-lifecycle` § Curated grounding folder. The preflight invokes this same shared gate with `--native-docs`; export `RESEARCH_GROUNDING_RECEIPT` for every preflight/completion command. Web-only prompts need no receipt.
+- **PASS** → recorded metadata and read evidence meet admission requirements; Gemini must still pass its own read-check table.
 
 This gate also runs over the **user-facing dispatch message**, not just the prompt
 body — telling Etan "attach the Drive folder" in the hand-off message is the same

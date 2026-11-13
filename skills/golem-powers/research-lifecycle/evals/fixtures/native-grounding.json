@@ -1,0 +1,13 @@
+{
+  "firingAccount": "research-account@example.com",
+  "files": [
+    {
+      "name": "BrainLayer Architecture Notes",
+      "id": "fixture-doc",
+      "mimeType": "application/vnd.google-apps.document",
+      "owner": "research-account@example.com",
+      "readBy": "research-account@example.com",
+      "readVerified": true
+    }
+  ]
+}

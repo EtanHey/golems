@@ -5,14 +5,18 @@ import { spawnSync } from 'node:child_process';
 import { evaluatePrompt, researcherPrompt, requiredSections } from '../prompt-preflight.mjs';
 import { evaluateGeminiPreflight } from '../../../research-lifecycle/scripts/lifecycle-gate.mjs';
 
+// Synthetic metadata/read receipt; no claim about live Drive access.
+process.env.RESEARCH_ACCOUNT = 'research@example.com';
+process.env.RESEARCH_GROUNDING_RECEIPT = new URL('./native-grounding.json', import.meta.url).pathname;
+
 const template = readFileSync(new URL('../../references/prompt-template.md', import.meta.url), 'utf8');
 const filled = (template.split('For explicitly authorized web-only research,')[0]
   + '# Owner asks (verbatim)' + template.split('# Owner asks (verbatim)')[1])
   .replace('<reviewer-one>', 'reader-a').replace('<reviewer-two>', 'reader-b')
   .replace(/<[^>]+>/g, 'Example statement').replaceAll('- [ ]', '- [x]');
-const legacy = '# Research goal\nCompare indexing.\n# Grounding\n- "Overview"\n# Scope\nLocal.\n# Desired output\nA table.\n';
+const legacy = '# Research goal\nCompare indexing.\n# Grounding\n- "Example statement"\n# Scope\nLocal.\n# Desired output\nA table.\n';
 
-test('RED: old gate accepts the R02-style omission; new gate rejects it', () => {
+test('native-Doc preflight accepts legacy structure; full prompt gate rejects omissions', () => {
   assert.equal(evaluateGeminiPreflight(legacy).pass, true);
   const result = evaluatePrompt(legacy);
   assert.equal(result.pass, false);

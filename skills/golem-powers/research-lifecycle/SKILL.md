@@ -190,7 +190,7 @@ The local corpus is the source to push. Drive is where Gemini grounds, so the Dr
 
 2. **Resolve the canonical destination.** Use `/drive-filing` for the correct numbered folder and naming convention (its folder model and decision tree own the Drive paths; this skill does not restate them). Use `/braindrive` to resolve current folder IDs and the Gemini-facing corpus; do not trust stale hard-coded IDs.
 
-3. **Reconcile the managed Drive corpus to local truth.** Upload or replace every current local context file under the canonical project corpus, keeping local and Drive relative names identical. Upload with `mcp__google-drive__uploadFile(localPath, name, parentFolderId, mimeType)` and set `mimeType` from the extension: `.md` → `text/markdown`, `.txt` → `text/plain`, `.json` → `application/json`. Without it, a markdown file whose first bytes are `<!--` lands as `text/html`. Do not use `createTextFile` or `updateTextFile` here: they take no `mimeType`. Track the complete lifecycle-managed file set. Delete only previously managed Drive files that are absent locally; never delete unrelated Drive documents. Unexpected duplicate managed names fail the gate.
+3. **Reconcile the results/context mirror to local truth.** The raw MIME mapping below is ONLY for the results/context mirror, never the Gemini Deep Research grounding set. Upload or replace every current local context file under the canonical project corpus, keeping local and Drive relative names identical. Upload with `mcp__google-drive__uploadFile(localPath, name, parentFolderId, mimeType)` and set `mimeType` from the extension: `.md` → `text/markdown`, `.txt` → `text/plain`, `.json` → `application/json`. Without it, a markdown file whose first bytes are `<!--` lands as `text/html`. Do not use `createTextFile` or `updateTextFile` here: they take no `mimeType`. Track the complete lifecycle-managed file set. Delete only previously managed Drive files that are absent locally; never delete unrelated Drive documents. Unexpected duplicate managed names fail the gate.
 
 4. **Verify the refresh with a real Drive read.** List/search and download/read the destination after upload. Record every local and Drive relative name, `modifiedTime`, and SHA-256 content digest in a receipt. The completion command independently walks `--local-root`, hashes every regular file, and rejects a receipt that omits or changes any canonical local entry. `DRIVE_FILESET=PASS` requires the Drive names to equal that derived inventory with no duplicates. `DRIVE_FRESHNESS=PASS` requires every Drive digest to match its local source and every Drive `modifiedTime` to be at least as new. Missing or unverifiable content is `FAIL`.
 
@@ -217,6 +217,21 @@ The local corpus is the source to push. Drive is where Gemini grounds, so the Dr
 ---
 
 ## CURATED GROUNDING FOLDER — one per research
+
+**Hard rule:** Gemini Deep Research grounding files must be native Google Docs (`application/vnd.google-apps.document`), never raw `.md` or other raw text uploads, owned by or shared to the firing account. A results/context mirror may use `text/markdown`; it is not the grounding set.
+Create a Doc directly, or convert an uploaded `.docx`, then rename it to the exact prompt title (conversion drops the extension). Read back Drive MIME type and owner, and verify content access as the firing account.
+On 2026-11-13 NarrationLayer R01 stopped at admission: six missing/inaccessible files; all 20 files in three grounding folders were raw markdown despite correct account/sharing. Format is the suspected connector cause; native-Doc admission still needs the next Gemini read-check, not an inferred pass.
+
+Save a separate grounding receipt from real Drive metadata/content reads (not the mirror's byte-hash receipt):
+```json
+{
+  "firingAccount": "research@example.com",
+  "files": [{"name": "01-Facts.md", "id": "drive-file-id",
+    "mimeType": "application/vnd.google-apps.document", "owner": "owner@example.com",
+    "readBy": "research@example.com", "readVerified": true}]
+}
+```
+`owner` records the Drive owner's email; `readBy` must equal the resolved research account and `readVerified: true` requires an actual successful content read under that account (ownership or a sharing flag alone is insufficient). Include exactly every named grounding file, with no duplicate titles. Export `RESEARCH_GROUNDING_RECEIPT=/absolute/path/to/grounding-receipt.json` for all Gemini preflight, emit and lifecycle completion commands. The existing `drive-grounding-gate.sh --native-docs` refuses missing evidence, raw MIME types or unreadable files; the prompt preflight invokes it automatically. Web-only research needs no receipt. This is receipt validation, not live connector proof.
 
 Prepare a bounded Drive folder `R{NN}-grounding/` holding only the curated documents the research needs, with a manifest (what and why, sha256, `manifest_sha256`); contract in `/drive-filing` § Research grounding folder contract. The preparation receipt names the folder and manifest. Admission stop, plan sentence and provenance fields: `/gemini-research` § Curated grounding set. After harvest, archive or consolidate the folder per the contract; the harvest record carries model, settings, prompt hash and manifest hash.
 

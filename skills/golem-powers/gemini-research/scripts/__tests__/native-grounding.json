@@ -1,0 +1,13 @@
+{
+  "firingAccount": "research@example.com",
+  "files": [
+    {
+      "name": "Example statement",
+      "id": "fixture-doc",
+      "mimeType": "application/vnd.google-apps.document",
+      "owner": "research@example.com",
+      "readBy": "research@example.com",
+      "readVerified": true
+    }
+  ]
+}

@@ -106,7 +106,7 @@ export function collectLocalInventory(rootPath) {
   return inventory;
 }
 
-export function evaluateGeminiPreflight(promptText) {
+export function evaluateGeminiPreflight(promptText, { env = process.env } = {}) {
   const text = typeof promptText === "string" ? promptText : "";
   const lines = text.split(/\r?\n/);
   const groundingIndexes = lines
@@ -130,11 +130,16 @@ export function evaluateGeminiPreflight(promptText) {
   const explicitWebOnly = groundingLines.includes("None — web-only research");
   const groundingSourceValid = (namedDocument || explicitWebOnly) && !hasDocumentPlaceholder;
   const sharedResult = spawnSync("bash", [sharedDriveGate, "-"], {
-    input: text,
+    input: text, env,
     encoding: "utf8",
   });
 
+  const nativeResult = spawnSync("bash", [sharedDriveGate, "--native-docs", "-"], {
+    input: text, env, encoding: "utf8",
+  });
   const checks = {
+    NATIVE_DOCS: check(nativeResult.status === 0,
+      (nativeResult.stderr || nativeResult.stdout || "native-Doc gate failed").trim()),
     GROUNDING_BLOCK: check(
       singleGrounding,
       `expected exactly one # Grounding block; found ${groundingIndexes.length}`,

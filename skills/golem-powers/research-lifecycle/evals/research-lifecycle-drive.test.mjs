@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
 
 import { loadLifecycleGate, runEvalCase } from "./run_eval_harness.mjs";
 
+// Synthetic metadata/read receipt keeps the existing mirror cases isolated.
+process.env.RESEARCH_ACCOUNT = "research-account@example.com";
+process.env.RESEARCH_GROUNDING_RECEIPT = new URL('./fixtures/native-grounding.json', import.meta.url).pathname;
+
 const namedPrompt = `# Grounding
 - "BrainLayer Architecture Notes"
 
@@ -298,14 +302,14 @@ test("Gemini preflight accepts named/web-only grounding and rejects silent omiss
   const webOnly = "# Grounding\nNone — web-only research\n\n# Scope\nSurvey primary sources.";
   const missing = "# Scope\nSurvey primary sources.";
   const vague = "# Grounding\nUse my architecture notes.\n\n# Scope\nSurvey primary sources.";
-  const attach = '# Grounding\n- "Architecture Notes"\n\nPlease attach the document.';
-  const unrelatedNegation = '# Grounding\n- "Architecture Notes"\n\nDo not search the web and attach the file.';
-  const compoundProhibition = '# Grounding\n- "Architecture Notes"\n\nDo not drag and drop the file.';
-  const postpositiveProhibition = '# Grounding\n- "Architecture Notes"\n\nYou should attach no documents. Upload no files.';
-  const postpositiveException = '# Grounding\n- "Architecture Notes"\n\nAttach nothing but the report.';
+  const attach = '# Grounding\n- "BrainLayer Architecture Notes"\n\nPlease attach the document.';
+  const unrelatedNegation = '# Grounding\n- "BrainLayer Architecture Notes"\n\nDo not search the web and attach the file.';
+  const compoundProhibition = '# Grounding\n- "BrainLayer Architecture Notes"\n\nDo not drag and drop the file.';
+  const postpositiveProhibition = '# Grounding\n- "BrainLayer Architecture Notes"\n\nYou should attach no documents. Upload no files.';
+  const postpositiveException = '# Grounding\n- "BrainLayer Architecture Notes"\n\nAttach nothing but the report.';
   const placeholder = '# Grounding\n- "<Exact Google Doc name 1>"\n\n# Scope\nSurvey primary sources.';
-  const mixedPlaceholder = '# Grounding\n- "Architecture Notes"\n- "<Exact Google Doc name 2>"\n\n# Scope\nSurvey primary sources.';
-  const duplicateEquivalentHeader = '# Grounding\n- "Architecture Notes"\n\n# Scope\nSurvey primary sources.\n\n# Grounding #\nNone — web-only research';
+  const mixedPlaceholder = '# Grounding\n- "BrainLayer Architecture Notes"\n- "<Exact Google Doc name 2>"\n\n# Scope\nSurvey primary sources.';
+  const duplicateEquivalentHeader = '# Grounding\n- "BrainLayer Architecture Notes"\n\n# Scope\nSurvey primary sources.\n\n# Grounding #\nNone — web-only research';
 
   assert.equal(gate.evaluateGeminiPreflight(namedPrompt).pass, true);
   assert.equal(gate.evaluateGeminiPreflight(webOnly).pass, true);

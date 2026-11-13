@@ -57,7 +57,10 @@ export async function runEvalCase(caseId) {
     };
   }
 
-  const preflight = gate.evaluateGeminiPreflight(fixture.geminiPrompt);
+  const preflight = gate.evaluateGeminiPreflight(fixture.geminiPrompt, { env: {
+    ...process.env, RESEARCH_ACCOUNT: fixture.researchAccount,
+    RESEARCH_GROUNDING_RECEIPT: path.join(here, 'fixtures/native-grounding.json'),
+  } });
   // The fixture names its account, so the verdict never depends on the
   // RESEARCH_ACCOUNT or ~/.config of the machine running the eval.
   const accountOptions = { env: { ...process.env, RESEARCH_ACCOUNT: fixture.researchAccount } };
