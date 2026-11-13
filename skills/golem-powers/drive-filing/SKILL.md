@@ -138,8 +138,8 @@ One folder per research holds only the curated documents that research needs, so
 
 - **Where:** `Brain Drive/03_RESEARCH/Active/<topic>/R{NN}-grounding/` (via `${BRAIN_DRIVE_RESEARCH_ACTIVE_FOLDER_ID}`), beside that research's prompt and results.
 - **Name:** `R{NN}-grounding` for the folder; files keep their `/research-lifecycle` context numbers. No duplicate document titles inside it (a duplicate makes "name the document" ambiguous).
-- **Manifest:** `00-GROUNDING-MANIFEST.md` in the folder: one row per file with `title | why it is here | bytes | SHA256`, plus a `manifest_sha256` line over the sorted rows. The prompt names exactly the manifest's files and says to use ONLY them.
-- **After harvest:** the folder is the research's record. Either (a) move it whole to `Brain Drive/06_ARCHIVE/research/<topic>/<YYYY-MM-DD>-R{NN}/` (§ Archive a heavy artifact), or (b) consolidate: fold lasting findings into the topic's `context/` files per `/research-lifecycle`, then archive the folder. Never leave a grounding folder in `Active/` after the harvest is recorded.
+- **Manifest:** `00-GROUNDING-MANIFEST.md` in the folder: one row per file with `title | why it is here | drive_file_id | revision_id`. Native Google Docs have no stable bytes, so identity is the Drive file id plus revision id, never a byte hash. Serialize each row as exactly `title|drive_file_id|revision_id` (the why stays out of the hash), UTF-8, LF line ends, rows sorted by `drive_file_id`; `manifest_sha256` is the sha256 of those lines joined by LF. The prompt names exactly the manifest's files and says to use ONLY them.
+- **After harvest:** the folder is the research's record. Keep it as that record, or consolidate lasting findings into the topic's `context/` files per `/research-lifecycle`, so Drive stays in good context. Either way the folder link, the manifest and `manifest_sha256` stay in the harvest record so provenance keeps its identity. Archiving the folder (§ Archive a heavy artifact) is optional, not required.
 
 ## Archive a heavy artifact
 
