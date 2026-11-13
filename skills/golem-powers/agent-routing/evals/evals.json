@@ -1977,6 +1977,86 @@
           "type": "behavioral"
         }
       ]
+    },
+    {
+      "id": 106,
+      "name": "codex-seats-dispatch-brief",
+      "category": "codex-seats",
+      "prompt": "You are a Claude lead in a T3 thread; Codex is available. Write one dispatch line (provider, model, effort, one-line why) for each child: (1) run the repo's full test suite and tabulate which tests fail; (2) a bounded off-by-one fix in a CSV parser (narrow technical work); (3) the other-vendor review of an XS, 30-line Claude-built diff; (4) a QA child that writes test cases for that parser. Then say what you record in your plan today.",
+      "expected_output": "(1) never Codex: a task that is only running tests and tabulating goes to Cursor, a Gemini gatherer, Sonnet or Haiku. (2) Codex Sol at medium, bounded work included (high only with one line of why; xhigh only on orc's word). (3) Codex Terra at medium for a small diff. (4) a test/QA role is never above low on any Codex model (or goes to a non-Codex seat). The plan gets the one-line daily count of turns dispatched to Codex, by purpose.",
+      "assertions": [
+        {
+          "text": "Child 1 (run tests and tabulate) is not dispatched to any Codex model.",
+          "type": "behavioral"
+        },
+        {
+          "text": "Child 2 is Codex Sol at medium effort, not Terra and not high or xhigh.",
+          "type": "behavioral"
+        },
+        {
+          "text": "Child 3 is a Codex review on Terra at medium effort.",
+          "type": "behavioral"
+        },
+        {
+          "text": "Child 4 runs at low effort or below if on Codex, or goes to a non-Codex seat.",
+          "type": "behavioral"
+        },
+        {
+          "text": "Records a one-line daily count of Codex turns dispatched, by purpose, in the plan.",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "name": "codex-seats-long-child-handoff",
+      "category": "codex-seats",
+      "prompt": "A Codex implementer child on PR #412 is 2.5 hours and 45 turns in, midway through fixing round-1 review findings; the PR is not merged. A related follow-up PR #413 is next. What happens to this child, and who builds #413?",
+      "expected_output": "The child is past the about 2 h or 40 turns cap: it writes a five-line handoff and stops; a fresh Codex child continues #412 from the handoff. #413 is a new task: a new fresh child with a short brief file, never the resumed old thread.",
+      "assertions": [
+        {
+          "text": "Stops the current child now: it writes a short (five-line) handoff and a fresh child continues #412 from it; does not let it keep going to ~100 turns.",
+          "type": "behavioral"
+        },
+        {
+          "text": "#413 goes to a new fresh child with a short brief; the old Codex thread is not resumed or reused for it.",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "name": "codex-seats-never-wait-in-turn",
+      "category": "codex-seats",
+      "prompt": "A Codex child has pushed a fix and must run the repo's 25-minute integration suite before its work counts as done. How does it handle the suite?",
+      "expected_output": "It never waits inside its turn: it starts the suite in the background, writes where the result will land, and ends its turn. A script or a Sonnet/Haiku sub-agent watches; a fresh child reads the result.",
+      "assertions": [
+        {
+          "text": "The Codex child does not sit through the suite inside its turn (no foreground run, no blocking wait or watch with a deadline in its own turn).",
+          "type": "behavioral"
+        },
+        {
+          "text": "It starts the suite in the background, writes where the result lands, and ends its turn; a script or cheap Claude sub-agent watches and a fresh child reads the result.",
+          "type": "behavioral"
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "name": "codex-seats-control-review-stays",
+      "category": "codex-seats",
+      "prompt": "Who does the inner-loop review of a Claude-built, size M skill-text PR? Does the November Codex usage audit change who reviews it?",
+      "expected_output": "Codex reviews it (the other vendor); the audit leaves review on Codex untouched.",
+      "assertions": [
+        {
+          "text": "A Codex reviewer (the other vendor) reviews it; not Claude, Cursor or Gemini.",
+          "type": "behavioral"
+        },
+        {
+          "text": "States review stays on Codex, or does not move review off Codex.",
+          "type": "behavioral"
+        }
+      ]
     }
   ]
 }

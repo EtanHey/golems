@@ -271,3 +271,48 @@ const POINTER_MUTANTS = [
 for (const [check, label, read] of POINTER_MUTANTS) {
   test(`mutant caught by ${check.name}: ${label}`, () => expect(check(read).length).toBeGreaterThan(0));
 }
+
+// Card 5 (Etan, 2026-11-13, via orc): the default lead shape lives in /agent-routing § Lead Topology,
+// with his caveat, fitted to canon #5 without restating or changing its numbers. Presence lint, same LIMIT.
+const ROUTING = "skills/golem-powers/agent-routing/SKILL.md";
+const ITEM_8 = "8. **The lead shape (default, 2026-11-13).**";
+// r1253: item 8 only, from its heading line to the next numbered item heading (or the section end),
+// so a phrase in a later item cannot satisfy item 8 and a later item's number cannot fail it.
+function item8(read) {
+  const topology = section(read(ROUTING), "## Lead Topology");
+  const at = topology.search(/^8\. \*\*The lead shape \(default, 2026-11-13\)\.\*\*/m);
+  if (at < 0) return "";
+  const rest = topology.slice(at + ITEM_8.length);
+  const next = rest.search(/^\d+\. /m);
+  return flat(next < 0 ? rest : rest.slice(0, next));
+}
+function leadShape(read) {
+  const item = item8(read);
+  if (!item) return ["Lead Topology has no lead-shape item"];
+  const errors = [];
+  for (const phrase of [
+    "Fable orchestrates a few Opus per domain; Opus hands reading and mechanical work to Sonnet or Haiku.",
+    "Sonnet (`claude.subagent.cheap`)", "Haiku (`claude.subagent.mechanical`)",
+    "Fable is selected explicitly at each lead launch", "fleet canon #5 owns the numbers; this shape changes none",
+    "it depends on the lead, and Saturday's weave should say whether Fables are better as advisers to Opus leads",
+    "\"Yeah, I think it depends on the lead,", "but for now I think we should adopt that default\" (Etan, 2026-11-13, dashboard card 5, via orc)",
+  ]) if (!item.includes(phrase)) errors.push(`lead shape lacks: ${phrase.slice(0, 50)}`);
+  if (/(?:<=|≤|at most|up to)\s*\d/.test(item)) errors.push("lead shape restates a canon #5 number");
+  return errors;
+}
+test("agent-routing adopts the card-5 lead shape with Etan's caveat", () => expect(leadShape(readRepo)).toEqual([]));
+const NEXT_ITEM = "\n\n## Goal Contract";
+const withNextItem = (body, from, to) => (r) => {
+  const text = withEdit(ROUTING, from, to)(r);
+  if (r !== ROUTING) return text;
+  if (!text.includes(NEXT_ITEM)) throw new Error(`mutant anchor missing in ${ROUTING}: ${NEXT_ITEM}`);
+  return text.replace(NEXT_ITEM, `\n9. **Next item.** ${body}${NEXT_ITEM}`);
+};
+const CANON_PHRASE = "fleet canon #5 owns the numbers; this shape changes none";
+for (const [label, read] of [
+  ["the caveat removed", withEdit(ROUTING, "it depends on the lead, and Saturday's weave", "Saturday's weave")],
+  ["a canon number restated", withEdit(ROUTING, "at most canon #5's `claude.judgment` worker cap", "at most 2")],
+  ["a required phrase moved into the next item", withNextItem(`${CANON_PHRASE}.`, CANON_PHRASE, "the canon owns the caps")],
+]) test(`mutant caught by leadShape: ${label}`, () => expect(leadShape(read).length).toBeGreaterThan(0));
+test("leadShape ignores a later item's own number", () =>
+  expect(leadShape(withNextItem("Run at most 4 of these at once.", ITEM_8, ITEM_8))).toEqual([]));

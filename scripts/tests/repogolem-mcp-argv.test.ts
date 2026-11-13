@@ -226,6 +226,8 @@ _golem_sync_agy_workspace testrepo "$2"`,
   test("Codex profile rendering", () => {
     const home = join(scratch, "home");
     const project = join(scratch, "project");
+    mkdirSync(join(scratch, "standards"));
+    writeFileSync(join(scratch, "standards/model-roles.json"), JSON.stringify({ roles: { "codex.implement": { model: "fixture-codex" } } }));
     const codexHome = join(scratch, "codex-home");
     const captured = join(scratch, "captured.toml");
     const registry = join(scratch, "registry.json");
@@ -271,7 +273,7 @@ function codex() {
 source "$1"
 testrepoCodex -s`,
       [DISPATCHER],
-      { HOME: home, CODEX_HOME: codexHome, CAPTURED_PROFILE: captured, RALPH_REGISTRY_FILE: registry },
+      { HOME: home, GOLEMS_MODEL_ROLES_ROOT: scratch, CODEX_HOME: codexHome, CAPTURED_PROFILE: captured, RALPH_REGISTRY_FILE: registry },
     );
 
     expect(result.exitCode, result.stderr.toString()).toBe(0);

@@ -1,14 +1,13 @@
 ---
 name: drive-filing
-description: "Brain Drive filing, archival, and docs.local lifecycle. Triggers: Drive/Brain Drive upload, archive this, post-digest archival, docs.local cleanup, docs.local artifacts, rollup, folders, prompts/results, audits, plans, transcripts, dashboards. NOT for Gemini Deep Research/queries."
+description: "Brain Drive upload, archive this, post-digest archival, docs.local cleanup/rollup. NOT for Gemini Deep Research/queries."
 ---
 
 # /drive-filing — filing, archival, and the docs.local lifecycle
 
 > One skill for everything that moves durable artifacts out of `docs.local/` (formerly `drive-usage`,
 > `google-drive-archive`, and the `archive` skill).
-> Named `drive-filing`, not `brain-drive`, so it is not one hyphen away from `/braindrive` (the Gemini
-> Drive query command).
+> Drive queries use connected Drive search tools; this skill owns filing.
 >
 > Etan's pain: agents (except researchers) don't use Drive right and **leave artifacts scattered in `docs.local/`**. This skill makes filing automatic. **Rule of thumb: if an artifact should outlive this session, file it by § Machine hygiene: code and harnesses in a repo, personal or client documents in iCloud, other durable artifacts in the RIGHT Brain Drive folder — `docs.local/` is a cache, not a home.**
 
@@ -19,7 +18,7 @@ description: "Brain Drive filing, archival, and docs.local lifecycle. Triggers: 
 | Keep `docs.local/` legible over time (daily → monthly → Drive) | § docs.local lifecycle |
 | Manifest schema, disk measurement commands, path reconciliation | [references/archiving-convention.md](references/archiving-convention.md) |
 
-Not this skill: `/braindrive` *queries* Drive via Gemini; `/gemini-research` does web research with Drive sources.
+Not this skill: connected Drive search tools query existing files; `/gemini-research` does web research with Drive sources.
 
 ## Brain Drive folder model
 
@@ -131,6 +130,15 @@ add a destructive home-wide reaper.
 - New topic folder: `mcp__google-drive__createFolder(name, parent=<resolved private ID>)`.
 - Find: `mcp__google-drive__search(query="'<RESOLVED_PRIVATE_PARENT_ID>' in parents", rawQuery=true)`.
 - Heavy/forever: § Archive a heavy artifact.
+
+## Research grounding folder contract
+
+One folder per research holds only the curated documents that research needs, so the researcher reads a bounded set and not the whole project folder. Agents prepare it; Etan never attaches anything.
+
+- **Where:** `Brain Drive/03_RESEARCH/Active/<topic>/R{NN}-grounding/` (via `${BRAIN_DRIVE_RESEARCH_ACTIVE_FOLDER_ID}`), beside that research's prompt and results.
+- **Name:** `R{NN}-grounding` for the folder; files keep their `/research-lifecycle` context numbers. No duplicate document titles inside it (a duplicate makes "name the document" ambiguous).
+- **Manifest:** `00-GROUNDING-MANIFEST.md` in the folder: one row per file with `title | why it is here | drive_file_id | revision_id`. Native Google Docs have no stable bytes, so identity is the Drive file id plus revision id, never a byte hash. Serialize each row as exactly `title|drive_file_id|revision_id` (the why stays out of the hash), UTF-8, LF line ends, rows sorted by `drive_file_id`; `manifest_sha256` is the sha256 of those lines joined by LF. The prompt names exactly the manifest's files and says to use ONLY them.
+- **After harvest:** the folder is the research's record. Keep it as that record, or consolidate lasting findings into the topic's `context/` files per `/research-lifecycle`, so Drive stays in good context. Either way the folder link, the manifest and `manifest_sha256` stay in the harvest record so provenance keeps its identity. Archiving the folder (§ Archive a heavy artifact) is optional, not required.
 
 ## Archive a heavy artifact
 

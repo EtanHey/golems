@@ -9,6 +9,9 @@ Grounding: `$ORCHESTRATOR_ROOT/docs.local/research/2026-09-14-codex-model-effort
 
 ## Model Roles
 
+Codex seat limits (short seats, no waiting inside a turn, no task that is only reading or running
+scripts or tests, effort caps, the daily count) live in SKILL.md § Codex seats; they win over anything below.
+
 Workers use `codex.implement`. Effort is chosen per `/large-plan` phase, recorded as
 `role · effort · why`, and passed explicitly at dispatch. Resume retains the selected
 session model and effort unless explicitly overridden. Verify launcher defaults against the role
@@ -46,9 +49,9 @@ Read the seat's actual `info.model_context_window` from its session. Handoff tim
 2. **Phase effort:** choose effort per `/large-plan` phase and pass it explicitly at dispatch.
    Record the acceptance boundary, ambiguity, or specific blocker that justifies the choice.
 3. **Evaluation:** task importance alone does not establish the value of more reasoning.
-4. **Read-heavy Codex children:** use named `recon` with the `codex.implement` model and
-   phase-selected effort passed explicitly at dispatch. Verify its runtime; external agent configuration may carry a stale pin.
-   A standalone read-only lane routes per SKILL.md § Routing rules (SSOT) (easy work: the 2026-11-02 Flash-high rule). The mechanical candidate cannot bypass its gate.
+4. **Reading-only tasks:** never a Codex child (SKILL.md § Codex seats, rule C); a Codex builder or
+   reviewer still reads what its own task needs. A read-only lane
+   routes per SKILL.md § Gathering (easy work: the 2026-11-02 Flash-high rule). The mechanical candidate cannot bypass its gate.
 5. **Coordination:** use `claude.judgment` under `/agent-routing`, not a separate literal Codex lead tier.
 
 Every brief names the role, phase effort, and one-line reason, then passes that effort
@@ -72,7 +75,7 @@ For the effort rungs, see `/large-plan` § "Choosing effort per phase".
 | Bounded or routine implementation | `codex.implement` | Record acceptance boundary and chosen phase effort. |
 | Open-ended implementation or review | `codex.implement` | Record ambiguity and chosen phase effort. |
 | One hard blocker | `codex.implement` | Name the blocker and why the chosen phase effort helps. |
-| Read-heavy Codex child | `codex.implement` | Named `recon`; choose phase effort and verify runtime. |
+| Reading-only task | not Codex | Withdrawn 2026-11-13 (SKILL.md § Codex seats, rule C). |
 | Internal mechanical child | `codex.subagent.mechanical` | Named `packet`; Etan-authorised internal use only, verify runtime. |
 
 ## Dispatch and Verification
@@ -85,7 +88,7 @@ brainlayerCodex -s -m "$(node scripts/model-roles.mjs codex.implement --field mo
 ```
 
 Codex custom agents live in `~/.codex/agents/*.toml`; defaults live in
-`~/.codex/config.toml`. Do not edit host settings in a routing-doc lane. Resolve `codex.implement` for workers/recon and `codex.subagent.mechanical` for internal
+`~/.codex/config.toml`. Do not edit host settings in a routing-doc lane. Resolve `codex.implement` for workers and `codex.subagent.mechanical` for internal
 mechanical children/packet; check each effective pin against its role.
 The concurrency key is `max_concurrent_threads_per_session`. The model-only installer preserves
 existing concurrency settings; review legacy `max_threads` separately before changing them.

@@ -2,11 +2,18 @@
 <Question and decision to inform; keeping the current approach is an allowed outcome.>
 
 # Grounding
-Use ONLY the named corpus in <canonical Drive project folder> for project facts.
+Use ONLY the documents named below, all in this research's own curated folder <Drive R{NN}-grounding folder>, for project facts. Do not read the shared project corpus.
 Pull these documents via the connected Drive workspace; never ask for attachments.
 - "<Verified findings + struck claims document title>"
 - "<Current project facts document title>"
 Verified findings + struck claims: "<Verified findings + struck claims document title>"
+Admission check (hard stop; project-grounded runs only, the web-only block below has none). Before any analysis, output this table, one row per
+named document, and fill every cell from actually reading the file:
+| document | readable (yes/no) | first heading or line read |
+Only an affirmative, verified read passes: `readable: yes` plus the heading or line
+actually read. Any other row (readable: no, blank, missing, empty, truncated,
+unreadable) means that file failed: output only this table and a MISSING FILES
+list, and stop.
 Read the verified findings and struck claims first. Do not revive struck claims
 without new primary evidence. If a named document is inaccessible, say so and
 leave project-specific conclusions unknown; do not substitute similarly named docs.

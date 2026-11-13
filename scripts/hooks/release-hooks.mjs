@@ -13,7 +13,7 @@ import { checkReleaseHooks } from './release-self-check.mjs';
 
 // Older release payloads predate publication hooks. A missing declared file
 // still fails releaseContext's integrity check; only legacy payloads may skip.
-const boundaryFiles = ['../ci/boundary-clones.mjs', '../ci/boundary-prepush.mjs', '../publish-boundary-policy.yaml', '../../.publish-boundary-allow'];
+const boundaryFiles = ['../ci/boundary-clones.mjs', '../ci/boundary-prepush.mjs', '../ci/identity-precommit.mjs', '../publish-boundary-policy.yaml', '../../.publish-boundary-allow'];
 const boundary = boundaryFiles.every(file => existsSync(new URL(file, import.meta.url)))
   ? await import('../ci/boundary-clones.mjs') : null;
 function syncBoundary(apply = false) {

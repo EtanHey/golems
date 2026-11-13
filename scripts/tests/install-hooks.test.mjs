@@ -91,7 +91,7 @@ function fixture({ settings, privateSuite = true, ownerLayout = false } = {}) {
   mkdirSync(path.join(repo, "scripts/hooks"), { recursive: true });
   writeFileSync(path.join(repo, "scripts/hooks/codex-policy-hook.py"), "# synthetic candidate adapter\n");
   cpSync(path.join(here, "../hooks/codex-gate.sh"), path.join(repo, "scripts/hooks/codex-gate.sh"));
-  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow']) {
+  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/ci/identity-precommit.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow']) {
     mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
     cpSync(path.join(here, '../..', file), path.join(repo, file));
   }
@@ -133,7 +133,10 @@ function fixtureEnv(fx) {
   // The parent suite owns the real mutex; nested synthetic installs use fixture-only state.
   delete env.GOLEMS_HEAVY_SUITE_HELD;
   const bin = path.join(fx.root, "machine-bin"); mkdirSync(bin, { recursive: true });
-  writeFileSync(path.join(bin, "scutil"), `#!/bin/sh\nprintf '%s\\n' '${fx.machine ?? (fx.host === "m1" ? "Locals-MacBook-Pro" : "MacBook-Pro")}'\n`, { mode: 0o755 });
+  // macOS can SIGKILL an executed script after an in-place rewrite; use a fresh inode.
+  const scutil = path.join(bin, "scutil");
+  writeFileSync(scutil + '.new', `#!/bin/sh\nprintf '%s\\n' '${fx.machine ?? (fx.host === "m1" ? "Locals-MacBook-Pro" : "MacBook-Pro")}'\n`, { mode: 0o755 });
+  renameSync(scutil + '.new', scutil);
   env.PATH = `${bin}:${env.PATH}`;
   return env;
 }
@@ -501,7 +504,15 @@ test("every shipped host set carries the same heredoc-guard, git-guardian and tm
   for (const id of ["heredoc-guard", "pre_tool_use", "tmp-block"]) {
     const mbp = realManifest.hosts.mbp.filter((hook) => hook.id === id);
     expect(mbp).toHaveLength(1);
-    expect(mbp[0].timeout).toBe(5);
+    if (id === "pre_tool_use") {
+      const source = readFileSync(path.join(here, "../../skills/golem-powers/git-guardian/hooks/pre_tool_use.py"), "utf8");
+      const itimer = Number(source.match(/setitimer\(signal\.ITIMER_REAL,\s*(\d+)\)/)?.[1]);
+      expect(Number.isFinite(itimer)).toBe(true);
+      // Watchdog sits 1 s below the host; leave another 1 s after the itimer.
+      expect(mbp[0].timeout - 1).toBeGreaterThanOrEqual(itimer + 1);
+    } else {
+      expect(mbp[0].timeout).toBe(5);
+    }
     for (const [host, entries] of Object.entries(realManifest.hosts)) {
       expect(entries.filter((hook) => hook.id === id), `${host} ${id}`).toEqual(mbp);
     }
@@ -1004,6 +1015,7 @@ function pinnedManifestFixture() {
   cpSync(installer, path.join(directory, 'install-hooks.mjs'));
   cpSync(path.join(path.dirname(installer), 'machine-host.mjs'), path.join(directory, 'machine-host.mjs'));
   cpSync(path.join(path.dirname(installer), 'hook-paths.mjs'), path.join(directory, 'hook-paths.mjs'));
+  cpSync(path.join(path.dirname(installer), 'fleet-jobs.mjs'), path.join(directory, 'fleet-jobs.mjs'));
   cpSync(path.join(path.dirname(installer), "hook-interpreters.mjs"), path.join(directory, "hook-interpreters.mjs"));
   mkdirSync(path.join(directory, '../repogolem'), { recursive: true });
   cpSync(path.join(here, '../repogolem/worktree-disk-floor.py'), path.join(directory, '../repogolem/worktree-disk-floor.py'));
@@ -1503,7 +1515,7 @@ test("policy status rejects missing fail-closed registration and stale launcher;
 test("installer refuses a legacy source launcher paired with fail-closed before pin or settings writes", () => {
   const fx = closedFixture();
   const source = path.join(fx.root, "installer"); mkdirSync(source);
-  for (const name of ["install-hooks.mjs", "hook-paths.mjs", "machine-host.mjs", "hook-interpreters.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
+  for (const name of ["install-hooks.mjs", "fleet-jobs.mjs", "hook-paths.mjs", "machine-host.mjs", "hook-interpreters.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
   writeFileSync(path.join(source, "fail-open.py"), legacyLauncher);
   const before = readFileSync(fx.settingsPath, "utf8");
   const result = spawnSync("node", [path.join(source, "install-hooks.mjs"), "--repo", fx.repo,
@@ -1533,7 +1545,7 @@ function policyFixture() {
     cpSync(path.join(sourceRepo, "skills/golem-powers", name), path.join(fx.repo, "skills/golem-powers", name), { recursive: true,
       filter: (s) => !/\/(tests|evals|__pycache__)(\/|$)|\.pyc$/.test(s.slice(sourceRepo.length)) });
   }
-  for (const name of ["install-hooks.mjs", "hook-paths.mjs", "machine-host.mjs", "install-hooks.sh", "hook-interpreters.mjs", "codex-hooks-install.mjs", "fail-open.py",
+  for (const name of ["install-hooks.mjs", "fleet-jobs.mjs", "hook-paths.mjs", "machine-host.mjs", "install-hooks.sh", "hook-interpreters.mjs", "codex-hooks-install.mjs", "fail-open.py",
     "private-regression-gate.py", "heavy-suite.py", "proc_identity.py", "codex-policy-hook.py", "codex-gate.sh"]) {
     cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
   }
@@ -1917,7 +1929,8 @@ test("M1 window gate registers both T3 spellings and status reports absent confi
   expect(run(fx, "--status").out).toContain("m1-window-gate seat (procedure lock checked per call)");
 });
 
-test('boundary clone installer status is red after removal and green after repair', () => {
+for (const hookName of ['pre-commit', 'pre-push']) {
+test(`${hookName} clone installer status is red after removal and green after repair`, () => {
   const fx = fixture({ ownerLayout: true, privateSuite: false });
   fx.host = 'm1';
   const manifest = JSON.parse(readFileSync(fx.manifest, 'utf8'));
@@ -1930,7 +1943,7 @@ test('boundary clone installer status is red after removal and green after repai
   expect(beforeInstall.out).toContain('boundary-prepush drift:');
   const applied = run(fx, '--apply');
   expect(applied.status, applied.out).toBe(0);
-  const hook = path.join(fx.repo, '.git/golems-boundary-hooks/pre-push');
+  const hook = path.join(fx.repo, '.git/golems-boundary-hooks', hookName);
   expect(existsSync(hook)).toBe(true);
   const green = run(fx, '--status');
   expect(green.status, green.out).toBe(0);
@@ -1938,7 +1951,8 @@ test('boundary clone installer status is red after removal and green after repai
   rmSync(hook);
   const red = run(fx, '--status');
   expect(red.status).not.toBe(0); expect(red.out).toContain('boundary-prepush-drift=1');
-  expect(run(fx, '--apply').status).toBe(0);
+  const repairApply = run(fx, '--apply');
+  expect(repairApply.status, repairApply.out).toBe(0);
   const repaired = run(fx, '--status');
   expect(repaired.out).toContain('boundary-prepush-drift=0');
   expect(repaired.status, repaired.out).toBe(0);
@@ -1956,3 +1970,45 @@ test('boundary clone installer status is red after removal and green after repai
   expect(changed.status).toBe(1);
   expect(changed.out).toContain('boundary-prepush-drift=1');
 }, 180_000);
+}
+
+test('scratch HOME fleet install never calls launchctl in the real user domain', () => {
+  const fx = fixture();
+  const manifest = manifestFor(); manifest.fleet_hosts = ['mbp'];
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const fleet = path.join(fx.repo, 'scripts/fleet'); mkdirSync(fleet, { recursive: true });
+  for (const name of ['worktree-sweeper', 'disk-guard']) {
+    cpSync(path.join(here, `../fleet/com.golems.${name}.plist.template`), path.join(fleet, `com.golems.${name}.plist.template`));
+  }
+  git(fx.repo, 'add', '.'); git(fx.repo, 'commit', '-qm', 'fleet fixture'); git(fx.repo, 'push', '-q', 'origin', 'HEAD:master');
+  const bin = path.join(fx.root, 'launchctl-bin'); mkdirSync(bin);
+  const log = path.join(fx.root, 'launchctl.log');
+  writeFileSync(path.join(bin, 'launchctl'), `#!/bin/sh\nprintf '%s\\n' "$*" >> '${log}'\n[ "$1" != print ]\n`, { mode: 0o755 });
+  fx.env = { PATH: `${bin}:${process.env.PATH}` };
+  const stableNode = path.join(bin, 'node');
+  symlinkSync(spawnSync('node', ['-p', 'process.execPath'], { encoding: 'utf8' }).stdout.trim(), stableNode);
+  const result = run(fx, '--apply', '--node', stableNode);
+  expect(result.status, result.out).toBe(0);
+  const calls = existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [];
+  expect(calls.filter(call => call.startsWith('bootstrap '))).toEqual([]);
+  expect(calls).toEqual([]);
+  expect(result.out).toContain('fleet launchd: skipped');
+  for (const name of ['worktree-sweeper', 'disk-guard']) {
+    expect(readFileSync(path.join(fx.home, `Library/LaunchAgents/com.golems.${name}.plist`), 'utf8')).toContain(`<string>${stableNode}</string>`);
+  }
+  const status = run(fx, '--status', '--node', stableNode);
+  expect(status.out).not.toContain('fleet job drift:');
+}, 180_000);
+
+test('fleet opt-in never aliases the retired M1 owner profile', () => {
+  const fx = fixture(); fx.host = 'm1';
+  const manifest = manifestFor(); manifest.fleet_hosts = ['m1'];
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const result = run(fx);
+  expect(result.status).not.toBe(0);
+  expect(result.out).toContain('has no host "m1"');
+});
+
+test('shipped fleet hosts stay disabled pending a separate rollout', () => {
+  expect(realManifest.fleet_hosts).toEqual([]);
+});

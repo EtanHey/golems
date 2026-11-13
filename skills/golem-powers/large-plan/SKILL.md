@@ -1,6 +1,6 @@
 ---
 name: large-plan
-description: "Invoke before any git/gh/grep, even for context: make a plan, plan next steps, lead kickoff, feature batch, multi-PR."
+description: "Invoke before any git/gh and before starting another agent (delegate_task, new thread, sub-agent): make a plan, plan next steps, lead kickoff, feature batch, multi-PR; dispatch a worker, send a brief, fan out."
 ---
 
 # /large-plan
@@ -29,6 +29,11 @@ When a worker, lane or sub-agent is already running, or this turn dispatches 2+:
 3. STATUS.md lists the new lane.
 Done = all three are true before the `delegate_task` / `t3_thread_launch` / `Agent` call. Otherwise, don't dispatch yet.
 
+**Every worker, always (a first single worker too):** the dispatched thread's `title` starts with the seat prefix (e.g. `skillcreator-w93`), and the brief's LAST step is on the worker's own thread: `t3_thread_organize` settle (its own `threadId`) if its work is merged or handed back, or snooze to a stated time if its PR is still open. Its DONE line says which (`Thread: settled` or `Thread: snoozed until <ISO>`).
+
+## At every turn end (lead)
+Before ending a turn, on EACH Mac (`environmentId` for the other one): `t3_thread_list {allProjects: true, settled: false, snoozed: false, includeSubagents: true, titleContains: "<seat prefix>"}`, following `nextCursor` until it is null. Delegated children count as subagents, so `includeSubagents: false` hides exactly the threads Etan sees idle; the prefix is why every dispatched title carries it (an older owned thread without it: settle or retitle it once). Every listed thread that is not running gets dealt with now, through the `/agent-routing` § T3-native dispatch #4 sequence (verify and harvest its docs.local, `task_cancel`, `unwatch_pull_request`, then settle with its explicit `threadId`), or is snoozed to when it is next needed, with the reason in the plan. A thread Etan snoozed himself is left alone (#7 there). Scheduled-task threads snooze themselves to their next run (#10 there). (Etan, 2026-11-13, via orc: "So many woke threads"; a promise did not hold, so this is a check, not a promise.)
+
 ## Quick Actions
 
 | What you want to do | Workflow |
@@ -51,6 +56,8 @@ Done = all three are true before the `delegate_task` / `t3_thread_launch` / `Age
 ## Core Concept
 
 ALWAYS use `/large-plan` for planning, including short work. A short plan is a few lines with the same skeleton: Goal, Time, Round, Tools (model, effort and why), Steps, Depends On, Status, and verification. Keep it inline or in one plan file; phase folders are for larger work.
+
+A plan that dispatches Codex keeps the daily one-line Codex count in its STATUS.md: `/agent-routing` § Codex seats, rule F.
 
 When planning phases for any visible front-end change, read [workflows/ux-ui.md](workflows/ux-ui.md) and name every stage in the plan, even while app details are pending.
 
@@ -126,6 +133,7 @@ When a round has parallel phases, the orchestrator dispatches through its harnes
    For PRs outside T3 only, reuse one existing pinned-head `pr-watch` process or bounded cheap watcher
    with its current deadline, following the PR-loop exit semantics. Never duplicate it or poll in the lead.
 6. **Settle** each lane at its terminal state (PR merged or handed off, artifact verified) (a child with no PR, such as a reviewer or recon: as soon as its report is verified), not only when the plan closes: conclude the child (no new sends), `task_cancel` its `taskId` to stop queued runs, `unwatch_pull_request` its PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. Then overwrite STATUS.md (no second collab line: the worker's line already recorded the change; append one only if none landed). Idle with no artifact pending = settle now, not later: "settle idle workers" (Etan 2026-10-18, via orc collab). Provider release timing and the worktree caveat: `/agent-routing` § Goal Contract.
+7. **Scheduled-task threads** end every run snoozed to their next run time (`t3_thread_organize` snooze with their own `threadId`), never idle between runs, unless Etan snoozed the thread himself (his snooze stands); a plan that creates a `schedule_task` puts that step last in its prompt (`/agent-routing` § T3-native dispatch #10).
 
 ### cmux adapter: parallel rounds
 
@@ -211,6 +219,7 @@ Low is only for known-output mechanical work; medium suits mechanical splits/ref
 High/xhigh suit open-ended implementation, hard debugging or contradictory evidence;
 security uses high. Evidence: skill-creator cleanup-routing R2 (2026-09-30, 48 verified runs): medium best-or-joint-best on mechanical cleanup; never default xhigh; a data point, not a ceiling.
 Every Codex dispatch passes `-E` / `effort:` explicitly with the phase's reason.
+Codex caps win over these rungs: `/agent-routing` § Codex seats, rule D.
 
 ## Invariant test
 - **Invariant:** [behavior this slice must preserve]

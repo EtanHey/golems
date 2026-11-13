@@ -1,0 +1,37 @@
+bun test v1.4.3 (c6da4a4d3)
+
+evals/decision-flow-sources.test.mjs:
+(pass) optional closed Sources disclosure has safe new-tab links and an exact, escaped prompt payload [47.34ms]
+(pass) sources only, prompt only, and neither render the correct optional drawer [29.66ms]
+(pass) sources refuse unsafe URL "javascript:alert(1)" [0.41ms]
+(pass) sources refuse unsafe URL "java\nscript:alert(1)" [0.13ms]
+(pass) sources refuse unsafe URL "data:text/html,x" [0.12ms]
+(pass) sources refuse unsafe URL "http://example.com" [0.12ms]
+(pass) sources refuse unsafe URL "//evil.test" [0.11ms]
+(pass) sources refuse unsafe URL "\\evil.test" [0.11ms]
+(pass) sources refuse unsafe URL "https://" [0.12ms]
+(pass) sources refuse unsafe URL "../outside.html" [0.10ms]
+(pass) sources refuse unsafe URL "%2e%2e/out.html" [0.14ms]
+(pass) invalid sources/prompt shape rejects {"sources":null} [0.15ms]
+(pass) invalid sources/prompt shape rejects {"sources":{}} [4.02ms]
+(pass) invalid sources/prompt shape rejects {"sources":[{"label":"","url":"./ok.html"}]} [0.15ms]
+(pass) invalid sources/prompt shape rejects {"sources":[{"label":"Research overview","url":"https://example.com/re [0.10ms]
+(pass) invalid sources/prompt shape rejects {"sources":[{"label":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx [0.11ms]
+(pass) invalid sources/prompt shape rejects {"copyPrompt":{"text":"x"}} [0.11ms]
+(pass) invalid sources/prompt shape rejects {"copyPrompt":{"label":"Copy","text":""}} [0.10ms]
+(pass) invalid sources/prompt shape rejects {"copyPrompt":{"label":"Copy","text":"x","notes":"xxxxxxxxxxxxxxxxxxxx [0.11ms]
+(pass) the evidence exemption cannot hide repeated prose, nested details or hostile links [15.56ms]
+(pass) maximum-length escaped labels and notes remain evidence-valid [5.49ms]
+(pass) Sources keyboard, exact clipboard and truthful fallback at 1280px, list and story [1893.60ms]
+(pass) Sources keyboard, exact clipboard and truthful fallback at 390px, list and story [1657.80ms]
+
+evals/decision-flow-header.test.mjs:
+(pass) subtitle renders escaped inside the header's Details disclosure [6.28ms]
+(pass) an absent or empty subtitle still renders a valid disclosure with the scope note [9.54ms]
+(pass) no header template slot leaks into the output [8.85ms]
+(pass) storage error stays outside the disclosure and is announced [14.64ms]
+
+ 27 pass
+ 0 fail
+ 203 expect() calls
+Ran 27 tests across 2 files. [4.05s]

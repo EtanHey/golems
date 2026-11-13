@@ -20,7 +20,7 @@ function fixture() {
   const root = mkdtempSync(path.join(scratch, 'client-')); roots.push(root);
   const candidate = path.join(root, 'candidate'), source = path.join(root, 'release'), home = path.join(root, 'home');
   mkdirSync(candidate); mkdirSync(source); mkdirSync(home);
-  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow', 'scripts/hooks', 'skills/golem-powers', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'package.json']) {
+  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/ci/identity-precommit.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow', 'scripts/hooks', 'skills/golem-powers', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'package.json']) {
     mkdirSync(path.dirname(path.join(candidate, file)), { recursive: true });
     cpSync(path.join(repo, file), path.join(candidate, file), { recursive: true, filter: p => !p.includes('__pycache__') });
   }
@@ -291,7 +291,7 @@ for (const name of ['golems-fail-open.py', 'golems-hooks-release.json']) test(`P
 
 test('legacy release without boundary files applies loudly and status reports drift', () => {
   const f = fixture();
-  const missing = ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow'];
+  const missing = ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/ci/identity-precommit.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow'];
   const at = path.join(f.source, 'MANIFEST.json'), manifest = JSON.parse(readFileSync(at));
   for (const file of missing) rmSync(path.join(f.source, file));
   manifest.files = manifest.files.filter(row => !missing.includes(row.path));

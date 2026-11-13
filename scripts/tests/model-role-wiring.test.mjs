@@ -37,7 +37,7 @@ test('routing SSOT owns the work table, sequential review and dispatch policy', 
   assert.match(text, /When Daybreak Blue returns, evaluate its first security PRs: if they show more review rounds or more defects than the prior route, flip the pair/); // MF-1
   assert.doesNotMatch(text, /Sonnet 5\.5 otherwise/);
   assert.match(text, /\| Holistic\/product work \(.*\| `claude.judgment` \(Opus; Sonnet\/Haiku only as sub-agents for trivial wording edits\), 2026-10-29 \| Codex Sol \(`codex.implement`\) \|/);
-  assert.match(text, /\| Narrow technical work \(.*\| Codex Sol \(hard\) \/ Terra \(bounded\), 2026-10-29 \| `claude.judgment` \|/);
+  assert.match(text, /\| Narrow technical work \(.*\| Codex Sol at medium by default \(high with one line of why\), § Codex seats D, 2026-11-13 \| `claude.judgment` \|/);
   // Ratchets and TLC/TLA+ specs are Opus-designed and Opus-built unless tiny; this row beats "CI script" above.
   const ratchet = text.split('\n').find(line => line.startsWith('| Ratchets and TLC/TLA+ specs ('));
   assert.ok(ratchet, 'ratchet/TLA+ row is required');
@@ -181,7 +181,7 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
   for (const rule of [
     '"**EXPERIMENT, starting now for a few days: FLIP the roles.** Claude Opus 5.5 IMPLEMENTS and Codex gpt-6.1-sol REVIEWS." (Etan 2026-10-18, via orc collab)',
     '"Track it in your STATUS: PRs merged per day, hours from open to merge, defects caught after merge. We compare at the end." (Etan 2026-10-18, via orc collab)',
-    'Default implementers (2026-10-29,', 'holistic/product work', 'Claude Opus implements. Sonnet/Haiku never implement', 'Narrow technical work', 'Codex implements (Sol hard, Terra bounded)', 'Reviewers (2026-10-29) are always the other vendor', 'Gemini/Antigravity gather and never review', 'Sonnet 5.5 is a valid worker tier', 'Never fast/priority', 'fresh context', 'bounded lifetime', 'explicit effort', 'serviceTier:"default"', 'Claude only', 'does not revert at a window reset',
+    'Default implementers (2026-10-29,', 'holistic/product work', 'Claude Opus implements. Sonnet/Haiku never implement', 'Narrow technical work', 'Codex implements (Sol at medium by default; high with one line of why; § Codex seats D, 2026-11-13)', 'Reviewers (2026-10-29) are always the other vendor', 'Gemini/Antigravity gather and never review', 'Sonnet 5.5 is a valid worker tier', 'Never fast/priority', 'fresh context', 'bounded lifetime', 'explicit effort', 'serviceTier:"default"', 'Claude only', 'does not revert at a window reset',
   ]) assert.ok(block.includes(rule), rule);
   const sizing = ssot.split('### Review sizing')[1]?.split('\n### ')[0];
   assert.ok(sizing, 'review sizing section is required');
@@ -203,7 +203,7 @@ test('routing SSOT carries the dated flip trial, risk-sized review and the Codex
   for (const rule of ['2026-10-28', 'red-team Claude', 'BOTH skills', "the table's Codex reviewer (cross-vendor, canon #1)", 'Codex plumbing', 'already the other vendor', 'Both reviews cite the Visual proof']) assert.ok(uiLine.includes(rule), rule);
   for (const rule of ['never the implementer', 'frontend-design:frontend-design', 'emil-design-eng', 'round caps', 'full panel']) assert.ok(sizing.includes(rule), rule);
   const matrix = skill.split('## Role Matrix')[1].split('### Evidence')[0];
-  assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*Codex Sol.*Terra/);
+  assert.match(matrix, /3\. Code or file changes follow the Routing rules \(SSOT\) table.*Codex Sol at medium by default \(§ Codex seats D\)/);
   const suite = JSON.parse(read('skills/golem-powers/agent-routing/evals/evals.json'));
   assert.equal(new Set(suite.evals.map(e => e.id)).size, suite.evals.length);
   for (const [id, name] of [[90, 'rebalance-refactor-codex-implements-opus-reviews'], [91, 'refuse-gpt-5-6-pin'], [92, 'astra-only-on-etan-ask'], [93, 'l-data-path-opus-cursor-panel-no-argon'], [94, 'ui-pr-recorded-states-frontend-design'], [95, 'm1-test-rig-only'], [96, 'xs-ui-pr-claude-taste-plus-codex-review'], [97, 'astra-on-etan-explicit-ask']]) {

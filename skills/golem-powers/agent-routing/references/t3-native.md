@@ -198,3 +198,5 @@ Worktree bases and the single post-launch preparation read follow the canonical
   SKILL.md § Lead Topology #5. Not restated here.
 - Vendors per work type and inner-loop order: SKILL.md § Routing rules (SSOT).
 - Model per role: `standards/model-roles.json`; effort per `/large-plan` phase.
+- Codex child limits (one task per fresh child, about 2 h or 40 turns, never waiting inside a turn,
+  no task that is only reading or running scripts or tests, effort caps): SKILL.md § Codex seats. Not restated here.

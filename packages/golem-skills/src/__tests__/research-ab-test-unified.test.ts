@@ -37,7 +37,7 @@ describe("research ab-test unified mode", () => {
 
     expect(claudeDesktop).toContain("Run this skill plus `/gemini-research`");
     expect(claudeDesktop).toContain("R{NN}-claude-desktop-result.md");
-    expect(gemini).toContain("Brain Drive/03_RESEARCH/Active/<project>/context/");
+    expect(gemini).toContain("Brain Drive/03_RESEARCH/Active/<project>/R{NN}-grounding/");
     expect(gemini).toContain("R{NN}-gemini-result.md");
   });
 
