@@ -124,6 +124,13 @@ class GraphQL(unittest.TestCase):
 
     def test_mutations_deny_unless_routine_review_traffic(self):
         self.assertEqual(decide("gh api graphql -f query='mutation{addComment(input:{subjectId:1,body:2}){clientMutationId}}'"), 'allow')
+        # A discussion comment is the same routine traffic as an issue comment.
+        self.assertEqual(decide("gh api graphql -f query='mutation{addDiscussionComment(input:{discussionId:1,body:2}){clientMutationId}}'"), 'allow')
+        for command in ["gh api graphql -f query='mutation{deleteDiscussion(input:{id:1}){clientMutationId}}'",
+                        "gh api graphql -f query='mutation{updateDiscussion(input:{discussionId:1,body:2}){clientMutationId}}'",
+                        "gh api graphql -f query='mutation{deleteDiscussionComment(input:{id:1}){clientMutationId}}'"]:
+            with self.subTest(command=command):
+                self.assertEqual(decide(command), 'deny')
         for command in ["gh api graphql -f query='mutation{updateRefs(input:{repositoryId:1,refUpdates:[]}){clientMutationId}}'",
                         "gh api graphql -f query='mutation{updateRepositoryWebCommitSignoffSetting(input:{}){clientMutationId}}'",
                         "gh api graphql -f query='mutation{createRef(input:{}){clientMutationId}}'",
