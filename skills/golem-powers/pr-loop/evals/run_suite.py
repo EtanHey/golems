@@ -375,13 +375,17 @@ class PlainWordsPrTitles(unittest.TestCase):
         self.assertIn("A PR title says in plain words what changes for the user or the fleet.", content)
         self.assertIn("An internal id alone (a ticket, lane, case or finding number", content)
         self.assertIn("is not a title", content)
+        # r1252: the rule must not mandate where an id goes; parentheses are an option, not a requirement.
+        self.assertIn("An id may sit beside those words (in parentheses, for example) or in the body; "
+                      "where it goes is the author's choice.", content)
+        self.assertNotIn("an id goes in parentheses", content)
         self.assertIn("\"we really need to work on our ... PR title because I barely understood these.\" "
                       "(Etan, 2026-11-13, dashboard card 18)", content)
 
     def test_title_rule_carries_real_before_after_examples(self):
         section = text("references/pr-creation.md").split("### PR title", 1)[1].split("### ", 1)[0]
         rows = [line for line in section.splitlines() if line.startswith("| `")]
-        self.assertGreaterEqual(len(rows), 2)
+        self.assertGreaterEqual(len(rows), 3)
         for row in rows:
             with self.subTest(row=row[:50]):
                 before, after = [cell.strip() for cell in row.strip("|").split("|")[:2]]

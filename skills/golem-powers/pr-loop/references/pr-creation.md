@@ -111,7 +111,8 @@ If the assigned worktree differs from the session cwd, every `apply_patch` filen
 A PR title says in plain words what changes for the user or the fleet. An internal id alone
 (a ticket, lane, case or finding number such as `S5`, `I5`, `FV3`, `r76 B1`) is not a title: the
 reader has no key for it. A `type(scope):` prefix may stay, but the words after it must make sense to
-someone who has not read the plan, and an id goes in parentheses after them or in the body.
+someone who has not read the plan. An id may sit beside those words (in parentheses, for example) or
+in the body; where it goes is the author's choice.
 
 Why: "we really need to work on our ... PR title because I barely understood these." (Etan, 2026-11-13, dashboard card 18)
 
