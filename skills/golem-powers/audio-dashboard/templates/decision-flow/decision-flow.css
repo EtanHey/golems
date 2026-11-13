@@ -437,3 +437,16 @@ body[data-view="story"] .df-card.is-active .df-compare-open{flex:none;margin:10p
 body[data-view="story"] .df-storage-state{order:4;margin:6px 0 0}
 /* Badge text: >=4.5:1 in every state; use this opaque pair and recheck any custom colors or ancestor opacity. */
 .ad-badge{display:inline-block;padding:2px 9px;border-radius:999px;background:#79cfc2;color:#101a2c;font-size:12px;font-weight:600;line-height:1.5}
+
+/* Data visuals own their horizontal overflow; t3-visuals opaque AA status pairs. */
+.df-table-scroll,.df-chart{max-width:100%;min-width:0;margin:16px 0;color:var(--moon);background:var(--panel);border:1px solid var(--line-strong);border-radius:8px}
+.df-table-scroll,.df-chart-scroll{overflow-x:auto;overscroll-behavior-x:contain}
+.df-table-scroll:focus-visible,.df-chart-scroll:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.df-data-table{border-collapse:collapse;width:100%;font-size:14px}
+.df-data-table caption,.df-chart figcaption{font-weight:650;text-align:left;padding:12px}
+.df-data-table th,.df-data-table td{padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+.df-v-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:600}
+.df-chart svg{display:block;width:100%;fill:currentColor;font:13px system-ui}
+.df-chart-legend,.df-chart-data{margin:10px 12px;font-size:14px}.df-chart-data p{overflow-wrap:anywhere}
+.df-v-ready{color:#86efac;background:#153526}.df-v-error{color:#fca5a5;background:#3d2024}.df-v-wait{color:#fde68a;background:#3c2d14}
+.df-series-0{color:#93c5fd}.df-series-1{color:#f9a8d4}.df-series-2{color:#86efac}.df-series-3{color:#fde68a}

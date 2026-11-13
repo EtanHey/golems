@@ -138,6 +138,9 @@ details; letter/number options he couldn't decode; a single voice saying 'look b
 
 All five live in `src/card-authoring-gate.mjs`; BUILD runs them on the job file right after render, before the card-text gate.
 
+For optional `tables`, `charts`, and rail `newTab`, use the fields, limits, and
+closed status set in [Tables, charts, new-tab links](references/card-format.md#tables-charts-new-tab-links).
+
 Follow [Card detail affordances](references/card-format.md): text-only cards
 must not repeat their text in a View details expander. Either offer no secondary
 action, or offer a **Listen deeper** button that opens an inline narrated section

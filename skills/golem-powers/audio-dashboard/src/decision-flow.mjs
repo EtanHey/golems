@@ -1,6 +1,7 @@
 import { ANSWER_RUNTIME, dashboardId } from './answer-persistence.mjs';
 import { COPY_BLOCK_ASSETS, renderCardBody, renderInlineProse } from './copy-blocks.mjs';
 import { AUDIO_SUMMARY_LABEL, hasAudioSummary } from './card-text-audio-gate.mjs';
+import { cardVisualBytes, renderTables, renderCharts } from './card-visuals.mjs';
 import { validateSources } from './decision-sources.mjs';
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -159,7 +160,7 @@ function renderRailValue(row) {
   const href = safeHref(row.href);
   if (!href) return escapeHtml(row.value);
   const reference = href.match(GITHUB_REFERENCE);
-  if (!reference) return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(value || href)}</a>`;
+  if (!reference) return `<a class="df-rail-link" href="${escapeHtml(href)}"${row.newTab ? ' target="_blank"' : ""} rel="noopener noreferrer">${escapeHtml(value || href)}</a>`;
   const [, owner, repo, kind, number] = reference;
   const stated = referenceTokens(value).map((match) => match[1]);
   if (stated.some((statedNumber) => statedNumber !== number)) {
@@ -167,7 +168,7 @@ function renderRailValue(row) {
   }
   const label = `${repo}#${number}`;
   const text = !value || /^#\d+$/.test(value) ? escapeHtml(label) : `${escapeHtml(value)} <span class="df-rail-ref">${escapeHtml(label)}</span>`;
-  return `<a class="df-rail-link" href="${escapeHtml(href)}" rel="noopener noreferrer" title="${kind === "pull" ? "Pull request" : "Issue"} ${escapeHtml(`${owner}/${repo}#${number}`)}">${text}</a>`;
+  return `<a class="df-rail-link" href="${escapeHtml(href)}"${row.newTab ? ' target="_blank"' : ""} rel="noopener noreferrer" title="${kind === "pull" ? "Pull request" : "Issue"} ${escapeHtml(`${owner}/${repo}#${number}`)}">${text}</a>`;
 }
 
 function renderRail(rows = []) {
@@ -207,6 +208,8 @@ export function findBareReferences(decisions = []) {
       ["summary", decision.summary],
       ["body", decision.body],
       ["ask", decision.ask],
+      ["tables", JSON.stringify(decision.tables || [])],
+      ["charts", JSON.stringify(decision.charts || [])],
       ...(decision.options || []).flatMap((option, index) => typeof option === "string"
         ? [[`option ${index}`, option]]
         : [[`option ${index}`, option?.label ?? option?.title], [`option ${index} summary`, option?.summary]]),
@@ -481,7 +484,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
     ${renderComparisonOpener(comparison)}
     <div class="df-sheet" id="sheet-${escapeHtml(decision.id)}">
     <div class="df-sheet-head"><h3 class="df-sheet-title" id="sheet-title-${escapeHtml(decision.id)}">${escapeHtml(decision.title)}</h3><button type="button" class="df-sheet-done">Done</button></div>
-    ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
+${decision.tables || decision.charts ? "    " + renderTables(decision.tables) + renderCharts(decision.charts) + "\n" : ""}    ${decision.summary ? `<p class="df-summary">${escapeHtml(decision.summary)}</p>` : ""}
     <div class="df-question">${renderAsk(decision)}${renderSheetBody(decision)}</div>
     ${renderRail(decision.rail)}
     ${renderSources(decision)}
@@ -499,6 +502,7 @@ function renderCard(decision, index, sceneById, comparisonTimeoutMs) {
 export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, decisions, id, dashboardId: accountId, storageKey, cinemaUrl, comparisonTimeoutMs = DEFAULT_COMPARISON_TIMEOUT_MS }) {
   if (!Array.isArray(scenes) || scenes.length === 0) throw new Error("decision-flow: scenes must be non-empty");
   if (!Array.isArray(decisions) || decisions.length === 0) throw new Error("decision-flow: decisions must be non-empty");
+  cardVisualBytes(decisions);
   assertSceneOwnership(decisions, scenes);
   decisions = orderDecisions(decisions);
   const timeoutMs = comparisonTimeout(comparisonTimeoutMs, "comparisonTimeoutMs");
@@ -514,12 +518,20 @@ export function renderDecisionFlow({ title, kicker, heading, subtitle, scenes, d
   const script = readFileSync(path.join(TEMPLATE_ROOT, "decision-flow.js"), "utf8");
   const cards = decisions.map((decision, index) => renderCard(decision, index, sceneById, timeoutMs)).join("\n");
   const safeModeUrl = safeCinemaUrl(cinemaUrl);
+  const durations = scenes.map(scene => Number(scene.duration));
+  const total = Math.round(durations.reduce((sum, seconds) => sum + seconds, 0));
+  const sections = new Set(decisions.flatMap(card => (card.rail || []).filter(row => row.label === 'Section').map(row => String(row.value))));
+  const audioTotal = durations.every(seconds => Number.isFinite(seconds) && seconds > 0)
+    ? `<p class="df-audio-total">Total audio ${Math.floor(total / 60)} min ${total % 60} s · ${sections.size} section${sections.size === 1 ? '' : 's'} · ${decisions.length} card${decisions.length === 1 ? '' : 's'}.</p>` : '';
+
+  const detailsSubtitle = audioTotal && typeof subtitle === 'string'
+    ? subtitle.replace(/^Total audio \d+ min \d+ s · \d+ sections · \d+ cards\.\s*/, '') : subtitle;
 
   const values = new Map([
     ["{{TITLE}}", escapeHtml(title || "Decision flow")],
     ["{{KICKER}}", escapeHtml(kicker || "Decision flow")],
     ["{{HEADING}}", escapeHtml(heading || title || "Decisions")],
-    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${subtitle ? `<p class="df-subtitle">${escapeHtml(subtitle)}</p>` : ""}<p class="df-scope">Answers are kept separately for each dashboard.</p></details>`],
+    ["{{CONTEXT}}", `<details class="df-context"><summary>Details</summary>${audioTotal}${detailsSubtitle ? `<p class="df-subtitle">${escapeHtml(detailsSubtitle)}</p>` : ""}<p class="df-scope">Answers are kept separately for each dashboard.</p></details>`],
     ["{{DECISION_COUNT}}", decisions.length],
     ["{{SCENE_COUNT}}", scenes.length],
     ["{{DASHBOARD_ID}}", escapeHtml(dashboardId(accountId || id, storageKey || "dbx:decision-flow"))],
