@@ -366,5 +366,34 @@ class RiskSizedGates(unittest.TestCase):
         self.assertIn("agent-routing", case["expected_output"])
 
 
+class PlainWordsPrTitles(unittest.TestCase):
+    """Etan 2026-11-13, dashboard card 18: PR titles he could not understand."""
+
+    def test_pr_creation_states_the_title_rule_with_the_quote(self):
+        content = flat("references/pr-creation.md")
+        self.assertIn("### PR title", content)
+        self.assertIn("A PR title says in plain words what changes for the user or the fleet.", content)
+        self.assertIn("An internal id alone (a ticket, lane, case or finding number", content)
+        self.assertIn("is not a title", content)
+        self.assertIn("\"we really need to work on our ... PR title because I barely understood these.\" "
+                      "(Etan, 2026-11-13, dashboard card 18)", content)
+
+    def test_title_rule_carries_real_before_after_examples(self):
+        section = text("references/pr-creation.md").split("### PR title", 1)[1].split("### ", 1)[0]
+        rows = [line for line in section.splitlines() if line.startswith("| `")]
+        self.assertGreaterEqual(len(rows), 2)
+        for row in rows:
+            with self.subTest(row=row[:50]):
+                before, after = [cell.strip() for cell in row.strip("|").split("|")[:2]]
+                self.assertRegex(before, r"\(#\d+\)$")  # a real PR number
+                self.assertNotRegex(after, r"\b(?:[A-Z]{1,3}\d+|r\d{2,})\b")  # no bare internal id
+
+    def test_create_command_and_skill_step_point_at_the_title_rule(self):
+        self.assertNotIn('--title "feat: description"', text("references/pr-creation.md"))
+        self.assertIn('--title "<plain words: what changes for the user or the fleet>"',
+                      text("references/pr-creation.md"))
+        self.assertIn("[plain-words title](references/pr-creation.md#pr-title)", text("SKILL.md"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

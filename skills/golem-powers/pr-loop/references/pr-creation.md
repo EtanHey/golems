@@ -106,6 +106,23 @@ If the assigned worktree differs from the session cwd, every `apply_patch` filen
 - On a feature/fix branch (not main/master/dev)
 - All changes committed
 
+### PR title
+
+A PR title says in plain words what changes for the user or the fleet. An internal id alone
+(a ticket, lane, case or finding number such as `S5`, `I5`, `FV3`, `r76 B1`) is not a title: the
+reader has no key for it. A `type(scope):` prefix may stay, but the words after it must make sense to
+someone who has not read the plan, and an id goes in parentheses after them or in the body.
+
+Why: "we really need to work on our ... PR title because I barely understood these." (Etan, 2026-11-13, dashboard card 18)
+
+Before → after, from real golems titles:
+
+| Before | After |
+|---|---|
+| `fix(ratchet): installed-skill-parity report-only until I5 + M1 run 2 (backstop 2026-11-09)` (#1047) | `ratchet: the installed-skill check stays a warning, not a failure, until 9 Nov` |
+| `chore: retire S5 dropped-table reporting and calendar mirror` (#1042) | `cloud worker: stop writing to the deleted status tables and the calendar copy` |
+| `fix(shell-parse): recognize prefixed cat heredoc data` (#1248) | `git guard: stop mistaking report text in a cat heredoc for git commands` |
+
 ### Create the PR
 
 ```bash
@@ -117,7 +134,7 @@ scripts/ci/pr-size-labels.sh suggest
 
 # Create the PR as a DRAFT with a structured body; flip it with `gh pr ready <N>`
 # only after the inner reviewer APPROVEs and local checks pass
-gh pr create --draft --title "feat: description" --body-file - <<'EOF'
+gh pr create --draft --title "<plain words: what changes for the user or the fleet>" --body-file - <<'EOF'
 ## Summary
 - What changed and why
 
