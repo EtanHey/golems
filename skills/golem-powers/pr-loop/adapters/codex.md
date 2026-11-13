@@ -90,9 +90,9 @@ Wait per the [waiting policy](../references/review-loop.md#waiting-policy-no-pol
    Ordinary wakes/pushes preserve the watch; no routine list/rearm. Unwatch before terminal/handoff.
    A delegated child reports its artifact and ends; it never watches or substitutes a process/child.
 2. **State needed now:** one bounded slim read (below), then act or end the turn.
-3. **Must sit and watch outside T3:** one pinned-head `pr-watch` process, or one bounded
-   `codex.subagent.mechanical` child that reports once at a terminal state. Never this session
-   looping.
+3. **Must sit and watch outside T3:** one pinned-head `pr-watch` process started in the
+   background, or one bounded `codex.subagent.mechanical` child that reports once at a terminal
+   state. Never this session waiting or looping.
 
 Sleep-poll loops that re-fetch the full PR payload are BANNED. Cost evidence
 (weave 2026-06-07, 3 instances across 2 sessions): `sleep 60; gh pr view <N>
@@ -103,9 +103,11 @@ entire comment/review payload into context.
 Use `pr-watch` on PATH (installed in `~/.golems/bin`), or `scripts/pr-watch` from a golems checkout.
 
 ```bash
-# Outside T3 only, CI: ONE blocking call — read its exit code. 25m, not Claude's 2h: Codex has no shorter Monitor
-# expiry, so the deadline itself keeps the wake inside Codex's ~30-min cache window
-pr-watch <owner/repo> <N> --head <sha> --deadline 25m
+# Outside T3 only, CI: never wait inside the turn (/agent-routing § Codex seats, rule B).
+# Start the watch in the background, write where its result lands, then end the turn.
+mkdir -p docs.local/pr-watch
+nohup sh -c 'pr-watch <owner/repo> <N> --head <sha> --deadline 2h; echo "exit=$?"' \
+  > docs.local/pr-watch/<N>-<sha>.log 2>&1 &
 
 # Review state: one bounded slim read per wake — state fields + activity COUNTS, never full bodies
 gh pr view <N> --json state,mergeStateStatus,reviewDecision
@@ -117,17 +119,23 @@ gh pr view <N> --json comments,reviews,latestReviews
 ```
 
 Rules:
-- Outside T3 only, CI waiting is one pinned-head pr-watch command. Read the
+- Outside T3 only, CI waiting is one pinned-head pr-watch command, started in the
+  background. A Codex seat never runs it inside its turn and never sits through it
+  (`/agent-routing` § Codex seats, rule B): it starts the watch, writes the log path
+  (`docs.local/pr-watch/<N>-<sha>.log`) in its report or collab line, and ends its turn.
+  A script or a mechanical-tier sub-agent (`/agent-routing` § Cheap sub-agents) watches for
+  the log's last line; a fresh child reads the result. The 2h deadline is the shared one:
+  nothing holds a turn open while it runs.
+- The fresh child reads the log: read its exit code from the `exit=<code>` line, beside
+  pr-watch's one terminal JSON line. Read the
   [exit-code table](../../../../scripts/pr-watch-lib/README.md#usage-and-exits):
   0 READY is a CI fact, 12 MERGED is an observed merge, 10 FAILED needs action,
   11 HEAD_MOVED needs a new head pin, 20 DEADLINE needs re-arming if waiting
-  continues, and 30 GH_ERROR needs the stderr diagnosis. The 25-minute deadline
-  is the Codex cache limit (≤25 min per wake): if CI needs longer, prefer the
-  event wake (T3 `watch_pull_request`, a delegate completion) over repeated
-  re-arms. pr-watch never merges;
+  continues, and 30 GH_ERROR needs the stderr diagnosis. Re-arming is the same
+  background start with a new log. pr-watch never merges;
   an empty rollup is never READY. Keep required contexts and the 180s default
   settle window. Do not route its output through a cmuxlayer file watch.
-- On each wake (T3 watch, delegate completion, pr-watch exit), read only the slim state fields plus the
+- On each wake (T3 watch, delegate completion, a pr-watch log's exit line), read only the slim state fields plus the
   comment/review COUNTS (`--jq '... length'` — only the numbers enter
   context). Counts are the trigger that catches bot reviewers (CodeRabbit,
   Codex, Bugbot) whose findings land as comments WITHOUT changing

@@ -91,6 +91,8 @@ Was the output actually good/useful?
 
 | Metric | Threshold | Meaning |
 |--------|-----------|---------|
+| With-skill pass rate <60% below T3 | ⬆️ Tier up | Model below the role's tier; rerun one tier up, then read the rows below there (SKILL.md § Model floor) |
+| No tier up to T3 clears ~60% | 🔍 No passing tier | Investigate cases, scorer, run and skill text before concluding; the floor alone never names the cause |
 | Baseline >70% | ⚠️ Flag | Skill may not add value |
 | Delta <10% | ⚠️ Marginal | Consider if complexity is worth it |
 | Delta 10-30% | ✅ Valuable | Ship with documentation |
@@ -116,6 +118,7 @@ Was the output actually good/useful?
 
 ```markdown
 ## Skill: [name]
+### Tier: T1/T2/T3 (lowest tier where the with-skill arm passes ≥60%), or "no passing tier"
 ### Baseline Score (without skill): X%
 ### With-Skill Score: Y%
 ### Delta: +Z%

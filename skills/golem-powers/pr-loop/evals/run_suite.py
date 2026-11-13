@@ -7,10 +7,10 @@ import unittest
 SKILL = Path(__file__).resolve().parents[1]
 REPO = SKILL.parents[2]
 COMMAND = "pr-watch <owner/repo> <N> --head <sha> --deadline 2h"
-# Codex blocks its turn on pr-watch with no shorter Monitor expiry, so its deadline is its cache limit.
-# AIDEV-NOTE: review-loop.md dropped this in-turn wait (2026-11-13, /agent-routing § Codex seats rule B:
-# a Codex child never waits inside a turn). adapters/codex.md still pins it; aligning that adapter is a follow-up.
-CODEX_COMMAND = "pr-watch <owner/repo> <N> --head <sha> --deadline 25m"
+# /agent-routing § Codex seats rule B: a Codex seat starts the same command in the background,
+# logs where its exit lands, and ends its turn; it never blocks on pr-watch.
+CODEX_COMMAND = ("nohup sh -c 'pr-watch <owner/repo> <N> --head <sha> --deadline 2h; echo \"exit=$?\"' "
+                 "\\ > docs.local/pr-watch/<N>-<sha>.log 2>&1 &")
 TABLE = "../../../../scripts/pr-watch-lib/README.md#usage-and-exits"
 SURFACES = ["references/review-loop.md", "adapters/claude.md", "adapters/codex.md",
             "adapters/cursor.md", "adapters/capabilities.yaml"]
@@ -32,11 +32,9 @@ class ArmingContract(unittest.TestCase):
         for relative in SURFACES:
             with self.subTest(surface=relative):
                 content = " ".join(text(relative).split())
+                self.assertIn(COMMAND, content)
                 if relative == "adapters/codex.md":
                     self.assertIn(CODEX_COMMAND, content)
-                    self.assertNotIn("--deadline 2h", content)
-                else:
-                    self.assertIn(COMMAND, content)
                 self.assertIn("pr-watch never merges", content)
                 self.assertIn("empty rollup is never READY", content)
                 self.assertNotRegex(content, r"gh pr checks.*?--watch")
@@ -55,10 +53,17 @@ class ArmingContract(unittest.TestCase):
         self.assertIn("stderr diagnosis", content)
         self.assertIn("Do not route its output through a cmuxlayer file watch", content)
 
-    def test_codex_deadline_stays_inside_its_cache_window(self):
+    def test_codex_adapter_starts_pr_watch_in_background_and_ends_its_turn(self):
         codex = " ".join(text("adapters/codex.md").split())
-        self.assertIn("~30-min cache window", codex)
-        self.assertIn("25-minute", codex)
+        self.assertIn("A Codex seat never runs it inside its turn and never sits through it", codex)
+        self.assertIn("(`/agent-routing` § Codex seats, rule B)", codex)
+        self.assertIn("writes the log path (`docs.local/pr-watch/<N>-<sha>.log`)", codex)
+        self.assertIn("and ends its turn", codex)
+        self.assertIn("a fresh child reads the result", codex)
+        for stale in ["ONE blocking call", "--deadline 25m", "25-minute", "cache window",
+                      "Never this session looping"]:
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, codex)
         shared = " ".join(text("references/review-loop.md").split())
         self.assertIn("The 30-minute Monitor expiry precedes the 2h --deadline", shared)
 
@@ -364,6 +369,39 @@ class RiskSizedGates(unittest.TestCase):
         self.assertIn(SSOT, panel)
         case = next(case for case in json.loads(text("evals/evals.json"))["evals"] if case["id"] == 20)
         self.assertIn("agent-routing", case["expected_output"])
+
+
+class PlainWordsPrTitles(unittest.TestCase):
+    """Etan 2026-11-13, dashboard card 18: PR titles he could not understand."""
+
+    def test_pr_creation_states_the_title_rule_with_the_quote(self):
+        content = flat("references/pr-creation.md")
+        self.assertIn("### PR title", content)
+        self.assertIn("A PR title says in plain words what changes for the user or the fleet.", content)
+        self.assertIn("An internal id alone (a ticket, lane, case or finding number", content)
+        self.assertIn("is not a title", content)
+        # r1252: the rule must not mandate where an id goes; parentheses are an option, not a requirement.
+        self.assertIn("An id may sit beside those words (in parentheses, for example) or in the body; "
+                      "where it goes is the author's choice.", content)
+        self.assertNotIn("an id goes in parentheses", content)
+        self.assertIn("\"we really need to work on our ... PR title because I barely understood these.\" "
+                      "(Etan, 2026-11-13, dashboard card 18)", content)
+
+    def test_title_rule_carries_real_before_after_examples(self):
+        section = text("references/pr-creation.md").split("### PR title", 1)[1].split("### ", 1)[0]
+        rows = [line for line in section.splitlines() if line.startswith("| `")]
+        self.assertGreaterEqual(len(rows), 3)
+        for row in rows:
+            with self.subTest(row=row[:50]):
+                before, after = [cell.strip() for cell in row.strip("|").split("|")[:2]]
+                self.assertRegex(before, r"\(#\d+\)$")  # a real PR number
+                self.assertNotRegex(after, r"\b(?:[A-Z]{1,3}\d+|r\d{2,})\b")  # no bare internal id
+
+    def test_create_command_and_skill_step_point_at_the_title_rule(self):
+        self.assertNotIn('--title "feat: description"', text("references/pr-creation.md"))
+        self.assertIn('--title "<plain words: what changes for the user or the fleet>"',
+                      text("references/pr-creation.md"))
+        self.assertIn("[plain-words title](references/pr-creation.md#pr-title)", text("SKILL.md"))
 
 
 if __name__ == "__main__":
