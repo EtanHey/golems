@@ -7,10 +7,10 @@ import unittest
 SKILL = Path(__file__).resolve().parents[1]
 REPO = SKILL.parents[2]
 COMMAND = "pr-watch <owner/repo> <N> --head <sha> --deadline 2h"
-# Codex blocks its turn on pr-watch with no shorter Monitor expiry, so its deadline is its cache limit.
-# AIDEV-NOTE: review-loop.md dropped this in-turn wait (2026-11-13, /agent-routing § Codex seats rule B:
-# a Codex child never waits inside a turn). adapters/codex.md still pins it; aligning that adapter is a follow-up.
-CODEX_COMMAND = "pr-watch <owner/repo> <N> --head <sha> --deadline 25m"
+# /agent-routing § Codex seats rule B: a Codex seat starts the same command in the background,
+# logs where its exit lands, and ends its turn; it never blocks on pr-watch.
+CODEX_COMMAND = ("nohup sh -c 'pr-watch <owner/repo> <N> --head <sha> --deadline 2h; echo \"exit=$?\"' "
+                 "\\ > docs.local/pr-watch/<N>-<sha>.log 2>&1 &")
 TABLE = "../../../../scripts/pr-watch-lib/README.md#usage-and-exits"
 SURFACES = ["references/review-loop.md", "adapters/claude.md", "adapters/codex.md",
             "adapters/cursor.md", "adapters/capabilities.yaml"]
@@ -32,11 +32,9 @@ class ArmingContract(unittest.TestCase):
         for relative in SURFACES:
             with self.subTest(surface=relative):
                 content = " ".join(text(relative).split())
+                self.assertIn(COMMAND, content)
                 if relative == "adapters/codex.md":
                     self.assertIn(CODEX_COMMAND, content)
-                    self.assertNotIn("--deadline 2h", content)
-                else:
-                    self.assertIn(COMMAND, content)
                 self.assertIn("pr-watch never merges", content)
                 self.assertIn("empty rollup is never READY", content)
                 self.assertNotRegex(content, r"gh pr checks.*?--watch")
@@ -55,10 +53,17 @@ class ArmingContract(unittest.TestCase):
         self.assertIn("stderr diagnosis", content)
         self.assertIn("Do not route its output through a cmuxlayer file watch", content)
 
-    def test_codex_deadline_stays_inside_its_cache_window(self):
+    def test_codex_adapter_starts_pr_watch_in_background_and_ends_its_turn(self):
         codex = " ".join(text("adapters/codex.md").split())
-        self.assertIn("~30-min cache window", codex)
-        self.assertIn("25-minute", codex)
+        self.assertIn("A Codex seat never runs it inside its turn and never sits through it", codex)
+        self.assertIn("(`/agent-routing` § Codex seats, rule B)", codex)
+        self.assertIn("writes the log path (`docs.local/pr-watch/<N>-<sha>.log`)", codex)
+        self.assertIn("and ends its turn", codex)
+        self.assertIn("a fresh child reads the result", codex)
+        for stale in ["ONE blocking call", "--deadline 25m", "25-minute", "cache window",
+                      "Never this session looping"]:
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, codex)
         shared = " ".join(text("references/review-loop.md").split())
         self.assertIn("The 30-minute Monitor expiry precedes the 2h --deadline", shared)
 
