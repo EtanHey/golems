@@ -145,6 +145,7 @@ jobs:
           python -m pytest scripts/tests/test_gemini_context.py -q
           python -m pytest scripts/tests/test_gemini_templates.py -q
           python -m pytest scripts/tests/test_gemini_video_qa.py -q
+          python -m pytest scripts/tests/test_git_guardian_trash_move.py -q
           python -m pytest scripts/tests/test_heavy_suite_lock.py -q
           python -m pytest scripts/tests/test_heavy_suite_nested_records.py -q
           python -m pytest scripts/tests/test_heavy_suite_optin.py -q
