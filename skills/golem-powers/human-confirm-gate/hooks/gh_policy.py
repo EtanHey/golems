@@ -72,7 +72,7 @@ def parse_api(args):
 
 # Routine review/comment traffic. Every other GraphQL mutation needs a token.
 SAFE_MUTATIONS = {
-    'addComment', 'updateIssueComment', 'addPullRequestReview', 'submitPullRequestReview',
+    'addComment', 'addDiscussionComment', 'updateIssueComment', 'addPullRequestReview', 'submitPullRequestReview',
     'updatePullRequestReview', 'addPullRequestReviewComment', 'updatePullRequestReviewComment',
     'addPullRequestReviewThread', 'addPullRequestReviewThreadReply', 'resolveReviewThread',
     'unresolveReviewThread', 'addReaction', 'removeReaction', 'minimizeComment', 'unminimizeComment',
