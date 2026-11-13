@@ -37,6 +37,18 @@ setup_clean_identifier_placeholder() {
   printf '{"projectId":"${GOLEMS_SUPABASE_PROJECT_REF}"}\n' > "$1/config.json"
 }
 
+setup_clean_projection_call() {
+  printf 'const projection = %s%s("fixture");\n' projectStructured Speech > "$1/source.ts"
+}
+
+setup_real_project_ref_assignment() {
+  printf 'project_ref = "%s%s"\n' abcdefghij 0123456789 > "$1/config.env"
+}
+
+setup_real_project_id_assignment() {
+  printf 'SUPABASE_PROJECT_ID=%s%s\n' abcdefghij klmnopqrst > "$1/config.env"
+}
+
 setup_clean_synthetic_project_id() {
   printf '{"project_id":"UHJvamVjdDo0OA=="}\n' > "$1/config.json"
 }
@@ -400,6 +412,9 @@ expect_reject "raw session marker" "raw-session" setup_raw_session
 expect_reject "generic client marker" "client-or-third-party" setup_client_generic
 expect_reject "finance rate marker" "finance-rate" setup_finance_rate
 expect_reject "identity marker" "identity-pii" setup_identity_marker
+expect_accept "projection function call is ordinary source" setup_clean_projection_call
+expect_reject "quoted project ref assignment" "real-identifiers" setup_real_project_ref_assignment
+expect_reject "unquoted project id assignment" "real-identifiers" setup_real_project_id_assignment
 expect_reject "real Supabase project identifier" "real-identifiers" setup_real_identifier
 expect_reject "real Supabase identifier in markdown" "real-identifiers" setup_real_identifier_markdown
 expect_reject "real Supabase project host with digit" "real-identifiers" setup_real_identifier_host
