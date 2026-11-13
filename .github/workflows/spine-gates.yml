@@ -35,5 +35,7 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Install Chromium for audio-dashboard layout tests
         run: bunx playwright install --with-deps chromium
+      - name: Install ffprobe for hosted-prepare media validation
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Replay spine gate fixtures (RED must FLAG, GREEN must PASS)
         run: bun run test:spine-gates

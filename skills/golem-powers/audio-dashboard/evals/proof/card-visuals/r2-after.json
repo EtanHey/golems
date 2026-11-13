@@ -1,0 +1,110 @@
+[
+  {
+    "width": 390,
+    "colorScheme": "light",
+    "scrollWidth": 322,
+    "clientWidth": 322,
+    "panel": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "table": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "card": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "totalLines": 1,
+    "bars": [
+      {
+        "visible": true
+      },
+      {
+        "visible": true
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "colorScheme": "dark",
+    "scrollWidth": 322,
+    "clientWidth": 322,
+    "panel": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "table": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "card": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "totalLines": 1,
+    "bars": [
+      {
+        "visible": true
+      },
+      {
+        "visible": true
+      }
+    ]
+  },
+  {
+    "width": 1280,
+    "colorScheme": "light",
+    "scrollWidth": 704,
+    "clientWidth": 704,
+    "panel": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "table": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "card": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "totalLines": 1,
+    "bars": [
+      {
+        "visible": true
+      },
+      {
+        "visible": true
+      }
+    ]
+  },
+  {
+    "width": 1280,
+    "colorScheme": "dark",
+    "scrollWidth": 704,
+    "clientWidth": 704,
+    "panel": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "table": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "card": {
+      "color": "rgb(236, 239, 245)",
+      "background": "rgb(23, 35, 56)"
+    },
+    "totalLines": 1,
+    "bars": [
+      {
+        "visible": true
+      },
+      {
+        "visible": true
+      }
+    ]
+  }
+]
