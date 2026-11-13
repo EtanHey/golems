@@ -199,17 +199,20 @@ A model that passes under about 60% of a skill's eval with the skill loaded is b
 Rerun the same cases one tier up (T1 → T2 → T3, as mapped by skill-creator `npm run eval -- run --tier`)
 before judging the skill text. Read every threshold below at the lowest tier where the with-skill arm passes
 at least 60%, and report that tier with the eval, beside the per-case lowest passing tier (LPT) from
-skill-creator `npm run eval:summarize -- --ladder`. Under 60% at T3 means the text is the problem: rewrite it.
+skill-creator `npm run eval:summarize -- --ladder`. The floor says only to try a smarter model. If no tier up to
+T3 clears about 60%, report "no passing tier" and investigate the cases, the scorer, the run and the skill text
+before concluding; never assert the cause from the floor alone.
 
 ### Scoring Thresholds
 
 | Condition | Action |
 |-----------|--------|
 | With-skill pass rate <60% below T3 | Model below the role's tier — rerun one tier up before judging the text |
+| No tier up to T3 clears ~60% | Report "no passing tier" — investigate cases, scorer, run and skill text before concluding |
 | Baseline >70% | Skill may not add value — flag and explain |
 | Delta <10% | Marginal — consider if complexity is worth it |
 | Delta >30% | Clearly valuable — ship with confidence |
-| Compliance <50% with skill, at T3 or a tier that clears the floor | Instructions unclear — rewrite before shipping |
+| Compliance <50% with skill, at a tier that clears the floor | Instructions unclear — rewrite before shipping |
 
 ### Agent Routing for Live Evals
 
