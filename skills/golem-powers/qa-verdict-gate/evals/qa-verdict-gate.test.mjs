@@ -89,6 +89,7 @@ test("video inspection receipts preserve the other four checks", () => {
 
 test("real qa-video inspection rows earn observed FAIL evidence", () => {
   const repo = path.resolve(here, "../../../..");
+  mkdirSync(path.join(repo, "docs.local"), { recursive: true }); // a fresh CI checkout has no docs.local
   const scratch = mkdtempSync(path.join(repo, "docs.local", "p14-cross-skill-"));
   const run = path.join(scratch, "qa-video", "run");
   mkdirSync(run, { recursive: true });
