@@ -52,7 +52,7 @@ test('real local push boundary, history, chain and drift', () => {
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('new refs exclude remote history, or local default history without remotes', () => {
+test('new refs exclude advertised history, never local default history', () => {
   const root = mkdtempSync(join(tmpdir(), 'boundary-newref-'));
   const git = (...args) => { const r = run(root, 'git', args); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
   try {
@@ -60,19 +60,22 @@ test('new refs exclude remote history, or local default history without remotes'
     writeFileSync(join(root, 'old'), '/' + 'Users/someone/old\n');
     git('add', '.'); git('commit', '-qm', 'already published history');
     const published = git('rev-parse', 'HEAD');
+    const remote = join(root, 'destination.git');
+    git('init', '--bare', '-q', remote); git('push', '-q', remote, 'HEAD:refs/heads/main');
     git('update-ref', 'refs/remotes/origin/main', published);
     git('switch', '-qc', 'candidate');
     writeFileSync(join(root, 'clean'), 'clean\n'); git('add', '.'); git('commit', '-qm', 'clean new commit');
     const clean = git('rev-parse', 'HEAD');
-    const check = head => run(root, process.execPath, [checker], `refs/heads/candidate ${head} refs/heads/candidate ${'0'.repeat(40)}\n`);
+    const check = (head, url = remote) => run(root, process.execPath, [checker, 'origin', url], `refs/heads/candidate ${head} refs/heads/candidate ${'0'.repeat(40)}\n`);
     assert.equal(check(clean).status, 0, 'clean new branch must ignore old remote history');
     writeFileSync(join(root, 'new'), '/' + 'Users/someone/new\n'); git('add', '.'); git('commit', '-qm', 'bad new commit');
     const bad = git('rev-parse', 'HEAD');
     assert.equal(check(bad).status, 1, 'new violation must be refused');
     git('update-ref', '-d', 'refs/remotes/origin/main');
     const fallback = check(clean);
-    assert.equal(fallback.status, 0, 'no-remotes fallback excludes default branch history: ' + fallback.stderr);
+    assert.equal(fallback.status, 0, 'advertisement works without local tracking refs: ' + fallback.stderr);
     assert.equal(check(bad).status, 1, 'fallback still refuses new violations');
+    assert.equal(check(clean, join(root, 'missing.git')).status, 1, 'lookup failure scans historical violation on local default branch');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
