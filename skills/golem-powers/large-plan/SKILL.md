@@ -128,7 +128,7 @@ When a round has parallel phases, the orchestrator dispatches through its harnes
    For PRs outside T3 only, reuse one existing pinned-head `pr-watch` process or bounded cheap watcher
    with its current deadline, following the PR-loop exit semantics. Never duplicate it or poll in the lead.
 6. **Settle** each lane at its terminal state (PR merged or handed off, artifact verified) (a child with no PR, such as a reviewer or recon: as soon as its report is verified), not only when the plan closes: conclude the child (no new sends), `task_cancel` its `taskId` to stop queued runs, `unwatch_pull_request` its PR, then `t3_thread_organize {action: "settle", threadId: <childThreadId>}`. Never omit threadId: an omitted threadId settles the calling lead thread. Then overwrite STATUS.md (no second collab line: the worker's line already recorded the change; append one only if none landed). Idle with no artifact pending = settle now, not later: "settle idle workers" (Etan 2026-10-18, via orc collab). Provider release timing and the worktree caveat: `/agent-routing` § Goal Contract.
-7. **Scheduled-task threads** end every run snoozed to their next run time (`t3_thread_organize` snooze on their own thread), never idle between runs; a plan that creates a `schedule_task` puts that step last in its prompt (`/agent-routing` § T3-native dispatch #10).
+7. **Scheduled-task threads** end every run snoozed to their next run time (`t3_thread_organize` snooze with their own `threadId`), never idle between runs, unless Etan snoozed the thread himself (his snooze stands); a plan that creates a `schedule_task` puts that step last in its prompt (`/agent-routing` § T3-native dispatch #10).
 
 ### cmux adapter: parallel rounds
 
