@@ -344,24 +344,28 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                 if any('refs/replace/' in a for a in tail):
                     rewrite = dict(class_='rewrite', repo=repo, refs=tail)
                 digest = None
+                binary = None
                 inspect_path = os.pathsep.join(os.path.abspath(os.path.join(cwd, part)) for part in
                                                current.get('PATH', os.environ.get('PATH', os.defpath)).split(os.pathsep))
                 if sub == 'push' and alias_lookup is configured_alias:
-                    # Expand configured destructive flags before classification,
-                    # without resolving a token provider or hashing destinations.
-                    inspector = 'git' if direct is not None else word
-                    if os.sep in inspector:
-                        inspector = os.path.abspath(os.path.join(cwd, inspector))
-                    try:
-                        tail, _ = git_config.effective_push(original, repo, inspector, inspect_path, bind=False)
-                    except (OSError, ValueError, subprocess.SubprocessError):
-                        # Preserve base classification when the shell executable
-                        # cannot be inspected. Protected operations still require
-                        # their exact provider below; this is never a token fallback.
-                        tail, _ = git_config.effective_push(original, repo, '/usr/bin/git', bind=False)
+                    if git_config.find_executable(cwd, word, inspect_path):
+                        # Found commands must classify with their actual provider.
+                        # Any lookup/config inspection error propagates as refusal.
+                        binary = git_config.resolve_git(cwd, word, inspect_path)
+                        tail, _ = git_config.effective_push(original, repo, binary, inspect_path, bind=False)
+                    else:
+                        # Nothing will execute. Preserve the existing plain-command
+                        # control, and configured destructive classification when
+                        # the shell's Git can inspect it; never bind a token here.
+                        inspector = git_config.find_executable(cwd, 'git', inspect_path)
+                        if inspector:
+                            try:
+                                tail, _ = git_config.effective_push(original, repo, inspector, inspect_path, bind=False)
+                            except (OSError, ValueError, subprocess.SubprocessError):
+                                pass
                 pushes = push_operation(tail, repo)
                 if (pushes or rewrite) and alias_lookup is configured_alias:
-                    binary = git_config.resolve_git(cwd, word, inspect_path)
+                    binary = binary or git_config.resolve_git(cwd, word, inspect_path)
                     bound, digest = git_config.effective_push(original, repo, binary, inspect_path)
                     if sub == 'push':
                         pushes = push_operation(bound, repo)

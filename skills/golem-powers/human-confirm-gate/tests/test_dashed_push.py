@@ -30,11 +30,12 @@ class DashedPush(unittest.TestCase):
         dashed.chmod(0o755)
         return bindir, execdir
 
-    def test_plain_dashed_push_needs_no_token_or_binary_resolution(self):
+    def test_plain_and_missing_commands_need_no_token(self):
         from commands import operations
         self.set_route()
         self.assertEqual(self.run_hook('git-push origin topic')[0], 0)
-        with patch('git_config.resolve_git', side_effect=ValueError('unresolvable')):
+        with patch('git_config.find_executable', return_value=None), \
+                patch('git_config.resolve_git', side_effect=ValueError('unresolvable')):
             self.assertEqual(operations('git-push origin topic', str(self.repo)), [])
             self.assertEqual(operations('git push origin topic', str(self.repo)), [])
 

@@ -11,19 +11,32 @@ VALUE_OPTIONS = {'--repo', '--receive-pack', '--exec', '--push-option', '-o'}
 FALSE = ('false', 'no', 'off', '0')
 
 
-def resolve_git(repo, executable='git', path=None):
-    """Resolve Git, or the PATH-ordered Git provider of a dashed command."""
-    search_dirs = [os.path.abspath(os.path.join(repo, part)) for part in
-                   (path if path is not None else os.environ.get('PATH', os.defpath)).split(os.pathsep)]
-    search = os.pathsep.join(search_dirs)
+def find_executable(repo, executable, path=None):
+    """Shell lookup only: None means no executable command will run."""
     if os.sep in executable:
         binary = os.path.abspath(os.path.join(repo, executable))
     else:
+        search = os.pathsep.join(os.path.abspath(os.path.join(repo, part)) for part in
+                                 (path if path is not None else os.environ.get('PATH', os.defpath)).split(os.pathsep))
         binary = shutil.which(executable, path=search)
+    return binary if binary and os.path.isfile(binary) and os.access(binary, os.X_OK) else None
+
+
+def resolve_git(repo, executable='git', path=None):
+    """Resolve Git, or the verified Git provider of a dashed command."""
+    search_dirs = [os.path.abspath(os.path.join(repo, part)) for part in
+                   (path if path is not None else os.environ.get('PATH', os.defpath)).split(os.pathsep)]
+    search = os.pathsep.join(search_dirs)
+    binary = find_executable(repo, executable, search)
     name = os.path.basename(executable)
     if name.casefold().startswith('git-'):
-        for directory in dict.fromkeys(search_dirs):
-            provider = os.path.join(directory, 'git')
+        providers = [os.path.join(directory, 'git') for directory in search_dirs]
+        if binary:
+            # An explicit other-install libexec/git-core command need not have
+            # its bin directory on PATH. Verify this sibling candidate using
+            # --exec-path too; never infer ownership from the layout alone.
+            providers.append(os.path.abspath(os.path.join(os.path.dirname(binary), '../../bin/git')))
+        for provider in dict.fromkeys(providers):
             if not os.path.isfile(provider) or not os.access(provider, os.X_OK):
                 continue
             result = subprocess.run([provider, '--exec-path'], capture_output=True, text=True,
