@@ -137,14 +137,37 @@ def assigned_bindings(tokens, positions, limit, initial, scopes, target=()):
 
 # Whole-command evidence is deny-only, including quoted eval/function bodies.
 _GIT_SCOPE = re.compile(r'(?<![A-Za-z0-9_])(?:XDG_CONFIG_HOME|HOME|PATH|GIT_DIR|GIT_COMMON_DIR|GIT_WORK_TREE|GIT_EXEC_PATH|GIT_PROXY_COMMAND|GIT_CONFIG[A-Za-z0-9_]*|GIT_SSH[A-Za-z0-9_]*)(?![A-Za-z0-9_])')
-_ENV_SCOPE = re.compile(r'\benv\b[^;&|()\n]*?\s(?:-[CPS](?:\s|[^-\s])|--(?:chdir|path|split-string)(?:=|\s))')
 _SCOPE_WRITERS = re.compile(r'(?<![\w./-])(?:export|declare|typeset|local|eval|read|readonly|unset)(?=\s)|\bprintf\s+-v\b|\bset\s+-a\b')
-_ENV_UNSET = re.compile(r'\benv\b[^;&|()\n]*?\s(?:-u(?:\s|[^-\s])|--unset(?:=|\s))')
 _PREFIX_ENV = '\0git-prefix-environment'
 
 
 def git_scope_variable(name):
     return bool(_GIT_SCOPE.fullmatch(name))
+
+
+def git_env_scope_options(tokens, positions):
+    """Inspect env's options only, stopping before its child executable."""
+    for i, token in enumerate(tokens):
+        if not positions[i] or shell._ASSIGNMENT_RE.match(token) or syntax.executable(token)[0] != 'env':
+            continue
+        j = i + 1
+        while j < len(tokens):
+            word = tokens[j]
+            if word == '--': break
+            if shell._ASSIGNMENT_RE.match(word):
+                j += 1; continue
+            if not word.startswith('-'): break
+            if word.startswith(('-C', '-P', '-S', '--chdir', '--path', '--split-string')):
+                return True
+            if word in ('-u', '--unset'):
+                j += 1
+                if j < len(tokens) and git_scope_variable(tokens[j]): return True
+            elif word.startswith('-u') and git_scope_variable(word[2:]):
+                return True
+            elif word.startswith('--unset=') and git_scope_variable(word.split('=', 1)[1]):
+                return True
+            j += 1
+    return False
 
 
 def git_scope_environment(tokens, i, bindings):
@@ -211,9 +234,11 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
     # The literal-name proof needs the whole raw command; nested bodies inherit it.
     _state = _state if _state is not None else {'config': False, 'literal': syntax.single_quoted_names(command, shell)}
     scope_source = syntax.mask_heredoc_bodies(command, shell)
-    _state['git_scope'] = _state.get('git_scope', False) or bool(_GIT_SCOPE.search(scope_source) or _ENV_SCOPE.search(scope_source))
-    _state['env_scope'] = _state.get('env_scope', False) or bool(_ENV_SCOPE.search(scope_source) or _ENV_UNSET.search(scope_source) and _GIT_SCOPE.search(scope_source))
-    _state['scope_writer'] = _state.get('scope_writer', False) or bool(_SCOPE_WRITERS.search(scope_source) or _ENV_SCOPE.search(scope_source))
+    scope_tokens, scope_positions, _, _ = shell._parse_bash(scope_source)
+    env_scope = git_env_scope_options(scope_tokens, scope_positions)
+    _state['git_scope'] = _state.get('git_scope', False) or bool(_GIT_SCOPE.search(scope_source) or env_scope)
+    _state['env_scope'] = _state.get('env_scope', False) or env_scope
+    _state['scope_writer'] = _state.get('scope_writer', False) or bool(_SCOPE_WRITERS.search(scope_source) or env_scope)
     split_map = {} if rejoined else syntax.split_words(command, shell)
 
     def splits(word):  # an expansion that may word-split; rejoined argv has lost its quoting
