@@ -1,14 +1,61 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const checker = resolve(process.env.BOUNDARY_PREPUSH_CHECKER ?? 'scripts/ci/boundary-prepush.mjs');
 const ip = (...parts) => parts.join('.');
 const version = '0.4.0+sdk-' + ip(1, 4, 341, 0);
 const cases = [
+  ['JDK five-part log version', 'formal/run.log', `Running on Homebrew ${ip(27, 0, 1, 0, 3)} (Mac OS X 26.1 aarch64)`, 'push-ipv4'],
+  ['five-part numeric version', 'note.txt', ip(1, 2, 3, 4, 5), 'push-ipv4'],
+  ['five-part private-looking version', 'note.txt', `version ${ip(10, 0, 0, 1, 2)}`, 'push-ipv4'],
+  ['product word does not exempt address', 'note.txt', `Homebrew ${ip(10, 20, 30, 40)}`, 'push-ipv4'],
+  ['sentence-final dot', 'note.txt', `host ${ip(192, 168, 1, 5)}.`, 'push-ipv4'],
+  ['address with port', 'note.txt', `${ip(10, 0, 0, 1)}:8080`, 'push-ipv4'],
+  ['parenthesized address', 'note.txt', `(${ip(10, 0, 0, 1)})`, 'push-ipv4'],
+  ['address with assignment and comma', 'note.txt', `ip=${ip(172, 16, 0, 1)},`, 'push-ipv4'],
+  ['address after longer version', 'note.txt', `${ip(1, 2, 3, 4, 5)} ${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['address before longer version', 'note.txt', `${ip(10, 0, 0, 1)} ${ip(1, 2, 3, 4, 5)}`, 'push-ipv4'],
+  ['six-part numeric version', 'note.txt', ip(1, 2, 3, 4, 5, 6), 'push-ipv4'],
+  ['dot before address', 'note.txt', `.${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['nonnumeric dotted prefix', 'note.txt', `host.${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['nonnumeric dotted suffix', 'note.txt', `${ip(10, 0, 0, 1)}.host`, 'push-ipv4'],
+  ['long numeric prefix in five-part version', 'note.txt', ip(1000, 1, 2, 3, 4), 'push-ipv4'],
+  ['long numeric suffix in five-part version', 'note.txt', ip(1, 2, 3, 4, 1000), 'push-ipv4'],
+  ['two longer versions', 'note.txt', `${ip(1, 2, 3, 4, 5)} ${ip(6, 7, 8, 9, 0)}`, 'push-ipv4'],
+  ['comma after longer version', 'note.txt', `${ip(1, 2, 3, 4, 5)},${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['credential beside longer version', 'note.txt', `${ip(1, 2, 3, 4, 5)} ${'ghp_' + 'z'.repeat(32)}`, 'push-credentials'],
+  ['prerelease-only five-part run', 'Cargo.lock', `1.2.3-sdk-${ip(10, 0, 0, 1, 2)}`, 'push-ipv4'],
+  ['metadata numeric five-part run', 'Cargo.lock', `1.2.3+${ip(10, 0, 0, 1, 2)}`, 'push-ipv4'],
+  ['v-prefixed metadata five-part run', 'Cargo.lock', `v1.2.3+sdk-${ip(10, 0, 0, 1, 2)}`, 'push-ipv4'],
+  ['package-prefixed semver five-part run', 'note.txt', `pkg-1.2.3+sdk-${ip(10, 0, 0, 1, 2)}`, 'push-ipv4'],
+  ['word-glued semver five-part run', 'note.txt', `pkg1.2.3+sdk-${ip(10, 0, 0, 1, 2)}`, 'push-ipv4'],
+  ['plain version after semver token', 'note.txt', `1.2.3+build ${ip(27, 0, 1, 0, 3)}`, 'push-ipv4'],
+  ['netstat dotted ports', 'formal/network.log', `tcp4 0 0 ${ip(10, 20, 30, 40, 51234)} ${ip(93, 184, 216, 34, 443)} ESTABLISHED`, 'push-ipv4'],
+  ['tcpdump dotted ports', 'formal/network.log', `IP ${ip(10, 20, 30, 40, 51234)} > ${ip(93, 184, 216, 34, 443)}: Flags [S]`, 'push-ipv4'],
+  ['syslog dotted port', 'note.txt', `connection from ${ip(10, 20, 30, 40, 55555)} refused`, 'push-ipv4'],
+  ['TLC runtime tuple', 'formal/run.log', `Running breadth-first search Model-Checking with fp 0 and seed 2 with 1 worker on 8 cores with 512MB heap and 64MB offheap memory [pid: 1234] (Mac OS X 26.1 aarch64, Homebrew ${ip(28, 1, 2, 3, 4)} 64bit, MSBDiskFPSet, DiskStateQueue).`, null],
+  ['vendor version architecture residual', 'note.txt', `Homebrew ${ip(10, 20, 30, 40, 5)} aarch64`, null],
+  ['four parts after vendor and before architecture', 'note.txt', `Homebrew ${ip(10, 20, 30, 40)} aarch64`, 'push-ipv4'],
+  ['unknown vendor five-part run', 'note.txt', `UnknownJDK ${ip(10, 20, 30, 40, 5)} aarch64`, 'push-ipv4'],
+  ['vendor glued to word', 'note.txt', `NotHomebrew ${ip(10, 20, 30, 40, 5)} aarch64`, 'push-ipv4'],
+  ['version without architecture', 'note.txt', `Homebrew ${ip(10, 20, 30, 40, 5)}`, 'push-ipv4'],
+  ['architecture glued suffix', 'note.txt', `Homebrew ${ip(10, 20, 30, 40, 5)} aarch64host`, 'push-ipv4'],
+  ['address after allowed header slot', 'note.txt', `Homebrew ${ip(28, 1, 2, 3, 4)} aarch64 ${ip(10, 20, 30, 40)}`, 'push-ipv4'],
+  ['address before allowed header slot', 'note.txt', `${ip(10, 20, 30, 40)} Homebrew ${ip(28, 1, 2, 3, 4)} aarch64`, 'push-ipv4'],
+  ['credential beside allowed header slot', 'note.txt', `Homebrew ${ip(28, 1, 2, 3, 4)} aarch64 ${'ghp_' + 'z'.repeat(32)}`, 'push-credentials'],
+  ['TLC2 version header', 'formal/run.log', `TLC2 Version ${ip(2027, 11, 12, 123456)} (rev: abc1234)`, null],
+  ['TLC2 address-slot residual', 'note.txt', `TLC2 Version ${ip(10, 20, 30, 40)} (rev: abc1234)`, null],
+  ['TLC2 missing revision suffix', 'note.txt', `TLC2 Version ${ip(10, 20, 30, 40)}`, 'push-ipv4'],
+  ['TLC2 missing literal prefix', 'note.txt', `Version ${ip(10, 20, 30, 40)} (rev: abc1234)`, 'push-ipv4'],
+  ['TLC2 revision too short', 'note.txt', `TLC2 Version ${ip(10, 20, 30, 40)} (rev: abc123)`, 'push-ipv4'],
+  ['TLC2 revision too long', 'note.txt', `TLC2 Version ${ip(10, 20, 30, 40)} (rev: ${'a'.repeat(41)})`, 'push-ipv4'],
+  ['TLC2 nonhex revision', 'note.txt', `TLC2 Version ${ip(10, 20, 30, 40)} (rev: abc123g)`, 'push-ipv4'],
+  ['address beside TLC2 header', 'note.txt', `TLC2 Version ${ip(2027, 11, 12, 123456)} (rev: abc1234) ${ip(10, 20, 30, 40)}`, 'push-ipv4'],
+  ['credential beside TLC2 header', 'note.txt', `TLC2 Version ${ip(2027, 11, 12, 123456)} (rev: abc1234) ${'ghp_' + 'z'.repeat(32)}`, 'push-credentials'],
   ['Cargo build metadata', 'Cargo.lock', `version = "${version}"`, null],
   ['JSON build metadata', 'package-lock.json', `"version": "${version}"`, null],
   ['prerelease build metadata address', 'poetry.lock', `version = "1.2.3-rc.1+sdk-${ip(1, 2, 3, 4)}"`, 'push-ipv4'],
@@ -73,6 +120,11 @@ const cases = [
   ['real shaped colon project id', 'config.json', '{"projectId":"' + 'abcdefghij' + 'klmnopqrst' + '"}', 'real-identifiers'],
 
 ];
+for (const vendor of ['Homebrew', 'Oracle Corporation', 'Eclipse Adoptium', 'Azul Systems', 'Amazon.com Inc.', 'Temurin', 'GraalVM']) {
+  for (const arch of ['aarch64', 'x86_64', 'amd64', '64bit']) {
+    cases.push([`JVM vendor ${vendor} ${arch}`, 'formal/run.log', `${vendor} ${ip(28, 1, 2, 3, 4, 5)} ${arch}`, null]);
+  }
+}
 for (const [name, file, content, violation] of cases) {
   test(name, () => {
     const root = mkdtempSync(join(tmpdir(), 'boundary-ipv4-'));
@@ -86,6 +138,7 @@ for (const [name, file, content, violation] of cases) {
       git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.com');
       git('commit', '--allow-empty', '-qm', 'base');
       const base = git('rev-parse', 'HEAD');
+      mkdirSync(dirname(join(root, file)), { recursive: true });
       writeFileSync(join(root, file), content + '\n');
       git('add', file); git('commit', '-qm', 'candidate');
       const head = git('rev-parse', 'HEAD');
