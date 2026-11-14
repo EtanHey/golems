@@ -463,6 +463,7 @@ expect_accept "public-only mode omits private marker class" setup_public_hashed_
 expect_reject "personal fixture without synthetic header" "synthetic_personal_fixture" setup_personal_fixture_without_synthetic_header "skill-evals/fixtures/coach-reflection.txt"
 expect_reject "private Hebrew name marker" "client-or-third-party" setup_private_hebrew_marker "client-he.txt"
 expect_reject "private examples augment the public policy" "client-or-third-party" setup_private_example_exact "client-private.txt"
+expect_accept "push-only version policy keeps forbidden-class fingerprint" setup_clean_push_only_versions
 expect_accept "placeholder domain" setup_clean_placeholder
 expect_accept "GitHub noreply domain" setup_clean_noreply
 expect_accept "machine attribution addresses" setup_clean_machine_attribution

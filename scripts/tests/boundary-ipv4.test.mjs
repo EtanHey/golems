@@ -1,14 +1,33 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const checker = resolve(process.env.BOUNDARY_PREPUSH_CHECKER ?? 'scripts/ci/boundary-prepush.mjs');
 const ip = (...parts) => parts.join('.');
 const version = '0.4.0+sdk-' + ip(1, 4, 341, 0);
 const cases = [
+  ['JDK five-part log version', 'formal/run.log', `Running on Homebrew ${ip(27, 0, 1, 0, 3)} (Mac OS X 26.1 aarch64)`, null],
+  ['five-part numeric version', 'note.txt', ip(1, 2, 3, 4, 5), null],
+  ['five-part private-looking version', 'note.txt', `version ${ip(10, 0, 0, 1, 2)}`, null],
+  ['product word does not exempt address', 'note.txt', `Homebrew ${ip(10, 20, 30, 40)}`, 'push-ipv4'],
+  ['sentence-final dot', 'note.txt', `host ${ip(192, 168, 1, 5)}.`, 'push-ipv4'],
+  ['address with port', 'note.txt', `${ip(10, 0, 0, 1)}:8080`, 'push-ipv4'],
+  ['parenthesized address', 'note.txt', `(${ip(10, 0, 0, 1)})`, 'push-ipv4'],
+  ['address with assignment and comma', 'note.txt', `ip=${ip(172, 16, 0, 1)},`, 'push-ipv4'],
+  ['address after longer version', 'note.txt', `${ip(1, 2, 3, 4, 5)} ${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['address before longer version', 'note.txt', `${ip(10, 0, 0, 1)} ${ip(1, 2, 3, 4, 5)}`, 'push-ipv4'],
+  ['six-part numeric version', 'note.txt', ip(1, 2, 3, 4, 5, 6), null],
+  ['dot before address', 'note.txt', `.${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['nonnumeric dotted prefix', 'note.txt', `host.${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['nonnumeric dotted suffix', 'note.txt', `${ip(10, 0, 0, 1)}.host`, 'push-ipv4'],
+  ['long numeric prefix in five-part version', 'note.txt', ip(1000, 1, 2, 3, 4), null],
+  ['long numeric suffix in five-part version', 'note.txt', ip(1, 2, 3, 4, 1000), null],
+  ['two longer versions', 'note.txt', `${ip(1, 2, 3, 4, 5)} ${ip(6, 7, 8, 9, 0)}`, null],
+  ['comma after longer version', 'note.txt', `${ip(1, 2, 3, 4, 5)},${ip(10, 0, 0, 1)}`, 'push-ipv4'],
+  ['credential beside longer version', 'note.txt', `${ip(1, 2, 3, 4, 5)} ${'ghp_' + 'z'.repeat(32)}`, 'push-credentials'],
   ['Cargo build metadata', 'Cargo.lock', `version = "${version}"`, null],
   ['JSON build metadata', 'package-lock.json', `"version": "${version}"`, null],
   ['prerelease build metadata address', 'poetry.lock', `version = "1.2.3-rc.1+sdk-${ip(1, 2, 3, 4)}"`, 'push-ipv4'],
@@ -86,6 +105,7 @@ for (const [name, file, content, violation] of cases) {
       git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.com');
       git('commit', '--allow-empty', '-qm', 'base');
       const base = git('rev-parse', 'HEAD');
+      mkdirSync(dirname(join(root, file)), { recursive: true });
       writeFileSync(join(root, file), content + '\n');
       git('add', file); git('commit', '-qm', 'candidate');
       const head = git('rev-parse', 'HEAD');

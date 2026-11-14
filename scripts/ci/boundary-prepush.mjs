@@ -183,6 +183,8 @@ try {
               }
               return '';
             });
+            // Policy patterns include dotted-number boundaries: never infer an
+            // address from a four-part window inside a longer numeric version.
             if (rule.patterns.some(re => { re.lastIndex = 0; return re.test(text); })) throw new Error(`publication violation (${name}); content withheld`);
           }
         }
