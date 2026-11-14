@@ -34,6 +34,9 @@ test('grounding guidance agrees on attachment default and optional Drive search 
   for (const skill of ['gemini-research', 'research-lifecycle', 'drive-filing']) {
     const text = readFileSync(new URL(`../../../${skill}/SKILL.md`, import.meta.url), 'utf8');
     assert.match(text, /attach/i, skill);
+    assert.match(text, /one folder/i, skill);
+    assert.match(text, /owner attaches/, skill);
+    assert.doesNotMatch(text, /[Aa]gents prepare and attach|attach them to the run|files attached during preparation/, skill);
     assert.match(text, /Drive source off/, skill);
     assert.match(text, /title SEARCH/, skill);
     assert.match(text, /unique across the whole[\s\n]+Drive|unique across the[\s\n]+whole Drive/, skill);

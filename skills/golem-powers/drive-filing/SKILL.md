@@ -134,8 +134,9 @@ add a destructive home-wide reaper.
 ## Research grounding folder contract
 
 One folder per research holds only the curated documents that research needs as a
-provenance record. Agents prepare and attach those files to the Deep Research run
-with Drive source off by default. A folder is not a Deep Research access route:
+provenance record. Agents prepare ONE folder holding exactly the curated grounding
+files with unique names. The hand-off names that folder and the files to attach;
+the owner attaches them when he starts the run with Drive source off by default. A folder is not a Deep Research access route:
 its connected Drive workspace provides title SEARCH only, not folder listing or
 opening Docs by link. Native Google Docs do not solve this limitation. If Drive
 is explicitly used, name each document by its exact title, unique across the whole

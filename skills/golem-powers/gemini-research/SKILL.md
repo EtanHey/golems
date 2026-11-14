@@ -9,7 +9,7 @@ Default: prepare a grounded prompt for Gemini Deep Research at gemini.google.com
 
 Triggers on: gemini research, Gemini Deep Research, deep research, compare research options.
 
-> **Grounding default: attach files, Drive source off.** Agents prepare and attach the curated grounding files to the Deep Research run before dispatch. Drive grounding is optional, never the default. Its connected Drive workspace supports title SEARCH only: it cannot list a folder or open a document by link. Native Google Docs do not fix this limitation.
+> **Grounding default: attach files, Drive source off.** Agents prepare ONE folder holding exactly the curated grounding files with unique names. The hand-off names that folder and the files to attach; the owner attaches them when he starts the run with Drive source off. Drive grounding is optional, never the default. Its connected Drive workspace supports title SEARCH only: it cannot list a folder or open a document by link. Native Google Docs do not fix this limitation.
 
 Measured 2026-11-13/14: four runs read none of the grounding files, with both raw
 Markdown and converted Docs. A Deep Research probe correctly quoted one Doc's
@@ -22,7 +22,7 @@ author-held answer key (PR 1267).
 
 Done condition: no research prompt leaves this skill until ONE of these is true:
 - **Project-grounded** (the default): a `/research-lifecycle` preparation receipt is
-  back, naming the grounding files and the copies supplied with the run.
+  back, naming ONE prepared folder and exactly the curated grounding files in it, with unique names.
 - **Web-only** (only when the user says the question needs no project state): the
   prompt's `# Grounding` block has the exact line `None — web-only research`
   and a separate `Reason: <the user's reason>` line. These replace the receipt.
@@ -30,21 +30,23 @@ Done condition: no research prompt leaves this skill until ONE of these is true:
 1. Right after loading this skill, dispatch ONE sub-agent. Do not search Drive, grep
    or draft the prompt yourself first. Its brief says: "Run `/research-lifecycle`
    preparation for <project>: verify local context, refresh the Drive grounding
-   corpus for provenance, prepare the bounded files for attachment with Drive off,
-   and return the exact grounding file names and the lifecycle receipt."
+   corpus for provenance, prepare ONE folder holding exactly the curated grounding
+   files with unique names, and return that folder, the exact file names to attach
+   with Drive off, and the lifecycle receipt."
    Pick its execution profile per `/agent-routing` § Execution capability (Drive
    write + shell); a read-only gatherer may only report staleness.
 2. Web-only branch: when the user says the question needs no project state, skip
    step 1, write the exact web-only line and separate reason,
    and go straight to the emit gate below. The grounding and START/EDIT gates
    still apply.
-3. Project-grounded: attach the prepared files to the run with Drive source off,
-   then draft the prompt from the receipt's exact file names. While
+3. Project-grounded: name the prepared folder and files to attach in the hand-off;
+   the owner attaches them when he starts the run with Drive source off.
+   Draft the prompt from the receipt's exact file names. While
    preparation runs or is blocked, tell Etan the prompt follows the receipt; never
    emit it before.
 
-Include one line in the hand-off: "Grounding files are supplied with this run;
-Drive source is off." Preparation is the agent's job; do not emit a prompt that
+Include one line in the hand-off: "Prepared folder: <folder>; files to attach: <exact file names>;
+attach this prepared set when starting the run, with Drive source off." Preparation is the agent's job; do not emit a prompt that
 asks Etan to collect files.
 
 ### Optional Drive route — exact titles and a probe first
@@ -64,7 +66,7 @@ admission table or author-held answer key.
 
 ## Curated grounding set, admission stop, provenance
 
-- **Curated, bounded set:** agents prepare only the files the research needs, attach them to the run, and keep a provenance copy (`/drive-filing` § Research grounding folder contract). The folder organizes the record; it is not a Deep Research access route. The prompt names the exact files and says to use ONLY them.
+- **Curated, bounded set:** agents prepare ONE folder holding exactly the curated grounding files with unique names, name that folder and the files to attach in the hand-off, and keep a provenance copy. The owner attaches the prepared set when starting the run with Drive source off (`/drive-filing` § Research grounding folder contract). The folder organizes the record; it is not a Deep Research access route. The prompt names the exact files and says to use ONLY them.
 - **Admission table with a HARD STOP:** before firing, the prompt's `# Grounding` block carries a read-check table, one row per grounding file, with `readable: yes/no`. Project-grounded runs only; web-only research keeps its own `None — web-only research` block and has no table. Any row that is not an affirmative verified read (no, blank, missing, empty, truncated, unreadable) stops the run: output only the table and a `MISSING FILES` list. The template holds the wording.
 - **Author-held answer key:** keep exact source answers and real first headings/lines in the author record's `admission-key` JSON inside `# Pre-fire checks`, never the emitted researcher text. Cover every named document and admission question. Emit refuses missing keys or verbatim answer leaks. `readable: yes` alone proves nothing: on 2026-11-13 NarrationLayer R02 with six attached grounding files invented all six answers (1.05 vs 1.5; 0.179 vs 0.484); the private key caught them. Earlier Drive-grounded runs stopped honestly with `readable: no` rows.
 - **Keep the stop in the plan:** when Gemini's generated plan drops the stop, return it for EDIT and paste this sentence: `If any read-check row is not an affirmative verified read (readable: no, blank, missing, empty, truncated or unreadable), output only the read-check table and a MISSING FILES list, and stop.`
@@ -78,7 +80,7 @@ admission table or author-held answer key.
 
 ## Default workflow: Gemini Deep Research
 
-Keep the curated provenance set in `Brain Drive/03_RESEARCH/Active/<project>/R{NN}-grounding/`; supply those files directly to the run with Drive off, using the preparation receipt's exact names. Do not use the shared `<project>/context/` corpus. Optional Drive grounding follows the exact-title and probe rules above. Number context files per `skills/golem-powers/_shared/research/context-numbering.md`.
+Keep the curated provenance set in `Brain Drive/03_RESEARCH/Active/<project>/R{NN}-grounding/`; name the prepared folder and its exact file names in the hand-off so the owner attaches that set when starting the run with Drive off. Do not use the shared `<project>/context/` corpus. Optional Drive grounding follows the exact-title and probe rules above. Number context files per `skills/golem-powers/_shared/research/context-numbering.md`.
 
 **Prompt template:** Fill [references/prompt-template.md](references/prompt-template.md): named verified-findings + struck-claims grounding, owner asks verbatim, evidence against, DOCUMENTED / OBSERVED / CLAIMED / PROPOSED / TARGET labels, sourced measurements and two independent bias checks. Web-only research uses the template's explicit N/A branch. Do not emit an unfilled template.
 
@@ -97,8 +99,8 @@ instructions.
 
 Run `prompt-preflight.mjs --emit` above. The shared legacy
 `drive-grounding-gate.sh` still checks for instructions asking Etan to collect or
-supply files; it does not prove Deep Research access. Keep attachment work in
-preparation, before dispatch. The researcher text describes files already supplied
+supply files; it does not prove Deep Research access. Keep file collection in
+agent preparation; the owner attaches the named prepared set when starting the run. The researcher text describes files already supplied
 with the run and names each one. A structural PASS does not prove that the files
 were supplied, the probe passed, or the researcher read them: retain those receipts
 and apply the admission harvest gate below.
@@ -146,7 +148,7 @@ Includes researches **Etan fires himself** in gemini.google.com
 to the fleet. Research without a harvest path = **parked**, not done.
 
 **Anti-patterns:**
-- Assuming a connected Drive source can browse a folder or open a link; using duplicate or look-alike titles; firing before the first-line probe passes. Attach prepared files with Drive off by default.
+- Assuming a connected Drive source can browse a folder or open a link; using duplicate or look-alike titles; firing before the first-line probe passes. Prepare one folder and name its files in the hand-off; the owner attaches that set with Drive off by default.
 - Skipping the prompt-author START/EDIT gate → the research runs on the raw plan, often with blind spots you could have caught
 - Leaving results unexported when they need to persist in Drive
 - Using for content already in Drive — use connected Drive search tools for those lookups

@@ -241,8 +241,10 @@ The local corpus is the source to push. Drive retains the provenance mirror, so 
 
 ## CURATED GROUNDING FOLDER — one per research
 
-Prepare a bounded Drive folder `R{NN}-grounding/` holding only the curated documents the research needs, with a manifest (what and why, sha256, `manifest_sha256`); contract in `/drive-filing` § Research grounding folder contract. The preparation receipt names the folder and manifest and the exact files prepared
-for attachment to the run (Drive source off). The folder is a provenance record,
+Prepare a bounded Drive folder `R{NN}-grounding/` holding only the curated documents the research needs, with a manifest (what and why, sha256, `manifest_sha256`); contract in `/drive-filing` § Research grounding folder contract. Agents prepare ONE folder holding exactly the curated grounding files with unique
+names. The preparation receipt and hand-off name that folder, its manifest and
+the exact files to attach; the owner attaches them when he starts the run with
+Drive source off. The folder is a provenance record,
 not a Deep Research access route. Its connected Drive workspace offers title SEARCH
 only, with no folder listing or opening Docs by link; native Google Docs do not
 fix this. If Drive is explicitly used, every title must be unique across the whole
@@ -256,7 +258,7 @@ routes; keep the real admission table and private key unchanged. Admission stop,
 
 Prepare the next prompt with [/gemini-research's template](../gemini-research/references/prompt-template.md) and its structural pre-fire gate.
 
-Before emitting any Gemini research prompt, require exactly one `# Grounding` block. That block must name each file supplied with the run (default: files attached during preparation, Drive source off), or each exact unique title for the optional probed Drive route, or carry the exact line `None — web-only research`. Agents supply files before dispatch; researcher text must not ask Etan to collect them.
+Before emitting any Gemini research prompt, require exactly one `# Grounding` block. That block must name each file supplied with the run (default: owner attaches the prepared set when starting the run, Drive source off), or each exact unique title for the optional probed Drive route, or carry the exact line `None — web-only research`. Agents prepare one folder with exactly the curated files and unique names; the hand-off names that folder and its files to attach; researcher text must not ask Etan to collect them.
 
 Run the executable gate against the prompt file. It checks the block structure and invokes the legacy shared no-attach gate for file-collection instructions. It does not verify attachment delivery, title uniqueness or the probe receipt:
 

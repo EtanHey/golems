@@ -21,9 +21,9 @@
       "name": "produce-prompt-attach-first",
       "category": "compliance",
       "prompt": "Write me a Gemini Deep Research prompt that investigates how to improve BrainLayer's hybrid search ranking. Ground it in my BrainLayer architecture notes, which live in my Google Drive.",
-      "expected_behavior": "Agents prepare and attach the bounded grounding files before dispatch, with Drive source off. The emitted prompt names each supplied file. A cheap first-line Deep Research probe must match the author key before the real run; preserve its admission table/key.",
+      "expected_behavior": "Agents prepare ONE folder holding exactly the curated grounding files with unique names; the hand-off names that folder and its files to attach, and the owner attaches them when he starts the run with Drive source off. The emitted prompt names each supplied file. A cheap first-line Deep Research probe must match the author key before the real run; preserve its admission table/key.",
       "assertions": [
-        "Files are attached during preparation with Drive source off; no file-collection task for Etan",
+        "Agents collect exactly the curated files with unique names into ONE prepared folder; the hand-off names the folder/files, and the owner attaches them when starting the run with Drive source off",
         "Emitted researcher text names each supplied file and passes prompt-preflight.mjs --emit",
         "Probe first lines match the author key before the real prompt fires"
       ],
@@ -35,7 +35,7 @@
       "name": "improve-prompt-to-prepared-files",
       "category": "compliance",
       "prompt": "Improve this Gemini research prompt so it's ready to paste:\n\n# Goal\nCompare sqlite-vec vs pgvector for our scale.\n\n# Context\nAttach the 'Vector Store Benchmarks' doc and upload our schema file so Gemini has the numbers.",
-      "expected_behavior": "Prepares the named benchmark and schema files for attachment with Drive off, then emits researcher text naming the supplied files after a first-line probe passes the author key.",
+      "expected_behavior": "Prepares ONE folder holding exactly the named benchmark and schema files with unique names, names that folder and the files to attach in the hand-off, and the owner attaches the prepared set when starting the run with Drive off; emits researcher text naming those files after a first-line probe passes the author key.",
       "assertions": [
         "Preserves exact file names and uses supplied-file grounding",
         "Does not imply Drive can open a folder or link",
