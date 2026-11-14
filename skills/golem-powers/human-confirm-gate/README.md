@@ -43,3 +43,19 @@ terminal you control, outside any agent. `SKILL.md` describes what the gate enfo
   terminal, approved in 1Password per request.
 - **Lead tokens:** `scripts/golems-lead-confirm` (see SKILL.md, "Lead tokens"), for lease
   pushes on a lead's own open PR branch only.
+
+Push tokens hash the resolved Git executable path, its effective selected remote's
+entire `remote.<name>.*` section, branch/push selection, `core.sshCommand`, `ssh.*`,
+`protocol.*`, `http.*`, and `url.*` config, plus Git's resolved push URL list
+(including legacy `.git/remotes` and `.git/branches` routes). Config is read using
+that executable and the hook-visible environment, including inherited scopes and
+includes. The digest also binds hook-visible `GIT_SSH`, `GIT_SSH_COMMAND`,
+`GIT_SSH_VARIANT`, `GIT_PROXY_COMMAND`, `GIT_CONFIG`/`GIT_CONFIG_*`, and `GIT_EXEC_PATH`.
+Only the digest travels in tokens. This wider binding invalidates older tokens;
+tokens live at most 300 seconds, so reissue costs at most five minutes of approvals.
+
+This pre-run check does not bind wrapper script contents, symlinks behind local
+path URLs, `~/.ssh/config`, DNS, or shell-startup environment changes invisible to
+the hook. State can also change between the hook check and Git execution. Closing
+these gaps requires the gate to run the push itself with fixed config/environment
+and the resolved URL; that execution-boundary redesign is outside this change.
