@@ -87,6 +87,23 @@ def effective_push(args, repo):
     # credential-bearing values into tokens or logs: only a digest travels.
     selected = {key: value for key, value in config.items() if key.startswith(prefix)
                 or key in ('push.default', 'remote.pushdefault') or key.startswith('branch.' + branch + '.')}
+    urls = config.get(prefix + 'pushurl') or config.get(prefix + 'url')
+    if urls:
+        resolved = read(repo, 'remote', 'get-url', '--push', '--all', '--', remote).splitlines()
+        if not resolved:
+            raise ValueError('cannot resolve effective push URLs')
+        # Preserve the old digest for routes without rewriting. Rewrites which
+        # do not affect this push (including pushInsteadOf with a pushurl) also
+        # leave existing tokens valid. Only hashed values travel in tokens.
+        if resolved != urls:
+            selected['effective_push_urls'] = resolved
+    else:
+        # Literal destinations have no remote stanza for get-url to inspect.
+        # Bind all rewrite rules conservatively, including inherited scopes.
+        rewrites = read(repo, 'config', '--null', '--get-regexp',
+                        r'^url\..*\.(insteadof|pushinsteadof)$')
+        if rewrites:
+            selected['url_rewrites'] = rewrites
     digest = hashlib.sha256(json.dumps(selected, sort_keys=True).encode()).hexdigest()
     return flags + [remote, *positional, *refs], digest
 

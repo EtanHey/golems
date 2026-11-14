@@ -43,3 +43,10 @@ terminal you control, outside any agent. `SKILL.md` describes what the gate enfo
   terminal, approved in 1Password per request.
 - **Lead tokens:** `scripts/golems-lead-confirm` (see SKILL.md, "Lead tokens"), for lease
   pushes on a lead's own open PR branch only.
+
+Push tokens bind Git's effective push URLs, including `insteadOf` and `pushInsteadOf`
+from local, global, and other inherited config scopes. A destination change requires
+a new token. Unrewritten routes retain the previous digest; older tokens issued while
+a URL rewrite was active must be reissued because they did not bind the resolved URL.
+Literal destinations conservatively bind all URL rewrite rules. URL values travel
+only in the configuration digest, never as plaintext token fields.
