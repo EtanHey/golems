@@ -344,7 +344,8 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                 digest = None
                 if sub == 'push' and alias_lookup is configured_alias:
                     # Judge the refspecs git would really use (config push/mirror routes).
-                    tail, digest = git_config.effective_push(tail, repo)
+                    binary = git_config.resolve_git(cwd, word, current.get('PATH'))
+                    tail, digest = git_config.effective_push(tail, repo, binary)
                 pushes = push_operation(tail, repo)
                 for op in pushes:
                     if digest is not None: op['push_config_sha256'] = digest

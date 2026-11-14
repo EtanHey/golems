@@ -3,17 +3,34 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 
-GIT = '/usr/bin/git'
-CONFIG_KEYS = r'^(remote\..*\.(push|mirror|url|pushurl)|remote\.pushdefault|push\.default|branch\..*\.(remote|pushremote|merge))$'
+CONFIG_KEYS = r'^(remote\..*|push\.default|branch\..*\.(remote|pushremote|merge)|core\.sshcommand|ssh\..*|protocol\..*|http\..*|url\..*)$'
 VALUE_OPTIONS = {'--repo', '--receive-pack', '--exec', '--push-option', '-o'}
 FALSE = ('false', 'no', 'off', '0')
 
 
-def read(repo, *args):
-    # Same environment as the shell that will run the push, so the same config is judged.
-    result = subprocess.run([GIT, '-C', repo, *args], capture_output=True, text=True, timeout=1)
+def resolve_git(repo, executable='git', path=None):
+    """Resolve the command's executable using the hook-visible PATH and cwd."""
+    if os.path.basename(executable).casefold() != 'git':
+        raise ValueError('cannot inspect per-subcommand Git configuration')
+    if os.sep in executable:
+        binary = os.path.abspath(os.path.join(repo, executable))
+    else:
+        search = os.pathsep.join(os.path.abspath(os.path.join(repo, part))
+                                 for part in (path if path is not None else os.environ.get('PATH', os.defpath)).split(os.pathsep))
+        binary = shutil.which(executable, path=search)
+    if not binary or not os.path.isfile(binary) or not os.access(binary, os.X_OK):
+        raise ValueError('cannot resolve push Git executable')
+    return binary
+
+
+def read(repo, *args, git_binary=None, missing_remote=False):
+    result = subprocess.run([git_binary or resolve_git(repo), '-C', repo, *args],
+                            capture_output=True, text=True, timeout=1)
+    if missing_remote and result.returncode == 2:
+        return ''  # get-url's documented "no such remote": may be a literal URL/path.
     if result.returncode not in (0, 1):
         raise ValueError('cannot inspect effective push configuration')
     return result.stdout
@@ -28,13 +45,16 @@ def truthy(value):
     return value is None or value.strip().strip('"').strip().lower() not in FALSE
 
 
-def effective_push(args, repo):
+def effective_push(args, repo, executable='git', path=None):
     """Rewrite `git push` argv to the refspecs/flags git would actually use, plus a route digest.
 
     Config-supplied refspecs (remote.<r>.push) and mirror mode apply when the
     command names no refspec, so a configured delete/force becomes explicit."""
+    binary = resolve_git(repo, executable, path)
+    def inspect(*args, **kwargs):
+        return read(repo, *args, git_binary=binary, **kwargs)
     config = {}
-    for item in read(repo, 'config', '--null', '--get-regexp', CONFIG_KEYS).split('\0'):
+    for item in inspect('config', '--null', '--get-regexp', CONFIG_KEYS).split('\0'):
         if item:
             key, sep, value = item.partition('\n')
             if not sep:
@@ -43,7 +63,7 @@ def effective_push(args, repo):
 
     def last(key, default=''):
         return config.get(key, [default])[-1]
-    branch = read(repo, 'symbolic-ref', '--quiet', '--short', 'HEAD').strip()
+    branch = inspect('symbolic-ref', '--quiet', '--short', 'HEAD').strip()
     if last('push.default', 'simple') not in ('nothing', 'current', 'upstream', 'tracking', 'simple', 'matching'):
         raise ValueError('unknown push.default')
     positional, flags, remote, i = [], [], '', 0
@@ -86,24 +106,17 @@ def effective_push(args, repo):
     # Bind authorization to the selected route (URLs included) without copying
     # credential-bearing values into tokens or logs: only a digest travels.
     selected = {key: value for key, value in config.items() if key.startswith(prefix)
-                or key in ('push.default', 'remote.pushdefault') or key.startswith('branch.' + branch + '.')}
-    urls = config.get(prefix + 'pushurl') or config.get(prefix + 'url')
-    if urls:
-        resolved = read(repo, 'remote', 'get-url', '--push', '--all', '--', remote).splitlines()
-        if not resolved:
-            raise ValueError('cannot resolve effective push URLs')
-        # Preserve the old digest for routes without rewriting. Rewrites which
-        # do not affect this push (including pushInsteadOf with a pushurl) also
-        # leave existing tokens valid. Only hashed values travel in tokens.
-        if resolved != urls:
-            selected['effective_push_urls'] = resolved
-    else:
-        # Literal destinations have no remote stanza for get-url to inspect.
-        # Bind all rewrite rules conservatively, including inherited scopes.
-        rewrites = read(repo, 'config', '--null', '--get-regexp',
-                        r'^url\..*\.(insteadof|pushinsteadof)$')
-        if rewrites:
-            selected['url_rewrites'] = rewrites
+                or key in ('push.default', 'remote.pushdefault', 'core.sshcommand')
+                or key.startswith(('branch.' + branch + '.', 'ssh.', 'protocol.', 'http.', 'url.'))}
+    # Ask Git even without a config stanza: legacy remotes/branches files can
+    # resolve a name too. Literal paths/URLs bind rewrite rules above.
+    selected['effective_push_urls'] = inspect('remote', 'get-url', '--push', '--all', '--', remote,
+                                               missing_remote=True).splitlines()
+    selected['git_binary'] = binary
+    selected['environment'] = {key: value for key, value in os.environ.items()
+                               if key.startswith('GIT_CONFIG_') or key in (
+                                   'GIT_CONFIG', 'GIT_SSH', 'GIT_SSH_COMMAND', 'GIT_SSH_VARIANT',
+                                   'GIT_PROXY_COMMAND', 'GIT_EXEC_PATH')}
     digest = hashlib.sha256(json.dumps(selected, sort_keys=True).encode()).hexdigest()
     return flags + [remote, *positional, *refs], digest
 

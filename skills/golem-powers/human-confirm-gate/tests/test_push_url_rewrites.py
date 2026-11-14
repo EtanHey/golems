@@ -43,11 +43,11 @@ class PushURLRewrites(unittest.TestCase):
         self.git('config', 'remote.origin.url', str(self.target))
         self.command = 'git push --delete origin refs/heads/topic'
 
-    def test_legacy_digest_and_unrelated_rewrite_stay_valid(self):
+    def test_wider_digest_expires_legacy_and_binds_all_rewrites(self):
         from git_config import CONFIG_KEYS, read
         self.set_route()
-        # The old algorithm hashed only the selected configuration. It did not
-        # include an unconditional extra field for resolved URLs.
+        # Round 2 deliberately expires older tokens by binding binary/env/URLs.
+        # They live at most 300 seconds; no legacy fallback may reopen scope.
         selected = {}
         for item in read(str(self.repo), 'config', '--null', '--get-regexp', CONFIG_KEYS).split('\0'):
             if item:
@@ -56,9 +56,11 @@ class PushURLRewrites(unittest.TestCase):
         digest = hashlib.sha256(json.dumps(selected, sort_keys=True).encode()).hexdigest()
         path = self.token()
         token = json.loads(path.read_text())
-        self.assertEqual(token['operations'][0]['push_config_sha256'], digest)
-        self.git('config', 'url.' + str(self.other) + '.pushInsteadOf', 'unrelated:')
+        self.assertNotEqual(token['operations'][0]['push_config_sha256'], digest)
         self.assertEqual(self.run_hook()[0], 0)
+        self.token(nonce=uuid.uuid4().hex)
+        self.git('config', 'url.' + str(self.other) + '.pushInsteadOf', 'unrelated:')
+        self.assertEqual(self.run_hook()[0], 2)
 
     def test_multiple_push_urls_and_explicit_pushurl(self):
         self.set_route()
@@ -66,7 +68,8 @@ class PushURLRewrites(unittest.TestCase):
         self.token()
         # Git ignores pushInsteadOf when an explicit pushurl is configured.
         self.git('config', 'url.' + str(self.other) + '.pushInsteadOf', str(self.target))
-        self.assertEqual(self.run_hook()[0], 0)
+        self.assertEqual(self.git('remote', 'get-url', '--push', 'origin'), str(self.target))
+        self.assertEqual(self.run_hook()[0], 2)
         self.token(nonce='b' * 32)
         self.git('config', '--add', 'remote.origin.pushurl', str(self.other))
         self.assertEqual(self.run_hook()[0], 2)
