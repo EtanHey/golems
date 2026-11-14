@@ -51,6 +51,15 @@ entire `remote.<name>.*` section, branch/push selection, `core.sshCommand`, `ssh
 that executable and the hook-visible environment, including inherited scopes and
 includes. The digest also binds hook-visible `GIT_SSH`, `GIT_SSH_COMMAND`,
 `GIT_SSH_VARIANT`, `GIT_PROXY_COMMAND`, `GIT_CONFIG`/`GIT_CONFIG_*`, and `GIT_EXEC_PATH`.
+Command-local `XDG_CONFIG_HOME`, `GIT_EXEC_PATH`, `PATH`, `GIT_SSH*` and
+`GIT_PROXY_COMMAND` assignments are used to classify a push, but a destructive
+push with any such assignment is refused even with a token. This covers direct
+prefixes, `env VAR=value git ...` and `export VAR=value; git ...`. Literal plain
+pushes remain allowed; unresolved scope fails closed. Existing `HOME`, `GIT_DIR`,
+`GIT_WORK_TREE` and `GIT_CONFIG*` prefix refusals remain unchanged (including
+`GIT_CONFIG_NOSYSTEM`). `GIT_ASKPASS` is outside this scope because it supplies
+credentials rather than choosing configuration, Git executables or transport.
+
 Only the digest travels in tokens. This wider binding invalidates older tokens;
 tokens live at most 300 seconds, so reissue costs at most five minutes of approvals.
 

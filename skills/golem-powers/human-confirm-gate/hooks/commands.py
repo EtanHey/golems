@@ -135,6 +135,30 @@ def assigned_bindings(tokens, positions, limit, initial, scopes, target=()):
     return values
 
 
+# These command-local changes are invisible to the hook's inherited environment.
+# GIT_ASKPASS only supplies credentials; it does not select config, Git or transport.
+def git_scope_variable(name):
+    return (name.startswith(('GIT_CONFIG', 'GIT_SSH')) or name in (
+        'XDG_CONFIG_HOME', 'HOME', 'GIT_DIR', 'GIT_WORK_TREE',
+        'GIT_EXEC_PATH', 'PATH', 'GIT_PROXY_COMMAND'))
+
+
+def git_scope_environment(tokens, positions, current):
+    names = {t.split('=', 1)[0] for j, t in enumerate(tokens)
+             if positions[j] and shell._ASSIGNMENT_RE.match(t)
+             and git_scope_variable(t.split('=', 1)[0])}
+    names.update(name for name in current if git_scope_variable(name))
+    if not names:
+        return None
+    environment = dict(os.environ)
+    for name in names:
+        value = current.get(name)
+        if value is None or syntax.unresolved(value, Path.home()):
+            raise ValueError('unresolved Git environment scope')
+        environment[name] = value
+    return environment
+
+
 GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry cherry-pick clean clone commit config describe diff difftool fetch for-each-ref gc grep help init log ls-files ls-remote ls-tree merge mergetool mv notes pull push range-diff rebase reflog remote reset restore revert rev-list rev-parse rm show show-ref sparse-checkout stash status submodule switch tag update-index update-ref version worktree"
                    # Local-only git commands: an alias never shadows a git command.
                    " annotate apply bugreport bundle check-attr check-ignore check-mailmap check-ref-format"
@@ -332,7 +356,12 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                 raise ValueError('uncertain repository/config scope for protected operation')
             if relevant and any(prefix.startswith(('GIT_CONFIG', 'GIT_DIR=', 'GIT_WORK_TREE=', 'HOME=')) for prefix in tokens[:i]):
                 raise ValueError('Git environment changes obscure repository/config scope')
+            scope_environment = git_scope_environment(tokens[:i], positions[:i], current) if relevant else None
+            if scope_environment is not None and sub not in ('push', 'send-pack'):
+                raise ValueError('Git environment changes obscure protected operation')
             alias = aliases.get(sub.lower())
+            if scope_environment is not None and alias:
+                raise ValueError('Git environment changes obscure alias scope')
             if sub == 'push' or sub not in GIT_BUILTINS:
                 alias = alias or alias_lookup(repo, sub.lower())
             if alias:
@@ -351,8 +380,8 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                     if git_config.find_executable(cwd, word, inspect_path):
                         # Found commands must classify with their actual provider.
                         # Any lookup/config inspection error propagates as refusal.
-                        binary = git_config.resolve_git(cwd, word, inspect_path)
-                        tail, _ = git_config.effective_push(original, repo, binary, inspect_path, bind=False)
+                        binary = git_config.resolve_git(cwd, word, inspect_path, environment=scope_environment)
+                        tail, _ = git_config.effective_push(original, repo, binary, inspect_path, bind=False, environment=scope_environment)
                     else:
                         # Nothing will execute. Preserve the existing plain-command
                         # control, and configured destructive classification when
@@ -360,12 +389,14 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                         inspector = git_config.find_executable(cwd, 'git', inspect_path)
                         if inspector:
                             try:
-                                tail, _ = git_config.effective_push(original, repo, inspector, inspect_path, bind=False)
+                                tail, _ = git_config.effective_push(original, repo, inspector, inspect_path, bind=False, environment=scope_environment)
                             except (OSError, ValueError, subprocess.SubprocessError):
                                 pass
                 pushes = push_operation(tail, repo)
+                if (pushes or rewrite) and scope_environment is not None:
+                    raise ValueError('Git environment changes obscure protected operation')
                 if (pushes or rewrite) and alias_lookup is configured_alias:
-                    binary = binary or git_config.resolve_git(cwd, word, inspect_path)
+                    binary = binary or git_config.resolve_git(cwd, word, inspect_path, environment=scope_environment)
                     bound, digest = git_config.effective_push(original, repo, binary, inspect_path)
                     if sub == 'push':
                         pushes = push_operation(bound, repo)
