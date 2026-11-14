@@ -7,7 +7,7 @@ description: "Research corpus: stale context, R-number, research docs link (Goog
 
 > Anti-pattern: R75 says "FTS5 is 96.9% desynced" — but it's been fixed for days. Without lifecycle management, R76 starts from wrong assumptions.
 
-Research context files live at `docs.local/claude-web/projects/<project>/`. After a sprint implements research findings, these files go STALE. The local corpus is the source; Google Drive is the grounding corpus Gemini reads. This skill refreshes both so the next research round starts from truth, not assumptions.
+Research context files live at `docs.local/claude-web/projects/<project>/`. After a sprint implements research findings, these files go STALE. The local corpus is the source; Google Drive keeps the grounding provenance corpus; Deep Research receives prepared files directly by default, with Drive source off. This skill refreshes both so the next research round starts from truth, not assumptions.
 
 ---
 
@@ -199,7 +199,7 @@ mv docs.local/claude-web/projects/brainlayer/R38-knowledge-graph.md \
 
 ## STEP 5: MIRRORED — Drive AND NotebookLM
 
-The local corpus is the source to push. Drive is where Gemini grounds, so the Drive refresh is blocking; NotebookLM mirroring is conditional on a project notebook existing.
+The local corpus is the source to push. Drive retains the provenance mirror, so the Drive refresh is blocking; NotebookLM mirroring is conditional on a project notebook existing.
 
 1. **Prove Drive auth and account identity with real calls.** `"MCP connected"` is NOT evidence of Drive auth. Call `authGetStatus`; continue only when the real call succeeds and returns authed. Tool discovery or a connected-tool count does not pass this gate. Then verify the active account before any upload, replacement, or deletion:
    ```bash
@@ -241,15 +241,24 @@ The local corpus is the source to push. Drive is where Gemini grounds, so the Dr
 
 ## CURATED GROUNDING FOLDER — one per research
 
-Prepare a bounded Drive folder `R{NN}-grounding/` holding only the curated documents the research needs, with a manifest (what and why, sha256, `manifest_sha256`); contract in `/drive-filing` § Research grounding folder contract. The preparation receipt names the folder and manifest. Admission stop, plan sentence and provenance fields: `/gemini-research` § Curated grounding set. After harvest, archive or consolidate the folder per the contract; the harvest record carries model, settings, prompt hash and manifest hash.
+Prepare a bounded Drive folder `R{NN}-grounding/` holding only the curated documents the research needs, with a manifest (what and why, sha256, `manifest_sha256`); contract in `/drive-filing` § Research grounding folder contract. The preparation receipt names the folder and manifest and the exact files prepared
+for attachment to the run (Drive source off). The folder is a provenance record,
+not a Deep Research access route. Its connected Drive workspace offers title SEARCH
+only, with no folder listing or opening Docs by link; native Google Docs do not
+fix this. If Drive is explicitly used, every title must be unique across the whole
+Drive with no look-alikes or duplicates, and the prompt names each exact title.
+Expect search to miss documents. Before the real run, run one cheap Deep Research
+probe asking only for each named document's first line, compare all lines against
+the author key, and block on any missing or mismatched line. Probe both source
+routes; keep the real admission table and private key unchanged. Admission stop, plan sentence and provenance fields: `/gemini-research` § Curated grounding set. After harvest, archive or consolidate the folder per the contract; the harvest record carries model, settings, prompt hash and manifest hash.
 
 ## GEMINI RESEARCH PROMPT PREFLIGHT — BLOCKING
 
 Prepare the next prompt with [/gemini-research's template](../gemini-research/references/prompt-template.md) and its structural pre-fire gate.
 
-Before emitting any Gemini research prompt, require exactly one `# Grounding` block. That block must contain either a Drive document referenced by name or the exact line `None — web-only research`. Never instruct Etan to attach or upload Drive documents; his connected Drive workspace pulls named documents itself.
+Before emitting any Gemini research prompt, require exactly one `# Grounding` block. That block must name each file supplied with the run (default: files attached during preparation, Drive source off), or each exact unique title for the optional probed Drive route, or carry the exact line `None — web-only research`. Agents supply files before dispatch; researcher text must not ask Etan to collect them.
 
-Run the executable gate against the prompt file. It checks the block structure and invokes the shared no-attach gate:
+Run the executable gate against the prompt file. It checks the block structure and invokes the legacy shared no-attach gate for file-collection instructions. It does not verify attachment delivery, title uniqueness or the probe receipt:
 
 ```bash
 PROMPT=/path/to/R{NN}-prompt.md

@@ -133,10 +133,19 @@ add a destructive home-wide reaper.
 
 ## Research grounding folder contract
 
-One folder per research holds only the curated documents that research needs, so the researcher reads a bounded set and not the whole project folder. Agents prepare it; Etan never attaches anything.
+One folder per research holds only the curated documents that research needs as a
+provenance record. Agents prepare and attach those files to the Deep Research run
+with Drive source off by default. A folder is not a Deep Research access route:
+its connected Drive workspace provides title SEARCH only, not folder listing or
+opening Docs by link. Native Google Docs do not solve this limitation. If Drive
+is explicitly used, name each document by its exact title, unique across the whole
+Drive with no duplicate or look-alike titles; expect search to miss documents.
+Before the real run, one cheap Deep Research probe asks only for each named
+file's first line, checked against the author key. Missing or mismatched lines
+block the real run; retain the admission table/key for the real run too.
 
 - **Where:** `Brain Drive/03_RESEARCH/Active/<topic>/R{NN}-grounding/` (via `${BRAIN_DRIVE_RESEARCH_ACTIVE_FOLDER_ID}`), beside that research's prompt and results.
-- **Name:** `R{NN}-grounding` for the folder; files keep their `/research-lifecycle` context numbers. No duplicate document titles inside it (a duplicate makes "name the document" ambiguous).
+- **Name:** `R{NN}-grounding` for the folder; files keep their `/research-lifecycle` context numbers. For the optional Drive route, titles must be unique across the whole Drive, not only inside this folder (include project, research number and topic to disambiguate).
 - **Manifest:** `00-GROUNDING-MANIFEST.md` in the folder: one row per file with `title | why it is here | drive_file_id | revision_id`. Native Google Docs have no stable bytes, so identity is the Drive file id plus revision id, never a byte hash. Serialize each row as exactly `title|drive_file_id|revision_id` (the why stays out of the hash), UTF-8, LF line ends, rows sorted by `drive_file_id`; `manifest_sha256` is the sha256 of those lines joined by LF. The prompt names exactly the manifest's files and says to use ONLY them.
 - **After harvest:** the folder is the research's record. Keep it as that record, or consolidate lasting findings into the topic's `context/` files per `/research-lifecycle`, so Drive stays in good context. Either way the folder link, the manifest and `manifest_sha256` stay in the harvest record so provenance keeps its identity. Archiving the folder (§ Archive a heavy artifact) is optional, not required.
 
