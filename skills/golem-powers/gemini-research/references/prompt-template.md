@@ -2,8 +2,15 @@
 <Question and decision to inform; keeping the current approach is an allowed outcome.>
 
 # Grounding
-Use ONLY the documents named below, all in this research's own curated folder <Drive R{NN}-grounding folder>, for project facts. Do not read the shared project corpus.
-Pull these documents via the connected Drive workspace; never ask for attachments.
+Files supplied with this run; Drive source off. Use ONLY the documents named below
+for project facts. Do not read the shared project corpus.
+Optional Drive route (only when explicitly selected instead of supplied files):
+search for each document by its exact title, unique across the whole Drive with no
+look-alike or duplicate titles. Do not use folder names or links as access routes;
+search may miss documents. Before the real run, a separate cheap Deep Research
+probe must return only each named document's first line, checked against the
+author key. Missing or mismatched lines block the real run. This probe does not
+replace the admission check below.
 - "<Verified findings + struck claims document title>"
 - "<Current project facts document title>"
 Verified findings + struck claims: "<Verified findings + struck claims document title>"

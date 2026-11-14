@@ -1,14 +1,14 @@
 {
   "skill": "gemini-research",
-  "version": "1.0.0",
-  "eval_date": "2026-06-09",
-  "description": "Drive-Workspace-rule compliance: a generated/improved Gemini deep-research prompt must REFERENCE Drive doc(s) by NAME and NEVER instruct Etan to attach/upload/drag files. Mechanically scored by _shared/research/drive-grounding-gate.sh.",
+  "version": "1.1.0",
+  "eval_date": "2026-11-14",
+  "description": "Attach-first grounding with Drive source off. Optional Drive grounding uses exact globally unique titles and a first-line Deep Research probe checked against the author key before a real run.",
   "scoring": {
     "compliance_weight": 0.7,
     "structure_weight": 0.2,
     "quality_weight": 0.1
   },
-  "mechanical_scorer": "skills/golem-powers/_shared/research/drive-grounding-gate.sh",
+  "mechanical_scorer": "skills/golem-powers/gemini-research/scripts/__tests__/prompt-preflight.test.mjs",
   "with_skill_vs_without_skill": {
     "strongest_discriminators": [
       "DW01",
@@ -18,31 +18,31 @@
   "cases": [
     {
       "id": "DW01",
-      "name": "produce-prompt-no-attach",
+      "name": "produce-prompt-attach-first",
       "category": "compliance",
       "prompt": "Write me a Gemini Deep Research prompt that investigates how to improve BrainLayer's hybrid search ranking. Ground it in my BrainLayer architecture notes, which live in my Google Drive.",
-      "expected_behavior": "Emits a deep-research prompt with a Grounding block that REFERENCES the Drive doc(s) by NAME (so Gemini's connected Drive workspace pulls them). It does NOT tell Etan to attach, upload, or drag any file.",
+      "expected_behavior": "Agents prepare ONE folder holding exactly the curated grounding files with unique names; the hand-off names that folder and its files to attach, and the owner attaches them when he starts the run with Drive source off. The emitted prompt names each supplied file. A cheap first-line Deep Research probe must match the author key before the real run; preserve its admission table/key.",
       "assertions": [
-        "Prompt references the grounding doc(s) by name (quotes/names a Drive Doc title)",
-        "Prompt contains NO instruction to attach a file or folder",
-        "Prompt contains NO instruction to upload a file",
-        "Prompt contains NO instruction to drag/drop a file",
-        "drive-grounding-gate.sh PASSES (exit 0) on the emitted prompt"
+        "Agents collect exactly the curated files with unique names into ONE prepared folder; the hand-off names the folder/files, and the owner attaches them when starting the run with Drive source off",
+        "Emitted researcher text names each supplied file and passes prompt-preflight.mjs --emit",
+        "Probe first lines match the author key before the real prompt fires"
       ],
-      "discriminating_power": "high — a baseline agent with no skill defaults to 'attach your architecture doc' or 'upload the file as context'"
+      "discriminating_power": "Regression: old template required connected-Drive retrieval and prohibited attachments.",
+      "measurement_status": "Structural regression tested; no live agent behavior measurement in this change"
     },
     {
       "id": "DW02",
-      "name": "improve-attach-prompt-to-reference",
+      "name": "improve-prompt-to-prepared-files",
       "category": "compliance",
       "prompt": "Improve this Gemini research prompt so it's ready to paste:\n\n# Goal\nCompare sqlite-vec vs pgvector for our scale.\n\n# Context\nAttach the 'Vector Store Benchmarks' doc and upload our schema file so Gemini has the numbers.",
-      "expected_behavior": "Rewrites the grounding so the prompt REFERENCES 'Vector Store Benchmarks' (and the schema) by NAME via the connected Drive workspace, stripping the attach/upload instructions entirely.",
+      "expected_behavior": "Prepares ONE folder holding exactly the named benchmark and schema files with unique names, names that folder and the files to attach in the hand-off, and the owner attaches the prepared set when starting the run with Drive off; emits researcher text naming those files after a first-line probe passes the author key.",
       "assertions": [
-        "Rewritten prompt references 'Vector Store Benchmarks' by name in a grounding block",
-        "The words 'attach' and 'upload' are removed from the grounding/instructions",
-        "drive-grounding-gate.sh PASSES (exit 0) on the rewritten prompt"
+        "Preserves exact file names and uses supplied-file grounding",
+        "Does not imply Drive can open a folder or link",
+        "Keeps author-only answers out of the emitted researcher prompt"
       ],
-      "discriminating_power": "high — baseline agent tends to keep or lightly reword the attach/upload language rather than recognizing the connected-Drive pattern"
+      "discriminating_power": "Regression: old rule replaced file delivery with unverified Drive retrieval.",
+      "measurement_status": "Structural regression tested; no live agent behavior measurement in this change"
     },
     {
       "id": "GP01",
@@ -63,10 +63,10 @@
       "name": "web-only-completes-without-prep",
       "category": "compliance",
       "prompt": "Draft a Gemini Deep Research prompt about medieval navigation. Pure web research; no project state or Drive documents.",
-      "expected_behavior": "Takes the web-only branch: no /research-lifecycle dispatch, and the prompt's # Grounding block reads the exact 'None — web-only research' line and a separate 'Reason: <reason>' line, which replaces the receipt; the Drive-grounding and START/EDIT gates still run, and the prompt is emitted.",
+      "expected_behavior": "Takes the web-only branch: no /research-lifecycle dispatch, and the prompt's # Grounding block reads the exact 'None \u2014 web-only research' line and a separate 'Reason: <reason>' line, which replaces the receipt; the Drive-grounding and START/EDIT gates still run, and the prompt is emitted.",
       "assertions": [
         "No /research-lifecycle preparation is dispatched or loaded",
-        "The # Grounding block carries the exact 'None — web-only research' line and a separate reason",
+        "The # Grounding block carries the exact 'None \u2014 web-only research' line and a separate reason",
         "The prompt is emitted (the done condition is satisfiable)",
         "drive-grounding-gate.sh PASSES on the emitted prompt"
       ],
@@ -137,6 +137,19 @@
         "Does not force the request into a Gemini text-only report"
       ],
       "measurement_status": "Planned; no paid live calls authorized"
+    },
+    {
+      "id": "DS01",
+      "name": "optional-drive-title-search-probe",
+      "category": "compliance",
+      "prompt": "Use Drive for Deep Research grounding; the folder has two look-alike document titles. Start the full run now.",
+      "expected_behavior": "Blocks the full run, establishes exact titles unique across the whole Drive, and runs a cheap Deep Research probe asking only for each first line. Missing or mismatched lines fail against the author key; search may miss documents. Folder/link access and native-Docs conversion are not fixes.",
+      "assertions": [
+        "No full run before every first line matches the author key",
+        "Exact globally unique titles, never folder or link access",
+        "Admission table and author-held key remain required in the real run"
+      ],
+      "measurement_status": "Planned; no live agent behavior measurement in this change"
     }
   ],
   "structural_scorer": "skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs"
