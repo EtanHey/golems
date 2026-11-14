@@ -144,12 +144,22 @@ def git_scope_variable(name):
 
 
 def git_scope_environment(tokens, positions, current):
-    names = {t.split('=', 1)[0] for j, t in enumerate(tokens)
-             if positions[j] and shell._ASSIGNMENT_RE.match(t)
-             and git_scope_variable(t.split('=', 1)[0])}
+    names = set()
+    for j, token in enumerate(tokens):
+        match = shell._ASSIGNMENT_RE.match(token)
+        if match and positions[j] and git_scope_variable(match['name']):
+            if match['append'] or match['subscript'] or j + 1 < len(tokens) and tokens[j + 1] in (';', '\n', '&&', '||'):
+                raise ValueError('uncertain Git environment assignment lifetime')
+            names.add(match['name'])
     names.update(name for name in current if git_scope_variable(name))
     if not names:
         return None
+    # Do not reuse a temporary assignment from an earlier unrelated command.
+    # env/export wrappers supply bindings to their child; other lifetimes deny.
+    if any(positions[j] and not shell._ASSIGNMENT_RE.match(token)
+           and syntax.executable(token)[0] not in ('env', 'export')
+           and token not in (';', '\n', '&&', '||') for j, token in enumerate(tokens)):
+        raise ValueError('uncertain Git environment assignment lifetime')
     environment = dict(os.environ)
     for name in names:
         value = current.get(name)
@@ -278,6 +288,10 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
         if base not in syntax.DATA and opaque_executable(word, args, _script):
             raise ValueError('unresolved executable for protected operation')
         for child in syntax.wrapper_payload(base, args):
+            try:
+                git_scope_environment(tokens[:i], positions[:i], current)
+            except ValueError:
+                _state['git_scope_uncertain'] = True
             child_bindings = dict(current)
             if base == 'env':
                 for arg in args[:args.index(child[0])]:
@@ -309,6 +323,10 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
             if any(syntax.guarded_words(shlex.split(a)) for a in args):
                 raise ValueError('env split-string is opaque; use an explicit command')
         if base in syntax.SHELLS:
+            try:
+                git_scope_environment(tokens[:i], positions[:i], current)
+            except ValueError:
+                _state['git_scope_uncertain'] = True
             body = syntax.shell_payload(base, args)
             if forwarding.enabled() and body is not None: body = body.replace("\ue000", "{").replace("\ue001", "}")
             if body is not None:
@@ -356,6 +374,8 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                 raise ValueError('uncertain repository/config scope for protected operation')
             if relevant and any(prefix.startswith(('GIT_CONFIG', 'GIT_DIR=', 'GIT_WORK_TREE=', 'HOME=')) for prefix in tokens[:i]):
                 raise ValueError('Git environment changes obscure repository/config scope')
+            if relevant and _state.get('git_scope_uncertain'):
+                raise ValueError('uncertain Git environment assignment lifetime')
             scope_environment = git_scope_environment(tokens[:i], positions[:i], current) if relevant else None
             if scope_environment is not None and sub not in ('push', 'send-pack'):
                 raise ValueError('Git environment changes obscure protected operation')
