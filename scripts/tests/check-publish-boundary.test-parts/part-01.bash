@@ -698,8 +698,8 @@ setup_policy_pattern_weakening() {
 
 setup_clean_push_only_versions() {
   mkdir -p "$1/formal"
-  printf 'Running on Homebrew %s (Mac OS X 26.1 aarch64)\n' '27.0.1.0.3' > "$1/formal/run.log"
+  printf '(Mac OS X 26.1 aarch64, Homebrew %s 64bit, MSBDiskFPSet, DiskStateQueue)\n' '28.1.2.3.4' > "$1/formal/run.log"
   # Tree/history intentionally ignores push-only IPv4 rules. The Node suite
-  # exercises both these versions and must-refuse four-part addresses.
+  # exercises the runtime allowance and must-refuse dotted addresses.
   printf 'version %s\n' '10.0.0.1.2' >> "$1/formal/run.log"
 }

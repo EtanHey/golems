@@ -183,8 +183,6 @@ try {
               }
               return '';
             });
-            // Policy bounds plain dotted versions to exactly four parts, while
-            // semver suffixes retain the original overlapping-run protection.
             if (rule.patterns.some(re => { re.lastIndex = 0; return re.test(text); })) throw new Error(`publication violation (${name}); content withheld`);
           }
         }

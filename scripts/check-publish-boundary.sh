@@ -184,7 +184,7 @@ extract_policy() {
       list_kind = ""
       next
     }
-    # push_patterns (including exact-four-part IPv4) belong to the added-line
+    # push_patterns (including the TLC JVM allowance) belong to the added-line
     # pre-push scanner; they do not enter this tree/history fingerprint.
     section == "forbidden_classes" || section == "private_markers" {
       if ($0 ~ /^  [a-z0-9_-]+:/) {
