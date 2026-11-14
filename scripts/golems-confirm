@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Owner-only capability issuer; signs via a public key and SSH agent, never op."""
+"""Human capability issuer; owner terminal or single-use approval plus native Touch ID."""
 import argparse
 import hashlib
 import json
@@ -44,22 +44,48 @@ def sign(argv, **kwargs):
     return subprocess.run(argv, **kwargs)
 
 
+def human_presence(value):
+    """Only test code replaces this seam; CLI has no bypass or alternative signer."""
+    if sys.platform != 'darwin':
+        raise ValueError('human presence requires macOS Touch ID')
+    print('Presence mechanism: LocalAuthentication Touch ID (no credential fallback)', flush=True)
+    reason = (f"Delete branch {value['ref'].removeprefix('refs/heads/')} on {value['repo_remote']}? "
+              f"Command: {value['command']}. Receipt from {value['asked_by']} at {value['created_at']}.")
+    helper = Path(__file__).with_name('golems-confirm-presence.swift')
+    try:
+        return subprocess.run(['/usr/bin/xcrun', 'swift', str(helper), reason],
+                              stdin=subprocess.DEVNULL, timeout=90).returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+
+
 def issue(argv=None, *, home=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('repo'); parser.add_argument('ref')
-    parser.add_argument('action', choices=['force', 'lease', 'delete', 'rewrite', 'settings'])
+    parser.add_argument('repo', nargs='?'); parser.add_argument('ref', nargs='?')
+    parser.add_argument('--approval')
+    parser.add_argument('action', nargs='?', choices=['force', 'lease', 'delete', 'rewrite', 'settings'])
     parser.add_argument('--sha'); parser.add_argument('--session', required=True)
     parser.add_argument('--remote', default='origin'); parser.add_argument('--command')
     parser.add_argument('--key', type=Path)
     parser.add_argument('--ttl', type=int, default=120)
     args = parser.parse_args(argv)
+    if args.approval:
+        import approvals
+        if any((args.repo, args.ref, args.action, args.sha)) or args.remote != 'origin' or args.command is None:
+            raise ValueError('approval mode requires --command and no positional scope overrides')
+        if not args.session or not 1 <= args.ttl <= 300:
+            raise ValueError('session and TTL 1..300 required')
+        home = Path(home or Path.home()).absolute(); repo = str(Path.cwd().resolve())
+        key = args.key or home / '.config/golems/human-confirm.pub'
+        with approvals.carry(home, args.approval, repo, args.command, human_presence) as (ops, expires):
+            return mint(args, home, repo, key, args.command, ops, expires=expires)
     owner_terminal()
+    if not all((args.repo, args.ref, args.action)):
+        raise ValueError('repo, ref and action required in owner-terminal mode')
     home = Path(home or Path.home()).resolve(); repo = str(Path(args.repo).resolve())
     if not Path(repo).is_dir() or not 1 <= args.ttl <= 300:
         raise ValueError('existing repo directory and TTL 1..300 required')
     key = args.key or home / '.config/golems/human-confirm.pub'
-    if not re.match(r'^(?:ssh-|ecdsa-|sk-)[^\s]+ [A-Za-z0-9+/=]+', key.read_text()):
-        raise ValueError('use a public key file backed by the owner SSH agent')
     ref = args.ref
     if args.action in ('force', 'lease', 'delete') and not ref.startswith('refs/'):
         ref = 'refs/heads/' + ref
@@ -86,10 +112,16 @@ def issue(argv=None, *, home=None):
         return op.get('ref') == ref or any(matched)
     if not ops or any(op['class'] != args.action or not matches(op) for op in ops):
         raise ValueError('command does not match requested ref/action scope')
+    return mint(args, home, repo, key, command, ops)
+
+
+def mint(args, home, repo, key, command, ops, *, expires=float("inf")):
+    if not re.match(r'^(?:ssh-|ecdsa-|sk-)[^\s]+ [A-Za-z0-9+/=]+', key.read_text()):
+        raise ValueError('use a public key file backed by the owner SSH agent')
     root = home / '.config/golems/human-confirm'; root.mkdir(parents=True, mode=0o700, exist_ok=True)
     anchor = anchor_bytes(home)
     now = time.time(); nonce = uuid.uuid4().hex
-    token = dict(version=1, kind='human', nonce=nonce, issued_at=now, expires_at=now + args.ttl,
+    token = dict(version=1, kind='human', nonce=nonce, issued_at=now, expires_at=min(now + args.ttl, expires),
                  command_sha256=hashlib.sha256((repo + '\0' + command).encode()).hexdigest(),
                  operations=ops, session_id=args.session)
     path = root / (nonce + '.json')
