@@ -339,13 +339,39 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                 body = alias[1:] if alias.startswith('!') else 'git ' + alias
                 result += operations(body + ' ' + shlex.join(tail), repo, alias_lookup, depth + 1, current, _state, rejoined=True)
             elif sub in ('push', 'send-pack'):
+                original = tail
+                rewrite = None
                 if any('refs/replace/' in a for a in tail):
-                    result.append(dict(class_='rewrite', repo=repo, refs=tail))
+                    rewrite = dict(class_='rewrite', repo=repo, refs=tail)
                 digest = None
+                binary = None
+                inspect_path = os.pathsep.join(os.path.abspath(os.path.join(cwd, part)) for part in
+                                               current.get('PATH', os.environ.get('PATH', os.defpath)).split(os.pathsep))
                 if sub == 'push' and alias_lookup is configured_alias:
-                    # Judge the refspecs git would really use (config push/mirror routes).
-                    tail, digest = git_config.effective_push(tail, repo)
+                    if git_config.find_executable(cwd, word, inspect_path):
+                        # Found commands must classify with their actual provider.
+                        # Any lookup/config inspection error propagates as refusal.
+                        binary = git_config.resolve_git(cwd, word, inspect_path)
+                        tail, _ = git_config.effective_push(original, repo, binary, inspect_path, bind=False)
+                    else:
+                        # Nothing will execute. Preserve the existing plain-command
+                        # control, and configured destructive classification when
+                        # the shell's Git can inspect it; never bind a token here.
+                        inspector = git_config.find_executable(cwd, 'git', inspect_path)
+                        if inspector:
+                            try:
+                                tail, _ = git_config.effective_push(original, repo, inspector, inspect_path, bind=False)
+                            except (OSError, ValueError, subprocess.SubprocessError):
+                                pass
                 pushes = push_operation(tail, repo)
+                if (pushes or rewrite) and alias_lookup is configured_alias:
+                    binary = binary or git_config.resolve_git(cwd, word, inspect_path)
+                    bound, digest = git_config.effective_push(original, repo, binary, inspect_path)
+                    if sub == 'push':
+                        pushes = push_operation(bound, repo)
+                if rewrite:
+                    if digest is not None: rewrite['push_config_sha256'] = digest
+                    result.append(rewrite)
                 for op in pushes:
                     if digest is not None: op['push_config_sha256'] = digest
                 result += pushes

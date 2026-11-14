@@ -22,7 +22,7 @@ symlink_rule: 'tracked-symlinks-must-resolve-inside-repository'
 forbidden_classes:
   real-identifiers:
     patterns:
-      - '((project[ _-]?(id|ref)?|supabase[ _-]?project)[^[:cntrl:]]{0,40}[:=][^[:cntrl:]]{0,8}[a-z0-9]{20}([^a-z0-9=]|$)|supabase[^[:cntrl:]]{0,40}[^a-z0-9][a-z0-9]{20}([^a-z0-9=]|$)|[a-z0-9]{20}[.]supabase[.]co|postgres[.:][a-z0-9]{20}([^a-z0-9]|$)|supabase[.]com/dashboard/project/[a-z0-9]{20})'
+      - '((project[ _-]?(id|ref)?|supabase[ _-]?project)[^[:cntrl:]]{0,40}[:=][^[:alnum:][:cntrl:]]{0,8}[a-z0-9]{20}([^a-z0-9=]|$)|supabase[^[:cntrl:]]{0,40}[^a-z0-9][a-z0-9]{20}([^a-z0-9=]|$)|[a-z0-9]{20}[.]supabase[.]co|postgres[.:][a-z0-9]{20}([^a-z0-9]|$)|supabase[.]com/dashboard/project/[a-z0-9]{20})'
       - 'https://(docs[.]google[.]com/(document/d|spreadsheets/d|presentation/d|forms/d|drawings/d)|drive[.]google[.]com/(file/d|drive/folders))/[[:alnum:]_-]{20,}'
       - 'https://drive[.]google[.]com/open[?]id=[[:alnum:]_-]{20,}'
       - '[a-z0-9-]+[.][a-z0-9-]+[.]ts[.]net'
@@ -111,3 +111,13 @@ push_patterns:
       - '([0-9]{1,3}[.]){3}[0-9]{1,3}'
     allowed_patterns:
       - '(^|[^0-9.])(127[.]0[.]0[.]1|192[.]0[.]2[.][0-9]{1,3}|198[.]51[.]100[.][0-9]{1,3}|203[.]0[.]113[.][0-9]{1,3})([^0-9.]|$)'
+      # TLC JVM runtime slot: vendor, five-or-more numeric parts, runtime token.
+      # TLC prints 64bit here; OS architecture is a separate preceding field.
+      - '(^|[^[:alnum:]_.+-])(Homebrew|Oracle Corporation|Eclipse Adoptium|Azul Systems|Amazon[.]com Inc[.]|Temurin|GraalVM) ([0-9]+[.]){4,}[0-9]+ (aarch64|x86_64|amd64|64bit)([^[:alnum:]_.+-]|$)'
+      # TLC's other run header requires its literal prefix and revision suffix.
+      - '(^|[^[:alnum:]_])TLC2 Version ([0-9]+[.])+[0-9]+ [(]rev: [a-f0-9]{7,40}[)]'
+    # These candidates require an IPv4 safety check before exemption.
+    # Every overlapping dotted run must have an octet >255 and start after
+    # a letter-bearing prefix; valid IPv4 addresses are never exempt versions.
+    allowed_versions:
+      - '(^|[^[:alnum:]_.+-])[0-9]+[.][0-9]+[.][0-9]+(-[[:alnum:]-]+([.][[:alnum:]-]+)*)?[+][[:alnum:]-]+([.][[:alnum:]-]+)*([^[:alnum:]_.+-]|$)'
