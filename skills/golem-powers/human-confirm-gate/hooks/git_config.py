@@ -22,7 +22,7 @@ def find_executable(repo, executable, path=None):
     return binary if binary and os.path.isfile(binary) and os.access(binary, os.X_OK) else None
 
 
-def resolve_git(repo, executable='git', path=None):
+def resolve_git(repo, executable='git', path=None, environment=None):
     """Resolve Git, or the verified Git provider of a dashed command."""
     search_dirs = [os.path.abspath(os.path.join(repo, part)) for part in
                    (path if path is not None else os.environ.get('PATH', os.defpath)).split(os.pathsep)]
@@ -40,7 +40,7 @@ def resolve_git(repo, executable='git', path=None):
             if not os.path.isfile(provider) or not os.access(provider, os.X_OK):
                 continue
             result = subprocess.run([provider, '--exec-path'], capture_output=True, text=True,
-                                    cwd=repo, timeout=1, env=dict(os.environ, PATH=search))
+                                    cwd=repo, timeout=1, env=dict(os.environ if environment is None else environment, PATH=search))
             exec_path = result.stdout.strip()
             if result.returncode or not os.path.isabs(exec_path) or '\n' in exec_path:
                 continue
@@ -58,10 +58,10 @@ def resolve_git(repo, executable='git', path=None):
     return binary
 
 
-def read(repo, *args, git_binary=None, missing_remote=False, path=None):
+def read(repo, *args, git_binary=None, missing_remote=False, path=None, environment=None):
     result = subprocess.run([git_binary or resolve_git(repo), '-C', repo, *args],
                             capture_output=True, text=True, timeout=1,
-                            env=None if path is None else dict(os.environ, PATH=path))
+                            env=(environment if path is None else dict(os.environ if environment is None else environment, PATH=path)))
     if missing_remote and result.returncode == 2:
         return ''  # get-url's documented "no such remote": may be a literal URL/path.
     if result.returncode not in (0, 1):
@@ -78,7 +78,27 @@ def truthy(value):
     return value is None or value.strip().strip('"').strip().lower() not in FALSE
 
 
-def effective_push(args, repo, executable='git', path=None, bind=True):
+def has_refspec(args):
+    """Does push argv explicitly supply refs, after option operands and remote?"""
+    positional, remote, i = [], False, 0
+    while i < len(args):
+        word = args[i]
+        if word == '--':
+            positional.extend(args[i + 1:]); break
+        if word in VALUE_OPTIONS:
+            remote |= word == '--repo'
+            i += 2; continue
+        if word.startswith('--repo='):
+            remote = True
+        elif re.fullmatch(r'-[A-Za-z]+', word) and 'o' in word:
+            if not word.partition('o')[2]: i += 1
+        elif not word.startswith('-'):
+            positional.append(word)
+        i += 1
+    return len(positional) >= (1 if remote else 2)
+
+
+def effective_push(args, repo, executable='git', path=None, bind=True, environment=None):
     """Rewrite `git push` argv to the refspecs/flags git would actually use, plus a route digest.
 
     Config-supplied refspecs (remote.<r>.push) and mirror mode apply when the
@@ -87,7 +107,7 @@ def effective_push(args, repo, executable='git', path=None, bind=True):
     # must not depend on token-only provider or destination resolution.
     binary = resolve_git(repo, executable, path) if bind else executable
     def inspect(*args, **kwargs):
-        return read(repo, *args, git_binary=binary, path=path, **kwargs)
+        return read(repo, *args, git_binary=binary, path=path, environment=environment, **kwargs)
     config = {}
     for item in inspect('config', '--null', '--get-regexp', CONFIG_KEYS).split('\0'):
         if item:

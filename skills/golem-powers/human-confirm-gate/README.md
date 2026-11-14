@@ -51,6 +51,20 @@ entire `remote.<name>.*` section, branch/push selection, `core.sshCommand`, `ssh
 that executable and the hook-visible environment, including inherited scopes and
 includes. The digest also binds hook-visible `GIT_SSH`, `GIT_SSH_COMMAND`,
 `GIT_SSH_VARIANT`, `GIT_PROXY_COMMAND`, `GIT_CONFIG`/`GIT_CONFIG_*`, and `GIT_EXEC_PATH`.
+For destructive operations, the gate refuses covered variable names anywhere
+in the command, including quoted function/eval bodies, declarations and unsets.
+The set includes `GIT_COMMON_DIR`, `XDG_CONFIG_HOME`, `HOME`, `GIT_DIR`,
+`GIT_WORK_TREE`, `GIT_CONFIG*`, `GIT_EXEC_PATH`, `PATH`, `GIT_SSH*` and
+`GIT_PROXY_COMMAND`; `env -u` of a covered variable and `env -C/-P/-S`
+also obscure scope. For plain pushes, only direct invocation prefixes or its
+`env` wrapper supply the environment: unrelated assignments in a compound
+command do not change that invocation's plain classification. An implicit
+push under unresolved configuration writers cannot establish ordinary refs.
+`GIT_ASKPASS` supplies credentials rather than choosing Git/config/transport.
+
+Named residuals requiring separate work are `git --exec-path`, `BASH_ENV`,
+and sourced files; this token check does not establish their runtime effects.
+
 Only the digest travels in tokens. This wider binding invalidates older tokens;
 tokens live at most 300 seconds, so reissue costs at most five minutes of approvals.
 
