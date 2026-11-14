@@ -107,10 +107,13 @@ push_patterns:
     patterns:
       - '(sk-|ghp_|github_pat_|xox[baprs]-|AKIA)[[:alnum:]_./+-]{16,}'
   push-ipv4:
-    # Match exactly four numeric parts, including punctuation boundaries.
-    # A dot extends the run only when its other neighbour is a digit.
+    # Outside semver prerelease/build metadata, match exactly four numeric
+    # parts. A dot extends the run only beside another numeric part.
     patterns:
       - '(^|[^0-9.]|(^|[^0-9])[.])([0-9]{1,3}[.]){3}[0-9]{1,3}([^0-9.]|[.]([^0-9]|$)|$)'
+      # Inside a semver suffix retain the original overlapping-run check.
+      # allowed_versions below still requires the same octet/prefix proof.
+      - '(^|[^0-9.])[0-9]+[.][0-9]+[.][0-9]+[-+][[:alnum:].+-]*([0-9]{1,3}[.]){3}[0-9]{1,3}'
     allowed_patterns:
       - '(^|[^0-9.])(127[.]0[.]0[.]1|192[.]0[.]2[.][0-9]{1,3}|198[.]51[.]100[.][0-9]{1,3}|203[.]0[.]113[.][0-9]{1,3})([^0-9.]|$)'
     # These candidates require an IPv4 safety check before exemption.
