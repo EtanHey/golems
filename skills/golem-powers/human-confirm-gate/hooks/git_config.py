@@ -78,6 +78,26 @@ def truthy(value):
     return value is None or value.strip().strip('"').strip().lower() not in FALSE
 
 
+def has_refspec(args):
+    """Does push argv explicitly supply refs, after option operands and remote?"""
+    positional, remote, i = [], False, 0
+    while i < len(args):
+        word = args[i]
+        if word == '--':
+            positional.extend(args[i + 1:]); break
+        if word in VALUE_OPTIONS:
+            remote |= word == '--repo'
+            i += 2; continue
+        if word.startswith('--repo='):
+            remote = True
+        elif re.fullmatch(r'-[A-Za-z]+', word) and 'o' in word:
+            if not word.partition('o')[2]: i += 1
+        elif not word.startswith('-'):
+            positional.append(word)
+        i += 1
+    return len(positional) >= (1 if remote else 2)
+
+
 def effective_push(args, repo, executable='git', path=None, bind=True, environment=None):
     """Rewrite `git push` argv to the refspecs/flags git would actually use, plus a route digest.
 

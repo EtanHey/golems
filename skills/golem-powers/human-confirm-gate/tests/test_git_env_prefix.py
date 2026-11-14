@@ -72,12 +72,12 @@ class GitEnvironmentPrefix(unittest.TestCase):
         for command in commands:
             self.assertEqual(self.run_hook(command)[0], 0)
 
-    def test_uncertain_assignment_lifetimes_refuse(self):
+    def test_only_invocation_assignments_change_plain_scope(self):
         self.set_route()
+        self.assertEqual(self.run_hook('XDG_CONFIG_HOME+=fixture git push origin')[0], 2)
         for command in (
-                'XDG_CONFIG_HOME+=fixture git push origin',
                 'XDG_CONFIG_HOME=fixture; git push origin',
                 'XDG_CONFIG_HOME=fixture true; git push origin',
                 'XDG_CONFIG_HOME=fixture true; env git push origin'):
             with self.subTest(command=command):
-                self.assertEqual(self.run_hook(command)[0], 2)
+                self.assertEqual(self.run_hook(command)[0], 0)

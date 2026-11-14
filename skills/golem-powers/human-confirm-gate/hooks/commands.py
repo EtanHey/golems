@@ -135,38 +135,39 @@ def assigned_bindings(tokens, positions, limit, initial, scopes, target=()):
     return values
 
 
-# These command-local changes are invisible to the hook's inherited environment.
-# GIT_ASKPASS only supplies credentials; it does not select config, Git or transport.
+# Whole-command evidence is deny-only, including quoted eval/function bodies.
+_GIT_SCOPE = re.compile(r'(?<![A-Za-z0-9_])(?:XDG_CONFIG_HOME|HOME|PATH|GIT_DIR|GIT_COMMON_DIR|GIT_WORK_TREE|GIT_EXEC_PATH|GIT_PROXY_COMMAND|GIT_CONFIG[A-Za-z0-9_]*|GIT_SSH[A-Za-z0-9_]*)(?![A-Za-z0-9_])')
+_ENV_SCOPE = re.compile(r'\benv\b[^;&|()\n]*?\s(?:-[CPS](?:\s|[^-\s])|--(?:chdir|path|split-string)(?:=|\s))')
+_SCOPE_WRITERS = re.compile(r'(?<![\w./-])(?:export|declare|typeset|local|eval|read|readonly|unset)(?=\s)|\bprintf\s+-v\b|\bset\s+-a\b')
+_ENV_UNSET = re.compile(r'\benv\b[^;&|()\n]*?\s(?:-u(?:\s|[^-\s])|--unset(?:=|\s))')
+_PREFIX_ENV = '\0git-prefix-environment'
+
+
 def git_scope_variable(name):
-    return (name.startswith(('GIT_CONFIG', 'GIT_SSH')) or name in (
-        'XDG_CONFIG_HOME', 'HOME', 'GIT_DIR', 'GIT_WORK_TREE',
-        'GIT_EXEC_PATH', 'PATH', 'GIT_PROXY_COMMAND'))
+    return bool(_GIT_SCOPE.fullmatch(name))
 
 
-def git_scope_environment(tokens, positions, current):
-    names = set()
-    for j, token in enumerate(tokens):
-        match = shell._ASSIGNMENT_RE.match(token)
-        if match and positions[j] and git_scope_variable(match['name']):
-            if match['append'] or match['subscript'] or j + 1 < len(tokens) and tokens[j + 1] in (';', '\n', '&&', '||'):
-                raise ValueError('uncertain Git environment assignment lifetime')
-            names.add(match['name'])
-    names.update(name for name in current if git_scope_variable(name))
-    if not names:
-        return None
-    # Do not reuse a temporary assignment from an earlier unrelated command.
-    # env/export wrappers supply bindings to their child; other lifetimes deny.
-    if any(positions[j] and not shell._ASSIGNMENT_RE.match(token)
-           and syntax.executable(token)[0] not in ('env', 'export')
-           and token not in (';', '\n', '&&', '||') for j, token in enumerate(tokens)):
-        raise ValueError('uncertain Git environment assignment lifetime')
-    environment = dict(os.environ)
-    for name in names:
-        value = current.get(name)
-        if value is None or syntax.unresolved(value, Path.home()):
-            raise ValueError('unresolved Git environment scope')
-        environment[name] = value
-    return environment
+def git_scope_environment(tokens, i, bindings):
+    """Only assignments attached to this invocation, not earlier commands."""
+    values = dict(bindings.get(_PREFIX_ENV, {}))
+    j = i - 1
+    while j >= 0:
+        match = shell._ASSIGNMENT_RE.match(tokens[j])
+        if not match:
+            break
+        if git_scope_variable(match['name']):
+            value = tokens[j].split('=', 1)[1]
+            value = resolve_word(value, bindings)
+            if match['append'] or match['subscript'] or syntax.unresolved(value, Path.home()):
+                value = None  # Carry uncertainty; ordinary wrapper payloads still run.
+            values.setdefault(match['name'], value)
+        j -= 1
+    return values
+
+
+def git_scope_refusal(state):
+    if state['git_scope']:
+        raise ValueError('Git environment changes obscure protected operation')
 
 
 GIT_BUILTINS = set("add am archive bisect blame branch cat-file checkout cherry cherry-pick clean clone commit config describe diff difftool fetch for-each-ref gc grep help init log ls-files ls-remote ls-tree merge mergetool mv notes pull push range-diff rebase reflog remote reset restore revert rev-list rev-parse rm show show-ref sparse-checkout stash status submodule switch tag update-index update-ref version worktree"
@@ -209,6 +210,10 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
     result = []
     # The literal-name proof needs the whole raw command; nested bodies inherit it.
     _state = _state if _state is not None else {'config': False, 'literal': syntax.single_quoted_names(command, shell)}
+    scope_source = syntax.mask_heredoc_bodies(command, shell)
+    _state['git_scope'] = _state.get('git_scope', False) or bool(_GIT_SCOPE.search(scope_source) or _ENV_SCOPE.search(scope_source))
+    _state['env_scope'] = _state.get('env_scope', False) or bool(_ENV_SCOPE.search(scope_source) or _ENV_UNSET.search(scope_source) and _GIT_SCOPE.search(scope_source))
+    _state['scope_writer'] = _state.get('scope_writer', False) or bool(_SCOPE_WRITERS.search(scope_source) or _ENV_SCOPE.search(scope_source))
     split_map = {} if rejoined else syntax.split_words(command, shell)
 
     def splits(word):  # an expansion that may word-split; rejoined argv has lost its quoting
@@ -288,15 +293,14 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
         if base not in syntax.DATA and opaque_executable(word, args, _script):
             raise ValueError('unresolved executable for protected operation')
         for child in syntax.wrapper_payload(base, args):
-            try:
-                git_scope_environment(tokens[:i], positions[:i], current)
-            except ValueError:
-                _state['git_scope_uncertain'] = True
             child_bindings = dict(current)
+            local_environment = git_scope_environment(tokens, i, bindings)
+            child_bindings[_PREFIX_ENV] = local_environment
             if base == 'env':
                 for arg in args[:args.index(child[0])]:
                     if shell._ASSIGNMENT_RE.match(arg):
                         name, value = arg.split('=', 1); child_bindings[name] = value
+                        if git_scope_variable(name): local_environment[name] = value
             result += operations(syntax.joined(child), cwd, alias_lookup, depth + 1, child_bindings, _state, rejoined=True, _unknown_tail=_unknown_tail or getattr(child, 'unknown_tail', False))
         # Unknown executors carrying a protected argv are conservative. Data
         # operands of echo/printf/cat/etc. are not command positions.
@@ -323,10 +327,7 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
             if any(syntax.guarded_words(shlex.split(a)) for a in args):
                 raise ValueError('env split-string is opaque; use an explicit command')
         if base in syntax.SHELLS:
-            try:
-                git_scope_environment(tokens[:i], positions[:i], current)
-            except ValueError:
-                _state['git_scope_uncertain'] = True
+            current[_PREFIX_ENV] = git_scope_environment(tokens, i, bindings)
             body = syntax.shell_payload(base, args)
             if forwarding.enabled() and body is not None: body = body.replace("\ue000", "{").replace("\ue001", "}")
             if body is not None:
@@ -374,14 +375,11 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                 raise ValueError('uncertain repository/config scope for protected operation')
             if relevant and any(prefix.startswith(('GIT_CONFIG', 'GIT_DIR=', 'GIT_WORK_TREE=', 'HOME=')) for prefix in tokens[:i]):
                 raise ValueError('Git environment changes obscure repository/config scope')
-            if relevant and _state.get('git_scope_uncertain'):
-                raise ValueError('uncertain Git environment assignment lifetime')
-            scope_environment = git_scope_environment(tokens[:i], positions[:i], current) if relevant else None
-            if scope_environment is not None and sub not in ('push', 'send-pack'):
-                raise ValueError('Git environment changes obscure protected operation')
+            local_environment = git_scope_environment(tokens, i, bindings) if sub in ('push', 'send-pack') else {}
+            if any(v is None or syntax.unresolved(v, Path.home()) for v in local_environment.values()):
+                raise ValueError('unresolved Git invocation environment')
+            scope_environment = dict(os.environ, **local_environment) if local_environment else None
             alias = aliases.get(sub.lower())
-            if scope_environment is not None and alias:
-                raise ValueError('Git environment changes obscure alias scope')
             if sub == 'push' or sub not in GIT_BUILTINS:
                 alias = alias or alias_lookup(repo, sub.lower())
             if alias:
@@ -395,7 +393,7 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                 digest = None
                 binary = None
                 inspect_path = os.pathsep.join(os.path.abspath(os.path.join(cwd, part)) for part in
-                                               current.get('PATH', os.environ.get('PATH', os.defpath)).split(os.pathsep))
+                                               local_environment.get('PATH', os.environ.get('PATH', os.defpath)).split(os.pathsep))
                 if sub == 'push' and alias_lookup is configured_alias:
                     if git_config.find_executable(cwd, word, inspect_path):
                         # Found commands must classify with their actual provider.
@@ -413,8 +411,23 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                             except (OSError, ValueError, subprocess.SubprocessError):
                                 pass
                 pushes = push_operation(tail, repo)
-                if (pushes or rewrite) and scope_environment is not None:
-                    raise ValueError('Git environment changes obscure protected operation')
+                # Earlier assignments can supply deny-only config evidence, never
+                # the plain invocation's PATH/environment. Unknown writers with
+                # implicit refs cannot prove this is an ordinary push.
+                if _state['git_scope'] and sub == 'push' and not git_config.has_refspec(original):
+                    if _state['env_scope']:
+                        raise ValueError('env options obscure implicit push scope')
+                    prior = {k: v for k, v in current.items() if git_scope_variable(k)}
+                    if _state['scope_writer'] and not local_environment:
+                        if not prior or any(v is None or syntax.unresolved(v, Path.home()) for v in prior.values()):
+                            raise ValueError('unresolved Git environment scope for implicit push')
+                        candidate = dict(os.environ, **prior)
+                        candidate_path = prior.get('PATH', inspect_path)
+                        inspector = git_config.resolve_git(cwd, word, candidate_path, environment=candidate)
+                        expanded, _ = git_config.effective_push(original, repo, inspector, candidate_path, bind=False, environment=candidate)
+                        pushes += push_operation(expanded, repo)
+                if pushes or rewrite:
+                    git_scope_refusal(_state)
                 if (pushes or rewrite) and alias_lookup is configured_alias:
                     binary = binary or git_config.resolve_git(cwd, word, inspect_path, environment=scope_environment)
                     bound, digest = git_config.effective_push(original, repo, binary, inspect_path)
@@ -427,6 +440,7 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                     if digest is not None: op['push_config_sha256'] = digest
                 result += pushes
             elif sub in ('filter-repo', 'filter-branch', 'replace'):
+                git_scope_refusal(_state)
                 result.append(dict(class_='rewrite', repo=repo, refs=tail))
             elif sub == 'rebase':
                 for j, arg in enumerate(tail):
@@ -443,6 +457,8 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
         elif base == 'gh':
             if cwd is None and syntax.guarded_words(args): raise ValueError('unknown settings cwd')
             result += gh_policy.operations(args, cwd, _state['literal'], splits)
+    if result:
+        git_scope_refusal(_state)
     # Normalize and deduplicate repeated wrapper/substitution views.
     unique = []
     for op in result:
