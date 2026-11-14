@@ -8,15 +8,23 @@ import subprocess
 from pathlib import Path
 
 PUBLIC_KEY = Path('.config/golems/enclave-public.der')
-HELPER = '/Applications/GolemsApprove.app/Contents/MacOS/golems-approve'
+HELPER = '/Library/PrivilegedHelperTools/com.golems.approve/GolemsApprove.app/Contents/MacOS/golems-approve'
+# Deliberately unusable until the owner's Team ID lands through a reviewed PR.
+ENROLL_TEAM_ID = 'TEAMID_NOT_CONFIGURED'
 
 
 def scope(command, cwd, ops):
-    """One explicit Git/GitHub operation; wrappers refuse rather than guess display scope."""
+    """One explicit Git operation; wrappers refuse rather than guess display scope."""
     import git_config
     words = shlex.split(command)
-    if not words or words[0] not in ('git', 'gh') or len(ops) != 1 or ops[0]['class'] not in ('delete', 'force', 'lease', 'rewrite', 'settings'):
-        raise ValueError('enclave requires one direct Git/GitHub operation')
+    if words and words[0] == 'gh':
+        raise ValueError('enclave refuses gh until its exact GitHub target can be rendered')
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=';&|()<>')
+    lexer.whitespace_split = True
+    if any(word and all(c in ';&|()<>' for c in word) for word in lexer):
+        raise ValueError('enclave cannot establish a GitHub target through compound commands')
+    if len(words) < 2 or words[0] != 'git' or words[1] not in ('push', 'filter-branch', 'filter-repo', 'replace', 'rebase', 'config') or len(ops) != 1 or ops[0]['class'] not in ('delete', 'force', 'lease', 'rewrite', 'settings'):
+        raise ValueError('enclave requires one direct Git operation; GitHub target aliases are unsupported')
     op = ops[0]
     if op['repo'] != cwd or ('push' in words[:2] and not re.fullmatch('[0-9a-f]{64}', op.get('push_config_sha256', ''))):
         raise ValueError('unbound enclave push destination')

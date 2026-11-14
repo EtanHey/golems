@@ -29,7 +29,8 @@ public struct Approval: Decodable {
     }
     public var reason: String {
         let formatter = DateFormatter(); formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
-        return "Approve \(operation)\nRemote: \(remote_url)\nRef: \(ref)\nDirectory: \(cwd)\nGit: \(git_provider)\nCommand: \(command)\nExpires: \(formatter.string(from: Date(timeIntervalSince1970: Double(expires_at))))"
+        let directory = cwd.count > 96 ? String(cwd.prefix(96)) + "..." : cwd
+        return "Approve \(operation)\nCommand: \(command)\nRemote: \(remote_url)\nRef: \(ref)\nGit: \(git_provider)\nExpires: \(formatter.string(from: Date(timeIntervalSince1970: Double(expires_at))))\nDirectory: \(directory)"
     }
     public static func approve(_ bytes: Data, signer: ApprovalSigner) throws -> Data {
         let token = try Approval(bytes: bytes)

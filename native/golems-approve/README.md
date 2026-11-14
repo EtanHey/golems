@@ -32,9 +32,10 @@ a matching Developer ID provisioning profile is required.
 builds both helper and parser tests. The software signer exists only in the test
 target. An unsigned/ad-hoc build refuses before querying or creating a key.
 
-For deployment, build release with `swift build -c release` in this package and
-package `.build/release/golems-approve` as
-`/Applications/GolemsApprove.app/Contents/MacOS/golems-approve`. Set the bundle's
+For deployment, build/sign ONLY on the isolated signing machine where agents do
+not run. Build release with `swift build -c release` and stage the executable as
+`GolemsApprove.app/Contents/MacOS/golems-approve`. The already-signed bundle later
+reaches the enrolling Mac through the root-install step below. Set the bundle's
 CFBundleIdentifier to `com.golems.approve`, CFBundleExecutable to `golems-approve`,
 and CFBundlePackageType to `APPL`. Embed the owner's matching Developer ID profile
 as `Contents/embedded.provisionprofile`. Sign with the owner's Developer ID
@@ -48,14 +49,16 @@ The entitlements must contain `com.apple.application-identifier` =
 runtime relaxation entitlements. TEAMID is the actual identity's Team ID, never
 an invented value. An agent must not provision or export signing credentials.
 
-Local identity inventory: `security find-identity -p codesigning -v` returned
+Round-1 identity inventory (not refreshed in round 2): `security find-identity -p codesigning -v` returned
 **0 valid identities found**. Team ID and concrete access group: **UNKNOWN**.
 Developer ID signing, profile validation and installed helper: **NOT_RUN**.
 No ad-hoc signature is offered as a substitute receipt.
 
 ## Owner enrolment after merge (NOT_RUN)
 
-Run `scripts/golems-enclave-enroll` once from the owner's terminal. It invokes the
+Enrolment stays disabled until the owner decides on signing, the real Team ID
+lands in a reviewed PR, and the root install and zero-identity preconditions below
+are met. Only then run `scripts/golems-enclave-enroll` once from the owner's terminal. It invokes the
 signed helper's `--enroll`, refuses to replace a key, exercises private-key usage
 with Touch ID, stores only SPKI DER at `~/.config/golems/enclave-public.der` (0600),
 and prints the PUBLIC key and SHA-256 pin. Add the printed `enclave-owner` pin to
@@ -68,7 +71,7 @@ stop for owner recovery; do not rerun or delete either automatically.
 
 Use `scripts/golems-confirm <repo> <ref> <action> --session <id> --enclave`.
 Agents may invoke this path: only the enclave signature gives authority. One
-explicit Git/GitHub operation with one resolved remote URL is supported; shell
+explicit Git operation with one resolved remote URL is supported; shell
 wrappers, multiple operations and ambiguous remotes refuse. Both issuer and hook
 must resolve the same Git and GIT_* configuration. Existing `kind: human` and
 lead paths stay intact, including their existing anchor requirement.
@@ -100,3 +103,62 @@ push with a fixed Git and environment. This draft does not claim that proof.
 Real Secure Enclave creation/signing, Touch ID display/cancel/timeout, changed
 biometry, substituted-signature key denial, enrolment and installed helper tests:
 **NOT_RUN**. Swift/software-key and disposable hook tests are local evidence only.
+
+## Round 2: enrolment is disabled pending the owner's signing decision
+
+Parked: Reviewed draft; waits on the owner's decision about the signing identity (orc 20:46). Nothing enrolled or signed.
+
+F1: The reviewed helper path is now beneath
+`/Library/PrivilegedHelperTools/com.golems.approve/`. Every directory from `/` to
+the binary, plus the binary itself, must be root-owned, not group/world-writable,
+and not a symlink. The owner installs an already-signed app from a trusted signing
+machine in ONE owner step (documented only, not run here):
+
+```sh
+sudo /bin/sh -c '
+set -eu
+/usr/bin/install -d -o root -g wheel -m 0755 /Library/PrivilegedHelperTools/com.golems.approve
+/usr/bin/ditto "$1" /Library/PrivilegedHelperTools/com.golems.approve/GolemsApprove.app
+/usr/sbin/chown -R root:wheel /Library/PrivilegedHelperTools/com.golems.approve/GolemsApprove.app
+/bin/chmod -R go-w /Library/PrivilegedHelperTools/com.golems.approve/GolemsApprove.app
+' sh /path/to/owner-signed/GolemsApprove.app
+```
+
+Before invoking that exact binary with `--enroll`, `golems-enclave-enroll` verifies
+its signature using `/usr/bin/codesign --verify --strict -R` (the `=` prefix selects
+a literal requirement rather than a file path) with the committed
+requirement `anchor apple generic and certificate leaf[subject.OU] = "TEAMID_NOT_CONFIGURED" and identifier "com.golems.approve"`.
+`ENROLL_TEAM_ID` deliberately remains `TEAMID_NOT_CONFIGURED`; enrolment refuses
+this placeholder BEFORE reserving a public file or running any platform command.
+A reviewed PR must set the owner's real Team ID. Environment variables, CLI flags
+and caller labels cannot supply it. Root custody closes the check-versus-execute
+replacement opportunity for a same-user agent at enrolment.
+
+F2: Build/sign and retain the team key on a machine where agents do not run.
+As an enrolment precondition, the enrolling agent Mac must return ONLY
+`0 valid identities found` from `/usr/bin/security find-identity -p codesigning -v`.
+Any identity, unexpected output or failed command refuses before `--enroll`.
+Tests mock this command; this round performs no identity/certificate search.
+Possession of the same Team's signing authority can produce another entitled
+helper and remains the critical custody boundary. No new signing identity is
+chosen, generated, imported or looked up by this work.
+
+F3: `gh` commands refuse on the enclave path until their actual explicit/resolved
+GitHub target can be rendered exactly; the cwd origin is never used as a gh target.
+The existing SSH path and its policy are unchanged.
+
+F4: Command is rendered immediately after Operation and is NEVER truncated.
+Directory is last, shortened to its first 96 ASCII characters plus `...` when
+needed. Full cwd remains signed and verifier-bound. Existing 400-byte field and
+1000-byte reason limits refuse requests rather than shorten Command. Real OS
+prompt layout/truncation remains NOT_RUN.
+
+F5 (documented only): pin labels currently have no semantic effect; an enclave
+SPKI hash under another label still passes. P-256 SPKI shape and SHA-256 binding
+prevent cross-format reuse; future label separation is a separate change.
+
+F6 (documented only): existing `kind: human` tokens stay accepted, so agents with
+SSH-agent signing access can still use that weak path. Enclave verification still
+requires the locked SSH anchor. Retiring SSH must explicitly decouple or preserve
+that anchor. The same-UID hooks-live tree can be committed and the writable spent
+ledger can be removed; this draft does not add a privileged runtime boundary.

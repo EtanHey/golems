@@ -108,3 +108,19 @@ class Enclave(unittest.TestCase):
         token = json.loads(path.read_bytes()); token['nonce'] = 'c' * 32
         path.write_text(json.dumps(token))
         self.assertEqual(self.run_hook()[0], 2)
+
+    def test_P3_gh_targets_refuse_instead_of_showing_cwd_origin(self):
+        from commands import operations
+        from enclave import scope
+        for command in ['gh api -X DELETE repos/invented/other-repo', 'gh repo delete invented/other-repo --yes',
+                        'gh --repo invented/other-repo api -X PATCH repos/invented/other-repo -f default_branch=x']:
+            with self.subTest(command=command), self.assertRaisesRegex(ValueError, 'GitHub target'):
+                scope(command, str(self.repo), operations(command, str(self.repo)))
+
+    def test_P3_gh_alias_target_also_refuses(self):
+        from commands import operations
+        from enclave import scope
+        self.git('config', 'alias.invented', '!gh repo delete invented/other-repo --yes')
+        command = 'git invented'
+        with self.assertRaisesRegex(ValueError, 'GitHub target'):
+            scope(command, str(self.repo), operations(command, str(self.repo)))

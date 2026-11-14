@@ -2,8 +2,38 @@
 """Owner-only enrolment; prints public material and a pin for a separate reviewed PR."""
 import hashlib
 import os
+import re
+import stat
+import sys
 import subprocess
 from pathlib import Path
+
+def verified_helper():
+    """Fail closed before reservation/execution; all trust inputs are committed."""
+    from enclave import HELPER, ENROLL_TEAM_ID
+    if not re.fullmatch('[A-Z0-9]{10}', ENROLL_TEAM_ID):
+        raise ValueError('enrolment disabled: committed TEAMID placeholder needs a reviewed Team ID PR')
+    helper = Path(HELPER)
+    # /Applications is admin-writable. Require every component, including the
+    # binary, to be root-owned and not writable by agents; disallow symlinks.
+    for part in (helper, *helper.parents):
+        info = part.lstat()
+        expected = stat.S_ISREG if part == helper else stat.S_ISDIR
+        if info.st_uid != 0 or info.st_mode & 0o022 or not expected(info.st_mode):
+            raise ValueError('helper and all ancestors must be root-owned and not group/world-writable')
+    if not helper.lstat().st_mode & 0o111:
+        raise ValueError('root-owned helper must be executable')
+    requirement = ('anchor apple generic and certificate leaf[subject.OU] = "' + ENROLL_TEAM_ID
+                   + '" and identifier "com.golems.approve"')
+    env = {'PATH': '/usr/bin:/bin'}
+    subprocess.run(['/usr/bin/codesign', '--verify', '--strict', '-R', '=' + requirement, HELPER],
+                   check=True, capture_output=True, timeout=10, env=env)
+    identities = subprocess.run(['/usr/bin/security', 'find-identity', '-p', 'codesigning', '-v'],
+                                check=True, capture_output=True, text=True, timeout=10, env=env)
+    if not re.fullmatch(r'\s*0 valid identities found\s*', identities.stdout):
+        raise ValueError('enrolling Mac must have zero code-signing identities; keep the team key off agent Macs')
+    return HELPER
+
 
 # Deliberately no agent-authorized automatic provisioning. Run once after merge.
 def main():
@@ -13,16 +43,21 @@ def main():
     spec = importlib.util.spec_from_loader(loader.name, loader)
     module = importlib.util.module_from_spec(spec); loader.exec_module(module)
     module.owner_terminal()
-    from enclave import HELPER, PUBLIC_KEY
+    from enclave import PUBLIC_KEY
+    helper = verified_helper()
     target = Path.home() / PUBLIC_KEY
     # Reserve before key creation; never clobber an existing pin file.
     fd = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, 'wb') as stream:
-        public = subprocess.run([HELPER, '--enroll'], check=True, capture_output=True, timeout=120).stdout
+        public = subprocess.run([helper, '--enroll'], check=True, capture_output=True, timeout=120).stdout
         stream.write(public); stream.flush(); os.fsync(stream.fileno())
     print(subprocess.run(['/usr/bin/openssl', 'pkey', '-pubin', '-inform', 'DER', '-in', str(target)], check=True, capture_output=True, text=True).stdout)
     print(hashlib.sha256(public).hexdigest() + ' enclave-owner')
     print('Add this pin to anchor.pins through a reviewed PR; enrolment is not activation.')
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print('golems-enclave-enroll refused: ' + str(exc), file=sys.stderr)
+        sys.exit(2)
