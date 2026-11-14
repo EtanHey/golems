@@ -73,3 +73,14 @@ path URLs, `~/.ssh/config`, DNS, or shell-startup environment changes invisible 
 the hook. State can also change between the hook check and Git execution. Closing
 these gaps requires the gate to run the push itself with fixed config/environment
 and the resolved URL; that execution-boundary redesign is outside this change.
+
+## Secure Enclave draft
+
+`golems-confirm --enclave` uses the parsed-token native helper and a separate
+SPKI P-256 public-key pin in `anchor.pins`. See
+[helper setup, threat model and NOT_RUN gates](../../../native/golems-approve/README.md).
+No enclave key or pin ships with this draft. The SSH `kind: human` path remains
+weak until owner enrolment and an orc decision to retire it. Git executable paths
+are bound, not their contents (including repointable Homebrew symlinks). SSH
+wrapper contents, ~/.ssh/config, DNS, shell-startup env and a check-versus-run
+race remain; a future gate that executes pushes with fixed Git must close them.

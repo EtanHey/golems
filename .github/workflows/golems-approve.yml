@@ -1,0 +1,21 @@
+name: Golems approval helper (software-only)
+on:
+  pull_request:
+    paths:
+      - 'native/golems-approve/**'
+      - '.github/workflows/golems-approve.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'native/golems-approve/**'
+      - '.github/workflows/golems-approve.yml'
+permissions:
+  contents: read
+jobs:
+  parser-and-signature:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      # Builds the helper; exercises only the test-target software signer.
+      # No keychain, Touch ID, enrolment or code-signing commands in CI.
+      - run: swift test --package-path native/golems-approve

@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""Owner-only enrolment; prints public material and a pin for a separate reviewed PR."""
+import hashlib
+import os
+import subprocess
+from pathlib import Path
+
+# Deliberately no agent-authorized automatic provisioning. Run once after merge.
+def main():
+    import importlib.machinery
+    import importlib.util
+    loader = importlib.machinery.SourceFileLoader('confirm', str(Path(__file__).with_name('golems-confirm')))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec); loader.exec_module(module)
+    module.owner_terminal()
+    from enclave import HELPER, PUBLIC_KEY
+    target = Path.home() / PUBLIC_KEY
+    # Reserve before key creation; never clobber an existing pin file.
+    fd = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'wb') as stream:
+        public = subprocess.run([HELPER, '--enroll'], check=True, capture_output=True, timeout=120).stdout
+        stream.write(public); stream.flush(); os.fsync(stream.fileno())
+    print(subprocess.run(['/usr/bin/openssl', 'pkey', '-pubin', '-inform', 'DER', '-in', str(target)], check=True, capture_output=True, text=True).stdout)
+    print(hashlib.sha256(public).hexdigest() + ' enclave-owner')
+    print('Add this pin to anchor.pins through a reviewed PR; enrolment is not activation.')
+
+if __name__ == '__main__':
+    main()
