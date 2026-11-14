@@ -42,6 +42,7 @@ Keep the existing grounding and prompt-author START/EDIT gates below.
 
 - **Curated, bounded set:** project-grounded research gets its own Drive folder of only the documents it needs (`/drive-filing` § Research grounding folder contract). Agents prepare it, never Etan. The prompt names those documents and says to use ONLY them.
 - **Admission table with a HARD STOP:** before firing, the prompt's `# Grounding` block carries a read-check table, one row per grounding file, with `readable: yes/no`. Project-grounded runs only; web-only research keeps its own `None — web-only research` block and has no table. Any row that is not an affirmative verified read (no, blank, missing, empty, truncated, unreadable) stops the run: output only the table and a `MISSING FILES` list. The template holds the wording.
+- **Author-held answer key:** keep exact source answers and real first headings/lines in the author record's `admission-key` JSON inside `# Pre-fire checks`, never the emitted researcher text. Cover every named document and admission question. Emit refuses missing keys or verbatim answer leaks. `readable: yes` alone proves nothing: on 2026-11-13 NarrationLayer R02 with six attached grounding files invented all six answers (1.05 vs 1.5; 0.179 vs 0.484); the private key caught them. Earlier Drive-grounded runs stopped honestly with `readable: no` rows.
 - **Keep the stop in the plan:** when Gemini's generated plan drops the stop, return it for EDIT and paste this sentence: `If any read-check row is not an affirmative verified read (readable: no, blank, missing, empty, truncated or unreadable), output only the read-check table and a MISSING FILES list, and stop.`
 - **Provenance:** the harvest record names the model, the settings (Drive on/off, Search on/off, mode), the prompt sha256, the grounding `manifest_sha256` and the folder's link, so the run's identity survives later consolidation. Write `unknown` only for a field you could not read.
 
@@ -95,8 +96,21 @@ violation. Both must pass.
    Research on your own plan interpretation.
 3. **Edit the plan** if needed (add angles, remove irrelevant ones, tighten focus)
 4. Click **Start Research** → wait (Fast: ~1 min, Thinking: ~5 min, Pro 3.1: 10–15 min)
-5. Read report → export to Google Doc if it needs to land in Drive
+5. Pass the admission harvest check below before reading the report → export to Google Doc if it needs to land in Drive
 6. `brain_store` conclusions (always) + `brain_digest` raw report for entity/relation extraction (standards/deep-research-brainlayer.md). `brain_digest` was fixed in PR #100 (2026-03-22) per ~/.claude/CLAUDE.md BrainLayer Protocol; if you suspect it's returning stubbed success, fall back to `brain_store` with the full raw report as the `content` field and skip the automated extraction step.
+
+**Admission harvest gate (project-grounded):** extract the result's admission table
+without reading its report body, then run:
+
+```bash
+node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --harvest-check /path/to/admission.md /path/to/R{NN}-prompt.md
+```
+
+The second file is the retained author record with its private key. Compare every
+answer AND first-line string exactly (outer cell whitespace is trimmed). A missing,
+extra, duplicate, non-yes or mismatched row fails. Retain the JSON failure receipt
+as a **fabricated read**, discard the entire result, and do not read, accept, store
+or relay its conclusions. A pass verifies key agreement, not report truth.
 
 **Harvest gate:** If a report claim cites one of YOUR OWN briefs/prompts/plans as
 evidence, open the actual brief text and cross-check the claim before accepting

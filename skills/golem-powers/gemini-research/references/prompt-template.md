@@ -7,11 +7,18 @@ Pull these documents via the connected Drive workspace; never ask for attachment
 - "<Verified findings + struck claims document title>"
 - "<Current project facts document title>"
 Verified findings + struck claims: "<Verified findings + struck claims document title>"
+Admission questions (author supplies one or more per document; no answers here):
+| document | question |
+| --- | --- |
+| <Verified findings + struck claims document title> | <question from the verified findings file> |
+| <Current project facts document title> | <question from the current facts file> |
 Admission check (hard stop; project-grounded runs only, the web-only block below has none). Before any analysis, output this table, one row per
-named document, and fill every cell from actually reading the file:
-| document | readable (yes/no) | first heading or line read |
+document/question pair, and fill every cell from actually reading the file:
+| document | question | readable (yes/no) | first heading or line read | answer |
+| --- | --- | --- | --- | --- |
 Only an affirmative, verified read passes: `readable: yes` plus the heading or line
-actually read. Any other row (readable: no, blank, missing, empty, truncated,
+actually read and the answer to its admission question. The author checks every
+answer and first-line string against a private key before accepting the result. Any other row (readable: no, blank, missing, empty, truncated,
 unreadable) means that file failed: output only this table and a MISSING FILES
 list, and stop.
 Read the verified findings and struck claims first. Do not revive struck claims
@@ -61,6 +68,16 @@ unknowns, struck claims, missing deliverables and the next measurement plan.
 # Pre-fire checks
 Author-only preparation: --emit removes this entire section from the researcher
 prompt. Send only the emitted text to Gemini or NotebookLM; retain this record.
+Copy each exact first heading/line and answer from the real source into this
+private JSON key (one row per admission question). Never include it in researcher
+text. If an answer occurs elsewhere in the emitted text, choose another question.
+```admission-key
+[
+  {"document":"<Verified findings + struck claims document title>","question":"<question from the verified findings file>","answer":"<exact verified answer>","first_line":"<exact verified first line>"},
+  {"document":"<Current project facts document title>","question":"<question from the current facts file>","answer":"<exact current answer>","first_line":"<exact current first line>"}
+]
+```
+For web-only research remove this key along with the admission questions/table.
 The prompt author obtains two independent readers' bias checks before emitting
 the prompt; each reads the prompt and grounding before seeing the other's review.
 Record their identities, findings and how each finding was resolved below; only

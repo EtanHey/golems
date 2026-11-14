@@ -33,6 +33,29 @@ When research links arrive, the receiver's **FIRST dispatch is ONE coordinator c
 
 The coordinator skips intake dispatch. Per `/agent-routing` § Execution capability, delegate harvest/readback/filing/NotebookLM to a Drive-write-capable child; wait for its receipt while orchestrating verification. The workflow preserves `R{NN}-<slug>-result`, readback/`export_route` and PARKED-not-guessed associations.
 
+## ADMISSION BEFORE REPORT — author-held key
+
+For project-grounded `/gemini-research`, the author records every admission
+question's exact source answer and real first heading/line in the private
+`admission-key` JSON under the prompt record's `# Pre-fire checks`. Never send the
+key to the researcher. Preflight `--emit` refuses incomplete keys or verbatim
+answer leaks. Before reading the report, extract only its admission table and run:
+
+```bash
+node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --harvest-check admission.md R{NN}-prompt.md
+```
+
+Every answer AND first-line string must match the author key. Any mismatch or
+missing/extra/duplicate/non-yes row: retain the failure receipt as a **fabricated
+read**, discard the whole result; no report reading, verification, filing or
+conclusion storage. Agreement permits report verification, not acceptance of its
+claims. Web-only research has no admission table/key.
+Evidence: NarrationLayer R02 on 2026-11-13, six attached grounding files, six
+`readable: yes` rows with invented answers (1.05 vs source 1.5; 0.179 vs 0.484);
+the author-held key caught the fabricated reads. Earlier
+Drive-grounded runs stopped with honest `readable: no` rows. This rule is scoped to these two
+research skills.
+
 ## VERIFY BEFORE STORE — coordinator-owned
 
 **Verifier parameter: `VERIFIER_ROLE=claude.research.verifier` (API key); one override to `codex.research.verifier` selects subscription dispatch.**

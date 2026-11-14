@@ -33,6 +33,12 @@ template = pathlib.Path(sys.argv[2]).read_text()
 prompt = template.split('For explicitly authorized web-only research,')[0]
 prompt += '# Owner asks (verbatim)' + template.split('# Owner asks (verbatim)', 1)[1]
 prompt = prompt.replace('<reviewer-one>', 'reader-a').replace('<reviewer-two>', 'reader-b')
+# Synthetic private answers must differ from the public questions/doc titles.
+prompt = prompt.replace('<exact verified answer>', 'Fixture-only verified answer')
+prompt = prompt.replace('<exact current answer>', 'Fixture-only current answer')
+prompt = prompt.replace('<exact verified first line>', '# Fixture verified heading')
+prompt = prompt.replace('<exact current first line>', '# Fixture current heading')
+prompt = prompt.replace('<Current project facts document title>', 'Current facts')
 prompt = re.sub(r'<[^>]+>', 'Example statement', prompt).replace('- [ ]', '- [x]')
 p = pathlib.Path(sys.argv[1]); fixture = json.loads(p.read_text())
 fixture['prompts'][0]['content'] = prompt
@@ -266,7 +272,7 @@ run_prompt_dispatch_case() {
   make_fixture "$tmp_dir/fixture.json"
   GEMINI_DRIVE_SYNC_FIXTURE="$tmp_dir/fixture.json" GEMINI_RESEARCH_STATE_FILE="$tmp_dir/state.json" \
     python3 - "$ROOT_DIR/scripts/drive_sync.py" <<'PY'
-import contextlib, importlib.util, io, sys
+import contextlib, importlib.util, io, re, sys
 spec = importlib.util.spec_from_file_location('drive_sync_under_test', sys.argv[1])
 module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
 sys.argv = ['drive_sync.py', '--project', 'example', '--prompt', 'R82-memory.md']
@@ -282,6 +288,20 @@ assert len(received) == 1
 assert all(word not in received[0] for word in ['Pre-fire checks', 'Bias check', 'reader-a', 'reader-b'])
 assert 'PROPOSED' in received[0] and 'Recompute every worked example' in received[0]
 assert 'reader-a' in module.load_fixture()['prompts'][0]['content']
+assert all(word not in received[0] for word in ['admission-key', 'Fixture-only verified answer', 'Fixture-only current answer'])
+
+# The same otherwise-valid author record must fail before research without its key.
+fixture = module.load_fixture()
+fixture['prompts'][0]['content'] = re.sub(r'```admission-key\n[\s\S]*?```', '', fixture['prompts'][0]['content'])
+module.save_fixture(fixture)
+previous_ops = len(fixture['operations'])
+received.clear()
+stderr = io.StringIO()
+with contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
+    assert module.main() == 1
+assert 'ADMISSION_KEY:' in stderr.getvalue(), stderr.getvalue()
+assert not received, 'missing key reached research'
+assert [op['op'] for op in module.load_fixture()['operations'][previous_ops:]] == ['verify-account']
 
 run = module.subprocess.run
 def missing_node(args, **kwargs):
