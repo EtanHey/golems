@@ -130,9 +130,10 @@ def citation_number(token):
 
 
 def unquoted_screen_text(finding):
-    # Ignore quoted screen text; a word-internal apostrophe is not a quote.
-    return re.sub(r'''"(?:\\.|[^"\\])*"|(?<!\w)'(?:\\.|[^'\\])*'(?!\w)|“[^”]*”|‘[^’]*’|`[^`]*`''',
-                      ' ', finding, flags=re.S)
+    # A quote cannot close on a later line. Word-internal inch marks and
+    # apostrophes are not openers; a label's opening quote is not a closer.
+    quoted = r'''(?<!\w)"(?:\\.|[^"\\])*"(?!\w)|(?<!\w)'(?:\\.|[^'\\])*'(?!\w)|“[^”]*”|‘[^’]*’|`[^`]*`'''
+    return ''.join(re.sub(quoted, ' ', line) for line in finding.splitlines(keepends=True))
 
 
 def reader_conflict(finding):
@@ -154,7 +155,7 @@ def validate_citations(item, tile_count):
     malformed = False
     # Read a complete numeric expression after each tile/frame label. Lists may
     # contain ranges, optional hashes and Oxford commas. Indexing stays zero-based.
-    label = re.compile(r'\b(?:tiles?|frames?)\b(?!\(s\))', re.I)
+    label = re.compile(r'\b(?:tiles?|frames?)\b(?:\(s\))?', re.I)
     number = r'\#?\s*(-?\d+)'
     word_number = (r'(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|'
                    r'eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|'
@@ -196,7 +197,7 @@ def validate_citations(item, tile_count):
         if not match:
             # Ordinary nouns (frame rate, frames per second, tile layout) are
             # not citations. Number words and punctuated indexes remain invalid.
-            if re.match(r'[-#\d\[(:]|x\b|' + word_number, tail, re.I):
+            if re.match(r'[-#\d\[(:]|' + word_number, tail, re.I):
                 malformed = True
             continue
         while match:
