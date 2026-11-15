@@ -1,8 +1,8 @@
 # Ratchet inbox relay
 
-Hourly M1 relay for orc's order: alert on new red causes, remind daily, clear once,
+Hourly relay: alert the guarded paths' owner on new red causes, remind daily, clear once,
 and warn 48 hours before report-only expiry. Uses ambient gh and batch SSH;
-no credentials are written. `node scripts/fleet/ratchet-inbox-relay.mjs --dry-run`
+no credentials are written or included in posts; raw run-log excerpts are never relayed. `node scripts/fleet/ratchet-inbox-relay.mjs --dry-run`
 fetches origin/master and prints due/pending posts without delivering or changing state.
 
 State is outside the checkout at ~/.golems/ratchet/inbox-relay-state.json.
@@ -15,7 +15,28 @@ or more failures, the first successful run reports the count, start time and saf
 The first-observed time is local; the original scheduled run URL is retained.
 
 Copy ratchet-relay.example.json to ~/.config/golems/ratchet-relay.json and set
-sshHost, remoteInbox and localOutbox for the operator environment. Config must stay
+owner.name, owner.inbox, owner.host, escalate and localOutbox for the operator environment.
+The owner receives RED, STILL RED, GREEN, WARN and recovery-health posts. Use
+`host: "local"` for a local append, otherwise a batch SSH host. Each inbox must be
+an absolute path. The escalation route must name `orc`. A RED strictly older than
+24 hours also reaches orc, then at most once per 24 hours; its GREEN reaches both.
+The incident age starts at the first local observation of its cause.
+
+Legacy configs with sshHost/remoteInbox retain their destination and scheduling,
+with a one-time health note that the owner is not configured. Already queued
+legacy posts keep that destination after migration (the escalation route is the
+fallback). New pending posts carry their route; successful route batches are
+removed before trying another route, so an escalation failure does not replay a
+successful owner append. Ambiguous delivery can still duplicate that batch.
+
+At install time create the owner's inbox, if absent, with a one-line Markdown
+header. This change does not edit or install the private config.
+
+There is currently no receipt age expiry in live-freshness.mjs/check-comment.mjs:
+a valid live receipt remains current until the guarded head changes. The
+120-minute grace belongs to a new guarded merge. Consequently there is no
+scheduled receipt-staleness timestamp to warn about one day ahead; no new TTL
+is introduced here. The existing report-only deadline warning is separate. Config must stay
 outside the repository. Missing or invalid config fails the run and increments self-health.
 
 After merge, the lead installs on the designated runner from its updated root checkout:

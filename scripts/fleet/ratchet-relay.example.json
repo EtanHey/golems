@@ -1,5 +1,13 @@
 {
-  "sshHost": "relay-host.example",
-  "remoteInbox": "/srv/relay/inbox.md",
+  "owner": {
+    "name": "guard-owner",
+    "inbox": "/srv/owner/inbox.md",
+    "host": "local"
+  },
+  "escalate": {
+    "name": "orc",
+    "inbox": "/srv/relay/inbox.md",
+    "host": "relay-host.example"
+  },
   "localOutbox": "/var/lib/relay/outbox.md"
 }
