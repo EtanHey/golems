@@ -238,11 +238,12 @@ print(json.dumps({'status': 'SUCCESS', 'response': json.dumps({'images': items})
         fixture = {'finding': 'tile 1: NOT DETERMINED; tile 2: NOT DETERMINED'}
     monkeypatch.setenv('PATH', str(tmp_path) + os.pathsep + os.environ['PATH'])
     monkeypatch.setenv('SHEET_RESPONSE', json.dumps(fixture))
-    image = tmp_path / 'moment-00.jpg'
-    image.write_bytes(b'provider fixture input')
-    (tmp_path/'index.tsv').write_text('moment-00.jpg\t0\t10\t20\ttest\n')
+    images = [tmp_path/f'moment-00-{position}.jpg' for position in ('start', 'midpoint')]
+    for image in images:
+        image.write_bytes(b'provider fixture input')
+    (tmp_path/'index.tsv').write_text(''.join(f'{image.name}\t0\t10\t20\ttest\n' for image in images))
     result = subprocess.run([sys.executable, str(DRIVER), '--model', 'fixture-model',
-                             '--question', 'facts', '--workdir', str(tmp_path), str(image)],
+                             '--question', 'facts', '--workdir', str(tmp_path), *map(str, images)],
                             capture_output=True, text=True, timeout=10)
     item = json.loads((tmp_path / 'visual/findings.jsonl').read_text().splitlines()[-1])
     spec = importlib.util.spec_from_file_location('debrief', SKILL / 'scripts/debrief.py')
@@ -250,14 +251,15 @@ print(json.dumps({'status': 'SUCCESS', 'response': json.dumps({'images': items})
     spec.loader.exec_module(debrief)
     debrief.evidence_note(tmp_path, 'debrief', json.loads(result.stdout)['status'],
                           {'moments': [{'start': 0, 'text': 'Read this slide.'}]},
-                          ['moment-00.jpg\t0\t0'])
+                          {image.name: f'{image.name}\t0\t0' for image in images})
     note = (tmp_path / 'debrief.md').read_text()
     if response == 'partial-sheet':
         assert result.returncode == 0 and item['ok'] is True
         assert 'Coverage: 1/1; complete;' in item['finding']
         assert '; 1 with unclear tiles' in item['finding'].splitlines()[0]
         assert expected in item['finding'] and expected in note
-        assert item['finding'].count('NOT DETERMINED') == note.count('NOT DETERMINED') == 1
+        assert item['finding'].count('NOT DETERMINED') == 1
+        assert note.count('NOT DETERMINED') == 2
     else:
         assert result.returncode == 2 and item['ok'] is False
         assert 'Coverage: 0/1; partial;' in item['finding']

@@ -19,10 +19,11 @@ def test_25_minute_planner():
                             for i in range(25))
     plan = load().plan(transcript, 3)
     assert 0 < len(plan['moments']) <= 12
-    assert plan['call_waves'] <= math.ceil(12/3)
-    assert plan['estimated_wall_seconds'] < 600
+    assert plan['call_waves'] <= math.ceil(24/3)
+    assert plan['estimated_wall_seconds'] == 120 + plan['call_waves']*90
     assert plan['scene_sweep'] is False
-    assert all(m['sampling'] == 'one still' for m in plan['moments'])
+    assert plan['frame_count'] == 2*len(plan['moments'])
+    assert all(m['sampling'] == 'cue start and midpoint' for m in plan['moments'])
     assert len({m['start'] for m in plan['moments']}) == len(plan['moments'])
     assert plan['moments'][-1]['start'] >= 1200, 'do not spend the cap entirely on early speech'
 
@@ -70,7 +71,7 @@ def test_end_to_end_evidence_and_phase_progress(media, setup, monkeypatch):
     assert receipt['status'] == 'COMPLETE' and receipt['wall_seconds'] < 600
     assert any('transcribed' in phase for phase in receipt['phases'])
     assert any('compiling' in phase for phase in receipt['phases'])
-    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 1
+    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 2
     assert float((work/'frames.tsv').read_text().split('\t')[2]) >= .5
     assert '42 percent' in (work/'debrief.md').read_text()
 
@@ -113,7 +114,7 @@ def test_failure_preserves_transcript_note(failure_pipeline, monkeypatch, stage,
     assert json.loads((work/'timing.json').read_text())['budget_seconds'] == (.15 if stage == 'extract_timeout' else 1)
     note = (work/'debrief.md').read_text()
     assert 'Status: '+status in note and '42 percent' in note and '99 percent' in note
-    assert note.count('visual: NOT DETERMINED (budget/failed)') == 2
+    assert note.count('visual: NOT DETERMINED (budget/failed)') == 4
     assert not (work/'visual/findings.jsonl').exists()
     assert len(json.loads((work/'plan.json').read_text())['moments']) == 2
 
@@ -141,10 +142,10 @@ def test_partial_visuals_keep_transcript_note(failure_pipeline, setup, monkeypat
                                     '--budget-seconds', '300', '--presort', '--helper', str(helper)])
     assert module.main() == 2
     assert json.loads((work/'timing.json').read_text())['status'] == 'PARTIAL'
-    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 4
+    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 8
     note = (work/'debrief.md').read_text()
     assert '42 percent' in note and '99 percent' in note and 'Status: PARTIAL' in note
-    assert note.count('visual: NOT DETERMINED (budget/failed)') == 2
+    assert note.count('visual: NOT DETERMINED (budget/failed)') == 4
 
 
 def tripwire(path, marker):
@@ -165,11 +166,11 @@ def test_direct_route_returns_stills_without_helper(failure_pipeline, monkeypatc
     assert not marker.exists(), 'direct route invoked a visual helper'
     timing = json.loads((work/'timing.json').read_text())
     assert timing['status'] == 'STILLS_READY' and timing['presort'] is False
-    assert [row.split('\t')[0] for row in (work/'frames.tsv').read_text().splitlines()] == ['moment-00.jpg', 'moment-01.jpg']
-    assert all((work/f'moment-0{i}.jpg').is_file() for i in range(2))
+    assert [row.split('\t')[0] for row in (work/'frames.tsv').read_text().splitlines()] == ['moment-00-start.jpg', 'moment-00-midpoint.jpg', 'moment-01-start.jpg', 'moment-01-midpoint.jpg']
+    assert all((work/f'moment-0{i}-{position}.jpg').is_file() for i in range(2) for position in ('start', 'midpoint'))
     assert not (work/'visual').exists()
     note = (work/'debrief.md').read_text()
-    assert note.count('NOT YET VIEWED; open moment-0') == 2 and 'NOT DETERMINED' not in note
+    assert note.count('NOT YET VIEWED; open moment-0') == 4 and 'NOT DETERMINED' not in note
 
 
 def test_helper_override_requires_presort(failure_pipeline, monkeypatch, capsys):
@@ -191,4 +192,19 @@ def test_presort_calls_helper(failure_pipeline, setup, monkeypatch):
     assert (work/'helper-called').exists()
     timing = json.loads((work/'timing.json').read_text())
     assert timing['status'] == 'COMPLETE' and timing['presort'] is True
-    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 2
+    assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 4
+
+
+def test_out_of_window_pts_retains_receipt_without_earning_coverage(failure_pipeline, monkeypatch):
+    import json
+    module, scripts, video, work = failure_pipeline
+    (scripts/'ffmpeg').write_text('#!/bin/bash\necho "pts_time:999" >&2\nprintf synthetic > "${@: -1}"\n')
+    monkeypatch.setattr(sys, 'argv', [str(SCRIPT), str(video), '--workdir', str(work), '--budget-seconds', '1'])
+    assert module.main() == 2
+    assert json.loads((work/'timing.json').read_text())['status'] == 'PARTIAL'
+    assert 'outside cue window' in (work/'failure.txt').read_text()
+    assert float((work/'frames.tsv').read_text().split('\t')[2]) == 999
+    assert (work/'moment-00-start.jpg').exists(), 'retain adverse extraction evidence'
+    note = (work/'debrief.md').read_text()
+    assert '42 percent' in note and note.count('Frame: NOT DETERMINED') == 4
+    assert 'real PTS' not in note and not (work/'visual').exists()
