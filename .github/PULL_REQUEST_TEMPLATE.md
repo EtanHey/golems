@@ -1,12 +1,12 @@
 ## Summary
 
-<!-- What does this PR do, and why? One logical change per PR. -->
+<!-- What does this PR do, and why? One behaviour the owner or a real client can try, including its tests, proof and docs (canon rule 9). -->
 
 ## Size
 
 <!-- size:XS (0-50) · size:S (51-150) · size:M (151-400) · size:L (over 400) hand-written added lines.
      Deletions and generated files don't count. A maintainer applies the label and CI checks it.
-     Over 400? Split the PR, or add one line saying why it can't be split. -->
+     Size is information only; cut by tryable behaviour, not line or commit count (canon rule 9). -->
 
 ## Checks
 

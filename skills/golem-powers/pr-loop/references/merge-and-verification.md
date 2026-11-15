@@ -236,8 +236,9 @@ At the batch gate, in order:
 5. The [Deploy Truth Gate](#deploy-truth-gate) live probe, then the done claim.
 
 Canon #4 (done = installed) still holds, at the batch: the batch is not done until the installed
-artifact carries the batch head, verified on the machine. A defect the batch gate finds opens a NEW PR
-(canon #9), and the gate reruns on the new head. Record the gate results, and any `Verified-Runtime:`
+artifact carries the batch head, verified on the machine. Under canon #9, fix a same-behaviour defect
+in its PR while that PR is open; an unrelated defect or a defect found after merge gets a new PR.
+The gate reruns on the new head. Record the gate results, and any `Verified-Runtime:`
 line, in the batch's closing PR body.
 
 **Single-PR batch:** a PR that alone ships to users runs this gate itself, before its release/install,

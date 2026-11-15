@@ -66,12 +66,14 @@ with `scripts/ci/canon-drift-lint.mjs --install` (canon-7 ratified by Etan via o
 
 8. **orchestration** - Run one expanding workflow per cluster, route through leads, surface blockers with
    evidence, and execute approved queues instead of parking them behind permission questions.
-9. **tight-loop PRs** - Small PRs are the unit of work: size label at open (XS/S/M/L; L needs a one-line why),
-   split past ~400 hand-written lines or 5 commits, a defect found mid-PR opens a NEW PR (never another commit on
-   the same branch), 24-h time-box then split-or-park in writing, 2 review rounds max, bots tiered (full panel on
-   core paths only; dup findings answered once + dup-links). Generated lines are exempt from the cap. Big
-   deletions are welcome as stacked PRs — reviewable slices plus a final integration PR. A DONE signal is not a
-   receipt; the artifact at the contracted path is. A turn ending "waiting for X" arms a watch on X first.
+9. **tight-loop PRs** - One PR per behaviour the owner or a real client can try, with its tests, proof
+   and docs inside it (owner decision, 2026-11-15). Cut by what can be tried, not by line or commit count.
+   Fix a defect found while the PR is open in the same PR when it belongs to that behaviour; an unrelated
+   defect gets a new PR. Apply a size label at open (XS/S/M/L), as information only; generated lines remain
+   excluded from sizing. Keep one reviewer from the other vendor and installed-app proof once per PR.
+   2 review rounds max, bots tiered (full panel on core paths only; dup findings answered once + dup-links).
+   Big deletions are welcome as stacked PRs — tryable slices plus a final integration PR. A DONE signal is
+   not a receipt; the artifact at the contracted path is. A turn ending "waiting for X" arms a watch on X first.
 
 10. **never-privatize** - Privatizing a repo is never the remedy for a leak; prevention is: publication-boundary
     guards, the docs.local law, secrets never on disk inside a repo. A leak is fixed by removing the blob path
