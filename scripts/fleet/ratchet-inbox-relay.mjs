@@ -126,14 +126,36 @@ export function collect({ gh = args => run('gh', args), git = args => run('git',
 const validPath = p => typeof p === 'string' && p.startsWith('/') && !/[\x00-\x1f\x7f]/.test(p);
 const validHost = host => typeof host === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_.@-]*$/.test(host);
 const validRoute = route => route && /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(route.name ?? '') && validPath(route.inbox) && validHost(route.host);
-export function readConfig(path = `${homedir()}/.config/golems/ratchet-relay.json`) {
-  const value = JSON.parse(readFileSync(path, 'utf8'));
+export function readConfig(path, home = homedir()) {
+  let raw;
+  if (path === undefined) {
+    path = `${home}/.golems/ratchet/relay.json`;
+    try { raw = readFileSync(path, 'utf8'); }
+    catch (e) {
+      if (e.code !== 'ENOENT') throw e;
+      path = `${home}/.config/golems/ratchet-relay.json`;
+    }
+  }
+  const value = JSON.parse(raw ?? readFileSync(path, 'utf8'));
   if (!value || !validPath(value.localOutbox) || !validHost(value.sshHost) || !validPath(value.remoteInbox)
-    || (value.owner && (!validRoute(value.owner) || !validRoute(value.escalate) || value.escalate.name !== 'orc'))) throw Error('invalid config');
+    || (value.escalate && (!validRoute(value.escalate) || value.escalate.name !== 'orc'))
+    || (value.owner && (!validRoute(value.owner) || !validRoute(value.escalate)))) throw Error('invalid config');
+  Object.defineProperty(value, 'configPath', { value: path });
   return value;
 }
 const healthPost = (now, text, owner) => `\n### golems-ratchet → @${owner?.name ?? 'orc'} — ${new Date(now).toISOString()} ${text}\n`;
 const pendingText = pending => pending.map(p => typeof p === 'string' ? p : p.text).join('');
+
+// Store only canonical public routing fields, never arbitrary config properties.
+function routingFor(settings) {
+  const route = r => ({ name: r.name, inbox: r.inbox, host: r.host });
+  const legacy = { name: 'orc', host: settings.sshHost, inbox: settings.remoteInbox };
+  const escalate = settings.escalate ?? legacy;
+  const routing = { owner: route(settings.owner ?? legacy), escalate: route(escalate),
+    ownerLocal: Boolean(settings.owner), escalationLocal: Boolean(settings.escalate),
+    configPath: settings.configPath ?? `${homedir()}/.golems/ratchet/relay.json` };
+  return { ...routing, fingerprint: createHash('sha256').update(JSON.stringify(routing)).digest('hex') };
+}
 
 export function executeRelay({ path, now = Date.now(), config = readConfig, fetch = () => run('git', ['fetch', 'origin', 'master']),
   collect: gather = collect, ssh, outbox, dry = false }) {
@@ -152,6 +174,48 @@ export function executeRelay({ path, now = Date.now(), config = readConfig, fetc
     try { state = JSON.parse(readFileSync(path, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
     state.pending ??= [];
     stage = 'config missing or invalid'; const settings = config();
+    const deliver = (body, route, local = true) => {
+      stage = 'SSH delivery failed';
+      try {
+        if (!route?.host || !route?.inbox) throw Error('missing delivery route');
+        if (local && route.host === 'local') {
+          mkdirSync(dirname(route.inbox), { recursive: true });
+          appendFileSync(route.inbox, body, { mode: 0o600 });
+        } else if (ssh) ssh(body, { ...settings, sshHost: route.host, remoteInbox: route.inbox });
+        else run('ssh', ['-o', 'BatchMode=yes', route.host, `cat >> '${route.inbox.replaceAll("'", "'\\''")}'`], body);
+      } catch {
+        if (outbox) outbox(body, settings);
+        else { mkdirSync(dirname(settings.localOutbox), { recursive: true }); appendFileSync(settings.localOutbox, body); }
+        throw Error('delivery failed');
+      }
+    };
+    const drainRouting = () => {
+      if (!state.routingChange) return;
+      while (state.routingChange.pending.length) {
+        const item = state.routingChange.pending[0];
+        deliver(item.text, item.route, item.local);
+        state.routingChange.pending.shift(); stage = 'state write failed'; save(state);
+      }
+      state.routing = state.routingChange.routing;
+      delete state.routingChange; stage = 'state write failed'; save(state);
+    };
+    // Finish the previous transaction at its pinned destinations even if config changed again.
+    if (!dry) drainRouting();
+    const routing = routingFor(settings);
+    const knownRouting = dry && state.routingChange ? state.routingChange.routing : state.routing;
+    if (dry && state.routingChange) console.log(pendingText(state.routingChange.pending));
+    if (knownRouting?.fingerprint !== routing.fingerprint) {
+      const text = `\n### golems-ratchet → @orc — ${new Date(now).toISOString()} ROUTING: warnings now go to @${routing.owner.name} (${routing.owner.inbox}); escalation to @${routing.escalate.name} (${routing.escalate.inbox}); config ${routing.configPath}\n`;
+      const routes = [state.routing, routing].filter(Boolean).map(r => ({ route: r.escalate, local: r.escalationLocal }));
+      // A legacy SSH alias named local is distinct from an explicit local append.
+      const key = item => JSON.stringify([item.route.host, item.route.inbox, item.route.host === 'local' && Boolean(item.local)]);
+      const unique = routes.filter((r, i) => routes.findIndex(other => key(other) === key(r)) === i);
+      if (dry) console.log(text);
+      else {
+        state.routingChange = { routing, pending: unique.map(item => ({ ...item, text })) };
+        stage = 'state write failed'; save(state); drainRouting();
+      }
+    }
     const queueHealth = text => {
       const body = healthPost(now, text, settings.owner);
       state.pending.push(settings.owner ? { target: 'owner', text: body } : body);
@@ -181,19 +245,7 @@ export function executeRelay({ path, now = Date.now(), config = readConfig, fetc
       let count = 1;
       while (count < state.pending.length && (typeof state.pending[count] === 'string' ? 'legacy' : state.pending[count].target) === target) count++;
       const body = pendingText(state.pending.slice(0, count));
-      stage = 'SSH delivery failed';
-      try {
-        if (!route?.host || !route?.inbox) throw Error('missing delivery route');
-        if (typeof item !== 'string' && route.host === 'local') {
-          mkdirSync(dirname(route.inbox), { recursive: true });
-          appendFileSync(route.inbox, body, { mode: 0o600 });
-        } else if (ssh) ssh(body, { ...settings, sshHost: route.host, remoteInbox: route.inbox });
-        else run('ssh', ['-o', 'BatchMode=yes', route.host, `cat >> '${route.inbox.replaceAll("'", "'\\''")}'`], body);
-      } catch {
-        if (outbox) outbox(body, settings);
-        else { mkdirSync(dirname(settings.localOutbox), { recursive: true }); appendFileSync(settings.localOutbox, body); }
-        throw Error('delivery failed');
-      }
+      deliver(body, route, typeof item !== 'string');
       state.pending.splice(0, count); stage = 'state write failed'; save(state);
     }
     delete state.failures; state.pending = []; stage = 'state write failed'; save(state); return 0;
@@ -202,7 +254,7 @@ export function executeRelay({ path, now = Date.now(), config = readConfig, fetc
       state.failures = { count: (state.failures?.count ?? 0) + 1, since: state.failures?.since ?? new Date(now).toISOString(), reason: stage };
       save(state);
     }
-    console.error(`ratchet inbox relay: ${stage}; configure ~/.config/golems/ratchet-relay.json; pending state retained`);
+    console.error(`ratchet inbox relay: ${stage}; configure ~/.golems/ratchet/relay.json; pending state retained`);
     return 1;
   } finally {
     if (lock !== undefined) {

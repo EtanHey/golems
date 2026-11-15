@@ -14,10 +14,13 @@ younger locks skip the run. Consecutive failed runs are counted in state. After 
 or more failures, the first successful run reports the count, start time and safe stage name. Failures never echo command stderr.
 The first-observed time is local; the original scheduled run URL is retained.
 
-Copy ratchet-relay.example.json to ~/.config/golems/ratchet-relay.json and set
+Copy ratchet-relay.example.json to ~/.golems/ratchet/relay.json and set
 owner.name, owner.inbox, owner.host, escalate and localOutbox for the operator environment.
-Keep the required legacy sshHost/remoteInbox fields for the other fleet jobs
-that share this config; their routing stays unchanged.
+The relay reads this path first; only when it is absent does it read the old
+~/.config/golems/ratchet-relay.json as a read-only fallback. An invalid new file
+fails closed. The relay never writes either config. Never move or modify the old
+file: other fleet jobs still read it. Keep the required legacy sshHost/remoteInbox
+fields in the new config for queued legacy posts.
 The owner receives RED, STILL RED, GREEN, WARN and recovery-health posts. Use
 `host: "local"` for a local append, otherwise a batch SSH host. Each inbox must be
 an absolute path. The escalation route must name `orc`. A RED strictly older than
@@ -30,6 +33,27 @@ legacy posts keep that destination after migration (the escalation route is the
 fallback). New pending posts carry their route; successful route batches are
 removed before trying another route, so an escalation failure does not replay a
 successful owner append. Ambiguous delivery can still duplicate that batch.
+
+Every routing change (owner name/inbox/host, escalation name/inbox/host, or
+selected config path) posts a single ROUTING line to each distinct old and new
+orc destination before any other post. The first run after upgrade also announces.
+State stores the canonical routing fingerprint only after all notices are delivered.
+Notice destinations are pinned in a separate durable queue; a failure blocks other
+posts and retries only the undelivered destinations next run, even if config changes
+again. A legacy SSH alias named `local` remains distinct from an explicit local
+append, including in the fingerprint and destination deduplication. Ambiguous SSH
+failures can duplicate a notice, like other posts.
+
+If the previous escalation host stays unreachable, the relay holds every post
+behind the pending ROUTING notice. To abandon delivery to that old destination,
+stop the relay, back up ~/.golems/ratchet/inbox-relay-state.json, and remove both
+top-level keys `routing` and `routingChange` from that state file, preserving
+`pending` and all other keys. On restart, the relay re-announces to the new
+escalation inbox only; the old inbox will not receive that notice.
+
+The state file lives in the same agent-writable directory as the config, so the
+notice catches honest routing edits, but an agent that rewrites both files could
+forge the recorded routing and suppress or fake the notice.
 
 At install time create the owner's inbox, if absent, with a one-line Markdown
 header. This change does not edit or install the private config.
@@ -62,7 +86,12 @@ Both run hourly via the adjacent launchd templates. The separate guarded hook
 installer integration installs and drift-checks these jobs; do not copy configs
 from a checkout. Neither job needs an LLM or a scheduled agent session.
 
-The existing relay config may additionally contain `repoRoots` (absolute paths)
+`fleet-runtime.mjs` and the other fleet jobs still read only
+~/.config/golems/ratchet-relay.json. Their routing is not covered by the relay's
+ROUTING notice. Do not remove the old config file after moving the relay to its
+new path.
+
+That old config may additionally contain `repoRoots` (absolute paths)
 and `diskThresholdGiB` (hostname to positive GiB threshold). Defaults scan
 ~/Gits and ~/.t3/worktrees; volumes below 1000 GiB default to 40 GiB, larger
 volumes to 60 GiB. Free space uses statfs bfree, excluding purgeable estimates.

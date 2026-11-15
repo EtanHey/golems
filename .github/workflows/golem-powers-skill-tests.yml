@@ -244,6 +244,7 @@ jobs:
 
       - name: node suites
         run: |
+          node --test scripts/fleet/*.test.mjs
           node --test skills/golem-powers/t3-visuals/evals/action-contract.test.mjs
           node --test scripts/tests/precommit-identity.test.mjs
           node --test scripts/tests/boundary-credentials.test.mjs scripts/tests/boundary-ipv4.test.mjs scripts/tests/boundary-prepush.test.mjs scripts/tests/boundary-upstream.test.mjs

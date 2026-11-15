@@ -80,3 +80,22 @@ test('stale lock recovery and consecutive failures are reported once on recovery
     assert.equal(delivered.length, 2);
   } finally { rmSync(dir, { recursive: true }); }
 });
+
+test('other fleet jobs retain the legacy config when the relay has its own config', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const dir = mkdtempSync(join(scratch, 'config-isolation-'));
+  const home = resolve(dir); const capture = join(home, 'delivered.json');
+  const config = { sshHost: 'legacy.example', remoteInbox: '/srv/legacy.md', localOutbox: join(home, 'outbox.md') };
+  try {
+    mkdirSync(join(home, '.config/golems'), { recursive: true }); mkdirSync(join(home, '.golems/ratchet'), { recursive: true });
+    writeFileSync(join(home, '.config/golems/ratchet-relay.json'), JSON.stringify(config));
+    writeFileSync(join(home, '.golems/ratchet/relay.json'), JSON.stringify({ ...config, sshHost: 'relay-only.example' }));
+    const code = `import { execute } from ${JSON.stringify(new URL('./fleet-runtime.mjs', import.meta.url).href)};
+      import { writeFileSync } from 'node:fs';
+      process.exitCode = execute('fixture', state => ({ state, posts: ['alert'] }), {
+        ssh: (text, settings) => writeFileSync(${JSON.stringify(capture)}, JSON.stringify(settings)) });`;
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, HOME: home }, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(readFileSync(capture)).sshHost, 'legacy.example');
+  } finally { rmSync(dir, { recursive: true }); }
+});
