@@ -5,7 +5,7 @@ import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync,
 import { basename, dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
-import { buildRelease } from '../release/build-release.mjs';
+import { buildRelease, shipped } from '../release/build-release.mjs';
 
 const repo = resolve(import.meta.dir, '../..'), installer = join(repo, 'scripts/release/install.sh');
 setDefaultTimeout(60_000);
@@ -16,12 +16,8 @@ const git = (...args) => execFileSync('git', ['-C', source, ...args], { encoding
 beforeAll(() => {
   mkdirSync(source); mkdirSync(minimal);
   // Snapshot the current payload into a scratch Git repo: P1 builds committed objects only.
-  const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repo, encoding: 'utf8' }).split('\0').filter(Boolean);
-  paths.push('scripts/release/install.sh', 'skills/catalog.json');
-  paths.push('scripts/hooks/client-install-transaction.mjs', 'standards/vercel-deploys.md', 'scripts/vercel-budget.mjs');
-  const boundaryFiles = new Set(['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/ci/identity-precommit.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow']);
-  for (const path of new Set(paths.filter(p => boundaryFiles.has(p) || /^(skills\/(golem-powers\/|catalog.json$)|scripts\/(pr-watch|repogolem\/|hooks\/|lib\/|schemas\/|install-receipt|skills-sync-receipt|ratchet\/(installed-skills|skills-receipt|sync-m1)\.py|release\/shipped-paths.json|model-roles.mjs|ci\/check-model-role-drift.mjs)|packages\/golem-skills\/|standards\/(model-roles|vercel-deploys\.md$)|scripts\/vercel-budget\.mjs$|\.claude\/hooks\/block-dangerous-commands.py|hooks\/daemon-gate-precheck.py|\.bun-version$|LICENSE$|package.json$|release-gate.json$|scripts\/release\/install.sh$)/.test(p)))) {
-    if (!existsSync(join(repo, path))) continue;
+  const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repo, encoding: 'utf8' }).split('\0').filter(path => shipped(path) || path === 'package.json');
+  for (const path of paths) {
     mkdirSync(dirname(join(source, path)), { recursive: true });
     copyFileSync(join(repo, path), join(source, path));
     chmodSync(join(source, path), lstatSync(join(repo, path)).mode & 0o777);
@@ -47,6 +43,7 @@ test('fresh install links exactly the per-client catalog, never support director
   }
   const manifest = JSON.parse(readFileSync(join(dir, '.golems/current/MANIFEST.json')));
   expect(manifest.files.some(file => file.path === 'skills/catalog.json')).toBe(true);
+  expect(manifest.files.some(file => file.path === 'launchd/named-program.mjs')).toBe(true);
 });
 test('mixed links preserve other repos, redirects and real directories with replacement enabled', () => {
   const dir = home(), checkout = join(dir, 'Gits/golems/skills/golem-powers');

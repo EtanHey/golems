@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildRelease } from '../release/build-release.mjs';
+import { buildRelease, shipped } from '../release/build-release.mjs';
 
 setDefaultTimeout(60_000);
 const repo = path.resolve(import.meta.dir, '../..');
@@ -20,7 +20,8 @@ function fixture() {
   const root = mkdtempSync(path.join(scratch, 'client-')); roots.push(root);
   const candidate = path.join(root, 'candidate'), source = path.join(root, 'release'), home = path.join(root, 'home');
   mkdirSync(candidate); mkdirSync(source); mkdirSync(home);
-  for (const file of ['scripts/ci/boundary-clones.mjs', 'scripts/ci/boundary-prepush.mjs', 'scripts/ci/identity-precommit.mjs', 'scripts/publish-boundary-policy.yaml', '.publish-boundary-allow', 'scripts/hooks', 'skills/golem-powers', '.claude/hooks/block-dangerous-commands.py', 'hooks/daemon-gate-precheck.py', 'package.json']) {
+  const paths = command('git', ['-C', repo, 'ls-files', '-z']).split('\0').filter(file => shipped(file) || file === 'package.json');
+  for (const file of paths) {
     mkdirSync(path.dirname(path.join(candidate, file)), { recursive: true });
     cpSync(path.join(repo, file), path.join(candidate, file), { recursive: true, filter: p => !p.includes('__pycache__') });
   }

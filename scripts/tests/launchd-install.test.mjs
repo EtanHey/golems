@@ -21,6 +21,9 @@ function runInstaller({ loaded = false, failBootstrap = "", failBootout = false,
   mkdirSync(agents, { recursive: true });
   // The OAuth helper invokes /bin/launchctl directly: never execute it in this fixture.
   writeFileSync(join(bin, "node"), '#!/bin/bash\nif [[ $1 == *named-program.mjs ]]; then exec "$REAL_NODE" "$@"; fi\nprintf "%s\\n" "$2" >> "$NODE_LOG"\n', { mode: 0o755 });
+  // This fixture tests lifecycle ordering on every OS. Native plist validation
+  // is covered by the separate macOS rendering tests, not this command stub.
+  writeFileSync(join(bin, "plutil"), '#!/bin/bash\nprintf "%s\\n" "$*" >> "$PLUTIL_LOG"\n[[ "$1" == -lint && -f "$2" ]]\n', { mode: 0o755 });
   writeFileSync(join(bin, "launchctl"), `#!/bin/bash
 printf '%s\\n' "$*" >> "$LAUNCHCTL_LOG"
 case "$1" in
@@ -61,7 +64,7 @@ fi
       cwd: repoRoot,
       env: {
         ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}`,
-        REAL_NODE: Bun.which("node"), LAUNCHCTL_LOG: log, NODE_LOG: join(scratch, "node.log"),
+        REAL_NODE: Bun.which("node"), LAUNCHCTL_LOG: log, NODE_LOG: join(scratch, "node.log"), PLUTIL_LOG: join(scratch, "plutil.log"),
         LOADED: loaded ? "1" : "0", PREFIX_ONLY: prefixOnly ? "1" : "0", FAIL_BOOTSTRAP: failBootstrap || "no-such-label",
         FAIL_BOOTOUT: failBootout ? "1" : "0", UNLOAD_DELAY: String(unloadDelay),
       },
@@ -71,6 +74,7 @@ fi
       result, agents,
       calls: readFileSync(log, "utf8").trim().split("\n"),
       helperAction: readFileSync(join(scratch, "node.log"), "utf8").trim(),
+      lintCalls: existsSync(join(scratch, "plutil.log")) ? readFileSync(join(scratch, "plutil.log"), "utf8").trim().split("\n") : [],
     });
   } finally {
     rmSync(scratch, { recursive: true, force: true });
@@ -89,9 +93,10 @@ describe("launchd installer lifecycle (stubbed launchctl)", () => {
   });
 
   test("already loaded labels boot out before bootstrapping the rendered definition", () => {
-    runInstaller({ loaded: true }, ({ result, agents, calls, helperAction }) => {
+    runInstaller({ loaded: true }, ({ result, agents, calls, helperAction, lintCalls }) => {
       expect(result.exitCode, result.stderr.toString()).toBe(0);
       expect(helperAction).toBe("install");
+      expect(lintCalls).toEqual(activeLabels.map(label => `-lint ${join(agents, `${label}.plist.candidate`)}`));
       expect(calls.filter((call) => !call.startsWith("print ") && call !== "list")).toEqual([
         ...retiredLabels.flatMap((label) => [`bootout ${domain}/${label}`, `rm ${join(agents, `${label}.plist`)}`]),
         ...activeLabels.flatMap((label) => [`bootout ${domain}/${label}`, `bootstrap ${domain} ${join(agents, `${label}.plist`)}`]),
