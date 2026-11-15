@@ -202,17 +202,19 @@ export function executeRelay({ path, now = Date.now(), config = readConfig, fetc
     // Finish the previous transaction at its pinned destinations even if config changed again.
     if (!dry) drainRouting();
     const routing = routingFor(settings);
-    if (state.routing?.fingerprint !== routing.fingerprint) {
+    const knownRouting = dry && state.routingChange ? state.routingChange.routing : state.routing;
+    if (dry && state.routingChange) console.log(pendingText(state.routingChange.pending));
+    if (knownRouting?.fingerprint !== routing.fingerprint) {
       const text = `\n### golems-ratchet → @orc — ${new Date(now).toISOString()} ROUTING: warnings now go to @${routing.owner.name} (${routing.owner.inbox}); escalation to @${routing.escalate.name} (${routing.escalate.inbox}); config ${routing.configPath}\n`;
       const routes = [state.routing?.escalate, routing.escalate].filter(Boolean);
       const unique = routes.filter((r, i) => routes.findIndex(other => other.host === r.host && other.inbox === r.inbox) === i);
-      if (dry) console.log(pendingText(state.routingChange?.pending ?? []) + text);
+      if (dry) console.log(text);
       else {
         state.routingChange = { routing, pending: unique.map(route => ({ route, text,
           local: route === routing.escalate ? routing.escalationLocal : state.routing.escalationLocal })) };
         stage = 'state write failed'; save(state); drainRouting();
       }
-    } else if (dry && state.routingChange) console.log(pendingText(state.routingChange.pending));
+    }
     const queueHealth = text => {
       const body = healthPost(now, text, settings.owner);
       state.pending.push(settings.owner ? { target: 'owner', text: body } : body);

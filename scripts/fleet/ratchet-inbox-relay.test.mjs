@@ -238,6 +238,13 @@ test('routing notices precede all posts, dedupe, retry only undelivered routes, 
     settings = { ...settings, owner: { ...settings.owner, name: 'new-owner' }, escalate: { name: 'orc', host: 'new.example', inbox: '/srv/new.md' } };
     failHost = 'new.example'; assert.equal(executeRelay(options), 1);
     assert.equal(state().routing.fingerprint, initial); assert.equal(calls.length, 1); assert.equal(calls[0].host, 'old.example');
+    const beforeDry = readFileSync(path, 'utf8'); const printed = []; const log = console.log;
+    try {
+      console.log = text => printed.push(text);
+      assert.equal(executeRelay({ ...options, dry: true }), 0);
+      assert.equal((printed.join('').match(/ROUTING:/g) ?? []).length, 1);
+      assert.equal(readFileSync(path, 'utf8'), beforeDry); assert.equal(calls.length, 1);
+    } finally { console.log = log; }
     failHost = undefined; assert.equal(executeRelay(options), 0);
     assert.equal(calls.length, 2); assert.equal(calls[1].host, 'new.example'); assert.notEqual(state().routing.fingerprint, initial);
     calls.length = 0; settings = { ...settings, configPath: '/routing/other.json' };
