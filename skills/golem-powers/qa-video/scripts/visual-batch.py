@@ -86,7 +86,7 @@ def recover_startup_warning(result, sheet, started):
         if (not isinstance(finding, str) or not visual.finding_is_read(finding)
                 or any(t in finding.lower() for t in ('<truncated', 'stream was interrupted'))):
             return None
-        return {'finding': sheet + ': ' + ' '.join(finding.split()),
+        return {'finding': sheet + ': ' + finding,
                 'warnings': [warning], 'helper_receipt': str(path),
                 'recovered_from': 'Codex startup warning; helper exit 2, provider exit 0'}
     except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError):
@@ -127,6 +127,13 @@ def citation_number(token):
     if len(token.lstrip('-')) > 9:
         raise ValueError('numeric citation exceeds 9 digits')
     return int(token)
+
+
+def reader_conflict(finding):
+    # Ignore quoted screen text; a word-internal apostrophe is not a quote.
+    unquoted = re.sub(r'''"(?:\\.|[^"\\])*"|(?<!\w)'(?:\\.|[^'\\])*'(?!\w)|“[^”]*”|‘[^’]*’|`[^`]*`''',
+                      ' ', finding, flags=re.S)
+    return bool(re.search(r'\bCONFLICT\s*[:-]|(?m:^\s*CONFLICT\s*$)', unquoted))
 
 
 def validate(item, tile_count):
@@ -220,9 +227,7 @@ def validate_citations(item, tile_count):
                 # intervals without allocating billions of Python integers.
                 if end - start < 1000:
                     bad.update(range(start, end + 1))
-    # A reader conflict is a standalone/leading marker, not quoted screen text
-    # such as Git's "CONFLICT (content)" in an otherwise valid observation.
-    conflict = bool(re.search(r'(?m)^\s*CONFLICT(?:\s*:|\s*$)', finding))
+    conflict = reader_conflict(item['finding'].removeprefix(sheet + ':'))
     invalid = bool(offending_intervals or malformed or conflict)
     state = 'INVALID' if invalid else ('READ' if item['ok'] else 'FAILED')
     cause = ('unparseable tile/frame citation' if malformed else

@@ -1,4 +1,4 @@
-"""Offline replay: w167 event structure, synthetic image observation and paths."""
+"""Offline replay: a recorded run with synthetic image observation and paths."""
 import importlib.util
 import json
 from pathlib import Path
@@ -177,3 +177,28 @@ def test_explicit_reader_conflict_still_fails(tmp_path):
         body['images'][0]['finding'] = 'CONFLICT: incompatible readings of Tile 0.'
         event['text'] = json.dumps(body)
     assert replay(tmp_path, mutate)['state'] == 'INVALID'
+
+
+@pytest.mark.parametrize('finding, expected', [
+    ('Reader A says red. CONFLICT: reader B says blue', 'INVALID'),
+    ('CONFLICT - reader A red; reader B blue', 'INVALID'),
+    ('Reader A says red.\nCONFLICT: reader B says blue.', 'INVALID'),
+    ('Tile 0: Terminal reports "CONFLICT (content): Merge conflict in example.txt".', 'READ'),
+    ('Tile 0: A sign reads "CONFLICT: choose a side".', 'READ'),
+    ("Tile 0: A sign reads 'CONFLICT - choose a side'.", 'READ'),
+    ('Tile 0: A sign reads “CONFLICT: choose a side”.', 'READ'),
+    ("Reader's note. CONFLICT: reader B says blue.", 'INVALID'),
+])
+@pytest.mark.parametrize('route', ['normal', 'recovered_warning'])
+def test_reader_markers_outside_quotes(tmp_path, finding, expected, route):
+    if route == 'normal':
+        item = batch.validate(dict(sheet='/synthetic.jpg', finding=finding,
+                                   ok=True, fatal='', cause=''), 1)
+    else:
+        def mutate(receipt):
+            event = receipt['provider_events'][3]['item']
+            body = json.loads(event['text'])
+            body['images'][0]['finding'] = finding
+            event['text'] = json.dumps(body)
+        item = replay(tmp_path, mutate)
+    assert item['state'] == expected, item
