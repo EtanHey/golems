@@ -24,7 +24,77 @@ def atomic(path, text):
     pending.replace(path)
 
 
+def recover_startup_warning(result, sheet, started):
+    """Recover only the recorded Codex helper's exact warning-only rejection.
+
+    The helper owns dispatch and keeps the unmodified provider stream. Never
+    infer success from its footer or from an arbitrary error message.
+    """
+    if result.returncode != 2 or result.stdout.strip() != (
+            'Coverage: 0/1; partial; NOT DETERMINED: helper failed.'):
+        return None
+    lines = result.stderr.splitlines()
+    if len(lines) != 2 or not lines[0].startswith('HELPER_RECEIPT ') or lines[1] != (
+            'ADAPTER_UNSUPPORTED: ValueError: ADAPTER_UNSUPPORTED or dispatch failed; inspect private helper receipt'):
+        return None
+    try:
+        path = Path(lines[0].removeprefix('HELPER_RECEIPT '))
+        directory = Path(sheet).resolve().parent / 'helper-receipts'
+        if (path.is_symlink() or path.resolve().parent != directory.resolve()
+                or path.stat().st_size > 2_000_000 or path.stat().st_mtime < started):
+            return None
+        receipt = json.loads(path.read_text())
+        if (receipt['provider'] != 'codex' or receipt['exit_code'] != 0
+                or receipt['images'] != [sheet] or receipt['tool_calls'] != ['error']):
+            return None
+        # Recorded cell helpers use cell/tmp or cell/work (when the caller
+        # sets TMPDIR to its output directory, above its sheets directory).
+        image = Path(sheet).resolve()
+        cells = [root for root in image.parents
+                 if image.is_relative_to(root / 'work') and (root / 'tmp').is_dir()]
+        home = Path(receipt['codex_home'])
+        if (len(cells) != 1 or not home.is_absolute() or not home.is_dir()
+                or home.is_symlink() or home.name != 'codex-home'
+                or not home.parent.name.startswith('reader-')):
+            return None
+        resolved_home = home.resolve()
+        if not (resolved_home.is_relative_to(cells[0] / 'tmp')
+                or resolved_home.is_relative_to(cells[0] / 'work')):
+            return None
+        warning = ('Under-development features enabled: skip_host_skill_discovery. '
+                   'Under-development features are incomplete and may behave unpredictably. '
+                   'To suppress this warning, set `suppress_unstable_features_warning = true` in '
+                   + receipt['codex_home'] + '/config.toml.')
+        events = receipt['provider_events']
+        # Exact lifecycle: warning before the turn, one final response, no tools,
+        # unknown events, additional errors, interrupted or failed turns.
+        if [e['type'] for e in events] != ['thread.started', 'item.completed',
+                'turn.started', 'item.completed', 'turn.completed']:
+            return None
+        if events[1]['item']['type'] != 'error' or events[1]['item']['message'] != warning:
+            return None
+        message = events[3]['item']
+        if message['type'] != 'agent_message' or len(message['text']) > 2000:
+            return None
+        body = message['text'].strip()
+        if body.startswith('```'):
+            body = '\n'.join(body.splitlines()[1:-1])
+        images = json.loads(body)['images']
+        if len(images) != 1 or images[0]['path'] != sheet:
+            return None
+        finding = images[0]['finding']
+        if (not isinstance(finding, str) or not visual.finding_is_read(finding)
+                or any(t in finding.lower() for t in ('<truncated', 'stream was interrupted'))):
+            return None
+        return {'finding': sheet + ': ' + finding,
+                'warnings': [warning], 'helper_receipt': str(path),
+                'recovered_from': 'Codex startup warning; helper exit 2, provider exit 0'}
+    except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError):
+        return None
+
+
 def read_sheet(helper, question, timeout, sheet, model=None, workdir=None):
+    started = time.time()
     try:
         result = visual.bounded_run([sys.executable, str(helper), '--question', question,
                                     '--timeout', str(timeout),
@@ -35,6 +105,9 @@ def read_sheet(helper, question, timeout, sheet, model=None, workdir=None):
         fatal = visual.dispatch_stop(context)
         return dict(failed(sheet, fatal or cause), fatal=fatal)
     out, err = result.stdout, result.stderr
+    recovered = recover_startup_warning(result, sheet, started)
+    if recovered:
+        return dict(recovered, sheet=sheet, fatal='', ok=True, cause='', attempt=1)
     fatal = next((s for s in err.splitlines() if s.startswith('DISPATCH_STOPPED:')), '')
     complete = (result.returncode == 0 and 'Coverage: 1/1; complete;' in out
                 and len(out.strip().splitlines()) > 1
@@ -54,6 +127,13 @@ def citation_number(token):
     if len(token.lstrip('-')) > 9:
         raise ValueError('numeric citation exceeds 9 digits')
     return int(token)
+
+
+def reader_conflict(finding):
+    # Ignore quoted screen text; a word-internal apostrophe is not a quote.
+    unquoted = re.sub(r'''"(?:\\.|[^"\\])*"|(?<!\w)'(?:\\.|[^'\\])*'(?!\w)|“[^”]*”|‘[^’]*’|`[^`]*`''',
+                      ' ', finding, flags=re.S)
+    return bool(re.search(r'\bCONFLICT\s*[:-]|(?m:^\s*CONFLICT\s*$)', unquoted))
 
 
 def validate(item, tile_count):
@@ -147,7 +227,7 @@ def validate_citations(item, tile_count):
                 # intervals without allocating billions of Python integers.
                 if end - start < 1000:
                     bad.update(range(start, end + 1))
-    conflict = bool(re.search(r'\bCONFLICT\b', item['finding']))
+    conflict = reader_conflict(item['finding'].removeprefix(sheet + ':'))
     invalid = bool(offending_intervals or malformed or conflict)
     state = 'INVALID' if invalid else ('READ' if item['ok'] else 'FAILED')
     cause = ('unparseable tile/frame citation' if malformed else
