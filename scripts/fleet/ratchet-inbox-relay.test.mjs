@@ -107,7 +107,7 @@ test('config accepts owner local and escalation remote, rejects unsafe routing',
   const root = mkdtempSync(join(tmpdir(), 'ratchet-config-'));
   try {
     const path = join(root, 'config.json');
-    const config = { owner, escalate: { name: 'orc', host: 'relay.example', inbox: '/srv/orc.md' }, localOutbox: '/srv/outbox.md' };
+    const config = { sshHost: 'relay.example', remoteInbox: '/srv/orc.md', owner, escalate: { name: 'orc', host: 'relay.example', inbox: '/srv/orc.md' }, localOutbox: '/srv/outbox.md' };
     writeFileSync(path, JSON.stringify(config)); assert.deepEqual(readConfig(path), config);
     writeFileSync(path, JSON.stringify({ ...config, owner: { ...owner, name: 'bad\nheading' } }));
     assert.throws(() => readConfig(path), /invalid config/);

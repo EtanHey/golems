@@ -16,6 +16,8 @@ The first-observed time is local; the original scheduled run URL is retained.
 
 Copy ratchet-relay.example.json to ~/.config/golems/ratchet-relay.json and set
 owner.name, owner.inbox, owner.host, escalate and localOutbox for the operator environment.
+Keep the required legacy sshHost/remoteInbox fields for the other fleet jobs
+that share this config; their routing stays unchanged.
 The owner receives RED, STILL RED, GREEN, WARN and recovery-health posts. Use
 `host: "local"` for a local append, otherwise a batch SSH host. Each inbox must be
 an absolute path. The escalation route must name `orc`. A RED strictly older than

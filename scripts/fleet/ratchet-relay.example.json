@@ -1,4 +1,6 @@
 {
+  "sshHost": "relay-host.example",
+  "remoteInbox": "/srv/relay/inbox.md",
   "owner": {
     "name": "guard-owner",
     "inbox": "/srv/owner/inbox.md",

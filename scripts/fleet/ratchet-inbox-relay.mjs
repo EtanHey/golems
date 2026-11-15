@@ -128,9 +128,8 @@ const validHost = host => typeof host === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_.@
 const validRoute = route => route && /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(route.name ?? '') && validPath(route.inbox) && validHost(route.host);
 export function readConfig(path = `${homedir()}/.config/golems/ratchet-relay.json`) {
   const value = JSON.parse(readFileSync(path, 'utf8'));
-  if (!value || !validPath(value.localOutbox) || (value.owner
-    ? !validRoute(value.owner) || !validRoute(value.escalate) || value.escalate.name !== 'orc'
-    : !validHost(value.sshHost) || !validPath(value.remoteInbox))) throw Error('invalid config');
+  if (!value || !validPath(value.localOutbox) || !validHost(value.sshHost) || !validPath(value.remoteInbox)
+    || (value.owner && (!validRoute(value.owner) || !validRoute(value.escalate) || value.escalate.name !== 'orc'))) throw Error('invalid config');
   return value;
 }
 const healthPost = (now, text, owner) => `\n### golems-ratchet → @${owner?.name ?? 'orc'} — ${new Date(now).toISOString()} ${text}\n`;
