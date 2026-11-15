@@ -47,14 +47,19 @@ def recover_startup_warning(result, sheet, started):
         if (receipt['provider'] != 'codex' or receipt['exit_code'] != 0
                 or receipt['images'] != [sheet] or receipt['tool_calls'] != ['error']):
             return None
-        # This adapter is for the cell helper: images live under cell/work,
-        # while each helper owns a real home under that same cell/tmp.
+        # Recorded cell helpers use cell/tmp or cell/work (when the caller
+        # sets TMPDIR to its output directory, above its sheets directory).
         image = Path(sheet).resolve()
         cells = [root for root in image.parents
                  if image.is_relative_to(root / 'work') and (root / 'tmp').is_dir()]
         home = Path(receipt['codex_home'])
         if (len(cells) != 1 or not home.is_absolute() or not home.is_dir()
-                or home.is_symlink() or not home.resolve().is_relative_to(cells[0] / 'tmp')):
+                or home.is_symlink() or home.name != 'codex-home'
+                or not home.parent.name.startswith('reader-')):
+            return None
+        resolved_home = home.resolve()
+        if not (resolved_home.is_relative_to(cells[0] / 'tmp')
+                or resolved_home.is_relative_to(cells[0] / 'work')):
             return None
         warning = ('Under-development features enabled: skip_host_skill_discovery. '
                    'Under-development features are incomplete and may behave unpredictably. '
@@ -215,7 +220,9 @@ def validate_citations(item, tile_count):
                 # intervals without allocating billions of Python integers.
                 if end - start < 1000:
                     bad.update(range(start, end + 1))
-    conflict = bool(re.search(r'\bCONFLICT\b', item['finding']))
+    # A reader conflict is a standalone/leading marker, not quoted screen text
+    # such as Git's "CONFLICT (content)" in an otherwise valid observation.
+    conflict = bool(re.search(r'(?m)^\s*CONFLICT(?:\s*:|\s*$)', finding))
     invalid = bool(offending_intervals or malformed or conflict)
     state = 'INVALID' if invalid else ('READ' if item['ok'] else 'FAILED')
     cause = ('unparseable tile/frame citation' if malformed else

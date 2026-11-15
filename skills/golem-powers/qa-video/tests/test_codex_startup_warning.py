@@ -127,7 +127,7 @@ def test_debrief_review_route_reaches_small_text_crop_rule():
     assert '`CROP` is a fresh `.png` path' in rule
 
 
-@pytest.mark.parametrize('case', ['missing', 'outside_cell', 'outside_tmp', 'symlink_escape'])
+@pytest.mark.parametrize('case', ['missing', 'outside_cell', 'protected_bin', 'symlink_escape'])
 def test_self_consistent_foreign_codex_home_fails(tmp_path, case):
     def mutate(receipt):
         original = receipt['codex_home']
@@ -135,8 +135,8 @@ def test_self_consistent_foreign_codex_home_fails(tmp_path, case):
         if case == 'outside_cell':
             home = tmp_path/'other-cell/tmp/reader-test/codex-home'
             home.mkdir(parents=True)
-        if case == 'outside_tmp':
-            home = tmp_path/'work/reader-test/codex-home'
+        if case == 'protected_bin':
+            home = tmp_path/'bin/reader-test/codex-home'
             home.mkdir(parents=True)
         if case == 'symlink_escape':
             foreign = tmp_path/'foreign-codex-home'
@@ -147,3 +147,33 @@ def test_self_consistent_foreign_codex_home_fails(tmp_path, case):
         warning = receipt['provider_events'][1]['item']
         warning['message'] = warning['message'].replace(original, str(home))
     assert replay(tmp_path, mutate)['state'] == 'FAILED'
+
+
+@pytest.mark.parametrize('parent_level', [0, 1])
+def test_recorded_colocated_reader_home_keeps_read(tmp_path, parent_level):
+    def mutate(receipt):
+        original = receipt['codex_home']
+        home = Path(receipt['images'][0]).parents[parent_level]/'reader-recorded/codex-home'
+        home.mkdir(parents=True)
+        receipt['codex_home'] = str(home)
+        warning = receipt['provider_events'][1]['item']
+        warning['message'] = warning['message'].replace(original, str(home))
+    assert replay(tmp_path, mutate)['state'] == 'READ'
+
+
+def test_visible_git_conflict_text_is_not_reader_conflict(tmp_path):
+    def mutate(receipt):
+        event = receipt['provider_events'][3]['item']
+        body = json.loads(event['text'])
+        body['images'][0]['finding'] = 'Tile 0: Terminal reports "CONFLICT (content): Merge conflict in example.txt".'
+        event['text'] = json.dumps(body)
+    assert replay(tmp_path, mutate)['state'] == 'READ'
+
+
+def test_explicit_reader_conflict_still_fails(tmp_path):
+    def mutate(receipt):
+        event = receipt['provider_events'][3]['item']
+        body = json.loads(event['text'])
+        body['images'][0]['finding'] = 'CONFLICT: incompatible readings of Tile 0.'
+        event['text'] = json.dumps(body)
+    assert replay(tmp_path, mutate)['state'] == 'INVALID'
