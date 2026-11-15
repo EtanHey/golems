@@ -34,9 +34,13 @@ header. This change does not edit or install the private config.
 
 There is currently no receipt age expiry in live-freshness.mjs/check-comment.mjs:
 a valid live receipt remains current until the guarded head changes. The
-120-minute grace belongs to a new guarded merge. Consequently there is no
-scheduled receipt-staleness timestamp to warn about one day ahead; no new TTL
-is introduced here. The existing report-only deadline warning is separate. Config must stay
+120-minute grace belongs to a new guarded merge. A receipt that carries a dated report-only allowance can become invalid at that
+allowance's deadline. The relay validates the current receipt now and at each
+future allowance deadline using the same freshness validator; if it becomes
+invalid within 24 hours, it warns the owner once per receipt content/update.
+Receipts without a timed allowance have no predictable stale date and produce
+no advance warning. No new TTL is introduced. The existing 48-hour report-only
+row warning is separate. Config must stay
 outside the repository. Missing or invalid config fails the run and increments self-health.
 
 After merge, the lead installs on the designated runner from its updated root checkout:

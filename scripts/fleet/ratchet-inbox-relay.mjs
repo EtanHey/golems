@@ -1,18 +1,19 @@
 #!/usr/bin/env node
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync, writeFileSync, renameSync, mkdirSync, openSync, closeSync, unlinkSync, statSync, fstatSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { guardedPrefixes, manifestsAt } from '../ratchet/guarded-set.mjs';
-import { parseRows, expectedReporting } from '../ratchet/table.mjs';
+import { parseRows, expectedReporting, findSticky, readVerdict } from '../ratchet/table.mjs';
 import { checkLiveFreshness } from '../ratchet/live-freshness.mjs';
 const HOUR = 3600000;
 const repo = 'EtanHey/golems';
 const marker = '<!-- golems-ratchet-schedule -->';
 const refresh = pr => `scripts/ratchet/post-merge-live.sh --merged-pr ${pr} --lease-pr <open PR>`;
 
-export function planRelay({ incident, rows, mergedPR, guardedHead, receiptFresh = false, reasons = {}, now = Date.now(), state = {}, owner }) {
+export function planRelay({ incident, rows, mergedPR, guardedHead, receiptFresh = false, reasons = {}, now = Date.now(), state = {}, owner, receiptExpiry }) {
   const next = structuredClone(state); next.warned ??= []; next.pending ??= [];
   const posts = [];
   const stamp = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit' }).format(now);
@@ -56,6 +57,11 @@ export function planRelay({ incident, rows, mergedPR, guardedHead, receiptFresh 
       next.warned.push(key);
     }
   }
+  if (receiptExpiry && now < Date.parse(receiptExpiry.at) && Date.parse(receiptExpiry.at) - now <= 24 * HOUR
+    && !next.warned.includes(receiptExpiry.key)) {
+    post(`WARN: live receipt for #${mergedPR} goes stale at ${receiptExpiry.at}; refresh with: ${refresh(mergedPR)}`);
+    next.warned.push(receiptExpiry.key);
+  }
   next.pending.push(...queued);
   return { posts, state: next };
 }
@@ -72,6 +78,19 @@ function run(binary, args, input) {
   if (result.status !== 0) throw Error(`${binary} ${args[0]} failed`); // never echo ambient auth or stderr
   return result.stdout.trim();
 }
+// A receipt has no age TTL. Only dated report-only allowances can make a currently
+// valid receipt expire at a known time. Ask the same freshness validator at that boundary.
+export function liveReceiptExpiry({ rows, ...input }) {
+  const expectedReal = rows.rows.filter(r => r.runner === 'live' && r.kind === 'real').length;
+  const check = now => checkLiveFreshness({ ...input, now, expectedReal, expectedReportOnly: expectedReporting(rows, 'live', now) });
+  if (!check(input.now).ok) return;
+  const comment = findSticky(input.comments, 'golems-ratchet-live', ['EtanHey']);
+  const verdict = readVerdict(comment?.body, 'golems-ratchet-live');
+  const deadlines = (verdict?.report_only ?? []).map(r => Date.parse(r.until)).filter(t => Number.isFinite(t) && t > input.now).sort((a, b) => a - b);
+  const deadline = deadlines.find(t => !check(t).ok);
+  if (deadline === undefined) return;
+  return { at: new Date(deadline).toISOString(), key: `receipt:${createHash('sha256').update(JSON.stringify([input.guardedHead, comment.id, comment.updated_at, comment.body])).digest('hex')}` };
+}
 export function collect({ gh = args => run('gh', args), git = args => run('git', args), now = Date.now() } = {}) {
   const api = path => JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${repo}/${path}`])).flat();
   const issues = api('issues?state=all&labels=ratchet-red&per_page=100').filter(i => !i.pull_request && i.user?.login === 'github-actions[bot]' && i.body?.split('\n')[0] === marker);
@@ -84,10 +103,12 @@ export function collect({ gh = args => run('gh', args), git = args => run('git',
   const pr = pulls.find(p => p.merged_at && p.base?.ref === 'master' && p.merge_commit_sha === guardedHead);
   if (!pr) throw Error('guarded merge PR not found');
   const comments = api(`issues/${pr.number}/comments`);
-  const receiptFresh = checkLiveFreshness({ guardedHead, pulls, comments, now,
+  const freshnessInput = { guardedHead, pulls, comments, now,
     allowedHeads: git(['rev-list', '--first-parent', 'origin/master', `^${guardedHead}^`]).split('\n'),
     expectedReal: rows.rows.filter(r => r.runner === 'live' && r.kind === 'real').length,
-    expectedReportOnly: expectedReporting(rows, 'live', now) }).ok;
+    expectedReportOnly: expectedReporting(rows, 'live', now) };
+  const receiptFresh = checkLiveFreshness(freshnessInput).ok;
+  const receiptExpiry = liveReceiptExpiry({ ...freshnessInput, rows });
   const reasons = {};
   if (incident.active) {
     try {
@@ -100,7 +121,7 @@ export function collect({ gh = args => run('gh', args), git = args => run('git',
       }
     } catch { /* run URL remains an explicit fallback */ }
   }
-  return { incident, rows: rows.rows, guardedHead, mergedPR: pr.number, receiptFresh, reasons, now };
+  return { incident, rows: rows.rows, guardedHead, mergedPR: pr.number, receiptFresh, receiptExpiry, reasons, now };
 }
 const validPath = p => typeof p === 'string' && p.startsWith('/') && !/[\x00-\x1f\x7f]/.test(p);
 const validHost = host => typeof host === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_.@-]*$/.test(host);

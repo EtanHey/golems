@@ -160,3 +160,22 @@ test('owner WARN and health never expose injected log secrets; legacy config is 
     assert.equal(JSON.parse(readFileSync(path)).pending.length, 0);
   } finally { rmSync(root, { recursive: true }); }
 });
+test('receipt expiry uses the real validator deadline, warns once per receipt, never invents TTL', async () => {
+  const { liveReceiptExpiry } = await import('./ratchet-inbox-relay.mjs');
+  const { PARITY_UNTIL } = await import('../ratchet/table.mjs');
+  const deadline = Date.parse(PARITY_UNTIL); const before = deadline - 24 * 3600000;
+  const head = 'a'.repeat(40);
+  const receipt = report_only => ({ user: { login: 'EtanHey' }, body: `<!-- ratchet-table: golems-ratchet-live -->\n<!-- ratchet-verdict: ${JSON.stringify({ head, ok: true, real_pass: 1, real_total: 1, bootstrap: false, report_only })} -->` });
+  const rows = { rows: [{ id: 'installed-skill-parity', kind: 'real', runner: 'live', report_only: 'until-i5-run2', report_only_until: PARITY_UNTIL }] };
+  const options = { guardedHead: head, pulls: [{ number: 1200, merged_at: '2026-11-01T00:00:00Z', merge_commit_sha: head, base: { ref: 'master' } }],
+    comments: [receipt([{ id: 'installed-skill-parity', until: PARITY_UNTIL }])], rows, now: before };
+  const expiry = liveReceiptExpiry(options); assert.equal(Date.parse(expiry.at), deadline);
+  const args = { ...input, incident: null, owner, now: before, receiptExpiry: expiry };
+  const first = planRelay(args); assert.equal(first.posts.length, 1);
+  assert.match(first.posts[0], /→ @skillcreator-lead.*WARN: live receipt for #1200 goes stale at/);
+  assert.equal(planRelay({ ...args, state: first.state }).posts.length, 0);
+  assert.equal(planRelay({ ...args, now: before - 1 }).posts.length, 0);
+  assert.equal(planRelay({ ...args, now: deadline }).posts.length, 0);
+  assert.equal(liveReceiptExpiry({ ...options, now: deadline }), undefined);
+  assert.equal(liveReceiptExpiry({ ...options, comments: [receipt([])], rows: { rows: [{ kind: 'real', runner: 'live' }] } }), undefined);
+});
