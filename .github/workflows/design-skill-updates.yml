@@ -89,7 +89,6 @@ jobs:
           GITHUB_TOKEN-opened PRs do not trigger pull_request CI. Required checks must
           be started by a maintainer push or close/reopen, or a suitable App/user token
           route. Require normal CI plus independent review before merge.
-          size:L because the exact upstream skill payload can exceed 400 copied lines.
           Loop-record: implementer=automation/upstream-sync/default reviewer=none rounds=0/0 defects=0 role=worker
           — designSkillsUpdater (automation) · GitHub Actions
           BODY

@@ -44,7 +44,7 @@ STUB
   export PR_SIZE_LABELS_GH="$TEST_ROOT/gh"
 }
 
-@test "classify honours the canon-9 thresholds at every boundary" {
+@test "classify honours the informational size thresholds at every boundary" {
   run "$SCRIPT" classify 0;   [ "$status" -eq 0 ]; [ "$output" = "size:XS" ]
   run "$SCRIPT" classify 50;  [ "$status" -eq 0 ]; [ "$output" = "size:XS" ]
   run "$SCRIPT" classify 51;  [ "$status" -eq 0 ]; [ "$output" = "size:S" ]
@@ -168,8 +168,8 @@ TSV
 
   # every create is idempotent
   [ "$(grep -c -- '--force' "$GH_LOG")" -eq 4 ]
-  # L carries the canon-9 one-liner requirement in its description
-  grep -qF 'canon 9 needs a one-line why' "$GH_LOG"
+  # L describes the measured count without imposing a split or justification
+  grep -qF 'over 400 hand-written lines added (informational)' "$GH_LOG"
   # descriptions say what is counted: added lines, not changed lines
   [ "$(grep -c 'hand-written lines added' "$GH_LOG")" -eq 4 ]
   run grep -c 'lines changed' "$GH_LOG"
@@ -253,21 +253,22 @@ TSV
   [[ "$output" == *"OK EtanHey/golems#42 size:M covers 10 hand-written lines"* ]]
 }
 
-@test "L without why warns and passes" {
+@test "L without justification passes without warning or reading the body" {
   make_gh_stub '' 'size:L'
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"::warning::"* ]] || false
-  [[ "$output" == *"size-why:"* ]]
+  [[ "$output" != *"::warning::"* ]] || false
+  ! grep -q -- '--json body' "$GH_LOG"
 }
 
-@test "L with why passes without warning" {
+@test "L with legacy justification also passes without reading the body" {
   make_gh_stub '' 'size:L' 'size-why: callers must land together'
   printf 'src/a.ts\t401\t0\n' > "$TEST_ROOT/files.tsv"
   run "$SCRIPT" check 42 --repo golems --files-tsv "$TEST_ROOT/files.tsv"
   [ "$status" -eq 0 ]
-  [[ "$output" != *"::warning::"* ]]
+  [[ "$output" != *"::warning::"* ]] || false
+  ! grep -q -- '--json body' "$GH_LOG"
 }
 
 @test "check still only warns when the size label is missing" {

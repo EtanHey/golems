@@ -443,7 +443,7 @@ RIGHT: Every CRITICAL/HIGH comment gets one of:
 3. Test each fix individually
 4. Row every NON-BLOCKING finding as a follow-up
 
-Max 2 review-fix rounds (canon #9). There is no round 3: after round 2 the lead verifies the final fixes, or the PR is split or parked.
+Max 2 review-fix rounds (canon #9). There is no round 3: after round 2 the lead verifies the final fixes, or the unfinished behaviour is parked.
 
 ### Classify each review comment:
 
@@ -486,7 +486,7 @@ Round 2: Only for BLOCKING findings; push fixes and request re-review (NON-BLOCK
 
 Automatic re-review depends on effective bot settings; manually request only missing/stale
 current-head coverage from eligible reviewers.
-There is no round 3 (canon #9): after round 2 the lead verifies the final fixes, or the PR is split or parked. Never merge with open blocking issues.
+There is no round 3 (canon #9): after round 2 the lead verifies the final fixes, or the unfinished behaviour is parked. Never merge with open blocking issues.
 
 ### Sanitize Before PR (CRITICAL)
 

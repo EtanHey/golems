@@ -187,16 +187,13 @@ stays small:
 | `size:M` | 151–400 |
 | `size:L` | over 400 |
 
-**A measured diff over 400 hand-written lines owes a one-line `size:L` why** in
-the PR body — canon 9 says to split past ~400 lines, so explain why this change
-could not be split. For example:
-`size:L because the generated client and its consumers cannot land separately
-without breaking the build.`
+Size is information only. Follow canon rule 9: one PR per behaviour the owner
+or a real client can try, including its tests, proof and docs. Line and commit
+counts do not require a split or a size justification. Fix same-behaviour defects
+in the open PR; put unrelated defects in a new PR.
 
 CI (`.github/workflows/pr-size-label.yml`) **fails** on a lying or conflicting
-label. It **warns** on a missing label and emits a non-fatal reminder on every
-measured diff over 400 hand-written lines to cover a large PR with no stated
-why. The check does not parse the PR body or judge rationale prose.
+label and **warns** on a missing label. A large PR needs no size justification.
 
 The signature line goes **last** in the body, and the same line ends every PR
 comment, review, and issue comment ([Agent Identity Signature](github-identity.md)). Commits use

@@ -61,6 +61,8 @@ A plan that dispatches Codex keeps the daily one-line Codex count in its STATUS.
 
 When planning phases for any visible front-end change, read [workflows/ux-ui.md](workflows/ux-ui.md) and name every stage in the plan, even while app details are pending.
 
+Cut PRs by tryable behaviour under canon rule 9, including the behaviour's tests, proof and docs. Line and commit counts do not define a slice. Fix same-behaviour defects in the open PR; unrelated defects get a new PR.
+
 Each slice of a multi-PR plan declares its invariant test: name the behavior that must hold and the test command or case that proves it before READY. Fill this in even when using the scaffold script or workflow templates.
 
 The plan reports chain span as its convergence metric: elapsed time from the first PR opening to the last merge in the linked fix chain, excluding unmerged roots and dependabot bundles, with stack and follow-up links reported separately. An unmerged root has no completed chain span; report it as pending rather than zero. Keep per-PR time alongside it.

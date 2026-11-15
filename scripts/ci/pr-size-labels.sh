@@ -21,8 +21,7 @@
 #   compute <pr>           Size a PR from its hand-written diff and apply exactly
 #                          one `size:*` label, removing every other `size:*` or
 #                          `size/*` it carries.
-#   check <pr>             Warn when the PR has no `size:*` label or it adds
-#                          over 400 hand-written lines; fail when its label
+#   check <pr>             Warn when the PR has no `size:*` label; fail when its label
 #                          under-reports on forks; correct same-repo labels. Fail if multiple
 #                          labels exist.
 #   suggest [base]         Print the branch size vs origin/master (default).
@@ -36,9 +35,9 @@
 #     count <=  50  -> size:XS
 #     count <= 150  -> size:S
 #     count <= 400  -> size:M
-#     count >  400  -> size:L   (canon 9: needs a one-line why)
-#   400 is canon 9's split point. Above that cap, warn unless the PR body
-#   has a line starting size-why: plus text. Missing justification never fails.
+#     count >  400  -> size:L
+#   Labels describe size only. Canon 9 cuts PRs by tryable behaviour, with no
+#   line or commit cap and no size justification.
 #
 # Exit codes: 0 ok, 1 runtime failure, 2 usage error.
 
@@ -58,7 +57,7 @@ LABEL_SPEC=(
   "size:XS|0E8A16|Tight-loop PR size: 50 or fewer hand-written lines added"
   "size:S|FBCA04|Tight-loop PR size: 51-150 hand-written lines added"
   "size:M|D93F0B|Tight-loop PR size: 151-400 hand-written lines added"
-  "size:L|B60205|Tight-loop PR size: over 400 hand-written lines added; canon 9 needs a one-line why"
+  "size:L|B60205|Tight-loop PR size: over 400 hand-written lines added (informational)"
 )
 
 # Files whose lines are NOT hand-written and are excluded from the count.
@@ -102,8 +101,7 @@ usage: pr-size-labels.sh <subcommand>
   compute <pr> --repo <owner/name>    size the PR from its hand-written diff and
                                       apply exactly one size:* label
                                       [--dry-run] [--files-tsv <path>]
-  check <pr> --repo <owner/name>      warn when the PR has no size:* or exceeds
-                                      400 hand-written lines; fail when its
+  check <pr> --repo <owner/name>      warn when the PR has no size:*; fail when its
                                       label under-reports the hand-written count
                                       or multiple labels exist
                                       [--files-tsv <path>]
@@ -114,7 +112,7 @@ usage: pr-size-labels.sh <subcommand>
   (default EtanHey).
 
   Sizing: additions over non-generated files; deletions never count.
-          <=50 XS, <=150 S, <=400 M, >400 L (canon 9's 400 split point).
+          <=50 XS, <=150 S, <=400 M, >400 L (informational only).
 USAGE
   exit 2
 }
@@ -297,14 +295,6 @@ size label corrected: $label → $required ($lines hand-written lines)"
       fi
       "$GH_BIN" api "$endpoint" --method "$method" -f body="$message" >/dev/null
       label="$required"
-    fi
-
-    if (( lines > M_MAX )); then
-      local body
-      body="$("$GH_BIN" pr view "$pr" --repo "$repo" --json body --jq '.body')"
-      if ! grep -qE '^size-why:[[:blank:]]*[^[:space:]]' <<<"$body"; then
-        printf '::warning::%s#%s has %s hand-written lines; add a size-why: justification line in the PR body to silence this warning.\n' "$repo" "$pr" "$lines"
-      fi
     fi
 
     printf 'OK %s#%s %s covers %s hand-written lines.\n' "$repo" "$pr" "$label" "$lines"
