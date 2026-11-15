@@ -44,6 +44,17 @@ again. A legacy SSH alias named `local` remains distinct from an explicit local
 append, including in the fingerprint and destination deduplication. Ambiguous SSH
 failures can duplicate a notice, like other posts.
 
+If the previous escalation host stays unreachable, the relay holds every post
+behind the pending ROUTING notice. To abandon delivery to that old destination,
+stop the relay, back up ~/.golems/ratchet/inbox-relay-state.json, and remove both
+top-level keys `routing` and `routingChange` from that state file, preserving
+`pending` and all other keys. On restart, the relay re-announces to the new
+escalation inbox only; the old inbox will not receive that notice.
+
+The state file lives in the same agent-writable directory as the config, so the
+notice catches honest routing edits, but an agent that rewrites both files could
+forge the recorded routing and suppress or fake the notice.
+
 At install time create the owner's inbox, if absent, with a one-line Markdown
 header. This change does not edit or install the private config.
 
@@ -75,7 +86,12 @@ Both run hourly via the adjacent launchd templates. The separate guarded hook
 installer integration installs and drift-checks these jobs; do not copy configs
 from a checkout. Neither job needs an LLM or a scheduled agent session.
 
-The existing relay config may additionally contain `repoRoots` (absolute paths)
+`fleet-runtime.mjs` and the other fleet jobs still read only
+~/.config/golems/ratchet-relay.json. Their routing is not covered by the relay's
+ROUTING notice. Do not remove the old config file after moving the relay to its
+new path.
+
+That old config may additionally contain `repoRoots` (absolute paths)
 and `diskThresholdGiB` (hostname to positive GiB threshold). Defaults scan
 ~/Gits and ~/.t3/worktrees; volumes below 1000 GiB default to 40 GiB, larger
 volumes to 60 GiB. Free space uses statfs bfree, excluding purgeable estimates.
