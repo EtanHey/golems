@@ -74,13 +74,16 @@ def evaluate(payload, home):
         return
     if not isinstance(args.get('command'), str):
         return
-    from commands import operations, shell
+    from commands import PolicyWriteRefused, operations, shell
     from tokens import authorize, own_lease_scope
     with shell.policy_evaluation_deadline(8):
         from branch_cleanup import allowed as branch_cleanup_allowed
         if branch_cleanup_allowed(args['command'], payload['cwd']):
             return
-        ops = operations(args['command'], payload['cwd'])
+        try:
+            ops = operations(args['command'], payload['cwd'])
+        except PolicyWriteRefused as exc:
+            raise ConfirmationRequired(str(exc)) from exc
         if ops and not authorize(payload, ops, home):
             allowed, reason = own_lease_scope(payload, ops)
             if not allowed:
