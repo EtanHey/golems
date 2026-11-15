@@ -162,7 +162,12 @@ export function executeRelay({ path, now = Date.now(), config = readConfig, fetc
     }
     stage = 'git fetch failed'; fetch();
     stage = 'incident collection or planning failed'; state = planRelay({ ...gather(), now, state, owner: settings.owner }).state;
-    if (state.failures?.count >= 3) queueHealth(`RELAY was failing for ${state.failures.count} runs since ${state.failures.since}: ${state.failures.reason}`);
+    if (state.failures?.count >= 3) {
+      // A recovery append can itself fail: replace its queued summary with the
+      // latest count rather than accumulating one health post per failed run.
+      state.pending = state.pending.filter(p => !pendingText([p]).includes('RELAY was failing for '));
+      queueHealth(`RELAY was failing for ${state.failures.count} runs since ${state.failures.since}: ${state.failures.reason}`);
+    }
     const text = pendingText(state.pending);
     if (dry) { console.log(text || 'No posts due.'); return 0; }
     stage = 'state write failed'; save(state);

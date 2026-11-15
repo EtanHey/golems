@@ -82,6 +82,7 @@ test('missing config counts failures; SSH failures use OUTBOX and recover with e
     assert.equal(outbox.length, 3); assert.equal(JSON.stringify(outbox).includes('SECRET'), false);
     assert.equal(executeRelay({ ...options, config: () => ({ sshHost: 'relay.example', remoteInbox: '/srv/orc.md', localOutbox: '/srv/outbox.md' }) }), 0);
     assert.match(posts[0], /RELAY was failing for 4 runs since.*SSH delivery failed/);
+    assert.equal((posts[0].match(/RELAY was failing for/g) ?? []).length, 1);
     assert.equal(JSON.parse(readFileSync(path)).failures, undefined);
   } finally { rmSync(root, { recursive: true }); }
 });
