@@ -32,17 +32,21 @@ Gather (gatherers read every sheet; you never open one), first that works:
 EOF
   else
     cat <<EOF
-  Transcript-first: <=12 moments, one still or a <=2 fps short window each; no 30 s coverage, no scene sweep.
+  Transcript-first: <=12 moments; cue window = containing transcript segment plus preceding three
+  (all available at the start). Extract start + midpoint per cue window: <=24 stills.
+  Count frame reads/waves within the same deadline; decoded PTS must lie inside the window, else refine or
+  mark NOT DETERMINED. No 30 s coverage, no scene sweep.
   (Rigorous/full/exhaustive or a silent video: workflows/gems.md § Visual-first exhaustive, same gatherers.)
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" $MODE -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode $MODE
-  (exit STILLS_READY: read transcript.srt, plan.json and debrief.md; the moment-NN.jpg stills go to gatherers)
+  (exit STILLS_READY: read transcript.srt, plan.json and debrief.md; the moment-NN-start.jpg / moment-NN-midpoint.jpg stills go to gatherers)
 Gather (gatherers read every still; you never open one), first that works:
-  1. T3: the moment stills as one batch (<=15 per batch), all in one turn:
+  1. T3: up to 24 stills means two batches (<=15 per batch), dispatched in one turn:
 EOF
   fi
   cat <<EOF
      delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "antigravity", model: "gemini-3.8-flash", options: {thinking_level: "high"}}, task: "Read and follow $WORKDIR/briefs/gather-bN.md"})
   2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"$([ "$MODE" = qa ] || printf ' "" %s-gather "%s"/moment-*.jpg' "$MODE" "$WORKDIR")   (visual-batch.py, headless Gemini via agy)
+  (For debrief/review, moment-*.jpg includes both start and midpoint files.)
   3. TOOLING FAILURE with the raw error path; unread windows stay NOT DETERMINED. Never read the frames instead.
 Wait budgets, enforced by bounded waits (never by a completion wake): 300 s per gatherer call, the gather stage gets
   max(600, 24 x video minutes) s, each timeout = the earliest of call/stage/parent deadline.
