@@ -19,6 +19,16 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const installer = path.join(here, "..", "hooks", "install-hooks.mjs");
 const wrapper = path.join(here, "..", "hooks", "fail-open.py");
 const realManifest = JSON.parse(readFileSync(path.join(here, "..", "hooks", "manifest.json"), "utf8"));
+// The release support policy owns cross-directory dependencies of copied hooks.
+const sourceRoot = path.resolve(here, "../..");
+const launchdSupport = JSON.parse(readFileSync(path.join(sourceRoot, 'scripts/release/shipped-paths.json'), 'utf8')).support.filter(file => file.startsWith('launchd/'));
+function copyLaunchdSupport(destinationRoot) {
+  for (const file of launchdSupport) {
+    mkdirSync(path.dirname(path.join(destinationRoot, file)), { recursive: true });
+    cpSync(path.join(sourceRoot, file), path.join(destinationRoot, file));
+  }
+}
+
 const dirs = [];
 afterEach(() => dirs.splice(0).forEach((d) => rmSync(d, { recursive: true, force: true })));
 
@@ -95,6 +105,7 @@ function fixture({ settings, privateSuite = true, ownerLayout = false } = {}) {
     mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
     cpSync(path.join(here, '../..', file), path.join(repo, file));
   }
+  copyLaunchdSupport(repo);
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "seed");
   git(repo, "push", "-q", "origin", "HEAD:master");
@@ -730,6 +741,7 @@ test("drift paths cover every registered hook source and shared runtime", () => 
     }
   }
   expect(paths).toContain("skills/golem-powers/_shared/");
+  expect(paths).toContain("launchd/named-program.mjs");
   expect(paths).toContain("skills/golem-powers/git-guardian/");
   const added = hookDriftPaths({ hosts: { other: [
     { kind: "golems", source: "new-hook/run.py" },
@@ -759,6 +771,8 @@ test("--status counts hook and shared changes, ignoring unrelated commits", () =
   expect(run(fx, "--status").out).toContain("drift=2 behind=4");
   commit("scripts/hooks/fail-open.py");
   expect(run(fx, "--status").out).toContain("drift=3 behind=5");
+  commit("launchd/named-program.mjs");
+  expect(run(fx, "--status").out).toContain("drift=4 behind=6");
 });
 
 test("--status: ok, drift, then copy(not link) and dangling exit nonzero; missing does not", () => {
@@ -1012,6 +1026,7 @@ function pinnedManifestFixture() {
   const fx = fixture();
   const directory = path.join(fx.root, 'invoking-checkout/scripts/hooks');
   mkdirSync(directory, { recursive: true });
+  copyLaunchdSupport(path.resolve(directory, '../..'));
   cpSync(installer, path.join(directory, 'install-hooks.mjs'));
   cpSync(path.join(path.dirname(installer), 'machine-host.mjs'), path.join(directory, 'machine-host.mjs'));
   cpSync(path.join(path.dirname(installer), 'hook-paths.mjs'), path.join(directory, 'hook-paths.mjs'));
@@ -1514,7 +1529,8 @@ test("policy status rejects missing fail-closed registration and stale launcher;
 
 test("installer refuses a legacy source launcher paired with fail-closed before pin or settings writes", () => {
   const fx = closedFixture();
-  const source = path.join(fx.root, "installer"); mkdirSync(source);
+  const source = path.join(fx.root, "installer/scripts/hooks"); mkdirSync(source, { recursive: true });
+  copyLaunchdSupport(path.resolve(source, "../.."));
   for (const name of ["install-hooks.mjs", "fleet-jobs.mjs", "hook-paths.mjs", "machine-host.mjs", "hook-interpreters.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
   writeFileSync(path.join(source, "fail-open.py"), legacyLauncher);
   const before = readFileSync(fx.settingsPath, "utf8");
@@ -1994,7 +2010,9 @@ test('scratch HOME fleet install never calls launchctl in the real user domain',
   expect(calls).toEqual([]);
   expect(result.out).toContain('fleet launchd: skipped');
   for (const name of ['worktree-sweeper', 'disk-guard']) {
-    expect(readFileSync(path.join(fx.home, `Library/LaunchAgents/com.golems.${name}.plist`), 'utf8')).toContain(`<string>${stableNode}</string>`);
+    const wrapper = path.join(fx.home, '.local/lib/golems', name === 'disk-guard' ? 'Golems Disk Guard' : 'Golems Worktree Sweeper');
+    expect(readFileSync(path.join(fx.home, `Library/LaunchAgents/com.golems.${name}.plist`), 'utf8')).toContain(`<string>${wrapper}</string>`);
+    expect(readFileSync(wrapper, 'utf8')).toContain(`exec '${stableNode}' "$@"`);
   }
   const status = run(fx, '--status', '--node', stableNode);
   expect(status.out).not.toContain('fleet job drift:');

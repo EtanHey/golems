@@ -68,6 +68,12 @@ function setup(id, e) {
   const isFile = source.endsWith(".py");
   copy(isFile ? path.dirname(source) : source);
   copy("scripts/hooks/fail-open.py");
+  // Some manifest sources copy the hooks directory, including fleet-jobs.
+  // Keep its cross-directory support in the same synthetic checkout.
+  if (existsSync(path.join(tree, 'scripts/hooks/fleet-jobs.mjs'))) {
+    const policy = JSON.parse(readFileSync(path.join(repo, 'scripts/release/shipped-paths.json'), 'utf8'));
+    for (const file of policy.support.filter(file => file.startsWith('launchd/'))) copy(file);
+  }
   const rest = e.command.split("golems-fail-open.py ")[1];
   const closed = rest.startsWith("--fail-closed ");  // policy gates: mirror the registered mode
   const after = closed ? rest.slice("--fail-closed ".length) : rest;
