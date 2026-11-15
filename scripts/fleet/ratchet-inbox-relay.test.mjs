@@ -180,3 +180,18 @@ test('receipt expiry uses the real validator deadline, warns once per receipt, n
   assert.equal(liveReceiptExpiry({ ...options, now: deadline }), undefined);
   assert.equal(liveReceiptExpiry({ ...options, comments: [receipt([])], rows: { rows: [{ kind: 'real', runner: 'live' }] } }), undefined);
 });
+
+test('legacy ssh host named local remains SSH rather than a local append', async () => {
+  const { executeRelay } = await import('./ratchet-inbox-relay.mjs');
+  const { mkdtempSync, existsSync, rmSync } = await import('node:fs');
+  const root = mkdtempSync(join(tmpdir(), 'ratchet-legacy-local-')); const inbox = join(root, 'inbox.md');
+  let delivered = '';
+  try {
+    assert.equal(executeRelay({ path: join(root, 'state.json'), now, fetch: () => {}, collect: () => input,
+      config: () => ({ sshHost: 'local', remoteInbox: inbox, localOutbox: join(root, 'outbox.md') }),
+      ssh: text => { delivered += text; } }), 0);
+    assert.match(delivered, /owner is not configured/);
+    assert.match(delivered, /→ @orc.*RED/);
+    assert.equal(existsSync(inbox), false);
+  } finally { rmSync(root, { recursive: true }); }
+});

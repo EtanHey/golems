@@ -184,7 +184,7 @@ export function executeRelay({ path, now = Date.now(), config = readConfig, fetc
       stage = 'SSH delivery failed';
       try {
         if (!route?.host || !route?.inbox) throw Error('missing delivery route');
-        if (route.host === 'local') {
+        if (typeof item !== 'string' && route.host === 'local') {
           mkdirSync(dirname(route.inbox), { recursive: true });
           appendFileSync(route.inbox, body, { mode: 0o600 });
         } else if (ssh) ssh(body, { ...settings, sshHost: route.host, remoteInbox: route.inbox });
