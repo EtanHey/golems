@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { nameProgram } from "../launchd/named-program.mjs";
+
 import { spawn } from "node:child_process";
 import {
   access,
@@ -206,13 +208,13 @@ async function install(options, paths) {
   await rm(paths.legacyRuntimePath, { force: true });
   await atomicWrite(
     paths.plistPath,
-    renderTemplate(template, {
+    nameProgram(renderTemplate(template, {
       "@HOME@": options.home,
       "@LOG_DIR@": paths.logDir,
       "@NODE_BIN@": options.nodeBin,
       "@RUNTIME_PATH@": paths.runtimePath,
       "@VENDOR_DIR@": options.vendorDir,
-    }),
+    }), options.home),
     0o644,
   );
 

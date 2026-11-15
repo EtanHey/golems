@@ -1,3 +1,4 @@
+import { nameProgram } from '../../launchd/named-program.mjs';
 import { existsSync, readFileSync, mkdirSync, writeFileSync, renameSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, userInfo } from 'node:os';
@@ -10,10 +11,13 @@ export function fleetJobFiles(live, home = homedir(), node = process.execPath) {
     path: join(home, 'Library/LaunchAgents', 'com.golems.' + name + '.plist'),
     text: readFileSync(join(live, 'scripts/fleet', 'com.golems.' + name + '.plist.template'), 'utf8')
       .replaceAll('/opt/homebrew/bin/node', xml(node)).replaceAll('__HOME__/Gits/golems', xml(live)).replaceAll('__HOME__', xml(home))
-  }));
+  })).map(f => ({ ...f, source: f.text, text: nameProgram(f.text, home, { install: false }) }));
 }
 export function fleetJobsStatus(live, options = {}) {
-  return fleetJobFiles(live, options.home, options.node).filter(f => !existsSync(f.path) || readFileSync(f.path, 'utf8') !== f.text).map(f => 'fleet job drift: ' + f.name);
+  return fleetJobFiles(live, options.home, options.node).filter(f => {
+    try { nameProgram(f.source, options.home ?? homedir(), { verifyOnly: true }); } catch { return true; }
+    return !existsSync(f.path) || readFileSync(f.path, 'utf8') !== f.text;
+  }).map(f => 'fleet job drift: ' + f.name);
 }
 // Keep manifest admission and the vetted stable interpreter together at both entry points.
 export function installContextFleetJobs(ctx, options = {}) {
@@ -43,6 +47,7 @@ export function installFleetJobs(live, { home = homedir(), accountHome = userInf
   const files = fleetJobFiles(live, home, node);
   mkdirSync(join(home, '.golems/fleet'), { recursive: true });
   for (const f of files) {
+    nameProgram(f.source, home); // Refuse differing wrappers before touching the loaded job.
     const domain = 'gui/' + uid; const service = domain + '/com.golems.' + f.name;
     const same = existsSync(f.path) && readFileSync(f.path, 'utf8') === f.text;
     let loaded = false;

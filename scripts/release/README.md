@@ -19,6 +19,9 @@ The archive preserves these repo-relative paths:
 - `scripts/repogolem/`: config generator, schema/example, runtime and dispatch modules
 - `packages/golem-skills/`: golems-cli source and package metadata
 - `scripts/hooks/`: installers, public gate implementations and hook manifest
+- `launchd/named-program.mjs`: shared named-wrapper dependency of the shipped
+  fleet hook installer. The other launchd/design/OAuth entrypoints remain
+  checkout-only tools; their local imports are not release entrypoints.
 - `.claude/hooks/block-dangerous-commands.py`, `hooks/daemon-gate-precheck.py`:
   additional sources named by the hook manifest
 - `scripts/model-roles.mjs`, its `scripts/ci/check-model-role-drift.mjs` loader,

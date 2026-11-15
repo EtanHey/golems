@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { userInfo } from 'node:os';
 import { fleetJobFiles, fleetJobsStatus, installFleetJobs, installContextFleetJobs, reportFleetJobsStatus } from './fleet-jobs.mjs';
@@ -15,12 +15,18 @@ test('jobs render pinned paths, install idempotently, detect plist drift', () =>
   };
   try {
     assert.equal(fleetJobsStatus(live, { home }).length, 2);
+    assert.equal(existsSync(join(home, ".local")), false, "status must not create runtime files");
     installFleetJobs(live, { home, accountHome: home, command, uid: 1 });
     assert.equal(fleetJobsStatus(live, { home }).length, 0);
     assert.equal(calls.filter(x => x === 'bootstrap').length, 2);
     installFleetJobs(live, { home, accountHome: home, command, uid: 1 });
     assert.equal(calls.filter(x => x === 'bootstrap').length, 2);
     const f = fleetJobFiles(live, home)[0]; assert.ok(f.text.includes(live));
+    const wrapper = join(home, '.local/lib/golems/Golems Worktree Sweeper');
+    const bytes = readFileSync(wrapper); writeFileSync(wrapper, 'drift');
+    assert.equal(fleetJobsStatus(live, { home }).length, 1);
+    assert.throws(() => installFleetJobs(live, { home, accountHome: home, command, uid: 1 }), /wrapper differs/);
+    writeFileSync(wrapper, bytes);
     writeFileSync(f.path, 'drift'); assert.equal(fleetJobsStatus(live, { home }).length, 1);
   } finally { rmSync(home, { recursive: true }); }
 });
@@ -44,7 +50,7 @@ test('context install and status share the vetted stable Node path', () => {
     installContextFleetJobs(ctx, { home, accountHome: scratch });
     for (const f of fleetJobFiles(ctx.live, home, ctx.hookNode.path)) {
       assert.equal(readFileSync(f.path, 'utf8'), f.text);
-      assert.ok(f.text.includes(`<string>${ctx.hookNode.path}</string>`));
+      assert.ok(readFileSync(join(home, ".local/lib/golems", f.name === "disk-guard" ? "Golems Disk Guard" : "Golems Worktree Sweeper"), "utf8").includes(ctx.hookNode.path));
     }
     assert.equal(reportFleetJobsStatus(ctx, true, { home }), false);
   } finally { rmSync(home, { recursive: true }); }

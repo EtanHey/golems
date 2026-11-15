@@ -59,7 +59,8 @@ test("focused installer renders a valid host plist without launchctl", { skip: p
     join(home, "Library/LaunchAgents/com.golems.stalker-morning-digest.plist"),
     "utf8",
   );
-  assert.ok(rendered.includes(`<string>${process.execPath}</string>`));
+  assert.ok(rendered.includes("Golems Morning Digest</string>"));
+  assert.ok((await readFile(join(home, ".local/lib/golems/Golems Morning Digest"), "utf8")).includes(process.execPath));
   assert.ok(rendered.includes(`<string>${root}/scripts/stalker/stalker-morning-digest.mjs</string>`));
   assert.match(rendered, /Home &amp; Team\/Gits\/orchestrator/);
   assert.doesNotMatch(rendered, /@[A-Z][A-Z0-9_]*@/);

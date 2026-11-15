@@ -16,25 +16,7 @@ RETIRED=("com.golemszikaron.briefing.plist" "com.golems.agent-browser-reap.plist
 
 domain="gui/$(id -u)"
 
-unload_label() {
-    local label="$1"
-    local attempt
-    if launchctl print "$domain/$label" >/dev/null 2>&1; then
-        echo "  Unloading existing $label..."
-        launchctl bootout "$domain/$label" 2>/dev/null || true
-        # bootout can return before launchd finishes removing the service.
-        for ((attempt = 0; attempt < 25; attempt++)); do
-            if ! launchctl print "$domain/$label" >/dev/null 2>&1; then
-                break
-            fi
-            sleep 0.2
-        done
-        if launchctl print "$domain/$label" >/dev/null 2>&1; then
-            echo "ERROR: $label still loaded after bootout" >&2
-            exit 1
-        fi
-    fi
-}
+source "$SCRIPT_DIR/unload-label.sh"
 
 remove_plists() {
     local plist label
@@ -71,12 +53,14 @@ remove_plists "${RETIRED[@]}"
 for plist in "${PLISTS[@]}"; do
     label="${plist%.plist}"
 
-    # Remove the loaded definition so bootstrap picks up the rendered plist.
-    unload_label "$label"
-
-    # Render host-specific paths into the installed plist.
+    # Prepare and verify before touching the loaded job or installed definition.
     echo "  Installing $plist..."
-    "$SCRIPT_DIR/render-plist.sh" "$SCRIPT_DIR/$plist" "$LAUNCH_AGENTS/$plist"
+    candidate="$LAUNCH_AGENTS/$plist.candidate"
+    "$SCRIPT_DIR/render-plist.sh" "$SCRIPT_DIR/$plist" "$candidate"
+    "$NODE_BIN" "$SCRIPT_DIR/named-program.mjs" "$candidate"
+    plutil -lint "$candidate"
+    unload_label "$label"
+    mv "$candidate" "$LAUNCH_AGENTS/$plist"
 
     # Bootstrap failures must stop installation before the success message.
     echo "  Loading $label..."
