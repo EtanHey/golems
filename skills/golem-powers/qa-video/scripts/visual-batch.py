@@ -47,6 +47,15 @@ def recover_startup_warning(result, sheet, started):
         if (receipt['provider'] != 'codex' or receipt['exit_code'] != 0
                 or receipt['images'] != [sheet] or receipt['tool_calls'] != ['error']):
             return None
+        # This adapter is for the cell helper: images live under cell/work,
+        # while each helper owns a real home under that same cell/tmp.
+        image = Path(sheet).resolve()
+        cells = [root for root in image.parents
+                 if image.is_relative_to(root / 'work') and (root / 'tmp').is_dir()]
+        home = Path(receipt['codex_home'])
+        if (len(cells) != 1 or not home.is_absolute() or not home.is_dir()
+                or home.is_symlink() or not home.resolve().is_relative_to(cells[0] / 'tmp')):
+            return None
         warning = ('Under-development features enabled: skip_host_skill_discovery. '
                    'Under-development features are incomplete and may behave unpredictably. '
                    'To suppress this warning, set `suppress_unstable_features_warning = true` in '

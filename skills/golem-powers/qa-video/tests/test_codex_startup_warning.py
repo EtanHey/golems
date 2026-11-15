@@ -16,16 +16,20 @@ FIXTURE = Path(__file__).parent/'fixtures/codex-startup-warning.jsonl'
 
 
 def replay(tmp_path, mutate=lambda receipt: None, code=2):
-    image = tmp_path/'frame.jpg'
+    image = tmp_path/'work/out/frame.jpg'
+    image.parent.mkdir(parents=True)
     image.write_bytes(b'synthetic')
     events = [json.loads(line) for line in FIXTURE.read_text().splitlines()]
     body = json.loads(events[3]['item']['text'])
     body['images'][0]['path'] = str(image)
     events[3]['item']['text'] = json.dumps(body)
+    home = tmp_path/'tmp/reader-test/codex-home'
+    home.mkdir(parents=True)
+    events[1]['item']['message'] = events[1]['item']['message'].replace('/reader/codex-home', str(home))
     receipt = dict(provider='codex', exit_code=0, images=[str(image)],
-                   codex_home='/reader/codex-home', tool_calls=['error'], provider_events=events)
+                   codex_home=str(home), tool_calls=['error'], provider_events=events)
     mutate(receipt)
-    directory = tmp_path/'helper-receipts'
+    directory = image.parent/'helper-receipts'
     directory.mkdir()
     path = directory/'recorded.json'
 
@@ -70,13 +74,15 @@ def test_crop_rule_has_exact_parameters():
     assert 'a cue whose answer is small on screen gets a cropped read of the bracketed frames' in text
     assert 'crop.sh "$FRAME" "$X" "$Y" "$W" "$H" "$CROP"' in text
     assert 'never use oracle coordinates' in text
+    assert '`CROP` is a fresh `.png` path in the run directory' in text
 
 
 def test_batch_cli_replays_helper_receipt(tmp_path):
     """Exercise the real subprocess/CLI/summary path, without a provider call."""
-    image = tmp_path/'frame.jpg'
+    image = tmp_path/'work/out/frame.jpg'
+    image.parent.mkdir(parents=True)
     image.write_bytes(b'synthetic input; never sent to a model')
-    index = tmp_path/'index.tsv'
+    index = image.parent/'index.tsv'
     index.write_text('frame.jpg\t0\t1\t1\tsynthetic\n')
     helper = tmp_path/'helper.py'
     helper.write_text('''import json, sys
@@ -86,7 +92,10 @@ events = [json.loads(line) for line in Path(''' + repr(str(FIXTURE)) + ''').read
 body = json.loads(events[3]['item']['text'])
 body['images'][0]['path'] = image
 events[3]['item']['text'] = json.dumps(body)
-r = dict(provider='codex', exit_code=0, codex_home='/reader/codex-home', images=[image], tool_calls=['error'], provider_events=events)
+home = Path(image).parents[2]/'tmp/reader-test/codex-home'
+home.mkdir(parents=True)
+events[1]['item']['message'] = events[1]['item']['message'].replace('/reader/codex-home', str(home))
+r = dict(provider='codex', exit_code=0, codex_home=str(home), images=[image], tool_calls=['error'], provider_events=events)
 p = Path(image).parent/'helper-receipts/replay.json'
 p.parent.mkdir(exist_ok=True)
 p.write_text(json.dumps(r))
@@ -103,3 +112,38 @@ sys.exit(2)
     assert summary['status'] == 'COMPLETE' and summary['covered'] == '1/1'
     assert len(summary['sheets'][0]['warnings']) == 1
     assert json.loads((tmp_path/'visual/findings.jsonl').read_text())['helper_receipt']
+
+
+def test_debrief_review_route_reaches_small_text_crop_rule():
+    skill = (SKILL/'SKILL.md').read_text()
+    route = next(line for line in skill.splitlines() if line.startswith('| "debrief", "review this video" |'))
+    assert '[workflows/process.md](workflows/process.md)' in route
+    process = (SKILL/'workflows/process.md').read_text()
+    assert '[Small-text crop rule](gems.md#small-text-crop-rule)' in process
+    gems = (SKILL/'workflows/gems.md').read_text()
+    assert '### Small-text crop rule' in gems
+    rule = gems.split('### Small-text crop rule', 1)[1].split('## Visual-first exhaustive', 1)[0]
+    assert 'a cue whose answer is small on screen gets a cropped read of the bracketed frames' in rule
+    assert '`CROP` is a fresh `.png` path' in rule
+
+
+@pytest.mark.parametrize('case', ['missing', 'outside_cell', 'outside_tmp', 'symlink_escape'])
+def test_self_consistent_foreign_codex_home_fails(tmp_path, case):
+    def mutate(receipt):
+        original = receipt['codex_home']
+        home = tmp_path/'tmp/missing/codex-home'
+        if case == 'outside_cell':
+            home = tmp_path/'other-cell/tmp/reader-test/codex-home'
+            home.mkdir(parents=True)
+        if case == 'outside_tmp':
+            home = tmp_path/'work/reader-test/codex-home'
+            home.mkdir(parents=True)
+        if case == 'symlink_escape':
+            foreign = tmp_path/'foreign-codex-home'
+            foreign.mkdir()
+            home = tmp_path/'tmp/reader-test/linked-home'
+            home.symlink_to(foreign, target_is_directory=True)
+        receipt['codex_home'] = str(home)
+        warning = receipt['provider_events'][1]['item']
+        warning['message'] = warning['message'].replace(original, str(home))
+    assert replay(tmp_path, mutate)['state'] == 'FAILED'
