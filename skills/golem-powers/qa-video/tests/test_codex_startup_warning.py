@@ -1,6 +1,9 @@
 """Offline replay: a recorded run with synthetic image observation and paths."""
+from contextlib import nullcontext
 import importlib.util
 import json
+import os
+import tempfile
 from pathlib import Path
 import subprocess
 import sys
@@ -15,7 +18,7 @@ spec.loader.exec_module(batch)
 FIXTURE = Path(__file__).parent/'fixtures/codex-startup-warning.jsonl'
 
 
-def replay(tmp_path, mutate=lambda receipt: None, code=2):
+def replay(tmp_path, mutate=lambda receipt: None, code=2, receipt_offset=None, preexisting=False):
     image = tmp_path/'work/out/frame.jpg'
     image.parent.mkdir(parents=True)
     image.write_bytes(b'synthetic')
@@ -33,12 +36,31 @@ def replay(tmp_path, mutate=lambda receipt: None, code=2):
     directory.mkdir()
     path = directory/'recorded.json'
 
-    def helper(*args):
+    started = 1_700_000_000.0
+    if preexisting:
         path.write_text(json.dumps(receipt))
+        stamp = started + (receipt_offset if receipt_offset is not None else -.002)
+        os.utime(path, (stamp, stamp))
+
+    original_marker = tempfile.TemporaryFile
+
+    def marker(*args, **kwargs):
+        stream = original_marker(*args, **kwargs)
+        # Simulate a filesystem clock rounded 2 ms below the wall clock.
+        os.utime(stream.fileno(), (started - .002, started - .002))
+        return stream
+
+    def helper(*args):
+        if not preexisting:
+            path.write_text(json.dumps(receipt))
+            if receipt_offset is not None:
+                os.utime(path, (started + receipt_offset, started + receipt_offset))
         return subprocess.CompletedProcess([], code,
             'Coverage: 0/1; partial; NOT DETERMINED: helper failed.\n',
             f'HELPER_RECEIPT {path}\nADAPTER_UNSUPPORTED: ValueError: ADAPTER_UNSUPPORTED or dispatch failed; inspect private helper receipt\n')
-    with patch.object(batch.visual, 'bounded_run', side_effect=helper):
+    with (patch.object(batch.visual, 'bounded_run', side_effect=helper),
+          patch.object(batch.time, 'time', return_value=started) if receipt_offset is not None or preexisting else nullcontext(),
+          patch.object(tempfile, 'TemporaryFile', side_effect=marker) if receipt_offset is not None or preexisting else nullcontext()):
         return batch.validate(batch.read_sheet(Path('helper'), 'facts', 10, str(image), workdir=tmp_path), 1)
 
 
@@ -202,3 +224,27 @@ def test_reader_markers_outside_quotes(tmp_path, finding, expected, route):
             event['text'] = json.dumps(body)
         item = replay(tmp_path, mutate)
     assert item['state'] == expected, item
+
+
+@pytest.mark.parametrize('offset, expected', [(-.002, 'READ'), (-300, 'FAILED')])
+def test_receipt_filesystem_clock_boundary(tmp_path, offset, expected):
+    assert replay(tmp_path, receipt_offset=offset)['state'] == expected
+
+
+@pytest.mark.parametrize('offset', [-.002, 300])
+def test_previous_run_receipt_is_refused_even_at_same_or_future_tick(tmp_path, offset):
+    assert replay(tmp_path, preexisting=True, receipt_offset=offset)['state'] == 'FAILED'
+
+
+def test_marker_failure_does_not_recover_receipt(tmp_path):
+    with patch.object(tempfile, 'TemporaryFile', side_effect=OSError('read-only filesystem')):
+        assert replay(tmp_path)['state'] == 'FAILED'
+
+
+def test_marker_failure_preserves_ordinary_read(tmp_path):
+    result = subprocess.CompletedProcess([], 0,
+        'Coverage: 1/1; complete; 0 image findings omitted by output cap.\nTile 0: blue square.\n', '')
+    with (patch.object(tempfile, 'TemporaryFile', side_effect=OSError('read-only filesystem')),
+          patch.object(batch.visual, 'bounded_run', return_value=result)):
+        item = batch.read_sheet(Path('helper'), 'facts', 10, str(tmp_path/'image.jpg'))
+    assert batch.validate(item, 1)['state'] == 'READ'
