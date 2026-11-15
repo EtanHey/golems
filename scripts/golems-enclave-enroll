@@ -3,10 +3,42 @@
 import hashlib
 import os
 import re
+import plistlib
+from xml.parsers.expat import ExpatError
 import stat
 import sys
 import subprocess
 from pathlib import Path
+
+PROFILE_SHA256 = '7287dac8a8a9b3308da5b96428471db1afb100ee6bf26250f2d5ff79082eef4f'
+
+
+def read_profile(path):
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022 or info.st_size > 1048576:
+            raise ValueError('installed profile must be root-owned and not writable by agents')
+        return stream.read(1048577)
+
+
+def verified_profile(helper):
+    from enclave import ENROLL_TEAM_ID
+    raw = read_profile(Path(helper).parents[1] / 'embedded.provisionprofile')
+    if hashlib.sha256(raw).hexdigest() != PROFILE_SHA256:
+        raise ValueError('installed profile fingerprint does not match the committed pin')
+    try:
+        result = subprocess.run(['/usr/bin/security', 'cms', '-D', '-i', '/dev/stdin'], input=raw,
+                                capture_output=True, check=True, timeout=10, env={'PATH': '/usr/bin:/bin'})
+        profile = plistlib.loads(result.stdout)
+    except (OSError, subprocess.SubprocessError, ValueError, plistlib.InvalidFileException, ExpatError) as error:
+        raise ValueError('installed profile entitlements could not be decoded') from error
+    expected = {'com.apple.application-identifier': ENROLL_TEAM_ID + '.com.golems.approve',
+                'com.apple.developer.team-identifier': ENROLL_TEAM_ID,
+                'keychain-access-groups': [ENROLL_TEAM_ID + '.*']}
+    if not isinstance(profile, dict) or profile.get('TeamIdentifier') != [ENROLL_TEAM_ID] or profile.get('Entitlements') != expected:
+        raise ValueError('installed profile entitlements do not match the committed identity')
+
 
 def verified_helper():
     """Fail closed before reservation/execution; all trust inputs are committed."""
@@ -28,6 +60,7 @@ def verified_helper():
     env = {'PATH': '/usr/bin:/bin'}
     subprocess.run(['/usr/bin/codesign', '--verify', '--strict', '-R', '=' + requirement, HELPER],
                    check=True, capture_output=True, timeout=10, env=env)
+    verified_profile(HELPER)
     identities = subprocess.run(['/usr/bin/security', 'find-identity', '-p', 'codesigning', '-v'],
                                 check=True, capture_output=True, text=True, timeout=10, env=env)
     if not re.fullmatch(r'\s*0 valid identities found\s*', identities.stdout):

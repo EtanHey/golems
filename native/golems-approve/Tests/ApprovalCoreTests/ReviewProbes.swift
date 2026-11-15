@@ -12,7 +12,7 @@ final class ReviewProbes: XCTestCase {
         let now = Int(Date().timeIntervalSince1970)
         let v: [String: Any] = ["version": 1, "kind": "enclave", "nonce": String(repeating: "a", count: 32), "issued_at": now, "expires_at": now + 120,
             "cwd": cwd, "command": command, "remote_url": "https://example.invalid/invented/repo", "ref": "[\"refs/heads/main\"]", "operation": "force",
-            "git_provider": "/usr/bin/git", "session_id": "s", "operations": [["repo": cwd, "class": "force"]],
+            "git_provider": "/usr/bin/git", "session_id": "s", "operations": [["repo": cwd, "class": "force", "refs": ["HEAD:refs/heads/main"]]],
             "command_sha256": SHA256.hash(data: Data((cwd + "\0" + command).utf8)).map { String(format: "%02x", $0) }.joined()]
         return try JSONSerialization.data(withJSONObject: v, options: [.sortedKeys, .withoutEscapingSlashes])
     }
@@ -22,8 +22,9 @@ final class ReviewProbes: XCTestCase {
         let box = NSMutableString()
         _ = try Approval.approve(try make(cwd, command), signer: Capture(box: box))
         let reason = box as String
-        XCTAssertTrue(reason.hasPrefix("Approve force\nCommand: " + command + "\n"))
-        XCTAssertTrue(reason.hasSuffix("Directory: " + String(cwd.prefix(96)) + "..."))
+        XCTAssertTrue(reason.hasPrefix("What happens: Force-push over branch main"))
+        XCTAssertTrue(reason.contains("Operation: force\nCommand: " + command + "\n"))
+        XCTAssertTrue(reason.contains("Directory: " + String(cwd.prefix(96)) + "...\nExpires: "))
         XCTAssertFalse(reason.contains(cwd))
         XCTAssertTrue(reason.contains(command))
     }

@@ -42,7 +42,8 @@ class Enrolment(unittest.TestCase):
 
     def test_placeholder_refuses_before_platform_commands(self):
         module = load()
-        with patch.object(module.subprocess, 'run', side_effect=AssertionError('no platform command with placeholder')):
+        import enclave
+        with patch.object(enclave, 'ENROLL_TEAM_ID', 'NOT_CONFIGURED'), patch.object(module.subprocess, 'run', side_effect=AssertionError('no platform command with placeholder')):
             with self.assertRaisesRegex(ValueError, 'TEAMID'):
                 module.verified_helper()
 
@@ -51,7 +52,7 @@ class Enrolment(unittest.TestCase):
         module = load()
         def root_owned(path):
             return SimpleNamespace(st_uid=0, st_mode=(stat.S_IFREG if str(path) == enclave.HELPER else stat.S_IFDIR) | 0o755)
-        with patch.object(enclave, 'ENROLL_TEAM_ID', 'ABCDEFGHIJ'), patch.object(module.Path, 'lstat', root_owned):
+        with patch.object(enclave, 'ENROLL_TEAM_ID', 'ABCDEFGHIJ'), patch.object(module.Path, 'lstat', root_owned), patch.object(module, 'verified_profile'):
             with patch.object(module.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, 'codesign')) as call:
                 with self.assertRaises(subprocess.CalledProcessError): module.verified_helper()
                 self.assertEqual(call.call_count, 1)

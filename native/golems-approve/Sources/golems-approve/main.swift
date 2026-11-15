@@ -70,7 +70,7 @@ func signingGroup() throws -> String {
     guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode else { throw Refusal.invalidToken }
     var info: CFDictionary?
     guard SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess,
-          let data = info as? [String: Any], let team = data[kSecCodeInfoTeamIdentifier as String] as? String,
+          let data = info as? [String: Any], let team = data[kSecCodeInfoTeamIdentifier as String] as? String, team == "PPN23G925Y",
           data[kSecCodeInfoIdentifier as String] as? String == "com.golems.approve",
           let entitlements = data[kSecCodeInfoEntitlementsDict as String] as? [String: Any],
           entitlements["com.apple.application-identifier"] as? String == team + ".com.golems.approve",

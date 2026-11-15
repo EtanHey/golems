@@ -14,7 +14,7 @@ final class ApprovalTests: XCTestCase {
         var value: [String: Any] = ["version": 1, "kind": "enclave", "nonce": String(repeating: "a", count: 32),
             "issued_at": now, "expires_at": now + 120, "cwd": "/invented/repo", "command": command,
             "remote_url": "https://example.invalid/repo", "ref": "refs/heads/invented", "operation": "delete",
-            "git_provider": "/usr/bin/git", "operations": [["repo": "/invented/repo", "push_config_sha256": String(repeating: "b", count: 64)]],
+            "git_provider": "/usr/bin/git", "operations": [["repo": "/invented/repo", "class": "delete", "refs": ["refs/heads/invented"], "push_config_sha256": String(repeating: "b", count: 64)]],
             "command_sha256": SHA256.hash(data: Data(("/invented/repo\0" + command).utf8)).map { String(format: "%02x", $0) }.joined()]
         value.merge(overrides) { _, new in new }
         return try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .withoutEscapingSlashes])
