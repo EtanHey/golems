@@ -10,7 +10,8 @@ export function run(command, args, input) {
   return r.stdout.trim();
 }
 // Match the relay: recover abandoned locks after 90 minutes and report recovery.
-export function execute(name, collect, { dir = fleetDir, now = Date.now(), config = readConfig, ssh = (text, c) => run('ssh',
+export function execute(name, collect, { dir = fleetDir, now = Date.now(),
+  config = () => readConfig(join(homedir(), '.config/golems/ratchet-relay.json')), ssh = (text, c) => run('ssh',
   ['-o', 'BatchMode=yes', c.sshHost, `cat >> '${c.remoteInbox.replaceAll("'", "'\\''")}'`], text) } = {}) {
   mkdirSync(dir, { recursive: true });
   const path = join(dir, name + '.json'); let lock; let recovered = false;
