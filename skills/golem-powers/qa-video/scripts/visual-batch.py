@@ -129,10 +129,14 @@ def citation_number(token):
     return int(token)
 
 
-def reader_conflict(finding):
+def unquoted_screen_text(finding):
     # Ignore quoted screen text; a word-internal apostrophe is not a quote.
-    unquoted = re.sub(r'''"(?:\\.|[^"\\])*"|(?<!\w)'(?:\\.|[^'\\])*'(?!\w)|“[^”]*”|‘[^’]*’|`[^`]*`''',
+    return re.sub(r'''"(?:\\.|[^"\\])*"|(?<!\w)'(?:\\.|[^'\\])*'(?!\w)|“[^”]*”|‘[^’]*’|`[^`]*`''',
                       ' ', finding, flags=re.S)
+
+
+def reader_conflict(finding):
+    unquoted = unquoted_screen_text(finding)
     return bool(re.search(r'\bCONFLICT\s*[:-]|(?m:^\s*CONFLICT\s*$)', unquoted))
 
 
@@ -150,7 +154,7 @@ def validate_citations(item, tile_count):
     malformed = False
     # Read a complete numeric expression after each tile/frame label. Lists may
     # contain ranges, optional hashes and Oxford commas. Indexing stays zero-based.
-    label = re.compile(r'\b(?:tiles?|frames?)\b', re.I)
+    label = re.compile(r'\b(?:tiles?|frames?)\b(?!\(s\))', re.I)
     number = r'\#?\s*(-?\d+)'
     word_number = (r'(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|'
                    r'eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|'
@@ -164,6 +168,7 @@ def validate_citations(item, tile_count):
     sheet = item.get('sheet', '')
     if sheet:
         finding = '\n'.join(line.removeprefix(sheet + ':') for line in finding.splitlines())
+    finding = unquoted_screen_text(finding)
     finding = re.sub(r'''[^\s<>"'`]*[/\\][^\s<>"'`]*''',
                      lambda m: ' ' if re.search(r'[a-zA-Z_]', m[0]) else m[0], finding)
     finding = re.sub(r'\b[\w.-]+\.(?:jpe?g|png|gif|webp|bmp|heic|avif|tiff?)\b',
@@ -191,7 +196,7 @@ def validate_citations(item, tile_count):
         if not match:
             # Ordinary nouns (frame rate, frames per second, tile layout) are
             # not citations. Number words and punctuated indexes remain invalid.
-            if re.match(r'[-#\d\[(:]|' + word_number, tail, re.I):
+            if re.match(r'[-#\d\[(:]|x\b|' + word_number, tail, re.I):
                 malformed = True
             continue
         while match:
