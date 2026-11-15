@@ -63,3 +63,26 @@ def test_parse_failure_keeps_generic_message(tmp_path):
     assert result.returncode == 2 and not result.stderr
     assert json.loads(result.stdout)['hookSpecificOutput']['permissionDecisionReason'] == (
         "Blocked: this command couldn't be checked safely. Rewrite it as a plain, literal command.")
+
+
+@pytest.mark.parametrize('tool', ['Bash', 'Monitor'])
+@pytest.mark.parametrize('tree', ['human-confirm-gate/hooks', '_shared'])
+@pytest.mark.parametrize('command', ['echo fake > {target}', 'rm {target}', 'ln -s source {target}'])
+@pytest.mark.parametrize('symlink', [False, True])
+def test_pinned_gate_write_names_the_rule(tmp_path, tool, tree, command, symlink):
+    directory = HOOK.parents[2] / tree
+    if symlink:
+        alias = tmp_path / 'gate-alias'
+        alias.symlink_to(directory, target_is_directory=True)
+        directory = alias
+    # These strings are inspected, never executed against the real gate tree.
+    import shlex
+    command = command.format(target=shlex.quote(str(directory / 'fixture.py')))
+    result = subprocess.run([sys.executable, '-I', '-B', str(HOOK)],
+        input=json.dumps(dict(tool_name=tool, cwd=str(tmp_path), tool_input=dict(command=command))),
+        text=True, capture_output=True, env={**os.environ, 'HOME': str(tmp_path)}, timeout=10)
+    assert result.returncode == 2 and not result.stderr
+    output = json.loads(result.stdout)['hookSpecificOutput']
+    assert output['permissionDecision'] == 'deny'
+    assert output['permissionDecisionReason'] == (
+        "Blocked: agents never change the approval trust anchor or the installed approval gate's files. Ask the lead.")

@@ -21,6 +21,10 @@ class PolicyWriteRefused(ValueError):
     """A deliberate policy denial, rather than a command inspection failure."""
 
 
+PINNED_GATE_REFUSAL = (
+    "Blocked: agents never change the approval trust anchor or the installed approval gate's files. Ask the lead.")
+
+
 def literal(word):
     if any(c in word for c in '$`*?[]{}'):
         raise ValueError('dynamic command scope; use literal arguments')
@@ -314,8 +318,11 @@ def _operations(command, cwd, alias_lookup=configured_alias, depth=0, bindings=N
                           for j, t in enumerate(tokens[:i]))
         uncertain_policy_target = policy_hint and any('$' in t or '`' in t for t in syntax.write_targets(base, args, redirects))
         if syntax.anchor_tamper(word, args, cwd, Path.home()):
-            raise ValueError('agent changes to the confirmation trust anchor or pinned hook tree are forbidden')
+            raise PolicyWriteRefused(PINNED_GATE_REFUSAL)
         if syntax.policy_write(base, args, redirects, cwd or '/', Path.home()) or uncertain_policy_target:
+            if any(syntax.anchor_path(target, cwd or '/', Path.home())
+                   for target in syntax.write_targets(base, args, redirects)):
+                raise PolicyWriteRefused(PINNED_GATE_REFUSAL)
             raise PolicyWriteRefused(
                 'Blocked: agents never write or delete under ~/.config/golems '
                 '(approval settings and tokens live there). Ask the lead; routing or other settings belong elsewhere.')
