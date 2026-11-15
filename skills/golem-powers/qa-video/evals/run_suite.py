@@ -69,6 +69,7 @@ def live():
 
 if __name__ == '__main__':
     contracts()
+    subprocess.run([sys.executable, str(HERE/'test_cue_bracket.py')], check=True)
     if '--live' in sys.argv:
         live()
     elif len(sys.argv) == 2:

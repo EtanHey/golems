@@ -248,6 +248,10 @@ def test_plan_prints_the_selected_modes_route():
         assert out.returncode == 0, out.stderr
         assert f'debrief.py" "/f/clip.mp4" --workdir "/f/work" --mode {mode}' in out.stdout
         assert '<=12 moments' in out.stdout and 'moment-*.jpg' in out.stdout
+        assert 'one still' not in out.stdout and 'midpoint' in out.stdout
+        assert 'containing transcript segment plus preceding three' in out.stdout
+        assert 'moment-NN-start.jpg' in out.stdout and 'moment-NN-midpoint.jpg' in out.stdout
+        assert '<=24 stills' in out.stdout and 'two batches' in out.stdout
         for sweep in ('coverage.sh', 'scene-cues.sh', 'dense-windows.sh'):
             assert sweep not in out.stdout, (mode, sweep)
     for out in (qa, plan('debrief')):

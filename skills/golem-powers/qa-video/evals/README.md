@@ -61,3 +61,19 @@ The managed `agents/video-gems.md` is picked up by the qa-video agents glob in
 regular file, is separate from packaging and planning proof. The six-frame cap
 borrows the real visual-gatherer's six-image call limit; applying it to large
 full-size frames is a conservative policy, not a measured context-capacity guarantee.
+
+## Cue-bracketing regression (offline)
+
+Run `python3 evals/test_cue_bracket.py` (also included in `evals/run_suite.py`)
+from this skill directory. The invented SRT and synthetic cue list in
+`fixtures/cue-bracket/` describe speech at 6s after a screen cue at 3.5–4.5s.
+The test generates an 8s black video with a white frame window using ffmpeg;
+there is no person's speech or screen and no model call. It checks actual
+ffmpeg decoded PTS and white pixels, not image-reader accuracy or command legibility.
+
+On master `4ed1012edad2956d1b41eaf7886fc93cb0015f67`, the same test's
+historical single-still fallback decodes only 6.0s and fails the target-window
+assertion. Cue bracketing decodes 0.0s and 4.0s, hitting the target window.
+The other case checks a first-segment cue and unscored preceding segments.
+This is a bounded mechanical regression, not a model-arm uplift claim.
+Live model arms: NOT_RUN (not required for this change).

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Transcript-first debrief: <=12 stills, preserved evidence, length-aware budget.
+"""Transcript-first debrief: <=12 cue windows / 24 initial stills, preserved evidence, length-aware budget.
 
 Default: extract the targeted stills and hand back so gatherers read them (no
 helper call here). --presort runs the visual-batch.py gather inline.
@@ -25,19 +25,25 @@ def seconds(value):
 
 def plan(transcript, concurrency):
     concurrency = min(4, max(1, concurrency))
-    candidates, duration = [], 0
+    candidates, segments, duration = [], [], 0
     for block in re.split(r'\n\s*\n', transcript.strip()):
         match = re.search(r'(\d{2}:\d{2}:\d{2}[,.]\d+) --> (\d{2}:\d{2}:\d{2}[,.]\d+)\s*\n(.+)', block, re.S)
         if not match:
             continue
         text = ' '.join(match[3].split())
-        duration = max(duration, seconds(match[2]))
+        start, end = seconds(match[1]), seconds(match[2])
+        segments.append((start, end))
+        duration = max(duration, end)
         visual = bool(re.search(r'\b(slide|chart|screen|code|diagram|share)\b', text, re.I))
         score = 4*visual + 3*bool(re.search(r'\d', text)) + 4*('?' in text)
         score += 2*bool(re.search(r'\b(is|are|should|must|because|means|claim|learned)\b', text, re.I))
         if score:
-            candidates.append({'start': seconds(match[1]), 'end': seconds(match[2]),
-                               'text': text, 'visual_reference': visual, 'sampling': 'one still', 'score': score})
+            window_start = segments[max(0, len(segments)-4)][0]
+            candidates.append({'start': start, 'end': end,
+                               'window_start_s': window_start, 'window_end_s': end,
+                               'frame_times_s': [window_start, (window_start+end)/2],
+                               'text': text, 'visual_reference': visual,
+                               'sampling': 'cue start and midpoint', 'score': score})
     ranked = sorted(candidates, key=lambda m: (-m['score'], m['start']))
     bins = {}
     if candidates:
@@ -46,9 +52,10 @@ def plan(transcript, concurrency):
         for item in ranked:
             bins.setdefault(int(12*(item['start']-first)/span), item)
     chosen = list(bins.values())
-    waves = math.ceil(len(chosen)/concurrency)
+    frame_count = 2*len(chosen)
+    waves = math.ceil(frame_count/concurrency)
     return {'moments': sorted(chosen, key=lambda m: m['start']), 'concurrency': concurrency,
-            'call_waves': waves, 'estimated_wall_seconds': 120 + waves*90,
+            'frame_count': frame_count, 'call_waves': waves, 'estimated_wall_seconds': 120 + waves*90,
             'scene_sweep': False, 'duration_seconds': duration, 'estimate_basis': '120s prep + 90s per wave; not a timing receipt'}
 
 def command(argv, log, deadline):
@@ -80,14 +87,18 @@ def evidence_note(work, mode, status, selected, citations, presorted=True):
                 continue
     quotes = []
     for i, moment in enumerate(selected['moments']):
-        image = work/f'moment-{i:02d}.jpg'
-        item = readings.get(str(image), {})
-        if not presorted and i < len(citations):
-            visual = f'visual: NOT YET VIEWED; open {image.name} yourself (no helper pre-sort)'
-        else:
-            visual = item.get('finding', '') if item.get('ok') else 'visual: NOT DETERMINED (budget/failed)'
-        citation = 'Frame (tile 0, real PTS): '+citations[i] if i < len(citations) else 'Frame: NOT DETERMINED'
-        quotes.append(f'## {moment["start"]:g}s — transcript-only claim\n{moment["text"]}\n{citation}\n{visual}')
+        evidence = []
+        for position in ('start', 'midpoint'):
+            image = work/f'moment-{i:02d}-{position}.jpg'
+            item = readings.get(str(image), {})
+            citation = citations.get(image.name)
+            if not presorted and citation:
+                visual = f'visual: NOT YET VIEWED; open {image.name} yourself (no helper pre-sort)'
+            else:
+                visual = item.get('finding', '') if item.get('ok') else 'visual: NOT DETERMINED (budget/failed)'
+            frame = 'Frame (tile 0, real PTS): '+citation if citation else 'Frame: NOT DETERMINED'
+            evidence.append(frame+'\n'+visual)
+        quotes.append(f'## {moment["start"]:g}s — transcript-only claim\n{moment["text"]}\n'+ '\n'.join(evidence))
     (work/'debrief.md').write_text(f'# {mode.title()} evidence note\nStatus: {status}\n'
                                  'Primary evidence: transcript.srt. Claims require verification.\n\n'+'\n\n'.join(quotes)+'\n')
 
@@ -121,7 +132,7 @@ def main():
         args.budget_seconds = 600
     deadline = started + args.budget_seconds
     phases, status = {}, 'PARTIAL'
-    selected, citations = None, []
+    selected, citations = None, {}
 
     def progress(text):
         atomic(work/'progress.txt', text+'\n')
@@ -149,16 +160,21 @@ def main():
         sheets = []
         (work/'frames.tsv').touch()
         for i, moment in enumerate(selected['moments']):
-            image, log = work/f'moment-{i:02d}.jpg', work/f'logs/frame-{i:02d}.log'
-            command(['ffmpeg', '-hide_banner', '-nostdin', '-y', '-ss', str(moment['start']), '-copyts',
-                     '-i', str(args.video.resolve()), '-vf', 'showinfo', '-frames:v', '1', '-q:v', '2', str(image)], log, deadline)
-            pts = re.search(r'pts_time:([\d.]+)', log.read_text())
-            if not pts or not image.is_file():
-                raise ValueError('targeted frame lacks real PTS or image')
-            provenance.record(work, [(image, pts[1], 'refine', image.name, 0, '')])
-            sheets.append(str(image))
-            citations.append(f'{image.name}\t0\t{pts[1]}')
-            progress(prefix+f'extracted {i+1}/{len(selected["moments"])} stills · ETA unknown')
+            for position, requested in zip(('start', 'midpoint'), moment['frame_times_s']):
+                image = work/f'moment-{i:02d}-{position}.jpg'
+                log = work/f'logs/frame-{i:02d}-{position}.log'
+                command(['ffmpeg', '-hide_banner', '-nostdin', '-y', '-ss', str(requested), '-copyts',
+                         '-i', str(args.video.resolve()), '-vf', 'showinfo', '-frames:v', '1', '-q:v', '2', str(image)], log, deadline)
+                pts = re.search(r'pts_time:([\d.]+)', log.read_text())
+                if not pts or not image.is_file():
+                    raise ValueError('targeted frame lacks real PTS or image')
+                # Retain the decoded receipt even on a failed in-window check.
+                provenance.record(work, [(image, pts[1], 'refine', image.name, 0, '')])
+                if not moment['window_start_s'] <= float(pts[1]) < moment['window_end_s']:
+                    raise ValueError(f'{image.name}: decoded PTS outside cue window; refine or NOT DETERMINED')
+                sheets.append(str(image))
+                citations[image.name] = f'{image.name}\t0\t{pts[1]}'
+                progress(prefix+f'extracted {len(sheets)}/{selected["frame_count"]} stills · ETA unknown')
         if sheets and not args.presort:
             status = 'STILLS_READY'  # gatherers read them next; no reserve, no helper
         elif sheets:
