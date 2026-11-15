@@ -58,15 +58,15 @@ test('stale lock recovery, young lock skip, and consecutive failure recovery', a
     ssh: text => posts.push(text), outbox: () => {} };
   try {
     writeFileSync(`${path}.lock`, ''); utimesSync(`${path}.lock`, (now - 2 * 3600000) / 1000, (now - 2 * 3600000) / 1000);
-    assert.equal(executeRelay(options), 0); assert.match(posts[0], /stale lock recovered/);
+    assert.equal(executeRelay(options), 0); assert.match(posts[1], /stale lock recovered/);
     writeFileSync(`${path}.lock`, ''); utimesSync(`${path}.lock`, (now - 600000) / 1000, (now - 600000) / 1000);
-    assert.equal(executeRelay(options), 0); assert.equal(posts.length, 1);
+    assert.equal(executeRelay(options), 0); assert.equal(posts.length, 2);
     assert.equal(existsSync(`${path}.lock`), true); rmSync(`${path}.lock`);
     for (let i = 0; i < 3; i++) assert.equal(executeRelay({ ...options, collect: () => { throw Error('SECRET'); } }), 1);
     const state = JSON.parse(readFileSync(path)); assert.equal(state.failures.count, 3);
     assert.equal(JSON.stringify(state).includes('SECRET'), false);
-    assert.equal(executeRelay(options), 0); assert.match(posts[1], /RELAY was failing for 3 runs since/);
-    executeRelay(options); assert.equal(posts.length, 2);
+    assert.equal(executeRelay(options), 0); assert.match(posts[2], /RELAY was failing for 3 runs since/);
+    executeRelay(options); assert.equal(posts.length, 3);
   } finally { rmSync(root, { recursive: true }); }
 });
 test('missing config counts failures; SSH failures use OUTBOX and recover with exact count', async () => {
@@ -81,8 +81,8 @@ test('missing config counts failures; SSH failures use OUTBOX and recover with e
     for (let i = 0; i < 3; i++) assert.equal(executeRelay({ ...options, config: () => ({ sshHost: 'relay.example', remoteInbox: '/srv/orc.md', localOutbox: '/srv/outbox.md' }), ssh: () => { throw Error('SECRET'); } }), 1);
     assert.equal(outbox.length, 3); assert.equal(JSON.stringify(outbox).includes('SECRET'), false);
     assert.equal(executeRelay({ ...options, config: () => ({ sshHost: 'relay.example', remoteInbox: '/srv/orc.md', localOutbox: '/srv/outbox.md' }) }), 0);
-    assert.match(posts[0], /RELAY was failing for 4 runs since.*SSH delivery failed/);
-    assert.equal((posts[0].match(/RELAY was failing for/g) ?? []).length, 1);
+    assert.match(posts[1], /RELAY was failing for 4 runs since.*SSH delivery failed/);
+    assert.equal((posts[1].match(/RELAY was failing for/g) ?? []).length, 1);
     assert.equal(JSON.parse(readFileSync(path)).failures, undefined);
   } finally { rmSync(root, { recursive: true }); }
 });
@@ -120,7 +120,7 @@ test('local owner append and remote escalation use independent pending delivery'
   const root = mkdtempSync(join(tmpdir(), 'ratchet-owner-'));
   const path = join(root, 'state.json'); const inbox = join(root, 'inbox.md');
   const settings = { owner: { ...owner, inbox }, escalate: { name: 'orc', host: 'relay.example', inbox: '/srv/orc.md' }, localOutbox: join(root, 'outbox.md') };
-  const options = { path, now, config: () => settings, collect: () => input, fetch: () => {} };
+  const options = { path, now, config: () => settings, collect: () => input, fetch: () => {}, ssh: () => {} };
   try {
     assert.equal(executeRelay(options), 0);
     assert.match(readFileSync(inbox, 'utf8'), /→ @skillcreator-lead.*RED/);
@@ -156,8 +156,9 @@ test('owner WARN and health never expose injected log secrets; legacy config is 
     const posts = [];
     assert.equal(executeRelay({ path, now, config: () => settings, fetch: () => {}, collect: () => input,
       ssh: (text, config) => posts.push({ text, config }) }), 0);
-    assert.equal(posts.length, 1); assert.equal(posts[0].config.sshHost, 'owner.example');
-    assert.match(posts[0].text, /→ @skillcreator-lead.*RELAY was failing/);
+    assert.equal(posts.length, 2); assert.equal(posts[0].config.sshHost, 'relay.example');
+    assert.match(posts[0].text, /ROUTING:/); assert.equal(posts[1].config.sshHost, 'owner.example');
+    assert.match(posts[1].text, /→ @skillcreator-lead.*RELAY was failing/);
     assert.equal(JSON.parse(readFileSync(path)).pending.length, 0);
   } finally { rmSync(root, { recursive: true }); }
 });
@@ -193,5 +194,111 @@ test('legacy ssh host named local remains SSH rather than a local append', async
     assert.match(delivered, /owner is not configured/);
     assert.match(delivered, /→ @orc.*RED/);
     assert.equal(existsSync(inbox), false);
+  } finally { rmSync(root, { recursive: true }); }
+});
+
+test('config prefers its own path, falls back only when absent, and requires orc escalation', async () => {
+  const { readConfig } = await import('./ratchet-inbox-relay.mjs');
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+  const root = mkdtempSync(join(tmpdir(), 'relay-config-path-'));
+  const fresh = join(root, '.golems/ratchet/relay.json'); const old = join(root, '.config/golems/ratchet-relay.json');
+  const config = { sshHost: 'relay.example', remoteInbox: '/srv/orc.md', localOutbox: '/srv/outbox.md', owner,
+    escalate: { name: 'orc', host: 'relay.example', inbox: '/srv/orc.md' } };
+  try {
+    mkdirSync(join(root, '.config/golems'), { recursive: true }); mkdirSync(join(root, '.golems/ratchet'), { recursive: true });
+    writeFileSync(old, JSON.stringify(config));
+    assert.equal(readConfig(undefined, root).configPath, old);
+    writeFileSync(fresh, JSON.stringify({ ...config, owner: { ...owner, name: 'new-owner' } }));
+    assert.equal(readConfig(undefined, root).owner.name, 'new-owner');
+    assert.equal(readConfig(undefined, root).configPath, fresh);
+    writeFileSync(fresh, '{'); assert.throws(() => readConfig(undefined, root));
+    writeFileSync(fresh, JSON.stringify({ ...config, escalate: undefined })); assert.throws(() => readConfig(undefined, root), /invalid config/);
+    writeFileSync(fresh, JSON.stringify({ ...config, owner: undefined, escalate: { ...config.escalate, name: 'other' } }));
+    assert.throws(() => readConfig(undefined, root), /invalid config/);
+  } finally { rmSync(root, { recursive: true }); }
+});
+
+test('routing notices precede all posts, dedupe, retry only undelivered routes, and pin prior targets', async () => {
+  const { executeRelay } = await import('./ratchet-inbox-relay.mjs');
+  const { mkdtempSync, readFileSync, rmSync } = await import('node:fs');
+  const root = mkdtempSync(join(tmpdir(), 'relay-routing-')); const path = join(root, 'state.json');
+  let settings = { owner: { ...owner, host: 'owner.example' }, escalate: { name: 'orc', host: 'old.example', inbox: '/srv/old.md' },
+    sshHost: 'legacy.example', remoteInbox: '/srv/legacy.md', localOutbox: join(root, 'outbox.md'), configPath: '/routing/relay.json', secret: 'TOKEN_secret' };
+  const calls = []; let failHost;
+  const options = { path, now, config: () => settings, fetch: () => {}, collect: () => input, outbox: () => {},
+    ssh: (text, cfg) => { if (cfg.sshHost === failHost) throw Error('TOKEN_secret'); calls.push({ text, host: cfg.sshHost }); } };
+  const state = () => JSON.parse(readFileSync(path));
+  try {
+    assert.equal(executeRelay(options), 0);
+    assert.match(calls[0].text, /→ @orc.*ROUTING: warnings now go to @skillcreator-lead/);
+    assert.equal(calls[0].host, 'old.example'); assert.match(calls[1].text, /RED:/);
+    assert.doesNotMatch(JSON.stringify(calls), /TOKEN_secret/);
+    const initial = state().routing.fingerprint;
+    calls.length = 0; assert.equal(executeRelay(options), 0); assert.equal(calls.length, 0);
+    settings = { ...settings, owner: { ...settings.owner, name: 'new-owner' }, escalate: { name: 'orc', host: 'new.example', inbox: '/srv/new.md' } };
+    failHost = 'new.example'; assert.equal(executeRelay(options), 1);
+    assert.equal(state().routing.fingerprint, initial); assert.equal(calls.length, 1); assert.equal(calls[0].host, 'old.example');
+    failHost = undefined; assert.equal(executeRelay(options), 0);
+    assert.equal(calls.length, 2); assert.equal(calls[1].host, 'new.example'); assert.notEqual(state().routing.fingerprint, initial);
+    calls.length = 0; settings = { ...settings, configPath: '/routing/other.json' };
+    assert.equal(executeRelay(options), 0); assert.equal(calls.length, 1); assert.match(calls[0].text, /config \/routing\/other.json/);
+    calls.length = 0; settings = { ...settings, owner: { ...settings.owner, inbox: '/srv/new-owner.md' } };
+    failHost = 'new.example'; assert.equal(executeRelay(options), 1); assert.equal(calls.length, 0);
+    settings = { ...settings, escalate: { name: 'orc', host: 'third.example', inbox: '/srv/third.md' } };
+    failHost = undefined; assert.equal(executeRelay(options), 0);
+    assert.deepEqual(calls.map(c => c.host), ['new.example', 'new.example', 'third.example']);
+  } finally { rmSync(root, { recursive: true }); }
+});
+
+test('routing announcement appends locally and dry run leaves state and inbox unchanged', async () => {
+  const { executeRelay } = await import('./ratchet-inbox-relay.mjs');
+  const { mkdtempSync, readFileSync, existsSync, rmSync } = await import('node:fs');
+  const root = mkdtempSync(join(tmpdir(), 'relay-local-routing-')); const path = join(root, 'state.json');
+  const inbox = join(root, 'orc.md'); const settings = { owner, sshHost: 'legacy.example', remoteInbox: '/srv/legacy.md',
+    escalate: { name: 'orc', host: 'local', inbox }, localOutbox: join(root, 'outbox.md') };
+  const options = { path, now, config: () => settings, fetch: () => {}, collect: () => ({ ...input, incident: null }) };
+  const original = console.log; const printed = [];
+  try {
+    console.log = text => printed.push(text);
+    assert.equal(executeRelay({ ...options, dry: true }), 0);
+    assert.match(printed[0], /ROUTING:/); assert.equal(existsSync(inbox), false); assert.equal(existsSync(path), false);
+    assert.equal(executeRelay(options), 0);
+    assert.equal((readFileSync(inbox, 'utf8').match(/ROUTING:/g) ?? []).length, 1);
+    const before = readFileSync(path, 'utf8');
+    settings.owner = { ...owner, name: 'new-owner' };
+    assert.equal(executeRelay({ ...options, dry: true }), 0);
+    assert.equal(readFileSync(path, 'utf8'), before);
+    assert.equal((readFileSync(inbox, 'utf8').match(/ROUTING:/g) ?? []).length, 1);
+  } finally { console.log = original; rmSync(root, { recursive: true }); }
+});
+
+test('real CLI uses the selected config and persists notices before an unchanged rerun', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } = await import('node:fs');
+  const root = mkdtempSync(join(tmpdir(), 'relay-cli-')); const bin = join(root, 'bin');
+  const oldInbox = join(root, 'old-orc.md'); const newInbox = join(root, 'new-orc.md');
+  const config = { owner: { ...owner, inbox: join(root, 'owner.md') }, escalate: { name: 'orc', host: 'local', inbox: oldInbox },
+    sshHost: 'unused.example', remoteInbox: '/srv/legacy.md', localOutbox: join(root, 'outbox.md') };
+  try {
+    mkdirSync(bin); mkdirSync(join(root, '.config/golems'), { recursive: true }); mkdirSync(join(root, '.golems/ratchet'), { recursive: true });
+    writeFileSync(join(root, '.config/golems/ratchet-relay.json'), JSON.stringify(config));
+    const head = 'a'.repeat(40);
+    const rows = { schema: 1, rows: [{ id: 'live', bug_sha: head, fix_sha: head, kind: 'real', runner: 'live', direction: 'pass', ceiling: true, command: 'true', metric: 'test' }] };
+    writeFileSync(join(bin, 'git'), `#!${process.execPath}\nconst a=process.argv.slice(2); if(a[0] !== 'fetch') console.log(a[0] === 'show' ? ${JSON.stringify(JSON.stringify(rows))} : ${JSON.stringify(head)});\n`, { mode: 0o700 });
+    const issue = { user: { login: 'github-actions[bot]' }, body: `<!-- golems-ratchet-schedule -->\n${JSON.stringify({ schema: 1, ...incident, active: false })}` };
+    const pull = { number: 1200, merged_at: '2026-11-01T00:00:00Z', merge_commit_sha: head, base: { ref: 'master' } };
+    writeFileSync(join(bin, 'gh'), `#!${process.execPath}\nconst p=process.argv.at(-1); console.log(JSON.stringify([p.includes('?state=all') ? [${JSON.stringify(issue)}] : p.endsWith('/pulls') ? [${JSON.stringify(pull)}] : []]));\n`, { mode: 0o700 });
+    const run = () => {
+      const result = spawnSync(process.execPath, [new URL('./ratchet-inbox-relay.mjs', import.meta.url).pathname],
+        { env: { ...process.env, HOME: root, PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+    };
+    run(); assert.match(readFileSync(oldInbox, 'utf8'), /config .*\.config\/golems\/ratchet-relay.json/);
+    writeFileSync(join(root, '.golems/ratchet/relay.json'), JSON.stringify({ ...config, escalate: { ...config.escalate, inbox: newInbox } }));
+    run(); assert.equal((readFileSync(oldInbox, 'utf8').match(/ROUTING:/g) ?? []).length, 2);
+    assert.equal((readFileSync(newInbox, 'utf8').match(/ROUTING:/g) ?? []).length, 1);
+    run(); assert.equal((readFileSync(newInbox, 'utf8').match(/ROUTING:/g) ?? []).length, 1);
+    const state = JSON.parse(readFileSync(join(root, '.golems/ratchet/inbox-relay-state.json')));
+    assert.equal(state.routing.configPath, join(root, '.golems/ratchet/relay.json')); assert.equal(state.routingChange, undefined);
   } finally { rmSync(root, { recursive: true }); }
 });
