@@ -55,8 +55,7 @@ Run the loop in this order:
 3. Invoke `/never-fabricate`. Per-PR visual proof is required below; builder self-QA and real-client runs remain at the feature-batch gate.
 4. Run the bounded local CodeRabbit pre-commit pass when available, then commit with the ratified identity trailer.
 5. Push and open the PR as a **draft** (`gh pr create --draft`) with a [plain-words title](references/pr-creation.md#pr-title), a signed body and exactly one
-   `size:*` label (`scripts/ci/pr-size-labels.sh suggest` before opening, `compute` after; an L PR
-   carries a `size-why:` line). In T3, immediately link every created/taken-over/pushed PR and every
+   `size:*` label (`scripts/ci/pr-size-labels.sh suggest` before opening, `compute` after). In T3, immediately link every created/taken-over/pushed PR and every
    stack layer; linking does not arm a watch. The lead-routed other-vendor inner review runs on the
    draft, and CI runs locally (the repo's pre-push hooks and suites), so review bots stay quiet.
    When the inner reviewer APPROVEs and the local checks pass, run `gh pr ready <N>`. That flip
@@ -152,7 +151,7 @@ Rollout to other repos is a follow-up; this change wires golems only.
   request only missing/stale evidence under the permitted bot policy.
 - A green run on an older SHA is not green. Verify the PR head matches the latest pushed commit.
 - Never merge with an unreplied CRITICAL, MAJOR, or HIGH finding.
-- One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; no round 3 (canon #9): after round 2 the lead verifies the final fixes, or the PR is split or parked.
+- One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; no round 3 (canon #9): after round 2 the lead verifies the final fixes, or the unfinished behaviour is parked.
 - For merge-authorized endpoints, after a clean other-vendor review at `headRefOid` and green required checks, leads merge now with `gh pr merge <N> --merge --admin --match-head-commit <headRefOid you saw green>` on EtanHey repos (`--admin` skips required checks, so the head pin is what stops a later push merging unchecked), per [Merge Authority](references/pr-creation.md#merge-authority); omit `--delete-branch`. Workers follow their brief's merge authority. Never ask Etan to approve or merge a PR; only true one-way doors wait for him. Failing/pending checks, conflicts and unresolved findings block merge.
 - On EtanHey repos, bot verdicts are comments, not formal self-reviews.
 - Repo bot policy tightens the fleet default panel. Bugbot is opt-in only for an L PR or a very important/core-risk PR (daemon/engine/transport, security, release); never request it for routine XS/S/M PRs. Record `Bugbot: unavailable (usage)` in the PR body only when Bugbot was actually requested and is unavailable, or it posted a real usage/rate/spend-limit notice on this PR. An actual notice must be recorded even on a routine PR where Bugbot was never requested. Routine PRs with no Bugbot activity do nothing Bugbot-related. After an eligible request, run any owed Cursor endpoint pass, then continue to exact-head merge checks in the same turn: no "awaiting Bugbot", watch, grace period or re-review gate. Actual posted findings still follow the normal finding rules.

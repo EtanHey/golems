@@ -126,7 +126,7 @@ teardown() {
 }
 
 @test "review rounds match canon 9 without a forced second clean review" {
-  grep -F 'One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; no round 3 (canon #9): after round 2 the lead verifies the final fixes, or the PR is split or parked.' "$PR_LOOP"
+  grep -F 'One clean review at headRefOid with required checks green may merge; round 2 only for BLOCKING findings; no round 3 (canon #9): after round 2 the lead verifies the final fixes, or the unfinished behaviour is parked.' "$PR_LOOP"
   run grep -Ei 'minimum (2|two)|Max 3|go to round 3|round 3 requires|lead exception written' "$REPO_ROOT/skills/golem-powers/pr-loop/references/review-loop.md" "$REPO_ROOT/skills/golem-powers/pr-loop/references/dispatch-and-handoffs.md"
   [ "$status" -eq 1 ]
 }
