@@ -309,3 +309,22 @@ test('real CLI uses the selected config and persists notices before an unchanged
     assert.equal(state.routing.configPath, join(root, '.golems/ratchet/relay.json')); assert.equal(state.routingChange, undefined);
   } finally { rmSync(root, { recursive: true }); }
 });
+
+test('legacy SSH alias local and explicit local append are distinct notice destinations', async () => {
+  const { executeRelay } = await import('./ratchet-inbox-relay.mjs');
+  const { mkdtempSync, readFileSync, existsSync, rmSync } = await import('node:fs');
+  const root = mkdtempSync(join(tmpdir(), 'relay-local-mode-')); const inbox = join(root, 'orc.md');
+  let settings = { sshHost: 'local', remoteInbox: inbox, localOutbox: join(root, 'outbox.md') };
+  const remote = [];
+  const options = { path: join(root, 'state.json'), now, config: () => settings, fetch: () => {},
+    collect: () => ({ ...input, incident: null }), ssh: text => remote.push(text) };
+  try {
+    assert.equal(executeRelay(options), 0); assert.equal(existsSync(inbox), false);
+    remote.length = 0;
+    settings = { ...settings, owner: { name: 'orc', host: 'local', inbox }, escalate: { name: 'orc', host: 'local', inbox } };
+    assert.equal(executeRelay(options), 0);
+    assert.equal(remote.length, 1); assert.match(remote[0], /ROUTING:/);
+    assert.equal((readFileSync(inbox, 'utf8').match(/ROUTING:/g) ?? []).length, 1);
+    assert.equal(executeRelay(options), 0); assert.equal(remote.length, 1);
+  } finally { rmSync(root, { recursive: true }); }
+});

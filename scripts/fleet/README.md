@@ -40,7 +40,9 @@ orc destination before any other post. The first run after upgrade also announce
 State stores the canonical routing fingerprint only after all notices are delivered.
 Notice destinations are pinned in a separate durable queue; a failure blocks other
 posts and retries only the undelivered destinations next run, even if config changes
-again. Ambiguous SSH failures can duplicate a notice, like other posts.
+again. A legacy SSH alias named `local` remains distinct from an explicit local
+append, including in the fingerprint and destination deduplication. Ambiguous SSH
+failures can duplicate a notice, like other posts.
 
 At install time create the owner's inbox, if absent, with a one-line Markdown
 header. This change does not edit or install the private config.

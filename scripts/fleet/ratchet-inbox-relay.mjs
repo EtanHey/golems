@@ -152,9 +152,9 @@ function routingFor(settings) {
   const legacy = { name: 'orc', host: settings.sshHost, inbox: settings.remoteInbox };
   const escalate = settings.escalate ?? legacy;
   const routing = { owner: route(settings.owner ?? legacy), escalate: route(escalate),
+    ownerLocal: Boolean(settings.owner), escalationLocal: Boolean(settings.escalate),
     configPath: settings.configPath ?? `${homedir()}/.golems/ratchet/relay.json` };
-  return { ...routing, escalationLocal: Boolean(settings.escalate),
-    fingerprint: createHash('sha256').update(JSON.stringify(routing)).digest('hex') };
+  return { ...routing, fingerprint: createHash('sha256').update(JSON.stringify(routing)).digest('hex') };
 }
 
 export function executeRelay({ path, now = Date.now(), config = readConfig, fetch = () => run('git', ['fetch', 'origin', 'master']),
@@ -206,12 +206,13 @@ export function executeRelay({ path, now = Date.now(), config = readConfig, fetc
     if (dry && state.routingChange) console.log(pendingText(state.routingChange.pending));
     if (knownRouting?.fingerprint !== routing.fingerprint) {
       const text = `\n### golems-ratchet → @orc — ${new Date(now).toISOString()} ROUTING: warnings now go to @${routing.owner.name} (${routing.owner.inbox}); escalation to @${routing.escalate.name} (${routing.escalate.inbox}); config ${routing.configPath}\n`;
-      const routes = [state.routing?.escalate, routing.escalate].filter(Boolean);
-      const unique = routes.filter((r, i) => routes.findIndex(other => other.host === r.host && other.inbox === r.inbox) === i);
+      const routes = [state.routing, routing].filter(Boolean).map(r => ({ route: r.escalate, local: r.escalationLocal }));
+      // A legacy SSH alias named local is distinct from an explicit local append.
+      const key = item => JSON.stringify([item.route.host, item.route.inbox, item.route.host === 'local' && Boolean(item.local)]);
+      const unique = routes.filter((r, i) => routes.findIndex(other => key(other) === key(r)) === i);
       if (dry) console.log(text);
       else {
-        state.routingChange = { routing, pending: unique.map(route => ({ route, text,
-          local: route === routing.escalate ? routing.escalationLocal : state.routing.escalationLocal })) };
+        state.routingChange = { routing, pending: unique.map(item => ({ ...item, text })) };
         stage = 'state write failed'; save(state); drainRouting();
       }
     }
