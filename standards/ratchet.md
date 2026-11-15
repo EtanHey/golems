@@ -242,6 +242,21 @@ after a passing receipt, later local tampering still requires a fresh lead live 
 
 ## Installed skill parity on both Macs
 
+As of 2026-11-15, this row is blocking again. Its temporary report-only metadata
+has been removed: the 2026-11-09 backstop passed and the lead recorded both-Mac
+PASS receipts for #1276 and #1280 (real live 3/3). It remains a real `live` row,
+so it gates guarded merges. Current receipt expectations contain no parity
+report-only allowance; old policy fixtures remain for historical base validation.
+The metric's bracket records the retired policy; its measurement text is unchanged.
+Removing report-only status is pure tightening and requires no `ratchet-loosen:`
+ruling under rule 5.
+
+Follow-up: automatic live receipt refresh after each guarded merge needs a
+separate M4 standing-lease PR. Design question: which stable, exclusively owned
+clean exact-head open PR worktree supplies the lease, how is that ownership
+renewed/revoked, and how does refresh fail closed on a moving PR/head without
+borrowing another lane's tokens? This change adds no automatic refresh.
+
 `installed-skill-parity` is a read-only `live` row: it inventories the local and SSH host's
 `.claude/skills`, `.agents/skills`, and `.codex/skills` afresh. Names, entry shapes, readable
 SKILL.md catalogs, supporting file hashes and executable bits must match. HOME prefixes are

@@ -88,3 +88,35 @@ test('a receipt written under the previous parity date stays valid only where ma
   const forged = body.replaceAll(oldUntil, '2026-11-05T00:00:00Z');
   expect(checkVerdict({ ...args, comments: [{ user: { login: 'EtanHey' }, body: forged }], expectedReportOnly: [{ id: row.id, until: '2026-11-05T00:00:00Z' }] }).ok).toBe(false);
 });
+
+test('shipped parity policy is permanently blocking, including before the retired deadline', async () => {
+  const { readFileSync } = await import('node:fs');
+  const shipped = parseRows(JSON.parse(readFileSync(new URL('../ratchet/rows.json', import.meta.url), 'utf8')));
+  const parity = shipped.rows.find(r => r.id === row.id);
+  expect(parity).toBeDefined();
+  expect(parity.report_only).toBeUndefined();
+  expect(parity.report_only_until).toBeUndefined();
+  expect(parity.runner).toBe('live'); expect(parity.kind).toBe('real');
+  const selected = doc(parity);
+  const retired = doc({ ...parity, report_only: row.report_only, report_only_until: until });
+  for (const now of [before, Date.parse(until), Date.parse('2026-11-15T00:00:00Z')]) {
+    expect(expectedReporting(selected, 'live', now)).toEqual([]);
+    for (const value of [true, false, undefined]) {
+      const evaluation = evaluate({ rows: selected, baseRows: retired, head, now,
+        results: { head_sha: head, results: value === undefined ? {} : { [row.id]: value } } });
+      expect(evaluation.loosened).toEqual([]);
+      expect(evaluation.ok).toBe(value === true);
+    }
+  }
+});
+test('current shipped live receipt rejects the retired parity report-only allowance', async () => {
+  const { readFileSync } = await import('node:fs');
+  const shipped = parseRows(JSON.parse(readFileSync(new URL('../ratchet/rows.json', import.meta.url), 'utf8')));
+  const total = shipped.rows.filter(r => r.kind === 'real' && r.runner === 'live').length;
+  const receipt = fields => [{ user: { login: 'EtanHey' }, body: `<!-- ratchet-table: golems-ratchet-live -->\n<!-- ratchet-verdict: ${JSON.stringify({ head, bootstrap: false, ok: true, real_total: total, real_pass: total, ...fields })} -->` }];
+  const args = { marker: 'golems-ratchet-live', head, expectedReal: total, authors: ['EtanHey'], baseHasRows: true,
+    expectedReportOnly: expectedReporting(shipped, 'live', before), now: before };
+  expect(checkVerdict({ ...args, comments: receipt({}) }).ok).toBe(true);
+  expect(checkVerdict({ ...args, comments: receipt({ real_pass: total - 1,
+    report_only: [{ id: row.id, until }] }) }).ok).toBe(false);
+});
