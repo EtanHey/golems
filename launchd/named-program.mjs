@@ -1,4 +1,5 @@
-import { constants, closeSync, fchmodSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { constants, closeSync, fchmodSync, fstatSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,20 +35,33 @@ export function installWrapper(home, name, program, { verifyOnly = false } = {})
   }
   const target = path.join(directory, name);
   const bytes = `#!/bin/sh\nset -eu\nexec ${quote(program)} "$@"\n`;
+  function verifyExisting() {
+    const fd = openSync(target, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      const info = fstatSync(fd);
+      if (!info.isFile() || info.uid !== process.getuid() || (info.mode & 0o777) !== 0o755 || readFileSync(fd, 'utf8') !== bytes) {
+        throw Error(`wrapper differs; explicit reconciliation required: ${target}`);
+      }
+    } finally { closeSync(fd); }
+  }
+  if (verifyOnly) { verifyExisting(); return target; }
+  // Publish only a fully written, synced file. link never replaces an arrival.
+  const staging = path.join(directory, `.install-${process.pid}-${randomUUID()}`);
   let fd;
+  let staged = false;
   try {
-    if (verifyOnly) throw Object.assign(Error('verify existing wrapper'), { code: 'EEXIST' });
-    fd = openSync(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o755);
-    fchmodSync(fd, 0o755);
+    fd = openSync(staging, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+    staged = true;
     writeFileSync(fd, bytes);
-  } catch (e) {
-    if (e.code !== 'EEXIST') throw e;
-    fd = openSync(target, constants.O_RDONLY | constants.O_NOFOLLOW);
-    const info = fstatSync(fd);
-    if (!info.isFile() || info.uid !== process.getuid() || (info.mode & 0o777) !== 0o755 || readFileSync(fd, 'utf8') !== bytes) {
-      throw Error(`wrapper differs; explicit reconciliation required: ${target}`);
-    }
-  } finally { if (fd !== undefined) closeSync(fd); }
+    fchmodSync(fd, 0o755);
+    fsyncSync(fd);
+    closeSync(fd); fd = undefined;
+    try { linkSync(staging, target); }
+    catch (e) { if (e.code !== 'EEXIST') throw e; verifyExisting(); }
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+    if (staged) unlinkSync(staging);
+  }
   return target;
 }
 

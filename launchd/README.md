@@ -4,9 +4,13 @@ gui-path retired 2026-10-31; T3 providers use absolute binaryPath.
 
 `install.sh` installs worktree cleanup and the Drive OAuth guard. Design skill
 updates and the morning digest have dedicated installers. To install an adopted
-stream watcher/guard, ComfyUI, or the ratchet relay explicitly, run:
+stream watcher/guard, ComfyUI, or the ratchet relay explicitly, run from the
+persistent root checkout (`~/Gits/golems`), never a scratch worktree. The stream
+watcher wrapper pins that checkout path; a later install from a different
+checkout is refused as differing bytes.
 
 ```sh
+cd "$HOME/Gits/golems"
 launchd/install-job.sh com.golems.stream-watcher
 # Render, create/verify the named executable, and lint without activation:
 launchd/install-job.sh com.golems.stream-watcher --skip-launchctl
@@ -42,3 +46,9 @@ exec '/absolute/path/to/the/original/interpreter' "$@"
 Wrappers stay on uninstall so an uninstall never deletes a modified executable.
 TTS belongs to VoiceLayer and has no installer here. Ecosystem health and storage
 cleanup have no tracked golems plist/installer and are outside this installation.
+
+`install-job.sh` keeps a uniquely named `.prev.*` plist backup until bootstrap
+succeeds. It waits for the old label to leave launchd before activating the new
+plist. On bootstrap failure it restores and reloads the previous definition,
+returns nonzero, and retains the backup for diagnosis. Wrappers are never
+replaced, so the old executable remains available throughout rollback.
