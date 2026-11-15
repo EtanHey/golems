@@ -5,12 +5,14 @@ import importlib.util
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import json
 import math
+import os
 import random
 import re
 from pathlib import Path
 import subprocess
 import sys
 import time
+import tempfile
 
 DEFAULT_DRAIN_SECONDS = 2.0
 
@@ -24,13 +26,13 @@ def atomic(path, text):
     pending.replace(path)
 
 
-def recover_startup_warning(result, sheet, started):
+def recover_startup_warning(result, sheet, started, existing):
     """Recover only the recorded Codex helper's exact warning-only rejection.
 
     The helper owns dispatch and keeps the unmodified provider stream. Never
     infer success from its footer or from an arbitrary error message.
     """
-    if result.returncode != 2 or result.stdout.strip() != (
+    if started is None or result.returncode != 2 or result.stdout.strip() != (
             'Coverage: 0/1; partial; NOT DETERMINED: helper failed.'):
         return None
     lines = result.stderr.splitlines()
@@ -41,7 +43,8 @@ def recover_startup_warning(result, sheet, started):
         path = Path(lines[0].removeprefix('HELPER_RECEIPT '))
         directory = Path(sheet).resolve().parent / 'helper-receipts'
         if (path.is_symlink() or path.resolve().parent != directory.resolve()
-                or path.stat().st_size > 2_000_000 or path.stat().st_mtime < started):
+                or path.resolve() in existing or path.stat().st_size > 2_000_000
+                or path.stat().st_mtime_ns < started):
             return None
         receipt = json.loads(path.read_text())
         if (receipt['provider'] != 'codex' or receipt['exit_code'] != 0
@@ -94,7 +97,16 @@ def recover_startup_warning(result, sheet, started):
 
 
 def read_sheet(helper, question, timeout, sheet, model=None, workdir=None):
-    started = time.time()
+    started, existing = None, set()
+    try:
+        directory = Path(sheet).resolve().parent / 'helper-receipts'
+        directory.mkdir(exist_ok=True)
+        existing = {path.resolve() for path in directory.iterdir()}
+        # Same-filesystem clock avoids skew; the snapshot excludes old receipts even on equal ticks.
+        with tempfile.TemporaryFile(dir=directory) as marker:
+            started = os.fstat(marker.fileno()).st_mtime_ns
+    except OSError:
+        started = None  # Disable recovery, but allow ordinary reads from read-only directories.
     try:
         result = visual.bounded_run([sys.executable, str(helper), '--question', question,
                                     '--timeout', str(timeout),
@@ -105,7 +117,7 @@ def read_sheet(helper, question, timeout, sheet, model=None, workdir=None):
         fatal = visual.dispatch_stop(context)
         return dict(failed(sheet, fatal or cause), fatal=fatal)
     out, err = result.stdout, result.stderr
-    recovered = recover_startup_warning(result, sheet, started)
+    recovered = recover_startup_warning(result, sheet, started, existing)
     if recovered:
         return dict(recovered, sheet=sheet, fatal='', ok=True, cause='', attempt=1)
     fatal = next((s for s in err.splitlines() if s.startswith('DISPATCH_STOPPED:')), '')
