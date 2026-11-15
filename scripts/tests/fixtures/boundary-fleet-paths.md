@@ -1,8 +1,9 @@
 # Publication guard fleet corpus
 
 `boundary-fleet-paths.json` contains tracked relative file paths and SHA-256
-hashes of their HEAD blobs, captured read-only on 2026-11-15 from golems,
-voicelayer, brainlayer, narrationlayer and skill-creator. No source contents,
+hashes of their Git blobs, captured read-only on 2026-11-15 from golems,
+voicelayer, brainlayer and narrationlayer. Only repositories verified PUBLIC
+with `gh repo view --json visibility` may supply rows. No source contents,
 private prose or absolute checkout paths are included. JSON Unicode escapes
 preserve real path strings while permitting publication through the old guard.
 
@@ -35,4 +36,20 @@ CI runs this suite in `golem-powers-skill-tests.yml`.
 
 Only the push pattern changes. The assignment-bound `credential-adjacent`
 forbidden class and the tree/history fingerprint remain unchanged.
-Independent security review and installed-Mac proof belong to the lead.
+Round-one Claude security review found one blocking escape-boundary defect;
+round two applies its exact approved regex. Final review, scan and installed-Mac
+proof belong to the lead.
+
+
+## Round two
+
+The escape-aware boundary is copied byte for byte from the reviewer fix.
+Fifteen refusal cases cover every reviewer escape probe, underscore/hyphen
+prefixes, carriage returns, escaped quotes and ANSI parameter variants.
+Against first-round head `a800afbd`, the revised suite is RED: 65 pass,
+14 fail (missed credentials); all path lookalikes remain accepted.
+
+The corpus retains 20 rows. Four private-repository rows were replaced with
+public golems paths and blob hashes from base `954a2459`. All four source
+repositories were verified PUBLIC using `gh repo view --json visibility`.
+Private repositories must never supply corpus rows.

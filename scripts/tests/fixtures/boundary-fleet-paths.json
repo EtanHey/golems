@@ -80,23 +80,23 @@
     "sha256": "5f31d7c3218493132a98587c3f9870fc4ccb2aed7798fea56bc4143079fe68c3"
   },
   {
-    "repo": "skill-creator",
-    "path": "README.md",
-    "sha256": "336f3fadd49036652cc75e80e7ec62ec1d8c20777de7d11c5c8118b80e0c5a5b"
+    "repo": "golems",
+    "path": "scripts/ci/boundary-prepush.mjs",
+    "sha256": "d0b1087540dbd5b39194a855f9929d8e11bac40676b51a6ba67ddc4362813b8e"
   },
   {
-    "repo": "skill-creator",
-    "path": "package.json",
-    "sha256": "89ba90791273a945cf5a69159124adc510f07160b62e44656c60d768f656c7e0"
+    "repo": "golems",
+    "path": "scripts/publish-boundary-policy.yaml",
+    "sha256": "11b8aefef3fe1441a58212fb063f076a07e52c899fbee4a5bdc6df67ce404dbf"
   },
   {
-    "repo": "skill-creator",
-    "path": "hooks-lab/fixtures/precondition-read-gate/red/01-ta\u0073k-done-keyword-no-read.json",
-    "sha256": "536b3f53307619ebe1773c45945c5dd305367b8b4674373eb42b86ec0ecea574"
+    "repo": "golems",
+    "path": "scripts/tests/boundary-ipv4.test.mjs",
+    "sha256": "cfe2456668d6e42fcd738cc0ed339cdcd979d79a4c1e9242be5df5ea0d997445"
   },
   {
-    "repo": "skill-creator",
-    "path": "hooks-lab/gates/precondition-read-gate/evals/fixtures/red/01-ta\u0073k-done-keyword-no-read.json",
-    "sha256": "536b3f53307619ebe1773c45945c5dd305367b8b4674373eb42b86ec0ecea574"
+    "repo": "golems",
+    "path": "scripts/ci/boundary-history-shards.sh",
+    "sha256": "e62bf02de472a1be8e49d5dde006f60c358c8c8dcd19049efa9ee56e36f79ab4"
   }
 ]
