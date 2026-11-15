@@ -1,3 +1,4 @@
+import { nameProgram } from "./named-program.mjs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -42,7 +43,7 @@ export function install({ home = homedir(), nodeBin = existsSync("/opt/homebrew/
   const values = { NODE_BIN: nodeBin, GH_BIN: ghBin, GIT_BIN: gitBin, RUNNER: runner, HOME: home, STATE: state, PATH: "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin" };
   const text = readFileSync(path.join(root, "launchd", label + ".plist"), "utf8").replace(/@([A-Z_]+)@/g, (_, key) => xml(values[key]));
   mkdirSync(path.dirname(plist), { recursive: true });
-  writeFileSync(plist + ".candidate", text, { mode: 0o600 });
+  writeFileSync(plist + ".candidate", nameProgram(text, home), { mode: 0o600 });
   run("/usr/bin/plutil", ["-lint", plist + ".candidate"]);
   if (prior) copyFileSync(plist, plist + `.backup-${Date.now()}`);
   renameSync(plist + ".candidate", plist);

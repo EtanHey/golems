@@ -22,9 +22,7 @@ After merge, the lead installs on the designated runner from its updated root ch
 
 ```sh
 mkdir -p "$HOME/.golems/ratchet" "$HOME/Library/LaunchAgents"
-sed "s|__HOME__|$HOME|g" scripts/fleet/com.golems.ratchet-inbox-relay.plist.template > "$HOME/Library/LaunchAgents/com.golems.ratchet-inbox-relay.plist"
-plutil -lint "$HOME/Library/LaunchAgents/com.golems.ratchet-inbox-relay.plist"
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.golems.ratchet-inbox-relay.plist"
+launchd/install-job.sh com.golems.ratchet-inbox-relay
 ```
 
 Requires /opt/homebrew/bin/node, authenticated gh, and an ssh host configured in ratchet-relay.json.

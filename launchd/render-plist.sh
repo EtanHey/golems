@@ -25,6 +25,7 @@ TASK_HOME=$task_home GOLEMS_PATH=$golems_root TASK_NODE=$node_bin perl -pe '
     }
   }
   s/\@HOME\@/$ENV{TASK_HOME}/g;
+  s/__HOME__/$ENV{TASK_HOME}/g;
   s/\@GOLEMS_ROOT\@/$ENV{GOLEMS_PATH}/g;
   s/\@NODE_BIN\@/$ENV{TASK_NODE}/g;
 ' "$source_plist" > "$destination_plist"

@@ -31,8 +31,10 @@ if [[ $uninstall == 1 ]]; then
 fi
 
 NODE_BIN=${NODE_BIN:-$(command -v node)} GOLEMS_ROOT=$golems_root HOME=$task_home \
-  "$script_dir/render-plist.sh" "$source_plist" "$installed_plist"
-plutil -lint "$installed_plist" >/dev/null
+  "$script_dir/render-plist.sh" "$source_plist" "$installed_plist.candidate"
+"${NODE_BIN:-$(command -v node)}" "$script_dir/named-program.mjs" "$installed_plist.candidate"
+plutil -lint "$installed_plist.candidate" >/dev/null
+mv "$installed_plist.candidate" "$installed_plist"
 
 if [[ $skip_launchctl == 0 ]]; then
   launchctl bootout "$domain/$label" 2>/dev/null || true

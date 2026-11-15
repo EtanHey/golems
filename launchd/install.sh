@@ -71,12 +71,14 @@ remove_plists "${RETIRED[@]}"
 for plist in "${PLISTS[@]}"; do
     label="${plist%.plist}"
 
-    # Remove the loaded definition so bootstrap picks up the rendered plist.
-    unload_label "$label"
-
-    # Render host-specific paths into the installed plist.
+    # Prepare and verify before touching the loaded job or installed definition.
     echo "  Installing $plist..."
-    "$SCRIPT_DIR/render-plist.sh" "$SCRIPT_DIR/$plist" "$LAUNCH_AGENTS/$plist"
+    candidate="$LAUNCH_AGENTS/$plist.candidate"
+    "$SCRIPT_DIR/render-plist.sh" "$SCRIPT_DIR/$plist" "$candidate"
+    "$NODE_BIN" "$SCRIPT_DIR/named-program.mjs" "$candidate"
+    plutil -lint "$candidate"
+    unload_label "$label"
+    mv "$candidate" "$LAUNCH_AGENTS/$plist"
 
     # Bootstrap failures must stop installation before the success message.
     echo "  Loading $label..."

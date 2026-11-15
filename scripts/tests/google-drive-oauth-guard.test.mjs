@@ -168,7 +168,8 @@ test("installer deploys tracked source and a rendered RunAtLoad plist", async ()
   const plist = await readFile(plistPath, "utf8");
   assert.match(plist, /<key>RunAtLoad<\/key>\s*<true\/>/);
   assert.match(plist, /<key>StartInterval<\/key>\s*<integer>300<\/integer>/);
-  assert.ok(plist.includes(`<string>${process.execPath}</string>`), plist);
+  assert.ok(plist.includes("Golems Drive OAuth Guard</string>"), plist);
+  assert.ok((await readFile(join(home, ".local/lib/golems/Golems Drive OAuth Guard"), "utf8")).includes(process.execPath));
   assert.ok(plist.includes(`<string>${runtimePath}</string>`), plist);
   assert.ok(plist.includes(`<string>${vendorDir}</string>`), plist);
   assert.doesNotMatch(plist, /@[A-Z][A-Z0-9_]*@/);

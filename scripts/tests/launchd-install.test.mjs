@@ -20,7 +20,7 @@ function runInstaller({ loaded = false, failBootstrap = "", failBootout = false,
   mkdirSync(bin);
   mkdirSync(agents, { recursive: true });
   // The OAuth helper invokes /bin/launchctl directly: never execute it in this fixture.
-  writeFileSync(join(bin, "node"), '#!/bin/bash\nprintf "%s\\n" "$2" >> "$NODE_LOG"\n', { mode: 0o755 });
+  writeFileSync(join(bin, "node"), '#!/bin/bash\nif [[ $1 == *named-program.mjs ]]; then exec "$REAL_NODE" "$@"; fi\nprintf "%s\\n" "$2" >> "$NODE_LOG"\n', { mode: 0o755 });
   writeFileSync(join(bin, "launchctl"), `#!/bin/bash
 printf '%s\\n' "$*" >> "$LAUNCHCTL_LOG"
 case "$1" in
@@ -61,7 +61,7 @@ fi
       cwd: repoRoot,
       env: {
         ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}`,
-        LAUNCHCTL_LOG: log, NODE_LOG: join(scratch, "node.log"),
+        REAL_NODE: Bun.which("node"), LAUNCHCTL_LOG: log, NODE_LOG: join(scratch, "node.log"),
         LOADED: loaded ? "1" : "0", PREFIX_ONLY: prefixOnly ? "1" : "0", FAIL_BOOTSTRAP: failBootstrap || "no-such-label",
         FAIL_BOOTOUT: failBootout ? "1" : "0", UNLOAD_DELAY: String(unloadDelay),
       },
