@@ -73,6 +73,39 @@ except BaseException:  # policy dependency uncertainty must never become allow
     _deny_policy_import_failure()
 
 
+def archived_delete_shape(command):
+    """Literal candidate shape, only for selecting the longer policy budget."""
+    import shlex
+    try:
+        words = shlex.split(command)
+        prefix = words[:3] + ['push'] if words[:2] == ['git', '-C'] else ['git', 'push']
+        tail = words[len(prefix):]
+        if words[:len(prefix)] != prefix or len(tail) != 3:
+            return False
+        match = re.fullmatch(r'--force-with-lease=(refs/heads/.+):[0-9a-f]{40}', tail[0])
+        if not match or tail[2] != ':' + match[1]:
+            return False
+        return True
+    except (ValueError, IndexError):
+        return False
+
+
+def archived_delete_allowed(command, cwd):
+    """Validation only; the mandatory gate hook writes the allowed-attempt row."""
+    import subprocess
+    if not archived_delete_shape(command):
+        return False
+    try:
+        gate = os.path.join(GIT_GUARDIAN_LIB, '..', 'human-confirm-gate', 'hooks', 'human-confirm-pretooluse.py')
+        payload = dict(tool_name='Bash', cwd=cwd, session_id='guardian-archive-check',
+                       tool_input=dict(command=command))
+        result = subprocess.run([sys.executable, '-I', '-B', gate, '--archive-check-only'], input=json.dumps(payload),
+                                capture_output=True, text=True, timeout=7)
+        return result.returncode == 0 and json.loads(result.stdout) == {}
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return False
+
+
 # --- Permission Classification ---
 
 # GREEN: safe, read-only operations — no logging needed
@@ -133,6 +166,9 @@ def classify_tool(tool_name, tool_input):
             raise
         except Exception:  # policy uncertainty must never become fail-open allow
             return "RED", "security policy could not evaluate command safely"
+        if (guardian_reason and 'remote reference deletion' in guardian_reason
+                and archived_delete_allowed(raw_command, tool_input.get("cwd", os.getcwd()))):
+            guardian_reason = None
         if guardian_reason:
             reason = (
                 guardian_reason
@@ -183,8 +219,8 @@ def block(reason):
     cancel_policy_evaluation_deadline()
     operation = 'a destructive operation'
     for needle, name in [('local branch', 'deleting a local branch'), ('push --force', 'force-push'), ('reset --hard', 'reset --hard'),
-                         ('clean', 'clean'), ('branch', 'deleting a branch'),
                          ('reference deletion', 'deleting a remote branch'),
+                         ('clean', 'clean'), ('branch', 'deleting a branch'),
                          ('restore', 'discarding changes'), ('checkout', 'discarding changes'),
                          ('rm', 'deleting files'), ('find', 'deleting files'),
                          ('rsync', 'deleting files'), ('SQL', 'deleting database data'),
@@ -195,6 +231,9 @@ def block(reason):
             operation = name
             break
     result_reason = f"Blocked: this git command can destroy work ({operation}). Use a safe alternative, or ask the lead."
+    if 'remote reference deletion' in (reason or ''):
+        result_reason += (' To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, '
+                          'then the command it prints.')
     if reason == "security policy could not evaluate command safely":
         result_reason = (
             "Blocked: the golems safety check couldn't parse this command, so it can't confirm it's safe. "
@@ -226,7 +265,7 @@ def _main_under_deadline():
             candidate = _git_safety._pkg.branch_cleanup._plan(tool_input.get("command", ""), tool_input["cwd"])
         except (ValueError, TypeError, AttributeError):
             candidate = None
-        if candidate:
+        if candidate or archived_delete_shape(tool_input.get("command", "")):
             import signal
             signal.setitimer(signal.ITIMER_REAL, 8)
 
