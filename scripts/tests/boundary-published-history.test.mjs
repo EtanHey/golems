@@ -128,3 +128,31 @@ test('R1: adjacent allowed addresses retain their separator for matching', () =>
   f.git('switch', '-qc', 'candidate');
   f.commit('address', email('example.com') + ' ' + email('foo.test') + '.'); allowed(f.check());
 }));
+
+for (const label of ['home address', 'home city', 'resume path']) {
+  for (const domain of ['b.test', 'example.com', 'users.noreply.github.com']) {
+    test(`C: label ${label} directly before allowed domain ${domain} is refused`, () => fixture(f => {
+      f.git('switch', '-qc', 'candidate'); f.commit('notes', label + ':' + 'a@' + domain);
+      const result = f.check(); refused(result); assert.match(result.stderr, /publication violation \(identity-pii\)/);
+    }));
+  }
+}
+test('R2: real push cannot strip a sensitive label colon', () => fixture(f => {
+  f.git('switch', '-qc', 'candidate'); f.commit('notes', 'home address' + ':' + 'a@' + 'b.test');
+  refused(f.push());
+  assert.equal(f.git('ls-remote', f.remote, 'refs/heads/candidate').split('\t')[0], f.base);
+}));
+
+test('R2: hook Git calls disable commitGraph despite repository configuration', () => fixture(f => {
+  f.git('switch', '-qc', 'candidate'); f.commit('safe', 'safe');
+  f.git('config', 'core.commitGraph', 'true');
+  const bin = join(f.root, 'bin'); mkdirSync(bin);
+  const realGit = spawnSync('which', ['git'], { encoding: 'utf8' }).stdout.trim();
+  writeFileSync(join(bin, 'git'), `#!${process.execPath}
+const {spawnSync} = require('node:child_process');
+const args = process.argv.slice(2);
+if (args[0] !== '--no-replace-objects' || args[1] !== '-c' || args[2] !== 'core.commitGraph=false') process.exit(71);
+const r = spawnSync(${JSON.stringify(realGit)}, args, {stdio: 'inherit'}); process.exit(r.status ?? 1);
+`, { mode: 0o755 });
+  allowed(f.check(f.base, f.remote, { ...process.env, PATH: bin + ':' + process.env.PATH }));
+}));

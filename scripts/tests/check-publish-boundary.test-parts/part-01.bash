@@ -724,3 +724,7 @@ setup_munged_email() {
 setup_sentence_final_emails() {
   printf 'Write to fixture@%s.\n' example.com foo.test foo.invalid site.example > "$1/contact.txt"
 }
+
+setup_labeled_address() {
+  printf '%s:a@%s\n' "$label_fixture_label" "$label_fixture_domain" > "$1/contact.txt"
+}

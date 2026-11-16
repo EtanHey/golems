@@ -401,6 +401,11 @@ expect_reject "jobs profile server path" "relocate-path" setup_jobs_profile_serv
 expect_reject "Gmail PII" "identity-pii" setup_gmail
 expect_reject "custom-domain email PII" "identity-pii" setup_custom_domain_email
 expect_accept "reserved-domain email fixtures" setup_reserved_domain_emails
+for label_fixture_label in 'home address' 'home city' 'resume path'; do
+  for label_fixture_domain in b.test example.com users.noreply.github.com; do
+    expect_reject "label $label_fixture_label with $label_fixture_domain" "identity-pii" setup_labeled_address
+  done
+done
 expect_reject "spliced reserved address" "identity-pii" setup_spliced_reserved_email
 expect_reject "spliced example address" "identity-pii" setup_spliced_example_email
 expect_reject "munged address" "identity-pii" setup_munged_email
