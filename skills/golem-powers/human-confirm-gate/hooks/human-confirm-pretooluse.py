@@ -57,6 +57,9 @@ def approval_reason(ops):
             action = 'disabling a workflow'
         elif 'variable' in target:
             action = 'changing GitHub variables'
+    if op['class'] == 'delete' and not op.get('local'):
+        from archived_delete import GUIDANCE
+        return 'Blocked: deleting this remote ref needs Etan approval. ' + GUIDANCE
     return f"Blocked: {action} can't be undone, so Etan has to approve it. Ask the lead to route it to him."
 
 
@@ -86,6 +89,9 @@ def evaluate(payload, home):
             raise ConfirmationRequired(str(exc)) from exc
         if ops and not authorize(payload, ops, home):
             allowed, reason = own_lease_scope(payload, ops)
+            if not allowed and not reason:
+                from archived_delete import scope
+                allowed, reason = scope(payload, ops, home)
             if not allowed:
                 raise ConfirmationRequired(reason or approval_reason(ops))
 

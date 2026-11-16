@@ -205,11 +205,15 @@ def lead_scope(op, metadata_fn=lead_metadata):
     return pr
 
 
-def own_lease_metadata(target, branch):
-    """Two concurrent REST reads, four seconds total, within the hook's policy deadline."""
+def own_lease_metadata(target, branch, *, include_prs=False):
+    """Concurrent REST reads, four seconds total, within the policy deadline."""
     gh = trusted_binary(GH_CANDIDATES)
     requests = [('repos/' + target, '{full_name,default_branch}'),
                 ('repos/' + target + '/branches/' + quote(branch, safe=''), '{name,protected}')]
+    if include_prs:
+        # One request: a full page means possible truncation and refuses below.
+        requests.append(('repos/' + target + '/pulls?state=open&per_page=100',
+                         '[.[] | {head: {ref: .head.ref}, base: {ref: .base.ref}}]'))
     pending, replies = [], []
     deadline = time.monotonic() + 4
     try:
@@ -229,10 +233,43 @@ def own_lease_metadata(target, branch):
             process.wait()
             process.stdout.close()
             process.stderr.close()
-    repo, branch_data = replies
+    repo, branch_data = replies[:2]
     if not isinstance(repo['full_name'], str) or repo['full_name'].casefold() != target.casefold():
         raise ValueError('repository metadata was redirected')
-    return repo['default_branch'], branch_data
+    result = (repo['default_branch'], branch_data)
+    return (*result, replies[2]) if include_prs else result
+
+
+def own_lease_remote(repo, remote):
+    """Shared destination/config validation for unsigned leases and archived deletes."""
+    import git_config
+    # Git can omit empty URL entries from get-url; count the raw config too.
+    for key in ('url', 'pushurl'):
+        raw = git_config.read(repo, 'config', '--null', '--get-all', 'remote.' + remote + '.' + key)
+        if raw and (not raw.endswith('\0') or len(raw.split('\0')) != 2
+                    or not raw[:-1] or raw[:-1] != raw[:-1].strip()):
+            raise ValueError('nonplain own-lease remote')
+    targets = []
+    for flags in ([], ['--push']):
+        urls = read_command([GIT, '-C', repo, 'remote', 'get-url', *flags, '--all', remote], strip=False).splitlines()
+        if len(urls) != 1 or urls[0] != urls[0].strip():
+            raise ValueError('nonplain own-lease remote')
+        url = urls[0]
+        match = re.fullmatch(r'(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)'
+                             r'(EtanHey/[A-Za-z0-9_.-]+?)(?:\.git)?', url, re.I | re.ASCII)
+        if not match or match[1].split('/')[1] in ('.', '..'):
+            raise ValueError('nonplain own-lease remote')
+        targets.append(match[1])
+    if targets[0].casefold() != targets[1].casefold():
+        raise ValueError('nonplain own-lease remote')
+    # Reuse the parser's config reader/boolean semantics for additional push
+    # modes that do not appear as destructive flags in effective_push.
+    for key in ('remote.' + remote + '.mirror', 'push.followTags', 'push.useForceIfIncludes', 'push.recurseSubmodules', 'submodule.recurse',
+                'remote.' + remote + '.receivepack', 'remote.' + remote + '.vcs'):
+        values = git_config.read(repo, 'config', '--null', '--get-all', key)
+        if values and (key.endswith(('.receivepack', '.vcs')) or any(git_config.truthy(v) for v in values.rstrip('\0').split('\0'))):
+            raise ValueError('nonplain own-lease remote')
+    return targets[1]
 
 
 def own_lease_scope(payload, ops, metadata_fn=None):
@@ -245,7 +282,6 @@ def own_lease_scope(payload, ops, metadata_fn=None):
         return False, ''
     try:
         import shlex
-        import git_config
         from commands import shell
         op = ops[0]
         words = shlex.split(payload['tool_input']['command'])
@@ -254,33 +290,7 @@ def own_lease_scope(payload, ops, metadata_fn=None):
         if words[:len(prefix)] != prefix or [w for w in words[len(prefix):] if w not in ('--atomic', '--verbose', '-v')] != expected:
             return False, ''
         repo, remote = op['repo'], op['remote']
-        # Git can omit empty URL entries from get-url; count the raw config too.
-        for key in ('url', 'pushurl'):
-            raw = git_config.read(repo, 'config', '--null', '--get-all', 'remote.' + remote + '.' + key)
-            if raw and (not raw.endswith('\0') or len(raw.split('\0')) != 2
-                        or not raw[:-1] or raw[:-1] != raw[:-1].strip()):
-                return False, ''
-        targets = []
-        for flags in ([], ['--push']):
-            urls = read_command([GIT, '-C', repo, 'remote', 'get-url', *flags, '--all', remote], strip=False).splitlines()
-            if len(urls) != 1 or urls[0] != urls[0].strip():
-                return False, ''
-            url = urls[0]
-            match = re.fullmatch(r'(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)'
-                                 r'(EtanHey/[A-Za-z0-9_.-]+?)(?:\.git)?', url, re.I | re.ASCII)
-            if not match or match[1].split('/')[1] in ('.', '..'):
-                return False, ''
-            targets.append(match[1])
-        if targets[0].casefold() != targets[1].casefold():
-            return False, ''
-        # Reuse the parser's config reader/boolean semantics for additional push
-        # modes that do not appear as destructive flags in effective_push.
-        for key in ('push.followTags', 'push.useForceIfIncludes', 'push.recurseSubmodules', 'submodule.recurse',
-                    'remote.' + remote + '.receivepack', 'remote.' + remote + '.vcs'):
-            values = git_config.read(repo, 'config', '--null', '--get-all', key)
-            if values and (key.endswith(('.receivepack', '.vcs')) or any(git_config.truthy(v) for v in values.rstrip('\0').split('\0'))):
-                return False, ''
-        target = targets[1]
+        target = own_lease_remote(repo, remote)
         branch = op['ref'].removeprefix('refs/heads/')
         if branch.casefold() in ('main', 'master', 'develop', 'trunk', 'gh-pages') or branch.casefold().startswith('release'):
             return False, f"Blocked: that's a shared branch of {target}; force-pushing it needs Etan."

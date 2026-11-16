@@ -84,3 +84,35 @@ weak until owner enrolment and an orc decision to retire it. Git executable path
 are bound, not their contents (including repointable Homebrew symlinks). SSH
 wrapper contents, ~/.ssh/config, DNS, shell-startup env and a check-versus-run
 race remain; a future gate that executes pushes with fixed Git must close them.
+
+## Archived fleet branch deletion
+
+To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, then the command it prints.
+Pass `<repo-dir> <remote> <branch>`. The helper fetches the branch, saves a full bundle,
+verifies it, and prints one lease-pinned delete; it never pushes. It stages an isolated
+bare repository under the archive so the bundle names exactly `refs/heads/<branch>`
+without moving a local branch. Existing bundles are verified, never overwritten.
+
+No signature is needed only for `git [-C <repo>] push
+--force-with-lease=refs/heads/<branch>:<40-hex-tip> <remote> :refs/heads/<branch>`.
+The same own-lease destination and push-configuration checks apply. The branch must
+be non-shared, non-default, unprotected, and unused as head or base of any open PR.
+Three concurrent REST requests share a four-second deadline; errors, ambiguous data,
+and a full 100-PR page refuse with a retry message rather than assume completeness.
+GitHub identity cannot distinguish agent work from owner work, so the exception
+checks reversibility instead of authorship. All other delete forms retain approval.
+
+The canonical bundle is `~/.golems/branch-archive/<owner>/<repo>/<branch with slashes
+replaced by __>/<tip>.bundle`: user-owned, regular, no symlink, mode 0600 or 0644,
+exactly one listed head matching the lease, and accepted by `git bundle verify`.
+The gate appends and flushes a JSON receipt to `~/.golems/branch-archive/deletes.jsonl`
+before allowing, with time, repository, branch, tip, bundle path and SHA-256. A receipt
+records an allowed attempt, not proof that Git subsequently deleted the branch.
+Git-guardian checks the exact shape through the same full confirmation hook; when
+both hooks run, each allowance records a receipt. Failure to write refuses.
+
+Restore from the saved bundle with `git fetch <bundle-path> refs/heads/<branch>`;
+inspect the fetched tip before deciding to push it back. Keep the archive for recovery.
+This pre-run policy does not prevent same-user edits after verification or a new PR
+opening before the push; the lease still fences the deleted remote tip. Installed
+hook activation and live GitHub deletion are separate release proof.

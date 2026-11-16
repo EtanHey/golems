@@ -73,6 +73,29 @@ except BaseException:  # policy dependency uncertainty must never become allow
     _deny_policy_import_failure()
 
 
+def archived_delete_allowed(command, cwd):
+    """Ask the mandatory confirmation gate; never waive it based on shape alone."""
+    import shlex
+    import subprocess
+    try:
+        words = shlex.split(command)
+        prefix = words[:3] + ['push'] if words[:2] == ['git', '-C'] else ['git', 'push']
+        tail = words[len(prefix):]
+        if words[:len(prefix)] != prefix or len(tail) != 3:
+            return False
+        match = re.fullmatch(r'--force-with-lease=(refs/heads/.+):[0-9a-f]{40}', tail[0])
+        if not match or tail[2] != ':' + match[1]:
+            return False
+        gate = os.path.join(GIT_GUARDIAN_LIB, '..', 'human-confirm-gate', 'hooks', 'human-confirm-pretooluse.py')
+        payload = dict(tool_name='Bash', cwd=cwd, session_id='guardian-archive-check',
+                       tool_input=dict(command=command))
+        result = subprocess.run([sys.executable, '-I', '-B', gate], input=json.dumps(payload),
+                                capture_output=True, text=True, timeout=9)
+        return result.returncode == 0 and json.loads(result.stdout) == {}
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return False
+
+
 # --- Permission Classification ---
 
 # GREEN: safe, read-only operations — no logging needed
@@ -133,6 +156,9 @@ def classify_tool(tool_name, tool_input):
             raise
         except Exception:  # policy uncertainty must never become fail-open allow
             return "RED", "security policy could not evaluate command safely"
+        if (guardian_reason and 'remote reference deletion' in guardian_reason
+                and archived_delete_allowed(raw_command, tool_input.get("cwd", os.getcwd()))):
+            guardian_reason = None
         if guardian_reason:
             reason = (
                 guardian_reason

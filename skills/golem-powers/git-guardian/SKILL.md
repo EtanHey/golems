@@ -77,6 +77,11 @@ explicit user confirmation. The shared policy blocks deletion options, empty-sou
 reference mappings, and bulk pruning or mirroring capabilities. Preview mode retains
 the same gate. Repository addresses and transport option values are not references.
 
+To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, then the command it prints.
+The exact archived, lease-pinned single-ref shape is checked by human-confirm-gate
+(including its bundle, branch metadata and durable receipt). Other remote deletes
+retain confirmation. See [archive contract](../human-confirm-gate/README.md#archived-fleet-branch-deletion).
+
 #### Reset Hard (`reset --hard`)
 1. Run `git log HEAD~<N>..HEAD --oneline` to list commits being dropped.
 2. Run `git status --short` to show uncommitted work that will be lost.
