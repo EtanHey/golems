@@ -8,7 +8,7 @@ A chat turn, send_to, sender stamp, or model assertion is never approval.
 The Claude PreToolUse hook classifies shell commands with `_shared/shell_parse`.
 Simple literal assignments resolve command/argument words (including #500);
 unresolved protected executable scope and xargs Git/GH/shell executors deny.
-It blocks force/lease pushes (except own-branch leases below), positive-force refspecs, remote deletes, mirror/prune,
+It blocks force/lease pushes (except own-branch leases below), positive-force refspecs, remote deletes (except archived deletes below), mirror/prune,
 filter-repo/filter-branch/replace (conservatively even local rewrites), replacement
 ref pushes, every `gh repo edit` plus repo delete/archive/unarchive/rename/
 forced-sync and deploy-key add/delete, `gh secret|variable set/delete`,
@@ -23,6 +23,14 @@ scope denies when it could affect a protected operation. The gate inspects
 known wrappers, shell -c/trap and literal stdin payloads, Git executors and
 same-call config mutations; opaque shell stdin sources deny. Unclosed input
 and policy/import/runtime errors deliberately deny (exit 2).
+
+**Archived deletes.** To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, then the command it prints.
+Only one exact 40-hex lease-pinned empty-source push to an own-lease validated
+remote may skip the signature: verified canonical bundle, non-shared/default/
+protected branch, no open PR using the branch as head or base, and a flushed
+receipt before allow. Metadata errors refuse with retry guidance. See
+[the archive contract](README.md#archived-fleet-branch-deletion). Other delete
+forms retain approval; authorship is not checkable from the shared GitHub identity.
 
 **Fleet false positives.** `tests/fleet_commands.json` holds about 5,000
 values-stripped shapes of real Claude and Codex Bash commands. The gate must

@@ -5,8 +5,9 @@ import shlex
 import subprocess
 
 import pytest
-from test_own_fork_lease import cell, decision, config, BRANCH
-import tokens
+from test_own_fork_lease import decision, config, BRANCH
+pytest_plugins = ["test_own_fork_lease"]
+from test_own_fork_lease import tokens
 
 
 def git(repo, *args):
@@ -142,3 +143,40 @@ def test_guardian_only_allows_after_full_gate_success(monkeypatch):
     assert calls == []
     monkeypatch.setattr(subprocess, 'run', lambda *a, **kw: SimpleNamespace(returncode=2, stdout='{}'))
     assert not guardian.archived_delete_allowed(command, '/repo')
+
+
+@pytest.mark.parametrize('delay,fail', [(0.2, False), (5, False), (0, True)])
+def test_three_rest_reads_share_deadline(cell, archived, monkeypatch, delay, fail):
+    import sys
+    import time
+    from test_commands import ROOT
+    from test_lead_issuer import load
+    home, _, _, _, command = archived
+    fake = home / 'gh-archive'
+    receipts = home / 'requests'
+    receipts.mkdir()
+    fake.write_text(f'''#!{sys.executable}
+import json, pathlib, sys, time
+kind = 'prs' if '/pulls?' in sys.argv[-1] else 'branch' if '/branches/' in sys.argv[-1] else 'repo'
+root = pathlib.Path({str(receipts)!r})
+(root / (kind + '-start')).write_text(str(time.monotonic()))
+time.sleep({delay!r})
+if {fail!r}: sys.exit(1)
+data = [] if kind == 'prs' else dict(name={BRANCH!r}, protected=False) if kind == 'branch' else dict(full_name='EtanHey/t3code', default_branch='main')
+(root / (kind + '-end')).write_text(str(time.monotonic()))
+print(json.dumps(data))
+''')
+    fake.chmod(0o700)
+    real = load(ROOT / 'hooks/tokens.py', 'archived_rest_tokens')
+    monkeypatch.setattr(real, 'trusted_binary', lambda _: str(fake))
+    monkeypatch.setattr(tokens, 'own_lease_metadata', real.own_lease_metadata)
+    started = time.monotonic()
+    rc, reason = decision(cell, monkeypatch, command)
+    assert time.monotonic() - started < 7
+    if delay == 0.2:
+        assert rc == 0, reason
+        starts = [float((receipts / (k + '-start')).read_text()) for k in ('repo', 'branch', 'prs')]
+        ends = [float((receipts / (k + '-end')).read_text()) for k in ('repo', 'branch', 'prs')]
+        assert max(starts) < min(ends)
+    else:
+        assert rc == 2 and 'Retry' in reason

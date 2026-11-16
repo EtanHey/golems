@@ -209,8 +209,8 @@ def block(reason):
     cancel_policy_evaluation_deadline()
     operation = 'a destructive operation'
     for needle, name in [('local branch', 'deleting a local branch'), ('push --force', 'force-push'), ('reset --hard', 'reset --hard'),
-                         ('clean', 'clean'), ('branch', 'deleting a branch'),
                          ('reference deletion', 'deleting a remote branch'),
+                         ('clean', 'clean'), ('branch', 'deleting a branch'),
                          ('restore', 'discarding changes'), ('checkout', 'discarding changes'),
                          ('rm', 'deleting files'), ('find', 'deleting files'),
                          ('rsync', 'deleting files'), ('SQL', 'deleting database data'),
@@ -221,6 +221,9 @@ def block(reason):
             operation = name
             break
     result_reason = f"Blocked: this git command can destroy work ({operation}). Use a safe alternative, or ask the lead."
+    if 'remote reference deletion' in (reason or ''):
+        result_reason += (' To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, '
+                          'then the command it prints.')
     if reason == "security policy could not evaluate command safely":
         result_reason = (
             "Blocked: the golems safety check couldn't parse this command, so it can't confirm it's safe. "

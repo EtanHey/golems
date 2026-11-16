@@ -7,7 +7,6 @@ import shlex
 import stat
 import subprocess
 import time
-from pathlib import Path
 
 import tokens
 

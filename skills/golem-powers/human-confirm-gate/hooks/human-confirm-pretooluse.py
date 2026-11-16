@@ -59,7 +59,8 @@ def approval_reason(ops):
             action = 'changing GitHub variables'
     if op['class'] == 'delete' and not op.get('local'):
         from archived_delete import GUIDANCE
-        return 'Blocked: deleting this remote ref needs Etan approval. ' + GUIDANCE
+        return ("Blocked: deleting a remote branch can't be undone, so Etan has to approve it. "
+                "Ask the lead to route it to him. " + GUIDANCE)
     return f"Blocked: {action} can't be undone, so Etan has to approve it. Ask the lead to route it to him."
 
 
