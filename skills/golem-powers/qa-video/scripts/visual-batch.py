@@ -195,6 +195,11 @@ def validate_citations(item, tile_count):
             malformed = True
             continue
         tail = finding[citation.end():].lstrip()
+        # A complete x/y pixel rectangle following the noun is geometry, not
+        # an indexed citation. Later frame/tile labels are still checked.
+        if citation[0].lower().startswith('frame') and re.match(
+                r':\s*x=\d+(?:[-–]\d+)?,\s*y=\d+(?:[-–]\d+)?(?=[.;\s]|$)', tail):
+            continue
         # "20 tiles" describes a count, not index 20. A parenthesized range
         # still supplies indexes and must be checked, including 0..19 notation.
         if re.search(r'\b\d+\s*$', prefix):
