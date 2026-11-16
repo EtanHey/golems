@@ -42,15 +42,7 @@ public struct Approval {
         command_sha256 = p.command_sha256; agentReason = p.reason
     }
     private static func printableReason(_ scalar: Unicode.Scalar) -> Bool {
-        if [0x115f, 0x1160, 0x3164, 0xffa0].contains(scalar.value) { return false }
-        if scalar.value == 32 { return true }
-        switch scalar.properties.generalCategory {
-        case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter,
-             .decimalNumber, .letterNumber, .otherNumber, .connectorPunctuation, .dashPunctuation,
-             .openPunctuation, .closePunctuation, .initialPunctuation, .finalPunctuation, .otherPunctuation,
-             .mathSymbol, .currencySymbol, .modifierSymbol, .otherSymbol: return true
-        default: return false // Includes controls, format/bidi/zero-width and combining marks.
-        }
+        (32...126).contains(scalar.value)
     }
     private static func matches(_ text: String, _ pattern: String) -> Bool { text.range(of: pattern, options: .regularExpression) != nil }
     private static func operationSentence(url: String, op: [String: Any], kind: String) throws -> String {
@@ -77,7 +69,7 @@ public struct Approval {
         case "delete": return "Delete branch \(branch) from \(repo). This cannot be undone."
         case "force": return "Force-push over branch \(branch) in \(repo). Remote history may be overwritten."
         case "lease": return "Force-push over branch \(branch) in \(repo) only if its expected remote revision still matches."
-        case "rewrite": return "Rewrite shared history on branch \(branch) in \(repo)."
+        case "rewrite": return "Rewrite local history on branch \(branch) in \(repo)."
         default: throw Refusal.invalidToken
         }
     }

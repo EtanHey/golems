@@ -35,9 +35,9 @@ class Enrolment(unittest.TestCase):
         # precedes helper invocation or any public-file reservation.
         with patch.object(enclave, 'HELPER', str(helper)), \
              patch('importlib.machinery.SourceFileLoader.exec_module', lambda _, m: m.__dict__.update(owner_terminal=lambda: None)), \
-             patch.object(module.subprocess, 'run', side_effect=AssertionError('must refuse before execution')):
+             patch.object(module.subprocess, 'run', side_effect=AssertionError('must refuse before execution')), patch.object(module, 'verified_source'):
             with self.assertRaises(ValueError):
-                module.main()
+                module.main(['--commit', 'a' * 40])
         self.assertFalse(self.pub.exists())
 
     def test_placeholder_refuses_before_platform_commands(self):
@@ -85,8 +85,8 @@ class Enrolment(unittest.TestCase):
         with patch.object(enclave, 'HELPER', str(helper)), patch.object(enclave, 'ENROLL_TEAM_ID', 'ABCDEFGHIJ'), \
              patch.object(module.Path, 'lstat', root_owned), \
              patch('importlib.machinery.SourceFileLoader.exec_module', lambda _, m: m.__dict__.update(owner_terminal=lambda: None)), \
-             patch.object(module.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, 'codesign')) as call:
-            with self.assertRaises(subprocess.CalledProcessError): module.main()
+             patch.object(module.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, 'codesign')) as call, patch.object(module, 'verified_source'):
+            with self.assertRaises(subprocess.CalledProcessError): module.main(['--commit', 'a' * 40])
         self.assertEqual(call.call_count, 1)
         self.assertEqual(call.call_args.args[0][-1], str(helper))
         self.assertEqual(call.call_args.args[0][:3], ['/usr/bin/codesign', '--verify', '--strict'])

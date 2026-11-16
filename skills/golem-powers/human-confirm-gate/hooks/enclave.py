@@ -5,7 +5,6 @@ import os
 import re
 import shlex
 import subprocess
-import unicodedata
 from pathlib import Path
 
 PUBLIC_KEY = Path('.config/golems/enclave-public.der')
@@ -15,8 +14,8 @@ ENROLL_TEAM_ID = 'PPN23G925Y'
 
 def validate_reason(reason):
     if reason is not None and (not isinstance(reason, str) or len(reason) > 200 or
-            any(ord(c) in (0x115f, 0x1160, 0x3164, 0xffa0) or (c != ' ' and unicodedata.category(c)[0] not in 'LNPS') for c in reason)):
-        raise ValueError('reason must be one printable line of at most 200 characters; no controls or invisible marks')
+                               any(not 32 <= ord(c) <= 126 for c in reason)):
+        raise ValueError('reason must be one line of at most 200 printable ASCII characters')
     return reason
 
 
@@ -50,7 +49,7 @@ def operation_sentence(url, op):
         'delete': f'Delete branch {branch} from {repo}. This cannot be undone.',
         'force': f'Force-push over branch {branch} in {repo}. Remote history may be overwritten.',
         'lease': f'Force-push over branch {branch} in {repo} only if its expected remote revision still matches.',
-        'rewrite': f'Rewrite shared history on branch {branch} in {repo}.'
+        'rewrite': f'Rewrite local history on branch {branch} in {repo}.'
     }[kind]
 
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Owner-only enrolment; prints public material and a pin for a separate reviewed PR."""
 import hashlib
+import argparse
 import os
 import re
 import plistlib
@@ -40,6 +41,35 @@ def verified_profile(helper):
         raise ValueError('installed profile entitlements do not match the committed identity')
 
 
+def verified_source(expected):
+    """Owner supplies a trusted merged SHA, never an agent-selected working tree."""
+    if not re.fullmatch('[0-9a-f]{40}', expected):
+        raise ValueError('enrolment requires the full trusted merged commit SHA')
+    repo = Path(__file__).resolve().parents[1]
+    if (repo / '.git').is_symlink() or not (repo / '.git').is_dir():
+        raise ValueError('enrol from a fresh standalone clone, not a worktree or linked git directory')
+    env = {'PATH': '/usr/bin:/bin', 'GIT_NO_REPLACE_OBJECTS': '1', 'GIT_CONFIG_NOSYSTEM': '1',
+           'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_CEILING_DIRECTORIES': str(repo.parent)}
+    base = ['/usr/bin/git', '--no-replace-objects', '-c', 'core.fsmonitor=false',
+            '-c', 'core.hooksPath=/dev/null', '-C', str(repo)]
+    def read(*args):
+        result = subprocess.run(base + list(args), check=True, capture_output=True, text=True, timeout=10, env=env)
+        return result.stdout.strip()
+    try:
+        if read('rev-parse', '--show-toplevel') != str(repo):
+            raise ValueError('enrolment repo root does not match its own script')
+        if read('rev-parse', 'HEAD') != expected:
+            raise ValueError('enrolment HEAD does not match the supplied merged commit')
+        if read('status', '--porcelain'):
+            raise ValueError('enrolment requires a clean source clone, including no untracked files')
+        origin = read('remote', 'get-url', '--all', 'origin')
+        if origin not in ('https://github.com/EtanHey/golems.git', 'git@github.com:EtanHey/golems.git'):
+            raise ValueError('enrolment origin must be the official golems repository')
+        read('merge-base', '--is-ancestor', expected, 'refs/remotes/origin/master')
+    except subprocess.SubprocessError as error:
+        raise ValueError('cannot verify the enrolment commit on origin/master') from error
+
+
 def verified_helper():
     """Fail closed before reservation/execution; all trust inputs are committed."""
     from enclave import HELPER, ENROLL_TEAM_ID
@@ -69,7 +99,12 @@ def verified_helper():
 
 
 # Deliberately no agent-authorized automatic provisioning. Run once after merge.
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--commit', required=True, help='full trusted merged commit from origin/master')
+    args = parser.parse_args(argv)
+    # BEFORE loading any golems-confirm/enclave code from this checkout.
+    verified_source(args.commit)
     import importlib.machinery
     import importlib.util
     loader = importlib.machinery.SourceFileLoader('confirm', str(Path(__file__).with_name('golems-confirm')))

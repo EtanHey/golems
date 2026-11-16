@@ -17,13 +17,22 @@ final class ReadableApprovalTests: XCTestCase {
         if let reason { token["reason"] = reason }
         return try JSONSerialization.data(withJSONObject: token, options: [.sortedKeys, .withoutEscapingSlashes])
     }
+    func testSharedReasonVectors() throws {
+        struct Vector: Decodable { let name: String, text: String, allowed: Bool }
+        let path = Bundle.module.url(forResource: "reason-vectors", withExtension: "json")!
+        let vectors = try JSONDecoder().decode([Vector].self, from: Data(contentsOf: path))
+        for v in vectors {
+            if v.allowed { XCTAssertNoThrow(try Approval(bytes: bytes(reason: v.text)), v.name) }
+            else { XCTAssertThrowsError(try Approval(bytes: bytes(reason: v.text)), v.name) }
+        }
+    }
     func testExactOrderAndUntrustedLabel() throws {
-        let raw = try bytes(reason: "Preserve the approved backup. לשמור גיבוי")
+        let raw = try bytes(reason: "Preserve the approved backup.")
         let token = try Approval(bytes: raw)
         let lines = token.reason.components(separatedBy: "\n")
         XCTAssertEqual(lines.count, 6)
         XCTAssertEqual(lines[0], "What happens: Delete branch topic from GitHub repo invented/repo. This cannot be undone.")
-        XCTAssertEqual(lines[1], "Why (the agent's words, not checked): Preserve the approved backup. לשמור גיבוי")
+        XCTAssertEqual(lines[1], "Why (the agent's words, not checked): Preserve the approved backup.")
         XCTAssertEqual(lines[2], "Operation: delete")
         XCTAssertEqual(lines[3], "Command: git push --delete origin refs/heads/topic")
         XCTAssertEqual(lines[4], "Directory: /invented")
@@ -37,6 +46,10 @@ final class ReadableApprovalTests: XCTestCase {
         XCTAssertThrowsError(try Approval(bytes: bytes(reason: 17)))
         XCTAssertThrowsError(try Approval(bytes: bytes("unknown")))
         XCTAssertThrowsError(try Approval(bytes: bytes(refs: ["*"])))
+    }
+    func testLocalRewriteWording() throws {
+        let token = try Approval(bytes: bytes("rewrite"))
+        XCTAssertEqual(token.whatHappens, "Rewrite local history on branch topic in GitHub repo invented/repo.")
     }
     func testEveryClassAndReasonCannotChangeNarrative() throws {
         for kind in ["delete", "force", "lease", "rewrite", "settings"] {

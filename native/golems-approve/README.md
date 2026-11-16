@@ -20,7 +20,8 @@ The helper parses the signed bytes and constructs the box in this order:
 6. **Expires:** local wall-clock date/time with timezone offset.
 
 Delete, force-push, explicit lease, history rewrite and protection-settings shapes
-have separate sentences. Unknown class, ambiguous target, multiple branches,
+have separate sentences. Local filter-branch/rewrite copy says local history,
+not shared history. Unknown class, ambiguous target, multiple branches,
 wildcard or unsupported command shape refuses; there is no generic fallback.
 For GitHub URLs the sentence names the owner/repo, otherwise it names the actual
 repository URL. The same derivation is checked in the verifier. GitHub CLI/alias
@@ -30,11 +31,16 @@ endpoints; it does not enable the currently refused gh entry point.
 
 Supply explanatory text with `golems-confirm --enclave --reason 'explanation'`
 (or the token JSON `reason` field). Absent omits the Why line. The optional reason
-is at most 200 Unicode code points, on one line: letters, numbers, punctuation,
-symbols and ASCII space only. Controls, bidi, format/zero-width and combining
-marks refuse; nothing is stripped, normalized or truncated. Its bytes are signed
+is at most 200 characters on one line, with a strict ASCII-only allowlist:
+U+0020 through U+007E (letters, digits, space and ASCII punctuation). All
+non-ASCII characters, including every non-ASCII letter/digit, symbol, blank,
+braille/musical/box character, mark, bidi/zero-width/control character refuse.
+Nothing is stripped, normalized or truncated. Its bytes are signed
 so the record contains what the owner saw. It never chooses the operation
-sentence or changes the authorized command/scope. Caller `asked_by` or
+sentence or changes the authorized command/scope. The same reason-vectors.json
+file is tested by Python and Swift; it includes all
+printable ASCII, boundaries, the reviewer's forged second-What-happens padding,
+and U+2800/U+1D159/U+2591/U+3164/U+FFA0 refusals. Caller `asked_by` or
 `what_happens` labels are ignored. Noncanonical/duplicate JSON, unsafe rendered
 fields and a reason box over 1000 UTF-8 bytes refuse.
 Actual OS dialog layout, wrapping and truncation remain NOT_RUN.
@@ -78,7 +84,41 @@ set -eu
 ' sh /path/to/signed/GolemsApprove.app
 ```
 
-Only then run `scripts/golems-enclave-enroll` from an owner terminal. Before
+Enrol ONLY from a new owner-created clone of the official golems repository at
+an independently trusted, reviewed commit already merged on origin/master.
+Do not use an agent-prepared tree or this T3 worktree. The owner must independently
+obtain/check the merged SHA and keep agents from writing the enrolment checkout.
+The owner step below is documentation only; this lane does not create that clone:
+
+```sh
+# MERGED_SHA is the full trusted merged commit, not an agent-selected HEAD.
+(
+set -eu
+: "${MERGED_SHA:?set the independently trusted merged commit first}"
+trusted_git() {
+  /usr/bin/env -i PATH=/usr/bin:/bin GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+    /usr/bin/git "$@"
+}
+trusted_git clone https://github.com/EtanHey/golems.git golems-enrol
+cd golems-enrol
+trusted_git checkout --detach "$MERGED_SHA"
+trusted_git rev-parse HEAD
+trusted_git status --porcelain
+/usr/bin/python3 -I -B scripts/golems-enclave-enroll --commit "$MERGED_SHA"
+)
+```
+
+The script checks its OWN repo before importing golems-confirm or enclave code:
+standalone .git directory (no linked worktree), HEAD exactly equals the supplied
+40-hex commit, status --porcelain is empty (including untracked files), official
+origin URL, and that commit is an ancestor of refs/remotes/origin/master from the
+fresh clone. Fixed /usr/bin/git, a sanitized environment, no replace objects and
+disabled global/system config, fsmonitor and hooks are used for these checks.
+These are source preconditions, not self-authentication of a maliciously edited
+checker or a fence against concurrent same-UID writes. The fresh trusted owner
+clone and trusted command-line SHA are the bootstrap; never ask an agent to
+prepare or modify that tree. On any mismatch enrolment refuses before local
+module imports, platform identity/signature commands, file reservation or --enroll. Before
 reserving the public file or invoking `--enroll`, it requires:
 
 - Every ancestor and the helper binary root-owned, without group/world write or symlinks.

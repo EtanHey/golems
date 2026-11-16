@@ -65,7 +65,8 @@ class Reason(unittest.TestCase):
         from enclave import validate_reason
         for bad in ['line\nnext', '\t', '\x00', '\u202e', '\u200b', '\ufeff', '\u115f', '\u034f', '\u2060', 'x' * 201]:
             with self.subTest(bad=repr(bad)), self.assertRaises(ValueError): validate_reason(bad)
-        self.assertEqual(validate_reason('Keep the approved backup. לשמור גיבוי'), 'Keep the approved backup. לשמור גיבוי')
+        self.assertEqual(validate_reason('Keep the approved backup.'), 'Keep the approved backup.')
+        with self.assertRaises(ValueError): validate_reason('לשמור גיבוי')
 
     def test_all_classes_have_derived_sentence_unknown_shapes_refuse(self):
         from enclave import operation_sentence
