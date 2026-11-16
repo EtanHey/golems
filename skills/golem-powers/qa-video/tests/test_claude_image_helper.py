@@ -9,7 +9,7 @@ def load(name,file):
 helper=load('claude_helper','claude-image-helper.py');batch=load('batch_claude','visual-batch.py')
 def events(image,tools=None,tool=False,error=False):
  return '\n'.join(json.dumps(x) for x in [
-  {'type':'system','subtype':'init','tools':tools or [],'mcp_servers':[]},
+  {'type':'system','subtype':'init','tools':tools or [],'mcp_servers':[],'skills':[],'slash_commands':[]},
   {'type':'assistant','message':{'content':[{'type':'tool_use'}] if tool else []}},
   {'type':'result','is_error':error,'result':json.dumps({'images':[{'path':str(image),'finding':'tile 0: blue square'}]})}])
 def test_attached_payload_has_no_read_or_auth(tmp_path):
@@ -40,7 +40,7 @@ def test_cli_success_retains_receipt_and_private_temp(tmp_path,monkeypatch,capsy
   ev=[json.loads(x) for x in events(image).splitlines()]
   ev[0]['model']=model
   return subprocess.CompletedProcess(cmd,0,'\n'.join(json.dumps(x) for x in ev),'')
- monkeypatch.setattr(helper.subprocess,'run',fake_run)
+ monkeypatch.setattr(helper,'run_provider',fake_run)
  monkeypatch.setattr(helper.sys,'argv',['helper','--question','facts','--model',model,str(image)])
  assert helper.main()==0
  output=capsys.readouterr()
@@ -52,9 +52,9 @@ def test_cli_success_retains_receipt_and_private_temp(tmp_path,monkeypatch,capsy
 def test_cli_failed_provider_is_not_a_read(tmp_path,monkeypatch,capsys):
  import subprocess
  image=tmp_path/'a.png';image.write_bytes(b'png')
- monkeypatch.setattr(helper.subprocess,'run',lambda *a,**k:subprocess.CompletedProcess([],1,'','auth failed'))
+ monkeypatch.setattr(helper,'run_provider',lambda *a,**k:subprocess.CompletedProcess([],1,'','auth failed'))
  monkeypatch.setattr(helper.sys,'argv',['helper','--question','facts','--model','claude-haiku-5-5',str(image)])
  assert helper.main()==2
  assert 'Coverage: 0/1; partial;' in capsys.readouterr().out
  receipt=json.loads(next((tmp_path/'helper-receipts').glob('*.json')).read_text())
- assert receipt['exit_code']==1 and receipt['failure']=='ValueError'
+ assert receipt['exit_code']==1 and receipt['failure']=='PROVIDER_EXIT'
