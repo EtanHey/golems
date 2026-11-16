@@ -311,14 +311,18 @@ def authorize(payload, ops, home, metadata_fn=lead_metadata):
         try:
             raw = private_read(path); token = json.loads(raw)
             now = time.time(); kind = token['kind']; nonce = token['nonce']
-            if kind not in ('human', 'lead') or token['version'] != 1 or not re.fullmatch('[0-9a-f]{32}', nonce) or path.name != nonce + '.json':
+            if kind not in ('human', 'lead', 'enclave') or token['version'] != 1 or not re.fullmatch('[0-9a-f]{32}', nonce) or path.name != nonce + '.json':
                 continue
             if not (token['issued_at'] <= now < token['expires_at'] <= token['issued_at'] + 300):
                 continue
             if token['command_sha256'] != digest or token['operations'] != ops or token['session_id'] != payload['session_id']:
                 continue
             # Signature authenticates the creator; creator fields/agent chat do not.
-            if not verify_signature(raw, anchor, kind, str(path) + '.sig'):
+            if kind == 'enclave':
+                import enclave
+                if not enclave.validate(token, payload, ops) or not enclave.verify(raw, home, str(path) + '.sig'):
+                    continue
+            elif not verify_signature(raw, anchor, kind, str(path) + '.sig'):
                 continue
             if kind == 'lead':
                 if len(ops) != 1 or ops[0]['class'] != 'lease':

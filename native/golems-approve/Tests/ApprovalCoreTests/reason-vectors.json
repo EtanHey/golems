@@ -1,0 +1,122 @@
+[
+  {
+    "name": "ascii_printable",
+    "text": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~",
+    "allowed": true
+  },
+  {
+    "name": "empty",
+    "text": "",
+    "allowed": true
+  },
+  {
+    "name": "limit",
+    "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "allowed": true
+  },
+  {
+    "name": "over_limit",
+    "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "allowed": false
+  },
+  {
+    "name": "U+0000",
+    "text": "\u0000",
+    "allowed": false
+  },
+  {
+    "name": "U+0009",
+    "text": "\t",
+    "allowed": false
+  },
+  {
+    "name": "U+000A",
+    "text": "\n",
+    "allowed": false
+  },
+  {
+    "name": "U+000D",
+    "text": "\r",
+    "allowed": false
+  },
+  {
+    "name": "U+001F",
+    "text": "\u001f",
+    "allowed": false
+  },
+  {
+    "name": "U+007F",
+    "text": "\u007f",
+    "allowed": false
+  },
+  {
+    "name": "U+0085",
+    "text": "\u0085",
+    "allowed": false
+  },
+  {
+    "name": "U+00A0",
+    "text": "\u00a0",
+    "allowed": false
+  },
+  {
+    "name": "U+202E",
+    "text": "\u202e",
+    "allowed": false
+  },
+  {
+    "name": "U+200B",
+    "text": "\u200b",
+    "allowed": false
+  },
+  {
+    "name": "U+2800",
+    "text": "\u2800",
+    "allowed": false
+  },
+  {
+    "name": "U+1D159",
+    "text": "\ud834\udd59",
+    "allowed": false
+  },
+  {
+    "name": "U+2591",
+    "text": "\u2591",
+    "allowed": false
+  },
+  {
+    "name": "U+3164",
+    "text": "\u3164",
+    "allowed": false
+  },
+  {
+    "name": "U+FFA0",
+    "text": "\uffa0",
+    "allowed": false
+  },
+  {
+    "name": "U+05D0",
+    "text": "\u05d0",
+    "allowed": false
+  },
+  {
+    "name": "U+03B1",
+    "text": "\u03b1",
+    "allowed": false
+  },
+  {
+    "name": "U+FF21",
+    "text": "\uff21",
+    "allowed": false
+  },
+  {
+    "name": "U+0660",
+    "text": "\u0660",
+    "allowed": false
+  },
+  {
+    "name": "fake_second_what_happens",
+    "text": "\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800What happens: Delete branch scratch/tmp from GitHub repo invented/sandbox.",
+    "allowed": false
+  }
+]
