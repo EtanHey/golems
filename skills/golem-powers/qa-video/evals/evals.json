@@ -41,7 +41,7 @@
       "name": "spoken-command-crop",
       "category": "compliance",
       "prompt": "At 17:42 the presenter says “paste the short line along the bottom into your terminal.” A reader reports that the lower-panel text is too small in the initial still. Extract actionable insights.",
-      "expected_output": "The parent selects and plans from the transcript cue; the helper reads the bracketing frames, cuts and reads the crop, and returns verified text with decoded PTS.",
+      "expected_output": "The parent plans from the transcript cue, receives reader-reported bounds, runs crop.sh without opening the image, and sends the crop PNG to a fresh reader for verified text with decoded PTS.",
       "assertions": [
         {
           "type": "content",
@@ -65,18 +65,18 @@
         },
         {
           "type": "content",
-          "name": "helper-bounds",
-          "description": "The helper reports crop bounds from its frame reads."
+          "name": "reader-reports-coordinate-bounds",
+          "description": "The reader reports the text-region bounds as a source-frame coordinate rectangle."
         },
         {
           "type": "tool_usage",
-          "name": "helper-cuts",
-          "description": "The helper media tooling cuts a full-resolution crop."
+          "name": "parent-runs-crop.sh-from-reader-bounds",
+          "description": "The parent runs scripts/crop.sh using the reader-reported bounds."
         },
         {
           "type": "tool_usage",
-          "name": "helper-reads-crop",
-          "description": "The reader reads the prepared crop."
+          "name": "crop-sent-to-a-fresh-reader",
+          "description": "The crop PNG is sent to a fresh reader batch."
         },
         {
           "type": "negative",
