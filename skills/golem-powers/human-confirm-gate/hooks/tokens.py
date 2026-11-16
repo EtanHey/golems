@@ -206,25 +206,58 @@ def lead_scope(op, metadata_fn=lead_metadata):
 
 
 def own_lease_metadata(target, branch, *, include_prs=False):
-    """Concurrent REST reads, four seconds total, within the policy deadline."""
+    """Concurrent REST reads, including fork-parent PRs, share four seconds."""
     gh = trusted_binary(GH_CANDIDATES)
-    requests = [('repos/' + target, '{full_name,default_branch}'),
+    pr_fields = '[.[] | {head: {ref: .head.ref}, base: {ref: .base.ref}}]'
+    requests = [('repos/' + target, '{full_name,default_branch,fork,parent:{full_name:.parent.full_name}}'),
                 ('repos/' + target + '/branches/' + quote(branch, safe=''), '{name,protected}')]
     if include_prs:
-        # One request: a full page means possible truncation and refuses below.
-        requests.append(('repos/' + target + '/pulls?state=open&per_page=100',
-                         '[.[] | {head: {ref: .head.ref}, base: {ref: .base.ref}}]'))
-    pending, replies = [], []
+        requests.append(('repos/' + target + '/pulls?state=open&per_page=100', pr_fields))
+    pending = []
     deadline = time.monotonic() + 4
+
+    def start(endpoint, fields):
+        process = subprocess.Popen([gh, 'api', '--hostname', 'github.com', '--jq', fields, endpoint],
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        pending.append(process)
+        return process
+
+    def reply(process):
+        stdout, _ = process.communicate(timeout=max(0, deadline - time.monotonic()))
+        if process.returncode:
+            raise subprocess.CalledProcessError(process.returncode, process.args)
+        return json.loads(stdout)
+
     try:
         for endpoint, fields in requests:
-            pending.append(subprocess.Popen([gh, 'api', '--hostname', 'github.com', '--jq', fields, endpoint],
-                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
-        for process in pending:
-            stdout, _ = process.communicate(timeout=max(0, deadline - time.monotonic()))
-            if process.returncode:
-                raise subprocess.CalledProcessError(process.returncode, process.args)
-            replies.append(json.loads(stdout))
+            start(endpoint, fields)
+        repo = reply(pending[0])
+        if not isinstance(repo['full_name'], str) or repo['full_name'].casefold() != target.casefold():
+            raise ValueError('repository metadata was redirected')
+        parent_process = None
+        if include_prs:
+            if type(repo['fork']) is not bool:
+                raise ValueError('ambiguous fork metadata')
+            if repo['fork']:
+                parent = repo['parent']['full_name']
+                if (not isinstance(parent, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', parent)
+                        or any(part in ('.', '..') for part in parent.split('/'))
+                        or parent.casefold() == target.casefold()):
+                    raise ValueError('ambiguous fork parent')
+                # Parent is discovered by the repo read. Start it immediately,
+                # overlapping the already-running branch and own-PR requests.
+                parent_process = start('repos/' + parent + '/pulls?state=open&per_page=100&head='
+                                       + quote('EtanHey:' + branch, safe=''), pr_fields)
+        branch_data = reply(pending[1])
+        result = (repo['default_branch'], branch_data)
+        if not include_prs:
+            return result
+        own_prs = reply(pending[2])
+        parent_prs = reply(parent_process) if parent_process else []
+        # A full page may be truncated; never assert PR absence from it.
+        if any(not isinstance(prs, list) or len(prs) >= 100 for prs in (own_prs, parent_prs)):
+            raise ValueError('ambiguous or incomplete PR page')
+        return (*result, own_prs + parent_prs)
     finally:
         for process in pending:
             if process.poll() is None:
@@ -233,11 +266,6 @@ def own_lease_metadata(target, branch, *, include_prs=False):
             process.wait()
             process.stdout.close()
             process.stderr.close()
-    repo, branch_data = replies[:2]
-    if not isinstance(repo['full_name'], str) or repo['full_name'].casefold() != target.casefold():
-        raise ValueError('repository metadata was redirected')
-    result = (repo['default_branch'], branch_data)
-    return (*result, replies[2]) if include_prs else result
 
 
 def own_lease_remote(repo, remote):

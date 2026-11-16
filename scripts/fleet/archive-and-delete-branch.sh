@@ -2,7 +2,12 @@
 # Save a reversible branch bundle, then print (never execute) the pinned delete.
 set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-exec python3 - "$root" "$@" <<'PY'
+# Match the hook installer's fixed Homebrew interpreter candidates; never PATH.
+python=/opt/homebrew/bin/python3
+if [[ ! -x "$python" ]]; then python=/usr/local/bin/python3; fi
+if [[ ! -x "$python" && "$(uname -s)" != Darwin ]]; then python=/usr/bin/python3; fi
+[[ -x "$python" ]] || { echo 'No fixed hook Python available' >&2; exit 1; }
+exec "$python" -I -B - "$root" "$@" <<'PY'
 import os
 import shlex
 import subprocess
@@ -10,9 +15,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+if sys.version_info < (3, 11):
+    sys.exit('Hook Python 3.11+ required')
 sys.path.insert(0, str(Path(sys.argv[1]) / 'skills/golem-powers/human-confirm-gate/hooks'))
 import tokens
-from archived_delete import archive_path, check_bundle
+from archived_delete import archive_path, archive_directories, check_bundle
 
 
 def git(repo, *args):
@@ -30,7 +37,8 @@ def main():
     git(repo, 'fetch', '--no-tags', '--no-recurse-submodules', '--', remote, 'refs/heads/' + branch)
     sha = git(repo, 'rev-parse', '--verify', 'FETCH_HEAD^{commit}')
     path = archive_path(Path.home(), target, branch, sha)
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    root = Path.home() / '.golems/branch-archive'
+    archive_directories(root, path.parent, create=True)
     if any(p.is_symlink() for p in (path, *path.parents)):
         raise ValueError('symlinked archive')
     if not path.exists():
@@ -42,7 +50,7 @@ def main():
             candidate = Path(staging) / 'saved.bundle'
             git(staging, 'bundle', 'create', str(candidate), 'refs/heads/' + branch)
             candidate.chmod(0o600)
-            check_bundle(candidate, repo, branch, sha)
+            check_bundle(candidate, repo, branch, sha, archive_root=root)
             # Exclusive hard link publishes without overwriting an existing copy.
             os.link(candidate, path)
     check_bundle(path, repo, branch, sha)

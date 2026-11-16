@@ -136,7 +136,8 @@ def test_guardian_only_allows_after_full_gate_success(monkeypatch):
     command = f'git push --force-with-lease=refs/heads/{BRANCH}:{"a" * 40} fork :refs/heads/{BRANCH}'
     assert guardian.archived_delete_allowed(command, '/repo')
     assert calls[0][1]['tool_input']['command'] == command
-    assert 'human-confirm-pretooluse.py' in calls[0][0][-1]
+    assert any(str(arg).endswith('human-confirm-pretooluse.py') for arg in calls[0][0])
+    assert calls[0][0][-1] == '--archive-check-only'
     calls.clear()
     assert not guardian.archived_delete_allowed(command + '; echo done', '/repo')
     assert not guardian.archived_delete_allowed('git push --delete fork topic', '/repo')
@@ -162,7 +163,7 @@ root = pathlib.Path({str(receipts)!r})
 (root / (kind + '-start')).write_text(str(time.monotonic()))
 time.sleep({delay!r})
 if {fail!r}: sys.exit(1)
-data = [] if kind == 'prs' else dict(name={BRANCH!r}, protected=False) if kind == 'branch' else dict(full_name='EtanHey/t3code', default_branch='main')
+data = [] if kind == 'prs' else dict(name={BRANCH!r}, protected=False) if kind == 'branch' else dict(full_name='EtanHey/t3code', default_branch='main', fork=False, parent=None)
 (root / (kind + '-end')).write_text(str(time.monotonic()))
 print(json.dumps(data))
 ''')

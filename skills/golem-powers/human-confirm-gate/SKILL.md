@@ -26,9 +26,11 @@ and policy/import/runtime errors deliberately deny (exit 2).
 
 **Archived deletes.** To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, then the command it prints.
 Only one exact 40-hex lease-pinned empty-source push to an own-lease validated
-remote may skip the signature: verified canonical bundle, non-shared/default/
-protected branch, no open PR using the branch as head or base, and a flushed
-receipt before allow. Metadata errors refuse with retry guidance. See
+remote may skip the signature: verified complete canonical bundle (v2, or v3 with only the sha1 capability;
+no prerequisite/filter headers), safe archive directories, non-shared/default/
+protected branch, no own or fork-parent open PR using the branch, and a flushed
+allowed-attempt receipt before allow. Guardian validation writes no receipt; the
+mandatory gate hook records the attempt once. Metadata errors refuse with retry guidance. See
 [the archive contract](README.md#archived-fleet-branch-deletion). Other delete
 forms retain approval; authorship is not checkable from the shared GitHub identity.
 

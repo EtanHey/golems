@@ -73,10 +73,9 @@ except BaseException:  # policy dependency uncertainty must never become allow
     _deny_policy_import_failure()
 
 
-def archived_delete_allowed(command, cwd):
-    """Ask the mandatory confirmation gate; never waive it based on shape alone."""
+def archived_delete_shape(command):
+    """Literal candidate shape, only for selecting the longer policy budget."""
     import shlex
-    import subprocess
     try:
         words = shlex.split(command)
         prefix = words[:3] + ['push'] if words[:2] == ['git', '-C'] else ['git', 'push']
@@ -86,11 +85,22 @@ def archived_delete_allowed(command, cwd):
         match = re.fullmatch(r'--force-with-lease=(refs/heads/.+):[0-9a-f]{40}', tail[0])
         if not match or tail[2] != ':' + match[1]:
             return False
+        return True
+    except (ValueError, IndexError):
+        return False
+
+
+def archived_delete_allowed(command, cwd):
+    """Validation only; the mandatory gate hook writes the allowed-attempt row."""
+    import subprocess
+    if not archived_delete_shape(command):
+        return False
+    try:
         gate = os.path.join(GIT_GUARDIAN_LIB, '..', 'human-confirm-gate', 'hooks', 'human-confirm-pretooluse.py')
         payload = dict(tool_name='Bash', cwd=cwd, session_id='guardian-archive-check',
                        tool_input=dict(command=command))
-        result = subprocess.run([sys.executable, '-I', '-B', gate], input=json.dumps(payload),
-                                capture_output=True, text=True, timeout=9)
+        result = subprocess.run([sys.executable, '-I', '-B', gate, '--archive-check-only'], input=json.dumps(payload),
+                                capture_output=True, text=True, timeout=7)
         return result.returncode == 0 and json.loads(result.stdout) == {}
     except (OSError, ValueError, subprocess.SubprocessError):
         return False
@@ -255,7 +265,7 @@ def _main_under_deadline():
             candidate = _git_safety._pkg.branch_cleanup._plan(tool_input.get("command", ""), tool_input["cwd"])
         except (ValueError, TypeError, AttributeError):
             candidate = None
-        if candidate:
+        if candidate or archived_delete_shape(tool_input.get("command", "")):
             import signal
             signal.setitimer(signal.ITIMER_REAL, 8)
 

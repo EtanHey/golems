@@ -18,16 +18,60 @@ def archive_path(home, target, branch, sha):
     return home / '.golems/branch-archive' / target / branch.replace('/', '__') / (sha + '.bundle')
 
 
-def check_bundle(path, repo, branch, sha):
+def archive_directories(root, leaf, *, create=False):
+    """Every archive directory is owned and excludes group/other writers."""
+    relative = leaf.relative_to(root)
+    directories = [root.parent, root]
+    for part in relative.parts:
+        directories.append(directories[-1] / part)
+    for directory in directories:
+        if create:
+            directory.mkdir(mode=0o700, exist_ok=True)
+        info = directory.lstat()
+        if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
+                or info.st_mode & 0o022):
+            raise ValueError('unsafe archive directory')
+
+
+def complete_header(stream, branch, sha):
+    """One bounded parser, on the already-open bundle fd; no prerequisite/filter."""
+    version = stream.readline(4096)
+    if version not in (b'# v2 git bundle\n', b'# v3 git bundle\n'):
+        raise ValueError('unsupported bundle header')
+    capability = False
+    heads = []
+    for _ in range(4):
+        line = stream.readline(4096)
+        if line == b'\n':
+            if heads != [(sha + ' refs/heads/' + branch + '\n').encode()]:
+                raise ValueError('bundle must name exactly the leased branch')
+            if version == b'# v3 git bundle\n' and not capability:
+                raise ValueError('v3 bundle must explicitly use sha1')
+            return
+        if not line.endswith(b'\n') or line.startswith(b'-'):
+            raise ValueError('incomplete or incremental bundle')
+        if line.startswith(b'@'):
+            if (version != b'# v3 git bundle\n' or capability or heads
+                    or line != b'@object-format=sha1\n'):
+                raise ValueError('unsupported bundle capability')
+            capability = True
+        else:
+            heads.append(line)
+    raise ValueError('oversized bundle header')
+
+
+def check_bundle(path, repo, branch, sha, *, archive_root=None):
     # Reject symlinked directories too; a symlinked archive is not a saved copy.
     if any(p.is_symlink() for p in (path, *path.parents)):
         raise ValueError('symlinked archive')
+    archive_directories(archive_root or path.parents[3], path.parent)
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    with os.fdopen(fd, 'rb') as stream:
+    with os.fdopen(fd, 'rb', buffering=0) as stream:
         info = os.fstat(fd)
         if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
                 or stat.S_IMODE(info.st_mode) not in (0o600, 0o644)):
             raise ValueError('unsafe bundle')
+        complete_header(stream, branch, sha)
         # Git and the hash read the same opened file, not a swapped pathname.
         opened = '/dev/fd/' + str(fd)
         for args in (['bundle', 'list-heads', opened], ['bundle', 'verify', opened]):
@@ -49,14 +93,14 @@ def record(home, target, branch, sha, path, digest):
         if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
                 or stat.S_IMODE(info.st_mode) not in (0o600, 0o644)):
             raise ValueError('unsafe receipt')
-        row = dict(time=time.time(), repo=target, branch=branch, sha=sha,
+        row = dict(event='allowed_attempt', time=time.time(), repo=target, branch=branch, sha=sha,
                    bundle=str(path), bundle_sha256=digest)
         stream.write(json.dumps(row, separators=(',', ':')) + '\n')
         stream.flush()
         os.fsync(fd)
 
 
-def scope(payload, ops, home):
+def scope(payload, ops, home, *, write_receipt=True):
     from commands import shell
     if len(ops) != 1 or ops[0]['class'] != 'delete' or ops[0].get('local'):
         return False, ''
@@ -99,11 +143,12 @@ def scope(payload, ops, home):
         try:
             digest = check_bundle(path, repo, branch, sha)
         except (OSError, ValueError, subprocess.SubprocessError):
-            create = shlex.join(['git', '-C', repo, 'bundle', 'create', str(path), 'refs/heads/' + branch])
+            create = shlex.join(['mkdir', '-p', str(path.parent)]) + ' && ' + shlex.join(['git', '-C', repo, 'bundle', 'create', str(path), 'refs/heads/' + branch])
             return False, (f'Blocked: missing or invalid bundle {path}. {GUIDANCE} '
                            f'Bundle creation command (local ref must equal {sha}): {create}')
         try:
-            record(home, target, branch, sha, path, digest)
+            if write_receipt:
+                record(home, target, branch, sha, path, digest)
         except (OSError, ValueError):
             return False, 'Blocked: could not save the branch deletion receipt. Retry after fixing the archive permissions.'
         return True, ''

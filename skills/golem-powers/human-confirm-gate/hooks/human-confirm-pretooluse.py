@@ -64,7 +64,7 @@ def approval_reason(ops):
     return f"Blocked: {action} can't be undone, so Etan has to approve it. Ask the lead to route it to him."
 
 
-def evaluate(payload, home):
+def evaluate(payload, home, *, archive_check_only=False):
     name, args = payload['tool_name'], payload['tool_input']
     protected = home / '.config/golems'
     if name in ('Write', 'Edit', 'MultiEdit', 'NotebookEdit'):
@@ -92,7 +92,7 @@ def evaluate(payload, home):
             allowed, reason = own_lease_scope(payload, ops)
             if not allowed and not reason:
                 from archived_delete import scope
-                allowed, reason = scope(payload, ops, home)
+                allowed, reason = scope(payload, ops, home, write_receipt=not archive_check_only)
             if not allowed:
                 raise ConfirmationRequired(reason or approval_reason(ops))
 
@@ -105,7 +105,8 @@ def main():
             if stray_importables():
                 raise ValueError('stray importable files beside the gate sources')
             payload = json.load(sys.stdin)
-            evaluate(payload, Path(os.path.expanduser('~')).resolve())
+            evaluate(payload, Path(os.path.expanduser('~')).resolve(),
+                     archive_check_only=sys.argv[1:] == ['--archive-check-only'])
     except ConfirmationRequired as exc:
         denied = True
         reason = str(exc)
