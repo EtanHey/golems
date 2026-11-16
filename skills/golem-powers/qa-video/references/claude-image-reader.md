@@ -9,5 +9,5 @@ A no-key startup may PASS isolation while inference fails authentication. That d
 Example (only after independent cost and startup admission):
 
 ```sh
-python3 scripts/visual-batch.py --helper scripts/claude-image-helper.py --model claude-haiku-5-5 --workdir /absolute/eval/work --question 'Visible text only' /absolute/eval/frame.png
+python3 scripts/visual-batch.py --helper scripts/claude-image-helper.py --model "$EVAL_READER_MODEL" --workdir /absolute/eval/work --question 'Visible text only' /absolute/eval/frame.png
 ```
