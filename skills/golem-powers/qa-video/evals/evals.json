@@ -56,7 +56,7 @@
         {
           "type": "content",
           "name": "window-bounded",
-          "description": "Each serialized window is at most8192 UTF-8 bytes."
+          "description": "Each serialized window is at most 8192 UTF-8 bytes."
         },
         {
           "type": "negative",

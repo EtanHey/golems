@@ -191,3 +191,48 @@ def test_batch_missing_pts_launches_no_helper(tmp_path):
     summary = json.loads((tmp_path / 'out/visual/summary.json').read_text())
     assert summary['status'] == 'SETUP_FAILED'
     assert 'TRANSCRIPT_DECODED_PTS_INVALID' in summary['cause']
+
+
+def test_direct_gemini_symlinked_image_uses_one_canonical_key(tmp_path, monkeypatch):
+    v = load('gather_symlink', 'visual-gather.py')
+    image, ledger, srt, _ = fixture(tmp_path)
+    link = tmp_path / 'alias'
+    link.symlink_to(tmp_path, target_is_directory=True)
+    aliased = link / image.name
+    monkeypatch.setattr(sys, 'argv', ['gather', '--question', 'facts', '--model', 'fake',
+        '--transcript', str(srt), '--frames-tsv', str(ledger), str(aliased)])
+    calls = []
+    def run(command, **kw):
+        data = json.loads(command[2].split('\n', 1)[1]);calls.append(data)
+        return subprocess.CompletedProcess(command, 0, json.dumps({'status': 'SUCCESS',
+            'response': json.dumps({'images': [{'path': data['image_paths'][0], 'finding': 'visible blue square'}]})}), '')
+    monkeypatch.setattr(v, 'bounded_run', run)
+    assert v.main() == 0
+    assert calls[0]['image_paths'] == [str(image.resolve())]
+    assert set(calls[0]['transcript_window']) == {str(image.resolve())}
+
+
+@pytest.mark.parametrize('empty_cue', [
+    '1\n00:00:01,000 --> 00:00:02,000\n\n',
+    '00:00:01,000 --> 00:00:02,000\n\n',
+    '1\n00:00:01,000 --> 00:00:02,000\n  \n\n',
+])
+def test_empty_timed_cues_are_skipped_between_and_at_end(tmp_path, empty_cue):
+    t = load('window_empty', 'transcript-window.py')
+    image, ledger, srt, _ = fixture(tmp_path)
+    valid = '2\n00:00:20,000 --> 00:00:21,000\nkeep this line\n\n'
+    srt.write_text(empty_cue + valid + empty_cue.rstrip())
+    rows = t.segments(srt)
+    assert len(rows) == 1 and rows[0][3] == 'keep this line'
+    window = t.windows_for([str(image)], srt, ledger)[str(image)]
+    assert len(window['srt']) == 1 and 'keep this line' in window['srt'][0]
+
+
+@pytest.mark.parametrize('stamp', ['00:00:20,1', '00:00:20,12', '00:00:20,1234', '00:00:20.12345'])
+def test_fractional_timestamp_precision_matches_debrief(tmp_path, stamp):
+    t = load('window_precision', 'transcript-window.py')
+    image, ledger, srt, _ = fixture(tmp_path)
+    timing = stamp + ' --> 00:00:21,99999'
+    srt.write_text('1\n' + timing + '\nkeep exact timestamps\n')
+    window = t.windows_for([str(image)], srt, ledger)[str(image)]
+    assert timing in window['srt'][0]

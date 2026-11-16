@@ -269,6 +269,9 @@ def main():
         paths = list(dict.fromkeys(args.images))
         if any(not Path(p).is_absolute() or not Path(p).is_file() for p in paths):
             raise ValueError('supply existing absolute image paths')
+        # Selection, prompt keys, responses and access directories share one
+        # canonical image identity, including symlinked directories on macOS.
+        paths = list(dict.fromkeys(str(Path(p).resolve()) for p in paths))
         windows = transcript.from_args(args, paths)
         tier, model = ('provided', args.model) if args.model else resolve_model()
         print(f'requested tier={tier}; agy --model={model}; effective model: NOT DETERMINED here', file=sys.stderr)

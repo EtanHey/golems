@@ -11,7 +11,7 @@ MAX_WINDOW_BYTES = 8192  # serialized UTF-8 per sheet, including timestamps/meta
 MAX_SEGMENTS = 40
 MAX_SRT_BYTES = 8 * 1024 * 1024
 FIELDS = 'sheet_file tile t_s frame pts_s source sheet sha256 repeat_of crop_of'.split()
-TIMING = re.compile(r'(\d{2,}:\d{2}:\d{2}[,.]\d{3})\s+-->\s+(\d{2,}:\d{2}:\d{2}[,.]\d{3})(?:\s+.*)?')
+TIMING = re.compile(r'(\d{2,}:\d{2}:\d{2}[,.]\d+)\s+-->\s+(\d{2,}:\d{2}:\d{2}[,.]\d+)(?:\s+.*)?')
 
 
 def encode(value):
@@ -38,8 +38,12 @@ def segments(path):
         lines = block.splitlines()
         index = 1 if lines[0].strip().isdigit() else 0
         match = TIMING.fullmatch(lines[index]) if index < len(lines) else None
-        if not match or index + 1 >= len(lines):
+        if not match:
             raise ValueError('TRANSCRIPT_SRT_INVALID')
+        # Match debrief.plan(): an empty timed cue contributes no speech.
+        # Skip it between populated cues and at EOF; malformed timing still fails.
+        if not any(line.strip() for line in lines[index + 1:]):
+            continue
         start, end = map(seconds, match.groups())
         if end < start:
             raise ValueError('TRANSCRIPT_TIMING_INVALID')
