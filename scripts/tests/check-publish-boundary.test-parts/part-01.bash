@@ -711,3 +711,16 @@ setup_reserved_domain_emails() {
 setup_example_prefix_email() {
   printf 'fixture@%s\n' example.com.evil.com > "$1/contact.txt"
 }
+
+setup_spliced_reserved_email() {
+  printf 'real.person@%s@foo.test\n' gmail.com > "$1/contact.txt"
+}
+setup_spliced_example_email() {
+  printf 'real.person@%s@example.com\n' gmail.com > "$1/contact.txt"
+}
+setup_munged_email() {
+  printf 'real.person@%s.invalid\n' gmail.com > "$1/contact.txt"
+}
+setup_sentence_final_emails() {
+  printf 'Write to fixture@%s.\n' example.com foo.test foo.invalid site.example > "$1/contact.txt"
+}

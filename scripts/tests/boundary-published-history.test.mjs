@@ -22,10 +22,17 @@ function fixture(fn) {
     git('init', '-q', '-b', 'main'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.com');
     const base = commit('shared', 'base');
     git('init', '--bare', '-q', remote); git('push', '-q', remote, 'HEAD:refs/heads/main', 'HEAD:refs/heads/candidate');
-    const check = (old = base, url = remote) => spawnSync(process.execPath, [checker, 'fixture', url], {
-      cwd: repo, encoding: 'utf8', input: `refs/heads/candidate ${git('rev-parse', 'HEAD')} refs/heads/candidate ${old}\n`,
+    const check = (old = base, url = remote, env = process.env) => spawnSync(process.execPath, [checker, 'fixture', url], {
+      cwd: repo, encoding: 'utf8', env, input: `refs/heads/candidate ${git('rev-parse', 'HEAD')} refs/heads/candidate ${old}\n`,
     });
-    fn({ root, remote, git, run, commit, check, base });
+    const push = () => {
+      const hooks = join(root, 'hooks'); mkdirSync(hooks, { recursive: true });
+      const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
+      writeFileSync(join(hooks, 'pre-push'), `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(checker)} "$@"\n`, { mode: 0o755 });
+      git('config', 'core.hooksPath', hooks);
+      return run('push', remote, 'HEAD:refs/heads/candidate');
+    };
+    fn({ root, repo, remote, git, run, commit, check, push, base });
   } finally { rmSync(root, { recursive: true, force: true }); }
 }
 const allowed = r => { assert.equal(r.status, 0, r.stderr); assert.match(r.stderr, /boundary-prepush: PASS/); };
@@ -64,7 +71,8 @@ for (const domain of ['evil.invalid.com', 'gmail.com', 'example.com.evil.com', '
 }
 test('D: new branch violation is refused when main is merged in the same push', () => fixture(f => {
   publishedMain(f); f.git('switch', '-qc', 'candidate', f.base);
-  f.commit('branch', email('gmail.com')); f.git('merge', '--no-ff', '-qm', 'merge main', 'main'); refused(f.check());
+  f.commit('branch', email('gmail.com')); f.git('merge', '--no-ff', '-qm', 'merge main', 'main');
+  const result = f.check(); refused(result); assert.match(result.stderr, /publication violation \(identity-pii\)/);
 }));
 test('unpublished parent violations survive combined merge scanning, even after removal', () => fixture(f => {
   f.git('switch', '-qc', 'side'); f.commit('transient', credential);
@@ -76,4 +84,47 @@ test('existing branch without destination evidence scans unpublished main', () =
   publishedMain(f); f.git('switch', '-qc', 'candidate', f.base);
   f.commit('branch', 'safe'); f.git('merge', '--no-ff', '-qm', 'merge main', 'main');
   refused(f.check(f.base, join(f.root, 'missing.git')));
+}));
+
+for (const suffix of ['foo.test', 'example.com', 'foo.invalid', 'site.example']) {
+  test(`R1: address splice before ${suffix} is refused`, () => fixture(f => {
+    f.git('switch', '-qc', 'candidate');
+    f.commit('address', 'real.person@' + 'gmail.com@' + suffix); refused(f.check());
+  }));
+}
+for (const domain of ['gmail.com.invalid', 'gmail.com.test', 'gmail.com.example', 'gmail.com.localhost']) {
+  test(`R1: munged domain ${domain} is refused`, () => fixture(f => {
+    f.git('switch', '-qc', 'candidate'); f.commit('address', 'real.person@' + domain); refused(f.check());
+  }));
+}
+for (const domain of ['example.com', 'foo.test', 'foo.invalid', 'site.example']) {
+  test(`R1: sentence-final ${domain} address is allowed`, () => fixture(f => {
+    f.git('switch', '-qc', 'candidate'); f.commit('address', 'Write to ' + email(domain) + '.'); allowed(f.check());
+  }));
+}
+test('R1: real push refuses the splice and leaves the remote unchanged', () => fixture(f => {
+  f.git('switch', '-qc', 'candidate'); f.commit('address', 'real.person@' + 'gmail.com@' + 'foo.test');
+  refused(f.push());
+  assert.equal(f.git('ls-remote', f.remote, 'refs/heads/candidate').split('\t')[0], f.base);
+}));
+test('R1: real push allows case A through the hook', () => fixture(f => {
+  publishedMain(f); f.git('switch', '-qc', 'candidate', f.base);
+  f.commit('branch', 'safe'); f.git('merge', '--no-ff', '-qm', 'merge published main', 'main');
+  allowed(f.push());
+  assert.equal(f.git('ls-remote', f.remote, 'refs/heads/candidate').split('\t')[0], f.git('rev-parse', 'HEAD'));
+}));
+for (const inherited of [false, true]) {
+  test(`R1: grafts cannot hide unpublished credential (inherited override=${inherited})`, () => fixture(f => {
+    f.git('switch', '-qc', 'candidate');
+    const bad = f.commit('credential', credential);
+    const root = f.git('commit-tree', f.git('rev-parse', 'HEAD^{tree}'), '-m', 'synthetic root');
+    const grafts = join(f.repo, '.git/info', inherited ? 'custom-grafts' : 'grafts');
+    writeFileSync(grafts, `${f.base} ${root}\n${bad} ${root}\n`);
+    refused(f.check(f.base, f.remote, inherited ? { ...process.env, GIT_GRAFT_FILE: grafts } : process.env));
+  }));
+}
+
+test('R1: adjacent allowed addresses retain their separator for matching', () => fixture(f => {
+  f.git('switch', '-qc', 'candidate');
+  f.commit('address', email('example.com') + ' ' + email('foo.test') + '.'); allowed(f.check());
 }));

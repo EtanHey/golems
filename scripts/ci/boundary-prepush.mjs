@@ -6,8 +6,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 const source = join(dirname(fileURLToPath(import.meta.url)), '..');
+// A path below a device cannot exist, including in a repository controlled by
+// the push author. Ignore both local info/grafts and inherited graft overrides.
+const noGrafts = '/dev/null/boundary-no-grafts';
+const gitEnv = { ...process.env, GIT_GRAFT_FILE: noGrafts, GIT_NO_REPLACE_OBJECTS: '1' };
 const gitInput = (input, ...args) => {
-  const r = spawnSync('git', ['--no-replace-objects', ...args], { input, encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
+  const r = spawnSync('git', ['--no-replace-objects', ...args], { env: gitEnv, input, encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
   if (r.status !== 0) throw new Error('git evidence unavailable');
   return r.stdout;
 };
@@ -34,7 +38,7 @@ function parentHistory(pushURL) {
     // or inherited Git environment may supply the publication evidence.
     scratch = mkdtempSync(join(tmpdir(), 'boundary-parent-'));
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
-    Object.assign(env, { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_TERMINAL_PROMPT: '0', GIT_NO_LAZY_FETCH: '1' });
+    Object.assign(env, { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_TERMINAL_PROMPT: '0', GIT_NO_LAZY_FETCH: '1', GIT_GRAFT_FILE: noGrafts, GIT_NO_REPLACE_OBJECTS: '1' });
     const isolated = (...args) => {
       const r = spawnSync('git', ['--no-replace-objects', '-C', scratch, ...args], {
         env, encoding: 'utf8', timeout: 60_000, maxBuffer: 128 * 1024 * 1024,
@@ -62,7 +66,7 @@ function advertisedExclusions() {
   // Local default branches and refs/remotes/* never prove publication there.
   const destination = process.argv[3];
   const resolved = destination && spawnSync('git', ['--no-replace-objects', 'ls-remote', '--get-url', '--', destination], {
-    encoding: 'utf8', timeout: 15_000, maxBuffer: 1024 * 1024,
+    env: gitEnv, encoding: 'utf8', timeout: 15_000, maxBuffer: 1024 * 1024,
   });
   if (!resolved || resolved.status !== 0 || resolved.stdout.trim() !== destination) {
     destinationEvidenceUnavailable = true;
@@ -71,7 +75,7 @@ function advertisedExclusions() {
   }
   const advertised = spawnSync('git', ['--no-replace-objects', 'ls-remote', '--refs', '--', destination], {
     encoding: 'utf8', timeout: 15_000, maxBuffer: 128 * 1024 * 1024,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    env: { ...gitEnv, GIT_TERMINAL_PROMPT: '0' },
   });
   const rows = advertised?.stdout?.trim().split('\n').filter(Boolean) ?? [];
   if (!advertised || advertised.status !== 0 || rows.some(row => !/^[a-f0-9]{40,64}\trefs\/\S+$/.test(row))) {
@@ -87,7 +91,7 @@ function advertisedExclusions() {
   // Disable promisor fetching so an absent tip remains absent, without network.
   const local = spawnSync('git', ['--no-replace-objects', 'cat-file', '--batch-check=%(objectname) %(objecttype)'], {
     input: tips.map(sha => sha + '^{commit}\n').join(''), encoding: 'utf8',
-    env: { ...process.env, GIT_NO_LAZY_FETCH: '1' }, timeout: 15_000, maxBuffer: 128 * 1024 * 1024,
+    env: { ...gitEnv, GIT_NO_LAZY_FETCH: '1' }, timeout: 15_000, maxBuffer: 128 * 1024 * 1024,
   });
   if (local.status !== 0) return destinationExclusions;
   const objects = local.stdout.trim().split('\n');
@@ -99,7 +103,7 @@ function advertisedExclusions() {
   }
   return destinationExclusions;
 }
-// The public policy uses quoted scalars and POSIX ERE character classes.
+// The public policy uses quoted scalars and POSIX character classes.
 // Reject unknown classes rather than silently weakening their translation.
 function regex(value) {
   const classes = { alnum: 'a-zA-Z0-9', alpha: 'a-zA-Z', digit: '0-9', space: '\\s', cntrl: '\\x00-\\x1f\\x7f' };

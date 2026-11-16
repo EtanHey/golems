@@ -401,6 +401,10 @@ expect_reject "jobs profile server path" "relocate-path" setup_jobs_profile_serv
 expect_reject "Gmail PII" "identity-pii" setup_gmail
 expect_reject "custom-domain email PII" "identity-pii" setup_custom_domain_email
 expect_accept "reserved-domain email fixtures" setup_reserved_domain_emails
+expect_reject "spliced reserved address" "identity-pii" setup_spliced_reserved_email
+expect_reject "spliced example address" "identity-pii" setup_spliced_example_email
+expect_reject "munged address" "identity-pii" setup_munged_email
+expect_accept "sentence-final fixture addresses" setup_sentence_final_emails
 expect_reject "example-domain prefix is not an allowance" "identity-pii" setup_example_prefix_email
 expect_reject "Israeli phone PII" "identity-pii" setup_phone
 expect_reject "WhatsApp JID PII" "identity-pii" setup_jid

@@ -60,9 +60,10 @@ forbidden_classes:
       - '[0-9]{8,}@s[.]whatsapp[.]net'
       - '(home (address|city)|resume path):'
     allowed_patterns:
-      - '[[:alnum:]._%+-]+@(example[.](com|org|net)|users[.]noreply[.]github[.]com)([^[:alnum:]_.%+@-]|$)'
-      # Reserved test names and localhost, with a complete domain boundary.
-      - '[[:alnum:]._%+-]+@([[:alnum:]-]+[.])*(invalid|test|example|localhost)([^[:alnum:]_.%+@-]|$)'
+      - '(^|[^[:alnum:]._%+@-])[[:alnum:]._%+-]+@(example[.](com|org|net)|users[.]noreply[.]github[.]com)[.]?(?=[^[:alnum:]_.%+@-]|$)'
+      # At most one label before a reserved name; reject munged public domains.
+      # Look ahead at the end so adjacent addresses can share a separator.
+      - '(^|[^[:alnum:]._%+@-])[[:alnum:]._%+-]+@([[:alnum:]-]+[.])?(invalid|test|example|localhost)[.]?(?=[^[:alnum:]_.%+@-]|$)'
       - '(noreply@anthropic[.]com|(git|noreply)@github[.]com)'
   credential-adjacent:
     patterns:
