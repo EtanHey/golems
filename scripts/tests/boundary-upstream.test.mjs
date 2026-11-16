@@ -26,7 +26,7 @@ function fixture(fn) {
     commit('shared', shared);
     const base = commit('safe', 'base\n');
     git('init', '--bare', '-q', destination); git('push', '-q', destination, 'HEAD:refs/heads/main');
-    const upstreamPII = 'upstream@' + 'private.invalid';
+    const upstreamPII = 'upstream@' + 'mail.fixture-domain.com';
     commit('shared', shared.replace('upstream-base', upstreamPII));
     const published = commit('upstream', upstreamPII + '\n');
     git('init', '--bare', '-q', parent); git('push', '-q', parent, 'HEAD:refs/heads/main');

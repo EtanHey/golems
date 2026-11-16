@@ -278,7 +278,7 @@ setup_gmail() {
 }
 
 setup_custom_domain_email() {
-  printf 'maintainer-contact@project.invalid\n' > "$1/contact.txt"
+  printf 'maintainer-contact@%s\n' 'mail.fixture-domain.com' > "$1/contact.txt"
 }
 
 setup_phone() {
@@ -702,4 +702,12 @@ setup_clean_push_only_versions() {
   # Tree/history intentionally ignores push-only IPv4 rules. The Node suite
   # exercises the runtime allowance and must-refuse dotted addresses.
   printf 'version %s\n' '10.0.0.1.2' >> "$1/formal/run.log"
+}
+
+setup_reserved_domain_emails() {
+  printf 'fixture@%s\n' foo.invalid bar.test example site.example localhost app.localhost > "$1/contact.txt"
+}
+
+setup_example_prefix_email() {
+  printf 'fixture@%s\n' example.com.evil.com > "$1/contact.txt"
 }

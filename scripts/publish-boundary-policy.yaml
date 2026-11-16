@@ -60,7 +60,9 @@ forbidden_classes:
       - '[0-9]{8,}@s[.]whatsapp[.]net'
       - '(home (address|city)|resume path):'
     allowed_patterns:
-      - '[[:alnum:]._%+-]+@(example[.](com|org|net)|users[.]noreply[.]github[.]com)'
+      - '[[:alnum:]._%+-]+@(example[.](com|org|net)|users[.]noreply[.]github[.]com)([^[:alnum:]_.%+@-]|$)'
+      # Reserved test names and localhost, with a complete domain boundary.
+      - '[[:alnum:]._%+-]+@([[:alnum:]-]+[.])*(invalid|test|example|localhost)([^[:alnum:]_.%+@-]|$)'
       - '(noreply@anthropic[.]com|(git|noreply)@github[.]com)'
   credential-adjacent:
     patterns:

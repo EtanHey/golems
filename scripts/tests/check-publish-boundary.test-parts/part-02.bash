@@ -400,6 +400,8 @@ expect_reject "client archive path" "relocate-path" setup_client_archive_path
 expect_reject "jobs profile server path" "relocate-path" setup_jobs_profile_server_path
 expect_reject "Gmail PII" "identity-pii" setup_gmail
 expect_reject "custom-domain email PII" "identity-pii" setup_custom_domain_email
+expect_accept "reserved-domain email fixtures" setup_reserved_domain_emails
+expect_reject "example-domain prefix is not an allowance" "identity-pii" setup_example_prefix_email
 expect_reject "Israeli phone PII" "identity-pii" setup_phone
 expect_reject "WhatsApp JID PII" "identity-pii" setup_jid
 expect_reject "binary PII" "identity-pii" setup_binary_pii

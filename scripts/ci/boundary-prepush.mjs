@@ -54,7 +54,7 @@ function parentHistory(pushURL) {
   } finally { if (scratch) rmSync(scratch, { recursive: true, force: true }); }
 }
 let destinationExclusions, destinationEvidenceUnavailable = false;
-function newRefExclusions() {
+function advertisedExclusions() {
   if (destinationExclusions) return destinationExclusions;
   destinationExclusions = [];
   // Check Git's second hook argument for another fetch-side URL rewrite before
@@ -149,17 +149,16 @@ try {
     const [, head, , remote] = fields;
     if (/^0+$/.test(head)) continue;
     git('cat-file', '-e', head + '^{commit}');
-    // Destination advertisements define the new-ref baseline in both modes.
-    // Verified parent evidence can additionally exempt already-public history.
-    // Existing refs use Git's advertised old tip, even for non-ancestor updates.
-    const exclusions = /^0+$/.test(remote) ? newRefExclusions() : ['^' + remote];
+    // Fresh destination tips exempt already-published history on every ref.
+    // Git's old tip remains a boundary even when the advertisement is unavailable.
+    // Verified parent evidence additionally exempts the fetched public graph.
+    const exclusions = [...advertisedExclusions(), ...(/^0+$/.test(remote) ? [] : ['^' + remote])];
     const commits = gitInput([head, ...exclusions].join('\n') + '\n', 'rev-list', '--stdin').trim().split('\n').filter(Boolean).filter(commit => !parent.commits?.has(commit));
-    // Combined patches scan novel merge resolution lines against ALL parents.
-    // Imported lines are scanned in their originating own commit, or exempted
-    // only by the fresh parent graph. -m and the aggregate diff would rescan
-    // upstream lines as if we authored them. Ordinary commits retain full patches.
-    const diffs = commits.map(commit => ['diff-tree', '--root', parent.commits ? '-c' : '-m', '-p', '--no-ext-diff', '--no-textconv', '--no-renames', '--unified=0', commit]);
-    if (!parent.commits && !/^0+$/.test(remote)) diffs.push(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--unified=0', remote, head]);
+    // Scan merge lines new against ALL parents. Unpublished parent additions
+    // are checked in their originating commits, including transient violations.
+    // Neither -m nor an aggregate old-tip diff can distinguish imported public
+    // lines from authored changes, so use per-commit combined patches only.
+    const diffs = commits.map(commit => ['diff-tree', '--root', '-c', '-p', '--no-ext-diff', '--no-textconv', '--no-renames', '--unified=0', commit]);
     for (const args of diffs) {
       let file = null, columns = 1, inHunk = false;
       for (const line of git(...args).split('\n')) {
