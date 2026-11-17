@@ -6,7 +6,7 @@ const repeat = (n, c = 'A') => c.repeat(n);
 const ghp = ['gh','p_',repeat(36)].join('');
 const attacks = [
   ['application_default_credentials.json', JSON.stringify({client_secret:'GOCSPX-'+repeat(28), refresh_token:'1//0g'+repeat(90)})],
-  ['.envrc', 'DATABASE_URL=postgres://admin:password123@db.example/app'],
+  ['.envrc', ['DATABASE_URL=post', 'gres://admin:', 'password123', '@db.example/app'].join('')],
   ['prod.env', 'ANTHROPIC_API_KEY='+['sk','-ant-api03-',repeat(40)].join('')],
   ['token.txt', 'ya29.'+repeat(120)],
   ['secrets.yaml', 'service_role: eyJ'+repeat(30)+'.'+repeat(80)+'.'+repeat(43)],

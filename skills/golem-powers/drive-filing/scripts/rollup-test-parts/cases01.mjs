@@ -458,6 +458,10 @@ describe("rollup v2: newest-mtime units (R-a maximal, R-b holds first, R-c visib
   });
 });
 
+// Historical split provenance (current package exceptions are tested below).
+// Found on the live golems dry-run: v2 made collab/ one mtime unit, and a file
+// under a dir named *token* reached the upload plan. Name rules hold dirs too.
+// Spec addition (skillcreatorLead, 2026-09-25 15:00): /secret/i, unanchored.
 describe("word-bearing directories outside packages stay held", () => {
   test.each(["collab/whoop-token-rotation/collab.md", "notes/prod-env/readme.md", "notes/old-credentials/list.md", "notes/SECRETS/a.md"])(
     "%s has a guarded ancestor", path => {
