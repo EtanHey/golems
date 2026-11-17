@@ -24,25 +24,40 @@
  *     to guarantee mono s16le WAV at the target rate, so AfterCode's reader accepts it.
  */
 
-import {
-  readFile,
-  writeFile,
-  mkdir,
-  stat,
-  rename,
-  copyFile,
-  unlink,
-} from "node:fs/promises";
+import { readFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { createHash } from "node:crypto";
 import path from "node:path";
 import os from "node:os";
-import { spawn } from "node:child_process";
 
 import { findProfile, qwenConfigFromProfile, warnIfNonAcceptedProfile } from "../src/profiles.js";
 import { prepareSpeechChannels as prepareDefaultChannels, type TermRule, type SpeechChannels } from "../src/text-normalize.js";
+import { clearTakeCacheReceipt } from "../src/pipelines/local-tts/take-cache.js";
+import { RunnerFailure, TakeCheckError } from "../src/pipelines/local-tts/failure.js";
+import type { WordCheckSetting } from "../src/quality/take-checks.js";
+import { renderLocalTts, type LocalTtsRenderResult } from "../src/pipelines/local-tts/index.js";
+
+export {
+  buildMonoS16WavArgs,
+  computeLoudnessGainDb,
+  buildLoudnessNormalizeArgs,
+  buildAtempoArgs,
+  buildPcmSilenceArgs,
+  buildWavConcatArgs,
+} from "../src/audio/ffmpeg-args.js";
+export { splitForBreathing } from "../src/plan/breathing.js";
+export {
+  type CacheKeyParams,
+  computeContentHashKey,
+  writeTakeCacheReceipt,
+  clearTakeCacheReceipt,
+} from "../src/pipelines/local-tts/take-cache.js";
 
 interface Args {
+  takeChecks?: boolean;
+  pitchCeilingHz?: number;
+  takeRetries?: number;
+  wordCheckSetting?: WordCheckSetting;
+  wordDictionary?: string;
   text?: string;
   output?: string;
   reference?: string;
@@ -56,6 +71,10 @@ interface Args {
   cache: boolean;
   /** Override the cache directory (default ~/.narrationlayer/tts-cache). */
   cacheDir?: string;
+  /** Render even on a HIT and replace the cached take (--refresh-cache). */
+  refreshCache: boolean;
+  /** Keep each joined piece and pieces.json here (--keep-pieces <dir>). */
+  keepPieces?: string;
 }
 
 function expandHome(value: string): string {
@@ -64,13 +83,13 @@ function expandHome(value: string): string {
   return value;
 }
 
-function fail(message: string): never {
+function fail(message: string, exitCode = 1): never {
   process.stderr.write(`local-tts-runner: ${message}\n`);
-  process.exit(1);
+  process.exit(exitCode);
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { sampleRate: 24000, timeoutMs: 120_000, cache: true };
+  const args: Args = { sampleRate: 24000, timeoutMs: 120_000, cache: true, refreshCache: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     const takeValue = (): string => {
@@ -83,6 +102,24 @@ function parseArgs(argv: string[]): Args {
     };
     const name = arg.includes("=") ? arg.slice(0, arg.indexOf("=")) : arg;
     switch (name) {
+      case "--take-checks":
+        args.takeChecks = true;
+        break;
+      case "--word-check-setting": {
+        const setting = takeValue();
+        if (setting !== "a" && setting !== "b" && setting !== "c" && setting !== "d") fail("--word-check-setting must be a, b, c or d");
+        args.wordCheckSetting = setting;
+        break;
+      }
+      case "--word-dictionary":
+        args.wordDictionary = takeValue();
+        break;
+      case "--pitch-ceiling":
+        args.pitchCeilingHz = Number(takeValue());
+        break;
+      case "--take-retries":
+        args.takeRetries = Number(takeValue());
+        break;
       case "--text":
         args.text = takeValue();
         break;
@@ -119,6 +156,12 @@ function parseArgs(argv: string[]): Args {
       case "--cache-dir":
         args.cacheDir = takeValue();
         break;
+      case "--refresh-cache":
+        args.refreshCache = true;
+        break;
+      case "--keep-pieces":
+        args.keepPieces = takeValue();
+        break;
       case "-h":
       case "--help":
         process.stdout.write(USAGE);
@@ -128,6 +171,14 @@ function parseArgs(argv: string[]): Args {
         fail(`unknown argument: ${arg}`);
     }
   }
+  if (args.refreshCache && !args.cache)
+    fail("--refresh-cache cannot be combined with --no-cache (a refresh stores the new take in the cache)");
+  if (args.takeChecks && (!Number.isFinite(args.pitchCeilingHz) || args.pitchCeilingHz! <= 0))
+    fail("--take-checks requires a positive --pitch-ceiling");
+  if (args.takeRetries !== undefined && (!Number.isSafeInteger(args.takeRetries) || args.takeRetries < 0 || args.takeRetries > 10))
+    fail("--take-retries must be an integer from 0 to 10");
+  if (!args.takeChecks && (args.pitchCeilingHz !== undefined || args.takeRetries !== undefined || args.wordCheckSetting !== undefined || args.wordDictionary !== undefined))
+    fail("--pitch-ceiling, --take-retries, --word-check-setting and --word-dictionary require --take-checks");
   return args;
 }
 
@@ -144,6 +195,11 @@ Required:
                            OR a direct path to a reference .wav clip.
 
 Options:
+  --take-checks              Check pitch and rank word matches on cached and fresh takes.
+  --pitch-ceiling <hz>        Required voice ceiling with --take-checks.
+  --take-retries <count>      Retries after the first render (default 2; range 0..10).
+  --word-check-setting <a|b|c|d>  Word tolerance (default a); kept-best fallback after retries.
+  --word-dictionary <path>    Common-word dictionary for b/c (default /usr/share/dict/words).
   --reference-text <string>  Reference transcript (overrides profile ref text)
   --role <host|expert>       Informational; passed by AfterCode. No engine effect.
   --sample-rate <hz>         Output sample rate (default 24000)
@@ -153,98 +209,19 @@ Options:
   --cache / --no-cache       Content-hash freeze cache (default ON). On a HIT the
                              frozen WAV is copied to --output, skipping the daemon.
   --cache-dir <path>         Cache directory (default ~/.narrationlayer/tts-cache)
+  --refresh-cache            Render a fresh take even on a HIT, then replace the cached
+                             take with it (atomically; a failed render keeps the old one).
+                             The receipt <output>.cache.json says cacheRefreshed. Not
+                             allowed with --no-cache.
+  --keep-pieces <dir>        Copy each piece's audio as it was joined (before loudness)
+                             to <dir>/piece-NNN.wav and write <dir>/pieces.json (text,
+                             samples, duration, pause after, offset). An uncut render
+                             keeps one piece. <dir> must not exist or must be empty. On
+                             a cache HIT nothing is rendered, so none are written; the
+                             receipt says so. Neither switch changes the audio or key.
 
 Fail-closed: a missing profile/reference exits non-zero. Never falls back to system TTS.
 `;
-
-/**
- * Synth params that affect the OUTPUT bytes. The content-hash key is computed over
- * the normalized spoken text + reference identity + this param object, so any change
- * that would change the audio yields a different key (and a fresh synth), while an
- * identical request reuses the frozen accepted take. Exported for tests.
- */
-export interface CacheKeyParams {
-  eqHighshelfHz?: number;
-  eqHighshelfGainDb?: number;
-  loudnessTargetDb?: number;
-  atempo?: number;
-  sentencePauseSeconds?: number;
-  commaPauseSeconds?: number;
-}
-
-/**
- * Compute the content-hash freeze key (sha256, hex) for a synth request. The key is
- * the determinism layer: qwen3 is non-deterministic, so freezing an accepted take by
- * its key is the canonical mechanism for reproducibility. The hash covers the LITERAL
- * normalized spoken text (what the daemon receives), the reference clip path + ref
- * text (voice identity), and the JSON of the OUTPUT-affecting synth params. Param keys
- * are serialized in a STABLE order so the key is independent of object construction
- * order; undefined params are omitted (a profile that never sets atempo hashes the same
- * with or without an explicit undefined). Exported for tests.
- */
-export function computeContentHashKey(input: {
-  spokenText: string;
-  referenceClip: string;
-  referenceText: string;
-  profileId?: string;
-  profileVersion?: string;
-  model?: string;
-  params: CacheKeyParams;
-}): string {
-  // Stable, explicit param ordering — never rely on object key insertion order.
-  const p = input.params;
-  const orderedParams = {
-    eqHighshelfHz: p.eqHighshelfHz,
-    eqHighshelfGainDb: p.eqHighshelfGainDb,
-    loudnessTargetDb: p.loudnessTargetDb,
-    atempo: p.atempo,
-    sentencePauseSeconds: p.sentencePauseSeconds,
-    commaPauseSeconds: p.commaPauseSeconds,
-  };
-  // JSON.stringify drops undefined values, so absent params don't perturb the key.
-  const payload = JSON.stringify({
-    spokenText: input.spokenText,
-    referenceClip: input.referenceClip,
-    referenceText: input.referenceText,
-    profileId: input.profileId,
-    profileVersion: input.profileVersion,
-    model: input.model,
-    params: orderedParams,
-  });
-  return createHash("sha256").update(payload, "utf8").digest("hex");
-}
-
-/**
- * Persist the cache decision that produced a take. The sidecar is replaced
- * atomically so downstream consumers never observe a partial receipt.
- */
-export async function writeTakeCacheReceipt(
-  output: string,
-  cacheKey: string,
-  options: { cacheEnabled: boolean },
-): Promise<string> {
-  if (!/^[a-f0-9]{64}$/.test(cacheKey)) {
-    throw new Error(`invalid cache key for take receipt: ${cacheKey}`);
-  }
-  const receiptPath = `${output}.cache.json`;
-  const temporaryPath = `${receiptPath}.tmp-${process.pid}`;
-  await writeFile(
-    temporaryPath,
-    `${JSON.stringify({ version: 1, cacheKey, cacheEnabled: options.cacheEnabled })}\n`,
-    "utf8",
-  );
-  await rename(temporaryPath, receiptPath);
-  return receiptPath;
-}
-
-/** Clear stale evidence before beginning a new attempt. Missing receipts are fine. */
-export async function clearTakeCacheReceipt(output: string): Promise<void> {
-  try {
-    await unlink(`${output}.cache.json`);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
-}
 
 async function resolveReference(args: Args): Promise<{
   referenceClip: string;
@@ -261,6 +238,7 @@ async function resolveReference(args: Args): Promise<{
   atempo?: number;
   sentencePauseSeconds?: number;
   commaPauseSeconds?: number;
+  colonPauseSeconds?: number;
 }> {
   const ref = args.reference;
   if (!ref)
@@ -360,520 +338,8 @@ async function resolveReference(args: Args): Promise<{
     atempo: cfg.atempo,
     sentencePauseSeconds: cfg.sentence_pause_seconds,
     commaPauseSeconds: cfg.comma_pause_seconds,
+    colonPauseSeconds: cfg.colon_pause_seconds,
   };
-}
-
-async function synthesize(opts: {
-  daemonUrl: string;
-  authToken: string;
-  referenceClip: string;
-  referenceText: string;
-  model?: string;
-  text: string;
-  timeoutMs: number;
-}): Promise<Buffer> {
-  // Same request shape as src/renderers/voicelayer-qwen3.ts synthesizeText().
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs);
-  let response: Response;
-  try {
-    response = await fetch(`${opts.daemonUrl.replace(/\/+$/, "")}/synthesize`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${opts.authToken}`,
-      },
-      body: JSON.stringify({
-        text: opts.text,
-        reference_wav: opts.referenceClip,
-        reference_text: opts.referenceText,
-        ...(opts.model ? { model: opts.model } : {}),
-      }),
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    fail(
-      `daemon /synthesize failed (${response.status}): ${body || response.statusText}`,
-    );
-  }
-
-  const payload = (await response.json()) as { audio_b64?: unknown };
-  if (typeof payload.audio_b64 !== "string" || !payload.audio_b64) {
-    fail("daemon response missing audio_b64");
-  }
-  return Buffer.from(payload.audio_b64 as string, "base64");
-}
-
-interface MonoS16WavOptions {
-  /** De-muffle high-shelf EQ frequency (Hz). Profile-gated; only set for eq-bearing profiles. */
-  eqHighshelfHz?: number;
-  /** De-muffle high-shelf EQ gain (dB). */
-  eqHighshelfGainDb?: number;
-}
-
-/**
- * Build the ffmpeg argv for the single mono s16le WAV pass. Exported for tests.
- * When EITHER eq param is set, a `highshelf=f=<hz>:g=<gain>` filter (mirroring
- * src/audio.ts applyAudioEq, same defaults hz=4000/g=0) is composed into a single
- * `-af` — no second re-encode pass. When neither is set, no `-af` is added.
- */
-export function buildMonoS16WavArgs(
-  inputPath: string,
-  outputPath: string,
-  sampleRate: number,
-  options: MonoS16WavOptions = {},
-): string[] {
-  const { eqHighshelfHz, eqHighshelfGainDb } = options;
-  // -ac 1 (mono), -c:a pcm_s16le (16-bit PCM), -ar <rate> (target sample rate).
-  const args = ["-y", "-i", inputPath, "-ac", "1", "-ar", String(sampleRate)];
-  if (eqHighshelfHz !== undefined || eqHighshelfGainDb !== undefined) {
-    const hz = eqHighshelfHz ?? 4000;
-    const gain = eqHighshelfGainDb ?? 0;
-    args.push("-af", `highshelf=f=${hz}:g=${gain}`);
-  }
-  args.push("-c:a", "pcm_s16le", outputPath);
-  return args;
-}
-
-function ffmpegToMonoS16Wav(
-  inputPath: string,
-  outputPath: string,
-  sampleRate: number,
-  options: MonoS16WavOptions = {},
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const ff = spawn(
-      "ffmpeg",
-      buildMonoS16WavArgs(inputPath, outputPath, sampleRate, options),
-      { stdio: ["ignore", "ignore", "pipe"] },
-    );
-    let stderr = "";
-    ff.stderr.on("data", (d) => {
-      stderr += d.toString();
-    });
-    ff.on("error", (err) => reject(err));
-    ff.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`ffmpeg exited ${code}: ${stderr.slice(-500)}`));
-    });
-  });
-}
-
-/**
- * Compute the dB gain needed to bring a measured mean_volume up/down to a target.
- * gainDb = target - measured. Exported for tests.
- */
-export function computeLoudnessGainDb(
-  measuredMeanVolumeDb: number,
-  targetDb: number,
-): number {
-  return targetDb - measuredMeanVolumeDb;
-}
-
-/**
- * Build the ffmpeg argv for the loudness-normalize re-encode pass. Applies
- * `volume=<gainDb>dB` to hit the target RMS, followed by `alimiter=limit=0.95`
- * to prevent clipping on boost, keeping mono/s16le/sampleRate. Exported for tests.
- */
-export function buildLoudnessNormalizeArgs(
-  inputPath: string,
-  outputPath: string,
-  sampleRate: number,
-  gainDb: number,
-): string[] {
-  return [
-    "-y",
-    "-i",
-    inputPath,
-    "-ac",
-    "1",
-    "-ar",
-    String(sampleRate),
-    "-af",
-    `volume=${gainDb}dB,alimiter=limit=0.95`,
-    "-c:a",
-    "pcm_s16le",
-    outputPath,
-  ];
-}
-
-/**
- * Build the ffmpeg argv for the per-profile ATEMPO (speed) pass. `atempo=<v>` is a
- * pitch-PRESERVING tempo change (no timbre / identity shift), so slowing a clone to
- * v=0.90 lengthens it ~11% without lowering its pitch. We re-assert mono / target
- * sample rate / s16le so the output stays a clean AfterCode-readable WAV. Exported
- * for tests. Runs AFTER ffmpegToMonoS16Wav and BEFORE loudness normalization.
- */
-export function buildAtempoArgs(
-  inputPath: string,
-  outputPath: string,
-  sampleRate: number,
-  v: number,
-): string[] {
-  return [
-    "-y",
-    "-i",
-    inputPath,
-    "-af",
-    `atempo=${v}`,
-    "-ac",
-    "1",
-    "-ar",
-    String(sampleRate),
-    "-c:a",
-    "pcm_s16le",
-    outputPath,
-  ];
-}
-
-function ffmpegRun(args: string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const ff = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
-    let stderr = "";
-    ff.stderr.on("data", (d) => {
-      stderr += d.toString();
-    });
-    ff.on("error", (err) => reject(err));
-    ff.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`ffmpeg exited ${code}: ${stderr.slice(-500)}`));
-    });
-  });
-}
-
-function ffmpegAtempo(
-  inputPath: string,
-  outputPath: string,
-  sampleRate: number,
-  v: number,
-): Promise<void> {
-  return ffmpegRun(buildAtempoArgs(inputPath, outputPath, sampleRate, v));
-}
-
-/**
- * Split normalized speech text into pieces on sentence-ending punctuation (. ? !)
- * and long pauses (em-dash / semicolon / colon), tagging each piece with the pause
- * (seconds) that should FOLLOW it. Sentence-enders => sentencePad; comma/clause
- * separators (, ; : —) => commaPad. The final piece carries no trailing pad (0).
- * Exported for tests. A piece with no detectable terminator keeps the text intact.
- */
-export function splitForBreathing(
-  text: string,
-  sentencePad: number,
-  commaPad: number,
-): Array<{ text: string; padAfterSeconds: number }> {
-  const pieces: Array<{ text: string; padAfterSeconds: number }> = [];
-  const sentenceEnders = new Set([".", "?", "!"]);
-  const clauseEnders = new Set([";", ":", "—", ","]);
-  const closingAfterSentence = new Set([
-    '"',
-    "'",
-    "”",
-    "’",
-    ")",
-    "]",
-    "}",
-    "»",
-  ]);
-  let pieceStart = 0;
-
-  const pushPiece = (
-    spokenEnd: number,
-    nextStart: number,
-    padAfterSeconds: number,
-  ) => {
-    const spoken = text.slice(pieceStart, spokenEnd).trim();
-    if (spoken) {
-      pieces.push({ text: spoken, padAfterSeconds });
-    }
-    pieceStart = nextStart;
-    while (pieceStart < text.length && /\s/.test(text[pieceStart])) {
-      pieceStart += 1;
-    }
-  };
-
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i];
-    if (sentenceEnders.has(ch)) {
-      let end = i + 1;
-      while (end < text.length && sentenceEnders.has(text[end])) {
-        end += 1;
-      }
-      while (end < text.length && closingAfterSentence.has(text[end])) {
-        end += 1;
-      }
-      if (end === text.length || /\s/.test(text[end])) {
-        pushPiece(end, end, sentencePad);
-        i = pieceStart - 1;
-      }
-      continue;
-    }
-
-    if (commaPad > 0 && clauseEnders.has(ch)) {
-      const end = i + 1;
-      if (end === text.length || /\s/.test(text[end])) {
-        pushPiece(i, end, commaPad);
-        i = pieceStart - 1;
-      }
-    }
-  }
-
-  const tail = text.slice(pieceStart).trim();
-  if (tail) pieces.push({ text: tail, padAfterSeconds: 0 });
-
-  if (pieces.length > 0) {
-    // The last piece ends the utterance — no trailing breath needed.
-    pieces[pieces.length - 1].padAfterSeconds = 0;
-  } else if (text.trim()) {
-    pieces.push({ text: text.trim(), padAfterSeconds: 0 });
-  }
-  return pieces;
-}
-
-/**
- * Build the ffmpeg argv for a PCM (s16le) silence clip of `seconds` duration.
- * CRITICAL: we generate silence as PCM (NOT mp3) so the silence shares the exact
- * WAV codec/rate/layout as the synthesized pieces; this lets the final assembly use
- * `concat -c copy` WITHOUT the non-monotonic-DTS error that an mp3-silence segment
- * triggers on the WAV demuxer path. Exported for tests.
- */
-export function buildPcmSilenceArgs(
-  outputPath: string,
-  seconds: number,
-  sampleRate: number,
-): string[] {
-  return [
-    "-y",
-    "-f",
-    "lavfi",
-    "-i",
-    `anullsrc=channel_layout=mono:sample_rate=${sampleRate}`,
-    "-t",
-    String(seconds),
-    "-ac",
-    "1",
-    "-ar",
-    String(sampleRate),
-    "-c:a",
-    "pcm_s16le",
-    outputPath,
-  ];
-}
-
-function escapeConcatPath(filePath: string): string {
-  return path.resolve(filePath).replace(/'/g, "'\\''");
-}
-
-/**
- * Build the ffmpeg argv for the `concat` demuxer stream-copy over a WAV concat list.
- * `-c copy` is safe ONLY because every entry (pieces + PCM silence) is mono s16le at
- * the same sample rate. Exported for tests.
- */
-export function buildWavConcatArgs(
-  concatListPath: string,
-  outputPath: string,
-): string[] {
-  return [
-    "-y",
-    "-f",
-    "concat",
-    "-safe",
-    "0",
-    "-i",
-    concatListPath,
-    "-c",
-    "copy",
-    outputPath,
-  ];
-}
-
-/**
- * BREATHING stage: re-synthesize the whole-segment text as discrete sentence/clause
- * pieces, mono-s16 each, then concat them interleaved with PCM silence pads so the
- * voice "breathes" between sentences. Profile-gated; runs AFTER atempo, BEFORE
- * loudness. Overwrites `output` in place with the assembled, padded WAV.
- */
-async function applyBreathingInPlace(opts: {
-  output: string;
-  sampleRate: number;
-  spokenText: string;
-  sentencePad: number;
-  commaPad: number;
-  daemonUrl: string;
-  authToken: string;
-  referenceClip: string;
-  referenceText: string;
-  timeoutMs: number;
-  eqHighshelfHz?: number;
-  eqHighshelfGainDb?: number;
-  atempo?: number;
-}): Promise<{ applied: boolean; pieces: number }> {
-  const pieces = splitForBreathing(
-    opts.spokenText,
-    opts.sentencePad,
-    opts.commaPad,
-  );
-  // Nothing to interleave: 0 or 1 piece => leave the whole-segment WAV untouched.
-  if (pieces.length < 2) {
-    return { applied: false, pieces: pieces.length };
-  }
-
-  const dir = path.dirname(opts.output);
-  const base = path.basename(opts.output);
-  const concatEntries: string[] = [];
-  const cleanup: string[] = [];
-  try {
-    for (let i = 0; i < pieces.length; i += 1) {
-      const piece = pieces[i];
-      // Synthesize this piece via the SAME daemon path as the whole segment.
-      const audioBuf = await synthesize({
-        daemonUrl: opts.daemonUrl,
-        authToken: opts.authToken,
-        referenceClip: opts.referenceClip,
-        referenceText: opts.referenceText,
-        text: piece.text,
-        timeoutMs: opts.timeoutMs,
-      });
-      const rawPath = path.join(dir, `${base}.breath-${i}.raw`);
-      const wavPath = path.join(dir, `${base}.breath-${i}.wav`);
-      cleanup.push(rawPath, wavPath);
-      await writeFile(rawPath, audioBuf);
-      await ffmpegToMonoS16Wav(rawPath, wavPath, opts.sampleRate, {
-        eqHighshelfHz: opts.eqHighshelfHz,
-        eqHighshelfGainDb: opts.eqHighshelfGainDb,
-      });
-      // Apply atempo PER PIECE (before silence) so the speech is sped/slowed but the
-      // PCM-silence breaths keep their EXACT profile pad durations.
-      if (opts.atempo !== undefined) {
-        const tempoPath = path.join(dir, `${base}.breath-${i}.tempo.wav`);
-        cleanup.push(tempoPath);
-        await ffmpegAtempo(wavPath, tempoPath, opts.sampleRate, opts.atempo);
-        concatEntries.push(tempoPath);
-      } else {
-        concatEntries.push(wavPath);
-      }
-      // Interleave a PCM-silence breath after every piece except the last.
-      if (piece.padAfterSeconds > 0 && i < pieces.length - 1) {
-        const silPath = path.join(dir, `${base}.sil-${i}.wav`);
-        cleanup.push(silPath);
-        await ffmpegRun(
-          buildPcmSilenceArgs(silPath, piece.padAfterSeconds, opts.sampleRate),
-        );
-        concatEntries.push(silPath);
-      }
-    }
-
-    const listPath = path.join(dir, `${base}.breath.concat.txt`);
-    cleanup.push(listPath);
-    await writeFile(
-      listPath,
-      concatEntries.map((p) => `file '${escapeConcatPath(p)}'`).join("\n"),
-      "utf8",
-    );
-    const assembled = path.join(dir, `${base}.breath.out.wav`);
-    cleanup.push(assembled);
-    await ffmpegRun(buildWavConcatArgs(listPath, assembled));
-    await rename(assembled, opts.output);
-    // `assembled` was renamed onto output; drop it from cleanup-removal set.
-    cleanup.splice(cleanup.indexOf(assembled), 1);
-    return { applied: true, pieces: pieces.length };
-  } finally {
-    const { unlink } = await import("node:fs/promises");
-    for (const p of cleanup) {
-      try {
-        await unlink(p);
-      } catch {
-        /* best effort */
-      }
-    }
-  }
-}
-
-/** Measure a WAV's mean_volume (dB) via ffmpeg volumedetect; null if unmeasurable. */
-function measureMeanVolumeDb(inputPath: string): Promise<number | null> {
-  return new Promise((resolve) => {
-    const ff = spawn(
-      "ffmpeg",
-      [
-        "-hide_banner",
-        "-nostats",
-        "-i",
-        inputPath,
-        "-af",
-        "volumedetect",
-        "-f",
-        "null",
-        "-",
-      ],
-      { stdio: ["ignore", "ignore", "pipe"] },
-    );
-    let stderr = "";
-    ff.stderr.on("data", (d) => {
-      stderr += d.toString();
-    });
-    ff.on("error", () => resolve(null));
-    ff.on("close", () => {
-      const match = stderr.match(/mean_volume:\s*(-?[0-9.]+)\s*dB/);
-      if (!match) {
-        resolve(null);
-        return;
-      }
-      const value = Number.parseFloat(match[1]);
-      resolve(Number.isFinite(value) ? value : null);
-    });
-  });
-}
-
-function ffmpegLoudnessNormalize(
-  inputPath: string,
-  outputPath: string,
-  sampleRate: number,
-  gainDb: number,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const ff = spawn(
-      "ffmpeg",
-      buildLoudnessNormalizeArgs(inputPath, outputPath, sampleRate, gainDb),
-      { stdio: ["ignore", "ignore", "pipe"] },
-    );
-    let stderr = "";
-    ff.stderr.on("data", (d) => {
-      stderr += d.toString();
-    });
-    ff.on("error", (err) => reject(err));
-    ff.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`ffmpeg exited ${code}: ${stderr.slice(-500)}`));
-    });
-  });
-}
-
-/**
- * 2-pass RMS loudness normalize: measure the WAV's mean_volume, compute the gain
- * to hit targetDb, then re-encode applying that gain + a limiter into a temp file
- * and rename over the output. Runs AFTER the highshelf EQ pass so the final body
- * RMS is exactly the target regardless of the EQ tone shaping (→ consistent across
- * segments). No-op (returns false) if the volume could not be measured.
- */
-async function loudnessNormalizeInPlace(
-  output: string,
-  sampleRate: number,
-  targetDb: number,
-): Promise<{ applied: boolean; measuredDb?: number; gainDb?: number }> {
-  const measuredDb = await measureMeanVolumeDb(output);
-  if (measuredDb === null) {
-    return { applied: false };
-  }
-  const gainDb = computeLoudnessGainDb(measuredDb, targetDb);
-  const tmpPath = `${output}.loud.wav`;
-  await ffmpegLoudnessNormalize(output, tmpPath, sampleRate, gainDb);
-  await rename(tmpPath, output);
-  return { applied: true, measuredDb, gainDb };
 }
 
 export type SpeechPreparation = (text: string, pronunciationRules: TermRule[]) => SpeechChannels;
@@ -889,7 +355,7 @@ export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)
 
   const output = path.resolve(expandHome(args.output));
   await mkdir(path.dirname(output), { recursive: true });
-  await clearTakeCacheReceipt(output);
+  if (!args.takeChecks) await clearTakeCacheReceipt(output);
 
   const resolved = await resolveReference(args);
 
@@ -899,183 +365,38 @@ export async function main(prepareSpeechChannels = defaultPrepareSpeechChannels)
   const authToken = (await readFile(authTokenPath, "utf8")).trim();
   if (!authToken) fail(`daemon auth token file is empty: ${authTokenPath}`);
 
-  // Pronunciation normalization (the TERM_MAP respellings) MUST happen here,
-  // before the daemon, exactly as renderSegment does. The DISPLAY is unaffected:
-  // the build reads the script .md, not this runner's TTS-feed text.
-  const channels = prepareSpeechChannels(args.text, []);
-  const spokenText = channels?.synthInput;
-  if (typeof spokenText !== "string" || !spokenText.trim())
-    fail("speech preparation must return a nonblank synthInput string synchronously");
-
-  // CONTENT-HASH FREEZE (determinism layer). The key is computed over the literal
-  // spoken text + reference identity + the OUTPUT-affecting synth params. On a HIT
-  // we copy the FROZEN accepted take to the output and skip the non-deterministic
-  // daemon entirely; on a MISS we synth normally, then store the final WAV under the
-  // key — freezing this take for every future identical request.
-  const cacheParams: CacheKeyParams = {
-    eqHighshelfHz: resolved.eqHighshelfHz,
-    eqHighshelfGainDb: resolved.eqHighshelfGainDb,
-    loudnessTargetDb: resolved.loudnessTargetDb,
-    atempo: resolved.atempo,
-    sentencePauseSeconds: resolved.sentencePauseSeconds,
-    commaPauseSeconds: resolved.commaPauseSeconds,
-  };
-  const cacheDir = path.resolve(
-    expandHome(args.cacheDir ?? "~/.narrationlayer/tts-cache"),
-  );
-  const cacheKey = computeContentHashKey({
-    spokenText,
-    referenceClip: resolved.referenceClip,
-    referenceText: resolved.referenceText,
-    profileId: resolved.profileId,
-    profileVersion: resolved.profileVersion,
-    model: resolved.model,
-    params: cacheParams,
-  });
-  const cachePath = path.join(cacheDir, `${cacheKey}.wav`);
-  if (args.cache && existsSync(cachePath)) {
-    await copyFile(cachePath, output);
-    const hitInfo = await stat(output).catch(() => undefined);
-    if (!hitInfo || hitInfo.size === 0) {
-      fail(`cache HIT but frozen WAV is empty or unreadable: ${cachePath}`);
-    }
-    // Commit synth provenance only after the selected WAV is known non-empty.
-    // A failed rerun must never pair new sidecar bytes with an older output.
-    await writeFile(`${output}.spoken.txt`, spokenText, "utf8");
-    await writeTakeCacheReceipt(output, cacheKey, { cacheEnabled: args.cache });
+  let result: LocalTtsRenderResult;
+  try {
+    result = await renderLocalTts({
+      text: args.text,
+      output,
+      sampleRate: args.sampleRate,
+      resolved,
+      authToken,
+      cacheDir: path.resolve(expandHome(args.cacheDir ?? "~/.narrationlayer/tts-cache")),
+      cache: args.cache,
+      takeChecks: args.takeChecks ? { pitchCeilingHz: args.pitchCeilingHz!, retries: args.takeRetries ?? 2,
+      wordCheckSetting: args.wordCheckSetting,
+      commonWords: args.wordCheckSetting === "b" || args.wordCheckSetting === "c"
+        ? new Set((await readFile(args.wordDictionary ?? "/usr/share/dict/words", "utf8")).split(/\r?\n/).map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ""))) : undefined } : undefined,
+      refreshCache: args.refreshCache,
+      keepPiecesDir: args.keepPieces === undefined ? undefined : path.resolve(expandHome(args.keepPieces)),
+      timeoutMs: args.timeoutMs,
+      prepareSpeechChannels,
+    });
+  } catch (err) {
+    if (err instanceof TakeCheckError) fail(err.message, 2);
+    if (err instanceof RunnerFailure) fail(err.message);
+    throw err;
+  }
+  if (result.kind === "cache-hit") {
     process.stderr.write(
-      `local-tts-runner: cache HIT key=${cacheKey} role=${args.role ?? "-"} via ${resolved.source} -> ${output} (${hitInfo.size} bytes, frozen take ${cachePath})\n`,
+      `local-tts-runner: cache HIT key=${result.cacheKey} role=${args.role ?? "-"} via ${resolved.source} -> ${output} (${result.bytes} bytes, frozen take ${result.cachePath})${result.piecesNote}\n`,
     );
     process.exit(0);
   }
-
-  const audioBuf = await synthesize({
-    daemonUrl: resolved.daemonUrl,
-    authToken,
-    referenceClip: resolved.referenceClip,
-    referenceText: resolved.referenceText,
-    model: resolved.model,
-    text: spokenText,
-    timeoutMs: args.timeoutMs,
-  });
-
-  // Write raw daemon audio to a temp file beside output, then transcode to mono s16 WAV.
-  const rawPath = `${output}.raw`;
-  await writeFile(rawPath, audioBuf);
-  try {
-    await ffmpegToMonoS16Wav(rawPath, output, args.sampleRate, {
-      eqHighshelfHz: resolved.eqHighshelfHz,
-      eqHighshelfGainDb: resolved.eqHighshelfGainDb,
-    });
-  } finally {
-    try {
-      await (await import("node:fs/promises")).unlink(rawPath);
-    } catch {
-      /* best effort */
-    }
-  }
-
-  // PER-PROFILE ATEMPO (speed) + BREATHING (pauses), applied AFTER the mono-s16 pass
-  // (so they share the EQ'd body) and BEFORE loudness normalization.
-  //   - atempo: pitch-PRESERVING tempo change (no timbre / identity shift).
-  //   - breathing: re-synthesize the segment as sentence/clause pieces and interleave
-  //     PCM-silence breaths.
-  // When breathing is active it applies atempo PER PIECE (so the silence pads keep
-  // their EXACT profile durations); the standalone atempo pass below runs ONLY when
-  // breathing did not assemble (so a non-breathing profile still gets its speed change).
-  let atempoNote =
-    resolved.atempo !== undefined ? ` atempo=${resolved.atempo}` : "";
-  let breathingNote = "";
-  let breathingApplied = false;
-  if (
-    resolved.sentencePauseSeconds !== undefined ||
-    resolved.commaPauseSeconds !== undefined
-  ) {
-    const sentencePad = resolved.sentencePauseSeconds ?? 0.55;
-    const commaPad = resolved.commaPauseSeconds ?? 0.22;
-    const breath = await applyBreathingInPlace({
-      output,
-      sampleRate: args.sampleRate,
-      spokenText,
-      sentencePad,
-      commaPad,
-      daemonUrl: resolved.daemonUrl,
-      authToken,
-      referenceClip: resolved.referenceClip,
-      referenceText: resolved.referenceText,
-      timeoutMs: args.timeoutMs,
-      eqHighshelfHz: resolved.eqHighshelfHz,
-      eqHighshelfGainDb: resolved.eqHighshelfGainDb,
-      atempo: resolved.atempo,
-    });
-    breathingApplied = breath.applied;
-    breathingNote = breath.applied
-      ? ` breathing=${breath.pieces}pc(sent=${sentencePad}s,comma=${commaPad}s)`
-      : ` breathing=skipped(${breath.pieces}pc)`;
-  }
-
-  // Standalone atempo: only when breathing did NOT assemble (breathing applies atempo
-  // per-piece internally). atempo unset => skipped (behavior unchanged).
-  if (resolved.atempo !== undefined && !breathingApplied) {
-    const tmpPath = `${output}.atempo.wav`;
-    try {
-      await ffmpegAtempo(output, tmpPath, args.sampleRate, resolved.atempo);
-      await rename(tmpPath, output);
-    } catch (err) {
-      try {
-        await (await import("node:fs/promises")).unlink(tmpPath);
-      } catch {
-        /* best effort */
-      }
-      throw err;
-    }
-  }
-
-  // Loudness normalization (profile-gated). Order matters: highshelf EQ ran FIRST
-  // (above, shaping the tone), THEN we RMS-normalize so the final body is exactly
-  // the target regardless of the EQ — making body loudness consistent across every
-  // segment. Unset target => behavior unchanged (skipped).
-  let loudnessNote = "";
-  if (resolved.loudnessTargetDb !== undefined) {
-    const norm = await loudnessNormalizeInPlace(
-      output,
-      args.sampleRate,
-      resolved.loudnessTargetDb,
-    );
-    loudnessNote = norm.applied
-      ? ` loudness=${resolved.loudnessTargetDb}dB (measured ${norm.measuredDb?.toFixed(2)}dB, gain ${norm.gainDb?.toFixed(2)}dB)`
-      : ` loudness=${resolved.loudnessTargetDb}dB (skipped: unmeasurable)`;
-  }
-
-  const info = await stat(output).catch(() => undefined);
-  if (!info || info.size === 0)
-    fail(`output WAV is empty or missing: ${output}`);
-
-  // Persist the literal daemon input only after every output-affecting pass and
-  // final non-empty validation has succeeded. Downstream gates derive approved
-  // aliases from these bytes, so publishing them before the WAV is accepted is unsafe.
-  await writeFile(`${output}.spoken.txt`, spokenText, "utf8");
-  await writeTakeCacheReceipt(output, cacheKey, { cacheEnabled: args.cache });
-
-  // CONTENT-HASH FREEZE (MISS): store the FINAL processed WAV under the key so this
-  // accepted take is frozen for every future identical request. Best-effort: a cache
-  // store failure must never fail an otherwise-good synth. Atomic via temp+rename so a
-  // crash mid-write never leaves a truncated frozen take.
-  let cacheNote = "";
-  if (args.cache) {
-    try {
-      await mkdir(cacheDir, { recursive: true });
-      const cacheTmp = `${cachePath}.tmp-${process.pid}`;
-      await copyFile(output, cacheTmp);
-      await rename(cacheTmp, cachePath);
-      cacheNote = ` cache MISS->frozen key=${cacheKey}`;
-    } catch {
-      cacheNote = ` cache MISS (store failed key=${cacheKey})`;
-    }
-  }
-
   process.stderr.write(
-    `local-tts-runner: ok role=${args.role ?? "-"} via ${resolved.source} -> ${output} (${info.size} bytes, mono s16 @ ${args.sampleRate}Hz)${atempoNote}${breathingNote}${loudnessNote}${cacheNote}\n`,
+    `local-tts-runner: ok role=${args.role ?? "-"} via ${resolved.source} -> ${output} (${result.bytes} bytes, mono s16 @ ${args.sampleRate}Hz)${result.atempoNote}${result.breathingNote}${result.loudnessNote}${result.cacheNote}${result.piecesNote}\n`,
   );
   process.exit(0);
 }

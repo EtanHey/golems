@@ -20,7 +20,7 @@ const fixture = JSON.parse(
   readFileSync(path.join(here, "fixtures", "spoken-form-pronunciation.json"), "utf8"),
 );
 const runnerSource = readFileSync(
-  path.join(here, "..", "vendor", "narrationlayer", "local-tts-runner.ts"),
+  path.join(here, "..", "vendor", "narrationlayer", "src", "pipelines", "local-tts", "index.ts"),
   "utf8",
 );
 const wrapperSource = readFileSync(path.join(here, "..", "scripts", "local-tts.mjs"), "utf8");
