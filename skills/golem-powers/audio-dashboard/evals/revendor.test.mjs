@@ -28,8 +28,13 @@ test("reference audio content is required and independently invalidates frozen t
 });
 
 test("pronunciation hints are refused before any synthesis or BUILD artifacts", () => {
-  expect(() => prepareSpeechChannels("Use shadcn{say:shad C N}.")).toThrow("PRONUNCIATION_HINT_UNSUPPORTED");
-  const root = mkdtempSync(path.resolve(import.meta.dir, '../../../../docs.local/hint-refusal-'));
+  for (const hinted of ["Use shadcn{say:shad C N}.", "Use shadcn{Say:shad}.", "Use shadcn{ say:shad}.", "Use shadcn{say}."]) {
+    expect(() => prepareSpeechChannels(hinted)).toThrow("PRONUNCIATION_HINT_UNSUPPORTED");
+  }
+  expect(() => prepareSpeechChannels("A plain {saying} in braces.")).not.toThrow();
+  const base = path.resolve(import.meta.dir, '../../../../docs.local');
+  mkdirSync(base, { recursive: true });
+  const root = mkdtempSync(path.join(base, 'hint-refusal-'));
   try {
     const spec = path.join(root, 'spec.json');
     writeFileSync(spec, JSON.stringify({ id: 'hints', type: 'cinema', scenes: [

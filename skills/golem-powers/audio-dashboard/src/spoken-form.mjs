@@ -81,7 +81,8 @@ function normalizeProse(text, aliases = []) {
 }
 
 export function assertSupportedScript(script) {
-  if (typeof script === "string" && script.includes("{say:")) {
+  // Same prefix NarrationLayer treats as a hint (src/text-normalize.ts HINT_PREFIX).
+  if (typeof script === "string" && /\{\s*say\b/i.test(script)) {
     throw new Error("PRONUNCIATION_HINT_UNSUPPORTED: audio-dashboard does not yet support {say:...} hints; remove the hint and use pronunciation config instead.");
   }
 }
