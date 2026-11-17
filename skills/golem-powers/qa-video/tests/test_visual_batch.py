@@ -243,6 +243,7 @@ print(json.dumps({'status': 'SUCCESS', 'response': json.dumps({'images': items})
         image.write_bytes(b'provider fixture input')
     (tmp_path/'index.tsv').write_text(''.join(f'{image.name}\t0\t10\t20\ttest\n' for image in images))
     result = subprocess.run([sys.executable, str(DRIVER), '--model', 'fixture-model',
+                             '--helper', str(DRIVER.with_name('visual-gather.py')),
                              '--question', 'facts', '--workdir', str(tmp_path), *map(str, images)],
                             capture_output=True, text=True, timeout=10)
     item = json.loads((tmp_path / 'visual/findings.jsonl').read_text().splitlines()[-1])

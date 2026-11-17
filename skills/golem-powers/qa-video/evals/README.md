@@ -7,12 +7,20 @@ parent tool traces with `python3 evals/run_suite.py <capture.json>`; captures us
 `{"case":"screenshots|judgment","image_paths":["/frame.png"],"calls":[{"tool":"Agent","arguments":{"subagent_type":"visual-gatherer"}}]}`.
 Document Reads are allowed; image Reads and Reads without an auditable path fail.
 
-`python3 evals/run_suite.py --live` runs the real helper twice, sequentially:
+`python3 evals/run_suite.py --live` explicitly probes the legacy Gemini helper twice, sequentially:
 synthetic accuracy, then a forced 1ms print timeout with one singleton retry round.
 Never run this concurrently with another Gemini call stream. Default CI is offline.
 The first round uses batches of at most six images; only missing results from
 those batches receive one serial singleton retry.
 Timeout and stream/truncation recovery are also covered in `../tests/`.
+
+Default routing: `tests/test_default_reader.py` executes the batch driver and Claude
+adapter against a synthetic CLI, checks attached images, the role pin, empty tools/MCP,
+and an explicit Claude model override. `tests/test_release_gather.py` explicitly selects
+the Gemini helper and checks a named model is preserved. Cases 23–24 in `evals.json`
+cover the unnamed Claude default and an explicit Gemini brief; model-based planning
+captures for those new cases are NOT_RUN. Offline tests establish dispatch contracts,
+not paid image-reading accuracy or live provider availability.
 
 Fixtures are generated, synthetic 480x240 RGB PNGs: Arial 28px labels, white
 background, optional red banner and blue circles. `alpha.png` has ALPHA,

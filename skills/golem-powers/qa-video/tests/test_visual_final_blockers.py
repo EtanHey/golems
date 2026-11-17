@@ -24,6 +24,8 @@ def run(tmp_path, body, *, production=True, count=1, budget=4, setup=False):
         command += ['--model', 'synthetic-model']
     if not production:
         command += ['--helper', str(helper)]
+    else:
+        command += ['--helper', str(DRIVER.with_name('visual-gather.py'))]
     result = subprocess.run(command, env=dict(os.environ, PATH=str(tmp_path)+os.pathsep+os.environ['PATH']), capture_output=True, text=True, timeout=30)
     return result, images
 

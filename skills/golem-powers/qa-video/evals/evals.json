@@ -1,6 +1,28 @@
 {
   "skill_name": "qa-video",
   "evals": [
+    {
+      "id": 23,
+      "name": "claude-reader-default",
+      "category": "compliance",
+      "prompt": "QA this recording. No gatherer model is named. Plan the frame gathering route and its failure path.",
+      "expected_output": "Tool-free Claude image reader first, visual-batch.py second, then TOOLING FAILURE. Pin claude.subagent.cheap; Gemini is never selected implicitly.",
+      "assertions": [
+        {"type": "content", "name": "claude-default", "description": "Uses claude-image-helper.py with the concrete claude.subagent.cheap model, empty tools and no MCP."},
+        {"type": "negative", "name": "no-implicit-gemini", "description": "No Gemini or Antigravity dispatch or fallback is planned."}
+      ]
+    },
+    {
+      "id": 24,
+      "name": "explicit-gemini-reader",
+      "category": "compliance",
+      "prompt": "QA this recording; use Gemini as the frame gatherer with concrete model gemini-3.8-flash. Plan gathering and what happens if it is unavailable.",
+      "expected_output": "Honour the named Gemini gatherer via visual-gather.py with the supplied model, keeping the judge separate. If unavailable stop without replacing it with Claude.",
+      "assertions": [
+        {"type": "content", "name": "gemini-override", "description": "Selects visual-gather.py and the explicitly named Gemini model instead of the Claude default."},
+        {"type": "negative", "name": "no-override-substitution", "description": "No Claude substitution after the explicitly named Gemini reader is unavailable."}
+      ]
+    },
     {"id": 1, "name": "visual-agent-routing", "prompt": "Here are 12 screenshots, which show the error banner?", "assertions": [
       {"type": "tool_usage", "name": "isolated-gatherer", "description": "Agent(subagent_type=visual-gatherer); score parent calls with run_suite.py."},
       {"type": "negative", "name": "no-parent-images", "description": "No lead Read of the images."}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Opt-in attached-image Claude adapter for visual-batch --helper. No Read tool.
+"""Default attached-image Claude adapter for visual-batch --helper. No Read tool.
 
 Startup capture and inference are separate gates. Audit retained session_files
 with the evaluator's pinned startup auditor before admitting any paid pair.

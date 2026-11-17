@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Headless visual gathering: image bytes stay in Gemini's context."""
+"""Explicit-Gemini gathering only: use when the brief names Gemini, never as a default."""
 import argparse
 import importlib.util
 import json

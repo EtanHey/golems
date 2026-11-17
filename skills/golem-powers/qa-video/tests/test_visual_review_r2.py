@@ -112,7 +112,7 @@ def test_setup_obeys_total_deadline(tmp_path, monkeypatch):
     image = tmp_path/'sheet.png'
     image.write_bytes(b'synthetic')
     start = time.monotonic()
-    result = subprocess.run([sys.executable, str(SCRIPT), '--budget-seconds', '.15', '--workdir', str(tmp_path), '--question', 'facts', str(image)], capture_output=True, text=True, timeout=2)
+    result = subprocess.run([sys.executable, str(SCRIPT), '--helper', str(SCRIPT.with_name('visual-gather.py')), '--budget-seconds', '.15', '--workdir', str(tmp_path), '--question', 'facts', str(image)], capture_output=True, text=True, timeout=2)
     assert time.monotonic() - start < .55
     summary = json.loads(result.stdout)
     assert summary['status'] == 'BUDGET_EXCEEDED'
