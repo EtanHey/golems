@@ -233,6 +233,12 @@ Everything the pipeline needs is inside the skill:
 | Narration vendor provenance + two-way drift lint | `vendor/narrationlayer/VENDOR-VERSION` + `scripts/lint-narration-vendor-drift.mjs` |
 | Orchestration | `scripts/synth-segments.mjs`, `scripts/build-dashboard.mjs`, `scripts/bootstrap.mjs`, `scripts/validate-evidence.mjs`, `scripts/audio-dashboard-generator.mjs` |
 
+## Take-check notices
+
+Run `bun scripts/classify-takes.mjs < checks.json` with `{clips:[{id, role, flagged, takeCheck:{edits, pitchFailed, firstWordOmitted}}], names:[]}`; edits retain `sent`, `recognised`, both indices and `tokenClass`. Render every returned `notices` line on its owning card.
+Only equivalent digit/unit forms, US/UK spellings and near spellings of explicit `names` or `tokenClass: jargon` may be waived; never strip plurals/final-s or waive possessives. Every real miss emits a plain failure line; even a wholly waived clip says it passed only as a spelling difference.
+Output is `{clips:[{id,status,real,waived,notices}]}` with a reason per item; pitch, omitted-first-word and unexplained flagged failures stay real. This reporting classifier does not override BUILD rejection gates.
+
 ## Canonical Pipeline
 
 Run these skill-local entries for the AfterCode read-along path (all relative to
