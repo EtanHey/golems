@@ -68,9 +68,10 @@ test('PNG-headed deleted blob holds in history and trailing text holds in workin
   git(repo,['add','.']);git(repo,['commit','-qm','image']);git(repo,['rm','--cached','-q','--','image.png']);
   renameSync(join(repo,'image.png'),join(dir,'retained'));git(repo,['commit','-qm','remove']);historyHold(clone(repo,dir));
 });
-test.each(['index','objects/info/commit-graph','objects/pack/pack-'+ 'a'.repeat(40)+'.pack'])('unvalidated Git storage stays held: %s',name=>{
+test.each(['index','objects/info/commit-graph','objects/pack/ignored.pack','objects/pack/pack-'+ 'a'.repeat(40)+'.pack'])('unvalidated Git storage stays held: %s',name=>{
   const {repo}=fresh();mkdirSync(dirname(join(repo,'.git',name)),{recursive:true});writeFileSync(join(repo,'.git',name),'GITHUB_TOKEN='+value);
-  expect(classify(repo).status).toBe('HOLD');
+  const r=classify(repo);expect(r.status).toBe('HOLD');
+  if(name.startsWith('objects/pack/'))expect(r.gitHistory[0].error).toBe('git-history-error');
 });
 test.each(['commondir','gitdir','objects/info/alternates'])('Git redirects refuse: %s',name=>{
   const {repo}=fresh();mkdirSync(dirname(join(repo,'.git',name)),{recursive:true});writeFileSync(join(repo,'.git',name),'../other');

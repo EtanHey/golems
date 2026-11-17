@@ -20,12 +20,13 @@ entries miss. Only successful `--verify` grants upload. Invalid numeric CLI/API
 options refuse before JSON serialization. Working-tree media receive raw credential
 checks, including trailing text; media over 64 MiB now HOLD with `scan-size-limit`.
 
-Current validation: 206 tests pass, zero fail, 957 assertions. The corrupt/empty Git
+Current validation: 207 tests pass, zero fail, 963 assertions. The corrupt/empty Git
 fixtures live outside any repository and assert `git-history-error` with no matches,
 so parent-repository discovery cannot accidentally satisfy them. Added rows cover
 each reported history/name/media case, missing promisor blobs and cache forgery.
 Clean packed-clone coverage includes native symbolic remote HEAD validation; an
-unused reverse-index sidecar explicitly stays held. History-hit tests additionally
+unused reverse-index sidecar explicitly stays held. Malformed/unrecognized pack
+filenames also refuse, rather than escaping the pack-set accounting. History-hit tests additionally
 assert there is no Git validation error, so a generic error cannot satisfy them.
 The final run used the implementation-identical fixture-preserving mirror described
 below. The adapted reviewer Git harness has no LEAK rows: every adversarial row and

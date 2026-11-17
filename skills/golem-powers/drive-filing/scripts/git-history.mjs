@@ -61,6 +61,7 @@ export async function scanHistory(repo,pool,deadline,files=[]) {
     }
     const packs=paths.filter(x=>/^objects\/pack\/pack-[a-f0-9]{40}(?:[a-f0-9]{24})?\.pack$/.test(x));
     const indexes=paths.filter(x=>/^objects\/pack\/pack-[a-f0-9]{40}(?:[a-f0-9]{24})?\.idx$/.test(x));
+    if(paths.some(x=>x.startsWith('objects/pack/') && /\.(pack|idx)$/.test(x) && !packs.includes(x) && !indexes.includes(x)))throw new Error();
     if(packs.length!==indexes.length || packs.some(x=>!indexes.includes(x.replace(/\.pack$/,'.idx')))) throw new Error();
     const counts={};await gitText(repo,['count-objects','-v'],deadline,line=>{
       const m=/^([a-z-]+): (\d+)$/.exec(line);if(m)counts[m[1]]=Number(m[2]);
