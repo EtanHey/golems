@@ -37,6 +37,118 @@
     {"id": 17, "name": "ordinary-debrief", "category": "compliance", "prompt": "Give me a normal debrief of this narrated talk; 40 existing frames, usable transcript, no visual-reference goal.", "expected_output": "Full/silent: exhaustive frame batches, reader dispatch, scroll/hover refinement and no early PARTIAL. Ordinary: bounded transcript-first.", "assertions": [{"type": "content", "name": "full-pass-plan", "description": "full-pass-score.py scores explicit frame IDs, actual stub dispatch attempts, batch IDs, scroll/hover refinement, continuation, partial causes and coverage template. Planning-only proof: reads and completed helpers remain zero."}]},
     {"id": 18, "name": "full-transcript-debrief", "category": "compliance", "prompt": "Give me a full transcript debrief of this narrated talk; focus on its spoken insights.", "expected_output": "Read the entire transcript but keep ordinary transcript-first visuals capped at 12 moments.", "assertions": [{"type": "negative", "name": "full-is-not-a-visual-request", "description": "The word full qualifies transcript coverage; it must not trigger exhaustive visual reading."}]},
     {
+      "id": 19,
+      "name": "spoken-command-crop",
+      "category": "compliance",
+      "prompt": "At 17:42 the presenter says “paste the short line along the bottom into your terminal.” A reader reports that the lower-panel text is too small in the initial still. Extract actionable insights.",
+      "expected_output": "The parent plans from the transcript cue, receives reader-reported bounds, runs crop.sh without opening the image, and sends the crop PNG to a fresh reader for verified text with decoded PTS.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "select-command-cue",
+          "description": "The visual selection includes the 17:42 transcript cue."
+        },
+        {
+          "type": "content",
+          "name": "preceding-segments",
+          "description": "The planned window includes the three preceding transcript segments when available."
+        },
+        {
+          "type": "tool_usage",
+          "name": "start-read",
+          "description": "A helper reads a full-size frame at the window start."
+        },
+        {
+          "type": "tool_usage",
+          "name": "midpoint-read",
+          "description": "A helper reads a full-size frame at the window midpoint."
+        },
+        {
+          "type": "content",
+          "name": "reader-reports-coordinate-bounds",
+          "description": "The reader reports the text-region bounds as a source-frame coordinate rectangle."
+        },
+        {
+          "type": "tool_usage",
+          "name": "parent-runs-crop.sh-from-reader-bounds",
+          "description": "The parent runs scripts/crop.sh using the reader-reported bounds."
+        },
+        {
+          "type": "tool_usage",
+          "name": "crop-sent-to-a-fresh-reader",
+          "description": "The crop PNG is sent to a fresh reader batch."
+        },
+        {
+          "type": "negative",
+          "name": "no-parent-crop-planning-read",
+          "description": "The parent never opens a frame or crop to plan the crop bounds."
+        },
+        {
+          "type": "content",
+          "name": "visible-text-only",
+          "description": "Every reported command character is supported by the reader’s visible transcription."
+        },
+        {
+          "type": "content",
+          "name": "decoded-pts",
+          "description": "The command finding cites the crop’s decoded PTS."
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "command-without-screen-reference",
+      "category": "compliance",
+      "prompt": "Debrief a talk where the speaker discusses command-line tools abstractly. No screen share or visual command is referenced.",
+      "expected_output": "Keep ordinary bounded transcript-first behavior.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "ordinary-transcript-first",
+          "description": "The plan uses the ordinary transcript-first visual selection."
+        },
+        {
+          "type": "negative",
+          "name": "no-invented-visual-command",
+          "description": "The report does not assert that a command was visible."
+        },
+        {
+          "type": "negative",
+          "name": "no-word-only-crop",
+          "description": "The plan does not request a crop solely because the word command was spoken."
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "crop-failure-honesty",
+      "category": "compliance",
+      "prompt": "A speaker points to code on screen; both full-size crop and refinement remain unreadable and the budget has expired.",
+      "expected_output": "Preserve the failed read evidence and report NOT DETERMINED.",
+      "assertions": [
+        {
+          "type": "content",
+          "name": "failed-receipt-retained",
+          "description": "The report retains a path to the failed crop/read receipt."
+        },
+        {
+          "type": "content",
+          "name": "unreadable-not-determined",
+          "description": "The unreadable code finding is NOT DETERMINED."
+        },
+        {
+          "type": "negative",
+          "name": "no-guessed-code",
+          "description": "The report contains no guessed code transcription."
+        },
+        {
+          "type": "negative",
+          "name": "no-expired-launch",
+          "description": "No new read or refinement launches after budget expiry."
+        }
+      ]
+    },
+    {
       "id": 22,
       "name": "reader-transcript-window-data",
       "category": "compliance",

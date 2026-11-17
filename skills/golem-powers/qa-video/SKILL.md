@@ -20,6 +20,8 @@ If your brief makes you the judge, dispatch no other judge; you are "the QA seat
 
 **Declare mode before dispatch.** **qa:** UI/app QA; mandatory 10 fps action-cue windows, scene cues, 30s coverage and refinement remain. **debrief / review / gems:** normally TRANSCRIPT-FIRST (the exhaustive override below wins); transcribe, pick ≤12 moments (questions, claims, numbers, referenced slides), then bracket each cue with at least a start and midpoint frame: the window spans its containing transcript segment plus the preceding three segments (or all available at the start). Speech can lag the screen. This means ≤24 initial stills for ≤12 moments; count frame reads/waves honestly within the same budget, never collapse a cue to one still. Check decoded PTS inside each window; refine within it or report NOT DETERMINED. No blanket 30s coverage; no scene-cue sweep unless the transcript references visuals such as slides/code/screen share. Default budget: **max(600, 24 × video minutes) seconds total wall-clock**, including transcription and notes (25min → 600s; 90min → 2160s). An explicit parent remaining deadline wins. Preserve debrief.md whenever the transcript exists, even on budget/partial exits; unread visuals stay NOT DETERMINED.
 
+**Spoken command/code cues:** When the speaker points to a command or code on screen (for example, “look closely at my screen” or “a command you can run”), keep that cue in the visual selection. The parent plans the crop request from the transcript cue: bracket its containing segment plus the preceding three segments and request start and midpoint frame reads. The reader reports the text-region bounds as a source-frame coordinate rectangle (`frame: x=<left>-<right>, y=<top>-<bottom>`). The parent/judge runs `scripts/crop.sh <frame> <x> <y> <w> <h> <out.png>` from those reported bounds without opening the frame or crop, then dispatches a fresh reader batch to read the crop PNG. The tool-free reader reports bounds and reads images; the parent owns the crop command. The parent never opens frames or crops to plan the crop or locate its bounds; it judges the returned text. Cite decoded PTS and keep speech separate from the verified visible transcription. If the crop remains unreadable, request refinement within the window or mark NOT DETERMINED with the failed crop/read receipt. Budget expiry still wins; never guess a command from narration alone.
+
 ## Visual-first exhaustive override (gems / debrief / review)
 
 "Full pass" / "full coverage" (including "Full /qa-video GEMS pass"),
@@ -178,8 +180,11 @@ guarantee of reader accuracy, and more reads would turn the judge back into the 
 A spot-check that disagrees sends that window back to a gatherer (fresh batch, crop or refine); a second
 disagreement is NOT DETERMINED. The judge never opens contact sheets, never reads frames to plan the
 split (plan from `index.tsv`, cues and the transcript) and never reads past its 2-frame budget.
-**Too small to read:** the judge cuts a crop (`scripts/crop.sh`) or re-densifies, and sends that to a
-gatherer; legibility is never a reason for a judge read. **Measurements** (bar height/length/colour,
+**Too small to read:** the parent/judge plans a crop request from the transcript cue and reader text;
+the reader reports the source-frame coordinate bounds. The parent/judge runs `scripts/crop.sh` from
+those bounds without opening either image, then sends the crop PNG to a fresh reader batch.
+The judge may request re-densification too;
+it never opens frames to plan crops, and legibility is never a reason for a judge read. **Measurements** (bar height/length/colour,
 spinner motion, frame registration, timing) come from a packaged script. None exists yet for those;
 the item is NOT DETERMINED (missing measurement: <what>) and the judge files a row to add the script to
 `scripts/` with a test. Never measure by eye and never hand-write a one-off measuring script in the run.
