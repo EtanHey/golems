@@ -268,7 +268,8 @@ Unsupported zip/xz/bz2/7z/tar/tgz/br/lz4/rar, nested compression and non-UTF-8
 Recognizable compressors are detected by magic even with a different suffix;
 known unsupported suffixes also hold (Brotli has no universal magic).
 Non-media input and decompressed text are limited to 64 MiB, every worker to
-15 seconds, and each run's scan to 120 seconds. Size/time limits, unreadable
+15 seconds. The whole-folder classifier uses a scaled run deadline (below);
+the legacy rollup planner retains its 120-second scan limit. Size/time limits, unreadable
 members, corruption, worker failures and policy errors fail closed with named reasons.
 
 **Scan receipt and upload preflight.** The classifier emits each scanned member's
@@ -284,5 +285,47 @@ of age, run `node scripts/classify.mjs <archive-run> [...]` from this skill dire
 Its JSON gives files, heldMembers, reason counts, member hashes and path/rule
 receipts. A HOLD blocks upload; CLEAR is not remote-preservation proof.
 Cleaning them up is the owner's call.
+
+### Large-folder classification and partial manifests
+
+Run `node scripts/classify.mjs --receipt-dir <outside-source-directory> <archive-run>`
+to save `receipt.json`, `scan-cache.json`, `upload-manifest.tsv` and `held.tsv`.
+Without `--receipt-dir`, classification only prints JSON and writes nothing.
+Receipt directories must be outside the source, including after resolving ancestor
+symlinks; never place these files inside the archive. One source per receipt directory.
+
+The classifier uses CPU count minus one workers (minimum 1, maximum 16); `--workers N`
+accepts 1–32. Each worker is terminated after 15 seconds per member. The deadline is
+60 seconds + raw bytes / 25 MiB per second + 5 milliseconds per file, capped at one
+hour. `--budget-ms N` overrides it, up to 24 hours. Inventory time counts against
+the deadline. Unscanned members remain HOLD with `scan-run-time-limit`.
+
+Cache entries bind relative path, size, mtime and SHA-256 of all raw bytes, plus a
+scanner/policy version hash. Cache hits rehash bytes before reusing CLEAR or a
+definitive HOLD; transient failures are retried. Git internals/history are never
+cached. Cache files are local receipts, not authenticated attestations. `--verify`
+ignores the cache, rehashes and rescans every member; changed bytes or inventory
+still refuse upload. Concurrent source changes require stopping and rescanning;
+this remains a preflight, not a filesystem snapshot or upload transaction.
+
+For a `.git` directory, the classifier streams all Git objects, including unreachable
+blobs, through `git cat-file --batch-all-objects --batch`. Blob decoding and scanning
+use the same content bounds. Recognized object storage/index bytes and validated
+reference text are hashed instead of being treated as unknown binary, conditional
+on clean history. Other Git metadata is scanned normally. History hits hold Git
+internals as `git-history-match`; `gitHistory.matches` gives blob IDs and paths when
+Git can resolve them, never values. Git errors fail closed as `git-history-error`.
+
+`upload-manifest.tsv` contains only CLEAR members (path, raw bytes, SHA-256);
+`held.tsv` contains paths and reason lists. TSV path/reason cells use JSON quoting
+so tabs and newlines cannot forge rows. Held members are never uploaded and never
+deleted locally. An operator may prepare an archive from only the CLEAR manifest,
+then classify and verify that new archive source separately. The original run's
+HOLD receipt cannot pass `--verify`. A run containing any held member cannot remove
+its source folder. CLEAR remains separate from remote preservation/deletion authority.
+
+`unsupportedEncoding` ranks unsupported members by extension and recognized magic
+(for example Mach-O, ELF, WebAssembly or SQLite). Unknown magic stays `unknown`;
+reports never print raw header bytes. These categories grant no new allowances.
 
 > **After creating/editing this skill it must be REGISTERED** (golem-install / symlink into `~/.claude/skills`) before any agent can invoke it — committed ≠ installed.
