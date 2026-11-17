@@ -905,14 +905,14 @@ STUB
 @test "nightly wrapper kills a prune that outlives its time limit" {
   repo="$(make_fixture_repo nightly-timeout-repo)"
   worktree="$(add_branch_worktree "$repo" nightly-timeout-branch)"
-  wrapper_dir="$TEST_ROOT/slow-git"
-  mkdir -p "$wrapper_dir"
-  printf '#!/usr/bin/env bash\n[[ " $* " == *" fetch "* ]] && sleep 30\nexec "$REAL_GIT" "$@"\n' > "$wrapper_dir/git"
-  chmod +x "$wrapper_dir/git"
+  # The real GC now deliberately stops before this outer alarm. Use a
+  # non-cooperative fixture command to keep testing the wrapper's kill path.
+  GC_SOURCE="$TEST_ROOT/noncooperative-gc"
+  printf '#!/usr/bin/env bash\nsleep 30\n' > "$GC_SOURCE"
+  chmod +x "$GC_SOURCE"
 
   SECONDS=0
   run env GOLEMS_HEAVY_LOCK="$TEST_ROOT/heavy-suite.lock" WORKTREE_GC_NIGHTLY_TIMEOUT=2 \
-    REAL_GIT="$(command -v git)" PATH="$wrapper_dir:$PATH" \
     "$WORKTREE_GC_NIGHTLY" --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 124 ] &&
