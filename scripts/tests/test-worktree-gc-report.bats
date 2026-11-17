@@ -53,6 +53,7 @@ PY
 
 @test "PR lookup failure publishes partial report and classifies healthy sibling" {
   report_fixture
+  commit_fixture_file "$failed_tree" unpublished
   git -C "$failed" config remote.origin.url https://github.com/fixture/failed.git
   git -C "$failed" config url."$TEST_ROOT/a-failed-origin.git".insteadOf https://github.com/fixture/failed.git
   cat > "$TEST_ROOT/bin/gh" <<'SH'
@@ -60,14 +61,24 @@ PY
 case "$*" in
   *'--state merged'*)
     case "$GC_PR_FAILURE" in merged) exit 1;; incomplete) echo '{}';; *) echo '[]';; esac ;;
-  *) [[ "$GC_PR_FAILURE" != open ]] ;;
+  *) [[ "$GC_PR_FAILURE" != open ]] || exit 1; echo '[]' ;;
 esac
 SH
   chmod +x "$TEST_ROOT/bin/gh"
   stage=pr-lookup
   for failure in open merged incomplete; do
     run env GC_PR_FAILURE="$failure" "$WORKTREE_GC" --dry-run
-    assert_partial_report
+    [ "$status" -eq 0 ]
+    python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" "$failed_tree" "$detached" <<'CHECK'
+import json,sys
+r=json.load(open(sys.argv[1]))
+assert r['status']=='partial' and r['error_count']==0 and r['lookup_error_count']==1
+by_path={x['path']:x for x in r['checkouts']}
+assert by_path[sys.argv[2]]['verdict']=='KEEP-undetermined'
+assert 'PR lookup' in by_path[sys.argv[2]]['detail']
+assert by_path[sys.argv[3]]['verdict']=='REMOVE'
+assert r['owners']['z-healthy'][0]['reason']=='KEEP-dirty'
+CHECK
   done
 }
 

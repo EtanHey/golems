@@ -63,6 +63,11 @@ def live_symlink(path):
     return False
 
 
+def budget_expired():
+    deadline = os.environ.get('GC_RUN_DEADLINE')
+    return bool(deadline and time.monotonic() >= float(deadline))
+
+
 def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
     if reason == "ERROR":
         detail = " ".join(detail.split())[:400]
@@ -71,8 +76,10 @@ def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
                                      size_bytes=None, reason=reason, detail=detail,
                                      birth_epoch=None, stage=stage)) + "\n")
         return
+    if budget_expired():
+        return
     try:
-        admin = subprocess.check_output(["git", "-C", path, "rev-parse", "--absolute-git-dir"], text=True).strip()
+        admin = subprocess.check_output(["git", "-C", path, "rev-parse", "--absolute-git-dir"], text=True, timeout=3).strip()
     except (OSError, subprocess.SubprocessError):
         if reason != "KEEP-undetermined":
             raise
@@ -80,7 +87,7 @@ def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
     # Birth time, never mtime: status/fetch must not make stale work look new.
     birth = None
     for flags in (["-f", "%B"], ["-c", "%W"]) if admin else ():
-        value = subprocess.run(["stat", *flags, admin], capture_output=True, text=True)
+        value = subprocess.run(["stat", *flags, admin], capture_output=True, text=True, timeout=2)
         if value.returncode == 0 and value.stdout.strip().isdigit():
             birth = int(value.stdout.strip())
             break
@@ -96,7 +103,8 @@ def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
         pass  # Reporting falls back to repo; the removal gate fails closed.
     size = None
     try:
-        measured = subprocess.run(["du", "-sk", path], capture_output=True, text=True)
+        remaining = max(.01, float(os.environ.get('GC_RUN_DEADLINE', time.monotonic()+30)) - time.monotonic())
+        measured = subprocess.run(["du", "-sk", path], capture_output=True, text=True, timeout=min(30, remaining))
         if measured.returncode == 0:
             size = int(measured.stdout.split()[0]) * 1024
     except (OSError, ValueError, IndexError):
@@ -133,11 +141,16 @@ def finish_report(journal, directory, run_status, publish):
     checkouts = list(by_path.values())
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     error_count = sum(row["reason"] == "ERROR" for rows in owners.values() for row in rows)
-    status = "partial" if error_count or int(run_status) not in (0, 3) else "complete"
+    elapsed = max(0, time.monotonic() - float(os.environ.get('GC_RUN_STARTED', time.monotonic())))
+    exhausted = budget_expired() or bool(os.environ.get('GC_BUDGET_MARKER') and Path(os.environ['GC_BUDGET_MARKER']).exists())
+    lookup_errors = sum('PR lookup' in row['detail'] for row in checkouts if row['verdict'] == 'KEEP-undetermined')
+    status = "partial" if error_count or lookup_errors or exhausted or int(run_status) not in (0, 3) else "complete"
     report = dict(generated_at=now, status=status, error_count=error_count,
-                  exit_status=int(run_status), owners=owners,
+                  exit_status=int(run_status), elapsed_seconds=round(elapsed, 3),
+                  budget_seconds=float(os.environ.get('GC_RUN_BUDGET', 3000)), budget_exhausted=exhausted,
+                  lookup_error_count=lookup_errors, owners=owners,
                   t3_managed_skips=t3_managed_skips, checkouts=checkouts)
-    md = [f"# Worktree GC owner report\n\n{now}; status={status}; errors={error_count}; exit={run_status}\n"]
+    md = [f"# Worktree GC owner report\n\n{now}; status={status}; errors={error_count}; exit={run_status}; elapsed_seconds={elapsed:.3f}; budget_exhausted={exhausted}\n"]
     md.append("## Checkout census\n")
     for row in checkouts:
         md.append(f"- `{row['path']}` · {row['size_bytes']} bytes · {row['verdict']}: {row['detail']}\n")
@@ -219,8 +232,12 @@ if __name__ == "__main__":
         elif command == "census":
             journal, repo, path, branch, verdict, detail = args
             size = None
-            if os.path.isdir(path):
-                result = subprocess.run(["du", "-sk", path], capture_output=True, text=True)
+            if os.path.isdir(path) and not budget_expired():
+                remaining = max(.01, float(os.environ.get('GC_RUN_DEADLINE', time.monotonic()+60)) - time.monotonic())
+                try:
+                    result = subprocess.run(["du", "-sk", path], capture_output=True, text=True, timeout=min(60, remaining))
+                except subprocess.TimeoutExpired:
+                    result = subprocess.CompletedProcess([], 124)
                 if result.returncode == 0:
                     size = int(result.stdout.split()[0]) * 1024
             print("size_bytes=" + str(size))

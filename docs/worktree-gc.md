@@ -164,3 +164,33 @@ T3's built-in cleanup holds an in-process workspace lease that external GC canno
 acquire. Final state, activity, Git and process rechecks narrow but cannot eliminate
 a concurrent provider startup or writer race. No installed-nightly or cross-process
 fencing proof is claimed by fixture tests or a dry-run.
+
+## Runtime bounds and PR metadata
+
+The nightly wrapper defaults to `LIMIT="${WORKTREE_GC_NIGHTLY_TIMEOUT:-3600}"`
+(`scripts/worktree-gc-nightly.sh:92`), arms its alarm, and sends TERM then KILL
+five seconds later on timeout. Raw GC has an internal judgment budget of at most
+3000 seconds; `WORKTREE_GC_BUDGET_SECONDS` can lower it. It also stays below a
+custom nightly timeout, reserving up to 60 seconds there for reporting.
+
+Deadline checks occur between checkout decisions and before destructive calls.
+External commands run under the remaining monotonic deadline; timed-out command
+process groups are stopped. No new target is judged after expiry. Exit 124 means
+budget exhaustion; the atomic report is PARTIAL, preserves prior decisions, and
+includes `elapsed_seconds`, `budget_seconds` and `budget_exhausted`. Publishing
+gets reporting headroom outside the judgment budget. Interrupted deletion intents
+remain visible; this is not a promise to finish a large deletion at the deadline.
+
+PR metadata is cached only within this run, keyed by repository slug (and branch
+for exact lookups), including failures. T3 merge evidence first uses
+`gh pr list --head <branch> --state merged --json headRefOid,baseRefName --limit 5`.
+The legacy repo listing is lazy and bounded at 2001 entries, fetched at most once
+per repository even across checkouts. Larger repositories use cached branch
+lookups instead of enumerating 10000 merged PRs. A capped branch result can prove
+a matching exact head but cannot prove absence of older merge evidence.
+
+Open-PR guards also use a cached one-row branch query, avoiding large upstream
+open-PR enumerations. Lookup errors retain the affected checkout as KEEP-undetermined and contribute
+`lookup_error_count` to a partial report; a known-safe sibling can still receive
+a verdict. Fetch failures still retain the repository. PR cache/timeout receipts
+remain in the ignored per-run scratch area; they are not authority for later runs.

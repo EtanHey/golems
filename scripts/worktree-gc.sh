@@ -204,33 +204,20 @@ path_has_cwd_in() {
   return 1
 }
 
-# Lists open branches and merged PR SHAs once per repo. An origin whose PRs cannot
-# be listed makes every branch worktree KEEP-undetermined.
+# Metadata is lazy and cached on disk by slug, shared across repo subshells.
 load_open_prs() {
+  open_pr_heads="" open_pr_failed="" merged_prs="" merged_pr_failed="" repo_slug=""
   local url
-  local slug
-
-  open_pr_heads=""
-  open_pr_failed=""
-  merged_prs="[]"
-  merged_pr_failed=""
-  # The configured URL, not `remote get-url` (which applies insteadOf rewrites).
   url="$(git -C "$repo_root" config --get remote.origin.url || true)"
   [[ "$url" =~ github\.com[:/]([^/]+/[^/]+)$ ]] || return 0
-  slug="${BASH_REMATCH[1]%.git}"
-  if ! open_pr_heads="$(gh pr list --repo "$slug" --state open --limit 1000 \
-    --json headRefName --jq '.[].headRefName' 2>/dev/null)"; then
-    open_pr_failed="cannot list open PRs for $slug (gh failed)"
-  fi
-  if ! merged_prs="$(gh pr list --repo "$slug" --state merged --limit 10000 \
-      --json headRefName,headRefOid,baseRefName 2>/dev/null)" ||
-      ! merged_prs="$(python3 -c 'import json,sys
-rows=json.load(sys.stdin)
-if not isinstance(rows,list) or len(rows)>=10000: raise ValueError("incomplete PR list")
-for r in rows:
- if not isinstance(r["headRefName"],str) or len(r["headRefOid"])!=40: raise ValueError("invalid PR head")
-print("\n".join(r["headRefName"]+"\t"+r["headRefOid"]+"\t"+r.get("baseRefName", "unknown") for r in rows))' <<< "$merged_prs")"; then
-    merged_pr_failed="cannot list merged PR heads for $slug (gh failed or incomplete)"
+  repo_slug="${BASH_REMATCH[1]%.git}"
+}
+
+load_checkout_open_prs() {
+  [[ -n "$repo_slug" ]] || return 0
+  if ! open_pr_heads="$(python3 "$SCRIPT_DIR/lib/worktree-gc-prs.py" "$PR_CACHE" "$repo_slug" open "$1" 2>&1)"; then
+    open_pr_failed="$open_pr_heads"
+    return 1
   fi
 }
 
@@ -238,7 +225,16 @@ print("\n".join(r["headRefName"]+"\t"+r["headRefOid"]+"\t"+r.get("baseRefName", 
 head_is_merged() {
   local path="$1" branch="$2" pr_branch pr_sha pr_base
   git -C "$path" merge-base --is-ancestor HEAD "$base_ref" && return 0
-  [[ -n "$branch" ]] || return 1
+  [[ -n "$branch" && -n "$repo_slug" ]] || return 1
+  local mode=legacy
+  [[ "${is_t3:-0}" -eq 0 ]] || mode=t3
+  merged_pr_failed=""
+  if ! merged_prs="$(python3 "$SCRIPT_DIR/lib/worktree-gc-prs.py" "$PR_CACHE" "$repo_slug" "$mode" "$branch" 2>&1)"; then
+    merged_pr_failed="$merged_prs"
+    return 1
+  fi
+  local capped=0
+  [[ "$merged_prs" != CAPPED* ]] || capped=1
   while IFS=$'\t' read -r pr_branch pr_sha pr_base; do
     [[ "$pr_branch" == "$branch" && "$pr_sha" =~ ^[0-9a-f]{40}$ ]] || continue
     local default_branch="${base_ref#refs/remotes/origin/}"
@@ -250,6 +246,7 @@ head_is_merged() {
       git -C "$path" merge-base --is-ancestor HEAD "$pr_sha" 2>/dev/null && return 0
     fi
   done <<< "$merged_prs"
+  [[ "$capped" -eq 0 ]] || merged_pr_failed="PR lookup capped for $repo_slug branch $branch"
   return 1
 }
 
@@ -386,6 +383,7 @@ apply_removal() {
       "REMOVE" "eligible prune plan; archive verification required before removal"
     return 0
   fi
+  budget_check || exit 124
   locked_removal "$worktree_path" "$branch_display" "$head_sha"
 }
 
@@ -440,9 +438,11 @@ archive_and_remove() {
       return 0
     fi
   fi
+  budget_check || exit 124
   # A durable intent must succeed before the destructive call (nightly crash evidence).
   emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" "REMOVING" "$archive_detail"
   # Never --force: git itself refuses a tree that became unclean meanwhile.
+  budget_check || exit 124
   if ! git -C "$repo_root" worktree remove "$worktree_path"; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
       "KEEP-undetermined" "git worktree remove refused"
@@ -546,6 +546,7 @@ judge_worktree_block() {
   fi
 
   if [[ -n "$branch_ref" ]]; then
+    load_checkout_open_prs "$branch_display" || true
     if [[ -n "$open_pr_failed" ]]; then
       emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
         "undetermined" "KEEP-undetermined" "$open_pr_failed"
@@ -631,11 +632,11 @@ judge_worktree_block() {
     return 0
   fi
   if [[ "$ahead" -ne 0 ]]; then
-    if [[ -n "$merged_pr_failed" ]]; then
-      emit_row "$repo_name" "$worktree_path" "$branch_display" 0 undetermined KEEP-undetermined "$merged_pr_failed"
-      return 0
-    fi
     if ! head_is_merged "$worktree_path" "$branch_display"; then
+      if [[ -n "$merged_pr_failed" ]]; then
+        emit_row "$repo_name" "$worktree_path" "$branch_display" 0 undetermined KEEP-undetermined "$merged_pr_failed"
+        return 0
+      fi
       emit_row "$repo_name" "$worktree_path" "$branch_display" "0" \
         "$ahead" "KEEP-unpushed" "$ahead commit(s) absent from $base_ref and merged PR heads"
       found_unpushed=1
@@ -705,6 +706,10 @@ judge_worktree_block() {
     return 0
   fi
   if [[ "$ahead" -ne 0 ]] && ! head_is_merged "$worktree_path" "$branch_display"; then
+    if [[ -n "$merged_pr_failed" ]]; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" 0 undetermined KEEP-undetermined "$merged_pr_failed"
+      return 0
+    fi
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" \
       "$ahead" "KEEP-unpushed" "$ahead commit(s) absent from freshly revalidated $base_ref"
     found_unpushed=1
@@ -754,7 +759,9 @@ t3_finished() {
 
 process_worktree_block() {
   local last_verdict="" is_t3=0
+  budget_check || exit 124
   judge_worktree_block
+  budget_check || exit 124
   case "$last_verdict" in
     KEEP-dirty|KEEP-unpushed|KEEP-open-pr|KEEP-reflog|KEEP-detached|KEEP-worktree-refs)
       # Unknown repo, owner, liveness or T3 state never grants cache deletion.
@@ -768,6 +775,7 @@ process_worktree_block() {
       refresh_live_cwds || return 0
       path_has_cwd_in "$tree" "$live_cwds" && return 0
       path_has_cwd_in "$tree" "$agent_cwds" && return 0
+      budget_check || exit 124
       local mode=plan
       [[ "$apply" -eq 0 ]] || mode=apply
       local trim_output trim_line trim_event trim_path trim_detail
@@ -809,10 +817,6 @@ process_repo() {
   repo_name="$(basename "$repo_root")"
   census_paths="$(sed -n 's/^worktree //p' <<< "$census")"
   load_open_prs
-  if [[ -n "$open_pr_failed$merged_pr_failed" ]]; then
-    repo_failure="${open_pr_failed:-$merged_pr_failed}"
-    repo_stage=pr-lookup
-  fi
   refresh_remote_base
   if [[ -z "$base_ref" && -z "$repo_failure" ]]; then
     repo_failure="$base_reason"
@@ -942,6 +946,34 @@ finish_run() {
 }
 trap finish_run EXIT
 
+# 3000s leaves reporting headroom below the wrapper's default 3600s alarm.
+GC_PYTHON="$(command -v python3)"
+read -r GC_RUN_STARTED GC_RUN_DEADLINE GC_RUN_BUDGET < <("$GC_PYTHON" -c '
+import math,os,time
+requested=float(os.environ.get("WORKTREE_GC_BUDGET_SECONDS", "3000"))
+outer=float(os.environ.get("WORKTREE_GC_NIGHTLY_TIMEOUT", "3600"))
+if not math.isfinite(requested) or not math.isfinite(outer) or requested<=0 or outer<=0: raise SystemExit("invalid GC runtime budget")
+limit=min(requested,3000,outer-min(60,outer/2))
+now=time.monotonic(); print(now,now+limit,limit)')
+[[ -n "${GC_RUN_DEADLINE:-}" ]] || exit 2
+GC_BUDGET_MARKER="$REPORT_JOURNAL.budget"
+PR_CACHE="$REPORT_JOURNAL.pr-cache"
+export GC_RUN_STARTED GC_RUN_DEADLINE GC_RUN_BUDGET GC_BUDGET_MARKER
+budget_check() { "$GC_PYTHON" "$SCRIPT_DIR/lib/worktree-gc-budget.py" check; }
+budget_run() { "$GC_PYTHON" "$SCRIPT_DIR/lib/worktree-gc-budget.py" run "$@"; }
+git() { budget_run git "$@"; }
+gh() { budget_run gh "$@"; }
+du() { budget_run du "$@"; }
+lsof() { budget_run lsof "$@"; }
+python3() {
+  # Reporting must survive the deadline; state helper skips expensive size/owner
+  # probes once exhausted. The final atomic publisher is outside judgment budget.
+  if [[ "${1:-}" == "$SCRIPT_DIR/lib/worktree-gc-state.py" ]]; then
+    case "${2:-}" in finish|census|add) command python3 "$@"; return ;; esac
+  fi
+  budget_run python3 "$@"
+}
+
 # A path-only lane close discovers its main root read-only, then validates it.
 # An explicit --repo is never replaced by --path, regardless of argument order.
 if [[ -n "$only_worktree" && -z "$explicit_repo" ]]; then
@@ -971,6 +1003,7 @@ t3_roots="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" roots)"
 found_unpushed=0
 repo_error=0
 for repo in "${repos[@]}"; do
+  budget_check || exit 124
   repo_name="$(basename "$repo")"
   # Do not put process_repo in an if/||: Bash would disable errexit inside
   # every removal gate. A subshell keeps it enabled and isolates repo state.
@@ -986,6 +1019,9 @@ for repo in "${repos[@]}"; do
   set -e
   read -r found_unpushed only_seen < "$repo_state"
   cat "$repo_stderr" >&2
+  if [[ "$repo_rc" -eq 124 || -e "$GC_BUDGET_MARKER" ]]; then
+    exit 124
+  fi
   if [[ "$repo_rc" -ne 0 ]]; then
     repo_error=2
     reason="$(normalize_reason "$(cat "$repo_stderr")")"

@@ -267,6 +267,7 @@ PY
 #!/bin/bash
 case " $* " in
   *' --state merged '*) printf '[{"headRefName":"topic","headRefOid":"%s","baseRefName":"%s"}]\n' "$PR_SHA" "$PR_BASE" ;;
+  *) echo '[]' ;;
 esac
 SH
   chmod +x "$TEST_ROOT/bin/gh"

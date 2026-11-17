@@ -84,7 +84,7 @@ def files_unused(target):
 
 
 def event(action, target, detail, **extra):
-    print(json.dumps(dict(action=action, path=str(target), detail=detail, **extra)))
+    print(json.dumps(dict(action=action, path=str(target), detail=detail, **extra)), flush=True)
 
 
 def disposable(root, target):
@@ -124,6 +124,10 @@ def trim(root, apply):
                 if not disposable(root, target) or not files_unused(target):
                     event('KEEP-live', target, 'build output changed or became live')
                     continue
+                if os.environ.get('GC_RUN_DEADLINE') and time.monotonic() >= float(os.environ['GC_RUN_DEADLINE']):
+                    event('KEEP-budget', target, 'run deadline reached before trim')
+                    return
+                event('TRIMMING', target, 'exact output deletion intent; interruption may leave a partial target')
                 try:
                     shutil.rmtree(target)
                 except OSError as error:

@@ -787,7 +787,14 @@ make_github_origin() {
   other="$(add_branch_worktree "$repo" no-pr-branch)"
   stub="$TEST_ROOT/gh-stub"
   mkdir -p "$stub"
-  printf '#!/usr/bin/env bash\n[[ " $* " == *" pr list "* && " $* " == *" --repo fixture/open-pr "* ]] || exit 9\ncase " $* " in *" --state merged "*) echo "[]";; *) echo open-pr-branch;; esac\n' > "$stub/gh"
+  cat > "$stub/gh" <<'STUB'
+#!/usr/bin/env bash
+[[ " $* " == *" pr list "* && " $* " == *" --repo fixture/open-pr "* ]] || exit 9
+case " $* " in
+  *" --state merged "*) echo '[]' ;;
+  *) printf '[{"headRefName":"open-pr-branch"}]\n' ;;
+esac
+STUB
   chmod +x "$stub/gh"
 
   run env PATH="$stub:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"

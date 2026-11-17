@@ -14,7 +14,7 @@ squash_fixture() {
   mkdir -p "$TEST_ROOT/bin"
   cat > "$TEST_ROOT/bin/gh" <<'STUB'
 #!/usr/bin/env bash
-[[ " $* " == *" --state merged "* ]] || exit 0
+[[ " $* " == *" --state merged "* ]] || { echo "[]"; exit 0; }
 [[ "${GH_FAIL:-0}" == 0 ]] || exit 1
 printf '[{"headRefName":"topic","headRefOid":"%s","baseRefName":"main"}]\n' "$MERGED_SHA"
 STUB
