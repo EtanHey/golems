@@ -17,8 +17,8 @@ or wants durable insights/takeaways from a video instead of QA findings.
 ## Execution Contract
 
 **Debrief/review, including the exhaustive override that process.md sends here:** the readers are
-gatherers, never Claude helpers or the runner: SKILL.md § Execution routing order (Antigravity `gemini.gather.visual`
-`delegate_task` → `visual-batch.py` / `visual-gatherer` → TOOLING FAILURE), with its wait budgets. A seat
+gatherers, never the runner: SKILL.md § Execution routing order (tool-free Claude image reader
+→ `visual-batch.py` / `visual-gatherer` → TOOLING FAILURE), with its wait budgets. Gemini is explicit-only. A seat
 with no dispatch tool runs `visual-batch.py` in its own shell; if that fails it returns NEEDS_READERS with
 the ordered frame batches, or reports TOOLING FAILURE with the unread frame IDs. It never reads the
 frames itself; the judge spot-checks ≤2 frames per reported finding. The reader fan-out and single-reader
@@ -35,12 +35,12 @@ the parent dispatches readers and synthesizes their evidence. If neither can
 dispatch, use the single-reader contract in `qa-video-runner.md`, disclose
 `helpers 0 (dispatch unavailable)`, and still read every frame for exhaustive mode.
 Each reader reads the images itself and returns text only. The parent stays text-only
-when helpers are available. `visual-batch.py` (driving `visual-gather.py`) / `visual-gatherer` are optional
+when helpers are available. `visual-batch.py` (tool-free Claude by default) / `visual-gatherer` are optional
 pre-sorting: a lead, never evidence; do not count pre-sort as reader fan-out.
 `debrief.py` runs no helper unless you pass `--presort`.
 NEVER hand-roll a shell loop over sheets; helper shells must be Bash 3.2 safe.
 
-Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
+Only when Etan **explicitly** asks for a **visible Gemini worker**, the lead opens a
 Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
 same loop in its own shell and views the images itself, like the runner. **Never open a terminal pane**
 or type into another surface to run media tools; never `send_to` media commands.

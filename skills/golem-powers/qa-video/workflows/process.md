@@ -28,12 +28,12 @@ Default pipeline: one `claude.judgment` judge, a delegate child of the requestin
 (on the machine holding the recording; SKILL.md § Execution routing gives the exact calls), and
 `Agent(video-gems)` for gems. The judge is "the QA seat" and "you" below. It runs the packaged
 extraction scripts in its **own shell** (a script, not a read), then gathers: gatherers read every
-sheet and frame and return text with tile, frame path and `pts_s` — T3 `delegate_task` to
-Antigravity (`gemini.gather.visual`), else `scripts/visual-batch.py` (driving visual-gather.py), else
+sheet and frame and return text with tile, frame path and `pts_s` — tool-free Claude image reader
+(`claude-image-helper.py`), else `scripts/visual-batch.py` (same Claude reader by default), else
 TOOLING FAILURE; never the judge reading instead, except mandatory pointer evidence below. The judge connects text over time
 (what changed across a cue, whether an element's state carries across windows) and spot-checks at most
 2 full-size frames per reported finding, plus every mandatory pointer frame. Gatherer text with frame refs is the evidence the judge
-judges; Gemini never forms a verdict. `qa-video-runner` is only the contract for a judge with no
+judges; gatherers never form a verdict. `qa-video-runner` is only the contract for a judge with no
 dispatch tool: it still gathers with visual-batch.py and returns NEEDS_READERS if that fails.
 NEVER hand-roll a shell loop over sheets; shells must be Bash 3.2 safe.
 Gatherers are leaf workers and never dispatch. The judge may use `Agent(visual-gatherer)` for
@@ -48,7 +48,7 @@ a few frames on a Claude terminal seat.
 > retry it serially. If the retry still fails, mark the item INCONCLUSIVE with a tooling note;
 > never record a verdict from the failed read.
 
-Only when Etan **explicitly** asks for a **visible worker**, the lead opens a
+Only when Etan **explicitly** asks for a **visible Gemini worker**, the lead opens a
 Gemini worker using `agy --agent video-qa` (golems#563). That worker owns the
 same loop in its own shell and views the images itself (Etan's explicit request). **Never open a terminal pane**
 or type into another surface to run media tools; never `send_to` media commands.
@@ -183,9 +183,9 @@ is `DENSE_MAX_GB=5` by default; see provenance.md for retention controls.
 batches of ≤15 sheets (each with the adjacent window's last sheet) and gather, first route that works
 (SKILL.md § Execution routing has the exact calls):
 
-1. T3: one `delegate_task` per batch to `antigravity` / `gemini-3.8-flash` / `thinking_level: "high"`,
-   all in one turn; save each returned text to `$MEDIADIR/visual/gather-b<N>.md`.
-2. Otherwise, or when Antigravity is out: `bash "$SCRIPTS/default.sh" gather "$MEDIADIR"`, which runs
+1. Tool-free Claude image reader (`claude-image-helper.py`), pinned to `claude.subagent.cheap`;
+   use the T3 wrapper example in SKILL.md and save returned text to `$MEDIADIR/visual/gather-b<N>.md`.
+2. Without dispatch, or if the wrapper fails: `bash "$SCRIPTS/default.sh" gather "$MEDIADIR"`, which runs
    the packaged batch driver (one sheet per call, default 3 concurrent, hard cap 4) in a fresh batch
    workdir inside `$MEDIADIR`, so coverage-count.sh finds its `visual/findings.jsonl`:
 

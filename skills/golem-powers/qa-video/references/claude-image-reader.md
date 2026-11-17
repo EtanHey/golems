@@ -1,6 +1,6 @@
-# Tool-free Claude reader (opt-in eval adapter)
+# Tool-free Claude reader (default gatherer)
 
-This adapter leaves the default Gemini gathering route unchanged. An evaluator may select `scripts/claude-image-helper.py` with visual-batch.py's existing `--helper` and a concrete `--model`. It attaches PNG/JPEG bytes through stream-json with `--tools ""`, no MCP and no Read tool. The historical kit's Claude reader required Read and is not an image-only replacement.
+The default gatherer is `scripts/claude-image-helper.py`. `visual-batch.py` selects it automatically and resolves the concrete `claude.subagent.cheap` model from `standards/model-roles.json`; an explicit `--model` wins. Direct helper calls must pass that resolved model. It attaches PNG/JPEG bytes through stream-json with `--tools ""`, no MCP and no Read tool. The historical kit's Claude reader required Read and is not an image-only replacement. A brief naming Gemini explicitly may select `--helper scripts/visual-gather.py --model <named concrete ID>`; Gemini is never an automatic fallback.
 
 The helper creates a disposable HOME and settings, carries no OAuth/config from the host, forwards only an explicitly provided ANTHROPIC_API_KEY and optional ANTHROPIC_BASE_URL, and retains session paths in helper-receipts. No real key should be written in an eval repo. It does not load any key file. Startup policy is the evaluator's responsibility: audit the retained session with an empty tool/MCP/instruction allowlist before admitting a paid run. The image is task data, never instructions.
 
@@ -9,7 +9,7 @@ A no-key startup may PASS isolation while inference fails authentication. That d
 Example (only after independent cost and startup admission):
 
 ```sh
-python3 scripts/visual-batch.py --helper scripts/claude-image-helper.py --model "$EVAL_READER_MODEL" --workdir /absolute/eval/work --question 'Visible text only' /absolute/eval/frame.png
+python3 scripts/visual-batch.py --workdir /absolute/eval/work --question 'Visible text only' /absolute/eval/frame.png
 ```
 
 The helper accepts the same timeout range as visual-batch (0 < seconds <= 600). The provider bound is strictly shorter: it reserves one quarter of the remaining time, up to one second, for process cleanup and receipt writing. It also respects QA_VISUAL_DEADLINE. Timeout or SIGTERM stops and reaps the owned provider process group; the receipt names PROVIDER_TIMEOUT or HELPER_TERMINATED. Malformed responses have named failures and partial coverage, without a traceback or raw provider diagnostics. Known supplied-key text, including JSON-escaped text, is refused before output and redacted from the receipt. This does not replace the independent startup/session audit.

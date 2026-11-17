@@ -19,6 +19,7 @@ if [ "${1:-}" = "plan" ]; then
   [ -z "$MUST_READ" ] || [ "$MUST_READ" = --must-read ] || { echo 'plan: expected --must-read' >&2; exit 2; }
   case "$MODE" in qa|debrief|review) ;; *) echo "plan: mode must be qa, debrief or review (gems: Agent(video-gems))" >&2; exit 2;; esac
   JUDGE_MODEL="$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.judgment --field model 2>/dev/null || echo '<claude.judgment model>')"
+  READER_MODEL="$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.subagent.cheap --field model)"
   if [ "$MODE" = qa ] || [ "$MUST_READ" = --must-read ]; then
     mkdir -p "$WORKDIR"
     touch "$WORKDIR/.qa-mode"
@@ -53,7 +54,7 @@ EOF
   python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$WORKDIR"
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
 Gather (gatherers read every sheet; you never open one), first that works:
-  1. T3: per batch of <=15 sheets from dense/index.tsv, all in one turn:
+  1. Tool-free Claude reader: per batch of <=15 sheets from dense/index.tsv:
 EOF
   else
     cat <<EOF
@@ -65,12 +66,12 @@ EOF
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" $MODE -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode $MODE $MUST_READ
   (exit STILLS_READY: read transcript.srt, plan.json and debrief.md; the moment-NN-start.jpg / moment-NN-midpoint.jpg stills go to gatherers)
 Gather (gatherers read every still; you never open one), first that works:
-  1. T3: up to 24 stills means two batches (<=15 per batch), dispatched in one turn:
+  1. Tool-free Claude reader: up to 24 stills means two batches (<=15 per batch):
 EOF
   fi
   cat <<EOF
-     delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "antigravity", model: "gemini-3.8-flash", options: {thinking_level: "high"}}, task: "Read and follow $WORKDIR/briefs/gather-bN.md"})
-  2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"$([ "$MODE" = qa ] || printf ' "" %s-gather "%s"/moment-*.jpg' "$MODE" "$WORKDIR")   (visual-batch.py, headless Gemini via agy)
+     delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "claudeAgent", model: "$READER_MODEL", options: {fastMode: false}}, task: "Read and follow $WORKDIR/briefs/gather-bN.md; run $SCRIPTS/claude-image-helper.py with --model $READER_MODEL, one image per call within the remaining deadline; return text only"})
+  2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"$([ "$MODE" = qa ] || printf ' "" %s-gather "%s"/moment-*.jpg' "$MODE" "$WORKDIR")   (visual-batch.py, tool-free Claude reader)
   (For debrief/review, moment-*.jpg includes both start and midpoint files.)
   3. TOOLING FAILURE with the raw error path; unread windows stay NOT DETERMINED. Never read the frames instead.
 Wait budgets, enforced by bounded waits (never by a completion wake): 300 s per gatherer call, the gather stage gets
@@ -89,6 +90,7 @@ Pin the first pointer crop per item via 'reference'; use 'sweep' briefs for ever
 Every named value and negative gatherer claim needs a judge frame; indicator-chosen frames need >=1s render lag.
 Briefs pass verbatim narration or transcript path and say 'look where the pointer is'.
 Explicit gatherer model/exclusion in the requesting brief wins over the defaults above; never use an excluded fallback.
+Gemini only when explicitly named: visual-batch.py --helper "$SCRIPTS/visual-gather.py" --model <named concrete ID>.
 Too small: crop.sh or re-densify, then gather again. Missing measurement script: NOT DETERMINED + file a row.
 EOF
   exit 0
@@ -98,8 +100,8 @@ if [ "${1:-}" = "gather" ]; then
   [ $# -ge 2 ] || { echo "usage: default.sh gather <workdir> [index.tsv|\"\"] [step] [image ...]" >&2; exit 2; }
   WORKDIR="$2"; INDEX="${3:-}"; STEP="${4:-gather-01}"
   [ $# -ge 4 ] && shift 4 || shift $#
-  # Wait budgets (w70, 2026-11-12): a 48-frame Gemini pass took 16.8 min (~21 s/frame), and real sheets needed
-  # more than 120 s; 300 s per call leaves ~2.5x headroom for a 6-frame call. The stage stops at its budget.
+  # Historical Gemini timings informed these deadlines; Claude latency remains unmeasured.
+  # The stage stops at its budget, regardless of provider.
   BUDGET="--budget-seconds ${GATHER_BUDGET_S:-600} --timeout ${GATHER_CALL_S:-300}"
   QUESTION='Per tile: cursor target, before/after UI state, visible defects, with zero-based tile indexes. Mark unclear tiles NOT DETERMINED; never invent timestamps.'
   if [ $# -gt 0 ]; then

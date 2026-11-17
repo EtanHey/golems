@@ -20,6 +20,7 @@ state = Path(__file__).with_name('calls')
 if sys.argv[1:2] == ['models']:
     print('gemini-3.8-flash-high\tGemini 3.8 Flash (High)'); sys.exit(0)
 prompt = sys.argv[sys.argv.index('--print') + 1]
+Path(__file__).with_name('selected-model').write_text(sys.argv[sys.argv.index('--model') + 1])
 paths = json.loads(prompt[prompt.index('{"question"'):])['image_paths']
 calls = int(state.read_text()) if state.exists() else 0
 state.write_text(str(calls + 1))
@@ -55,6 +56,7 @@ def release(tmp_path, truncate_first=0, roles=True):
 
 def batch(scripts, sheet, env, *extra):
     return subprocess.run([sys.executable, str(scripts / 'visual-batch.py'), '--question', 'facts',
+                           '--helper', str(scripts / 'visual-gather.py'),
                            '--workdir', str(sheet.parent.parent / 'work'), '--budget-seconds', '60',
                            *extra, str(sheet)], env=env, capture_output=True, text=True, timeout=120)
 
@@ -68,6 +70,14 @@ def test_setup_succeeds_from_a_non_git_release_copy(tmp_path):
     result = batch(scripts, sheet, env)
     assert 'SETUP_FAILED' not in result.stderr and 'not a git repository' not in result.stderr
     assert result.returncode == 0, result.stdout + result.stderr
+    assert summary(sheet)['counts']['READ'] == 1
+
+
+def test_explicit_gemini_brief_honours_concrete_model(tmp_path):
+    scripts, sheet, env, bin_dir = release(tmp_path)
+    result = batch(scripts, sheet, env, '--model', 'gemini-explicit-fixture')
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (bin_dir / 'selected-model').read_text() == 'gemini-explicit-fixture'
     assert summary(sheet)['counts']['READ'] == 1
 
 

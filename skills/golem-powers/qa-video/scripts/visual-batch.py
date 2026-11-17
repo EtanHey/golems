@@ -355,6 +355,13 @@ def run(args, sheets):
     except (OSError, ValueError) as error:
         status, cause = 'SETUP_FAILED', 'TRANSCRIPT_WINDOW_SETUP_FAILED: ' + visual.safe_cause(str(error), work)
     progress()
+    if status == 'RUNNING' and args.helper.resolve() == Path(__file__).resolve().with_name('claude-image-helper.py') and not model:
+        try:
+            model = json.loads(visual.roles_file().read_text())['roles']['claude.subagent.cheap']['model']
+            if not isinstance(model, str) or not model.strip():
+                raise ValueError('claude.subagent.cheap model must be a concrete model ID')
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            status, cause = 'SETUP_FAILED', 'CLAUDE_MODEL_SETUP_FAILED: ' + visual.safe_cause(str(error), work)
     if status == 'RUNNING' and args.helper.resolve() == Path(__file__).resolve().with_name('visual-gather.py') and not model:
         try:
             model = visual.resolve_model(deadline=deadline)[1]
@@ -457,7 +464,8 @@ def main():
     parser.add_argument('--timeout', type=float, default=90)
     parser.add_argument('--progress-prefix', default='', help='Parent phase context for progress.txt')
     parser.add_argument('--model', help='Already resolved concrete model ID')
-    parser.add_argument('--helper', type=Path, default=Path(__file__).with_name('visual-gather.py'))
+    parser.add_argument('--helper', type=Path, default=Path(__file__).with_name('claude-image-helper.py'),
+                        help='Default: tool-free Claude reader; visual-gather.py is explicit Gemini only')
     visual.transcript.add_arguments(parser)
     parser.add_argument('sheets', nargs='*', type=Path)
     args = parser.parse_args()

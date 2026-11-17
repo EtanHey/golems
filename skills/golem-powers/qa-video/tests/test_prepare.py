@@ -128,8 +128,8 @@ def test_skill_owns_iterative_loop():
         assert 'never open a terminal pane' in text.lower()
         assert 'video-qa' in text
         assert 'qa-video-runner' in text and 'video-gems' in text
-        assert 'visual-gather.py' in text
-        assert 'explicitly' in text and 'visible worker' in text
+        assert 'claude-image-helper.py' in text or 'tool-free Claude' in text
+        assert 'explicitly' in text and 'visible Gemini worker' in text
         assert 'never read images' not in text.lower() and 'for every sheet/frame' not in text
         if relative == 'workflows/gems.md':
             # Exhaustive gems keeps its reader fan-out (out of the 2026-11-12 QA split's scope).
@@ -137,7 +137,7 @@ def test_skill_owns_iterative_loop():
         else:
             # 2026-11-12 (Etan via orc): gatherers read the frames; one Opus judge judges their text.
             assert 'reads the images itself' not in text and 'a lead, never evidence' not in text
-            assert 'gemini-3.8-flash' in text and 'TOOLING FAILURE' in text
+            assert 'claude-image-helper.py' in text and 'TOOLING FAILURE' in text
             assert 'spot-check' in text.lower() and 'Never fall back to' in text
         assert 'run-step.sh' in text and '.log' in text and '.pid' in text and '.exit' in text
         assert 'run_command' in text and 'view_file' in text
@@ -158,10 +158,10 @@ def test_one_judge_child_gatherers_read_the_frames():
                  'default.sh plan', 'read the frames yourself'):
         assert term in head, term
     for term in ('where the recording lives', 'Never copy the recording', 'environmentId',
-                 'providerInstanceId: "antigravity", model: "gemini-3.8-flash", options: {thinking_level: "high"}',
+                 'claude-image-helper.py', 'resolved claude.subagent.cheap model',
                  'providerInstanceId: "claudeAgent"', 'fastMode: false', 'Never `t3_thread_launch`',
                  'TOOLING FAILURE', 'missing measurement', 'scripts/crop.sh',
-                 'Gemini never forms a verdict', 'no single runner', 'NEEDS_READERS'):
+                 'gatherers never form a verdict', 'no single runner', 'NEEDS_READERS'):
         assert term in skill, term
     for gone in ('fans out itself', 'their reads count as viewed', 'never fewer than 2', 'Each helper\n**reads'):
         assert gone not in skill, gone
@@ -256,7 +256,7 @@ def test_plan_prints_the_selected_modes_route(tmp_path):
         for sweep in ('coverage.sh', 'scene-cues.sh', 'dense-windows.sh'):
             assert sweep not in out.stdout, (mode, sweep)
     for out in (qa, plan('debrief')):
-        assert 'gemini-3.8-flash' in out.stdout and 'TOOLING FAILURE' in out.stdout
+        assert 'claude-image-helper.py' in out.stdout and 'TOOLING FAILURE' in out.stdout
         assert '300 s per gatherer call' in out.stdout and 'PARTIAL' in out.stdout
         assert 'timeoutMs:300000' in out.stdout and 'task_cancel' in out.stdout and 't3_thread_wait' in out.stdout
         assert 'A fully stalled stage still yields PARTIAL at the deadline' in out.stdout
@@ -269,7 +269,7 @@ def test_exhaustive_debrief_review_never_ends_in_a_self_reader():
     root = SCRIPT.parents[1]
     gems = (root/'workflows/gems.md').read_text()
     head = gems.split('## Visual-first exhaustive')[0]
-    for term in ('Debrief/review, including the exhaustive override', 'never Claude helpers or the runner',
+    for term in ('Debrief/review, including the exhaustive override', 'never the runner', 'tool-free Claude image reader',
                  'visual-batch.py', 'NEEDS_READERS', 'TOOLING FAILURE', 'It never reads the\nframes itself',
                  '**pure gems only**'):
         assert term in head, term
