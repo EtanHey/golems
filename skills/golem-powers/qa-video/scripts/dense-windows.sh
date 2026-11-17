@@ -70,6 +70,8 @@ printf '%s' "$TILE_W" | grep -Eq '^[0-9]+$' || die "DENSE_TILE_WIDTH must be an 
 command -v ffmpeg >/dev/null 2>&1 || die "ffmpeg not found on PATH"
 [ -f "$VIDEO" ] || die "video not found: $VIDEO"
 [ -f "$CUES" ] || die "cues file not found: $CUES"
+SCRIPTS="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+python3 "$SCRIPTS/must-read.py" guard "$CUES" "$OUTDIR" "$FPS" "$PRE" "$POST" || exit 2
 
 # Duration from ffmpeg's own header (ffprobe is not guaranteed alongside it).
 DURATION="$(ffmpeg -hide_banner -i "$VIDEO" 2>&1 \

@@ -30,9 +30,9 @@ Default pipeline: one `claude.judgment` judge, a delegate child of the requestin
 extraction scripts in its **own shell** (a script, not a read), then gathers: gatherers read every
 sheet and frame and return text with tile, frame path and `pts_s` — T3 `delegate_task` to
 Antigravity (`gemini.gather.visual`), else `scripts/visual-batch.py` (driving visual-gather.py), else
-TOOLING FAILURE; never the judge reading instead. The judge judges that text, connects it over time
+TOOLING FAILURE; never the judge reading instead, except mandatory pointer evidence below. The judge connects text over time
 (what changed across a cue, whether an element's state carries across windows) and spot-checks at most
-2 full-size frames per reported finding. Gatherer text with frame refs is the evidence the judge
+2 full-size frames per reported finding, plus every mandatory pointer frame. Gatherer text with frame refs is the evidence the judge
 judges; Gemini never forms a verdict. `qa-video-runner` is only the contract for a judge with no
 dispatch tool: it still gathers with visual-batch.py and returns NEEDS_READERS if that fails.
 NEVER hand-roll a shell loop over sheets; shells must be Bash 3.2 safe.
@@ -155,7 +155,10 @@ SCRIPTS="<qa-video skill dir>/scripts"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" "scene${SUFFIX}" -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
 # Poll logs/scene${SUFFIX}.exit; require 0, then append its TSV:
 cat "$WORKDIR/logs/scene${SUFFIX}.log" >> "$WORKDIR/cues.tsv"
-bash "$SCRIPTS/run-step.sh" "$WORKDIR" "dense${SUFFIX}" -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$MEDIADIR/dense" 10
+if [ "$WORKDIR" != "$MEDIADIR" ]; then cp "$WORKDIR/cues.tsv" "$MEDIADIR/cues.tsv"; fi
+python3 "$SCRIPTS/must-read.py" plan "$MEDIADIR"
+python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$MEDIADIR"
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" "dense${SUFFIX}" -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$MEDIADIR/cues.tsv" "$MEDIADIR/dense" 10
 # Poll logs/dense${SUFFIX}.exit; require 0 before Phase 4.
 ```
 
@@ -268,12 +271,12 @@ for each pass so earlier citations remain valid:
 # Example only: choose these bounds from the actual unclear moment.
 printf '12.1\t12.6\tunclear-click-target\n' > "$WORKDIR/refine-cues-01.tsv"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues-01.tsv" \
-  "$MEDIADIR/refine-01" 20 0 0
+  "$MEDIADIR/refine-01" 20 1 2
 ```
 
 Poll `logs/refine-01.exit` and require `0` before gathering the new sheets.
-The final `0 0` disables cue padding, making this exactly one start/end/fps
-window; a `refine*` directory records `source=refine`. A gatherer reads the new sheets (a delegate_task batch, or
+QA retains pre=1/post=2 padding; a `refine*` directory records `source=refine`.
+A gatherer reads the new sheets (a delegate_task batch, or
 `default.sh gather "$MEDIADIR" <new index.tsv> refine-01-gather`); use that pass's `frames.tsv` for exact tile timestamps. Repeat at different bounds if needed.
 If source-rate sampling or source resolution cannot resolve the moment, mark it **NOT
 DETERMINED**, explain the limitation and request better evidence. Higher output
@@ -345,7 +348,11 @@ unmodified TSV rows for every FAIL, not summaries. It reads only active files na
 `inspected.tsv` under the run, including `$MEDIADIR/inspected.tsv` and `logs/inspected.tsv`;
 `inspected-quarantine-*.tsv` is excluded. Keep `scripts/inspected.sh` as the only writer.
 If it exits nonzero, re-inspect or downgrade the named item to INCONCLUSIVE, rewrite
-the report and rerun in this turn; never fake a row. Run `/qa-verdict-gate` before the verdict.
+the report and rerun in this turn; never fake a row. Before `/qa-verdict-gate`, run
+`must-read-check.sh "$MEDIADIR" <qa-report.md>`: the judge opens all mandatory full-size frames,
+logs `judge:` inspections, crops the pointer region and writes the report rows in
+[must-read.md](../references/must-read.md). An item begins at its first pointing line;
+INCONCLUSIVE cannot bypass these reads. A coverage downgrade permits only COVERAGE FAIL.
 
 ## Phase 6: Parent Stores in BrainLayer
 

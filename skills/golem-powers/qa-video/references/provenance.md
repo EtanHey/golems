@@ -7,7 +7,7 @@ Shell entry points support Bash 3.2 and call Python 3 / ffmpeg / ffprobe.
 bash scripts/source-fps.sh "$VIDEO"
 bash scripts/coverage.sh "$VIDEO" "$WORKDIR"
 bash scripts/dense-windows.sh "$VIDEO" cues.tsv "$WORKDIR/dense" 50
-QA_FRAME_SOURCE=refine bash scripts/dense-windows.sh "$VIDEO" refine.tsv "$WORKDIR/refine" 20 0 0
+QA_FRAME_SOURCE=refine bash scripts/dense-windows.sh "$VIDEO" refine.tsv "$WORKDIR/refine" 20 1 2
 bash scripts/crop.sh "$FRAME" 100 200 300 400 "$WORKDIR/detail.png"
 bash scripts/inspected.sh "$WORKDIR" "$FRAME" before F1
 bash scripts/coverage-count.sh "$WORKDIR"
@@ -46,7 +46,7 @@ sheet_file  tile  t_s  frame  pts_s  source  sheet  sha256  repeat_of  crop_of
 ```
 
 The legacy three-column prefix stays unchanged. `frame` is absolute; `pts_s`
-equals `t_s` in seconds to three decimals. `source` is coverage/dense/refine/crop.
+equals `t_s` in seconds to three decimals. `source` is coverage/dense/refine/crop/must-read.
 `sheet` aliases `sheet_file`; sheet/tile are empty without a sheet. SHA256 hashes
 the exact image file bytes. `repeat_of` points to the first identical SHA in run
 append order, never a perceptual match. Crops inherit PTS and add `crop_of`.
