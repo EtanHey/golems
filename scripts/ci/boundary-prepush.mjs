@@ -6,8 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 const source = join(dirname(fileURLToPath(import.meta.url)), '..');
+// A path below a device cannot exist, including in a repository controlled by
+// the push author. Ignore both local info/grafts and inherited graft overrides.
+const noGrafts = '/dev/null/boundary-no-grafts';
+// Read ancestry from commit objects, never an on-disk commit-graph cache.
+const gitFlags = ['--no-replace-objects', '-c', 'core.commitGraph=false'];
+const gitEnv = { ...process.env, GIT_GRAFT_FILE: noGrafts, GIT_NO_REPLACE_OBJECTS: '1' };
 const gitInput = (input, ...args) => {
-  const r = spawnSync('git', ['--no-replace-objects', ...args], { input, encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
+  const r = spawnSync('git', [...gitFlags, ...args], { env: gitEnv, input, encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
   if (r.status !== 0) throw new Error('git evidence unavailable');
   return r.stdout;
 };
@@ -34,9 +40,9 @@ function parentHistory(pushURL) {
     // or inherited Git environment may supply the publication evidence.
     scratch = mkdtempSync(join(tmpdir(), 'boundary-parent-'));
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
-    Object.assign(env, { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_TERMINAL_PROMPT: '0', GIT_NO_LAZY_FETCH: '1' });
+    Object.assign(env, { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_TERMINAL_PROMPT: '0', GIT_NO_LAZY_FETCH: '1', GIT_GRAFT_FILE: noGrafts, GIT_NO_REPLACE_OBJECTS: '1' });
     const isolated = (...args) => {
-      const r = spawnSync('git', ['--no-replace-objects', '-C', scratch, ...args], {
+      const r = spawnSync('git', [...gitFlags, '-C', scratch, ...args], {
         env, encoding: 'utf8', timeout: 60_000, maxBuffer: 128 * 1024 * 1024,
       });
       if (r.status !== 0) throw new Error('parent history unavailable');
@@ -54,24 +60,24 @@ function parentHistory(pushURL) {
   } finally { if (scratch) rmSync(scratch, { recursive: true, force: true }); }
 }
 let destinationExclusions, destinationEvidenceUnavailable = false;
-function newRefExclusions() {
+function advertisedExclusions() {
   if (destinationExclusions) return destinationExclusions;
   destinationExclusions = [];
   // Check Git's second hook argument for another fetch-side URL rewrite before
   // reading its advertisement. Configured transport helpers remain trusted.
   // Local default branches and refs/remotes/* never prove publication there.
   const destination = process.argv[3];
-  const resolved = destination && spawnSync('git', ['--no-replace-objects', 'ls-remote', '--get-url', '--', destination], {
-    encoding: 'utf8', timeout: 15_000, maxBuffer: 1024 * 1024,
+  const resolved = destination && spawnSync('git', [...gitFlags, 'ls-remote', '--get-url', '--', destination], {
+    env: gitEnv, encoding: 'utf8', timeout: 15_000, maxBuffer: 1024 * 1024,
   });
   if (!resolved || resolved.status !== 0 || resolved.stdout.trim() !== destination) {
     destinationEvidenceUnavailable = true;
     console.error('boundary-prepush: destination URL rewritten or unavailable; scanning full history');
     return destinationExclusions;
   }
-  const advertised = spawnSync('git', ['--no-replace-objects', 'ls-remote', '--refs', '--', destination], {
+  const advertised = spawnSync('git', [...gitFlags, 'ls-remote', '--refs', '--', destination], {
     encoding: 'utf8', timeout: 15_000, maxBuffer: 128 * 1024 * 1024,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    env: { ...gitEnv, GIT_TERMINAL_PROMPT: '0' },
   });
   const rows = advertised?.stdout?.trim().split('\n').filter(Boolean) ?? [];
   if (!advertised || advertised.status !== 0 || rows.some(row => !/^[a-f0-9]{40,64}\trefs\/\S+$/.test(row))) {
@@ -85,9 +91,9 @@ function newRefExclusions() {
   if (!tips.length) return destinationExclusions;
   // Batch the local check: large destinations can advertise thousands of refs.
   // Disable promisor fetching so an absent tip remains absent, without network.
-  const local = spawnSync('git', ['--no-replace-objects', 'cat-file', '--batch-check=%(objectname) %(objecttype)'], {
+  const local = spawnSync('git', [...gitFlags, 'cat-file', '--batch-check=%(objectname) %(objecttype)'], {
     input: tips.map(sha => sha + '^{commit}\n').join(''), encoding: 'utf8',
-    env: { ...process.env, GIT_NO_LAZY_FETCH: '1' }, timeout: 15_000, maxBuffer: 128 * 1024 * 1024,
+    env: { ...gitEnv, GIT_NO_LAZY_FETCH: '1' }, timeout: 15_000, maxBuffer: 128 * 1024 * 1024,
   });
   if (local.status !== 0) return destinationExclusions;
   const objects = local.stdout.trim().split('\n');
@@ -99,7 +105,7 @@ function newRefExclusions() {
   }
   return destinationExclusions;
 }
-// The public policy uses quoted scalars and POSIX ERE character classes.
+// The public policy uses quoted scalars and POSIX character classes.
 // Reject unknown classes rather than silently weakening their translation.
 function regex(value) {
   const classes = { alnum: 'a-zA-Z0-9', alpha: 'a-zA-Z', digit: '0-9', space: '\\s', cntrl: '\\x00-\\x1f\\x7f' };
@@ -149,17 +155,16 @@ try {
     const [, head, , remote] = fields;
     if (/^0+$/.test(head)) continue;
     git('cat-file', '-e', head + '^{commit}');
-    // Destination advertisements define the new-ref baseline in both modes.
-    // Verified parent evidence can additionally exempt already-public history.
-    // Existing refs use Git's advertised old tip, even for non-ancestor updates.
-    const exclusions = /^0+$/.test(remote) ? newRefExclusions() : ['^' + remote];
+    // Fresh destination tips exempt already-published history on every ref.
+    // Git's old tip remains a boundary even when the advertisement is unavailable.
+    // Verified parent evidence additionally exempts the fetched public graph.
+    const exclusions = [...advertisedExclusions(), ...(/^0+$/.test(remote) ? [] : ['^' + remote])];
     const commits = gitInput([head, ...exclusions].join('\n') + '\n', 'rev-list', '--stdin').trim().split('\n').filter(Boolean).filter(commit => !parent.commits?.has(commit));
-    // Combined patches scan novel merge resolution lines against ALL parents.
-    // Imported lines are scanned in their originating own commit, or exempted
-    // only by the fresh parent graph. -m and the aggregate diff would rescan
-    // upstream lines as if we authored them. Ordinary commits retain full patches.
-    const diffs = commits.map(commit => ['diff-tree', '--root', parent.commits ? '-c' : '-m', '-p', '--no-ext-diff', '--no-textconv', '--no-renames', '--unified=0', commit]);
-    if (!parent.commits && !/^0+$/.test(remote)) diffs.push(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--unified=0', remote, head]);
+    // Scan merge lines new against ALL parents. Unpublished parent additions
+    // are checked in their originating commits, including transient violations.
+    // Neither -m nor an aggregate old-tip diff can distinguish imported public
+    // lines from authored changes, so use per-commit combined patches only.
+    const diffs = commits.map(commit => ['diff-tree', '--root', '-c', '-p', '--no-ext-diff', '--no-textconv', '--no-renames', '--unified=0', commit]);
     for (const args of diffs) {
       let file = null, columns = 1, inHunk = false;
       for (const line of git(...args).split('\n')) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Owner-only capability issuer; signs via a public key and SSH agent, never op."""
+"""Capability issuer: owner SSH agent, or native parsed-command enclave approval."""
 import argparse
 import hashlib
 import json
@@ -52,13 +52,23 @@ def issue(argv=None, *, home=None):
     parser.add_argument('--remote', default='origin'); parser.add_argument('--command')
     parser.add_argument('--key', type=Path)
     parser.add_argument('--ttl', type=int, default=120)
+    parser.add_argument('--enclave', action='store_true')
+    parser.add_argument('--reason', help="optional explanation, shown as the agent's unchecked words; enclave only")
+    parser.add_argument('--approval-receipt', type=Path, help='recorded question-tool JSON receipt; enclave only')
     args = parser.parse_args(argv)
-    owner_terminal()
+    if not args.enclave:
+        owner_terminal()
+    if args.reason is not None:
+        if not args.enclave: raise ValueError('reason requires --enclave')
+        from enclave import validate_reason
+        validate_reason(args.reason)
+    if args.approval_receipt and not args.enclave:
+        raise ValueError('approval carry requires --enclave')
     home = Path(home or Path.home()).resolve(); repo = str(Path(args.repo).resolve())
     if not Path(repo).is_dir() or not 1 <= args.ttl <= 300:
         raise ValueError('existing repo directory and TTL 1..300 required')
     key = args.key or home / '.config/golems/human-confirm.pub'
-    if not re.match(r'^(?:ssh-|ecdsa-|sk-)[^\s]+ [A-Za-z0-9+/=]+', key.read_text()):
+    if not args.enclave and not re.match(r'^(?:ssh-|ecdsa-|sk-)[^\s]+ [A-Za-z0-9+/=]+', key.read_text()):
         raise ValueError('use a public key file backed by the owner SSH agent')
     ref = args.ref
     if args.action in ('force', 'lease', 'delete') and not ref.startswith('refs/'):
@@ -93,14 +103,37 @@ def issue(argv=None, *, home=None):
                  command_sha256=hashlib.sha256((repo + '\0' + command).encode()).hexdigest(),
                  operations=ops, session_id=args.session)
     path = root / (nonce + '.json')
-    raw = json.dumps(token, sort_keys=True).encode()
+    if args.enclave:
+        import enclave
+        token.update(kind='enclave', issued_at=int(now), expires_at=int(now) + args.ttl, cwd=repo, command=command,
+                     **enclave.scope(command, repo, ops))
+        if args.reason is not None: token['reason'] = args.reason
+        if args.approval_receipt:
+            from tokens import private_read
+            receipt = json.loads(private_read(args.approval_receipt))
+            if receipt != dict(approved=True, cwd=repo, command=command, session_id=args.session):
+                raise ValueError('question-tool receipt does not match exact command/session')
+            # A receipt is context, never signing authority. Spend before prompting.
+            fd = os.open(str(args.approval_receipt) + '.spent', os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+            os.fsync(fd); os.close(fd)
+    raw = json.dumps(token, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode() if args.enclave else json.dumps(token, sort_keys=True).encode()
     print(json.dumps(dict(cwd=repo, command=command, operations=ops, session_id=args.session, ttl=args.ttl), indent=2), flush=True)
     try:
         fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
         with os.fdopen(fd, 'wb') as stream:
             stream.write(raw); stream.flush(); os.fsync(stream.fileno())
-        sign([SSH, '-Y', 'sign', '-U', '-q', '-f', str(key), '-n', 'golems-confirm', str(path)], check=True, timeout=120)
-        if not verify_signature(raw, anchor, 'human', str(path) + '.sig'):
+        if args.enclave:
+            # This process has no approval boolean: only a pinned signature counts.
+            result = subprocess.run([enclave.HELPER], input=raw, capture_output=True, check=True, timeout=120)
+            signature = Path(str(path) + '.sig')
+            fd = os.open(signature, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, 'wb') as stream:
+                stream.write(result.stdout); stream.flush(); os.fsync(stream.fileno())
+            verified = enclave.verify(raw, home, signature)
+        else:
+            sign([SSH, '-Y', 'sign', '-U', '-q', '-f', str(key), '-n', 'golems-confirm', str(path)], check=True, timeout=120)
+            verified = verify_signature(raw, anchor, 'human', str(path) + '.sig')
+        if not verified:
             raise ValueError('signature does not match pinned anchor')
         if time.time() >= token['expires_at']:
             raise ValueError('approval expired while signing; issue a fresh token')

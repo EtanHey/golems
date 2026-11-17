@@ -95,13 +95,16 @@ test("both hosts preserve config and external hooks, backup once, install idempo
     const f = { ...fixture(), host };
     const config = readFileSync(path.join(f.codexHome, "config.toml"));
     const external = { matcher: "Bash", hooks: [{ type: "command", command: "external-hook" }] };
-    const original = JSON.stringify({ description: "preserve", hooks: { PreToolUse: [external] } });
+    const mcpApproval = { matcher: "^mcp__", hooks: [{ type: "command", command: "external-mcp-approval" }] };
+    const original = JSON.stringify({ description: "preserve", hooks: { PreToolUse: [external], PermissionRequest: [mcpApproval] } });
     writeFileSync(path.join(f.codexHome, "hooks.json"), original, { mode: 0o640 });
     const p = planCodexHooks(f); expect(p.registered).toBe(false);
     applyCodexHooks(p);
     const next = planCodexHooks(f); expect(next.registered).toBe(true);
     const json = JSON.parse(next.old); expect(json.description).toBe("preserve");
     expect(json.hooks.PreToolUse[0]).toEqual(external);
+    expect(json.hooks.PermissionRequest[0]).toEqual(mcpApproval);
+    expect(json.hooks.PermissionRequest[1].matcher).toBe("^Bash$");
     expect(readFileSync(path.join(f.codexHome, "config.toml"))).toEqual(config);
     expect(statSync(next.at).mode & 0o777).toBe(0o640);
     applyCodexHooks(next);
@@ -144,7 +147,9 @@ test("status checks positional persistent trust without claiming hash verificati
   applyCodexHooks(planCodexHooks(f));
   expect(codexStatus(planCodexHooks(f))).toBe(true);
   const config = path.join(f.codexHome, "config.toml");
+  const permissionState = `[hooks.state.${JSON.stringify(path.join(f.codexHome, "hooks.json") + ':permission_request:0:0')}]\ntrusted_hash = "synthetic-unverified-hash"\n`;
   const states = [1, 2].map(i => `[hooks.state.${JSON.stringify(path.join(f.codexHome, "hooks.json") + ':pre_tool_use:' + i + ':0')}]\ntrusted_hash = "synthetic-unverified-hash"\n`);
+  states[1] += permissionState;
   writeFileSync(config, states.join("\n"));
   expect(planCodexHooks(f).trust).toBe("present-unverified");
   expect(codexStatus(planCodexHooks(f))).toBe(false);
@@ -154,6 +159,23 @@ test("status checks positional persistent trust without claiming hash verificati
   writeFileSync(config, states[0]);
   expect(planCodexHooks(f).trust).toBe("missing");
   expect(codexStatus(planCodexHooks(f))).toBe(true);
+});
+
+test("PermissionRequest registration is mandatory and status uses its own trust key", () => {
+  const f = fixture(); applyCodexHooks(planCodexHooks(f));
+  const at = path.join(f.codexHome, "hooks.json");
+  const value = JSON.parse(readFileSync(at));
+  expect(value.hooks.PermissionRequest).toHaveLength(1);
+  expect(value.hooks.PermissionRequest[0].matcher).toBe("^Bash$");
+  const states = [["pre_tool_use", 0], ["pre_tool_use", 1], ["permission_request", 0]]
+    .map(([event, index]) => `[hooks.state.${JSON.stringify(`${at}:${event}:${index}:0`)}]\ntrusted_hash = "synthetic-unverified-hash"\n`);
+  writeFileSync(path.join(f.codexHome, "config.toml"), states.join("\n"));
+  expect(codexStatus(planCodexHooks(f))).toBe(false);
+  delete value.hooks.PermissionRequest;
+  writeFileSync(at, JSON.stringify(value));
+  expect(codexStatus(planCodexHooks(f))).toBe(true);
+  applyCodexHooks(planCodexHooks(f));
+  expect(codexStatus(planCodexHooks(f))).toBe(false);
 });
 
 test("managed-only is a requirements setting rather than a config.toml feature", () => {
@@ -185,6 +207,20 @@ test("shell fallback blocks missing interpreter and adapter with value-free stde
     expect(r.status).toBe(2);
     expect(r.stderr).toContain("Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.");
     expect(r.stderr + r.stdout).not.toContain("PRIVATE-VALUE");
+  }
+});
+
+test("PermissionRequest shell fallback denies when interpreter or adapter fails", () => {
+  for (const python of ["/missing/interpreter", "python3"]) {
+    const f = fixture();
+    const command = codexCommand(python, path.join(f.live, "scripts/hooks/missing.py"), "permission-request");
+    const r = spawnSync("/bin/sh", ["-c", command], { encoding: "utf8", input: "{malformed" });
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe("");
+    const output = JSON.parse(r.stdout).hookSpecificOutput;
+    expect(output.hookEventName).toBe("PermissionRequest");
+    expect(output.decision.behavior).toBe("deny");
+    expect(output.decision.message).toContain("one named file");
   }
 });
 

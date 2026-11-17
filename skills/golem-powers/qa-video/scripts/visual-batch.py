@@ -96,7 +96,7 @@ def recover_startup_warning(result, sheet, started, existing):
         return None
 
 
-def read_sheet(helper, question, timeout, sheet, model=None, workdir=None):
+def read_sheet(helper, question, timeout, sheet, model=None, workdir=None, transcript_window=None):
     started, existing = None, set()
     try:
         directory = Path(sheet).resolve().parent / 'helper-receipts'
@@ -110,7 +110,9 @@ def read_sheet(helper, question, timeout, sheet, model=None, workdir=None):
     try:
         result = visual.bounded_run([sys.executable, str(helper), '--question', question,
                                     '--timeout', str(timeout),
-                                    *(['--model', model] if model else []), sheet], timeout)
+                                    *(['--model', model] if model else []),
+                                    *(['--transcript-window', visual.transcript.encode({sheet: transcript_window})]
+                                      if transcript_window is not None else []), sheet], timeout)
     except (subprocess.TimeoutExpired, OverflowError) as error:
         cause = 'helper timeout' if isinstance(error, subprocess.TimeoutExpired) else str(error)
         context = visual.decoded(getattr(error, 'stderr', ''))
@@ -195,6 +197,15 @@ def validate_citations(item, tile_count):
             malformed = True
             continue
         tail = finding[citation.end():].lstrip()
+        # A complete x/y pixel rectangle following the noun is geometry, not
+        # an indexed citation. Require its end before punctuation/end-of-text;
+        # whitespace cannot hide a following index, conjunction or range.
+        # Only ordered lowercase x/y integer coordinates and -/– ranges are
+        # accepted; uppercase, reversed axes, decimals and negative values fail
+        # closed. Later frame/tile labels are still checked.
+        if citation[0].lower().startswith('frame') and re.match(
+                r':\s*x=\d+(?:[-–]\d+)?,\s*y=\d+(?:[-–]\d+)?(?=\s*(?:;|\.(?!\d)|$))', tail):
+            continue
         # "20 tiles" describes a count, not index 20. A parenthesized range
         # still supplies indexes and must be checked, including 0..19 notation.
         if re.search(r'\b\d+\s*$', prefix):
@@ -336,8 +347,15 @@ def run(args, sheets):
                f'{int(elapsed)//60}m{int(elapsed)%60:02d}s · ETA {remaining} · '
                f'budget {args.budget_seconds/60:g}m · {status}' + (' · serial retry' if retrying else '') + '\n')
 
+    windows = {}
+    try:
+        windows = visual.transcript.from_args(args, sheets)
+        if windows:
+            atomic(work / 'visual/transcript-windows.json', visual.transcript.encode(windows) + '\n')
+    except (OSError, ValueError) as error:
+        status, cause = 'SETUP_FAILED', 'TRANSCRIPT_WINDOW_SETUP_FAILED: ' + visual.safe_cause(str(error), work)
     progress()
-    if args.helper.resolve() == Path(__file__).resolve().with_name('visual-gather.py') and not model:
+    if status == 'RUNNING' and args.helper.resolve() == Path(__file__).resolve().with_name('visual-gather.py') and not model:
         try:
             model = visual.resolve_model(deadline=deadline)[1]
         except (ValueError, OSError, subprocess.SubprocessError, visual.DispatchError) as error:
@@ -356,7 +374,7 @@ def run(args, sheets):
                         break
                     sheet = sheets[launched]
                     timeout = min(args.timeout, deadline - time.monotonic())
-                    active[pool.submit(read_sheet, args.helper, args.question + (f' Valid zero-based tiles: 0..{counts[sheet]-1}.' if sheet in counts else ''), timeout, sheet, model, work)] = sheet
+                    active[pool.submit(read_sheet, args.helper, args.question + (f' Valid zero-based tiles: 0..{counts[sheet]-1}.' if sheet in counts else ''), timeout, sheet, model, work, **({'transcript_window': windows[sheet]} if windows else {}))] = sheet
                     launched += 1
                 if not active:
                     break
@@ -392,7 +410,7 @@ def run(args, sheets):
                 retrying = True
                 progress()
                 def read(question, timeout):
-                    return read_sheet(args.helper, question, timeout, item['sheet'], model, work)
+                    return read_sheet(args.helper, question, timeout, item['sheet'], model, work, **({'transcript_window': windows[item['sheet']]} if windows else {}))
                 item = retry_read(read, args.question, counts.get(item['sheet']), deadline,
                                   args.timeout, previous=item)
                 findings[i] = item
@@ -440,6 +458,7 @@ def main():
     parser.add_argument('--progress-prefix', default='', help='Parent phase context for progress.txt')
     parser.add_argument('--model', help='Already resolved concrete model ID')
     parser.add_argument('--helper', type=Path, default=Path(__file__).with_name('visual-gather.py'))
+    visual.transcript.add_arguments(parser)
     parser.add_argument('sheets', nargs='*', type=Path)
     args = parser.parse_args()
     if not (0 < args.drain_seconds < float('inf') and args.concurrency > 0 and 0 < args.budget_seconds < float('inf') and 0 < args.timeout <= visual.MAX_TIMEOUT):

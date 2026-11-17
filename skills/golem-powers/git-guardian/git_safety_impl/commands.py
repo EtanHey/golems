@@ -329,7 +329,8 @@ def _dangerous_non_rm_in_words(
     if subcommand == "branch" and api['_pkg'].branch_cleanup.forced_local_delete(arguments):
         return "Dangerous command: local branch deletion requires verified cleanup or confirmation"
     if subcommand == "push" and _push_deletes_remote_refs(arguments):
-        return "Dangerous command: remote reference deletion requires explicit confirmation"
+        return ("Dangerous command: remote reference deletion requires explicit confirmation. "
+                "To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, then the command it prints.")
     short_force = any(
         argument.startswith("-")
         and not argument.startswith("--")

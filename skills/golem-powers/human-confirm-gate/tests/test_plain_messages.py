@@ -32,8 +32,12 @@ def test_plain_denial(tmp_path, command, action):
         cwd=repo, text=True, capture_output=True, env=env, timeout=10)
     assert result.returncode == 2 and not result.stderr
     reason = json.loads(result.stdout)['hookSpecificOutput']['permissionDecisionReason']
-    assert reason == (f"Blocked: {action} can't be undone, so Etan has to approve it. Ask the lead to route it to him."
+    expected = (f"Blocked: {action} can't be undone, so Etan has to approve it. Ask the lead to route it to him."
                       if action else "Blocked: this command couldn't be checked safely. Rewrite it as a plain, literal command.")
+    if action == 'deleting a remote branch':
+        expected += (' To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, '
+                     'then the command it prints.')
+    assert reason == expected
 
 
 @pytest.mark.parametrize('tool', ['Bash', 'Monitor'])
