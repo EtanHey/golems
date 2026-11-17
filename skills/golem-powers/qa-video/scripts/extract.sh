@@ -6,9 +6,16 @@ VIDEO="$1"; WORKDIR="$2"
 mkdir -p "$WORKDIR"
 # Failed retries must not leave an old transcript available for analysis.
 rm -f "$WORKDIR/transcript.srt" "$WORKDIR/transcript.txt"
-for tool in ffmpeg ffprobe whisper-cli; do
+for tool in ffmpeg ffprobe; do
   command -v "$tool" >/dev/null 2>&1 || { echo "extract: $tool not found on PATH" >&2; exit 1; }
 done
+[[ -f "$VIDEO" ]] || { echo "extract: video not found: $VIDEO" >&2; exit 1; }
+if [ -z "$(ffprobe -v error -select_streams a:0 -show_entries stream=index -of csv=p=0 "$VIDEO")" ]; then
+  printf '%s\n' '{"note":"no narration: no audio stream"}' > "$WORKDIR/no-narration.json"
+  echo 'extract: no audio stream; no narration recorded'
+  exit 0
+fi
+command -v whisper-cli >/dev/null 2>&1 || { echo 'extract: whisper-cli not found on PATH' >&2; exit 1; }
 MODEL="${WHISPER_MODEL:-$HOME/.cache/whisper/ggml-small.bin}"
 [[ -s "$MODEL" ]] || { echo "extract: whisper model missing: $MODEL (install ggml-small or set WHISPER_MODEL)" >&2; exit 1; }
 [[ -f "$VIDEO" ]] || { echo "extract: video not found: $VIDEO" >&2; exit 1; }

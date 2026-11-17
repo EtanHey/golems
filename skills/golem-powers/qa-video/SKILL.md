@@ -20,7 +20,7 @@ If your brief makes you the judge, dispatch no other judge; you are "the QA seat
 
 **Declare mode before dispatch.** **qa:** UI/app QA; mandatory 10 fps action-cue windows, scene cues, 30s coverage and refinement remain. **debrief / review / gems:** normally TRANSCRIPT-FIRST (the exhaustive override below wins); transcribe, pick ≤12 moments (questions, claims, numbers, referenced slides), then bracket each cue with at least a start and midpoint frame: the window spans its containing transcript segment plus the preceding three segments (or all available at the start). Speech can lag the screen. This means ≤24 initial stills for ≤12 moments; count frame reads/waves honestly within the same budget, never collapse a cue to one still. Check decoded PTS inside each window; refine within it or report NOT DETERMINED. No blanket 30s coverage; no scene-cue sweep unless the transcript references visuals such as slides/code/screen share. Default budget: **max(600, 24 × video minutes) seconds total wall-clock**, including transcription and notes (25min → 600s; 90min → 2160s). An explicit parent remaining deadline wins. Preserve debrief.md whenever the transcript exists, even on budget/partial exits; unread visuals stay NOT DETERMINED.
 
-**Spoken command/code cues:** When the speaker points to a command or code on screen (for example, “look closely at my screen” or “a command you can run”), keep that cue in the visual selection. The parent plans the crop request from the transcript cue: bracket its containing segment plus the preceding three segments and request start and midpoint frame reads. The reader reports the text-region bounds as a source-frame coordinate rectangle (`frame: x=<left>-<right>, y=<top>-<bottom>`). The parent/judge runs `scripts/crop.sh <frame> <x> <y> <w> <h> <out.png>` from those reported bounds without opening the frame or crop, then dispatches a fresh reader batch to read the crop PNG. The tool-free reader reports bounds and reads images; the parent owns the crop command. The parent never opens frames or crops to plan the crop or locate its bounds; it judges the returned text. Cite decoded PTS and keep speech separate from the verified visible transcription. If the crop remains unreadable, request refinement within the window or mark NOT DETERMINED with the failed crop/read receipt. Budget expiry still wins; never guess a command from narration alone.
+**Spoken command/code cues:** When the speaker points to a command or code on screen (for example, “look closely at my screen” or “a command you can run”), keep that cue in the visual selection. The parent plans the crop request from the transcript cue: bracket its containing segment plus the preceding three segments and request start and midpoint frame reads. The reader reports the text-region bounds as a source-frame coordinate rectangle (`frame: x=<left>-<right>, y=<top>-<bottom>`). The parent/judge runs `scripts/crop.sh <frame> <x> <y> <w> <h> <out.png>` from those reported bounds without opening the frame or crop, then dispatches a fresh reader batch to read the crop PNG. The tool-free reader reports bounds and reads images; the parent owns the crop command. The judge never opens frames to plan crops EXCEPT must-read pointer frames, which the judge itself opens and crops to identify the pointer region and establish the item's reference. Outside that exception, the parent never opens frames or crops to locate bounds; it judges the returned text. Cite decoded PTS and keep speech separate from the verified visible transcription. If the crop remains unreadable, request refinement within the window or mark NOT DETERMINED with the failed crop/read receipt. Budget expiry still wins; never guess a command from narration alone.
 
 ## Visual-first exhaustive override (gems / debrief / review)
 
@@ -84,7 +84,8 @@ whoever received the request) does no media work: it briefs one `claude.judgment
 (per [agent-routing/references/cross-machine.md](../agent-routing/references/cross-machine.md) § 1).
 On a Claude terminal seat: `Agent` with that model and the same brief. Never `t3_thread_launch` or
 `create_threads` for a QA pass. The brief gives the absolute skill path, source, mode, workdir, deadline
-and collab path, and authorizes gatherer dispatch. Never copy the recording to another machine.
+and collab path, and authorizes gatherer dispatch. Pass narration verbatim or its transcript path,
+never a paraphrase; for pointer cues say "look where the pointer is". Never copy the recording.
 
 **Subagent routing — named requests first:** When the user names a model or
 subagent for the QA pass (a named model, or "use video-gems"), dispatch exactly
@@ -116,6 +117,8 @@ tools it follows the no-dispatch runner contract below.
 | Extract gems (default) | `Agent(video-gems)` with source and artifact directory | Ordinary gems: video-gems reads targeted stills; exhaustive: reader fan-out, single-reader fallback if dispatch is unavailable |
 | Etan explicitly asks for a visible worker | Lead opens a cmux Gemini worker with `agy --agent video-qa` and an explicit absolute `docs.local` workdir | That worker views sheets and runs the same iterative loop |
 
+**Gatherer override:** A requesting brief's named gatherer model or exclusion wins over every
+default/fallback below (including no-Gemini). Stop if unavailable; do not substitute an excluded model.
 **Default subagent routing:** Use this table once per unnamed request. Do not open an unrequested
 Gemini pane, and do not hand the QA pipeline to a single runner sub-agent.
 `video-gems` is managed at `agents/video-gems.md`, installed with the other
@@ -176,15 +179,31 @@ decides each finding. **Spot-check:** for each finding it reports, the judge Rea
 frames — the cited before and after — one image per call, and logs each with
 `scripts/inspected.sh <workdir> <frame> 'spot: before' F4`. Why 2: a spot-check can catch a wrong frame reference
 or a misread; Flash-high's 44/44 visual bench (0 fabrications) supports trying this bounded policy, not a
-guarantee of reader accuracy, and more reads would turn the judge back into the reader.
+guarantee of reader accuracy. **Mandatory pointer exception:** the judge opens every must-read
+full-size cue-time frame itself (±0.5s optional), logs `inspected.sh ... 'judge: pointer ...' <srt_index>`,
+identifies the pointer region and crops it with crop.sh. These reads are outside the two-frame cap;
+no gatherer can satisfy them. See [must-read evidence](references/must-read.md) for report rows.
+Strong pointer language is always mandatory; weak demonstratives are ranked near defect words
+and capped at max(6, one per two narrated minutes). Overflow is reference-backed, "gathered, not judge-read".
+The judge also reads each named level/value and checks each negative gatherer claim once at full
+size. Pin the first pointer crop per item as its reference; every later sweep/gather carries that
+image path and asks "is this the same defect as the reference?". **The UI's indicator leads the
+re-render:** indicator-selected evidence is ≥1s after its change, with change time beside the frame
+(zoom badge, toggle, counter, spinner end). Plan a continuous span between narrated items.
+Use [narration evidence](references/narration-evidence.md) for commands and report rows. These
+mandatory reads also sit outside the spot-check cap; a gatherer's absent/hidden/NOT DETERMINED
+claim is never accepted as absence without the judge check. Gatherer-only defect classes belong
+only under "Unverified gatherer claims", never as findings or "low confidence".
 A spot-check that disagrees sends that window back to a gatherer (fresh batch, crop or refine); a second
 disagreement is NOT DETERMINED. The judge never opens contact sheets, never reads frames to plan the
-split (plan from `index.tsv`, cues and the transcript) and never reads past its 2-frame budget.
+split (plan from `index.tsv`, cues and the transcript); the cap excludes mandatory pointer reads.
 **Too small to read:** the parent/judge plans a crop request from the transcript cue and reader text;
 the reader reports the source-frame coordinate bounds. The parent/judge runs `scripts/crop.sh` from
 those bounds without opening either image, then sends the crop PNG to a fresh reader batch.
-The judge may request re-densification too;
-it never opens frames to plan crops, and legibility is never a reason for a judge read. **Measurements** (bar height/length/colour,
+The judge may request re-densification too. The judge never opens frames to plan crops EXCEPT
+must-read pointer frames, which the judge itself opens and crops to identify the pointer region
+and establish the item's reference. Outside that exception, legibility is never a reason for a
+judge read. **Measurements** (bar height/length/colour,
 spinner motion, frame registration, timing) come from a packaged script. None exists yet for those;
 the item is NOT DETERMINED (missing measurement: <what>) and the judge files a row to add the script to
 `scripts/` with a test. Never measure by eye and never hand-write a one-off measuring script in the run.
@@ -233,7 +252,13 @@ DETERMINED**. Cite full-size frames or crops with `pts_s` from `frames.tsv`; the
 sheet + tile only locates them. Scripts support judgement; an optional
 convenience index never gates the loop.
 
-**Verdict integrity (before emitting a QA verdict or "QA complete"):** Run `/qa-verdict-gate` over the run. It enforces tri-state **PASS / FAIL / INCONCLUSIVE** — `FAIL` is reserved for a *confirmed-observed* failure (a screenshot/click that reached the surface or an observed error in a tool result); a path you **couldn't reach** ("couldn't load", "element not found", blocked at step 0) is `INCONCLUSIVE`, never FAIL or PASS — and a QA run only counts when a `qa-report.md` with all the checklist items exists. `bun skills/golem-powers/qa-verdict-gate/scripts/qa-verdict-gate-cli.mjs <transcript|->` (exit 3 = FLAG = the verdict isn't earned yet). Composes with `/false-green-gate` and `/never-fabricate`.
+**Verdict integrity:** Run `bash scripts/default.sh finalize <workdir> <qa-report.md> --transcript
+<judge-session.jsonl>`: automatically checks mandatory reads, narration evidence and `/qa-verdict-gate`.
+Strong cues require actual image-read calls in that session, not just ledger attestations. INCONCLUSIVE
+cannot bypass reads. A recorded downgrade permits only COVERAGE FAIL and satisfies the integrity
+check without reads. Silent runs record "no narration". Ordinary verdicts remain PASS / FAIL /
+INCONCLUSIVE; FAIL needs an observed product failure, unreachable surfaces are INCONCLUSIVE.
+Require every checklist item in qa-report.md. Composes with `/false-green-gate` and `/never-fabricate`.
 
 **Final report and verdict:** In the SAME turn that writes `qa-report.md` and states the verdict,
 run `bash "$SCRIPTS/fail-evidence.sh" "$WORKDIR"` and expose its tool output: unmodified TSV
@@ -248,7 +273,7 @@ rewrite the report and rerun the helper in this turn; never fake a row. Then run
 
 Completed `docs.local/qa-video` runs join drive-filing's monthly archive only after their owner registers them as harvested in the outside-repo archive config. Keep original member names, full-size cited frames/crops, decoded timestamps and inspection provenance. Leave `_DRIVE-LEDGER.md` pointers after archival; missing local proof is restored read-only with `$GOLEMS_ROOT/scripts/drive/fetch-qa-image.mjs` and inspected before a visual claim. See `/drive-filing` § Monthly qa-video archive; archive success alone grants no deletion authority.
 
-The gatherers are the readers and the judge's spot-checks its only image reads; the tooling records provenance. Column and helper
+Gatherers read sheets; the judge reads mandatory pointer frames plus spot-checks. Column and helper
 details: [references/provenance.md](references/provenance.md).
 If a provenance tool or column is missing, keep reading the frames directly, say
 "provenance unavailable", and never synthesize counts or timestamps.
@@ -290,9 +315,15 @@ If a provenance tool or column is missing, keep reading the frames directly, say
 
 ## Key Design Decisions (learned from real usage)
 
-1. **The agent reads the SRT directly** — It chooses semantic hotspots from narration; QA combines them with `scene-cues.sh` visual-change cues. Automated audio-volume spikes do not replace transcript judgement.
+1. **The agent reads the SRT directly** — Semantic hotspots plus `scene-cues.sh`; audio spikes do not replace transcript judgement.
 
-2. **Dense action windows (mandatory)** — In QA mode, every action cue gets a dense-frame window, not a single frame. A click's target, hover state and resulting animation all happen in under a second; one frame every 30s plus ±5s hotspot frames cannot show what was clicked or how the UI reacted, and a 10-run eval found every "pixel-only" finding from that method was hallucinated or mis-scoped.
+2. **Dense action windows (mandatory)** — Every QA action cue gets a dense window. After hand-written
+   cues, run `python3 scripts/must-read.py plan <workdir>`: it automatically merges deixis windows
+   from transcript.srt into cues.tsv and writes must-read.tsv. Start an item at its first pointing line,
+   not its first measurement. Run `python3 scripts/must-read.py extract <video> <workdir>` for the
+   judge's full-size mandatory frames. Phrase list and `this` false-positive rule: [must-read.md](references/must-read.md).
+   QA dense padding below pre=1/post=2 or must-read fps<10 exits 2. An explicit
+   `QA_COVERAGE_DOWNGRADE=1` records a ledger downgrade and forces COVERAGE FAIL.
    - **Build `cues.tsv`** (`start_s<TAB>end_s<TAB>label`) from:
      - (a) every transcript segment whose text matches action language: click, clicking, press, tap, hover, drag, drop, scroll, open, close, select, toggle, switch, type, "when I", "now I", "this", "here", "look", "watch"
      - (b) `scripts/scene-cues.sh <video>` output — visual changes catch silent clicks and UI changes the narrator never mentions
@@ -307,15 +338,12 @@ If a provenance tool or column is missing, keep reading the frames directly, say
 
 5. **Findings live in the PROJECT repo** — `docs/qa-session-YYYY-MM-DD-HHMM/` in the project being tested, not in the orchestrator. Each round gets a suffix: `qa-findings-round2.md`.
 
-6. **BrainLayer storage is mandatory** — After every video processing run, `brain_store` the findings summary with tags `["qa", "<project>", "round-N"]`.
+6. **Persist and iterate** — After each run, brain_store findings with `["qa", "<project>", "round-N"]`;
+   track fixed vs persistent issues across rounds. Gems target insights, opinions, numbers and advice.
 
-7. **QA is iterative** — Expect 3-6 rounds per feature. The skill supports multi-round workflows with proper round numbering and delta tracking (what was fixed vs. what persists).
+7. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
-8. **Gems use the same media primitives with a different analysis target** — QA hotspots look for bugs and UX issues. Gems hotspots look for surprising insights, strong opinions, technical revelations, numbers, examples, and reusable advice.
-
-9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
-
-10. **One pipeline route** — a named model/subagent owns the entire pass under
+8. **One pipeline route** — a named model/subagent owns the entire pass under
     Subagent routing; otherwise debrief and review follow the default QA route. QA: one `claude.judgment` judge child,
     on the machine holding the recording, owns extraction, hotspots and refinement in its own Bash, then fans the
     frame windows out to gatherers (Antigravity `gemini.gather.visual` → visual-batch.py → TOOLING FAILURE)
@@ -373,6 +401,9 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" coverage -- bash "$SCRIPTS/coverage.sh" "
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
 # After logs/scene.exit exists and is 0, append the scene TSV output:
 cat "$WORKDIR/logs/scene.log" >> "$WORKDIR/cues.tsv"
+python3 "$SCRIPTS/must-read.py" plan "$WORKDIR"
+python3 "$SCRIPTS/narration-evidence.py" plan "$WORKDIR"
+python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$WORKDIR"
 # Below 100 GB free, the slot lock enforces at most 2 parallel dense-window jobs.
 # JPEG ledger targets survive; unregistered intermediates are cleaned automatically.
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
@@ -380,7 +411,7 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" gather-01 -- python3 "$SCRIPTS/visual-batch.py" --index "$WORKDIR/dense/index.tsv" --transcript "$WORKDIR/transcript.srt" --frames-tsv "$WORKDIR/dense/frames.tsv" --workdir "$WORKDIR/visual-dense-01" --budget-seconds 480 --question 'Per tile: cursor target, before/after state, defects; tile index, NOT DETERMINED if unsure.'
 # Judge visual-dense-01/visual/findings.jsonl; if a gatherer reports a moment unclear, re-densify a single tighter window:
 printf '1.0\t1.5\tunclear-target\n' > "$WORKDIR/refine-cues.tsv"
-bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 0 0
+bash "$SCRIPTS/run-step.sh" "$WORKDIR" refine-01 -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/refine-cues.tsv" "$WORKDIR/refine-01" 20 1 2
 # Wait for refine-01.exit=0. Send the new sheets to a gatherer; repeat as needed, or mark NOT DETERMINED. Full workflow:
 # inspected.sh per spot-checked frame, coverage-count.sh, full-size before/after findings.
 ```

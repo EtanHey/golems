@@ -5,11 +5,33 @@ set -euo pipefail
 # the frames, one Opus judge child judges their text). No args keeps the prerequisite status check.
 SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+if [ "${1:-}" = finalize ]; then
+  [ $# == 5 ] && [ "$4" = --transcript ] || { echo 'usage: default.sh finalize <workdir> <qa-report.md> --transcript <judge-session.jsonl>' >&2; exit 2; }
+  bash "$SCRIPTS/must-read-check.sh" "$2" "$3" --transcript "$5"
+  python3 "$SCRIPTS/narration-evidence.py" check "$2" "$3"
+  exec bun "$SCRIPTS/../../qa-verdict-gate/scripts/qa-verdict-gate-cli.mjs" "$5"
+fi
+
 if [ "${1:-}" = "plan" ]; then
   [ $# -ge 3 ] || { echo "usage: default.sh plan <video> <workdir> [qa|debrief|review]" >&2; exit 2; }
   VIDEO="$2"; WORKDIR="$3"; MODE="${4:-qa}"
+  MUST_READ="${5:-}"
+  [ -z "$MUST_READ" ] || [ "$MUST_READ" = --must-read ] || { echo 'plan: expected --must-read' >&2; exit 2; }
   case "$MODE" in qa|debrief|review) ;; *) echo "plan: mode must be qa, debrief or review (gems: Agent(video-gems))" >&2; exit 2;; esac
   JUDGE_MODEL="$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.judgment --field model 2>/dev/null || echo '<claude.judgment model>')"
+  if [ "$MODE" = qa ] || [ "$MUST_READ" = --must-read ]; then
+    mkdir -p "$WORKDIR"
+    touch "$WORKDIR/.qa-mode"
+    python3 "$SCRIPTS/must-read.py" plan "$WORKDIR"
+    python3 "$SCRIPTS/narration-evidence.py" plan "$WORKDIR"
+  fi
+  if [ "$MODE" != qa ] && [ "$MUST_READ" = --must-read ]; then
+    cat <<EOF
+  After debrief transcription, opt-in pointer evidence:
+  python3 "$SCRIPTS/must-read.py" plan "$WORKDIR"
+  python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$WORKDIR"
+EOF
+  fi
   cat <<EOF
 ## /qa-video plan — mode=$MODE, gather-first
 Requesting seat (lead, or whoever got the request): do no media work. Dispatch ONE Opus judge child and wait:
@@ -26,6 +48,9 @@ EOF
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" coverage -- bash "$SCRIPTS/coverage.sh" "$VIDEO" "$WORKDIR"
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
   (read the SRT; write cues.tsv from transcript hotspots + logs/scene.log)
+  python3 "$SCRIPTS/must-read.py" plan "$WORKDIR"
+  python3 "$SCRIPTS/narration-evidence.py" plan "$WORKDIR"
+  python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$WORKDIR"
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
 Gather (gatherers read every sheet; you never open one), first that works:
   1. T3: per batch of <=15 sheets from dense/index.tsv, all in one turn:
@@ -37,7 +62,7 @@ EOF
   Count frame reads/waves within the same deadline; decoded PTS must lie inside the window, else refine or
   mark NOT DETERMINED. No 30 s coverage, no scene sweep.
   (Rigorous/full/exhaustive or a silent video: workflows/gems.md § Visual-first exhaustive, same gatherers.)
-  bash "$SCRIPTS/run-step.sh" "$WORKDIR" $MODE -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode $MODE
+  bash "$SCRIPTS/run-step.sh" "$WORKDIR" $MODE -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode $MODE $MUST_READ
   (exit STILLS_READY: read transcript.srt, plan.json and debrief.md; the moment-NN-start.jpg / moment-NN-midpoint.jpg stills go to gatherers)
 Gather (gatherers read every still; you never open one), first that works:
   1. T3: up to 24 stills means two batches (<=15 per batch), dispatched in one turn:
@@ -56,6 +81,14 @@ Wait budgets, enforced by bounded waits (never by a completion wake): 300 s per 
   A fully stalled stage still yields PARTIAL at the deadline: name the missing windows NOT DETERMINED, continue with what
   arrived, mark the report PARTIAL.
 Judge the gatherer text; spot-check <=2 full-size frames per reported finding (inspected.sh 'spot: ...' <id>).
+QA exception: open EVERY must-read frame yourself, one per call; log with inspected.sh 'judge: pointer ...',
+crop the identified pointer region via crop.sh and write MUST_READ report rows (references/must-read.md).
+Finalize QA automatically: bash "$SCRIPTS/default.sh" finalize "$WORKDIR" "$WORKDIR/qa-report.md" --transcript <judge-session.jsonl>
+This chains must-read-check (actual strong-cue image reads), narration-evidence and /qa-verdict-gate.
+Pin the first pointer crop per item via 'reference'; use 'sweep' briefs for every later gather.
+Every named value and negative gatherer claim needs a judge frame; indicator-chosen frames need >=1s render lag.
+Briefs pass verbatim narration or transcript path and say 'look where the pointer is'.
+Explicit gatherer model/exclusion in the requesting brief wins over the defaults above; never use an excluded fallback.
 Too small: crop.sh or re-densify, then gather again. Missing measurement script: NOT DETERMINED + file a row.
 EOF
   exit 0

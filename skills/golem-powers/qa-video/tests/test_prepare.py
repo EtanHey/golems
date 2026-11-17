@@ -236,9 +236,10 @@ def test_extract_aligns_a_late_audio_track_to_the_frame_timeline(media, tmp_path
     assert peak(0.65, 1.0) > 2000, 'the tone starts where the video says it does'
 
 
-def test_plan_prints_the_selected_modes_route():
+def test_plan_prints_the_selected_modes_route(tmp_path):
     # R70-5: `plan ... debrief|review` printed the QA sweep (coverage, scene cues, 10 fps dense).
-    plan = lambda mode: subprocess.run(['bash', str(SCRIPT.parent/'default.sh'), 'plan', '/f/clip.mp4', '/f/work', mode],
+    # QA planning now persists its marker before transcription; use an owned writable workdir.
+    plan = lambda mode: subprocess.run(['bash', str(SCRIPT.parent/'default.sh'), 'plan', '/f/clip.mp4', str(tmp_path/'work'), mode],
                                        capture_output=True, text=True)
     qa = plan('qa')
     assert qa.returncode == 0 and 'dense-windows.sh' in qa.stdout and 'coverage.sh' in qa.stdout
@@ -246,7 +247,7 @@ def test_plan_prints_the_selected_modes_route():
     for mode in ('debrief', 'review'):
         out = plan(mode)
         assert out.returncode == 0, out.stderr
-        assert f'debrief.py" "/f/clip.mp4" --workdir "/f/work" --mode {mode}' in out.stdout
+        assert f'debrief.py" "/f/clip.mp4" --workdir "{tmp_path / "work"}" --mode {mode}' in out.stdout
         assert '<=12 moments' in out.stdout and 'moment-*.jpg' in out.stdout
         assert 'one still' not in out.stdout and 'midpoint' in out.stdout
         assert 'containing transcript segment plus preceding three' in out.stdout
