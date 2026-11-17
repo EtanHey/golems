@@ -6,7 +6,16 @@ import * as zlib from 'node:zlib';
 
 export const MAX_SCAN_BYTES = 64 * 1024 * 1024;
 export const SCAN_TIMEOUT_MS = 15_000;
-// Media signatures, never suffixes. Credential shapes are checked before this.
+export function encodingMagic(data) {
+  const hex = data.subarray(0, 8).toString('hex');
+  if (hex.startsWith('7f454c46')) return 'ELF';
+  if (/^(cffaedfe|cefaedfe|feedface|feedfacf|cafebabe)/.test(hex)) return 'Mach-O';
+  if (data.toString('ascii',0,15) === 'SQLite format 3') return 'SQLite';
+  if (hex.startsWith('0061736d')) return 'WebAssembly';
+  if (/^(fffe|feff)/.test(hex)) return 'UTF-16-BOM';
+  return 'unknown';
+}
+// Media signatures identify a format, never permission to skip credential checks.
 export function mediaMagic(b) {
   const hex = b.subarray(0, 16).toString('hex');
   return hex.startsWith('89504e470d0a1a0a') || hex.startsWith('ffd8ff') ||
@@ -87,53 +96,60 @@ export function scanner() {
 
 // Each worker hashes the exact raw bytes it classifies. Decoding is bounded,
 // and nested encodings/compressors hold instead of being scanned as raw text.
-async function main(abs) {
-  let result, sha256, bytes = 0;
+export async function scanData(data, abs = '', { history = false } = {}) {
+  try {
+    if (data.length > MAX_SCAN_BYTES) throw new Error('scan-size-limit');
+    if (mediaMagic(data)) {
+      if (history) return {shapes:['scan-unsupported-encoding']};
+      const scan = scanner(); scan.push(data);
+      return {shapes:scan.result()};
+    }
+    const format = compression(data);
+    if (format === 'unsupported' || /\.(zip|xz|bz2|7z|tar|tgz|taz|br|lz4|rar)$/i.test(abs)) throw new Error('scan-unsupported-decoder');
+    if (/\.(gz|zst)$/i.test(abs) && !format) throw new Error('scan-decompression-error');
+    if (format) {
+      const decoder = format === 'gz' ? zlib.createGunzip() : zlib.createZstdDecompress();
+      const decoded = []; let size = 0;
+      for await (const buf of Readable.from([data]).pipe(decoder)) {
+        size += buf.length;
+        if (size > MAX_SCAN_BYTES) { decoder.destroy(); throw new Error('scan-size-limit'); }
+        decoded.push(buf);
+      }
+      data = Buffer.concat(decoded);
+      if (compression(data)) throw new Error('scan-unsupported-decoder');
+    }
+    const encoded = data.toString('ascii').trim();
+    if ((encoded.length >= 32 && encoded.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(encoded) &&
+        Buffer.from(encoded,'base64').toString('base64') === encoded) || data.includes(0) || !isUtf8(data)) {
+      return {shapes:['scan-unsupported-encoding'],magic:encodingMagic(data)};
+    }
+    const scan = scanner(); scan.push(data);
+    return {shapes:scan.result()};
+  } catch (error) {
+    const safe = new Set(['scan-size-limit','scan-policy-error','scan-unsupported-decoder']);
+    return {shapes:[safe.has(error.message) ? error.message : 'scan-decompression-error']};
+  }
+}
+export async function scanFile(abs) {
+  let result, sha256, magic, bytes = 0;
   try {
     if (/\.(zip|xz|bz2|7z|tar|tgz|taz|br|lz4|rar)$/i.test(abs)) throw new Error('scan-unsupported-decoder');
     const chunks = [], hash = createHash('sha256');
-    let media;
     for await (const buf of createReadStream(abs, {highWaterMark: 64 * 1024})) {
-      if (media === undefined) media = mediaMagic(buf);
       bytes += buf.length;
       hash.update(buf);
-      if (!media) {
-        if (bytes > MAX_SCAN_BYTES) throw new Error('scan-size-limit');
-        chunks.push(buf);
-      }
+      if (bytes > MAX_SCAN_BYTES) throw new Error('scan-size-limit');
+      chunks.push(buf);
     }
     sha256 = hash.digest('hex');
-    if (media) result = [];
-    else {
-      let data = Buffer.concat(chunks);
-      const format = compression(data);
-      // Brotli has no universal magic. Known unsupported suffixes also hold.
-      if (format === 'unsupported' || /\.(zip|xz|bz2|7z|tar|tgz|taz|br|lz4|rar)$/i.test(abs)) throw new Error('scan-unsupported-decoder');
-      if (/\.(gz|zst)$/i.test(abs) && !format) throw new Error('scan-decompression-error');
-      if (format) {
-        const decoder = format === 'gz' ? zlib.createGunzip() : zlib.createZstdDecompress();
-        const decoded = [];
-        let size = 0;
-        for await (const buf of Readable.from([data]).pipe(decoder)) {
-          size += buf.length;
-          if (size > MAX_SCAN_BYTES) { decoder.destroy(); throw new Error('scan-size-limit'); }
-          decoded.push(buf);
-        }
-        data = Buffer.concat(decoded);
-        if (compression(data)) throw new Error('scan-unsupported-decoder');
-      }
-      const encoded = data.toString('ascii').trim();
-      if (encoded.length >= 32 && encoded.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(encoded) &&
-          Buffer.from(encoded, 'base64').toString('base64') === encoded) throw new Error('scan-unsupported-encoding');
-      if (data.includes(0) || !isUtf8(data)) throw new Error('scan-unsupported-encoding');
-      const scan = scanner();
-      scan.push(data);
-      result = scan.result();
+    {
+      const receipt = await scanData(Buffer.concat(chunks), abs);
+      result = receipt.shapes; magic = receipt.magic;
     }
   } catch (error) {
     const safe = new Set(['scan-size-limit', 'scan-unreadable', 'scan-policy-error', 'scan-unsupported-decoder', 'scan-unsupported-encoding']);
     result = [safe.has(error.message) ? error.message : 'scan-decompression-error'];
   }
-  process.stdout.write(JSON.stringify({ shapes: result, sha256, bytes }));
+  return { shapes: result, sha256, bytes, magic };
 }
-if (process.argv[1] === new URL(import.meta.url).pathname) await main(process.argv[2]);
+if (process.argv[1] === new URL(import.meta.url).pathname) process.stdout.write(JSON.stringify(await scanFile(process.argv[2])));
