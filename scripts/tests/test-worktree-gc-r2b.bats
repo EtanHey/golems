@@ -16,7 +16,7 @@ squash_fixture() {
 #!/usr/bin/env bash
 [[ " $* " == *" --state merged "* ]] || exit 0
 [[ "${GH_FAIL:-0}" == 0 ]] || exit 1
-printf '[{"headRefName":"topic","headRefOid":"%s"}]\n' "$MERGED_SHA"
+printf '[{"headRefName":"topic","headRefOid":"%s","baseRefName":"main"}]\n' "$MERGED_SHA"
 STUB
   chmod +x "$TEST_ROOT/bin/gh"
   export PATH="$TEST_ROOT/bin:$PATH" MERGED_SHA="$merged_sha"

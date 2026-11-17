@@ -37,21 +37,54 @@ def old(root):
     return time.time() - newest > 3 * 86400
 
 
+EXACT_OUTPUTS = {'.build', 'node_modules', '.venv', 'venv'}
+NOINDEX_OUTPUTS = {'swift', 'brainbar-render', 'pytest'}
+
+
 def candidates(root):
     for here, dirs, _files in walk(root):
         dirs[:] = [d for d in dirs if d not in ('.git', 'docs.local') and
                    not os.path.islink(os.path.join(here, d))]
+        # Unknown build-like roots and proof children protect their entire subtree.
+        # This prefix is a KEEP boundary, never a disposal rule.
+        dirs[:] = [d for d in dirs if not d.startswith('.build') or d in ('.build', '.build.noindex')]
+        if Path(here).name == '.build.noindex':
+            dirs[:] = [d for d in dirs if d in NOINDEX_OUTPUTS]
         for name in list(dirs):
-            if name.startswith('.build') or name in ('.venv', 'node_modules'):
-                target = Path(here) / name
-                yield target
-                # Known build children remain eligible when a sibling receipt
-                # protects the container. Never traverse docs.local itself.
-                if name == '.build.noindex':
-                    for child in ('swift', 'brainbar-render', 'pytest'):
-                        if (target / child).is_dir() and not (target / child).is_symlink():
-                            yield target / child
+            if name in EXACT_OUTPUTS or (Path(here).name == '.build.noindex' and name in NOINDEX_OUTPUTS):
+                yield Path(here) / name
                 dirs.remove(name)
+
+
+def files_unused(target):
+    # A complete, bounded user-wide snapshot includes fds, cwd and txt mappings.
+    # Empty/partial/mock-without-fd output is not evidence of absence.
+    pids = subprocess.check_output(['ps', '-o', 'pid=', '-u', str(os.getuid())], timeout=10).split()
+    result = subprocess.run(['lsof', '-nP', '-a', '-u', str(os.getuid()), '-Fpfan'],
+                            capture_output=True, text=True, timeout=15)
+    result.check_returncode()
+    lines = result.stdout.splitlines()
+    if not pids or sum(line.startswith('p') for line in lines) * 10 < len(pids) * 9:
+        raise ValueError('partial open-file process coverage')
+    fd = False
+    for line in lines:
+        if line.startswith('p'):
+            fd = False
+        elif line.startswith('f'):
+            fd = True
+        elif line.startswith('n'):
+            if not fd:
+                raise ValueError('open-file snapshot lacks descriptor records')
+            name = line[1:].removesuffix(' (deleted)')
+            if name == str(target) or name.startswith(str(target) + os.sep):
+                return False
+    if not any(line.startswith('f') for line in lines):
+        raise ValueError('open-file snapshot empty')
+    return True
+
+
+def event(action, target, detail, **extra):
+    print(json.dumps(dict(action=action, path=str(target), detail=detail, **extra)))
 
 
 def disposable(root, target):
@@ -77,22 +110,29 @@ def trim(root, apply):
     if not old(root):
         print('builds kept: activity within 72h')
         return
-    outputs = sorted(candidates(root), key=lambda p: (p.name == '.venv', str(p)))
+    outputs = sorted(candidates(root), key=lambda p: (p.name in ('.venv', 'venv'), str(p)))
     selected = []
     for target in outputs:
-        if any(parent in target.parents for parent in selected):
-            continue
-        if not disposable(root, target):
-            continue
-        size = subprocess.check_output(['du', '-sk', str(target)], text=True).split()[0]
-        if apply:
-            # Recheck immediately before deleting; never use Git clean or follow aliases.
-            if not disposable(root, target):
+        try:
+            if any(parent in target.parents for parent in selected) or not disposable(root, target):
                 continue
-            shutil.rmtree(target)
-        selected.append(target)
-        print(json.dumps(dict(action='TRIMMED' if apply else 'TRIM', path=str(target),
-                              size_bytes=int(size) * 1024)))
+            if not files_unused(target):
+                event('KEEP-live', target, 'open file or mapping under build output')
+                continue
+            size = subprocess.check_output(['du', '-sk', str(target)], text=True).split()[0]
+            if apply:
+                if not disposable(root, target) or not files_unused(target):
+                    event('KEEP-live', target, 'build output changed or became live')
+                    continue
+                try:
+                    shutil.rmtree(target)
+                except OSError as error:
+                    event('KEEP-trim-error', target, 'deletion failed; target may be partially deleted: ' + str(error))
+                    continue
+            selected.append(target)
+            event('TRIMMED' if apply else 'TRIM', target, 'exact ignored rebuildable output', size_bytes=int(size) * 1024)
+        except (OSError, ValueError, IndexError, subprocess.SubprocessError) as error:
+            event('KEEP-trim-error', target, 'trim refused: ' + str(error))
 
 
 if __name__ == '__main__':
@@ -110,10 +150,14 @@ if __name__ == '__main__':
                             os.path.expanduser('~/.local/state/golems/heavy-suite.lock')))
                 lock.parent.mkdir(parents=True, exist_ok=True)
                 with lock.open('a') as handle:
-                    fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    trim(root, True)
+                    try:
+                        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError:
+                        event('KEEP-busy', root, 'heavy-suite lock held; trim deferred')
+                    else:
+                        trim(root, True)
             else:
                 trim(root, False)
-    except (OSError, ValueError, subprocess.SubprocessError) as error:
-        print('build maintenance refused: ' + str(error))
-        sys.exit(1)
+    except (OSError, ValueError, IndexError, subprocess.SubprocessError) as error:
+        event('KEEP-trim-error', sys.argv[2], 'build maintenance refused: ' + str(error))
+        sys.exit(0 if sys.argv[1] == 'trim' else 1)

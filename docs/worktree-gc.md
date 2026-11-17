@@ -139,15 +139,21 @@ filesystem and Git admin mtimes and cannot be lowered with `--idle-hours`.
 Removal uses the existing archive/lock/`git worktree remove` path. Git removes its
 own registration; broad prune remains disabled to preserve absent KEEP trees.
 
-Old kept candidates can shed ignored `.build*`, `.venv` and `node_modules`
+Old kept candidates can shed ignored exact `.build`, `.venv`, `venv` and `node_modules`
 directories in apply mode. Plans print each directory and allocated size.
 Tracked entries, unignored entries, nested Git repositories, symlink directories
 and all `docs.local` subtrees protect a cache directory. Owner pins, live bindings,
 unknown state and process-cwd uncertainty also prevent trimming. Cache maintenance
 takes the heavy-suite lock; dry-run and prune-plan never delete output.
-Nested build roots such as `brain-bar/.build` are included. When a receipt protects
-`.build.noindex`, its ignored `swift`, `brainbar-render` and `pytest` children
-can still be trimmed individually. Venvs are processed last.
+Nested build roots such as `brain-bar/.build` are included. Only the exact
+`swift`, `brainbar-render` and `pytest` children of `.build.noindex` are trimmed,
+never the container or any other child. Other `.build*` names are durable data.
+Venvs are processed last. Open files and mappings under each target block trimming;
+bounded lsof errors retain the target. Busy locks report KEEP-busy. Trim errors
+name the target (including possible partial deletion) and never skip siblings.
+Legacy `.worktrees` removals retain their original archive policy; T3 archives
+all ignored data outside the exact build allowlist. Dry-run prune plans measure
+archive allocation and the build-like data protected from the earlier broad rule.
 
 `checkouts` in the JSON report holds each checkout's final verdict, reason and
 allocated `size_bytes` (null means unknown). The existing stale-owner queue is

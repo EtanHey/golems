@@ -28,7 +28,7 @@ REGENERABLE = {
 
 
 def regenerable(name):
-    return name in REGENERABLE or name.startswith(".build") or name.startswith(".venv") or name.endswith(".egg-info")
+    return name in REGENERABLE or name.startswith(".venv") or name.endswith(".egg-info")
 
 
 def nested_git(root):
@@ -45,7 +45,7 @@ def _raise(err):
     raise err
 
 
-def expand(root, rel):
+def expand(root, rel, strict=False):
     """Only known ignored cache roots are disposable, never data inside an ignored ancestor."""
     parts = rel.split("/")
     if "docs.local" in parts:
@@ -59,12 +59,21 @@ def expand(root, rel):
         ignored = subprocess.run(["git", "-C", root, "check-ignore", "-q", "--", rel + "/"])
         if ignored.returncode == 1:
             return [leaf for child in sorted(os.listdir(full))
-                    for leaf in expand(root, rel + "/" + child)]
+                    for leaf in expand(root, rel + "/" + child, strict)]
         ignored.check_returncode()
-    canonical = (len(parts) == 1 or parts[:-1] == ["ui"] or
+    if strict:
+        if parts[-1] == '.build.noindex' and os.path.isdir(full):
+            return [leaf for child in sorted(os.listdir(full))
+                    for leaf in expand(root, rel + '/' + child, True)]
+        known = (parts[-1] in {'.build', 'node_modules', '.venv', 'venv'} or
+                 (len(parts) > 1 and parts[-2] == '.build.noindex' and
+                  parts[-1] in {'swift', 'brainbar-render', 'pytest'}))
+        if not known or not os.path.isdir(full):
+            return [rel]
+    canonical = strict or (len(parts) == 1 or parts[:-1] == ["ui"] or
                  (len(parts) == 3 and parts[0] == "packages") or
                  parts[-1] == "__pycache__")
-    if not canonical or not regenerable(parts[-1]):
+    if not canonical or (not strict and not regenerable(parts[-1])):
         return [rel]
     # Even a cache root can contain durable docs.local receipts.
     for _here, dirs, _files in os.walk(os.path.join(root, rel), onerror=_raise):
@@ -123,14 +132,46 @@ def manifest(base, rel):
     return out
 
 
-def archive(root, dests):
+def ignored_keep(root, strict=False):
     listed = subprocess.run(
-        ["git", "-C", root, "ls-files", "-z", "-o", "-i", "--exclude-standard", "--directory"],
+        ['git', '-C', root, 'ls-files', '-z', '-o', '-i', '--exclude-standard', '--directory'],
         capture_output=True, check=True).stdout.decode()
-    entries = sorted({e.rstrip("/") for e in listed.split("\0") if e})
-    # --directory lists nested entries too (packages/, packages/x/, ...): keep the top-most.
-    tops = [e for e in entries if not any(e.startswith(o + "/") for o in entries if o != e)]
-    keep = [leaf for e in tops for leaf in expand(root, e)]
+    entries = sorted({e.rstrip('/') for e in listed.split('\0') if e})
+    tops = [e for e in entries if not any(e.startswith(o + '/') for o in entries if o != e)]
+    return [leaf for e in tops for leaf in expand(root, e, strict)]
+
+
+def previous_build_drop(root, rel):
+    # Historical sizing only: reproduces the removed broad rule, never authorizes deletion.
+    parts = rel.split('/')
+    for length in range(1, len(parts) + 1):
+        prefix = parts[:length]
+        canonical = (length == 1 or prefix[:-1] == ['ui'] or
+                     (length == 3 and prefix[0] == 'packages'))
+        target = os.path.join(root, *prefix)
+        if canonical and prefix[-1].startswith('.build') and not os.path.islink(target):
+            # The previous broad rule still protected containers holding receipts.
+            if any('docs.local' in dirs for _here, dirs, _files in os.walk(target, onerror=_raise)):
+                return False
+            return True
+    return False
+
+
+def plan(root, strict=False):
+    import json
+    keep = ignored_keep(root, strict)
+    allocated = newly_protected = 0
+    for rel in keep:
+        size = int(subprocess.check_output(['du', '-sk', os.path.join(root, rel)], text=True).split()[0]) * 1024
+        allocated += size
+        if previous_build_drop(root, rel):
+            newly_protected += size
+    print(json.dumps(dict(action='ARCHIVE-plan', path=root, size_bytes=allocated,
+                          newly_protected_build_bytes=newly_protected, paths=len(keep))))
+
+
+def archive(root, dests, strict=False):
+    keep = ignored_keep(root, strict)
     if not keep:
         print("no archive needed (only regenerable caches ignored)")
         return 0
@@ -161,8 +202,11 @@ def main(argv):
     try:
         if len(argv) == 2 and argv[0] == "nested-git":
             return nested_git(argv[1])
-        if len(argv) >= 3 and argv[0] == "archive":
-            return archive(argv[1], argv[2:])
+        if len(argv) == 3 and argv[0] == 'plan':
+            plan(argv[1], argv[2] == 't3')
+            return 0
+        if len(argv) >= 3 and argv[0] in ("archive", "archive-t3"):
+            return archive(argv[1], argv[2:], argv[0] == 'archive-t3')
     except (OSError, subprocess.CalledProcessError) as err:
         print(f"worktree-archive failed: {err}")
         return 1

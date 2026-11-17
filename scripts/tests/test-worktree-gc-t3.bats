@@ -18,7 +18,7 @@ finished_fixture() {
   mkdir -p "$TEST_ROOT/bin"
   cat > "$TEST_ROOT/bin/lsof" <<'SH'
 #!/bin/bash
-ps -o pid= -u "$(id -u)" | while read -r pid; do printf 'p%s\nn/\n' "$pid"; done
+ps -o pid= -u "$(id -u)" | while read -r pid; do printf 'p%s\nfcwd\nn/\n' "$pid"; done
 [[ -z "${GC_LIVE_PATH:-}" ]] || printf 'p999999\nn%s\n' "$GC_LIVE_PATH"
 SH
   chmod +x "$TEST_ROOT/bin/lsof"
@@ -37,9 +37,9 @@ PY
 }
 @test "T3 merged clean old settled checkout is removed" {
   finished_fixture
-  mkdir -p "$worktree/.build.noindex"
+  mkdir -p "$worktree/.build.noindex/swift"
   printf '.build*/\n' >> "$repo/.git/info/exclude"
-  printf cache > "$worktree/.build.noindex/out"
+  printf cache > "$worktree/.build.noindex/swift/out"
   age_tree
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   echo "$output"
@@ -149,7 +149,7 @@ PY
     [[ "$output" == *KEEP-undetermined* ]]; [ -d "$worktree" ]
   done
 }
-@test "T3 cache dry-run counts a disposable container once" {
+@test "T3 cache dry-run selects the exact child once" {
   finished_fixture
   mkdir -p "$worktree/.build.noindex/swift"
   printf '.build*/\n' >> "$repo/.git/info/exclude"
@@ -159,6 +159,137 @@ PY
   run "$WORKTREE_GC" --dry-run --repo "$repo"
   echo "$output"
   [ "$status" -eq 0 ]
-  [ "$(printf '%s\n' "$output" | rg -c '^\{"action": "TRIM"')" -eq 1 ]
+  [ "$(printf '%s\n' "$output" | grep -c '^{"action": "TRIM"')" -eq 1 ]
   [ -f "$worktree/.build.noindex/swift/out" ]
+}
+
+@test "R2 exact trim outputs preserve build-like data and legacy removal archives it" {
+  finished_fixture
+  for path in .build-receipts .buildkite-local .build.noindex/review .build.noindex/snapshots .build.noindex/e2e24; do
+    mkdir -p "$worktree/$path"; printf receipt > "$worktree/$path/only-copy"
+  done
+  mkdir -p "$worktree/.build.noindex/swift" "$worktree/.build.noindex/review/node_modules" "$worktree/.build-receipts/.build"
+  printf receipt > "$worktree/.build.noindex/review/node_modules/proof"
+  printf receipt > "$worktree/.build-receipts/.build/proof"
+  printf cache > "$worktree/.build.noindex/swift/out"
+  printf '.build*/\n' >> "$repo/.git/info/exclude"
+  printf dirty > "$worktree/local"
+  age_tree
+  run "$WORKTREE_GC" --apply --repo "$repo"
+  [ "$status" -eq 0 ]; [ ! -e "$worktree/.build.noindex/swift" ]
+  for path in .build-receipts .buildkite-local .build.noindex/review .build.noindex/snapshots .build.noindex/e2e24; do
+    [ "$(cat "$worktree/$path/only-copy")" = receipt ]
+  done
+  [ -f "$worktree/.build.noindex/review/node_modules/proof" ]
+  [ -f "$worktree/.build-receipts/.build/proof" ]
+  local legacy; legacy="$(add_branch_worktree "$repo" legacy)"
+  mkdir -p "$legacy/.build.noindex/swift" "$legacy/.build-receipts"
+  printf receipt > "$legacy/.build-receipts/proof"
+  printf cache > "$legacy/.build.noindex/swift/out"
+  run "$WORKTREE_GC" --apply --idle-hours 0 --path "$legacy"
+  [ "$status" -eq 0 ]; [ ! -e "$legacy" ]
+  [ -f "$repo/docs.local/worktree-archive/legacy-worktree/.build-receipts/proof" ]
+  [ -f "$repo/docs.local/worktree-archive/legacy-worktree/.build.noindex/swift/out" ]
+}
+
+@test "R3 permission failure names target and continues trimming and sibling judgments" {
+  finished_fixture
+  local kept; kept="$(add_branch_worktree "$repo" akeep)"
+  printf 'node_modules/\nvenv/\n' >> "$repo/.git/info/exclude"
+  mkdir -p "$kept/node_modules/a" "$kept/node_modules/z/locked" "$kept/venv"
+  printf x > "$kept/node_modules/a/f"; printf x > "$kept/node_modules/z/locked/f"
+  printf x > "$kept/venv/f"; printf dirty > "$kept/dirty"
+  local saved="$worktree"; worktree="$kept"; age_tree; worktree="$saved"
+  chmod 500 "$kept/node_modules/z/locked"
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  chmod 700 "$kept/node_modules/z/locked"
+  echo "$output"
+  [ "$status" -eq 0 ]; [[ "$output" == *KEEP-trim-error*node_modules*'partially deleted'* ]]
+  [ ! -e "$kept/venv" ]; [ ! -e "$worktree" ]
+}
+
+@test "R4 busy trim lock records KEEP-busy and still judges siblings" {
+  finished_fixture
+  local kept; kept="$(add_branch_worktree "$repo" kept)"
+  printf 'node_modules/\n' >> "$repo/.git/info/exclude"
+  mkdir -p "$kept/node_modules"; printf x > "$kept/node_modules/f"; printf dirty > "$kept/dirty"
+  local saved="$worktree"; worktree="$kept"; age_tree; worktree="$saved"
+  python3 -c 'import fcntl,sys,time; f=open(sys.argv[1],"a"); fcntl.flock(f,fcntl.LOCK_EX); open(sys.argv[2],"w").close(); time.sleep(30)' "$GOLEMS_HEAVY_LOCK" "$TEST_ROOT/locked" &
+  local holder=$!
+  while [ ! -e "$TEST_ROOT/locked" ]; do :; done
+  run "$WORKTREE_GC" --apply --repo "$repo"
+  kill "$holder"
+  [ "$status" -eq 0 ]; [[ "$output" == *KEEP-busy* ]]; [ -f "$kept/node_modules/f" ]
+  [[ "$output" == *"$worktree"* ]]
+}
+
+@test "R5 real lsof sees an open file with cwd outside the checkout" {
+  finished_fixture
+  local real_lsof; real_lsof="$(PATH=/usr/sbin:/usr/bin:/sbin:/bin command -v lsof)"
+  mkdir -p "$worktree/.venv"; printf live > "$worktree/.venv/state.db"
+  printf '.venv/\n' >> "$repo/.git/info/exclude"
+  age_tree
+  (cd "$TEST_ROOT" && exec tail -f "$worktree/.venv/state.db" >/dev/null) &
+  local holder=$!
+  # First prove the descriptor is present, avoiding a sleep-based readiness race.
+  local seen=0
+  for attempt in {1..100}; do
+    if "$real_lsof" -p "$holder" -Fn | grep -q "n$worktree/.venv/state.db"; then seen=1; break; fi
+  done
+  if [ "$seen" -ne 1 ]; then kill "$holder"; return 1; fi
+  run env PATH=/usr/sbin:/usr/bin:/sbin:/bin python3 "$REPO_ROOT/scripts/lib/worktree-gc-builds.py" trim "$worktree" apply
+  kill "$holder"
+  echo "$output"
+  [ "$status" -eq 0 ]; [ -f "$worktree/.venv/state.db" ]
+  [[ "$output" == *KEEP-live*'open file or mapping'* ]]
+}
+
+@test "archived and explicitly settled threads ignore retained limit recovery" {
+  finished_fixture
+  sqlite3 "$WORKTREE_GC_T3_DB" "UPDATE orchestration_v2_projection_threads SET payload_json=json_set(payload_json,'$.settledOverride','settled','$.limitRecovery',json('{}'));"
+  # Use a nonempty recovery payload.
+  sqlite3 "$WORKTREE_GC_T3_DB" "UPDATE orchestration_v2_projection_threads SET payload_json=json_set(payload_json,'$.limitRecovery',json('{\"autoResume\":true}'));"
+  run "$WORKTREE_GC" --dry-run --repo "$repo"
+  [ "$status" -eq 0 ]; [[ "$output" == *' · REMOVE · '* ]]
+  sqlite3 "$WORKTREE_GC_T3_DB" "UPDATE orchestration_v2_projection_threads SET payload_json=json_set(json_remove(payload_json,'$.settledAt','$.settledOverride'),'$.archivedAt','2020-01-01');"
+  run "$WORKTREE_GC" --dry-run --repo "$repo"
+  [ "$status" -eq 0 ]; [[ "$output" == *' · REMOVE · '* ]]
+}
+
+@test "R8 exact-head PR requires the actual default base" {
+  finished_fixture
+  local remote="$TEST_ROOT/finished-origin.git"
+  git -C "$repo" config remote.origin.url https://github.com/fixture/stack
+  git -C "$repo" config "url.$remote.insteadOf" https://github.com/fixture/stack
+  commit_fixture_file "$worktree" feature
+  export PR_SHA="$(git -C "$worktree" rev-parse HEAD)"
+  cat > "$TEST_ROOT/bin/gh" <<'SH'
+#!/bin/bash
+case " $* " in
+  *' --state merged '*) printf '[{"headRefName":"topic","headRefOid":"%s","baseRefName":"%s"}]\n' "$PR_SHA" "$PR_BASE" ;;
+esac
+SH
+  chmod +x "$TEST_ROOT/bin/gh"
+  age_tree
+  run env PR_BASE=parent "$WORKTREE_GC" --dry-run --repo "$repo"
+  [ "$status" -eq 3 ]; [[ "$output" == *KEEP-unpushed* ]]; [ -d "$worktree" ]
+  run env PR_BASE=main "$WORKTREE_GC" --dry-run --repo "$repo"
+  echo "$output"
+  [ "$status" -eq 0 ]; [[ "$output" == *' · REMOVE · '* ]]
+}
+
+@test "lsof error keeps exact build target and still judges later worktrees" {
+  finished_fixture
+  local kept; kept="$(add_branch_worktree "$repo" error)"
+  printf 'node_modules/\n' >> "$repo/.git/info/exclude"
+  mkdir -p "$kept/node_modules"; printf data > "$kept/node_modules/f"; printf dirty > "$kept/dirty"
+  local saved="$worktree"; worktree="$kept"; age_tree; worktree="$saved"
+  cat > "$TEST_ROOT/bin/lsof" <<'SH'
+#!/bin/bash
+case "$*" in *-Fpfan*) exit 1;; esac
+ps -o pid= -u "$(id -u)" | while read -r pid; do printf 'p%s\nfcwd\nn/\n' "$pid"; done
+SH
+  run "$WORKTREE_GC" --apply --repo "$repo"
+  [ "$status" -eq 0 ]; [ -f "$kept/node_modules/f" ]; [ ! -e "$worktree" ]
+  [[ "$output" == *KEEP-trim-error*node_modules* ]]
 }

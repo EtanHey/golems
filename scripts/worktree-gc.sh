@@ -223,24 +223,27 @@ load_open_prs() {
     open_pr_failed="cannot list open PRs for $slug (gh failed)"
   fi
   if ! merged_prs="$(gh pr list --repo "$slug" --state merged --limit 10000 \
-      --json headRefName,headRefOid 2>/dev/null)" ||
+      --json headRefName,headRefOid,baseRefName 2>/dev/null)" ||
       ! merged_prs="$(python3 -c 'import json,sys
 rows=json.load(sys.stdin)
 if not isinstance(rows,list) or len(rows)>=10000: raise ValueError("incomplete PR list")
 for r in rows:
  if not isinstance(r["headRefName"],str) or len(r["headRefOid"])!=40: raise ValueError("invalid PR head")
-print("\n".join(r["headRefName"]+"\t"+r["headRefOid"] for r in rows))' <<< "$merged_prs")"; then
+print("\n".join(r["headRefName"]+"\t"+r["headRefOid"]+"\t"+r.get("baseRefName", "unknown") for r in rows))' <<< "$merged_prs")"; then
     merged_pr_failed="cannot list merged PR heads for $slug (gh failed or incomplete)"
   fi
 }
 
 # A name is only a lookup key: the local HEAD must be covered by the PR SHA.
 head_is_merged() {
-  local path="$1" branch="$2" pr_branch pr_sha
+  local path="$1" branch="$2" pr_branch pr_sha pr_base
   git -C "$path" merge-base --is-ancestor HEAD "$base_ref" && return 0
   [[ -n "$branch" ]] || return 1
-  while IFS=$'\t' read -r pr_branch pr_sha; do
+  while IFS=$'\t' read -r pr_branch pr_sha pr_base; do
     [[ "$pr_branch" == "$branch" && "$pr_sha" =~ ^[0-9a-f]{40}$ ]] || continue
+    local default_branch="${base_ref#refs/remotes/origin/}"
+    default_branch="${default_branch#origin/}"
+    [[ "$pr_base" == "$default_branch" ]] || continue
     if [[ "${is_t3:-0}" -eq 1 ]]; then
       [[ "$(git -C "$path" rev-parse HEAD)" == "$pr_sha" ]] && return 0
     else
@@ -299,7 +302,9 @@ archive_ignored() {
   local dest
 
   dest="$repo_root/docs.local/worktree-archive/$(basename "$worktree_path")"
-  archive_detail="$(python3 "$SCRIPT_DIR/lib/worktree-archive.py" archive "$worktree_path" \
+  local archive_mode=archive
+  [[ "${is_t3:-0}" -eq 0 ]] || archive_mode=archive-t3
+  archive_detail="$(python3 "$SCRIPT_DIR/lib/worktree-archive.py" "$archive_mode" "$worktree_path" \
     "$dest" "$dest-${head_sha:0:12}")"
 }
 
@@ -370,6 +375,13 @@ apply_removal() {
     return 0
   fi
   if [[ "$apply" -eq 0 ]]; then
+    local archive_plan archive_policy=legacy
+    [[ "${is_t3:-0}" -eq 0 ]] || archive_policy=t3
+    if ! archive_plan="$(python3 "$SCRIPT_DIR/lib/worktree-archive.py" plan "$worktree_path" "$archive_policy")"; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 KEEP-undetermined "cannot measure ignored-data archive plan"
+      return 0
+    fi
+    printf '%s\n' "$archive_plan" | tee -a "$LOG_FILE"
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
       "REMOVE" "eligible prune plan; archive verification required before removal"
     return 0
@@ -758,7 +770,19 @@ process_worktree_block() {
       path_has_cwd_in "$tree" "$agent_cwds" && return 0
       local mode=plan
       [[ "$apply" -eq 0 ]] || mode=apply
-      python3 "$SCRIPT_DIR/lib/worktree-gc-builds.py" trim "$tree" "$mode" | tee -a "$LOG_FILE"
+      local trim_output trim_line trim_event trim_path trim_detail
+      if ! trim_output="$(python3 "$SCRIPT_DIR/lib/worktree-gc-builds.py" trim "$tree" "$mode" 2>&1)"; then
+        emit_row "$repo_name" "$tree" "${block_branch#refs/heads/}" not-checked not-checked KEEP-trim-error "trim helper failed: $trim_output"
+        return 0
+      fi
+      while IFS= read -r trim_line; do
+        case "$trim_line" in
+          *'"action": "KEEP-'*)
+            trim_event="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["action"])' "$trim_line")"
+            emit_row "$repo_name" "$tree" "${block_branch#refs/heads/}" not-checked not-checked "$trim_event" "$trim_line" ;;
+          *) printf '%s\n' "$trim_line" | tee -a "$LOG_FILE" ;;
+        esac
+      done <<< "$trim_output"
       ;;
   esac
 }

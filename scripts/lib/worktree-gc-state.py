@@ -13,11 +13,10 @@ from urllib.parse import quote
 
 def t3_threads(path):
     db = os.environ.get("WORKTREE_GC_T3_DB", os.path.expanduser("~/.t3/userdata/statev2.sqlite"))
-    literal = "'" + path.replace("'", "''") + "'"
     active = "('running','starting','queued','waiting','preparing')"
     query = f"""
       WITH bound AS (SELECT thread_id,payload_json,deleted_at FROM orchestration_v2_projection_threads
-        WHERE json_extract(payload_json,'$.worktreePath')={literal})
+        WHERE json_extract(payload_json,'$.worktreePath') IS NOT NULL)
       SELECT json_object('id',thread_id,'settled',json_extract(payload_json,'$.settledAt'),
         'payload',json(payload_json),'created',json_extract(payload_json,'$.createdAt'),'deleted_at',deleted_at,
         'owner',coalesce(json_extract(payload_json,'$.lineage.rootThreadId'),
@@ -29,7 +28,8 @@ def t3_threads(path):
     """
     result = subprocess.run(["sqlite3", "file:" + quote(os.path.abspath(db), safe="/") + "?mode=ro",
                              ".timeout 3000", query], check=True, capture_output=True, text=True, timeout=10)
-    return [json.loads(row) for row in result.stdout.splitlines()]
+    rows = [json.loads(row) for row in result.stdout.splitlines()]
+    return [row for row in rows if os.path.realpath(row['payload']['worktreePath']) == os.path.realpath(path)]
 
 
 def t3_roots():
@@ -182,10 +182,13 @@ if __name__ == "__main__":
                 raise ValueError("no bound thread")
             for t in threads:
                 p = t["payload"]
-                if (p.get("pinnedAt") or not (t["settled"] or p.get("archivedAt")) or t["active"] or
-                    p.get("activeRunId") or p.get("pendingBackgroundTasks") or
-                    p.get("pendingRuntimeRequest") or p.get("queuedTurnStart") or
-                    p.get("limitRecovery") or p.get("usageLimitResetAt")):
+                # Shell-derived active/pending fields are checked in projection tables below.
+                # t3code apps/server/src/storageCleanup.ts:191-203, heldForLimitRecovery:
+                # archived or explicitly settled threads are never recovery-held.
+                recovery_held = (not p.get('archivedAt') and p.get('settledOverride') != 'settled'
+                                 and bool(p.get('limitRecovery')))
+                if (p.get("pinnedAt") or not (t["settled"] or p.get("archivedAt")) or
+                    t["active"] or recovery_held):
                     raise ValueError("binding unsettled, active, pending or recovery-held")
             db = os.environ.get("WORKTREE_GC_T3_DB", os.path.expanduser("~/.t3/userdata/statev2.sqlite"))
             with sqlite3.connect("file:" + quote(os.path.abspath(db), safe="/") + "?mode=ro", uri=True, timeout=3) as conn:
@@ -211,7 +214,7 @@ if __name__ == "__main__":
                     p = t["payload"]
                     for field in ("settledAt", "archivedAt", "updatedAt", "snoozedUntil"):
                         value = p.get(field)
-                        if value and time.time() - datetime.datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=datetime.timezone.utc).timestamp() <= 72 * 3600:
+                        if value and time.time() - datetime.datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(datetime.timezone.utc).timestamp() <= 72 * 3600:
                             raise ValueError("recent or future thread activity")
         elif command == "census":
             journal, repo, path, branch, verdict, detail = args
@@ -231,7 +234,7 @@ if __name__ == "__main__":
                 out.write(json.dumps(dict(kind="t3-managed", repo=args[1], count=int(args[2]))) + "\n")
         elif command == "t3":
             live = [{k: v for k, v in t.items() if k != "payload"}
-                    for t in t3_threads(args[0]) if not t["settled"] or t["active"]]
+                    for t in t3_threads(args[0]) if not (t["settled"] or t["payload"].get("archivedAt")) or t["active"]]
             if live:
                 print("T3 binding live: " + json.dumps(live))
             sys.exit(3 if live else 0)
