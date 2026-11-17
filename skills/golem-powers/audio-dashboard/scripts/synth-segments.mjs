@@ -44,6 +44,8 @@ import { normalizeWordTimingsForScript } from "../vendor/narrationlayer/word-tim
 import { deriveSpeechAliases } from "../src/spoken-form.mjs";
 import { clearTakeCacheReceiptForByo, writeWordTimingArtifacts } from "../src/word-timing-artifacts.mjs";
 
+import { takeCheckArgs, readTakeChecks, rejectedTakeChecks } from "../src/take-checks.mjs";
+
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TTS_RUNNER = path.join(SKILL_ROOT, "scripts", "local-tts.mjs");
 
@@ -124,6 +126,7 @@ function runTts(scene, wavPath, { noCache = false } = {}) {
     "--text", scene.script,
     "--output", wavPath,
     "--reference", ref,
+    ...takeCheckArgs(ref, scene),
     ...(scene.role ? ["--role", scene.role] : []),
     ...(noCache ? ["--no-cache"] : []),
   ];
@@ -133,7 +136,7 @@ function runTts(scene, wavPath, { noCache = false } = {}) {
     // The vendored runner is fail-closed: a down daemon / missing profile /
     // missing clone exits nonzero. We propagate LOUD — never fall back to
     // estimated timing or system TTS.
-    fail(`TTS synth failed for scene ${scene.id} (exit ${r.status}). The vendored local-tts-runner is fail-closed: check the qwen3 daemon (:8880), the voice profile/clone, and NARRATIONLAYER_PROFILES_FILE. Run scripts/bootstrap.mjs to diagnose.`);
+    fail(`TTS synth failed for scene ${scene.id} (exit ${r.status}). The vendored local-tts-runner is fail-closed: check the configured qwen3 daemon, the voice profile/clone, and NARRATIONLAYER_PROFILES_FILE. Run scripts/bootstrap.mjs to diagnose.`);
   }
 }
 
@@ -201,6 +204,7 @@ async function main() {
     const wav = path.join(segDir, `${sceneId}.wav`);
     const mp3 = path.join(segDir, `${sceneId}.mp3`);
     let speechAliases = [];
+    let takeChecks;
 
     // 1) audio: BYO existing WAV, else canonical fail-closed TTS synth.
     if (sceneForRun.audioWav) {
@@ -216,6 +220,8 @@ async function main() {
       clearTakeCacheReceiptForByo(wav);
     } else {
       runTts(sceneForRun, wav, { noCache: args.noCache });
+      takeChecks = readTakeChecks(wav, { required: true });
+      if (rejectedTakeChecks(takeChecks)) console.error(`[synth-segments] KEPT-BEST ${sceneId}: word check failed; retained for inspection, BUILD will reject`);
       const spokenPath = `${wav}.spoken.txt`;
       if (!existsSync(spokenPath)) {
         fail(`scene ${sceneId}: TTS runner did not persist its required synth-input sidecar`);
@@ -283,9 +289,10 @@ async function main() {
       durationSec: Number(duration.toFixed(3)),
       repaired: aligned.repaired,
       byo: Boolean(sceneForRun.audioWav),
+      ...(takeChecks ? { takeChecks, takeCheckStatus: rejectedTakeChecks(takeChecks) ? "kept-best" : "pass" } : {}),
     });
     console.error(
-      `[synth-segments] OK ${sceneId} words=${aligned.words.length} src=${stt.source} dur=${duration.toFixed(2)}s${sceneForRun.audioWav ? " (BYO wav)" : ""}${aligned.repaired ? " aligned" : ""}`,
+      `[synth-segments] ${rejectedTakeChecks(takeChecks) ? "KEPT-BEST" : "OK"} ${sceneId} words=${aligned.words.length} src=${stt.source} dur=${duration.toFixed(2)}s${sceneForRun.audioWav ? " (BYO wav)" : ""}${aligned.repaired ? " aligned" : ""}`,
     );
   }
 

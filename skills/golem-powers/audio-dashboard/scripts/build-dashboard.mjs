@@ -31,6 +31,7 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { checkPublishedDesign, writeDesignReport } from "../src/design-preservation.mjs";
+import { readTakeChecks, rejectedTakeChecks } from "../src/take-checks.mjs";
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
 import { loadPronunciationRules } from "../vendor/narrationlayer/pronunciation-config.ts";
 import { deriveSpeechAliases, prepareSpeechChannels } from "../src/spoken-form.mjs";
@@ -307,6 +308,24 @@ async function main() {
     }
   };
   checkVoiceRoles();
+
+  // A kept-best take is inspectable audio, never a passing page candidate.
+  const takeCheckRows = spec.scenes.filter(scene => !scene.audioWav).map(scene => ({
+    segment: safePathId(scene.id, "scene.id"),
+    checks: readTakeChecks(path.join(jobDir, "segments", scene.id, `${scene.id}.wav`)),
+  }));
+  const failedChecks = takeCheckRows.filter(row => rejectedTakeChecks(row.checks));
+  const checkedTakes = takeCheckRows.filter(row => row.checks);
+  if (checkedTakes.length) buildReceipts.takeChecks = checkedTakes;
+  if (checkedTakes.length) upsertBuildGate(buildReceipts, { gate: "take-checks", config: { keptBestAllowed: false },
+    result: { verdict: failedChecks.length ? "REJECT" : "PASS", violations: failedChecks.map(row => ({
+      segment: row.segment, metric: "TAKE_CHECK_FAILED", value: "kept-best", threshold: "pass",
+      evidence: "Runner retained a failed take after bounded retries.",
+    })) }, runbook: "Re-synthesize rejected scenes; kept-best audio cannot be published." });
+  if (failedChecks.length) {
+    writeBuildReceipts(outPath, buildReceipts, "");
+    fail(`TAKE_CHECK_FAILED: ${failedChecks.map(row => row.segment).join(", ")}; kept-best audio withheld from page selection`);
+  }
 
   const scenes = [];
   const artifacts = [];

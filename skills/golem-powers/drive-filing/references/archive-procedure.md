@@ -8,6 +8,31 @@ This procedure is for **putting things INTO Drive**. To **query Drive content** 
 
 ---
 
+## Credential gate before every upload run
+
+Classify the entire source run read-only and save stdout to a receipt OUTSIDE
+that source folder (otherwise the receipt itself changes the inventory):
+
+```bash
+node "$GOLEMS_ROOT/skills/golem-powers/drive-filing/scripts/classify.mjs" "$ARCHIVE_RUN" > "$SCAN_RECEIPT"
+```
+
+Require a successful command and every report to say status CLEAR, heldMembers 0.
+Before EACH upload step, rehash/verify every member against that receipt:
+
+```bash
+node "$GOLEMS_ROOT/skills/golem-powers/drive-filing/scripts/classify.mjs" --verify "$SCAN_RECEIPT"
+```
+
+Exit 1 refuses upload eligibility on any hash/inventory mismatch, invalid receipt,
+new hit or unreadable member; never upload after a refusal. The caller must invoke
+this preflight and stop on failure. The verifier does not perform an upload and is
+not an atomic upload transaction; do not mutate the source between verify and upload.
+Any hit, scan failure or limit holds the entire run; report paths and rules only,
+never values. All members, including regenerable directories, receive checks.
+Name rules, extended patterns, magic-byte handling and bounds are in
+[the skill](../SKILL.md#docslocal-lifecycle). Classification is not remote proof.
+
 ## Source-of-Truth Hierarchy
 
 ```

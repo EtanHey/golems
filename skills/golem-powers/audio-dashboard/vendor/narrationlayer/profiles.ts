@@ -3,8 +3,7 @@ import { constants } from "node:fs";
 import path from "node:path";
 
 import type { RendererName } from "./schema.js";
-import type { ExternalCommandConfig } from "./schema.js";
-import type { VoiceLayerQwen3Config } from "./schema.js";
+import type { ExternalCommandConfig, VoiceLayerQwen3Config } from "./core/render-types.js";
 
 export interface NarrationProfile {
   id: string;
@@ -338,6 +337,7 @@ export function qwenConfigFromProfile(profile: NarrationProfile | undefined): Pa
     min_utterance_words: parsePositiveNumber(profile.render.min_utterance_words),
     sentence_pause_seconds: parsePositiveNumber(profile.render.sentence_pause_seconds),
     comma_pause_seconds: parsePositiveNumber(profile.render.comma_pause_seconds),
+    colon_pause_seconds: parsePositiveNumber(profile.render.colon_pause_seconds),
     trim_silence: parseBoolean(profile.render.trim_silence),
     silence_threshold_db: parseNumber(profile.render.silence_threshold_db),
     eq_highshelf_hz: parseNumber(profile.render.eq_highshelf_hz),

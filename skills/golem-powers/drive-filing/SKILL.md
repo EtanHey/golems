@@ -230,25 +230,120 @@ Upload exactly the files in that handoff through the [archive procedure](referen
 and sizes, with no hashes, host, producer or restore command): until `rollup.mjs` emits one, write each
 unit's `MANIFEST.json` by hand before its upload and upload it with the unit.
 
-**Credentials never move.** Nothing whose name contains `credential`, `secret`, `token` or `.env` (`.env*`,
-`deploy.env`, `.ENV.prod`, `.envrc`) or has `env` as a word (`prod-env.json`, `app-env.yml`,
-`staging_env`), or ends in `auth.json`, `.pem` or `.key` — file **or directory** — and nothing under a
-`codexhome`/`codex-home*`, `claudehome`/`claude-home*`, `.codex`, `.claude` or `*-HOME*` directory or a
-browser profile (a dir holding `Local State`, `Cookies`, `Login Data` or `Web Data`), is uploaded,
-moved or deleted. Every name rule matches anywhere in the name, case-insensitively, because
-docs.local names are date-prefixed. `token` releases only proven-safe words: `tokeniz*`,
-`design-token(s)` and `Trust Tokens` are stripped first, so `tokenizer-remap.md` passes and
-`github_token_tokenizer.txt` does not (a browser profile is still held whole). Holds run before dating. `rollup.mjs` enforces this in code: each credential is reported
-as `skipped: credential <path>` (a credential directory is one line plus its credential-named
-files), and a month group (the `YYYY-MM/` folder plus that month's dated siblings in the same
-folder) that holds one is **held whole**: no moves into or out of it, no upload unit. It is reported
-once as `held: contains credentials <path>` with its items and credentials listed under it.
-**Content scan (B1).** Every file the plan would move or upload is read (text only, in overlapping 1 MiB
-chunks; a file with a NUL in its first chunk counts as binary and is skipped) for high-confidence secret
-shapes: Supabase `sbp_`, Google `AIza`, GitHub `gh[pousr]_` / `github_pat_`, OpenAI `sk-`, AWS `AKIA`,
-Slack `xox?-`, and PEM private-key headers. A hit holds the whole month group as
-`held: credential-content <path>`, listing `content: <file> (<shape>)`. **A matched value is never kept,
-logged or printed.** The summary adds `content-held=N`.
+**Credentials never move.** Always-held basenames are case-insensitive; a leading
+YYYY-MM-DD- or YYYY-MM-DD_ may precede a shape. The canonical list is
+[scripts/credential-policy.mjs](scripts/credential-policy.mjs); tests check this block:
+
+<!-- credential-names:start -->
+`.env`, `.env.*`, `.envrc`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `id_ed25519*`, `*.keychain*`, `auth.json`, `credentials`, `credentials.json`, `.credentials.json`, `.netrc`, `.npmrc`, `.pypirc`, `token.json`, `*secret*.json`, `*.kdbx`, `.git-credentials`, `application_default_credentials.json`, `service-account*.json`, `*.p8`, `*.keystore`, `*.jks`, `.pgpass`, `Login Data`, `Login Data For Account`, `Cookies`, `Cookies-journal`, `Local State`, `Web Data`, `*.ovpn`, `wallet.dat`, `*_rsa`, `*_ed25519`, `*_ecdsa`
+<!-- credential-names:end -->
+
+The contextual paths `.docker/config.json`, `.kube/config` and `.aws/credentials`
+always hold too. `.env.example` and `.env.sample` are exempt from the name hold;
+they still require a full clean content scan. Known credential homes and browser
+profiles remain held. Other directory components containing credential, secret,
+token or env hold their subtree, except inside node_modules, site-packages,
+vendor and .venv trees. Package names receive no directory-word hold, but their
+member files still undergo name and content checks, even when regenerable files
+are excluded from the upload list.
+
+**Conditional name release.** A basename containing those words is held unless
+its bytes prove real media or its complete supported text scans clean. Unknown
+binary, including SQLite, holds; an extension is never proof of media.
+Always-held credential shapes win even over a real media signature. Reports
+contain file paths and rule names only, never matched values or raw decoder errors.
+The entire month/mtime group or classified run holds on any hit or scan failure.
+
+**Content scan.** Read the complete UTF-8 text, decompressing gzip/zstd by magic
+bytes, and apply publication-policy credential-adjacent patterns plus provider
+shapes and generic assignments (password/passwd/pwd/secret/token/api-key/access-key),
+JSON refresh_token/access_token/private_key/client_secret keys, JWTs, Google ya29,
+Anthropic sk-ant and URL userinfo. False positives become named holds for owner
+review. PNG, JPEG, GIF, ISO media ftyp, RIFF WAVE/WEBP/AVI, ID3/MPEG audio, FLAC,
+Ogg and Matroska/WebM signatures identify media. Media bytes, including text after
+the header, still receive credential-shape scans; hashes cover every raw byte.
+A text file named .png or .mp4 is scanned as text. Media over the 64 MiB content
+bound HOLD with `scan-size-limit`, rather than bypassing credential scanning.
+
+Unsupported zip/xz/bz2/7z/tar/tgz/br/lz4/rar, nested compression and non-UTF-8
+(including UTF-16), and base64-looking single blobs hold with scan-unsupported-decoder or scan-unsupported-encoding.
+Recognizable compressors are detected by magic even with a different suffix;
+known unsupported suffixes also hold (Brotli has no universal magic).
+Input (including media) and decompressed text are limited to 64 MiB, every worker to
+15 seconds. The whole-folder classifier uses a scaled run deadline (below);
+the legacy rollup planner retains its 120-second scan limit. Size/time limits, unreadable
+members, corruption, worker failures and policy errors fail closed with named reasons.
+
+**Scan receipt and upload preflight.** The classifier emits each scanned member's
+path, byte count and SHA-256 of the raw bytes read during scanning, including media.
+Save the JSON outside the source run. Immediately before each upload step run
+`node scripts/classify.mjs --verify <receipt.json>`: it rescans and rehashes the
+whole run and refuses changed bytes, additions, deletions, new holds or invalid
+receipts (exit 1). Only exit 0 permits upload. The planner also records scanMembers;
+it never uploads. This is a preflight verifier, not an atomic upload transaction.
+
+For read-only whole-folder classification including regenerable files, independent
+of age, run `node scripts/classify.mjs <archive-run> [...]` from this skill directory.
+Its JSON gives files, heldMembers, reason counts, member hashes and path/rule
+receipts. A HOLD blocks upload; CLEAR is not remote-preservation proof.
 Cleaning them up is the owner's call.
+
+### Large-folder classification and partial manifests
+
+Run `node scripts/classify.mjs --receipt-dir <outside-source-directory> <archive-run>`
+to save `receipt.json`, `scan-cache.json`, `upload-manifest.tsv` and `held.tsv`.
+Without `--receipt-dir`, classification only prints JSON and writes nothing.
+Receipt directories must be outside the source, including after resolving ancestor
+symlinks; never place these files inside the archive. One source per receipt directory.
+
+The classifier uses CPU count minus one workers (minimum 1, maximum 16); `--workers N`
+accepts 1–32. Each worker is terminated after 15 seconds per member. The deadline is
+60 seconds + raw bytes / 25 MiB per second + 5 milliseconds per file, capped at one
+hour. `--budget-ms N` overrides it, up to 24 hours. Inventory time counts against
+the deadline. Unscanned members remain HOLD with `scan-run-time-limit`.
+
+Cache entries bind relative path, size, mtime and SHA-256 of all raw bytes, plus a
+scanner/policy version hash. Cache hits rehash bytes before reusing CLEAR or a
+definitive HOLD; transient failures are retried. Git internals/history are never
+cached. The cache payload is HMAC-SHA256 authenticated with a 0600 key created at
+`~/.local/state/golems/drive-scan-cache.key`, outside the source and receipt directory.
+Unkeyed or altered caches count as misses. An invalid key location or permissions
+refuses the run; the key is never included in receipts or archives. `--verify`
+ignores the cache, rehashes and rescans every member; changed bytes or inventory
+still refuse upload. Concurrent source changes require stopping and rescanning;
+this remains a preflight, not a filesystem snapshot or upload transaction.
+
+For a `.git` directory, the classifier streams all Git objects, including unreachable
+blobs, commits, tags and trees, through `git cat-file --batch-all-objects --batch`.
+Commit/tag text and blob decoding use the same content bounds; history media HOLD
+instead of bypassing scanning. Tree entry names and contextual full paths receive
+the credential-name and directory policy, including unreachable trees. Missing
+referenced objects fail closed. Tree inventory/traversal is bounded to 500,000 entries
+and 1,000,000 tree visits. Git is bound to the absolute `.git` directory with discovery
+ceilings, `--no-lazy-fetch`, fsmonitor disabled and lazy fetching disabled in the
+environment; an older Git rejecting the flag refuses the scan. Redirects (`commondir`,
+`gitdir`, alternates, or a `.git` file) HOLD. Pack/index pairs must match Git's pack
+and object counts and pass `verify-pack`. Loose objects must be consumed by Git,
+match their object IDs and have no trailing compressed bytes. Git indexes require
+checksum validation, `ls-files --stage` validation with fsmonitor off, and a full raw
+credential scan. Only validated storage and reference text bypass unknown-binary
+decoding. Commit graphs, reverse indexes and bitmaps remain ordinary content scans;
+unknown binary metadata HOLDs. History hits hold Git
+internals as `git-history-match`; `gitHistory.matches` gives blob IDs and paths when
+Git can resolve them, never values. Git errors fail closed as `git-history-error`.
+
+Only a successful `--verify` grants upload. A manifest from a cached classification
+never grants upload by itself. `upload-manifest.tsv` contains only CLEAR members
+(path, raw bytes, SHA-256);
+`held.tsv` contains paths and reason lists. TSV path/reason cells use JSON quoting
+so tabs and newlines cannot forge rows. Held members are never uploaded and never
+deleted locally. An operator may prepare an archive from only the CLEAR manifest,
+then classify and verify that new archive source separately. The original run's
+HOLD receipt cannot pass `--verify`. A run containing any held member cannot remove
+its source folder. CLEAR remains separate from remote preservation/deletion authority.
+
+`unsupportedEncoding` ranks unsupported members by extension and recognized magic
+(for example Mach-O, ELF, WebAssembly or SQLite). Unknown magic stays `unknown`;
+reports never print raw header bytes. These categories grant no new allowances.
 
 > **After creating/editing this skill it must be REGISTERED** (golem-install / symlink into `~/.claude/skills`) before any agent can invoke it — committed ≠ installed.

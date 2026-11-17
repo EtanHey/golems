@@ -93,6 +93,18 @@ def desynced_patch_cases(target):
 
 
 class CodexPolicyHookTests(unittest.TestCase):
+    def test_permission_request_always_denies_even_malformed_input(self):
+        for data in (dict(payload("/bin/zsh -lc 'git status; rm -rf .scratch/x'"),
+                          hook_event_name="PermissionRequest"), "{broken", "", "[]"):
+            with self.subTest(data=data):
+                proc = run("permission-request", data)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                output = json.loads(proc.stdout)["hookSpecificOutput"]
+                self.assertEqual(output["hookEventName"], "PermissionRequest")
+                self.assertEqual(output["decision"]["behavior"], "deny")
+                self.assertIn("one named file", output["decision"]["message"])
+                self.assertFalse(proc.stderr)
+
     @classmethod
     def setUpClass(cls):
         # These fixtures must also work in a fresh checkout with no ignored

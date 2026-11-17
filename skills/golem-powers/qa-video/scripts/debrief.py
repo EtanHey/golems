@@ -196,6 +196,7 @@ def main():
             progress(prefix+'visual 0/%s · ETA unknown' % len(sheets))
             result = batch.run(argparse.Namespace(workdir=work, budget_seconds=remaining,
                                concurrency=selected['concurrency'], timeout=90, helper=args.helper,
+                               transcript=work/'transcript.srt', frames_tsv=work/'frames.tsv',
                                question='Describe visible slide/code/chart text and numbers. Do not infer claims from speech. Mark unknown details NOT DETERMINED.',
                                progress_prefix=prefix), sheets)
             status = 'COMPLETE' if result == 0 else json.loads((work/'visual/summary.json').read_text())['status']
