@@ -1,40 +1,40 @@
 {
   "schemaVersion": 1,
   "vendor": "narrationlayer",
-  "vendorDate": "2026-11-17",
+  "vendorDate": "2026-11-08",
   "upstream": {
     "repository": "EtanHey/narrationlayer",
-    "commit": "d4fd42a6e8d471002d6f16e487f5f6b1b9800cd8",
-    "committedAt": "2026-11-16T16:46:58+02:00"
+    "commit": "c0fa324212eb9499c27c5b778bc39ff3da933b73",
+    "committedAt": "2026-11-08T05:31:41+02:00"
   },
   "pairs": [
     {
       "id": "local-tts-runner",
       "vendorPath": "vendor/narrationlayer/local-tts-runner.ts",
       "sourcePath": "bin/local-tts-runner.ts",
-      "vendorSha256": "1daecf50918db38c1a9c784e99463eab3ba1922af0ab51a130cf6634a2614181",
-      "sourceSha256": "1daecf50918db38c1a9c784e99463eab3ba1922af0ab51a130cf6634a2614181"
+      "vendorSha256": "9255384b5c0437f98f93b15eee30653415a8a89c54b895d6a35312a3f79eb266",
+      "sourceSha256": "9255384b5c0437f98f93b15eee30653415a8a89c54b895d6a35312a3f79eb266"
     },
     {
       "id": "profiles",
       "vendorPath": "vendor/narrationlayer/profiles.ts",
       "sourcePath": "src/profiles.ts",
-      "vendorSha256": "cf030a35c82a7d4626fb12516ca59d2eaba8e415cb16ab1374ce14bdac8597c2",
-      "sourceSha256": "cf030a35c82a7d4626fb12516ca59d2eaba8e415cb16ab1374ce14bdac8597c2"
+      "vendorSha256": "00beafd92a22240f4a7bbc2d80e2e19b08601062f0959c640a7fc637756a0dcd",
+      "sourceSha256": "00beafd92a22240f4a7bbc2d80e2e19b08601062f0959c640a7fc637756a0dcd"
     },
     {
       "id": "schema",
       "vendorPath": "vendor/narrationlayer/schema.ts",
       "sourcePath": "src/schema.ts",
-      "vendorSha256": "d1e167a42d46c7e23fe200862c7ac48871cd91363d9a169883756a5a3c2df557",
-      "sourceSha256": "d1e167a42d46c7e23fe200862c7ac48871cd91363d9a169883756a5a3c2df557"
+      "vendorSha256": "503c685fa4b1c76235d7bfec9afc49c8fcdb2f65248e4de811358aa1c125c89f",
+      "sourceSha256": "503c685fa4b1c76235d7bfec9afc49c8fcdb2f65248e4de811358aa1c125c89f"
     },
     {
       "id": "text-normalize",
       "vendorPath": "vendor/narrationlayer/text-normalize.ts",
       "sourcePath": "src/text-normalize.ts",
-      "vendorSha256": "81e8c414df375c4e7592be1e096b12ebd23d0eb48bea762e71654b660757f05b",
-      "sourceSha256": "81e8c414df375c4e7592be1e096b12ebd23d0eb48bea762e71654b660757f05b"
+      "vendorSha256": "c62c361b2ca6f518e18a214eda668aca5f24040ed7ae58d972271be83acf4087",
+      "sourceSha256": "c62c361b2ca6f518e18a214eda668aca5f24040ed7ae58d972271be83acf4087"
     },
     {
       "id": "word-timing-repair",
@@ -47,141 +47,29 @@
       "id": "word-timings",
       "vendorPath": "vendor/narrationlayer/word-timings.ts",
       "sourcePath": "src/word-timings.ts",
-      "vendorSha256": "f29b92816cddacb7fbc4cbce0b5872f90f188a071c2420f8cc1453a6792e93f3",
-      "sourceSha256": "f29b92816cddacb7fbc4cbce0b5872f90f188a071c2420f8cc1453a6792e93f3"
+      "vendorSha256": "f6b4ba33773478fd8b7d64774a2baa59aca169c88c1f7d8a4f2db9b4f42fced5",
+      "sourceSha256": "f6b4ba33773478fd8b7d64774a2baa59aca169c88c1f7d8a4f2db9b4f42fced5"
     },
     {
       "id": "profile-renderer-types",
       "vendorPath": "vendor/narrationlayer/profile-renderer-types.ts",
       "sourcePath": "src/profile-renderer-types.ts",
-      "vendorSha256": "3386564688d5e7d38cda84ed2ceed79cdab219eee507125643d74c557857b37f",
-      "sourceSha256": "3386564688d5e7d38cda84ed2ceed79cdab219eee507125643d74c557857b37f"
+      "vendorSha256": "080a576e98fcdf57d17b633ad1e11ae294ce02b007bc4cb4eccfe8bd0f277269",
+      "sourceSha256": "080a576e98fcdf57d17b633ad1e11ae294ce02b007bc4cb4eccfe8bd0f277269"
     },
     {
       "id": "audio",
       "vendorPath": "vendor/narrationlayer/audio.ts",
       "sourcePath": "src/audio.ts",
       "vendorSha256": "cb9d39fe0db450115d5b7c88594a822bd2327b30983eadba35522e8b4fa2b2a0",
-      "sourceSha256": "4de34ccb09762a63cfef682f3e17155286245314cac689e4eaa9da071ec97ebe"
+      "sourceSha256": "cd96a769e4544069a63ea6d6d8c75e7a4f0014e0bf966dd926a88b267ad96228"
     },
     {
       "id": "narration-plan",
       "vendorPath": "vendor/narrationlayer/narration-plan.ts",
       "sourcePath": "src/narration-plan.ts",
       "vendorSha256": "1f2bf5da4c0d48885a28998ba873ead4d2d13f8add317b2aff9f7dfd9d228dc6",
-      "sourceSha256": "bd819ca601a1bb56a67314071d848ce0538331998ad1e846e4e73ab6fdff1956"
-    },
-    {
-      "id": "src-pipelines-local-tts-take-cache",
-      "sourcePath": "src/pipelines/local-tts/take-cache.ts",
-      "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/take-cache.ts",
-      "sourceSha256": "bfdb86e74435dbbef0787df32e4806ef3ecc8a6b41dcebac2f263240fccbf9f9",
-      "vendorSha256": "bfdb86e74435dbbef0787df32e4806ef3ecc8a6b41dcebac2f263240fccbf9f9"
-    },
-    {
-      "id": "src-pipelines-local-tts-failure",
-      "sourcePath": "src/pipelines/local-tts/failure.ts",
-      "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/failure.ts",
-      "sourceSha256": "762338f23e4369594f567336e723527f7dd96dcc5479a75aabdfd30322f38436",
-      "vendorSha256": "762338f23e4369594f567336e723527f7dd96dcc5479a75aabdfd30322f38436"
-    },
-    {
-      "id": "src-pipelines-local-tts-index",
-      "sourcePath": "src/pipelines/local-tts/index.ts",
-      "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/index.ts",
-      "sourceSha256": "d9a675dc29cdcd6a721a54e04d1a5a6565a78635ef0cc8ba77b8d4503b2ab6eb",
-      "vendorSha256": "d9a675dc29cdcd6a721a54e04d1a5a6565a78635ef0cc8ba77b8d4503b2ab6eb"
-    },
-    {
-      "id": "src-quality-take-checks",
-      "sourcePath": "src/quality/take-checks.ts",
-      "vendorPath": "vendor/narrationlayer/src/quality/take-checks.ts",
-      "sourceSha256": "d91fe2e89219c01c8f7ee1aeb7d1d1dceaf375ae69fb4908ac69c74a6a86e466",
-      "vendorSha256": "d91fe2e89219c01c8f7ee1aeb7d1d1dceaf375ae69fb4908ac69c74a6a86e466"
-    },
-    {
-      "id": "src-quality-transcription-equivalence",
-      "sourcePath": "src/quality/transcription-equivalence.ts",
-      "vendorPath": "vendor/narrationlayer/src/quality/transcription-equivalence.ts",
-      "sourceSha256": "2e2826e8c5a3f53e312143664100dd1f0b9c56c869ae6220366d3c5ca940e511",
-      "vendorSha256": "2e2826e8c5a3f53e312143664100dd1f0b9c56c869ae6220366d3c5ca940e511"
-    },
-    {
-      "id": "src-audio-ffmpeg-run",
-      "sourcePath": "src/audio/ffmpeg-run.ts",
-      "vendorPath": "vendor/narrationlayer/src/audio/ffmpeg-run.ts",
-      "sourceSha256": "6f00e8f06846252beb5f661b85d0b7b2cc4a327274f7daaf291da5e5083ad5ff",
-      "vendorSha256": "6f00e8f06846252beb5f661b85d0b7b2cc4a327274f7daaf291da5e5083ad5ff"
-    },
-    {
-      "id": "src-audio-ffmpeg-args",
-      "sourcePath": "src/audio/ffmpeg-args.ts",
-      "vendorPath": "vendor/narrationlayer/src/audio/ffmpeg-args.ts",
-      "sourceSha256": "424e56f44c2210627c091285b45bb01e1b8a968631a4080e16a480fb12d399bf",
-      "vendorSha256": "424e56f44c2210627c091285b45bb01e1b8a968631a4080e16a480fb12d399bf"
-    },
-    {
-      "id": "src-pipelines-local-tts-synthesis",
-      "sourcePath": "src/pipelines/local-tts/synthesis.ts",
-      "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/synthesis.ts",
-      "sourceSha256": "13396191820fb1e41c7c320996c60177ec432f374d3e361660b6117cbedb9189",
-      "vendorSha256": "13396191820fb1e41c7c320996c60177ec432f374d3e361660b6117cbedb9189"
-    },
-    {
-      "id": "src-backends-qwen3-daemon",
-      "sourcePath": "src/backends/qwen3-daemon.ts",
-      "vendorPath": "vendor/narrationlayer/src/backends/qwen3-daemon.ts",
-      "sourceSha256": "b7d2106509a95bf063a1b0e00ec40c767a6feac215c5a5ed57e98c8a338350f5",
-      "vendorSha256": "b7d2106509a95bf063a1b0e00ec40c767a6feac215c5a5ed57e98c8a338350f5"
-    },
-    {
-      "id": "src-plan-breathing",
-      "sourcePath": "src/plan/breathing.ts",
-      "vendorPath": "vendor/narrationlayer/src/plan/breathing.ts",
-      "sourceSha256": "9f484d919799e357061010bbeb0c904f55fe36fd647531151cec0e6dfc4a5fb4",
-      "vendorSha256": "9f484d919799e357061010bbeb0c904f55fe36fd647531151cec0e6dfc4a5fb4"
-    },
-    {
-      "id": "src-pipelines-local-tts-breathing",
-      "sourcePath": "src/pipelines/local-tts/breathing.ts",
-      "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/breathing.ts",
-      "sourceSha256": "07aecf3a129f88cf60594df9199a9123b9136d1a8091e17e97e4b8627ef32968",
-      "vendorSha256": "07aecf3a129f88cf60594df9199a9123b9136d1a8091e17e97e4b8627ef32968"
-    },
-    {
-      "id": "src-plan-index",
-      "sourcePath": "src/plan/index.ts",
-      "vendorPath": "vendor/narrationlayer/src/plan/index.ts",
-      "sourceSha256": "12cde92b8b236e1704d9b997accf29d90b349ff2628a96dc329ccfa410559cd0",
-      "vendorSha256": "12cde92b8b236e1704d9b997accf29d90b349ff2628a96dc329ccfa410559cd0"
-    },
-    {
-      "id": "src-plan-utterances",
-      "sourcePath": "src/plan/utterances.ts",
-      "vendorPath": "vendor/narrationlayer/src/plan/utterances.ts",
-      "sourceSha256": "674104e2f25dd7fb95d426e47efb4d4b6fe424b813c47a7160c94606f26d8b5a",
-      "vendorSha256": "674104e2f25dd7fb95d426e47efb4d4b6fe424b813c47a7160c94606f26d8b5a"
-    },
-    {
-      "id": "src-pipelines-local-tts-loudness",
-      "sourcePath": "src/pipelines/local-tts/loudness.ts",
-      "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/loudness.ts",
-      "sourceSha256": "69ede100a55449c5cc0edc386afa1fa39c9e30f5d0d5850b7371244c9560de04",
-      "vendorSha256": "69ede100a55449c5cc0edc386afa1fa39c9e30f5d0d5850b7371244c9560de04"
-    },
-    {
-      "id": "src-pipelines-local-tts-keep-pieces",
-      "sourcePath": "src/pipelines/local-tts/keep-pieces.ts",
-      "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/keep-pieces.ts",
-      "sourceSha256": "8406cbf19001298508bf1bf1e8ecaf779dcbc376934c65a15ff1f8bc92822865",
-      "vendorSha256": "8406cbf19001298508bf1bf1e8ecaf779dcbc376934c65a15ff1f8bc92822865"
-    },
-    {
-      "id": "src-core-render-types",
-      "sourcePath": "src/core/render-types.ts",
-      "vendorPath": "vendor/narrationlayer/src/core/render-types.ts",
-      "sourceSha256": "42ce380de53e04fee66cb7c1ae9066a537694c81ed7234c8d1d3b2ed6000acba",
-      "vendorSha256": "42ce380de53e04fee66cb7c1ae9066a537694c81ed7234c8d1d3b2ed6000acba"
+      "sourceSha256": "2a04501ea2c8cd9a3dfdb95f6d8cc16cf2640b64091f1a3b82579293f657773d"
     }
   ],
   "intentionalAdaptations": [
@@ -365,11 +253,6 @@
       "skillPaths": [
         "vendor/src/profiles.ts",
         "vendor/src/text-normalize.ts",
-        "vendor/src/plan/breathing.ts",
-        "vendor/src/audio/ffmpeg-args.ts",
-        "vendor/src/pipelines/local-tts/failure.ts",
-        "vendor/src/pipelines/local-tts/index.ts",
-        "vendor/src/pipelines/local-tts/take-cache.ts",
         "scripts/local-tts.mjs"
       ]
     }
@@ -414,18 +297,8 @@
     }
   ],
   "pendingRevendor": {
-    "sourceCommit": "d4fd42a6e8d471002d6f16e487f5f6b1b9800cd8",
+    "sourceCommit": "c0fa324212eb9499c27c5b778bc39ff3da933b73",
     "status": "refreshed-with-open-debt",
-    "aidevNote": "Exact committed runtime dependency closure; existing type-only shims and repo-free profile/pronunciation bridge debt retained. Historical debt resolutions remain historical."
-  },
-  "skillBridgeHashes": {
-    "vendor/src/profiles.ts": "b23dc98ab8dec55b323ee57c441372f9b28822cd12be2831031ca466aa64fc46",
-    "vendor/src/text-normalize.ts": "6e5492d8ca2a95d136e2afc260f0a09170343add2283e3bba4466b64c2b4ff6c",
-    "vendor/src/plan/breathing.ts": "335a590a6ec29003d44d9e9cc6049ffad679c8fbee2fc0bcc9df2bcc169bb6e7",
-    "vendor/src/audio/ffmpeg-args.ts": "ad38d83ff1d843b6ac04c9c5aa1b581f002901fc64586b8095ad26e667f3c590",
-    "vendor/src/pipelines/local-tts/failure.ts": "67d069f184172e83e415b10816596e62e17b002c73b379ea20d4dd5e307ddcf2",
-    "vendor/src/pipelines/local-tts/index.ts": "351e751ec34f5fd51919e47683f67b2e406e34a635178b8ff10f5bb89c1652aa",
-    "vendor/src/pipelines/local-tts/take-cache.ts": "07cea09d830e89c76dbdb1388e1145ec021b38a3726fb63456b3a6ed91f47f72",
-    "vendor/narrationlayer/src/word-timings.ts": "bf9c297de7d15af9fc5f596b7bdbebefb6ee2dbe0710ebe3733b2d82bfa67828"
+    "aidevNote": "Eight debts resolved by atomic refresh after targeted upstream tests; SKILL_REPO_FREE_RUNNER_BRIDGES stays OPEN because upstream lacks NARRATIONLAYER_ROOT and loadPronunciationRules(). No remaining byte drift; one named debt rejection."
   }
 }
