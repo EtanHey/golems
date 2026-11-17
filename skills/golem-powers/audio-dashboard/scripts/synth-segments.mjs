@@ -41,7 +41,7 @@ import { fileURLToPath } from "node:url";
 
 import { runWhisperCliWordTimings } from "../vendor/narrationlayer/word-timings.ts";
 import { normalizeWordTimingsForScript } from "../vendor/narrationlayer/word-timing-repair.ts";
-import { deriveSpeechAliases } from "../src/spoken-form.mjs";
+import { deriveSpeechAliases, assertSupportedScript } from "../src/spoken-form.mjs";
 import { clearTakeCacheReceiptForByo, writeWordTimingArtifacts } from "../src/word-timing-artifacts.mjs";
 
 import { takeCheckArgs, readTakeChecks, rejectedTakeChecks } from "../src/take-checks.mjs";
@@ -156,6 +156,7 @@ async function main() {
   if (!existsSync(specPath)) fail(`spec not found: ${specPath}`);
   const spec = JSON.parse(readFileSync(specPath, "utf8"));
   if (!Array.isArray(spec.scenes) || spec.scenes.length === 0) fail("spec.scenes must be a non-empty array");
+  for (const scene of spec.scenes) assertSupportedScript(scene.script);
 
   const jobId = safePathId(spec.id || "audio-dashboard-job", "spec.id");
   const jobDir = path.resolve(

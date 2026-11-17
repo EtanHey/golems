@@ -6,14 +6,14 @@ import { spawnSync } from "node:child_process";
 import { runWhisperCliWordTimings } from "../../word-timings.js";
 import { pitchRunaway, wordMismatches, type RecognisedWord, type WordCheckSetting } from "../../quality/take-checks.js";
 import type { TakeCheckReceipt } from "./take-cache.js";
-import type { SpeechChannels, TermRule } from "../../text-normalize.js";
+import { prepareWordCheckText, type SpeechChannels, type TermRule } from "../../text-normalize.js";
 import { ffmpegToMonoS16Wav, ffmpegAtempo } from "../../audio/ffmpeg-run.js";
 import { synthesize } from "./synthesis.js";
 import { RunnerFailure, TakeCheckError } from "./failure.js";
 import { DEFAULT_COLON_PAUSE_SECONDS } from "../../plan/breathing.js";
 import { applyBreathingInPlace } from "./breathing.js";
 import { loudnessNormalizeInPlace } from "./loudness.js";
-import { computeContentHashKey, writeTakeCacheReceipt, type CacheKeyParams } from "./take-cache.js";
+import { hashReferenceClip, computeContentHashKey, writeTakeCacheReceipt, type CacheKeyParams } from "./take-cache.js";
 import { assertKeepPiecesDir, keepPieces } from "./keep-pieces.js";
 
 export interface ResolvedLocalTtsVoice extends CacheKeyParams {
@@ -50,7 +50,7 @@ export type LocalTtsRenderResult =
 const PIECES_ON_HIT = "cache hit: no pieces were rendered";
 
 /** Render one resolved voice configuration without owning the caller's process. */
-async function renderUnchecked(args: LocalTtsRenderOptions, store = true): Promise<LocalTtsRenderResult> {
+async function renderUnchecked(args: LocalTtsRenderOptions, referenceAudioSha256: string, store = true): Promise<LocalTtsRenderResult> {
   const { output, resolved, authToken, cacheDir, prepareSpeechChannels, keepPiecesDir } = args;
   if (args.refreshCache && !args.cache) throw new RunnerFailure("--refresh-cache cannot be combined with --no-cache");
   if (keepPiecesDir !== undefined) await assertKeepPiecesDir(keepPiecesDir);
@@ -79,7 +79,7 @@ async function renderUnchecked(args: LocalTtsRenderOptions, store = true): Promi
   };
   const cacheKey = computeContentHashKey({
     spokenText,
-    referenceClip: resolved.referenceClip,
+    referenceAudioSha256,
     referenceText: resolved.referenceText,
     profileId: resolved.profileId,
     profileVersion: resolved.profileVersion,
@@ -249,8 +249,10 @@ async function renderUnchecked(args: LocalTtsRenderOptions, store = true): Promi
 
 /** Pitch is a gate; word mismatches rank bounded retries without freezing a rejected take. */
 export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<LocalTtsRenderResult> {
+  // Memoised for this run only: retries reuse it; subsequent runs read fresh bytes.
+  const referenceAudioSha256 = await hashReferenceClip(args.resolved.referenceClip);
   const checks = args.takeChecks;
-  if (!checks) return renderUnchecked(args);
+  if (!checks) return renderUnchecked(args, referenceAudioSha256);
   if (!Number.isFinite(checks.pitchCeilingHz) || checks.pitchCeilingHz <= 0
     || !Number.isSafeInteger(checks.retries) || checks.retries < 0 || checks.retries > 10)
     throw new TakeCheckError("take checks require a positive pitch ceiling and 0..10 retries");
@@ -269,7 +271,7 @@ export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<Local
     for (;;) {
       // The existing synthesis path sends a fresh request; the backend supplies variance (no seed API).
       let result = await renderUnchecked({ ...args, output, keepPiecesDir: pieces,
-        cache: args.cache && !refresh && evidence.attempts === 0 && evidence.failures.length === 0, refreshCache: false }, false);
+        cache: args.cache && !refresh && evidence.attempts === 0 && evidence.failures.length === 0, refreshCache: false }, referenceAudioSha256, false);
       key = result.cacheKey;
       let source: "cache" | "render" = result.kind === "cache-hit" ? "cache" : "render";
       if (source === "render") evidence.attempts++;
@@ -294,7 +296,9 @@ export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<Local
       if (!reason) {
         try {
           const spoken = await readFile(`${output}.spoken.txt`, "utf8");
-          if (!/[a-z0-9]/i.test(spoken)) {
+          const expected = prepareWordCheckText(args.text, spoken,
+            text => args.prepareSpeechChannels(text, []).synthInput);
+          if (!/[a-z0-9]/i.test(expected)) {
             wordAttempts.push({ source, attempt: evidence.attempts, editCount: null });
             evidence.wordMatch = { pass: true, setting: checks.wordCheckSetting ?? "a", attempts: wordAttempts,
               edits: [], note: "not judged: no Latin-script words", model: "not-run" };
@@ -303,7 +307,7 @@ export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<Local
           if (!args.recogniseTake && !existsSync(modelPath)) throw new Error(`take checks require model: ${modelPath}`);
           const words = args.recogniseTake ? await args.recogniseTake(output)
             : (await runWhisperCliWordTimings(output, { output_directory: stage, whisper_model: modelPath })).words;
-          const wordMatch = wordMismatches(spoken, words,
+          const wordMatch = wordMismatches(expected, words,
             { setting: checks.wordCheckSetting, commonWords: checks.commonWords });
           wordAttempts.push({ source, attempt: evidence.attempts, editCount: wordMatch.edits.length });
           wordFailed = !wordMatch.pass;

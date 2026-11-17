@@ -80,8 +80,15 @@ function normalizeProse(text, aliases = []) {
   return text;
 }
 
+export function assertSupportedScript(script) {
+  if (typeof script === "string" && script.includes("{say:")) {
+    throw new Error("PRONUNCIATION_HINT_UNSUPPORTED: audio-dashboard does not yet support {say:...} hints; remove the hint and use pronunciation config instead.");
+  }
+}
+
 /** B11: only synthInput enters the engine; displayText stays byte-for-byte authored. */
 export function prepareSpeechChannels(displayText, rules = []) {
+  assertSupportedScript(displayText);
   return {
     displayText,
     synthInput: mapProse(displayText, text => normalizeForSpeech(normalizeProse(text), rules)),

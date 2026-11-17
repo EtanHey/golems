@@ -1,14 +1,15 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { computeContentHashKey } from "../vendor/narrationlayer/local-tts-runner.ts";
 import { prepareSpeechChannels } from "../src/spoken-form.mjs";
 import { classifyVendorDrift, observeVendorState } from "../src/narration-vendor-drift.mjs";
 
 test("profile identity, version and model independently invalidate frozen takes", () => {
-  const input = { spokenText: "hello", referenceClip: "clip.wav", referenceText: "hello", params: {} };
+  const input = { spokenText: "hello", referenceAudioSha256: "a".repeat(64), referenceText: "hello", params: {} };
   const original = computeContentHashKey(input);
   const keys = ["profileId", "profileVersion", "model"].map(field => computeContentHashKey({ ...input, [field]: "changed" }));
   expect(new Set([original, ...keys]).size).toBe(4);
@@ -18,6 +19,31 @@ test("the callback applies spoken forms once, before overlay replacements", () =
   expect(prepareSpeechChannels("alpha", [{ term: "alpha", spoken: "5%" }])).toEqual({
     displayText: "alpha", synthInput: "5%",
   });
+});
+
+test("reference audio content is required and independently invalidates frozen takes", () => {
+  const input = { spokenText: "hello", referenceAudioSha256: "a".repeat(64), referenceText: "hello", params: {} };
+  expect(computeContentHashKey(input)).not.toBe(computeContentHashKey({ ...input, referenceAudioSha256: "b".repeat(64) }));
+  expect(() => computeContentHashKey({ ...input, referenceAudioSha256: undefined, referenceClip: "clip.wav" })).toThrow("referenceAudioSha256");
+});
+
+test("pronunciation hints are refused before any synthesis or BUILD artifacts", () => {
+  expect(() => prepareSpeechChannels("Use shadcn{say:shad C N}.")).toThrow("PRONUNCIATION_HINT_UNSUPPORTED");
+  const root = mkdtempSync(path.resolve(import.meta.dir, '../../../../docs.local/hint-refusal-'));
+  try {
+    const spec = path.join(root, 'spec.json');
+    writeFileSync(spec, JSON.stringify({ id: 'hints', type: 'cinema', scenes: [
+      { id: 'plain', script: 'This valid scene must not render first.', reference: 'missing-profile' },
+      { id: 'hint', script: 'Use shadcn{say:shad C N}.', audioWav: 'missing.wav' },
+    ] }));
+    for (const script of ['synth-segments.mjs', 'build-dashboard.mjs']) {
+      const result = spawnSync(process.execPath, [new URL(`../scripts/${script}`, import.meta.url).pathname,
+        '--spec', spec, '--job-dir', path.join(root, 'job')], { encoding: 'utf8' });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('PRONUNCIATION_HINT_UNSUPPORTED');
+      expect(existsSync(path.join(root, 'job'))).toBe(false);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test("the real wrapper selects an accepted alias and frozen take with profile identity and install overlay", () => {
@@ -46,7 +72,8 @@ test("the real wrapper selects an accepted alias and frozen take with profile id
 `);
     const text = "P R by 21:00 alpha";
     const spokenText = "pull request by nine p m 5%";
-    const cacheKey = computeContentHashKey({ spokenText, referenceClip: clip, referenceText: "reference",
+    const referenceAudioSha256 = createHash("sha256").update(readFileSync(clip)).digest("hex");
+    const cacheKey = computeContentHashKey({ spokenText, referenceAudioSha256, referenceText: "reference",
       profileId: "fixture-v2", profileVersion: "v2", model: "fixture-model", params: {} });
     mkdirSync(cache);
     writeFileSync(path.join(cache, `${cacheKey}.wav`), "synthetic frozen take; nonempty fixture");
@@ -60,6 +87,12 @@ test("the real wrapper selects an accepted alias and frozen take with profile id
     expect(readFileSync(`${output}.spoken.txt`, "utf8")).toBe(spokenText);
     expect(JSON.parse(readFileSync(`${output}.cache.json`, "utf8"))).toEqual({ version: 1, cacheKey, cacheEnabled: true });
     expect(readFileSync(output, "utf8")).toBe("synthetic frozen take; nonempty fixture");
+    // The path stays fixed: the real wrapper must miss after its reference bytes change.
+    writeFileSync(clip, "replacement reference content at the same path");
+    const replaced = spawnSync(process.execPath, [wrapper, "--text", text, "--output", output,
+      "--reference", "fixture", "--cache-dir", cache], { encoding: "utf8", env, timeout: 10000 });
+    expect(replaced.status).not.toBe(0); // Unreachable fixture daemon; no matching frozen take.
+    expect(replaced.stderr).not.toContain(`cache HIT key=${cacheKey}`);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

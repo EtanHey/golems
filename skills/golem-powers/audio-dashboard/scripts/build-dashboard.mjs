@@ -34,7 +34,7 @@ import { checkPublishedDesign, writeDesignReport } from "../src/design-preservat
 import { readTakeChecks, rejectedTakeChecks } from "../src/take-checks.mjs";
 import { renderV4 } from "../vendor/agent-html/lib/render-v4.mjs";
 import { loadPronunciationRules } from "../vendor/narrationlayer/pronunciation-config.ts";
-import { deriveSpeechAliases, prepareSpeechChannels } from "../src/spoken-form.mjs";
+import { deriveSpeechAliases, prepareSpeechChannels, assertSupportedScript } from "../src/spoken-form.mjs";
 import {
   analyzeAcousticArtifacts,
   analyzeOnsetEnergy,
@@ -252,6 +252,7 @@ async function main() {
   if (!existsSync(specPath)) fail(`spec not found: ${specPath}`);
   const spec = JSON.parse(readFileSync(specPath, "utf8"));
   if (!Array.isArray(spec.scenes) || spec.scenes.length === 0) fail("spec.scenes must be a non-empty array");
+  for (const scene of spec.scenes) assertSupportedScript(scene.script);
   const dashboardType = spec.type || "cinema";
   if (!["cinema", "decision-flow"].includes(dashboardType)) {
     fail(`unsupported spec.type: ${dashboardType}`);
