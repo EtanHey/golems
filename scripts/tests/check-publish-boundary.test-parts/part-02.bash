@@ -401,6 +401,12 @@ expect_reject "jobs profile server path" "relocate-path" setup_jobs_profile_serv
 expect_reject "Gmail PII" "identity-pii" setup_gmail
 expect_reject "custom-domain email PII" "identity-pii" setup_custom_domain_email
 expect_accept "reserved-domain email fixtures" setup_reserved_domain_emails
+url_fixture_value='https://user@host.invalid/path'
+expect_accept "reserved invalid URL userinfo" setup_url_userinfo
+url_fixture_value='https://user@foo.test:8080/'
+expect_accept "reserved test URL userinfo with port" setup_url_userinfo
+url_fixture_value='git clone https://token@''github.com/x/y'
+expect_reject "nonreserved git clone URL userinfo" "identity-pii" setup_url_userinfo
 for label_fixture_label in 'home address' 'home city' 'resume path'; do
   for label_fixture_domain in b.test example.com users.noreply.github.com; do
     expect_reject "label $label_fixture_label with $label_fixture_domain" "identity-pii" setup_labeled_address
