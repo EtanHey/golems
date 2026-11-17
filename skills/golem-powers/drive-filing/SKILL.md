@@ -260,14 +260,16 @@ shapes and generic assignments (password/passwd/pwd/secret/token/api-key/access-
 JSON refresh_token/access_token/private_key/client_secret keys, JWTs, Google ya29,
 Anthropic sk-ant and URL userinfo. False positives become named holds for owner
 review. PNG, JPEG, GIF, ISO media ftyp, RIFF WAVE/WEBP/AVI, ID3/MPEG audio, FLAC,
-Ogg and Matroska/WebM signatures permit media content exclusion; hashes still
-cover every raw byte. A text file named .png or .mp4 is scanned as text.
+Ogg and Matroska/WebM signatures identify media. Media bytes, including text after
+the header, still receive credential-shape scans; hashes cover every raw byte.
+A text file named .png or .mp4 is scanned as text. Media over the 64 MiB content
+bound HOLD with `scan-size-limit`, rather than bypassing credential scanning.
 
 Unsupported zip/xz/bz2/7z/tar/tgz/br/lz4/rar, nested compression and non-UTF-8
 (including UTF-16), and base64-looking single blobs hold with scan-unsupported-decoder or scan-unsupported-encoding.
 Recognizable compressors are detected by magic even with a different suffix;
 known unsupported suffixes also hold (Brotli has no universal magic).
-Non-media input and decompressed text are limited to 64 MiB, every worker to
+Input (including media) and decompressed text are limited to 64 MiB, every worker to
 15 seconds. The whole-folder classifier uses a scaled run deadline (below);
 the legacy rollup planner retains its 120-second scan limit. Size/time limits, unreadable
 members, corruption, worker failures and policy errors fail closed with named reasons.
@@ -303,20 +305,36 @@ the deadline. Unscanned members remain HOLD with `scan-run-time-limit`.
 Cache entries bind relative path, size, mtime and SHA-256 of all raw bytes, plus a
 scanner/policy version hash. Cache hits rehash bytes before reusing CLEAR or a
 definitive HOLD; transient failures are retried. Git internals/history are never
-cached. Cache files are local receipts, not authenticated attestations. `--verify`
+cached. The cache payload is HMAC-SHA256 authenticated with a 0600 key created at
+`~/.local/state/golems/drive-scan-cache.key`, outside the source and receipt directory.
+Unkeyed or altered caches count as misses. An invalid key location or permissions
+refuses the run; the key is never included in receipts or archives. `--verify`
 ignores the cache, rehashes and rescans every member; changed bytes or inventory
 still refuse upload. Concurrent source changes require stopping and rescanning;
 this remains a preflight, not a filesystem snapshot or upload transaction.
 
 For a `.git` directory, the classifier streams all Git objects, including unreachable
-blobs, through `git cat-file --batch-all-objects --batch`. Blob decoding and scanning
-use the same content bounds. Recognized object storage/index bytes and validated
-reference text are hashed instead of being treated as unknown binary, conditional
-on clean history. Other Git metadata is scanned normally. History hits hold Git
+blobs, commits, tags and trees, through `git cat-file --batch-all-objects --batch`.
+Commit/tag text and blob decoding use the same content bounds; history media HOLD
+instead of bypassing scanning. Tree entry names and contextual full paths receive
+the credential-name and directory policy, including unreachable trees. Missing
+referenced objects fail closed. Tree inventory/traversal is bounded to 500,000 entries
+and 1,000,000 tree visits. Git is bound to the absolute `.git` directory with discovery
+ceilings, `--no-lazy-fetch`, fsmonitor disabled and lazy fetching disabled in the
+environment; an older Git rejecting the flag refuses the scan. Redirects (`commondir`,
+`gitdir`, alternates, or a `.git` file) HOLD. Pack/index pairs must match Git's pack
+and object counts and pass `verify-pack`. Loose objects must be consumed by Git,
+match their object IDs and have no trailing compressed bytes. Git indexes require
+checksum validation, `ls-files --stage` validation with fsmonitor off, and a full raw
+credential scan. Only validated storage and reference text bypass unknown-binary
+decoding. Commit graphs, reverse indexes and bitmaps remain ordinary content scans;
+unknown binary metadata HOLDs. History hits hold Git
 internals as `git-history-match`; `gitHistory.matches` gives blob IDs and paths when
 Git can resolve them, never values. Git errors fail closed as `git-history-error`.
 
-`upload-manifest.tsv` contains only CLEAR members (path, raw bytes, SHA-256);
+Only a successful `--verify` grants upload. A manifest from a cached classification
+never grants upload by itself. `upload-manifest.tsv` contains only CLEAR members
+(path, raw bytes, SHA-256);
 `held.tsv` contains paths and reason lists. TSV path/reason cells use JSON quoting
 so tabs and newlines cannot forge rows. Held members are never uploaded and never
 deleted locally. An operator may prepare an archive from only the CLEAR manifest,

@@ -15,7 +15,7 @@ export function encodingMagic(data) {
   if (/^(fffe|feff)/.test(hex)) return 'UTF-16-BOM';
   return 'unknown';
 }
-// Media signatures, never suffixes. Credential shapes are checked before this.
+// Media signatures identify a format, never permission to skip credential checks.
 export function mediaMagic(b) {
   const hex = b.subarray(0, 16).toString('hex');
   return hex.startsWith('89504e470d0a1a0a') || hex.startsWith('ffd8ff') ||
@@ -96,10 +96,14 @@ export function scanner() {
 
 // Each worker hashes the exact raw bytes it classifies. Decoding is bounded,
 // and nested encodings/compressors hold instead of being scanned as raw text.
-export async function scanData(data, abs = '') {
+export async function scanData(data, abs = '', { history = false } = {}) {
   try {
     if (data.length > MAX_SCAN_BYTES) throw new Error('scan-size-limit');
-    if (mediaMagic(data)) return {shapes:[]};
+    if (mediaMagic(data)) {
+      if (history) return {shapes:['scan-unsupported-encoding']};
+      const scan = scanner(); scan.push(data);
+      return {shapes:scan.result()};
+    }
     const format = compression(data);
     if (format === 'unsupported' || /\.(zip|xz|bz2|7z|tar|tgz|taz|br|lz4|rar)$/i.test(abs)) throw new Error('scan-unsupported-decoder');
     if (/\.(gz|zst)$/i.test(abs) && !format) throw new Error('scan-decompression-error');
@@ -131,19 +135,14 @@ export async function scanFile(abs) {
   try {
     if (/\.(zip|xz|bz2|7z|tar|tgz|taz|br|lz4|rar)$/i.test(abs)) throw new Error('scan-unsupported-decoder');
     const chunks = [], hash = createHash('sha256');
-    let media;
     for await (const buf of createReadStream(abs, {highWaterMark: 64 * 1024})) {
-      if (media === undefined) media = mediaMagic(buf);
       bytes += buf.length;
       hash.update(buf);
-      if (!media) {
-        if (bytes > MAX_SCAN_BYTES) throw new Error('scan-size-limit');
-        chunks.push(buf);
-      }
+      if (bytes > MAX_SCAN_BYTES) throw new Error('scan-size-limit');
+      chunks.push(buf);
     }
     sha256 = hash.digest('hex');
-    if (media) result = [];
-    else {
+    {
       const receipt = await scanData(Buffer.concat(chunks), abs);
       result = receipt.shapes; magic = receipt.magic;
     }

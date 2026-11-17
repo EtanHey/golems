@@ -1,5 +1,7 @@
 import { test, expect } from 'bun:test';
-import { mkdirSync, writeFileSync, readFileSync, utimesSync, statSync, symlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, utimesSync, statSync, symlinkSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { classify, verifyReports } from './classify.mjs';
 import { fixture, join } from './rollup-test-parts/common.mjs';
@@ -55,14 +57,20 @@ test('clean Git internals clear; deleted and unreachable credential blobs hold a
 });
 
 test('corrupt Git object fails closed', () => {
-  const root=fixture({'repo/readme.txt':'ordinary text'}), repo=join(root,'docs.local/repo');
-  expect(spawnSync('git',['-C',repo,'init','--template=']).status).toBe(0);
+  const base=join(homedir(),'.local/state/golems/drive-scan-tests');mkdirSync(base,{recursive:true});
+  const repo=mkdtempSync(join(base,'corrupt-'));
+  const env={...process.env,GIT_CEILING_DIRECTORIES:dirname(repo)};
+  expect(spawnSync('git',['-C',repo,'init','--template='],{env}).status).toBe(0);
   mkdirSync(join(repo,'.git/objects/aa'),{recursive:true});
   writeFileSync(join(repo,'.git/objects/aa', 'b'.repeat(38)),'corrupt');
-  expect(classify(repo).status).toBe('HOLD');
-  const empty=fixture({'repo/readme.txt':'ordinary text'}), emptyRepo=join(empty,'docs.local/repo');
+  const corrupt=classify(repo);expect(corrupt.status).toBe('HOLD');
+  expect(corrupt.gitHistory[0].error).toBe('git-history-error');
+  expect(corrupt.gitHistory[0].matches).toEqual([]);
+  const emptyRepo=mkdtempSync(join(base,'empty-'));
   mkdirSync(join(emptyRepo,'.git'));
-  expect(classify(emptyRepo).status).toBe('HOLD');
+  const empty=classify(emptyRepo);expect(empty.status).toBe('HOLD');
+  expect(empty.gitHistory[0].error).toBe('git-history-error');
+  expect(empty.gitHistory[0].matches).toEqual([]);
 });
 
 test('20k small members plus large text finish and reuse the cache', () => {

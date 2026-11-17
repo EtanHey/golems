@@ -5,6 +5,8 @@ import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 export function classify(root, options = {}) {
+  if (options.budgetMs !== undefined && (!Number.isFinite(options.budgetMs) || options.budgetMs <= 0 || options.budgetMs > 86_400_000)) throw new Error('invalid-budget');
+  if (options.workers !== undefined && (!Number.isInteger(options.workers) || options.workers < 1 || options.workers > 32)) throw new Error('invalid-workers');
   const child = spawnSync(process.execPath, [new URL('./classify-engine.mjs',import.meta.url).pathname, JSON.stringify({root,options})],
     {encoding:'utf8',maxBuffer:256*1024*1024});
   if (child.error || child.status !== 0) throw new Error('scan-classification-error');

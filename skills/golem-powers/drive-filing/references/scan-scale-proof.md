@@ -1,8 +1,53 @@
 # Local scan proof (2026-11-17)
 
-Status: implementation proof; independent review and CI pending. No archive uploaded.
+Status: round 1 requested changes; fixes implemented, lead verification of round 2
+and CI pending. No archive uploaded. Earlier measurements below are historical.
 Runtime: Node 26.13.1, Bun 1.4.3, macOS M1. Classifier elapsed times include inventory
 and scanning, before receipt serialization. Results are local, not M4 folder proof.
+
+## Review fixes and current proof
+
+History now scans commits and tags, parses every tree (including unreachable trees),
+checks names/full paths and refuses missing referenced objects. History media HOLDs.
+Git has an absolute git-dir, discovery ceiling, `--no-lazy-fetch`, disabled fsmonitor
+and disabled lazy fetching in the environment. Redirects refuse. Pack pairs/counts
+must agree with `count-objects` and `verify-pack`; loose objects require exact inflation
+and object-ID validation. Indexes require checksum/native validation and a raw scan.
+Commit graphs, reverse indexes and bitmaps receive ordinary content scans.
+
+The cache is HMAC authenticated with a separate 0600 state key; planted/unkeyed
+entries miss. Only successful `--verify` grants upload. Invalid numeric CLI/API
+options refuse before JSON serialization. Working-tree media receive raw credential
+checks, including trailing text; media over 64 MiB now HOLD with `scan-size-limit`.
+
+Current validation: 206 tests pass, zero fail, 957 assertions. The corrupt/empty Git
+fixtures live outside any repository and assert `git-history-error` with no matches,
+so parent-repository discovery cannot accidentally satisfy them. Added rows cover
+each reported history/name/media case, missing promisor blobs and cache forgery.
+Clean packed-clone coverage includes native symbolic remote HEAD validation; an
+unused reverse-index sidecar explicitly stays held. History-hit tests additionally
+assert there is no Git validation error, so a generic error cannot satisfy them.
+The final run used the implementation-identical fixture-preserving mirror described
+below. The adapted reviewer Git harness has no LEAK rows: every adversarial row and
+the post-CLEAR commit reclassification HOLD. All 14 execution probes report no-exec;
+both PNG-prefix cases HOLD and the invalid numeric CLI refuses. The forged-cache
+case HOLDs with zero cache hits and no secret member in the upload manifest.
+The 25 r1297 attack cases still HOLD and the clean control stays CLEAR.
+
+| Current case | Files | Result | Classifier time | Wall time |
+| --- | ---: | --- | ---: | ---: |
+| Sparse 10 GiB logical bytes, 35k small texts | 35,010 | HOLD: ten oversized media, no timeouts | 4,891 ms | 5.15 s |
+| Small text plus three 8 MiB texts | 20,003 | CLEAR | 1,683 ms | 1.88 s |
+| Authenticated, rehashed cache rerun | 20,003 | CLEAR, 20,003 hits | 1,027 ms | 1.22 s |
+
+The 35k fixture still hashes 10,737,908,240 raw logical bytes. Its ten 1 GiB sparse
+media members now HOLD under the stricter content bound; this is not a CLEAR or
+physical 10 GiB throughput claim. The cached text run takes 61.0% of the first scan.
+Scratch is retained: attack cleanup is disabled, member deletion cases move files
+outside the scanned source, and Git gc is replaced by non-pruning repack. The
+reviewer's historical output labels still say gc. Lead reruns remain required.
+
+## Initial head 110b07ae (before review, superseded)
 
 | Case | Files | Raw bytes scanned | Result | Elapsed |
 | --- | ---: | ---: | --- | ---: |
