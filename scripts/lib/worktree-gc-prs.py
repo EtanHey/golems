@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run-local GitHub metadata cache, shared by repository slug across checkouts."""
+import importlib.util
 import hashlib
 import json
 import os
@@ -7,6 +8,11 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+
+
+_spec = importlib.util.spec_from_file_location('gc_network_budget', Path(__file__).with_name('worktree-gc-budget.py'))
+_budget = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_budget)
 
 
 class LookupError(Exception):
@@ -28,7 +34,10 @@ def lookup(directory, repo, kind, branch=''):
         else:
             args += ['--head', branch, '--state', 'merged', '--json', 'headRefOid,baseRefName', '--limit', '5']
         try:
-            command = subprocess.run(args, check=True, capture_output=True, text=True, timeout=30)
+            command = _budget.captured(args, directory)
+            if command.returncode == 124:
+                raise TimeoutError('hard gh per-call timeout')
+            command.check_returncode()
             rows = json.loads(command.stdout)
             if not isinstance(rows, list):
                 raise ValueError('invalid PR list')

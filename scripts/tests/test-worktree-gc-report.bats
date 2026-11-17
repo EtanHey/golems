@@ -24,31 +24,28 @@ report_fixture() {
 }
 
 assert_partial_report() {
-  [ "$status" -eq 0 ] # Existing PR/fetch lookup failures are KEEP, not exit 2.
+  [ "$status" -eq 0 ]
   [[ "$output" != *' · REMOVE'* ]] || return 1
   [ -d "$failed_tree" ] && [ -d "$detached" ]
-  python3 - "$WORKTREE_GC_REPORT_DIR" "$stage" "$failed_tree" "$detached" "$healthy_tree" <<'PY'
-import datetime, json, pathlib, sys
-root = pathlib.Path(sys.argv[1])
-r = json.loads((root / 'latest.json').read_text())
-assert r['status'] == 'partial' and r['error_count'] == 1
-assert r['exit_status'] == 0
+  python3 - "$WORKTREE_GC_REPORT_DIR" "$failed_tree" "$detached" "$healthy_tree" <<'PYTEST'
+import datetime,json,pathlib,sys
+root=pathlib.Path(sys.argv[1]); r=json.loads((root/'latest.json').read_text())
+assert r['status']=='partial' and r['error_count']==0 and r['network_error_count']==2
+assert r['exit_status']==0
 datetime.datetime.fromisoformat(r['generated_at'])
-rows = r['owners']['a-failed']
-error, = [row for row in rows if row['reason'] == 'ERROR']
-assert error['repo'] == 'a-failed' and error['stage'] == sys.argv[2]
-assert error['detail'] and len(error['detail']) < 500
-for path in sys.argv[3:5]:
-    row, = [row for row in rows if row['path'] == path]
-    assert row['reason'] == 'KEEP-undetermined'
-row, = r['owners']['z-healthy']
-assert row['path'] == sys.argv[5] and row['reason'] == 'KEEP-dirty'
-md = (root / 'latest.md').read_text()
-assert 'partial' in md and 'errors=1' in md
-assert r['generated_at'] in md and error['stage'] in md and error['detail'] in md
-assert json.loads((root / 'last-run.json').read_text()) == r
+rows={row['path']:row for row in r['checkouts']}
+for path in sys.argv[2:4]:
+    assert rows[path]['verdict']=='KEEP-undetermined'
+    assert 'git fetch origin failed' in rows[path]['detail']
+    assert rows[path]['detail'] and len(rows[path]['detail']) < 500
+assert rows[sys.argv[4]]['verdict']=='KEEP-dirty'
+assert json.loads((root/'last-run.json').read_text())==r
+md=(root/'latest.md').read_text()
+assert r['generated_at'] in md and 'partial' in md and 'errors=0' in md
+for path in sys.argv[2:4]:
+    assert rows[path]['detail'] in md
 assert not list(root.glob('.latest.*'))
-PY
+PYTEST
 }
 
 @test "PR lookup failure publishes partial report and classifies healthy sibling" {

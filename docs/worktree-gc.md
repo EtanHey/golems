@@ -194,3 +194,38 @@ open-PR enumerations. Lookup errors retain the affected checkout as KEEP-undeter
 `lookup_error_count` to a partial report; a known-safe sibling can still receive
 a verdict. Fetch failures still retain the repository. PR cache/timeout receipts
 remain in the ignored per-run scratch area; they are not authority for later runs.
+
+## Raw-entry outage supervisor
+
+Every public invocation of `scripts/worktree-gc.sh` now launches an independent
+Python supervisor before sourcing the internal shell body. The shell body lives
+in `scripts/lib/worktree-gc-main.sh` and does not reset the parent's deadline.
+This covers `--dry-run`, `--prune-plan` and `--apply` even without the nightly
+wrapper, including startup Git environment probes. The public launcher uses an
+absolute Python executable rather than a login-shell function.
+
+Expiry uses the earlier of wall-clock and explicit `CLOCK_MONOTONIC` deadlines.
+The explicit clock shares an epoch across helpers, including older macOS Python
+versions whose `time.monotonic()` is process-relative; helpers use the supervisor
+interpreter. A completed child
+cannot turn an over-budget run into exit 0. The supervisor stops the GC process
+group and its observed descendant network groups, then publishes PARTIAL itself
+from the journal, preserving complete rows even after an interrupted append.
+The timer starts at the public entry; it cannot bound a caller's login shell
+before that caller executes the entry point. Host sleep cannot be interrupted by
+software, but wall elapsed time is counted when execution resumes.
+
+Network calls have their own process-group caps: gh 30s, git fetch/ls-remote 60s,
+always limited by the remaining run budget. `WORKTREE_GC_GH_TIMEOUT_SECONDS` and
+`WORKTREE_GC_GIT_TIMEOUT_SECONDS` can lower these caps for fixtures. stdout/stderr
+are retained regular files; no timeout path calls communicate() or waits for pipe
+EOF, and reaping after kill has a bounded grace. Network groups are stopped even
+when their parent exits while a descendant retains output. A timeout retains the
+affected checkout as KEEP-undetermined; the next checkout gets independent fresh
+fetch evidence. Reports include `network_error_count` and are partial on network
+uncertainty. Earlier repo-wide fetch-failure behavior is superseded.
+
+All GC scratch, capture files and fixture artifacts are retained. The outage
+suite is `python3 scripts/tests/test_worktree_gc_outage.py`; it performs no fixture
+cleanup. The legacy Bats fixture harness still contains recursive teardown and
+was not invoked for this outage fix under the current no-cleanup instruction.

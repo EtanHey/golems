@@ -65,7 +65,9 @@ def live_symlink(path):
 
 def budget_expired():
     deadline = os.environ.get('GC_RUN_DEADLINE')
-    return bool(deadline and time.monotonic() >= float(deadline))
+    wall = os.environ.get('GC_RUN_WALL_DEADLINE')
+    return bool((deadline and time.clock_gettime(time.CLOCK_MONOTONIC) >= float(deadline)) or
+                (wall and time.time() >= float(wall)))
 
 
 def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
@@ -103,7 +105,7 @@ def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
         pass  # Reporting falls back to repo; the removal gate fails closed.
     size = None
     try:
-        remaining = max(.01, float(os.environ.get('GC_RUN_DEADLINE', time.monotonic()+30)) - time.monotonic())
+        remaining = max(.01, float(os.environ.get('GC_RUN_DEADLINE', time.clock_gettime(time.CLOCK_MONOTONIC)+30)) - time.clock_gettime(time.CLOCK_MONOTONIC))
         measured = subprocess.run(["du", "-sk", path], capture_output=True, text=True, timeout=min(30, remaining))
         if measured.returncode == 0:
             size = int(measured.stdout.split()[0]) * 1024
@@ -124,8 +126,13 @@ def finish_report(journal, directory, run_status, publish):
     owners = {}
     t3_managed_skips = {}
     checkouts = []
+    journal_errors = 0
     for line in Path(journal).read_text().splitlines():
-        row = json.loads(line)
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            journal_errors += 1
+            continue  # Keep complete earlier decisions after an interrupted append.
         if row.get("kind") == "checkout":
             checkouts.append(row)
         elif row.get("kind") == "t3-managed":
@@ -141,14 +148,18 @@ def finish_report(journal, directory, run_status, publish):
     checkouts = list(by_path.values())
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     error_count = sum(row["reason"] == "ERROR" for rows in owners.values() for row in rows)
-    elapsed = max(0, time.monotonic() - float(os.environ.get('GC_RUN_STARTED', time.monotonic())))
+    elapsed = max(0, time.clock_gettime(time.CLOCK_MONOTONIC) - float(os.environ.get('GC_RUN_STARTED', time.clock_gettime(time.CLOCK_MONOTONIC))),
+                  time.time() - float(os.environ.get('GC_RUN_WALL_STARTED', time.time())))
     exhausted = budget_expired() or bool(os.environ.get('GC_BUDGET_MARKER') and Path(os.environ['GC_BUDGET_MARKER']).exists())
     lookup_errors = sum('PR lookup' in row['detail'] for row in checkouts if row['verdict'] == 'KEEP-undetermined')
-    status = "partial" if error_count or lookup_errors or exhausted or int(run_status) not in (0, 3) else "complete"
+    network_errors = sum(any(reason in row['detail'] for reason in
+                             ('PR lookup', 'git fetch origin failed', 'remote default lookup failed'))
+                         for row in checkouts if row['verdict'] == 'KEEP-undetermined')
+    status = "partial" if network_errors or journal_errors or error_count or lookup_errors or exhausted or int(run_status) not in (0, 3) else "complete"
     report = dict(generated_at=now, status=status, error_count=error_count,
-                  exit_status=int(run_status), elapsed_seconds=round(elapsed, 3),
+                  journal_error_count=journal_errors, exit_status=int(run_status), elapsed_seconds=round(elapsed, 3),
                   budget_seconds=float(os.environ.get('GC_RUN_BUDGET', 3000)), budget_exhausted=exhausted,
-                  lookup_error_count=lookup_errors, owners=owners,
+                  lookup_error_count=lookup_errors, network_error_count=network_errors, owners=owners,
                   t3_managed_skips=t3_managed_skips, checkouts=checkouts)
     md = [f"# Worktree GC owner report\n\n{now}; status={status}; errors={error_count}; exit={run_status}; elapsed_seconds={elapsed:.3f}; budget_exhausted={exhausted}\n"]
     md.append("## Checkout census\n")
@@ -233,7 +244,7 @@ if __name__ == "__main__":
             journal, repo, path, branch, verdict, detail = args
             size = None
             if os.path.isdir(path) and not budget_expired():
-                remaining = max(.01, float(os.environ.get('GC_RUN_DEADLINE', time.monotonic()+60)) - time.monotonic())
+                remaining = max(.01, float(os.environ.get('GC_RUN_DEADLINE', time.clock_gettime(time.CLOCK_MONOTONIC)+60)) - time.clock_gettime(time.CLOCK_MONOTONIC))
                 try:
                     result = subprocess.run(["du", "-sk", path], capture_output=True, text=True, timeout=min(60, remaining))
                 except subprocess.TimeoutExpired:
