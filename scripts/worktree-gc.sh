@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source "$SCRIPT_DIR/lib/worktree-git-env.sh"
-# T3 Code reaps its own worktrees (storageCleanup.ts); this script covers non-T3 checkouts and merged branches.
+# T3 checkouts require settled/archived read-only state plus all Git/owner/idle guards.
 # Pins: ~/.config/golems/worktree-gc-pins.txt (one absolute path or branch per line).
 # Owner queue: docs.local/worktree-gc/latest.{json,md}; age is reporting only.
 # Every scan, including scoped/partial failures, rewrites latest and last-run atomically.
@@ -48,9 +48,13 @@ emit_row() {
   local verdict="$6"
   local reason="$7"
   local row
+  last_verdict="$verdict"
 
   reason="$(normalize_reason "$reason")"
-  row="$repo_name · $worktree_path · $branch · dirty=$dirty · ahead=$ahead · $verdict · $reason"
+  local measured
+  measured="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" census "$REPORT_JOURNAL" \
+    "$repo_name" "$worktree_path" "$branch" "$verdict" "$reason")"
+  row="$repo_name · $worktree_path · $branch · dirty=$dirty · ahead=$ahead · $verdict · $reason · $measured"
   printf '%s\n' "$row" >> "$LOG_FILE"
   printf '%s\n' "$row"
   case "$verdict" in
@@ -87,6 +91,18 @@ refresh_remote_base() {
   if ! git -C "$repo_root" fetch origin --quiet --prune --no-auto-maintenance \
     '+refs/heads/*:refs/remotes/origin/*'; then
     base_reason="git fetch origin failed; refusing stale judgment"
+  elif [[ "${is_t3:-0}" -eq 1 ]]; then
+    local default_branch
+    if default_branch="$(git -C "$repo_root" ls-remote --symref origin HEAD)"; then
+      default_branch="$(sed -n 's@^ref: refs/heads/\(.*\)[[:space:]]HEAD$@\1@p' <<< "$default_branch")"
+      if [[ -n "$default_branch" ]] && git -C "$repo_root" show-ref --verify --quiet "refs/remotes/origin/$default_branch"; then
+        base_ref="refs/remotes/origin/$default_branch"
+      else
+        base_reason="remote default branch unproven"
+      fi
+    else
+      base_reason="remote default lookup failed"
+    fi
   elif git -C "$repo_root" show-ref --verify --quiet refs/remotes/origin/main; then
     base_ref="origin/main"
   elif git -C "$repo_root" show-ref --verify --quiet refs/remotes/origin/master; then
@@ -225,7 +241,11 @@ head_is_merged() {
   [[ -n "$branch" ]] || return 1
   while IFS=$'\t' read -r pr_branch pr_sha; do
     [[ "$pr_branch" == "$branch" && "$pr_sha" =~ ^[0-9a-f]{40}$ ]] || continue
-    git -C "$path" merge-base --is-ancestor HEAD "$pr_sha" 2>/dev/null && return 0
+    if [[ "${is_t3:-0}" -eq 1 ]]; then
+      [[ "$(git -C "$path" rev-parse HEAD)" == "$pr_sha" ]] && return 0
+    else
+      git -C "$path" merge-base --is-ancestor HEAD "$pr_sha" 2>/dev/null && return 0
+    fi
   done <<< "$merged_prs"
   return 1
 }
@@ -291,6 +311,17 @@ apply_removal() {
   local now
   local removed_detail
 
+  if [[ "${is_t3:-0}" -eq 1 ]]; then
+    t3_finished "$worktree_path" "$branch_display" || return 0
+    local age_rc=0
+    python3 "$SCRIPT_DIR/lib/worktree-gc-builds.py" old "$worktree_path" || age_rc=$?
+    if [[ "$age_rc" -ne 0 ]]; then
+      local age_verdict=KEEP-undetermined
+      [[ "$age_rc" -eq 3 ]] && age_verdict=KEEP-active
+      emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 "$age_verdict" "72h filesystem/admin inactivity not proven"
+      return 0
+    fi
+  fi
   if (( idle_seconds > 0 )); then
     if ! last="$(last_activity_epoch "$worktree_path")"; then
       emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
@@ -383,6 +414,20 @@ archive_and_remove() {
     return 0
   fi
   check_owner_guards "$worktree_path" "$branch_display" || return 0
+  if [[ "${is_t3:-0}" -eq 1 ]]; then
+    t3_finished "$worktree_path" "$branch_display" || return 0
+    if ! python3 "$SCRIPT_DIR/lib/worktree-gc-builds.py" old "$worktree_path" ||
+        ! head_is_merged "$worktree_path" "$branch_display" ||
+        [[ "$(git -C "$worktree_path" rev-parse HEAD)" != "$head_sha" ]]; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 KEEP-undetermined "T3 activity or HEAD changed before removal"
+      return 0
+    fi
+    if ! refresh_live_cwds || path_has_cwd_in "$worktree_path" "$live_cwds" ||
+        path_has_cwd_in "$worktree_path" "$agent_cwds"; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 KEEP-live "process absence not proven before removal"
+      return 0
+    fi
+  fi
   # A durable intent must succeed before the destructive call (nightly crash evidence).
   emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" "REMOVING" "$archive_detail"
   # Never --force: git itself refuses a tree that became unclean meanwhile.
@@ -408,7 +453,7 @@ has_hidden_index_flags() {
   return 1
 }
 
-process_worktree_block() {
+judge_worktree_block() {
   local worktree_path="$block_worktree"
   local branch_ref="$block_branch"
   local locked_reason="$block_locked"
@@ -445,13 +490,9 @@ process_worktree_block() {
     return 0
   fi
 
+  is_t3=0
   while IFS= read -r t3_root; do
-    if [[ "$canonical_worktree" == "$t3_root" || "$canonical_worktree" == "$t3_root/"* ]]; then
-      t3_skip_count=$((t3_skip_count + 1))
-      emit_row "$repo_name" "$worktree_path" "$branch_display" not-checked not-checked \
-        skip "t3-managed (T3 storageCleanup owns it)" >/dev/null
-      return 0
-    fi
+    if [[ "$canonical_worktree" == "$t3_root" || "$canonical_worktree" == "$t3_root/"* ]]; then is_t3=1; fi
   done <<< "$t3_roots"
 
   if is_tool_managed_worktree "$repo_root" "$canonical_worktree"; then
@@ -474,12 +515,17 @@ process_worktree_block() {
   fi
 
   local scope_name="${canonical_worktree#"$main_root/.worktrees/"}"
-  if [[ "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ]]; then
+  if [[ "$is_t3" -eq 0 && ( "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ) ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
       "not-checked" "KEEP-out-of-scope" "not under $main_root/.worktrees/"
     return 0
   fi
   check_owner_guards "$worktree_path" "$branch_display" || return 0
+
+  if [[ "$is_t3" -eq 1 ]]; then refresh_remote_base; fi
+  if [[ "$is_t3" -eq 1 ]] && ! t3_finished "$worktree_path" "$branch_display"; then
+    return 0
+  fi
 
   if [[ -n "$locked_reason" ]]; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
@@ -678,7 +724,7 @@ process_worktree_block() {
     return 0
   fi
 
-  if [[ "$apply" -eq 1 || "$prune_plan" -eq 1 ]]; then
+  if [[ "$apply" -eq 1 || "$prune_plan" -eq 1 || "$is_t3" -eq 1 ]]; then
     apply_removal "$worktree_path" "$branch_display"
     return 0
   fi
@@ -686,12 +732,42 @@ process_worktree_block() {
     "REMOVE" "eligible; report only; clean and fully represented by $base_ref"
 }
 
+t3_finished() {
+  local detail
+  if ! detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3-finished "$1" 2>&1)"; then
+    emit_row "$repo_name" "$1" "$2" not-checked undetermined KEEP-undetermined "T3 finished state unproven: $detail"
+    return 1
+  fi
+}
+
+process_worktree_block() {
+  local last_verdict="" is_t3=0
+  judge_worktree_block
+  case "$last_verdict" in
+    KEEP-dirty|KEEP-unpushed|KEEP-open-pr|KEEP-reflog|KEEP-detached|KEEP-worktree-refs)
+      # Unknown repo, owner, liveness or T3 state never grants cache deletion.
+      [[ -z "$repo_failure" && -d "$block_worktree" && -z "$block_locked" ]] || return 0
+      local tree="$(canonical_path "$block_worktree")"
+      [[ "$is_t3" -eq 1 || "$tree" == "$main_root/.worktrees/"* ]] || return 0
+      check_owner_guards "$tree" "${block_branch#refs/heads/}" || return 0
+      if [[ "$is_t3" -eq 1 ]]; then
+        t3_finished "$tree" "${block_branch#refs/heads/}" || return 0
+      fi
+      refresh_live_cwds || return 0
+      path_has_cwd_in "$tree" "$live_cwds" && return 0
+      path_has_cwd_in "$tree" "$agent_cwds" && return 0
+      local mode=plan
+      [[ "$apply" -eq 0 ]] || mode=apply
+      python3 "$SCRIPT_DIR/lib/worktree-gc-builds.py" trim "$tree" "$mode" | tee -a "$LOG_FILE"
+      ;;
+  esac
+}
+
 process_repo() {
   local requested_repo="$1"
   local census
   local repo_failure=""
   local repo_stage=""
-  local t3_skip_count=0
   local line
 
   if ! repo_root="$(golems_main_repo "$requested_repo")"; then
@@ -743,10 +819,6 @@ process_repo() {
     esac
   done <<< "$census"
   process_worktree_block
-  if (( t3_skip_count > 0 )); then
-    printf '%s · t3-managed (T3 storageCleanup owns it): %s skip\n' "$repo_name" "$t3_skip_count" | tee -a "$LOG_FILE"
-    python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3-summary "$REPORT_JOURNAL" "$repo_name" "$t3_skip_count"
-  fi
   # AIDEV-NOTE: never `git worktree prune` here (#703 R1 M1): it drops the
   # registration of a KEEP worktree that is only temporarily away, orphaning
   # its commits. `git worktree remove` already deletes its own admin entry.

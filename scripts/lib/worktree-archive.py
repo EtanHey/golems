@@ -28,7 +28,7 @@ REGENERABLE = {
 
 
 def regenerable(name):
-    return name in REGENERABLE or name.startswith(".venv") or name.endswith(".egg-info")
+    return name in REGENERABLE or name.startswith(".build") or name.startswith(".venv") or name.endswith(".egg-info")
 
 
 def nested_git(root):

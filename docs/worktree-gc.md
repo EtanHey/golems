@@ -1,7 +1,7 @@
 # Worktree cleanup safety
 
 `worktree-gc.sh --apply` removes only clean, merged, idle, unused one-level
-`<main>/.worktrees/<name>` worktrees. Open PR branches, live process/cmux cwd,
+`<main>/.worktrees/<name>` worktrees and finished T3 checkouts. Open PR branches, live process/cmux cwd,
 locked trees, hooks-live, nested Git repositories and reflog-only commits are kept.
 `--repo` must name a Git toplevel; `--path` selects one registered linked tree.
 
@@ -121,3 +121,40 @@ host runs are proved.
 
 The report-only condition changes merge gating, not the creation floor or any
 permission to delete. Real GC, activation and installation remain lead-owned.
+
+## Finished T3 checkouts and kept-tree build output
+
+T3 namespace entries receive individual verdicts in the checkout census. Removal
+requires a read-only settled or archived thread binding, no active/pending runs,
+sessions, runtime requests, background tasks or scheduled work, no native pin or
+recovery hold, and activity older than 72 hours. Missing bindings, unreadable
+state or unknown schema retain the checkout with a named reason. The database is
+opened read-only and never changed. All bound threads must pass.
+
+The Git guards still require a clean tree including untracked files, owner guards,
+process-cwd absence and history preservation. T3 candidates resolve the actual
+remote default branch; an ancestor of that ref or a merged PR at exactly HEAD
+qualifies. A squash commit alone is insufficient. The 72-hour minimum includes
+filesystem and Git admin mtimes and cannot be lowered with `--idle-hours`.
+Removal uses the existing archive/lock/`git worktree remove` path. Git removes its
+own registration; broad prune remains disabled to preserve absent KEEP trees.
+
+Old kept candidates can shed ignored `.build*`, `.venv` and `node_modules`
+directories in apply mode. Plans print each directory and allocated size.
+Tracked entries, unignored entries, nested Git repositories, symlink directories
+and all `docs.local` subtrees protect a cache directory. Owner pins, live bindings,
+unknown state and process-cwd uncertainty also prevent trimming. Cache maintenance
+takes the heavy-suite lock; dry-run and prune-plan never delete output.
+Nested build roots such as `brain-bar/.build` are included. When a receipt protects
+`.build.noindex`, its ignored `swift`, `brainbar-render` and `pytest` children
+can still be trimmed individually. Venvs are processed last.
+
+`checkouts` in the JSON report holds each checkout's final verdict, reason and
+allocated `size_bytes` (null means unknown). The existing stale-owner queue is
+preserved separately. Dry-run includes the same T3 age/process/deletion preflight
+as apply; archives remain unverified until apply.
+
+T3's built-in cleanup holds an in-process workspace lease that external GC cannot
+acquire. Final state, activity, Git and process rechecks narrow but cannot eliminate
+a concurrent provider startup or writer race. No installed-nightly or cross-process
+fencing proof is claimed by fixture tests or a dry-run.
