@@ -37,6 +37,18 @@ TARGETS = {
 REPAIR_REASON = (
     "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks."
 )
+UNATTENDED_REASON = (
+    "Blocked: this command needs a person's approval and this session runs unattended. "
+    "Avoid forced deletes (no rm -f/-rf; delete one named file at a time, or leave "
+    "scratch and list it), or report the command to your lead."
+)
+
+
+def permission_denial():
+    # Deliberately independent of stdin: even malformed approval input denies.
+    return {"hookSpecificOutput": {"hookEventName": "PermissionRequest",
+            "decision": {"behavior": "deny", "message": UNATTENDED_REASON}}}
+
 BUDGET_SECONDS = 7
 TIMEOUT_REASON = "BLOCKED: policy check timed out or patch is too large; split the patch or retry a smaller tool call."
 PATCH_TRANSPORT_REASON = (
@@ -556,6 +568,10 @@ def evaluate():
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["permission-request"]:
+        print(json.dumps(permission_denial(), separators=(",", ":")))
+        sys.exit(0)
+
     def timeout(_signum, _frame):
         raise TimeoutError("adapter budget exceeded")
 

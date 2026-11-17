@@ -9,6 +9,13 @@ execution and can return a model-visible denial. Keep the existing tmp-block and
 git-guardian policies and shared parser; adapt only transport and file envelopes.
 Register from the same pinned hooks-live manifest used for Claude.
 
+On Codex 0.169, the installer also registers `PermissionRequest` for `^Bash$`:
+commands needing a person's approval receive an unattended-session refusal with
+safe alternatives, including under granular approval policy. Malformed input
+and adapter/interpreter failures deny; MCP and network approvals are outside
+this matcher. `install-hooks --status` requires this entry and its native trust
+state. Review the new definition through plain Codex `/hooks` after installation.
+
 Pinned source: OpenAI Codex tag `rust-v0.160.0`, commit
 `a956835d020762cb2b570053af06f643a11c0ecc`. The installed CLI reports 0.160.0.
 

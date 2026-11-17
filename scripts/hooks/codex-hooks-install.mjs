@@ -71,6 +71,9 @@ export function planCodexHooks({ manifest, host, live, source: releaseSource, co
   const desired = entries.map(e => ({ matcher: e.matcher, hooks: [{ type: "command",
     command: codexCommand(python, path.join(live, e.source), e.gate, e.mode),
     statusMessage: STATUS_MESSAGES[e.gate], timeout: e.timeout }] }));
+  const permission = { matcher: "^Bash$", hooks: [{ type: "command",
+    command: codexCommand(python, path.join(live, "scripts/hooks/codex-policy-hook.py"), "permission-request"),
+    statusMessage: "golems unattended: refuses commands needing a person's approval", timeout: 10 }] };
   const hooks = structuredClone(current.hooks ?? {});
   let matches = [];
   for (const [event, groups] of Object.entries(hooks)) {
@@ -85,13 +88,16 @@ export function planCodexHooks({ manifest, host, live, source: releaseSource, co
     }).filter(group => group.hooks.length);
   }
   hooks.PreToolUse = [...(hooks.PreToolUse ?? []), ...desired];
+  hooks.PermissionRequest = [...(hooks.PermissionRequest ?? []), permission];
   const next = `${JSON.stringify({ ...current, hooks }, null, 2)}\n`;
-  const registered = matches.length === desired.length && desired.every(want =>
-    matches.filter(m => m.event === "PreToolUse" && isDeepStrictEqual(m.group, want)).length === 1);
+  const required = [...desired.map(group => ({ event: "PreToolUse", group })),
+    { event: "PermissionRequest", group: permission }];
+  const registered = matches.length === required.length && required.every(want =>
+    matches.filter(m => m.event === want.event && isDeepStrictEqual(m.group, want.group)).length === 1);
   const source = entries.every(e => existsSync(path.join(live, e.source))) && existsSync(path.join(live, "scripts/hooks/codex-gate.sh"));
   // Native state keys are positional. Presence is evidence of persisted trust,
   // not proof that its hash still matches this definition (use native /hooks).
-  const managedStates = matches.map(m => states[`${at}:pre_tool_use:${m.groupIndex}:${m.handlerIndex}`]);
+  const managedStates = matches.map(m => states[`${at}:${m.event.replace(/[A-Z]/g, (c, i) => (i ? "_" : "") + c.toLowerCase())}:${m.groupIndex}:${m.handlerIndex}`]);
   const trust = !enabled || managedStates.some(s => s?.enabled === false) ? "disabled"
     : !registered || managedStates.some(s => typeof s?.trusted_hash !== "string" || !s.trusted_hash.trim()) ? "missing"
     : "present-unverified";
