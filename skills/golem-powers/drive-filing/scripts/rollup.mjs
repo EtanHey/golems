@@ -16,10 +16,13 @@
 // 2026-09-25): a gitignored .codex-home-test/auth.json held live OAuth tokens.
 // Credentials are never moved, uploaded or deleted; each is reported as
 // "skipped: credential <path>". Round 2 (r6 B1/B2, r4 F1/F2, spec-owner
-// ruling): every name rule matches anywhere in the name, and a (folder,
+// ruling): credential-shaped basenames are held, and a (folder,
 // month) group -- the YYYY-MM/ folder plus that month's dated siblings --
 // holding ANY credential is held whole: no moves, no upload unit.
-import { closeSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { closeSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { credentialNameRule } from "./credential-policy.mjs";
+import { MAX_SCAN_BYTES, SCAN_TIMEOUT_MS, MEDIA } from "./scan-content.mjs";
 import { randomUUID } from "node:crypto";
 import { basename, join, relative, resolve, sep } from "node:path";
 
@@ -34,69 +37,30 @@ const MONTH = /^(\d{4})-(\d{2})$/;
 const NAME_DAY = /(?<!\d)(20\d{2})-(\d{2})-(\d{2})(?!\d)/g;
 const NAME_MONTH = /(?<!\d)(20\d{2})-(\d{2})(?![\d])/g;
 
-// Name rules match anywhere in the name, case-insensitively (spec-owner
-// ruling: docs.local names are date-prefixed, so ^-anchors never fire).
+// Retained credential-home directory rules; file shapes use anchored basenames.
 const CREDENTIAL_DIR = [/codex-?home/i, /claude-?home/i, /^\.(codex|claude)$/i, /-home/i];
 const BROWSER_PROFILE_FILE = /^(login data( for account)?|cookies(-journal)?|local state|web data)$/i;
-const CREDENTIAL_FILE = [
-  /credential/i,
-  /auth\.json$/i,
-  /\.pem$/i,
-  /\.key$/i,
-  /\.env/i, // anything containing .env: .env*, prod.env; .environment over-holds (fine)
-  /(^|[-_.])env([-_.]|$)/i, // N-C1: env-named config (prod-env.json, app-env.yml, staging_env)
-  /secret/i, // client_secret.json, app-secrets.yml, secrets/ (spec addition 2026-09-25)
-  BROWSER_PROFILE_FILE,
-];
-// /token/i stays exactly as broad. A name is released from it only when every
-// "token" in it belongs to a proven-safe word (spec owner, 2026-09-25): the
-// allow-listed words are removed first, then /token/i runs on what is left, so
-// github_token_tokenizer.txt stays held. Other rules and profile holds still win.
-const TOKEN = /token/i;
-const TOKEN_ALLOW = [/tokeniz/gi, /design[-_]?tokens?/gi, /trust[ _-]?tokens/gi];
-function isTokenName(name) {
-  return TOKEN.test(TOKEN_ALLOW.reduce((rest, re) => rest.replace(re, ""), name));
-}
 
-// B1 (skillcreatorLead SECURITY, 2026-09-25): a planned file whose CONTENT
-// carries a high-confidence secret shape holds its whole unit. Only the path
-// and the shape name are ever reported; a matched value is never kept, logged
-// or printed. Each shape needs a non-word character (or start) before it.
-const CONTENT_SHAPES = [
-  ["supabase", /(?<![A-Za-z0-9_])sbp_[0-9a-f]{40}/],
-  ["google", /(?<![A-Za-z0-9_])AIza[0-9A-Za-z_-]{35}/],
-  ["github", /(?<![A-Za-z0-9_])gh[pousr]_[0-9A-Za-z]{36}/],
-  ["github-pat", /(?<![A-Za-z0-9_])github_pat_[0-9A-Za-z_]{22,}/],
-  ["openai", /(?<![A-Za-z0-9_-])sk-(?:proj-)?[A-Za-z0-9_-]{20,}/],
-  ["aws", /(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}/],
-  ["slack", /(?<![A-Za-z0-9])xox[abprs]-[0-9A-Za-z-]{10,}/],
-  ["private-key", /-{5}BEGIN [A-Z ]*PRIVATE KEY-{5}/],
-];
-const SCAN_CHUNK = 1024 * 1024;
-const SCAN_OVERLAP = 512; // longer than any shape above, so a split token is still seen
-
-// Shape names found in a text file's content (binary files, with a NUL in
-// the first chunk, are skipped). Reads the whole file in overlapping chunks.
-export function contentShapes(abs) {
-  const found = new Set();
-  const fd = openSync(abs, "r");
+// Never return matched bytes or raw OS/decompressor errors to the report.
+export function contentShapes(abs, timeout = SCAN_TIMEOUT_MS) {
+  let fd;
   try {
-    const buf = Buffer.alloc(SCAN_CHUNK);
-    let carry = "";
-    let position = 0;
-    for (;;) {
-      const n = readSync(fd, buf, 0, SCAN_CHUNK, position);
-      if (n === 0) break;
-      if (position === 0 && buf.subarray(0, n).includes(0)) return [];
-      const text = carry + buf.toString("latin1", 0, n);
-      for (const [shape, re] of CONTENT_SHAPES) if (re.test(text)) found.add(shape);
-      carry = text.slice(-SCAN_OVERLAP);
-      position += n;
-    }
+    if (timeout <= 0) return ["scan-run-time-limit"];
+    const stat = lstatSync(abs);
+    if (!stat.isFile() || (stat.mode & 0o444) === 0) return ["scan-unreadable"];
+    fd = openSync(abs, "r");
+    if (MEDIA.test(abs)) return [];
+    if (stat.size > MAX_SCAN_BYTES) return ["scan-size-limit"];
+    const child = spawnSync(process.execPath, [new URL("./scan-content.mjs", import.meta.url).pathname, abs],
+      { encoding: "utf8", timeout: Math.min(timeout, SCAN_TIMEOUT_MS), maxBuffer: 8192 });
+    if (child.error?.code === "ETIMEDOUT") return [timeout < SCAN_TIMEOUT_MS ? "scan-run-time-limit" : "scan-time-limit"];
+    if (child.error || child.status !== 0) return ["scan-worker-error"];
+    return JSON.parse(child.stdout);
+  } catch {
+    return ["scan-unreadable"];
   } finally {
-    closeSync(fd);
+    if (fd !== undefined) closeSync(fd);
   }
-  return CONTENT_SHAPES.map(([shape]) => shape).filter((shape) => found.has(shape));
 }
 
 // PR-8b: tool output that any checkout regenerates. Never archived, never an
@@ -111,8 +75,7 @@ export function isRegenerableDir(name) {
   return REGENERABLE_DIR.has(name);
 }
 
-// v2: every credential name rule holds a directory too (a *token* or *-env dir
-// is held whole), found when mtime units first let such a dir's files upload.
+// Credential-shaped directories and known credential homes remain held whole.
 export function isCredentialDir(name) {
   return CREDENTIAL_DIR.some((re) => re.test(name)) || isCredentialFile(name);
 }
@@ -124,7 +87,7 @@ function isBrowserProfile(abs) {
 }
 
 export function isCredentialFile(name) {
-  return CREDENTIAL_FILE.some((re) => re.test(name)) || isTokenName(name);
+  return Boolean(credentialNameRule(name)) || BROWSER_PROFILE_FILE.test(name);
 }
 
 function parseArgs(argv) {
@@ -196,7 +159,7 @@ function collect(abs) {
     const entry = { abs, bytes: stat.size, mtimeMs: stat.mtimeMs };
     if (isCredentialFile(name)) {
       out.credentials.push(entry);
-      out.reports.push({ abs, kind: "file" });
+      out.reports.push({ abs, kind: "file", rule: credentialNameRule(name) ?? "browser-profile" });
     } else {
       out.files.push(entry);
     }
@@ -225,6 +188,8 @@ function collect(abs) {
 }
 
 export function buildPlan({ repo, keepMonths, now, mode }) {
+  const scanDeadline = Date.now() + 120_000;
+  const scanMember = abs => contentShapes(abs, scanDeadline - Date.now());
   const repoRoot = resolve(repo);
   const docsLocal = join(repoRoot, "docs.local");
   const rel = (abs) => relative(repoRoot, abs).split(sep).join("/");
@@ -291,7 +256,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
       plan.skipped.push(
         r.kind === "dir"
           ? { path: rel(r.abs), reason: "credential", kind: "dir", files: r.files }
-          : { path: rel(r.abs), reason: "credential", kind: "file" },
+          : { path: rel(r.abs), reason: "credential", kind: "file", rule: r.rule ?? credentialNameRule(basename(r.abs)) ?? "browser-profile" },
       );
     }
   };
@@ -343,7 +308,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     const upload = isOld(month);
     if (upload) {
       // B1: an mtime unit is planned whole, so a secret-shaped file holds it whole.
-      const content = found.files.flatMap((f) => contentShapes(f.abs).map((shape) => ({ path: rel(f.abs), shape })));
+      const content = found.files.flatMap((f) => scanMember(f.abs).map((shape) => ({ path: rel(f.abs), shape })));
       if (content.length > 0) {
         plan.held.push({
           path: rel(abs),
@@ -427,7 +392,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
       const content = planned
         ? members
             .flatMap((m) => m.found.files)
-            .flatMap((f) => contentShapes(f.abs).map((shape) => ({ path: rel(f.abs), shape })))
+            .flatMap((f) => scanMember(f.abs).map((shape) => ({ path: rel(f.abs), shape })))
         : [];
       if (content.length > 0) {
         plan.held.push({
@@ -620,6 +585,7 @@ function main(argv) {
     ...plan.skipped.map((s) =>
       s.kind === "dir" ? `skipped: credential ${s.path}/ (${s.files} files)` : `skipped: credential ${s.path}`,
     ),
+    ...plan.skipped.map(s => `  name-rule: ${s.path} (${s.rule ?? "credential-directory"})`),
     ...plan.regenerable.map((r) => `skipped: regenerable ${r.path}/ (${r.files} files, ${r.bytes} bytes)`),
     ...plan.held.flatMap((h) => [
       `held: ${h.reason} ${h.path}`,

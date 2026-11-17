@@ -77,8 +77,8 @@ describe("B1: content-scan hold", () => {
     expect(uploadPaths(p)).toEqual(["docs.local/2026-01-05-notes.md"]);
   });
 
-  test("binary files are not scanned", () => {
-    const repo = fixture({ "2026-01-05-blob.bin": `\u0000\u0001${FAKE.aws}` });
+  test("binary media are classified by name", () => {
+    const repo = fixture({ "2026-01-05-blob.mp4": `\u0000\u0001${FAKE.aws}` });
     const p = plan(repo);
     expect(p.held).toEqual([]);
   });

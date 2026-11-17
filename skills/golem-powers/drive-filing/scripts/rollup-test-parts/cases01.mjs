@@ -44,7 +44,7 @@ describe("credential exclusion (hard requirement)", () => {
       "notes/id.key": "x",
       "notes/.ENV": "x",
       "notes/Credentials.json": "x",
-      "notes/github-TOKEN.txt": "x",
+      "notes/TOKEN.json": "x",
       "notes/Auth.JSON": "x",
       "boxes/.Claude-Home/settings.md": "x",
       "boxes/golems-HOME-copy/readme.md": "x",
@@ -60,7 +60,7 @@ describe("credential exclusion (hard requirement)", () => {
         "docs.local/notes/.ENV",
         "docs.local/notes/Auth.JSON",
         "docs.local/notes/Credentials.json",
-        "docs.local/notes/github-TOKEN.txt",
+        "docs.local/notes/TOKEN.json",
         "docs.local/notes/id.key",
         "docs.local/notes/server.PEM",
       ].sort(),
@@ -90,13 +90,13 @@ describe("credential exclusion, round 2", () => {
   };
 
   test.each([
-    "2026-02-21-credentials.txt",
-    "2026-02-21-auth.json",
-    "2026-02-21-deploy.env",
+    "2026-02-21-x/credentials",
+    "2026-02-21-x/auth.json",
+    "2026-02-21-x/.env",
     "2026-02-21-api.pem",
     "2026-02-21-signing.key",
-    "2026-02-21-my_token.txt",
-  ])("F1: every name rule matches a date-prefixed name: %s", (name) => {
+    "2026-02-21-x/token.json",
+  ])("credential-shaped names inside a dated item: %s", (name) => {
     const p = plan(fixture({ [name]: "secret", "2026-02-22-plain.md": "plain" }));
     const { uploads, moved } = credentialFree(p);
     expect(p.skipped.map((s) => s.path)).toContain(`docs.local/${name}`);
@@ -105,8 +105,8 @@ describe("credential exclusion, round 2", () => {
     expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-02"]);
   });
 
-  test.each(["2026-02-21-x/.envrc", "2026-02-21-x/.env-production", "2026-02-21-x/.env_backup"])(
-    "the env rule covers every .env* name: %s",
+  test.each(["2026-02-21-x/.env.rc", "2026-02-21-x/.env.production", "2026-02-21-x/.env.backup"])(
+    "the env rule covers dot-separated suffixes: %s",
     (path) => {
       const p = plan(fixture({ [path]: "API_KEY=x", "2026-02-21-x/notes.md": "notes" }));
       expect(p.skipped.map((s) => s.path)).toContain(`docs.local/${path}`);
@@ -267,8 +267,8 @@ describe("CLI contract", () => {
 });
 
 // Rollup v2 (GO-4 PR-8; spec owner skillcreatorLead, cleanliness-standard.md).
-describe("rollup v2: N-C1 env-named config is a credential too", () => {
-  test.each(["2026-02-21-x/prod-env.json", "2026-02-21-x/app-env.yml", "2026-02-21-x/staging_env", "2026-02-21-x/env.json"])(
+describe("credential-shaped environment config", () => {
+  test.each(["2026-02-21-x/.env.prod", "2026-02-21-x/.env.app", "2026-02-21-x/.env.staging", "2026-02-21-x/.env.json"])(
     "%s is held",
     (path) => {
       const p = plan(fixture({ [path]: "API_KEY=x", "2026-02-21-x/notes.md": "notes" }));
@@ -279,9 +279,9 @@ describe("rollup v2: N-C1 env-named config is a credential too", () => {
     },
   );
 
-  test("the /\\.env/i rule still holds every .env* name alongside it", async () => {
+  test("exact env names and dot-separated suffixes hold", async () => {
     const { isCredentialFile } = await import("../rollup.mjs");
-    for (const name of [".env", ".envrc", ".env-production", ".env_backup", "prod.env"]) {
+    for (const name of [".env", ".env.rc", ".env.production", ".env.backup", ".env.prod"]) {
       expect(isCredentialFile(name)).toBe(true);
     }
     for (const name of ["environment-notes.md", "envelope.md", "seven.md"]) {
@@ -290,7 +290,7 @@ describe("rollup v2: N-C1 env-named config is a credential too", () => {
   });
 });
 
-describe("rollup v2: token allow-list (spec owner: keep /token/i, release proven-safe names only)", () => {
+describe("credential basenames and ordinary token words", () => {
   test("a tokenizer note no longer freezes its month", () => {
     const p = plan(fixture({ "2026-02-02-tokenizer-remap.md": "notes", "2026-02-10-other.md": "other" }));
     expect(p.skipped).toEqual([]);
@@ -299,7 +299,7 @@ describe("rollup v2: token allow-list (spec owner: keep /token/i, release proven
     expect(uploadPaths(p)).toContain("docs.local/2026-02-02-tokenizer-remap.md");
   });
 
-  test.each(["2026-02-21-x/github_token", "2026-02-21-x/api-token.json", "2026-02-21-x/deploy-token.txt", "2026-02-21-x/github_token_tokenizer.txt"])(
+  test.each(["2026-02-21-x/token.json", "2026-02-21-x/auth.json", "2026-02-21-x/id_ed25519", "2026-02-21-x/credentials.json"])(
     "%s is still held",
     (path) => {
       const p = plan(fixture({ [path]: "ghp_secret", "2026-02-21-x/notes.md": "notes" }));
@@ -314,7 +314,7 @@ describe("rollup v2: token allow-list (spec owner: keep /token/i, release proven
     for (const name of ["design-tokens.json", "design_token.css", "DesignTokens.ts", "Trust Tokens", "tokenization.md"]) {
       expect(isCredentialFile(name)).toBe(false);
     }
-    for (const name of ["tokenizer.pem", "design-tokens.env", "design-tokens-api-token.json"]) {
+    for (const name of ["tokenizer.pem", "design-tokens.key", "auth.json"]) {
       expect(isCredentialFile(name)).toBe(true);
     }
   });
@@ -458,32 +458,19 @@ describe("rollup v2: newest-mtime units (R-a maximal, R-b holds first, R-c visib
   });
 });
 
-// Found on the live golems dry-run: v2 made collab/ one mtime unit, and a file
-// under a dir named *token* reached the upload plan. Name rules hold dirs too.
-describe("rollup v2: credential name rules hold directories as well", () => {
-  test.each(["collab/whoop-token-rotation/collab.md", "notes/prod-env/readme.md", "notes/old-credentials/list.md"])(
-    "%s is held with its directory",
-    (path) => {
-      const repo = fixture({ [path]: "prose" });
-      const p = plan(repo);
-      expect(uploadPaths(p)).toEqual([]);
-      expect(p.skipped.map((s) => s.path)).toContain(`docs.local/${path.split("/").slice(0, 2).join("/")}`);
+describe("ordinary words in directory names are released", () => {
+  test.each(["collab/whoop-token-rotation/collab.md", "notes/prod-env/readme.md", "notes/old-credentials/list.md", "notes/SECRETS/a.md"])(
+    "%s has no credential shape", path => {
+      const p = plan(fixture({ [path]: "prose" }));
+      expect(p.held).toEqual([]);
+      expect(p.skipped).toEqual([]);
     },
   );
-
-  test("an allow-listed dir name is not held", () => {
-    const p = plan(fixture({ "design-tokens/colors.json": "{}" }));
-    expect(p.skipped).toEqual([]);
-  });
-});
-
-// Spec addition (skillcreatorLead, 2026-09-25 15:00): /secret/i, unanchored.
-describe("rollup v2: secret-named files and dirs are credentials", () => {
-  test.each(["2026-02-21-x/client_secret.json", "2026-02-21-x/app-secrets.yml", "2026-02-21-x/SECRETS/a.md"])("%s is held", (path) => {
-    const p = plan(fixture({ [path]: "s", "2026-02-21-x/notes.md": "notes" }));
-    expect(uploadPaths(p)).toEqual([]);
+  test("a secret-shaped JSON file holds its month", () => {
+    const p = plan(fixture({ "2026-02-21-x/client_secret.json": "s" }));
+    expect(p.upload).toEqual([]);
     expect(p.moves).toEqual([]);
-    expect(p.held.map((h) => h.path)).toEqual(["docs.local/2026-02"]);
+    expect(p.held.map(h => h.path)).toEqual(["docs.local/2026-02"]);
   });
 });
 

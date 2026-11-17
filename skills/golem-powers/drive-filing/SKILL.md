@@ -230,25 +230,40 @@ Upload exactly the files in that handoff through the [archive procedure](referen
 and sizes, with no hashes, host, producer or restore command): until `rollup.mjs` emits one, write each
 unit's `MANIFEST.json` by hand before its upload and upload it with the unit.
 
-**Credentials never move.** Nothing whose name contains `credential`, `secret`, `token` or `.env` (`.env*`,
-`deploy.env`, `.ENV.prod`, `.envrc`) or has `env` as a word (`prod-env.json`, `app-env.yml`,
-`staging_env`), or ends in `auth.json`, `.pem` or `.key` — file **or directory** — and nothing under a
-`codexhome`/`codex-home*`, `claudehome`/`claude-home*`, `.codex`, `.claude` or `*-HOME*` directory or a
-browser profile (a dir holding `Local State`, `Cookies`, `Login Data` or `Web Data`), is uploaded,
-moved or deleted. Every name rule matches anywhere in the name, case-insensitively, because
-docs.local names are date-prefixed. `token` releases only proven-safe words: `tokeniz*`,
-`design-token(s)` and `Trust Tokens` are stripped first, so `tokenizer-remap.md` passes and
-`github_token_tokenizer.txt` does not (a browser profile is still held whole). Holds run before dating. `rollup.mjs` enforces this in code: each credential is reported
-as `skipped: credential <path>` (a credential directory is one line plus its credential-named
-files), and a month group (the `YYYY-MM/` folder plus that month's dated siblings in the same
-folder) that holds one is **held whole**: no moves into or out of it, no upload unit. It is reported
-once as `held: contains credentials <path>` with its items and credentials listed under it.
-**Content scan (B1).** Every file the plan would move or upload is read (text only, in overlapping 1 MiB
-chunks; a file with a NUL in its first chunk counts as binary and is skipped) for high-confidence secret
-shapes: Supabase `sbp_`, Google `AIza`, GitHub `gh[pousr]_` / `github_pat_`, OpenAI `sk-`, AWS `AKIA`,
-Slack `xox?-`, and PEM private-key headers. A hit holds the whole month group as
-`held: credential-content <path>`, listing `content: <file> (<shape>)`. **A matched value is never kept,
-logged or printed.** The summary adds `content-held=N`.
+**Credentials never move.** Basename rules are case-insensitive, anchored to the
+whole file name; an ordinary path component containing a word such as `tokenlayer`,
+`js-tokens` or `secret-1.wav.mp4` is not a credential. The canonical list is
+[`scripts/credential-policy.mjs`](scripts/credential-policy.mjs); the test checks this block for drift:
+
+<!-- credential-names:start -->
+`.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `id_ed25519*`, `*.keychain*`, `auth.json`, `credentials`, `credentials.json`, `.credentials.json`, `.netrc`, `.npmrc`, `.pypirc`, `token.json`, `*secret*.json`, `*.kdbx`
+<!-- credential-names:end -->
+
+There are no template exemptions: `.env.example` and `.env.sample` remain held.
+These shapes also hold same-named directories. Existing credential homes
+(`codexhome`/`codex-home*`, `claudehome`/`claude-home*`, `.codex`, `.claude`, `*-HOME*`)
+and browser profiles (holding `Local State`, `Cookies`, `Login Data` or `Web Data`)
+remain held. Holds precede dating. A month group containing a credential is held
+whole: no moves, no upload unit. Skipped records include the path and name rule.
+
+**Content scan.** Every planned text member is scanned, including decompressed
+`.gz` and `.zst` streams, using the `credential-adjacent` patterns loaded from
+`scripts/publish-boundary-policy.yaml` plus the existing high-confidence provider
+shapes (Supabase, Google, GitHub, OpenAI, AWS, Slack). Binary media is checked by
+name only: mp4, mov, m4v, mkv, webm, mp3, wav, flac, aac, m4a, ogg, png, jpg,
+jpeg, gif, webp, heic, avif. Other files are scanned even if they contain NULs.
+Each member has a 64 MiB input/decompressed limit and a killable 15-second scan;
+the run has a 120-second content-scan budget. Oversized, unreadable, corrupt,
+unsupported-decoder, policy-load and timeout failures hold the whole run with a
+named `scan-*` reason. Reports give file paths and rule names, never matched values
+or raw decoder errors. A content hold blocks the entire month/mtime unit.
+The planner never uploads; rerun classification immediately before any upload.
+
+For a read-only classification of an entire folder, including regenerable files
+and independent of age, run `node scripts/classify.mjs <archive-run> [...]` from
+this skill directory. It emits JSON with `files`, `heldMembers`, reason counts and
+path/rule receipts; any member hit makes the run `HOLD`. This is classification,
+not upload or remote-preservation proof.
 Cleaning them up is the owner's call.
 
 > **After creating/editing this skill it must be REGISTERED** (golem-install / symlink into `~/.claude/skills`) before any agent can invoke it — committed ≠ installed.

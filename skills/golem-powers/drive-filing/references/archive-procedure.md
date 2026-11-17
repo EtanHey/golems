@@ -8,6 +8,21 @@ This procedure is for **putting things INTO Drive**. To **query Drive content** 
 
 ---
 
+## Credential gate before every upload run
+
+Immediately before upload, classify the entire source run read-only:
+
+```bash
+node "$GOLEMS_ROOT/skills/golem-powers/drive-filing/scripts/classify.mjs" "$ARCHIVE_RUN"
+```
+
+Proceed only if the command succeeds and every report says `status: CLEAR` with
+`heldMembers: 0`. Any hit, scan failure or limit holds the whole run; report the
+member path and rule, never the matched value. Do not mutate the source between
+classification and upload. This gate includes gzip/zstd content and all members,
+including regenerable directories. Name rules and bounds are in
+[the skill](../SKILL.md#docslocal-lifecycle). Classification is not remote proof.
+
 ## Source-of-Truth Hierarchy
 
 ```
