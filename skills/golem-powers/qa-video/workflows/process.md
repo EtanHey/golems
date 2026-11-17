@@ -157,6 +157,7 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" "scene${SUFFIX}" -- bash "$SCRIPTS/scene-
 cat "$WORKDIR/logs/scene${SUFFIX}.log" >> "$WORKDIR/cues.tsv"
 if [ "$WORKDIR" != "$MEDIADIR" ]; then cp "$WORKDIR/cues.tsv" "$MEDIADIR/cues.tsv"; fi
 python3 "$SCRIPTS/must-read.py" plan "$MEDIADIR"
+python3 "$SCRIPTS/narration-evidence.py" plan "$MEDIADIR"
 python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$MEDIADIR"
 bash "$SCRIPTS/run-step.sh" "$WORKDIR" "dense${SUFFIX}" -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$MEDIADIR/cues.tsv" "$MEDIADIR/dense" 10
 # Poll logs/dense${SUFFIX}.exit; require 0 before Phase 4.
@@ -353,6 +354,11 @@ the report and rerun in this turn; never fake a row. Before `/qa-verdict-gate`, 
 logs `judge:` inspections, crops the pointer region and writes the report rows in
 [must-read.md](../references/must-read.md). An item begins at its first pointing line;
 INCONCLUSIVE cannot bypass these reads. A coverage downgrade permits only COVERAGE FAIL.
+Then run `python3 "$SCRIPTS/narration-evidence.py" check "$MEDIADIR" <qa-report.md>`.
+Its [reference/lag/level/gap/finding contract](../references/narration-evidence.md) requires the
+first pointer crop as each item's reference in later sweeps, a ≥1s delay after indicator changes,
+judge frames for named values and negative gatherer claims, continuous cue coverage, and judge
+observations for every finding. Keep invented classes only under Unverified gatherer claims.
 
 ## Phase 6: Parent Stores in BrainLayer
 

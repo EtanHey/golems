@@ -12,6 +12,7 @@ if [ "${1:-}" = "plan" ]; then
   JUDGE_MODEL="$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.judgment --field model 2>/dev/null || echo '<claude.judgment model>')"
   if [ "$MODE" = qa ] && [ -f "$WORKDIR/transcript.srt" ]; then
     python3 "$SCRIPTS/must-read.py" plan "$WORKDIR"
+    python3 "$SCRIPTS/narration-evidence.py" plan "$WORKDIR"
   fi
   cat <<EOF
 ## /qa-video plan — mode=$MODE, gather-first
@@ -30,6 +31,7 @@ EOF
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$VIDEO"
   (read the SRT; write cues.tsv from transcript hotspots + logs/scene.log)
   python3 "$SCRIPTS/must-read.py" plan "$WORKDIR"
+  python3 "$SCRIPTS/narration-evidence.py" plan "$WORKDIR"
   python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$WORKDIR"
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
 Gather (gatherers read every sheet; you never open one), first that works:
@@ -64,6 +66,9 @@ Judge the gatherer text; spot-check <=2 full-size frames per reported finding (i
 QA exception: open EVERY must-read frame yourself, one per call; log with inspected.sh 'judge: pointer ...',
 crop the identified pointer region via crop.sh and write MUST_READ report rows (references/must-read.md).
 Run must-read-check.sh "$WORKDIR" "$WORKDIR/qa-report.md" before /qa-verdict-gate.
+Also run narration-evidence.py check "$WORKDIR" "$WORKDIR/qa-report.md" (references/narration-evidence.md).
+Pin the first pointer crop per item via 'reference'; use 'sweep' briefs for every later gather.
+Every named value and negative gatherer claim needs a judge frame; indicator-chosen frames need >=1s render lag.
 Briefs pass verbatim narration or transcript path and say 'look where the pointer is'.
 Explicit gatherer model/exclusion in the requesting brief wins over the defaults above; never use an excluded fallback.
 Too small: crop.sh or re-densify, then gather again. Missing measurement script: NOT DETERMINED + file a row.

@@ -173,6 +173,15 @@ guarantee of reader accuracy. **Mandatory pointer exception:** the judge opens e
 full-size frame itself (t_s and ±0.5s), logs `inspected.sh ... 'judge: pointer ...' <srt_index>`,
 identifies the pointer region and crops it with crop.sh. These reads are outside the two-frame cap;
 no gatherer can satisfy them. See [must-read evidence](references/must-read.md) for report rows.
+The judge also reads each named level/value and checks each negative gatherer claim once at full
+size. Pin the first pointer crop per item as its reference; every later sweep/gather carries that
+image path and asks "is this the same defect as the reference?". **The UI's indicator leads the
+re-render:** indicator-selected evidence is ≥1s after its change, with change time beside the frame
+(zoom badge, toggle, counter, spinner end). Plan a continuous span between narrated items.
+Use [narration evidence](references/narration-evidence.md) for commands and report rows. These
+mandatory reads also sit outside the spot-check cap; a gatherer's absent/hidden/NOT DETERMINED
+claim is never accepted as absence without the judge check. Gatherer-only defect classes belong
+only under "Unverified gatherer claims", never as findings or "low confidence".
 A spot-check that disagrees sends that window back to a gatherer (fresh batch, crop or refine); a second
 disagreement is NOT DETERMINED. The judge never opens contact sheets, never reads frames to plan the
 split (plan from `index.tsv`, cues and the transcript); the cap excludes mandatory pointer reads.
@@ -227,6 +236,7 @@ sheet + tile only locates them. Scripts support judgement; an optional
 convenience index never gates the loop.
 
 **Verdict integrity:** First run `scripts/must-read-check.sh <workdir> <qa-report.md>` (exit 3 =
+unearned), then `python3 scripts/narration-evidence.py check <workdir> <qa-report.md>` (exit 3 =
 unearned). INCONCLUSIVE on a narrated item requires the judge's own mandatory reads; a gatherer's
 negative report is insufficient. A downgraded item's status is only **COVERAGE FAIL** (not an observed
 product failure). Then run `/qa-verdict-gate`: PASS / FAIL / INCONCLUSIVE, with FAIL reserved for
@@ -376,6 +386,7 @@ bash "$SCRIPTS/run-step.sh" "$WORKDIR" scene -- bash "$SCRIPTS/scene-cues.sh" "$
 # After logs/scene.exit exists and is 0, append the scene TSV output:
 cat "$WORKDIR/logs/scene.log" >> "$WORKDIR/cues.tsv"
 python3 "$SCRIPTS/must-read.py" plan "$WORKDIR"
+python3 "$SCRIPTS/narration-evidence.py" plan "$WORKDIR"
 python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$WORKDIR"
 # Below 100 GB free, the slot lock enforces at most 2 parallel dense-window jobs.
 # JPEG ledger targets survive; unregistered intermediates are cleaned automatically.
