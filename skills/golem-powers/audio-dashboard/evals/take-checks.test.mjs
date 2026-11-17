@@ -14,6 +14,17 @@ test('vendored colon, shadcn and numeric-equivalence behavior', () => {
   expect(wordMismatches('four hundred dollars', words, { setting: 'a' }).pass).toBe(true);
 });
 
+test('Here is and What is accept recognizer contractions without discarding content', () => {
+  for (const [sent, heard] of [
+    ['Here is the plan: we ship tomorrow.', "Here's the plan: we ship tomorrow."],
+    ['What is the plan: do we ship tomorrow?', "What's the plan: do we ship tomorrow?"],
+  ]) {
+    const words = heard.split(' ').map((word, i) => ({ word, start: i, end: i + 1 }));
+    expect(wordMismatches(sent, words, { setting: 'a' }).pass).toBe(true);
+    expect(wordMismatches(sent, words.slice(0, -2), { setting: 'a' }).pass).toBe(false);
+  }
+});
+
 test('kept-best never passes selection even if a caller labels its word check pass', () => {
   expect(rejectedTakeChecks({ wordMatch: { pass: true, keptBest: true } })).toBe(true);
   expect(rejectedTakeChecks({ gaveUp: true })).toBe(true);

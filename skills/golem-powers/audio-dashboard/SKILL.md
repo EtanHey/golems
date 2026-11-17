@@ -245,6 +245,11 @@ mismatch is retained for inspection and marked `kept-best`; BUILD records
 `TAKE_CHECK_FAILED`, withholds the HTML, and rejects it as a page candidate.
 Existing BYO audio and timing artifact paths remain supported.
 
+Frozen takes identify reference audio by its SHA-256 content digest, so replacing
+audio at the same path invalidates the cache. Upstream `word{say:...}` hints are
+not yet supported by this skill: synthesis and BUILD refuse any script containing
+`{say:` with `PRONUNCIATION_HINT_UNSUPPORTED`. Use pronunciation config instead.
+
 The debt refresh command below reconciles declared debts. For a full upstream
 version bump, use the explicit-commit dependency-closure copier first:
 
