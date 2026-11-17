@@ -115,6 +115,7 @@ def test_helper_uses_fixed_interpreter_and_private_directories(cell, archived):
     script = script.replace('target = tokens.own_lease_remote(repo, remote)', "target = 'EtanHey/t3code'")
     script = script.replace('root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)',
                             'root=' + shlex.quote(str(ROOT.parents[2])))
+    script = script.replace('default, _ = tokens.own_lease_metadata(target, branch)', "raise ValueError('fixture unmerged')")
     helper = home / 'review-helper.sh'
     helper.write_text(script)
     fake = home / 'bin'

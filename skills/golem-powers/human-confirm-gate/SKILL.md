@@ -24,6 +24,9 @@ known wrappers, shell -c/trap and literal stdin payloads, Git executors and
 same-call config mutations; opaque shell stdin sources deny. Unclosed input
 and policy/import/runtime errors deliberately deny (exit 2).
 
+Merged tips need no bundle when refreshed default ancestry or a merged PR into the default at the exact head proves them saved.
+Every merged-delete allow writes a flushed `merged-on-main` receipt with its proof; write failure refuses.
+
 **Archived deletes.** To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, then the command it prints.
 Only one exact 40-hex lease-pinned empty-source push to an own-lease validated
 remote may skip the signature: verified complete canonical bundle (v2, or v3 with only the sha1 capability;

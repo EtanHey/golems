@@ -36,6 +36,10 @@ class BranchCleanup(unittest.TestCase):
         self.base = self.git('rev-parse', 'HEAD')
         self.git('branch', 'topic')
         self.git('update-ref', 'refs/remotes/origin/main', self.base)
+        self.home = Path(self.repo) / 'home'
+        self.home.mkdir()
+        patch.dict(os.environ, {'HOME': str(self.home)}).start()
+        self.addCleanup(patch.stopall)
         self.head = self.base
         self.owner, self.default, self.protected, self.rules = 'EtanHey', 'main', False, []
         self.prs, self.failure, self.calls = [], None, []
@@ -84,8 +88,91 @@ class BranchCleanup(unittest.TestCase):
         self.head = self.git('rev-parse', 'HEAD')
 
     def merged(self):
-        self.prs = [{'merged_at': '2026-11-01T00:00:00Z', 'base': {'ref': self.default}, 'head': {
+        self.prs = [{'number': 7, 'merged_at': '2026-11-01T00:00:00Z', 'base': {'ref': self.default}, 'head': {
             'sha': self.head, 'ref': 'topic', 'repo': {'full_name': 'EtanHey/example'}}}]
+
+    def test_merged_receipt_before_allow(self):
+        self.assertTrue(self.policy.allowed('git branch -D topic', self.repo))
+        row, = (self.home / '.golems/branch-archive/deletes.jsonl').read_text().splitlines()
+        self.assertEqual(json.loads(row)['rule'], 'merged-on-main')
+        self.assertEqual(json.loads(row)['proof'], 'ancestor')
+        self.assertIsNone(json.loads(row)['bundle'])
+
+    def test_exact_pr_receipt(self):
+        self.moved(); self.merged()
+        self.assertTrue(self.policy.allowed('git branch -D topic', self.repo))
+        row = json.loads((self.home / '.golems/branch-archive/deletes.jsonl').read_text())
+        self.assertEqual(row['proof'], 'pr#7@' + self.head)
+
+    def test_receipt_failure_refuses(self):
+        root = self.home / '.golems/branch-archive'
+        root.mkdir(parents=True)
+        (root / 'deletes.jsonl').mkdir()
+        self.assertFalse(self.policy.allowed('git branch -D topic', self.repo))
+
+    def test_fsync_failure_refuses(self):
+        with patch.object(self.policy.os, 'fsync', side_effect=OSError('fixture disk failure')):
+            self.assertFalse(self.policy.allowed('git branch -D topic', self.repo))
+
+    def test_check_only_does_not_record(self):
+        self.assertTrue(self.policy.allowed('git branch -D topic', self.repo, write_receipt=False))
+        self.assertFalse((self.home / '.golems/branch-archive/deletes.jsonl').exists())
+
+    def helper(self):
+        import shlex
+        self.git('config', 'remote.origin.url', self.repo)
+        script = (ROOT.parents[1] / 'scripts/fleet/archive-and-delete-branch.sh').read_text()
+        script = script.replace('root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)',
+                                'root=' + shlex.quote(str(ROOT.parents[1])))
+        script = script.replace('target = tokens.own_lease_remote(repo, remote)', "target = 'EtanHey/example'")
+        script = script.replace('default, _ = tokens.own_lease_metadata(target, branch)', "default = 'main'")
+        script = script.replace('from branch_cleanup import merged_proof',
+            "from branch_cleanup import merged_proof\nimport branch_cleanup\noriginal_run = branch_cleanup._run\ndef fixture_run(argv, cwd):\n    return " + repr(json.dumps(self.prs)) + " if argv[0] == 'gh' else original_run(argv, cwd)\nbranch_cleanup._run = fixture_run")
+        path = Path(self.repo) / 'helper.sh'; path.write_text(script)
+        result = subprocess.run(['bash', str(path), self.repo, 'origin', 'topic'],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.strip()
+
+    def test_helper_ancestor_no_bundle_and_gate_receipt(self):
+        command = self.helper()
+        self.assertFalse(list(self.home.rglob('*.bundle')))
+        self.assertTrue(self.policy.allowed(command, self.repo))
+        self.assertTrue((self.home / '.golems/branch-archive/deletes.jsonl').exists())
+
+    def test_helper_exact_pr_no_bundle(self):
+        self.moved(); self.merged()
+        command = self.helper()
+        self.assertFalse(list(self.home.rglob('*.bundle')))
+        self.assertTrue(self.policy.allowed(command, self.repo))
+
+    def test_helper_unmerged_or_stale_squash_bundles(self):
+        for stale_pr in (False, True):
+            with self.subTest(stale_pr=stale_pr):
+                if stale_pr: self.merged()
+                self.moved()
+                self.helper()
+                self.assertTrue(list(self.home.rglob(self.head + '.bundle')))
+
+    def test_reconstruct_unproven_refuses_before_any_row(self):
+        module = load('reconstruct_deletes', ROOT.parents[1] / 'scripts/fleet/reconstruct-merged-deletes.py')
+        self.moved()
+        with patch.object(module.tokens, 'own_lease_remote', return_value='EtanHey/example'), \
+             patch.object(module, 'repository_default', return_value='main'), \
+             patch.object(sys.modules['branch_cleanup'], '_run', side_effect=self.transport):
+            with self.assertRaisesRegex(ValueError, 'unproven'):
+                module.reconstruct(self.repo, 'origin', [('topic', self.base), ('lost', self.head)], self.home)
+        self.assertFalse((self.home / '.golems/branch-archive/deletes.jsonl').exists())
+
+    def test_reconstruct_marks_historical_rows(self):
+        module = load('reconstruct_deletes_ok', ROOT.parents[1] / 'scripts/fleet/reconstruct-merged-deletes.py')
+        with patch.object(module.tokens, 'own_lease_remote', return_value='EtanHey/example'), \
+             patch.object(module, 'repository_default', return_value='main'), \
+             patch.object(sys.modules['branch_cleanup'], '_run', side_effect=self.transport):
+            module.reconstruct(self.repo, 'origin', [('topic', self.base)], self.home)
+        row = json.loads((self.home / '.golems/branch-archive/deletes.jsonl').read_text())
+        self.assertTrue(row['reconstructed'])
+        self.assertRegex(row['reconstructed_on'], r'^\d{4}-\d{2}-\d{2}$')
 
     def test_contained_local(self):
         self.assertTrue(self.verdict('git branch -D topic'))

@@ -10,6 +10,8 @@ import re
 import shlex
 import subprocess
 import time
+import stat
+from pathlib import Path
 from urllib.parse import quote
 
 
@@ -86,7 +88,56 @@ def _plan(command, cwd):
     return None
 
 
-def allowed(command, cwd):
+def record(home, target, branch, sha, path=None, digest=None, **extra):
+    """Durably record an allowed attempt; never claim the delete executed."""
+    root = home / '.golems/branch-archive'
+    for directory in (root.parent, root):
+        directory.mkdir(mode=0o700, exist_ok=True)
+        info = directory.lstat()
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o022:
+            raise ValueError('unsafe receipt directory')
+    fd = os.open(root / 'deletes.jsonl', os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    with os.fdopen(fd, 'a') as stream:
+        info = os.fstat(fd)
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
+                or stat.S_IMODE(info.st_mode) not in (0o600, 0o644)):
+            raise ValueError('unsafe receipt')
+        row = dict(event='allowed_attempt', time=time.time(), repo=target, branch=branch, sha=sha,
+                   bundle=str(path) if path is not None else None, bundle_sha256=digest, **extra)
+        stream.write(json.dumps(row, separators=(',', ':')) + '\n')
+        stream.flush()
+        os.fsync(fd)
+
+
+def proof_at_head(run, cwd, repo, branch, sha, default, default_sha, prs):
+    """Shared exact-head PR or refreshed-default ancestry proof."""
+    if not isinstance(prs, list) or len(prs) >= 100:
+        raise ValueError('incomplete PR metadata')
+    for p in prs:
+        if (p.get('merged_at') and p.get('base', {}).get('ref') == default
+                and p['head']['sha'] == sha and p['head']['ref'] == branch
+                and p['head']['repo']['full_name'] == repo):
+            number = p['number']
+            if type(number) is not int or number < 1: raise ValueError('invalid PR number')
+            return f'pr#{number}@{sha}'
+    if not run(['git', 'rev-list', default_sha + '..' + sha], cwd):
+        return 'ancestor'
+    return ''
+
+
+def merged_proof(cwd, repo, remote, branch, sha, default):
+    """Read fresh default and PR evidence, including already-deleted branches."""
+    _run(['git', 'check-ref-format', 'refs/heads/' + default], cwd)
+    _run(['git', 'fetch', '--no-tags', '--no-recurse-submodules', '--', remote,
+          '+refs/heads/' + default + ':refs/remotes/' + remote + '/' + default], cwd)
+    default_sha = _run(['git', 'rev-parse', '--verify',
+                        'refs/remotes/' + remote + '/' + default + '^{commit}'], cwd)
+    prs = json.loads(_run(['gh', 'api', '--hostname', 'github.com', 'repos/' + repo
+                          + '/pulls?state=closed&head=EtanHey:' + quote(branch, safe='') + '&per_page=100'], cwd))
+    return proof_at_head(_run, cwd, repo, branch, sha, default, default_sha, prs)
+
+
+def allowed(command, cwd, *, home=None, write_receipt=True):
     """True only with fresh, owned, unprotected, exact-commit evidence.
 
     Receipt failures return False, including a missing remote branch/protection
@@ -159,17 +210,18 @@ def allowed(command, cwd):
             if leases and leases.get(branch) != sha: return False
             prs = api('repos/' + repo + '/pulls?state=closed&head=EtanHey:' + quote(branch, safe='') + '&per_page=100')
             if not isinstance(prs, list): return False
-            merged = any(p.get('merged_at') and p.get('base', {}).get('ref') == default and p['head']['sha'] == sha and
-                         p['head']['ref'] == branch and
-                         p['head']['repo']['full_name'] == repo for p in prs)
-            if not merged and run(['git', 'rev-list', default_sha + '..' + sha], cwd): return False
-            heads.append((branch, sha))
+            proof = proof_at_head(run, cwd, repo, branch, sha, default, default_sha, prs)
+            if not proof: return False
+            heads.append((branch, sha, proof))
         # Revalidate every source after the last await-equivalent metadata call.
-        for branch, sha in heads:
+        for branch, sha, proof in heads:
             if kind == 'local': current = run(['git', 'rev-parse', '--verify', 'refs/heads/' + branch + '^{commit}'], cwd)
             else:
                 current = run(['git', 'ls-remote', '--exit-code', '--heads', 'origin', 'refs/heads/' + branch], cwd).split()[0]
             if current != sha: return False
+        if write_receipt:
+            for branch, sha, proof in heads:
+                record(home or Path.home(), repo, branch, sha, rule='merged-on-main', proof=proof)
         return True
     except (ValueError, TypeError, KeyError, IndexError, AttributeError, OSError, subprocess.SubprocessError):
         return False

@@ -17,6 +17,8 @@ def git(repo, *args):
 @pytest.fixture
 def archived(cell, monkeypatch):
     home, repo = cell
+    import archived_delete
+    monkeypatch.setattr(archived_delete, "merged_proof", lambda *args: "")
     git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.com',
         'commit', '--allow-empty', '-qm', 'fixture')
     sha = git(repo, 'rev-parse', 'HEAD')
@@ -108,6 +110,7 @@ def test_helper_preserves_remote_branch_without_moving_local(cell, archived, mon
     # above. A local transport supplies real fetched objects in this fixture.
     source = ROOT.parents[2] / 'scripts/fleet/archive-and-delete-branch.sh'
     script = source.read_text().replace('target = tokens.own_lease_remote(repo, remote)', "target = 'EtanHey/t3code'")
+    script = script.replace('default, _ = tokens.own_lease_metadata(target, branch)', "raise ValueError('fixture unmerged')")
     helper = home / 'helper.sh'
     script = script.replace('root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)',
                             'root=' + shlex.quote(str(ROOT.parents[2])))
@@ -181,3 +184,25 @@ print(json.dumps(data))
         assert max(starts) < min(ends)
     else:
         assert rc == 2 and 'Retry' in reason
+
+
+@pytest.mark.parametrize('proof', ['ancestor', 'pr#7@' + 'a' * 40])
+def test_merged_fork_needs_no_bundle_but_writes_receipt(cell, archived, monkeypatch, proof):
+    import archived_delete
+    home, repo, sha, path, command = archived
+    path.unlink()
+    proof = proof.replace('a' * 40, sha)
+    monkeypatch.setattr(archived_delete, 'merged_proof', lambda *args: proof)
+    assert decision(cell, monkeypatch, command) == (0, '')
+    row = json.loads((home / '.golems/branch-archive/deletes.jsonl').read_text())
+    assert row['rule'] == 'merged-on-main' and row['proof'] == proof
+    assert row['bundle'] is None and not path.exists()
+
+
+def test_merged_fork_receipt_failure_refuses_even_with_bundle(cell, archived, monkeypatch):
+    import archived_delete
+    home, _, _, _, command = archived
+    monkeypatch.setattr(archived_delete, 'merged_proof', lambda *args: 'ancestor')
+    (home / '.golems/branch-archive/deletes.jsonl').mkdir()
+    rc, reason = decision(cell, monkeypatch, command)
+    assert rc == 2 and 'receipt' in reason

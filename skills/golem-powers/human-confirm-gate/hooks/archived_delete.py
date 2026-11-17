@@ -1,14 +1,13 @@
 """Reversible, unsigned single-ref deletes. Never executes a push."""
 import hashlib
-import json
 import os
 import re
 import shlex
 import stat
 import subprocess
-import time
 
 import tokens
+from branch_cleanup import record, merged_proof
 
 GUIDANCE = ('To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, '
             'then the command it prints.')
@@ -85,21 +84,6 @@ def check_bundle(path, repo, branch, sha, *, archive_root=None):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def record(home, target, branch, sha, path, digest):
-    receipt = home / '.golems/branch-archive/deletes.jsonl'
-    fd = os.open(receipt, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
-    with os.fdopen(fd, 'a') as stream:
-        info = os.fstat(fd)
-        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
-                or stat.S_IMODE(info.st_mode) not in (0o600, 0o644)):
-            raise ValueError('unsafe receipt')
-        row = dict(event='allowed_attempt', time=time.time(), repo=target, branch=branch, sha=sha,
-                   bundle=str(path), bundle_sha256=digest)
-        stream.write(json.dumps(row, separators=(',', ':')) + '\n')
-        stream.flush()
-        os.fsync(fd)
-
-
 def scope(payload, ops, home, *, write_receipt=True):
     from commands import shell
     if len(ops) != 1 or ops[0]['class'] != 'delete' or ops[0].get('local'):
@@ -139,6 +123,17 @@ def scope(payload, ops, home, *, write_receipt=True):
             return False, f"Blocked: couldn't confirm branch safety and open PRs in {target}. Retry the push."
         if branch.casefold() == default.casefold() or data['protected'] or linked:
             return False, f'Blocked: default/protected branch or open PR uses {branch} in {target}; deleting it needs Etan.'
+        try:
+            proof = merged_proof(repo, target, remote, branch, sha, default)
+        except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+            proof = ''  # Without positive proof, preserve the bundle requirement.
+        if proof:
+            try:
+                if write_receipt:
+                    record(home, target, branch, sha, rule='merged-on-main', proof=proof)
+            except (OSError, ValueError):
+                return False, 'Blocked: could not save the branch deletion receipt. Retry after fixing the archive permissions.'
+            return True, ''
         path = archive_path(home, target, branch, sha)
         try:
             digest = check_bundle(path, repo, branch, sha)

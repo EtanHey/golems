@@ -82,7 +82,8 @@ def evaluate(payload, home, *, archive_check_only=False):
     from tokens import authorize, own_lease_scope
     with shell.policy_evaluation_deadline(8):
         from branch_cleanup import allowed as branch_cleanup_allowed
-        if branch_cleanup_allowed(args['command'], payload['cwd']):
+        if branch_cleanup_allowed(args['command'], payload['cwd'], home=home,
+                                  write_receipt=not archive_check_only):
             return
         try:
             ops = operations(args['command'], payload['cwd'])

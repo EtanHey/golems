@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Save a reversible branch bundle, then print (never execute) the pinned delete.
+# Prove the tip merged or save a bundle, then print (never execute) the pinned delete.
 set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # Match the hook installer's fixed Homebrew interpreter candidates; never PATH.
@@ -18,8 +18,10 @@ from pathlib import Path
 if sys.version_info < (3, 11):
     sys.exit('Hook Python 3.11+ required')
 sys.path.insert(0, str(Path(sys.argv[1]) / 'skills/golem-powers/human-confirm-gate/hooks'))
+sys.path.insert(0, str(Path(sys.argv[1]) / 'skills/golem-powers/_shared'))
 import tokens
 from archived_delete import archive_path, archive_directories, check_bundle
+from branch_cleanup import merged_proof
 
 
 def git(repo, *args):
@@ -36,6 +38,16 @@ def main():
     # Fetch precisely this branch, then retain the fetched object before archiving.
     git(repo, 'fetch', '--no-tags', '--no-recurse-submodules', '--', remote, 'refs/heads/' + branch)
     sha = git(repo, 'rev-parse', '--verify', 'FETCH_HEAD^{commit}')
+    command = shlex.join(['git', '-C', repo, 'push', '--force-with-lease=refs/heads/' + branch + ':' + sha,
+                         remote, ':refs/heads/' + branch])
+    try:
+        default, _ = tokens.own_lease_metadata(target, branch)
+        proof = merged_proof(repo, target, remote, branch, sha, default)
+    except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError):
+        proof = ''
+    if proof:
+        print(command)
+        return
     path = archive_path(Path.home(), target, branch, sha)
     root = Path.home() / '.golems/branch-archive'
     archive_directories(root, path.parent, create=True)
@@ -54,8 +66,7 @@ def main():
             # Exclusive hard link publishes without overwriting an existing copy.
             os.link(candidate, path)
     check_bundle(path, repo, branch, sha)
-    print(shlex.join(['git', '-C', repo, 'push', '--force-with-lease=refs/heads/' + branch + ':' + sha,
-                      remote, ':refs/heads/' + branch]))
+    print(command)
 
 
 try:

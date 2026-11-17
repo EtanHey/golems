@@ -88,7 +88,11 @@ race remain; a future gate that executes pushes with fixed Git must close them.
 ## Archived fleet branch deletion
 
 To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, then the command it prints.
-Pass `<repo-dir> <remote> <branch>`. The helper fetches the branch, saves a full bundle,
+A tip proven by refreshed default ancestry or an exact-head merged PR needs no bundle; otherwise the helper bundles first, including unproven squash merges.
+Merged-delete allows append `rule: "merged-on-main"` with `proof: "ancestor"` or `"pr#N@sha"` before allow; receipt failure refuses.
+For historical deletes only, run `python3 -I scripts/fleet/reconstruct-merged-deletes.py <repo-dir> <remote> <branch> <sha> [<branch> <sha> ...]`; all pairs must prove merged, and rows carry `reconstructed: true` plus `reconstructed_on`.
+
+Pass `<repo-dir> <remote> <branch>`. The helper fetches the branch and, when unproven, saves a full bundle,
 verifies it, and prints one lease-pinned delete; it never pushes. It stages an isolated
 bare repository under the archive so the bundle names exactly `refs/heads/<branch>`
 without moving a local branch. Existing bundles are verified, never overwritten.
@@ -102,7 +106,7 @@ fork, the discovered parent's open PRs with head `EtanHey:<branch>` are read whi
 the other requests are still running, within the same four-second deadline; errors, ambiguous data,
 and a full 100-PR page refuse with a retry message rather than assume completeness.
 A parent-read failure refuses. GitHub identity cannot distinguish agent work from owner work, so the exception
-checks reversibility instead of authorship. All other delete forms retain approval.
+checks reversibility instead of authorship. The separate merged-branch verifier also admits its documented literal local/origin/API forms with a receipt. Other delete forms retain approval.
 
 The canonical bundle is `~/.golems/branch-archive/<owner>/<repo>/<branch with slashes
 replaced by __>/<tip>.bundle`: user-owned, regular, no symlink, mode 0600 or 0644,
@@ -116,8 +120,8 @@ The gate appends and flushes a JSON receipt to `~/.golems/branch-archive/deletes
 before allowing, with `event: "allowed_attempt"`, time, repository, branch, tip, bundle path and SHA-256. A receipt
 records an allowed attempt, not proof that Git subsequently deleted the branch.
 Git-guardian validates the exact shape through the same confirmation hook using
-`--archive-check-only`: it writes no receipt. Only the mandatory gate hook writes
-the allowed-attempt row, so one command crossing both hooks yields one row.
+`--archive-check-only`: it writes no receipt. The mandatory gate hook writes
+the archive attempt row. A merged command may cross multiple independent verifiers; each verifier records its own allowed attempt, not a completed deletion.
 A caller-supplied payload cannot select check-only mode. Failure to write refuses.
 The guardian selects an eight-second deadline only for this exact candidate shape;
 its nested check times out after seven seconds, inside the nine-second installed
