@@ -17,7 +17,9 @@ afterEach(() => {
 
 // Build <repo>/docs.local from { "relative/path": "content" }.
 function fixture(files) {
-  const repo = mkdtempSync(join(tmpdir(), "drive-filing-rollup-"));
+  const parent = join(dirname(ROLLUP), "../../../../docs.local");
+  mkdirSync(parent, { recursive: true });
+  const repo = mkdtempSync(join(parent, "drive-filing-rollup-"));
   roots.push(repo);
   for (const [rel, content] of Object.entries(files)) {
     const file = join(repo, "docs.local", rel);
