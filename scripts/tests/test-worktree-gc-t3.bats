@@ -149,3 +149,16 @@ PY
     [[ "$output" == *KEEP-undetermined* ]]; [ -d "$worktree" ]
   done
 }
+@test "T3 cache dry-run counts a disposable container once" {
+  finished_fixture
+  mkdir -p "$worktree/.build.noindex/swift"
+  printf '.build*/\n' >> "$repo/.git/info/exclude"
+  printf cache > "$worktree/.build.noindex/swift/out"
+  printf local > "$worktree/dirty"
+  age_tree
+  run "$WORKTREE_GC" --dry-run --repo "$repo"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | rg -c '^\{"action": "TRIM"')" -eq 1 ]
+  [ -f "$worktree/.build.noindex/swift/out" ]
+}

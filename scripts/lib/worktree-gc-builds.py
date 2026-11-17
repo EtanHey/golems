@@ -78,7 +78,10 @@ def trim(root, apply):
         print('builds kept: activity within 72h')
         return
     outputs = sorted(candidates(root), key=lambda p: (p.name == '.venv', str(p)))
+    selected = []
     for target in outputs:
+        if any(parent in target.parents for parent in selected):
+            continue
         if not disposable(root, target):
             continue
         size = subprocess.check_output(['du', '-sk', str(target)], text=True).split()[0]
@@ -87,6 +90,7 @@ def trim(root, apply):
             if not disposable(root, target):
                 continue
             shutil.rmtree(target)
+        selected.append(target)
         print(json.dumps(dict(action='TRIMMED' if apply else 'TRIM', path=str(target),
                               size_bytes=int(size) * 1024)))
 
