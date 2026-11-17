@@ -293,3 +293,20 @@ SH
   [ "$status" -eq 0 ]; [ -f "$kept/node_modules/f" ]; [ ! -e "$worktree" ]
   [[ "$output" == *KEEP-trim-error*node_modules* ]]
 }
+
+@test "T3 archive preserves every unknown direct noindex child even with a generic cache name" {
+  finished_fixture
+  printf '.build*/\n' >> "$repo/.git/info/exclude"
+  for name in node_modules .build .build.noindex venv review snapshots; do
+    mkdir -p "$worktree/.build.noindex/$name"
+    printf only-copy > "$worktree/.build.noindex/$name/proof"
+  done
+  mkdir -p "$worktree/.build.noindex/swift"; printf cache > "$worktree/.build.noindex/swift/out"
+  age_tree
+  run "$WORKTREE_GC" --apply --repo "$repo"
+  [ "$status" -eq 0 ]; [ ! -e "$worktree" ]
+  for name in node_modules .build .build.noindex venv review snapshots; do
+    [ "$(cat "$repo/docs.local/worktree-archive/topic/.build.noindex/$name/proof")" = only-copy ]
+  done
+  [ ! -e "$repo/docs.local/worktree-archive/topic/.build.noindex/swift" ]
+}

@@ -62,6 +62,9 @@ def expand(root, rel, strict=False):
                     for leaf in expand(root, rel + "/" + child, strict)]
         ignored.check_returncode()
     if strict:
+        if (len(parts) > 1 and parts[-2] == '.build.noindex' and
+                parts[-1] not in {'swift', 'brainbar-render', 'pytest'}):
+            return [rel]
         if parts[-1] == '.build.noindex' and os.path.isdir(full):
             return [leaf for child in sorted(os.listdir(full))
                     for leaf in expand(root, rel + '/' + child, True)]
