@@ -352,9 +352,10 @@ load lib/worktree-gc-fixtures
 
   run env LC_ALL=C LANG=C "$WORKTREE_GC" --repo "$repo"
   row="$(printf '%s\n' "$output" | grep -F " · $worktree · ")"
+  expected_size="$(du -sk "$worktree" | awk '{print $1 * 1024}')"
 
   [ "$status" -eq 0 ] &&
-    [ "$row" = "normal-index-c · $worktree · normal-index-c-branch · dirty=0 · ahead=0 · REMOVE · eligible; report only; clean and fully represented by origin/main" ]
+    [ "$row" = "normal-index-c · $worktree · normal-index-c-branch · dirty=0 · ahead=0 · REMOVE · eligible; report only; clean and fully represented by origin/main · size_bytes=$expected_size" ]
 }
 
 @test "normal H index tags are not hidden flags under en_US.UTF-8 locale" {
@@ -364,9 +365,10 @@ load lib/worktree-gc-fixtures
 
   run env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 "$WORKTREE_GC" --repo "$repo"
   row="$(printf '%s\n' "$output" | grep -F " · $worktree · ")"
+  expected_size="$(du -sk "$worktree" | awk '{print $1 * 1024}')"
 
   [ "$status" -eq 0 ] &&
-    [ "$row" = "normal-index-utf8 · $worktree · normal-index-utf8-branch · dirty=0 · ahead=0 · REMOVE · eligible; report only; clean and fully represented by origin/main" ]
+    [ "$row" = "normal-index-utf8 · $worktree · normal-index-utf8-branch · dirty=0 · ahead=0 · REMOVE · eligible; report only; clean and fully represented by origin/main · size_bytes=$expected_size" ]
 }
 
 @test "keeps a worktree whose tracked contents are hidden by assume-unchanged" {
@@ -380,9 +382,10 @@ load lib/worktree-gc-fixtures
 
   run "$WORKTREE_GC" --repo "$repo"
   row="$(printf '%s\n' "$output" | grep -F " · $worktree · ")"
+  expected_size="$(du -sk "$worktree" | awk '{print $1 * 1024}')"
 
   [ "$status" -eq 0 ] &&
-    [ "$row" = "hidden-assume-index · $worktree · assume-hidden-branch · dirty=not-checked · ahead=undetermined · KEEP-undetermined · tracked paths use an assume-unchanged or skip-worktree index flag" ] &&
+    [ "$row" = "hidden-assume-index · $worktree · assume-hidden-branch · dirty=not-checked · ahead=undetermined · KEEP-undetermined · tracked paths use an assume-unchanged or skip-worktree index flag · size_bytes=$expected_size" ] &&
     [[ "$row" != *" · REMOVE · "* ]]
 }
 
@@ -397,9 +400,10 @@ load lib/worktree-gc-fixtures
 
   run "$WORKTREE_GC" --repo "$repo"
   row="$(printf '%s\n' "$output" | grep -F " · $worktree · ")"
+  expected_size="$(du -sk "$worktree" | awk '{print $1 * 1024}')"
 
   [ "$status" -eq 0 ] &&
-    [ "$row" = "hidden-skip-index · $worktree · skip-hidden-branch · dirty=not-checked · ahead=undetermined · KEEP-undetermined · tracked paths use an assume-unchanged or skip-worktree index flag" ] &&
+    [ "$row" = "hidden-skip-index · $worktree · skip-hidden-branch · dirty=not-checked · ahead=undetermined · KEEP-undetermined · tracked paths use an assume-unchanged or skip-worktree index flag · size_bytes=$expected_size" ] &&
     [[ "$row" != *" · REMOVE · "* ]]
 }
 
@@ -425,13 +429,14 @@ load lib/worktree-gc-fixtures
     RACE_STATE="$wrapper_state" PATH="$wrapper_dir:$PATH" \
     "$WORKTREE_GC" --repo "$repo"
   row="$(printf '%s\n' "$output" | grep -F " · $worktree · ")"
+  expected_size="$(du -sk "$worktree" | awk '{print $1 * 1024}')"
 
   [ "$status" -eq 0 ] &&
     [ -e "$wrapper_state" ] &&
     [[ "$(git -C "$worktree" ls-files -v fixture.txt)" == h\ * ]] &&
     [ -z "$(git -C "$worktree" -c status.showUntrackedFiles=all \
       status --porcelain --ignored --untracked-files=all)" ] &&
-    [ "$row" = "hidden-index-race · $worktree · hidden-index-race-branch · dirty=not-checked · ahead=undetermined · KEEP-undetermined · tracked paths use an assume-unchanged or skip-worktree index flag" ] &&
+    [ "$row" = "hidden-index-race · $worktree · hidden-index-race-branch · dirty=not-checked · ahead=undetermined · KEEP-undetermined · tracked paths use an assume-unchanged or skip-worktree index flag · size_bytes=$expected_size" ] &&
     [[ "$row" != *" · REMOVE · "* ]]
 }
 
