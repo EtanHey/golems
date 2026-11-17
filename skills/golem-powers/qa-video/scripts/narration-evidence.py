@@ -37,6 +37,9 @@ def number(value):
     return value
 
 def source(work):
+    if not (work/'transcript.srt').exists():
+        load_module('must-read').all_cues(work)  # Records silence; deleted known narration fails closed.
+        return '', [], [], []
     text = (work/'transcript.srt').read_text(encoding='utf-8-sig')
     segments, levels = [], []
     for block in re.split(r'\n\s*\n', text.replace('\r\n', '\n').strip()):
@@ -107,7 +110,7 @@ def first_pointer(work, item):
     owner = next((i for i in items if i['id'] == item), None)
     if not owner:
         raise ValueError('unknown narrated item')
-    cues = [c for c in d.cues(text) if owner['start_s'] <= float(c[0]) <= owner['end_s']]
+    cues = [c for c in load_module('must-read').required(work) if owner['start_s'] <= float(c[0]) <= owner['end_s']]
     return min(cues, key=lambda c: float(c[0])) if cues else None
 
 def validate_reference(work, item, crop):
@@ -119,7 +122,7 @@ def validate_reference(work, item, crop):
     with (work/'must-read-frames.tsv').open() as stream:
         originals = list(csv.DictReader(stream, delimiter='\t'))
     if rec['source'] != 'crop' or rec['pts_s'] != parent['pts_s'] or not any(r['srt_index'] == cue[4] and float(r['offset_s']) == 0
-            and r['frame'] == parent['frame'] and r['pts_s'] == parent['pts_s'] for r in originals):
+            and float(r['requested_s']) == float(cue[0]) and r['frame'] == parent['frame'] and r['pts_s'] == parent['pts_s'] for r in originals):
         raise ValueError('reference must crop the first pointer cue at t_s')
     return rec
 
@@ -226,6 +229,9 @@ def check_findings(work, report):
 
 def check(work, report):
     work = Path(work).resolve()
+    if (work/'coverage-downgrades.jsonl').exists():
+        load_module('must-read').check(work, report)
+        return  # An honestly reported coverage failure is a satisfied integrity check.
     check_gaps(work); check_levels(work, report); check_findings(work, report)
     _, _, items, _ = source(work)
     refs = read_json(work/'item-references.json', {})
@@ -234,6 +240,15 @@ def check(work, report):
             ref = refs[item['id']]
             if validate_reference(work, item['id'], ref['frame'])['sha256'] != ref['sha256']:
                 raise ValueError('reference bytes changed')
+    for cue in load_module('must-read').all_cues(work)[0]:
+        if cue[3] != 'weak-overflow':
+            continue
+        item = next(i for i in items if i['start_s'] <= float(cue[0]) <= i['end_s'])
+        ref = refs[item['id']]
+        matches = [r for r in lines(report, 'GATHERED') if len(r) == 4 and r[1] == cue[4]
+                   and r[2] == ref['frame'] and r[3] == 'gathered, not judge-read']
+        if not matches:
+            raise ValueError('weak overflow needs reference-backed gathered, not judge-read report row')
     for line in (work/'item-sweeps.jsonl').read_text().splitlines() if (work/'item-sweeps.jsonl').exists() else []:
         row = json.loads(line)
         brief = read_json(Path(row['brief']))

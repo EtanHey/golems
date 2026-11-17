@@ -170,9 +170,11 @@ frames — the cited before and after — one image per call, and logs each with
 `scripts/inspected.sh <workdir> <frame> 'spot: before' F4`. Why 2: a spot-check can catch a wrong frame reference
 or a misread; Flash-high's 44/44 visual bench (0 fabrications) supports trying this bounded policy, not a
 guarantee of reader accuracy. **Mandatory pointer exception:** the judge opens every must-read
-full-size frame itself (t_s and ±0.5s), logs `inspected.sh ... 'judge: pointer ...' <srt_index>`,
+full-size cue-time frame itself (±0.5s optional), logs `inspected.sh ... 'judge: pointer ...' <srt_index>`,
 identifies the pointer region and crops it with crop.sh. These reads are outside the two-frame cap;
 no gatherer can satisfy them. See [must-read evidence](references/must-read.md) for report rows.
+Strong pointer language is always mandatory; weak demonstratives are ranked near defect words
+and capped at max(6, one per two narrated minutes). Overflow is reference-backed, "gathered, not judge-read".
 The judge also reads each named level/value and checks each negative gatherer claim once at full
 size. Pin the first pointer crop per item as its reference; every later sweep/gather carries that
 image path and asks "is this the same defect as the reference?". **The UI's indicator leads the
@@ -185,8 +187,9 @@ only under "Unverified gatherer claims", never as findings or "low confidence".
 A spot-check that disagrees sends that window back to a gatherer (fresh batch, crop or refine); a second
 disagreement is NOT DETERMINED. The judge never opens contact sheets, never reads frames to plan the
 split (plan from `index.tsv`, cues and the transcript); the cap excludes mandatory pointer reads.
-**Too small to read:** the judge cuts a crop (`scripts/crop.sh`) or re-densifies, and sends that to a
-gatherer; legibility is never a reason for a judge read. **Measurements** (bar height/length/colour,
+**Too small to read:** outside the mandatory pointer/reference exception, a reader supplies crop
+bounds; the judge runs crop.sh without opening frames to plan the crop, then sends it to a fresh reader.
+The exception above requires the judge's own pointer read and crop. **Measurements** (bar height/length/colour,
 spinner motion, frame registration, timing) come from a packaged script. None exists yet for those;
 the item is NOT DETERMINED (missing measurement: <what>) and the judge files a row to add the script to
 `scripts/` with a test. Never measure by eye and never hand-write a one-off measuring script in the run.
@@ -235,14 +238,13 @@ DETERMINED**. Cite full-size frames or crops with `pts_s` from `frames.tsv`; the
 sheet + tile only locates them. Scripts support judgement; an optional
 convenience index never gates the loop.
 
-**Verdict integrity:** First run `scripts/must-read-check.sh <workdir> <qa-report.md>` (exit 3 =
-unearned), then `python3 scripts/narration-evidence.py check <workdir> <qa-report.md>` (exit 3 =
-unearned). INCONCLUSIVE on a narrated item requires the judge's own mandatory reads; a gatherer's
-negative report is insufficient. A downgraded item's status is only **COVERAGE FAIL** (not an observed
-product failure). Then run `/qa-verdict-gate`: PASS / FAIL / INCONCLUSIVE, with FAIL reserved for
-confirmed observations; unreachable surfaces are INCONCLUSIVE. Require every checklist item in
-qa-report.md. `bun skills/golem-powers/qa-verdict-gate/scripts/qa-verdict-gate-cli.mjs <transcript|->`
-(exit 3 = FLAG). Composes with `/false-green-gate` and `/never-fabricate`.
+**Verdict integrity:** Run `bash scripts/default.sh finalize <workdir> <qa-report.md> --transcript
+<judge-session.jsonl>`: automatically checks mandatory reads, narration evidence and `/qa-verdict-gate`.
+Strong cues require actual image-read calls in that session, not just ledger attestations. INCONCLUSIVE
+cannot bypass reads. A recorded downgrade permits only COVERAGE FAIL and satisfies the integrity
+check without reads. Silent runs record "no narration". Ordinary verdicts remain PASS / FAIL /
+INCONCLUSIVE; FAIL needs an observed product failure, unreachable surfaces are INCONCLUSIVE.
+Require every checklist item in qa-report.md. Composes with `/false-green-gate` and `/never-fabricate`.
 
 **Final report and verdict:** In the SAME turn that writes `qa-report.md` and states the verdict,
 run `bash "$SCRIPTS/fail-evidence.sh" "$WORKDIR"` and expose its tool output: unmodified TSV
@@ -325,9 +327,9 @@ If a provenance tool or column is missing, keep reading the frames directly, say
 6. **Persist and iterate** — After each run, brain_store findings with `["qa", "<project>", "round-N"]`;
    track fixed vs persistent issues across rounds. Gems target insights, opinions, numbers and advice.
 
-9. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
+7. **BrainLayer is the destination for gems** — Files are intermediate artifacts. Use `brain_digest` for full transcripts/notes, then `brain_store` the structured gems. If BrainLayer is unavailable, write the full output to `docs.local/qa-video/[date]-[title].md` and flag that persistence failed.
 
-10. **One pipeline route** — a named model/subagent owns the entire pass under
+8. **One pipeline route** — a named model/subagent owns the entire pass under
     Subagent routing; otherwise debrief and review follow the default QA route. QA: one `claude.judgment` judge child,
     on the machine holding the recording, owns extraction, hotspots and refinement in its own Bash, then fans the
     frame windows out to gatherers (Antigravity `gemini.gather.visual` → visual-batch.py → TOOLING FAILURE)

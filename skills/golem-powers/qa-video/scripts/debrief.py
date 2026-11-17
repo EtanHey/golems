@@ -111,6 +111,7 @@ def main():
     parser.add_argument('--budget-seconds', type=float, help='Parent deadline override; default max(600, 24 * video minutes)')
     parser.add_argument('--presort', action='store_true',
                         help='Opt in to the visual-batch.py pre-sort; its text is a lead, not evidence')
+    parser.add_argument('--must-read', action='store_true', help='Opt in to budgeted narrated-pointer evidence in debrief/review/gems')
     parser.add_argument('--helper', type=Path, help='Offline helper override (requires --presort)')
     args = parser.parse_args()
     if args.helper and not args.presort:
@@ -120,6 +121,9 @@ def main():
     reserved = {'transcript.srt', 'transcript.txt', 'audio.wav', 'progress.txt', 'progress.json',
                 'plan.json', 'frames.tsv', 'debrief.md', 'timing.json', 'failure.txt'}
     inputs = {'logs', args.video.name, args.video.with_suffix('.info.json').name} - reserved
+    if args.must_read:
+        inputs |= {'.qa-mode', 'must-read.tsv', 'deixis-cues.tsv', 'deixis-budget.json',
+                   'narration-status.json', 'no-narration.json', 'narrated-plan.json', 'cues.tsv'}
     if work.exists() and any(p.name not in inputs for p in work.iterdir()):
         parser.error('use a fresh empty workdir; prior evidence must survive')
     if (args.budget_seconds is not None and not 0 < args.budget_seconds < float('inf')) or args.concurrency < 1:
@@ -150,6 +154,10 @@ def main():
         progress('transcribing · ETA unknown · budget %gs' % args.budget_seconds)
         command(['bash', str(HERE/'extract.sh'), str(args.video.resolve()), str(work)], work/'logs/extract.log', deadline)
         transcript = (work/'transcript.srt').read_text()
+        if args.must_read:
+            command(['python3', str(HERE/'must-read.py'), 'plan', str(work)], work/'logs/must-plan.log', deadline)
+            command(['python3', str(HERE/'narration-evidence.py'), 'plan', str(work)], work/'logs/narration-plan.log', deadline)
+            command(['python3', str(HERE/'must-read.py'), 'extract', str(args.video.resolve()), str(work)], work/'logs/must-extract.log', deadline)
         selected = plan(transcript, args.concurrency)
         atomic(work/'plan.json', json.dumps(selected, indent=2)+'\n')
         duration = selected['duration_seconds']

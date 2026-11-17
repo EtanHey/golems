@@ -40,7 +40,8 @@ def test_cues(run):
     assert r.returncode == 0, r.stderr
     rows = list(csv.reader(r.stdout.splitlines(), delimiter='\t'))
     assert [row[4] for row in rows] == ['2', '3']
-    assert rows[0][:3] == ['4.000', '3.000', '6.000']
+    assert 4 < float(rows[0][0]) < 5, 'cue time estimates phrase offset, not subtitle start'
+    assert rows[0][1:3] == ['3.000', '6.000']
 
 def test_plan_merges_omitted_pointer(run):
     work, video = run
@@ -71,7 +72,7 @@ def test_check_requires_every_open_and_crop(run):
     work, video = run
     prepare(work, video)
     text, rows = report(work)
-    assert len(rows) == 6
+    assert len(rows) == 2, 'only cue-time frames are mandatory; neighbours are optional'
     size = subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries',
         'stream=width,height', '-of', 'csv=p=0', rows[0]['frame']], text=True)
     assert size.strip() == '160,90', 'must-read frames retain source resolution'
@@ -108,7 +109,9 @@ def test_phrase_list(tmp_path, phrase):
     assert r.returncode == 0 and len(r.stdout.splitlines()) == 1
 
 @pytest.mark.parametrize('phrase', ['this PR', 'this morning', 'this is useful', 'hereafter',
-                                   'there', 'look atlas', 'hovering overhead'])
+                                   'there', 'look atlas', "here's the thing", 'as you can see in the docs',
+                                   "I'll fix this.", 'what is this?', 'here we go', 'here you go',
+                                   'so this', "it's here in the code", 'look at the docs later'])
 def test_false_positives(tmp_path, phrase):
     srt = tmp_path/'test.srt'
     srt.write_text('1\n00:00:02,000 --> 00:00:03,000\n'+phrase+'\n')

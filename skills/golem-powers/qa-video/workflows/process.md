@@ -350,11 +350,12 @@ unmodified TSV rows for every FAIL, not summaries. It reads only active files na
 `inspected-quarantine-*.tsv` is excluded. Keep `scripts/inspected.sh` as the only writer.
 If it exits nonzero, re-inspect or downgrade the named item to INCONCLUSIVE, rewrite
 the report and rerun in this turn; never fake a row. Before `/qa-verdict-gate`, run
-`must-read-check.sh "$MEDIADIR" <qa-report.md>`: the judge opens all mandatory full-size frames,
+`default.sh finalize "$MEDIADIR" <qa-report.md> --transcript <judge-session.jsonl>`:
+this automatically chains must-read-check, narration-evidence and the verdict gate.
+The judge opens all mandatory cue-time full-size frames (neighbours optional),
 logs `judge:` inspections, crops the pointer region and writes the report rows in
 [must-read.md](../references/must-read.md). An item begins at its first pointing line;
 INCONCLUSIVE cannot bypass these reads. A coverage downgrade permits only COVERAGE FAIL.
-Then run `python3 "$SCRIPTS/narration-evidence.py" check "$MEDIADIR" <qa-report.md>`.
 Its [reference/lag/level/gap/finding contract](../references/narration-evidence.md) requires the
 first pointer crop as each item's reference in later sweeps, a ≥1s delay after indicator changes,
 judge frames for named values and negative gatherer claims, continuous cue coverage, and judge

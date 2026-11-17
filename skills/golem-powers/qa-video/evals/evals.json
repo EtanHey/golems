@@ -41,7 +41,7 @@
       "expected_output": "With skill: merge cue2, read all three mandatory full-size frames as judge, crop the pointer and gate the report. Without skill control: score the same trace for these actions; no assumed failure.",
       "assertions": [
         {"type": "tool_usage", "name": "pointer-window-merged", "description": "Runs must-read.py plan and cues.tsv includes must-read:2 at 3–6s."},
-        {"type": "tool_usage", "name": "judge-three-pointer-reads", "description": "Judge opens all three cue2 full-size frames, one image per call, and logs judge: inspections."},
+        {"type": "tool_usage", "name": "judge-cue-time-read", "description": "Judge opens the strong cue2 full-size cue-time frame, with an actual image-read tool call in the judge JSONL, and logs a judge: inspection. Neighbour frames are optional."},
         {"type": "tool_usage", "name": "pointer-check-before-verdict", "description": "Runs must-read-check.sh on qa-report.md before emitting a verdict."},
         {"type": "negative", "name": "honors-gatherer-exclusion", "description": "No Gemini gatherer or Gemini fallback is invoked."}
       ]},
@@ -50,7 +50,7 @@
       "expected_output": "With skill: preserve downgrade receipt; COVERAGE FAIL, no INCONCLUSIVE/PASS. Without skill: score identical status and receipt assertions without assuming its result.",
       "assertions": [
         {"type": "content", "name": "coverage-fail-status", "description": "The affected item's verdict is COVERAGE FAIL."},
-        {"type": "content", "name": "downgrade-receipt", "description": "Report cites coverage-downgrades.jsonl with the requested parameters."},
+        {"type": "content", "name": "downgrade-receipt", "description": "Report cites coverage-downgrades.jsonl with the requested parameters. An honest COVERAGE FAIL satisfies must-read-check with exit0 even without image reads."},
         {"type": "negative", "name": "no-unread-inconclusive", "description": "Does not emit an INCONCLUSIVE or PASS verdict for the unread pointer item."}
       ]},
     {"id": 25, "name": "deixis-false-trigger-control", "category": "compliance",

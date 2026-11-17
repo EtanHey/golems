@@ -1,6 +1,7 @@
 # Narration-to-finding integrity (QA)
 
 Run the sibling checker **in addition to** must-read-check.sh before the verdict gate.
+`default.sh finalize <workdir> <qa-report.md> --transcript <judge-session.jsonl>` runs all three automatically.
 All commands below are `python3 scripts/narration-evidence.py <action> ...`.
 They make no provider calls. Evidence rows are plain TAB-separated lines in qa-report.md.
 
@@ -21,6 +22,8 @@ They make no provider calls. Evidence rows are plain TAB-separated lines in qa-r
    for the item, run `sweep <workdir> <item-id> <window-start-s> <fresh-brief.json>`.
    Send that generated brief with the sweep's frame paths and the reference image
    path to the reader. It asks **"is this the same defect as the reference?"**.
+   Weak-cue overflow uses the same reference and gets a report row
+   `GATHERED<TAB>srt_index<TAB>reference crop path<TAB>gathered, not judge-read`.
    The requesting brief's model exclusions still apply. item-sweeps.jsonl records
    the payload and brief path; the checker rejects missing/edited reference fields.
    A manifest is a payload receipt, not proof that a provider received the images.
