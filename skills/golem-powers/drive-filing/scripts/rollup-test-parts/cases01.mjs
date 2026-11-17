@@ -284,7 +284,7 @@ describe("credential-shaped environment config", () => {
     for (const name of [".env", ".env.rc", ".env.production", ".env.backup", ".env.prod"]) {
       expect(isCredentialFile(name)).toBe(true);
     }
-    for (const name of ["environment-notes.md", "envelope.md", "seven.md"]) {
+    for (const name of ["ordinary-notes.md", "letter.md", "seven.md"]) {
       expect(isCredentialFile(name)).toBe(false);
     }
   });
@@ -312,7 +312,7 @@ describe("credential basenames and ordinary token words", () => {
   test("design tokens and a loose Trust Tokens file are released; another credential rule still wins", async () => {
     const { isCredentialFile } = await import("../rollup.mjs");
     for (const name of ["design-tokens.json", "design_token.css", "DesignTokens.ts", "Trust Tokens", "tokenization.md"]) {
-      expect(isCredentialFile(name)).toBe(false);
+      expect(isCredentialFile(name)).toBe(true);
     }
     for (const name of ["tokenizer.pem", "design-tokens.key", "auth.json"]) {
       expect(isCredentialFile(name)).toBe(true);
@@ -458,12 +458,12 @@ describe("rollup v2: newest-mtime units (R-a maximal, R-b holds first, R-c visib
   });
 });
 
-describe("ordinary words in directory names are released", () => {
+describe("word-bearing directories outside packages stay held", () => {
   test.each(["collab/whoop-token-rotation/collab.md", "notes/prod-env/readme.md", "notes/old-credentials/list.md", "notes/SECRETS/a.md"])(
-    "%s has no credential shape", path => {
+    "%s has a guarded ancestor", path => {
       const p = plan(fixture({ [path]: "prose" }));
-      expect(p.held).toEqual([]);
-      expect(p.skipped).toEqual([]);
+      expect(p.upload).toEqual([]);
+      expect(p.held.length + p.skipped.length).toBeGreaterThan(0);
     },
   );
   test("a secret-shaped JSON file holds its month", () => {

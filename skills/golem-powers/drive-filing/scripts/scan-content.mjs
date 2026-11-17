@@ -1,9 +1,30 @@
 import { createReadStream, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { Readable } from 'node:stream';
+import { isUtf8 } from 'node:buffer';
 import * as zlib from 'node:zlib';
 
 export const MAX_SCAN_BYTES = 64 * 1024 * 1024;
 export const SCAN_TIMEOUT_MS = 15_000;
-export const MEDIA = /\.(?:mp4|mov|m4v|mkv|webm|mp3|wav|flac|aac|m4a|ogg|png|jpe?g|gif|webp|heic|avif)$/i;
+// Media signatures, never suffixes. Credential shapes are checked before this.
+export function mediaMagic(b) {
+  const hex = b.subarray(0, 16).toString('hex');
+  return hex.startsWith('89504e470d0a1a0a') || hex.startsWith('ffd8ff') ||
+    /^(474946383761|474946383961)/.test(hex) ||
+    (b.length >= 16 && b.readUInt32BE(0) >= 16 && b.readUInt32BE(0) <= b.length &&
+      b.toString('ascii', 4, 8) === 'ftyp' && /^(isom|iso[0-9]|mp4[12]|M4[AV] |qt  |avif|avis|heic|heix|hevc|mif1|msf1|3g[p2])/.test(b.toString('ascii', 8, 12))) ||
+    (b.toString('ascii', 0, 4) === 'RIFF' && /WAVE|WEBP|AVI /.test(b.toString('ascii', 8, 12))) ||
+    /^(494433|664c6143|4f676753|1a45dfa3)/.test(hex) ||
+    (b.length >= 4 && b[0] === 0xff && (b[1] & 0xe0) === 0xe0 && (b[1] & 6) !== 0);
+}
+function compression(b) {
+  const hex = b.subarray(0, 8).toString('hex');
+  if (hex.startsWith('1f8b')) return 'gz';
+  if (hex.startsWith('28b52ffd')) return 'zst';
+  if (/^(504b0304|504b0506|504b0708|fd377a585a00|425a68|377abcaf271c|52617221|04224d18)/.test(hex) ||
+      b.toString('ascii', 257, 262) === 'ustar') return 'unsupported';
+  return null;
+}
 
 // Parse only this policy's strict, single-quoted patterns list; unknown syntax
 // fails closed instead of silently omitting a changed publication rule.
@@ -23,7 +44,7 @@ function adjacentPatterns() {
     if (!value) throw new Error('scan-policy-error');
     const source = value.replace(/''/g, "'").replace(/\[:space:\]/g, '\\s').replace(/\[:alnum:\]/g, 'A-Za-z0-9');
     if (/\[:[a-z]+:\]/.test(source)) throw new Error('scan-policy-error');
-    return [i === 1 ? 'private-key' : `credential-adjacent-${i + 1}`, new RegExp(source)];
+    return [value === '-----BEGIN [A-Z ]*PRIVATE KEY-----' ? 'private-key' : `credential-adjacent-${i + 1}`, new RegExp(source)];
   });
 }
 export function contentRules() {
@@ -35,6 +56,14 @@ export function contentRules() {
     ['openai', /(?<![A-Za-z0-9_-])sk-(?:proj-)?[A-Za-z0-9_-]{20,}/],
     ['aws', /(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}/],
     ['slack', /(?<![A-Za-z0-9])xox[abprs]-[0-9A-Za-z-]{10,}/],
+    ['generic-assignment', /(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)\s*[:=]\s*['"]?\S{8,}/i],
+    ['credential-json-key', /"(?:refresh_token|access_token|private_key|client_secret)"\s*:/i],
+    ['jwt', /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./],
+    ['google-oauth', /ya29\./],
+    ['google-oauth-secret', /GOCSPX-|1\/\/0[A-Za-z0-9_-]{30,}/],
+    ['stripe', /[sr]k_live_[A-Za-z0-9]{16,}/],
+    ['anthropic', /sk-ant-/],
+    ['url-credentials', /:\/\/[^/\s:@]+:[^/\s@]+@/],
     ...adjacentPatterns(),
   ];
 }
@@ -56,22 +85,55 @@ export function scanner() {
   };
 }
 
-// Compressed streams run in a killable child with a parent-enforced wall clock.
+// Each worker hashes the exact raw bytes it classifies. Decoding is bounded,
+// and nested encodings/compressors hold instead of being scanned as raw text.
 async function main(abs) {
-  let result;
+  let result, sha256, bytes = 0;
   try {
-    const scan = scanner();
-    const source = createReadStream(abs);
-    const decoder = /\.gz$/i.test(abs) ? zlib.createGunzip() : /\.zst$/i.test(abs) ? zlib.createZstdDecompress() : null;
-    source.on('error', () => decoder?.destroy(new Error('scan-unreadable')));
-    const stream = decoder ? source.pipe(decoder) : source;
-    try { for await (const buf of stream) scan.push(buf); }
-    finally { source.destroy(); decoder?.destroy(); }
-    result = scan.result();
+    if (/\.(zip|xz|bz2|7z|tar|tgz|taz|br|lz4|rar)$/i.test(abs)) throw new Error('scan-unsupported-decoder');
+    const chunks = [], hash = createHash('sha256');
+    let media;
+    for await (const buf of createReadStream(abs, {highWaterMark: 64 * 1024})) {
+      if (media === undefined) media = mediaMagic(buf);
+      bytes += buf.length;
+      hash.update(buf);
+      if (!media) {
+        if (bytes > MAX_SCAN_BYTES) throw new Error('scan-size-limit');
+        chunks.push(buf);
+      }
+    }
+    sha256 = hash.digest('hex');
+    if (media) result = [];
+    else {
+      let data = Buffer.concat(chunks);
+      const format = compression(data);
+      // Brotli has no universal magic. Known unsupported suffixes also hold.
+      if (format === 'unsupported' || /\.(zip|xz|bz2|7z|tar|tgz|taz|br|lz4|rar)$/i.test(abs)) throw new Error('scan-unsupported-decoder');
+      if (/\.(gz|zst)$/i.test(abs) && !format) throw new Error('scan-decompression-error');
+      if (format) {
+        const decoder = format === 'gz' ? zlib.createGunzip() : zlib.createZstdDecompress();
+        const decoded = [];
+        let size = 0;
+        for await (const buf of Readable.from([data]).pipe(decoder)) {
+          size += buf.length;
+          if (size > MAX_SCAN_BYTES) { decoder.destroy(); throw new Error('scan-size-limit'); }
+          decoded.push(buf);
+        }
+        data = Buffer.concat(decoded);
+        if (compression(data)) throw new Error('scan-unsupported-decoder');
+      }
+      const encoded = data.toString('ascii').trim();
+      if (encoded.length >= 32 && encoded.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(encoded) &&
+          Buffer.from(encoded, 'base64').toString('base64') === encoded) throw new Error('scan-unsupported-encoding');
+      if (data.includes(0) || !isUtf8(data)) throw new Error('scan-unsupported-encoding');
+      const scan = scanner();
+      scan.push(data);
+      result = scan.result();
+    }
   } catch (error) {
-    result = [error.message === 'scan-size-limit' || error.message === 'scan-unreadable' || error.message === 'scan-policy-error'
-      ? error.message : 'scan-decompression-error'];
+    const safe = new Set(['scan-size-limit', 'scan-unreadable', 'scan-policy-error', 'scan-unsupported-decoder', 'scan-unsupported-encoding']);
+    result = [safe.has(error.message) ? error.message : 'scan-decompression-error'];
   }
-  process.stdout.write(JSON.stringify(result));
+  process.stdout.write(JSON.stringify({ shapes: result, sha256, bytes }));
 }
 if (process.argv[1] === new URL(import.meta.url).pathname) await main(process.argv[2]);

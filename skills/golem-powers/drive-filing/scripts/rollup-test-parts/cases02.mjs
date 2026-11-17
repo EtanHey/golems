@@ -78,7 +78,7 @@ describe("B1: content-scan hold", () => {
   });
 
   test("binary media are classified by name", () => {
-    const repo = fixture({ "2026-01-05-blob.mp4": `\u0000\u0001${FAKE.aws}` });
+    const repo = fixture({ "2026-01-05-blob.mp4": Buffer.from("00000018667479706d703432000000006d70343269736f6d", "hex") });
     const p = plan(repo);
     expect(p.held).toEqual([]);
   });

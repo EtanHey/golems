@@ -230,40 +230,59 @@ Upload exactly the files in that handoff through the [archive procedure](referen
 and sizes, with no hashes, host, producer or restore command): until `rollup.mjs` emits one, write each
 unit's `MANIFEST.json` by hand before its upload and upload it with the unit.
 
-**Credentials never move.** Basename rules are case-insensitive, anchored to the
-whole file name; an ordinary path component containing a word such as `tokenlayer`,
-`js-tokens` or `secret-1.wav.mp4` is not a credential. The canonical list is
-[`scripts/credential-policy.mjs`](scripts/credential-policy.mjs); the test checks this block for drift:
+**Credentials never move.** Always-held basenames are case-insensitive; a leading
+YYYY-MM-DD- or YYYY-MM-DD_ may precede a shape. The canonical list is
+[scripts/credential-policy.mjs](scripts/credential-policy.mjs); tests check this block:
 
 <!-- credential-names:start -->
-`.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `id_ed25519*`, `*.keychain*`, `auth.json`, `credentials`, `credentials.json`, `.credentials.json`, `.netrc`, `.npmrc`, `.pypirc`, `token.json`, `*secret*.json`, `*.kdbx`
+`.env`, `.env.*`, `.envrc`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `id_ed25519*`, `*.keychain*`, `auth.json`, `credentials`, `credentials.json`, `.credentials.json`, `.netrc`, `.npmrc`, `.pypirc`, `token.json`, `*secret*.json`, `*.kdbx`, `.git-credentials`, `application_default_credentials.json`, `service-account*.json`, `*.p8`, `*.keystore`, `*.jks`, `.pgpass`, `Login Data`, `Login Data For Account`, `Cookies`, `Cookies-journal`, `Local State`, `Web Data`, `*.ovpn`, `wallet.dat`, `*_rsa`, `*_ed25519`, `*_ecdsa`
 <!-- credential-names:end -->
 
-There are no template exemptions: `.env.example` and `.env.sample` remain held.
-These shapes also hold same-named directories. Existing credential homes
-(`codexhome`/`codex-home*`, `claudehome`/`claude-home*`, `.codex`, `.claude`, `*-HOME*`)
-and browser profiles (holding `Local State`, `Cookies`, `Login Data` or `Web Data`)
-remain held. Holds precede dating. A month group containing a credential is held
-whole: no moves, no upload unit. Skipped records include the path and name rule.
+The contextual paths `.docker/config.json`, `.kube/config` and `.aws/credentials`
+always hold too. `.env.example` and `.env.sample` are exempt from the name hold;
+they still require a full clean content scan. Known credential homes and browser
+profiles remain held. Other directory components containing credential, secret,
+token or env hold their subtree, except inside node_modules, site-packages,
+vendor and .venv trees. Package names receive no directory-word hold, but their
+member files still undergo name and content checks, even when regenerable files
+are excluded from the upload list.
 
-**Content scan.** Every planned text member is scanned, including decompressed
-`.gz` and `.zst` streams, using the `credential-adjacent` patterns loaded from
-`scripts/publish-boundary-policy.yaml` plus the existing high-confidence provider
-shapes (Supabase, Google, GitHub, OpenAI, AWS, Slack). Binary media is checked by
-name only: mp4, mov, m4v, mkv, webm, mp3, wav, flac, aac, m4a, ogg, png, jpg,
-jpeg, gif, webp, heic, avif. Other files are scanned even if they contain NULs.
-Each member has a 64 MiB input/decompressed limit and a killable 15-second scan;
-the run has a 120-second content-scan budget. Oversized, unreadable, corrupt,
-unsupported-decoder, policy-load and timeout failures hold the whole run with a
-named `scan-*` reason. Reports give file paths and rule names, never matched values
-or raw decoder errors. A content hold blocks the entire month/mtime unit.
-The planner never uploads; rerun classification immediately before any upload.
+**Conditional name release.** A basename containing those words is held unless
+its bytes prove real media or its complete supported text scans clean. Unknown
+binary, including SQLite, holds; an extension is never proof of media.
+Always-held credential shapes win even over a real media signature. Reports
+contain file paths and rule names only, never matched values or raw decoder errors.
+The entire month/mtime group or classified run holds on any hit or scan failure.
 
-For a read-only classification of an entire folder, including regenerable files
-and independent of age, run `node scripts/classify.mjs <archive-run> [...]` from
-this skill directory. It emits JSON with `files`, `heldMembers`, reason counts and
-path/rule receipts; any member hit makes the run `HOLD`. This is classification,
-not upload or remote-preservation proof.
+**Content scan.** Read the complete UTF-8 text, decompressing gzip/zstd by magic
+bytes, and apply publication-policy credential-adjacent patterns plus provider
+shapes and generic assignments (password/passwd/pwd/secret/token/api-key/access-key),
+JSON refresh_token/access_token/private_key/client_secret keys, JWTs, Google ya29,
+Anthropic sk-ant and URL userinfo. False positives become named holds for owner
+review. PNG, JPEG, GIF, ISO media ftyp, RIFF WAVE/WEBP/AVI, ID3/MPEG audio, FLAC,
+Ogg and Matroska/WebM signatures permit media content exclusion; hashes still
+cover every raw byte. A text file named .png or .mp4 is scanned as text.
+
+Unsupported zip/xz/bz2/7z/tar/tgz/br/lz4/rar, nested compression and non-UTF-8
+(including UTF-16), and base64-looking single blobs hold with scan-unsupported-decoder or scan-unsupported-encoding.
+Recognizable compressors are detected by magic even with a different suffix;
+known unsupported suffixes also hold (Brotli has no universal magic).
+Non-media input and decompressed text are limited to 64 MiB, every worker to
+15 seconds, and each run's scan to 120 seconds. Size/time limits, unreadable
+members, corruption, worker failures and policy errors fail closed with named reasons.
+
+**Scan receipt and upload preflight.** The classifier emits each scanned member's
+path, byte count and SHA-256 of the raw bytes read during scanning, including media.
+Save the JSON outside the source run. Immediately before each upload step run
+`node scripts/classify.mjs --verify <receipt.json>`: it rescans and rehashes the
+whole run and refuses changed bytes, additions, deletions, new holds or invalid
+receipts (exit 1). Only exit 0 permits upload. The planner also records scanMembers;
+it never uploads. This is a preflight verifier, not an atomic upload transaction.
+
+For read-only whole-folder classification including regenerable files, independent
+of age, run `node scripts/classify.mjs <archive-run> [...]` from this skill directory.
+Its JSON gives files, heldMembers, reason counts, member hashes and path/rule
+receipts. A HOLD blocks upload; CLEAR is not remote-preservation proof.
 Cleaning them up is the owner's call.
 
 > **After creating/editing this skill it must be REGISTERED** (golem-install / symlink into `~/.claude/skills`) before any agent can invoke it — committed ≠ installed.

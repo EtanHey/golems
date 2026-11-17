@@ -21,8 +21,8 @@
 // holding ANY credential is held whole: no moves, no upload unit.
 import { closeSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { credentialNameRule } from "./credential-policy.mjs";
-import { MAX_SCAN_BYTES, SCAN_TIMEOUT_MS, MEDIA } from "./scan-content.mjs";
+import { credentialNameRule, credentialPathRule, wordName, packageTree, templateName } from "./credential-policy.mjs";
+import { SCAN_TIMEOUT_MS } from "./scan-content.mjs";
 import { randomUUID } from "node:crypto";
 import { basename, join, relative, resolve, sep } from "node:path";
 
@@ -42,26 +42,26 @@ const CREDENTIAL_DIR = [/codex-?home/i, /claude-?home/i, /^\.(codex|claude)$/i, 
 const BROWSER_PROFILE_FILE = /^(login data( for account)?|cookies(-journal)?|local state|web data)$/i;
 
 // Never return matched bytes or raw OS/decompressor errors to the report.
-export function contentShapes(abs, timeout = SCAN_TIMEOUT_MS) {
+export function scanReceipt(abs, timeout = SCAN_TIMEOUT_MS) {
   let fd;
   try {
-    if (timeout <= 0) return ["scan-run-time-limit"];
+    if (timeout <= 0) return { shapes: ["scan-run-time-limit"] };
     const stat = lstatSync(abs);
-    if (!stat.isFile() || (stat.mode & 0o444) === 0) return ["scan-unreadable"];
+    if (!stat.isFile() || (stat.mode & 0o444) === 0) return { shapes: ["scan-unreadable"] };
     fd = openSync(abs, "r");
-    if (MEDIA.test(abs)) return [];
-    if (stat.size > MAX_SCAN_BYTES) return ["scan-size-limit"];
     const child = spawnSync(process.execPath, [new URL("./scan-content.mjs", import.meta.url).pathname, abs],
       { encoding: "utf8", timeout: Math.min(timeout, SCAN_TIMEOUT_MS), maxBuffer: 8192 });
-    if (child.error?.code === "ETIMEDOUT") return [timeout < SCAN_TIMEOUT_MS ? "scan-run-time-limit" : "scan-time-limit"];
-    if (child.error || child.status !== 0) return ["scan-worker-error"];
+    if (child.error?.code === "ETIMEDOUT") return { shapes: [timeout < SCAN_TIMEOUT_MS ? "scan-run-time-limit" : "scan-time-limit"] };
+    if (child.error || child.status !== 0) return { shapes: ["scan-worker-error"] };
     return JSON.parse(child.stdout);
   } catch {
-    return ["scan-unreadable"];
+    return { shapes: ["scan-unreadable"] };
   } finally {
     if (fd !== undefined) closeSync(fd);
   }
 }
+
+export const contentShapes = (abs, timeout) => scanReceipt(abs, timeout).shapes;
 
 // PR-8b: tool output that any checkout regenerates. Never archived, never an
 // mtime unit, never deleted; reported once with its size. Holds win: a
@@ -76,8 +76,8 @@ export function isRegenerableDir(name) {
 }
 
 // Credential-shaped directories and known credential homes remain held whole.
-export function isCredentialDir(name) {
-  return CREDENTIAL_DIR.some((re) => re.test(name)) || isCredentialFile(name);
+export function isCredentialDir(name, inPackageTree = false) {
+  return CREDENTIAL_DIR.some((re) => re.test(name)) || Boolean(credentialNameRule(name)) || (!inPackageTree && wordName(name));
 }
 
 // A Chromium/Helium profile root (or its Default/ dir) holds a Local State,
@@ -87,7 +87,7 @@ function isBrowserProfile(abs) {
 }
 
 export function isCredentialFile(name) {
-  return Boolean(credentialNameRule(name)) || BROWSER_PROFILE_FILE.test(name);
+  return Boolean(credentialNameRule(name)) || (!templateName(name) && wordName(name));
 }
 
 function parseArgs(argv) {
@@ -151,27 +151,27 @@ function allFiles(abs) {
 // subtree is excluded) plus every credential-named file, including those
 // inside such a directory, so e.g. .codex-home-test/auth.json is named.
 function collect(abs) {
-  const out = { files: [], credentials: [], reports: [], regenerable: [] };
+  const out = { files: [], credentials: [], reports: [], regenerable: [], scanFiles: [] };
   const stat = lstatSync(abs);
   if (stat.isSymbolicLink()) return out;
   const name = basename(abs);
   if (stat.isFile()) {
     const entry = { abs, bytes: stat.size, mtimeMs: stat.mtimeMs };
-    if (isCredentialFile(name)) {
+    if (credentialPathRule(abs)) {
       out.credentials.push(entry);
-      out.reports.push({ abs, kind: "file", rule: credentialNameRule(name) ?? "browser-profile" });
+      out.reports.push({ abs, kind: "file", rule: credentialPathRule(abs) });
     } else {
       out.files.push(entry);
     }
-  } else if (stat.isDirectory() && (isCredentialDir(name) || isBrowserProfile(abs))) {
+  } else if (stat.isDirectory() && (isCredentialDir(name, packageTree(abs)) || isBrowserProfile(abs))) {
     const inside = allFiles(abs);
     out.credentials.push(...inside);
     out.reports.push({ abs, kind: "dir", files: inside.length });
     for (const f of inside) {
-      if (isCredentialFile(basename(f.abs))) out.reports.push({ abs: f.abs, kind: "file" });
+      if (credentialPathRule(f.abs)) out.reports.push({ abs: f.abs, kind: "file", rule: credentialPathRule(f.abs) });
     }
   } else if (stat.isDirectory()) {
-    const inner = { files: [], credentials: [], reports: [], regenerable: [] };
+    const inner = { files: [], credentials: [], reports: [], regenerable: [], scanFiles: [] };
     for (const child of readdirSync(abs).sort()) {
       const sub = collect(join(abs, child));
       for (const key of Object.keys(inner)) inner[key].push(...sub[key]);
@@ -179,6 +179,7 @@ function collect(abs) {
     if (isRegenerableDir(name) && inner.credentials.length === 0) {
       // Reported once at its top; nested regenerable dirs fold into it.
       const all = allFiles(abs);
+      out.scanFiles.push(...inner.files, ...inner.scanFiles);
       out.regenerable.push({ abs, files: all.length, bytes: all.reduce((n, f) => n + f.bytes, 0) });
     } else {
       for (const key of Object.keys(inner)) out[key].push(...inner[key]);
@@ -189,7 +190,12 @@ function collect(abs) {
 
 export function buildPlan({ repo, keepMonths, now, mode }) {
   const scanDeadline = Date.now() + 120_000;
-  const scanMember = abs => contentShapes(abs, scanDeadline - Date.now());
+  const scanMembers = [];
+  const scanMember = abs => {
+    const receipt = scanReceipt(abs, scanDeadline - Date.now());
+    scanMembers.push({path: rel(abs), ...receipt});
+    return receipt.shapes;
+  };
   const repoRoot = resolve(repo);
   const docsLocal = join(repoRoot, "docs.local");
   const rel = (abs) => relative(repoRoot, abs).split(sep).join("/");
@@ -198,6 +204,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
   const isOld = (month) => monthIndex(nowMonth) - monthIndex(month) > keepMonths;
 
   const plan = {
+    scanMembers,
     version: 1,
     repo: repoRoot,
     now,
@@ -308,7 +315,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
     const upload = isOld(month);
     if (upload) {
       // B1: an mtime unit is planned whole, so a secret-shaped file holds it whole.
-      const content = found.files.flatMap((f) => scanMember(f.abs).map((shape) => ({ path: rel(f.abs), shape })));
+      const content = [...found.files, ...found.scanFiles].flatMap((f) => scanMember(f.abs).map((shape) => ({ path: rel(f.abs), shape })));
       if (content.length > 0) {
         plan.held.push({
           path: rel(abs),
@@ -358,7 +365,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
         const key = folderMonth ?? month;
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push({ abs, name, found: collect(abs), dated: Boolean(month) });
-      } else if (stat.isDirectory() && (isCredentialDir(name) || isBrowserProfile(abs))) {
+      } else if (stat.isDirectory() && (isCredentialDir(name, packageTree(abs)) || isBrowserProfile(abs))) {
         count(collect(abs));
       } else if (stat.isDirectory() && isRegenerableDir(name)) {
         mtimeUnit(abs); // held if it holds a credential; otherwise reported as regenerable, no unit
@@ -391,7 +398,7 @@ export function buildPlan({ repo, keepMonths, now, mode }) {
       const planned = members.some((m) => m.dated && isFinished(month)) || isOld(month);
       const content = planned
         ? members
-            .flatMap((m) => m.found.files)
+            .flatMap((m) => [...m.found.files, ...m.found.scanFiles])
             .flatMap((f) => scanMember(f.abs).map((shape) => ({ path: rel(f.abs), shape })))
         : [];
       if (content.length > 0) {

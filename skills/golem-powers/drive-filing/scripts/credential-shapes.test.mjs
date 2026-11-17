@@ -4,15 +4,17 @@ import { chmodSync, readFileSync } from 'node:fs';
 import { contentShapes, isCredentialFile, isCredentialDir } from './rollup.mjs';
 import { fixture, plan, rollup, join, spawnSync } from './rollup-test-parts/common.mjs';
 
+const mp4 = readFileSync(new URL('./fixtures/synthetic-video.mp4', import.meta.url));
 const value = ['gh', 'p_', 'A'.repeat(36)].join('');
-test('ordinary words in file and directory names pass', () => {
+test('word-bearing files require content proof; package directories are exempt', () => {
   for (const name of ['js-tokens', 'tokenlayer', 'brief0026-secret-1.wav.mp4', 'tokenlayer-2026.jsonl.zst']) {
-    expect(isCredentialFile(name)).toBe(false);
-    expect(isCredentialDir(name)).toBe(false);
+    expect(isCredentialFile(name)).toBe(true);
+    expect(isCredentialDir(name)).toBe(true);
+    expect(isCredentialDir(name, true)).toBe(false);
   }
   const repo = fixture({
     '2026-01-01-run/node_modules/js-tokens/index.js': 'module.exports = {};',
-    '2026-01-01-run/brief0026-secret-1.wav.mp4': Buffer.from([0, 1]),
+    '2026-01-01-run/brief0026-secret-1.wav.mp4': mp4,
     '2026-01-01-run/tokenlayer-2026.jsonl.zst': zstdCompressSync('clean text'),
   });
   expect(plan(repo).held).toEqual([]);
@@ -52,7 +54,7 @@ test('documented basename rules match the canonical policy', async () => {
   const doc = readFileSync(new URL('../SKILL.md', import.meta.url), 'utf8');
   const block = doc.split('<!-- credential-names:start -->')[1].split('<!-- credential-names:end -->')[0];
   expect([...block.matchAll(/`([^`]+)`/g)].map(m => m[1])).toEqual(credentialNames);
-  for (const name of ['.env.example', '.env.sample']) expect(isCredentialFile(name)).toBe(true);
+  for (const name of ['.env.example', '.env.sample']) expect(isCredentialFile(name)).toBe(false);
 });
 test('oversized decompressed stream holds', () => {
   const repo = fixture({ '2026-01-01-run/notes.gz': gzipSync(Buffer.alloc(65 * 1024 * 1024, 32)) });
@@ -60,7 +62,7 @@ test('oversized decompressed stream holds', () => {
 });
 test('full-folder classification counts files and named holds', async () => {
   const { classify } = await import('./classify.mjs');
-  const repo = fixture({ 'node_modules/js-tokens/index.js': 'clean', 'brief0026-secret-1.wav.mp4': Buffer.from([0]), 'notes.jsonl.zst': zstdCompressSync(`GITHUB_TOKEN=${value}`) });
+  const repo = fixture({ 'node_modules/js-tokens/index.js': 'clean', 'brief0026-secret-1.wav.mp4': mp4, 'notes.jsonl.zst': zstdCompressSync(`GITHUB_TOKEN=${value}`) });
   const report = classify(join(repo, 'docs.local'));
   expect(report.files).toBe(3);
   expect(report.heldMembers).toBe(1);
@@ -83,10 +85,10 @@ test('Node CLI classifies actual zstd bytes read-only', () => {
   expect(report.reasons['credential-adjacent-1']).toBe(1);
   expect(result.stdout).not.toContain(value);
 });
-test('every canonical glob matches and word-only former holds are released', async () => {
+test('canonical shapes and suspicious word names remain guarded', async () => {
   const { credentialNames } = await import('./credential-policy.mjs');
-  for (const glob of credentialNames) expect(isCredentialFile(glob.replaceAll('*', 'sample'))).toBe(true);
+  for (const glob of credentialNames) expect(isCredentialFile(glob.replaceAll('*', 'prod'))).toBe(true);
   for (const name of ['credentials.txt', 'prod-env.json', 'app-env.yml', 'staging_env', 'api-token.json', 'github_token_tokenizer.txt', 'app-secrets.yml', '2026-02-21-auth.json']) {
-    expect(isCredentialFile(name)).toBe(false);
+    expect(isCredentialFile(name)).toBe(true);
   }
 });
