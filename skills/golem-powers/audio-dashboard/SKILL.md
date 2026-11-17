@@ -233,6 +233,31 @@ Everything the pipeline needs is inside the skill:
 | Narration vendor provenance + two-way drift lint | `vendor/narrationlayer/VENDOR-VERSION` + `scripts/lint-narration-vendor-drift.mjs` |
 | Orchestration | `scripts/synth-segments.mjs`, `scripts/build-dashboard.mjs`, `scripts/bootstrap.mjs`, `scripts/validate-evidence.mjs`, `scripts/audio-dashboard-generator.mjs` |
 
+### Checked synthesis and full upstream version bumps
+
+`synth-segments.mjs` enables `--take-checks --take-retries 2 --word-check-setting a`.
+It sets `--pitch-ceiling 340` for `theo-c4s` and `260` for `ben-c1`. Other profiles
+and direct WAV references require an explicit positive `scene.pitchCeilingHz`.
+The required check model is `~/.cache/whisper/ggml-large-v3-turbo.bin`; a missing
+model fails before synthesis. Check receipts stay beside each WAV in `.cache.json`.
+The synth summary exposes `takeChecks` and `takeCheckStatus`. A kept-best word
+mismatch is retained for inspection and marked `kept-best`; BUILD records
+`TAKE_CHECK_FAILED`, withholds the HTML, and rejects it as a page candidate.
+Existing BYO audio and timing artifact paths remain supported.
+
+The debt refresh command below reconciles declared debts. For a full upstream
+version bump, use the explicit-commit dependency-closure copier first:
+
+```bash
+NARRATIONLAYER_UPSTREAM=/path/to/narrationlayer bun scripts/revendor-narration.mjs <commit>
+```
+
+It copies committed runtime modules byte-for-byte, preserving upstream layering
+through skill-local import bridges, and updates all paired hashes. Existing
+profile-root/pronunciation bridge debt and type-only shims remain declared.
+Run the drift lint and skill evals afterward; historical debt resolutions are
+kept as history rather than silently reclassified as newly verified closures.
+
 ## Canonical Pipeline
 
 Run these skill-local entries for the AfterCode read-along path (all relative to
