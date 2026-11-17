@@ -3,6 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { verifySet, stageSet, verifyTar } from './clear-set.mjs';
 
 export function classify(root, options = {}) {
   if (options.budgetMs !== undefined && (!Number.isFinite(options.budgetMs) || options.budgetMs <= 0 || options.budgetMs > 86_400_000)) throw new Error('invalid-budget');
@@ -21,7 +22,15 @@ export function verifyReports(reports) {
 }
 if (process.argv[1] === new URL(import.meta.url).pathname) {
   try {
-    if (process.argv[2] === '--verify') {
+    if (process.argv[2] === '--verify' && process.argv[3] === '--clear-set') {
+      if (!(process.argv.length===5 || (process.argv.length===7 && process.argv[5]==='--manifest'))) throw new Error('clear-set-usage');
+      const added=verifySet(process.argv[4],process.argv[6],classify);
+      console.log(`clear-set-verified new-unarchived:${added}`);
+    } else if (['--stage-clear-set','--verify-tar'].includes(process.argv[2])) {
+      if(process.argv.length!==6) throw new Error('clear-set-usage');
+      (process.argv[2]==='--stage-clear-set'?stageSet:verifyTar)(...process.argv.slice(3));
+      console.log(process.argv[2]==='--stage-clear-set'?'clear-set-staged':'tar-verified');
+    } else if (process.argv[2] === '--verify') {
       if (process.argv.length !== 4 || !verifyReports(JSON.parse(readFileSync(process.argv[3],'utf8')))) throw new Error();
       console.log('scan-receipt-verified');
     } else {
@@ -37,5 +46,10 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
       if(!roots.length || (options.receiptDir && roots.length!==1)) throw new Error();
       console.log(JSON.stringify(roots.map(root=>classify(root,options)),null,2));
     }
-  } catch { console.error(process.argv[2]==='--verify'?'scan-receipt-mismatch':'scan-classification-error'); process.exitCode=1; }
+  } catch (error) {
+    const partial=process.argv[3]==='--clear-set' || ['--stage-clear-set','--verify-tar'].includes(process.argv[2]);
+    // Never print decoder/OS errors, paths, content or matched values.
+    const reason=partial && /^(clear-set|tar)-[a-z-]+$/.test(error.message) ? error.message : partial?'clear-set-operation-error':process.argv[2]==='--verify'?'scan-receipt-mismatch':'scan-classification-error';
+    console.error(reason); process.exitCode=1;
+  }
 }

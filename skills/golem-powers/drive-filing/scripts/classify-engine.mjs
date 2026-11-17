@@ -45,7 +45,7 @@ export async function classifyAsync(root, options = {}) {
     receiptDir = dest; mkdirSync(dest,{recursive:true});
   }
   const policyHash = createHash('sha256');
-  for (const name of ['scan-content.mjs','scan-worker.mjs','credential-policy.mjs','classify-engine.mjs','git-history.mjs','cache-auth.mjs']) policyHash.update(readFileSync(new URL(name,import.meta.url)));
+  for (const name of ['scan-content.mjs','scan-worker.mjs','credential-policy.mjs','classify-engine.mjs','git-history.mjs','cache-auth.mjs','scan-pool.mjs','rollup.mjs']) policyHash.update(readFileSync(new URL(name,import.meta.url)));
   policyHash.update(readFileSync(new URL('../../../../scripts/publish-boundary-policy.yaml',import.meta.url)));
   const policy = policyHash.digest('hex');
   const auth=receiptDir?cacheAuthenticator(realpathSync(root),receiptDir):null;
@@ -93,7 +93,7 @@ export async function classifyAsync(root, options = {}) {
   members.sort((a,b)=>a.path.localeCompare(b.path,'en'));
   held.sort((a,b)=>a.path.localeCompare(b.path,'en')||a.rule.localeCompare(b.rule,'en'));
   const reasons={}; for(const h of held) reasons[h.rule]=(reasons[h.rule]??0)+1;
-  const report={root,files:inventory.length,members,heldMembers:new Set(held.map(h=>h.path)).size,reasons,held,status:held.length?'HOLD':'CLEAR',budgetMs,elapsedMs:Date.now()-started,cacheHits,gitHistory,
+  const report={root,policy,files:inventory.length,members,heldMembers:new Set(held.map(h=>h.path)).size,reasons,held,status:held.length?'HOLD':'CLEAR',budgetMs,elapsedMs:Date.now()-started,cacheHits,gitHistory,
     unsupportedEncoding:Object.entries(triage).map(([type,count])=>({extension:type.split('|')[0],magic:type.split('|')[1],count})).sort((a,b)=>b.count-a.count)};
   if (receiptDir) {
     const writeReceipt = (name, text) => {

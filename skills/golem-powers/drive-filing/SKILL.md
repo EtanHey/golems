@@ -332,15 +332,51 @@ unknown binary metadata HOLDs. History hits hold Git
 internals as `git-history-match`; `gitHistory.matches` gives blob IDs and paths when
 Git can resolve them, never values. Git errors fail closed as `git-history-error`.
 
-Only a successful `--verify` grants upload. A manifest from a cached classification
+Only a successful `--verify` (whole folder) or `--verify --clear-set` (exact partial
+manifest, below) grants upload. A manifest from a cached classification
 never grants upload by itself. `upload-manifest.tsv` contains only CLEAR members
 (path, raw bytes, SHA-256);
 `held.tsv` contains paths and reason lists. TSV path/reason cells use JSON quoting
 so tabs and newlines cannot forge rows. Held members are never uploaded and never
-deleted locally. An operator may prepare an archive from only the CLEAR manifest,
-then classify and verify that new archive source separately. The original run's
-HOLD receipt cannot pass `--verify`. A run containing any held member cannot remove
+deleted locally. The original run's HOLD receipt cannot pass plain `--verify`.
+A run containing any held member cannot remove
 its source folder. CLEAR remains separate from remote preservation/deletion authority.
+
+#### Archive the CLEAR set of a folder with held members
+
+Use these commands from this skill directory; receipts and tar output must live
+outside the source folder. Keep the source stable through staging and upload.
+
+```bash
+node scripts/classify.mjs --receipt-dir <receipts> <source>
+node scripts/classify.mjs --stage-clear-set <receipts/receipt.json> <receipts/upload-manifest.tsv> <out.tar>
+node scripts/classify.mjs --verify --clear-set <receipts/receipt.json> --manifest <receipts/upload-manifest.tsv>
+node scripts/classify.mjs --verify-tar <receipts/receipt.json> <receipts/upload-manifest.tsv> <out.tar>
+```
+
+Run both verification commands immediately before upload. Upload only the verified
+tar, then re-download it, compare its byte count and SHA-256 to the uploaded tar,
+and run `--verify-tar` on the downloaded copy. Follow the ledger and restore drill
+procedure above. **`held.tsv` never leaves the Mac.** Held source members stay local;
+neither successful verification nor upload authorizes their deletion.
+
+The manifest must equal every CLEAR member of the saved receipt by path, size and
+SHA-256, without duplicates, omissions or held paths. Partial verification bypasses
+the cache, rescans the same root under the saved policy identity, and requires each
+manifest member to remain present, CLEAR and byte-identical. New members do not
+invalidate this set; stdout reports `new-unarchived:N`. Plain `--verify` retains
+its whole-folder semantics. Receipts lacking a policy identity need classification
+again. Failures exit nonzero and print only named reasons, never matched values.
+
+Staging streams exactly the manifest members into an exclusive new USTAR file,
+checking their size/hash and refusing symlinks in source paths. No globbing or
+symlink following is used. `--verify-tar` independently streams the tar and rejects
+extra, missing, duplicate, changed or non-regular entries (including symlinks),
+unsafe paths and invalid headers. PAX/GNU extension entries are refused; paths
+must fit USTAR's 100-byte name plus 155-byte prefix and sizes its octal field.
+Failed staging may leave a partial output: keep it for diagnosis, never upload it,
+and choose a fresh output filename on retry. This preflight is not an atomic
+snapshot: stop writers and keep the verified tar stable until upload completes.
 
 `unsupportedEncoding` ranks unsupported members by extension and recognized magic
 (for example Mach-O, ELF, WebAssembly or SQLite). Unknown magic stays `unknown`;
