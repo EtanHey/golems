@@ -62,7 +62,7 @@ test("a newly held pending source closes as not moved and allows a correct hando
   const repo = fixture({ "2026-01-01-a.md": "a", "2026-01-02-b.md": "b", "2026-02-01-c.md": "c" });
   expect(interrupt(repo, 1).status).toBe(86);
   const intent = read(intents(repo)[0]);
-  const credential = join(repo, "docs.local/2026-01-03-x.env.local");
+  const credential = join(repo, "docs.local/2026-01/credentials.json");
   writeFileSync(credential, "PRIVATE=fixture");
   const resumed = apply(repo);
   expect(resumed.status).toBe(0);
