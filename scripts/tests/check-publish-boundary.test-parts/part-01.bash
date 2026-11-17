@@ -728,3 +728,7 @@ setup_sentence_final_emails() {
 setup_labeled_address() {
   printf '%s:a@%s\n' "$label_fixture_label" "$label_fixture_domain" > "$1/contact.txt"
 }
+
+setup_url_userinfo() {
+  printf '%s\n' "$url_fixture_value" > "$1/url.txt"
+}

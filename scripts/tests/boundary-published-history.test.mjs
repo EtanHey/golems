@@ -156,3 +156,14 @@ const r = spawnSync(${JSON.stringify(realGit)}, args, {stdio: 'inherit'}); proce
 `, { mode: 0o755 });
   allowed(f.check(f.base, f.remote, { ...process.env, PATH: bin + ':' + process.env.PATH }));
 }));
+
+for (const [value, accept] of [
+  ['https://user@' + 'host.invalid/path', true],
+  ['https://user@' + 'foo.test:8080/', true],
+  ['git clone https://token@' + 'github.com/x/y', false],
+]) {
+  test(`URL userinfo: ${value} is ${accept ? 'allowed' : 'refused'}`, () => fixture(f => {
+    f.git('switch', '-qc', 'candidate'); f.commit('url', value);
+    (accept ? allowed : refused)(f.push());
+  }));
+}

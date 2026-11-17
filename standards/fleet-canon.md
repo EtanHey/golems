@@ -80,6 +80,14 @@ with `scripts/ci/canon-drift-lint.mjs --install` (canon-7 ratified by Etan via o
     (an orphan-commit republish from an audited SHA) while the public repo STAYS public. Privatizing loses the
     stars and kills CI (public repos are exempt from the Actions billing lock). The archived VoiceLayer is the
     scar this rule exists to prevent; golems went public on 2026-09-05 by exactly this shape.
+
+11. **power and displays** - AlDente periodically calibrates both Macs, so battery discharge with a charger
+    attached is expected; the M1 stays on its charger (owner decision, 2026-11-16). Before a power alarm,
+    check `ioreg -rn AppleSmartBattery` for `ExternalConnected = Yes` and `AdapterDetails`, even when
+    `pmset -g batt` says Battery Power or "not charging"; check `pgrep -x AlDente` and whether AlDente
+    is discharging or holding charge. Alarm only when the adapter is missing AND charge is falling.
+    Example: 50%, AC attached/not charging, ExternalConnected Yes, 60 W adapter, IsCharging No.
+    Never blank, sleep or lock either Mac's display: no `pmset displaysleepnow` or screen-lock commands.
 <!-- FLEET_CANON_END -->
 
 ## Overlap Reconciliation

@@ -258,6 +258,12 @@ profile-root/pronunciation bridge debt and type-only shims remain declared.
 Run the drift lint and skill evals afterward; historical debt resolutions are
 kept as history rather than silently reclassified as newly verified closures.
 
+## Take-check notices
+
+Run `bun scripts/classify-takes.mjs < checks.json` with `{clips:[{id, role, flagged, takeCheck:{edits, pitchFailed, firstWordOmitted}}], names:[]}`; edits retain `sent`, `recognised`, both indices and `tokenClass`. Render every returned `notices` line on its owning card.
+Only equivalent digit/unit forms, US/UK spellings and near spellings of explicit `names` or `tokenClass: jargon` may be waived; never strip plurals/final-s or waive possessives. Every real miss emits a plain failure line; even a wholly waived clip says it passed only as a spelling difference.
+Output is `{clips:[{id,status,real,waived,notices}]}` with a reason per item; pitch, omitted-first-word and unexplained flagged failures stay real. This reporting classifier does not override BUILD rejection gates.
+
 ## Canonical Pipeline
 
 Run these skill-local entries for the AfterCode read-along path (all relative to
