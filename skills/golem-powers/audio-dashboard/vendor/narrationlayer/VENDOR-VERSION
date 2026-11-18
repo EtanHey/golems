@@ -1,11 +1,12 @@
 {
   "schemaVersion": 1,
   "vendor": "narrationlayer",
-  "vendorDate": "2026-11-17",
+  "vendorDate": "2026-11-18",
   "upstream": {
     "repository": "EtanHey/narrationlayer",
-    "commit": "08e01a34cb0d438ddf8fb002b6223cb4c290b32e",
-    "committedAt": "2026-11-17T05:52:07+02:00"
+    "commit": "15542251f8a234fe089fc110e8d26f73f4fb57f4",
+    "committedAt": "2026-11-17T23:30:44+02:00",
+    "ref": "PR #147 head, re-vendor from master after it merges"
   },
   "pairs": [
     {
@@ -40,8 +41,8 @@
       "id": "word-timing-repair",
       "vendorPath": "vendor/narrationlayer/word-timing-repair.ts",
       "sourcePath": "src/word-timing-repair.ts",
-      "vendorSha256": "55e150c980f2d6e6455d1fd0b79c815f935c8d8e376765e5b23e8f07ccd5ab0c",
-      "sourceSha256": "55e150c980f2d6e6455d1fd0b79c815f935c8d8e376765e5b23e8f07ccd5ab0c"
+      "vendorSha256": "403641bcdb8fcba611f47d4cff01af2dc7011ed5a9d7a2fa264f8edb89d4639c",
+      "sourceSha256": "403641bcdb8fcba611f47d4cff01af2dc7011ed5a9d7a2fa264f8edb89d4639c"
     },
     {
       "id": "word-timings",
@@ -96,15 +97,8 @@
       "id": "src-quality-take-checks",
       "sourcePath": "src/quality/take-checks.ts",
       "vendorPath": "vendor/narrationlayer/src/quality/take-checks.ts",
-      "sourceSha256": "ac487f87688af6dae2e979e4ec38e20199efbf226ea481038e460afb1e7b4d2b",
-      "vendorSha256": "ac487f87688af6dae2e979e4ec38e20199efbf226ea481038e460afb1e7b4d2b"
-    },
-    {
-      "id": "src-quality-transcription-equivalence",
-      "sourcePath": "src/quality/transcription-equivalence.ts",
-      "vendorPath": "vendor/narrationlayer/src/quality/transcription-equivalence.ts",
-      "sourceSha256": "2e2826e8c5a3f53e312143664100dd1f0b9c56c869ae6220366d3c5ca940e511",
-      "vendorSha256": "2e2826e8c5a3f53e312143664100dd1f0b9c56c869ae6220366d3c5ca940e511"
+      "sourceSha256": "b48e8183dfe3996d450a84ba5a758a80dd1c3de3c20e020d3c281d596eef0ed8",
+      "vendorSha256": "b48e8183dfe3996d450a84ba5a758a80dd1c3de3c20e020d3c281d596eef0ed8"
     },
     {
       "id": "src-audio-ffmpeg-run",
@@ -182,6 +176,13 @@
       "vendorPath": "vendor/narrationlayer/src/core/render-types.ts",
       "sourceSha256": "42ce380de53e04fee66cb7c1ae9066a537694c81ed7234c8d1d3b2ed6000acba",
       "vendorSha256": "42ce380de53e04fee66cb7c1ae9066a537694c81ed7234c8d1d3b2ed6000acba"
+    },
+    {
+      "id": "src-text-transcription-equivalence",
+      "sourcePath": "src/text/transcription-equivalence.ts",
+      "vendorPath": "vendor/narrationlayer/src/text/transcription-equivalence.ts",
+      "sourceSha256": "45dea06934c5cf83435d10431789aafb6cb0b82e96ecf87f7b041c1f8fd125de",
+      "vendorSha256": "45dea06934c5cf83435d10431789aafb6cb0b82e96ecf87f7b041c1f8fd125de"
     }
   ],
   "intentionalAdaptations": [
@@ -414,9 +415,9 @@
     }
   ],
   "pendingRevendor": {
-    "sourceCommit": "08e01a34cb0d438ddf8fb002b6223cb4c290b32e",
+    "sourceCommit": "15542251f8a234fe089fc110e8d26f73f4fb57f4",
     "status": "refreshed-with-open-debt",
-    "aidevNote": "Exact committed runtime dependency closure; existing type-only shims and repo-free profile/pronunciation bridge debt retained. Historical debt resolutions remain historical."
+    "aidevNote": "PR #147 head, re-vendor from master after it merges (narrationlayer#147 is a draft; 15542251 is not on NL master). Exact committed runtime dependency closure; existing type-only shims and repo-free profile/pronunciation bridge debt retained. Historical debt resolutions remain historical."
   },
   "skillBridgeHashes": {
     "vendor/src/profiles.ts": "b23dc98ab8dec55b323ee57c441372f9b28822cd12be2831031ca466aa64fc46",
