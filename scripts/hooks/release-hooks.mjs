@@ -34,7 +34,7 @@ function assertClientHost(home, o) {
   if (!o.migrateOwnerInstall && ownerInstallPaths(path.join(home, '.claude/hooks')).length) throw new Error('refusing client installation: HOME has an owner install; use --migrate-owner-install on a non-owner host');
 }
 
-function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFingerprints, resolveHookPython }) {
+function releaseContext(o, { E1_DELETED, failClosedCommand, permissionGuardCommand, pathPython, pinnedFingerprints, resolveHookPython }) {
   if (o.host !== 'client' || o.update || o.restoreLive || o.manifest) throw new Error('--source requires --host client and cannot use --update, --restore-live or --manifest');
   const home = homedir(), hooksDir = path.join(home, '.claude/hooks');
   const source = realpathSync(o.source), at = path.join(source, 'MANIFEST.json');
@@ -73,7 +73,7 @@ function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFi
   const skippedCodex = (manifest.codex_hosts?.client ?? []).filter(e => e.ownerOnly);
   const entries = listed.filter(e => !e.ownerOnly);
   for (const e of entries) {
-    if (e.kind !== 'golems' || !safe(e.link) || !safe(e.source) || !e.match || typeof e.command !== 'string' || !Number.isInteger(e.timeout) || e.timeout < 1 || e.timeout > 120 || (e.command.includes('--fail-closed') && e.timeout < 2)) throw new Error(`invalid client hook: ${e.id}`);
+    if (e.kind !== 'golems' || !safe(e.link) || !safe(e.source) || !e.match || typeof e.command !== 'string' || !Number.isInteger(e.timeout) || e.timeout < 1 || e.timeout > 120 || (e.command.includes('--fail-closed') && e.timeout < 2) || (e.event === 'PermissionRequest' && e.command.includes('--fail-closed'))) throw new Error(`invalid client hook: ${e.id}`);
     if (!files.has(e.source) && ![...files].some(p => p.startsWith(e.source + '/'))) throw new Error(`release integrity: hook source missing ${e.id}`);
     if (e.requiresPin && (!safe(e.requiresPin) || !files.has(e.requiresPin) || !pinnedFingerprints(readFileSync(path.join(source, e.requiresPin))))) throw new Error(`client hook ${e.id} has no release anchor fingerprint; refusing installation`);
   }
@@ -82,7 +82,9 @@ function releaseContext(o, { E1_DELETED, failClosedCommand, pathPython, pinnedFi
   // Absolute node chosen by the invoking CLI; no git discovery.
   const expand = s => s.replaceAll('{home}', quote(home)).replaceAll('{hooks}', quote(hooksDir)).replaceAll('{live}', quote(source)).replaceAll('{node}', quote(process.execPath)).replaceAll('{python}', quote(hookPython.python));
   const golems = entries.map(e => ({ ...e, at: path.join(hooksDir, e.link), to: path.join(source, e.source), cmd: e.command.includes(' --fail-closed ')
-    ? failClosedCommand(expand(e.command.replace(' --fail-closed ', ` --fail-closed --client --budget ${e.timeout - 1} `)), CLIENT_REPAIR) : expand(e.command) }));
+    ? failClosedCommand(expand(e.command.replace(' --fail-closed ', ` --fail-closed --client --budget ${e.timeout - 1} `)), CLIENT_REPAIR)
+    // PermissionRequest fails open even if the launcher or hook is gone (install-hooks.mjs permissionGuardCommand).
+    : e.event === 'PermissionRequest' ? permissionGuardCommand(expand(e.command)) : expand(e.command) }));
   const codex = planCodexHooks({ manifest, host: 'client', source, codexHome: path.resolve(process.env.CODEX_HOME || path.join(home, '.codex')), python: hookPython.python });
   if (!codex || !codex.enabled || !codex.source) throw new Error('client Codex hooks disabled or adapter absent');
   const wrapper = path.join(source, 'scripts/hooks/fail-open.py');

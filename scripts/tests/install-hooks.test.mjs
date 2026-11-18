@@ -3,13 +3,13 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync,
-  statSync, symlinkSync, writeFileSync, renameSync,
+  statSync, symlinkSync, unlinkSync, writeFileSync, renameSync,
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  E1_DELETED, hookDriftPaths, MIN_HOOK_PYTHON, REPAIR_REASON, failClosedCommand, pathPython, pinnedFingerprints, resolveHookPython,
+  E1_DELETED, hookDriftPaths, MIN_HOOK_PYTHON, REPAIR_REASON, failClosedCommand, pathPython, permissionGuardCommand, pinnedFingerprints, resolveHookPython,
 } from "../hooks/install-hooks.mjs";
 
 // Every test builds a git fixture and spawns node; a cold CI runner needs headroom.
@@ -868,6 +868,108 @@ test("human confirmation ships once on each host through hooks-live with the sha
   }
 });
 
+// The worker PermissionRequest hook is a single file in scripts/hooks, registered
+// for every tool (no matcher) through the fail-open launcher: a broken hook must
+// fall back to Claude's own prompt, never deny a lead.
+test("worker permission hook ships once on each host, fail-open, for every tool", () => {
+  const reference = realManifest.hosts.mbp.find((h) => h.id === "worker-permission");
+  expect(reference).toEqual({ id: "worker-permission", kind: "golems", event: "PermissionRequest",
+    link: "claude-worker-permission.py", source: "scripts/hooks/claude-worker-permission.py",
+    match: "claude-worker-permission.py", timeout: 5,
+    command: "{python} -I -B {hooks}/golems-fail-open.py {hooks}/claude-worker-permission.py" });
+  for (const entries of Object.values(realManifest.hosts)) {
+    expect(entries.filter((h) => h.event === "PermissionRequest")).toEqual([reference]);
+  }
+  expect(hookDriftPaths(realManifest)).toContain("scripts/hooks/");
+});
+
+test("PermissionRequest guard: a missing launcher or script exits 0 with no output, never 2", () => {
+  const missing = path.join(here, "missing-launcher-for-guard-test.py");
+  const raw = `${hookPython()} -I -B ${missing} ${missing}`;
+  const unguarded = spawnSync("/bin/sh", ["-c", raw], { input: "{}", encoding: "utf8" });
+  expect(unguarded.status).toBe(2); // the hole: Claude would read this as a denial for every session
+  const guarded = spawnSync("/bin/sh", ["-c", permissionGuardCommand(raw)], { input: "{}", encoding: "utf8" });
+  expect([guarded.status, guarded.stdout]).toEqual([0, ""]);
+  // A successful hook's output passes through unchanged; a failed hook's partial output is dropped.
+  const deny = '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"m"}}}';
+  const ok = spawnSync("/bin/sh", ["-c", permissionGuardCommand(`printf '%s' '${deny}'`)], { encoding: "utf8" });
+  expect([ok.status, ok.stdout]).toEqual([0, `${deny}\n`]);
+  const partial = spawnSync("/bin/sh", ["-c", permissionGuardCommand(`printf '%s' '${deny}'; exit 2`)], { encoding: "utf8" });
+  expect([partial.status, partial.stdout]).toEqual([0, ""]);
+});
+
+test("installer refuses a fail-closed PermissionRequest hook before any writes", () => {
+  const fx = fixture();
+  const manifest = manifestFor();
+  manifest.hosts.mbp.push({ ...realManifest.hosts.mbp.find((h) => h.id === "worker-permission"),
+    command: "{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/claude-worker-permission.py" });
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const before = readFileSync(fx.settingsPath, "utf8");
+  const r = run(fx, "--apply");
+  expect(r.status).not.toBe(0);
+  expect(r.out).toContain("must fail open");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+});
+
+test("--apply registers the worker PermissionRequest hook with no matcher; --status reports it and its drift", () => {
+  const fx = fixture();
+  const manifest = manifestFor();
+  const entry = realManifest.hosts.mbp.find((h) => h.id === "worker-permission");
+  manifest.hosts.mbp.push(entry);
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  cpSync(path.join(here, "../hooks/claude-worker-permission.py"), path.join(fx.repo, "scripts/hooks/claude-worker-permission.py"));
+  git(fx.repo, "add", "-A");
+  git(fx.repo, "commit", "-qm", "worker permission hook");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+
+  const r = run(fx, "--apply");
+  expect(r.status, r.out).toBe(0);
+  const link = path.join(fx.home, ".claude/hooks/claude-worker-permission.py");
+  expect(readlinkSync(link)).toBe(path.join(live(fx), "scripts/hooks/claude-worker-permission.py"));
+  const after = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  expect(after.hooks.PermissionRequest).toEqual([{ hooks: [{ type: "command", timeout: 5,
+    command: permissionGuardCommand(`${hookPython()} -I -B ${fx.home}/.claude/hooks/golems-fail-open.py ${link}`) }] }]);
+
+  const ok = run(fx, "--status");
+  expect(ok.out).toMatch(/^worker-permission ok$/m);
+  expect(ok.out).toContain("settings-drift=0");
+
+  // The registered command, fed a delegated child's request, denies with the actionable message.
+  const command = after.hooks.PermissionRequest[0].hooks[0].command;
+  const workerRequest = () => spawnSync("/bin/sh", ["-c", command], { input: JSON.stringify({ hook_event_name: "PermissionRequest", tool_name: "Bash", tool_input: { command: "x" } }),
+    encoding: "utf8", env: { ...fixtureEnv(fx), T3CODE_THREAD_ID: "thread:delegated-task:fixture", GOLEMS_T3_STATE_DB: path.join(fx.root, "absent.sqlite") } });
+  const denied = workerRequest();
+  expect(denied.status).toBe(0);
+  expect(JSON.parse(denied.stdout).hookSpecificOutput.decision.behavior).toBe("deny");
+
+  // Fail open, never exit 2: Claude treats exit 2 on PermissionRequest as a denial for every
+  // session. With the installed launcher copy gone, the command must exit 0 with no output.
+  const launcher = path.join(fx.home, ".claude/hooks/golems-fail-open.py");
+  renameSync(launcher, `${launcher}.moved`);
+  const lost = workerRequest();
+  expect([lost.status, lost.stdout]).toEqual([0, ""]);
+  renameSync(`${launcher}.moved`, launcher);
+  // Likewise with the hook link dangling (hooks-live moved).
+  unlinkSync(link);
+  symlinkSync(path.join(fx.root, "absent-hook.py"), link);
+  const dangling = workerRequest();
+  expect([dangling.status, dangling.stdout]).toEqual([0, ""]);
+  unlinkSync(link);
+  symlinkSync(path.join(live(fx), "scripts/hooks/claude-worker-permission.py"), link);
+
+  // A matcher added by hand is drift, and so is a deregistered hook.
+  after.hooks.PermissionRequest[0].matcher = "Bash";
+  writeFileSync(fx.settingsPath, `${JSON.stringify(after, null, 2)}\n`);
+  const drifted = run(fx, "--status");
+  expect(drifted.status).not.toBe(0);
+  expect(drifted.out).toMatch(/^worker-permission drifted$/m);
+  delete after.hooks.PermissionRequest;
+  writeFileSync(fx.settingsPath, `${JSON.stringify(after, null, 2)}\n`);
+  const missing = run(fx, "--status");
+  expect(missing.status).not.toBe(0);
+  expect(missing.out).toMatch(/^worker-permission unregistered$/m);
+});
+
 function addPinGate(fx, pins) {
   const manifest = manifestFor();
   manifest.hosts.mbp.push({ id: "pin-gate", kind: "golems", event: "PreToolUse", matcher: "Bash", link: "pin-gate",
@@ -1032,6 +1134,7 @@ function pinnedManifestFixture() {
   cpSync(path.join(path.dirname(installer), 'hook-paths.mjs'), path.join(directory, 'hook-paths.mjs'));
   cpSync(path.join(path.dirname(installer), 'fleet-jobs.mjs'), path.join(directory, 'fleet-jobs.mjs'));
   cpSync(path.join(path.dirname(installer), "hook-interpreters.mjs"), path.join(directory, "hook-interpreters.mjs"));
+  cpSync(path.join(path.dirname(installer), "command-guards.mjs"), path.join(directory, "command-guards.mjs"));
   mkdirSync(path.join(directory, '../repogolem'), { recursive: true });
   cpSync(path.join(here, '../repogolem/worktree-disk-floor.py'), path.join(directory, '../repogolem/worktree-disk-floor.py'));
   cpSync(path.join(here, '../hooks/codex-hooks-install.mjs'), path.join(directory, 'codex-hooks-install.mjs'));
@@ -1531,7 +1634,7 @@ test("installer refuses a legacy source launcher paired with fail-closed before 
   const fx = closedFixture();
   const source = path.join(fx.root, "installer/scripts/hooks"); mkdirSync(source, { recursive: true });
   copyLaunchdSupport(path.resolve(source, "../.."));
-  for (const name of ["install-hooks.mjs", "fleet-jobs.mjs", "hook-paths.mjs", "machine-host.mjs", "hook-interpreters.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
+  for (const name of ["install-hooks.mjs", "fleet-jobs.mjs", "hook-paths.mjs", "machine-host.mjs", "hook-interpreters.mjs", "command-guards.mjs", "codex-hooks-install.mjs"]) cpSync(path.join(path.dirname(installer), name), path.join(source, name));
   writeFileSync(path.join(source, "fail-open.py"), legacyLauncher);
   const before = readFileSync(fx.settingsPath, "utf8");
   const result = spawnSync("node", [path.join(source, "install-hooks.mjs"), "--repo", fx.repo,
@@ -1561,7 +1664,7 @@ function policyFixture() {
     cpSync(path.join(sourceRepo, "skills/golem-powers", name), path.join(fx.repo, "skills/golem-powers", name), { recursive: true,
       filter: (s) => !/\/(tests|evals|__pycache__)(\/|$)|\.pyc$/.test(s.slice(sourceRepo.length)) });
   }
-  for (const name of ["install-hooks.mjs", "fleet-jobs.mjs", "hook-paths.mjs", "machine-host.mjs", "install-hooks.sh", "hook-interpreters.mjs", "codex-hooks-install.mjs", "fail-open.py",
+  for (const name of ["install-hooks.mjs", "fleet-jobs.mjs", "hook-paths.mjs", "machine-host.mjs", "install-hooks.sh", "hook-interpreters.mjs", "command-guards.mjs", "codex-hooks-install.mjs", "fail-open.py",
     "private-regression-gate.py", "heavy-suite.py", "proc_identity.py", "codex-policy-hook.py", "codex-gate.sh"]) {
     cpSync(path.join(sourceRepo, "scripts/hooks", name), path.join(fx.repo, "scripts/hooks", name));
   }

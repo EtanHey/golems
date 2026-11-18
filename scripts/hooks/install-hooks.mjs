@@ -33,6 +33,7 @@ import { installContextFleetJobs, reportFleetJobsStatus } from "./fleet-jobs.mjs
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { machineHost } from "./machine-host.mjs";
+import { REPAIR_REASON, failClosedCommand, permissionGuardCommand } from "./command-guards.mjs";
 import { planCodexHooks, applyCodexHooks, codexStatus, CODEX_TRUST_HINT } from "./codex-hooks-install.mjs";
 import { MIN_HOOK_PYTHON, HOOK_PYTHON_CANDIDATES, pathPython, pythonProblem, resolveHookPython,
   resolveHookNode, recordHookNode } from "./hook-interpreters.mjs";
@@ -52,19 +53,9 @@ const LOCK_REASON = "GO-5 pinned hook source; move only with scripts/hooks/insta
 // Protocol 2 = --budget watchdog (#656 R1 F2); an older launcher would read --budget as the hook path.
 const supportsFailClosed = (bytes) => /^FAIL_CLOSED_PROTOCOL = 2\b/m.test(bytes.toString());
 
-// AIDEV-NOTE: a fail-closed policy gate's Claude command runs inside a /bin/sh
-// guard. The launcher denies every hook failure itself, but nothing in Python
-// runs when the pinned interpreter is gone (exit 127) or the launcher copy
-// cannot start (exit 1); Claude treats both as non-blocking, i.e. allow. The
-// guard passes the launcher's own 0/2 through and turns any other status into
-// the launcher's static denial (byte-identical to fail-open.py _block()).
-// Codex has the same shape in codex-hooks-install.mjs.
-export const REPAIR_REASON = "Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.";
-const quote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
-export function failClosedCommand(run, repair = REPAIR_REASON) {
-  const deny = JSON.stringify({ decision: "block", reason: repair, hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: repair } });
-  return `/bin/sh -c ${quote(`out=$(${run}); s=$?; if [ "$s" -eq 0 ] || [ "$s" -eq 2 ]; then [ -z "$out" ] || printf '%s\\n' "$out"; exit "$s"; fi; printf '%s\\n' ${quote(deny)}; exit 2`)}`;
-}
+// AIDEV-NOTE: the fail-closed (policy gate) and fail-open (PermissionRequest)
+// /bin/sh command guards live in command-guards.mjs; re-exported here.
+export { REPAIR_REASON, failClosedCommand, permissionGuardCommand };
 // The interpreter a registered launcher command runs, guarded or not.
 const commandPython = (command) => /(?:^|\s)(\S+)(?: -[A-Za-z]+)* \S*golems-fail-open\.py/
   .exec(String(command).replace(/'|\$\(/g, " "))?.[1] ?? String(command).split(" ")[0];
@@ -137,6 +128,10 @@ function context(o, sha) {
       if (e.command?.includes(" --fail-closed ") && e.timeout < 2) {
         die(`REFUSED: ${host}/${e.id} is fail-closed and needs a timeout >= 2 seconds for its watchdog budget`);
       }
+      // A fail-closed PermissionRequest would deny every prompt in every session.
+      if (e.event === "PermissionRequest" && e.command?.includes("--fail-closed")) {
+        die(`REFUSED: ${host}/${e.id} is a PermissionRequest hook and must fail open (no --fail-closed)`);
+      }
     }
   }
   const entries = hosts?.[o.host];
@@ -158,7 +153,7 @@ function context(o, sha) {
   // 1 s under its manifest timeout (5 s -> 4 s, 10 s -> 9 s; #656 R1 F2).
   const claudeCommand = (e) => (e.command.includes(" --fail-closed ")
     ? failClosedCommand(expand(e.command.replace(" --fail-closed ", ` --fail-closed --budget ${Math.max(1, e.timeout - 1)} `)))
-    : expand(e.command));
+    : e.event === "PermissionRequest" ? permissionGuardCommand(expand(e.command)) : expand(e.command));
   const golems = entries.filter((e) => e.kind === "golems").map((e) => ({
     ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: claudeCommand(e),
   }));
@@ -240,8 +235,8 @@ const INTERPRETER = /^(python[0-9.]*|node|bun|bash|sh|zsh)$/;
 function unwrapFailClosed(command) {
   const body = /^\/bin\/sh -c '([\s\S]*)'$/.exec(command)?.[1]?.replaceAll("'\\''", "'");
   const run = /^out=\$\(([\s\S]*)\); s=\$\?;/.exec(body ?? "")?.[1];
-  // Only our exact generated guard grants ownership of its inner command.
-  return run && failClosedCommand(run) === command ? run : command;
+  // Only our exact generated guards grant ownership of their inner command.
+  return run && (failClosedCommand(run) === command || permissionGuardCommand(run) === command) ? run : command;
 }
 function executedPaths(command) {
   const tokens = unwrapFailClosed(String(command ?? "")).trim().split(/\s+/).map((t) => t.replace(/^['"]|['"]$/g, "")).filter(Boolean);
@@ -849,5 +844,5 @@ async function status(o) {
 // still match import.meta.url, which is the real path (#488-b N3).
 if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const o = parseArgs(process.argv.slice(2));
-  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? await status(o) : await install(o));
+  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, permissionGuardCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? await status(o) : await install(o));
 }

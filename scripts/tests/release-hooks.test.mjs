@@ -157,6 +157,20 @@ test('client launcher missing-hook denial gives the release repair hint', () => 
   expect(JSON.parse(r.stdout).reason).toBe("Blocked: a golems safety check couldn't run. Ask the lead to reinstall the hooks.");
   expect(r.stdout).not.toContain('~/Gits');
 });
+test('client worker PermissionRequest hook denies a delegated worker and fails open (exit 0, silent) when its launcher or file is gone', () => {
+  const f = fixture(); expect(run(f, '--apply').status).toBe(0);
+  const hook = JSON.parse(readFileSync(path.join(f.home, '.claude/settings.json'))).hooks.PermissionRequest.flatMap(g => g.hooks).find(h => h.command.includes('claude-worker-permission.py')).command;
+  const env = { ...f.env, T3CODE_THREAD_ID: 'thread:delegated-task:fixture', GOLEMS_T3_STATE_DB: path.join(f.root, 'absent.sqlite') };
+  const request = () => spawnSync('/bin/sh', ['-c', hook], { env, input: JSON.stringify({ hook_event_name: 'PermissionRequest', tool_name: 'Bash', tool_input: { command: 'x' } }), encoding: 'utf8' });
+  const denied = request();
+  expect(denied.status).toBe(0);
+  expect(JSON.parse(denied.stdout).hookSpecificOutput.decision.behavior).toBe('deny');
+  const lead = spawnSync('/bin/sh', ['-c', hook], { env: { ...env, T3CODE_THREAD_ID: 'lead-not-in-db' }, input: '{}', encoding: 'utf8' });
+  expect([lead.status, lead.stdout]).toEqual([0, '']);
+  rmSync(path.join(f.home, '.claude/hooks/golems-fail-open.py'));
+  const lost = request();
+  expect([lost.status, lost.stdout]).toEqual([0, '']);
+});
 test('installed Claude and Codex human-confirm deny a no-token lease and allow an ordinary command', () => {
   const f = fixture(); expect(run(f, '--apply').status).toBe(0);
   const claude = JSON.parse(readFileSync(path.join(f.home, '.claude/settings.json'))).hooks.PreToolUse.flatMap(g => g.hooks).find(h => h.command.includes('human-confirm-pretooluse')).command;
