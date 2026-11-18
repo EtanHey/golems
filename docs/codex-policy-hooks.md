@@ -15,6 +15,8 @@ safe alternatives, including under granular approval policy. Malformed input
 and adapter/interpreter failures deny; MCP and network approvals are outside
 this matcher. `install-hooks --status` requires this entry and its native trust
 state. Review the new definition through plain Codex `/hooks` after installation.
+The Claude counterpart, which denies only in unattended T3 worker threads, is
+[claude-worker-permission.md](claude-worker-permission.md).
 
 Pinned source: OpenAI Codex tag `rust-v0.160.0`, commit
 `a956835d020762cb2b570053af06f643a11c0ecc`. The installed CLI reports 0.160.0.

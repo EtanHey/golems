@@ -868,6 +868,63 @@ test("human confirmation ships once on each host through hooks-live with the sha
   }
 });
 
+// The worker PermissionRequest hook is a single file in scripts/hooks, registered
+// for every tool (no matcher) through the fail-open launcher: a broken hook must
+// fall back to Claude's own prompt, never deny a lead.
+test("worker permission hook ships once on each host, fail-open, for every tool", () => {
+  const reference = realManifest.hosts.mbp.find((h) => h.id === "worker-permission");
+  expect(reference).toEqual({ id: "worker-permission", kind: "golems", event: "PermissionRequest",
+    link: "claude-worker-permission.py", source: "scripts/hooks/claude-worker-permission.py",
+    match: "claude-worker-permission.py", timeout: 5,
+    command: "{python} -I -B {hooks}/golems-fail-open.py {hooks}/claude-worker-permission.py" });
+  for (const entries of Object.values(realManifest.hosts)) {
+    expect(entries.filter((h) => h.event === "PermissionRequest")).toEqual([reference]);
+  }
+  expect(hookDriftPaths(realManifest)).toContain("scripts/hooks/");
+});
+
+test("--apply registers the worker PermissionRequest hook with no matcher; --status reports it and its drift", () => {
+  const fx = fixture();
+  const manifest = manifestFor();
+  const entry = realManifest.hosts.mbp.find((h) => h.id === "worker-permission");
+  manifest.hosts.mbp.push(entry);
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  cpSync(path.join(here, "../hooks/claude-worker-permission.py"), path.join(fx.repo, "scripts/hooks/claude-worker-permission.py"));
+  git(fx.repo, "add", "-A");
+  git(fx.repo, "commit", "-qm", "worker permission hook");
+  git(fx.repo, "push", "-q", "origin", "HEAD:master");
+
+  const r = run(fx, "--apply");
+  expect(r.status, r.out).toBe(0);
+  const link = path.join(fx.home, ".claude/hooks/claude-worker-permission.py");
+  expect(readlinkSync(link)).toBe(path.join(live(fx), "scripts/hooks/claude-worker-permission.py"));
+  const after = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
+  expect(after.hooks.PermissionRequest).toEqual([{ hooks: [{ type: "command", timeout: 5,
+    command: `${hookPython()} -I -B ${fx.home}/.claude/hooks/golems-fail-open.py ${link}` }] }]);
+
+  const ok = run(fx, "--status");
+  expect(ok.out).toMatch(/^worker-permission ok$/m);
+  expect(ok.out).toContain("settings-drift=0");
+
+  // The registered command, fed a delegated child's request, denies with the actionable message.
+  const command = after.hooks.PermissionRequest[0].hooks[0].command;
+  const denied = spawnSync("/bin/sh", ["-c", command], { input: JSON.stringify({ hook_event_name: "PermissionRequest", tool_name: "Bash", tool_input: { command: "x" } }),
+    encoding: "utf8", env: { ...fixtureEnv(fx), T3CODE_THREAD_ID: "thread:delegated-task:fixture", GOLEMS_T3_STATE_DB: path.join(fx.root, "absent.sqlite") } });
+  expect(JSON.parse(denied.stdout).hookSpecificOutput.decision.behavior).toBe("deny");
+
+  // A matcher added by hand is drift, and so is a deregistered hook.
+  after.hooks.PermissionRequest[0].matcher = "Bash";
+  writeFileSync(fx.settingsPath, `${JSON.stringify(after, null, 2)}\n`);
+  const drifted = run(fx, "--status");
+  expect(drifted.status).not.toBe(0);
+  expect(drifted.out).toMatch(/^worker-permission drifted$/m);
+  delete after.hooks.PermissionRequest;
+  writeFileSync(fx.settingsPath, `${JSON.stringify(after, null, 2)}\n`);
+  const missing = run(fx, "--status");
+  expect(missing.status).not.toBe(0);
+  expect(missing.out).toMatch(/^worker-permission unregistered$/m);
+});
+
 function addPinGate(fx, pins) {
   const manifest = manifestFor();
   manifest.hosts.mbp.push({ id: "pin-gate", kind: "golems", event: "PreToolUse", matcher: "Bash", link: "pin-gate",

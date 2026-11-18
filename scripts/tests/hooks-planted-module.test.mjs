@@ -32,6 +32,8 @@ const PAYLOADS = {
   "frustration-capture": { hook_event_name: "UserPromptSubmit", prompt: "no, that's wrong, I told you already" },
   "research-link-reminder": { hook_event_name: "UserPromptSubmit", prompt: "https://docs.google.com/document/d/FIXTURE_DOC_ID_0001/edit" },
   "daemon-gate-precheck": { tool_name: "Bash", tool_input: { command: "ls" } },
+  // No T3 thread id in this env: the hook stays silent (exit 0), planted modules or not.
+  "worker-permission": { hook_event_name: "PermissionRequest", tool_name: "Bash", tool_input: { command: "ls" } },
 };
 
 const entries = new Map();
