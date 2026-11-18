@@ -41,6 +41,10 @@ A recording wrapper captured the hook's input (`hook_event_name:
 "PermissionRequest"`, `permission_mode: "bypassPermissions"`, `tool_name:
 "Bash"`, the exact command) and its output, the deny JSON.
 
+After review round 1 changed the message to a general one, a fourth GREEN run
+delivered the new text ("This step needs a person's approval, and this worker
+runs unattended. …") to the model, with the callback aborted after 148 ms.
+
 With an instant callback the callback wins the race. That case doesn't happen
 in T3, whose callback waits for a person.
 

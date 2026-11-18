@@ -3,13 +3,13 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync,
-  statSync, symlinkSync, writeFileSync, renameSync,
+  statSync, symlinkSync, unlinkSync, writeFileSync, renameSync,
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  E1_DELETED, hookDriftPaths, MIN_HOOK_PYTHON, REPAIR_REASON, failClosedCommand, pathPython, pinnedFingerprints, resolveHookPython,
+  E1_DELETED, hookDriftPaths, MIN_HOOK_PYTHON, REPAIR_REASON, failClosedCommand, pathPython, permissionGuardCommand, pinnedFingerprints, resolveHookPython,
 } from "../hooks/install-hooks.mjs";
 
 // Every test builds a git fixture and spawns node; a cold CI runner needs headroom.
@@ -883,6 +883,34 @@ test("worker permission hook ships once on each host, fail-open, for every tool"
   expect(hookDriftPaths(realManifest)).toContain("scripts/hooks/");
 });
 
+test("PermissionRequest guard: a missing launcher or script exits 0 with no output, never 2", () => {
+  const missing = path.join(here, "missing-launcher-for-guard-test.py");
+  const raw = `${hookPython()} -I -B ${missing} ${missing}`;
+  const unguarded = spawnSync("/bin/sh", ["-c", raw], { input: "{}", encoding: "utf8" });
+  expect(unguarded.status).toBe(2); // the hole: Claude would read this as a denial for every session
+  const guarded = spawnSync("/bin/sh", ["-c", permissionGuardCommand(raw)], { input: "{}", encoding: "utf8" });
+  expect([guarded.status, guarded.stdout]).toEqual([0, ""]);
+  // A successful hook's output passes through unchanged; a failed hook's partial output is dropped.
+  const deny = '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"m"}}}';
+  const ok = spawnSync("/bin/sh", ["-c", permissionGuardCommand(`printf '%s' '${deny}'`)], { encoding: "utf8" });
+  expect([ok.status, ok.stdout]).toEqual([0, `${deny}\n`]);
+  const partial = spawnSync("/bin/sh", ["-c", permissionGuardCommand(`printf '%s' '${deny}'; exit 2`)], { encoding: "utf8" });
+  expect([partial.status, partial.stdout]).toEqual([0, ""]);
+});
+
+test("installer refuses a fail-closed PermissionRequest hook before any writes", () => {
+  const fx = fixture();
+  const manifest = manifestFor();
+  manifest.hosts.mbp.push({ ...realManifest.hosts.mbp.find((h) => h.id === "worker-permission"),
+    command: "{python} -I -B {hooks}/golems-fail-open.py --fail-closed {hooks}/claude-worker-permission.py" });
+  writeFileSync(fx.manifest, JSON.stringify(manifest));
+  const before = readFileSync(fx.settingsPath, "utf8");
+  const r = run(fx, "--apply");
+  expect(r.status).not.toBe(0);
+  expect(r.out).toContain("must fail open");
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+});
+
 test("--apply registers the worker PermissionRequest hook with no matcher; --status reports it and its drift", () => {
   const fx = fixture();
   const manifest = manifestFor();
@@ -900,7 +928,7 @@ test("--apply registers the worker PermissionRequest hook with no matcher; --sta
   expect(readlinkSync(link)).toBe(path.join(live(fx), "scripts/hooks/claude-worker-permission.py"));
   const after = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
   expect(after.hooks.PermissionRequest).toEqual([{ hooks: [{ type: "command", timeout: 5,
-    command: `${hookPython()} -I -B ${fx.home}/.claude/hooks/golems-fail-open.py ${link}` }] }]);
+    command: permissionGuardCommand(`${hookPython()} -I -B ${fx.home}/.claude/hooks/golems-fail-open.py ${link}`) }] }]);
 
   const ok = run(fx, "--status");
   expect(ok.out).toMatch(/^worker-permission ok$/m);
@@ -908,9 +936,26 @@ test("--apply registers the worker PermissionRequest hook with no matcher; --sta
 
   // The registered command, fed a delegated child's request, denies with the actionable message.
   const command = after.hooks.PermissionRequest[0].hooks[0].command;
-  const denied = spawnSync("/bin/sh", ["-c", command], { input: JSON.stringify({ hook_event_name: "PermissionRequest", tool_name: "Bash", tool_input: { command: "x" } }),
+  const workerRequest = () => spawnSync("/bin/sh", ["-c", command], { input: JSON.stringify({ hook_event_name: "PermissionRequest", tool_name: "Bash", tool_input: { command: "x" } }),
     encoding: "utf8", env: { ...fixtureEnv(fx), T3CODE_THREAD_ID: "thread:delegated-task:fixture", GOLEMS_T3_STATE_DB: path.join(fx.root, "absent.sqlite") } });
+  const denied = workerRequest();
+  expect(denied.status).toBe(0);
   expect(JSON.parse(denied.stdout).hookSpecificOutput.decision.behavior).toBe("deny");
+
+  // Fail open, never exit 2: Claude treats exit 2 on PermissionRequest as a denial for every
+  // session. With the installed launcher copy gone, the command must exit 0 with no output.
+  const launcher = path.join(fx.home, ".claude/hooks/golems-fail-open.py");
+  renameSync(launcher, `${launcher}.moved`);
+  const lost = workerRequest();
+  expect([lost.status, lost.stdout]).toEqual([0, ""]);
+  renameSync(`${launcher}.moved`, launcher);
+  // Likewise with the hook link dangling (hooks-live moved).
+  unlinkSync(link);
+  symlinkSync(path.join(fx.root, "absent-hook.py"), link);
+  const dangling = workerRequest();
+  expect([dangling.status, dangling.stdout]).toEqual([0, ""]);
+  unlinkSync(link);
+  symlinkSync(path.join(live(fx), "scripts/hooks/claude-worker-permission.py"), link);
 
   // A matcher added by hand is drift, and so is a deregistered hook.
   after.hooks.PermissionRequest[0].matcher = "Bash";

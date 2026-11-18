@@ -65,6 +65,14 @@ export function failClosedCommand(run, repair = REPAIR_REASON) {
   const deny = JSON.stringify({ decision: "block", reason: repair, hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: repair } });
   return `/bin/sh -c ${quote(`out=$(${run}); s=$?; if [ "$s" -eq 0 ] || [ "$s" -eq 2 ]; then [ -z "$out" ] || printf '%s\\n' "$out"; exit "$s"; fi; printf '%s\\n' ${quote(deny)}; exit 2`)}`;
 }
+// AIDEV-NOTE: a PermissionRequest hook must fail OPEN. Claude treats exit 2 on
+// that event as a denial, and `python3 <missing launcher>` exits 2, so a lost
+// launcher copy or hook file would refuse every prompt in every session, leads
+// included. This /bin/sh guard prints the hook's output only on exit 0 and
+// always exits 0, so any failure falls back to Claude's own prompt.
+export function permissionGuardCommand(run) {
+  return `/bin/sh -c ${quote(`out=$(${run}); s=$?; if [ "$s" -eq 0 ] && [ -n "$out" ]; then printf '%s\\n' "$out"; fi; exit 0`)}`;
+}
 // The interpreter a registered launcher command runs, guarded or not.
 const commandPython = (command) => /(?:^|\s)(\S+)(?: -[A-Za-z]+)* \S*golems-fail-open\.py/
   .exec(String(command).replace(/'|\$\(/g, " "))?.[1] ?? String(command).split(" ")[0];
@@ -137,6 +145,10 @@ function context(o, sha) {
       if (e.command?.includes(" --fail-closed ") && e.timeout < 2) {
         die(`REFUSED: ${host}/${e.id} is fail-closed and needs a timeout >= 2 seconds for its watchdog budget`);
       }
+      // A fail-closed PermissionRequest would deny every prompt in every session.
+      if (e.event === "PermissionRequest" && e.command?.includes("--fail-closed")) {
+        die(`REFUSED: ${host}/${e.id} is a PermissionRequest hook and must fail open (no --fail-closed)`);
+      }
     }
   }
   const entries = hosts?.[o.host];
@@ -158,7 +170,7 @@ function context(o, sha) {
   // 1 s under its manifest timeout (5 s -> 4 s, 10 s -> 9 s; #656 R1 F2).
   const claudeCommand = (e) => (e.command.includes(" --fail-closed ")
     ? failClosedCommand(expand(e.command.replace(" --fail-closed ", ` --fail-closed --budget ${Math.max(1, e.timeout - 1)} `)))
-    : expand(e.command));
+    : e.event === "PermissionRequest" ? permissionGuardCommand(expand(e.command)) : expand(e.command));
   const golems = entries.filter((e) => e.kind === "golems").map((e) => ({
     ...e, at: path.join(hooksDir, e.link), to: path.join(live, e.source), cmd: claudeCommand(e),
   }));
@@ -240,8 +252,8 @@ const INTERPRETER = /^(python[0-9.]*|node|bun|bash|sh|zsh)$/;
 function unwrapFailClosed(command) {
   const body = /^\/bin\/sh -c '([\s\S]*)'$/.exec(command)?.[1]?.replaceAll("'\\''", "'");
   const run = /^out=\$\(([\s\S]*)\); s=\$\?;/.exec(body ?? "")?.[1];
-  // Only our exact generated guard grants ownership of its inner command.
-  return run && failClosedCommand(run) === command ? run : command;
+  // Only our exact generated guards grant ownership of their inner command.
+  return run && (failClosedCommand(run) === command || permissionGuardCommand(run) === command) ? run : command;
 }
 function executedPaths(command) {
   const tokens = unwrapFailClosed(String(command ?? "")).trim().split(/\s+/).map((t) => t.replace(/^['"]|['"]$/g, "")).filter(Boolean);
@@ -849,5 +861,5 @@ async function status(o) {
 // still match import.meta.url, which is the real path (#488-b N3).
 if (process.argv[1] && existsSync(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const o = parseArgs(process.argv.slice(2));
-  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? await status(o) : await install(o));
+  process.exit(o.source ? (await import("./release-hooks.mjs")).runReleaseHooks(o, { E1_DELETED, desiredHooks, failClosedCommand, permissionGuardCommand, hookSpec, linkState, pathPython, pinnedFingerprints, readSettings, resolveHookPython, retiredRegistrations, withoutHooks, withoutRetired }) : o.status ? await status(o) : await install(o));
 }

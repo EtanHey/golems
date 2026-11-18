@@ -23,9 +23,10 @@ PAYLOAD = {"hook_event_name": "PermissionRequest", "tool_name": "Bash",
            "tool_input": {"command": 'LINES=(${(f)"$(printf "a\\nb\\n")"})'}}
 EXPECTED = {"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": {
     "behavior": "deny",
-    "message": ("Blocked: this step needs a person's approval and this worker runs unattended. "
-                "Do it another way (Edit/Write tools instead of a shell edit; one plain literal "
-                "command; no rm -f), or report BLOCKED to your lead with the exact command.")}}}
+    "message": ("This step needs a person's approval, and this worker runs unattended. "
+                "Do it another way that needs no approval (for a shell step: Edit/Write tools, "
+                "or one plain literal command, or a script file you run), or report BLOCKED to "
+                "your lead with exactly what you needed.")}}}
 
 SCHEMA = """CREATE TABLE orchestration_v2_projection_threads (
   thread_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, title TEXT NOT NULL,

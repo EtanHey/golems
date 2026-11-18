@@ -39,10 +39,13 @@ DEFAULT_DB = Path.home() / ".t3" / "userdata" / "statev2.sqlite"
 # Test seam: a fixture DB path. Not a policy switch: any value that fails to
 # open falls back to "not a worker".
 DB_ENV = "GOLEMS_T3_STATE_DB"
+# General on purpose: the hook has no matcher, so this also answers non-shell
+# prompts (MCP tools, questions, plan-mode exits).
 MESSAGE = (
-    "Blocked: this step needs a person's approval and this worker runs unattended. "
-    "Do it another way (Edit/Write tools instead of a shell edit; one plain literal "
-    "command; no rm -f), or report BLOCKED to your lead with the exact command."
+    "This step needs a person's approval, and this worker runs unattended. "
+    "Do it another way that needs no approval (for a shell step: Edit/Write tools, "
+    "or one plain literal command, or a script file you run), or report BLOCKED to "
+    "your lead with exactly what you needed."
 )
 QUERY = (
     "SELECT json_type(payload_json, '$.delegatedFrom'),"
