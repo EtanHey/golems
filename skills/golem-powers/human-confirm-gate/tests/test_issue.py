@@ -1,6 +1,7 @@
 import importlib.machinery
 import importlib.util
 import json
+import shlex
 import subprocess
 import unittest
 from unittest.mock import patch
@@ -42,7 +43,11 @@ class Issue(unittest.TestCase):
             return subprocess.run(args, **kwargs)
         args = [str(self.repo), 'refs/heads/topic', 'lease', '--sha', self.sha,
                 '--session', 'worker', '--key', str(self.key.with_suffix('.pub'))]
-        with patch.object(module, 'owner_terminal'), patch.object(module, 'sign', side_effect=signer):
+        # A fake current agent that lists the key (agent discovery: test_issue_agent.py).
+        agent = self.home / 'ssh-add'
+        agent.write_text('#!/bin/sh\nexec cat ' + shlex.quote(str(self.key.with_suffix('.pub'))) + '\n'); agent.chmod(0o755)
+        with patch.object(module, 'owner_terminal'), patch.object(module, 'sign', side_effect=signer), \
+             patch.object(module, 'SSH_ADD', str(agent)):
             path = module.issue(args, home=self.home)
         self.assertEqual(calls[0][calls[0].index('-f') + 1], str(self.key.with_suffix('.pub')))
         self.assertEqual(json.loads(path.read_text())['kind'], 'human')
@@ -60,7 +65,7 @@ class Issue(unittest.TestCase):
             return real_run(args, **kwargs)
         args = [str(self.repo), 'topic', 'lease', '--sha', self.sha, '--session', 'worker', '--key', str(self.key.with_suffix('.pub'))]
         with patch.dict('os.environ', {'CMUX_AGENT_ID': 'worker'}), patch('sys.stdin.isatty', return_value=True), \
-             patch.object(module, 'sign', side_effect=fixture_sign), self.assertRaises(ValueError):
+             patch.object(module, 'sign', side_effect=fixture_sign), self.assertRaisesRegex(ValueError, 'owner terminal'):
             module.issue(args, home=self.home)
         self.assertEqual(list(self.store.glob('*.json')), [])
 
@@ -70,7 +75,8 @@ class Issue(unittest.TestCase):
         module = importlib.util.module_from_spec(spec); loader.exec_module(module)
         with patch.dict('os.environ', {'CMUX_AGENT_ID': 'worker'}), patch('sys.stdin.isatty', return_value=True), self.assertRaises(ValueError):
             module.owner_terminal()
-        with patch.object(module, 'owner_terminal'), patch.object(module, 'sign', side_effect=AssertionError('must refuse scope before signing')), self.assertRaises(ValueError):
+        with patch.object(module, 'owner_terminal'), patch.object(module, 'sign', side_effect=AssertionError('must refuse scope before signing')), \
+             self.assertRaisesRegex(ValueError, 'does not match requested ref/action scope'):
             module.issue([str(self.repo), 'wrong-ref', 'lease', '--sha', self.sha, '--session', 'worker',
                           '--command', self.command, '--key', str(self.key.with_suffix('.pub'))], home=self.home)
         self.assertEqual(list(self.store.glob('*.json')), [])
@@ -79,7 +85,8 @@ class Issue(unittest.TestCase):
         loader = importlib.machinery.SourceFileLoader('confirm_issue', str(HELPER))
         spec = importlib.util.spec_from_loader(loader.name, loader)
         module = importlib.util.module_from_spec(spec); loader.exec_module(module)
-        with patch.object(module, 'owner_terminal'), patch.object(module, 'sign', side_effect=AssertionError('must refuse private key before signing')), self.assertRaises(ValueError):
+        with patch.object(module, 'owner_terminal'), patch.object(module, 'sign', side_effect=AssertionError('must refuse private key before signing')), \
+             self.assertRaisesRegex(ValueError, 'public key file backed by the owner SSH agent'):
             module.issue([str(self.repo), 'topic', 'lease', '--sha', self.sha, '--session', 'worker',
                           '--key', str(self.key)], home=self.home)
         self.assertEqual(list(self.store.glob('*.json')), [])

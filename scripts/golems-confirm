@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Capability issuer: owner SSH agent, or native parsed-command enclave approval."""
 import argparse
+import base64
 import hashlib
 import json
 import os
 import re
 import shlex
+import stat
 import subprocess
 import sys
 
@@ -44,6 +46,81 @@ def sign(argv, **kwargs):
     return subprocess.run(argv, **kwargs)
 
 
+# AIDEV-NOTE: `ssh-keygen -Y sign -U` asks only the agent at SSH_AUTH_SOCK; it ignores
+# IdentityAgent in ~/.ssh/config. When our agent lacks the key, find the one that holds
+# it and give that socket to the signing child only. The agent still prompts per request
+# and the pinned-anchor verification is unchanged: this picks a socket, it grants nothing.
+SSH_ADD = '/usr/bin/ssh-add'
+ONEPASSWORD_AGENT = 'Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock'
+
+
+def agent_lists(sock, key):
+    try:
+        listed = subprocess.run([SSH_ADD, '-L'], env=dict(os.environ, SSH_AUTH_SOCK=str(sock)),
+                                capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return listed.returncode == 0 and any(tuple(line.split()[:2]) == key for line in listed.stdout.splitlines())
+
+
+def identity_agent(home):
+    """The `Host *` IdentityAgent from ~/.ssh/config (first value wins, as in ssh), or None."""
+    try:
+        lines = (home / '.ssh/config').read_text(errors='replace').splitlines()
+    except OSError:
+        return None
+    applies = True  # options before the first Host/Match apply to every host
+    for line in lines:
+        row = re.match(r'\s*([A-Za-z]+)(?:\s*=\s*|\s+)(.*?)\s*$', line)
+        if not row or line.lstrip().startswith('#'):
+            continue
+        word, value = row.group(1).lower(), row.group(2)
+        if word in ('host', 'match'):
+            patterns = value.split()
+            applies = word == 'host' and '*' in patterns and not any(p.startswith('!') for p in patterns)
+        elif word == 'identityagent' and applies:
+            value = value[1:-1] if len(value) > 1 and value[0] == value[-1] == '"' else value
+            if value.lower() == 'none' or value == 'SSH_AUTH_SOCK' or '$' in value or '%' in value:
+                return None  # disabled, or an expansion we do not reimplement
+            path = home / value[2:] if value.startswith('~/') else Path(value)
+            return path if path.is_absolute() else None
+    return None
+
+
+def fingerprint(key):
+    try:
+        digest = hashlib.sha256(base64.b64decode(key[1], validate=True)).digest()
+    except ValueError:
+        return 'of an unreadable key'
+    return 'SHA256:' + base64.b64encode(digest).decode().rstrip('=')
+
+
+def signing_env(key_text, home):
+    """None keeps our environment; else a copy whose SSH_AUTH_SOCK holds the key, for the child."""
+    key = tuple(key_text.split()[:2])
+    current = os.environ.get('SSH_AUTH_SOCK')
+    if current and agent_lists(current, key):
+        return None
+    tried = [f'SSH_AUTH_SOCK {current or "(unset)"}: key not listed']
+    configured = identity_agent(home)
+    candidates = [('~/.ssh/config IdentityAgent', configured)] if configured else []
+    for label, path in candidates + [('1Password agent', home / ONEPASSWORD_AGENT)]:
+        real = os.path.realpath(path)  # check and use the same file, not a link that can move
+        try:
+            info = os.stat(real)
+            reason = ('not a socket' if not stat.S_ISSOCK(info.st_mode)
+                      else 'owned by another user' if info.st_uid != os.getuid()
+                      else None if agent_lists(real, key) else 'key not listed')
+        except OSError:
+            reason = 'missing'
+        if reason is None:
+            return dict(os.environ, SSH_AUTH_SOCK=real)
+        tried.append(f'{label} {path}: {reason}')
+    raise ValueError(f'no SSH agent lists the signing key {fingerprint(key)}. Tried:\n  ' + '\n  '.join(tried)
+                     + '\nFix: unlock 1Password and enable its SSH agent, or set SSH_AUTH_SOCK '
+                       'to the agent that holds this key.')
+
+
 def issue(argv=None, *, home=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('repo'); parser.add_argument('ref')
@@ -68,7 +145,8 @@ def issue(argv=None, *, home=None):
     if not Path(repo).is_dir() or not 1 <= args.ttl <= 300:
         raise ValueError('existing repo directory and TTL 1..300 required')
     key = args.key or home / '.config/golems/human-confirm.pub'
-    if not args.enclave and not re.match(r'^(?:ssh-|ecdsa-|sk-)[^\s]+ [A-Za-z0-9+/=]+', key.read_text()):
+    key_text = '' if args.enclave else key.read_text()
+    if not args.enclave and not re.match(r'^(?:ssh-|ecdsa-|sk-)[^\s]+ [A-Za-z0-9+/=]+', key_text):
         raise ValueError('use a public key file backed by the owner SSH agent')
     ref = args.ref
     if args.action in ('force', 'lease', 'delete') and not ref.startswith('refs/'):
@@ -96,6 +174,8 @@ def issue(argv=None, *, home=None):
         return op.get('ref') == ref or any(matched)
     if not ops or any(op['class'] != args.action or not matches(op) for op in ops):
         raise ValueError('command does not match requested ref/action scope')
+    # Before any token file exists: a missing agent refuses with nothing to clean up.
+    child_env = None if args.enclave else signing_env(key_text, home)
     root = home / '.config/golems/human-confirm'; root.mkdir(parents=True, mode=0o700, exist_ok=True)
     anchor = anchor_bytes(home)
     now = time.time(); nonce = uuid.uuid4().hex
@@ -131,7 +211,7 @@ def issue(argv=None, *, home=None):
                 stream.write(result.stdout); stream.flush(); os.fsync(stream.fileno())
             verified = enclave.verify(raw, home, signature)
         else:
-            sign([SSH, '-Y', 'sign', '-U', '-q', '-f', str(key), '-n', 'golems-confirm', str(path)], check=True, timeout=120)
+            sign([SSH, '-Y', 'sign', '-U', '-q', '-f', str(key), '-n', 'golems-confirm', str(path)], check=True, timeout=120, env=child_env)
             verified = verify_signature(raw, anchor, 'human', str(path) + '.sig')
         if not verified:
             raise ValueError('signature does not match pinned anchor')
