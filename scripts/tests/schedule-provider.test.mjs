@@ -156,3 +156,91 @@ test('CLI prints a pick or exits 3 with a refusal', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// AIDEV-NOTE: `vendors` shape follows TokenLayer drafts #173/#174/#183 (src/usage/vendors.ts); values invented.
+function vendor(over = {}) {
+  return {
+    pct: 40, window: '7d', resets_at: '2026-11-22T00:00:00.000Z', observed_at: NOW,
+    source: 't3-cache:codex', stale: false,
+    windows: [
+      { id: 'primary', window: '7d', pct: 40, resets_at: '2026-11-22T00:00:00.000Z' },
+      { id: 'secondary', window: '5h', pct: 10, resets_at: '2026-11-19T13:00:00.000Z' },
+    ],
+    ...over,
+  };
+}
+const fullCodex = resetsAt => vendor({ pct: 100, resets_at: resetsAt, windows: [
+  { id: 'primary', window: '7d', pct: 100, resets_at: resetsAt },
+  { id: 'secondary', window: '5h', pct: 10, resets_at: '2026-11-19T13:00:00.000Z' },
+] });
+const withVendors = vendors => ({ ...tokenlayer([account()]), vendors });
+const pickFrom = (usage, candidates, at = FIRE) => pickScheduleProvider(usageFromTokenlayer(usage, at), candidates, at);
+
+test('vendors: codex at 100 with a reset after fire time is skipped for both codex instances', () => {
+  const usage = withVendors({ codex: fullCodex('2026-11-20T00:02:00.000Z'), antigravity: vendor({ source: 't3-cache:antigravity' }) });
+  const r = pickFrom(usage, [codex, { provider: 'codex', model: 'gpt-6.1-sol' }, flash]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.pick, flash);
+  assert.equal(r.unverified, false);
+  assert.deepEqual(r.skipped.map(s => [s.provider, s.state, s.resets_at]), [
+    ['codex-worker', 'exhausted', '2026-11-20T00:02:00.000Z'],
+    ['codex', 'exhausted', '2026-11-20T00:02:00.000Z'],
+  ]);
+});
+
+test('vendors: codex at 100 that resets before fire time is allowed and verified', () => {
+  const r = pickFrom(withVendors({ codex: fullCodex('2026-11-19T18:00:00.000Z') }), [codex, opus]);
+  assert.deepEqual(r.pick, codex);
+  assert.equal(r.unverified, false);
+});
+
+test('vendors: a full secondary window blocks too, until its own reset', () => {
+  const usage = withVendors({ codex: vendor({ windows: [
+    { id: 'primary', window: '7d', pct: 30, resets_at: '2026-11-22T00:00:00.000Z' },
+    { id: 'secondary', window: '5h', pct: 100, resets_at: '2026-11-19T21:00:00.000Z' },
+  ] }) });
+  assert.equal(pickFrom(usage, [codex]).ok, false);
+  assert.deepEqual(pickFrom(usage, [codex], '2026-11-19T22:00:00.000Z').pick, codex);
+});
+
+test('vendors: stale is unknown, never usable ahead of a known provider', () => {
+  const usage = withVendors({ codex: vendor({ stale: true }) });
+  const r = pickFrom(usage, [codex, opus]);
+  assert.deepEqual(r.pick, opus);
+  assert.equal(r.unverified, false);
+  assert.deepEqual(r.fallback, codex);
+  const only = pickFrom(usage, [codex]);
+  assert.equal(only.ok, true);
+  assert.equal(only.unverified, true);
+  assert.match(only.reason, /^unknown: vendors\.codex is stale/);
+});
+
+test('vendors: no vendors key is unknown, with an explicit reason the caller must show', () => {
+  const u = usageFromTokenlayer(tokenlayer([account()]), FIRE);
+  assert.equal(u['codex-worker'].state, 'unknown');
+  assert.equal(u.antigravity.state, 'unknown');
+  const r = pickFrom(tokenlayer([account()]), [codex, flash]);
+  assert.equal(r.unverified, true);
+  assert.match(r.reason, /^unknown: usage\.json has no vendors block/);
+  assert.deepEqual(pickFrom(tokenlayer([account()]), [codex, opus]).pick, opus);
+});
+
+test('vendors: a missing or null driver is unknown', () => {
+  const r = pickFrom(withVendors({ codex: vendor(), kiro: null }), [flash, codex]);
+  assert.deepEqual(r.pick, codex);
+  assert.deepEqual(r.fallback, flash);
+  assert.equal(usageFromTokenlayer(withVendors({ kiro: null }), FIRE).kiro.state, 'unknown');
+});
+
+test('vendors: all exhausted is an explicit refusal with the earliest reset', () => {
+  const full = account({ weekly: { used_pct: 100, resets_at: '2026-11-22T00:00:00.000Z' } });
+  const usage = { ...tokenlayer([full]), vendors: {
+    codex: fullCodex('2026-11-20T00:02:00.000Z'),
+    antigravity: vendor({ pct: 100, windows: [{ id: 'flash', window: '7d', pct: 100, resets_at: '2026-11-21T00:00:00.000Z' }] }),
+  } };
+  const r = pickFrom(usage, [codex, opus, flash]);
+  assert.equal(r.ok, false);
+  assert.equal(r.pick, undefined);
+  assert.equal(r.retry_after, '2026-11-20T00:02:00.000Z');
+  assert.equal(r.skipped.length, 3);
+});
