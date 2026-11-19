@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "vendor": "narrationlayer",
-  "vendorDate": "2026-11-18",
+  "vendorDate": "2026-11-19",
   "upstream": {
     "repository": "EtanHey/narrationlayer",
-    "commit": "15542251f8a234fe089fc110e8d26f73f4fb57f4",
-    "committedAt": "2026-11-17T23:30:44+02:00",
+    "commit": "429d19d65c01c9b3358f332f7b98817a2afcaa3b",
+    "committedAt": "2026-11-19T14:31:48+02:00",
     "ref": "PR #147 head, re-vendor from master after it merges"
   },
   "pairs": [
@@ -41,8 +41,8 @@
       "id": "word-timing-repair",
       "vendorPath": "vendor/narrationlayer/word-timing-repair.ts",
       "sourcePath": "src/word-timing-repair.ts",
-      "vendorSha256": "403641bcdb8fcba611f47d4cff01af2dc7011ed5a9d7a2fa264f8edb89d4639c",
-      "sourceSha256": "403641bcdb8fcba611f47d4cff01af2dc7011ed5a9d7a2fa264f8edb89d4639c"
+      "vendorSha256": "aa5094f8655a7f964cb5af89d03adf3f27b9028037899149cb7c62a0fc24f1bb",
+      "sourceSha256": "aa5094f8655a7f964cb5af89d03adf3f27b9028037899149cb7c62a0fc24f1bb"
     },
     {
       "id": "word-timings",
@@ -97,8 +97,8 @@
       "id": "src-quality-take-checks",
       "sourcePath": "src/quality/take-checks.ts",
       "vendorPath": "vendor/narrationlayer/src/quality/take-checks.ts",
-      "sourceSha256": "b48e8183dfe3996d450a84ba5a758a80dd1c3de3c20e020d3c281d596eef0ed8",
-      "vendorSha256": "b48e8183dfe3996d450a84ba5a758a80dd1c3de3c20e020d3c281d596eef0ed8"
+      "sourceSha256": "843494149f487f6c2742e27a7a6b7c91a9312f6800d6ad5c01fa8d3f85211712",
+      "vendorSha256": "843494149f487f6c2742e27a7a6b7c91a9312f6800d6ad5c01fa8d3f85211712"
     },
     {
       "id": "src-audio-ffmpeg-run",
@@ -181,8 +181,8 @@
       "id": "src-text-transcription-equivalence",
       "sourcePath": "src/text/transcription-equivalence.ts",
       "vendorPath": "vendor/narrationlayer/src/text/transcription-equivalence.ts",
-      "sourceSha256": "45dea06934c5cf83435d10431789aafb6cb0b82e96ecf87f7b041c1f8fd125de",
-      "vendorSha256": "45dea06934c5cf83435d10431789aafb6cb0b82e96ecf87f7b041c1f8fd125de"
+      "sourceSha256": "fa6fcd67d972642ef0eecdf8aff70f21d88275b55477bdbb35721869aa75fd25",
+      "vendorSha256": "fa6fcd67d972642ef0eecdf8aff70f21d88275b55477bdbb35721869aa75fd25"
     }
   ],
   "intentionalAdaptations": [
@@ -415,9 +415,9 @@
     }
   ],
   "pendingRevendor": {
-    "sourceCommit": "15542251f8a234fe089fc110e8d26f73f4fb57f4",
+    "sourceCommit": "429d19d65c01c9b3358f332f7b98817a2afcaa3b",
     "status": "refreshed-with-open-debt",
-    "aidevNote": "PR #147 head, re-vendor from master after it merges (narrationlayer#147 is a draft; 15542251 is not on NL master). Exact committed runtime dependency closure; existing type-only shims and repo-free profile/pronunciation bridge debt retained. Historical debt resolutions remain historical."
+    "aidevNote": "PR #147 head, re-vendor from master after it merges (narrationlayer#147 is a draft; 429d19d6 is not on NL master). Exact committed runtime dependency closure; existing type-only shims and repo-free profile/pronunciation bridge debt retained. Historical debt resolutions remain historical."
   },
   "skillBridgeHashes": {
     "vendor/src/profiles.ts": "b23dc98ab8dec55b323ee57c441372f9b28822cd12be2831031ca466aa64fc46",
