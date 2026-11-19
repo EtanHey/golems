@@ -100,7 +100,7 @@ gatherers and completes synthesis; this is a handoff, not a PARTIAL/completed au
 In T3, call `orchestrator_capabilities` then `delegate_task` with the model the
 user named and its provider, putting settings in `target.options`: Codex
 `serviceTier:"default"`, Claude `fastMode:false` only when that model's catalog options list
-`fastMode` (Opus today; never Haiku or Sonnet). Match the named model against
+`fastMode` (see /agent-routing). Match the named model against
 the live dispatch catalog (`orchestrator_capabilities`); if it isn't offered,
 report and stop. Claude seats outside T3 may use `Agent` with the named model/profile.
 Codex seats have no `Agent` tool: use `delegate_task`. If the profile or dispatch
