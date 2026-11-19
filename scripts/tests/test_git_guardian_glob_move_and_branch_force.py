@@ -56,8 +56,9 @@ mkdir -p .work/superseded; mv .work/overview-copy-still-*.png .work/case-before.
 
 
 @pytest.fixture
-def captures(tmp_path):
+def captures(tmp_path, monkeypatch):
     home = tmp_path / 'owner'
+    monkeypatch.setenv('HOME', str(home))  # the protected-root rules read the process HOME
     project = home / 'Gits' / 'project'
     (project / '.git').mkdir(parents=True)
     work = project / 'captures' / '.work'
