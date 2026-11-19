@@ -99,7 +99,8 @@ gatherers and completes synthesis; this is a handoff, not a PARTIAL/completed au
 
 In T3, call `orchestrator_capabilities` then `delegate_task` with the model the
 user named and its provider, putting settings in `target.options`: Codex
-`serviceTier:"default"`, Claude `fastMode:false`. Match the named model against
+`serviceTier:"default"`, Claude `fastMode:false` only when that model's catalog options list
+`fastMode` (Opus today; never Haiku or Sonnet). Match the named model against
 the live dispatch catalog (`orchestrator_capabilities`); if it isn't offered,
 report and stop. Claude seats outside T3 may use `Agent` with the named model/profile.
 Codex seats have no `Agent` tool: use `delegate_task`. If the profile or dispatch
@@ -132,7 +133,7 @@ sections) into batches of ≤15 sheets, each carrying the adjacent window's last
 and sends every batch to a gatherer. Gatherer order (unless the brief explicitly overrides it):
 
 1. **Tool-free Claude reader:** pin `claude.subagent.cheap` via `node scripts/model-roles.mjs claude.subagent.cheap --field model`; use [claude-image-reader.md](references/claude-image-reader.md), never a Claude image Read tool. T3 wrapper example after `orchestrator_capabilities`:
-   `delegate_task({title: "qa-video gather b1", role: "research", target: {providerInstanceId: "claudeAgent", model: "<resolved claude.subagent.cheap model>", options: {fastMode: false}}, task: "Read and follow <WORKDIR>/briefs/gather-b1.md; run claude-image-helper.py with the pinned model, one image per call within the remaining deadline; return text only"})`.
+   `delegate_task({title: "qa-video gather b1", role: "research", target: {providerInstanceId: "claudeAgent", model: "<resolved claude.subagent.cheap model>"}, task: "Read and follow <WORKDIR>/briefs/gather-b1.md; run claude-image-helper.py with the pinned model, one image per call within the remaining deadline; return text only"})`.
    The brief lists the question, the absolute sheet paths in time order with their `frames.tsv`
    rows (`tile`, `frame`, `pts_s`), plus a `transcript_window` JSON data field keyed by each absolute
    sheet path: the SRT lines overlapping [first tile decoded `pts_s` − 15s, last tile decoded `pts_s` + 3s]

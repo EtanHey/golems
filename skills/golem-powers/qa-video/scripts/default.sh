@@ -70,7 +70,7 @@ Gather (gatherers read every still; you never open one), first that works:
 EOF
   fi
   cat <<EOF
-     delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "claudeAgent", model: "$READER_MODEL", options: {fastMode: false}}, task: "Read and follow $WORKDIR/briefs/gather-bN.md; run $SCRIPTS/claude-image-helper.py with --model $READER_MODEL, one image per call within the remaining deadline; return text only"})
+     delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "claudeAgent", model: "$READER_MODEL"}, task: "Read and follow $WORKDIR/briefs/gather-bN.md; run $SCRIPTS/claude-image-helper.py with --model $READER_MODEL, one image per call within the remaining deadline; return text only"})
   2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"$([ "$MODE" = qa ] || printf ' "" %s-gather "%s"/moment-*.jpg' "$MODE" "$WORKDIR")   (visual-batch.py, tool-free Claude reader)
   (For debrief/review, moment-*.jpg includes both start and midpoint files.)
   3. TOOLING FAILURE with the raw error path; unread windows stay NOT DETERMINED. Never read the frames instead.

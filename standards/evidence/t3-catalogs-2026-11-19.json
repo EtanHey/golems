@@ -1,0 +1,32 @@
+{
+  "captured": "2026-11-19",
+  "source": "T3 orchestrator_capabilities on each Mac. Ids and option names only; refresh by re-running it and editing this file.",
+  "macs": {
+    "M1": {
+      "antigravity": {
+        "gemini-4-neon": ["thinking_level"],
+        "gemini-4-argon": ["thinking_level"],
+        "gemini-4-hydrogen": ["thinking_level"],
+        "gemini-3.8-flash": ["thinking_level"],
+        "claude-opus-5-5": ["thinking_level"],
+        "claude-sonnet-5-5": ["thinking_level"],
+        "gpt-oss-120b-medium": ["thinking_level"]
+      },
+      "claudeAgent": {
+        "claude-opus-5-5": ["effort", "ultracode", "fastMode"],
+        "claude-sonnet-5-5": ["effort", "ultracode"],
+        "claude-haiku-5-5": ["effort", "ultracode"],
+        "claude-fable-5-2": ["effort", "ultracode"]
+      }
+    },
+    "M4": {
+      "antigravity": {
+        "gemini-4-neon": ["thought_level"],
+        "gemini-4-argon": ["thought_level"],
+        "gemini-4-hydrogen": ["thought_level"],
+        "gemini-pro-orchestrator-neon": ["thought_level"],
+        "gemini-pro-orchestrator-g1-pro": ["thought_level"]
+      }
+    }
+  }
+}
