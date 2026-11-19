@@ -201,3 +201,80 @@ def test_unknown_directory_fails_closed(repo):
     home, root = repo
     code, decision = hook('cd "$UNKNOWN" && git branch -f main HEAD~1', root, home)
     assert code == 2 and decision['reason'] == RESET_HARD_MESSAGE
+
+
+# ── 3. `git update-ref --stdin` ─────────────────────────────────────────────
+
+STDIN_UNSEEN_SUFFIX = ('git update-ref --stdin reads its input from somewhere this command does not show, '
+                       'so the guard cannot tell which branches it moves; put the lines in a heredoc or printf.')
+
+STDIN_VISIBLE_MOVES = [
+    "printf 'update refs/heads/main HEAD~1\\n' | git update-ref --stdin",
+    "echo 'update refs/heads/main HEAD~1' | git update-ref --stdin",
+    "git update-ref --stdin <<'EOF'\nupdate refs/heads/main HEAD~1\nEOF",
+    "git update-ref --stdin <<EOF\nverify refs/heads/other HEAD\nupdate refs/heads/main HEAD~1\nEOF",
+    "git update-ref --stdin <<-EOF\n\tupdate refs/heads/main HEAD~1\n\tEOF",
+    "git update-ref --stdin <<< 'update refs/heads/main HEAD~1'",
+    "cat <<'EOF' | git update-ref --stdin\nupdate refs/heads/main HEAD~1\nEOF",
+    "printf 'create refs/heads/new HEAD\\ndelete refs/heads/feat\\n' | git update-ref --stdin",
+    "printf 'update HEAD HEAD~1\\n' | git update-ref --stdin",
+    "printf 'update refs/heads/main\\0HEAD~1\\0\\0' | git update-ref -z --stdin",
+    "printf 'option no-deref\\nupdate HEAD HEAD~1\\nupdate refs/heads/main HEAD~1\\n' | git update-ref --stdin",
+    "printf 'start\\nupdate \"refs/heads/main\" HEAD~1\\ncommit\\n' | git update-ref --stdin",
+    "printf 'update %s HEAD~1\\n' refs/heads/main | git update-ref -m msg --stdin",
+    "printf 'update %s HEAD~1\\n' \"$REF\" | git update-ref --stdin",
+    "git update-ref --stdin <<EOF\nupdate $REF HEAD~1\nEOF",
+    "bash -c \"printf 'update refs/heads/main HEAD~1\\n' | git update-ref --stdin\"",
+    "git update-ref --stdin <<< $'update refs/heads/main HEAD~1'",
+    "printf '%b' 'verify refs/heads/other HEAD\\nupdate refs/heads/main HEAD~1' | git update-ref --stdin",
+    "cat <<A\nupdate refs/heads/other HEAD\nA\ngit update-ref --stdin <<B\nupdate refs/heads/main HEAD~1\nB",
+]
+
+STDIN_UNSEEN = [
+    'git update-ref --stdin < moves.txt',
+    'git update-ref --stdin',
+    'git update-ref -z --stdin 0<moves.txt',
+    'make-moves | git update-ref --stdin',
+    "git update-ref --stdin 3<<'EOF'\nupdate refs/heads/other HEAD\nEOF",
+    "git update-ref --stdin < <(printf 'update refs/heads/other HEAD\\n')",
+    "printf 'update refs/heads/other HEAD\\n' | tee /dev/null | git update-ref --stdin",
+]
+
+
+@pytest.mark.parametrize('command', STDIN_VISIBLE_MOVES)
+def test_update_ref_stdin_that_moves_the_checked_out_branch_is_refused(repo, command):
+    home, root = repo
+    assert guardian.dangerous_shell_reason(command, cwd=str(root), env={'HOME': str(home)})
+    assert hook(command, root, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
+
+
+def test_update_ref_stdin_finds_the_repo_through_cd(repo):
+    home, root = repo
+    command = "cd scratch && git update-ref --stdin <<'EOF'\nupdate refs/heads/main HEAD~1\nEOF"
+    assert hook(command, root.parent, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
+
+
+@pytest.mark.parametrize('command', STDIN_UNSEEN)
+def test_update_ref_stdin_with_unseen_input_fails_closed_and_says_why(repo, command):
+    home, root = repo
+    assert guardian.dangerous_shell_reason(command, cwd=str(root), env={'HOME': str(home)})
+    assert hook(command, root, home) == (
+        2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE + ' ' + STDIN_UNSEEN_SUFFIX})
+
+
+@pytest.mark.parametrize('command', [
+    "printf 'update refs/heads/other HEAD\\n' | git update-ref --stdin",
+    "echo 'create refs/heads/brand-new HEAD' | git update-ref --stdin",
+    "git update-ref --stdin <<'EOF'\nupdate refs/heads/other HEAD\ncreate refs/heads/brand-new HEAD\nEOF",
+    "git update-ref --stdin <<< 'delete refs/heads/other'",
+    "cat <<'EOF' | git update-ref --stdin\nupdate refs/remotes/origin/main HEAD\nEOF",
+    "printf 'verify refs/heads/main HEAD\\n' | git update-ref --stdin",
+    "printf 'option no-deref\\nupdate HEAD HEAD~1\\n' | git update-ref --stdin",
+    "git update-ref --no-deref --stdin <<< 'update HEAD HEAD~1'",
+    "printf 'update refs/heads/other\\0HEAD\\0\\0' | git update-ref -z --stdin",
+    "cat <<A\nupdate refs/heads/main HEAD~1\nA\ngit update-ref --stdin <<B\nupdate refs/heads/other HEAD\nB",
+])
+def test_update_ref_stdin_on_a_branch_that_is_not_checked_out_stays_allowed(repo, command):
+    home, root = repo
+    assert guardian.dangerous_shell_reason(command, cwd=str(root), env={'HOME': str(home)}) is None
+    assert hook(command, root, home) == (0, {})

@@ -1,10 +1,13 @@
 """Moving a checked-out branch: the same effect as `git reset --hard`.
 
 `git branch -f <b>`, `git checkout -B <b>`, `git switch -C <b>` and
-`git update-ref refs/heads/<b>` repoint a branch. When <b> is checked out (in
+`git update-ref refs/heads/<b>` repoint a branch, and so do the
+`update|create|delete` lines `git update-ref --stdin` reads. When <b> is checked out (in
 this worktree or a linked one), its commits drop out of the branch just as a
 `reset --hard` drops them, so the guard refuses them with the same message.
 Moving a branch that no worktree has checked out keeps today's behaviour.
+When the command does not show update-ref's stdin (a `<` file, an unseen
+producer), the guard cannot tell which branches it moves and refuses.
 """
 
 from __future__ import annotations
@@ -13,9 +16,14 @@ import os
 import subprocess
 
 from .paths import _expand_tilde
+from .update_ref_stdin import ANY_REF, visible_targets
 
 # Reads as reset --hard in the hook's operation names; never says "local branch".
 REASON = "Dangerous command: moving a checked-out branch is the same as git reset --hard"
+# The hook adds its own sentence for this case; keep the "update-ref --stdin input" needle.
+STDIN_UNSEEN_REASON = (REASON + "; the update-ref --stdin input is not in the command, "
+                       "so the guard cannot tell which branches it moves")
+_STDIN = "\0stdin"
 
 _GLOBAL_WITH_VALUE = {"-c", "--namespace", "--exec-path", "--config-env", "--super-prefix"}
 _BRANCH_WITH_VALUE = {
@@ -75,7 +83,7 @@ def _update_ref_targets(arguments: list[str]) -> list[str]:
         elif word == "--no-deref":
             no_deref = True
         elif word == "--stdin":
-            return []
+            return [_STDIN + ("-no-deref" if "--no-deref" in arguments else "")]
         elif not word.startswith("-") or word == "-":
             positionals.append(word)
         index += 1
@@ -149,6 +157,11 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
     targets = _targets(family, arguments)
     if not targets:
         return None
+    stdin = targets[0].startswith(_STDIN)
+    if stdin:
+        targets = visible_targets(no_deref=targets[0].endswith("-no-deref"))
+        if targets == []:
+            return None
     if any(variables.get(name) for name in ("GIT_DIR", "GIT_WORK_TREE")):
         return REASON
     if not directory or not os.path.isdir(directory):
@@ -157,6 +170,10 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
     if state is None:
         return REASON
     branches, current = state
+    if targets is None or ANY_REF in targets:
+        if branches or current is not None:
+            return REASON if targets is not None else STDIN_UNSEEN_REASON
+        return None
     for target in targets:
         if target == "HEAD" and current is not None:
             return REASON

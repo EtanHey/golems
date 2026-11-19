@@ -14,6 +14,7 @@ from . import shell_parse
 from .trash import trash_move, literal_trash_syntax
 from .move_glob import expand_move_glob
 from .branch_move import checked_out_branch_move_reason
+from . import update_ref_stdin
 from .paths import (
     _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason,
     _rm_exact_target_reason, _rm_allows_ignored_directory,
@@ -928,13 +929,22 @@ def _rm_reason_in_words(
     return None
 
 
-def is_dangerous_rm(
+def is_dangerous_rm(api: dict, command: str, **options):
+    """Return `(blocked, reason)` after resolving cwd and shell assignments."""
+    # update-ref --stdin reads its input from the raw command (heredoc bodies included).
+    token = update_ref_stdin.RAW_COMMAND.set(command)
+    try:
+        return _is_dangerous_rm(api, command, **options)
+    finally:
+        update_ref_stdin.RAW_COMMAND.reset(token)
+
+
+def _is_dangerous_rm(
     api: dict, command: str, *, cwd: str | None = None, env=None, _depth: int = 0,
     _find_cache: dict[tuple, str | None] | None = None,
     protected_cwd: str | None = None,
     _created_paths: list[CreatedPath] | None = None,
 ):
-    """Return `(blocked, reason)` after resolving cwd and shell assignments."""
     if _depth > api["_MAX_WRAPPER_DEPTH"]:
         return True, api["_wrapper_depth_reason"]()
     if _find_cache is None:
