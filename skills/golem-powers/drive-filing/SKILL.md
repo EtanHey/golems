@@ -257,9 +257,10 @@ The entire month/mtime group or classified run holds on any hit or scan failure.
 **Content scan.** Read the complete UTF-8 text, decompressing gzip/zstd by magic
 bytes, and apply publication-policy credential-adjacent patterns plus provider
 shapes and generic assignments (password/passwd/pwd/secret/token/api-key/access-key)
-whose value is secret-shaped: a whole >=16-char credential-alphabet literal with
->=8 distinct chars, or a quoted >=8-char password mixing 3+ character classes;
-code expressions (`token=++n`, `key=e.key`) and bare `NAME=` lines stay clear,
+whose value is a non-empty literal, short or with symbols (`password=Tr0ub4dor&3`);
+code and references stay clear: empty `NAME=` lines, keywords, `****`, `${X}`/`$X`,
+member access, calls and `++n` (`token=++n`, `key=e.key`), and in code (not an
+env/YAML line, `--flag=` or URL query) numbers, operators and bare identifiers,
 JSON refresh_token/access_token/private_key/client_secret keys, JWTs, Google ya29,
 Anthropic sk-ant and URL userinfo. False positives become named holds for owner
 review. PNG, JPEG, GIF, ISO media ftyp, RIFF WAVE/WEBP/AVI, ID3/MPEG audio, FLAC,

@@ -57,39 +57,70 @@ function adjacentPatterns() {
   });
 }
 // AIDEV-NOTE: generic-assignment judges the VALUE's shape, never the file type
-// (w267). A bare value counts only as a whole credential-alphabet literal of
-// >=16 chars with >=8 distinct chars that ends the token: `token=++n`,
-// `key=e.key`, `secret:a.b`, numbers, keywords and `NAME=` with nothing after
-// it on the line stay clear. The distinct floor drops repeated-char
-// placeholders yet keeps 16 random hex chars (~10.3 distinct expected). A
-// quoted value also counts as a whitespace-free >=8-char password mixing 3+ of
-// lower/upper/digit/symbol. Long bare identifiers (`token=someLongName;`) still
-// hold: letters-only passphrases look the same. Provider rules are separate.
+// (w267). Every key it matches is credential-named, so any non-empty LITERAL
+// value holds unless it is clearly code or a reference (fix round 1, w271:
+// master held `password=Tr0ub4dor&3` and `secret: 'hunter2hunter2'`, and so
+// must this rule). Clear: an empty value (`NAME=`, `"FOO_API_KEY="` inside a
+// string), keywords, single-char placeholders (`****`), references (`${X}`,
+// `$X`, `{{x}}`, `%X%`, a quoted dotted path like "a.b"), member access, calls
+// and indexing (`e.key`, `p()`, `t[0]`) and `++n`/`--n`. A quoted value with
+// whitespace stays clear (prose), as on master. Bare values depend on context:
+// on an env/YAML/ini line, a `--flag=` or a URL query (`?token=`), a bare word
+// is a literal and holds, numbers included. Elsewhere it is code: numbers,
+// bare identifiers (`token=n`) and operator expressions (`k+1`, `a?b:c`, `!0`)
+// clear. Known limit: a bare >=16-char credential-alphabet literal with >=8
+// distinct chars holds even in code, so long bare identifiers
+// (`token=someLongName;`) still hold: letters-only passphrases look the same.
+// Provider rules are separate.
 const GENERIC_NAME = /(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)[ \t]*[:=][ \t]*/gi;
 const KEYWORDS = new Set(['true', 'false', 'null', 'undefined', 'none', 'nil']);
+const IDENT = /^[A-Za-z_$][\w$]*/;
+const REFERENCE = /^(?:\$\{|\$[A-Za-z_]|\{\{|<%|%[A-Za-z_]\w*%$)/;
+const DOTTED_PATH = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+$/;
+const NUMBER = /^(?:[-+]?\d+(?:\.\d+)?(?:e[-+]?\d+)?|0x[0-9a-f]+)$/i;
 function credentialLiteral(v) {
   return v.length >= 16 && /^[A-Za-z0-9+/_-]+={0,2}$/.test(v) && !/^\d+$/.test(v) &&
     !/^(\+\+|--)/.test(v) && !KEYWORDS.has(v.toLowerCase()) && new Set(v).size >= 8;
 }
+function placeholder(v) {
+  return KEYWORDS.has(v.toLowerCase()) || new Set(v).size === 1 || !/[A-Za-z0-9]/.test(v);
+}
 function quotedSecret(v) {
-  if (!v || /\s/.test(v)) return false;
-  const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(re => re.test(v)).length;
-  return credentialLiteral(v) || (v.length >= 8 && classes >= 3);
+  return !!v && !/\s/.test(v) && !placeholder(v) && !REFERENCE.test(v) && !v.includes('${') && !DOTTED_PATH.test(v);
+}
+// The key's start, walked back over the rest of its name (`DB_PASSWORD`, `--password`).
+function keyStart(text, at) {
+  while (at > 0 && /[\w.-]/.test(text[at - 1])) at--;
+  return at;
+}
+function literalContext(text, start) {
+  const before = text.slice(text.lastIndexOf('\n', start - 1) + 1, start);
+  return /^\s*(?:export\s+|set\s+|-\s+)?$/.test(before) || /[?&]$/.test(before) || text.startsWith('--', start);
+}
+function bareSecret(tok, literal) {
+  if (!tok || placeholder(tok) || /^(?:\+\+|--|[(\[{<])/.test(tok) || REFERENCE.test(tok)) return false;
+  const id = IDENT.exec(tok)?.[0];
+  const after = id ? tok.slice(id.length) : '';
+  if (id && /^(?:\?\.|\.[A-Za-z_$]|[(\[])/.test(after)) return false; // member, call, index
+  if (literal) return true;
+  if (NUMBER.test(tok) || tok[0] === '!' || id === tok) return false; // number, unary, reference
+  return !(id && /^(?:[-+*/%<>?|:^~]|[!=]=|=[^\s,;])/.test(after)); // operator expression
 }
 const genericAssignment = {
   test(text) {
     GENERIC_NAME.lastIndex = 0;
     for (let m; (m = GENERIC_NAME.exec(text));) {
-      const at = GENERIC_NAME.lastIndex, q = text[at];
+      const at = GENERIC_NAME.lastIndex, q = text[at], start = keyStart(text, m.index);
       if (q === '"' || q === "'" || q === '`') {
+        if (text[start - 1] === q) continue; // `"FOO_API_KEY="`: the quote closes the name's own string
         const end = text.indexOf(q, at + 1), nl = text.indexOf('\n', at + 1);
         if (end > at && (nl < 0 || end < nl) && quotedSecret(text.slice(at + 1, end))) return true;
         continue;
       }
-      const bare = /^[A-Za-z0-9+/_-]+={0,2}/.exec(text.slice(at, at + 4096))?.[0];
-      if (!bare) continue;
-      const next = text[at + bare.length];
-      if ((next === undefined || /[\s,;)}\]'"`]/.test(next)) && credentialLiteral(bare)) return true;
+      const rest = text.slice(at, at + 4096);
+      const bare = /^[A-Za-z0-9+/_-]+={0,2}/.exec(rest)?.[0];
+      if (bare && /^[\s,;)}\]'"`]?$/.test(rest[bare.length] ?? '') && credentialLiteral(bare)) return true;
+      if (bareSecret(/^[^\s,;'"`&)}\]]*/.exec(rest)[0], literalContext(text, start))) return true;
     }
     return false;
   },
