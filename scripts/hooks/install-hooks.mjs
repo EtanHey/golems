@@ -33,6 +33,7 @@ import { installContextFleetJobs, reportFleetJobsStatus } from "./fleet-jobs.mjs
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { machineHost } from "./machine-host.mjs";
+import { gitIdentityStatus } from "./git-identity.mjs";
 import { REPAIR_REASON, failClosedCommand, permissionGuardCommand } from "./command-guards.mjs";
 import { planCodexHooks, applyCodexHooks, codexStatus, CODEX_TRUST_HINT } from "./codex-hooks-install.mjs";
 import { MIN_HOOK_PYTHON, HOOK_PYTHON_CANDIDATES, pathPython, pythonProblem, resolveHookPython,
@@ -723,6 +724,8 @@ async function status(o) {
   const stray = !current && existsSync(ctx.live);
   console.log(`hooks-live=${current ?? (stray ? "NOT-A-WORKTREE" : "absent")} master=${master ?? "unknown"} drift=${drift} behind=${behind}`);
   let bad = stray || Boolean(ctx.hookNode?.problem);
+  // Informational: identity-precommit and boundary-prepush enforce it per commit/push.
+  console.log(gitIdentityStatus().line);
   if (ctx.hookNode) console.log(ctx.hookNode.problem ? `hook-node BAD: ${ctx.hookNode.problem}`
     : `hook-node=${ctx.hookNode.path} (${ctx.hookNode.version})${ctx.hookNode.legacy ? " legacy registration; version baseline recorded on --apply" : ""}`);
   if (ctx.hookPython) console.log(`hook-python=${ctx.hookPython.python} (${ctx.hookPython.version})`);

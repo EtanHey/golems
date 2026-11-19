@@ -143,6 +143,21 @@ function allowlist() {
   }
   return result;
 }
+// AIDEV-NOTE: GitHub links no `.local` or empty email to an account, so such a
+// commit never counts for its author. Only the new range is checked: history
+// already on the destination is excluded with the content scan's boundaries.
+function unlinkedIdentity(commits) {
+  if (!commits.length) return;
+  const rows = gitInput(commits.join('\n') + '\n', 'log', '--no-walk=unsorted', '--stdin', '--format=%H%x00%ae%x00%ce').trim().split('\n');
+  for (const row of rows) {
+    const [sha, author, committer] = row.split('\0');
+    const bad = [['author', author], ['committer', committer]].filter(([, e]) => !e?.trim() || /\.local\.?$/i.test(e.trim())).map(([k]) => k);
+    if (!bad.length) continue;
+    throw new Error(`commit ${sha} has an empty or .local ${bad.join(' and ')} email; GitHub will not credit it to any account. `
+      + "Fix: git config --global user.email 'you@example.com'; for the last commit run git commit --amend --reset-author --no-edit; "
+      + "for older commits set user.email and rebase (git rebase -r <base> --exec 'git commit --amend --no-edit --reset-author')");
+  }
+}
 try {
   const rules = policy(), allowed = allowlist();
   const input = readFileSync(0, 'utf8').trim();
@@ -160,6 +175,7 @@ try {
     // Verified parent evidence additionally exempts the fetched public graph.
     const exclusions = [...advertisedExclusions(), ...(/^0+$/.test(remote) ? [] : ['^' + remote])];
     const commits = gitInput([head, ...exclusions].join('\n') + '\n', 'rev-list', '--stdin').trim().split('\n').filter(Boolean).filter(commit => !parent.commits?.has(commit));
+    unlinkedIdentity(commits);
     // Scan merge lines new against ALL parents. Unpublished parent additions
     // are checked in their originating commits, including transient violations.
     // Neither -m nor an aggregate old-tip diff can distinguish imported public
