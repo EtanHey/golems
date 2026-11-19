@@ -56,6 +56,44 @@ function adjacentPatterns() {
     return [value === '-----BEGIN [A-Z ]*PRIVATE KEY-----' ? 'private-key' : `credential-adjacent-${i + 1}`, new RegExp(source)];
   });
 }
+// AIDEV-NOTE: generic-assignment judges the VALUE's shape, never the file type
+// (w267). A bare value counts only as a whole credential-alphabet literal of
+// >=16 chars with >=8 distinct chars that ends the token: `token=++n`,
+// `key=e.key`, `secret:a.b`, numbers, keywords and `NAME=` with nothing after
+// it on the line stay clear. The distinct floor drops repeated-char
+// placeholders yet keeps 16 random hex chars (~10.3 distinct expected). A
+// quoted value also counts as a whitespace-free >=8-char password mixing 3+ of
+// lower/upper/digit/symbol. Long bare identifiers (`token=someLongName;`) still
+// hold: letters-only passphrases look the same. Provider rules are separate.
+const GENERIC_NAME = /(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)[ \t]*[:=][ \t]*/gi;
+const KEYWORDS = new Set(['true', 'false', 'null', 'undefined', 'none', 'nil']);
+function credentialLiteral(v) {
+  return v.length >= 16 && /^[A-Za-z0-9+/_-]+={0,2}$/.test(v) && !/^\d+$/.test(v) &&
+    !/^(\+\+|--)/.test(v) && !KEYWORDS.has(v.toLowerCase()) && new Set(v).size >= 8;
+}
+function quotedSecret(v) {
+  if (!v || /\s/.test(v)) return false;
+  const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(re => re.test(v)).length;
+  return credentialLiteral(v) || (v.length >= 8 && classes >= 3);
+}
+const genericAssignment = {
+  test(text) {
+    GENERIC_NAME.lastIndex = 0;
+    for (let m; (m = GENERIC_NAME.exec(text));) {
+      const at = GENERIC_NAME.lastIndex, q = text[at];
+      if (q === '"' || q === "'" || q === '`') {
+        const end = text.indexOf(q, at + 1), nl = text.indexOf('\n', at + 1);
+        if (end > at && (nl < 0 || end < nl) && quotedSecret(text.slice(at + 1, end))) return true;
+        continue;
+      }
+      const bare = /^[A-Za-z0-9+/_-]+={0,2}/.exec(text.slice(at, at + 4096))?.[0];
+      if (!bare) continue;
+      const next = text[at + bare.length];
+      if ((next === undefined || /[\s,;)}\]'"`]/.test(next)) && credentialLiteral(bare)) return true;
+    }
+    return false;
+  },
+};
 export function contentRules() {
   return [
     ['supabase', /(?<![A-Za-z0-9_])sbp_[0-9a-f]{40}/],
@@ -65,7 +103,7 @@ export function contentRules() {
     ['openai', /(?<![A-Za-z0-9_-])sk-(?:proj-)?[A-Za-z0-9_-]{20,}/],
     ['aws', /(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}/],
     ['slack', /(?<![A-Za-z0-9])xox[abprs]-[0-9A-Za-z-]{10,}/],
-    ['generic-assignment', /(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)\s*[:=]\s*['"]?\S{8,}/i],
+    ['generic-assignment', genericAssignment],
     ['credential-json-key', /"(?:refresh_token|access_token|private_key|client_secret)"\s*:/i],
     ['jwt', /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./],
     ['google-oauth', /ya29\./],
