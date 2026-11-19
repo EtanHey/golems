@@ -291,6 +291,7 @@ A lead in a T3 thread dispatches child work through the T3 MCP, not panes. The l
 8. **PRs:** `link_pull_request` every PR; the parent owns `watch_pull_request`.
 9. **Who and how many:** Routing rules (SSOT) picks the vendors; fresh implementer per PR and the Codex cap live in § Lead Topology #5.
 10. **Scheduled tasks:** a thread that exists for a `schedule_task` run ends every run by snoozing itself to its next run time (`t3_thread_organize {action: "snooze", threadId: <its own threadId>, snoozedUntil: <next run, ISO>}`), so it never sits idle in Etan's sidebar between runs. Write that as the last step of the scheduled prompt. If Etan snoozed the thread himself, his snooze stands (#7). (Etan, 2026-11-13, via orc.)
+11. **Scheduled tasks need usage at fire time:** `schedule_task` pins a provider and model, so before it run `node scripts/schedule-provider.mjs --at <fire ISO> --usage ~/.config/tokenlayer/usage.json --capabilities <orchestrator_capabilities JSON> [--out <provider[/model]>@<reset ISO>] <provider:model>...` with candidates in preference order. `usage.json` covers Claude hub accounts only and the catalog shows only disabled or signed-out instances, so pass every exhaustion you know of (Codex weekly, an Antigravity model pool) as `--out`. Schedule its `pick`; the scheduled brief names its `fallback` (or says none). Exit 3 means no candidate has usage then: schedule after `retry_after` or add a candidate, never pin an exhausted one. An `unverified` pick had no usage signal; say so in the brief.
 
 ## Dispatch Boundaries
 
