@@ -244,3 +244,66 @@ test('vendors: all exhausted is an explicit refusal with the earliest reset', ()
   assert.equal(r.retry_after, '2026-11-20T00:02:00.000Z');
   assert.equal(r.skipped.length, 3);
 });
+
+// AIDEV-NOTE: schedule_task has no provider field; a scheduled run uses the CALLER's provider
+// (t3code OrchestratorMcpService.ts `parent?.thread.modelSelection ?? projectDefaultModelSelection`).
+// The schedule-time check therefore looks at the caller only. Namespace import so these tests fail,
+// not the whole file, where checkScheduleCaller does not exist.
+import * as sp from '../schedule-provider.mjs';
+
+const claudeCaller = { provider: 'claudeAgent', model: 'claude-opus-5-5' };
+const fullClaude = account({ five_hour: { used_pct: 100, resets_at: '2026-11-19T22:00:00.000Z' } });
+
+test('schedule time: Claude caller exhausted at fire time, codex fine -> schedule after Claude resets', () => {
+  const usage = { ...tokenlayer([fullClaude]), vendors: { codex: vendor() } };
+  // The fire-time pick happily says codex; that is not the provider the scheduled run uses.
+  assert.equal(pickFrom(usage, [codex]).ok, true);
+  const r = sp.checkScheduleCaller(usage, claudeCaller, FIRE);
+  assert.equal(r.decision, 'schedule-after-reset');
+  assert.equal(r.run_at, '2026-11-19T22:00:00.000Z');
+});
+
+test('schedule time: Claude caller fine -> schedule now, whatever codex reads', () => {
+  for (const codexReading of [fullCodex('2026-11-20T00:02:00.000Z'), vendor({ stale: true }), undefined]) {
+    const usage = { ...tokenlayer([account()]), vendors: codexReading ? { codex: codexReading } : {} };
+    assert.equal(sp.checkScheduleCaller(usage, claudeCaller, FIRE).decision, 'schedule-now');
+  }
+});
+
+test('schedule time: unknown caller usage, or exhausted with no reset, is refused', () => {
+  const stale = sp.checkScheduleCaller({ ...tokenlayer([account()]), stale: true }, claudeCaller, FIRE);
+  assert.equal(stale.decision, 'refuse');
+  assert.match(stale.reason, /^unknown: /);
+  const dead = sp.checkScheduleCaller(tokenlayer([account({ disabled: true })]), claudeCaller, FIRE);
+  assert.equal(dead.decision, 'refuse');
+  assert.equal(dead.run_at, undefined);
+});
+
+test('schedule time: a reset that runs into a later projected empty waits for the weekly reset', () => {
+  const burning = account({
+    five_hour: { used_pct: 100, resets_at: '2026-11-19T22:00:00.000Z' },
+    projected_weekly_empty_at: '2026-11-19T21:00:00.000Z',
+  });
+  const r = sp.checkScheduleCaller(tokenlayer([burning]), claudeCaller, FIRE);
+  assert.equal(r.decision, 'schedule-after-reset');
+  assert.equal(r.run_at, '2026-11-22T00:00:00.000Z');
+});
+
+test('schedule time CLI: --caller prints the decision; refuse exits 3', () => {
+  mkdirSync(join(root, 'docs.local/w263'), { recursive: true });
+  const dir = mkdtempSync(join(root, 'docs.local/w263/cli-'));
+  try {
+    const cli = join(root, 'scripts/schedule-provider.mjs');
+    const usagePath = join(dir, 'usage.json');
+    writeFileSync(usagePath, JSON.stringify({ ...tokenlayer([fullClaude]), vendors: { codex: vendor() } }));
+    const later = spawnSync('node', [cli, '--at', FIRE, '--usage', usagePath, '--caller', 'claudeAgent:claude-opus-5-5'], { encoding: 'utf8' });
+    assert.equal(later.status, 0, later.stderr);
+    assert.equal(JSON.parse(later.stdout).decision, 'schedule-after-reset');
+    writeFileSync(usagePath, JSON.stringify({ ...tokenlayer([account()]), stale: true }));
+    const refused = spawnSync('node', [cli, '--at', FIRE, '--usage', usagePath, '--caller', 'claudeAgent'], { encoding: 'utf8' });
+    assert.equal(refused.status, 3, refused.stderr);
+    assert.equal(JSON.parse(refused.stdout).decision, 'refuse');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

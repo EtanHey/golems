@@ -1,7 +1,14 @@
 #!/usr/bin/env node
-// AIDEV-NOTE: Pick a provider for a T3 schedule_task so the task never sits on a provider that is
-// out of usage at fire time. Pure helpers plus a small CLI; /agent-routing § T3-native dispatch #11
-// is the rule that calls it. Signals:
+// AIDEV-NOTE: Usage checks for a T3 schedule_task. schedule_task has NO provider or model field: a
+// scheduled run takes the CALLER thread's modelSelection, else the project default (t3code
+// packages/contracts/src/orchestratorMcp.ts OrchestratorMcpScheduleTaskInput;
+// apps/server/src/mcp/OrchestratorMcpService.ts `parent?.thread.modelSelection ?? projectDefaultModelSelection`).
+// So there are two checks, both in this file; /agent-routing § T3-native dispatch #11 calls them:
+//   1. Schedule time, checkScheduleCaller (--caller): will the caller's own provider have usage at
+//      fire time? schedule-now / schedule-after-reset (run_at) / refuse.
+//   2. Fire time, pickScheduleProvider (candidates): inside the scheduled prompt, before its
+//      delegate_task, pick a provider with usage and name a fallback.
+// Signals:
 //   - TokenLayer usage.json, Claude hub accounts: accounts[].{status, disabled,
 //     five_hour.{used_pct,resets_at}, weekly.{used_pct,resets_at}, projected_weekly_empty_at}, stale.
 //   - TokenLayer usage.json `vendors.<driver>` (codex, cursor, antigravity, kiro):
@@ -171,11 +178,48 @@ export function pickScheduleProvider(usage, candidates, at) {
   return result;
 }
 
+/**
+ * Schedule-time check. The scheduled run will use the CALLER's provider (T3 has no provider field),
+ * so only the caller's usage at fire time matters here; other providers are chosen later, at fire
+ * time, by pickScheduleProvider inside the scheduled prompt.
+ * `usage` is raw TokenLayer usage.json (re-read at each later reset); `extra` is a merged usage map
+ * from capabilities or --out. Returns {decision: 'schedule-now' | 'schedule-after-reset' | 'refuse'},
+ * with run_at for schedule-after-reset and a reason for refuse (`unknown: ...` when usage is unknown,
+ * which is never room).
+ */
+export function checkScheduleCaller(usage, caller, at, extra = {}) {
+  if (!caller || typeof caller.provider !== 'string' || !caller.provider) throw new Error('caller needs a provider');
+  const fireMs = ms(at, 'at');
+  let atMs = fireMs;
+  for (let hop = 0; hop < 8; hop++) {
+    const map = mergeUsage(usageFromTokenlayer(usage, iso(atMs)), extra);
+    const a = assess(map, caller, atMs);
+    if (a.usable && a.verified) {
+      return atMs === fireMs
+        ? { decision: 'schedule-now', caller, at: iso(fireMs) }
+        : { decision: 'schedule-after-reset', caller, at: iso(fireMs), run_at: iso(atMs),
+          reason: `${caller.provider} is out of usage at ${iso(fireMs)}; it resets at ${iso(atMs)}` };
+    }
+    if (a.usable) {
+      const why = a.entry?.reason ?? `no usage signal for ${caller.provider}`;
+      return { decision: 'refuse', caller, at: iso(fireMs),
+        reason: `unknown: ${why}; schedule from a thread whose provider has known usage at ${iso(atMs)}` };
+    }
+    const next = a.entry.resets_at ? ms(a.entry.resets_at, 'resets_at') : NaN;
+    if (!Number.isFinite(next) || next <= atMs) {
+      return { decision: 'refuse', caller, at: iso(fireMs),
+        reason: `${caller.provider} is ${a.entry.state} at ${iso(atMs)} with no known reset${a.entry.reason ? ` (${a.entry.reason})` : ''}; schedule from a thread whose provider has usage then` };
+    }
+    atMs = next;
+  }
+  return { decision: 'refuse', caller, at: iso(fireMs), reason: `${caller.provider} keeps hitting limits after ${iso(atMs)}` };
+}
+
 function parseArgs(argv) {
   const opts = { candidates: [], out: [] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (['--at', '--usage', '--capabilities', '--out'].includes(arg)) {
+    if (['--at', '--usage', '--capabilities', '--out', '--caller'].includes(arg)) {
       const value = argv[++i];
       if (value === undefined) throw new Error(`${arg} needs a value`);
       if (arg === '--out') opts.out.push(value);
@@ -188,18 +232,26 @@ function parseArgs(argv) {
     }
   }
   if (!opts.at) throw new Error('--at <ISO fire time> is required');
+  if (opts.caller && opts.candidates.length) throw new Error('--caller (schedule-time check) takes no candidates');
   return opts;
 }
 
 function main(argv) {
   const opts = parseArgs(argv);
   const maps = [];
-  if (opts.usage) maps.push(usageFromTokenlayer(JSON.parse(readFileSync(opts.usage, 'utf8')), opts.at));
+  const raw = opts.usage ? JSON.parse(readFileSync(opts.usage, 'utf8')) : null;
+  if (raw && !opts.caller) maps.push(usageFromTokenlayer(raw, opts.at));
   if (opts.capabilities) maps.push(usageFromCapabilities(JSON.parse(readFileSync(opts.capabilities, 'utf8'))));
   for (const spec of opts.out) {
     const at = spec.lastIndexOf('@');
     if (at <= 0) throw new Error(`--out wants <provider[/model]>@<reset ISO>, got ${spec}`);
     maps.push({ [spec.slice(0, at)]: { state: 'exhausted', resets_at: iso(ms(spec.slice(at + 1), '--out reset')) } });
+  }
+  if (opts.caller) {
+    const [provider, ...model] = opts.caller.split(':');
+    const result = checkScheduleCaller(raw, { provider, model: model.join(':') || undefined }, opts.at, mergeUsage(...maps));
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return result.decision === 'refuse' ? 3 : 0;
   }
   const result = pickScheduleProvider(mergeUsage(...maps), opts.candidates, opts.at);
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
