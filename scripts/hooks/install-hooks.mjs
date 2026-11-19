@@ -101,6 +101,23 @@ function parseArgs(argv) {
   return o;
 }
 
+// Set on the one re-exec after --update --apply moves the pin (see install()).
+const REEXEC_ENV = "GOLEMS_HOOKS_REEXEC";
+// The same args, with --update pinned to the sha this run moved to (origin/master
+// may move again) and --restore-live dropped (it already ran before the move).
+export function reexecArgs(argv, sha) {
+  const out = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--restore-live") continue;
+    if (argv[i] === "--update") {
+      if (argv[i + 1] && !argv[i + 1].startsWith("--")) i++;
+      continue;
+    }
+    out.push(argv[i]);
+  }
+  return [...out, "--update", sha];
+}
+
 function stamp() {
   return new Date().toISOString().replace(/[:.]/g, "").replace("T", "-").slice(0, 17);
 }
@@ -614,7 +631,20 @@ async function install(o) {
     purgeBytecode(ctx.live, importDirs(ctx));
     if (result.status !== 0) die("private regression gate refused; hooks-live and host configuration untouched");
   }
+  const before = liveHead(ctx.live);
   console.log(pinLive(o, ctx.live, sha, importDirs(ctx)));
+  // AIDEV-NOTE: this process holds the installer modules it loaded BEFORE the
+  // pin moved, so it would write settings in the old command format. Once
+  // --update --apply moves the pin, the moved checkout's installer does the
+  // writes: re-exec it once (the guard env stops a second hop), pinned to this
+  // exact sha. --restore-live already ran here, before the move.
+  const pinned = path.join(ctx.live, "scripts/hooks/install-hooks.mjs");
+  if (o.apply && o.update && before !== sha && !process.env[REEXEC_ENV] && existsSync(pinned)) {
+    console.log(`hooks-live: moved; applying with the installer at ${sha}`);
+    const r = spawnSync(process.execPath, [pinned, ...reexecArgs(process.argv.slice(2), sha)],
+      { stdio: "inherit", env: { ...process.env, [REEXEC_ENV]: sha } });
+    return r.status ?? 1;
+  }
   const refused = ctx.golems.filter((g) => !pinReady(o, sha, g));
   for (const e of refused) {
     console.log(`REFUSED ${e.id}: ${e.requiresPin} has no owner fingerprint at ${sha}; ${o.apply ? "unlinked and deregistered" : "would be unlinked and deregistered"}. `
