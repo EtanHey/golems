@@ -12,6 +12,8 @@ from functools import lru_cache
 
 from . import shell_parse
 from .trash import trash_move, literal_trash_syntax
+from .move_glob import expand_move_glob
+from .branch_move import checked_out_branch_move_reason
 from .paths import (
     _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason,
     _rm_exact_target_reason, _rm_allows_ignored_directory,
@@ -827,6 +829,9 @@ def _rm_reason_in_words(
                 path = parent if parent != path else None
         return None
 
+    if api["git_family"](words[position]) is not None:
+        return checked_out_branch_move_reason(api, words, position, cwd, argument_variables)
+
     if command_name in {"mv", "ln", "cp"}:
         args = words[position + 1:]
         operands = []
@@ -864,13 +869,21 @@ def _rm_reason_in_words(
                     protected_cwd, _created_paths, syntax_safe=trash_syntax_safe)
                 if refusal:
                     return refusal
-                for source in sources:
-                    reason = _created_target_reason(api, source, cwd, argument_variables, _created_paths)
-                    if reason:
-                        return reason
-                    reason = api["_rm_target_reason"](source, cwd, argument_variables, protected_cwd, protected_only=True)
-                    if reason and not trash_admitted:
-                        return "protected root used by move or symbolic link"
+                for operand in sources:
+                    # A `*`/`?` glob is judged by its real matches; an earlier
+                    # path creation under its directory leaves it unresolved.
+                    glob = expand_move_glob(operand, cwd, argument_variables)
+                    if glob is not None:
+                        reason = _created_target_reason(api, glob[1], cwd, argument_variables, _created_paths)
+                        if reason:
+                            return reason
+                    for source in glob[0] if glob is not None else [operand]:
+                        reason = _created_target_reason(api, source, cwd, argument_variables, _created_paths)
+                        if reason:
+                            return reason
+                        reason = api["_rm_target_reason"](source, cwd, argument_variables, protected_cwd, protected_only=True)
+                        if reason and not trash_admitted:
+                            return "protected root used by move or symbolic link"
             destination_operand = destination_option or operands[-1]
             if command_name == "ln" and not destination_option and len(operands) == 1:
                 destination_operand = os.path.basename(operands[0].rstrip("/"))
