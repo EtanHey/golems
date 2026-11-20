@@ -117,6 +117,55 @@ class AgentSocket(unittest.TestCase):
         self.assertEqual(self.probed(), [str(current), os.path.realpath(agent)])
         self.assertEqual(self.run_hook()[0], 0)
 
+    def test_identity_agent_inline_comments_choose_configured_socket(self):
+        current = self.bind(self.home / 'cur.sock')
+        agent = self.bind(self.home / 'ia/agent.sock', holds=self.pub)
+        decoy = self.bind(Path(str(agent) + ' # comment'), holds=self.pub)
+        config = self.home / '.ssh/config'
+        config.parent.mkdir()
+        for value in (f'{agent} # comment', f'"{agent}" # comment'):
+            with self.subTest(value=value):
+                config.write_text(f'Host * # defaults\n IdentityAgent {value}\n')
+                self.issue(current)
+                self.assertEqual(self.module.identity_agent(self.home), agent)
+                self.assertEqual(self.calls[-1]['SSH_AUTH_SOCK'], os.path.realpath(agent))
+                self.assertNotIn(str(decoy), self.probed())
+
+    def test_identity_agent_quoted_hash_is_literal(self):
+        current = self.bind(self.home / 'cur.sock')
+        agent = self.bind(self.home / 'ia/agent # literal.sock', holds=self.pub)
+        self.identity_agent(agent)
+        config = self.home / '.ssh/config'
+        config.write_text(config.read_text().rstrip() + ' # comment\n')
+        self.assertEqual(self.module.identity_agent(self.home), agent)
+        self.issue(current)
+        self.assertEqual(self.calls[-1]['SSH_AUTH_SOCK'], os.path.realpath(agent))
+
+    def test_identity_agent_matches_native_ssh_comment_and_quote_grammar(self):
+        config = self.home / '.ssh/config'
+        config.parent.mkdir()
+        for value in ('/synthetic/agent.sock # comment',
+                      '"/synthetic/agent.sock" # comment',
+                      '"/synthetic/agent # literal.sock" # comment',
+                      '/synthetic/agent#literal.sock',
+                      "'/synthetic/agent.sock' # comment",
+                      r'/synthetic/agent\ name.sock # comment',
+                      r'"/synthetic/agent\ name.sock" # comment'):
+            with self.subTest(value=value):
+                config.write_text(f'Host * # defaults\n IdentityAgent {value}\n')
+                native = subprocess.run(['/usr/bin/ssh', '-G', '-F', str(config), 'fixture.invalid'],
+                                        capture_output=True, text=True, check=True)
+                expected = next(line.removeprefix('identityagent ') for line in native.stdout.splitlines()
+                                if line.startswith('identityagent '))
+                self.assertEqual(str(self.module.identity_agent(self.home)), expected)
+
+    def test_refusal_outside_home_displays_names_only(self):
+        # Synthetic absolute paths: neither parent directories nor fixture HOME may leak.
+        self.identity_agent('/synthetic/private/configured.sock')
+        message = self.refused('/synthetic/private/current.sock', 'current.sock', 'configured.sock')
+        self.assertNotIn('/synthetic/private', message)
+        self.assertNotIn(str(self.home), message)
+
     def test_onepassword_default_socket_when_config_names_none(self):
         current = self.bind(self.home / 'cur.sock')
         agent = self.bind(self.home / ONEPASSWORD, holds=self.pub)
@@ -128,7 +177,8 @@ class AgentSocket(unittest.TestCase):
         current = self.bind(self.home / 'cur.sock')
         configured = self.bind(self.home / 'ia/agent.sock')
         self.identity_agent(configured)
-        message = self.refused(current, str(current), str(configured), str(self.home / ONEPASSWORD))
+        message = self.refused(current, '~/cur.sock', '~/ia/agent.sock', '~/' + ONEPASSWORD)
+        self.assertNotIn(str(self.home), message)
         self.assertIn('unlock 1Password', message)
 
     def test_non_socket_or_foreign_candidate_refused(self):

@@ -16,6 +16,8 @@ terminal you control, outside any agent. `SKILL.md` describes what the gate enfo
   (`~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock`). It uses a socket only
   if you own it and it lists exactly this key, and only for the signing step. If no agent has
   the key, it stops before writing a token and names the key fingerprint and every socket it tried.
+  Socket diagnostics use `~`-relative paths inside your home and names only elsewhere.
+  Inline SSH config comments are ignored; a quoted `#` remains part of the socket name.
 
 ## 2. Lead signing key
 - Run `scripts/golems-lead-keygen` once. It creates

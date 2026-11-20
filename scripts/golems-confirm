@@ -63,6 +63,29 @@ def agent_lists(sock, key):
     return listed.returncode == 0 and any(tuple(line.split()[:2]) == key for line in listed.stdout.splitlines())
 
 
+def ssh_config_words(value):
+    """Split SSH arguments; a comment starts at an unquoted token boundary."""
+    quote = None
+    escaped = False
+    for i, char in enumerate(value):
+        if escaped:
+            escaped = False
+        elif char == '\\' and quote != "'":
+            escaped = True
+        elif quote:
+            if char == quote:
+                quote = None
+        elif char in ('"', "'"):
+            quote = char
+        elif char == '#' and (i == 0 or value[i - 1].isspace()):
+            value = value[:i]
+            break
+    try:
+        return shlex.split(value, comments=False)
+    except ValueError:
+        return []  # malformed quoting is never a socket candidate
+
+
 def identity_agent(home):
     """The `Host *` IdentityAgent from ~/.ssh/config (first value wins, as in ssh), or None."""
     try:
@@ -74,12 +97,14 @@ def identity_agent(home):
         row = re.match(r'\s*([A-Za-z]+)(?:\s*=\s*|\s+)(.*?)\s*$', line)
         if not row or line.lstrip().startswith('#'):
             continue
-        word, value = row.group(1).lower(), row.group(2)
+        word, values = row.group(1).lower(), ssh_config_words(row.group(2))
         if word in ('host', 'match'):
-            patterns = value.split()
+            patterns = values
             applies = word == 'host' and '*' in patterns and not any(p.startswith('!') for p in patterns)
         elif word == 'identityagent' and applies:
-            value = value[1:-1] if len(value) > 1 and value[0] == value[-1] == '"' else value
+            if len(values) != 1:
+                return None
+            value = values[0]
             if value.lower() == 'none' or value == 'SSH_AUTH_SOCK' or '$' in value or '%' in value:
                 return None  # disabled, or an expansion we do not reimplement
             path = home / value[2:] if value.startswith('~/') else Path(value)
@@ -95,13 +120,24 @@ def fingerprint(key):
     return 'SHA256:' + base64.b64encode(digest).decode().rstrip('=')
 
 
+def socket_label(path, home):
+    """Keep failure diagnostics copyable without disclosing absolute directories."""
+    if not path:
+        return '(unset)'
+    path = Path(os.path.abspath(path))
+    try:
+        return '~/' + str(path.relative_to(home))
+    except ValueError:
+        return path.name
+
+
 def signing_env(key_text, home):
     """None keeps our environment; else a copy whose SSH_AUTH_SOCK holds the key, for the child."""
     key = tuple(key_text.split()[:2])
     current = os.environ.get('SSH_AUTH_SOCK')
     if current and agent_lists(current, key):
         return None
-    tried = [f'SSH_AUTH_SOCK {current or "(unset)"}: key not listed']
+    tried = [f'SSH_AUTH_SOCK {socket_label(current, home)}: key not listed']
     configured = identity_agent(home)
     candidates = [('~/.ssh/config IdentityAgent', configured)] if configured else []
     for label, path in candidates + [('1Password agent', home / ONEPASSWORD_AGENT)]:
@@ -115,7 +151,7 @@ def signing_env(key_text, home):
             reason = 'missing'
         if reason is None:
             return dict(os.environ, SSH_AUTH_SOCK=real)
-        tried.append(f'{label} {path}: {reason}')
+        tried.append(f'{label} {socket_label(path, home)}: {reason}')
     raise ValueError(f'no SSH agent lists the signing key {fingerprint(key)}. Tried:\n  ' + '\n  '.join(tried)
                      + '\nFix: unlock 1Password and enable its SSH agent, or set SSH_AUTH_SOCK '
                        'to the agent that holds this key.')
