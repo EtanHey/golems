@@ -205,6 +205,21 @@ class BranchCleanup(unittest.TestCase):
                                           'topic', self.head, 'main', main, [])
         self.assertEqual(proof, '')
 
+    def test_partial_write_rollback_preserves_existing_receipts(self):
+        self.policy.record(self.home, 'EtanHey/example', 'saved', self.base, rule='merged-on-main', proof='ancestor')
+        receipt = self.home / '.golems/branch-archive/deletes.jsonl'
+        before = receipt.read_bytes()
+        original = self.policy.os.write
+        calls = []
+        def interrupted(fd, data):
+            calls.append(1)
+            if len(calls) == 1:
+                return original(fd, data[:17])
+            raise OSError('fixture partial write')
+        with patch.object(self.policy.os, 'write', side_effect=interrupted):
+            self.assertFalse(self.policy.allowed('git branch -D topic', self.repo))
+        self.assertEqual(receipt.read_bytes(), before)
+
     def helper(self):
         import shlex
         self.git('config', 'remote.origin.url', self.repo)

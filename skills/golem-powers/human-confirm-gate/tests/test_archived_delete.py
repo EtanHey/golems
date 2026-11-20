@@ -236,7 +236,20 @@ def test_real_merged_proof_ignores_path_gh(cell, monkeypatch):
     # This executable stands for the fixed, trusted gh, returning no merged PR.
     trusted = home / 'trusted-gh'
     trusted.write_text("#!/bin/sh\nprintf '[]'\n"); trusted.chmod(0o700)
-    monkeypatch.setattr(branch_cleanup, '_trusted_gh', lambda: str(trusted), raising=False)
+    # Exercise the real fixed-candidate selector too. Only OS observations and
+    # execution of those fixed host paths are redirected to this fixture.
+    trusted_info = trusted.stat()
+    original_stat, original_run = os.stat, subprocess.run
+    def fixture_stat(path, *args, **kwargs):
+        if str(path) in tokens.GH_CANDIDATES:
+            return trusted_info
+        return original_stat(path, *args, **kwargs)
+    def fixture_run(argv, *args, **kwargs):
+        if argv[0] in tokens.GH_CANDIDATES:
+            argv = [str(trusted), *argv[1:]]
+        return original_run(argv, *args, **kwargs)
+    monkeypatch.setattr(os, 'stat', fixture_stat)
+    monkeypatch.setattr(subprocess, 'run', fixture_run)
     monkeypatch.setenv('PATH', str(fakebin) + os.pathsep + os.environ['PATH'])
     command = f'git push --force-with-lease=refs/heads/{BRANCH}:{sha} fork :refs/heads/{BRANCH}'
     rc, reason = decision(cell, monkeypatch, command)

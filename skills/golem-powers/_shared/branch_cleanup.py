@@ -4,6 +4,8 @@ One literal command only: aliases, wrappers, config overrides, bulk operations,
 implicit destinations and dynamic shell scope retain the normal approval gate.
 """
 import json
+import fcntl
+import importlib.util
 from fnmatch import fnmatchcase
 import os
 import re
@@ -15,10 +17,25 @@ from pathlib import Path
 from urllib.parse import quote
 
 
+def _trusted_gh():
+    # Reuse the gate's fixed Homebrew candidates and ownership/mode checks.
+    # Load by this release tree's path: standalone guardian/default hooks do
+    # not necessarily have the confirmation hook directory on sys.path.
+    source = Path(__file__).resolve().parents[1] / 'human-confirm-gate/hooks/tokens.py'
+    spec = importlib.util.spec_from_file_location('_branch_cleanup_tokens', source)
+    tokens = importlib.util.module_from_spec(spec)
+    exec(compile(source.read_bytes(), str(source), 'exec'), tokens.__dict__)
+    return tokens.trusted_binary(tokens.GH_CANDIDATES)
+
+
 def _run(argv, cwd):
-    argv = ['/usr/bin/git', *argv[1:]] if argv[0] == 'git' else argv
+    if argv[0] == 'git': argv = ['/usr/bin/git', *argv[1:]]
+    elif argv[0] == 'gh': argv = [_trusted_gh(), *argv[1:]]
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith('GIT_') and k not in ('GH_HOST', 'GH_REPO')}
+    env.update(GIT_NO_REPLACE_OBJECTS='1', GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull)
     result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True,
-                            timeout=2, check=True)
+                            timeout=2, check=True, env=env)
     return result.stdout.strip()
 
 
@@ -88,25 +105,59 @@ def _plan(command, cwd):
     return None
 
 
+class ReceiptError(OSError):
+    """Persistence failure, distinct from missing merge evidence."""
+
+
+def receipt_row(target, branch, sha, path=None, digest=None, **extra):
+    return dict(event='allowed_attempt', time=time.time(), repo=target, branch=branch, sha=sha,
+                bundle=str(path) if path is not None else None, bundle_sha256=digest, **extra)
+
+
 def record(home, target, branch, sha, path=None, digest=None, **extra):
-    """Durably record an allowed attempt; never claim the delete executed."""
+    """Durably record one attempt through the same transaction as bulk deletes."""
+    record_rows(home, [receipt_row(target, branch, sha, path, digest, **extra)])
+
+
+def record_rows(home, rows):
+    """Append all rows under one lock; restore the old length on write failure."""
+    try:
+        _record_rows(home, rows)
+    except (OSError, ValueError) as exc:
+        raise ReceiptError('could not save branch deletion receipt') from exc
+
+
+def _record_rows(home, rows):
     root = home / '.golems/branch-archive'
     for directory in (root.parent, root):
         directory.mkdir(mode=0o700, exist_ok=True)
         info = directory.lstat()
         if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o022:
             raise ValueError('unsafe receipt directory')
-    fd = os.open(root / 'deletes.jsonl', os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
-    with os.fdopen(fd, 'a') as stream:
+    data = ''.join(json.dumps(row, separators=(',', ':')) + '\n' for row in rows).encode()
+    fd = os.open(root / 'deletes.jsonl', os.O_RDWR | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    with os.fdopen(fd, 'r+b', buffering=0):
         info = os.fstat(fd)
         if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
                 or stat.S_IMODE(info.st_mode) not in (0o600, 0o644)):
             raise ValueError('unsafe receipt')
-        row = dict(event='allowed_attempt', time=time.time(), repo=target, branch=branch, sha=sha,
-                   bundle=str(path) if path is not None else None, bundle_sha256=digest, **extra)
-        stream.write(json.dumps(row, separators=(',', ':')) + '\n')
-        stream.flush()
-        os.fsync(fd)
+        # Nonblocking admission keeps the hook inside its time budget. All
+        # writers (archived, merged and reconstructed) use this same lock.
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        start = os.fstat(fd).st_size
+        try:
+            pending = memoryview(data)
+            while pending:
+                written = os.write(fd, pending)
+                if written <= 0: raise OSError('short receipt write')
+                pending = pending[written:]
+            os.fsync(fd)
+        except BaseException:
+            os.ftruncate(fd, start)
+            # Preserve the original failure even if syncing rollback fails.
+            try: os.fsync(fd)
+            except OSError: pass
+            raise
 
 
 def proof_at_head(run, cwd, repo, branch, sha, default, default_sha, prs):
@@ -137,7 +188,7 @@ def merged_proof(cwd, repo, remote, branch, sha, default):
     return proof_at_head(_run, cwd, repo, branch, sha, default, default_sha, prs)
 
 
-def allowed(command, cwd, *, home=None, write_receipt=True):
+def allowed(command, cwd, *, home=None, write_receipt=True, raise_on_receipt_error=False):
     """True only with fresh, owned, unprotected, exact-commit evidence.
 
     Receipt failures return False, including a missing remote branch/protection
@@ -220,8 +271,11 @@ def allowed(command, cwd, *, home=None, write_receipt=True):
                 current = run(['git', 'ls-remote', '--exit-code', '--heads', 'origin', 'refs/heads/' + branch], cwd).split()[0]
             if current != sha: return False
         if write_receipt:
-            for branch, sha, proof in heads:
-                record(home or Path.home(), repo, branch, sha, rule='merged-on-main', proof=proof)
+            record_rows(home or Path.home(), [receipt_row(repo, branch, sha, rule='merged-on-main', proof=proof)
+                                             for branch, sha, proof in heads])
         return True
+    except ReceiptError:
+        if raise_on_receipt_error: raise
+        return False
     except (ValueError, TypeError, KeyError, IndexError, AttributeError, OSError, subprocess.SubprocessError):
         return False

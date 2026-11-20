@@ -81,10 +81,15 @@ def evaluate(payload, home, *, archive_check_only=False):
     from commands import PolicyWriteRefused, operations, shell
     from tokens import authorize, own_lease_scope
     with shell.policy_evaluation_deadline(8):
-        from branch_cleanup import allowed as branch_cleanup_allowed, _plan
-        if branch_cleanup_allowed(args['command'], payload['cwd'], home=home,
-                                  write_receipt=not archive_check_only):
-            return
+        from branch_cleanup import allowed as branch_cleanup_allowed, _plan, ReceiptError
+        try:
+            if branch_cleanup_allowed(args['command'], payload['cwd'], home=home,
+                                      write_receipt=not archive_check_only, raise_on_receipt_error=True):
+                return
+        except ReceiptError as exc:
+            # A persistence failure is a terminal refusal, never an invitation
+            # to retry the same receipt through the archived-delete fallback.
+            raise ConfirmationRequired('Blocked: could not save the branch deletion receipt.') from exc
         # Local force deletes are absent from operations(): preserve refusal
         # if proof or receipt persistence failed, instead of falling through.
         cleanup_plan = _plan(args['command'], payload['cwd'])

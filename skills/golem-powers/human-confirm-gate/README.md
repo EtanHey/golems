@@ -122,7 +122,9 @@ records an allowed attempt, not proof that Git subsequently deleted the branch.
 Git-guardian validates the exact shape through the same confirmation hook using
 `--archive-check-only`: it writes no receipt. The mandatory gate hook writes
 the single allowed-attempt row for merged or archived deletes; guardian and default-checkout validation write no receipt.
-A caller-supplied payload cannot select check-only mode. Failure to write refuses.
+A caller-supplied payload cannot select check-only mode. A receipt failure refuses without retrying through another rule.
+Rows for one command append under a nonblocking exclusive file lock; write or fsync failure truncates to the starting length, preserving earlier receipts.
+Merge proof reads use the same fixed Homebrew gh candidates and ownership checks as the gate; Git reads ignore replace refs and inherited Git environment overrides.
 The guardian selects an eight-second deadline only for this exact candidate shape;
 its nested check times out after seven seconds, inside the nine-second installed
 watchdog and ten-second harness budget. Ordinary commands keep three seconds.
