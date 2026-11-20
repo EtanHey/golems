@@ -13,11 +13,13 @@ producer), the guard cannot tell which branches it moves and refuses.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 
 from .paths import _expand_tilde
 from .branch_aliases import (AliasUnknown, git_alias, shell_alias_bodies,
-                             alias_input_is_unseen, inspect_shell_alias, shell_alias_context_uncertain)
+                             alias_input_is_unseen, inspect_shell_alias, shell_alias_context_uncertain,
+                             literal_listing_patterns)
 from .update_ref_stdin import ANY_REF, NO_DEREF, visible_targets, with_raw_command
 
 # Reads as reset --hard in the hook's operation names; never says "local branch".
@@ -61,6 +63,36 @@ def _branch_targets(arguments: list[str]) -> list[str]:
         forced = force or set(flags) & set("MC")
         return [f"refs/heads/{positionals[-1]}"] if forced and positionals else []
     return [f"refs/heads/{positionals[0]}"] if force and positionals else []
+
+
+def _listing_requested(arguments):
+    listing, index = False, 0
+    query_values = _BRANCH_WITH_VALUE - {'-u', '--set-upstream-to'}
+    query_flags = {'--all', '--remotes', '--verbose', '--no-verbose', '--quiet',
+                   '--no-quiet', '--ignore-case', '--no-ignore-case', '--color',
+                   '--no-color', '--column', '--no-column', '--abbrev', '--no-abbrev',
+                   '--show-current', '--no-show-current', '--omit-empty', '--no-omit-empty'}
+    while index < len(arguments):
+        word = arguments[index]
+        index += 1
+        if word == '--':
+            break
+        option = word.split('=', 1)[0]
+        if option in query_values:
+            index += '=' not in word
+        elif word == '--list':
+            listing = True
+        elif word == '--no-list':
+            listing = False
+        elif word.startswith('--'):
+            if option not in query_flags:
+                return False  # unknown/abbreviated options retain the conservative guard
+        elif word.startswith('-') and word != '-':
+            if not re.fullmatch(r'-[alrvqi]+', word):
+                return False
+            if 'l' in word[1:]:
+                listing = True
+    return listing
 
 
 def _created_branch(arguments: list[str], short: str, long: str | None = None) -> list[str]:
@@ -233,9 +265,9 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
         if expanded:
             family, arguments = expanded[0], expanded[1:]
     literal_targets = _targets(family, arguments)
-    options = arguments[:arguments.index("--")] if "--" in arguments else arguments
-    if (family == "branch" and "--list" in options and not literal_targets
-            and not any("$" in word or "`" in word for word in arguments)):
+    if (family == "branch" and _listing_requested(arguments) and not literal_targets
+            and not any("$" in word or "`" in word for word in arguments)
+            and literal_listing_patterns(api)):
         return None  # a literal listing pattern is data, not a mutation option
 
     # An expansion may supply the force option itself (or an entire argv array),

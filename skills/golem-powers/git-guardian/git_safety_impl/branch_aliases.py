@@ -13,6 +13,7 @@ from .update_ref_stdin import RAW_COMMAND
 
 
 _ALIAS_INPUT = contextvars.ContextVar("branch_alias_input_unseen", default=False)
+_ALIAS_LISTING_LITERAL = contextvars.ContextVar("branch_alias_listing_literal", default=None)
 
 
 class AliasUnknown(ValueError):
@@ -120,11 +121,32 @@ def inspect_shell_alias(api, body, cwd, variables, depth):
     if any(active and (token in {'eval', 'source', '.'} or '$' in token or '`' in token)
            for token, active in zip(tokens, positions)):
         raise AliasUnknown
+    literal = literal_listing_patterns(api)
     token = _ALIAS_INPUT.set(True)
+    listing_token = _ALIAS_LISTING_LITERAL.set(None)
     try:
         if shell_alias_context_uncertain():
             variables = {**variables, '__GUARDIAN_ALIAS_CWD': None}
             body = 'cd "$__GUARDIAN_ALIAS_CWD"; ' + body
+        _ALIAS_LISTING_LITERAL.set((body, literal))
         return api['_is_dangerous_rm_at_depth'](body, cwd=cwd, env=variables, _depth=depth + 1)
     finally:
+        _ALIAS_LISTING_LITERAL.reset(listing_token)
         _ALIAS_INPUT.reset(token)
+
+
+def literal_listing_patterns(api):
+    """A listing waiver never admits an unquoted glob that can become options."""
+    inherited = _ALIAS_LISTING_LITERAL.get()
+    command = RAW_COMMAND.get()
+    if inherited is not None and command is inherited[0]:
+        return inherited[1]
+    if command is None:
+        return False
+    active = api["_shell_text_with_comments_blanked"](shell_parse.shell_text_without_heredoc_bodies(command))
+    if any(char in shell_parse._blank_quoted(active) for char in '*?['):
+        return False
+    # Alias definition quotes protect definition text, not its later execution.
+    tokens, _positions, _segments, _scopes = shell_parse._parse_bash(active)
+    return not any('=' in token and any(char in shell_parse._blank_quoted(token.split('=', 1)[1])
+                                       for char in '*?[') for token in tokens)

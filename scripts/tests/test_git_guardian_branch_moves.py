@@ -373,3 +373,45 @@ def test_r1_listing_token_after_separator_cannot_waive_dynamic_options(repo):
     home, root = repo
     code, decision = hook('git branch * -- --list', root, home)
     assert code == 2 and decision['decision'] == 'block'
+
+
+@pytest.mark.parametrize('command', [
+    "git branch -l 'feat*'",
+    "git branch -vl --format='%(refname:short)' 'feat*'",
+])
+def test_r1_short_listing_patterns_stay_allowed(repo, command):
+    home, root = repo
+    assert hook(command, root, home) == (0, {})
+
+
+@pytest.mark.parametrize('command', [
+    'git branch --list * HEAD~1',
+    'git branch --list --no-list * HEAD~1',
+])
+def test_r1_unquoted_globs_cannot_cancel_listing_mode(repo, command):
+    home, root = repo
+    code, decision = hook(command, root, home)
+    assert code == 2 and decision['decision'] == 'block'
+
+
+
+def test_r1_alias_quote_proof_does_not_cross_shell_execution(repo):
+    home, root = repo
+    command = "shopt -s expand_aliases\nalias peek='bash -c \"git branch --list * HEAD~1\"'\npeek"
+    code, decision = hook(command, root, home)
+    assert code == 2 and decision['decision'] == 'block'
+
+
+
+def test_r1_comment_quotes_cannot_hide_unquoted_listing_globs(repo):
+    home, root = repo
+    code, decision = hook("# '\ngit branch --list * HEAD~1", root, home)
+    assert code == 2 and decision['decision'] == 'block'
+
+
+
+def test_r1_unknown_listing_options_do_not_get_the_pattern_waiver(repo):
+    home, root = repo
+    command = "git branch --list --no-lis --forc main HEAD~1 --format '*'"
+    code, decision = hook(command, root, home)
+    assert code == 2 and decision['decision'] == 'block'
