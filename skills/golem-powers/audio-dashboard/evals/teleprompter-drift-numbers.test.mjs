@@ -83,3 +83,28 @@ test("in the lexical fallback a number span counts as aligned, not three misses"
   expect(result.stats[0].tokenMismatches).toBe(1);
   expect(result.verdict).toBe("PASS");
 });
+
+test("the exact aligner rejects a missing zero before a bare unit", () => {
+  const result = analyzeTeleprompterDrift({ segments: [{
+    id: "missing-zero-exact",
+    sourceWords: [{ word: "dollars", start: 0, end: 1 }],
+    renderedWords: [{ word: "zero", start: 0, end: 0.5 }, { word: "dollars", start: 0.5, end: 1 }],
+  }] });
+  expect(result.verdict).toBe("REJECTED");
+  expect(result.stats[0].tokenMismatches).toBe(1);
+  expect(result.stats[0].unalignedTokenRatio).toBe(0.5);
+  expect(result.violations.map(v => v.code)).toContain("WORD_SEQUENCE_MISMATCH");
+});
+
+test("the lexical fallback rejects a missing zero beside a spelling mismatch", () => {
+  const sourceWords = timed(["Our", "color", "budget", "is", "dollars", "today."], 0, 1);
+  const renderedWords = [
+    ...sourceWords.slice(0, 4).map(word => word.word === "color" ? { ...word, word: "colour" } : word),
+    { word: "zero", start: 4, end: 4.5 }, { word: "dollars", start: 4.5, end: 5 }, sourceWords[5],
+  ];
+  const result = analyzeTeleprompterDrift({ segments: [{ id: "missing-zero-lexical", sourceWords, renderedWords }] });
+  expect(result.verdict).toBe("REJECTED");
+  expect(result.stats[0].tokenMismatches).toBe(2);
+  expect(result.stats[0].unalignedTokenRatio).toBeCloseTo(2 / 7, 3);
+  expect(result.violations.map(v => v.code)).toContain("WORD_SEQUENCE_MISMATCH");
+});
