@@ -22,6 +22,7 @@ RAW_COMMAND = contextvars.ContextVar("git_guardian_update_ref_raw_command", defa
 _MOVES = {"update", "create", "delete", "symref-update", "symref-create", "symref-delete"}
 _READS = {"verify", "symref-verify"}
 _SEPARATOR = set(";&|()")
+NO_DEREF = "\0no-deref:"
 
 
 def _heredocs(command: str):
@@ -146,6 +147,10 @@ def stdin_targets(text: str, no_deref: bool) -> list[str]:
     The text is also read with printf escapes decoded (`%b`, `echo` in zsh), so an
     escaped newline cannot hide a line.
     """
+    # Quoting/expansion of heredocs is not represented in the input record.
+    # Refuse continuations rather than treating split verbs/refs as inert data.
+    if "\\\n" in text:
+        return [ANY_REF]
     decoded = _printf_escape(text)
     return _line_targets(text, no_deref) + (_line_targets(decoded, no_deref) if decoded != text else [])
 
@@ -169,14 +174,17 @@ def _line_targets(text: str, no_deref: bool) -> list[str]:
         next_no_deref = False
         if verb in _READS or len(fields) < 2:
             continue
+        if verb.startswith("symref-"):
+            targets.append(ANY_REF)  # may change later dereferencing in this transaction
+            continue
         ref = fields[1].strip('"').replace("\\", "")
         if "$" in ref or "`" in ref:
             targets.append(ANY_REF)
         if ref == "HEAD":
             if verb.startswith("symref-") or not detached:
                 targets.append("HEAD")
-        elif ref.startswith("refs/heads/"):
-            targets.append(ref)
+        else:
+            targets.append((NO_DEREF if detached else "") + ref)
     return targets
 
 

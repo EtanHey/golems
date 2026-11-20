@@ -16,7 +16,7 @@ import os
 import subprocess
 
 from .paths import _expand_tilde
-from .update_ref_stdin import ANY_REF, visible_targets
+from .update_ref_stdin import ANY_REF, NO_DEREF, visible_targets
 
 # Reads as reset --hard in the hook's operation names; never says "local branch".
 REASON = "Dangerous command: moving a checked-out branch is the same as git reset --hard"
@@ -92,7 +92,7 @@ def _update_ref_targets(arguments: list[str]) -> list[str]:
     ref = positionals[0]
     if ref == "HEAD":
         return [] if no_deref else ["HEAD"]
-    return [ref] if ref.startswith("refs/heads/") else []
+    return [(NO_DEREF if no_deref else "") + ref]
 
 
 def _targets(subcommand: str, arguments: list[str]) -> list[str]:
@@ -104,7 +104,42 @@ def _targets(subcommand: str, arguments: list[str]) -> list[str]:
         return _created_branch(arguments, "-C", "--force-create")
     if subcommand == "update-ref":
         return _update_ref_targets(arguments)
+    if subcommand == "symbolic-ref":
+        # Creating an alias to a checked-out ref can make a subsequent update
+        # destructive in the same call. Check the destination as well as name.
+        positionals = []
+        index = 0
+        while index < len(arguments):
+            word = arguments[index]
+            if word == "-m":
+                index += 2
+                continue
+            if not word.startswith('-'):
+                positionals.append(word)
+            index += 1
+        return positionals if len(positionals) >= 2 else []
     return []
+
+
+def _resolved_ref(directory: str, ref: str) -> str | None:
+    """Resolve existing symref chains; rc=1 means a literal, nonsymbolic ref.
+
+    Git resolves the chain and rejects cycles. Any other failure is unknown.
+    No user config helpers or inherited Git environment are used.
+    """
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    try:
+        result = subprocess.run(
+            ["/usr/bin/git", "-c", "core.fsmonitor=false", "-C", directory,
+             "symbolic-ref", "-q", "--", ref],
+            env=env, capture_output=True, timeout=1, check=False)
+        if result.returncode == 1:
+            return ref
+        if result.returncode == 0:
+            return os.fsdecode(result.stdout).strip() or None
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return None
 
 
 def _checked_out(directory: str):
@@ -175,6 +210,17 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
             return REASON if targets is not None else STDIN_UNSEEN_REASON
         return None
     for target in targets:
+        no_deref = target.startswith(NO_DEREF)
+        if no_deref:
+            target = target[len(NO_DEREF):]
+        # The shell parser preserves unresolved expansions in operand spelling.
+        # Do not compare them as if they were literal branch/ref names.
+        if any(char in target for char in "$`*?[]{}\\"):
+            return REASON
+        if not no_deref:
+            target = _resolved_ref(directory, target)
+            if target is None:
+                return REASON
         if target == "HEAD" and current is not None:
             return REASON
         if target in branches:

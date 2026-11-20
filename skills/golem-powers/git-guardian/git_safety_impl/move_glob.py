@@ -72,4 +72,6 @@ def expand_move_glob(source: str, cwd: str, variables: dict[str, str]):
             if len(following) > MOVE_GLOB_LIMIT:
                 return None
         candidates = following
-    return candidates, literal
+    # A trailing slash dereferences a matched symlink on macOS mv. Do not
+    # normalize that traversal away before the protected-root check.
+    return ([path + os.sep for path in candidates] if source.endswith('/') else candidates), literal
