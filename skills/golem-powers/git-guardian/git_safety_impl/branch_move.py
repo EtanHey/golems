@@ -189,6 +189,7 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
         if index >= len(arguments):
             return None
         family, arguments = arguments[index], arguments[index + 1:]
+    literal_targets = _targets(family, arguments)
     # An expansion may supply the force option itself (or an entire argv array),
     # before literal target extraction has a chance to recognize the mutation.
     if family in {"branch", "checkout", "switch", "update-ref", "symbolic-ref"}:
@@ -211,6 +212,15 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
         targets = visible_targets(no_deref=targets[0].endswith("-no-deref"))
         if targets == []:
             return None
+    # Quote provenance is intentionally read conservatively. An operand such as
+    # '$REF' can be a literal symbolic ref even when REF has a known assignment.
+    # Check that spelling as well as the expanded argv, without treating an
+    # unexpanded stdin marker as a ref.
+    literal_targets = {target for target in literal_targets
+                       if targets is not None and target not in targets
+                       and not target.startswith(_STDIN)}
+    if targets is not None:
+        targets = targets + list(literal_targets)
     if any(variables.get(name) for name in ("GIT_DIR", "GIT_WORK_TREE")):
         return REASON
     if not directory or not os.path.isdir(directory):
@@ -229,7 +239,7 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
             target = target[len(NO_DEREF):]
         # The shell parser preserves unresolved expansions in operand spelling.
         # Do not compare them as if they were literal branch/ref names.
-        if any(char in target for char in "$`*?[]{}\\"):
+        if target not in literal_targets and any(char in target for char in "$`*?[]{}\\"):
             return REASON
         if not no_deref:
             target = _resolved_ref(directory, target)

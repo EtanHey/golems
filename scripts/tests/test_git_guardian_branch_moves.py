@@ -260,3 +260,10 @@ def test_variable_targets_fail_closed(repo, command):
 def test_expanded_options_cannot_hide_branch_moves(repo, command):
     home, root = repo
     assert hook(command, root, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
+
+
+def test_literal_dollar_ref_is_checked_before_assignment_expansion(repo):
+    home, root = repo
+    git(root, 'symbolic-ref', 'refs/remotes/local/$ALIAS', 'refs/heads/main')
+    command = "ALIAS=other; git update-ref 'refs/remotes/local/$ALIAS' HEAD~1"
+    assert hook(command, root, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
