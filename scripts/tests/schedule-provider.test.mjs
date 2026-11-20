@@ -307,3 +307,79 @@ test('schedule time CLI: --caller prints the decision; refuse exits 3', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+const unknownClaude = account({
+  status: 'unknown',
+  five_hour: { used_pct: null, resets_at: null },
+  weekly: { used_pct: null, resets_at: null },
+});
+
+test('unknown Claude accounts never prove room, alone or beside exhausted/disabled accounts', () => {
+  for (const accounts of [[unknownClaude], [unknownClaude, fullClaude], [unknownClaude, account({ disabled: true })]]) {
+    const usage = { ...tokenlayer(accounts), vendors: { codex: vendor() } };
+    assert.equal(usageFromTokenlayer(usage, FIRE).claudeAgent.state, 'unknown');
+    const caller = sp.checkScheduleCaller(usage, claudeCaller, FIRE);
+    assert.equal(caller.decision, 'refuse');
+    assert.match(caller.reason, /^unknown: /);
+    assert.deepEqual(pickFrom(usage, [opus, codex]).pick, codex);
+  }
+});
+
+test('a known healthy Claude account can serve beside unknown accounts', () => {
+  assert.equal(usageFromTokenlayer(tokenlayer([unknownClaude, account()]), FIRE).claudeAgent.state, 'ok');
+});
+
+test('missing or nonfinite Claude window usage never proves room', () => {
+  for (const changed of [
+    { five_hour: null },
+    { weekly: { used_pct: null, resets_at: null } },
+    { five_hour: { used_pct: NaN, resets_at: null } },
+  ]) {
+    assert.equal(usageFromTokenlayer(tokenlayer([account(changed)]), FIRE).claudeAgent.state, 'unknown');
+  }
+});
+
+const earlier = '2026-11-19T18:00:00.000Z';
+const later = '2026-11-19T23:00:00.000Z';
+const exhausted = resets_at => ({ state: 'exhausted', resets_at });
+
+test('provider and model exhaustions retain every block in either order', () => {
+  for (const [providerReset, modelReset] of [[earlier, later], [later, earlier], [earlier, null], [null, earlier]]) {
+    const usage = { 'codex-worker': exhausted(providerReset), 'codex-worker/gpt-6.1-sol': exhausted(modelReset) };
+    const r = pickScheduleProvider(usage, [codex], FIRE);
+    assert.equal(r.ok, false);
+    assert.equal(r.retry_after, providerReset === null || modelReset === null ? null : later);
+    const caller = sp.checkScheduleCaller(null, codex, FIRE, usage);
+    assert.equal(caller.decision, providerReset === null || modelReset === null ? 'refuse' : 'schedule-after-reset');
+    if (caller.decision === 'schedule-after-reset') assert.equal(caller.run_at, later);
+  }
+});
+
+test('elapsed exhaustion cannot verify an unknown provider or model', () => {
+  for (const [providerEntry, modelEntry] of [
+    [exhausted(earlier), { state: 'unknown' }],
+    [{ state: 'unknown' }, exhausted(earlier)],
+  ]) {
+    const r = pickScheduleProvider({ 'codex-worker': providerEntry, 'codex-worker/gpt-6.1-sol': modelEntry }, [codex], FIRE);
+    assert.equal(r.ok, true);
+    assert.equal(r.unverified, true);
+  }
+});
+
+test('merging exhaustions keeps the latest reset, with unknown end blocking, in either order', () => {
+  for (const [a, b] of [[earlier, later], [later, earlier], [earlier, null], [null, later], [earlier, undefined]]) {
+    const merged = mergeUsage({ 'codex-worker': exhausted(a) }, { 'codex-worker': exhausted(b) });
+    assert.equal(merged['codex-worker'].resets_at, a == null || b == null ? null : later);
+    assert.equal(pickScheduleProvider(merged, [codex], FIRE).ok, false);
+  }
+});
+
+test('CLI refuses provider/model and repeated provider --out ties until the later reset', () => {
+  const cli = join(root, 'scripts/schedule-provider.mjs');
+  for (const second of ['codex/model', 'codex']) {
+    const r = spawnSync('node', [cli, '--at', FIRE, '--out', `codex@${earlier}`, '--out', `${second}@${later}`, 'codex:model'], { encoding: 'utf8' });
+    assert.equal(r.status, 3, r.stderr);
+    assert.equal(JSON.parse(r.stdout).ok, false);
+    assert.equal(JSON.parse(r.stdout).retry_after, later);
+  }
+});
