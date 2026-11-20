@@ -1,4 +1,4 @@
-import { createReadStream, readFileSync } from 'node:fs';
+import { createReadStream, readFileSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { isUtf8 } from 'node:buffer';
@@ -9,8 +9,14 @@ export const SCAN_TIMEOUT_MS = 15_000;
 // Dashboard custody stages these two generated members under the same dashboard
 // ID twice. No other archive member or HTML/JSON path receives this exception.
 function generatedDashboardArtifact(abs) {
-  return abs.startsWith('/') && !abs.split('/').some(part => part === '.' || part === '..') &&
-    /\/docs\.local\/dashboards\/runtime-\d{8}\/archive-((?:[01]\d|2[0-3])[0-5]\d-20\d{2}-\d{2}-\d{2})(?:-tonight)?\/\1\/(?:page\.html|clips\.json)$/.test(abs);
+  if (!abs.startsWith('/') || abs.split('/').some(part => part === '.' || part === '..')) return false;
+  const layout = /\/docs\.local\/dashboards\/runtime-\d{8}\/archive-((?:[01]\d|2[0-3])[0-5]\d-20\d{2}-\d{2}-\d{2})(?:-tonight)?\/\1\/(?:page\.html|clips\.json)$/.exec(abs);
+  if (!layout) return false;
+  try {
+    // Resolve every ancestor even when classification starts at a descendant or
+    // the file itself. Aliasing the repo root is fine; redirecting its layout is not.
+    return realpathSync(abs) === realpathSync(abs.slice(0, layout.index)) + layout[0];
+  } catch { return false; }
 }
 export function encodingMagic(data) {
   const hex = data.subarray(0, 8).toString('hex');

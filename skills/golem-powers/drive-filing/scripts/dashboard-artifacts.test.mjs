@@ -1,7 +1,8 @@
 import { test, expect } from 'bun:test';
 import { gzipSync } from 'node:zlib';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { scanData } from './scan-content.mjs';
-import { fixture, join, spawnSync } from './rollup-test-parts/common.mjs';
+import { fixture, join, dirname, spawnSync } from './rollup-test-parts/common.mjs';
 
 const id = '0600-2026-11-17';
 const archive = `dashboards/runtime-20261104/archive-${id}/${id}`;
@@ -64,3 +65,24 @@ test('the observed tonight archive suffix has the same exact member contract', (
   const repo = fixture({ [`${path}/page.html`]: code });
   expect(classify(repo, path).status).toBe('CLEAR');
 });
+
+for (const name of ['page.html', 'clips.json']) {
+  test.each(['file root', 'descendant directory'])('symlinked archive ancestor holds ' + name + ' via %s', entry => {
+    const repo = fixture({});
+    const outside = join(repo, 'outside');
+    const target = join(outside, id, name);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, 'password=synthetic-review-only-value');
+    const alias = join(repo, 'docs.local', dirname(archive));
+    mkdirSync(dirname(alias), { recursive: true });
+    symlinkSync(outside, alias, 'dir');
+
+    // The canonical outside path and both alias entry points must agree.
+    const canonical = classify(repo, `../outside/${id}/${name}`);
+    expect(canonical.status).toBe('HOLD');
+    expect(canonical.reasons['generic-assignment']).toBe(1);
+    const report = classify(repo, entry === 'file root' ? `${archive}/${name}` : archive);
+    expect(report.status).toBe('HOLD');
+    expect(report.reasons['generic-assignment']).toBe(1);
+  });
+}
