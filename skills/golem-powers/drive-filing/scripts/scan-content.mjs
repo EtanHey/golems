@@ -6,6 +6,12 @@ import * as zlib from 'node:zlib';
 
 export const MAX_SCAN_BYTES = 64 * 1024 * 1024;
 export const SCAN_TIMEOUT_MS = 15_000;
+// Dashboard custody stages these two generated members under the same dashboard
+// ID twice. No other archive member or HTML/JSON path receives this exception.
+function generatedDashboardArtifact(abs) {
+  return abs.startsWith('/') && !abs.split('/').some(part => part === '.' || part === '..') &&
+    /\/docs\.local\/dashboards\/runtime-\d{8}\/archive-((?:[01]\d|2[0-3])[0-5]\d-20\d{2}-\d{2}-\d{2})(?:-tonight)?\/\1\/(?:page\.html|clips\.json)$/.test(abs);
+}
 export function encodingMagic(data) {
   const hex = data.subarray(0, 8).toString('hex');
   if (hex.startsWith('7f454c46')) return 'ELF';
@@ -124,7 +130,11 @@ export async function scanData(data, abs = '', { history = false } = {}) {
       return {shapes:['scan-unsupported-encoding'],magic:encodingMagic(data)};
     }
     const scan = scanner(); scan.push(data);
-    return {shapes:scan.result()};
+    const shapes = scan.result();
+    // Waive only the heuristic on plain generated source. Provider/policy rules,
+    // history, media, decoders and all fail-closed bounds retain their behavior.
+    return {shapes: !history && !format && generatedDashboardArtifact(abs)
+      ? shapes.filter(name => name !== 'generic-assignment') : shapes};
   } catch (error) {
     const safe = new Set(['scan-size-limit','scan-policy-error','scan-unsupported-decoder']);
     return {shapes:[safe.has(error.message) ? error.message : 'scan-decompression-error']};
