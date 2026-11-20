@@ -67,9 +67,11 @@ def ssh_config_words(value):
     """Split SSH arguments; a comment starts at an unquoted token boundary."""
     quote = None
     escaped = False
+    boundary = True
     for i, char in enumerate(value):
         if escaped:
             escaped = False
+            boundary = False
         elif char == '\\' and quote != "'":
             escaped = True
         elif quote:
@@ -77,9 +79,12 @@ def ssh_config_words(value):
                 quote = None
         elif char in ('"', "'"):
             quote = char
-        elif char == '#' and (i == 0 or value[i - 1].isspace()):
+            boundary = False
+        elif char == '#' and boundary:
             value = value[:i]
             break
+        else:
+            boundary = char.isspace()
     try:
         return shlex.split(value, comments=False)
     except ValueError:

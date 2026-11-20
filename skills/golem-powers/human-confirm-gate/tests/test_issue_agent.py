@@ -148,6 +148,7 @@ class AgentSocket(unittest.TestCase):
                       '"/synthetic/agent.sock" # comment',
                       '"/synthetic/agent # literal.sock" # comment',
                       '/synthetic/agent#literal.sock',
+                      r'/synthetic/agent\ #literal.sock',
                       "'/synthetic/agent.sock' # comment",
                       r'/synthetic/agent\ name.sock # comment',
                       r'"/synthetic/agent\ name.sock" # comment'):
