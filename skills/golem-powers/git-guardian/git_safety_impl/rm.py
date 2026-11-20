@@ -12,6 +12,7 @@ from functools import lru_cache
 
 from . import shell_parse, branch_move
 from .trash import trash_move, literal_trash_syntax
+from .move_glob import move_sources_reason
 from .paths import (
     _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason,
     _rm_exact_target_reason, _rm_allows_ignored_directory,
@@ -864,13 +865,10 @@ def _rm_reason_in_words(
                     protected_cwd, _created_paths, syntax_safe=trash_syntax_safe)
                 if refusal:
                     return refusal
-                for source in sources:
-                    reason = _created_target_reason(api, source, cwd, argument_variables, _created_paths)
-                    if reason:
-                        return reason
-                    reason = api["_rm_target_reason"](source, cwd, argument_variables, protected_cwd, protected_only=True)
-                    if reason and not trash_admitted:
-                        return "protected root used by move or symbolic link"
+                reason = move_sources_reason(api, args, sources, cwd, argument_variables,
+                    protected_cwd, _created_paths, trash_admitted)
+                if reason:
+                    return reason
             destination_operand = destination_option or operands[-1]
             if command_name == "ln" and not destination_option and len(operands) == 1:
                 destination_operand = os.path.basename(operands[0].rstrip("/"))
