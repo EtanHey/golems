@@ -1,8 +1,6 @@
 # Explicit tracked-path exceptions only. Globs and directories are rejected.
 # This test file contains authored synthetic violations used to prove the guard.
 scripts/tests/check-publish-boundary.test.sh
-# Reserved-namespace adverse controls in the algorithm-name regression fixture.
-scripts/tests/boundary-openssh.test.mjs
 
 # Authored adversarial fixture for the launchd secret detector.
 skills/golem-powers/cyber/scripts/launchd-secret-linter/tests/test_plist_secret_lint.py
