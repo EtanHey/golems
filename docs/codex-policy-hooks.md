@@ -122,7 +122,9 @@ reordering hooks requires another native trust review.
 `--status` distinguishes registration from base-config trust: `missing`,
 `disabled`, or `present-unverified`. A stored hash is not proof it still matches
 the current definition: verify through native `/hooks`. Missing/disabled trust
-returns nonzero. Status reads only base config; profile/CLI overrides such as
+returns nonzero. After any change in Codex `/hooks`, run the golems `--status`
+command above on that Mac and confirm `trust=` is not `disabled`.
+Status reads only base config; profile/CLI overrides such as
 `--disable hooks` or `-c features.hooks=false` can change runtime behavior.
 `allow_managed_hooks_only` belongs to managed requirements, not config.toml
 ([config/src/config_requirements.rs:182](https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/config/src/config_requirements.rs#L182));

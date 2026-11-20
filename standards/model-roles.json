@@ -1,27 +1,44 @@
 {
   "schema": 1,
-  "updated": "2026-11-03",
+  "updated": "2026-11-19",
   "swap_rule": "A model change = bench it with the skill-creator harness, then edit ONE line here. No skill/agent file names a role-owned model directly (drift lint).",
   "roles": {
     "claude.judgment": {
       "model": "claude-opus-5-5",
       "alias": "opus",
       "use_for": "decision-grade/multi-source work, deletion decisions, PR-gating reviews, UX/UI judgment",
-      "evidence": "skill-creator 2026-09-29 subagent-routing RESULTS.md; 2026-09-29/30 cleanup-routing"
+      "evidence": "skill-creator 2026-09-29 subagent-routing RESULTS.md; 2026-09-29/30 cleanup-routing",
+      "t3_delegate": {
+        "provider": "claudeAgent",
+        "options": {
+          "fastMode": false
+        },
+        "check": "Pass fastMode:false only because this model's catalog options list fastMode."
+      }
     },
     "claude.subagent.cheap": {
       "model": "claude-sonnet-5-5",
       "alias": "sonnet",
       "use_for": "single-fact brain-worker lookups, orc-helper pane mechanics, verifiers",
       "evidence": "2026-09-29 subagent-routing: brain-worker recall parity at 0.46x; orc-helper 4/4 parity at 0.47x; verifiers 0 wrong at 0.55x",
-      "never_for": "deletion decisions, PR-gating review, multi-source history"
+      "never_for": "deletion decisions, PR-gating review, multi-source history",
+      "t3_delegate": {
+        "provider": "claudeAgent",
+        "options": {},
+        "check": "No fastMode: this model's catalog options lack it, and T3 refuses it."
+      }
     },
     "claude.subagent.mechanical": {
       "model": "claude-haiku-5-5",
       "alias": "haiku",
       "use_for": "mechanical checks and waits (Etan 2026-10-19 21:07, via orc)",
       "evidence": "ruling-based; verifier bench pending (skillcreator-lead follow-up)",
-      "never_for": "judgment, deletion decisions, review, multi-source recall"
+      "never_for": "judgment, deletion decisions, review, multi-source recall",
+      "t3_delegate": {
+        "provider": "claudeAgent",
+        "options": {},
+        "check": "No fastMode: this model's catalog options lack it, and T3 refuses it."
+      }
     },
     "codex.implement": {
       "model": "gpt-6.1-sol",
@@ -43,20 +60,43 @@
       "model": "Gemini 3.8 Flash (High)",
       "launcher_tier": "flash-high",
       "use_for": "doc/link/copy audits, inventories, doc fetch+quote, BrainLayer recall",
-      "never_for": "deletion decisions, implementing, reviewing"
+      "never_for": "deletion decisions, implementing, reviewing",
+      "t3_delegate": {
+        "provider": "antigravity",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-4-hydrogen"
+        ],
+        "thinking": "high",
+        "check": "Call orchestrator_capabilities first on the Mac you dispatch to. Use the first model in this list that Mac's antigravity catalog offers, at high thinking, under the option name that catalog gives (thinking_level or thought_level; never hard-code one). gemini-4-hydrogen is not benchmarked: treat its output as a pointer to verify. Never Argon for easy reads."
+      }
     },
     "gemini.gather.visual": {
       "model": "Gemini 3.8 Flash (High)",
       "launcher_tier": "flash-high",
       "use_for": "frames, screenshots, OCR, video state changes, /qa-video",
-      "evidence": "2026-09-30 visual re-bench: 44/44 vs Pro-High 43/44 + fabricated timing"
+      "evidence": "2026-09-30 visual re-bench: 44/44 vs Pro-High 43/44 + fabricated timing",
+      "t3_delegate": {
+        "provider": "antigravity",
+        "models": [
+          "gemini-3.8-flash",
+          "gemini-4-hydrogen"
+        ],
+        "thinking": "high",
+        "check": "Call orchestrator_capabilities first on the Mac you dispatch to. Use the first model in this list that Mac's antigravity catalog offers, at high thinking, under the option name that catalog gives (thinking_level or thought_level; never hard-code one). gemini-4-hydrogen is not benchmarked: treat its output as a pointer to verify. Never Argon for easy reads."
+      }
     },
     "claude.research.verifier": {
       "model": "claude-haiku-5-5",
       "alias": "haiku",
       "use_for": "fixed-list research section fact checking with mandatory adjudication and VERIFIED audit",
       "evidence": "2026-11-03 P1 research-verify measurement and RV-tiebreak; lead w5 decision",
-      "never_for": "final research fact release without adjudication/audit"
+      "never_for": "final research fact release without adjudication/audit",
+      "t3_delegate": {
+        "provider": "claudeAgent",
+        "options": {},
+        "check": "No fastMode: this model's catalog options lack it, and T3 refuses it."
+      }
     },
     "codex.research.verifier": {
       "model": "gpt-6-luna",

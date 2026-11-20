@@ -28,6 +28,18 @@
           "never_for": {"type": "string", "minLength": 1},
           "gate": {"type": "string", "minLength": 1},
           "launcher_tier": {"type": "string", "minLength": 1},
+          "t3_delegate": {
+            "type": "object",
+            "required": ["provider", "check"],
+            "additionalProperties": false,
+            "properties": {
+              "provider": {"type": "string", "minLength": 1},
+              "models": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+              "thinking": {"type": "string", "enum": ["high"]},
+              "options": {"type": "object"},
+              "check": {"type": "string", "minLength": 1}
+            }
+          },
           "status": {"type": "string", "enum": ["candidate", "active"], "default": "active"}
         }
       }
