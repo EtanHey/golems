@@ -65,6 +65,16 @@ forbidden_classes:
       # Look ahead at the end so adjacent addresses can share a separator.
       - '(?<![[:alnum:]._%+@-])[[:alnum:]._%+-]+@([[:alnum:]-]+[.])?(invalid|test|example|localhost)[.]?(?=[^[:alnum:]_.%+@-]|$)'
       - '(noreply@anthropic[.]com|(git|noreply)@github[.]com)'
+      # Exact public OpenSSH key algorithm tokens; never exempt the whole domain.
+      - '(?<![[:alnum:]._%+@-])sk-ssh-ed25519@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])ssh-ed25519-cert-v01@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])sk-ecdsa-sha2-nistp256@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])sk-ssh-ed25519-cert-v01@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])sk-ecdsa-sha2-nistp256-cert-v01@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])ecdsa-sha2-nistp256-cert-v01@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])ecdsa-sha2-nistp384-cert-v01@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])ecdsa-sha2-nistp521-cert-v01@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])ssh-rsa-cert-v01@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
   credential-adjacent:
     patterns:
       - '[A-Z][A-Z0-9_]*(TOKEN|SECRET|PASSWORD)[A-Z0-9_]*[[:space:]]*[:=][[:space:]]*(sk-|ghp_|github_pat_|sbp_|xox[baprs]-|AKIA)[[:alnum:]_./+-]{12,}'
@@ -109,6 +119,11 @@ push_patterns:
   push-credentials:
     patterns:
       - '(^|[^[:alnum:]]|\\[nrt]|\\u[0-9a-f]{4}|%[0-9a-f]{2}|\[[0-9;]*m)(sk-|ghp_|github_pat_|xox[baprs]-|AKIA)[[:alnum:]_./+-]{16,}'
+    allowed_patterns:
+      - '(?<![[:alnum:]._%+@-])sk-ssh-ed25519@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])sk-ecdsa-sha2-nistp256@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])sk-ssh-ed25519-cert-v01@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
+      - '(?<![[:alnum:]._%+@-])sk-ecdsa-sha2-nistp256-cert-v01@openssh[.]com(?=[^[:alnum:]_.%+@-]|$)'
   push-ipv4:
     patterns:
       - '([0-9]{1,3}[.]){3}[0-9]{1,3}'
