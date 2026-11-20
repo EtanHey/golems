@@ -1,9 +1,41 @@
 import { test, expect } from 'bun:test';
 import { randomBytes } from 'node:crypto';
 import { scanData } from './scan-content.mjs';
+import { mkdtempSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { classify } from './classify.mjs';
 
 // The generic-assignment rule judges the VALUE's shape, never the file type.
 const shapes = async text => (await scanData(Buffer.from(text), 'page.html')).shapes;
+
+// Sol round 2: these nine synthetic literals were all held by master.
+const regressions = [
+  ['shell assignment', 'true;password=hunter22'],
+  ['ambiguous ampersand', 'x;password=Tr0ub4dor&3'],
+  ['YAML flow word', 'auth: {password: hunter22}'],
+  ['YAML flow number', 'auth: {password: 12345678}'],
+  ['quoted dotted password', 'password="Winter.Secret9"'],
+  ['YAML dotted password', 'password: Winter.Secret9'],
+  ['symbol-only password', 'password="!@#%^&*()"'],
+  ['repeated-digit password', 'password="99999999"'],
+  ['passphrase', 'password="Winter2024 long phrase"'],
+];
+test.each(regressions)('Sol P1 preserves master hold: %s', async (_, text) => {
+  expect(await shapes(text)).toContain('generic-assignment');
+});
+test.each([regressions[0], regressions[2], regressions[4], regressions[6], regressions[8]])(
+  'Sol P1 real classifier holds page.html: %s', (_, text) => {
+    const root = mkdtempSync(join(import.meta.dir, '.sol-1322-'));
+    const file = join(root, 'page.html');
+    try {
+      writeFileSync(file, text);
+      expect(classify(root, { workers: 1 }).status).toBe('HOLD');
+    } finally {
+      unlinkSync(file);
+      rmdirSync(root);
+    }
+  },
+);
 
 test.each([
   ['minified pre-increment', 'function f(){let n=0;for(const e of l){token=++n,i=r.slice(0);}}'],
