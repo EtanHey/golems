@@ -16,6 +16,8 @@ import os
 import subprocess
 
 from .paths import _expand_tilde
+from .branch_aliases import (AliasUnknown, git_alias, shell_alias_bodies,
+                             alias_input_is_unseen, inspect_shell_alias, shell_alias_context_uncertain)
 from .update_ref_stdin import ANY_REF, NO_DEREF, visible_targets, with_raw_command
 
 # Reads as reset --hard in the hook's operation names; never says "local branch".
@@ -62,15 +64,25 @@ def _branch_targets(arguments: list[str]) -> list[str]:
 
 
 def _created_branch(arguments: list[str], short: str, long: str | None = None) -> list[str]:
-    for index, word in enumerate(arguments):
+    index = 0
+    while index < len(arguments):
+        word = arguments[index]
+        index += 1
         if word == "--":
             break
-        if word in (short, long) and index + 1 < len(arguments):
-            return [f"refs/heads/{arguments[index + 1]}"]
         if long and word.startswith(long + "="):
             return [f"refs/heads/{word.split('=', 1)[1]}"]
-        if word.startswith(short) and len(word) > len(short):
-            return [f"refs/heads/{word[len(short):]}"]
+        if long and word == long:
+            return [f"refs/heads/{arguments[index]}"] if index < len(arguments) else []
+        if word.startswith('-') and not word.startswith('--'):
+            for offset, flag in enumerate(word[1:], 2):
+                if flag in {short[1], 'b' if short == '-B' else 'c'}:
+                    operand = word[offset:] or (arguments[index] if index < len(arguments) else '')
+                    if flag == short[1] and operand:
+                        return [f"refs/heads/{operand}"]
+                    if offset == len(word):
+                        index += 1  # non-forced create option consumes its branch name
+                    break
     return []
 
 
@@ -166,14 +178,36 @@ def _checked_out(directory: str):
 
 
 def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: str,
-                                   variables: dict[str, str]) -> str | None:
+                                   variables: dict[str, str], *, depth: int = 0,
+                                   git_environment: dict | None = None) -> str | None:
+    git_environment = variables if git_environment is None else git_environment
+    alias_bodies = shell_alias_bodies(words[position])
+    if alias_bodies and any(key.startswith('GIT_') and value != variables.get(key)
+                            for key, value in git_environment.items()):
+        return REASON  # command-local Git environment is not argv expansion state
+    for body in alias_bodies:
+        try:
+            blocked, reason = inspect_shell_alias(api, body, cwd, variables, depth)
+        except AliasUnknown:
+            return REASON
+        if blocked:
+            return reason
     family = api["git_family"](words[position])
     arguments = words[position + 1:]
-    directory = cwd or None
+    directory = None if shell_alias_context_uncertain() else (cwd or None)
+    configs = []
     if family == "":
         index = 0
         while index < len(arguments) and arguments[index].startswith("-"):
             word = arguments[index]
+            if word == "-c" and index + 1 < len(arguments):
+                configs.append(arguments[index + 1])
+                index += 2
+                continue
+            if word.startswith("-c") and len(word) > 2:
+                configs.append(word[2:])
+                index += 1
+                continue
             if word in {"--git-dir", "--work-tree"} or word.startswith(("--git-dir=", "--work-tree=")):
                 directory = None  # another repository: cannot be read from here
                 index += 1 if "=" in word else 2
@@ -189,7 +223,21 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
         if index >= len(arguments):
             return None
         family, arguments = arguments[index], arguments[index + 1:]
+    if family is not None and family not in {"branch", "checkout", "switch", "update-ref", "symbolic-ref"}:
+        try:
+            expanded = git_alias(family, arguments, directory, configs, config_unknown=(
+                any(word.startswith('--config-env') for word in words[position + 1:])
+                or any(key.startswith('GIT_CONFIG') and value for key, value in git_environment.items())))
+        except AliasUnknown:
+            return REASON
+        if expanded:
+            family, arguments = expanded[0], expanded[1:]
     literal_targets = _targets(family, arguments)
+    options = arguments[:arguments.index("--")] if "--" in arguments else arguments
+    if (family == "branch" and "--list" in options and not literal_targets
+            and not any("$" in word or "`" in word for word in arguments)):
+        return None  # a literal listing pattern is data, not a mutation option
+
     # An expansion may supply the force option itself (or an entire argv array),
     # before literal target extraction has a chance to recognize the mutation.
     if family in {"branch", "checkout", "switch", "update-ref", "symbolic-ref"}:
@@ -209,6 +257,8 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
         return None
     stdin = targets[0].startswith(_STDIN)
     if stdin:
+        if alias_input_is_unseen():
+            return STDIN_UNSEEN_REASON
         targets = visible_targets(no_deref=targets[0].endswith("-no-deref"))
         if targets == []:
             return None
@@ -221,7 +271,7 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
                        and not target.startswith(_STDIN)}
     if targets is not None:
         targets = targets + list(literal_targets)
-    if any(variables.get(name) for name in ("GIT_DIR", "GIT_WORK_TREE")):
+    if any(git_environment.get(name) for name in ("GIT_DIR", "GIT_WORK_TREE")):
         return REASON
     if not directory or not os.path.isdir(directory):
         return REASON  # cannot tell which branch is checked out there

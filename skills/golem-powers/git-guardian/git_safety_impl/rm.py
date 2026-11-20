@@ -892,7 +892,7 @@ def _rm_reason_in_words(
         return api["_rm_target_reason"](destination, cwd, argument_variables, protected_cwd, follow_symlinks=True)
 
     if command_name != "rm":
-        return branch_move.checked_out_branch_move_reason(api, words, position, cwd, argument_variables)
+        return branch_move.checked_out_branch_move_reason(api, words, position, cwd, argument_variables, depth=_depth, git_environment=variables)
 
     arguments = words[position + 1:]
     flags = [word for word in arguments if word.startswith("-") and word != "-"]

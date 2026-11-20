@@ -273,3 +273,103 @@ def test_no_deref_known_non_checked_out_ref_stays_allowed(repo):
     home, root = repo
     command = 'REF=refs/heads/other; git update-ref --no-deref "$REF" HEAD'
     assert hook(command, root, home) == (0, {})
+
+
+# PR #1325, Sol round 1: clustered options, executable aliases, read-only lists.
+@pytest.mark.parametrize('command', [
+    'git checkout -qB main HEAD~1',
+    'git switch -qC main HEAD~1',
+    'git checkout -qBmain HEAD~1',
+    'git switch -qCmain HEAD~1',
+    'OPT=-qB; git checkout "$OPT" main HEAD~1',
+    'OPT=-qCmain; git switch "$OPT" HEAD~1',
+])
+def test_r1_clustered_force_create_is_refused(repo, command):
+    home, root = repo
+    assert hook(command, root, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
+
+
+@pytest.mark.parametrize('command', [
+    "git -c 'alias.back=update-ref refs/heads/main HEAD~1' back",
+    "git -c 'alias.back=checkout -B' back main HEAD~1",
+    "git -calias.back='switch -qC' back main HEAD~1",
+    "git -c 'alias.back=next' -c 'alias.next=update-ref refs/heads/feat HEAD~1' back",
+    "shopt -s expand_aliases\nalias back='git update-ref refs/heads/main HEAD~1'\nback",
+    "shopt -s expand_aliases\nalias back='git checkout -B'\nback main HEAD~1",
+])
+def test_r1_alias_branch_moves_are_refused(repo, command):
+    home, root = repo
+    assert hook(command, root, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
+
+
+def test_r1_stored_git_alias_is_refused(repo):
+    home, root = repo
+    git(root, 'config', 'alias.back', 'update-ref refs/heads/main HEAD~1')
+    assert hook('git back', root, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
+
+
+def test_r1_shell_alias_uses_invocation_directory(repo):
+    home, root = repo
+    command = "cd scratch\nshopt -s expand_aliases\nalias back='git update-ref refs/heads/main HEAD~1'\nback"
+    assert hook(command, root.parent, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
+
+
+@pytest.mark.parametrize('command', [
+    "git branch --list 'feat*'",
+    "git branch --list 'feat*' --format='%(refname:short)'",
+    'git checkout -qB other HEAD',
+    'git switch -qCother HEAD',
+    "git -c 'alias.peek=status --short' peek",
+    "git -c 'alias.peek=branch --list' peek 'feat*'",
+    "git -c 'alias.back=checkout -qB' back other HEAD",
+    "shopt -s expand_aliases\nalias peek='git branch --list'\npeek 'feat*'",
+    "shopt -s expand_aliases\nalias back='git update-ref refs/heads/other HEAD'\nback",
+    "alias back='git update-ref refs/heads/main HEAD~1'",
+])
+def test_r1_read_only_and_unchecked_controls_stay_allowed(repo, command):
+    home, root = repo
+    assert hook(command, root, home) == (0, {})
+
+
+@pytest.mark.parametrize('command', [
+    "shopt -s expand_aliases\nalias back='git update-ref --stdin'\nback <<< 'update refs/heads/main HEAD~1'",
+    "shopt -s expand_aliases\nalias setbranch='BRANCH=main'\nBRANCH=other\nsetbranch\ngit checkout -B \"$BRANCH\" HEAD~1",
+])
+def test_r1_alias_input_and_state_uncertainty_fail_closed(repo, command):
+    home, root = repo
+    code, decision = hook(command, root, home)
+    assert code == 2 and decision['decision'] == 'block'
+
+
+def test_r1_alias_directory_effect_is_not_lost(repo):
+    home, root = repo
+    command = "shopt -s expand_aliases\nalias enter='cd scratch'\nenter\ngit update-ref refs/heads/main HEAD~1"
+    code, decision = hook(command, root.parent, home)
+    assert code == 2 and decision['decision'] == 'block'
+
+
+@pytest.mark.parametrize('command', [
+    "git -c 'alias.status=update-ref refs/heads/main HEAD~1' status --short",
+    'git checkout -qb topicB HEAD',
+    'git switch -qc topicC HEAD',
+])
+def test_r1_builtin_and_non_forced_create_controls(repo, command):
+    home, root = repo
+    assert hook(command, root, home) == (0, {})
+
+
+@pytest.mark.parametrize('command', [
+    "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.back GIT_CONFIG_VALUE_0='update-ref refs/heads/main HEAD~1' git back",
+    "shopt -s expand_aliases\nalias back='git next'\nGIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.next GIT_CONFIG_VALUE_0='update-ref refs/heads/main HEAD~1' back",
+])
+def test_r1_environment_defined_aliases_fail_closed(repo, command):
+    home, root = repo
+    code, decision = hook(command, root, home)
+    assert code == 2 and decision['decision'] == 'block'
+
+
+
+def test_r1_listing_token_after_separator_cannot_waive_dynamic_options(repo):
+    home, root = repo
+    code, decision = hook('git branch * -- --list', root, home)
+    assert code == 2 and decision['decision'] == 'block'
