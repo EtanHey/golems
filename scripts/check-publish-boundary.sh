@@ -44,7 +44,7 @@ symlink_paths="$scratch_dir/symlink-paths.txt"
 grep_paths_file="$scratch_dir/grep-paths.bin"
 new_violations_file="$scratch_dir/new-violations.txt"
 history_diagnostics="$scratch_dir/history-diagnostics.txt"
-expected_public_policy_fingerprint='6eb591e45cb32ef546b486e85656c01a8ec1f08d1a113f179397c5808d3de5b1'
+expected_public_policy_fingerprint='656588c0153beb5189d78d4850acce77e97065b599d040f5cc6d110fc12093fe'
 expected_known_violation_baseline_fingerprint='c9755fb30a77942e8b9af46c748c21feed1c440f3b75223462e82e39ed5d7ba1'
 expected_forbidden_classes='client-or-third-party credential-adjacent finance-rate finding-content github_action_full_sha health identity-pii mcp_executable_exact_version operator-verbatim private-structure private_structure_slash_suffix publication-operational-data raw-session real-identifiers substance synthetic_personal_fixture telegram_chat_id'
 # Bash 3.2 + `set -u` rejects expansion of a truly empty array. The empty
