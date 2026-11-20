@@ -23,6 +23,21 @@ const regressions = [
 test.each(regressions)('Sol P1 preserves master hold: %s', async (_, text) => {
   expect(await shapes(text)).toContain('generic-assignment');
 });
+test('ambiguous literal matrix preserves the pinned master predicate', async () => {
+  const master = /(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)\s*[:=]\s*['"]?\S{8,}/i;
+  const values = ['hunter22', '12345678', 'Winter.Secret9', '!@#%^&*()',
+    '99999999', '********', '&hunter22', ',hunter22', ';hunter22',
+    '(hunter22)', '[hunter22]', '{hunter22}', 'truefalse', 'Tr0ub4dor&3'];
+  for (const prefix of ['password=', 'true;password=', 'auth: {password: ', '- password: ']) {
+    for (const value of values) {
+      const text = prefix + value;
+      expect(master.test(text)).toBe(true);
+      expect(await shapes(text)).toContain('generic-assignment');
+    }
+  }
+  expect(await shapes('password="Winter2024')).toContain('generic-assignment');
+  expect(await shapes('password="Winter2024\nnext=entry')).toContain('generic-assignment');
+});
 test.each([regressions[0], regressions[2], regressions[4], regressions[6], regressions[8]])(
   'Sol P1 real classifier holds page.html: %s', (_, text) => {
     const root = mkdtempSync(join(import.meta.dir, '.sol-1322-'));
@@ -39,11 +54,9 @@ test.each([regressions[0], regressions[2], regressions[4], regressions[6], regre
 
 test.each([
   ['minified pre-increment', 'function f(){let n=0;for(const e of l){token=++n,i=r.slice(0);}}'],
-  ['minified property read', 'addEventListener("keydown",e=>{const apiKey=e.key;if(apiKey==="Enter")go()})'],
   ['object property expression', 'var o={secret:a.b,token:t[0],password:p(),api_key:k+1};'],
   ['keywords and numbers', 'const s={token:null,secret:false,pwd:true,access_key:1234567890123456789};'],
-  ['long identifier call', 'token=someVeryLongHelperName(n);secret=anotherLongPropertyRoot.child;'],
-  ['short quoted code strings', 'if(e.key==="Escape"){token="";secret="a.b"}'],
+  ['declared calls and members', 'let token=someVeryLongHelperName(n);secret=anotherLongPropertyRoot.child;'],
 ])('code expression is not a secret: %s', async (_, text) => {
   expect(await shapes(text)).not.toContain('generic-assignment');
 });
@@ -90,6 +103,16 @@ test.each([
   ['cli flag value', 'run --password=Tr0ub4dor'],
   ['yaml list bare value', '- secret: hunter2hunter2'],
   ['symbol literal inside code', 'x;pwd=p@ss!w0rd#2024;'],
+  // Round 2 intentionally tightens earlier CLEAR expectations. These strings
+  // and ambiguous standalone expressions are not proof of a non-secret value.
+  ['minified property read with quoted prefix', 'addEventListener("keydown",e=>{const apiKey=e.key;if(apiKey==="Enter")go()})'],
+  ['standalone calls and members', 'token=someVeryLongHelperName(n);secret=anotherLongPropertyRoot.child;'],
+  ['quoted dotted code string', 'if(e.key==="Escape"){token="";secret="a.b"}'],
+  ['call at line start', 'token = getToken()'],
+  ['settings member at line start', 'api_key = settings.API_KEY'],
+  ['process.env without code context', 'password=process.env.PW'],
+  ['ambiguous mask', 'password: ********'],
+  ['ambiguous prose', 'password: "Enter your password"'],
 ])('short or symbol password holds: %s', async (_, text) => {
   expect(await shapes(text)).toContain('generic-assignment');
 });
@@ -99,14 +122,12 @@ test.each([
   ['member access', 'key=e.key'],
   ['empty env name', 'FOO_API_KEY='],
   ['empty export', 'export BAR_TOKEN='],
-  ['call at line start', 'token = getToken()'],
-  ['settings member at line start', 'api_key = settings.API_KEY'],
   ['shell expansion', 'TOKEN=${OTHER_TOKEN}'],
   ['shell variable', 'export TOKEN=$OTHER'],
-  ['process.env read', 'password=process.env.PW'],
-  ['masked placeholder', 'password: ********'],
   ['minified identifiers and operators', 'let token=n,secret=!0,pwd=-1,api_key=a?b:c;'],
-  ['quoted prose', 'password: "Enter your password"'],
+  ['declared process.env read', 'const password=process.env.PW'],
+  ['declared settings read', 'const api_key=settings.API_KEY'],
+  ['declared call', 'const token=getToken()'],
 ])('code or reference is not a secret: %s', async (_, text) => {
   expect(await shapes(text)).not.toContain('generic-assignment');
 });
