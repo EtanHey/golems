@@ -278,3 +278,51 @@ def test_update_ref_stdin_on_a_branch_that_is_not_checked_out_stays_allowed(repo
     home, root = repo
     assert guardian.dangerous_shell_reason(command, cwd=str(root), env={'HOME': str(home)}) is None
     assert hook(command, root, home) == (0, {})
+
+
+# Sol round 2: specimens are policy input, never executed.
+def test_trailing_slash_glob_preserves_symlink_traversal(captures):
+    home, project = captures
+    (project / 'captures' / 'link0').symlink_to(home / 'Gits' / 'site-a')
+    code, decision = hook('mv link0*/ ~/elsewhere/', project / 'captures', home)
+    assert code == 2 and decision['decision'] == 'block'
+
+
+@pytest.mark.parametrize('body', [
+    'upda\\\nte refs/heads/main HEAD~1',
+    'update refs/hea\\\nds/main HEAD~1',
+    'option no-deref\\\nX\nupdate HEAD HEAD~1',
+])
+def test_heredoc_continuations_fail_closed(repo, body):
+    home, root = repo
+    code, decision = hook('git update-ref --stdin <<EOF\n' + body + '\nEOF', root, home)
+    assert code == 2 and decision['decision'] == 'block'
+
+
+@pytest.mark.parametrize('command', [
+    'git update-ref refs/remotes/local/alias HEAD~1',
+    "printf 'update refs/remotes/local/alias HEAD~1\\n' | git update-ref --stdin",
+])
+@pytest.mark.parametrize('existing', [False, True])
+def test_symbolic_refs_cannot_hide_checked_out_branch(repo, command, existing):
+    home, root = repo
+    if existing:
+        git(root, 'symbolic-ref', 'refs/remotes/local/alias', 'refs/heads/main')
+    else:
+        command = 'git symbolic-ref refs/remotes/local/alias refs/heads/main; ' + command
+    assert hook(command, root, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
+
+
+@pytest.mark.parametrize('command', [
+    'REF=refs/heads/main; git update-ref "$REF" HEAD~1',
+    'BRANCH=main; git checkout -B "$BRANCH" HEAD~1',
+    'BRANCH=main; git switch -C "$BRANCH" HEAD~1',
+    'BRANCH=feat; git branch -f "$BRANCH" HEAD~1',
+    'git update-ref "$UNKNOWN" HEAD~1',
+    'git checkout -B "$UNKNOWN" HEAD~1',
+    'git switch --force-create="$UNKNOWN" HEAD~1',
+    'git branch -M other "$UNKNOWN"',
+])
+def test_variable_targets_fail_closed(repo, command):
+    home, root = repo
+    assert hook(command, root, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
