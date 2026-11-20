@@ -234,12 +234,13 @@ def checked_out_branch_move_reason(api, words: list[str], position: int, cwd: st
             return REASON if targets is not None else STDIN_UNSEEN_REASON
         return None
     for target in targets:
+        literal_target = target in literal_targets
         no_deref = target.startswith(NO_DEREF)
         if no_deref:
             target = target[len(NO_DEREF):]
         # The shell parser preserves unresolved expansions in operand spelling.
         # Do not compare them as if they were literal branch/ref names.
-        if target not in literal_targets and any(char in target for char in "$`*?[]{}\\"):
+        if not literal_target and any(char in target for char in "$`*?[]{}\\"):
             return REASON
         if not no_deref:
             target = _resolved_ref(directory, target)

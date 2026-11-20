@@ -267,3 +267,9 @@ def test_literal_dollar_ref_is_checked_before_assignment_expansion(repo):
     git(root, 'symbolic-ref', 'refs/remotes/local/$ALIAS', 'refs/heads/main')
     command = "ALIAS=other; git update-ref 'refs/remotes/local/$ALIAS' HEAD~1"
     assert hook(command, root, home) == (2, {'decision': 'block', 'reason': RESET_HARD_MESSAGE})
+
+
+def test_no_deref_known_non_checked_out_ref_stays_allowed(repo):
+    home, root = repo
+    command = 'REF=refs/heads/other; git update-ref --no-deref "$REF" HEAD'
+    assert hook(command, root, home) == (0, {})
