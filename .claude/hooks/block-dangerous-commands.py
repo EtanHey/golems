@@ -96,7 +96,7 @@ def _verified_branch_cleanup(command, cwd=None):
         spec = importlib.util.spec_from_file_location('_branch_cleanup', source)
         policy = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(policy)
-        return policy.allowed(command, cwd if cwd is not None else os.getcwd())
+        return policy.allowed(command, cwd if cwd is not None else os.getcwd(), write_receipt=False)
     except Exception:
         pass  # Retain the existing denial if the verifier cannot load.
     return False

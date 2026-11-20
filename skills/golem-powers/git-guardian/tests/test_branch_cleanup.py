@@ -118,6 +118,51 @@ class BranchCleanup(unittest.TestCase):
         self.assertTrue(self.policy.allowed('git branch -D topic', self.repo, write_receipt=False))
         self.assertFalse((self.home / '.golems/branch-archive/deletes.jsonl').exists())
 
+    def across_hooks(self, command, *, receipt_failure=False):
+        patch.dict(sys.modules, {'branch_cleanup': self.policy}).start()
+        old_prefix, old_bytecode = sys.pycache_prefix, sys.dont_write_bytecode
+        gate = load('merged_receipt_gate', ROOT / 'human-confirm-gate/hooks/human-confirm-pretooluse.py')
+        self.addCleanup(setattr, sys, 'pycache_prefix', old_prefix)
+        self.addCleanup(setattr, sys, 'dont_write_bytecode', old_bytecode)
+        receipt = self.home / '.golems/branch-archive/deletes.jsonl'
+        self.assertTrue(self.verdict(command))
+        self.assertFalse(receipt.exists(), 'guardian validation must not write a receipt')
+        block = load('merged_default_validator', ROOT.parents[1] / '.claude/hooks/block-dangerous-commands.py')
+        real_spec = importlib.util.spec_from_file_location
+        def fixture_spec(*args, **kwargs):
+            spec = real_spec(*args, **kwargs)
+            execute = spec.loader.exec_module
+            def fixture_execute(module):
+                execute(module)
+                module._run = self.transport
+            spec.loader.exec_module = fixture_execute
+            return spec
+        with patch.object(importlib.util, 'spec_from_file_location', side_effect=fixture_spec):
+            self.assertTrue(block._verified_branch_cleanup(command, self.repo))
+        self.assertFalse(receipt.exists(), 'default-checkout validation must not write a receipt')
+        payload = dict(tool_name='Bash', cwd=self.repo, tool_input=dict(command=command))
+        if receipt_failure:
+            receipt.parent.mkdir(parents=True)
+            receipt.mkdir()
+            with self.assertRaises(gate.ConfirmationRequired):
+                gate.evaluate(payload, self.home)
+        else:
+            gate.evaluate(payload, self.home)
+            row, = receipt.read_text().splitlines()
+            self.assertEqual(json.loads(row)['rule'], 'merged-on-main')
+
+    def test_guardian_then_gate_records_once_remote(self):
+        self.across_hooks('git push origin --delete topic')
+
+    def test_guardian_then_gate_records_once_local(self):
+        self.across_hooks('git branch -D topic')
+
+    def test_gate_receipt_failure_refuses_remote(self):
+        self.across_hooks('git push origin --delete topic', receipt_failure=True)
+
+    def test_gate_receipt_failure_refuses_local(self):
+        self.across_hooks('git branch -D topic', receipt_failure=True)
+
     def helper(self):
         import shlex
         self.git('config', 'remote.origin.url', self.repo)

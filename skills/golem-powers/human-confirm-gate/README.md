@@ -121,7 +121,7 @@ before allowing, with `event: "allowed_attempt"`, time, repository, branch, tip,
 records an allowed attempt, not proof that Git subsequently deleted the branch.
 Git-guardian validates the exact shape through the same confirmation hook using
 `--archive-check-only`: it writes no receipt. The mandatory gate hook writes
-the archive attempt row. A merged command may cross multiple independent verifiers; each verifier records its own allowed attempt, not a completed deletion.
+the single allowed-attempt row for merged or archived deletes; guardian and default-checkout validation write no receipt.
 A caller-supplied payload cannot select check-only mode. Failure to write refuses.
 The guardian selects an eight-second deadline only for this exact candidate shape;
 its nested check times out after seven seconds, inside the nine-second installed

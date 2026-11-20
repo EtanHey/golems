@@ -81,10 +81,15 @@ def evaluate(payload, home, *, archive_check_only=False):
     from commands import PolicyWriteRefused, operations, shell
     from tokens import authorize, own_lease_scope
     with shell.policy_evaluation_deadline(8):
-        from branch_cleanup import allowed as branch_cleanup_allowed
+        from branch_cleanup import allowed as branch_cleanup_allowed, _plan
         if branch_cleanup_allowed(args['command'], payload['cwd'], home=home,
                                   write_receipt=not archive_check_only):
             return
+        # Local force deletes are absent from operations(): preserve refusal
+        # if proof or receipt persistence failed, instead of falling through.
+        cleanup_plan = _plan(args['command'], payload['cwd'])
+        if cleanup_plan and cleanup_plan[1] == 'local':
+            raise ConfirmationRequired('Blocked: local branch deletion could not be verified and recorded.')
         try:
             ops = operations(args['command'], payload['cwd'])
         except PolicyWriteRefused as exc:
