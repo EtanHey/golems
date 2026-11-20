@@ -31,7 +31,8 @@ def _git(*arguments):
 
 @lru_cache(maxsize=1)
 def _builtins():
-    result = _git('--list-cmds=builtins')
+    # Builtin names do not depend on repository discovery or the caller's gitdir.
+    result = _git('-C', '/', '--list-cmds=builtins')
     if result.returncode:
         raise AliasUnknown
     return set(os.fsdecode(result.stdout).splitlines())
