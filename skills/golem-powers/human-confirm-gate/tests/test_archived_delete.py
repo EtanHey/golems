@@ -206,3 +206,40 @@ def test_merged_fork_receipt_failure_refuses_even_with_bundle(cell, archived, mo
     (home / '.golems/branch-archive/deletes.jsonl').mkdir()
     rc, reason = decision(cell, monkeypatch, command)
     assert rc == 2 and 'receipt' in reason
+
+
+def test_real_merged_proof_ignores_path_gh(cell, monkeypatch):
+    import os
+    from pathlib import Path
+    import archived_delete, branch_cleanup
+    home, repo = cell
+    git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.com',
+        'commit', '--allow-empty', '-qm', 'base')
+    git(repo, 'branch', 'main')
+    git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.com',
+        'commit', '--allow-empty', '-qm', 'unmerged')
+    sha = git(repo, 'rev-parse', 'HEAD')
+    git(repo, 'branch', BRANCH)
+    git(repo, 'config', 'remote.fork.url', str(repo))
+    monkeypatch.setattr(tokens, 'own_lease_remote', lambda *a: 'EtanHey/t3code')
+    monkeypatch.setattr(tokens, 'own_lease_metadata', lambda *a, **kw:
+                        ('main', dict(name=BRANCH, protected=False), []))
+    monkeypatch.setattr(archived_delete, 'merged_proof', branch_cleanup.merged_proof)
+    fakebin = home / 'fakebin'; fakebin.mkdir()
+    marker = home / 'path-gh-ran'
+    prs = [dict(number=7, merged_at='2026-11-01', base=dict(ref='main'),
+                head=dict(sha=sha, ref=BRANCH, repo=dict(full_name='EtanHey/t3code')))]
+    gh = fakebin / 'gh'
+    gh.write_text('#!/bin/sh\nprintf ran > ' + shlex.quote(str(marker)) +
+                  '\nprintf %s ' + shlex.quote(json.dumps(prs)) + '\n')
+    gh.chmod(0o700)
+    # This executable stands for the fixed, trusted gh, returning no merged PR.
+    trusted = home / 'trusted-gh'
+    trusted.write_text("#!/bin/sh\nprintf '[]'\n"); trusted.chmod(0o700)
+    monkeypatch.setattr(branch_cleanup, '_trusted_gh', lambda: str(trusted), raising=False)
+    monkeypatch.setenv('PATH', str(fakebin) + os.pathsep + os.environ['PATH'])
+    command = f'git push --force-with-lease=refs/heads/{BRANCH}:{sha} fork :refs/heads/{BRANCH}'
+    rc, reason = decision(cell, monkeypatch, command)
+    assert rc == 2, reason
+    assert not marker.exists()
+    assert not (home / '.golems/branch-archive/deletes.jsonl').exists()

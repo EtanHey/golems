@@ -46,6 +46,7 @@ class BranchCleanup(unittest.TestCase):
         source = ROOT / '_shared/branch_cleanup.py'
         self.policy = load('w68_policy', source) if source.exists() else None
         if self.policy:
+            self.production_run = self.policy._run
             self.addCleanup(patch.stopall)
             patch.object(self.policy, '_run', side_effect=self.transport).start()
             patch.object(git_safety._pkg, 'branch_cleanup', self.policy).start()
@@ -162,6 +163,47 @@ class BranchCleanup(unittest.TestCase):
 
     def test_gate_receipt_failure_refuses_local(self):
         self.across_hooks('git branch -D topic', receipt_failure=True)
+
+    def test_multibranch_fsync_failure_leaves_no_allowed_rows(self):
+        self.git('branch', 'other')
+        receipt = self.home / '.golems/branch-archive/deletes.jsonl'
+        with patch.object(self.policy.os, 'fsync', side_effect=OSError('fixture sync failure')):
+            self.assertFalse(self.policy.allowed('git branch -D topic other', self.repo))
+        self.assertEqual(receipt.read_text() if receipt.exists() else '', '')
+
+    def test_lease_fsync_failure_does_not_retry_and_duplicate(self):
+        patch.dict(sys.modules, {'branch_cleanup': self.policy}).start()
+        old_prefix, old_bytecode = sys.pycache_prefix, sys.dont_write_bytecode
+        gate = load('fsync_gate', ROOT / 'human-confirm-gate/hooks/human-confirm-pretooluse.py')
+        self.addCleanup(setattr, sys, 'pycache_prefix', old_prefix)
+        self.addCleanup(setattr, sys, 'dont_write_bytecode', old_bytecode)
+        import archived_delete, tokens
+        command = 'git push --force-with-lease=refs/heads/topic:' + self.base + ' origin :refs/heads/topic'
+        payload = dict(tool_name='Bash', cwd=self.repo, tool_input=dict(command=command))
+        with patch.object(self.policy.os, 'fsync', side_effect=[OSError('first sync fails'), None, None]), \
+             patch.object(tokens, 'authorize', return_value=False), \
+             patch.object(tokens, 'own_lease_scope', return_value=(False, '')), \
+             patch.object(tokens, 'own_lease_remote', return_value='EtanHey/example'), \
+             patch.object(tokens, 'own_lease_metadata', return_value=('main', dict(name='topic', protected=False), [])), \
+             patch.object(archived_delete, 'merged_proof', return_value='ancestor'):
+            with self.assertRaises(gate.ConfirmationRequired):
+                gate.evaluate(payload, self.home)
+        receipt = self.home / '.golems/branch-archive/deletes.jsonl'
+        self.assertEqual(receipt.read_text() if receipt.exists() else '', '')
+
+    def test_replace_refs_cannot_fake_ancestor(self):
+        self.moved()
+        # Make main newer than topic, with a separate parent. A replace graft
+        # adds topic as a fake second parent of main, despite the stored DAG.
+        self.git('checkout', '-q', 'main')
+        self.git('commit', '--allow-empty', '-qm', 'main-only')
+        main = self.git('rev-parse', 'HEAD')
+        self.git('replace', '--graft', main, self.base, self.head)
+        self.assertEqual(self.git('rev-list', main + '..' + self.head), '')
+        self.assertTrue(self.git('--no-replace-objects', 'rev-list', main + '..' + self.head))
+        proof = self.policy.proof_at_head(self.production_run, self.repo, 'EtanHey/example',
+                                          'topic', self.head, 'main', main, [])
+        self.assertEqual(proof, '')
 
     def helper(self):
         import shlex
