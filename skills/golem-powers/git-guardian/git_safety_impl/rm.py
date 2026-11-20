@@ -10,7 +10,7 @@ import stat
 import time
 from functools import lru_cache
 
-from . import shell_parse
+from . import shell_parse, branch_move
 from .trash import trash_move, literal_trash_syntax
 from .paths import (
     _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason,
@@ -892,7 +892,7 @@ def _rm_reason_in_words(
         return api["_rm_target_reason"](destination, cwd, argument_variables, protected_cwd, follow_symlinks=True)
 
     if command_name != "rm":
-        return None
+        return branch_move.checked_out_branch_move_reason(api, words, position, cwd, argument_variables)
 
     arguments = words[position + 1:]
     flags = [word for word in arguments if word.startswith("-") and word != "-"]
@@ -915,6 +915,7 @@ def _rm_reason_in_words(
     return None
 
 
+@branch_move.with_raw_command
 def is_dangerous_rm(
     api: dict, command: str, *, cwd: str | None = None, env=None, _depth: int = 0,
     _find_cache: dict[tuple, str | None] | None = None,
