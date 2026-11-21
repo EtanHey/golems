@@ -141,6 +141,11 @@ RED_FILE_REGEXES = [
     r'\S+\.key(?:\s|$|")',                       # *.key files
 ]
 
+# Preserve the old redirect shape inside a single quoted program word.
+RED_REDIRECT_RE = re.compile(
+    r'>{1,2}\s*["\']?(?:\S*/)?(?:\.env(?!\.example)[\w.-]*|credentials\.\w+|secrets?\.\w+|[\w.-]+\.pem|[\w.-]+\.key)(?:["\'\s;&|)]|$)'
+)
+
 def sensitive_path(path):
     return any(re.search(p, os.path.basename(path)) for p in RED_FILE_REGEXES)
 
@@ -280,6 +285,9 @@ def secret_shell_write(command, depth=0, cwd=None, guarded_context=False):
     active = parser._strip_heredoc_bodies(command)
     tokens = parser._shell_tokens(active, _operator_origin=True)
     operator = parser._tokens._ShellOperator
+    # Do not join words: echo '>' .env contains data in two separate words.
+    if any(not isinstance(word, operator) and RED_REDIRECT_RE.search(word) for word in tokens):
+        return True
 
     def operands_for(name, args):
         """Known option values are not operands; -- ends option processing."""
