@@ -264,16 +264,19 @@ def secret_shell_write(command, depth=0, cwd=None, guarded_context=False):
     # Removing quote/escape characters here only widens the candidate check;
     # the shared tokenizer below still decides the actual operand boundaries.
     candidate = command.translate(str.maketrans('', '', "'\"\\"))
-    if (not guarded_context and not re.search(r'\.env|credentials\.|secrets?\.|\.pem\b|\.key\b', candidate)
-            and not any(char in candidate for char in '*?[')):
+    guarded_context = guarded_context or bool(re.search(
+        r'\.env|credentials\.|secrets?\.|\.pem\b|\.key\b', candidate))
+    if not guarded_context and not any(char in candidate for char in '*?['):
         return False
     if depth > 16:
         return True
     parser = _git_safety._pkg.shell_parse
     def guarded_target(path):
         # A guarded literal elsewhere in this command may bind this variable.
-        # An unresolved write destination cannot establish a safe target.
-        return sensitive_path(path) or bool(re.search(r'[$`*?\[]', path))
+        # Glob shapes here are write targets; syntax brackets elsewhere do not
+        # make an unresolved destination part of a guarded-file operation.
+        return (sensitive_path(path) or bool(re.search(r'[*?\[]', path))
+                or guarded_context and bool(re.search(r'[$`]', path)))
     active = parser._strip_heredoc_bodies(command)
     tokens = parser._shell_tokens(active, _operator_origin=True)
     operator = parser._tokens._ShellOperator
@@ -357,7 +360,7 @@ def secret_shell_write(command, depth=0, cwd=None, guarded_context=False):
     segments.append(segment)
     for words in segments:
         positions = parser._command_position_flags(words)
-        if any(secret_shell_write(body, depth + 1, cwd, True) for body, _, _ in
+        if any(secret_shell_write(body, depth + 1, cwd, guarded_context) for body, _, _ in
                parser._shell_command_payloads(words, positions, [0] * len(words))):
             return True
         for i, word in enumerate(words):
@@ -393,7 +396,7 @@ def secret_shell_write(command, depth=0, cwd=None, guarded_context=False):
             break
     outer = parser.without_dollar_paren_bodies(active)
     bodies = parser._backtick_bodies(outer) + _git_safety._executed_payloads(command, active)
-    return any(secret_shell_write(body, depth + 1, cwd, True) for body in bodies)
+    return any(secret_shell_write(body, depth + 1, cwd, guarded_context) for body in bodies)
 
 
 def classify_tool(tool_name, tool_input):
