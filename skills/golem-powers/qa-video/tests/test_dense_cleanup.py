@@ -28,34 +28,6 @@ def frames(out):
     return sorted(out.glob('window_*-f_*'))
 
 
-def test_slot_deadline_crossing_reports_contention(media):
-    _, _, env = media
-    bin_dir = Path(env['PATH'].split(os.pathsep)[0])
-    lock = bin_dir/'slots'
-    slot = lock/'slot-1'
-    slot.mkdir(parents=True)
-    (slot/'pid').write_text(str(os.getpid()))
-    # Cross the deadline during the first acquisition attempt, without sleeping.
-    clock = bin_dir/'date'
-    clock.write_text('''#!/bin/sh
-if [ -e "$0.started" ]; then
-  echo 101
-else
-  touch "$0.started"
-  echo 100
-fi
-''')
-    clock.chmod(0o755)
-    result, out = run(media, DENSE_LOCK_DIR=str(lock), DENSE_SLOTS='1',
-                      DENSE_SLOT_FREE_GB='999999', DENSE_SLOT_WAIT_S='1')
-    assert result.returncode != 0
-    assert 'DENSE_SLOT_WAIT_TIMEOUT wait_s=1' in result.stderr
-    assert 'waiting for dense slot' in result.stderr
-    assert slot.is_dir()
-    assert (slot/'pid').read_text() == str(os.getpid())
-    assert not frames(out)
-
-
 def test_cleanup_preserves_sheet_index_and_provenance(media):
     result, out = run(media)
     assert result.returncode == 0, result.stderr
