@@ -37,9 +37,10 @@ function latest(a, b) {
   return Math.max(a, b);
 }
 
-/** When this account can serve again (ms), -Infinity if it can now, null if unknown. */
+/** Account availability: ms/-Infinity = known reset/room, null = indefinite block, undefined = unknown usage. */
 function accountFreeAt(account, atMs) {
   if (account.disabled === true) return null;
+  if (account.status !== 'allowed' && account.status !== 'rejected') return undefined;
   const windows = [account.five_hour, account.weekly].filter(w => w && typeof w === 'object');
   const resets = windows.map(w => (w.resets_at ? Date.parse(w.resets_at) : null));
   let blocked; // undefined = not blocked
@@ -53,7 +54,9 @@ function accountFreeAt(account, atMs) {
   const empty = account.projected_weekly_empty_at ? Date.parse(account.projected_weekly_empty_at) : NaN;
   const weeklyReset = account.weekly?.resets_at ? Date.parse(account.weekly.resets_at) : null;
   if (Number.isFinite(empty) && empty <= atMs) blocked = latest(blocked, Number.isFinite(weeklyReset) ? weeklyReset : null);
-  return blocked === undefined ? -Infinity : blocked;
+  if (blocked !== undefined) return blocked;
+  // Room requires both windows to be measured; null/absent values are not zero usage.
+  return windows.length === 2 && windows.every(w => Number.isFinite(w.used_pct)) ? -Infinity : undefined;
 }
 
 /** usage.json `vendors` driver -> the T3 provider instance ids its account serves. */
@@ -95,7 +98,8 @@ function claudeFromAccounts(usage, atMs, provider) {
     return { [provider]: { state: 'unknown', reason: 'usage.json accounts are stale or empty' } };
   }
   const free = usage.accounts.map(a => accountFreeAt(a, atMs));
-  if (free.some(t => t !== null && t <= atMs)) return { [provider]: { state: 'ok' } };
+  if (free.some(t => t != null && t <= atMs)) return { [provider]: { state: 'ok' } };
+  if (free.includes(undefined)) return { [provider]: { state: 'unknown', reason: 'usage.json contains unknown account usage' } };
   const known = free.filter(t => t !== null);
   return { [provider]: { state: 'exhausted', resets_at: known.length ? iso(Math.min(...known)) : null } };
 }
@@ -118,13 +122,24 @@ export function usageFromCapabilities(caps) {
   return out;
 }
 
-/** Merge usage maps; the worst state for a key wins. */
+/** Worst state wins; simultaneous exhaustions last until every block has reset. */
+function combineEntry(prev, entry) {
+  if (!prev || RANK[entry.state] > RANK[prev.state]) return entry;
+  if (prev.state === 'exhausted' && entry.state === 'exhausted') {
+    const reset = latest(prev.resets_at ? ms(prev.resets_at, 'resets_at') : null,
+      entry.resets_at ? ms(entry.resets_at, 'resets_at') : null);
+    return { ...prev, resets_at: reset === null ? null : iso(reset) };
+  }
+  return prev;
+}
+
+/** Merge usage maps, retaining all applicable exhaustion windows for each key. */
 export function mergeUsage(...maps) {
   const out = {};
   for (const map of maps) {
     for (const [key, entry] of Object.entries(map ?? {})) {
       const prev = out[key];
-      if (!prev || RANK[entry.state] > RANK[prev.state]) out[key] = entry;
+      out[key] = combineEntry(prev, entry);
     }
   }
   return out;
@@ -134,12 +149,13 @@ export function mergeUsage(...maps) {
 function assess(usage, candidate, atMs) {
   const entries = [usage[candidate.provider], usage[`${candidate.provider}/${candidate.model}`]].filter(Boolean);
   if (!entries.length) return { usable: true, verified: false };
-  const worst = entries.reduce((a, b) => (RANK[b.state] > RANK[a.state] ? b : a));
+  // Expiry applies to each scope separately. An elapsed provider block cannot erase a
+  // live model block, or turn an unknown model reading into verified room (and vice versa).
+  const current = entries.map(entry => entry.state === 'exhausted' && entry.resets_at
+    && ms(entry.resets_at, 'resets_at') <= atMs ? { state: 'ok' } : entry);
+  const worst = current.reduce(combineEntry);
   if (worst.state === 'ok') return { usable: true, verified: true };
   if (worst.state === 'unknown') return { usable: true, verified: false, entry: worst };
-  if (worst.state === 'exhausted' && worst.resets_at && ms(worst.resets_at, 'resets_at') <= atMs) {
-    return { usable: true, verified: true, entry: worst };
-  }
   return { usable: false, entry: worst };
 }
 
