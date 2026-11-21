@@ -3,6 +3,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -368,3 +369,26 @@ def test_gemini_installed_profile_case_reaches_worker_cli(tmp_path):
     assert b"AGY_ARG=Gemini 3.8 Flash (High)\n" in output
     config = json.loads(base64.b64decode(result["files"]["project/.agents/mcp_config.json"]))
     assert {"fixture", "repo"} <= config["mcpServers"].keys()
+
+
+@pytest.mark.parametrize("case_id", [
+    "topup-guardian-cwd-worktree",
+    "topup-guardian-cwd-nested-worktree",
+    "topup-r2-guardian-find-clean",
+    "topup-r2-api-find-clean",
+    "topup-r2-guardian-sudo-force-push",
+    "topup-r2-api-sudo-force-push",
+])
+def test_guardian_preserves_pristine_policy_in_incomplete_worktree(case_id, tmp_path):
+    """Git builtin metadata must not reinterpret unrelated policy at startup."""
+    corpus = json.loads(harness.CORPUS.read_text())
+    case = next(row for row in corpus if row["id"] == case_id)
+    harness.make_fixture(tmp_path)
+    actual = harness.capture(case, ROOT, tmp_path)
+    expected = harness.expected_on_host(json.loads(harness.GOLDENS.read_text()))
+    declarations = harness.load_deltas(ROOT / harness.DELTA_PATH, [row["id"] for row in corpus])
+    failures, _used = harness.compare_captures(
+        {case_id: expected[case_id]}, {case_id: actual}, declarations, sys.platform,
+        hook_cases={case_id} if case["target"] == "git-guardian" else set(),
+    )
+    assert failures == []
