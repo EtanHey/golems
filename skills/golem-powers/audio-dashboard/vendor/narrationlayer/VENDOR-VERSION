@@ -1,19 +1,20 @@
 {
   "schemaVersion": 1,
   "vendor": "narrationlayer",
-  "vendorDate": "2026-11-17",
+  "vendorDate": "2026-11-20",
   "upstream": {
     "repository": "EtanHey/narrationlayer",
-    "commit": "08e01a34cb0d438ddf8fb002b6223cb4c290b32e",
-    "committedAt": "2026-11-17T05:52:07+02:00"
+    "commit": "f9b3483c240f4a590172fed60fce8c0dfcb09fae",
+    "committedAt": "2026-11-20T21:51:12+02:00",
+    "ref": "master"
   },
   "pairs": [
     {
       "id": "local-tts-runner",
       "vendorPath": "vendor/narrationlayer/local-tts-runner.ts",
       "sourcePath": "bin/local-tts-runner.ts",
-      "vendorSha256": "1daecf50918db38c1a9c784e99463eab3ba1922af0ab51a130cf6634a2614181",
-      "sourceSha256": "1daecf50918db38c1a9c784e99463eab3ba1922af0ab51a130cf6634a2614181"
+      "vendorSha256": "9edfe4a1776ada236c37b5d61bddca8669c25f72d46a3dd1c024f1412f98a79c",
+      "sourceSha256": "9edfe4a1776ada236c37b5d61bddca8669c25f72d46a3dd1c024f1412f98a79c"
     },
     {
       "id": "profiles",
@@ -40,8 +41,8 @@
       "id": "word-timing-repair",
       "vendorPath": "vendor/narrationlayer/word-timing-repair.ts",
       "sourcePath": "src/word-timing-repair.ts",
-      "vendorSha256": "55e150c980f2d6e6455d1fd0b79c815f935c8d8e376765e5b23e8f07ccd5ab0c",
-      "sourceSha256": "55e150c980f2d6e6455d1fd0b79c815f935c8d8e376765e5b23e8f07ccd5ab0c"
+      "vendorSha256": "aa5094f8655a7f964cb5af89d03adf3f27b9028037899149cb7c62a0fc24f1bb",
+      "sourceSha256": "aa5094f8655a7f964cb5af89d03adf3f27b9028037899149cb7c62a0fc24f1bb"
     },
     {
       "id": "word-timings",
@@ -75,8 +76,8 @@
       "id": "src-pipelines-local-tts-take-cache",
       "sourcePath": "src/pipelines/local-tts/take-cache.ts",
       "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/take-cache.ts",
-      "sourceSha256": "4046ef21526b472e557678ffb27d799d721abb981d69343fa302e3273a09933e",
-      "vendorSha256": "4046ef21526b472e557678ffb27d799d721abb981d69343fa302e3273a09933e"
+      "sourceSha256": "fcf09d75da2dc2641363254004d242e34566eb211aaa59cb9b2301936014d2a7",
+      "vendorSha256": "fcf09d75da2dc2641363254004d242e34566eb211aaa59cb9b2301936014d2a7"
     },
     {
       "id": "src-pipelines-local-tts-failure",
@@ -89,22 +90,15 @@
       "id": "src-pipelines-local-tts-index",
       "sourcePath": "src/pipelines/local-tts/index.ts",
       "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/index.ts",
-      "sourceSha256": "0f5f62be3a42fc591725aba66ec386795dc07f3bb123eeaa82be813e69cdc1e4",
-      "vendorSha256": "0f5f62be3a42fc591725aba66ec386795dc07f3bb123eeaa82be813e69cdc1e4"
+      "sourceSha256": "696741e5e933006c01bc44cd046d332efa62b20dedccf388392be05716dcb9dd",
+      "vendorSha256": "696741e5e933006c01bc44cd046d332efa62b20dedccf388392be05716dcb9dd"
     },
     {
       "id": "src-quality-take-checks",
       "sourcePath": "src/quality/take-checks.ts",
       "vendorPath": "vendor/narrationlayer/src/quality/take-checks.ts",
-      "sourceSha256": "ac487f87688af6dae2e979e4ec38e20199efbf226ea481038e460afb1e7b4d2b",
-      "vendorSha256": "ac487f87688af6dae2e979e4ec38e20199efbf226ea481038e460afb1e7b4d2b"
-    },
-    {
-      "id": "src-quality-transcription-equivalence",
-      "sourcePath": "src/quality/transcription-equivalence.ts",
-      "vendorPath": "vendor/narrationlayer/src/quality/transcription-equivalence.ts",
-      "sourceSha256": "2e2826e8c5a3f53e312143664100dd1f0b9c56c869ae6220366d3c5ca940e511",
-      "vendorSha256": "2e2826e8c5a3f53e312143664100dd1f0b9c56c869ae6220366d3c5ca940e511"
+      "sourceSha256": "89d50fc8dbac62f4a0a6db9f9ae0436b93b46a8198de536a4432bda699f2727e",
+      "vendorSha256": "89d50fc8dbac62f4a0a6db9f9ae0436b93b46a8198de536a4432bda699f2727e"
     },
     {
       "id": "src-audio-ffmpeg-run",
@@ -182,6 +176,13 @@
       "vendorPath": "vendor/narrationlayer/src/core/render-types.ts",
       "sourceSha256": "42ce380de53e04fee66cb7c1ae9066a537694c81ed7234c8d1d3b2ed6000acba",
       "vendorSha256": "42ce380de53e04fee66cb7c1ae9066a537694c81ed7234c8d1d3b2ed6000acba"
+    },
+    {
+      "id": "src-text-transcription-equivalence",
+      "sourcePath": "src/text/transcription-equivalence.ts",
+      "vendorPath": "vendor/narrationlayer/src/text/transcription-equivalence.ts",
+      "sourceSha256": "4384f3ad5fac82e95ec6b343c23844576ea459ee62cb6ad207b2e0347001d018",
+      "vendorSha256": "4384f3ad5fac82e95ec6b343c23844576ea459ee62cb6ad207b2e0347001d018"
     }
   ],
   "intentionalAdaptations": [
@@ -414,7 +415,7 @@
     }
   ],
   "pendingRevendor": {
-    "sourceCommit": "08e01a34cb0d438ddf8fb002b6223cb4c290b32e",
+    "sourceCommit": "f9b3483c240f4a590172fed60fce8c0dfcb09fae",
     "status": "refreshed-with-open-debt",
     "aidevNote": "Exact committed runtime dependency closure; existing type-only shims and repo-free profile/pronunciation bridge debt retained. Historical debt resolutions remain historical."
   },
