@@ -259,7 +259,20 @@ bytes, and apply publication-policy credential-adjacent patterns plus provider
 shapes and generic assignments (password/passwd/pwd/secret/token/api-key/access-key),
 JSON refresh_token/access_token/private_key/client_secret keys, JWTs, Google ya29,
 Anthropic sk-ant and URL userinfo. False positives become named holds for owner
-review. PNG, JPEG, GIF, ISO media ftyp, RIFF WAVE/WEBP/AVI, ID3/MPEG audio, FLAC,
+review. One narrow exception waives only `generic-assignment` for plain UTF-8
+generated `page.html` and `clips.json` at the absolute local path
+`<repo>/docs.local/dashboards/runtime-<YYYYMMDD>/archive-<id>/<id>/<member>`,
+also admitting the observed `archive-<id>-tonight` directory. The ID is
+`HHMM-YYYY-MM-DD` and must agree in both directory names. No other member,
+extension or nested path qualifies. The file's resolved path must equal that
+layout beneath the repo's resolved root; symlinked ancestors cannot redirect
+the exemption, even when scanning starts at a descendant directory or file.
+Provider/policy detectors, credential names,
+JSON credential keys and all scan bounds still hold. Git history, media and
+compressed bytes retain generic scanning too. This is the local custody staging
+layout whose preserved members go to `06_ARCHIVE/Audio dashboards/<id>/`;
+the Drive destination alone never grants an exception.
+PNG, JPEG, GIF, ISO media ftyp, RIFF WAVE/WEBP/AVI, ID3/MPEG audio, FLAC,
 Ogg and Matroska/WebM signatures identify media. Media bytes, including text after
 the header, still receive credential-shape scans; hashes cover every raw byte.
 A text file named .png or .mp4 is scanned as text. Media over the 64 MiB content
