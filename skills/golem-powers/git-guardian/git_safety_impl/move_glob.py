@@ -15,6 +15,7 @@ import fnmatch
 import os
 
 from .paths import _expand_tilde, _created_target_reason
+from .move_history import snapshot_is_current
 
 _SECRET_INSPECTION = ContextVar('move_glob_secret_inspection', default=None)
 
@@ -35,10 +36,14 @@ _SCAN_LIMIT = 20000
 _GLOB_CHARS = frozenset("*?")
 # Bracket, brace and extended (zsh/ksh) forms, quoting and expansions stay
 # unresolved: the caller keeps today's refusal for them.
-_UNSUPPORTED = frozenset("[]{}()<>^#|!$`\\'\"")
+_UNSUPPORTED = frozenset("=[]{}()<>^#|!$`\\'\"")
 # A match whose own name holds one of these would be re-read as a pattern or a
 # variable by the path checks, so it is not judged from its spelling.
 _UNSAFE_NAME = frozenset("*?[]{}$`~\\")
+
+
+def _known_directory(path):
+    return os.path.isdir(path) and os.access(path, os.R_OK | os.X_OK)
 
 
 def expand_move_glob(source: str, cwd: str, variables: dict[str, str]):
@@ -60,15 +65,21 @@ def expand_move_glob(source: str, cwd: str, variables: dict[str, str]):
     components = [part for part in os.path.normpath(base).split(os.sep) if part]
     first = next(index for index, part in enumerate(components) if set(part) & _GLOB_CHARS)
     literal = os.sep + os.sep.join(components[:first])
+    if not _known_directory(literal):
+        return None
     candidates = [literal]
     scanned = 0
-    for part in components[first:]:
+    for index, part in enumerate(components[first:], start=first):
         following = []
         for directory in candidates:
+            if not _known_directory(directory):
+                return None
             if not set(part) & _GLOB_CHARS:
                 path = os.path.join(directory, part)
-                if os.path.lexists(path):
-                    following.append(path)
+                if (not os.path.lexists(path)
+                        or index < len(components) - 1 and not _known_directory(path)):
+                    return None
+                following.append(path)
                 continue
             try:
                 with os.scandir(directory) as entries:
@@ -80,10 +91,8 @@ def expand_move_glob(source: str, cwd: str, variables: dict[str, str]):
                             if entry.name.startswith('-') or set(entry.name) & _UNSAFE_NAME:
                                 return None
                             following.append(entry.path)
-            except NotADirectoryError:
-                continue
-            except FileNotFoundError:
-                continue
+            except (NotADirectoryError, FileNotFoundError):
+                return None
             except OSError:
                 return None
             if len(following) > MOVE_GLOB_LIMIT:
@@ -110,6 +119,8 @@ def move_sources_reason(api, args, sources, cwd, variables, protected_cwd,
     for operand in sources:
         glob = expand_move_glob(operand, cwd, variables)
         if glob is not None:
+            if not snapshot_is_current(api, glob[1]):
+                return "protected root move cannot use a stale or uncertain glob snapshot"
             reason = _created_target_reason(api, glob[1], cwd, variables, created_paths)
             if reason:
                 return reason

@@ -10,7 +10,7 @@ import stat
 import time
 from functools import lru_cache
 
-from . import shell_parse, branch_move
+from . import shell_parse, branch_move, move_history
 from .trash import trash_move, literal_trash_syntax
 from .move_glob import move_sources_reason
 from .paths import (
@@ -914,6 +914,7 @@ def _rm_reason_in_words(
 
 
 @branch_move.with_raw_command
+@move_history.with_history
 def is_dangerous_rm(
     api: dict, command: str, *, cwd: str | None = None, env=None, _depth: int = 0,
     _find_cache: dict[tuple, str | None] | None = None,
@@ -991,6 +992,7 @@ def is_dangerous_rm(
                 local_variables[assignment.group(1)] = None
             assignments.append((assignment.group(1), local_variables[assignment.group(1)]))
             position += 1
+        move_history.note_segment(words, position, current, local_variables, operator_before, operator_after)
         if position == len(words):
             if (
                 control_prefix_seen
