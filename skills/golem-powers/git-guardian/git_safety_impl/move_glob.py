@@ -8,10 +8,27 @@ the same protected-root check a literal source gets.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
+
 import fnmatch
 import os
 
 from .paths import _expand_tilde, _created_target_reason
+
+_SECRET_INSPECTION = ContextVar('move_glob_secret_inspection', default=None)
+
+
+@contextmanager
+def inspect_secret_matches(sensitive_path):
+    """Use the hook's secret-name rule with the scanner's tracked cwd."""
+    admitted = set()
+    token = _SECRET_INSPECTION.set((sensitive_path, admitted))
+    try:
+        yield admitted
+    finally:
+        _SECRET_INSPECTION.reset(token)
+
 
 MOVE_GLOB_LIMIT = 1000
 _SCAN_LIMIT = 20000
@@ -96,6 +113,11 @@ def move_sources_reason(api, args, sources, cwd, variables, protected_cwd,
             reason = _created_target_reason(api, glob[1], cwd, variables, created_paths)
             if reason:
                 return reason
+        inspection = _SECRET_INSPECTION.get()
+        if glob is not None and inspection is not None:
+            if any(inspection[0](source.rstrip(os.sep)) for source in glob[0]):
+                return "sensitive file matched by mv source glob"
+            inspection[1].add(operand)
         for source in glob[0] if glob is not None else [operand]:
             reason = _created_target_reason(api, source, cwd, variables, created_paths)
             if reason:

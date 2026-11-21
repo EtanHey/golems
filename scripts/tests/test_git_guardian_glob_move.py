@@ -140,3 +140,24 @@ def test_glob_match_cannot_inject_mv_options(captures):
     (work / 'elsewhere').mkdir()
     code, decision = hook('mv * ~/Gits/site-a', work, home)
     assert code == 2 and decision['decision'] == 'block'
+
+
+@pytest.mark.parametrize('name', ['.env', '.env.local', 'credentials.json', 'secret.yaml', 'client.pem', 'client.key'])
+def test_source_glob_retains_secret_file_hold(captures, name):
+    home, project = captures
+    (project / 'captures' / '.work' / name).write_text('synthetic fixture')
+    code, decision = hook('cd captures && mv .work/* elsewhere/', project, home)
+    assert code == 2 and decision['decision'] == 'block'
+
+
+@pytest.mark.parametrize('command', [
+    'cd captures && mv .work/zz-* .env',
+    'cd captures && mv .work/zz-* "$UNKNOWN"',
+    'cd captures && mv -t .env .work/zz-*',
+    'cd captures && mv .work/zz-* elsewhere/*',
+    'cd captures && mv .work/zz-* elsewhere/; printf x > .env',
+])
+def test_source_glob_does_not_waive_other_secret_writes(captures, command):
+    home, project = captures
+    code, decision = hook(command, project, home)
+    assert code == 2 and decision['decision'] == 'block'
