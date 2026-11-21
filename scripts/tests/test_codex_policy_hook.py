@@ -434,6 +434,8 @@ class CodexPolicyHookTests(unittest.TestCase):
             lib = Path(scratch)
             (lib / "git_safety.py").write_text(
                 "from contextlib import nullcontext\n"
+                "from types import SimpleNamespace\n"
+                "_pkg = SimpleNamespace(move_glob=SimpleNamespace(inspect_secret_matches=lambda predicate: nullcontext(set())))\n"
                 "class PolicyEvaluationDeadlineExceeded(Exception): pass\n"
                 "policy_evaluation_deadline = nullcontext\n"
                 "cancel_policy_evaluation_deadline = lambda: None\n"
