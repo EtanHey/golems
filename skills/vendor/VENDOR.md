@@ -4,8 +4,8 @@ Status: upstream bytes copied without edits; usage policy is a separate DRAFT.
 
 | Owner | Source | Pinned commit | License |
 | --- | --- | --- | --- |
-| Anthropic | https://github.com/anthropics/claude-plugins-official | f75f5b25ae94f4332be4ff5f18435741d2589bdb | Apache-2.0, frontend-design/LICENSE.txt |
-| Emil Kowalski | https://github.com/emilkowalski/skills | f7ce8c02d6e3c8f0d980a44c57bcc41a40254349 | MIT, LICENSE in each skill |
+| Anthropic | https://github.com/anthropics/claude-plugins-official | d7d32797e7e02708d0bb00ffe8b8f2397dc1aea6 | Apache-2.0, frontend-design/LICENSE.txt |
+| Emil Kowalski | https://github.com/emilkowalski/skills | 64eb3deb9a5fbfa041faf783e0bc3fd635872e9c | MIT, LICENSE in each skill |
 
 Only the five named Emil skills are included. `animate` references `pick-ui-library`,
 which is not installed: use existing repo dependencies and never fetch it. No selected folder has scripts.
