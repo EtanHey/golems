@@ -1062,13 +1062,13 @@
     "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
   },
   {
-    "authority": "golems#1048",
+    "authority": "golems#1331",
     "candidate_sha256": {
-      "darwin": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a",
-      "linux": "2038138c6224988bd2d5908f1769ee63852dd54f832967218f82b38da1edcf5a"
+      "darwin": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb",
+      "linux": "f028ca79514ff757344880b8c27914594ee4cab2fe93e62de20a571e7f949ffb"
     },
     "case": "r2-guardian-035",
-    "reason": "Plain one-line hook message (wording only; decision and exit unchanged)"
+    "reason": "wording only; decision and exit unchanged"
   },
   {
     "authority": "golems#1048",
