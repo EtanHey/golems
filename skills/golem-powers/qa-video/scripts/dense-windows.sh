@@ -152,7 +152,10 @@ if [ "$SLOTS" -gt 0 ]; then
       done
       [ -z "$SLOT" ] || break
       remaining=$((deadline - $(date +%s)))
-      [ "$remaining" -gt 0 ] || die "DENSE_SLOT_WAIT_TIMEOUT wait_s=$WAIT_S lock_root=$LOCK_ROOT"
+      if [ "$remaining" -le 0 ]; then
+        echo "dense-windows: waiting for dense slot ($SLOTS slots; deadline reached)" >&2
+        die "DENSE_SLOT_WAIT_TIMEOUT wait_s=$WAIT_S lock_root=$LOCK_ROOT"
+      fi
       [ "$delay" -le "$remaining" ] || delay=$remaining
       echo "dense-windows: waiting for dense slot ($SLOTS slots; retry in ${delay}s)" >&2
       sleep "$delay"
