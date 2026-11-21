@@ -9,7 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  E1_DELETED, hookDriftPaths, MIN_HOOK_PYTHON, REPAIR_REASON, failClosedCommand, pathPython, permissionGuardCommand, pinnedFingerprints, resolveHookPython,
+  E1_DELETED, hookDriftPaths, MIN_HOOK_PYTHON, REPAIR_REASON, failClosedCommand, pathPython, permissionGuardCommand, pinnedFingerprints, reexecArgs, resolveHookPython,
 } from "../hooks/install-hooks.mjs";
 
 // Every test builds a git fixture and spawns node; a cold CI runner needs headroom.
@@ -837,6 +837,52 @@ test("--update moves the pin to a new sha and re-locks; nothing else moves it", 
   expect(git(fx.repo, "worktree", "list", "--porcelain")).toMatch(/hooks-live\nHEAD \w+\ndetached\nlocked .+/);
 });
 
+// The pin's own installer runs `--update --apply`; the next commit changes how
+// it writes a command. One apply must write that command with the NEW code, so
+// --status (which runs the new code) reads no drift.
+test("--update --apply writes settings with the moved pin's installer, so one apply leaves --status clean", () => {
+  const fx = guardedFixture({ privateSuite: "present" }); // a tree with the installer is gate-guarded
+  const hooksDir = path.join(fx.repo, "scripts/hooks");
+  copyInstaller(hooksDir);
+  git(fx.repo, "add", "-A"); git(fx.repo, "commit", "-qm", "installer v1"); git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const pinned = (fx2, ...args) => {
+    const r = spawnSync("node", [path.join(live(fx2), "scripts/hooks/install-hooks.mjs"), "--repo", fx2.repo,
+      "--manifest", fx2.manifest, "--host", "mbp", ...args], { encoding: "utf8", env: fixtureEnv(fx2) });
+    return { status: r.status, out: `${r.stdout}${r.stderr}` };
+  };
+  const first = spawnSync("node", [path.join(hooksDir, "install-hooks.mjs"), "--repo", fx.repo, "--manifest", fx.manifest,
+    "--host", "mbp", "--apply"], { encoding: "utf8", env: fixtureEnv(fx) });
+  expect(first.status, `${first.stdout}${first.stderr}`).toBe(0);
+  const v1 = git(live(fx), "rev-parse", "HEAD");
+  const source = readFileSync(path.join(hooksDir, "install-hooks.mjs"), "utf8");
+  const old = ": expand(e.command));";
+  expect(source.split(old)).toHaveLength(2);
+  writeFileSync(path.join(hooksDir, "install-hooks.mjs"), source.replace(old, ': `${expand(e.command)} #v2`);'));
+  git(fx.repo, "add", "scripts/hooks/install-hooks.mjs"); git(fx.repo, "commit", "-qm", "installer v2"); git(fx.repo, "push", "-q", "origin", "HEAD:master");
+  const v2 = git(fx.repo, "rev-parse", "HEAD");
+
+  const update = pinned(fx, "--update", "--apply");
+  expect(update.status, update.out).toBe(0);
+  expect(update.out).toContain(`hooks-live: moved; applying with the installer at ${v2}`);
+  expect(git(live(fx), "rev-parse", "HEAD")).not.toBe(v1);
+  expect(git(live(fx), "rev-parse", "HEAD")).toBe(v2);
+  const command = JSON.parse(readFileSync(fx.settingsPath, "utf8")).hooks.PreToolUse[0].hooks[0].command;
+  expect(command.endsWith("demo-gate.py #v2")).toBe(true);
+  const status = pinned(fx, "--status");
+  expect(status.out).toContain("settings-drift=0");
+  expect(status.out).toMatch(/^demo-gate ok$/m);
+  expect(status.status, status.out).toBe(0);
+  // Settled: a second apply changes nothing.
+  const before = readFileSync(fx.settingsPath, "utf8");
+  expect(pinned(fx, "--update", "--apply").status).toBe(0);
+  expect(readFileSync(fx.settingsPath, "utf8")).toBe(before);
+});
+
+test("re-exec args pin --update to the moved sha and drop --restore-live", () => {
+  expect(reexecArgs(["--host", "mbp", "--update", "--apply", "--restore-live"], "abc")).toEqual(["--host", "mbp", "--apply", "--update", "abc"]);
+  expect(reexecArgs(["--update", "origin/master", "--apply", "--python", "/p"], "abc")).toEqual(["--apply", "--python", "/p", "--update", "abc"]);
+});
+
 test("--status reads only registered hook commands: an E1 or external name elsewhere in settings is not a hit", () => {
   const fx = fixture();
   const s = JSON.parse(readFileSync(fx.settingsPath, "utf8"));
@@ -1124,9 +1170,8 @@ test("--status compares every Python hook's import dirs byte-for-byte with HEAD;
   expect(run(fx, "--status").out).not.toMatch(/import files|INDEX|REPLACE/);
 });
 
-function pinnedManifestFixture() {
-  const fx = fixture();
-  const directory = path.join(fx.root, 'invoking-checkout/scripts/hooks');
+// A runnable copy of this installer (and what it imports or spawns) at <directory>.
+function copyInstaller(directory) {
   mkdirSync(directory, { recursive: true });
   copyLaunchdSupport(path.resolve(directory, '../..'));
   cpSync(installer, path.join(directory, 'install-hooks.mjs'));
@@ -1142,6 +1187,11 @@ function pinnedManifestFixture() {
   cpSync(path.join(here, '../hooks/private-regression-gate.py'), path.join(directory, 'private-regression-gate.py'));
   cpSync(path.join(here, '../hooks/heavy-suite.py'), path.join(directory, 'heavy-suite.py'));
   cpSync(path.join(here, '../hooks/proc_identity.py'), path.join(directory, 'proc_identity.py'));
+}
+function pinnedManifestFixture() {
+  const fx = fixture();
+  const directory = path.join(fx.root, 'invoking-checkout/scripts/hooks');
+  copyInstaller(directory);
   writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifestFor()));
   fx.defaultInstaller = path.join(directory, 'install-hooks.mjs');
   fx.pinnedManifest = path.join(fx.repo, 'scripts/hooks/manifest.json');
