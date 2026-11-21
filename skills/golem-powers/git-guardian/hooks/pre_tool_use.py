@@ -22,6 +22,8 @@ import json
 import sys
 import os
 import re
+import subprocess
+from pathlib import Path
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 
@@ -132,18 +134,160 @@ RED_SQL_REGEXES = [
 # RED: file access patterns — matched as file paths, not substrings.
 # Uses regex to avoid false positives on inline code (e.g. process.env.API_KEY).
 RED_FILE_REGEXES = [
-    r'(?:^|\s|/|")\.env(?!\.example)(?:\s|$|\.|\b)',  # .env, .env.local — but NOT .env.example
+    r'(?:^|\s|/|")\.env(?!\.example)',  # all dotenv prefixes, but NOT .env.example
     r'(?:^|\s|/)credentials\.\w+',              # credentials.json (not GOOGLE_CREDENTIALS)
     r'(?:^|\s|/)secrets?\.\w+',                 # secret.yaml, secrets.json
     r'\S+\.pem(?:\s|$|")',                       # *.pem files
     r'\S+\.key(?:\s|$|")',                       # *.key files
 ]
 
-# A shell redirect (`>`, `>>`) whose target is a secret file, whatever writes it.
-# GO-5: `echo x > credentials.json` passed the old substring op check ("echo >").
-RED_REDIRECT_RE = re.compile(
-    r'>{1,2}\s*["\']?(?:\S*/)?(?:\.env(?!\.example)[\w.-]*|credentials\.\w+|secrets?\.\w+|[\w.-]+\.pem|[\w.-]+\.key)(?:["\'\s;&|)]|$)'
-)
+def sensitive_path(path):
+    return any(re.search(p, os.path.basename(path)) for p in RED_FILE_REGEXES)
+
+
+def schema_content_safe(text):
+    """Conservative Varlock subset: empty entries and typed scalar defaults.
+
+    Varlock permits secrets in schemas too; neither the suffix nor @public is
+    evidence of safety. Arbitrary strings, expressions and multiline values
+    stay guarded. See https://varlock.dev/guides/schema/.
+    """
+    kind = None
+    default_public = False
+    public = False
+    seen_item = False
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            kind = None
+            public = default_public
+            continue
+        if line.startswith('#'):
+            # An empty active assignment does not make comment values safe.
+            # Decorator assignments begin with @; ordinary populated assignments
+            # and credential-shaped material remain guarded in documentation.
+            decorators = {'type', 'description', 'sensitive', 'currentEnv',
+                          'defaultSensitive', 'defaultRequired', 'defaultDynamic'}
+            for assignment in re.finditer(r'(?<!\w)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?=\S)', line):
+                if (line[assignment.start() - 1:assignment.start()] != '@'
+                        or assignment[1] not in decorators):
+                    return False
+            if (re.search(r'\b(?:sk-|ghp_|github_pat_|sbp_|xox[baprs]-|AKIA)[A-Za-z0-9_./+-]{8,}', line)
+                    or re.search(r'-{5}BEGIN [A-Z ]*PRIVATE KEY-{5}', line)):
+                return False
+            if not seen_item and re.search(r'@defaultSensitive=false\b', line):
+                default_public = public = True
+            if re.search(r'@sensitive=false\b|@public\b', line):
+                public = True
+            match = re.search(r'@type=(number|boolean)\b', line)
+            if match and kind != 'sensitive':
+                kind = match[1]
+            if re.search(r'@sensitive(?:\s|$|=true)', line):
+                kind = 'sensitive'
+                public = False
+            continue
+        match = re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*=(.*)', line)
+        if not match:
+            return False
+        value = match[1].strip()
+        if value and not (public and (kind == 'number' and re.fullmatch(r'-?\d+(?:\.\d+)?', value)
+                                     or kind == 'boolean' and value in ('true', 'false'))):
+            return False
+        seen_item = True
+        kind = None
+        public = default_public
+    return True
+
+
+def safe_schema_edit(tool, inputs):
+    path = Path(inputs.get('file_path', ''))
+    if path.name != '.env.schema' or path.is_symlink():
+        return False
+    try:
+        tracked = subprocess.run(['git', '-C', str(path.resolve().parent), 'ls-files',
+                                  '--error-unmatch', '--', path.name],
+                                 capture_output=True, timeout=1)
+        if tracked.returncode:
+            return False
+        before = path.read_text()
+        if not schema_content_safe(before):
+            return False
+        if tool == 'Write':
+            after = inputs['content']
+        elif tool == 'Edit':
+            old, new = inputs['old_string'], inputs['new_string']
+            if not old or old not in before:
+                return False
+            after = before.replace(old, new, -1 if inputs.get('replace_all') else 1)
+        else:
+            return False
+        return schema_content_safe(after)
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        return False
+
+
+def secret_shell_write(command, depth=0, cwd=None, guarded_context=False):
+    """Inspect literal write operands using the shared quote-aware tokenizer."""
+    # Avoid a second recursive parse for commands with no guarded path at all.
+    # Removing quote/escape characters here only widens the candidate check;
+    # the shared tokenizer below still decides the actual operand boundaries.
+    candidate = command.translate(str.maketrans('', '', "'\"\\"))
+    if not guarded_context and not re.search(r'\.env|credentials\.|secrets?\.|\.pem\b|\.key\b', candidate):
+        return False
+    if depth > 16:
+        return True
+    parser = _git_safety._pkg.shell_parse
+    def guarded_target(path):
+        # A guarded literal elsewhere in this command may bind this variable.
+        # An unresolved write destination cannot establish a safe target.
+        return sensitive_path(path) or bool(re.search(r'[$`]', path))
+    active = parser._strip_heredoc_bodies(command)
+    tokens = parser._shell_tokens(active, _operator_origin=True)
+    operator = parser._tokens._ShellOperator
+    for i, token in enumerate(tokens[:-1]):
+        if isinstance(token, operator) and token.startswith('>') and guarded_target(tokens[i + 1]):
+            return True
+    segments, segment = [], []
+    for token in tokens:
+        if isinstance(token, operator) and token in (';', '|', '||', '&&', '&', '(', ')', '\n'):
+            segments.append(segment)
+            segment = []
+        else:
+            segment.append(token)
+    segments.append(segment)
+    for words in segments:
+        positions = parser._command_position_flags(words)
+        if any(secret_shell_write(body, depth + 1, cwd, True) for body, _, _ in
+               parser._shell_command_payloads(words, positions, [0] * len(words))):
+            return True
+        for i, word in enumerate(words):
+            name = os.path.basename(word)
+            if not positions[i] or name not in ('sed', 'perl', 'tee', 'cp', 'mv', 'rm'):
+                continue
+            args = words[i + 1:]
+            inplace = (name == 'sed' and any(a == '--in-place' or a.startswith('--in-place=') or a.startswith('-i') for a in args)
+                       or name == 'perl' and any(a.startswith('-') and not a.startswith('--') and 'i' in a[1:] for a in args))
+            if name in ('cp', 'mv'):
+                targets = args[-1:]
+                if args and os.path.isdir(os.path.join(cwd or os.getcwd(), args[-1])):
+                    targets = [os.path.join(args[-1], os.path.basename(a)) for a in args[:-1]]
+                for j, arg in enumerate(args):
+                    if arg in ('-t', '--target-directory') and j + 1 < len(args):
+                        targets = [os.path.join(args[j + 1], os.path.basename(a)) for a in args[j + 2:]]
+                    elif arg.startswith('--target-directory='):
+                        targets = [os.path.join(arg.split('=', 1)[1], os.path.basename(a)) for a in args[j + 1:]]
+                if name == 'mv':
+                    targets += args[:-1]
+            elif name in ('tee', 'rm') or inplace:
+                targets = args
+            else:
+                targets = []
+            if any(guarded_target(a) for a in targets):
+                return True
+            break
+    outer = parser.without_dollar_paren_bodies(active)
+    bodies = parser._backtick_bodies(outer) + _git_safety._executed_payloads(command, active)
+    return any(secret_shell_write(body, depth + 1, cwd, True) for body in bodies)
 
 
 def classify_tool(tool_name, tool_input):
@@ -181,18 +325,12 @@ def classify_tool(tool_name, tool_input):
             if re.search(sql_re, command, re.IGNORECASE):
                 return "RED", f"Dangerous command: {label}"
 
-        # Check for sensitive file access in write context
-        # Skip inline code execution (bun -e, node -e, python -c)
-        stripped = command.strip()
-        is_inline_code = bool(re.match(
-            r'^(bun|node|deno|npx|tsx)\s+(-e|--eval)\s+', stripped
-        )) or bool(re.match(r'^python3?\s+-c\s+', stripped))
-
-        if not is_inline_code and RED_REDIRECT_RE.search(command):
-            return "RED", f"Sensitive file operation: {command[:80]}"
-        if not is_inline_code and any(re.search(p, command) for p in RED_FILE_REGEXES):
-            if any(op in command for op in ["cat >", "echo >", "write ", "cp ", "mv ", "rm "]):
-                return "RED", f"Sensitive file operation: {command[:80]}"
+        # Redirects remain writes even on inline-code commands.
+        try:
+            if secret_shell_write(raw_command, cwd=tool_input.get('cwd', os.getcwd())):
+                return "RED", "Sensitive file operation"
+        except Exception:
+            return "RED", "security policy could not evaluate command safely"
 
         # GREEN commands
         for green_cmd in GREEN_COMMANDS:
@@ -208,6 +346,8 @@ def classify_tool(tool_name, tool_input):
         basename = os.path.basename(file_path)
         # RED if touching sensitive files
         if any(re.search(p, basename) for p in RED_FILE_REGEXES):
+            if safe_schema_edit(tool_name, tool_input):
+                return "YELLOW", None
             return "RED", f"Editing sensitive file: {file_path}"
         return "YELLOW", None
 
