@@ -263,7 +263,7 @@ def safe_schema_edit(tool, inputs):
         return False
 
 
-def secret_shell_write(command, depth=0, cwd=None, guarded_context=False):
+def secret_shell_write(command, depth=0, cwd=None, guarded_context=False, admitted_move_globs=frozenset()):
     """Inspect literal write operands using the shared quote-aware tokenizer."""
     # Avoid a second recursive parse for commands with no guarded path at all.
     # Removing quote/escape characters here only widens the candidate check;
@@ -368,7 +368,7 @@ def secret_shell_write(command, depth=0, cwd=None, guarded_context=False):
     segments.append(segment)
     for words in segments:
         positions = parser._command_position_flags(words)
-        if any(secret_shell_write(body, depth + 1, cwd, guarded_context) for body, _, _ in
+        if any(secret_shell_write(body, depth + 1, cwd, guarded_context, admitted_move_globs) for body, _, _ in
                parser._shell_command_payloads(words, positions, [0] * len(words))):
             return True
         for i, word in enumerate(words):
@@ -390,7 +390,17 @@ def secret_shell_write(command, depth=0, cwd=None, guarded_context=False):
                 elif operands and os.path.isdir(os.path.join(cwd or os.getcwd(), operands[-1])):
                     targets = [os.path.join(operands[-1], os.path.basename(a)) for a in operands[:-1]]
                 if name == 'mv':
-                    targets += operands[:-1]
+                    sources = operands if directory is not None else operands[:-1]
+                    admitted = [source for source in sources if source in admitted_move_globs]
+                    if admitted:
+                        # Only source globs checked at every actual scanner cwd
+                        # qualify. An uncertain destination retains the hold.
+                        destination = directory if directory is not None else operands[-1]
+                        if re.search(r'[$`*?\[]', destination) or guarded_target(destination):
+                            return True
+                        targets = [destination] + [source for source in sources if source not in admitted_move_globs]
+                    else:
+                        targets += operands[:-1]
             elif name == 'dd':
                 targets = [arg[3:] for arg in args if arg.startswith('of=')]
             elif name in ('tee', 'rm', 'truncate', 'sponge'):
@@ -404,7 +414,7 @@ def secret_shell_write(command, depth=0, cwd=None, guarded_context=False):
             break
     outer = parser.without_dollar_paren_bodies(active)
     bodies = parser._backtick_bodies(outer) + _git_safety._executed_payloads(command, active)
-    return any(secret_shell_write(body, depth + 1, cwd, guarded_context) for body in bodies)
+    return any(secret_shell_write(body, depth + 1, cwd, guarded_context, admitted_move_globs) for body in bodies)
 
 
 def classify_tool(tool_name, tool_input):
@@ -421,7 +431,8 @@ def classify_tool(tool_name, tool_input):
             size_reason = policy_command_size_reason(raw_command)
             if size_reason:
                 return "RED", size_reason
-            guardian_reason = dangerous_shell_reason(raw_command, cwd=tool_input.get("cwd", os.getcwd()))
+            with _git_safety._pkg.move_glob.inspect_secret_matches(sensitive_path) as admitted_move_globs:
+                guardian_reason = dangerous_shell_reason(raw_command, cwd=tool_input.get("cwd", os.getcwd()))
             command = shell_text_without_heredoc_bodies(raw_command)
         except PolicyEvaluationDeadlineExceeded:
             raise
@@ -444,7 +455,7 @@ def classify_tool(tool_name, tool_input):
 
         # Redirects remain writes even on inline-code commands.
         try:
-            if secret_shell_write(raw_command, cwd=tool_input.get('cwd', os.getcwd())):
+            if secret_shell_write(raw_command, cwd=tool_input.get('cwd', os.getcwd()), admitted_move_globs=admitted_move_globs):
                 return "RED", "Sensitive file operation"
         except Exception:
             return "RED", "security policy could not evaluate command safely"
@@ -491,6 +502,8 @@ def block(reason):
     if 'update-ref --stdin input is not in the command' in (reason or ''):
         result_reason += (' git update-ref --stdin reads its input from somewhere this command does not show, '
                           'so the guard cannot tell which branches it moves; put the lines in a heredoc or printf.')
+    if 'protected root' in (reason or ''):
+        result_reason = f"Blocked: protected root move rule ({reason}). Use a safe alternative, or ask the lead."
     if 'remote reference deletion' in (reason or ''):
         result_reason += (' To delete a fleet branch: run scripts/fleet/archive-and-delete-branch.sh, '
                           'then the command it prints.')
