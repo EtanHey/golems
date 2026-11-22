@@ -18,8 +18,9 @@ removal. Checks repeat immediately before deletion. A refusal returns nonzero;
 other independent candidates may already have been trimmed. This is a build-only
 guard, not a check that the entire checkout is clean, pushed or merged.
 
-Removal uses Python 3.12+ `shutil.rmtree(path, onexc=stop)`, stopping at the first
-error. Deletion is permanent; partial removal can occur. No Trash command runs.
+Removal uses `shutil.rmtree(path, onexc=stop)` on Python 3.12+ and its
+`onerror` equivalent on older Python (including CI Python 3.11), stopping at the
+first error. Deletion is permanent; partial removal can occur. No Trash command runs.
 Completed removals append `absolute path<TAB>allocated bytes unlinked<TAB>directory mtime`
 to `<target repository main checkout>/docs.local/trim-builds/receipts.tsv`.
 Bytes count `lstat().st_blocks * 512` once per removed inode, excluding file

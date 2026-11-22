@@ -116,7 +116,13 @@ def unused(target):
 def remove(target):
     def stop(function, path, error):
         raise error
-    shutil.rmtree(target, onexc=stop)
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(target, onexc=stop)
+    else:
+        # Python 3.11's callback receives exc_info rather than the exception.
+        def stop_legacy(function, path, exc_info):
+            stop(function, path, exc_info[1])
+        shutil.rmtree(target, onerror=stop_legacy)
     if target.exists() or target.is_symlink():
         raise ValueError('removal did not complete')
 

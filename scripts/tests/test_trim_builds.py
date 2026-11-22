@@ -11,7 +11,9 @@ SCRIPT = Path(__file__).resolve().parents[1] / 'trim-builds'
 
 class TrimBuildsTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='trim-builds-', dir=SCRIPT.parent.parent / 'docs.local/trim-builds')
+        fixture_parent = SCRIPT.parent.parent / 'docs.local/trim-builds'
+        fixture_parent.mkdir(parents=True, exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(prefix='trim-builds-', dir=fixture_parent)
         self.addCleanup(self.temp.cleanup)
         self.base = Path(self.temp.name)
         self.main = self.base / 'main'
@@ -258,15 +260,19 @@ runpy.run_path(sys.argv[0], run_name='__main__')
         from unittest.mock import patch
         module = runpy.run_path(str(SCRIPT))
         path = self.output()
-        with patch('shutil.rmtree') as remove, patch('subprocess.run', side_effect=AssertionError('no system Trash')):
-            # Mock removal leaves the path: completion guard must refuse.
-            with self.assertRaises(ValueError):
-                module['remove'](path)
-            self.assertEqual(remove.call_count, 1)
-            stop = remove.call_args.kwargs['onexc']
-            error = PermissionError('fixture failure')
-            with self.assertRaises(PermissionError):
-                stop(None, str(path), error)
+        for version, callback in (((3, 11), 'onerror'), ((3, 12), 'onexc')):
+            with self.subTest(version=version), patch.object(sys, 'version_info', version), patch('shutil.rmtree') as remove, patch('subprocess.run', side_effect=AssertionError('no system Trash')):
+                # Mock removal leaves the path: completion guard must refuse.
+                with self.assertRaises(ValueError):
+                    module['remove'](path)
+                self.assertEqual(remove.call_count, 1)
+                self.assertEqual(set(remove.call_args.kwargs), {callback})
+                stop = remove.call_args.kwargs[callback]
+                error = PermissionError('fixture failure')
+                callback_error = error if callback == 'onexc' else (type(error), error, None)
+                with self.assertRaises(PermissionError) as raised:
+                    stop(None, str(path), callback_error)
+                self.assertIs(raised.exception, error)
 
     def test_real_open_file(self):
         path = self.output()
