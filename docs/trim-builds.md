@@ -20,6 +20,11 @@ stops at the first error (permanent deletion; partial removal can occur).
 Completed removals append `absolute path<TAB>logical file bytes<TAB>directory mtime`
 to `<target repository main checkout>/docs.local/trim-builds/receipts.tsv`.
 Logical bytes are not an allocated-space measurement. Dry-run writes no receipts.
+Dry-run stdout is readable TSV with header `path<TAB>bytes<TAB>reason`, one row
+per eligible candidate. Refusals go to stderr and return nonzero; never treat an
+incomplete list as approval. Before the first real use on **each Mac**, the lead
+posts this dry-run list before applying. A posted list does not replace the
+checks repeated by the apply invocation.
 The receipt is locked and opened before removal, flushed/fsynced after it. An
 interruption or write error after removal can leave a missing receipt; neither
 this nor lsof prevents a concurrent writer from starting after the final check.

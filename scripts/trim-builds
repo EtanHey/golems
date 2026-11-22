@@ -120,12 +120,16 @@ def main():
     root = args.worktree.absolute()
     owner = identity(root)
     failed = False
+    if args.dry_run:
+        print('path\tbytes\treason')
     for target in candidates(root):
         try:
+            if any(c in str(target) for c in '\t\r\n'):
+                raise ValueError('path cannot be represented as TSV')
             size, mtime = validate(root, target)
             unused(target)
             if args.dry_run:
-                print(f'DRY-RUN\t{target}\t{size}\t{mtime}')
+                print(f'{target}\t{size}\teligible: ignored allowlisted output; no tracked files or open descriptors')
                 continue
             # Open/lock the receipt BEFORE removal; do not delete if it cannot be
             # written. O_NOFOLLOW protects the receipt file from a final alias.

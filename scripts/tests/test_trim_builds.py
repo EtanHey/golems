@@ -106,6 +106,10 @@ class TrimBuildsTests(unittest.TestCase):
     def test_dry_run_no_mutations(self):
         path = self.output()
         result = self.run_trim('--dry-run')
+        self.assertEqual(result.stdout.splitlines(), [
+            'path\tbytes\treason',
+            f'{path}\t10\teligible: ignored allowlisted output; no tracked files or open descriptors',
+        ])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(path.exists())
         self.assertFalse((self.main / 'docs.local/trim-builds').exists())
