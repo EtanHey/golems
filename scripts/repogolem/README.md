@@ -192,3 +192,40 @@ installed links remain valid during regeneration. Multiple prompts, receipts
 and other outputs are not a single transaction; a write failure can leave a
 stale mix that `--check` refuses. Interrupted installs reconcile absent retired
 links idempotently; agent-link operations precede shell changes.
+
+## MCP startup scope
+
+The shared `mcp_policy.py` removes the retired agent-html publisher from generated
+registries, launcher arguments and project/inherited MCP configs (including command
+aliases). It leaves the project launcher, existing pages and host/server code alone.
+Gmail and Google Drive **MCP servers** belong to `coach` and `orc` (`orchestrator`
+is the repo-name alias). Personal definitions formerly in `global.mcps` move into
+`mcpDefinitions` and those lanes' project lists during generation. Other projects'
+`mcps` and `mcpsLight` lists lose them. Definitions remain available to consumers.
+
+Claude launches use `--strict-mcp-config` with a private, filtered merge of allowed
+owner-global, registry and project servers; inherited configs receive the same
+lane filter. Codex's project profile receives the filter too, and per-launch
+`enabled=false` overrides suppress forbidden servers from the base user config.
+Owner-global files remain unchanged, so a plain CLI launched outside repoGolem
+retains its own configuration. Codex Apps/cloud connectors have their separate
+existing policy; this scope governs stdio/HTTP MCP registrations.
+
+After merging, run **on each Mac**, from the updated golems root checkout in the
+normal shell where `REPOGOLEM_CONFIG` identifies that Mac's private config:
+
+```sh
+bun scripts/repogolem/repogolem-config.ts generate --config "$REPOGOLEM_CONFIG" --keep-secrets
+bun scripts/repogolem/repogolem-config.ts install --config "$REPOGOLEM_CONFIG" --apply
+bun scripts/repogolem/repogolem-config.ts generate --config "$REPOGOLEM_CONFIG" --check
+```
+
+This uses the documented cached-secret regeneration path and installs the new
+policy/runtime. Start a fresh repoGolem session for launch-time MCP profiles to
+change. It neither edits private source YAML nor kills existing sessions. If the
+cache refuses changed secret sources, stop and report the diagnostic; do not invoke
+1Password automatically. Do not hand-edit generated registry or owner-global files.
+
+New dashboard publication uses the audio-dashboard repo/plugin's `adash validate`
+and `adash publish` workflow. Follow its deployment/ingress proof and authenticated
+publish requirements; this wiring change does not deploy a publisher or migrate pages.

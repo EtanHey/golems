@@ -40,7 +40,9 @@ The false-green-gate lesson: evidence comes ONLY from REAL tool execution — `B
 NAMES, and tool_result OUTPUTS. Assistant narrative ("mirrored to the hub ✅, curl returned 200") is
 EXCLUDED. The 200 only counts if a `curl`/`wget` COMMAND actually targeted the tailnet host AND its OUTPUT
 shows `200` — a 200 in a passive `Read` of a log, a 200 against `localhost`, or a 404/500 from the host all
-FLAG. MCP tool names are base-normalized (`mcp__agent-html-publisher__publish_dashboard` → `publish_dashboard`).
+FLAG. Historical transcripts may contain retired publisher calls; new publishing
+uses the audio-dashboard repo/plugin (`adash validate`, then `adash publish`) and
+its delivery proof. MCP tool names are base-normalized (`mcp__agent-html-publisher__publish_dashboard` → `publish_dashboard`).
 
 ## How /pr-loop & /html-dashboard Consume It
 

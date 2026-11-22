@@ -476,6 +476,15 @@ _golem_launch_codex() {
   fi
 
   local codex_home="${CODEX_HOME:-$HOME/.codex}"
+  # Profiles layer on user config, so explicitly disable denied global servers.
+  local blocked_global_mcps="" blocked_global_mcp
+  if [[ -f "${codex_home}/config.toml" ]]; then
+    blocked_global_mcps=$(python3 "$_GOLEM_MCP_POLICY" codex-blocks "$project_name" < "${codex_home}/config.toml") || { _golem_cleanup_agent_context "$agent_context_file"; return 1; }
+    for blocked_global_mcp in ${(f)blocked_global_mcps}; do
+      [[ -n "$blocked_global_mcp" ]] && codex_args+=("-c" "$blocked_global_mcp")
+    done
+  fi
+
   # Give every launch its own profile. A project- or directory-stable name lets
   # a concurrent launch overwrite this launch's config and remove it on exit.
   local codex_launch_digest

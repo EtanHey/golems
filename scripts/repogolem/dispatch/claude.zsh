@@ -13,7 +13,7 @@ _golem_launch_claude() {
   # means medium.
   _golem_refuse_claude_sonnet_full_pane || return $?
   local claude_args=("${_extra_args[@]}")
-  local inherit_mcp_config=""
+  local inherit_mcp_config="" scoped_mcp_config=""
 
   if [[ -n "$_flag_worktree" ]]; then
     _golem_copy_mcp_to_worktree "$project_path" "$_flag_worktree" || return $?
@@ -41,7 +41,7 @@ _golem_launch_claude() {
   # while this function is still on the stack, so it does see the local.
   # `${_notify_config:-}` keeps the guard nounset-safe either way.
   setopt localoptions localtraps
-  trap '[[ -n "${_notify_config:-}" ]] && rm -f "${_notify_config}" 2>/dev/null' INT TERM
+  trap '[[ -n "${_notify_config:-}" ]] && rm -f "${_notify_config}" 2>/dev/null; [[ -z "${scoped_mcp_config:-}" ]] || rm -f "$scoped_mcp_config"; [[ -z "${inherit_mcp_config:-}" ]] || rm -f "$inherit_mcp_config"' INT TERM
   if [[ -n "$_flag_notify_mode" && -n "$_notify_config" ]]; then
     local quiet_val="false" verbose_val="false"
     [[ "$_flag_notify_mode" == "quiet" ]] && quiet_val="true"
@@ -107,6 +107,13 @@ _golem_launch_claude() {
     [[ -n "$_flag_headless_prompt" ]] && claude_args+=("$_flag_headless_prompt")
   fi
 
+  local global_mcps='{"mcpServers":{}}' registry_mcps='{"mcpServers":{}}'
+  if [[ -f "$HOME/.claude.json" ]]; then
+    global_mcps=$(python3 "$_GOLEM_MCP_POLICY" claude-global "$project_name" < "$HOME/.claude.json") || return 1
+  fi
+  if typeset -f _ralph_build_mcp_config >/dev/null 2>&1; then
+    registry_mcps=$(_ralph_build_mcp_config "$project_name") || return 1
+  fi
   # Load contexts from registry
   local registry="$RALPH_REGISTRY_FILE"
   if [[ -f "$registry" ]]; then
@@ -154,10 +161,22 @@ _golem_launch_claude() {
         if ! _golem_filter_mcp_json < "${inherit_path}/.mcp.json" > "$inherit_mcp_config"; then
           rm -f "$inherit_mcp_config"; return 1
         fi
-        claude_args+=("--mcp-config" "$inherit_mcp_config")
       fi
     fi
   fi
+
+  # Strict mode prevents user-global MCPs from starting outside their lanes.
+  # Reintroduce allowed globals and resolved registry/project servers explicitly.
+  [[ -n "$_notify_staging_dir" ]] || { [[ -z "$inherit_mcp_config" ]] || rm -f "$inherit_mcp_config"; return 1; }
+  scoped_mcp_config=$(umask 077; mktemp "${_notify_staging_dir}/claude-mcp.XXXXXX") || { [[ -z "$inherit_mcp_config" ]] || rm -f "$inherit_mcp_config"; return 1; }
+  if ! { print -r -- "$global_mcps" "$registry_mcps"; [[ ! -f .mcp.json ]] || cat .mcp.json; [[ -z "$inherit_mcp_config" ]] || cat "$inherit_mcp_config"; } \
+      | jq -s 'reduce .[] as $item ({mcpServers:{}}; .mcpServers += ($item.mcpServers // {}))' \
+      | _golem_filter_mcp_json > "$scoped_mcp_config"; then
+    rm -f "$scoped_mcp_config"
+    [[ -z "$inherit_mcp_config" ]] || rm -f "$inherit_mcp_config"
+    return 1
+  fi
+  claude_args+=("--strict-mcp-config" "--mcp-config" "$scoped_mcp_config")
 
   local claude_exit=0
   if $_flag_web; then
@@ -177,6 +196,7 @@ _golem_launch_claude() {
 
   _golem_reset_title
   [[ -n "$inherit_mcp_config" ]] && rm -f "$inherit_mcp_config"
+  [[ -n "$scoped_mcp_config" ]] && rm -f "$scoped_mcp_config"
   [[ -n "$_notify_config" ]] && rm -f "$_notify_config" 2>/dev/null
   return "$claude_exit"
 }

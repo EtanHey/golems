@@ -13,11 +13,20 @@ from intake to delivery. This is a workflow argument to the skill, not a separat
 catalog command. This skill owns all build instructions; orc only relays the
 filled intake block and Etan's extra instructions.
 
+## Hosted publication
+
+New hosted publication follows the audio-dashboard repo/plugin's
+`/audio-dashboard:adash` skill (`adash validate <folder>`, then authenticated
+`adash publish <folder>` after deployment/ingress proof). The `agent-html` paths
+below are vendored renderer/provenance references, not a publisher MCP dependency.
+Keep the existing pages and host running. The NarrationLayer handoff below is the
+legacy Lakebed delivery route; do not use the retired publisher MCP.
+
 ## Ownership and delivery
 
-skill-creator owns this skill, templates and BUILD gates. NarrationLayer owns the
-Lakebed app, relay/media server, account answer sync and UploadThing, and is the
-ONLY publisher. Builders never deploy a dashboard shell themselves. Audio may use
+skill-creator owns this skill, templates and BUILD gates. For legacy Lakebed
+delivery, NarrationLayer owns the app, relay/media server, account answer sync
+and UploadThing, and is the only Lakebed publisher. Builders never deploy a dashboard shell themselves. Audio may use
 CDN/relay or tailnet media fallback (8447); tailnet may host redirects, not the shell.
 Audio delivery follows the html-dashboard Lakebed/allowedEmails standard through
 NarrationLayer; see [publish contract v2](references/publish-contract-v2.md).

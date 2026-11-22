@@ -1,7 +1,7 @@
 typeset -g _GOLEM_MCP_POLICY="${${(%):-%x}:A:h:h}/mcp_policy.py"
 
 _golem_filter_mcp_json() {
-  python3 "$_GOLEM_MCP_POLICY" "${1:-config}"
+  python3 "$_GOLEM_MCP_POLICY" "${1:-config}" "${project_name:-}"
 }
 
 _golem_filter_mcp_file() {
