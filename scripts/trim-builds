@@ -11,7 +11,12 @@ import sys
 
 ALLOW = {'node_modules', '.venv', 'venv', '.build', 'dist', '.next',
          '__pycache__', '.pytest_cache', 'DerivedData'}
-PROTECT = {'.git', 'docs.local', '.build.noindex'}
+PROTECT = {name.casefold() for name in ('.git', 'docs.local', '.build.noindex')}
+
+
+def protected(name):
+    folded = name.casefold()
+    return folded in PROTECT or (folded.startswith('.build') and folded != '.build')
 
 
 def git(root, *args):
@@ -42,12 +47,12 @@ def identity(root):
 
 def candidates(root):
     for here, dirs, files in walk(root):
-        if Path(here) != root and '.git' in dirs + files:
+        if Path(here) != root and any(name.casefold() == '.git' for name in dirs + files):
             dirs[:] = []
             continue
         for name in list(dirs):
             path = Path(here) / name
-            if name in PROTECT or (name.startswith('.build') and name != '.build'):
+            if protected(name):
                 dirs.remove(name)
             elif name in ALLOW:
                 yield path
@@ -63,30 +68,38 @@ def validate(root, target):
     if resolved != target or not resolved.is_relative_to(root):
         raise ValueError('candidate escapes worktree')
     rel = target.relative_to(root).as_posix()
+    for parent in target.parents:
+        if parent == root:
+            break
+        if parent.is_symlink() or protected(parent.name):
+            raise ValueError('candidate has an alias or protected parent')
     # Literal pathspecs matter for directory names containing glob syntax.
-    if git(root, '--literal-pathspecs', 'ls-files', '-z', '--', rel):
+    if git(root, 'ls-files', '-z', '--', ':(literal,icase)' + rel):
         raise ValueError('candidate contains tracked files')
-    if git(root, '--literal-pathspecs', 'ls-files', '-z', '--others', '--exclude-standard', '--', rel):
+    if git(root, 'ls-files', '-z', '--others', '--exclude-standard', '--', ':(literal,icase)' + rel):
         raise ValueError('candidate contains nonignored files')
     result = subprocess.run(['git', '-C', str(root), 'check-ignore', '-q', '--', rel + '/'])
     if result.returncode != 0:
         raise ValueError('candidate is not ignored (or Git inspection failed)')
-    size = 0
+    entries = {}
     for here, dirs, files in walk(target):
         for name in dirs + files:
             path = Path(here) / name
-            if name in PROTECT or name.startswith('.build.noindex'):
+            if protected(name):
                 raise ValueError('candidate contains protected notes or metadata')
             info = path.lstat()
-            # Reject even internal aliases: dependencies must not hide custody.
-            if stat.S_ISLNK(info.st_mode):
-                raise ValueError('candidate contains symlink')
-            if not path.resolve(strict=True).is_relative_to(root):
-                raise ValueError('descendant escapes worktree')
-            if stat.S_ISREG(info.st_mode):
-                size += info.st_size
-            elif not stat.S_ISDIR(info.st_mode):
+            # lstat only: links inside the candidate are unlinked, never followed.
+            if not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)):
                 raise ValueError('candidate contains special file')
+            key = (info.st_dev, info.st_ino)
+            previous = entries.get(key, (info, 0))
+            entries[key] = (info, previous[1] + 1)
+    # Count allocated blocks once per inode, excluding files still hardlinked
+    # outside this candidate. APFS clone/snapshot sharing is not exposed here.
+    size = target.lstat().st_blocks * 512
+    for info, links in entries.values():
+        if stat.S_ISDIR(info.st_mode) or info.st_nlink <= links:
+            size += info.st_blocks * 512
     return size, target.stat().st_mtime
 
 
@@ -101,13 +114,9 @@ def unused(target):
 
 
 def remove(target):
-    trash = Path('/usr/bin/trash')
-    if trash.is_file():
-        subprocess.run([str(trash), str(target)], check=True, timeout=120)
-    else:
-        def stop(function, path, error):
-            raise error[1]
-        shutil.rmtree(target, onerror=stop)
+    def stop(function, path, error):
+        raise error
+    shutil.rmtree(target, onexc=stop)
     if target.exists() or target.is_symlink():
         raise ValueError('removal did not complete')
 

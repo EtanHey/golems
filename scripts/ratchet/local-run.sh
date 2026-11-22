@@ -93,18 +93,6 @@ echo "local-run: run dir $RUN"
 printf 'local-run: node %s (%s)\n' "$NODE" "$NODE_VERSION" | tee "$RUN/node.log"
 
 cleanup() {
-  local run_status=$?
-  # Run on success AND failure, including --keep. A refusal is visible and
-  # preserves the scratch for diagnosis instead of bypassing trim's guard.
-  if [ -d "$CLONE" ]; then
-    if ! "$HERE/../trim-builds" "$CLONE" > "$RUN/trim-builds.log" 2>&1; then
-      echo "local-run: build trim refused; retaining scratch ($RUN/trim-builds.log)" >&2
-      return "$run_status"
-    fi
-    if [ -f "$SCRATCH/repository/docs.local/trim-builds/receipts.tsv" ]; then
-      cp "$SCRATCH/repository/docs.local/trim-builds/receipts.tsv" "$RUN/trim-builds-receipts.tsv"
-    fi
-  fi
   # The anchor is locked immutable (uchg) like the owner's; unlock it so the scratch can go.
   chflags -R nouchg "$SH/.config/golems/human-confirm-anchor" 2>/dev/null || true
   if [ "$KEEP" = 0 ]; then
@@ -122,10 +110,7 @@ fi
 
 # --shared borrows the real repo's objects read-only; origin is GitHub so the installer's
 # `fetch origin master` sees the real master.
-# Keep a separate scratch main so the execution checkout is eligible for
-# build-only trimming; both live under the same disposable scratch root.
-git clone -q --shared --no-checkout "$MAIN" "$SCRATCH/repository"
-git -C "$SCRATCH/repository" worktree add -q --detach "$CLONE" HEAD
+git clone -q --shared "$MAIN" "$CLONE"
 git -C "$CLONE" remote set-url origin "https://github.com/$REPO_SLUG.git"
 git -C "$CLONE" fetch -q origin "+refs/heads/*:refs/remotes/origin/*" "+refs/pull/$PR/head:refs/ratchet/pr"
 git -C "$CLONE" checkout -q --detach "$INSTALL"

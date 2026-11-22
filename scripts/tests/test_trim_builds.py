@@ -1,5 +1,6 @@
 """Scratch-only CLI tests; never invoke trimming on a real checkout."""
 import os
+import sys
 from pathlib import Path
 import subprocess
 import tempfile
@@ -45,10 +46,23 @@ class TrimBuildsTests(unittest.TestCase):
         env = dict(os.environ)
         if not real_lsof:
             env['PATH'] = str(self.bin) + os.pathsep + env['PATH']
-        return subprocess.run([str(SCRIPT), str(root or self.tree), *args], capture_output=True, text=True, env=env)
+        # Never let an old/red implementation put fixtures in the owner's Trash.
+        driver = """
+import runpy, subprocess, sys
+original = subprocess.run
+def guarded(command, *args, **kwargs):
+    if isinstance(command, (list, tuple)) and str(command[0]).endswith('/trash'):
+        raise RuntimeError('test forbids system Trash')
+    return original(command, *args, **kwargs)
+subprocess.run = guarded
+sys.argv = sys.argv[1:]
+runpy.run_path(sys.argv[0], run_name='__main__')
+"""
+        return subprocess.run([sys.executable, '-c', driver, str(SCRIPT), str(root or self.tree), *args], capture_output=True, text=True, env=env)
 
     def test_removes_exact_nested_outputs_and_receipts(self):
         paths = [self.output(name) for name in ('node_modules', '.venv', 'venv', '.build', 'pkg/dist', '.next', '__pycache__', '.pytest_cache', 'DerivedData')]
+        expected = {path: sum(entry.lstat().st_blocks * 512 for entry in [path, *path.rglob('*')]) for path in paths}
         result = self.run_trim()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(all(not path.exists() for path in paths))
@@ -57,7 +71,7 @@ class TrimBuildsTests(unittest.TestCase):
         for row in rows:
             path, size, mtime = row.split('\t')
             self.assertIn(Path(path), paths)
-            self.assertEqual(int(size), 10)
+            self.assertEqual(int(size), expected[Path(path)])
             self.assertGreater(float(mtime), 0)
 
     def test_main_refused(self):
@@ -93,12 +107,8 @@ class TrimBuildsTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)  # nested notes refuse the outer candidate
         self.assertTrue(all(path.exists() for path in paths))
 
-    def test_internal_symlink_and_git_metadata_refused(self):
+    def test_nested_git_metadata_refused(self):
         path = self.output()
-        (path / 'alias').symlink_to(self.main, target_is_directory=True)
-        self.assertNotEqual(self.run_trim().returncode, 0)
-        self.assertTrue(path.exists())
-        (path / 'alias').unlink()
         (path / '.git').write_text('gitdir: elsewhere')
         self.assertNotEqual(self.run_trim().returncode, 0)
         self.assertTrue(path.exists())
@@ -108,7 +118,7 @@ class TrimBuildsTests(unittest.TestCase):
         result = self.run_trim('--dry-run')
         self.assertEqual(result.stdout.splitlines(), [
             'path\tbytes\treason',
-            f'{path}\t10\teligible: ignored allowlisted output; no tracked files or open descriptors',
+            f'{path}\t{path.lstat().st_blocks * 512 + (path / "output").lstat().st_blocks * 512}\teligible: ignored allowlisted output; no tracked files or open descriptors',
         ])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(path.exists())
@@ -135,36 +145,128 @@ class TrimBuildsTests(unittest.TestCase):
         self.run_trim()
         self.assertTrue(output.exists())
 
-    def test_exit_hook_success_failure_keep_and_refusal(self):
-        # Execute the actual EXIT-trap body, with a stub trim command, on owned
-        # scratch only. No installer/network/heavy ratchet rows are run.
+    def test_case_alias_tracked_file_refused(self):
+        path = self.tree / 'dist'
+        path.mkdir()
+        (path / 'keep.txt').write_text('KEEP')
+        (self.tree / '.gitignore').write_text('dist/\n')
+        self.git(self.tree, 'config', 'core.ignorecase', 'true')
+        # Exact APFS repro: physical dist/ but index spelling Dist/keep.txt.
+        if (self.tree / 'Dist').exists():
+            self.git(self.tree, 'add', '-f', 'Dist/keep.txt')
+        else:
+            blob = self.git(self.tree, 'hash-object', '-w', 'dist/keep.txt').stdout.decode().strip()
+            self.git(self.tree, 'update-index', '--add', '--cacheinfo', '100644', blob, 'Dist/keep.txt')
+        self.git(self.tree, 'commit', '-qm', 'keep case alias')
+        self.assertIn(b'Dist/keep.txt', self.git(self.tree, 'ls-files').stdout)
+        for args in [('--dry-run',), ()]:
+            result = self.run_trim(*args)
+            self.assertNotEqual(result.returncode, 0, result.stdout)
+            self.assertIn('tracked files', result.stderr)
+            self.assertEqual((path / 'keep.txt').read_text(), 'KEEP')
+
+    def test_case_alias_untracked_exception_refused(self):
+        path = self.output('dist')
+        (self.tree / '.gitignore').write_text('dist/\n')
+        # Nonignored case-variant subtree on case-sensitive hosts also has to be
+        # matched by Git's icase pathspec (APFS aliases it to the same directory).
+        alias = self.tree / 'Dist'
+        if alias.exists():
+            (self.tree / '.gitignore').write_text('dist/*\n!dist/keep.txt\n')
+        else:
+            alias.mkdir()
+        (alias / 'keep.txt').write_text('KEEP')
+        result = self.run_trim('--dry-run')
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn('nonignored files', result.stderr)
+        self.assertTrue(path.exists())
+
+    def test_casefold_protected_roots(self):
+        for name in ('.Build.noindex/node_modules', '.BUILD-custom/dist', 'Docs.Local/dist', 'pkg/.GIT/dist'):
+            with self.subTest(name=name):
+                path = self.output(name)
+                result = self.run_trim('--dry-run')
+                self.assertNotIn(str(path) + '\t', result.stdout)
+                self.assertTrue(path.exists())
+
+    def test_casefold_nested_protected_names(self):
+        for name in ('Docs.Local', '.GIT', '.Build.noindex', '.BUILD-custom'):
+            with self.subTest(name=name):
+                path = self.output('pkg' + name + '/dist/' + name)
+                result = self.run_trim('--dry-run')
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertIn('protected', result.stderr)
+                self.assertIn(str(path.parent), result.stderr)
+                self.assertTrue(path.exists())
+
+    def test_internal_symlinks_unlinked_without_following(self):
+        for name in ('node_modules', '.venv'):
+            with self.subTest(name=name):
+                path = self.output(name)
+                outside = self.base / ('outside-' + name)
+                outside.mkdir()
+                (outside / 'keep').write_text('KEEP')
+                bindir = path / '.bin'
+                bindir.mkdir()
+                (bindir / 'outside').symlink_to(outside, target_is_directory=True)
+                (bindir / 'local').symlink_to(path / 'output')
+                (bindir / 'dangling').symlink_to(path / 'absent')
+                result = self.run_trim()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertFalse(path.exists())
+                self.assertEqual((outside / 'keep').read_text(), 'KEEP')
+
+    def test_symlink_parent_is_never_followed(self):
+        real = self.tree / 'real'
+        (real / 'dist').mkdir(parents=True)
+        (real / 'dist/keep').write_text('KEEP')
+        (self.tree / 'alias').symlink_to(real, target_is_directory=True)
+        # Direct validation proves parent alias refusal; discovery must not
+        # enter it either (use a nonignored real subtree so it is kept).
+        import runpy
+        module = runpy.run_path(str(SCRIPT))
+        with self.assertRaises(ValueError):
+            module['validate'](self.tree, self.tree / 'alias/dist')
+        self.assertNotIn(self.tree / 'alias/dist', list(module['candidates'](self.tree)))
+        self.assertEqual((real / 'dist/keep').read_text(), 'KEEP')
+
+    def test_local_run_has_no_trim_hook(self):
         source = (SCRIPT.parent / 'ratchet/local-run.sh').read_text()
-        cleanup = source[source.index('cleanup() {'):source.index('trap cleanup EXIT')]
-        ratchet = self.base / 'hooks/ratchet'
-        ratchet.mkdir(parents=True)
-        trimmer = ratchet.parent / 'trim-builds'
-        log = self.base / 'calls'
-        run = self.base / 'run'
-        run.mkdir()
-        scratch = self.base / 'scratch'
-        (scratch / 'home').mkdir(parents=True)
-        clone = scratch / 'clone'
-        clone.mkdir()
-        env = dict(os.environ, HERE=str(ratchet), RUN=str(run), SCRATCH=str(scratch),
-                   SH=str(scratch / 'home'), CLONE=str(clone), REAL_HOME=str(self.base),
-                   KEEP='1')
-        for status in (0, 7):
-            trimmer.write_text('#!/bin/sh\nprintf "%s\\n" "$1" >> "' + str(log) + '"\n')
-            trimmer.chmod(0o755)
-            result = subprocess.run(['bash', '-c', cleanup + '\ntrap cleanup EXIT\nexit ' + str(status)], env=env, capture_output=True)
-            self.assertEqual(result.returncode, status, result.stderr)
-        self.assertEqual(log.read_text().splitlines(), [str(clone)] * 2)
-        trimmer.write_text('#!/bin/sh\nexit 1\n')
-        env['KEEP'] = '0'
-        result = subprocess.run(['bash', '-c', cleanup + '\ntrap cleanup EXIT\nexit 7'], env=env, capture_output=True)
-        self.assertEqual(result.returncode, 7)
-        self.assertTrue(clone.exists())
-        self.assertIn(b'retaining scratch', result.stderr)
+        self.assertNotIn('trim-builds', source)
+        self.assertNotIn('--no-checkout', source)
+
+    def test_allocated_bytes_exclude_external_hardlinks_and_symlink_targets(self):
+        path = self.output()
+        outside = self.base / 'large-outside'
+        outside.write_bytes(b'x' * 65536)
+        os.link(outside, path / 'shared')
+        (path / 'outside-link').symlink_to(outside)
+        expected = sum(entry.lstat().st_blocks * 512 for entry in (
+            path, path / 'output', path / 'outside-link'))
+        result = self.run_trim('--dry-run')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(int(result.stdout.splitlines()[1].split('\t')[1]), expected)
+        result = self.run_trim()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(path.exists())
+        self.assertEqual(outside.read_bytes(), b'x' * 65536)
+        row = (self.main / 'docs.local/trim-builds/receipts.tsv').read_text().splitlines()[0]
+        self.assertEqual(int(row.split('\t')[1]), expected)
+
+    def test_remove_is_rmtree_with_stop_callback(self):
+        import runpy
+        from unittest.mock import patch
+        module = runpy.run_path(str(SCRIPT))
+        path = self.output()
+        with patch('shutil.rmtree') as remove, patch('subprocess.run', side_effect=AssertionError('no system Trash')):
+            # Mock removal leaves the path: completion guard must refuse.
+            with self.assertRaises(ValueError):
+                module['remove'](path)
+            self.assertEqual(remove.call_count, 1)
+            stop = remove.call_args.kwargs['onexc']
+            error = PermissionError('fixture failure')
+            with self.assertRaises(PermissionError):
+                stop(None, str(path), error)
 
     def test_real_open_file(self):
         path = self.output()

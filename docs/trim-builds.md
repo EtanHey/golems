@@ -7,19 +7,27 @@ The main checkout is refused. No whole worktree is removed.
 
 The command ports the closed worktree-GC branch's conservative rules: candidates
 must be ignored, contain no tracked or nonignored files, Git metadata, notes,
-special files or symlinks. Nested repositories, `docs.local`, `.git`, the whole
+or special files. Protected names and `.build*` prefixes are compared with
+`casefold()`; Git tracked/nonignored queries use literal, case-insensitive pathspecs. Nested repositories, `docs.local`, `.git`, the whole
 `.build.noindex` subtree and unknown `.build*` roots are kept. Symlink candidates
-are refused, including aliases within the tree. No directory aliases are followed.
+and candidates reached through a symlink parent are refused. Internal symlinks
+(including dangling links and links to outside targets) are unlinked without
+following them; their targets are untouched.
 `lsof -nP +D` must report no descriptors; warnings, errors or timeouts refuse
 removal. Checks repeat immediately before deletion. A refusal returns nonzero;
 other independent candidates may already have been trimmed. This is a build-only
 guard, not a check that the entire checkout is clean, pushed or merged.
 
-Removal uses `/usr/bin/trash` when installed. Otherwise Python `shutil.rmtree`
-stops at the first error (permanent deletion; partial removal can occur).
-Completed removals append `absolute path<TAB>logical file bytes<TAB>directory mtime`
+Removal uses Python 3.12+ `shutil.rmtree(path, onexc=stop)`, stopping at the first
+error. Deletion is permanent; partial removal can occur. No Trash command runs.
+Completed removals append `absolute path<TAB>allocated bytes unlinked<TAB>directory mtime`
 to `<target repository main checkout>/docs.local/trim-builds/receipts.tsv`.
-Logical bytes are not an allocated-space measurement. Dry-run writes no receipts.
+Bytes count `lstat().st_blocks * 512` once per removed inode, excluding file
+inodes with hardlinks outside the candidate. Internal symlink targets contribute
+no bytes. This records allocated blocks unlinked by actual removal, not a move
+to Trash or logical file length. APFS clone/snapshot sharing and concurrent disk
+activity mean exact volume free-space gain remains UNKNOWN; do not report this
+field as a measured volume delta. Dry-run writes no receipts.
 Dry-run stdout is readable TSV with header `path<TAB>bytes<TAB>reason`, one row
 per eligible candidate. Refusals go to stderr and return nonzero; never treat an
 incomplete list as approval. Before the first real use on **each Mac**, the lead
@@ -65,14 +73,6 @@ and passes `projectScriptRuntimeEnv` from `packages/shared/src/projectScripts.ts
 worktree. `packages/contracts/src/t3ProjectFile.ts` defines `t3.json` and
 `runOnSettle`. Settlement is distinct from a provider run simply ending.
 
-## Ratchet scratch lifecycle
-
-`local-run.sh` uses a linked execution checkout of a separate scratch main clone.
-Its EXIT trap calls trim on success and failure, also with `--keep`. A trim refusal
-retains scratch and logs the refusal. Receipts are copied into the durable run
-directory before the existing scratch teardown; the original run exit status is
-preserved. Evidence under `docs.local` stays outside the trim allowlist.
-
 ## Targeted verification
 
 ```sh
@@ -81,4 +81,7 @@ python3 -m unittest discover -s scripts/tests -p test_trim_builds.py
 
 Fixtures use disposable repositories under `docs.local/trim-builds`. Deterministic
 lsof stubs cover errors and idle/busy outcomes; a real open descriptor test also
-checks the installed lsof. No real working tree is trimmed by the tests.
+checks the installed lsof. Tests guard against calling system Trash, including
+when replayed against the old implementation. No real working tree is trimmed.
+`local-run.sh` is unchanged from master; its existing scratch teardown remains
+outside this command.
