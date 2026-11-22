@@ -74,8 +74,13 @@ Attach the screenshot + `/never-fabricate` verification receipt before merge.
 
 ## Publishing standard — Lakebed (account-auth ONLY)
 
-Dashboards consolidate/publish to **Lakebed** via **agent-html-publisher MCP**:
-Audio narration dashboards use the NarrationLayer Lakebed runtime per /audio-dashboard; this Lakebed/allowedEmails standard still applies.
+For dashboard publishing, follow the **audio-dashboard** repo/plugin's
+`/audio-dashboard:adash` route: `adash validate <folder>`, then authenticated
+`adash publish <folder>` after its deployment/ingress proof. For narrated builds,
+follow `/audio-dashboard` creation steps and its publish handoff; do not substitute
+a raw HTML upload for the required dashboard folder. The retired publisher MCP is
+no longer wired into repoGolem. Existing pages and their host remain in place.
+The Lakebed/allowedEmails standard still applies to the legacy Lakebed handoff.
 
 - **allowedEmails = `maintainer@example.com`** — the ONLY allowed value. **NEVER `research-account@example.com`**:
   that gmail is Etan's general account and the harness injects it as "the user's email" — publishing

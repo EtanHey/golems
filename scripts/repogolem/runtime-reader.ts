@@ -4,8 +4,8 @@ import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-export function filterMcpJson(text: string, mode: "registry" | "config" = "config"): string {
-  const result = spawnSync("python3", [join(import.meta.dir, "mcp_policy.py"), mode],
+export function filterMcpJson(text: string, mode: "registry" | "config" = "config", project = ""): string {
+  const result = spawnSync("python3", [join(import.meta.dir, "mcp_policy.py"), mode, project],
     { input: text, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
   if (result.status !== 0) throw new Error("runtime cache MCP deny policy failed");
   return result.stdout;
@@ -114,7 +114,7 @@ export function runtimeMcpConfig(registry: ObjectMap, project: string) {
     };
     if (definition) servers[name] = definition;
   }
-  return JSON.parse(filterMcpJson(JSON.stringify({ mcpServers: servers })));
+  return JSON.parse(filterMcpJson(JSON.stringify({ mcpServers: servers }), "config", project));
 }
 export function runtimeEnvironment(registry: ObjectMap, project: string): Record<string, string> {
   const out = { ...registry.global?.env, ...registry.projects?.[project]?.secrets };
