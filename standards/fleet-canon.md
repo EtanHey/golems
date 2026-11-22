@@ -88,6 +88,14 @@ with `scripts/ci/canon-drift-lint.mjs --install` (canon-7 ratified by Etan via o
     is discharging or holding charge. Alarm only when the adapter is missing AND charge is falling.
     Example: 50%, AC attached/not charging, ExternalConnected Yes, 60 W adapter, IsCharging No.
     Never blank, sleep or lock either Mac's display: no `pmset displaysleepnow` or screen-lock commands.
+
+12. **a cancelled call is not a refusal** - When a tool call comes back cancelled with the harness sentence
+    "The user doesn't want to take this action right now. STOP what you are doing and wait for the user to tell
+    you how to proceed." at the same moment a new message from the owner or a lead arrived, the cancellation is
+    a side effect of that message being delivered, not a decision. Read the message. Unless it says to stop or
+    not to do that thing, run the cancelled call again, carry on, and answer what it asked. Never stop and wait,
+    and never ask "should I continue?", because of that sentence alone. A cancellation with no message arriving
+    at that moment is still a real refusal. Every brief carries this rule.
 <!-- FLEET_CANON_END -->
 
 ## Overlap Reconciliation
