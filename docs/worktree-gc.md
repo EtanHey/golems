@@ -1,13 +1,35 @@
 # Worktree cleanup safety
 
 `worktree-gc.sh --apply` removes only clean, merged, idle, unused one-level
-`<main>/.worktrees/<name>` worktrees. Open PR branches, live process/cmux cwd,
+`<main>/.worktrees/<name>` worktrees and proven-finished trees under
+`~/.t3/worktrees` (including registered nested descendants). Open PR branches, live process/cmux cwd,
 locked trees, hooks-live, nested Git repositories and reflog-only commits are kept.
 `--repo` must name a Git toplevel; `--path` selects one registered linked tree.
 
 `--dry-run` reports merge eligibility. `--prune-plan` also checks the nightly
 idle/live/nested-repository guards and emits REMOVE without archiving or deleting.
 A REMOVE plan still requires successful archive verification before deletion.
+
+T3 removal additionally requires a bound settled or archived thread, no active or
+pending run/session/request/turn/background task, no scheduled work or T3 project
+root inside the candidate, and no pinned/recovery-held binding. Missing state,
+schema or bindings means KEEP-undetermined. Canonical paths match aliases in the
+read-only T3 database. Thread updates and all filesystem entries (ignored notes
+and output included), plus Git admin activity, must be at least 24 hours old;
+`--idle-hours 0` cannot waive this minimum. A complete user-wide open-file snapshot
+must prove no descriptor, cwd or mapped file inside the candidate. Partial or
+failed probes keep it. These T3 proofs run again after archival, before removal.
+
+Open PRs are fetched once per repository with `gh pr list --state open --json
+headRefName,number --limit 500`. A full 500-row response is incomplete and keeps
+unknown candidates. Only ahead-of-base branches need a per-branch merged-head
+query; a branch name alone never proves the local HEAD was merged. Closed PRs
+whose HEAD is absent from the default branch and merged PR heads remain kept to
+protect unmerged commits. Lookup failures affect only candidates needing that
+proof, and reports retain stderr categories (rate-limit, authentication,
+forbidden, not-found, network, gh-failed), without raw stderr. A head already on
+the fetched base needs no PR lookup proof if the open snapshot failed; known open
+PRs are always kept. No repository-wide merged PR crawl is performed.
 
 Ignored data is archived under the main checkout's `docs.local/worktree-archive/`.
 Only ignored caches at known locations are disposable. Every docs.local subtree

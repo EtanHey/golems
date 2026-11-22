@@ -14,7 +14,7 @@ squash_fixture() {
   mkdir -p "$TEST_ROOT/bin"
   cat > "$TEST_ROOT/bin/gh" <<'STUB'
 #!/usr/bin/env bash
-[[ " $* " == *" --state merged "* ]] || exit 0
+[[ " $* " == *" --state merged "* ]] || { echo "[]"; exit 0; }
 [[ "${GH_FAIL:-0}" == 0 ]] || exit 1
 printf '[{"headRefName":"topic","headRefOid":"%s"}]\n' "$MERGED_SHA"
 STUB
@@ -107,12 +107,12 @@ bind_thread() {
   [ -d "$worktree" ]
 }
 
-@test "R2b T3 managed root skips even with missing DB" {
+@test "R2b T3 managed root keeps undetermined with missing DB" {
   managed_t3_fixture
   rm "$WORKTREE_GC_T3_DB"
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]
-  [[ "$output" == *t3-managed* ]] || return 1
+  [[ "$output" == *KEEP-undetermined* ]] || return 1
   [ -d "$worktree" ]
 }
 
@@ -134,7 +134,7 @@ bind_thread() {
   managed_t3_fixture
   sqlite3 "$WORKTREE_GC_T3_DB" 'DROP TABLE orchestration_v2_projection_runs;'
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [[ "$output" == *t3-managed* ]] || return 1
+  [[ "$output" == *KEEP-undetermined* ]] || return 1
   [ -d "$worktree" ]
 }
 
@@ -254,7 +254,7 @@ CHECK
   [ "$status" -eq 0 ]; [ ! -e "$other" ]; [[ "$output" == *"report row failed"* ]]
 }
 
-@test "H1 merged T3 roots skip all descendants and report one count per repo" {
+@test "H1 T3 descendants without finished-state proof are kept undetermined" {
   t3_fixture
   root="$HOME/.t3/worktrees"
   for name in first nested/second; do
@@ -263,22 +263,16 @@ CHECK
   run "$WORKTREE_GC" --apply --idle-hours 0
   [ "$status" -eq 0 ]
   [ -d "$root/t3-repo/first" ]; [ -d "$root/t3-repo/nested/second" ]
-  [[ "$output" == *"t3-managed (T3 storageCleanup owns it): 2 skip"* ]] || false
-  [[ "$output" != *"$root/t3-repo/first"* ]] || false
-  python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" <<'CHECK'
-import json,sys
-assert json.load(open(sys.argv[1]))["t3_managed_skips"] == {"t3-repo": 2}
-assert open(sys.argv[1].replace(".json", ".md")).read().count("t3-managed") == 1
-CHECK
+  [[ "$output" == *"T3 retirement unproven"* ]]
 }
-@test "H1 canonical adapter root skips but similarly prefixed sibling is removed" {
+@test "H1 canonical adapter root requires finished state but similarly prefixed sibling is removed" {
   t3_fixture
   ln -s "$repo/.worktrees" "$HOME/root-alias"
   export WORKTREE_GC_T3_ROOTS="$HOME/root-alias/candidate"
   other="$(add_branch_worktree "$repo" candidate-sibling)"
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [ -d "$worktree" ]; [ ! -e "$other" ]
-  [[ "$output" == *t3-managed* ]]
+  [[ "$output" == *KEEP-undetermined* ]]
 }
 @test "H1 detached live symlink sources are kept across every protected root" {
   repo="$(make_fixture_repo sources)"
