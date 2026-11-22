@@ -34,10 +34,17 @@ def snapshot(raw, mode):
                 raise ValueError('invalid number')
             out.append(branch)
         else:
+            if mode == 'finished':
+                if row['state'] not in ('MERGED', 'CLOSED'):
+                    raise ValueError('PR not merged or closed')
+                out.append(branch + '\t' + row['state'])
+                continue
             sha = row['headRefOid']
             if not re.fullmatch('[0-9a-f]{40}', sha):
                 raise ValueError('invalid SHA')
             out.append(branch + '\t' + sha)
+    if mode == 'finished' and not out:
+        raise ValueError('no merged or closed PR')
     return '\n'.join(out)
 
 

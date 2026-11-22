@@ -174,7 +174,7 @@ if __name__ == "__main__":
                 # archived or explicitly settled threads are never recovery-held.
                 recovery_held = (not p.get('archivedAt') and p.get('settledOverride') != 'settled'
                                  and bool(p.get('limitRecovery')))
-                if (p.get("pinnedAt") or not (t["settled"] or p.get("archivedAt")) or
+                if (p.get("pinnedAt") or not t["settled"] or
                     t["active"] or recovery_held):
                     raise ValueError("binding unsettled, active, pending or recovery-held")
             db = os.environ.get("WORKTREE_GC_T3_DB", os.path.expanduser("~/.t3/userdata/statev2.sqlite"))

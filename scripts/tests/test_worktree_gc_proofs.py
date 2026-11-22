@@ -34,5 +34,28 @@ class PrProofs(unittest.TestCase):
                                       'merged'), 'topic\t' + 'a'*40)
 
 
+class PlanInventory(unittest.TestCase):
+    def test_unknown_inventory_cannot_offer_remove(self):
+        import csv
+        import tempfile
+        from unittest.mock import patch
+        spec = importlib.util.spec_from_file_location('plan', LIB / 'worktree-gc-plan.py')
+        plan = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(plan)
+        scratch = LIB.parents[1] / 'docs.local'
+        scratch.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as directory:
+            output = Path(directory) / 'plan.tsv'
+            output.write_text(plan.HEADER)
+            with patch.object(plan.subprocess, 'run', side_effect=OSError('unavailable')):
+                plan.append(output, 'repo', '/missing', 'topic', 'REMOVE', 'eligible')
+            with output.open() as source:
+                row, = list(csv.DictReader(source, delimiter='\t'))
+            self.assertEqual(row['verdict'], 'KEEP-undetermined')
+            self.assertEqual(row['size_bytes'], 'UNKNOWN')
+            self.assertEqual(json.loads(row['notes_to_archive_json']), None)
+            self.assertEqual(row['inventory_status'], 'size-unknown,notes-unknown')
+
+
 if __name__ == '__main__':
     unittest.main()

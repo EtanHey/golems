@@ -31,7 +31,9 @@ if [[ " $* " == *' --state open '* ]]; then
   printf '%s\n' "${OPEN_PRS:-[]}"
 else
   [[ " $* " != *' --head unknown '* ]] || { echo 'HTTP 403 API rate limit exceeded' >&2; exit 1; }
-  printf '[{"headRefName":"topic","headRefOid":"%s","state":"MERGED"}]\n' "$PR_SHA"
+  if [[ "${NO_PR:-0}" == 1 ]]; then echo '[]'; else
+    printf '[{"headRefName":"topic","headRefOid":"%s","state":"%s"}]\n' "$PR_SHA" "${PR_STATE:-MERGED}"
+  fi
 fi
 STUB
   chmod +x "$TEST_ROOT/bin/"*
@@ -95,18 +97,20 @@ PY
   [[ "$output" == *rate-limit* ]]
   [ "$(rg -c -- '--state open' "$GH_CALLS")" -eq 1 ]
 }
-@test "open lookup failure does not block a head proven on default branch" {
+@test "T3 open lookup failure keeps even a head on default branch" {
   fixture; age
   run env OPEN_FAIL=1 "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [ ! -e "$worktree" ]
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]]
 }
-@test "archived binding permits removal but incomplete open-file view keeps" {
+@test "archived-only binding and incomplete open-file view cannot authorize removal" {
   fixture; age
+  run env LSOF_FAIL=1 "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]]
   sqlite3 "$WORKTREE_GC_T3_DB" "UPDATE orchestration_v2_projection_threads SET payload_json=json_set(json_remove(payload_json,'$.settledAt'),'$.archivedAt','2020-01-01T00:00:00Z');"
   run env LSOF_FAIL=1 "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]]
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [ ! -e "$worktree" ]
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]
 }
 @test "pending request and unknown run status protect settled T3 trees" {
   fixture; age
@@ -134,4 +138,40 @@ STUB
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ -d "$worktree" ]; [[ "$output" == *"KEEP-undetermined · fixture archive failure"* ]]
   [[ "$output" != *REMOVING* ]]
+}
+
+@test "T3 default-branch ancestry without a PR keeps but closed PR permits" {
+  fixture; age
+  run env NO_PR=1 "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *"T3 PR state unproven"* ]]
+  run env PR_STATE=CLOSED "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]; [ ! -e "$worktree" ]
+}
+@test "prune-plan TSV lists every tree size reasons and notes without copying or removing" {
+  fixture
+  printf 'docs.local/\nnode_modules/\n' >> "$(git -C "$repo" rev-parse --absolute-git-dir)/info/exclude"
+  mkdir -p "$worktree/docs.local" "$worktree/node_modules"
+  echo notes > "$worktree/docs.local/note"
+  echo cache > "$worktree/node_modules/cache"
+  age
+  sibling="$(add_branch_worktree "$repo" dirty)"
+  echo dirty > "$sibling/local"
+  run "$WORKTREE_GC" --prune-plan --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [ -d "$sibling" ]
+  [ ! -e "$repo/docs.local/worktree-archive" ]
+  plan="$(printf '%s\n' "$output" | sed -n 's/^List-only plan TSV: //p')"
+  [ -f "$plan" ]
+  python3 - "$plan" "$worktree" "$sibling" <<'CHECK'
+import csv,json,sys
+rows=list(csv.DictReader(open(sys.argv[1]), delimiter='\t'))
+assert len(rows)==2
+by={r['path']:r for r in rows}
+a=by[sys.argv[2]]
+assert a['verdict']=='REMOVE' and int(a['size_bytes'])>0 and a['reason']
+assert a['inventory_status']=='complete'
+notes=json.loads(a['notes_to_archive_json'])
+assert 'docs.local/note' in notes and 'node_modules/cache' not in notes
+b=by[sys.argv[3]]
+assert b['verdict']=='KEEP-dirty' and int(b['size_bytes'])>0 and b['reason']
+CHECK
 }

@@ -50,6 +50,9 @@ emit_row() {
   local row
 
   reason="$(normalize_reason "$reason")"
+  if [[ -n "${PLAN_TSV:-}" ]]; then
+    python3 "$SCRIPT_DIR/lib/worktree-gc-plan.py" append "$PLAN_TSV" "$repo_name" "$worktree_path" "$branch" "$verdict" "$reason" || exit 2
+  fi
   row="$repo_name · $worktree_path · $branch · dirty=$dirty · ahead=$ahead · $verdict · $reason"
   printf '%s\n' "$row" >> "$LOG_FILE"
   printf '%s\n' "$row"
@@ -331,6 +334,7 @@ archive_and_remove() {
   fi
   check_owner_guards "$worktree_path" "$branch_display" || return 0
   if [[ "$is_t3" -eq 1 ]]; then
+    t3_pr_guard "$worktree_path" "$branch_display" || return 0
     t3_guard "$worktree_path" "$branch_display" || return 0
   fi
   # A durable intent must succeed before the destructive call (nightly crash evidence).
@@ -403,6 +407,9 @@ process_worktree_block() {
   done <<< "$t3_roots"
 
   if is_tool_managed_worktree "$repo_root" "$canonical_worktree"; then
+    if [[ -n "${PLAN_TSV:-}" ]]; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" not-checked not-checked KEEP-tool-managed "tool-managed namespace"
+    fi
     return 0
   fi
 
@@ -449,6 +456,10 @@ process_worktree_block() {
         "not-checked" "KEEP-open-pr" "branch has an open PR (live lane, parked or not)"
       return 0
     fi
+  fi
+
+  if [[ "$is_t3" -eq 1 ]]; then
+    t3_pr_guard "$worktree_path" "$branch_display" || return 0
   fi
 
   local other
@@ -524,7 +535,7 @@ process_worktree_block() {
     return 0
   fi
   if [[ "$ahead" -ne 0 ]]; then
-    load_merged_proof "$branch_display"
+    if [[ "$is_t3" -eq 0 ]]; then load_merged_proof "$branch_display"; fi
     if [[ -n "$merged_pr_failed" ]]; then
       emit_row "$repo_name" "$worktree_path" "$branch_display" 0 undetermined KEEP-undetermined "$merged_pr_failed"
       return 0
@@ -773,6 +784,12 @@ LOG_FILE="$LOG_DIR/worktree-gc-$(date '+%Y%m%d-%H%M%S')-$$.log"
 REPORT_JOURNAL="$LOG_FILE.rows.jsonl"
 : > "$REPORT_JOURNAL"
 REPORT_DIR="${WORKTREE_GC_REPORT_DIR:-$LOG_DIR/worktree-gc}"
+PLAN_TSV=""
+if [[ "$prune_plan" -eq 1 ]]; then
+  PLAN_TSV="$LOG_FILE.plan.tsv"
+  python3 "$SCRIPT_DIR/lib/worktree-gc-plan.py" init "$PLAN_TSV"
+  printf 'List-only plan TSV: %s\n' "$PLAN_TSV"
+fi
 publish_report=0
 if [[ -z "$explicit_repo" && -z "$only_worktree" && "$prune_plan" -eq 0 ]]; then
   publish_report=1
