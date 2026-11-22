@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""Trim exact ignored build directories in a linked checkout. Fail closed."""
+import argparse
+import fcntl
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import sys
+
+ALLOW = {'node_modules', '.venv', 'venv', '.build', 'dist', '.next',
+         '__pycache__', '.pytest_cache', 'DerivedData'}
+PROTECT = {'.git', 'docs.local', '.build.noindex'}
+
+
+def git(root, *args):
+    return subprocess.check_output(['git', '-C', str(root), *args], timeout=30)
+
+
+def walk(root):
+    def fail(error):
+        raise error
+    return os.walk(root, followlinks=False, onerror=fail)
+
+
+def identity(root):
+    if root.is_symlink() or root.absolute() != root.resolve(strict=True):
+        raise ValueError('worktree must have a canonical, non-symlink path')
+    if Path(os.fsdecode(git(root, 'rev-parse', '--show-toplevel')).strip()).resolve() != root:
+        raise ValueError('path is not a checkout root')
+    common = Path(os.fsdecode(git(root, 'rev-parse', '--path-format=absolute', '--git-common-dir')).strip()).resolve()
+    # A normal main checkout owns its common .git directory. Bare roots are not a
+    # main checkout destination, and cannot provide the required receipt location.
+    main = common.parent
+    if common.name != '.git' or not (main / '.git').is_dir():
+        raise ValueError('cannot identify main checkout')
+    if root == main or Path(os.fsdecode(git(root, 'rev-parse', '--absolute-git-dir')).strip()).resolve() == common:
+        raise ValueError('main checkout refused')
+    return main
+
+
+def candidates(root):
+    for here, dirs, files in walk(root):
+        if Path(here) != root and '.git' in dirs + files:
+            dirs[:] = []
+            continue
+        for name in list(dirs):
+            path = Path(here) / name
+            if name in PROTECT or (name.startswith('.build') and name != '.build'):
+                dirs.remove(name)
+            elif name in ALLOW:
+                yield path
+                dirs.remove(name)
+            elif path.is_symlink():
+                dirs.remove(name)
+
+
+def validate(root, target):
+    if target.name not in ALLOW or target.is_symlink() or not target.is_dir():
+        raise ValueError('candidate is an alias or not an allowed directory')
+    resolved = target.resolve(strict=True)
+    if resolved != target or not resolved.is_relative_to(root):
+        raise ValueError('candidate escapes worktree')
+    rel = target.relative_to(root).as_posix()
+    # Literal pathspecs matter for directory names containing glob syntax.
+    if git(root, '--literal-pathspecs', 'ls-files', '-z', '--', rel):
+        raise ValueError('candidate contains tracked files')
+    if git(root, '--literal-pathspecs', 'ls-files', '-z', '--others', '--exclude-standard', '--', rel):
+        raise ValueError('candidate contains nonignored files')
+    result = subprocess.run(['git', '-C', str(root), 'check-ignore', '-q', '--', rel + '/'])
+    if result.returncode != 0:
+        raise ValueError('candidate is not ignored (or Git inspection failed)')
+    size = 0
+    for here, dirs, files in walk(target):
+        for name in dirs + files:
+            path = Path(here) / name
+            if name in PROTECT or name.startswith('.build.noindex'):
+                raise ValueError('candidate contains protected notes or metadata')
+            info = path.lstat()
+            # Reject even internal aliases: dependencies must not hide custody.
+            if stat.S_ISLNK(info.st_mode):
+                raise ValueError('candidate contains symlink')
+            if not path.resolve(strict=True).is_relative_to(root):
+                raise ValueError('descendant escapes worktree')
+            if stat.S_ISREG(info.st_mode):
+                size += info.st_size
+            elif not stat.S_ISDIR(info.st_mode):
+                raise ValueError('candidate contains special file')
+    return size, target.stat().st_mtime
+
+
+def unused(target):
+    result = subprocess.run(['lsof', '-nP', '+D', str(target)], capture_output=True, timeout=30)
+    # lsof exits 1 with no output when there are no matching descriptors. Warnings,
+    # unavailable binaries, timeouts and every other status are refusals.
+    if result.returncode == 0 or result.stdout:
+        raise ValueError('busy: open file under candidate')
+    if result.returncode != 1 or result.stdout or result.stderr:
+        raise ValueError('lsof error: cannot prove candidate unused')
+
+
+def remove(target):
+    trash = Path('/usr/bin/trash')
+    if trash.is_file():
+        subprocess.run([str(trash), str(target)], check=True, timeout=120)
+    else:
+        def stop(function, path, error):
+            raise error[1]
+        shutil.rmtree(target, onerror=stop)
+    if target.exists() or target.is_symlink():
+        raise ValueError('removal did not complete')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('worktree', type=Path)
+    parser.add_argument('--dry-run', action='store_true')
+    args = parser.parse_args()
+    root = args.worktree.absolute()
+    owner = identity(root)
+    failed = False
+    for target in candidates(root):
+        try:
+            size, mtime = validate(root, target)
+            unused(target)
+            if args.dry_run:
+                print(f'DRY-RUN\t{target}\t{size}\t{mtime}')
+                continue
+            # Open/lock the receipt BEFORE removal; do not delete if it cannot be
+            # written. O_NOFOLLOW protects the receipt file from a final alias.
+            directory = owner / 'docs.local' / 'trim-builds'
+            if directory.resolve() != directory:
+                raise ValueError('receipt directory is a symlink')
+            directory.mkdir(parents=True, exist_ok=True)
+            if directory.resolve() != directory:
+                raise ValueError('receipt directory is a symlink')
+            receipt = directory / 'receipts.tsv'
+            with os.fdopen(os.open(receipt, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600), 'a') as out:
+                fcntl.flock(out, fcntl.LOCK_EX)
+                if identity(root) != owner:
+                    raise ValueError('checkout identity changed')
+                size, mtime = validate(root, target)
+                unused(target)
+                if any(c in str(target) for c in '\t\r\n'):
+                    raise ValueError('path cannot be represented as TSV')
+                remove(target)
+                out.write(f'{target}\t{size}\t{mtime}\n')
+                out.flush()
+                os.fsync(out.fileno())
+            print(f'TRIMMED\t{target}\t{size}\t{mtime}')
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            print(f'REFUSED\t{target}\t{error}', file=sys.stderr)
+            failed = True
+    return int(failed)
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f'REFUSED\t{error}', file=sys.stderr)
+        sys.exit(1)
