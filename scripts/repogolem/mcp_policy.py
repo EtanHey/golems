@@ -110,13 +110,6 @@ def main():
                 raise ValueError('unsupported MCP key')
             print(f'mcp_servers.{name}.enabled=false')
         return
-    if sys.argv[1] == 'claude-global':
-        data = json.loads(text)
-        servers = dict(data.get('mcpServers') or {})
-        local = (data.get('projects') or {}).get(str(Path.cwd()), {})
-        servers.update(local.get('mcpServers') or {})
-        print(json.dumps({'mcpServers': allowed_servers(servers, project)}))
-        return
     decoder, remaining, outputs, changed = json.JSONDecoder(), text.lstrip(), [], False
     while remaining:
         data, end = decoder.raw_decode(remaining)

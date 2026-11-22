@@ -203,12 +203,17 @@ is the repo-name alias). Personal definitions formerly in `global.mcps` move int
 `mcpDefinitions` and those lanes' project lists during generation. Other projects'
 `mcps` and `mcpsLight` lists lose them. Definitions remain available to consumers.
 
-Claude launches use `--strict-mcp-config` with a private, filtered merge of allowed
-owner-global, registry and project servers; inherited configs receive the same
-lane filter. Codex's project profile receives the filter too, and per-launch
-`enabled=false` overrides suppress forbidden servers from the base user config.
-Owner-global files remain unchanged, so a plain CLI launched outside repoGolem
-retains its own configuration. Codex Apps/cloud connectors have their separate
+Claude keeps its normal user-global, ancestor-project and plugin MCP discovery;
+it adds no strict-loading flag or new staging requirement. Project and inherited
+configs receive the lane filter. Codex's project profile receives the filter too,
+and per-launch `enabled=false` overrides suppress forbidden base-user servers.
+Owner-global and ancestor configs are outside this installer's ownership. Remove
+the retired publisher and move personal MCPs out of those global blocks separately
+after merge, using the exact host keys from the deployment recon. Preserve unrelated
+servers (especially brainlayer) and first retain Gmail/Drive in coach/orc scope.
+The installer does not edit `~/.claude.json`, `~/.codex/config.toml` or ancestor
+`.mcp.json` files. Without that separate host cleanup, T3/direct CLI sessions keep
+their global/ancestor registrations. Codex Apps/cloud connectors have their separate
 existing policy; this scope governs stdio/HTTP MCP registrations.
 
 After merging, run **on each Mac**, from the updated golems root checkout in the
@@ -224,7 +229,9 @@ This uses the documented cached-secret regeneration path and installs the new
 policy/runtime. Start a fresh repoGolem session for launch-time MCP profiles to
 change. It neither edits private source YAML nor kills existing sessions. If the
 cache refuses changed secret sources, stop and report the diagnostic; do not invoke
-1Password automatically. Do not hand-edit generated registry or owner-global files.
+1Password automatically. Do not hand-edit the generated registry. Owner-global
+and ancestor cleanup is a separate lead-owned apply step, never an incidental
+launcher side effect.
 
 New dashboard publication uses the audio-dashboard repo/plugin's `adash validate`
 and `adash publish` workflow. Follow its deployment/ingress proof and authenticated

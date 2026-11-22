@@ -63,8 +63,9 @@ test("Codex global and explicit-profile aliases receive disabling overrides", ()
 });
 
 // Run the real dispatcher with only the final CLI replaced by a capture function.
-for (const client of ["claude", "codex"]) for (const lane of ["golems", "coach", "orc"]) {
-  test(`${client} ${lane} launch scopes owner-global MCP registrations`, () => {
+for (const client of ["claude", "codex"]) for (const lane of ["golems", "coach", "orc"])
+for (const stagingFails of client === "claude" ? [false, true] : [false]) {
+  test(`${client} ${lane} preserves discovery (staging failure=${stagingFails})`, () => {
     const root = join(import.meta.dir, "../..");
     const dir = mkdtempSync(join(root, "docs.local/mcp-trim-launch-"));
     try {
@@ -76,11 +77,12 @@ for (const client of ["claude", "codex"]) for (const lane of ["golems", "coach",
       writeFileSync(join(dir, "standards/model-roles.json"), JSON.stringify({ roles: { "codex.implement": { model: "fixture" } } }));
       const script = `
         source "$1"
+        [[ "$STAGING_FAILS" != true ]] || function _golem_staging_dir() { return 1; }
         function _golem_setup_title() { return 0; }
         function _golem_reset_title() { return 0; }
         function _golem_setup_env() { _golem_filter_mcp_file .mcp.json; }
         function _ralph_build_mcp_config() { print '{"mcpServers":{}}'; }
-        function claude() { print -rl -- "$@" > "$CASE_DIR/args"; local prev="" arg;
+        function claude() { cp .mcp.json "$CASE_DIR/effective.json"; print -rl -- "$@" > "$CASE_DIR/args"; local prev="" arg;
           for arg in "$@"; do [[ "$prev" == --mcp-config ]] && cp "$arg" "$CASE_DIR/effective.json"; prev="$arg"; done; }
         function codex() { print -rl -- "$@" > "$CASE_DIR/args"; local p;
           for p in "$CODEX_HOME"/repogolem-*.config.toml(N); do cp "$p" "$CASE_DIR/effective.toml"; done; }
@@ -88,13 +90,13 @@ for (const client of ["claude", "codex"]) for (const lane of ["golems", "coach",
       `;
       const run = Bun.spawnSync(["zsh", "-f", "-c", script, "_", join(root, "scripts/repogolem/golem-dispatch.zsh"), client, lane], {
         env: { ...process.env, HOME: join(dir, "home"), CODEX_HOME: join(dir, "home/.codex"), CASE_DIR: dir,
-          RALPH_REGISTRY_FILE: join(dir, "registry.json"), GOLEMS_MODEL_ROLES_ROOT: dir, GOLEM_ROLE: "", GOLEM_EFFORT: "", GOLEM_AGENT_ROLE: "" },
+          STAGING_FAILS: String(stagingFails), RALPH_REGISTRY_FILE: join(dir, "registry.json"), GOLEMS_MODEL_ROLES_ROOT: dir, GOLEM_ROLE: "", GOLEM_EFFORT: "", GOLEM_AGENT_ROLE: "" },
         stdout: "pipe", stderr: "pipe",
       });
       expect(run.exitCode, run.stderr.toString()).toBe(0);
       const args = readFileSync(join(dir, "args"), "utf8");
       if (client === "claude") {
-        expect(args).toContain("--strict-mcp-config");
+        expect(args).not.toContain("--strict-mcp-config");
         expect(JSON.parse(readFileSync(join(dir, "effective.json"), "utf8")).mcpServers).toEqual(lane === "golems" ? safe : { ...personal, ...safe });
       } else {
         expect(args).toContain("mcp_servers.agent-html-publisher.enabled=false");
