@@ -465,7 +465,6 @@ _golem_launch_codex() {
   if [[ "$explicit_resume" == false && -n "$model" ]]; then
     codex_args=("--model" "$model" "${codex_args[@]}")
   fi
-
   # Build MCP config for codex.
   # This JSON can carry live API tokens, so it is staged 0600 inside CODEX_HOME
   # (never in a shared /tmp) and deleted as soon as the profile is rendered.
@@ -474,17 +473,9 @@ _golem_launch_codex() {
     local built=$(  _ralph_build_mcp_config "$project_name" 2>/dev/null)
     [[ -n "$built" && "$built" != "null" ]] && merged_mcp_json="$built"
   fi
-
-  local codex_home="${CODEX_HOME:-$HOME/.codex}"
-  # Profiles layer on user config, so explicitly disable denied global servers.
-  local blocked_global_mcps="" blocked_global_mcp
-  if [[ -f "${codex_home}/config.toml" ]]; then
-    blocked_global_mcps=$(python3 "$_GOLEM_MCP_POLICY" codex-blocks "$project_name" < "${codex_home}/config.toml") || { _golem_cleanup_agent_context "$agent_context_file"; return 1; }
-    for blocked_global_mcp in ${(f)blocked_global_mcps}; do
-      [[ -n "$blocked_global_mcp" ]] && codex_args+=("-c" "$blocked_global_mcp")
-    done
-  fi
-
+  local codex_home="${CODEX_HOME:-$HOME/.codex}" codex_mcp_block_args
+  codex_mcp_block_args=$(_golem_codex_mcp_block_args "$codex_home" "$project_name") || { _golem_cleanup_agent_context "$agent_context_file"; return 1; }
+  [[ -z "$codex_mcp_block_args" ]] || codex_args+=("${(@f)codex_mcp_block_args}")
   # Give every launch its own profile. A project- or directory-stable name lets
   # a concurrent launch overwrite this launch's config and remove it on exit.
   local codex_launch_digest

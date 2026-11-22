@@ -21,3 +21,14 @@ _golem_filter_mcp_file() {
   fi
   mv "$filtered" "$target"
 }
+
+# Profiles layer on user config, so disable denied global servers per launch.
+_golem_codex_mcp_block_args() {
+  local codex_home="$1" project_name="$2" blocked_mcps blocked_mcp
+  [[ -f "${codex_home}/config.toml" ]] || return 0
+  blocked_mcps=$(python3 "$_GOLEM_MCP_POLICY" codex-blocks "$project_name" < "${codex_home}/config.toml") || return 1
+  for blocked_mcp in ${(f)blocked_mcps}; do
+    [[ -z "$blocked_mcp" ]] || print -rl -- "-c" "$blocked_mcp"
+  done
+  return 0
+}
