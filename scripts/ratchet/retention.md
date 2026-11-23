@@ -24,3 +24,23 @@ The Mac `ratchet-runs-size` row reports allocated size with a 10 GB ceiling,
 overridable via `GOLEMS_RATCHET_RUNS_MAX_GB`. It remains report-only pending
 successful retention on both Macs. The disk free floor remains unchanged.
 The lead must sequence merge and refresh open guarded PRs for the added row.
+
+## PR-state policy command
+
+
+Run `python3 scripts/ratchet/retain-runs.py` to LIST the main checkout's
+`docs.local/ratchet-runs`. Output columns: path, PR, state, age in days,
+bytes (logical, including directory entries), reason, KEEP/REMOVE.
+`--root` selects another run directory; `--repo` defaults to EtanHey/golems.
+
+Policy: newest three runs per open PR; newest one for fourteen days after
+closure or merge; none afterward. Any comment mentioning the run name pins
+it, including sticky comments. Unknown names, failed lookups and unknown
+states remain. Missing closure metadata also retains runs. Symlinks and
+filesystem errors stop the scan. No symlink targets are read.
+
+`--apply` explicitly enables removal after the complete scan and filesystem
+revalidation. Stop writers before applying: the scan is not an atomic
+snapshot and cannot fence concurrent writers. This tool is not wired into
+nightly jobs. The older `prune-runs.mjs` SHA policy remains a separate tool;
+use this command for PR-state retention.
