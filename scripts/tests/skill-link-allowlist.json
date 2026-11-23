@@ -1,0 +1,15 @@
+{
+  "comment": "Legacy installed-path violations; may only shrink. Follow-up: repair non-_shared repository and unavailable-sibling destinations identified in PR #1354 review (issuecomment-7091969663). Do not add new exceptions.",
+  "links": [
+    "architectural-conformance-audit/SKILL.md -> ../plan-council/references/assumption-check.md",
+    "git-guardian/SKILL.md -> ../human-confirm-gate/README.md#archived-fleet-branch-deletion",
+    "human-confirm-gate/README.md -> ../../../native/golems-approve/README.md",
+    "orc/agents/deploy-local-prod.md -> ../../../../standards/vercel-deploys.md",
+    "pr-loop/SKILL.md -> ../../../standards/vercel-deploys.md",
+    "pr-loop/adapters/claude.md -> ../../../../scripts/pr-watch-lib/README.md#usage-and-exits",
+    "pr-loop/adapters/codex.md -> ../../../../scripts/pr-watch-lib/README.md#usage-and-exits",
+    "pr-loop/adapters/cursor.md -> ../../../../scripts/pr-watch-lib/README.md#usage-and-exits",
+    "pr-loop/references/review-loop.md -> ../../../../scripts/pr-watch-lib/README.md#usage-and-exits",
+    "tmp-block/SKILL.md -> ../../../docs/codex-policy-hooks.md"
+  ]
+}
