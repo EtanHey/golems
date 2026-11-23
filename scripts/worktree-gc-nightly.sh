@@ -10,6 +10,8 @@
 # killed and the exit is 124. A completed run exits 0 even when it KEEPs unpushed worktrees.
 # Extra arguments pass through to worktree-gc.sh --apply.
 set -uo pipefail
+# Release scripts must stay identical to their verified manifest after execution.
+export PYTHONDONTWRITEBYTECODE=1
 
 GC_MIN_SAFE_SHA=c2fb389974ebc18df088a28e08f011220edd2b8f
 PIN="${GOLEMS_WORKTREE_GC_PIN_ROOT-$HOME/Gits/golems/.worktrees/hooks-live}"
