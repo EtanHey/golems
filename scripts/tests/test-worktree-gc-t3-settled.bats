@@ -184,7 +184,7 @@ CHECK
   [[ "$output" != *" · REMOVE · "* && "$output" != *REMOVING* ]]
 }
 
-@test "list run shares one lsof capture and never reopens source DB through sqlite CLI" {
+@test "list run shares separate cwd and full captures and never reopens source DB through sqlite CLI" {
   fixture; age
   sibling="$(add_branch_worktree "$repo" other)"
   export PROBE_CALLS="$TEST_ROOT/probe-calls" REAL_SQLITE="$(command -v sqlite3)"
@@ -195,14 +195,15 @@ exec "$REAL_SQLITE" "$@"
 STUB
   cat > "$TEST_ROOT/bin/lsof" <<'STUB'
 #!/usr/bin/env bash
-printf 'lsof\n' >> "$PROBE_CALLS"
+if [[ " $* " == *' -d cwd '* ]]; then echo lsof-cwd; else echo lsof-full; fi >> "$PROBE_CALLS"
 printf 'p1\nfcwd\nn/outside\nf3\nn/outside\n'
 STUB
   chmod +x "$TEST_ROOT/bin/sqlite3" "$TEST_ROOT/bin/lsof"
   run "$WORKTREE_GC" --prune-plan --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
   [[ "$output" == *" · REMOVE · "* ]] || false
-  [ "$(grep -c '^lsof$' "$PROBE_CALLS")" -eq 1 ]
+  [ "$(grep -c '^lsof-cwd$' "$PROBE_CALLS")" -eq 1 ]
+  [ "$(grep -c '^lsof-full$' "$PROBE_CALLS")" -eq 1 ]
   ! grep -F -- "$WORKTREE_GC_T3_DB" "$PROBE_CALLS"
   grep -F '.t3.sqlite?mode=ro' "$PROBE_CALLS"
 }
@@ -226,4 +227,19 @@ STUB
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [ ! -e "$worktree" ]
   [ "$(wc -l < "$FETCH_CALLS" | tr -d ' ')" -ge 2 ]
+}
+
+@test "failed full snapshot has its own T3 category without suppressing ordinary REMOVE" {
+  fixture; age
+  sibling="$(add_branch_worktree "$repo" ordinary)"
+  printf '#!/usr/bin/env bash\nseq 1 20\n' > "$TEST_ROOT/bin/ps"
+  cat > "$TEST_ROOT/bin/lsof" <<'STUB'
+#!/usr/bin/env bash
+for i in $(seq 1 19); do printf 'p%s\nfcwd\nn/outside\n' "$i"; done
+STUB
+  run "$WORKTREE_GC" --prune-plan --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"open-file-snapshot-unavailable"* ]] || false
+  [[ "$output" == *" · $sibling · "*" · REMOVE · "* ]] || false
+  [[ "$output" != *"lsof exited 1"* ]] || false
 }

@@ -124,11 +124,7 @@ refresh_live_cwds() {
     live_reason="ps failed; cannot cross-check lsof coverage"
     return 1
   fi
-  if [[ "$apply" -eq 0 && -n "${WORKTREE_GC_FILES_SNAPSHOT:-}" ]]; then
-    out="$(python3 "$SCRIPT_DIR/lib/worktree-gc-t3.py" cwds "$WORKTREE_GC_FILES_SNAPSHOT" 2>/dev/null)" || rc=$?
-  else
-    out="$(lsof -a -u "$(id -u)" -d cwd -Fpn 2>/dev/null)" || rc=$?
-  fi
+  out="$(lsof -a -u "$(id -u)" -d cwd -Fpn 2>/dev/null)" || rc=$?
   if [[ "$rc" -ne 0 ]]; then
     live_reason="lsof exited $rc (partial view); refusing to treat that as idle"
     return 1
@@ -817,6 +813,11 @@ finish_run() {
   local rc=$?
   rm -f "$LOG_FILE.repo-state" "$LOG_FILE.repo-stderr" "$REPORT_JOURNAL.gh-stderr" ||
     printf 'scratch cleanup failed\n' >> "$LOG_FILE"
+  if [[ "$apply" -eq 0 ]]; then
+    rm -f "$LOG_FILE.t3.sqlite" "$LOG_FILE.t3.sqlite.pending."* \
+      "$LOG_FILE.files.json" "$LOG_FILE.symlinks.json" ||
+      printf 'snapshot cleanup failed\n' >> "$LOG_FILE"
+  fi
   if ! python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report"; then
     printf 'report publish failed\n' | tee -a "$LOG_FILE" >&2
     [[ "$rc" -ne 0 ]] || rc=2

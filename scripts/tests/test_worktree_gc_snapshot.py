@@ -108,6 +108,38 @@ class Snapshots(unittest.TestCase):
         self.assertEqual(result.returncode, 124)
         self.assertIn('remote-state-unproven', result.stderr)
 
+    def test_remote_wrapper_signals_reap_its_child(self):
+        import signal
+        import time
+        scratch = LIB.parents[1] / 'docs.local'
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            with self.subTest(signal=sig), tempfile.TemporaryDirectory(dir=scratch) as directory:
+                pidfile = Path(directory) / 'child.pid'
+                code = 'import os,time,pathlib,sys,signal; signal.signal(signal.SIGTERM,signal.SIG_IGN); pathlib.Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(30)'
+                wrapper = subprocess.Popen(['python3', str(LIB / 'worktree-gc-remote.py'), '30',
+                                            'python3', '-c', code, str(pidfile)],
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                child = None
+                try:
+                    deadline = time.monotonic() + 3
+                    while not pidfile.exists() and time.monotonic() < deadline:
+                        time.sleep(0.01)
+                    self.assertTrue(pidfile.exists())
+                    child = int(pidfile.read_text())
+                    wrapper.send_signal(sig)
+                    self.assertEqual(wrapper.wait(timeout=3), 128 + sig)
+                    with self.assertRaises(ProcessLookupError):
+                        os.kill(child, 0)
+                finally:
+                    if wrapper.poll() is None:
+                        wrapper.kill()
+                        wrapper.wait()
+                    if child:
+                        try:
+                            os.kill(child, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+
     def test_empty_finished_pr_has_categorized_error(self):
         result = subprocess.run(['python3', str(LIB / 'worktree-gc-prs.py'), 'finished'], input='[]', text=True, capture_output=True)
         self.assertEqual(result.returncode, 1)

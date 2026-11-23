@@ -14,8 +14,15 @@ gc_probe() {
 # T3 paths require positive finished-state, full-tree age and open-FD proof.
 t3_guard() {
   local category
-  if ! category="$(gc_probe t3-state-unproven python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3-finished "$1")" ||
-     ! category="$(gc_probe t3-files-unproven python3 "$SCRIPT_DIR/lib/worktree-gc-t3.py" "$1")"; then
+  if ! category="$(gc_probe t3-state-unproven python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3-finished "$1")"; then
+    emit_row "$repo_name" "$1" "$2" not-checked undetermined KEEP-undetermined "T3 retirement unproven: $category"
+    return 1
+  fi
+  if [[ "$apply" -eq 0 && ! -f "${WORKTREE_GC_FILES_SNAPSHOT:-}" ]]; then
+    emit_row "$repo_name" "$1" "$2" not-checked undetermined KEEP-undetermined "T3 retirement unproven: open-file-snapshot-unavailable"
+    return 1
+  fi
+  if ! category="$(gc_probe t3-files-unproven python3 "$SCRIPT_DIR/lib/worktree-gc-t3.py" "$1")"; then
     emit_row "$repo_name" "$1" "$2" not-checked undetermined KEEP-undetermined "T3 retirement unproven: $category"
     return 1
   fi

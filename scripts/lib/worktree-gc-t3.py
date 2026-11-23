@@ -73,17 +73,6 @@ def files_unused(target):
 
 if __name__ == '__main__':
     try:
-        if sys.argv[1] == "cwds":
-            cwd = False
-            for line in json.loads(Path(sys.argv[2]).read_text()):
-                if line.startswith('p'):
-                    print(line)
-                    cwd = False
-                elif line.startswith('f'):
-                    cwd = line == 'fcwd'
-                elif line.startswith('n') and cwd:
-                    print(line)
-            sys.exit(0)
         if sys.argv[1] == "snapshot":
             Path(sys.argv[2]).write_text(json.dumps(open_file_snapshot()))
             sys.exit(0)
