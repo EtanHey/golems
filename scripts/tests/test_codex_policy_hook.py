@@ -529,13 +529,15 @@ class CodexPolicyHookTests(unittest.TestCase):
             base = Path(scratch)
             counter = base / "python-starts.txt"
             # Policy children run -I (PYTHONPATH ignored), so count starts with a
-            # sitecustomize in a throwaway venv's site-packages, which -I keeps.
+            # .pth import in a throwaway venv's site-packages, which -I keeps.
+            # Homebrew 3.14 ships stdlib sitecustomize, shadowing a venv copy.
             venv = base / "venv"
             subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)], check=True)
             python = str(venv / "bin/python3")
             purelib = subprocess.run([python, "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"],
                                      capture_output=True, text=True, check=True).stdout.strip()
-            (Path(purelib) / "sitecustomize.py").write_text(
+            (Path(purelib) / "policy_start_counter.pth").write_text("import policy_start_counter\n")
+            (Path(purelib) / "policy_start_counter.py").write_text(
                 "import os,time\n"
                 "with open(os.environ['CODEX_TEST_START_COUNTER'], 'a') as starts:\n"
                 "    starts.write(str(os.getpid()) + '\\n')\n"
