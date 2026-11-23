@@ -180,8 +180,9 @@ if [[ "$WRAPPER" != "$PIN/"* ]]; then
 fi
 
 # Nightly must prove registry coverage; standalone GC may omit a registry.
-export WORKTREE_GC_LOG_DIR="$main/docs.local"
-export WORKTREE_GC_REPORT_DIR="$main/docs.local/worktree-gc"
+# Defaults only: an explicit caller/test override must win (doc: "unless WORKTREE_GC_REPORT_DIR overrides").
+export WORKTREE_GC_LOG_DIR="${WORKTREE_GC_LOG_DIR-$main/docs.local}"
+export WORKTREE_GC_REPORT_DIR="${WORKTREE_GC_REPORT_DIR-$main/docs.local/worktree-gc}"
 export WORKTREE_GC_CMUX_REGISTRY="${WORKTREE_GC_CMUX_REGISTRY-$HOME/.cmuxlayer/session-registry.jsonl}"
 LOCK="${GOLEMS_WORKTREE_GC_LOCK:-$HOME/.local/state/golems/worktree-gc.lock}"
 LIMIT="${WORKTREE_GC_NIGHTLY_TIMEOUT:-3600}"
