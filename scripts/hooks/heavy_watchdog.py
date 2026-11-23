@@ -60,6 +60,12 @@ def measure(tree):
     return sum(size for _, size, _, _ in rows), rows
 
 
+def log_path(home=None):
+    host = 'm1' if os.uname().machine == 'arm64' and 'T6000' in os.uname().version else 'm4'
+    filename = f'.{host}-heavy.log' if sys.platform == 'darwin' else '.heavy-run.log'
+    return (Path.home() if home is None else Path(home)) / filename
+
+
 def log_limit(lane, total, rows, pgid):
     escapees = [(row, size, cmd, metric) for row, size, cmd, metric in rows if row.pgid != pgid]
     top = max(escapees or rows, key=lambda item: item[1], default=None)
@@ -68,10 +74,9 @@ def log_limit(lane, total, rows, pgid):
     line = f'{time.strftime("%Y-%m-%dT%H:%M:%S%z")} {prefix} lane={lane} peak={total / 1024**3:.3f}GiB {detail} metric={",".join(sorted({item[3] for item in rows}))}'
     # One record even if command/lane contains newlines.
     line = line.replace('\n', '\\n').replace('\r', '\\r')
-    host = 'm1' if os.uname().machine == 'arm64' and 'T6000' in os.uname().version else 'm4'
-    filename = f'.{host}-heavy.log' if sys.platform == 'darwin' else '.heavy-run.log'
+
     try:
-        with (Path.home() / filename).open('a') as stream:
+        with log_path().open('a') as stream:
             stream.write(line + '\n')
     except OSError as error:
         print(f'{line} log_error={error}', file=sys.stderr, flush=True)

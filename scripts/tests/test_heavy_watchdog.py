@@ -45,14 +45,23 @@ class WatchdogTests(unittest.TestCase):
             os.waitpid(leader, 0)
             self.assertEqual(os.waitstatus_to_exitcode(status), 0)
 
-    def run_case(self, source, expected, limit='.2', survived=False, absent=False):
+    def run_case(self, source, expected, limit='.2', survived=False, absent=False, non_darwin=False):
         (ROOT / 'docs.local').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT/'docs.local') as directory:
             env = {**os.environ, 'HOME': directory}
             for key in list(env):
                 if key.startswith('GOLEMS_HEAVY_'): del env[key]
             env['GOLEMS_HEAVY_SUITE_SLOTS'] = '1'
-            result = subprocess.run([sys.executable, str(HOOKS/'heavy-suite.py'),
+            helper_path = str(HOOKS/'heavy-suite.py')
+            launcher = [sys.executable, helper_path]
+            if non_darwin:
+                # Change only the watchdog's platform view: native process identity stays Darwin.
+                launcher = [sys.executable, '-c',
+                    'import runpy,sys; from types import SimpleNamespace; '
+                    f'sys.path.insert(0,{str(HOOKS)!r}); import heavy_watchdog as w; '
+                    'w.sys=SimpleNamespace(platform="linux",stderr=sys.stderr); '
+                    f'runpy.run_path({helper_path!r},run_name="__main__")']
+            result = subprocess.run([*launcher,
                 '--limit-gb',limit,'--kill-grace-seconds','.1','--min-free-gb','0',
                 '--max-load','99999','--',sys.executable,'-c',source],env=env,
                 text=True,capture_output=True,timeout=20)
@@ -63,7 +72,26 @@ class WatchdogTests(unittest.TestCase):
             if survived:
                 self.assertEqual((Path(directory)/'survived').read_text(), 'yes')
                 self.assertFalse((Path(directory)/'signalled').exists())
-            return result, list(Path(directory).glob('.*-heavy.log')) and '\n'.join(p.read_text() for p in Path(directory).glob('.*-heavy.log'))
+            if non_darwin:
+                from unittest.mock import patch
+                from types import SimpleNamespace
+                with patch.object(watchdog, 'sys', SimpleNamespace(platform='linux')):
+                    alarm = watchdog.log_path(directory)
+            else:
+                alarm = watchdog.log_path(directory)
+            if expected in (125,126):
+                self.assertTrue(alarm.is_file(), f'missing alarm log: {alarm}\n{result.stderr}')
+            return result, alarm.read_text() if alarm.is_file() else ''
+
+    def test_non_darwin_alarm_logs(self):
+        _, log = self.run_case('import time; x=bytearray(260*1024*1024); time.sleep(10)',
+            125, non_darwin=True)
+        self.assertIn('MEMORY_LIMIT', log)
+        self.assertIn('metric=rss', log)
+        source = 'import os,time; from pathlib import Path\nif os.fork()==0:\n os.setsid()\n time.sleep(.4)\n x=bytearray(260*1024*1024)\n time.sleep(4)\n (Path.home()/"survived").write_text("yes")\n os._exit(0)\ntime.sleep(10)\n'
+        _, log = self.run_case(source,126,survived=True,non_darwin=True)
+        self.assertIn('ALARM unkillable escapee', log)
+        self.assertIn('metric=rss', log)
 
     def test_exit(self):
         result,_ = self.run_case('raise SystemExit(7)',7)
