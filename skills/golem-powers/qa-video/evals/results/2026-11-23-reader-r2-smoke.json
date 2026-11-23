@@ -1,53 +1,108 @@
 {
-  "artifact_kind": "signed-in-reader-startup-smoke",
-  "status": "BLOCKED",
+  "artifact_kind": "cli-session-reader-live-smoke",
+  "revision": 3,
+  "status": "PASS",
+  "base_head": "9bbd74141db1490857d104bf4754fd304c0723be",
+  "helper_sha256_at_smoke": "0695b35d0d587c0d60c0f2830dec51c9a213d168e6a5d39935ce8987f4246704",
   "media": "generated synthetic 1x1 white RGB PNG; no recording",
   "machine": "M1",
   "disk_floor_gib": 32,
-  "disk_free_gib_before_first_smoke": 35.643,
+  "disk_free_gib_before_smoke": 35.075,
   "cli_version": "2.1.330",
   "anthropic_environment_variables": "all unset",
-  "oauth_environment_token": "unset for smoke; keychain/session login only",
+  "oauth_environment_token": "unset",
+  "auth_route": "cli-session",
+  "apiKeySource": "none",
+  "requested_model": "claude-sonnet-5-5",
+  "observed_model": "claude-sonnet-5-5",
+  "effort_requested": "medium",
+  "read_count": 1,
+  "exit_code": 0,
+  "startup_inventory": {
+    "tools": [],
+    "mcp_servers": [],
+    "skills": [],
+    "slash_commands": []
+  },
   "safe_mode_requested": true,
-  "safe_mode_documented_contract": "disables CLAUDE.md, skills, plugins and customizations; auth retained",
-  "claude_md_loaded": "NOT_DETERMINED: authentication stopped before init",
-  "skills_inventory": "NOT_OBSERVED",
-  "slash_commands_inventory": "NOT_OBSERVED",
-  "model_effective": "NOT_DETERMINED",
-  "effort_effective": "NOT_DETERMINED",
-  "attempts": [
-    {
-      "auth_route": "signed-in",
-      "read_count": 0,
-      "failure": "PROVIDER_EXIT",
-      "startup_inventory": null,
-      "provider_error_flags": []
+  "claude_md_loaded_check": {
+    "loaded": false,
+    "marker": "CLAUDE_MD_LOADED=no",
+    "method": "reader model startup-context self-report with safe mode enabled",
+    "scope": "model self-report plus CLI safe-mode contract; not an independent instruction-source audit"
+  },
+  "visible_finding": "white pixel",
+  "batch_status": "COMPLETE",
+  "counts": {
+    "READ": 1,
+    "INVALID": 0,
+    "FAILED": 0,
+    "NOT_READ": 0
+  },
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 3021,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 478,
+    "output_tokens_details": {
+      "thinking_tokens": 358
     },
-    {
-      "auth_route": "signed-in",
-      "read_count": 0,
-      "failure": "PROVIDER_EXIT",
-      "startup_inventory": null,
-      "provider_error_flags": []
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
     },
-    {
-      "auth_route": "signed-in",
-      "read_count": 0,
-      "failure": "PROVIDER_EXIT",
-      "startup_inventory": null,
-      "provider_error_flags": [
-        "authentication",
-        "not logged in",
-        "model",
-        "permission",
-        "invalid",
-        "input",
-        "login"
-      ]
-    }
-  ],
-  "result": "No successful signed-in visual read; provider authentication/not-logged-in markers observed. No credential inspection or alternate auth route attempted.",
-  "usage": "NOT_REPORTED; no successful inference claimed",
-  "base_head": "69e75daa6fbf8a9ce4c49bfac9bc0fa4c13e1bf0",
-  "helper_sha256_at_diagnostic_run": "ddc0dfaceb4e7db20278c80e866ca78231f805ac4757245c19a697a7c17d1892"
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 3021,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "actual_cost_usd": "NOT_RETAINED in helper receipt",
+  "root_cause": "setting-sources empty and restricted each discard user-settings auth; both removed, safe mode retained",
+  "prior_round_2": {
+    "status": "BLOCKED",
+    "read_count": 0,
+    "attempts": [
+      {
+        "auth_route": "signed-in",
+        "read_count": 0,
+        "failure": "PROVIDER_EXIT",
+        "startup_inventory": null,
+        "provider_error_flags": []
+      },
+      {
+        "auth_route": "signed-in",
+        "read_count": 0,
+        "failure": "PROVIDER_EXIT",
+        "startup_inventory": null,
+        "provider_error_flags": []
+      },
+      {
+        "auth_route": "signed-in",
+        "read_count": 0,
+        "failure": "PROVIDER_EXIT",
+        "startup_inventory": null,
+        "provider_error_flags": [
+          "authentication",
+          "not logged in",
+          "model",
+          "permission",
+          "invalid",
+          "input",
+          "login"
+        ]
+      }
+    ],
+    "result": "No successful signed-in visual read; provider authentication/not-logged-in markers observed. No credential inspection or alternate auth route attempted.",
+    "inventories": "NOT_OBSERVED; authentication stopped before init"
+  },
+  "remaining_limits": [
+    "real-video QA NOT_RUN",
+    "with/without-skill behavior evals NOT_RUN",
+    "installed-release proof NOT_RUN"
+  ]
 }

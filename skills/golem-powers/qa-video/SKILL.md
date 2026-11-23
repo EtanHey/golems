@@ -24,18 +24,22 @@ If your brief makes you the judge, dispatch no other judge; you are "the QA seat
 
 ## Reader authentication, cost and zero-read stop
 
-The default tool-free helper uses the signed-in Claude Code session: it preserves the user's
+The default tool-free helper uses the existing Claude CLI session/settings: it preserves the user's
 HOME and optional CLAUDE_CONFIG_DIR, with no `--bare`. It runs from a fresh working directory
 with `--safe-mode` (CLAUDE.md, skills, plugins and customizations disabled), plus hooks, tools and MCP disabled; it never opens or copies credential files. An explicitly
 configured ANTHROPIC_API_KEY is an optional route; ANTHROPIC_AUTH_TOKEN and
 CLAUDE_CODE_OAUTH_TOKEN are forwarded in memory when configured, never printed or saved.
+Do not add `--setting-sources ''` or `--restricted`: both discard the user-settings env
+block that supplies login on the M1. Safe mode disables CLAUDE.md/skills/plugins while preserving
+that auth configuration. Receipts retain the init's `apiKeySource` verbatim and label a route with
+no forwarded key/token as `cli-session`; this does not claim keychain or subscription auth.
 This is a login-capable reader, not a hermetic startup-isolation evaluator.
 
 **Before ANY reading or gatherer dispatch**, total all planned sheets/stills across batches and
 state `sheets × estimated price per sheet = estimated dollars`. Use the selected paid route's
 estimate including retries; the script's default planning allowance is **$0.10 per sheet including
 one retry**, not a provider tariff or guaranteed bill. Supply `--price-per-sheet-usd` to
-visual-batch.py or direct helper calls when a different allowance is justified. Signed-in usage
+visual-batch.py or direct helper calls when a different allowance is justified. CLI session usage
 may consume subscription limits or incur billing; do not call it free. **Above about $5, STOP and
 state the cost before reading**; obtain explicit spend authorization or reduce scope. Never split
 batches or lower the allowance to evade admission. The scripted route holds above $5; an

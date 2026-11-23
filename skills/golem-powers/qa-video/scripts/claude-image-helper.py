@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Default attached-image Claude adapter for visual-batch --helper. No Read tool.
 
-Uses the signed-in Claude Code login unless an API key is explicitly configured.
+Uses the existing Claude CLI session/settings unless a key is explicitly configured.
 Tools and MCP remain disabled; login startup is not hermetic isolation.
 """
 import argparse
@@ -86,9 +86,12 @@ def run_provider(cmd, *, input, timeout, cwd, env):
 
 
 def command(model, settings):
+    # Do not add --setting-sources '' or --restricted: both discard the
+    # user-settings env block supplying this host login. --safe-mode disables
+    # CLAUDE.md/skills/plugins while preserving that auth configuration.
     return ['claude', '-p', '', '--model', model, '--effort', 'medium',
             '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
-            '--settings', str(settings), '--setting-sources', '', '--restricted',
+            '--settings', str(settings),
             '--tools', '', '--allowedTools', '', '--permission-mode', 'dontAsk',
             '--no-chrome', '--disable-slash-commands', '--safe-mode',
             '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose']
@@ -196,7 +199,7 @@ def main():
     except (ValueError, OSError, KeyError, TypeError) as error:
         print('COST_ADMISSION_REQUIRED: ' + visual.safe_cause(str(error), images[0].parent), file=sys.stderr)
         return 2
-    # Keep the signed-in user's HOME/config. Never inspect/copy login material.
+    # Keep the user's CLI session HOME/config. Never inspect/copy login material.
     # Isolate working directory/temp only; settings and CLI flags disable tools.
     root = Path(tempfile.mkdtemp(prefix='reader-', dir=images[0].parent))
     (root/'tmp').mkdir()
@@ -209,8 +212,10 @@ def main():
                CLAUDE_CODE_DISABLE_AUTO_MEMORY='1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC='1')
     receipt = {'exit_code': None, 'provider': 'claude', 'requested_model': a.model, 'effort': 'medium',
                'serviceTier': 'default', 'fastMode': False, 'images': list(map(str, images)),
-               'home': str(home), 'tool_calls': [], 'scope': 'signed-in session; not hermetic startup isolation',
-               'auth_route': 'explicit-key' if env.get('ANTHROPIC_API_KEY') else 'signed-in',
+               'home': str(home), 'tool_calls': [], 'scope': 'CLI session/settings; not hermetic startup isolation',
+               'auth_route': ('explicit-key' if env.get('ANTHROPIC_API_KEY') else
+                              'explicit-token' if any(env.get(k) for k in ('ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN')) else
+                              'cli-session'),
                'read_count': 0, 'run_id': admission['run_id'],
                'safe_mode': True, 'customizations_disabled': True}
     code, found = 2, {}
@@ -239,6 +244,7 @@ def main():
             raise ReaderFailure('SECRET_IN_PROVIDER_OUTPUT')
         receipt['exit_code'] = r.returncode
         if r.returncode:
+            receipt['provider_stderr_first_line'] = visual.safe_cause(scrub(r.stderr.splitlines()[0]), root) if r.stderr.splitlines() else None
             diagnostic = (r.stdout + r.stderr).lower()
             receipt['provider_error_flags'] = [term for term in (
                 'unknown option', 'requires', 'authentication', 'not logged in',
@@ -252,6 +258,7 @@ def main():
             if isinstance(event, dict) and event.get('type') == 'system' and event.get('subtype') == 'init':
                 receipt['startup_inventory'] = {k: event.get(k) for k in ('tools', 'mcp_servers', 'skills', 'slash_commands')}
                 receipt['session_id'] = event.get('session_id')
+                receipt['apiKeySource'] = event.get('apiKeySource')
         init, result, found = observation(r.stdout, images)
         if init.get('model') != a.model:
             raise ReaderFailure('MODEL_MISMATCH')
