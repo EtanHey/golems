@@ -18,6 +18,7 @@ import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import proc_identity as proc
+import heavy_watchdog as watchdog
 
 runtime_wait = Event().wait
 
@@ -88,7 +89,7 @@ def wait_for_memory(min_free_gb, poll_seconds, deadline):
         time.sleep(min(poll_seconds, deadline - now))
 
 
-def acquire_slot(poll_seconds, deadline, min_free_gb, max_load=None, strict_load=False):
+def acquire_slot(poll_seconds, deadline, min_free_gb, max_load=None, strict_load=False, strict_slot=False):
     base = Path(os.environ.get("GOLEMS_HEAVY_LOCK") or Path.home() / ".local/state/golems/heavy-suite.lock")
     base.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     next_notice = 0
@@ -135,6 +136,8 @@ def acquire_slot(poll_seconds, deadline, min_free_gb, max_load=None, strict_load
         now = time.monotonic()
         summary = "; ".join(holders)
         if now >= deadline:
+            if strict_slot:
+                raise ValueError("slot wait timed out; refusing START")
             notice(f"WARNING PROCEEDING unqueued after max wait; holders {summary}")
             return None, None, None
         if now >= next_notice:
@@ -345,7 +348,7 @@ def private_pipe():
     return descriptors
 
 
-def run_command(command, timeout=1800, grace=10, slot=None):
+def run_command(command, timeout=1800, grace=10, slot=None, limit_gb=None, lane="heavy-suite"):
     # AIDEV-NOTE: START records are best-effort: no consumer reads them; cleanup
     # uses live process state. If a future guardian uses active records to find
     # orphans, START writes must become fail-closed again.
@@ -385,7 +388,10 @@ def run_command(command, timeout=1800, grace=10, slot=None):
         gate_read, gate_write = private_pipe()
         status_read, status_write = private_pipe()
         os.set_blocking(status_read, False)
-        bootstrap = """import os,subprocess,sys
+        bootstrap = """import os,subprocess,sys,signal
+signal.signal(signal.SIGTERM, lambda *_: None)
+signal.signal(signal.SIGINT, lambda *_: None)
+signal.signal(signal.SIGHUP, lambda *_: None)
 control, status = map(int, sys.argv[1:3])
 if os.read(control, 1) != b"1": sys.exit(125)
 try: result = subprocess.call(sys.argv[3:], close_fds=True)
@@ -395,6 +401,8 @@ except BrokenPipeError: pass
 os.close(status)
 os.read(control, 1)
 """
+        if limit_gb is None:
+            bootstrap = bootstrap.replace("signal.signal(signal.SIGTERM, lambda *_: None)", "").replace("signal.signal(signal.SIGINT, lambda *_: None)", "").replace("signal.signal(signal.SIGHUP, lambda *_: None)", "")
         deadline = time.monotonic() + timeout
         child = subprocess.Popen([sys.executable, "-c", bootstrap, str(gate_read), str(status_write), *command],
             pass_fds=(gate_read, status_write), start_new_session=True, close_fds=True, env={**os.environ,
@@ -407,21 +415,29 @@ os.read(control, 1)
         os.write(gate_write, b"1")
         record.update(leader_pid=child.pid, leader_birth=leader.start if leader else None, pgid=child.pid)
         if path: outer_record(save_run, path, record)
+        next_memory = 0
         while True:
+            if limit_gb is not None and time.monotonic() >= next_memory:
+                total, memory = watchdog.measure(tree)
+                next_memory = time.monotonic() + 2
+                if total > limit_gb * 1024**3:
+                    result = watchdog.log_limit(lane, total, memory, child.pid)
+                    reason = "memory-limit"
+                    break
             tree.scan(markers=False)  # Capture authority before reaping; marker inspection is cleanup-only.
             try: message = os.read(status_read, 64)
             except BlockingIOError: message = None
             status = int(message) if message else None
             if pending: result, reason = 128 + pending[0], "cancelled"; break
             if status is not None: result, reason = status if status >= 0 else 128 - status, "child-exit"; break
-            if message == b"" or child.poll() is not None:
+            if message == b"" or (limit_gb is None and child.poll() is not None):
                 raise proc.ProcIdentityUnavailable("suite leader exited without command status")
             if time.monotonic() >= deadline:
                 result, reason = 124, "timeout"
                 if not nested: notice(f"TIMEOUT after {timeout:g}s; terminating suite process tree (suite_id={suite_id})")
                 break
             runtime_wait(min(.02, max(0, deadline - time.monotonic())))
-        ok, survivors = cleanup_tree(tree, child, grace, pending[0] if pending else None)
+        ok, survivors = (watchdog.cleanup_group if limit_gb is not None else cleanup_tree)(tree, child, grace, pending[0] if pending else None)
         if not ok:
             notice(f"CLEANUP FAILED; suite process tree remains or is unverifiable (suite_id={suite_id})")
             if result == 0: result = 70
@@ -435,12 +451,12 @@ os.read(control, 1)
             outer_record(save_run, path.with_suffix(".cleanup.json"), record)
             if ok: outer_record(lambda: path.unlink(missing_ok=True))
         if not nested: notice(f"SUITE DONE pid={os.getpid()} slot={slot} suite_id={suite_id} exit={result} reason={reason} cleanup={'ok' if ok else 'failed'}{inner_failure_pointer(suite_id)}")
-    except (OSError, proc.ProcIdentityUnavailable):
+    except (OSError, ValueError, subprocess.SubprocessError, proc.ProcIdentityUnavailable):
         notice("supervision unavailable; refusing START" if child is None else "CLEANUP FAILED; supervision unavailable")
         if child is not None:
             tree = tree or SuiteTree(None, suite_id, nested)
             tree.incomplete.add("supervision-unavailable")
-            ok, survivors = cleanup_tree(tree, child, grace)
+            ok, survivors = (watchdog.cleanup_group if limit_gb is not None else cleanup_tree)(tree, child, grace)
             if nested: save_inner_failure(record, tree, reason, survivors)
             if path:
                 record.update(reason=reason, cleanup="failed", members_seen=[vars(row) for row in tree.known.values()],
@@ -465,6 +481,8 @@ def main(argv=None):
         parser.add_argument("--" + flag, type=float, default=os.environ.get("GOLEMS_HEAVY_" + env, default))
     for flag, default in (("timeout-seconds", "1800"), ("kill-grace-seconds", "10")):
         parser.add_argument("--" + flag, default=os.environ.get("GOLEMS_HEAVY_" + flag.upper().replace("-", "_"), default))
+    parser.add_argument("--limit-gb", type=float)
+    parser.add_argument("--lane", default="heavy-suite")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
@@ -478,7 +496,9 @@ def main(argv=None):
             notice(f"invalid {flag.replace('_', '-')}; expected a finite number {'> 0' if positive else '>= 0'}; refusing START")
             return 2
         setattr(args, flag, value)
-    def run(slot=None): return run_command(command, args.timeout_seconds, args.kill_grace_seconds, slot)
+    if args.limit_gb is not None and (not math.isfinite(args.limit_gb) or args.limit_gb <= 0):
+        parser.error("limit-gb must be finite and positive")
+    def run(slot=None): return run_command(command, args.timeout_seconds, args.kill_grace_seconds, slot, args.limit_gb, args.lane)
     if (os.environ.get("GOLEMS_HEAVY_PRE_PUSH") == "1"
             and sys.stdin is not None and not sys.stdin.isatty()):
         updates = [line.split() for line in sys.stdin.buffer]
@@ -489,6 +509,9 @@ def main(argv=None):
     if os.environ.get("GOLEMS_HEAVY_SUITE_HELD"):
         return run()
     if os.environ.get("GOLEMS_HEAVY_FORCE") == "1":
+        if args.limit_gb is not None:
+            notice("watchdog refuses FORCE admission bypass")
+            return 75
         notice("WARNING FORCE=1: running unqueued, bypassing slots, memory and load gates")
         return run()
     if not math.isfinite(args.min_free_gb) or args.min_free_gb < 0:
@@ -496,14 +519,19 @@ def main(argv=None):
         return 75
     for value, name, minimum in ((args.max_load, "max-load", 0), (args.poll_seconds, "poll-seconds", 0), (args.max_wait_seconds, "max-wait-seconds", 0)):
         if not math.isfinite(value) or value < minimum or (name == "poll-seconds" and value == 0):
+            if args.limit_gb is not None:
+                notice(f"invalid {name}; refusing START")
+                return 75
             notice(f"WARNING invalid {name}; running unqueued")
             return run()
     deadline, fd, legacy_fd = time.monotonic() + args.max_wait_seconds, None, None
     try:
         try:
             notice(f"QUEUED pid={os.getpid()}")
-            fd, index, legacy_fd = acquire_slot(args.poll_seconds, deadline, args.min_free_gb, args.max_load)
+            fd, index, legacy_fd = acquire_slot(args.poll_seconds, deadline, args.min_free_gb, args.max_load, strict_slot=args.limit_gb is not None)
         except OSError as error:
+            if args.limit_gb is not None:
+                raise ValueError(f"lock unavailable; refusing START: {error}")
             notice(f"WARNING lock unavailable ({error}); running unqueued")
             wait_for_memory(args.min_free_gb, args.poll_seconds, deadline)
         if fd is None:
