@@ -15,6 +15,11 @@ sys.path.insert(0, str(HOOKS))
 import heavy_watchdog as watchdog
 
 class WatchdogTests(unittest.TestCase):
+    def test_memory_rows_ignores_continuation_lines(self):
+        from unittest.mock import patch
+        with patch.object(subprocess, "check_output", return_value="123 2048 /bin/python\ncontinued command text\n"):
+            self.assertEqual(watchdog.memory_rows(), {123: (2048 * 1024, "/bin/python")})
+
     def test_session_join_regression(self):
         for isolated in (False, True):
             read, write = os.pipe()

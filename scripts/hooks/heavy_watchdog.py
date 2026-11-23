@@ -8,12 +8,15 @@ from pathlib import Path
 
 def memory_rows():
     # RSS is portable across Darwin/Linux and requires no task-port entitlement.
-    output = subprocess.check_output(['ps', '-axo', 'pid=,rss=,command='], text=True, timeout=5)
+    output = subprocess.check_output(['ps', '-axo', 'pid=,rss=,comm='], text=True, timeout=5)
     result = {}
     for line in output.splitlines():
         fields = line.strip().split(None, 2)
         if len(fields) >= 2:
-            result[int(fields[0])] = (int(fields[1]) * 1024, fields[2] if len(fields) == 3 else '')
+            try:
+                result[int(fields[0])] = (int(fields[1]) * 1024, fields[2] if len(fields) == 3 else '')
+            except ValueError:
+                continue  # ps can print continuation lines for unusual executable names.
     return result
 
 

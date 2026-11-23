@@ -18,7 +18,6 @@ import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import proc_identity as proc
-import heavy_watchdog as watchdog
 
 runtime_wait = Event().wait
 
@@ -352,6 +351,8 @@ def run_command(command, timeout=1800, grace=10, slot=None, limit_gb=None, lane=
     # AIDEV-NOTE: START records are best-effort: no consumer reads them; cleanup
     # uses live process state. If a future guardian uses active records to find
     # orphans, START writes must become fail-closed again.
+    if limit_gb is not None:
+        import heavy_watchdog as watchdog
     record_warning = False
     def outer_record(action, *args):
         nonlocal record_warning
