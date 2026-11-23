@@ -238,3 +238,26 @@ test('leading-zero PR aliases stay unknown; closed citations use neutral wording
  assert.equal(rows.find(r=>r.name===normal).reason,'PR citation');
  }finally{fs.rmSync(root,{recursive:true});}
 });
+
+test('non-PR lane keeps three newest runs, cited older run and recent writes (fake gh)', async()=>{
+ const {evidenceFromGitHub}=await import('../ratchet/prune-runs.mjs');
+ const root=scratch(), oldPath=process.env.PATH;
+ try{
+  const names=Array.from({length:7},(_,i)=>`m1-procedure-${String(i+1).repeat(7)}-2026010${i+1}T000000`);
+  for(const n of names){fs.mkdirSync(path.join(root,n));fs.utimesSync(path.join(root,n),new Date(0),new Date(0));}
+  const bin=path.join(root,'bin');fs.mkdirSync(bin);const gh=path.join(bin,'gh');
+  fs.writeFileSync(gh,`#!/usr/bin/env node
+if(process.env.NONPR_GH_FAIL==='1')process.exit(1);
+const ep=process.argv.at(-1);
+console.log(JSON.stringify(ep.includes('/pulls?')?[[{number:42,state:'closed',closed_at:'2020-01-01',merged_at:null,body:'${names[0]}'}]]:ep.includes('/issues/')?[[{body:'<!-- ratchet-table: golems-ratchet-mac --> ${names[1]}'}]]:[[]]));
+`);fs.chmodSync(gh,0o755);process.env.PATH=bin+path.delimiter+oldPath;
+  const evidence=evidenceFromGitHub(root);
+  const rows=rawPlanRuns(root,evidence);
+  assert.deepEqual(rows.filter(r=>r.action==='delete').map(r=>r.name),names.slice(2,4));
+  assert.equal(rows.find(r=>r.name===names[0]).reason,'PR citation');
+  assert.equal(rows.find(r=>r.name===names[1]).reason,'PR citation');
+  fs.writeFileSync(path.join(root,names[2],'active.log'),'working');fs.utimesSync(path.join(root,names[2]),new Date(0),new Date(0));
+  assert.match(rawPlanRuns(root,evidence).find(r=>r.name===names[2]).reason,/two hours/);
+  process.env.NONPR_GH_FAIL='1';assert.throws(()=>evidenceFromGitHub(root));assert.ok(fs.existsSync(path.join(root,names[3])));
+ }finally{delete process.env.NONPR_GH_FAIL;process.env.PATH=oldPath;fs.rmSync(root,{recursive:true});}
+});

@@ -26,6 +26,11 @@ export function inspectTree(target, { allowSymlinks = false } = {}) {
   }
   return { bytes, modified, dev: st.dev, ino: st.ino };
 }
+function nonPrLane(lane) {
+  // PR-looking aliases remain unknown, rather than becoming disposable lanes.
+  return /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(lane) &&
+    !/^pr[0-9]/.test(lane) && !/^live-pr/.test(lane);
+}
 export function planRuns(root, { keep = 3, citations, states = {}, now = Date.now() } = {}) {
   root = checkedRoot(root);
   if (!Number.isSafeInteger(keep) || keep < 1) throw new Error('keep must be a positive integer');
@@ -40,7 +45,8 @@ export function planRuns(root, { keep = 3, citations, states = {}, now = Date.no
     Object.assign(row, { lane: match[1], sha: match[2], timestamp: match[3] });
     const prMatch = /^pr([1-9][0-9]*)$/.exec(row.lane);
     row.pr = prMatch ? Number(prMatch[1]) : null;
-    row.state = states[row.pr]?.state ?? 'UNKNOWN';
+    row.nonPr = row.pr === null && nonPrLane(row.lane);
+    row.state = row.nonPr ? 'NON_PR' : states[row.pr]?.state ?? 'UNKNOWN';
     const t = row.timestamp;
     // Writers use local `date`; an explicit Z suffix is UTC.
     const iso = `${t.slice(0,4)}-${t.slice(4,6)}-${t.slice(6,8)}T${t.slice(9,11)}:${t.slice(11,13)}:${t.slice(13,15)}.${(t.slice(15) || '0').padEnd(3,'0').slice(0,3)}${name.endsWith('Z') ? 'Z' : ''}`;
@@ -54,7 +60,7 @@ export function planRuns(root, { keep = 3, citations, states = {}, now = Date.no
     if (citations.includes(name) || hashes.some(h => h.toLowerCase().startsWith(row.sha) || row.sha.startsWith(h.toLowerCase()))) row.reason = 'PR citation';
     else if (now - measured.modified < 2 * 3600000) row.reason = 'modified within two hours';
     else if (!Number.isFinite(row.time) || row.time > now) row.reason = 'invalid or future timestamp';
-    else if (!['OPEN', 'MERGED', 'CLOSED'].includes(row.state)) row.reason = 'unknown PR state';
+    else if (!row.nonPr && !['OPEN', 'MERGED', 'CLOSED'].includes(row.state)) row.reason = 'unknown PR state';
     else { row.action = 'delete'; row.reason = 'outside retention'; }
     return row;
   });
@@ -73,6 +79,13 @@ export function planRuns(root, { keep = 3, citations, states = {}, now = Date.no
     }
     for (const row of runs.slice(0,count)) {
       if (row.action === 'delete') { row.action = 'keep'; row.reason = 'newest PR runs'; }
+    }
+  }
+  for (const lane of new Set(rows.filter(r => r.nonPr).map(r => r.lane))) {
+    const runs = rows.filter(r => r.nonPr && r.lane === lane && Number.isFinite(r.time) && r.time <= now)
+      .sort((a,b) => b.time - a.time || b.name.localeCompare(a.name));
+    for (const row of runs.slice(0,3)) {
+      if (row.action === 'delete') { row.action = 'keep'; row.reason = 'newest non-PR lane runs'; }
     }
   }
   return rows;
@@ -100,7 +113,12 @@ export function evidenceFromGitHub(root) {
   // Closed PRs still own sticky receipts. Any lookup error aborts before apply.
   const prs = api('repos/EtanHey/golems/pulls?state=all&per_page=100');
   const text = [], states = {};
-  const relevant = root ? new Set(fs.readdirSync(root).map(n => /^(?:live-)?pr([1-9][0-9]*)-/.exec(n)?.[1]).filter(Boolean).map(Number)) : null;
+  // A non-PR run may be linked from any closed PR, with no PR number in its name.
+  const hasNonPrRuns = root && fs.readdirSync(root).some(n => {
+    const match = /^(.+)-[0-9a-f]{7,40}-[0-9]{8}T[0-9]{6,12}Z?$/.exec(n);
+    return match && nonPrLane(match[1]);
+  });
+  const relevant = root && !hasNonPrRuns ? new Set(fs.readdirSync(root).map(n => /^(?:live-)?pr([1-9][0-9]*)-/.exec(n)?.[1]).filter(Boolean).map(Number)) : null;
   for (const pr of prs) {
     if (relevant && pr.state !== 'open' && !relevant.has(pr.number)) continue;
     if (!Number.isSafeInteger(pr.number) || typeof pr.body !== 'string' && pr.body !== null) throw new Error('invalid PR');
