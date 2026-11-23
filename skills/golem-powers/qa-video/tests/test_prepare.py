@@ -259,7 +259,7 @@ def test_plan_prints_the_selected_modes_route(tmp_path):
         assert 'claude-image-helper.py' in out.stdout and 'TOOLING FAILURE' in out.stdout
         assert '300 s per gatherer call' in out.stdout and 'PARTIAL' in out.stdout
         assert 'timeoutMs:300000' in out.stdout and 'task_cancel' in out.stdout and 't3_thread_wait' in out.stdout
-        assert 'A fully stalled stage still yields PARTIAL at the deadline' in out.stdout
+        assert 'Zero valid reads: STOP with "no frames were read" and no QA verdict' in out.stdout
     assert plan('gems').returncode == 2
 
 
@@ -288,6 +288,6 @@ def test_wait_budget_is_a_bounded_wait_not_a_wake():
     for term in ('bounded wait that always\nreturns', '`mode: "wait"`, `timeoutMs: 300000`', '`task_cancel`',
                  '`t3_thread_wait({threadId: <childThreadId>, timeoutMs: <remaining>})`', 'earliest of the call, stage and parent deadlines',
                  '`Monitor` with `timeout_ms`', 'clamps every call to its absolute deadline',
-                 'A fully stalled stage still produces PARTIAL at its deadline', 'NOT DETERMINED', 'dated addendum'):
+                 'A fully stalled stage with zero valid reads STOPS', 'NOT DETERMINED', 'dated addendum'):
         assert term in budget, term
     assert 'first wake past' not in skill

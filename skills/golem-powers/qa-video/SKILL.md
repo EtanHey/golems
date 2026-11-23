@@ -22,6 +22,37 @@ If your brief makes you the judge, dispatch no other judge; you are "the QA seat
 
 **Spoken command/code cues:** When the speaker points to a command or code on screen (for example, “look closely at my screen” or “a command you can run”), keep that cue in the visual selection. The parent plans the crop request from the transcript cue: bracket its containing segment plus the preceding three segments and request start and midpoint frame reads. The reader reports the text-region bounds as a source-frame coordinate rectangle (`frame: x=<left>-<right>, y=<top>-<bottom>`). The parent/judge runs `scripts/crop.sh <frame> <x> <y> <w> <h> <out.png>` from those reported bounds without opening the frame or crop, then dispatches a fresh reader batch to read the crop PNG. The tool-free reader reports bounds and reads images; the parent owns the crop command. The judge never opens frames to plan crops EXCEPT must-read pointer frames, which the judge itself opens and crops to identify the pointer region and establish the item's reference. Outside that exception, the parent never opens frames or crops to locate bounds; it judges the returned text. Cite decoded PTS and keep speech separate from the verified visible transcription. If the crop remains unreadable, request refinement within the window or mark NOT DETERMINED with the failed crop/read receipt. Budget expiry still wins; never guess a command from narration alone.
 
+## Reader authentication, cost and zero-read stop
+
+The default tool-free helper uses the signed-in Claude Code session: it preserves the user's
+HOME and optional CLAUDE_CONFIG_DIR, with no `--bare`. It runs from a fresh working directory
+with hooks, tools and MCP disabled; it never opens or copies credential files. An explicitly
+configured ANTHROPIC_API_KEY is an optional route; ANTHROPIC_AUTH_TOKEN and
+CLAUDE_CODE_OAUTH_TOKEN are forwarded in memory when configured, never printed or saved.
+This is a login-capable reader, not a hermetic startup-isolation evaluator.
+
+**Before ANY reading or gatherer dispatch**, total all planned sheets/stills across batches and
+state `sheets × estimated price per sheet = estimated dollars`. Use the selected paid route's
+estimate including retries; the script's default planning allowance is **$0.10 per sheet including
+one retry**, not a provider tariff or guaranteed bill. Supply `--price-per-sheet-usd` to
+visual-batch.py or direct helper calls when a different allowance is justified. Signed-in usage
+may consume subscription limits or incur billing; do not call it free. **Above about $5, STOP and
+state the cost before reading**; obtain explicit spend authorization or reduce scope. Never split
+batches or lower the allowance to evade admission. The scripted route holds above $5; an
+explicitly authorized larger run must be planned by the orchestrating agent before dispatch.
+
+**Zero valid visual reads means STOP: "no frames were read" (no frames read). No QA verdict,
+PASS, INCONCLUSIVE or completed audit is permitted.** Return TOOLING FAILURE / NEEDS_READERS
+with the error receipt path. Preserve the transcript and unfinished notes as evidence only.
+The partial-report rules below apply only when some frames were successfully read. A launch,
+auth startup, transcript, empty response or NOT DETERMINED-only response is not a visual read.
+The batch summary records `verdict_allowed:false` on zero reads. Before writing a QA verdict,
+check the current run's receipts with `python3 scripts/reader-policy.py <workdir> <judge-session.jsonl>`;
+`default.sh finalize` runs this gate before its existing checks. Direct helper delegates must
+retain helper-receipts inside the run workdir; native judge reads must appear in the supplied
+session JSONL. Non-Claude helpers retain their READ rows in visual/summary.json. Passing this
+minimum gate does not replace full coverage, pointer evidence or the per-finding checks.
+
 ## Visual-first exhaustive override (gems / debrief / review)
 
 "Full pass" / "full coverage" (including "Full /qa-video GEMS pass"),
@@ -151,7 +182,7 @@ and sends every batch to a gatherer. Gatherer order (unless the brief explicitly
    the judge's own shell (defaults to `claude-image-helper.py`, pinned `claude.subagent.cheap`; bounded, with coverage receipts in
    `visual/`), or `Agent(visual-gatherer)` from a judge that has the Agent tool (a sub-agent judge has not). Both run
    the same tool-free Claude reader: try once; never silently switch providers.
-3. **Both failed:** `TOOLING FAILURE` with the raw error path; the unread windows stay NOT DETERMINED.
+3. **Both failed:** STOP with "no frames were read" and no QA verdict if zero valid reads; `TOOLING FAILURE` with the raw error path; the unread windows stay NOT DETERMINED.
    A quota stop from our own dispatch is reported as that. **Never fall back to the judge, or a Claude
    helper using image tools, reading the frames.**
 
@@ -169,7 +200,8 @@ returns**; never wait for a completion wake. Each timeout is the earliest of the
   budget left); on timeout it reports PARTIAL from the judge's `progress.txt` and findings so far.
 - **Claude terminal:** a background `Agent` plus `Monitor` with `timeout_ms`, or the gather script's own bound.
 - **Scripts:** `visual-batch.py` clamps every call to its absolute deadline (`--timeout`, `--budget-seconds`).
-A fully stalled stage still produces PARTIAL at its deadline, because the bounded wait returns. On expiry:
+A fully stalled stage with zero valid reads STOPS with "no frames were read" and no QA verdict.
+A stage with some valid visual evidence produces PARTIAL at its deadline. On expiry:
 name the missing windows NOT DETERMINED, continue with what arrived, and mark the report PARTIAL. A late
 result becomes a dated addendum, never a silent merge.
 

@@ -36,7 +36,7 @@ def test_cli_success_retains_receipt_and_private_temp(tmp_path,monkeypatch,capsy
  def fake_run(cmd,**kw):
   seen.append((cmd,kw))
   assert kw['env']['CLAUDE_CODE_TMPDIR']==kw['env']['TMPDIR']
-  assert str(tmp_path) in kw['env']['HOME']
+  assert kw['env']['HOME'] == str(Path.home())
   ev=[json.loads(x) for x in events(image).splitlines()]
   ev[0]['model']=model
   return subprocess.CompletedProcess(cmd,0,'\n'.join(json.dumps(x) for x in ev),'')

@@ -7,6 +7,7 @@ SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ "${1:-}" = finalize ]; then
   [ $# == 5 ] && [ "$4" = --transcript ] || { echo 'usage: default.sh finalize <workdir> <qa-report.md> --transcript <judge-session.jsonl>' >&2; exit 2; }
+  python3 "$SCRIPTS/reader-policy.py" "$2" "$5"
   bash "$SCRIPTS/must-read-check.sh" "$2" "$3" --transcript "$5"
   python3 "$SCRIPTS/narration-evidence.py" check "$2" "$3"
   exec bun "$SCRIPTS/../../qa-verdict-gate/scripts/qa-verdict-gate-cli.mjs" "$5"
@@ -53,6 +54,7 @@ EOF
   python3 "$SCRIPTS/narration-evidence.py" plan "$WORKDIR"
   python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$WORKDIR"
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
+Before any reader dispatch: estimate ALL sheets x price (default \$0.10/sheet including retry); above \$5 STOP and state cost.
 Gather (gatherers read every sheet; you never open one), first that works:
   1. Tool-free Claude reader: per batch of <=15 sheets from dense/index.tsv:
 EOF
@@ -65,6 +67,7 @@ EOF
   (Rigorous/full/exhaustive or a silent video: workflows/gems.md § Visual-first exhaustive, same gatherers.)
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" $MODE -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode $MODE $MUST_READ
   (exit STILLS_READY: read transcript.srt, plan.json and debrief.md; the moment-NN-start.jpg / moment-NN-midpoint.jpg stills go to gatherers)
+Before any reader dispatch: estimate ALL stills x price (default \$0.10/still including retry); above \$5 STOP and state cost.
 Gather (gatherers read every still; you never open one), first that works:
   1. Tool-free Claude reader: up to 24 stills means two batches (<=15 per batch):
 EOF
@@ -73,13 +76,14 @@ EOF
      delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "claudeAgent", model: "$READER_MODEL"}, task: "Read and follow $WORKDIR/briefs/gather-bN.md; run $SCRIPTS/claude-image-helper.py with --model $READER_MODEL, one image per call within the remaining deadline; return text only"})
   2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"$([ "$MODE" = qa ] || printf ' "" %s-gather "%s"/moment-*.jpg' "$MODE" "$WORKDIR")   (visual-batch.py, tool-free Claude reader)
   (For debrief/review, moment-*.jpg includes both start and midpoint files.)
-  3. TOOLING FAILURE with the raw error path; unread windows stay NOT DETERMINED. Never read the frames instead.
+  3. STOP: no frames were read; no QA verdict. TOOLING FAILURE with the raw error path; unread windows stay NOT DETERMINED. Never read the frames instead.
 Wait budgets, enforced by bounded waits (never by a completion wake): 300 s per gatherer call, the gather stage gets
   max(600, 24 x video minutes) s, each timeout = the earliest of call/stage/parent deadline.
   T3: delegate_task mode:"wait", timeoutMs:300000; on timeout task_cancel that child. Parallel: dispatch async, then one
   t3_thread_wait({threadId: <childThreadId>, timeoutMs: <remaining>}) per child; task_cancel any child still running at
   the stage deadline. Scripts: visual-batch.py clamps every call to its absolute deadline.
-  A fully stalled stage still yields PARTIAL at the deadline: name the missing windows NOT DETERMINED, continue with what
+  Zero valid reads: STOP with "no frames were read" and no QA verdict.
+  With visual evidence, a stalled stage yields PARTIAL at the deadline: name the missing windows NOT DETERMINED, continue with what
   arrived, mark the report PARTIAL.
 Judge the gatherer text; spot-check <=2 full-size frames per reported finding (inspected.sh 'spot: ...' <id>).
 QA exception: open EVERY must-read frame yourself, one per call; log with inspected.sh 'judge: pointer ...',
