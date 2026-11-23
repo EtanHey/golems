@@ -11,16 +11,42 @@
 # Extra arguments pass through to worktree-gc.sh --apply.
 set -uo pipefail
 
-GC_MIN_SAFE_SHA=21051c815433bab7cb77a0633e06b19c10fb2cad
+GC_MIN_SAFE_SHA=c2fb389974ebc18df088a28e08f011220edd2b8f
 PIN="${GOLEMS_WORKTREE_GC_PIN_ROOT-$HOME/Gits/golems/.worktrees/hooks-live}"
 PIN_SHA=unavailable
+NIGHTLY_RECEIPT=unavailable
+nightly_finish() {
+  local rc=$?
+  trap - EXIT
+  if [[ -n "${GOLEMS_WORKTREE_GC_NOTIFY:-}" ]]; then
+    /usr/bin/python3 - "$GOLEMS_WORKTREE_GC_NOTIFY" "$rc" "$NIGHTLY_RECEIPT" <<'NOTIFY'
+import os,sys,re
+path,rc,receipt=sys.argv[1:]; rc=int(rc)
+count=0
+if receipt != 'unavailable':
+    with open(receipt) as f:
+        count=sum(bool(re.search(r' · dirty=[01] · ahead=[0-9]+ · REMOVED · ', line)) for line in f)
+line = (f'ALARM worktree-gc exit={rc} receipt={receipt}\n' if rc not in (0,3)
+        else f'worktree-gc removed={count} receipt={receipt}\n' if count else '')
+if line:
+    data=line.encode()
+    if len(data)>4096: raise ValueError('notification too long')
+    fd=os.open(path, os.O_WRONLY|os.O_APPEND|os.O_CREAT, 0o600)
+    try:
+        if os.write(fd,data)!=len(data): raise OSError('short notification write')
+    finally: os.close(fd)
+NOTIFY
+  fi
+  exit "$rc"
+}
+trap nightly_finish EXIT
 # Match install-hooks.mjs: porcelain must not trust flags, caches or replacements.
 git() {
   GIT_NO_REPLACE_OBJECTS=1 command git -c core.fsmonitor=false -c core.untrackedCache=false -c core.commitGraph=false "$@"
 }
 log_pin_lag() {
   local lag
-  lag="$(git -C "$PIN" rev-list --count HEAD..refs/remotes/origin/master 2>/dev/null)" || lag=unavailable
+  lag="$(git -C "${ancestry_repo:-$PIN}" rev-list --count "$PIN_SHA"..refs/remotes/origin/master 2>/dev/null)" || lag=unavailable
   if [[ "$lag" =~ ^[0-9]+$ ]]; then
     echo "worktree-gc-nightly: pin is $lag commits behind origin/master" >&2
   else
@@ -47,6 +73,41 @@ source "$HERE/lib/worktree-git-env.sh"
 # The root checkout can lag the installed safety fixes. Never execute its GC.
 [[ -d "$PIN" ]] || refuse_pin 'pin missing'
 PIN="$(cd "$PIN" && pwd -P)" || refuse_pin 'cannot resolve pin'
+if [[ -f "$PIN/MANIFEST.json" && ! -e "$PIN/.git" ]]; then
+  main="$(golems_main_repo "$HOME/Gits/golems" 2>/dev/null)" || refuse_pin 'main checkout unavailable'
+  PIN_SHA="$("$PYTHON" - "$PIN" "$HOME/.golems" <<'RELEASE'
+import hashlib,json,os,pathlib,re,stat,sys
+pin,prefix=map(pathlib.Path,sys.argv[1:])
+try:
+    assert pin == (prefix/'current').resolve()
+    assert pin.parent == (prefix/'releases').resolve()
+    raw=(pin/'MANIFEST.json').read_bytes(); manifest=json.loads(raw)
+    receipt=json.loads((prefix/'release.json').read_text())
+    sha=manifest['commit']; assert re.fullmatch('[0-9a-f]{40}',sha)
+    assert receipt['commit']==sha and receipt['version']==manifest['version']
+    assert receipt['manifest_sha256']==hashlib.sha256(raw).hexdigest()
+    seen=set()
+    for row in manifest['files']:
+        name=row['path']; rel=pathlib.PurePosixPath(name)
+        assert not rel.is_absolute() and '..' not in rel.parts and name not in seen
+        seen.add(name); target=pin/name
+        assert target.resolve()==target and stat.S_ISREG(target.lstat().st_mode)
+        assert row['mode'] in ('0644','0755')
+        assert stat.S_IMODE(target.stat().st_mode)==int(row['mode'],8)
+        assert hashlib.sha256(target.read_bytes()).hexdigest()==row['sha256']
+    assert {'scripts/worktree-gc.sh','scripts/worktree-gc-nightly.sh','scripts/lib/worktree-git-env.sh'} <= seen
+    for root in ('scripts',):
+        for target in (pin/root).rglob('*'):
+            assert not target.is_symlink()
+            if target.is_file(): assert str(target.relative_to(pin)) in seen
+    print(sha)
+except Exception as e:
+    print('release verification failed: '+str(e),file=sys.stderr); sys.exit(2)
+RELEASE
+)" || refuse_pin 'release verification failed'
+  # Ancestry must use the main checkout, never upward discovery from a release.
+  ancestry_repo="$main"
+else
 pin_head="$(git -C "$PIN" rev-parse --verify 'HEAD^{commit}' 2>/dev/null)" || refuse_pin 'pin HEAD unavailable'
 PIN_SHA="$pin_head"
 top="$(git -C "$PIN" rev-parse --show-toplevel 2>/dev/null)" || refuse_pin 'not a golems worktree'
@@ -69,10 +130,15 @@ done <<< "$flags"
 pin_status="$(git -C "$PIN" status --porcelain --untracked-files=all 2>/dev/null)" || refuse_pin 'pin status unavailable'
 [[ -z "$pin_status" ]] || refuse_pin 'pin dirty'
 git -C "$PIN" diff --quiet --no-ext-diff --ignore-submodules=none HEAD -- 2>/dev/null || refuse_pin 'pin dirty (HEAD content differs)'
-# Use the currently fetched full ref; network availability must never waive ancestry.
-git -C "$PIN" rev-parse --verify refs/remotes/origin/master >/dev/null 2>&1 || refuse_pin 'origin/master missing'
-git -C "$PIN" merge-base --is-ancestor HEAD refs/remotes/origin/master 2>/dev/null || refuse_pin 'HEAD is not on origin/master'
-git -C "$PIN" merge-base --is-ancestor "$GC_MIN_SAFE_SHA" HEAD 2>/dev/null || refuse_pin 'pin predates GC safety floor'
+  ancestry_repo="$PIN"
+fi
+replaced="$(git -C "$ancestry_repo" for-each-ref --format='%(refname)' refs/replace/)" || refuse_pin 'cannot inspect replace refs'
+[[ -z "$replaced" ]] || refuse_pin 'replace refs present'
+grafts="$(git -C "$ancestry_repo" rev-parse --git-path info/grafts)" || refuse_pin 'cannot inspect grafts'
+(cd "$ancestry_repo" && [[ ! -f "$grafts" ]]) || refuse_pin 'grafts present'
+git -C "$ancestry_repo" rev-parse --verify refs/remotes/origin/master >/dev/null 2>&1 || refuse_pin 'origin/master missing'
+git -C "$ancestry_repo" merge-base --is-ancestor "$PIN_SHA" refs/remotes/origin/master 2>/dev/null || refuse_pin 'HEAD is not on origin/master'
+git -C "$ancestry_repo" merge-base --is-ancestor "$GC_MIN_SAFE_SHA" "$PIN_SHA" 2>/dev/null || refuse_pin 'pin predates GC safety floor'
 GC_SCRIPT="$(realpath "$PIN/scripts/worktree-gc.sh" 2>/dev/null)" || refuse_pin 'cannot resolve GC script'
 [[ "$GC_SCRIPT" == "$PIN/"* ]] || refuse_pin 'GC script outside pin'
 [[ -f "$GC_SCRIPT" ]] || refuse_pin 'GC script missing'
@@ -83,6 +149,7 @@ if [[ "$WRAPPER" != "$PIN/"* ]]; then
   pinned_wrapper="$(realpath "$PIN/scripts/worktree-gc-nightly.sh" 2>/dev/null)" || refuse_pin 'cannot resolve pinned wrapper'
   [[ "$pinned_wrapper" == "$PIN/"* && -x "$pinned_wrapper" ]] || refuse_pin 'pinned wrapper missing or outside pin'
   export GOLEMS_WORKTREE_GC_REEXEC=1
+  trap - EXIT
   exec "$PIN/scripts/worktree-gc-nightly.sh" "$@"
 fi
 
@@ -110,7 +177,11 @@ fi
 
 # AIDEV-NOTE: perl opens fds above $^F (2) close-on-exec, so the child below
 # never holds the lock; only this parent does, and only until the child exits.
-exec perl -MFcntl=:flock -MPOSIX=:sys_wait_h,:signal_h -e '
+receipt_dir="${GOLEMS_WORKTREE_GC_RECEIPT_DIR:-$HOME/.local/state/golems/worktree-gc}"
+mkdir -p "$receipt_dir" || exit 2
+NIGHTLY_RECEIPT="$receipt_dir/nightly-$(date -u +%Y%m%dT%H%M%S)-$$.log"
+# Capture the actual apply rows and raw exit; KEEP-only 3 is normalized below.
+perl -MFcntl=:flock -MPOSIX=:sys_wait_h,:signal_h -e '
   my ($lock, $limit, @cmd) = @ARGV;
   my $fh;
   if (!open($fh, ">>", $lock)) {
@@ -158,5 +229,13 @@ exec perl -MFcntl=:flock -MPOSIX=:sys_wait_h,:signal_h -e '
   flock($fh, LOCK_UN);
   # 3 = completed with KEEP-unpushed. A runtime crash (1) remains a failure.
   print STDERR "worktree-gc-nightly: FAILED gc exit $rc\n" if $rc && $rc != 3;
-  exit($rc == 3 ? 0 : $rc);
-' "$LOCK" "$LIMIT" /bin/bash "$GC_SCRIPT" --apply "$@"
+  exit $rc;
+' "$LOCK" "$LIMIT" /bin/bash -c '
+  script=$1; shift
+  /bin/bash "$script" --prune-plan "$@" || exit $?
+  exec /bin/bash "$script" --apply "$@"
+' nightly "$GC_SCRIPT" "$@" > "$NIGHTLY_RECEIPT" 2>&1
+rc=$?
+cat "$NIGHTLY_RECEIPT"
+[[ "$rc" != 3 ]] || rc=0
+exit "$rc"

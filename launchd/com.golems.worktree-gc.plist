@@ -6,6 +6,9 @@
 	<dict>
 		<key>HOME</key>
 		<string>@HOME@</string>
+		<!-- Set a private append-only inbox path in the installed copy to opt in. -->
+		<key>GOLEMS_WORKTREE_GC_NOTIFY</key>
+		<string></string>
 		<key>PATH</key>
 		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
 	</dict>

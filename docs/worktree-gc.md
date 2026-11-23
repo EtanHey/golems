@@ -129,7 +129,7 @@ its path, including on refusal.
 
 The default completed-run reports now live in the pin's `docs.local/worktree-gc/latest.{json,md}`
 (unless `WORKTREE_GC_REPORT_DIR` overrides that location).
-Refused nights are visible only in the launchd log (`StandardErrorPath`),
+Refused nights are visible in the launchd log (`StandardErrorPath`),
 rendered as `@GOLEMS_ROOT@/docs.local/worktree-gc-launchd.log`; they do not update
 `latest.*`. Inspect that log to detect a pin that keeps refusing.
 Verification can still race a concurrent `install-hooks --update`; the installer
@@ -191,3 +191,22 @@ host runs are proved.
 
 The report-only condition changes merge gating, not the creation floor or any
 permission to delete. Real GC, activation and installation remain lead-owned.
+
+### Nightly release pins and notifications
+
+The nightly wrapper also accepts the active `~/.golems/current` release under
+`~/.golems/releases`. It verifies the installed receipt's full commit, version
+and manifest hash, every manifest file's checksum and mode, and refuses symlinks
+or unmanifested files in scripts. The main checkout's fetched origin/master must
+contain that commit, which must include the archiver safety floor
+`c2fb389974ebc18df088a28e08f011220edd2b8f`. Worktree pin checks remain in place.
+This verifies installed integrity, not independent publisher authentication.
+
+Every admitted run captures a dated plan followed by apply output in
+`~/.local/state/golems/worktree-gc/nightly-*.log` (override with
+`GOLEMS_WORKTREE_GC_RECEIPT_DIR`). Apply repeats its own safety checks.
+Set `GOLEMS_WORKTREE_GC_NOTIFY` to a private inbox path in the installed plist
+to opt in. One small O_APPEND write reports the removal count and receipt path
+when anything was removed; raw failures other than 0 or 3 append one ALARM,
+including refused pins and timeouts. Zero-removal successful nights stay silent.
+The inbox parent must already exist. Notification write errors are logged.
