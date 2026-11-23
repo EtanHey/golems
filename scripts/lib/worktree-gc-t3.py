@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only full-tree age and open-file proof for T3 retirement."""
 import os
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -17,20 +18,24 @@ def walk(root):
 
 
 def old(root):
-    newest = os.lstat(root).st_mtime
+    cutoff = time.time() - 86400
+    if os.lstat(root).st_mtime >= cutoff:
+        return False
     admin = Path(os.fsdecode(git(root, 'rev-parse', '--absolute-git-dir')).strip())
     for name in ('HEAD', 'index', 'COMMIT_EDITMSG'):
         p = admin / name
         if p.exists():
-            newest = max(newest, p.stat().st_mtime)
+            if p.stat().st_mtime >= cutoff:
+                return False
     for here, dirs, files in walk(root):
         dirs[:] = [d for d in dirs if d != '.git']
         for name in dirs + files:
-            newest = max(newest, os.lstat(os.path.join(here, name)).st_mtime)
-    return time.time() - newest > 86400
+            if os.lstat(os.path.join(here, name)).st_mtime >= cutoff:
+                return False
+    return True
 
 
-def files_unused(target):
+def open_file_snapshot():
     # A complete, bounded user-wide snapshot includes fds, cwd and txt mappings.
     # Empty/partial/mock-without-fd output is not evidence of absence.
     pids = subprocess.check_output(['ps', '-o', 'pid=', '-u', str(os.getuid())], timeout=10).split()
@@ -43,6 +48,12 @@ def files_unused(target):
     observed = {line[1:].encode() for line in lines if line.startswith('p')}
     if not stable or not stable <= observed:
         raise ValueError('partial open-file process coverage')
+    return lines
+
+
+def files_unused(target):
+    snapshot = os.environ.get("WORKTREE_GC_FILES_SNAPSHOT")
+    lines = json.loads(Path(snapshot).read_text()) if snapshot else open_file_snapshot()
     fd = False
     for line in lines:
         if line.startswith('p'):
@@ -62,6 +73,20 @@ def files_unused(target):
 
 if __name__ == '__main__':
     try:
+        if sys.argv[1] == "cwds":
+            cwd = False
+            for line in json.loads(Path(sys.argv[2]).read_text()):
+                if line.startswith('p'):
+                    print(line)
+                    cwd = False
+                elif line.startswith('f'):
+                    cwd = line == 'fcwd'
+                elif line.startswith('n') and cwd:
+                    print(line)
+            sys.exit(0)
+        if sys.argv[1] == "snapshot":
+            Path(sys.argv[2]).write_text(json.dumps(open_file_snapshot()))
+            sys.exit(0)
         root = Path(os.path.realpath(sys.argv[1]))
         if not old(root):
             raise ValueError('files or Git admin activity within 24h')

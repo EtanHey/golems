@@ -20,7 +20,7 @@ INSERT INTO orchestration_v2_projection_threads VALUES ('t',json_object('worktre
   cat > "$TEST_ROOT/bin/lsof" <<'STUB'
 #!/usr/bin/env bash
 [[ "${LSOF_FAIL:-0}" == 0 ]] || exit 1
-printf 'p1\nf1\nn%s\n' "${OPEN_FILE:-/outside}"
+printf 'p1\nfcwd\nn/outside\nf1\nn%s\n' "${OPEN_FILE:-/outside}"
 STUB
   printf '#!/usr/bin/env bash\necho 1\n' > "$TEST_ROOT/bin/ps"
   cat > "$TEST_ROOT/bin/gh" <<'STUB'
@@ -61,7 +61,7 @@ PY
   printf 'docs.local/\n' >> "$(git -C "$repo" rev-parse --absolute-git-dir)/info/exclude"
   mkdir -p "$worktree/docs.local"; echo precious > "$worktree/docs.local/note"
   age
-  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  run env WORKTREE_GC_T3_SNAPSHOT="$TEST_ROOT/nonexistent.sqlite" WORKTREE_GC_FILES_SNAPSHOT="$TEST_ROOT/nonexistent.json" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [[ "$output" == *REMOVED* ]] || false; [ ! -e "$worktree" ]
   [ "$(cat "$repo/docs.local/worktree-archive/topic/docs.local/note")" == precious ]
   [ -s "$repo/docs.local/worktree-archive/topic/RECEIPT.tsv" ]
@@ -182,4 +182,27 @@ CHECK
   [ "$status" -eq 0 ]; [ -d "$worktree" ]
   [[ "$output" == *"would remove (dry run)"* ]] || false
   [[ "$output" != *" · REMOVE · "* && "$output" != *REMOVING* ]]
+}
+
+@test "list run shares one lsof capture and never reopens source DB through sqlite CLI" {
+  fixture; age
+  sibling="$(add_branch_worktree "$repo" other)"
+  export PROBE_CALLS="$TEST_ROOT/probe-calls" REAL_SQLITE="$(command -v sqlite3)"
+  cat > "$TEST_ROOT/bin/sqlite3" <<'STUB'
+#!/usr/bin/env bash
+printf 'sqlite %s\n' "$*" >> "$PROBE_CALLS"
+exec "$REAL_SQLITE" "$@"
+STUB
+  cat > "$TEST_ROOT/bin/lsof" <<'STUB'
+#!/usr/bin/env bash
+printf 'lsof\n' >> "$PROBE_CALLS"
+printf 'p1\nfcwd\nn/outside\nf3\nn/outside\n'
+STUB
+  chmod +x "$TEST_ROOT/bin/sqlite3" "$TEST_ROOT/bin/lsof"
+  run "$WORKTREE_GC" --prune-plan --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+  [[ "$output" == *" · REMOVE · "* ]] || false
+  [ "$(grep -c '^lsof$' "$PROBE_CALLS")" -eq 1 ]
+  ! grep -F -- "$WORKTREE_GC_T3_DB" "$PROBE_CALLS"
+  grep -F '.t3.sqlite?mode=ro' "$PROBE_CALLS"
 }

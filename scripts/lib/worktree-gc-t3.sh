@@ -29,7 +29,7 @@ t3_pr_guard() {
     detail="${open_pr_failed:-branch PR identity unavailable}"
   elif ! raw="$(gh pr list --repo "$pr_slug" --state all --head "$2" --limit 500 --json headRefName,headRefOid,state 2>"$REPORT_JOURNAL.gh-stderr")"; then
     detail="$(gh_category "$REPORT_JOURNAL.gh-stderr")"
-  elif ! detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-prs.py" finished <<< "$raw")" ||
+  elif ! detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-prs.py" finished 2>> "$LOG_FILE" <<< "$raw")" ||
        ! line_in "$2" "$(cut -f1 <<< "$detail")"; then
     detail="merged or closed branch PR unproven"
   else

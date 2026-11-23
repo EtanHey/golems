@@ -191,3 +191,16 @@ host runs are proved.
 
 The report-only condition changes merge gating, not the creation floor or any
 permission to delete. Real GC, activation and installation remain lead-owned.
+
+### List-run proof snapshots
+
+Read-only runs capture live skill/hook symlink targets and the user-wide
+open-file view once. Cwd checks use the same descriptor records. They read the T3 database in one read transaction,
+retaining only bound threads, project roots, enabled schedules, and unfinished
+state for bound threads in a compact run-local database beside the log. Missing
+or failed snapshots keep candidates undetermined; they never fall back to an
+empty successful view. Probe diagnostics stay in the run log.
+
+These snapshots describe the plan's observation time. `--apply` clears snapshot
+inputs and retains the fresh per-candidate and post-archive removal proofs.
+A plan is not permission to remove a tree using stale observations.

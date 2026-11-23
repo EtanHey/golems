@@ -107,6 +107,9 @@ refresh_live_cwds() {
   local out
   local rc=0
 
+  if [[ "$apply" -eq 0 && "${live_snapshot_loaded:-0}" -eq 1 ]]; then
+    return "${live_snapshot_rc:-1}"
+  fi
   live_cwds=""
   agent_cwds=""
   if ! command -v lsof >/dev/null 2>&1; then
@@ -121,7 +124,11 @@ refresh_live_cwds() {
     live_reason="ps failed; cannot cross-check lsof coverage"
     return 1
   fi
-  out="$(lsof -a -u "$(id -u)" -d cwd -Fpn 2>/dev/null)" || rc=$?
+  if [[ "$apply" -eq 0 && -n "${WORKTREE_GC_FILES_SNAPSHOT:-}" ]]; then
+    out="$(python3 "$SCRIPT_DIR/lib/worktree-gc-t3.py" cwds "$WORKTREE_GC_FILES_SNAPSHOT" 2>/dev/null)" || rc=$?
+  else
+    out="$(lsof -a -u "$(id -u)" -d cwd -Fpn 2>/dev/null)" || rc=$?
+  fi
   if [[ "$rc" -ne 0 ]]; then
     live_reason="lsof exited $rc (partial view); refusing to treat that as idle"
     return 1
@@ -838,6 +845,20 @@ if [[ "${#repos[@]}" -eq 0 ]]; then
   exit 2
 fi
 
+# Snapshot only list/report runs. Apply always reads fresh source state.
+unset WORKTREE_GC_T3_SNAPSHOT WORKTREE_GC_FILES_SNAPSHOT WORKTREE_GC_SYMLINK_SNAPSHOT
+live_snapshot_loaded=0
+if [[ "$apply" -eq 0 ]]; then
+  export WORKTREE_GC_T3_SNAPSHOT="$LOG_FILE.t3.sqlite"
+  export WORKTREE_GC_FILES_SNAPSHOT="$LOG_FILE.files.json"
+  export WORKTREE_GC_SYMLINK_SNAPSHOT="$LOG_FILE.symlinks.json"
+  python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" symlinks "$WORKTREE_GC_SYMLINK_SNAPSHOT" >> "$LOG_FILE" 2>&1 || true
+  WORKTREE_GC_T3_SNAPSHOT= python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" snapshot "$WORKTREE_GC_T3_SNAPSHOT" >> "$LOG_FILE" 2>&1 || true
+  python3 "$SCRIPT_DIR/lib/worktree-gc-t3.py" snapshot "$WORKTREE_GC_FILES_SNAPSHOT" >> "$LOG_FILE" 2>&1 || true
+  live_snapshot_rc=0
+  refresh_live_cwds || live_snapshot_rc=$?
+  live_snapshot_loaded=1
+fi
 t3_roots="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" roots)"
 found_unpushed=0
 repo_error=0
