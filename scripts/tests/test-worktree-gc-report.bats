@@ -68,7 +68,7 @@ SH
   for failure in open merged incomplete; do
     run env GC_PR_FAILURE="$failure" "$WORKTREE_GC" --dry-run
     [ "$status" -eq 0 ]
-    [[ "$output" == *"$detached · (detached) · dirty=0 · ahead=0 · REMOVE"* ]]
+    [[ "$output" == *"$detached · (detached) · dirty=0 · ahead=0 · REMOVE"* ]] || false
     python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" "$failed_tree" <<'PYTEST'
 import json,sys
 r=json.load(open(sys.argv[1]))

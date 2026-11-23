@@ -62,7 +62,7 @@ PY
   mkdir -p "$worktree/docs.local"; echo precious > "$worktree/docs.local/note"
   age
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [[ "$output" == *REMOVED* ]]; [ ! -e "$worktree" ]
+  [ "$status" -eq 0 ]; [[ "$output" == *REMOVED* ]] || false; [ ! -e "$worktree" ]
   [ "$(cat "$repo/docs.local/worktree-archive/topic/docs.local/note")" == precious ]
   [ -s "$repo/docs.local/worktree-archive/topic/RECEIPT.tsv" ]
   [ "$(grep -c -- '--state open' "$GH_CALLS")" -eq 1 ]
@@ -81,7 +81,7 @@ PY
       unknown) sqlite3 "$WORKTREE_GC_T3_DB" 'DELETE FROM orchestration_v2_projection_threads;' ;;
     esac
     run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-    [ -d "$worktree" ]; [[ "$output" == *KEEP-* ]]
+    [ -d "$worktree" ]; [[ "$output" == *KEEP-* ]] || false
     [[ "$why" != dirty ]] || unlink "$worktree/local"
     age
   done
@@ -94,7 +94,7 @@ PY
   age
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [ ! -e "$worktree" ]; [ -d "$unknown" ]
-  [[ "$output" == *rate-limit* ]]
+  [[ "$output" == *rate-limit* ]] || false
   [ "$(grep -c -- '--state open' "$GH_CALLS")" -eq 1 ]
 }
 @test "T3 open lookup failure keeps even a head on default branch" {
@@ -105,10 +105,10 @@ PY
 @test "archived-only binding and incomplete open-file view cannot authorize removal" {
   fixture; age
   run env LSOF_FAIL=1 "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]]
+  [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]] || false
   sqlite3 "$WORKTREE_GC_T3_DB" "UPDATE orchestration_v2_projection_threads SET payload_json=json_set(json_remove(payload_json,'$.settledAt'),'$.archivedAt','2020-01-01T00:00:00Z');"
   run env LSOF_FAIL=1 "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ -d "$worktree" ]; [[ "$output" == *KEEP-live* ]]
+  [ -d "$worktree" ]; [[ "$output" == *KEEP-live* ]] || false
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [ -d "$worktree" ]
 }
@@ -121,7 +121,7 @@ PY
       sqlite3 "$WORKTREE_GC_T3_DB" "DELETE FROM orchestration_v2_projection_runtime_requests; INSERT INTO orchestration_v2_projection_runs VALUES ('t',NULL);"
     fi
     run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-    [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]]
+    [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]] || false
   done
 }
 @test "T3 archive failure keeps the tree" {
@@ -136,14 +136,14 @@ exec "$REAL_PYTHON" "$@"
 STUB
   chmod +x "$TEST_ROOT/bin/python3"
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ -d "$worktree" ]; [[ "$output" == *"KEEP-undetermined · fixture archive failure"* ]]
+  [ -d "$worktree" ]; [[ "$output" == *"KEEP-undetermined · fixture archive failure"* ]] || false
   [[ "$output" != *REMOVING* ]]
 }
 
 @test "T3 default-branch ancestry without a PR keeps but closed PR permits" {
   fixture; age
   run env NO_PR=1 "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *"T3 PR state unproven"* ]]
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *"T3 PR state unproven"* ]] || false
   run env PR_STATE=CLOSED "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [ ! -e "$worktree" ]
 }
@@ -180,6 +180,6 @@ CHECK
   fixture; age
   run "$WORKTREE_GC" --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [ -d "$worktree" ]
-  [[ "$output" == *"would remove (dry run)"* ]]
+  [[ "$output" == *"would remove (dry run)"* ]] || false
   [[ "$output" != *" · REMOVE · "* && "$output" != *REMOVING* ]]
 }

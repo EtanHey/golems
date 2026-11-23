@@ -37,8 +37,8 @@ STUB
   ordinary_fixture; bind_live
   sqlite3 "$WORKTREE_GC_T3_DB" 'DROP TABLE orchestration_v2_projection_provider_sessions;'
   run "$WORKTREE_GC" --prune-plan --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [[ "$output" == *KEEP-undetermined* ]]; [ -d "$worktree" ]
-  [[ "$output" != *Traceback* && "$output" != *SELECT* ]]
+  [ "$status" -eq 0 ]; [[ "$output" == *KEEP-undetermined* ]] || false; [ -d "$worktree" ]
+  [[ "$output" != *Traceback* && "$output" != *SELECT* ]] || false
   plan="$(printf '%s\n' "$output" | sed -n 's/^List-only plan TSV: //p')"
   ! grep -Eq 'Traceback|SELECT|CalledProcessError' "$plan"
   grep -q 'no such table' "${plan%.plan.tsv}"
@@ -49,7 +49,7 @@ STUB
   ordinary_fixture
   sqlite3 "$WORKTREE_GC_T3_DB" "INSERT INTO orchestration_v2_projection_threads VALUES ('live',json_object('worktreePath','$worktree'),NULL); INSERT INTO orchestration_v2_projection_threads VALUES ('bad',json_object('worktreePath',5),NULL);"
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *KEEP-live* ]]
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *KEEP-live* ]] || false
   journal="$(python3 -c 'import json,sys;print(json.loads(open(sys.argv[1]).read().splitlines()[-1])["journal"])' "$WORKTREE_GC_REPORT_DIR/receipts.jsonl")"
   grep -q 'worktree-path-invalid' "${journal%.rows.jsonl}"
 }
@@ -58,7 +58,7 @@ STUB
   ordinary_fixture; bind_live
   mv "$WORKTREE_GC_T3_DB" "$TEST_ROOT/preserved.sqlite"
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]]
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]] || false
   export REAL_PYTHON="$(command -v python3)"
   mkdir -p "$TEST_ROOT/bin"
   cat > "$TEST_ROOT/bin/python3" <<'STUB'
@@ -71,6 +71,6 @@ exec "$REAL_PYTHON" "$@"
 STUB
   chmod +x "$TEST_ROOT/bin/python3"
   run env PATH="$TEST_ROOT/bin:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]]
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]] || false
   [[ "$output" != *Traceback* ]]
 }
