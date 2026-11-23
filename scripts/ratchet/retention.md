@@ -1,26 +1,36 @@
 # Ratchet run evidence retention
 
-`node scripts/ratchet/prune-runs.mjs` defaults to a dry-run against the main
-checkout's `docs.local/ratchet-runs`, including when invoked from a worktree.
-`--apply` removes the printed candidates. `GOLEMS_RATCHET_RUNS_KEEP` defaults to
-3 distinct SHAs per lane, retaining the newest timestamped run for each SHA.
-Names follow `<lane>-<7..40 hex SHA>-<YYYYMMDDTHHMMSS>[fraction][Z]` (up to six fractional digits).
+`node scripts/ratchet/prune-runs.mjs` defaults to LIST (also `--dry-run`).
+The run directory is the main checkout's `docs.local/ratchet-runs`, resolved
+from the script's git common directory, regardless of the caller's cwd.
+Columns: path / PR / state / age in days / allocated bytes / reason / action.
+GOLEMS_RATCHET_RUNS_KEEP is ignored with a warning; the 3/1 policy is fixed.
 
-Open PR bodies, issue comments, review comments and review summaries protect
-named directories and cited SHAs. A failed GitHub read stops pruning. Unknown
-names remain listed and kept; symlinks stop the operation. Files or directories
-modified within two hours remain protected, including writes below a run root.
-The apply step checks identity, timestamps and sizes again before each removal.
-Allocated bytes are reported in decimal GB; APFS snapshots may delay reclamation.
+Keep the newest three runs per OPEN PR (runs, not distinct SHAs). For a merged
+or closed PR keep its newest run for fourteen days after closure, then none.
+These counts never override citations or the two-hour recent-write guard.
+Run names use ASCII digits. Unmarked timestamps use the writer host's local
+timezone, as shell `date` writes them; an explicit Z means UTC. Run corpora
+must be evaluated in their writer's timezone. Unknown/non-PR names and
+SHA-less live runs KEEP conservatively. Unknown state, invalid closure
+metadata or invalid/future timestamps KEEP. Files are never candidates.
 
-`post-merge-live.sh` invokes `--apply` after posting its live receipt (master's code, after a merge). It must never run from `local-run.sh` or anything else the pre-push hook executes from a candidate branch: on 2026-11-02 that let an unmerged branch prune (43 old `pr*` receipt dirs, 0.029 GB).
-For the M1 procedure owner (skill-creator): invoke the same command from the
-golems checkout at the end of each procedure run. Procedure files are owned by
-skill-creator and are deliberately unchanged here. The first real apply needs
-lead coordination; this change's verification uses only a real dry-run and
-isolated test directories.
+PR bodies, issue comments, review comments and review summaries protect
+named directories and SHA prefixes, including real ratchet-verdict head
+and producer SHAs. The 64-character receipt hash does not pin a run.
+Fetch all open PR evidence plus closed PRs
+represented in this corpus. Closed/merged sticky evidence remains protected.
+A GitHub read or malformed response error aborts before apply (everything
+remains). Symlinks anywhere in a candidate tree or root alias abort scanning.
 
-The Mac `ratchet-runs-size` row reports allocated size with a 10 GB ceiling,
-overridable via `GOLEMS_RATCHET_RUNS_MAX_GB`. It remains report-only pending
-successful retention on both Macs. The disk free floor remains unchanged.
-The lead must sequence merge and refresh open guarded PRs for the added row.
+`--apply` explicitly removes candidates. It validates every candidate first,
+then rechecks identity, size, latest descendant mtime and the two-hour guard
+immediately before each removal. Filesystem errors stop immediately. This
+is not an atomic snapshot or writer lock; stop writers before applying.
+APFS snapshots can delay physical reclamation. No real apply was performed
+for this PR; apply verification uses fixture directories only.
+
+`post-merge-live.sh` retains its existing invocation of this command after
+posting its live receipt. No new nightly wiring is introduced. Never invoke
+apply from candidate pre-push/local-run.sh. The Mac ratchet-runs-size row
+remains report-only at the 10 GB ceiling. Mac rows for this PR are lead-routed.
