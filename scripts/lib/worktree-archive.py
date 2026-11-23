@@ -19,7 +19,7 @@ import sys
 # Names are disposable only at known cache roots. An ignored data ancestor or
 # any docs.local directory protects every descendant, including these names.
 REGENERABLE = {
-    "node_modules", ".venv", "venv", ".build", ".next", "dist", "build", "target", "__pycache__",
+    "node_modules", ".venv", "venv", ".build", ".build.noindex", ".next", "dist", "build", "target", "__pycache__",
     ".pytest_cache", ".ruff_cache", ".mypy_cache", ".turbo", ".parcel-cache", ".swiftpm",
     "DerivedData", "coverage", ".nyc_output", ".DS_Store", "tsconfig.tsbuildinfo", "next-env.d.ts",
     ".eslintcache", ".test-tmp", ".hypothesis", "htmlcov", ".tox", ".gradle", ".expo", ".svelte-kit",
