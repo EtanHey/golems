@@ -86,7 +86,7 @@ PY
 }
 @test "wiring: bytecode refusal and release-only plist setup are documented" {
   run cat "$REPO_ROOT/docs/worktree-gc.md"
-  [[ "$output" == *'Stray `__pycache__/*.pyc` files are refused'* ]]
+  [[ "$output" == *'Stray `__pycache__/*.pyc` files are refused'* ]] || false
   [[ "$output" == *'GOLEMS_WORKTREE_GC_PIN_ROOT'* ]]
 }
 
