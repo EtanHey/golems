@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -27,11 +28,13 @@ export function inspectTree(target, { allowSymlinks = false } = {}) {
   return { bytes, modified, dev: st.dev, ino: st.ino };
 }
 function nonPrLane(lane) {
-  // PR-looking aliases remain unknown, rather than becoming disposable lanes.
-  return /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(lane) &&
-    !/^pr[0-9]/.test(lane) && !/^live-pr/.test(lane);
+  return lane === 'm1-procedure'; // Explicit writer allowlist; aliases stay unknown.
 }
-export function planRuns(root, { keep = 3, citations, states = {}, now = Date.now() } = {}) {
+function procedureLocked() {
+  try { fs.lstatSync(path.join(os.homedir(), '.golems/m1-procedure.lock')); return true; }
+  catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+}
+export function planRuns(root, { keep = 3, citations, states = {}, nonPrEvidenceComplete = false, now = Date.now() } = {}) {
   root = checkedRoot(root);
   if (!Number.isSafeInteger(keep) || keep < 1) throw new Error('keep must be a positive integer');
   if (typeof citations !== 'string') throw new Error('PR citations required');
@@ -49,15 +52,17 @@ export function planRuns(root, { keep = 3, citations, states = {}, now = Date.no
     row.state = row.nonPr ? 'NON_PR' : states[row.pr]?.state ?? 'UNKNOWN';
     const t = row.timestamp;
     // Writers use local `date`; an explicit Z suffix is UTC.
-    const iso = `${t.slice(0,4)}-${t.slice(4,6)}-${t.slice(6,8)}T${t.slice(9,11)}:${t.slice(11,13)}:${t.slice(13,15)}.${(t.slice(15) || '0').padEnd(3,'0').slice(0,3)}${name.endsWith('Z') ? 'Z' : ''}`;
+    const utc = name.endsWith('Z') || row.lane === 'm1-procedure';
+    const iso = `${t.slice(0,4)}-${t.slice(4,6)}-${t.slice(6,8)}T${t.slice(9,11)}:${t.slice(11,13)}:${t.slice(13,15)}.${(t.slice(15) || '0').padEnd(3,'0').slice(0,3)}${utc ? 'Z' : ''}`;
     row.time = Date.parse(iso);
     const parsed = new Date(row.time);
-    const get = field => parsed[`${name.endsWith('Z') ? 'getUTC' : 'get'}${field}`]();
+    const get = field => parsed[`${utc ? 'getUTC' : 'get'}${field}`]();
     if (get('FullYear') !== Number(t.slice(0,4)) || get('Month') + 1 !== Number(t.slice(4,6)) ||
         get('Date') !== Number(t.slice(6,8)) || get('Hours') !== Number(t.slice(9,11)) ||
         get('Minutes') !== Number(t.slice(11,13)) || get('Seconds') !== Number(t.slice(13,15))) row.time = NaN;
     row.age = (now - row.time) / 86400000;
     if (citations.includes(name) || hashes.some(h => h.toLowerCase().startsWith(row.sha) || row.sha.startsWith(h.toLowerCase()))) row.reason = 'PR citation';
+    else if (row.nonPr && (!nonPrEvidenceComplete || procedureLocked())) row.reason = 'incomplete citations or active procedure';
     else if (now - measured.modified < 2 * 3600000) row.reason = 'modified within two hours';
     else if (!Number.isFinite(row.time) || row.time > now) row.reason = 'invalid or future timestamp';
     else if (!row.nonPr && !['OPEN', 'MERGED', 'CLOSED'].includes(row.state)) row.reason = 'unknown PR state';
@@ -95,6 +100,7 @@ export function applyPlan(root, plan) {
   const candidates = plan.filter(r => r.action === 'delete');
   const validate = row => {
     if (path.basename(row.name) !== row.name || row.name === '.' || row.name === '..') throw new Error('not a direct child');
+    if (row.nonPr && procedureLocked()) throw new Error('active procedure');
     const target = path.join(root, row.name);
     const current = inspectTree(target);
     if (fs.realpathSync(target) !== target || current.dev !== row.dev || current.ino !== row.ino || current.modified !== row.modified || current.bytes !== row.bytes) throw new Error(`run changed: ${row.name}`);
@@ -113,11 +119,58 @@ export function evidenceFromGitHub(root) {
   // Closed PRs still own sticky receipts. Any lookup error aborts before apply.
   const prs = api('repos/EtanHey/golems/pulls?state=all&per_page=100');
   const text = [], states = {};
-  // A non-PR run may be linked from any closed PR, with no PR number in its name.
-  const hasNonPrRuns = root && fs.readdirSync(root).some(n => {
-    const match = /^(.+)-[0-9a-f]{7,40}-[0-9]{8}T[0-9]{6,12}Z?$/.exec(n);
-    return match && nonPrLane(match[1]);
+  const hasNonPrRuns = root && fs.readdirSync(root, {withFileTypes:true}).some(entry => {
+    const match = /^(.+)-[0-9a-f]{7,40}-[0-9]{8}T[0-9]{6,12}Z?$/.exec(entry.name);
+    return entry.isDirectory() && match && nonPrLane(match[1]);
   });
+  if (hasNonPrRuns) {
+    const result = {citations:'', states:{}, nonPrEvidenceComplete:false};
+    if (!prs.length) return result;
+    // Independent GraphQL total + identities detect short REST lists and missing Link pages.
+    // Each connection is bounded at 100 entries/page; incomplete inner reviews fail closed.
+    const query = `query($endCursor:String){repository(owner:"EtanHey",name:"golems"){
+      pullRequests(first:100,after:$endCursor){totalCount pageInfo{hasNextPage endCursor}
+        nodes{number reviews(first:100){totalCount nodes{body} pageInfo{hasNextPage}}}}}}`;
+    const pages = JSON.parse(execFileSync('gh', ['api','graphql','--paginate','--slurp','-f',`query=${query}`],
+      {encoding:'utf8',maxBuffer:64*1024*1024}));
+    if (!Array.isArray(pages) || !pages.length) return result;
+    const ids = new Set(), reviews = [];
+    let total;
+    for (let i=0; i<pages.length; i++) {
+      const connection = pages[i]?.data?.repository?.pullRequests;
+      if (pages[i]?.errors || !connection || !Number.isSafeInteger(connection.totalCount) ||
+          !Array.isArray(connection.nodes) || connection.pageInfo?.hasNextPage !== (i < pages.length-1)) return result;
+      if (total !== undefined && total !== connection.totalCount) return result;
+      total = connection.totalCount;
+      for (const pr of connection.nodes) {
+        if (!Number.isSafeInteger(pr.number) || ids.has(pr.number) ||
+            pr.reviews?.pageInfo?.hasNextPage !== false || !Array.isArray(pr.reviews.nodes) ||
+            pr.reviews.nodes.length !== pr.reviews.totalCount) return result;
+        ids.add(pr.number);
+        for (const review of pr.reviews.nodes) {
+          if (typeof review.body !== 'string') return result;
+          reviews.push(review.body);
+        }
+      }
+    }
+    const restIds = new Set(prs.map(pr=>pr.number));
+    const corpusIds = fs.readdirSync(root).map(n=>/^(?:live-)?pr([1-9][0-9]*)-/.exec(n)?.[1]).filter(Boolean).map(Number);
+    if (!total || ids.size !== total || restIds.size !== total || prs.length !== total ||
+        [...restIds].some(n=>!ids.has(n)) || corpusIds.some(n=>!ids.has(n))) return result;
+    const bodies = [];
+    for (const pr of prs) {
+      if (typeof pr.body !== 'string' && pr.body !== null) return result;
+      result.states[pr.number] = {state:pr.state==='open'?'OPEN':pr.state==='closed'?(pr.merged_at?'MERGED':'CLOSED'):'UNKNOWN',closedAt:pr.closed_at};
+      bodies.push(pr.body ?? '');
+    }
+    for (const endpoint of ['issues/comments','pulls/comments']) {
+      for (const comment of api(`repos/EtanHey/golems/${endpoint}?per_page=100`)) {
+        if (typeof comment.body !== 'string') throw new Error('invalid comment');
+        bodies.push(comment.body);
+      }
+    }
+    return {citations:[...bodies,...reviews].join('\n'),states:result.states,nonPrEvidenceComplete:true};
+  }
   const relevant = root && !hasNonPrRuns ? new Set(fs.readdirSync(root).map(n => /^(?:live-)?pr([1-9][0-9]*)-/.exec(n)?.[1]).filter(Boolean).map(Number)) : null;
   for (const pr of prs) {
     if (relevant && pr.state !== 'open' && !relevant.has(pr.number)) continue;

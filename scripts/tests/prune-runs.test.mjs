@@ -249,6 +249,7 @@ test('non-PR lane keeps three newest runs, cited older run and recent writes (fa
   fs.writeFileSync(gh,`#!/usr/bin/env node
 if(process.env.NONPR_GH_FAIL==='1')process.exit(1);
 const ep=process.argv.at(-1);
+if(process.argv.includes('graphql')){console.log(JSON.stringify([{data:{repository:{pullRequests:{totalCount:1,pageInfo:{hasNextPage:false},nodes:[{number:42,reviews:{totalCount:0,nodes:[],pageInfo:{hasNextPage:false}}}]}}}}]));process.exit(0);}
 console.log(JSON.stringify(ep.includes('/pulls?')?[[{number:42,state:'closed',closed_at:'2020-01-01',merged_at:null,body:'${names[0]}'}]]:ep.includes('/issues/')?[[{body:'<!-- ratchet-table: golems-ratchet-mac --> ${names[1]}'}]]:[[]]));
 `);fs.chmodSync(gh,0o755);process.env.PATH=bin+path.delimiter+oldPath;
   const evidence=evidenceFromGitHub(root);
@@ -260,4 +261,60 @@ console.log(JSON.stringify(ep.includes('/pulls?')?[[{number:42,state:'closed',cl
   assert.match(rawPlanRuns(root,evidence).find(r=>r.name===names[2]).reason,/two hours/);
   process.env.NONPR_GH_FAIL='1';assert.throws(()=>evidenceFromGitHub(root));assert.ok(fs.existsSync(path.join(root,names[3])));
  }finally{delete process.env.NONPR_GH_FAIL;process.env.PATH=oldPath;fs.rmSync(root,{recursive:true});}
+});
+
+test('non-PR citations use four gh invocations for 1201 PRs; empty/short/incomplete evidence KEEP (S6)', async()=>{
+ const {evidenceFromGitHub}=await import('../ratchet/prune-runs.mjs');
+ const root=scratch(), previous=process.env.PATH;
+ try{
+  const names=Array.from({length:5},(_,i)=>`m1-procedure-${String(i+1).repeat(7)}-2026010${i+1}T000000`);
+  for(const n of names){fs.mkdirSync(path.join(root,n));fs.utimesSync(path.join(root,n),new Date(0),new Date(0));}
+  const bin=path.join(root,'bin');fs.mkdirSync(bin);const log=path.join(root,'calls');
+  fs.writeFileSync(path.join(bin,'gh'),`#!/usr/bin/env node
+const fs=require('fs');fs.appendFileSync(${JSON.stringify(log)},'x\\n');
+if(fs.readFileSync(${JSON.stringify(log)},'utf8').split('\\n').length>7)process.exit(1);
+const mode=process.env.CITATION_MODE||'',ep=process.argv.at(-1),m=1201;
+const chunk=a=>Array.from({length:Math.ceil(a.length/100)},(_,i)=>a.slice(i*100,i*100+100));
+if(process.argv.includes('graphql')){
+ const nodes=Array.from({length:m},(_,i)=>({number:i+1,reviews:{totalCount:0,nodes:[],pageInfo:{hasNextPage:mode==='inner'}}}));
+ const pages=chunk(nodes).map((nodes,i)=>({data:{repository:{pullRequests:{totalCount:m,nodes,pageInfo:{hasNextPage:i<12}}}}}));
+ if(mode==='outer')pages.pop();
+ console.log(JSON.stringify(pages));
+}else if(ep.includes('/pulls?')){
+ const prs=Array.from({length:mode==='empty'?0:mode==='short'?1:m},(_,i)=>({number:i+1,state:'closed',body:'',closed_at:'2020-01-01',merged_at:null}));
+ console.log(JSON.stringify(prs.length?chunk(prs):[[]]));
+}else {if(mode==='page-error')process.exit(1);console.log('[[]]');}
+`);fs.chmodSync(path.join(bin,'gh'),0o755);process.env.PATH=bin+path.delimiter+previous;
+  const evidence=evidenceFromGitHub(root);
+  assert.equal(evidence.nonPrEvidenceComplete,true);
+  assert.equal(fs.readFileSync(log,'utf8').trim().split('\n').length,4);
+  assert.equal(rawPlanRuns(root,evidence).filter(r=>r.action==='delete').length,2);
+  for(const mode of ['empty','short','inner','outer']){
+   fs.writeFileSync(log,'');process.env.CITATION_MODE=mode;
+   const incomplete=evidenceFromGitHub(root);
+   assert.equal(incomplete.nonPrEvidenceComplete,false,mode);
+   assert.ok(rawPlanRuns(root,incomplete).every(r=>r.action==='keep'),mode);
+  }
+  fs.writeFileSync(log,'');process.env.CITATION_MODE='page-error';assert.throws(()=>evidenceFromGitHub(root));
+  const fileRoot=path.join(root,'file-only');fs.mkdirSync(fileRoot);fs.writeFileSync(path.join(fileRoot,names[0]),'archive');
+  fs.writeFileSync(log,'');delete process.env.CITATION_MODE;
+  evidenceFromGitHub(fileRoot);assert.equal(fs.readFileSync(log,'utf8').trim().split('\n').length,1,'plain files must not trigger repo-wide citations');
+ }finally{process.env.PATH=previous;delete process.env.CITATION_MODE;fs.rmSync(root,{recursive:true});}
+});
+
+test('lane allowlist, UTC procedure names, and procedure lock keep data',()=>{
+ const root=scratch(), lstat=fs.lstatSync, previousTZ=process.env.TZ;
+ try{
+  process.env.TZ='Asia/Jerusalem';
+  const names=['m1-procedure-aaaaaaa-20260101T010000','m1-procedure-bbbbbbb-20260102T010000','m1-procedure-ccccccc-20260103T010000','m1-procedure-ddddddd-20260104T010000','mac-pr12-aaaaaaa-20260101T010000','pr-aaaaaaa-20260101T010000'];
+  for(const n of names){fs.mkdirSync(path.join(root,n));fs.utimesSync(path.join(root,n),new Date(0),new Date(0));}
+  const options={citations:'',nonPrEvidenceComplete:true};
+  let rows=rawPlanRuns(root,options);
+  assert.equal(rows.find(r=>r.name===names[0]).time,Date.UTC(2026,0,1,1));
+  assert.ok(rows.filter(r=>names.slice(4).includes(r.name)).every(r=>r.action==='keep'));
+  const plan=rows;
+  fs.lstatSync=(p,...args)=>String(p).endsWith('/.golems/m1-procedure.lock')?{}:lstat(p,...args);
+  rows=rawPlanRuns(root,options);assert.ok(rows.every(r=>r.action==='keep'));
+  assert.throws(()=>applyPlan(root,plan),/active procedure/);
+ }finally{fs.lstatSync=lstat;if(previousTZ===undefined)delete process.env.TZ;else process.env.TZ=previousTZ;fs.rmSync(root,{recursive:true});}
 });
