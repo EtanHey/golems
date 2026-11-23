@@ -1,3 +1,8 @@
+import {
+  TRANSCRIPTION_TOKEN,
+  transcriptionNumberKeys,
+} from "../vendor/narrationlayer/src/text/transcription-equivalence.ts";
+
 export const TELEPROMPTER_DRIFT_DEFAULTS = {
   maxWordDeltaSeconds: 0.35,
   tailStartFraction: 2 / 3,
@@ -90,14 +95,66 @@ function compileAliasSignatures(aliases) {
   return signatures;
 }
 
+// Spoken numbers run longer than other blocks ("one hundred twenty-three dollars").
+// Same bound as NarrationLayer's word-timing repair (MAX_NUMBER_BLOCK).
+const MAX_NUMBER_BLOCK = 8;
+
+/**
+ * Number-equivalence keys of every word block up to MAX_NUMBER_BLOCK words, by start then length.
+ * AIDEV-NOTE: equivalence comes only from the vendored NarrationLayer parser
+ * (src/text/transcription-equivalence.ts), the one the repair and take check use; never add a
+ * second number parser here. "$400" tokenizes to ["$", "400"] and "dollars." to ["dollars"].
+ */
+function numberBlockKeys(words) {
+  const parts = words.map((word) => word.word.match(TRANSCRIPTION_TOKEN) ?? []);
+  return words.map((_, start) => {
+    const byLength = [[]];
+    for (let length = 1; length <= Math.min(MAX_NUMBER_BLOCK, words.length - start); length += 1) {
+      const tokens = parts.slice(start, start + length).flat();
+      byLength.push(tokens.length ? transcriptionNumberKeys(tokens) : []);
+    }
+    return byLength;
+  });
+}
+
+/** Every [sourceLength, renderedLength] pair whose two blocks say the same number. */
+function numberBlockPairs(sourceNumbers, renderedNumbers, sourceIndex, renderedIndex) {
+  const pairs = [];
+  const sourceByLength = sourceNumbers[sourceIndex] ?? [];
+  const renderedByLength = renderedNumbers[renderedIndex] ?? [];
+  for (let sourceLength = 1; sourceLength < sourceByLength.length; sourceLength += 1) {
+    const sourceKeys = sourceByLength[sourceLength];
+    if (!sourceKeys.length) continue;
+    for (let renderedLength = 1; renderedLength < renderedByLength.length; renderedLength += 1) {
+      if (renderedByLength[renderedLength].some((key) => sourceKeys.includes(key))) {
+        pairs.push([sourceLength, renderedLength]);
+      }
+    }
+  }
+  return pairs;
+}
+
 function alignExactWordBlocks(sourceWords, renderedWords, maxMergeWords, aliases) {
   const aliasSignatures = compileAliasSignatures(aliases);
+  const sourceNumbers = numberBlockKeys(sourceWords);
+  const renderedNumbers = numberBlockKeys(renderedWords);
   const memo = new Map();
   function visit(sourceIndex, renderedIndex) {
     const key = `${sourceIndex}:${renderedIndex}`;
     if (memo.has(key)) return memo.get(key);
     if (sourceIndex === sourceWords.length && renderedIndex === renderedWords.length) return [];
     if (sourceIndex === sourceWords.length || renderedIndex === renderedWords.length) return null;
+
+    const accept = (sourceLength, renderedLength) => {
+      const rest = visit(sourceIndex + sourceLength, renderedIndex + renderedLength);
+      if (!rest) return null;
+      return [{
+        sourceStart: sourceIndex,
+        sourceEnd: sourceIndex + sourceLength,
+        renderedStart: renderedIndex,
+        renderedEnd: renderedIndex + renderedLength,
+      }, ...rest];
+    };
 
     for (let total = 2; total <= maxMergeWords * 2; total += 1) {
       for (let sourceLength = 1; sourceLength <= maxMergeWords; sourceLength += 1) {
@@ -111,17 +168,19 @@ function alignExactWordBlocks(sourceWords, renderedWords, maxMergeWords, aliases
           sourceSignature !== renderedSignature &&
           !aliasSignatures.get(renderedSignature)?.has(sourceSignature)
         ) continue;
-        const rest = visit(sourceIndex + sourceLength, renderedIndex + renderedLength);
-        if (rest) {
-          const result = [{
-            sourceStart: sourceIndex,
-            sourceEnd: sourceIndex + sourceLength,
-            renderedStart: renderedIndex,
-            renderedEnd: renderedIndex + renderedLength,
-          }, ...rest];
+        const result = accept(sourceLength, renderedLength);
+        if (result) {
           memo.set(key, result);
           return result;
         }
+      }
+    }
+    // A spoken number and its written form ("four hundred dollars" / "$400") are one block.
+    for (const [sourceLength, renderedLength] of numberBlockPairs(sourceNumbers, renderedNumbers, sourceIndex, renderedIndex)) {
+      const result = accept(sourceLength, renderedLength);
+      if (result) {
+        memo.set(key, result);
+        return result;
       }
     }
     memo.set(key, null);
@@ -139,13 +198,15 @@ function lexicalUnits(words) {
 function wordBlocksFromLexicalSteps(steps) {
   const blocks = [];
   for (const step of steps) {
-    if (step.kind !== "match" && step.kind !== "substitute") continue;
-    const candidate = {
-      sourceStart: step.source.wordIndex,
-      sourceEnd: step.source.wordIndex + 1,
-      renderedStart: step.rendered.wordIndex,
-      renderedEnd: step.rendered.wordIndex + 1,
-    };
+    if (step.kind !== "match" && step.kind !== "substitute" && step.kind !== "number") continue;
+    const candidate = step.kind === "number"
+      ? { ...step.block }
+      : {
+        sourceStart: step.source.wordIndex,
+        sourceEnd: step.source.wordIndex + 1,
+        renderedStart: step.rendered.wordIndex,
+        renderedEnd: step.rendered.wordIndex + 1,
+      };
     const previous = blocks.at(-1);
     const sharesSourceWord = previous && candidate.sourceStart < previous.sourceEnd;
     const sharesRenderedWord = previous && candidate.renderedStart < previous.renderedEnd;
@@ -159,9 +220,24 @@ function wordBlocksFromLexicalSteps(steps) {
   return blocks;
 }
 
+/** Unit offset where each word starts (offsets[words.length] is the unit count), and words by offset. */
+function unitOffsets(words) {
+  const offsets = [0];
+  for (const word of words) offsets.push(offsets.at(-1) + canonicalParts(word.word).length);
+  const startsAt = new Map();
+  words.forEach((_, index) => {
+    if (offsets[index + 1] > offsets[index]) startsAt.set(offsets[index], [...(startsAt.get(offsets[index]) ?? []), index]);
+  });
+  return { offsets, startsAt };
+}
+
 function alignLexicalUnits(sourceWords, renderedWords) {
   const source = lexicalUnits(sourceWords);
   const rendered = lexicalUnits(renderedWords);
+  const sourceUnits = unitOffsets(sourceWords);
+  const renderedUnits = unitOffsets(renderedWords);
+  const sourceNumbers = numberBlockKeys(sourceWords);
+  const renderedNumbers = numberBlockKeys(renderedWords);
   const cells = Array.from({ length: source.length + 1 }, () =>
     Array.from({ length: rendered.length + 1 }, () => ({ cost: Number.POSITIVE_INFINITY, step: null })),
   );
@@ -175,6 +251,22 @@ function alignLexicalUnits(sourceWords, renderedWords) {
           cells[nextI][nextJ] = { cost: cell.cost + cost, step: { ...step, prevI: i, prevJ: j } };
         }
       };
+      // A number-equivalent word block is aligned, not a run of substitutions and inserts.
+      for (const sourceStart of sourceUnits.startsAt.get(i) ?? []) {
+        for (const renderedStart of renderedUnits.startsAt.get(j) ?? []) {
+          for (const [sourceLength, renderedLength] of numberBlockPairs(sourceNumbers, renderedNumbers, sourceStart, renderedStart)) {
+            update(sourceUnits.offsets[sourceStart + sourceLength], renderedUnits.offsets[renderedStart + renderedLength], 0, {
+              kind: "number",
+              block: {
+                sourceStart,
+                sourceEnd: sourceStart + sourceLength,
+                renderedStart,
+                renderedEnd: renderedStart + renderedLength,
+              },
+            });
+          }
+        }
+      }
       if (i < source.length && j < rendered.length) {
         const exact = source[i].token === rendered[j].token;
         update(i + 1, j + 1, exact ? 0 : 1, {
@@ -201,7 +293,7 @@ function alignLexicalUnits(sourceWords, renderedWords) {
   steps.reverse();
   return {
     blocks: wordBlocksFromLexicalSteps(steps),
-    unalignedCount: steps.filter((step) => step.kind !== "match").length,
+    unalignedCount: steps.filter((step) => step.kind !== "match" && step.kind !== "number").length,
     totalUnits: Math.max(source.length, rendered.length),
   };
 }
