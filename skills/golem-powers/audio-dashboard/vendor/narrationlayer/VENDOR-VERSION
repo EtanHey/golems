@@ -433,6 +433,7 @@
     "vendor/src/pipelines/local-tts/failure.ts": "67d069f184172e83e415b10816596e62e17b002c73b379ea20d4dd5e307ddcf2",
     "vendor/src/pipelines/local-tts/index.ts": "351e751ec34f5fd51919e47683f67b2e406e34a635178b8ff10f5bb89c1652aa",
     "vendor/src/pipelines/local-tts/take-cache.ts": "07cea09d830e89c76dbdb1388e1145ec021b38a3726fb63456b3a6ed91f47f72",
+    "vendor/narrationlayer/text/transcription-equivalence.ts": "1604aef1540deb6b0b49e1e64f478ed5b7b353e81d70149412cd4d4735610d9a",
     "vendor/narrationlayer/src/text-normalize.ts": "4738e04ecfb21c05e46e7b2e8fe4c02c281fd82e3949fa97e1c0d2b7e81638da",
     "vendor/narrationlayer/src/word-timings.ts": "bf9c297de7d15af9fc5f596b7bdbebefb6ee2dbe0710ebe3733b2d82bfa67828"
   }

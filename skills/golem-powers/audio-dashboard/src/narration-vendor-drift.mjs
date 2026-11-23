@@ -276,6 +276,12 @@ export async function refreshVendorStamp({
   const upstreamPairs = nextStamp.pairs.filter(pair => upstreamDebts.some(debt => debt.pairId === pair.id));
   const openPairIds = new Set(openDebts.map((debt) => debt.pairId));
   const beforeRefresh = await observeVendorState({ skillRoot, upstreamRoot, stamp: nextStamp });
+  const changedBridges = Object.entries(nextStamp.skillBridgeHashes ?? {})
+    .filter(([file, expected]) => beforeRefresh.skillBridgeHashes[file] !== expected)
+    .map(([file]) => file);
+  if (changedBridges.length > 0) {
+    throw new Error(`unexpected bridge drift: ${changedBridges.join(", ")}`);
+  }
   const beforeById = new Map(beforeRefresh.pairs.map((pair) => [pair.id, pair]));
   const unexpectedDrift = nextStamp.pairs.filter((pair) => {
     if (openPairIds.has(pair.id)) return false;
@@ -352,14 +358,7 @@ export async function refreshVendorStamp({
 
   const validationError = validateStamp(nextStamp);
   if (validationError) throw new Error(`refreshed stamp is invalid: ${validationError}`);
-  const observed = {
-    upstreamHead: inspected.head,
-    pairs: nextStamp.pairs.map((pair) => ({
-      id: pair.id,
-      vendorSha256: pair.vendorSha256,
-      sourceSha256: pair.sourceSha256,
-    })),
-  };
+  const observed = await observeVendorState({ skillRoot, upstreamRoot, stamp: nextStamp });
   const preflight = classifyVendorDrift(nextStamp, observed);
   // Explicit deferral keeps the REJECTED receipt; it cannot admit unrelated drift.
   const remainingDebts = [...nextStamp.vendorSideFirst, ...nextStamp.upstreamSideFirst]
@@ -408,7 +407,11 @@ export async function observeVendorState({ skillRoot, upstreamRoot, stamp }) {
       return { id: pair.id, vendorSha256, ...(upstreamRoot ? { sourceSha256 } : {}) };
     }),
   );
-  return { upstreamHead: null, pairs };
+  const skillBridgeHashes = Object.fromEntries(await Promise.all(
+    Object.keys(stamp.skillBridgeHashes ?? {}).map(async file => [file,
+      await sha256File(path.join(skillRoot, file)).catch(() => null)]),
+  ));
+  return { upstreamHead: null, pairs, skillBridgeHashes };
 }
 
 function sortRecords(records) {
@@ -428,6 +431,18 @@ export function classifyVendorDrift(stamp, observed, { upstreamAvailable = true 
       .map((debt) => [debt.pairId, debt]),
   );
   const records = [];
+
+  for (const [file, expected] of Object.entries(stamp.skillBridgeHashes ?? {})) {
+    const actual = observed?.skillBridgeHashes?.[file];
+    if (actual !== expected) {
+      records.push(driftRecord(
+        { id: file, sourcePath: "<skill-owned-bridge>", vendorPath: file },
+        "VENDOR_AHEAD", actual ?? "missing", expected,
+        "The skill-owned bridge differs from its stamped bytes.",
+        "Review the bridge change and re-run the copier to record its accepted hash.",
+      ));
+    }
+  }
 
   if (!upstreamAvailable) {
     records.push({
