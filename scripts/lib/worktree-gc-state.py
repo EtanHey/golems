@@ -6,19 +6,19 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import sqlite3
 import time
 from urllib.parse import quote
 
 
 def t3_threads(path):
     db = os.environ.get("WORKTREE_GC_T3_DB", os.path.expanduser("~/.t3/userdata/statev2.sqlite"))
-    literal = "'" + path.replace("'", "''") + "'"
     active = "('running','starting','queued','waiting','preparing')"
     query = f"""
       WITH bound AS (SELECT thread_id,payload_json,deleted_at FROM orchestration_v2_projection_threads
-        WHERE json_extract(payload_json,'$.worktreePath')={literal})
+        WHERE json_extract(payload_json,'$.worktreePath') IS NOT NULL)
       SELECT json_object('id',thread_id,'settled',json_extract(payload_json,'$.settledAt'),
-        'created',json_extract(payload_json,'$.createdAt'),'deleted_at',deleted_at,
+        'payload',json(payload_json),'created',json_extract(payload_json,'$.createdAt'),'deleted_at',deleted_at,
         'owner',coalesce(json_extract(payload_json,'$.lineage.rootThreadId'),
                          json_extract(payload_json,'$.lineage.parentThreadId')),
         'active',EXISTS(SELECT 1 FROM orchestration_v2_projection_runs r
@@ -28,7 +28,21 @@ def t3_threads(path):
     """
     result = subprocess.run(["sqlite3", "file:" + quote(os.path.abspath(db), safe="/") + "?mode=ro",
                              ".timeout 3000", query], check=True, capture_output=True, text=True, timeout=10)
-    return [json.loads(row) for row in result.stdout.splitlines()]
+    rows = [json.loads(row) for row in result.stdout.splitlines()]
+    bound = []
+    for row in rows:
+        candidate = row['payload']['worktreePath']
+        if not isinstance(candidate, str) or not candidate or not os.path.isabs(candidate) or '\0' in candidate:
+            print('worktree-path-invalid: skipped row ' + str(row['id']), file=sys.stderr)
+            continue
+        try:
+            real = os.path.realpath(candidate)
+        except (OSError, ValueError):
+            print('worktree-path-invalid: skipped row ' + str(row['id']), file=sys.stderr)
+            continue
+        if real == os.path.realpath(path):
+            bound.append(row)
+    return bound
 
 
 def t3_roots():
@@ -162,13 +176,54 @@ if __name__ == "__main__":
         command, *args = sys.argv[1:]
         if command == "roots":
             t3_roots()
+        elif command == "t3-finished":
+            threads = t3_threads(args[0])
+            if not threads:
+                raise ValueError("no bound thread")
+            for t in threads:
+                p = t["payload"]
+                # Shell-derived active/pending fields are checked in projection tables below.
+                # t3code apps/server/src/storageCleanup.ts:191-203, heldForLimitRecovery:
+                # archived or explicitly settled threads are never recovery-held.
+                recovery_held = (not p.get('archivedAt') and p.get('settledOverride') != 'settled'
+                                 and bool(p.get('limitRecovery')))
+                if (p.get("pinnedAt") or not t["settled"] or
+                    t["active"] or recovery_held):
+                    raise ValueError("binding unsettled, active, pending or recovery-held")
+            db = os.environ.get("WORKTREE_GC_T3_DB", os.path.expanduser("~/.t3/userdata/statev2.sqlite"))
+            with sqlite3.connect("file:" + quote(os.path.abspath(db), safe="/") + "?mode=ro", uri=True, timeout=3) as conn:
+                for (project_root,) in conn.execute("SELECT workspace_root FROM projection_projects"):
+                    real = os.path.realpath(project_root)
+                    if real == args[0] or real.startswith(args[0] + os.sep):
+                        raise ValueError("contains a T3 project checkout")
+                for t in threads:
+                    # Missing tables/columns are errors, never permission to remove.
+                    for table, condition in (
+                        ("runs", "status NOT IN ('completed','cancelled','failed','interrupted','rolled_back')"),
+                        ("provider_sessions", "status NOT IN ('stopped','ready')"),
+                        ("runtime_requests", "status NOT IN ('resolved','expired','cancelled')"),
+                        ("provider_threads", "status NOT IN ('idle','not_loaded') OR coalesce(json_array_length(payload_json,'$.pendingBackgroundTasks'),0)>0"),
+                        ("turn_items", "status NOT IN ('completed','failed','interrupted','cancelled')"),
+                    ):
+                        if conn.execute("SELECT 1 FROM orchestration_v2_projection_" + table +
+                                        " WHERE thread_id=? AND (status IS NULL OR " + condition + ") LIMIT 1", (t["id"],)).fetchone():
+                            raise ValueError("pending or active " + table)
+                    if conn.execute("SELECT 1 FROM scheduled_tasks WHERE thread_id=? AND (enabled IS NULL OR enabled!=0)", (t["id"],)).fetchone():
+                        raise ValueError("enabled scheduled task")
+                    # Settlement and thread updates must predate the inactivity window too.
+                    p = t["payload"]
+                    for field in ("settledAt", "archivedAt", "updatedAt", "snoozedUntil"):
+                        value = p.get(field)
+                        if value and time.time() - datetime.datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(datetime.timezone.utc).timestamp() <= 24 * 3600:
+                            raise ValueError("recent or future thread activity")
         elif command == "live-symlink":
             sys.exit(3 if live_symlink(args[0]) else 0)
         elif command == "t3-summary":
             with open(args[0], "a") as out:
                 out.write(json.dumps(dict(kind="t3-managed", repo=args[1], count=int(args[2]))) + "\n")
         elif command == "t3":
-            live = [t for t in t3_threads(args[0]) if not t["settled"] or t["active"]]
+            live = [{k: v for k, v in t.items() if k != "payload"}
+                    for t in t3_threads(args[0]) if not t["settled"] or t["active"]]
             if live:
                 print("T3 binding live: " + json.dumps(live))
             sys.exit(3 if live else 0)
@@ -184,6 +239,8 @@ if __name__ == "__main__":
             add_report(*args)
         elif command == "finish":
             finish_report(*args)
-    except (OSError, ValueError, subprocess.SubprocessError) as error:
+    except (OSError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
         print(f"worktree-gc state: {error}", file=sys.stderr)
+        if isinstance(error, subprocess.CalledProcessError) and error.stderr:
+            print(error.stderr, file=sys.stderr)
         sys.exit(1)

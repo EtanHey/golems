@@ -96,7 +96,7 @@ def recover_startup_warning(result, sheet, started, existing):
         return None
 
 
-def read_sheet(helper, question, timeout, sheet, model=None, workdir=None, transcript_window=None):
+def read_sheet(helper, question, timeout, sheet, model=None, workdir=None, transcript_window=None, admission=None):
     started, existing = None, set()
     try:
         directory = Path(sheet).resolve().parent / 'helper-receipts'
@@ -111,6 +111,7 @@ def read_sheet(helper, question, timeout, sheet, model=None, workdir=None, trans
         result = visual.bounded_run([sys.executable, str(helper), '--question', question,
                                     '--timeout', str(timeout),
                                     *(['--model', model] if model else []),
+                                    *(['--admission', str(admission)] if admission else []),
                                     *(['--transcript-window', visual.transcript.encode({sheet: transcript_window})]
                                       if transcript_window is not None else []), sheet], timeout)
     except (subprocess.TimeoutExpired, OverflowError) as error:
@@ -347,6 +348,19 @@ def run(args, sheets):
                f'{int(elapsed)//60}m{int(elapsed)%60:02d}s · ETA {remaining} · '
                f'budget {args.budget_seconds/60:g}m · {status}' + (' · serial retry' if retrying else '') + '\n')
 
+    admission_path = getattr(args, 'admission', None)
+    run_id = None
+    builtin = args.helper.resolve() == Path(__file__).resolve().with_name('claude-image-helper.py')
+    try:
+        if admission_path:
+            admitted = visual.policy.validate(admission_path, sheets)
+        else:
+            visual.policy.begin(work)  # Every standalone invocation is a fresh run.
+            admission_path = visual.policy.admit(work, sheets, getattr(args, 'price_per_sheet_usd', .10))
+            admitted = visual.policy.validate(admission_path, sheets)
+        run_id = admitted['run_id']
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        status, cause = 'COST_HOLD', str(error)
     windows = {}
     try:
         windows = visual.transcript.from_args(args, sheets)
@@ -381,7 +395,7 @@ def run(args, sheets):
                         break
                     sheet = sheets[launched]
                     timeout = min(args.timeout, deadline - time.monotonic())
-                    active[pool.submit(read_sheet, args.helper, args.question + (f' Valid zero-based tiles: 0..{counts[sheet]-1}.' if sheet in counts else ''), timeout, sheet, model, work, **({'transcript_window': windows[sheet]} if windows else {}))] = sheet
+                    active[pool.submit(read_sheet, args.helper, args.question + (f' Valid zero-based tiles: 0..{counts[sheet]-1}.' if sheet in counts else ''), timeout, sheet, model, work, **({'transcript_window': windows[sheet]} if windows else {}), **({'admission': admission_path} if builtin else {}))] = sheet
                     launched += 1
                 if not active:
                     break
@@ -417,7 +431,7 @@ def run(args, sheets):
                 retrying = True
                 progress()
                 def read(question, timeout):
-                    return read_sheet(args.helper, question, timeout, item['sheet'], model, work, **({'transcript_window': windows[item['sheet']]} if windows else {}))
+                    return read_sheet(args.helper, question, timeout, item['sheet'], model, work, **({'transcript_window': windows[item['sheet']]} if windows else {}), **({'admission': admission_path} if builtin else {}))
                 item = retry_read(read, args.question, counts.get(item['sheet']), deadline,
                                   args.timeout, previous=item)
                 findings[i] = item
@@ -441,12 +455,19 @@ def run(args, sheets):
             status = 'PARTIAL' if any(not f['ok'] for f in findings) else 'COMPLETE'
         unread = [{'sheet': s, 'finding': 'NOT DETERMINED (not read: ' + status + ')', 'cause': cause, 'state': 'NOT_READ', 'attempts': 0, 'ok': False} for s in sheets[launched:]]
         states = {state: sum(f['state'] == state for f in findings + unread) for state in ('READ', 'INVALID', 'FAILED', 'NOT_READ')}
-        summary = {'counts': states, 'covered': f"{states['READ']}/{total}", 'sheets': findings + unread, 'status': status, 'cause': cause, 'completed': completed,
+        visual_error = ''
+        if not states['READ'] and status != 'COST_HOLD':
+            if status == 'PARTIAL':
+                status = 'NO_FRAMES_READ'
+            visual_error = 'TOOLING FAILURE: no frames were read (no frames read); STOP, no QA verdict'
+        summary = {'run_id': run_id, 'visual_error': visual_error, 'verdict_allowed': states['READ'] > 0, 'counts': states, 'covered': f"{states['READ']}/{total}", 'sheets': findings + unread, 'status': status, 'cause': cause, 'completed': completed,
                    'total': total, 'concurrency': args.concurrency, 'unread': unread,
                    'unresolved': [f for f in findings if not f['ok']]}
         atomic(work / 'visual/summary.json', json.dumps(summary, indent=2) + '\n')
         progress()
         print(json.dumps(summary))
+        if visual_error:
+            print(visual_error, file=sys.stderr)
         if cause:
             print(cause, file=sys.stderr)
     return 0 if status == 'COMPLETE' else 2
@@ -454,6 +475,10 @@ def run(args, sheets):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--price-per-sheet-usd', type=float, default=0.10,
+                        help='Planning allowance per sheet including retry; stop above $5')
+    parser.add_argument('--admission', type=Path, default=os.environ.get('QA_VIDEO_ADMISSION'),
+                        help='Whole-run cost admission created by default.sh plan/admit')
     parser.add_argument('--index', type=Path)
     parser.add_argument('--question', required=True)
     parser.add_argument('--workdir', required=True, type=Path)

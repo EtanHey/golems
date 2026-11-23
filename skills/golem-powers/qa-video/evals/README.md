@@ -85,3 +85,15 @@ assertion. Cue bracketing decodes 0.0s and 4.0s, hitting the target window.
 The other case checks a first-segment cue and unscored preceding segments.
 This is a bounded mechanical regression, not a model-arm uplift claim.
 Live model arms: NOT_RUN (not required for this change).
+
+## Zero-reader and whole-run cost behavior (cases 28–29)
+
+Cases `all-readers-fail-stop` and `sixty-sheets-cost-hold` cover the orchestrating agent:
+zero gathered frames (even with successful pointer reads) must STOP without a QA verdict;
+60 sheets at $0.10 require a stated $6 total and a hold before delegate dispatch.
+With/without-skill model eval: **NOT_RUN**. The packaged run_suite.py scores routing captures
+and --live only probes legacy Gemini image accuracy/timeouts; it has no arbitrary behavior-case
+A/B or bounded API-spend runner. skill-creator/scripts/live-eval-runner.sh only extracts/stores
+cases and manages sandboxes; it does not execute model arms. No runner was improvised and no
+API credentials were loaded. The lead will run these two cases. Mechanical regression tests
+are separate evidence, not model-arm compliance scores.

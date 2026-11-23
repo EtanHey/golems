@@ -18,6 +18,10 @@ _spec = importlib.util.spec_from_file_location('transcript_window', Path(__file_
 transcript = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(transcript)
 
+_policy_spec = importlib.util.spec_from_file_location('reader_policy', Path(__file__).with_name('reader-policy.py'))
+policy = importlib.util.module_from_spec(_policy_spec)
+_policy_spec.loader.exec_module(policy)
+
 # Six images leave room for per-image paths and compact findings under 2000 chars.
 FIRST_BATCH_SIZE = 6
 # Per-call cap; visual-batch.py still clamps each call to its absolute deadline (dictation lead needed 300 s).

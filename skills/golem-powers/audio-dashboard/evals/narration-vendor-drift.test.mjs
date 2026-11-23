@@ -810,6 +810,39 @@ function classifyRemaining(stamp) {
   return [...stamp.vendorSideFirst, ...stamp.upstreamSideFirst].filter(d => d.status === "open").map(d => d.id);
 }
 
+test("refresh preserves stamped bridges and rejects bridge edits before debt tests", async () => {
+  const { refreshVendorStamp } = await loadSubject();
+  const h = await makeRefreshHarness();
+  const bridge = "vendor/narrationlayer/text/bridge.ts";
+  const bytes = 'export * from "../word-timing-repair.js";\n';
+  await Bun.write(path.join(h.skill, bridge), bytes);
+  h.stamp.skillBridgeHashes = { [bridge]: sha256(bytes) };
+  writeFileSync(h.manifestPath, JSON.stringify(h.stamp));
+  const before = readFileSync(h.manifestPath, "utf8");
+  const calls = [];
+  const args = { skillRoot: h.skill, upstreamRoot: h.upstream,
+    stampPath: h.manifestPath, stamp: h.stamp, inspectUpstream: async () => cleanUpstream,
+    runTest: async command => { calls.push(command); return { status: 0, stdout: "pass", stderr: "" }; } };
+  try {
+    const result = await refreshVendorStamp(args);
+    expect(result.verdict).toBe("PASS");
+    expect(result.stamp.skillBridgeHashes).toEqual(h.stamp.skillBridgeHashes);
+    expect(JSON.parse(readFileSync(h.manifestPath, "utf8")).skillBridgeHashes).toEqual(h.stamp.skillBridgeHashes);
+    writeFileSync(h.manifestPath, before);
+    calls.length = 0;
+    await Bun.write(path.join(h.skill, bridge), "edited bridge\n");
+    await expect(refreshVendorStamp(args)).rejects.toThrow("unexpected bridge drift");
+    expect(calls).toHaveLength(0);
+    expect(readFileSync(h.manifestPath, "utf8")).toBe(before);
+    await Bun.write(path.join(h.skill, bridge), bytes);
+    await expect(refreshVendorStamp({ ...args, runTest: async () => {
+      await Bun.write(path.join(h.skill, bridge), "edited during debt tests\n");
+      return { status: 0, stdout: "pass", stderr: "" };
+    } })).rejects.toThrow("refreshed stamp preflight rejected 1 unexpected record(s)");
+    expect(readFileSync(h.manifestPath, "utf8")).toBe(before);
+  } finally { rmSync(h.root, { recursive: true, force: true }); }
+});
+
 test("refresh never implicitly defers a missing marker and rejects unknown explicit deferrals", async () => {
   const refreshVendorStamp = await subjectFunction("refreshVendorStamp");
   const h = await makeRefreshHarness({ omitPattern: fixture.stamp.vendorSideFirst[0].requiredUpstreamPatterns[0] });

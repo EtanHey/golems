@@ -141,10 +141,10 @@ def test_partial_visuals_keep_transcript_note(failure_pipeline, setup, monkeypat
     monkeypatch.setattr(sys, 'argv', [str(SCRIPT), str(video), '--workdir', str(work),
                                     '--budget-seconds', '300', '--presort', '--helper', str(helper)])
     assert module.main() == 2
-    assert json.loads((work/'timing.json').read_text())['status'] == 'PARTIAL'
+    assert json.loads((work/'timing.json').read_text())['status'] == 'NO_FRAMES_READ'
     assert len((work/'visual/findings.jsonl').read_text().splitlines()) == 8
     note = (work/'debrief.md').read_text()
-    assert '42 percent' in note and '99 percent' in note and 'Status: PARTIAL' in note
+    assert '42 percent' in note and '99 percent' in note and 'Status: NO_FRAMES_READ' in note
     assert note.count('visual: NOT DETERMINED (budget/failed)') == 4
 
 

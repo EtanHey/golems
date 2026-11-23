@@ -4,16 +4,18 @@ import path from "node:path";
 import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { runWhisperCliWordTimings } from "../../word-timings.js";
-import { pitchRunaway, wordMismatches, type RecognisedWord, type WordCheckSetting } from "../../quality/take-checks.js";
+import { CUT_ENDING_DEFAULTS, pitchRunaway, wordMismatches, type RecognisedWord, type WordCheckSetting } from "../../quality/take-checks.js";
+import { cutJoinsInKeptPieces, cutTakeEnd, readKeptPieces } from "../../quality/check-take.js";
 import type { TakeCheckReceipt } from "./take-cache.js";
 import { prepareWordCheckText, type SpeechChannels, type TermRule } from "../../text-normalize.js";
 import { ffmpegToMonoS16Wav, ffmpegAtempo } from "../../audio/ffmpeg-run.js";
 import { synthesize } from "./synthesis.js";
 import { RunnerFailure, TakeCheckError } from "./failure.js";
-import { DEFAULT_COLON_PAUSE_SECONDS } from "../../plan/breathing.js";
-import { applyBreathingInPlace } from "./breathing.js";
+import { DEFAULT_COLON_PAUSE_SECONDS, MAX_BREATHING_PIECE_WORDS, splitPauseSeconds } from "../../plan/breathing.js";
+import { applyBreathingInPlace, planBreathingPieces } from "./breathing.js";
 import { loudnessNormalizeInPlace } from "./loudness.js";
-import { hashReferenceClip, computeContentHashKey, writeTakeCacheReceipt, type CacheKeyParams } from "./take-cache.js";
+import { hashReferenceClip, computeContentHashKey, readTakeChecksVersion, TAKE_CHECKS_VERSION, writeTakeCacheReceipt,
+  writeTakeChecksVersion, type CacheKeyParams } from "./take-cache.js";
 import { assertKeepPiecesDir, keepPieces } from "./keep-pieces.js";
 
 export interface ResolvedLocalTtsVoice extends CacheKeyParams {
@@ -26,7 +28,7 @@ export interface ResolvedLocalTtsVoice extends CacheKeyParams {
 }
 
 export interface LocalTtsRenderOptions {
-  takeChecks?: { pitchCeilingHz: number; retries: number; wordCheckSetting?: WordCheckSetting; commonWords?: ReadonlySet<string> };
+  takeChecks?: { pitchCeilingHz: number; retries: number; rejectFades?: boolean; wordCheckSetting?: WordCheckSetting; commonWords?: ReadonlySet<string> };
   recogniseTake?: (wav: string) => Promise<readonly RecognisedWord[]>;
   text: string;
   output: string;
@@ -49,8 +51,32 @@ export type LocalTtsRenderResult =
 
 const PIECES_ON_HIT = "cache hit: no pieces were rendered";
 
+/** Decode any audio file to mono float samples at `rate`; throws on any decode failure. */
+function decodeMono(file: string, rate: number): Float32Array {
+  const decoded = spawnSync("ffmpeg", ["-v", "error", "-nostdin", "-i", file,
+    "-ar", String(rate), "-ac", "1", "-f", "f32le", "pipe:1"], { maxBuffer: 256 * 1024 * 1024 });
+  if (decoded.error || decoded.status !== 0 || !decoded.stdout.length) throw new Error(`decode failed: ${file}`);
+  const samples = new Float32Array(decoded.stdout.length / 4);
+  for (let i = 0; i < samples.length; i++) samples[i] = decoded.stdout.readFloatLE(i * 4);
+  return samples;
+}
+
+/** Profile pauses, or undefined when only the length bound may split the take. */
+function breathingPads(resolved: ResolvedLocalTtsVoice): { sentencePad: number; commaPad: number; colonPad: number } | undefined {
+  if (resolved.sentencePauseSeconds === undefined && resolved.commaPauseSeconds === undefined
+    && resolved.colonPauseSeconds === undefined) return undefined;
+  return { sentencePad: resolved.sentencePauseSeconds ?? 0.55, commaPad: resolved.commaPauseSeconds ?? 0.22,
+    colonPad: resolved.colonPauseSeconds ?? DEFAULT_COLON_PAUSE_SECONDS };
+}
+
+/** Whether a take of `spokenText` is joined from breathing pieces, so it has joins to judge. */
+function hasJoins(spokenText: string, resolved: ResolvedLocalTtsVoice): boolean {
+  const pads = breathingPads(resolved);
+  return planBreathingPieces(spokenText, pads?.sentencePad, pads?.commaPad, pads?.colonPad, splitPauseSeconds(pads?.commaPad)).length >= 2;
+}
+
 /** Render one resolved voice configuration without owning the caller's process. */
-async function renderUnchecked(args: LocalTtsRenderOptions, referenceAudioSha256: string, store = true): Promise<LocalTtsRenderResult> {
+async function renderUnchecked(args: LocalTtsRenderOptions, referenceAudioSha256: string, store = true): Promise<LocalTtsRenderResult & { joinGainDb?: number }> {
   const { output, resolved, authToken, cacheDir, prepareSpeechChannels, keepPiecesDir } = args;
   if (args.refreshCache && !args.cache) throw new RunnerFailure("--refresh-cache cannot be combined with --no-cache");
   if (keepPiecesDir !== undefined) await assertKeepPiecesDir(keepPiecesDir);
@@ -133,46 +159,49 @@ async function renderUnchecked(args: LocalTtsRenderOptions, referenceAudioSha256
   // (so they share the EQ'd body) and BEFORE loudness normalization.
   //   - atempo: pitch-PRESERVING tempo change (no timbre / identity shift).
   //   - breathing: re-synthesize the segment as sentence/clause pieces and interleave
-  //     PCM-silence breaths.
+  //     PCM-silence breaths. A profile without pauses is re-synthesized only when the
+  //     segment is over MAX_BREATHING_PIECE_WORDS (the model's ~10 s length wall).
   // When breathing is active it applies atempo PER PIECE (so the silence pads keep
   // their EXACT profile durations); the standalone atempo pass below runs ONLY when
   // breathing did not assemble (so a non-breathing profile still gets its speed change).
   let atempoNote =
     resolved.atempo !== undefined ? ` atempo=${resolved.atempo}` : "";
   let breathingNote = "";
-  let breathingApplied = false;
   let piecesKept: number | undefined;
-  if (
+  const breathing =
     resolved.sentencePauseSeconds !== undefined ||
     resolved.commaPauseSeconds !== undefined ||
-    resolved.colonPauseSeconds !== undefined
-  ) {
-    const sentencePad = resolved.sentencePauseSeconds ?? 0.55;
-    const commaPad = resolved.commaPauseSeconds ?? 0.22;
-    const colonPad = resolved.colonPauseSeconds ?? DEFAULT_COLON_PAUSE_SECONDS;
-    const breath = await applyBreathingInPlace({
-      output,
-      sampleRate: args.sampleRate,
-      spokenText,
-      sentencePad,
-      commaPad,
-      colonPad,
-      daemonUrl: resolved.daemonUrl,
-      authToken,
-      referenceClip: resolved.referenceClip,
-      referenceText: resolved.referenceText,
-      timeoutMs: args.timeoutMs,
-      eqHighshelfHz: resolved.eqHighshelfHz,
-      eqHighshelfGainDb: resolved.eqHighshelfGainDb,
-      atempo: resolved.atempo,
-      onJoined: keepPiecesDir === undefined ? undefined : async (pieces) => {
-        piecesKept = await keepPieces(keepPiecesDir, pieces);
-      },
-    });
-    breathingApplied = breath.applied;
+    resolved.colonPauseSeconds !== undefined;
+  const sentencePad = resolved.sentencePauseSeconds ?? 0.55;
+  const commaPad = resolved.commaPauseSeconds ?? 0.22;
+  const colonPad = resolved.colonPauseSeconds ?? DEFAULT_COLON_PAUSE_SECONDS;
+  const splitPause = splitPauseSeconds(breathing ? commaPad : undefined);
+  const breath = await applyBreathingInPlace({
+    output,
+    sampleRate: args.sampleRate,
+    spokenText,
+    pads: breathing ? { sentence: sentencePad, comma: commaPad, colon: colonPad } : undefined,
+    splitPause,
+    daemonUrl: resolved.daemonUrl,
+    authToken,
+    referenceClip: resolved.referenceClip,
+    referenceText: resolved.referenceText,
+    model: resolved.model,
+    timeoutMs: args.timeoutMs,
+    eqHighshelfHz: resolved.eqHighshelfHz,
+    eqHighshelfGainDb: resolved.eqHighshelfGainDb,
+    atempo: resolved.atempo,
+    onJoined: keepPiecesDir === undefined ? undefined : async (pieces) => {
+      piecesKept = await keepPieces(keepPiecesDir, pieces);
+    },
+  });
+  const breathingApplied = breath.applied;
+  if (breathing) {
     breathingNote = breath.applied
       ? ` breathing=${breath.pieces}pc(sent=${sentencePad}s,comma=${commaPad}s,colon=${colonPad}s)`
       : ` breathing=skipped(${breath.pieces}pc)`;
+  } else if (breath.applied) {
+    breathingNote = ` long-split=${breath.pieces}pc(max=${MAX_BREATHING_PIECE_WORDS}w,pause=${splitPause}s)`;
   }
 
   // Standalone atempo: only when breathing did NOT assemble (breathing applies atempo
@@ -201,12 +230,16 @@ async function renderUnchecked(args: LocalTtsRenderOptions, referenceAudioSha256
   // the target regardless of the EQ — making body loudness consistent across every
   // segment. Unset target => behavior unchanged (skipped).
   let loudnessNote = "";
+  let joinGainDb = 0;
   if (resolved.loudnessTargetDb !== undefined) {
     const norm = await loudnessNormalizeInPlace(
       output,
       args.sampleRate,
       resolved.loudnessTargetDb,
     );
+    // alimiter's default level=true makes up its 0.95 ceiling (ffmpeg-args.ts).
+    // At the audibility floor it is linear; loud peak limiting cannot affect that floor.
+    if (norm.applied) joinGainDb = (norm.gainDb ?? 0) - 20 * Math.log10(0.95);
     loudnessNote = norm.applied
       ? ` loudness=${resolved.loudnessTargetDb}dB (measured ${norm.measuredDb?.toFixed(2)}dB, gain ${norm.gainDb?.toFixed(2)}dB)`
       : ` loudness=${resolved.loudnessTargetDb}dB (skipped: unmeasurable)`;
@@ -244,7 +277,7 @@ async function renderUnchecked(args: LocalTtsRenderOptions, referenceAudioSha256
   await writeTakeCacheReceipt(output, cacheKey, { cacheEnabled: args.cache, refreshed: args.refreshCache === true, keptPieces });
   const piecesNote = keptPieces ? ` pieces=${keptPieces.count} kept in ${keptPieces.dir}` : "";
 
-  return { kind: "rendered", cacheKey, bytes: info.size, atempoNote, breathingNote, loudnessNote, cacheNote, piecesNote };
+  return { kind: "rendered", cacheKey, bytes: info.size, atempoNote, breathingNote, loudnessNote, cacheNote, piecesNote, joinGainDb };
 }
 
 /** Pitch is a gate; word mismatches rank bounded retries without freezing a rejected take. */
@@ -261,12 +294,14 @@ export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<Local
   const evidence: TakeCheckReceipt = { attempts: 0, failures: [], gaveUp: false };
   const stage = await mkdtemp(`${args.output}.checks-`);
   const output = path.join(stage, "take.wav");
-  const pieces = args.keepPiecesDir === undefined ? undefined : path.join(stage, "pieces");
+  // Pieces are always kept in the stage: the cut-join check reads them; --keep-pieces publishes them.
+  const pieces = path.join(stage, "pieces");
   let refresh = args.refreshCache;
   let key = "";
   const wordAttempts: { source: "cache" | "render"; attempt: number; editCount: number | null }[] = [];
   let best: { count: number; result: LocalTtsRenderResult; source: "cache" | "render";
-    wordMatch: NonNullable<TakeCheckReceipt["wordMatch"]>; pitchNote: TakeCheckReceipt["pitchNote"] } | undefined;
+    wordMatch: NonNullable<TakeCheckReceipt["wordMatch"]>; pitchNote: TakeCheckReceipt["pitchNote"];
+    cutEnding: TakeCheckReceipt["cutEnding"]; cutJoins: TakeCheckReceipt["cutJoins"] } | undefined;
   try {
     for (;;) {
       // The existing synthesis path sends a fresh request; the backend supplies variance (no seed API).
@@ -275,14 +310,27 @@ export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<Local
       key = result.cacheKey;
       let source: "cache" | "render" = result.kind === "cache-hit" ? "cache" : "render";
       if (source === "render") evidence.attempts++;
+      // A take frozen under older checks: re-made when it has joins (they can't be judged
+      // without its pieces), else re-judged whole below and recorded as current once kept.
+      let stampChecks = source === "render";
+      if (source === "cache") {
+        const recordedVersion = await readTakeChecksVersion(args.cacheDir, key, output);
+        if (recordedVersion === null || recordedVersion < TAKE_CHECKS_VERSION) {
+          const remake = hasJoins(await readFile(`${output}.spoken.txt`, "utf8"), args.resolved);
+          evidence.cachedChecks = { recordedVersion, currentVersion: TAKE_CHECKS_VERSION, action: remake ? "re-made" : "re-judged" };
+          if (remake) {
+            evidence.failures.push({ source, attempt: evidence.attempts,
+              reason: `checks-version:${JSON.stringify({ recorded: recordedVersion, current: TAKE_CHECKS_VERSION })}` });
+            await rm(pieces, { recursive: true, force: true });
+            refresh = false;
+            continue;
+          }
+          stampChecks = true;
+        }
+      }
       const pitch = (() => {
         try {
-      const decoded = spawnSync("ffmpeg", ["-v", "error", "-nostdin", "-i", output,
-        "-ar", "8000", "-ac", "1", "-f", "f32le", "pipe:1"], { maxBuffer: 256 * 1024 * 1024 });
-      if (decoded.error || decoded.status !== 0 || !decoded.stdout.length) throw new RunnerFailure("take check audio decode failed");
-      const samples = new Float32Array(decoded.stdout.length / 4);
-      for (let i = 0; i < samples.length; i++) samples[i] = decoded.stdout.readFloatLE(i * 4);
-      return pitchRunaway(samples, 8000, checks.pitchCeilingHz);
+          return pitchRunaway(decodeMono(output, 8000), 8000, checks.pitchCeilingHz);
         } catch {
           throw new TakeCheckError("take check execution failed; no retry performed");
         }
@@ -293,6 +341,7 @@ export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<Local
       let reason = tooShort ? undefined : pitch.worstMedianHz === null ? "pitch-unmeasurable" : pitch.failed ? "pitch-over-ceiling" : undefined;
       const pitchFailed = reason !== undefined;
       let wordFailed = false;
+      let recognised: readonly RecognisedWord[] = [];
       if (!reason) {
         try {
           const spoken = await readFile(`${output}.spoken.txt`, "utf8");
@@ -307,6 +356,7 @@ export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<Local
           if (!args.recogniseTake && !existsSync(modelPath)) throw new Error(`take checks require model: ${modelPath}`);
           const words = args.recogniseTake ? await args.recogniseTake(output)
             : (await runWhisperCliWordTimings(output, { output_directory: stage, whisper_model: modelPath })).words;
+          recognised = words;
           const wordMatch = wordMismatches(expected, words,
             { setting: checks.wordCheckSetting, commonWords: checks.commonWords });
           wordAttempts.push({ source, attempt: evidence.attempts, editCount: wordMatch.edits.length });
@@ -320,30 +370,61 @@ export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<Local
           const detail = error instanceof Error ? error.message : "unknown recognition error";
           throw new TakeCheckError(`word check execution failed; no retry performed: ${detail}`);
         }
+        // Cut ending: the same take-end check `check-take` runs; a cut take is never kept as best.
+        const cut = (() => {
+          try {
+            return cutTakeEnd(output, recognised, { rejectFades: checks.rejectFades ?? false });
+          } catch {
+            throw new TakeCheckError("cut-ending check execution failed; no retry performed");
+          }
+        })();
+        evidence.cutEnding = cut;
+        // Cut joins: each breathing piece's own ending, as joined, judged like the take's ending.
+        evidence.cutJoins = source === "cache"
+          ? { failed: false, piecesChecked: 0, cuts: [], note: "not judged: a cache hit keeps no pieces" }
+          : await (async () => {
+            try {
+              return cutJoinsInKeptPieces(pieces, await readKeptPieces(pieces), recognised,
+                { minTailDbfs: CUT_ENDING_DEFAULTS.minTailDbfs - (result.joinGainDb ?? 0), rejectFades: checks.rejectFades ?? false });
+            } catch {
+              throw new TakeCheckError("cut-join check execution failed; no retry performed");
+            }
+          })();
+        if (cut.failed) {
+          wordFailed = false;
+          reason = `cut-ending:${JSON.stringify({ reason: cut.reason, tailRelDb: cut.tailRelDb, fadeDbPer10ms: cut.fadeDbPer10ms,
+            audioEndSeconds: cut.audioEndSeconds, lastWordEndSeconds: cut.lastWordEndSeconds })}`;
+        } else if (evidence.cutJoins.failed) {
+          wordFailed = false;
+          reason = `cut-join:${JSON.stringify(evidence.cutJoins.cuts[0])}`;
+        }
+      } else {
+        delete evidence.cutEnding;
+        delete evidence.cutJoins;
       }
       if (pitchFailed) wordAttempts.push({ source, attempt: evidence.attempts, editCount: null });
       if (reason) evidence.failures.push({ source, attempt: evidence.attempts, reason });
       if (wordFailed && evidence.wordMatch && (!best || evidence.wordMatch.edits.length < best.count)) {
         best = { count: evidence.wordMatch.edits.length, result, source,
-          wordMatch: evidence.wordMatch, pitchNote: evidence.pitchNote };
+          wordMatch: evidence.wordMatch, pitchNote: evidence.pitchNote, cutEnding: evidence.cutEnding, cutJoins: evidence.cutJoins };
         await copyFile(output, path.join(stage, "best.wav"));
         await copyFile(`${output}.spoken.txt`, path.join(stage, "best.spoken.txt"));
-        if (pieces) {
-          await rm(path.join(stage, "best-pieces"), { recursive: true, force: true });
-          if (existsSync(pieces)) await cp(pieces, path.join(stage, "best-pieces"), { recursive: true });
-        }
+        await rm(path.join(stage, "best-pieces"), { recursive: true, force: true });
+        if (existsSync(pieces)) await cp(pieces, path.join(stage, "best-pieces"), { recursive: true });
       }
       if (reason && best && evidence.attempts >= checks.retries + 1) {
         await copyFile(path.join(stage, "best.wav"), output);
         await copyFile(path.join(stage, "best.spoken.txt"), `${output}.spoken.txt`);
-        if (pieces) {
-          await rm(pieces, { recursive: true, force: true });
-          if (existsSync(path.join(stage, "best-pieces"))) await cp(path.join(stage, "best-pieces"), pieces, { recursive: true });
-        }
+        await rm(pieces, { recursive: true, force: true });
+        if (existsSync(path.join(stage, "best-pieces"))) await cp(path.join(stage, "best-pieces"), pieces, { recursive: true });
         result = best.result; source = best.source;
         evidence.wordMatch = { ...best.wordMatch, keptBest: true, attempts: wordAttempts };
         if (best.pitchNote) evidence.pitchNote = best.pitchNote;
         else delete evidence.pitchNote;
+        if (best.cutEnding) evidence.cutEnding = best.cutEnding;
+        else delete evidence.cutEnding;
+        if (best.cutJoins) evidence.cutJoins = best.cutJoins;
+        else delete evidence.cutJoins;
         reason = undefined;
       }
       if (!reason) {
@@ -355,20 +436,23 @@ export async function renderLocalTts(args: LocalTtsRenderOptions): Promise<Local
           await copyFile(output, tmp);
           await rename(tmp, cachePath);
         }
+        // Bind the record to our checked candidate even if another writer replaces the cache WAV.
+        if (cacheAccepted && stampChecks) await writeTakeChecksVersion(args.cacheDir, key, output);
         await rename(output, args.output);
         await writeFile(`${args.output}.spoken.txt`, await readFile(`${output}.spoken.txt`));
-        if (pieces && args.keepPiecesDir && existsSync(pieces)) await rename(pieces, args.keepPiecesDir);
+        if (args.keepPiecesDir && existsSync(pieces)) await rename(pieces, args.keepPiecesDir);
         const keptPieces = args.keepPiecesDir === undefined ? undefined : source === "cache"
           ? { dir: args.keepPiecesDir, count: 0, skipped: PIECES_ON_HIT }
           : { dir: args.keepPiecesDir, count: JSON.parse(await readFile(path.join(args.keepPiecesDir, "pieces.json"), "utf8")).pieces.length };
         await writeTakeCacheReceipt(args.output, key, { cacheEnabled: cacheAccepted,
           refreshed: args.refreshCache && cacheAccepted, keptPieces, takeChecks: evidence });
         const pitchNote = evidence.pitchNote ? ` pitch=${evidence.pitchNote}` : "";
-        return result.kind === "cache-hit" ? { ...result, cachePath, piecesNote: result.piecesNote + pitchNote }
+        return result.kind === "cache-hit" ? { ...result, cachePath,
+          piecesNote: (keptPieces ? ` pieces=skipped(${PIECES_ON_HIT})` : "") + pitchNote }
           : { ...result, cacheNote: cacheAccepted ? ` cache checked->frozen key=${key}` : evidence.wordMatch?.keptBest ? " cache skipped: kept best word-mismatch take" : "",
             piecesNote: (keptPieces ? ` pieces=${keptPieces.count} kept in ${args.keepPiecesDir}` : "") + pitchNote };
       }
-      if (pieces) await rm(pieces, { recursive: true, force: true });
+      await rm(pieces, { recursive: true, force: true });
       if (evidence.attempts >= checks.retries + 1) {
         evidence.gaveUp = true;
         throw new RunnerFailure(`take checks gave up after bounded retries: ${JSON.stringify(evidence)}`);

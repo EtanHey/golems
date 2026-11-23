@@ -477,3 +477,20 @@ test('round2 dry rollback lists retained backups without writing', () => {
   expect(result.text).toContain(entries[0].backup);
   expect(treeSnapshot()).toEqual(before);
 });
+
+test('combined policy normalization refuses a raw old-render regular seat with denied MCPs', () => {
+  const seat = readFileSync(config, 'utf8');
+  const oldView = seat + 'contextProfiles:\n  fixture:\n    mcps:\n      allow:\n        - brainlayer\n        - cmuxlayer\n      block: []\n';
+  writeFileSync(config, seat + 'machineSeatConfigs:\n  fixture-host: |\n' + oldView.trimEnd().split('\n').map(line => '    ' + line).join('\n') + '\n');
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  const seats = join(home, '.golems/config.yaml');
+  const normalized = readFileSync(seats, 'utf8');
+  expect(normalized).toContain('allow:\n        - brainlayer\n      block:\n        - cmuxlayer');
+  rmSync(seats); writeFileSync(seats, oldView);
+  const before = treeSnapshot();
+  const result = run(['--host', 'fixture-host']);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('installed seat link changed; reconciliation required');
+  expect(result.text).toContain('changed top-level keys: contextProfiles');
+  expect(treeSnapshot()).toEqual(before);
+});

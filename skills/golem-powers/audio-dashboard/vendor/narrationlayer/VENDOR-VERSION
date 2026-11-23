@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
   "vendor": "narrationlayer",
-  "vendorDate": "2026-11-17",
+  "vendorDate": "2026-11-23",
   "upstream": {
     "repository": "EtanHey/narrationlayer",
-    "commit": "08e01a34cb0d438ddf8fb002b6223cb4c290b32e",
-    "committedAt": "2026-11-17T05:52:07+02:00"
+    "commit": "f1c3414e67d41519ffb59c4df0b592d754bdbb89",
+    "committedAt": "2026-11-20T23:57:18+02:00"
   },
   "pairs": [
     {
       "id": "local-tts-runner",
       "vendorPath": "vendor/narrationlayer/local-tts-runner.ts",
       "sourcePath": "bin/local-tts-runner.ts",
-      "vendorSha256": "1daecf50918db38c1a9c784e99463eab3ba1922af0ab51a130cf6634a2614181",
-      "sourceSha256": "1daecf50918db38c1a9c784e99463eab3ba1922af0ab51a130cf6634a2614181"
+      "vendorSha256": "1671613a639918e1ee19f924890be351a7d575c2f593a7f20e98c350ca422a8e",
+      "sourceSha256": "1671613a639918e1ee19f924890be351a7d575c2f593a7f20e98c350ca422a8e"
     },
     {
       "id": "profiles",
@@ -40,8 +40,8 @@
       "id": "word-timing-repair",
       "vendorPath": "vendor/narrationlayer/word-timing-repair.ts",
       "sourcePath": "src/word-timing-repair.ts",
-      "vendorSha256": "55e150c980f2d6e6455d1fd0b79c815f935c8d8e376765e5b23e8f07ccd5ab0c",
-      "sourceSha256": "55e150c980f2d6e6455d1fd0b79c815f935c8d8e376765e5b23e8f07ccd5ab0c"
+      "vendorSha256": "aa5094f8655a7f964cb5af89d03adf3f27b9028037899149cb7c62a0fc24f1bb",
+      "sourceSha256": "aa5094f8655a7f964cb5af89d03adf3f27b9028037899149cb7c62a0fc24f1bb"
     },
     {
       "id": "word-timings",
@@ -75,8 +75,8 @@
       "id": "src-pipelines-local-tts-take-cache",
       "sourcePath": "src/pipelines/local-tts/take-cache.ts",
       "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/take-cache.ts",
-      "sourceSha256": "4046ef21526b472e557678ffb27d799d721abb981d69343fa302e3273a09933e",
-      "vendorSha256": "4046ef21526b472e557678ffb27d799d721abb981d69343fa302e3273a09933e"
+      "sourceSha256": "6673f4b692bf978ecdfd4ec5629fffdfa05f7aec1bda6af0f92e69482f6d9fe5",
+      "vendorSha256": "6673f4b692bf978ecdfd4ec5629fffdfa05f7aec1bda6af0f92e69482f6d9fe5"
     },
     {
       "id": "src-pipelines-local-tts-failure",
@@ -89,22 +89,22 @@
       "id": "src-pipelines-local-tts-index",
       "sourcePath": "src/pipelines/local-tts/index.ts",
       "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/index.ts",
-      "sourceSha256": "0f5f62be3a42fc591725aba66ec386795dc07f3bb123eeaa82be813e69cdc1e4",
-      "vendorSha256": "0f5f62be3a42fc591725aba66ec386795dc07f3bb123eeaa82be813e69cdc1e4"
+      "sourceSha256": "64bf5c264a0a323d8ec2412d57badd4b74db32194fa952e8d3d6ff7440b8c72f",
+      "vendorSha256": "64bf5c264a0a323d8ec2412d57badd4b74db32194fa952e8d3d6ff7440b8c72f"
     },
     {
       "id": "src-quality-take-checks",
       "sourcePath": "src/quality/take-checks.ts",
       "vendorPath": "vendor/narrationlayer/src/quality/take-checks.ts",
-      "sourceSha256": "ac487f87688af6dae2e979e4ec38e20199efbf226ea481038e460afb1e7b4d2b",
-      "vendorSha256": "ac487f87688af6dae2e979e4ec38e20199efbf226ea481038e460afb1e7b4d2b"
+      "sourceSha256": "dc7e7b6eb3e787231a9fe9edc724c54e3a010ff43421adc3857c1bd71f4881dd",
+      "vendorSha256": "dc7e7b6eb3e787231a9fe9edc724c54e3a010ff43421adc3857c1bd71f4881dd"
     },
     {
-      "id": "src-quality-transcription-equivalence",
-      "sourcePath": "src/quality/transcription-equivalence.ts",
-      "vendorPath": "vendor/narrationlayer/src/quality/transcription-equivalence.ts",
-      "sourceSha256": "2e2826e8c5a3f53e312143664100dd1f0b9c56c869ae6220366d3c5ca940e511",
-      "vendorSha256": "2e2826e8c5a3f53e312143664100dd1f0b9c56c869ae6220366d3c5ca940e511"
+      "id": "src-text-transcription-equivalence",
+      "sourcePath": "src/text/transcription-equivalence.ts",
+      "vendorPath": "vendor/narrationlayer/src/text/transcription-equivalence.ts",
+      "sourceSha256": "4384f3ad5fac82e95ec6b343c23844576ea459ee62cb6ad207b2e0347001d018",
+      "vendorSha256": "4384f3ad5fac82e95ec6b343c23844576ea459ee62cb6ad207b2e0347001d018"
     },
     {
       "id": "src-audio-ffmpeg-run",
@@ -138,15 +138,15 @@
       "id": "src-plan-breathing",
       "sourcePath": "src/plan/breathing.ts",
       "vendorPath": "vendor/narrationlayer/src/plan/breathing.ts",
-      "sourceSha256": "9f484d919799e357061010bbeb0c904f55fe36fd647531151cec0e6dfc4a5fb4",
-      "vendorSha256": "9f484d919799e357061010bbeb0c904f55fe36fd647531151cec0e6dfc4a5fb4"
+      "sourceSha256": "e0c19a1c01913adf3837d610524857680844cd5a33838dc6a2872fdfb729f2e9",
+      "vendorSha256": "e0c19a1c01913adf3837d610524857680844cd5a33838dc6a2872fdfb729f2e9"
     },
     {
       "id": "src-pipelines-local-tts-breathing",
       "sourcePath": "src/pipelines/local-tts/breathing.ts",
       "vendorPath": "vendor/narrationlayer/src/pipelines/local-tts/breathing.ts",
-      "sourceSha256": "07aecf3a129f88cf60594df9199a9123b9136d1a8091e17e97e4b8627ef32968",
-      "vendorSha256": "07aecf3a129f88cf60594df9199a9123b9136d1a8091e17e97e4b8627ef32968"
+      "sourceSha256": "3f995c07680eb20a316db4bf69b24bac18b12edd7b12e7f732ab1246c3873f1c",
+      "vendorSha256": "3f995c07680eb20a316db4bf69b24bac18b12edd7b12e7f732ab1246c3873f1c"
     },
     {
       "id": "src-plan-index",
@@ -182,6 +182,13 @@
       "vendorPath": "vendor/narrationlayer/src/core/render-types.ts",
       "sourceSha256": "42ce380de53e04fee66cb7c1ae9066a537694c81ed7234c8d1d3b2ed6000acba",
       "vendorSha256": "42ce380de53e04fee66cb7c1ae9066a537694c81ed7234c8d1d3b2ed6000acba"
+    },
+    {
+      "id": "src-quality-check-take",
+      "sourcePath": "src/quality/check-take.ts",
+      "vendorPath": "vendor/narrationlayer/src/quality/check-take.ts",
+      "sourceSha256": "6c62201a35e25ad676934d472757598bf8c092cefc013716bc7eb4642e7d331a",
+      "vendorSha256": "6c62201a35e25ad676934d472757598bf8c092cefc013716bc7eb4642e7d331a"
     }
   ],
   "intentionalAdaptations": [
@@ -414,7 +421,7 @@
     }
   ],
   "pendingRevendor": {
-    "sourceCommit": "08e01a34cb0d438ddf8fb002b6223cb4c290b32e",
+    "sourceCommit": "f1c3414e67d41519ffb59c4df0b592d754bdbb89",
     "status": "refreshed-with-open-debt",
     "aidevNote": "Exact committed runtime dependency closure; existing type-only shims and repo-free profile/pronunciation bridge debt retained. Historical debt resolutions remain historical."
   },
@@ -426,6 +433,7 @@
     "vendor/src/pipelines/local-tts/failure.ts": "67d069f184172e83e415b10816596e62e17b002c73b379ea20d4dd5e307ddcf2",
     "vendor/src/pipelines/local-tts/index.ts": "351e751ec34f5fd51919e47683f67b2e406e34a635178b8ff10f5bb89c1652aa",
     "vendor/src/pipelines/local-tts/take-cache.ts": "07cea09d830e89c76dbdb1388e1145ec021b38a3726fb63456b3a6ed91f47f72",
+    "vendor/narrationlayer/text/transcription-equivalence.ts": "1604aef1540deb6b0b49e1e64f478ed5b7b353e81d70149412cd4d4735610d9a",
     "vendor/narrationlayer/src/text-normalize.ts": "4738e04ecfb21c05e46e7b2e8fe4c02c281fd82e3949fa97e1c0d2b7e81638da",
     "vendor/narrationlayer/src/word-timings.ts": "bf9c297de7d15af9fc5f596b7bdbebefb6ee2dbe0710ebe3733b2d82bfa67828"
   }

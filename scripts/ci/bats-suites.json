@@ -37,7 +37,9 @@
     "test-worktree-gc-r2b.bats",
     "test-worktree-gc-r2d.bats",
     "test-worktree-gc-r2f.bats",
+    "test-worktree-gc-redteam.bats",
     "test-worktree-gc-report.bats",
+    "test-worktree-gc-t3-settled.bats",
     "test-worktree-gc.bats"
   ],
   "skip": {}
