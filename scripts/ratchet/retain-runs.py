@@ -32,7 +32,7 @@ def plan(root, repo, now):
     try:
         pages = gh(['api', '--paginate', '--slurp', f'repos/{repo}/issues/comments?per_page=100'])
         citations = [c['body'] for page in pages for c in page]
-    except (subprocess.SubprocessError, ValueError, KeyError, TypeError):
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError):
         citations = None
     for path in sorted(root.iterdir()):
         proof = snapshot(path)
@@ -66,7 +66,7 @@ def plan(root, repo, now):
                 row['reason'] = 'future timestamp'
             else:
                 row['reason'] = 'retention candidate'
-        except (subprocess.SubprocessError, ValueError, KeyError, TypeError):
+        except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError):
             states.pop(pr, None)
             row['state'] = 'UNKNOWN'
             row['reason'] = 'lookup failed or unknown state'
