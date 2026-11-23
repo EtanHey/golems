@@ -31,7 +31,9 @@ test("PR1 gateways link the lifecycle contract without the C1-C6 cleanup recipes
     const text = readFileSync(file, "utf8");
     const target = text.match(/\]\(([^)]+_shared\/lifecycle\/CONTRACT\.md)\)/)?.[1];
     assert.ok(target, `${relative}: missing contract link`);
-    assert.equal(path.resolve(path.dirname(file), target), path.resolve(here, "../../skills/golem-powers/_shared/lifecycle/CONTRACT.md"));
+    // #1354: installed skills are per-skill symlinks, so the link is the public raw URL plus the plain repo path.
+    assert.equal(target, "https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/_shared/lifecycle/CONTRACT.md");
+    assert.ok(text.includes("golems: skills/golem-powers/_shared/lifecycle/CONTRACT.md"), `${relative}: missing repo path`);
     assert.doesNotMatch(text, /git worktree prune|worktree remove[^\n]*--force|regenerable cache|removes the tree too|inside your own worktree, unchanged/);
   }
 });

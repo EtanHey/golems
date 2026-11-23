@@ -38,7 +38,10 @@ def test_merge_reference_carries_receipt_after_worktree_removal():
     lifecycle = text.index("**Worktree cleanup (lane close):**")
     heading = text.index("### Cleanup Receipt")
     assert heading > lifecycle
-    assert "../../_shared/lifecycle/CONTRACT.md" in text
+    # #1354: installed skills are per-skill symlinks, so the contract link is a public URL plus the repo path.
+    assert "https://raw.githubusercontent.com/EtanHey/golems/master/skills/golem-powers/_shared/lifecycle/CONTRACT.md" in text
+    assert "golems: skills/golem-powers/_shared/lifecycle/CONTRACT.md" in text
+    assert "../../_shared/lifecycle/CONTRACT.md" not in text
     assert "git worktree prune" not in text
     for line in RECEIPT_LINES:
         assert line in text[heading:], line
