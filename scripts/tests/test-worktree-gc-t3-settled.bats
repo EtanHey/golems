@@ -206,3 +206,24 @@ STUB
   ! grep -F -- "$WORKTREE_GC_T3_DB" "$PROBE_CALLS"
   grep -F '.t3.sqlite?mode=ro' "$PROBE_CALLS"
 }
+
+@test "plan reuses one remote base but apply still refreshes before removal" {
+  fixture; age
+  export REAL_GIT="$(command -v git)" FETCH_CALLS="$TEST_ROOT/fetch-calls"
+  cat > "$TEST_ROOT/bin/git" <<'STUB'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  [[ "$arg" != fetch ]] || printf 'fetch\n' >> "$FETCH_CALLS"
+done
+exec "$REAL_GIT" "$@"
+STUB
+  chmod +x "$TEST_ROOT/bin/git"
+  run "$WORKTREE_GC" --prune-plan --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *" · REMOVE · "* ]] || false
+  [ "$(wc -l < "$FETCH_CALLS" | tr -d ' ')" -eq 1 ]
+  : > "$FETCH_CALLS"
+  run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]; [ ! -e "$worktree" ]
+  [ "$(wc -l < "$FETCH_CALLS" | tr -d ' ')" -ge 2 ]
+}

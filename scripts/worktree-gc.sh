@@ -689,6 +689,7 @@ process_repo() {
     return 0
   fi
   load_open_prs
+  remote_snapshot_loaded=0
   refresh_remote_base
   if [[ -z "$base_ref" && -z "$repo_failure" ]]; then
     repo_failure="$base_reason"

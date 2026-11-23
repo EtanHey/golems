@@ -101,6 +101,13 @@ class Snapshots(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'partial open-file process coverage'):
                 files.open_file_snapshot()
 
+    def test_stalled_plan_remote_is_bounded_and_unproven(self):
+        result = subprocess.run(['python3', str(LIB / 'worktree-gc-remote.py'), '0.05',
+                                 'python3', '-c', 'import time; time.sleep(10)'],
+                                capture_output=True, text=True, timeout=3)
+        self.assertEqual(result.returncode, 124)
+        self.assertIn('remote-state-unproven', result.stderr)
+
     def test_empty_finished_pr_has_categorized_error(self):
         result = subprocess.run(['python3', str(LIB / 'worktree-gc-prs.py'), 'finished'], input='[]', text=True, capture_output=True)
         self.assertEqual(result.returncode, 1)

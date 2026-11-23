@@ -201,7 +201,9 @@ state for bound threads in a compact run-local database beside the log. Missing
 or failed snapshots keep candidates undetermined; they never fall back to an
 empty successful view. Probe diagnostics stay in the run log. A validated census
 with no linked worktrees skips remote lookups because there are no candidate
-verdicts to prove.
+verdicts to prove. Prune plans reuse the initial remote refresh per repository;
+its network commands have a 45-second deadline and fail closed on timeout.
+Apply retains fresh remote rechecks before removal.
 
 These snapshots describe the plan's observation time. `--apply` clears snapshot
 inputs and retains the fresh per-candidate and post-archive removal proofs.
