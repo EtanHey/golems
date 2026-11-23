@@ -370,6 +370,7 @@ def run_command(command, timeout=1800, grace=10, slot=None, limit_gb=None, lane=
     suite_id = suite_id if nested else uuid.uuid4().hex
     signals = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
     previous = {sig: signal.signal(sig, lambda sig, frame: pending.append(sig)) for sig in signals}
+    previous_sigchld = None
     result, reason, ok = 70, "supervision-unavailable", False
     try:
         owner, wrapper = proc.identity(os.getppid()), proc.identity(os.getpid())
@@ -405,6 +406,8 @@ os.read(control, 1)
         if limit_gb is None:
             bootstrap = bootstrap.replace("signal.signal(signal.SIGTERM, lambda *_: None)", "").replace("signal.signal(signal.SIGINT, lambda *_: None)", "").replace("signal.signal(signal.SIGHUP, lambda *_: None)", "")
         deadline = time.monotonic() + timeout
+        if limit_gb is not None:
+            previous_sigchld = signal.signal(signal.SIGCHLD, signal.SIG_DFL)
         child = subprocess.Popen([sys.executable, "-c", bootstrap, str(gate_read), str(status_write), *command],
             pass_fds=(gate_read, status_write), start_new_session=True, close_fds=True, env={**os.environ,
             "GOLEMS_HEAVY_SUITE_HELD": str(os.getpid()), "GOLEMS_HEAVY_SUITE_ID": suite_id, "GOLEMS_HEAVY_RUN_ID": suite_id})
@@ -452,7 +455,11 @@ os.read(control, 1)
             outer_record(save_run, path.with_suffix(".cleanup.json"), record)
             if ok: outer_record(lambda: path.unlink(missing_ok=True))
         if not nested: notice(f"SUITE DONE pid={os.getpid()} slot={slot} suite_id={suite_id} exit={result} reason={reason} cleanup={'ok' if ok else 'failed'}{inner_failure_pointer(suite_id)}")
-    except (OSError, ValueError, subprocess.SubprocessError, proc.ProcIdentityUnavailable):
+    except BaseException as error:
+        if limit_gb is None and not isinstance(error, (OSError, ValueError, subprocess.SubprocessError, proc.ProcIdentityUnavailable)):
+            raise
+        if limit_gb is not None:
+            result, reason = 70, 'supervision-unavailable'
         notice("supervision unavailable; refusing START" if child is None else "CLEANUP FAILED; supervision unavailable")
         if child is not None:
             tree = tree or SuiteTree(None, suite_id, nested)
@@ -466,6 +473,8 @@ os.read(control, 1)
                 outer_record(save_run, path, record)
         elif path: outer_record(lambda: path.unlink(missing_ok=True))
     finally:
+        if previous_sigchld is not None:
+            signal.signal(signal.SIGCHLD, previous_sigchld)
         for fd in (gate_read, gate_write, status_read, status_write):
             if fd is not None: os.close(fd)
         mask = signal.pthread_sigmask(signal.SIG_BLOCK, signals)
