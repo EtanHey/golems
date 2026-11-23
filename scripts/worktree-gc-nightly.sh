@@ -25,9 +25,13 @@ nightly_finish() {
 import os,sys,re
 path,rc,receipt=sys.argv[1:]; rc=int(rc)
 count=0
-if receipt != 'unavailable':
-    with open(receipt) as f:
-        count=sum(bool(re.search(r' · dirty=[01] · ahead=[0-9]+ · REMOVED · ', line)) for line in f)
+# A raw failure always alarms, even if capture never opened or was truncated.
+if rc in (0,3) and receipt != 'unavailable':
+    try:
+        with open(receipt, errors='replace') as f:
+            count=sum(bool(re.search(r' · dirty=[01] · ahead=[0-9]+ · REMOVED · ', line)) for line in f)
+    except OSError:
+        rc=2; receipt='unreadable'
 line = (f'ALARM worktree-gc exit={rc} receipt={receipt}\n' if rc not in (0,3)
         else f'worktree-gc removed={count} receipt={receipt}\n' if count else '')
 if line:
@@ -77,9 +81,12 @@ source "$HERE/lib/worktree-git-env.sh"
 PIN="$(cd "$PIN" && pwd -P)" || refuse_pin 'cannot resolve pin'
 if [[ -f "$PIN/MANIFEST.json" && ! -e "$PIN/.git" ]]; then
   main="$(golems_main_repo "$HOME/Gits/golems" 2>/dev/null)" || refuse_pin 'main checkout unavailable'
-  PIN_SHA="$("$PYTHON" - "$PIN" "$HOME/.golems" <<'RELEASE'
-import hashlib,json,os,pathlib,re,stat,sys
-pin,prefix=map(pathlib.Path,sys.argv[1:])
+  PIN_SHA="$("$PYTHON" - "$PIN" "$HOME/.golems" "$main" <<'RELEASE'
+import hashlib,json,os,pathlib,re,stat,sys,subprocess
+pin,prefix,main=map(pathlib.Path,sys.argv[1:])
+def git(*args):
+    env=dict(os.environ,GIT_NO_REPLACE_OBJECTS='1')
+    return subprocess.check_output(['git','--literal-pathspecs','-c','core.commitGraph=false','-C',str(main),*args],env=env)
 try:
     assert pin == (prefix/'current').resolve()
     assert pin.parent == (prefix/'releases').resolve()
@@ -88,6 +95,12 @@ try:
     sha=manifest['commit']; assert re.fullmatch('[0-9a-f]{40}',sha)
     assert receipt['commit']==sha and receipt['version']==manifest['version']
     assert receipt['manifest_sha256']==hashlib.sha256(raw).hexdigest()
+    tree={}
+    for entry in git('ls-tree','-rz','--full-tree',sha).split(b'\0'):
+        if not entry: continue
+        meta,name=entry.split(b'\t',1)
+        mode,kind,oid=meta.decode().split()
+        tree[os.fsdecode(name)]=(mode,kind,oid)
     seen=set()
     for row in manifest['files']:
         name=row['path']; rel=pathlib.PurePosixPath(name)
@@ -96,7 +109,18 @@ try:
         assert target.resolve()==target and stat.S_ISREG(target.lstat().st_mode)
         assert row['mode'] in ('0644','0755')
         assert stat.S_IMODE(target.stat().st_mode)==int(row['mode'],8)
-        assert hashlib.sha256(target.read_bytes()).hexdigest()==row['sha256']
+        content=target.read_bytes()
+        assert hashlib.sha256(content).hexdigest()==row['sha256']
+        mode,kind,oid=tree[name]
+        assert kind=='blob' and mode==('100755' if row['mode']=='0755' else '100644')
+        if name=='package.json':
+            # build-release projects the root package to the runtime dependency set.
+            source=json.loads(git('cat-file','blob',oid))
+            expected=dict(name='golems-release',private=True,type='module',dependencies={k:source['dependencies'][k] for k in ('ajv','yaml','varlock')})
+            assert content==(json.dumps(expected,indent=2,ensure_ascii=False)+'\n').encode()
+        else:
+            digest=hashlib.sha1 if len(oid)==40 else hashlib.sha256
+            assert digest(b'blob '+str(len(content)).encode()+b'\0'+content).hexdigest()==oid
     assert {'scripts/worktree-gc.sh','scripts/worktree-gc-nightly.sh','scripts/lib/worktree-git-env.sh'} <= seen
     for root in ('scripts',):
         for target in (pin/root).rglob('*'):
@@ -106,7 +130,7 @@ try:
 except Exception as e:
     print('release verification failed: '+str(e),file=sys.stderr); sys.exit(2)
 RELEASE
-)" || refuse_pin 'release verification failed'
+)" || { PIN_SHA=unavailable; refuse_pin 'release verification failed'; }
   # Ancestry must use the main checkout, never upward discovery from a release.
   ancestry_repo="$main"
 else
@@ -156,6 +180,8 @@ if [[ "$WRAPPER" != "$PIN/"* ]]; then
 fi
 
 # Nightly must prove registry coverage; standalone GC may omit a registry.
+export WORKTREE_GC_LOG_DIR="$main/docs.local"
+export WORKTREE_GC_REPORT_DIR="$main/docs.local/worktree-gc"
 export WORKTREE_GC_CMUX_REGISTRY="${WORKTREE_GC_CMUX_REGISTRY-$HOME/.cmuxlayer/session-registry.jsonl}"
 LOCK="${GOLEMS_WORKTREE_GC_LOCK:-$HOME/.local/state/golems/worktree-gc.lock}"
 LIMIT="${WORKTREE_GC_NIGHTLY_TIMEOUT:-3600}"
@@ -182,6 +208,23 @@ fi
 receipt_dir="${GOLEMS_WORKTREE_GC_RECEIPT_DIR:-$HOME/.local/state/golems/worktree-gc}"
 mkdir -p "$receipt_dir" || exit 2
 NIGHTLY_RECEIPT="$receipt_dir/nightly-$(date -u +%Y%m%dT%H%M%S)-$$.log"
+# Bash waits asynchronously so launchd signals can be forwarded immediately.
+supervisor_pid=
+pending_signal=
+forward_signal() {
+  local signal="$1" code="$2"
+  if [[ -z "$supervisor_pid" ]]; then
+    pending_signal="$signal:$code"
+    return
+  fi
+  trap '' TERM INT HUP
+  kill -s "$signal" "$supervisor_pid" 2>/dev/null || true
+  wait "$supervisor_pid" || true
+  exit "$code"
+}
+trap 'forward_signal TERM 143' TERM
+trap 'forward_signal INT 130' INT
+trap 'forward_signal HUP 129' HUP
 # Capture the actual apply rows and raw exit; KEEP-only 3 is normalized below.
 perl -MFcntl=:flock -MPOSIX=:sys_wait_h,:signal_h -e '
   my ($lock, $limit, @cmd) = @ARGV;
@@ -234,9 +277,16 @@ perl -MFcntl=:flock -MPOSIX=:sys_wait_h,:signal_h -e '
   exit $rc;
 ' "$LOCK" "$LIMIT" /bin/bash -c '
   script=$1; shift
-  /bin/bash "$script" --prune-plan "$@" || exit $?
+  /bin/bash "$script" --prune-plan "$@"
+  plan_rc=$?
+  [[ "$plan_rc" == 0 || "$plan_rc" == 3 ]] || exit "$plan_rc"
   exec /bin/bash "$script" --apply "$@"
-' nightly "$GC_SCRIPT" "$@" > "$NIGHTLY_RECEIPT" 2>&1
+' nightly "$GC_SCRIPT" "$@" > "$NIGHTLY_RECEIPT" 2>&1 &
+supervisor_pid=$!
+if [[ -n "$pending_signal" ]]; then
+  forward_signal "${pending_signal%:*}" "${pending_signal#*:}"
+fi
+wait "$supervisor_pid"
 rc=$?
 cat "$NIGHTLY_RECEIPT"
 [[ "$rc" != 3 ]] || rc=0

@@ -17,10 +17,10 @@
     "test-post-stream-tail-gate.bats",
     "test-pr-review-loop-rule.bats",
     "test-pr-size-labels.bats",
-    "test-ratchet-live-rows-common-dir.bats",
     "test-process-stream-agy-cli.bats",
     "test-qa-video-dense-windows.bats",
     "test-qa-video-package.bats",
+    "test-ratchet-live-rows-common-dir.bats",
     "test-repogolem-dispatch.bats",
     "test-session-handoff-context-occupancy.bats",
     "test-skill-catalog-lint.bats",
@@ -40,6 +40,7 @@
     "test-worktree-gc-redteam.bats",
     "test-worktree-gc-report.bats",
     "test-worktree-gc-t3-settled.bats",
+    "test-worktree-gc-wiring.bats",
     "test-worktree-gc.bats"
   ],
   "skip": {}

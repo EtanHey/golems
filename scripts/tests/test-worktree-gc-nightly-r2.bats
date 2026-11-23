@@ -6,7 +6,7 @@ prepare_stub_pin() {
   stub="$TEST_ROOT/stub-gc.sh"
   cat > "$stub" <<'STUB'
 #!/bin/bash
-[[ "$*" != *--prune-plan* ]] || exit 0
+[[ "$*" != *--prune-plan* ]] || exit 3
 printf '%s\n' "$0 $*" >> "$GC_CALLS"
 if [[ -n "${GC_CHILD_PID:-}" ]]; then
   sleep 60 &
