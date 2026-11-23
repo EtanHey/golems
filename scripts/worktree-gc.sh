@@ -684,6 +684,10 @@ process_repo() {
   [[ "$main_root" == "$repo_root" ]] || { echo "Main census root mismatch" >&2; return 2; }
   repo_name="$(basename "$repo_root")"
   census_paths="$(sed -n 's/^worktree //p' <<< "$census")"
+  # No candidate means no plan verdict needs a remote proof.
+  if [[ "$prune_plan" -eq 1 && "$census_paths" == "$main_root" ]]; then
+    return 0
+  fi
   load_open_prs
   refresh_remote_base
   if [[ -z "$base_ref" && -z "$repo_failure" ]]; then

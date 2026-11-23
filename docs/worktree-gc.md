@@ -199,7 +199,9 @@ open-file view once. Cwd checks use the same descriptor records. They read the T
 retaining only bound threads, project roots, enabled schedules, and unfinished
 state for bound threads in a compact run-local database beside the log. Missing
 or failed snapshots keep candidates undetermined; they never fall back to an
-empty successful view. Probe diagnostics stay in the run log.
+empty successful view. Probe diagnostics stay in the run log. A validated census
+with no linked worktrees skips remote lookups because there are no candidate
+verdicts to prove.
 
 These snapshots describe the plan's observation time. `--apply` clears snapshot
 inputs and retains the fresh per-candidate and post-archive removal proofs.
