@@ -785,7 +785,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=lib/portable-stat.sh
 source "$SCRIPT_DIR/lib/portable-stat.sh"
 idle_seconds=$((idle_hours * 3600))
-LOG_DIR="$SCRIPT_DIR/../docs.local"
+LOG_DIR="${WORKTREE_GC_LOG_DIR:-$SCRIPT_DIR/../docs.local}"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/worktree-gc-$(date '+%Y%m%d-%H%M%S')-$$.log"
 REPORT_JOURNAL="$LOG_FILE.rows.jsonl"

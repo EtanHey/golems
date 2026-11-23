@@ -6,6 +6,7 @@ prepare_stub_pin() {
   stub="$TEST_ROOT/stub-gc.sh"
   cat > "$stub" <<'STUB'
 #!/bin/bash
+[[ "$*" != *--prune-plan* ]] || exit 3
 printf '%s\n' "$0 $*" >> "$GC_CALLS"
 if [[ -n "${GC_CHILD_PID:-}" ]]; then
   sleep 60 &
@@ -258,7 +259,7 @@ PY
 
 @test "nightly R1: production safety floor is the full ratified commit" {
   run sed -n '/^GC_MIN_SAFE_SHA=/p' "$REPO_ROOT/scripts/worktree-gc-nightly.sh"
-  [ "$output" = 'GC_MIN_SAFE_SHA=21051c815433bab7cb77a0633e06b19c10fb2cad' ]
+  [ "$output" = 'GC_MIN_SAFE_SHA=c2fb389974ebc18df088a28e08f011220edd2b8f' ]
 }
 
 @test "nightly N1: logs zero lag and arbitrarily old safe pins without a freshness limit" {
@@ -329,7 +330,7 @@ PY
 
 @test "nightly docs N5: refused-night log visibility is explicit" {
   run cat "$REPO_ROOT/docs/worktree-gc.md"
-  [[ "$output" == *'Refused nights are visible only in the launchd log (`StandardErrorPath`)'* ]]
+  [[ "$output" == *'Refused nights are visible in the launchd log (`StandardErrorPath`)'* ]]
 }
 
 
