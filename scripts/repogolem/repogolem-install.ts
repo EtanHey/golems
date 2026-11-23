@@ -1,7 +1,8 @@
 // Installation is dry-run unless --apply; no generation or secret resolution.
 import { createHash } from 'node:crypto';
 import { chmodSync, cpSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { parse as parseYaml } from 'yaml';
+import { parse as parseYaml, parseDocument } from 'yaml';
+import { filterMcpJson } from './runtime-reader';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,6 +67,21 @@ function changedMachineKeys(observed: string, expected: string) {
     const names = keys.filter(key => /^[A-Za-z][A-Za-z0-9_-]*$/.test(key)).sort();
     return keys.length ? `changed top-level keys: ${names.join(', ') || '(nonstandard names hidden)'}` : 'bytes differ; parsed keys match';
   } catch { return 'document could not be compared; values hidden'; }
+}
+function policySeatText(text: string): string {
+  try {
+    const document = parseDocument(text);
+    if (document.errors.length) throw new Error();
+    const source = document.toJS();
+    const filtered = JSON.parse(filterMcpJson(JSON.stringify(source), 'registry'));
+    let changed = false;
+    for (const [key, value] of Object.entries(filtered)) {
+      // Registry mode creates an empty definitions map even without MCPs.
+      if (key === 'mcpDefinitions' && !Object.hasOwn(source, key) && Object.keys(value as object).length === 0) continue;
+      if (!isDeepStrictEqual(source[key], value)) { document.set(key, value); changed = true; }
+    }
+    return changed ? document.toString() : text;
+  } catch { throw new Error('machine seat MCP deny policy failed; values hidden; nothing written'); }
 }
 function verifySeats(state: any, seats: string, current?: { target: string; text: string }) {
   const stat = present(seats), pending = state.phase === 'installing';
@@ -151,7 +167,7 @@ export function runInstall(argv: string[]): number {
       host = probe.stdout.toString().trim();
     }
     if (typeof views[host] !== 'string') throw new Error('no seat config for this machine; nothing written');
-    seatText = views[host]; seatTarget = join(root, 'machine-config.yaml'); safePath(home, seatTarget);
+    seatText = policySeatText(views[host]); seatTarget = join(root, 'machine-config.yaml'); safePath(home, seatTarget);
   }
   if (previous && (previous.seatTarget ?? previous.config) !== seatTarget) throw new Error('existing installation seat target differs; roll back first');
   const reconciled = previous && verifySeats(previous, seats, { target: seatTarget, text: seatText });
