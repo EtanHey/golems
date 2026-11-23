@@ -67,7 +67,7 @@ function changedMachineKeys(observed: string, expected: string) {
     return keys.length ? `changed top-level keys: ${names.join(', ') || '(nonstandard names hidden)'}` : 'bytes differ; parsed keys match';
   } catch { return 'document could not be compared; values hidden'; }
 }
-function verifySeats(state: any, seats: string, current?: { target: string; text: string }) {
+function verifySeats(state: any, seats: string, current?: { target: string; text: string }): { kind: 'machine-view' } | { kind: 'regular-file'; text: string } | undefined {
   const stat = present(seats), pending = state.phase === 'installing';
   const target = state.seatTarget ?? state.config;
   if (stat?.isSymbolicLink() && stat.uid === process.getuid?.() && readlinkSync(seats) === target) {
@@ -75,10 +75,23 @@ function verifySeats(state: any, seats: string, current?: { target: string; text
       const text = present(target) ? readFileSync(target, 'utf8') : null;
       const observed = text === null ? null : digest(text);
       if (observed !== state.machineDigest && !(pending && observed === state.previousMachineDigest)) {
-        if (current && target === current.target && text === current.text) return true;
+        if (current && target === current.target && text === current.text) return { kind: 'machine-view' };
         const diagnostic = current && text !== null ? `; ${changedMachineKeys(text, current.text)}` : '';
         throw new Error(`installed machine seat view changed; ${current ? 'install' : 'rollback'} refused${diagnostic}`);
       }
+    }
+  } else if (current && stat?.isFile()) {
+    safePath(dirname(dirname(seats)), seats);
+    const text = readFileSync(seats, 'utf8');
+    try {
+      const actual: unknown = parseYaml(text), wanted: unknown = parseYaml(current.text);
+      if (actual && typeof actual === 'object' && !Array.isArray(actual) && isDeepStrictEqual(actual, wanted)) {
+        return { kind: 'regular-file', text };
+      }
+    } catch { /* Refuse with a value-free diagnostic below. */ }
+    // Preserve recovery of an interrupted first install's original registry.
+    if (!(pending && state.hadSeats && digest(text) === state.originalSeatDigest)) {
+      throw new Error(`installed seat link changed; reconciliation required; ${changedMachineKeys(text, current.text)}`);
     }
   // A pending attempt may have unlinked the original file before linking its view.
   } else if (!pending || (stat && (!state.hadSeats || !stat.isFile() || digest(readFileSync(seats, 'utf8')) !== state.originalSeatDigest))) {
@@ -171,7 +184,7 @@ export function runInstall(argv: string[]): number {
   }
   if (reconciled) {
     previous.machineDigest = digest(seatText);
-    console.log('machine view reconciled: matches current render');
+    console.log(reconciled.kind === 'regular-file' ? 'regular seat reconciled: parsed content matches current render' : 'machine view reconciled: matches current render');
   }
   if (dry) { console.log(`would install runtime and CLI; link seat registry to ${seatTarget}; swap ${shell}; no generate or op`); return 0; }
   mkdirSync(root, { recursive: true, mode: 0o700 }); chmodSync(root, 0o700);
@@ -180,7 +193,18 @@ export function runInstall(argv: string[]): number {
     atomic(join(root, 'zshrc.before'), before);
     if (existsSync(seats)) atomic(join(root, 'seats.before'), oldText);
   }
-  const state = { ...previous, config, seatTarget, managedBlock: managedBlock(config), phase: 'installing', agentLinks:{...previous?.agentLinks,...agentLinks},
+  const seatReconciliations = [...(previous?.seatReconciliations ?? [])];
+  if (reconciled?.kind === 'regular-file') {
+    safePath(home, seats);
+    if (readFileSync(seats, 'utf8') !== reconciled.text) throw new Error('seat changed during reconciliation; install refused');
+    const at = new Date().toISOString();
+    const directory = mkdtempSync(`${seats}.backup-${at.replaceAll(':', '-')}-`);
+    chmodSync(directory, 0o700);
+    const backup = join(directory, 'config.yaml');
+    writeFileSync(backup, reconciled.text, { mode: 0o600, flag: 'wx' });
+    seatReconciliations.push({ path: seats, backup, at });
+  }
+  const state = { ...previous, config, seatTarget, seatReconciliations, managedBlock: managedBlock(config), phase: 'installing', agentLinks:{...previous?.agentLinks,...agentLinks},
     machineDigest: seatTarget === config ? null : digest(seatText), previousMachineDigest: previous?.phase === 'installing' ? previous.previousMachineDigest : previous?.machineDigest,
     hadSeats: previous?.hadSeats ?? existsSync(seats), hadShell: previous?.hadShell ?? existsSync(shell),
     shellMode: previous?.shellMode ?? (present(shell)?.mode ?? 0o600) & 0o777,
@@ -231,7 +255,15 @@ export function runInstall(argv: string[]): number {
   for (const [name,target] of Object.entries(agentLinks)) if (!present(join(agentDir,name))) symlinkSync(target,join(agentDir,name));
   atomic(shell, after, state.shellMode);
   mkdirSync(dirname(seats), { recursive: true, mode: 0o700 });
-  if (!present(seats)?.isSymbolicLink()) { rmSync(seats, { force: true }); symlinkSync(seatTarget, seats); }
+  if (reconciled?.kind === 'regular-file') {
+    safePath(home, seats);
+    if (!present(seats)?.isFile() || readFileSync(seats, 'utf8') !== reconciled.text) throw new Error('seat changed during reconciliation; install refused');
+  }
+  if (!present(seats)?.isSymbolicLink()) {
+    const temporary = `${seats}.new-${process.pid}`;
+    symlinkSync(seatTarget, temporary);
+    try { renameSync(temporary, seats); } finally { rmSync(temporary, { force: true }); }
+  }
   atomic(statePath, JSON.stringify({ ...state, phase: 'installed', agentLinks }) + '\n');
   console.log('installed cache-only runtime and repogolem CLI; backups and recovery journal saved; generate not run');
   return 0;
