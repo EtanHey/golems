@@ -38,7 +38,7 @@ export function planRuns(root, { keep = 3, citations, states = {}, now = Date.no
     const row = { name, ...measured, action: 'keep', reason: 'unparseable name' };
     if (!fs.statSync(target).isDirectory() || !match) return row;
     Object.assign(row, { lane: match[1], sha: match[2], timestamp: match[3] });
-    const prMatch = /^pr([0-9]+)$/.exec(row.lane);
+    const prMatch = /^pr([1-9][0-9]*)$/.exec(row.lane);
     row.pr = prMatch ? Number(prMatch[1]) : null;
     row.state = states[row.pr]?.state ?? 'UNKNOWN';
     const t = row.timestamp;
@@ -51,7 +51,7 @@ export function planRuns(root, { keep = 3, citations, states = {}, now = Date.no
         get('Date') !== Number(t.slice(6,8)) || get('Hours') !== Number(t.slice(9,11)) ||
         get('Minutes') !== Number(t.slice(11,13)) || get('Seconds') !== Number(t.slice(13,15))) row.time = NaN;
     row.age = (now - row.time) / 86400000;
-    if (citations.includes(name) || hashes.some(h => h.toLowerCase().startsWith(row.sha) || row.sha.startsWith(h.toLowerCase()))) row.reason = 'open PR citation';
+    if (citations.includes(name) || hashes.some(h => h.toLowerCase().startsWith(row.sha) || row.sha.startsWith(h.toLowerCase()))) row.reason = 'PR citation';
     else if (now - measured.modified < 2 * 3600000) row.reason = 'modified within two hours';
     else if (!Number.isFinite(row.time) || row.time > now) row.reason = 'invalid or future timestamp';
     else if (!['OPEN', 'MERGED', 'CLOSED'].includes(row.state)) row.reason = 'unknown PR state';
@@ -100,7 +100,7 @@ export function evidenceFromGitHub(root) {
   // Closed PRs still own sticky receipts. Any lookup error aborts before apply.
   const prs = api('repos/EtanHey/golems/pulls?state=all&per_page=100');
   const text = [], states = {};
-  const relevant = root ? new Set(fs.readdirSync(root).map(n => /^(?:live-)?pr([0-9]+)-/.exec(n)?.[1]).filter(Boolean).map(Number)) : null;
+  const relevant = root ? new Set(fs.readdirSync(root).map(n => /^(?:live-)?pr([1-9][0-9]*)-/.exec(n)?.[1]).filter(Boolean).map(Number)) : null;
   for (const pr of prs) {
     if (relevant && pr.state !== 'open' && !relevant.has(pr.number)) continue;
     if (!Number.isSafeInteger(pr.number) || typeof pr.body !== 'string' && pr.body !== null) throw new Error('invalid PR');
@@ -118,6 +118,7 @@ export function evidenceFromGitHub(root) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const args = process.argv.slice(2);
+    if (Object.hasOwn(process.env, 'GOLEMS_RATCHET_RUNS_KEEP')) console.error('warning: GOLEMS_RATCHET_RUNS_KEEP is ignored; PR retention uses the fixed 3/1 policy');
     if (args.some(a => !['--dry-run', '--apply'].includes(a)) || args.length > 1) throw new Error('usage: prune-runs.mjs [--dry-run|--apply]');
     const root = defaultRoot();
     if (!fs.existsSync(root)) { console.log(`No run root: ${root}`); process.exit(0); }

@@ -4,6 +4,7 @@
 The run directory is the main checkout's `docs.local/ratchet-runs`, resolved
 from the script's git common directory, regardless of the caller's cwd.
 Columns: path / PR / state / age in days / allocated bytes / reason / action.
+GOLEMS_RATCHET_RUNS_KEEP is ignored with a warning; the 3/1 policy is fixed.
 
 Keep the newest three runs per OPEN PR (runs, not distinct SHAs). For a merged
 or closed PR keep its newest run for fourteen days after closure, then none.
@@ -15,8 +16,9 @@ SHA-less live runs KEEP conservatively. Unknown state, invalid closure
 metadata or invalid/future timestamps KEEP. Files are never candidates.
 
 PR bodies, issue comments, review comments and review summaries protect
-named directories and SHA prefixes, including real ratchet-verdict head,
-producer and receipt metadata. Fetch all open PR evidence plus closed PRs
+named directories and SHA prefixes, including real ratchet-verdict head
+and producer SHAs. The 64-character receipt hash does not pin a run.
+Fetch all open PR evidence plus closed PRs
 represented in this corpus. Closed/merged sticky evidence remains protected.
 A GitHub read or malformed response error aborts before apply (everything
 remains). Symlinks anywhere in a candidate tree or root alias abort scanning.

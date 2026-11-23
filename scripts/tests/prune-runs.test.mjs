@@ -222,7 +222,19 @@ console.log(JSON.stringify(process.argv.at(-1).includes('/pulls?')?[[{number:7,s
  const env={...process.env,PATH:bin+path.delimiter+process.env.PATH};
  const invoke=(args,extra={})=>spawnSync('node',[script,...args],{cwd:root,env:{...env,...extra},encoding:'utf8'});
  assert.equal(invoke([]).status,0);assert.ok(fs.existsSync(run));
+ assert.match(invoke([],{GOLEMS_RATCHET_RUNS_KEEP:'9'}).stderr,/GOLEMS_RATCHET_RUNS_KEEP.*ignored/);
  assert.equal(invoke(['--apply'],{FAKE_GH_FAIL:'1'}).status,2);assert.ok(fs.existsSync(run));
  const result=invoke(['--apply']);assert.equal(result.status,0,result.stderr);assert.equal(fs.existsSync(run),false);
+ }finally{fs.rmSync(root,{recursive:true});}
+});
+
+test('leading-zero PR aliases stay unknown; closed citations use neutral wording',()=>{
+ const root=scratch();try{
+ const alias='pr01-aaaaaaa-20260101T000000', normal='pr1-bbbbbbb-20260101T000000';
+ for(const name of [alias,normal]){fs.mkdirSync(path.join(root,name));fs.utimesSync(path.join(root,name),new Date(0),new Date(0));}
+ const rows=rawPlanRuns(root,{citations:'bbbbbbb',states:{1:{state:'CLOSED',closedAt:'2020-01-01'}}});
+ assert.equal(rows.find(r=>r.name===alias).pr,null);
+ assert.equal(rows.find(r=>r.name===alias).action,'keep');
+ assert.equal(rows.find(r=>r.name===normal).reason,'PR citation');
  }finally{fs.rmSync(root,{recursive:true});}
 });
