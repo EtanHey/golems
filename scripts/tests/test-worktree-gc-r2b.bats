@@ -29,9 +29,9 @@ t3_fixture() {
   worktree="$repo/.worktrees/candidate"
   git -C "$repo" worktree add -qb topic "$worktree" origin/main
   sqlite3 "$WORKTREE_GC_T3_DB" '
-    CREATE TABLE orchestration_v2_projection_threads(thread_id TEXT PRIMARY KEY,payload_json TEXT,deleted_at TEXT);
-    CREATE TABLE orchestration_v2_projection_runs(thread_id TEXT,status TEXT);
-    CREATE TABLE orchestration_v2_projection_provider_sessions(thread_id TEXT,status TEXT);'
+    CREATE TABLE IF NOT EXISTS orchestration_v2_projection_threads(thread_id TEXT PRIMARY KEY,payload_json TEXT,deleted_at TEXT);
+    CREATE TABLE IF NOT EXISTS orchestration_v2_projection_runs(thread_id TEXT,status TEXT);
+    CREATE TABLE IF NOT EXISTS orchestration_v2_projection_provider_sessions(thread_id TEXT,status TEXT);'
 }
 
 managed_t3_fixture() {
@@ -230,7 +230,11 @@ age_worktrees() {
   python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" <<'CHECK'
 import json,sys
 r=json.load(open(sys.argv[1]))["owners"]["owner-root"][0]
-assert r["reason"] == "KEEP-live" and "2026-01-01" in r["detail"] and "2026-02-01" in r["detail"]
+assert r["reason"] == "KEEP-live" and r["detail"] == "t3-binding-live"
+from pathlib import Path
+journal=json.loads(Path(sys.argv[1]).with_name("receipts.jsonl").read_text().splitlines()[-1])["journal"]
+log=Path(journal.removesuffix(".rows.jsonl")).read_text()
+assert "2026-01-01" in log and "2026-02-01" in log
 CHECK
 }
 

@@ -29,7 +29,20 @@ def t3_threads(path):
     result = subprocess.run(["sqlite3", "file:" + quote(os.path.abspath(db), safe="/") + "?mode=ro",
                              ".timeout 3000", query], check=True, capture_output=True, text=True, timeout=10)
     rows = [json.loads(row) for row in result.stdout.splitlines()]
-    return [row for row in rows if os.path.realpath(row['payload']['worktreePath']) == os.path.realpath(path)]
+    bound = []
+    for row in rows:
+        candidate = row['payload']['worktreePath']
+        if not isinstance(candidate, str) or not candidate or not os.path.isabs(candidate) or '\0' in candidate:
+            print('worktree-path-invalid: skipped row ' + str(row['id']), file=sys.stderr)
+            continue
+        try:
+            real = os.path.realpath(candidate)
+        except (OSError, ValueError):
+            print('worktree-path-invalid: skipped row ' + str(row['id']), file=sys.stderr)
+            continue
+        if real == os.path.realpath(path):
+            bound.append(row)
+    return bound
 
 
 def t3_roots():
@@ -210,7 +223,7 @@ if __name__ == "__main__":
                 out.write(json.dumps(dict(kind="t3-managed", repo=args[1], count=int(args[2]))) + "\n")
         elif command == "t3":
             live = [{k: v for k, v in t.items() if k != "payload"}
-                    for t in t3_threads(args[0]) if not (t["settled"] or t["payload"].get("archivedAt")) or t["active"]]
+                    for t in t3_threads(args[0]) if not t["settled"] or t["active"]]
             if live:
                 print("T3 binding live: " + json.dumps(live))
             sys.exit(3 if live else 0)
@@ -228,4 +241,6 @@ if __name__ == "__main__":
             finish_report(*args)
     except (OSError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
         print(f"worktree-gc state: {error}", file=sys.stderr)
+        if isinstance(error, subprocess.CalledProcessError) and error.stderr:
+            print(error.stderr, file=sys.stderr)
         sys.exit(1)

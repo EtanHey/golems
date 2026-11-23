@@ -200,9 +200,12 @@ check_owner_guards() {
       return 1
     fi
   fi
-  detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3 "$path" 2>/dev/null)" || rc=$?
-  if [[ "$rc" -eq 3 ]]; then
-    emit_row "$repo_name" "$path" "$branch" not-checked undetermined KEEP-live "$detail"
+  rc=0
+  detail="$(gc_probe t3-state-unproven python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3 "$path")" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    local verdict=KEEP-undetermined
+    [[ "$rc" -eq 3 ]] && { verdict=KEEP-live; detail=t3-binding-live; }
+    emit_row "$repo_name" "$path" "$branch" not-checked undetermined "$verdict" "$detail"
     return 1
   fi
 }
@@ -289,6 +292,10 @@ apply_removal() {
     return 0
   fi
   if [[ "$apply" -eq 0 ]]; then
+    if [[ "$is_t3" -eq 1 && "$prune_plan" -eq 0 ]]; then
+      emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 "would remove (dry run)" "archive verification required before removal"
+      return 0
+    fi
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
       "REMOVE" "eligible prune plan; archive verification required before removal"
     return 0
@@ -446,9 +453,9 @@ process_worktree_block() {
   fi
 
   if [[ -n "$branch_ref" ]]; then
-    if [[ -n "$open_pr_failed" ]] && ! git -C "$worktree_path" merge-base --is-ancestor HEAD "$base_ref"; then
+    if [[ -n "$open_pr_failed" ]]; then
       emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
-        "undetermined" "KEEP-undetermined" "$open_pr_failed"
+        "undetermined" "KEEP-undetermined" "pr-lookup: $open_pr_failed"
       return 0
     fi
     if line_in "$branch_display" "$open_pr_heads"; then

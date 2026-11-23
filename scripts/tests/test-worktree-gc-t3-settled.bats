@@ -7,14 +7,14 @@ fixture() {
   worktree="$HOME/.t3/worktrees/settled/topic"
   git -C "$repo" worktree add -qb topic "$worktree" origin/main
   sqlite3 "$WORKTREE_GC_T3_DB" "
-CREATE TABLE orchestration_v2_projection_threads(thread_id TEXT,payload_json TEXT,deleted_at TEXT);
-CREATE TABLE orchestration_v2_projection_runs(thread_id TEXT,status TEXT);
-CREATE TABLE orchestration_v2_projection_provider_sessions(thread_id TEXT,status TEXT);
-CREATE TABLE orchestration_v2_projection_runtime_requests(thread_id TEXT,status TEXT);
-CREATE TABLE orchestration_v2_projection_provider_threads(thread_id TEXT,status TEXT,payload_json TEXT);
-CREATE TABLE orchestration_v2_projection_turn_items(thread_id TEXT,status TEXT);
-CREATE TABLE scheduled_tasks(thread_id TEXT,enabled INTEGER);
-CREATE TABLE projection_projects(workspace_root TEXT);
+CREATE TABLE IF NOT EXISTS orchestration_v2_projection_threads(thread_id TEXT,payload_json TEXT,deleted_at TEXT);
+CREATE TABLE IF NOT EXISTS orchestration_v2_projection_runs(thread_id TEXT,status TEXT);
+CREATE TABLE IF NOT EXISTS orchestration_v2_projection_provider_sessions(thread_id TEXT,status TEXT);
+CREATE TABLE IF NOT EXISTS orchestration_v2_projection_runtime_requests(thread_id TEXT,status TEXT);
+CREATE TABLE IF NOT EXISTS orchestration_v2_projection_provider_threads(thread_id TEXT,status TEXT,payload_json TEXT);
+CREATE TABLE IF NOT EXISTS orchestration_v2_projection_turn_items(thread_id TEXT,status TEXT);
+CREATE TABLE IF NOT EXISTS scheduled_tasks(thread_id TEXT,enabled INTEGER);
+CREATE TABLE IF NOT EXISTS projection_projects(workspace_root TEXT);
 INSERT INTO orchestration_v2_projection_threads VALUES ('t',json_object('worktreePath','$worktree','settledAt','2020-01-01T00:00:00Z'),NULL);"
   mkdir -p "$TEST_ROOT/bin"
   cat > "$TEST_ROOT/bin/lsof" <<'STUB'
@@ -65,7 +65,7 @@ PY
   [ "$status" -eq 0 ]; [[ "$output" == *REMOVED* ]]; [ ! -e "$worktree" ]
   [ "$(cat "$repo/docs.local/worktree-archive/topic/docs.local/note")" == precious ]
   [ -s "$repo/docs.local/worktree-archive/topic/RECEIPT.tsv" ]
-  [ "$(rg -c -- '--state open' "$GH_CALLS")" -eq 1 ]
+  [ "$(grep -c -- '--state open' "$GH_CALLS")" -eq 1 ]
 }
 @test "T3 live unsettled recent dirty open PR and unknown states keep" {
   fixture; age
@@ -95,7 +95,7 @@ PY
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [ ! -e "$worktree" ]; [ -d "$unknown" ]
   [[ "$output" == *rate-limit* ]]
-  [ "$(rg -c -- '--state open' "$GH_CALLS")" -eq 1 ]
+  [ "$(grep -c -- '--state open' "$GH_CALLS")" -eq 1 ]
 }
 @test "T3 open lookup failure keeps even a head on default branch" {
   fixture; age
@@ -108,7 +108,7 @@ PY
   [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]]
   sqlite3 "$WORKTREE_GC_T3_DB" "UPDATE orchestration_v2_projection_threads SET payload_json=json_set(json_remove(payload_json,'$.settledAt'),'$.archivedAt','2020-01-01T00:00:00Z');"
   run env LSOF_FAIL=1 "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
-  [ -d "$worktree" ]; [[ "$output" == *KEEP-undetermined* ]]
+  [ -d "$worktree" ]; [[ "$output" == *KEEP-live* ]]
   run "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
   [ "$status" -eq 0 ]; [ -d "$worktree" ]
 }
@@ -174,4 +174,12 @@ assert 'docs.local/note' in notes and 'node_modules/cache' not in notes
 b=by[sys.argv[3]]
 assert b['verdict']=='KEEP-dirty' and int(b['size_bytes'])>0 and b['reason']
 CHECK
+}
+
+@test "T3 no-flag report says would remove dry run and never REMOVE" {
+  fixture; age
+  run "$WORKTREE_GC" --idle-hours 0 --repo "$repo"
+  [ "$status" -eq 0 ]; [ -d "$worktree" ]
+  [[ "$output" == *"would remove (dry run)"* ]]
+  [[ "$output" != *" · REMOVE · "* && "$output" != *REMOVING* ]]
 }

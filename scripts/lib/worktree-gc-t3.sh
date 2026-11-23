@@ -1,9 +1,22 @@
+# Log full probe output (including successful row-skip diagnostics), but expose
+# only a short category to reason cells. Preserve the probe's exit status.
+gc_probe() {
+  local category="$1" output rc=0
+  shift
+  output="$("$@" 2>&1)" || rc=$?
+  if [[ -n "$output" ]]; then
+    printf 'probe %s exit %s\n%s\n' "$category" "$rc" "$output" >> "$LOG_FILE"
+  fi
+  if [[ "$rc" -ne 0 ]]; then printf '%s\n' "$category"; fi
+  return "$rc"
+}
+
 # T3 paths require positive finished-state, full-tree age and open-FD proof.
 t3_guard() {
-  local detail
-  if ! detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3-finished "$1" 2>&1)" ||
-     ! detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-t3.py" "$1" 2>&1)"; then
-    emit_row "$repo_name" "$1" "$2" not-checked undetermined KEEP-undetermined "T3 retirement unproven: $detail"
+  local category
+  if ! category="$(gc_probe t3-state-unproven python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" t3-finished "$1")" ||
+     ! category="$(gc_probe t3-files-unproven python3 "$SCRIPT_DIR/lib/worktree-gc-t3.py" "$1")"; then
+    emit_row "$repo_name" "$1" "$2" not-checked undetermined KEEP-undetermined "T3 retirement unproven: $category"
     return 1
   fi
 }

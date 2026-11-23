@@ -5,6 +5,12 @@
 `~/.t3/worktrees` (including registered nested descendants). Open PR branches, live process/cmux cwd,
 locked trees, hooks-live, nested Git repositories and reflog-only commits are kept.
 `--repo` must name a Git toplevel; `--path` selects one registered linked tree.
+Every in-scope tree, including ordinary `.worktrees` candidates, requires a
+successful T3 binding lookup. A missing/unreadable database, missing schema or
+failed probe is KEEP-undetermined; an unsettled or active binding is KEEP-live,
+even when archived. Malformed non-string/invalid path rows are skipped with a
+reason in the run log so they cannot disable other bindings. State-probe reason
+cells carry short categories; full probe details stay in the run log.
 
 `--dry-run` reports merge eligibility. `--prune-plan` also checks the nightly
 idle/live/nested-repository guards and emits REMOVE without archiving or deleting.
@@ -29,9 +35,8 @@ merged-head query when ahead of base; a branch name alone never proves the local
 whose HEAD is absent from the default branch and merged PR heads remain kept to
 protect unmerged commits. Lookup failures affect only candidates needing that
 proof, and reports retain stderr categories (rate-limit, authentication,
-forbidden, not-found, network, gh-failed), without raw stderr. For non-T3 trees, a head already on
-the fetched base needs no PR lookup proof if the open snapshot failed. T3 trees
-are kept if that snapshot fails; known open PRs are always kept. No repository-wide merged PR crawl is performed.
+forbidden, not-found, network, gh-failed), without raw stderr. Any tree with a branch is kept if the open snapshot fails,
+including HEADs already on the default branch; known open PRs are always kept. No repository-wide merged PR crawl is performed.
 
 ## First run on each Mac: list only, then wait for orc
 
@@ -66,7 +71,8 @@ archive receipt; unescape a cell before decoding its JSON. Size failures show
 inventory downgrades a TSV REMOVE to KEEP-undetermined. Review the TSV as the
 list-only approval artifact, not the earlier console eligibility messages.
 
-Prune-plan runs the idle/live/nested guards and writes reports and the TSV only:
+Prune-plan does run `git fetch --prune`, updating remote-tracking refs. It also
+runs the idle/live/nested guards and writes logs, reports and the TSV:
 it never archives notes, takes the removal lock or calls worktree removal. Real
 archive hashes and RECEIPT.tsv are produced only on a later approved apply, before
 each removal. A plan is not an archive receipt or a promise that apply will remove
