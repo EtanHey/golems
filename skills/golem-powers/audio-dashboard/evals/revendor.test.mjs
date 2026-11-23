@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, readFileSync, mkdirSync, writeFileSync, rmSync, existsSync, cpSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -7,6 +7,33 @@ import { createHash } from "node:crypto";
 import { computeContentHashKey } from "../vendor/narrationlayer/local-tts-runner.ts";
 import { prepareSpeechChannels } from "../src/spoken-form.mjs";
 import { classifyVendorDrift, observeVendorState } from "../src/narration-vendor-drift.mjs";
+
+test("drift CLI detects an edited text bridge in a temporary skill copy", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "revendor-bridge-"));
+  try {
+    const skill = path.join(root, "skill");
+    for (const directory of ["vendor", "src", "scripts"]) {
+      cpSync(new URL(`../${directory}`, import.meta.url), path.join(skill, directory), { recursive: true });
+    }
+    const bridge = "vendor/narrationlayer/text/transcription-equivalence.ts";
+    const env = { ...process.env, NARRATIONLAYER_UPSTREAM: "" };
+    const lint = () => {
+      const result = spawnSync(process.execPath, [path.join(skill, "scripts/lint-narration-vendor-drift.mjs")],
+        { encoding: "utf8", env, timeout: 10000 });
+      expect(result.error).toBeUndefined();
+      return { status: result.status, records: result.stdout.trim().split("\n").map(line => JSON.parse(line)) };
+    };
+    const before = lint();
+    expect(before.records.some(row => row.target === bridge)).toBe(false);
+    writeFileSync(path.join(skill, bridge), 'export * from "../src/quality/check-take.js";\n');
+    const after = lint();
+    expect(after.status).toBe(1);
+    expect(after.records).toContainEqual(expect.objectContaining({
+      target: bridge, metric: "VENDOR_AHEAD", verdict: "REJECTED",
+    }));
+    expect(after.records.at(-1).value).toBe(before.records.at(-1).value + 1);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
 
 test("profile identity, version and model independently invalidate frozen takes", () => {
   const input = { spokenText: "hello", referenceAudioSha256: "a".repeat(64), referenceText: "hello", params: {} };

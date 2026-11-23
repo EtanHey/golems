@@ -50,7 +50,8 @@ function copy(source) {
 }
 for (const source of [...pairs.keys(), 'src/core/render-types.ts']) copy(source);
 const bridges = readdirSync(path.join(root, 'vendor/src'), { recursive: true }).filter(file => file.endsWith('.ts')).map(file => `vendor/src/${file}`);
-const internalBridges = readdirSync(path.join(root, 'vendor/narrationlayer/src'), { recursive: true }).filter(file => file.endsWith('.ts')).map(file => `vendor/narrationlayer/src/${file}`).filter(file => /^export \* from [^;]+;\s*$/.test(readFileSync(path.join(root, file), 'utf8')));
+const pairedPaths = new Set([...pairs.values()].map(pair => pair.vendorPath));
+const internalBridges = readdirSync(path.join(root, 'vendor/narrationlayer'), { recursive: true }).filter(file => file.endsWith('.ts')).map(file => `vendor/narrationlayer/${file}`).filter(file => !pairedPaths.has(file) && /^export \* from [^;]+;\s*$/.test(readFileSync(path.join(root, file), 'utf8')));
 stamp.skillBridgeHashes = Object.fromEntries([...bridges, ...internalBridges].map(file => [file, sha(readFileSync(path.join(root, file)))]));
 stamp.vendorSideFirst.find(debt => debt.id === 'SKILL_REPO_FREE_RUNNER_BRIDGES').skillPaths = [...bridges, 'scripts/local-tts.mjs'];
 stamp.pairs = [...pairs.values()];

@@ -408,7 +408,11 @@ export async function observeVendorState({ skillRoot, upstreamRoot, stamp }) {
       return { id: pair.id, vendorSha256, ...(upstreamRoot ? { sourceSha256 } : {}) };
     }),
   );
-  return { upstreamHead: null, pairs };
+  const skillBridgeHashes = Object.fromEntries(await Promise.all(
+    Object.keys(stamp.skillBridgeHashes ?? {}).map(async file => [file,
+      await sha256File(path.join(skillRoot, file)).catch(() => null)]),
+  ));
+  return { upstreamHead: null, pairs, skillBridgeHashes };
 }
 
 function sortRecords(records) {
@@ -428,6 +432,18 @@ export function classifyVendorDrift(stamp, observed, { upstreamAvailable = true 
       .map((debt) => [debt.pairId, debt]),
   );
   const records = [];
+
+  for (const [file, expected] of Object.entries(stamp.skillBridgeHashes ?? {})) {
+    const actual = observed?.skillBridgeHashes?.[file];
+    if (actual !== expected) {
+      records.push(driftRecord(
+        { id: file, sourcePath: "<skill-owned-bridge>", vendorPath: file },
+        "VENDOR_AHEAD", actual ?? "missing", expected,
+        "The skill-owned bridge differs from its stamped bytes.",
+        "Review the bridge change and re-run the copier to record its accepted hash.",
+      ));
+    }
+  }
 
   if (!upstreamAvailable) {
     records.push({
