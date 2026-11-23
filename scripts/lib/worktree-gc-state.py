@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only T3 liveness and durable, atomic stale-work owner reports."""
 import datetime
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -11,8 +12,43 @@ import time
 from urllib.parse import quote
 
 
-def t3_threads(path):
+PENDING = (
+    ("runs", "status NOT IN ('completed','cancelled','failed','interrupted','rolled_back')"),
+    ("provider_sessions", "status NOT IN ('stopped','ready')"),
+    ("runtime_requests", "status NOT IN ('resolved','expired','cancelled')"),
+    ("provider_threads", "status NOT IN ('idle','not_loaded') OR coalesce(json_array_length(payload_json,'$.pendingBackgroundTasks'),0)>0"),
+    ("turn_items", "status NOT IN ('completed','failed','interrupted','cancelled')"),
+)
+
+
+def snapshot_database(destination):
+    """Copy proof inputs under one source read transaction, excluding completed history."""
     db = os.environ.get("WORKTREE_GC_T3_DB", os.path.expanduser("~/.t3/userdata/statev2.sqlite"))
+    tables = {
+        "orchestration_v2_projection_threads": "json_extract(payload_json,'$.worktreePath') IS NOT NULL",
+        "projection_projects": "1",
+        "scheduled_tasks": "enabled IS NULL OR enabled!=0",
+    }
+    for table, condition in PENDING:
+        tables["orchestration_v2_projection_" + table] = "thread_id IN (SELECT thread_id FROM orchestration_v2_projection_threads WHERE json_extract(payload_json,'$.worktreePath') IS NOT NULL) AND (status IS NULL OR " + condition + ")"
+    stage = destination + ".pending." + str(os.getpid())
+    with closing(sqlite3.connect("file:" + quote(os.path.abspath(db), safe="/") + "?mode=ro", uri=True, timeout=3)) as source:
+        source.execute("BEGIN")
+        with closing(sqlite3.connect(stage)) as target:
+            for table, condition in tables.items():
+                found = source.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
+                if found is None:
+                    continue  # Missing schema stays missing: each consuming proof fails closed.
+                target.execute(found[0])
+                cursor = source.execute("SELECT * FROM " + table + " WHERE " + condition)
+                marks = ','.join('?' for _ in cursor.description)
+                target.executemany("INSERT INTO " + table + " VALUES (" + marks + ")", cursor)
+            target.commit()
+    os.replace(stage, destination)
+
+
+def t3_threads(path):
+    db = os.environ.get("WORKTREE_GC_T3_SNAPSHOT") or os.environ.get("WORKTREE_GC_T3_DB", os.path.expanduser("~/.t3/userdata/statev2.sqlite"))
     active = "('running','starting','queued','waiting','preparing')"
     query = f"""
       WITH bound AS (SELECT thread_id,payload_json,deleted_at FROM orchestration_v2_projection_threads
@@ -51,27 +87,27 @@ def t3_roots():
                     for root in roots if root.strip()))
 
 
-def live_symlink(path):
-    path = os.path.realpath(path)
-
+def symlink_targets():
     def visit(directory, depth):
         if os.path.islink(directory):
-            target = os.path.realpath(directory)
-            if target == path or target.startswith(path + os.sep):
-                return directory
+            yield directory, os.path.realpath(directory)
         if depth == 3 or not os.path.isdir(directory):
-            return None
+            return
         with os.scandir(directory) as entries:
             for entry in entries:
-                found = visit(entry.path, depth + 1)
-                if found:
-                    return found
-        return None
+                yield from visit(entry.path, depth + 1)
 
     for root in ("~/.agents", "~/.codex", "~/.claude/skills", "~/.claude/hooks", "~/.golems"):
-        found = visit(os.path.expanduser(root), 0)
-        if found:
-            print("live-symlink-target " + found)
+        yield from visit(os.path.expanduser(root), 0)
+
+
+def live_symlink(path):
+    path = os.path.realpath(path)
+    snapshot = os.environ.get("WORKTREE_GC_SYMLINK_SNAPSHOT")
+    targets = json.loads(Path(snapshot).read_text()) if snapshot else symlink_targets()
+    for directory, target in targets:
+        if target == path or target.startswith(path + os.sep):
+            print("live-symlink-target " + directory)
             return True
     return False
 
@@ -174,7 +210,11 @@ def finish_report(journal, directory, run_status, publish):
 if __name__ == "__main__":
     try:
         command, *args = sys.argv[1:]
-        if command == "roots":
+        if command == "snapshot":
+            snapshot_database(args[0])
+        elif command == "symlinks":
+            Path(args[0]).write_text(json.dumps(list(symlink_targets())))
+        elif command == "roots":
             t3_roots()
         elif command == "t3-finished":
             threads = t3_threads(args[0])
@@ -190,7 +230,7 @@ if __name__ == "__main__":
                 if (p.get("pinnedAt") or not t["settled"] or
                     t["active"] or recovery_held):
                     raise ValueError("binding unsettled, active, pending or recovery-held")
-            db = os.environ.get("WORKTREE_GC_T3_DB", os.path.expanduser("~/.t3/userdata/statev2.sqlite"))
+            db = os.environ.get("WORKTREE_GC_T3_SNAPSHOT") or os.environ.get("WORKTREE_GC_T3_DB", os.path.expanduser("~/.t3/userdata/statev2.sqlite"))
             with sqlite3.connect("file:" + quote(os.path.abspath(db), safe="/") + "?mode=ro", uri=True, timeout=3) as conn:
                 for (project_root,) in conn.execute("SELECT workspace_root FROM projection_projects"):
                     real = os.path.realpath(project_root)
@@ -198,13 +238,7 @@ if __name__ == "__main__":
                         raise ValueError("contains a T3 project checkout")
                 for t in threads:
                     # Missing tables/columns are errors, never permission to remove.
-                    for table, condition in (
-                        ("runs", "status NOT IN ('completed','cancelled','failed','interrupted','rolled_back')"),
-                        ("provider_sessions", "status NOT IN ('stopped','ready')"),
-                        ("runtime_requests", "status NOT IN ('resolved','expired','cancelled')"),
-                        ("provider_threads", "status NOT IN ('idle','not_loaded') OR coalesce(json_array_length(payload_json,'$.pendingBackgroundTasks'),0)>0"),
-                        ("turn_items", "status NOT IN ('completed','failed','interrupted','cancelled')"),
-                    ):
+                    for table, condition in PENDING:
                         if conn.execute("SELECT 1 FROM orchestration_v2_projection_" + table +
                                         " WHERE thread_id=? AND (status IS NULL OR " + condition + ") LIMIT 1", (t["id"],)).fetchone():
                             raise ValueError("pending or active " + table)

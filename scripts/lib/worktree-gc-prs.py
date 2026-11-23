@@ -53,5 +53,7 @@ if __name__ == '__main__':
         print(category(Path(sys.argv[2]).read_text()) if sys.argv[1] == 'category'
               else snapshot(sys.stdin.read(), sys.argv[1]))
     except (OSError, ValueError, KeyError, TypeError) as error:
-        print(type(error).__name__, file=sys.stderr)
+        known = {"incomplete snapshot", "invalid branch", "invalid number", "PR not merged or closed", "invalid SHA", "no merged or closed PR"}
+        reason = str(error) if isinstance(error, ValueError) and str(error) in known else "invalid-response"
+        print("pr-state-unproven: " + reason, file=sys.stderr)
         sys.exit(1)

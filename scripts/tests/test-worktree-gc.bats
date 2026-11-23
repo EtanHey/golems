@@ -929,3 +929,26 @@ STUB
     [[ "$output" == *" · $worktree · "*"KEEP-unpushed"* ]] &&
     [ -f "$worktree/local-only.txt" ]
 }
+
+@test "prune plan skips remote lookups when census has no linked worktrees" {
+  repo="$(make_fixture_repo empty-plan)"
+  export REAL_GIT="$(command -v git)" REMOTE_CALLS="$TEST_ROOT/remote-calls"
+  mkdir -p "$TEST_ROOT/bin"
+  cat > "$TEST_ROOT/bin/git" <<'STUB'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  if [[ "$arg" == fetch || "$arg" == ls-remote ]]; then
+    printf '%s\n' "$*" >> "$REMOTE_CALLS"
+    exit 88
+  fi
+ done
+exec "$REAL_GIT" "$@"
+STUB
+  chmod +x "$TEST_ROOT/bin/git"
+  export PATH="$TEST_ROOT/bin:$PATH"
+  run "$WORKTREE_GC" --prune-plan --repo "$repo"
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+  [ ! -e "$REMOTE_CALLS" ]
+  plan="$(printf '%s\n' "$output" | sed -n 's/^List-only plan TSV: //p')"
+  [ "$(wc -l < "$plan" | tr -d ' ')" -eq 1 ]
+}
