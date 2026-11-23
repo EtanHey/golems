@@ -16,6 +16,7 @@ fi
 if [ "${1:-}" = "plan" ]; then
   [ $# -ge 3 ] || { echo "usage: default.sh plan <video> <workdir> [qa|debrief|review]" >&2; exit 2; }
   VIDEO="$2"; WORKDIR="$3"; MODE="${4:-qa}"
+  python3 "$SCRIPTS/reader-policy.py" plan "$WORKDIR"
   MUST_READ="${5:-}"
   [ -z "$MUST_READ" ] || [ "$MUST_READ" = --must-read ] || { echo 'plan: expected --must-read' >&2; exit 2; }
   case "$MODE" in qa|debrief|review) ;; *) echo "plan: mode must be qa, debrief or review (gems: Agent(video-gems))" >&2; exit 2;; esac
@@ -54,6 +55,8 @@ EOF
   python3 "$SCRIPTS/narration-evidence.py" plan "$WORKDIR"
   python3 "$SCRIPTS/must-read.py" extract "$VIDEO" "$WORKDIR"
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" dense -- bash "$SCRIPTS/dense-windows.sh" "$VIDEO" "$WORKDIR/cues.tsv" "$WORKDIR/dense" 10
+Before any reader dispatch: run python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" to admit the whole dense/index.tsv.
+For targeted debrief/review stills: use admit "$WORKDIR" <all moment paths> instead.
 Before any reader dispatch: estimate ALL sheets x price (default \$0.10/sheet including retry); above \$5 STOP and state cost.
 Gather (gatherers read every sheet; you never open one), first that works:
   1. Tool-free Claude reader: per batch of <=15 sheets from dense/index.tsv:
@@ -67,13 +70,15 @@ EOF
   (Rigorous/full/exhaustive or a silent video: workflows/gems.md § Visual-first exhaustive, same gatherers.)
   bash "$SCRIPTS/run-step.sh" "$WORKDIR" $MODE -- python3 "$SCRIPTS/debrief.py" "$VIDEO" --workdir "$WORKDIR" --mode $MODE $MUST_READ
   (exit STILLS_READY: read transcript.srt, plan.json and debrief.md; the moment-NN-start.jpg / moment-NN-midpoint.jpg stills go to gatherers)
+Before any reader dispatch: run python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" to admit the whole dense/index.tsv.
+For targeted debrief/review stills: use admit "$WORKDIR" <all moment paths> instead.
 Before any reader dispatch: estimate ALL stills x price (default \$0.10/still including retry); above \$5 STOP and state cost.
 Gather (gatherers read every still; you never open one), first that works:
   1. Tool-free Claude reader: up to 24 stills means two batches (<=15 per batch):
 EOF
   fi
   cat <<EOF
-     delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "claudeAgent", model: "$READER_MODEL"}, task: "Read and follow $WORKDIR/briefs/gather-bN.md; run $SCRIPTS/claude-image-helper.py with --model $READER_MODEL, one image per call within the remaining deadline; return text only"})
+     delegate_task({title: "qa-video gather bN", role: "research", target: {providerInstanceId: "claudeAgent", model: "$READER_MODEL"}, task: "Read and follow $WORKDIR/briefs/gather-bN.md; run $SCRIPTS/claude-image-helper.py with --model $READER_MODEL --admission $WORKDIR/visual/cost-admission.json, one image per call within the remaining deadline; return text only"})
   2. bash "$SCRIPTS/default.sh" gather "$WORKDIR"$([ "$MODE" = qa ] || printf ' "" %s-gather "%s"/moment-*.jpg' "$MODE" "$WORKDIR")   (visual-batch.py, tool-free Claude reader)
   (For debrief/review, moment-*.jpg includes both start and midpoint files.)
   3. STOP: no frames were read; no QA verdict. TOOLING FAILURE with the raw error path; unread windows stay NOT DETERMINED. Never read the frames instead.
@@ -108,13 +113,20 @@ if [ "${1:-}" = "gather" ]; then
   # The stage stops at its budget, regardless of provider.
   BUDGET="--budget-seconds ${GATHER_BUDGET_S:-600} --timeout ${GATHER_CALL_S:-300}"
   QUESTION='Per tile: cursor target, before/after UI state, visible defects, with zero-based tile indexes. Mark unclear tiles NOT DETERMINED; never invent timestamps.'
+  export QA_VIDEO_ADMISSION="$WORKDIR/visual/cost-admission.json"
   if [ $# -gt 0 ]; then
+    if [ -f "$WORKDIR/dense/index.tsv" ]; then
+      python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" --index "$WORKDIR/dense/index.tsv"
+    else
+      python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" "$@"
+    fi
     # shellcheck disable=SC2086
     exec bash "$SCRIPTS/run-step.sh" "$WORKDIR" "$STEP" -- python3 "$SCRIPTS/visual-batch.py" \
       --workdir "$WORKDIR/visual-$STEP" $BUDGET --question "$QUESTION" "$@"
   fi
   INDEX="${INDEX:-$WORKDIR/dense/index.tsv}"
   [ -f "$INDEX" ] || { echo "TOOLING FAILURE: no index at $INDEX (run dense-windows.sh first)" >&2; exit 3; }
+  python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" --index "$INDEX"
   # shellcheck disable=SC2086
   exec bash "$SCRIPTS/run-step.sh" "$WORKDIR" "$STEP" -- python3 "$SCRIPTS/visual-batch.py" \
     --index "$INDEX" --workdir "$WORKDIR/visual-$STEP" $BUDGET --question "$QUESTION"

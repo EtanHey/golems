@@ -20,6 +20,10 @@ Declare mode first: qa (default for UI bugs), debrief, or review. QA retains man
 
 Not the default /qa-video route: by default one `claude.judgment` judge child gathers (../SKILL.md
 § Execution routing). Use this contract only for a seat with no dispatch tool.
+Before any helper reading, follow SKILL.md current-run admission: default.sh plan starts a run ID;
+admit the whole index (or all targeted stills), state its total and hold above $5. Pass the same
+--admission path to batch/helper calls. Zero gathered reads, including a pointer-only judge,
+means STOP with "no frames were read" and NEEDS_READERS, no QA verdict.
 Own the complete QA/debrief loop using the parent's video, project, artifact directory
 and round. Locate the skill from the parent's absolute path or the resolved
 qa-video-runner agent symlink; read ../SKILL.md and ../workflows/process.md.

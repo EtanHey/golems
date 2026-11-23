@@ -124,6 +124,11 @@ def main():
     if args.must_read:
         inputs |= {'.qa-mode', 'must-read.tsv', 'deixis-cues.tsv', 'deixis-budget.json',
                    'narration-status.json', 'no-narration.json', 'narrated-plan.json', 'cues.tsv'}
+    # A fresh plan creates only run/cost metadata before transcription. Never
+    # admit a visual directory already containing findings from an earlier pass.
+    planned = work/'visual'
+    if planned.is_dir() and {p.name for p in planned.iterdir()} <= {'run.json', 'cost-admission.json'}:
+        inputs.add('visual')
     if work.exists() and any(p.name not in inputs for p in work.iterdir()):
         parser.error('use a fresh empty workdir; prior evidence must survive')
     if (args.budget_seconds is not None and not 0 < args.budget_seconds < float('inf')) or args.concurrency < 1:

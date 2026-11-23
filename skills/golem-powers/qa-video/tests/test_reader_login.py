@@ -42,6 +42,8 @@ print(json.dumps(dict(type='result', is_error=False, result=json.dumps(dict(imag
         'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL',
         'CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CONFIG_DIR'}}
     env.update(PATH=str(bindir) + os.pathsep + env.get('PATH', ''), HOME=str(home), EXPECTED_HOME=str(home))
+    subprocess.run([sys.executable, str(S/'reader-policy.py'), 'plan', str(tmp_path), str(image)], check=True, capture_output=True)
+    env['QA_VIDEO_ADMISSION'] = str(tmp_path/'visual/cost-admission.json')
     return home, image, env
 
 
@@ -66,7 +68,8 @@ def test_no_working_reader_stops_without_verdict(tmp_path):
     assert result.returncode != 0
     assert 'no frames were read' in result.stderr
     summary = json.loads((tmp_path/'work/visual/summary.json').read_text())
-    assert summary['status'] == 'NO_FRAMES_READ'
+    assert summary['status'] == 'DISPATCH_STOPPED'
+    assert summary['sheets'][0]['attempts'] == 1
     assert summary['verdict_allowed'] is False
     result = subprocess.run(['bash', str(S/'default.sh'), 'finalize', str(tmp_path/'work'),
         str(tmp_path/'work/qa-report.md'), '--transcript', str(tmp_path/'unused.jsonl')],
@@ -78,6 +81,7 @@ def test_no_working_reader_stops_without_verdict(tmp_path):
 
 def test_cost_stated_and_stops_before_provider_over_five_dollars(tmp_path):
     home, image, env = fixture(tmp_path)
+    env.pop('QA_VIDEO_ADMISSION')
     result = batch(tmp_path, image, env, '--price-per-sheet-usd', '6')
     assert result.returncode != 0
     assert '1 sheets x $6.00 = $6.00' in result.stderr
@@ -91,6 +95,7 @@ def test_cost_for_whole_batch_counts_every_sheet(tmp_path):
     for i in range(51):
         (tmp_path/f'sheet-{i}.png').write_bytes(image.read_bytes())
     index.write_text(''.join(f'sheet-{i}.png\t0\t1\t1\tfixture\n' for i in range(51)))
+    env.pop('QA_VIDEO_ADMISSION')
     result = subprocess.run([sys.executable, str(S/'visual-batch.py'), '--workdir', str(tmp_path/'work'),
         '--question', 'facts', '--index', str(index)], env=env, capture_output=True, text=True, timeout=20)
     assert result.returncode == 2

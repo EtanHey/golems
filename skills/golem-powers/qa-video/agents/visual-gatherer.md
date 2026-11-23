@@ -24,10 +24,12 @@ release is not a checkout): `claude.subagent.cheap` in `standards/model-roles.js
 `GOLEMS_ROOT`, the release root beside the script, or `~/.golems/current`.
 
 Run `python3 <resolved helper path>
+--admission '<parent run workdir>/visual/cost-admission.json'
 --workdir '<parent supplied absolute workdir>' --question '<parent question>' --timeout 90 <absolute image paths...>` through Bash.
 Quote every argument safely; never interpolate untrusted text as shell code.
 The batch driver defaults to `claude-image-helper.py`, attaches image bytes, and
-runs Claude with empty tools/MCP in an isolated HOME. See `../references/claude-image-reader.md`
+runs Claude with empty tools/MCP, signed-in HOME and --safe-mode (CLAUDE.md/customizations disabled).
+The parent must admit the WHOLE run first; no admission means STOP. See `../references/claude-image-reader.md`
 for startup admission and receipts. A brief's explicit model/exclusion wins: pass
 `--model <named concrete ID>`; for explicitly named Gemini also pass
 `--helper <scripts directory>/visual-gather.py`. Stop if unavailable; no substitution.

@@ -1,0 +1,53 @@
+{
+  "artifact_kind": "signed-in-reader-startup-smoke",
+  "status": "BLOCKED",
+  "media": "generated synthetic 1x1 white RGB PNG; no recording",
+  "machine": "M1",
+  "disk_floor_gib": 32,
+  "disk_free_gib_before_first_smoke": 35.643,
+  "cli_version": "2.1.330",
+  "anthropic_environment_variables": "all unset",
+  "oauth_environment_token": "unset for smoke; keychain/session login only",
+  "safe_mode_requested": true,
+  "safe_mode_documented_contract": "disables CLAUDE.md, skills, plugins and customizations; auth retained",
+  "claude_md_loaded": "NOT_DETERMINED: authentication stopped before init",
+  "skills_inventory": "NOT_OBSERVED",
+  "slash_commands_inventory": "NOT_OBSERVED",
+  "model_effective": "NOT_DETERMINED",
+  "effort_effective": "NOT_DETERMINED",
+  "attempts": [
+    {
+      "auth_route": "signed-in",
+      "read_count": 0,
+      "failure": "PROVIDER_EXIT",
+      "startup_inventory": null,
+      "provider_error_flags": []
+    },
+    {
+      "auth_route": "signed-in",
+      "read_count": 0,
+      "failure": "PROVIDER_EXIT",
+      "startup_inventory": null,
+      "provider_error_flags": []
+    },
+    {
+      "auth_route": "signed-in",
+      "read_count": 0,
+      "failure": "PROVIDER_EXIT",
+      "startup_inventory": null,
+      "provider_error_flags": [
+        "authentication",
+        "not logged in",
+        "model",
+        "permission",
+        "invalid",
+        "input",
+        "login"
+      ]
+    }
+  ],
+  "result": "No successful signed-in visual read; provider authentication/not-logged-in markers observed. No credential inspection or alternate auth route attempted.",
+  "usage": "NOT_REPORTED; no successful inference claimed",
+  "base_head": "69e75daa6fbf8a9ce4c49bfac9bc0fa4c13e1bf0",
+  "helper_sha256_at_diagnostic_run": "ddc0dfaceb4e7db20278c80e866ca78231f805ac4757245c19a697a7c17d1892"
+}

@@ -104,6 +104,8 @@ def test_gemini_prompt_keeps_transcript_in_data(tmp_path, monkeypatch, transcrip
 def test_claude_attached_data_and_receipt(tmp_path, monkeypatch, transcript):
     h = load('claude_window', 'claude-image-helper.py')
     image, ledger, srt, injection = fixture(tmp_path)
+    h.visual.policy.begin(tmp_path)
+    monkeypatch.setenv('QA_VIDEO_ADMISSION', str(h.visual.policy.admit(tmp_path, [image])))
     monkeypatch.setattr(sys, 'argv', ['helper', '--question', 'facts', '--model', 'fake',
         *(['--transcript', str(srt), '--frames-tsv', str(ledger)] if transcript else []), str(image)])
     calls = []

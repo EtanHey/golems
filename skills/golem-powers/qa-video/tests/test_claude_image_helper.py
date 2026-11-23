@@ -31,6 +31,8 @@ def test_output_uses_batch_contract(tmp_path):
 def test_cli_success_retains_receipt_and_private_temp(tmp_path,monkeypatch,capsys):
  import subprocess
  image=tmp_path/'a.png';image.write_bytes(b'synthetic PNG bytes')
+ helper.visual.policy.begin(tmp_path)
+ monkeypatch.setenv('QA_VIDEO_ADMISSION',str(helper.visual.policy.admit(tmp_path,[image])))
  model='claude-haiku-5-5'
  seen=[]
  def fake_run(cmd,**kw):
@@ -52,6 +54,8 @@ def test_cli_success_retains_receipt_and_private_temp(tmp_path,monkeypatch,capsy
 def test_cli_failed_provider_is_not_a_read(tmp_path,monkeypatch,capsys):
  import subprocess
  image=tmp_path/'a.png';image.write_bytes(b'png')
+ helper.visual.policy.begin(tmp_path)
+ monkeypatch.setenv('QA_VIDEO_ADMISSION',str(helper.visual.policy.admit(tmp_path,[image])))
  monkeypatch.setattr(helper,'run_provider',lambda *a,**k:subprocess.CompletedProcess([],1,'','auth failed'))
  monkeypatch.setattr(helper.sys,'argv',['helper','--question','facts','--model','claude-haiku-5-5',str(image)])
  assert helper.main()==2

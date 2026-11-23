@@ -67,6 +67,8 @@ def run_args(tmp_path):
 
 
 def test_retry_entry_deadline_preserves_identity_and_attempt(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path/'first.png').write_bytes(b'synthetic')
     now, writes = [0.], [0]
     real_atomic = batch.atomic
     def atomic(path, text):
@@ -88,6 +90,7 @@ def test_retry_entry_deadline_preserves_identity_and_attempt(tmp_path, monkeypat
 
 
 def test_retry_oserror_is_fresh_failed_attempt(tmp_path, monkeypatch):
+    (tmp_path/'sheet.png').write_bytes(b'synthetic')
     (tmp_path/'index.tsv').write_text('sheet.png\t0\t10\t20\tsynthetic\n')
     calls = []
     def read(*args):

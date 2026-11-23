@@ -29,6 +29,8 @@ def stream(image, result=None):
 def invoke(tmp_path, monkeypatch, capsys, mutate=lambda e: e, timeout='90'):
     image = tmp_path / 'image.png'
     image.write_bytes(b'png')
+    helper.visual.policy.begin(tmp_path)
+    monkeypatch.setenv('QA_VIDEO_ADMISSION', str(helper.visual.policy.admit(tmp_path, [image])))
     events = mutate(stream(image))
     seen = []
 
@@ -128,6 +130,8 @@ def test_image_cap_leaves_receipt_before_provider(tmp_path, monkeypatch, capsys)
     image = tmp_path / 'big.png'
     with image.open('wb') as f:
         f.truncate(6 * 1024 * 1024)
+    helper.visual.policy.begin(tmp_path)
+    monkeypatch.setenv('QA_VIDEO_ADMISSION', str(helper.visual.policy.admit(tmp_path, [image])))
     monkeypatch.setattr(helper.sys, 'argv', ['helper', '--question', 'facts', '--model', MODEL, str(image)])
     monkeypatch.setattr(helper, 'run_provider', lambda *a, **k: pytest.fail('oversized image dispatched'), raising=False)
     monkeypatch.setattr(helper.subprocess, 'run', lambda *a, **k: pytest.fail('oversized image dispatched'))
@@ -149,6 +153,8 @@ def test_real_local_provider_timeout_keeps_receipt(tmp_path, monkeypatch):
     monkeypatch.setenv('PATH', str(bindir) + os.pathsep + os.environ.get('PATH', ''))
     monkeypatch.delenv('ANTHROPIC_API_KEY', raising=False)
     monkeypatch.delenv('ANTHROPIC_BASE_URL', raising=False)
+    helper.visual.policy.begin(tmp_path)
+    monkeypatch.setenv('QA_VIDEO_ADMISSION', str(helper.visual.policy.admit(tmp_path, [image])))
     result = helper.visual.bounded_run([
         sys.executable, str(SCRIPTS / 'claude-image-helper.py'), '--question', 'facts',
         '--model', MODEL, '--timeout', '4', str(image)], timeout=4)

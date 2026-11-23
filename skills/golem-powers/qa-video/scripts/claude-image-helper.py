@@ -90,7 +90,7 @@ def command(model, settings):
             '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
             '--settings', str(settings), '--setting-sources', '', '--restricted',
             '--tools', '', '--allowedTools', '', '--permission-mode', 'dontAsk',
-            '--no-chrome', '--disable-slash-commands',
+            '--no-chrome', '--disable-slash-commands', '--safe-mode',
             '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose']
 
 
@@ -182,6 +182,7 @@ def main():
     p.add_argument('--question', required=True)
     p.add_argument('--timeout', type=float, default=90)
     p.add_argument('--model', required=True)
+    p.add_argument('--admission', type=Path, default=os.environ.get('QA_VIDEO_ADMISSION'))
     p.add_argument('--price-per-sheet-usd', type=float, default=0.10)
     visual.transcript.add_arguments(p)
     p.add_argument('images', nargs='+', type=Path)
@@ -191,8 +192,9 @@ def main():
         p.error(f'existing images and 0 < timeout <={MAX_TIMEOUT:g} required')
     try:
         visual.policy.admit_cost(len(images), a.price_per_sheet_usd)
-    except ValueError as error:
-        print(str(error), file=sys.stderr)
+        admission = visual.policy.validate(a.admission, images)
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        print('COST_ADMISSION_REQUIRED: ' + visual.safe_cause(str(error), images[0].parent), file=sys.stderr)
         return 2
     # Keep the signed-in user's HOME/config. Never inspect/copy login material.
     # Isolate working directory/temp only; settings and CLI flags disable tools.
@@ -209,7 +211,8 @@ def main():
                'serviceTier': 'default', 'fastMode': False, 'images': list(map(str, images)),
                'home': str(home), 'tool_calls': [], 'scope': 'signed-in session; not hermetic startup isolation',
                'auth_route': 'explicit-key' if env.get('ANTHROPIC_API_KEY') else 'signed-in',
-               'read_count': 0}
+               'read_count': 0, 'run_id': admission['run_id'],
+               'safe_mode': True, 'customizations_disabled': True}
     code, found = 2, {}
     secrets = [env[k] for k in ('ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN') if env.get(k)]
     def scrub(value):
@@ -236,7 +239,19 @@ def main():
             raise ReaderFailure('SECRET_IN_PROVIDER_OUTPUT')
         receipt['exit_code'] = r.returncode
         if r.returncode:
+            diagnostic = (r.stdout + r.stderr).lower()
+            receipt['provider_error_flags'] = [term for term in (
+                'unknown option', 'requires', 'authentication', 'not logged in',
+                'model', 'safe-mode', 'incompatible', 'restricted', 'permission',
+                'keychain', 'invalid', 'prompt', 'input', 'json', 'allowedtools',
+                'api key', 'oauth', 'system prompt', 'argument', 'trust', 'login') if term in diagnostic]
+            print('DISPATCH_STOPPED: Claude provider startup/exit failure; inspect sanitized receipt', file=sys.stderr)
             raise ReaderFailure('PROVIDER_EXIT')
+        for line in r.stdout.splitlines():
+            event = json.loads(line)
+            if isinstance(event, dict) and event.get('type') == 'system' and event.get('subtype') == 'init':
+                receipt['startup_inventory'] = {k: event.get(k) for k in ('tools', 'mcp_servers', 'skills', 'slash_commands')}
+                receipt['session_id'] = event.get('session_id')
         init, result, found = observation(r.stdout, images)
         if init.get('model') != a.model:
             raise ReaderFailure('MODEL_MISMATCH')
