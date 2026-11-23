@@ -23,7 +23,7 @@ class ArchiveCaches(unittest.TestCase):
             (repo / '.gitignore').write_text('\n'.join(names + ['docs.local']) + '\n')
             for prefix in ['', 'ui/', 'packages/app/']:
                 for name in names:
-                    path = repo / prefix / name / 'output'
+                    path = repo / prefix / name / ('arm64-apple-macosx/debug/output' if name == '.build.noindex' else 'output')
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text('regenerable')
             note = repo / 'packages/app/docs.local/deep/note.md'
@@ -35,6 +35,60 @@ class ArchiveCaches(unittest.TestCase):
             self.assertEqual(len(rows), 1)
             self.assertTrue(rows[0].startswith('packages/app/docs.local/deep/note.md\t'))
             self.assertEqual((dest / note.relative_to(repo)).read_text(), 'keep')
+
+    def test_proofs_swift_output_and_case_aliases_survive_in_plan_and_archive(self):
+        import csv
+        import json
+        scratch = ROOT / 'docs.local/storage-tools'
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as tmp:
+            repo = Path(tmp) / 'repo'
+            repo.mkdir()
+            subprocess.run(['git', 'init', '-q', str(repo)], check=True)
+            (repo / '.gitignore').write_text('.build.noindex/\nnode_modules/\n')
+            proofs = ['.build.noindex/test_floor_fail_first.py', '.build.noindex/test_r2_fail_first.py',
+                      '.build.noindex/pytest/deep/run.log', '.build.noindex/proof/dist/notes.md',
+                      '.build.noindex/Docs.Local/note.md', 'node_modules/Docs.Local/note.md',
+                      '.build.noindex/swift/proof/deep/script.py']
+            output = ['.build.noindex/arm64-apple-macosx/debug/object',
+                      '.build.noindex/swift/arm64-apple-macosx/debug/object',
+                      '.build.noindex/swift/debug.yaml', '.build.noindex/swift/build.db',
+                      '.build.noindex/swift/plugin-tools.yaml',
+                      '.build.noindex/swift/workspace-state.json', '.build.noindex/swift/.lock',
+                      '.build.noindex/swift/checkouts/pkg/source', '.build.noindex/swift/artifacts/item',
+                      '.build.noindex/swift/repositories/repo/item', '.build.noindex/release/object',
+                      '.build.noindex/ModuleCache/mod', '.build.noindex/index/item',
+                      '.build.noindex/__pycache__/module.pyc']
+            for rel in proofs + output:
+                path = repo / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('fixture')
+            # Case aliases inside otherwise disposable output must also protect it.
+            alias = '.build.noindex/swift/arm64-apple-macosx/Docs.Local/keep.md'
+            (repo / alias).parent.mkdir(parents=True)
+            (repo / alias).write_text('keep')
+            dest = Path(tmp) / 'archive'
+            self.assertEqual(archive.archive(str(repo), [str(dest)]), 0)
+            receipt = {r.split('\t')[0] for r in (dest / 'RECEIPT.tsv').read_text().splitlines()}
+            for rel in proofs + [alias]:
+                self.assertIn(rel, receipt)
+                self.assertTrue((dest / rel).is_file())
+            protected_output = '.build.noindex/swift/arm64-apple-macosx/debug/object'
+            for rel in output:
+                if rel != protected_output:
+                    self.assertNotIn(rel, receipt)
+            plan = Path(tmp) / 'plan.tsv'
+            helper = ROOT / 'scripts/lib/worktree-gc-plan.py'
+            subprocess.run(['python3', str(helper), 'init', str(plan)], check=True)
+            subprocess.run(['python3', str(helper), 'append', str(plan), str(repo), str(repo),
+                            'fixture', 'REMOVE', 'fixture'], check=True)
+            with plan.open() as fh:
+                notes = json.loads(next(csv.DictReader(fh, delimiter='\t'))['notes_to_archive_json'])
+            for rel in proofs + [alias]:
+                self.assertIn(rel, notes)
+            for rel in output:
+                if rel != protected_output:
+                    self.assertNotIn(rel, notes)
 
 
 if __name__ == '__main__':
