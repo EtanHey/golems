@@ -95,7 +95,7 @@ Schema and measurement commands: [references/archiving-convention.md](references
 
 1. Agents create no ad-hoc folders in `~/` or `~/Desktop`. Use sanctioned T3
    scratch or repo `docs.local/` scratch under the
-   [workspace lifecycle contract](../_shared/lifecycle/CONTRACT.md).
+   [workspace lifecycle contract](https://github.com/EtanHey/golems/blob/master/skills/golem-powers/_shared/lifecycle/CONTRACT.md).
 2. Delete a local archive copy only after the Drive or iCloud copy exists,
    manifest hashes match verified remote bytes, and a one-file restore drill
    succeeds. A matching name or folder listing is insufficient. Keep the ledger
