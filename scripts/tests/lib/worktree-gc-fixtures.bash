@@ -13,6 +13,10 @@ setup() {
   unset GOLEMS_WORKTREE_GC_PIN_ROOT GOLEMS_WORKTREE_GC_REEXEC
   mkdir -p "$HOME"
   export WORKTREE_GC_REPORT_DIR="$TEST_ROOT/report" WORKTREE_GC_T3_DB="$TEST_ROOT/t3.sqlite"
+  sqlite3 "$WORKTREE_GC_T3_DB" '
+    CREATE TABLE orchestration_v2_projection_threads(thread_id TEXT PRIMARY KEY,payload_json TEXT,deleted_at TEXT);
+    CREATE TABLE orchestration_v2_projection_runs(thread_id TEXT,status TEXT);
+    CREATE TABLE orchestration_v2_projection_provider_sessions(thread_id TEXT,status TEXT);'
   export WORKTREE_GC_CMUX_REGISTRY="$TEST_ROOT/registry.jsonl" GOLEMS_HEAVY_LOCK="$TEST_ROOT/lock"
   : > "$WORKTREE_GC_CMUX_REGISTRY"
   export GOLEMS_WORKTREE_GC_LOCK="$TEST_ROOT/gc.lock"

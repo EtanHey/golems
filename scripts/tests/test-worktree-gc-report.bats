@@ -51,23 +51,32 @@ assert not list(root.glob('.latest.*'))
 PY
 }
 
-@test "PR lookup failure publishes partial report and classifies healthy sibling" {
+@test "PR lookup failure publishes partial report and classifies healthy siblings" {
   report_fixture
+  commit_fixture_file "$failed_tree" feature
   git -C "$failed" config remote.origin.url https://github.com/fixture/failed.git
   git -C "$failed" config url."$TEST_ROOT/a-failed-origin.git".insteadOf https://github.com/fixture/failed.git
   cat > "$TEST_ROOT/bin/gh" <<'SH'
 #!/usr/bin/env bash
 case "$*" in
   *'--state merged'*)
-    case "$GC_PR_FAILURE" in merged) exit 1;; incomplete) echo '{}';; *) echo '[]';; esac ;;
-  *) [[ "$GC_PR_FAILURE" != open ]] ;;
+    case "$GC_PR_FAILURE" in merged) echo 'HTTP 429 rate limit' >&2; exit 1;; incomplete) echo '{}';; *) echo '[]';; esac ;;
+  *) [[ "$GC_PR_FAILURE" != open ]] || { echo 'HTTP 429 rate limit' >&2; exit 1; }; echo '[]' ;;
 esac
 SH
   chmod +x "$TEST_ROOT/bin/gh"
-  stage=pr-lookup
   for failure in open merged incomplete; do
     run env GC_PR_FAILURE="$failure" "$WORKTREE_GC" --dry-run
-    assert_partial_report
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"$detached · (detached) · dirty=0 · ahead=0 · REMOVE"* ]] || false
+    python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" "$failed_tree" <<'PYTEST'
+import json,sys
+r=json.load(open(sys.argv[1]))
+assert r['status']=='partial' and r['error_count']==1
+rows=r['owners']['a-failed']
+assert any(row['path']==sys.argv[2] and row['reason']=='KEEP-undetermined' for row in rows)
+assert r['owners']['z-healthy'][0]['reason']=='KEEP-dirty'
+PYTEST
   done
 }
 

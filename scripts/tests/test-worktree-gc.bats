@@ -98,14 +98,14 @@ load lib/worktree-gc-fixtures
     [ -d "$worktree" ]
 }
 
-@test "keeps every candidate undetermined when neither remote base exists" {
+@test "uses origin default even when neither main nor master exists" {
   repo="$(make_fixture_repo trunk-repo trunk)"
   worktree="$(add_branch_worktree "$repo" trunk-candidate origin/trunk)"
 
   run "$WORKTREE_GC" --repo "$repo"
 
   [ "$status" -eq 0 ] &&
-    [[ "$output" == *" · $worktree · trunk-candidate · dirty=not-checked · ahead=undetermined · KEEP-undetermined · "* ]] &&
+    [[ "$output" == *" · $worktree · trunk-candidate · dirty=0 · ahead=0 · REMOVE · "* ]] &&
     [ -d "$worktree" ]
 }
 
@@ -782,7 +782,14 @@ make_github_origin() {
   other="$(add_branch_worktree "$repo" no-pr-branch)"
   stub="$TEST_ROOT/gh-stub"
   mkdir -p "$stub"
-  printf '#!/usr/bin/env bash\n[[ " $* " == *" pr list "* && " $* " == *" --repo fixture/open-pr "* ]] || exit 9\ncase " $* " in *" --state merged "*) echo "[]";; *) echo open-pr-branch;; esac\n' > "$stub/gh"
+  cat > "$stub/gh" <<'STUB'
+#!/usr/bin/env bash
+[[ " $* " == *" pr list "* && " $* " == *" --repo fixture/open-pr "* ]] || exit 9
+case " $* " in
+  *" --state merged "*) echo '[]';;
+  *) echo '[{"headRefName":"open-pr-branch","number":1}]';;
+esac
+STUB
   chmod +x "$stub/gh"
 
   run env PATH="$stub:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
@@ -793,10 +800,11 @@ make_github_origin() {
     [ -d "$worktree" ]
 }
 
-@test "a failed open-PR lookup fails closed" {
+@test "a failed open-PR lookup retains heads without default-branch proof" {
   repo="$(make_fixture_repo pr-blind-repo)"
   make_github_origin "$repo" fixture/pr-blind
   worktree="$(add_branch_worktree "$repo" pr-blind-branch)"
+  commit_fixture_file "$worktree" unmerged
   stub="$TEST_ROOT/gh-fail"
   mkdir -p "$stub"
   printf '#!/usr/bin/env bash\nexit 1\n' > "$stub/gh"
@@ -805,7 +813,7 @@ make_github_origin() {
   run env PATH="$stub:$PATH" "$WORKTREE_GC" --apply --idle-hours 0 --repo "$repo"
 
   [ "$status" -eq 0 ] &&
-    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"open PRs"* ]] &&
+    [[ "$output" == *" · $worktree · "*"KEEP-undetermined"*"open PR lookup"* ]] &&
     [ -d "$worktree" ]
 }
 

@@ -1,13 +1,83 @@
 # Worktree cleanup safety
 
 `worktree-gc.sh --apply` removes only clean, merged, idle, unused one-level
-`<main>/.worktrees/<name>` worktrees. Open PR branches, live process/cmux cwd,
+`<main>/.worktrees/<name>` worktrees and proven-finished trees under
+`~/.t3/worktrees` (including registered nested descendants). Open PR branches, live process/cmux cwd,
 locked trees, hooks-live, nested Git repositories and reflog-only commits are kept.
 `--repo` must name a Git toplevel; `--path` selects one registered linked tree.
+Every in-scope tree, including ordinary `.worktrees` candidates, requires a
+successful T3 binding lookup. A missing/unreadable database, missing schema or
+failed probe is KEEP-undetermined; an unsettled or active binding is KEEP-live,
+even when archived. Malformed non-string/invalid path rows are skipped with a
+reason in the run log so they cannot disable other bindings. State-probe reason
+cells carry short categories; full probe details stay in the run log.
 
 `--dry-run` reports merge eligibility. `--prune-plan` also checks the nightly
 idle/live/nested-repository guards and emits REMOVE without archiving or deleting.
 A REMOVE plan still requires successful archive verification before deletion.
+
+T3 removal additionally requires a bound settled thread (archival alone is insufficient)
+and a positively proven merged or closed branch PR, no active or
+pending run/session/request/turn/background task, no scheduled work or T3 project
+root inside the candidate, and no pinned/recovery-held binding. Missing state,
+schema or bindings means KEEP-undetermined. Canonical paths match aliases in the
+read-only T3 database. Thread updates and all filesystem entries (ignored notes
+and output included), plus Git admin activity, must be at least 24 hours old;
+`--idle-hours 0` cannot waive this minimum. A complete user-wide open-file snapshot
+must prove no descriptor, cwd or mapped file inside the candidate. Partial or
+failed probes keep it. These T3 proofs run again after archival, before removal.
+
+Open PRs are fetched once per repository with `gh pr list --state open --json
+headRefName,number --limit 500`. A full 500-row response is incomplete and keeps
+unknown candidates. T3 candidates require a branch-specific merged/closed PR
+query even when HEAD is on the default branch. Other trees only need a per-branch
+merged-head query when ahead of base; a branch name alone never proves the local HEAD was merged. Closed PRs
+whose HEAD is absent from the default branch and merged PR heads remain kept to
+protect unmerged commits. Lookup failures affect only candidates needing that
+proof, and reports retain stderr categories (rate-limit, authentication,
+forbidden, not-found, network, gh-failed), without raw stderr. Any tree with a branch is kept if the open snapshot fails,
+including HEADs already on the default branch; known open PRs are always kept. No repository-wide merged PR crawl is performed.
+
+## First run on each Mac: list only, then wait for orc
+
+The first run on **each** Mac must use `--prune-plan`. Do not enable an automatic
+apply schedule or run `--apply` before orc answers the posted plan for that Mac.
+Approval of one host does not authorize the other. The lead runs, from the reviewed
+checkout on that host:
+
+```bash
+hostname
+git rev-parse HEAD
+scripts/worktree-gc.sh --prune-plan
+```
+
+The command prints `List-only plan TSV: <absolute-path>` and writes that unique
+`docs.local/worktree-gc-<timestamp>-<pid>.log.plan.tsv`. Post the TSV itself (or its
+readable local artifact link), host identity, source SHA, command, timestamps and
+exit status to the lead's storage collab for orc. **Wait for orc's answer.** Do not
+infer approval from a successful exit, REMOVE rows, silence or elapsed time. A
+partial run or any unknown inventory must be disclosed, never treated as complete.
+Keep the dated per-host plan and answer together as the first-run receipt.
+
+The TSV has one row per registered linked candidate, including KEEP and tool-managed
+rows (the main checkout is protected and excluded). Columns are `repo`, `path`,
+`branch`, `verdict`, `reason`, `size_bytes` (allocated `du -sk` size converted to
+bytes), `notes_to_archive_json` and `inventory_status`. Notes inventory uses the
+same ignored-path/cache classification as the actual archiver and lists relative
+paths, including ignored notes inside directories. It does not copy or hash file
+contents. TSV fields escape backslash, tab, newline and carriage return as in the
+archive receipt; unescape a cell before decoding its JSON. Size failures show
+`UNKNOWN`; failed notes inventories show JSON `null` and `notes-unknown`. Incomplete
+inventory downgrades a TSV REMOVE to KEEP-undetermined. Review the TSV as the
+list-only approval artifact, not the earlier console eligibility messages.
+
+Prune-plan does run `git fetch --prune`, updating remote-tracking refs. It also
+runs the idle/live/nested guards and writes logs, reports and the TSV:
+it never archives notes, takes the removal lock or calls worktree removal. Real
+archive hashes and RECEIPT.tsv are produced only on a later approved apply, before
+each removal. A plan is not an archive receipt or a promise that apply will remove
+anything; all runtime guards still apply. Existing `--dry-run` remains a less
+complete eligibility report and is not the first-run approval artifact.
 
 Ignored data is archived under the main checkout's `docs.local/worktree-archive/`.
 Only ignored caches at known locations are disposable. Every docs.local subtree
