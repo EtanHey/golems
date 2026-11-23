@@ -432,3 +432,48 @@ test('redteam rollback reports every retained reconciliation backup', () => {
     expect(readFileSync(backup.path, 'utf8')).toBe(backup.bytes);
   }
 });
+
+function interruptedMachineFirstInstall() {
+  const seat = readFileSync(config, 'utf8');
+  writeFileSync(config, seat + 'machineSeatConfigs:\n  fixture-host: |\n' + seat.trimEnd().split('\n').map(line => '    ' + line).join('\n') + '\n');
+  const bin = join(home, 'first-build-fault'); mkdirSync(bin);
+  writeFileSync(join(bin, 'bun'), '#!/bin/sh\nexit 77\n', { mode: 0o700 });
+  const failed = run(['--host', 'fixture-host'], true, { PATH: bin + ':' + process.env.PATH });
+  expect(failed.code).toBe(2);
+  expect(failed.text).toContain('CLI bundle failed; retry install or rollback');
+  const target = join(home, '.config/repogolem/machine-config.yaml');
+  expect(existsSync(target)).toBe(false);
+  expect(lstatSync(join(home, '.golems/config.yaml')).isFile()).toBe(true);
+  return { seat, target };
+}
+test('round2 machine first install retries after a failed build with no target', () => {
+  const { seat, target } = interruptedMachineFirstInstall();
+  const result = run(['--host', 'fixture-host']);
+  expect(result.code).toBe(0);
+  expect(readlinkSync(join(home, '.golems/config.yaml'))).toBe(target);
+  expect(readFileSync(target, 'utf8')).toBe(seat);
+  expect(run(['--rollback']).code).toBe(0);
+  expect(readFileSync(join(home, '.golems/config.yaml'), 'utf8')).toBe(seat);
+});
+test('round2 interrupted first install still refuses a hand-edited existing target', () => {
+  const { seat, target } = interruptedMachineFirstInstall();
+  writeFileSync(target, seat + 'handKey: precious\n');
+  const before = treeSnapshot();
+  const result = run(['--host', 'fixture-host']);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('installed machine seat view changed; install refused');
+  expect(result.text).toContain('handKey');
+  expect(result.text).not.toContain('precious');
+  expect(treeSnapshot()).toEqual(before);
+});
+test('round2 dry rollback lists retained backups without writing', () => {
+  const { journal } = regularSeatFixture();
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  const entries = JSON.parse(readFileSync(journal, 'utf8')).seatReconciliations;
+  expect(entries).toHaveLength(1);
+  const before = treeSnapshot();
+  const result = run(['--rollback', '--dry-run']);
+  expect(result.code).toBe(0);
+  expect(result.text).toContain(entries[0].backup);
+  expect(treeSnapshot()).toEqual(before);
+});

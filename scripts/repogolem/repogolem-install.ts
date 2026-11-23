@@ -85,8 +85,10 @@ function verifySeats(state: any, seats: string, current?: { target: string; text
     if (verifyTarget()) return { kind: 'machine-view' };
   } else if (current && stat?.isFile()) {
     safePath(dirname(dirname(seats)), seats);
-    verifyTarget();
     const text = readFileSync(seats, 'utf8');
+    const originalPendingSeat = pending && state.hadSeats && digest(text) === state.originalSeatDigest;
+    // A failed first build has not written a target; existing targets still need the P1 check.
+    if (!originalPendingSeat || present(target)) verifyTarget();
     try {
       const actual: unknown = parseYaml(text), wanted: unknown = parseYaml(current.text);
       if (actual && typeof actual === 'object' && !Array.isArray(actual) && isDeepStrictEqual(actual, wanted)) {
@@ -94,7 +96,7 @@ function verifySeats(state: any, seats: string, current?: { target: string; text
       }
     } catch { /* Refuse with a value-free diagnostic below. */ }
     // Preserve recovery of an interrupted first install's original registry.
-    if (!(pending && state.hadSeats && digest(text) === state.originalSeatDigest)) {
+    if (!originalPendingSeat) {
       throw new Error(`installed seat link changed; reconciliation required; ${changedMachineKeys(text, current.text)}`);
     }
   // A pending attempt may have unlinked the original file before linking its view.
@@ -129,7 +131,11 @@ export function runInstall(argv: string[]): number {
   if (rollback) {
     if (!previous) throw new Error('no installer backup to roll back');
     const clean = removeManaged(before, previous);
-    if (dry) { console.log('would remove managed block and restore seat backup, preserving shell edits'); return 0; }
+    if (dry) {
+      console.log('would remove managed block and restore seat backup, preserving shell edits');
+      for (const entry of previous.seatReconciliations ?? []) console.log(`reconciliation backup retained: ${entry.backup}`);
+      return 0;
+    }
     safePath(home, join(root, 'zshrc.before')); safePath(home, join(root, 'seats.before'));
     const original = readFileSync(join(root, 'zshrc.before'), 'utf8');
     if (previous.originalShellDigest && digest(original) !== previous.originalShellDigest) throw new Error('shell backup changed; rollback refused');
@@ -255,6 +261,8 @@ export function runInstall(argv: string[]): number {
   chmodSync(bundle, 0o600);
   const bin = join(home, '.local/bin/repogolem'); safePath(home, bin);
   atomic(bin, `#!/bin/sh\nexec bun --no-install ${quote(bundle)} "$@"\n`); chmodSync(bin, 0o700);
+  // AIDEV-NOTE: Pre-existing save window: a target edit during the CLI build can be
+  // overwritten here without a backup; target validation happens before the build.
   if (seatTarget !== config) atomic(seatTarget, seatText);
   if (Object.keys(agentLinks).length) { safePath(home,agentDir); mkdirSync(agentDir,{recursive:true,mode:0o700}); }
   for (const name of Object.keys(previous?.agentLinks ?? {})) if (!Object.hasOwn(agentLinks,name)) rmSync(join(agentDir,name),{force:true});
@@ -262,6 +270,8 @@ export function runInstall(argv: string[]): number {
   atomic(shell, after, state.shellMode);
   mkdirSync(dirname(seats), { recursive: true, mode: 0o700 });
   if (reconciled?.kind === 'regular-file') {
+    // AIDEV-NOTE: This late refusal preserves the edited seat but shell/target are already
+    // written; retry and rollback can require manual reconciliation of the changed seat.
     safePath(home, seats);
     if (!present(seats)?.isFile() || readFileSync(seats, 'utf8') !== reconciled.text) throw new Error('seat changed during reconciliation; install refused');
   }
