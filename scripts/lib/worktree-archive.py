@@ -11,6 +11,7 @@
 """
 import hashlib
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -25,6 +26,64 @@ REGENERABLE = {
     ".eslintcache", ".test-tmp", ".hypothesis", "htmlcov", ".tox", ".gradle", ".expo", ".svelte-kit",
     ".wrangler", "storybook-static", ".pnpm-store",
 }
+
+
+# Verified against M1 voicelayer s12m1/.build.noindex/swift. These names
+# are disposable only inside a container identified as SwiftPM scratch.
+SWIFTPM_OUTPUT = {
+    'debug', 'release', 'checkouts', 'repositories', 'artifacts',
+    'workspace-state.json', '.lock', 'ModuleCache', 'index',
+    'build.db', 'debug.yaml', 'release.yaml', 'plugin-tools.yaml',
+}
+
+
+def swiftpm_output(name):
+    return name in SWIFTPM_OUTPUT or bool(re.fullmatch(
+        r'(?:arm64|arm64e|aarch64|x86_64|i[3-6]86|wasm32)-'
+        r'(?:apple|unknown|pc)-[A-Za-z0-9_.-]+', name))
+
+
+def protected_docs(full):
+    if not stat.S_ISDIR(os.lstat(full).st_mode):
+        return False
+    for _here, dirs, _files in os.walk(full, onerror=_raise):
+        if any(d.casefold() == 'docs.local' for d in dirs):
+            return True
+    return False
+
+
+def swiftpm_scratch(full):
+    # A name such as "swift" alone is not authority to discard proof files.
+    if os.path.islink(full) or not os.path.isdir(full):
+        return False
+    names = os.listdir(full)
+    if 'workspace-state.json' not in names:
+        return False
+    state = os.lstat(os.path.join(full, 'workspace-state.json'))
+    return stat.S_ISREG(state.st_mode) and (
+        '.lock' in names or any(n not in SWIFTPM_OUTPUT and swiftpm_output(n) for n in names))
+
+
+def expand_build_container(root, rel, scratch=False):
+    keep = []
+    scratch = scratch or swiftpm_scratch(os.path.join(root, rel))
+    for name in sorted(os.listdir(os.path.join(root, rel))):
+        child = rel + '/' + name
+        full = os.path.join(root, child)
+        if name.casefold() == 'docs.local' or os.path.islink(full):
+            keep.append(child)
+        elif name == '.build.noindex' and os.path.isdir(full):
+            keep.extend(expand_build_container(root, child))
+        elif (scratch and swiftpm_output(name)) or regenerable(name):
+            if protected_docs(full):
+                keep.append(child)
+        elif swiftpm_scratch(full):
+            keep.extend(expand_build_container(root, child, scratch=True))
+        else:
+            # Unknown children are data ancestors: preserve everything below,
+            # including cache-looking names, just as expand() does elsewhere.
+            keep.append(child)
+    return keep
 
 
 def regenerable(name):
@@ -48,7 +107,7 @@ def _raise(err):
 def expand(root, rel):
     """Only known ignored cache roots are disposable, never data inside an ignored ancestor."""
     parts = rel.split("/")
-    if "docs.local" in parts:
+    if any(p.casefold() == "docs.local" for p in parts):
         return [rel]
     full = os.path.join(root, rel)
     if os.path.islink(full):
@@ -64,12 +123,13 @@ def expand(root, rel):
     canonical = (len(parts) == 1 or parts[:-1] == ["ui"] or
                  (len(parts) == 3 and parts[0] == "packages") or
                  parts[-1] == "__pycache__")
+    if canonical and parts[-1] == '.build.noindex' and os.path.isdir(full):
+        return expand_build_container(root, rel)
     if not canonical or not regenerable(parts[-1]):
         return [rel]
     # Even a cache root can contain durable docs.local receipts.
-    for _here, dirs, _files in os.walk(os.path.join(root, rel), onerror=_raise):
-        if "docs.local" in dirs:
-            return [rel]
+    if protected_docs(full):
+        return [rel]
     return []
 
 

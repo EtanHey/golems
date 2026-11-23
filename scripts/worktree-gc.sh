@@ -107,6 +107,9 @@ refresh_live_cwds() {
   local out
   local rc=0
 
+  if [[ "$apply" -eq 0 && "${live_snapshot_loaded:-0}" -eq 1 ]]; then
+    return "${live_snapshot_rc:-1}"
+  fi
   live_cwds=""
   agent_cwds=""
   if ! command -v lsof >/dev/null 2>&1; then
@@ -677,7 +680,12 @@ process_repo() {
   [[ "$main_root" == "$repo_root" ]] || { echo "Main census root mismatch" >&2; return 2; }
   repo_name="$(basename "$repo_root")"
   census_paths="$(sed -n 's/^worktree //p' <<< "$census")"
+  # No candidate means no plan verdict needs a remote proof.
+  if [[ "$prune_plan" -eq 1 && "$census_paths" == "$main_root" ]]; then
+    return 0
+  fi
   load_open_prs
+  remote_snapshot_loaded=0
   refresh_remote_base
   if [[ -z "$base_ref" && -z "$repo_failure" ]]; then
     repo_failure="$base_reason"
@@ -785,7 +793,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=lib/portable-stat.sh
 source "$SCRIPT_DIR/lib/portable-stat.sh"
 idle_seconds=$((idle_hours * 3600))
-LOG_DIR="$SCRIPT_DIR/../docs.local"
+LOG_DIR="${WORKTREE_GC_LOG_DIR:-$SCRIPT_DIR/../docs.local}"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/worktree-gc-$(date '+%Y%m%d-%H%M%S')-$$.log"
 REPORT_JOURNAL="$LOG_FILE.rows.jsonl"
@@ -805,6 +813,11 @@ finish_run() {
   local rc=$?
   rm -f "$LOG_FILE.repo-state" "$LOG_FILE.repo-stderr" "$REPORT_JOURNAL.gh-stderr" ||
     printf 'scratch cleanup failed\n' >> "$LOG_FILE"
+  if [[ "$apply" -eq 0 ]]; then
+    rm -f "$LOG_FILE.t3.sqlite" "$LOG_FILE.t3.sqlite.pending."* \
+      "$LOG_FILE.files.json" "$LOG_FILE.symlinks.json" ||
+      printf 'snapshot cleanup failed\n' >> "$LOG_FILE"
+  fi
   if ! python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" finish "$REPORT_JOURNAL" "$REPORT_DIR" "$rc" "$publish_report"; then
     printf 'report publish failed\n' | tee -a "$LOG_FILE" >&2
     [[ "$rc" -ne 0 ]] || rc=2
@@ -838,6 +851,20 @@ if [[ "${#repos[@]}" -eq 0 ]]; then
   exit 2
 fi
 
+# Snapshot only list/report runs. Apply always reads fresh source state.
+unset WORKTREE_GC_T3_SNAPSHOT WORKTREE_GC_FILES_SNAPSHOT WORKTREE_GC_SYMLINK_SNAPSHOT
+live_snapshot_loaded=0
+if [[ "$apply" -eq 0 ]]; then
+  export WORKTREE_GC_T3_SNAPSHOT="$LOG_FILE.t3.sqlite"
+  export WORKTREE_GC_FILES_SNAPSHOT="$LOG_FILE.files.json"
+  export WORKTREE_GC_SYMLINK_SNAPSHOT="$LOG_FILE.symlinks.json"
+  python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" symlinks "$WORKTREE_GC_SYMLINK_SNAPSHOT" >> "$LOG_FILE" 2>&1 || true
+  WORKTREE_GC_T3_SNAPSHOT= python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" snapshot "$WORKTREE_GC_T3_SNAPSHOT" >> "$LOG_FILE" 2>&1 || true
+  python3 "$SCRIPT_DIR/lib/worktree-gc-t3.py" snapshot "$WORKTREE_GC_FILES_SNAPSHOT" >> "$LOG_FILE" 2>&1 || true
+  live_snapshot_rc=0
+  refresh_live_cwds || live_snapshot_rc=$?
+  live_snapshot_loaded=1
+fi
 t3_roots="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" roots)"
 found_unpushed=0
 repo_error=0
