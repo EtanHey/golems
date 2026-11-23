@@ -57,7 +57,10 @@ def test_killed_wrapper_blocks_retry_until_group_dies(tmp_path):
                     pass
 
 
-def test_bounded_drain_and_finally_summary(tmp_path):
+def test_bounded_drain_and_finally_summary(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    for image in ['sheet', 'unstarted']:
+        Path(image).write_bytes(b"synthetic")
     spec = importlib.util.spec_from_file_location('batch_bounds', SCRIPTS / 'visual-batch.py')
     batch = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(batch)
@@ -76,7 +79,10 @@ def test_bounded_drain_and_finally_summary(tmp_path):
         release.set()
 
 
-def test_unexpected_failure_publishes_summary(tmp_path):
+def test_unexpected_failure_publishes_summary(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    for image in ['sheet', 'unstarted']:
+        Path(image).write_bytes(b"synthetic")
     spec = importlib.util.spec_from_file_location('batch_failure', SCRIPTS / 'visual-batch.py')
     batch = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(batch)
@@ -93,7 +99,10 @@ def test_unexpected_failure_publishes_summary(tmp_path):
     assert sum(summary['counts'].values()) == 2
 
 
-def test_drain_preserves_dispatch_stop_cause(tmp_path):
+def test_drain_preserves_dispatch_stop_cause(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    for image in ['quota', 'blocked']:
+        Path(image).write_bytes(b"synthetic")
     spec = importlib.util.spec_from_file_location('batch_quota', SCRIPTS / 'visual-batch.py')
     batch = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(batch)

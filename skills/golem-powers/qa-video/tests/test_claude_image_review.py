@@ -29,6 +29,8 @@ def stream(image, result=None):
 def invoke(tmp_path, monkeypatch, capsys, mutate=lambda e: e, timeout='90'):
     image = tmp_path / 'image.png'
     image.write_bytes(b'png')
+    helper.visual.policy.begin(tmp_path)
+    monkeypatch.setenv('QA_VIDEO_ADMISSION', str(helper.visual.policy.admit(tmp_path, [image])))
     events = mutate(stream(image))
     seen = []
 
@@ -89,11 +91,15 @@ def test_environment_is_exact_allowlist(tmp_path, monkeypatch, capsys):
     code, _, _, seen = invoke(tmp_path, monkeypatch, capsys)
     assert code == 0
     env = seen[0]['env']
-    assert set(env) == {'PATH', 'HOME', 'CLAUDE_CONFIG_DIR', 'TMPDIR', 'CLAUDE_CODE_TMPDIR',
+    assert set(env) - {'CLAUDE_CONFIG_DIR'} == {'PATH', 'HOME', 'TMPDIR', 'CLAUDE_CODE_TMPDIR',
                         'CLAUDE_CODE_DISABLE_AUTO_MEMORY', 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
-                        'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL'}
+                        'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'}
     assert env['ANTHROPIC_API_KEY'] == CANARY
-    for key in ['HOME', 'CLAUDE_CONFIG_DIR', 'TMPDIR', 'CLAUDE_CODE_TMPDIR']:
+    assert env['HOME'] == str(Path.home())
+    assert env.get('CLAUDE_CONFIG_DIR') == os.environ.get('CLAUDE_CONFIG_DIR')
+    assert env['ANTHROPIC_AUTH_TOKEN'] == 'ambient-do-not-forward'
+    assert env['CLAUDE_CODE_OAUTH_TOKEN'] == 'ambient-do-not-forward'
+    for key in ['TMPDIR', 'CLAUDE_CODE_TMPDIR']:
         assert Path(env[key]).is_relative_to(tmp_path)
 
 
@@ -105,8 +111,9 @@ def test_provider_bound_below_batch_and_same_max(tmp_path, monkeypatch, capsys):
 
 
 @pytest.mark.parametrize('escaped', [False, True])
-def test_key_never_in_output_or_receipt(tmp_path, monkeypatch, capsys, escaped):
-    monkeypatch.setenv('ANTHROPIC_API_KEY', CANARY)
+@pytest.mark.parametrize('credential', ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'])
+def test_key_never_in_output_or_receipt(tmp_path, monkeypatch, capsys, escaped, credential):
+    monkeypatch.setenv(credential, CANARY)
     def leak(events):
         text = CANARY if not escaped else ''.join('\\u%04x' % ord(c) for c in CANARY)
         events[1]['result'] = '{"images":[{"path":' + json.dumps(str(tmp_path / 'image.png')) + ',"finding":"' + text + '"}]}'
@@ -123,6 +130,8 @@ def test_image_cap_leaves_receipt_before_provider(tmp_path, monkeypatch, capsys)
     image = tmp_path / 'big.png'
     with image.open('wb') as f:
         f.truncate(6 * 1024 * 1024)
+    helper.visual.policy.begin(tmp_path)
+    monkeypatch.setenv('QA_VIDEO_ADMISSION', str(helper.visual.policy.admit(tmp_path, [image])))
     monkeypatch.setattr(helper.sys, 'argv', ['helper', '--question', 'facts', '--model', MODEL, str(image)])
     monkeypatch.setattr(helper, 'run_provider', lambda *a, **k: pytest.fail('oversized image dispatched'), raising=False)
     monkeypatch.setattr(helper.subprocess, 'run', lambda *a, **k: pytest.fail('oversized image dispatched'))
@@ -144,6 +153,8 @@ def test_real_local_provider_timeout_keeps_receipt(tmp_path, monkeypatch):
     monkeypatch.setenv('PATH', str(bindir) + os.pathsep + os.environ.get('PATH', ''))
     monkeypatch.delenv('ANTHROPIC_API_KEY', raising=False)
     monkeypatch.delenv('ANTHROPIC_BASE_URL', raising=False)
+    helper.visual.policy.begin(tmp_path)
+    monkeypatch.setenv('QA_VIDEO_ADMISSION', str(helper.visual.policy.admit(tmp_path, [image])))
     result = helper.visual.bounded_run([
         sys.executable, str(SCRIPTS / 'claude-image-helper.py'), '--question', 'facts',
         '--model', MODEL, '--timeout', '4', str(image)], timeout=4)

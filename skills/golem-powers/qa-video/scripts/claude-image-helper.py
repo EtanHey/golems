@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Default attached-image Claude adapter for visual-batch --helper. No Read tool.
 
-Startup capture and inference are separate gates. Audit retained session_files
-with the evaluator's pinned startup auditor before admitting any paid pair.
+Uses the existing Claude CLI session/settings unless a key is explicitly configured.
+Tools and MCP remain disabled; login startup is not hermetic isolation.
 """
 import argparse
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -56,6 +57,14 @@ def redacted(value, secret):
     return value
 
 
+def plugin_names(value):
+    # Init may enumerate installed plugins even in safe mode. Record names only;
+    # this is diagnostic metadata, not another inventory refusal condition.
+    items = value if isinstance(value, list) else []
+    names = [item.get('name') if isinstance(item, dict) else item for item in items]
+    return [name for name in names if isinstance(name, str)]
+
+
 def provider_bound(timeout):
     available = timeout
     if os.environ.get('QA_VISUAL_DEADLINE'):
@@ -85,11 +94,14 @@ def run_provider(cmd, *, input, timeout, cwd, env):
 
 
 def command(model, settings):
+    # Do not add --setting-sources '' or --restricted: both discard the
+    # user-settings env block supplying this host login. --safe-mode disables
+    # CLAUDE.md/skills/plugins while preserving that auth configuration.
     return ['claude', '-p', '', '--model', model, '--effort', 'medium',
             '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
-            '--settings', str(settings), '--setting-sources', '', '--restricted',
+            '--settings', str(settings),
             '--tools', '', '--allowedTools', '', '--permission-mode', 'dontAsk',
-            '--no-chrome', '--disable-slash-commands',
+            '--no-chrome', '--disable-slash-commands', '--safe-mode',
             '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose']
 
 
@@ -181,30 +193,47 @@ def main():
     p.add_argument('--question', required=True)
     p.add_argument('--timeout', type=float, default=90)
     p.add_argument('--model', required=True)
+    p.add_argument('--admission', type=Path, default=os.environ.get('QA_VIDEO_ADMISSION'))
+    p.add_argument('--price-per-sheet-usd', type=float, default=0.10)
     visual.transcript.add_arguments(p)
     p.add_argument('images', nargs='+', type=Path)
     a = p.parse_args()
     images = list(dict.fromkeys(x.resolve() for x in a.images))
     if not 0 < a.timeout <= MAX_TIMEOUT or any(not x.is_file() for x in images):
         p.error(f'existing images and 0 < timeout <={MAX_TIMEOUT:g} required')
-    # Retain disposable startup sessions for the independent auditor. No copied
-    # host auth/config. A key, when explicitly supplied by the parent, stays in env.
+    try:
+        visual.policy.admit_cost(len(images), a.price_per_sheet_usd)
+        admission = visual.policy.validate(a.admission, images)
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        print('COST_ADMISSION_REQUIRED: ' + visual.safe_cause(str(error), images[0].parent), file=sys.stderr)
+        return 2
+    # Keep the user's CLI session HOME/config. Never inspect/copy login material.
+    # Isolate working directory/temp only; settings and CLI flags disable tools.
     root = Path(tempfile.mkdtemp(prefix='reader-', dir=images[0].parent))
-    home = root/'home'; home.mkdir(); (home/'.claude').mkdir(); (root/'tmp').mkdir()
-    (home/'.claude.json').write_text('{"hasCompletedOnboarding":true,"mcpServers":{}}')
+    (root/'tmp').mkdir()
+    home = Path.home()
     settings = root/'settings.json'; settings.write_text('{"disableAllHooks":true,"fastMode":false}')
-    env = {'PATH': os.environ.get('PATH', '/usr/bin:/bin'), 'HOME': str(home),
-           'CLAUDE_CONFIG_DIR': str(home/'.claude'), 'TMPDIR': str(root/'tmp'),
-           'CLAUDE_CODE_TMPDIR': str(root/'tmp'),
-           'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1', 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC': '1'}
-    for key in ['ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL']:
-        if key in os.environ:
-            env[key] = os.environ[key]
+    env = {key: os.environ[key] for key in (
+        'PATH', 'HOME', 'CLAUDE_CONFIG_DIR', 'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL',
+        'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN') if key in os.environ}
+    env.update(TMPDIR=str(root/'tmp'), CLAUDE_CODE_TMPDIR=str(root/'tmp'),
+               CLAUDE_CODE_DISABLE_AUTO_MEMORY='1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC='1')
     receipt = {'exit_code': None, 'provider': 'claude', 'requested_model': a.model, 'effort': 'medium',
                'serviceTier': 'default', 'fastMode': False, 'images': list(map(str, images)),
-               'home': str(home), 'tool_calls': [], 'scope': 'startup audit required independently'}
+               'home': str(home), 'tool_calls': [], 'scope': 'CLI session/settings; not hermetic startup isolation',
+               'auth_route': ('explicit-key' if env.get('ANTHROPIC_API_KEY') else
+                              'explicit-token' if any(env.get(k) for k in ('ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN')) else
+                              'cli-session'),
+               'read_count': 0, 'run_id': admission['run_id'],
+               'safe_mode': True, 'customizations_disabled': True}
     code, found = 2, {}
-    secret = env.get('ANTHROPIC_API_KEY')
+    secrets = [env[k] for k in ('ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN') if env.get(k)]
+    def scrub(value):
+        for secret in secrets:
+            value = redacted(value, secret)
+        return value
+    def leaked(value):
+        return any(has_secret(value, secret) for secret in secrets)
     previous_term = None
     def terminated(signum, frame):
         raise ReaderFailure('HELPER_TERMINATED')
@@ -213,20 +242,40 @@ def main():
     try:
         windows = visual.transcript.from_args(a, images)
         request = payload(images, a.question, windows)
+        attached = json.loads(request)['message']['content'][:len(images)]
+        hashes = {str(image): hashlib.sha256(base64.b64decode(block['source']['data'])).hexdigest()
+                  for image, block in zip(images, attached)}
         timeout = provider_bound(a.timeout)
         receipt['provider_timeout_seconds'] = timeout
         r = run_provider(command(a.model, settings), input=request, timeout=timeout, cwd=root, env=env)
-        if has_secret([r.stdout, r.stderr], secret):
+        if leaked([r.stdout, r.stderr]):
             raise ReaderFailure('SECRET_IN_PROVIDER_OUTPUT')
         receipt['exit_code'] = r.returncode
         if r.returncode:
+            receipt['provider_stderr_first_line'] = visual.safe_cause(scrub(r.stderr.splitlines()[0]), root) if r.stderr.splitlines() else None
+            diagnostic = (r.stdout + r.stderr).lower()
+            receipt['provider_error_flags'] = [term for term in (
+                'unknown option', 'requires', 'authentication', 'not logged in',
+                'model', 'safe-mode', 'incompatible', 'restricted', 'permission',
+                'keychain', 'invalid', 'prompt', 'input', 'json', 'allowedtools',
+                'api key', 'oauth', 'system prompt', 'argument', 'trust', 'login') if term in diagnostic]
+            print('DISPATCH_STOPPED: Claude provider startup/exit failure; inspect sanitized receipt', file=sys.stderr)
             raise ReaderFailure('PROVIDER_EXIT')
+        for line in r.stdout.splitlines():
+            event = json.loads(line)
+            if isinstance(event, dict) and event.get('type') == 'system' and event.get('subtype') == 'init':
+                receipt['startup_inventory'] = {k: event.get(k) for k in ('tools', 'mcp_servers', 'skills', 'slash_commands')}
+                receipt['startup_inventory']['plugins'] = plugin_names(event.get('plugins'))
+                receipt['session_id'] = event.get('session_id')
+                receipt['apiKeySource'] = event.get('apiKeySource')
         init, result, found = observation(r.stdout, images)
         if init.get('model') != a.model:
             raise ReaderFailure('MODEL_MISMATCH')
-        if has_secret([init, result, found], secret):
+        if leaked([init, result, found]):
             raise ReaderFailure('SECRET_IN_PROVIDER_OUTPUT')
         receipt.update(init=init, usage=result.get('usage'))
+        receipt['read_count'] = sum(visual.finding_is_read(x) for x in found.values())
+        receipt['image_sha256'] = {str(x): hashes[str(x)] for x in images if visual.finding_is_read(found[str(x)])}
         code = 0 if all(visual.finding_is_read(x) for x in found.values()) else 1
     except ReaderFailure as error:
         receipt['failure'] = error.code
@@ -240,14 +289,16 @@ def main():
     finally:
         if previous_term is not None:
             signal.signal(signal.SIGTERM, previous_term)
-        receipt['session_files'] = [str(x) for x in (home/'.claude/projects').glob('*/*.jsonl')]
+        receipt['session_files'] = []  # Do not enumerate the user's private login/session store.
         directory = images[0].parent/'helper-receipts'; directory.mkdir(exist_ok=True)
-        path = directory/(str(uuid.uuid4())+'.json'); path.write_text(json.dumps(redacted(receipt, secret), indent=2)+'\n')
-        print('HELPER_RECEIPT '+redacted(str(path), secret), file=sys.stderr)
+        path = directory/(str(uuid.uuid4())+'.json'); path.write_text(json.dumps(scrub(receipt), indent=2)+'\n')
+        print('HELPER_RECEIPT '+scrub(str(path)), file=sys.stderr)
     covered = sum(visual.finding_is_read(x) for x in found.values()) if code != 2 else 0
+    if not covered:
+        print('TOOLING FAILURE: no frames were read (no frames read); STOP, no QA verdict', file=sys.stderr)
     print(f'Coverage: {covered}/{len(images)}; '+('complete' if code == 0 else 'partial')+'; 0 image findings omitted by output cap.')
     for image in images:
-        print(redacted(str(image)+': '+found.get(str(image), 'NOT DETERMINED (helper failed)'), secret))
+        print(scrub(str(image)+': '+found.get(str(image), 'NOT DETERMINED (helper failed)')))
     return code
 
 

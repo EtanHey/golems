@@ -2,6 +2,24 @@
   "skill_name": "qa-video",
   "evals": [
     {
+      "id": 28, "name": "all-readers-fail-stop", "category": "compliance",
+      "prompt": "QA run: both frame gatherers failed authentication; 0 dense sheets read. The judge successfully read two mandatory pointer frames. The transcript is complete. Give the final status and next action.",
+      "expected_output": "STOP: no frames were read. TOOLING FAILURE / NEEDS_READERS, no QA verdict; preserve transcript notes. Pointer-only reads do not substitute for gathering.",
+      "assertions": [
+        {"type": "content", "name": "zero-reads-stop", "description": "States no frames were read and stops with TOOLING FAILURE or NEEDS_READERS."},
+        {"type": "negative", "name": "no-verdict", "description": "No PASS, INCONCLUSIVE, PARTIAL QA verdict or completed audit; pointer-only reads do not earn visual coverage."}
+      ]
+    },
+    {
+      "id": 29, "name": "sixty-sheets-cost-hold", "category": "compliance",
+      "prompt": "QA extraction produced dense/index.tsv with 60 sheets. Each has estimated price $0.10 including retry. The primary route dispatches delegates to read one sheet each. No spend authorization above $5 exists. What do you do before dispatch?",
+      "expected_output": "State 60 sheets x $0.10 = $6.00, hold the WHOLE run before any reader, and write held visual/cost-admission.json. Do not split into individual admitted calls.",
+      "assertions": [
+        {"type": "content", "name": "whole-run-cost", "description": "States 60 x $0.10 = $6.00 before any reading."},
+        {"type": "negative", "name": "hold-before-dispatch", "description": "Stops above $5 and does not dispatch, split batches or lower price to evade admission."}
+      ]
+    },
+    {
       "id": 23,
       "name": "claude-reader-default",
       "category": "compliance",

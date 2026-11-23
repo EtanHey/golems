@@ -179,6 +179,13 @@ is `DENSE_MAX_GB=5` by default; see provenance.md for retention controls.
 
 ## Phase 4: Gatherers Read the Sheets, You Judge the Text, Then Re-Densify
 
+**Admit before dispatch:** `default.sh plan` starts the current run ID. After extraction run
+`python3 "$SCRIPTS/reader-policy.py" admit "$MEDIADIR"` to count the entire dense/index.tsv,
+state sheets × price and write visual/cost-admission.json. Above $5 STOP. Every helper/delegate
+receives `--admission "$MEDIADIR/visual/cost-admission.json"`; no admission means no reader.
+A successful pointer read cannot replace gathering. If all gatherers fail, STOP with
+"no frames were read", no QA verdict; retain transcript evidence notes only.
+
 **Gatherers read every contact sheet; you never open one.** Split `index.tsv` into time-ordered
 batches of ≤15 sheets (each with the adjacent window's last sheet) and gather, first route that works
 (SKILL.md § Execution routing has the exact calls):
@@ -190,7 +197,7 @@ batches of ≤15 sheets (each with the adjacent window's last sheet) and gather,
    workdir inside `$MEDIADIR`, so coverage-count.sh finds its `visual/findings.jsonl`:
 
 ```bash
-python3 "$SCRIPTS/visual-batch.py" --index "$MEDIADIR/dense/index.tsv" \
+python3 "$SCRIPTS/visual-batch.py" --admission "$MEDIADIR/visual/cost-admission.json" --index "$MEDIADIR/dense/index.tsv" \
   --workdir "$MEDIADIR/visual-dense-01" --budget-seconds 480 --question \
   'Describe cursor targets and before/after states with zero-based tile indexes. Mark unclear moments NOT DETERMINED; never invent timestamps.'
 ```

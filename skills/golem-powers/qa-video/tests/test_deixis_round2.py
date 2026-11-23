@@ -100,6 +100,17 @@ def test_read_transcript_and_auto_finalize_reject_forged_ledger(run):
     r = call('narration-evidence.py', 'reference', work, 'item-1', rows[0]['frame']+'.crop.png')
     assert r.returncode == 0, r.stderr
     out.write_text(text+'\n## Findings\n')
+    # Successful pointer inspections alone never satisfy gathering.
+    blocked = call('default.sh', 'finalize', work, out, '--transcript', session)
+    assert blocked.returncode == 3 and 'no frames were read' in blocked.stderr
+    gathered = work/'gather.png'; gathered.write_bytes(Path(rows[0]['frame']).read_bytes())
+    assert call('reader-policy.py', 'plan', work, gathered).returncode == 0
+    with session.open('a') as stream:
+        stream.write('\n'+json.dumps({'type': 'assistant', 'message': {'content': [
+            {'type': 'tool_use', 'id': 'gather1', 'name': 'Read', 'input': {'file_path': str(gathered)}}]}})+'\n')
+        stream.write(json.dumps({'type': 'user', 'message': {'content': [
+            {'type': 'tool_result', 'tool_use_id': 'gather1', 'is_error': False,
+             'content': [{'type': 'image', 'source': {}}]}]}})+'\n')
     r = call('default.sh', 'finalize', work, out, '--transcript', session)
     assert r.returncode == 0, r.stderr
 

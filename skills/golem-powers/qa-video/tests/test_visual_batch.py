@@ -163,6 +163,9 @@ def test_setup_auth_error_is_propagated(monkeypatch, capsys):
 
 @pytest.mark.parametrize('slowdown', [False, True])
 def test_eta_matches_throughput_and_can_rise(tmp_path, monkeypatch, slowdown):
+    monkeypatch.chdir(tmp_path)
+    for i in range(12):
+        Path(str(i)).write_bytes(b'synthetic')
     spec = importlib.util.spec_from_file_location('batch', DRIVER)
     batch = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(batch)
@@ -301,5 +304,8 @@ def test_cached_model_avoids_concurrent_setup(setup, monkeypatch):
     monkeypatch.setattr(batch, 'read_sheet', read)
     args = Namespace(workdir=work, budget_seconds=10, concurrency=3, timeout=90,
                      helper=SKILL/'scripts/visual-gather.py', question='facts')
+    monkeypatch.chdir(work)
+    for name in ('a', 'b', 'c'):
+        Path(name).write_bytes(b'synthetic')
     assert batch.run(args, ['a', 'b', 'c']) == 0
     assert lookups == [1] and models == ['fixture-model']*3
