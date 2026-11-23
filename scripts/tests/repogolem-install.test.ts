@@ -402,3 +402,33 @@ test('regular seat exact bytes reconcile without changing the original rollback 
   expect(run(['--rollback']).code).toBe(0);
   expect(readFileSync(seats, 'utf8')).toBe(seat);
 });
+
+for (const dry of [false, true]) test(`redteam regular seat refuses target hand edit (${dry ? 'dry-run' : 'apply'})`, () => {
+  const { target, seats, current } = regularSeatFixture();
+  writeFileSync(seats, current);
+  writeFileSync(target, current + 'handKey: precious\n');
+  const before = treeSnapshot();
+  const result = run(['--host', 'fixture-host', ...(dry ? ['--dry-run'] : [])]);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('installed machine seat view changed; install refused');
+  expect(result.text).toContain('handKey');
+  expect(result.text).not.toContain('precious');
+  expect(readFileSync(target, 'utf8')).toContain('handKey: precious');
+  expect(treeSnapshot()).toEqual(before);
+});
+test('redteam rollback reports every retained reconciliation backup', () => {
+  const { seats, original, journal } = regularSeatFixture();
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  rmSync(seats); writeFileSync(seats, original + '# second reconciliation\n');
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  const entries = JSON.parse(readFileSync(journal, 'utf8')).seatReconciliations;
+  expect(entries).toHaveLength(2);
+  const backups = entries.map((entry: { backup: string }) => ({ path: entry.backup, bytes: readFileSync(entry.backup, 'utf8') }));
+  const result = run(['--rollback']);
+  expect(result.code).toBe(0);
+  expect(existsSync(journal)).toBe(false);
+  for (const backup of backups) {
+    expect(result.text).toContain(backup.path);
+    expect(readFileSync(backup.path, 'utf8')).toBe(backup.bytes);
+  }
+});

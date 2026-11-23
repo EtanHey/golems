@@ -70,18 +70,22 @@ function changedMachineKeys(observed: string, expected: string) {
 function verifySeats(state: any, seats: string, current?: { target: string; text: string }): { kind: 'machine-view' } | { kind: 'regular-file'; text: string } | undefined {
   const stat = present(seats), pending = state.phase === 'installing';
   const target = state.seatTarget ?? state.config;
-  if (stat?.isSymbolicLink() && stat.uid === process.getuid?.() && readlinkSync(seats) === target) {
+  function verifyTarget() {
     if (state.machineDigest) {
       const text = present(target) ? readFileSync(target, 'utf8') : null;
       const observed = text === null ? null : digest(text);
       if (observed !== state.machineDigest && !(pending && observed === state.previousMachineDigest)) {
-        if (current && target === current.target && text === current.text) return { kind: 'machine-view' };
+        if (current && target === current.target && text === current.text) return true;
         const diagnostic = current && text !== null ? `; ${changedMachineKeys(text, current.text)}` : '';
         throw new Error(`installed machine seat view changed; ${current ? 'install' : 'rollback'} refused${diagnostic}`);
       }
     }
+  }
+  if (stat?.isSymbolicLink() && stat.uid === process.getuid?.() && readlinkSync(seats) === target) {
+    if (verifyTarget()) return { kind: 'machine-view' };
   } else if (current && stat?.isFile()) {
     safePath(dirname(dirname(seats)), seats);
+    verifyTarget();
     const text = readFileSync(seats, 'utf8');
     try {
       const actual: unknown = parseYaml(text), wanted: unknown = parseYaml(current.text);
@@ -140,7 +144,9 @@ export function runInstall(argv: string[]): number {
     }
     for (const name of Object.keys(previous.agentLinks ?? {})) rmSync(join(agentDir,name),{force:true});
     rmSync(statePath);
-    console.log('restored shell and seat registry; installed runtime retained'); return 0;
+    console.log('restored shell and seat registry; installed runtime retained');
+    for (const entry of previous.seatReconciliations ?? []) console.log(`reconciliation backup retained: ${entry.backup}`);
+    return 0;
   }
   if (!config || !existsSync(config)) throw new Error('install requires an existing --config or REPOGOLEM_CONFIG');
   config = resolve(config);
@@ -262,6 +268,8 @@ export function runInstall(argv: string[]): number {
   if (!present(seats)?.isSymbolicLink()) {
     const temporary = `${seats}.new-${process.pid}`;
     symlinkSync(seatTarget, temporary);
+    // AIDEV-NOTE: An editor save between the recheck and renameSync can still be replaced.
+    // The pre-check bytes are in the reconciliation backup; a save in this residual window is not.
     try { renameSync(temporary, seats); } finally { rmSync(temporary, { force: true }); }
   }
   atomic(statePath, JSON.stringify({ ...state, phase: 'installed', agentLinks }) + '\n');
