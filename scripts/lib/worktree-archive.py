@@ -29,7 +29,7 @@ REGENERABLE = {
 
 
 # Verified against M1 voicelayer s12m1/.build.noindex/swift. These names
-# are disposable only inside a canonical .build.noindex or SwiftPM scratch.
+# are disposable only inside a container identified as SwiftPM scratch.
 SWIFTPM_OUTPUT = {
     'debug', 'release', 'checkouts', 'repositories', 'artifacts',
     'workspace-state.json', '.lock', 'ModuleCache', 'index',
@@ -64,8 +64,9 @@ def swiftpm_scratch(full):
         '.lock' in names or any(n not in SWIFTPM_OUTPUT and swiftpm_output(n) for n in names))
 
 
-def expand_build_container(root, rel):
+def expand_build_container(root, rel, scratch=False):
     keep = []
+    scratch = scratch or swiftpm_scratch(os.path.join(root, rel))
     for name in sorted(os.listdir(os.path.join(root, rel))):
         child = rel + '/' + name
         full = os.path.join(root, child)
@@ -73,11 +74,11 @@ def expand_build_container(root, rel):
             keep.append(child)
         elif name == '.build.noindex' and os.path.isdir(full):
             keep.extend(expand_build_container(root, child))
-        elif swiftpm_output(name) or regenerable(name):
+        elif (scratch and swiftpm_output(name)) or regenerable(name):
             if protected_docs(full):
                 keep.append(child)
         elif swiftpm_scratch(full):
-            keep.extend(expand_build_container(root, child))
+            keep.extend(expand_build_container(root, child, scratch=True))
         else:
             # Unknown children are data ancestors: preserve everything below,
             # including cache-looking names, just as expand() does elsewhere.
