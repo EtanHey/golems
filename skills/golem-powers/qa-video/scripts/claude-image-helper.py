@@ -57,6 +57,14 @@ def redacted(value, secret):
     return value
 
 
+def plugin_names(value):
+    # Init may enumerate installed plugins even in safe mode. Record names only;
+    # this is diagnostic metadata, not another inventory refusal condition.
+    items = value if isinstance(value, list) else []
+    names = [item.get('name') if isinstance(item, dict) else item for item in items]
+    return [name for name in names if isinstance(name, str)]
+
+
 def provider_bound(timeout):
     available = timeout
     if os.environ.get('QA_VISUAL_DEADLINE'):
@@ -257,6 +265,7 @@ def main():
             event = json.loads(line)
             if isinstance(event, dict) and event.get('type') == 'system' and event.get('subtype') == 'init':
                 receipt['startup_inventory'] = {k: event.get(k) for k in ('tools', 'mcp_servers', 'skills', 'slash_commands')}
+                receipt['startup_inventory']['plugins'] = plugin_names(event.get('plugins'))
                 receipt['session_id'] = event.get('session_id')
                 receipt['apiKeySource'] = event.get('apiKeySource')
         init, result, found = observation(r.stdout, images)

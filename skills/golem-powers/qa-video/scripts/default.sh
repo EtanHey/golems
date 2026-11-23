@@ -16,10 +16,10 @@ fi
 if [ "${1:-}" = "plan" ]; then
   [ $# -ge 3 ] || { echo "usage: default.sh plan <video> <workdir> [qa|debrief|review]" >&2; exit 2; }
   VIDEO="$2"; WORKDIR="$3"; MODE="${4:-qa}"
-  python3 "$SCRIPTS/reader-policy.py" plan "$WORKDIR"
   MUST_READ="${5:-}"
   [ -z "$MUST_READ" ] || [ "$MUST_READ" = --must-read ] || { echo 'plan: expected --must-read' >&2; exit 2; }
   case "$MODE" in qa|debrief|review) ;; *) echo "plan: mode must be qa, debrief or review (gems: Agent(video-gems))" >&2; exit 2;; esac
+  python3 "$SCRIPTS/reader-policy.py" plan "$WORKDIR"
   JUDGE_MODEL="$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.judgment --field model 2>/dev/null || echo '<claude.judgment model>')"
   READER_MODEL="$(node "$SCRIPTS/../../../../scripts/model-roles.mjs" claude.subagent.cheap --field model)"
   if [ "$MODE" = qa ] || [ "$MUST_READ" = --must-read ]; then
@@ -117,9 +117,9 @@ if [ "${1:-}" = "gather" ]; then
   if [ $# -gt 0 ]; then
     if [ -f "$WORKDIR/dense/index.tsv" ]; then
       python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" --index "$WORKDIR/dense/index.tsv"
-    else
-      python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" "$@"
     fi
+    # Include crops/refinements alongside the complete index; admit accumulates.
+    python3 "$SCRIPTS/reader-policy.py" admit "$WORKDIR" "$@"
     # shellcheck disable=SC2086
     exec bash "$SCRIPTS/run-step.sh" "$WORKDIR" "$STEP" -- python3 "$SCRIPTS/visual-batch.py" \
       --workdir "$WORKDIR/visual-$STEP" $BUDGET --question "$QUESTION" "$@"
