@@ -192,6 +192,25 @@ host runs are proved.
 The report-only condition changes merge gating, not the creation floor or any
 permission to delete. Real GC, activation and installation remain lead-owned.
 
+### List-run proof snapshots
+
+Read-only runs capture live skill/hook symlink targets once. An independent
+startup cwd-only lsof view retains the 90% process-coverage rule for ordinary
+liveness checks. A separate strict full open-file snapshot serves T3 proofs;
+its failure is categorized as `open-file-snapshot-unavailable`. They read the T3 database in one read transaction,
+retaining only bound threads, project roots, enabled schedules, and unfinished
+state for bound threads in a compact run-local database beside the log. Missing
+or failed proof inputs keep affected candidates undetermined; a failed full-file
+capture does not replace the independent cwd view. Probe diagnostics stay in the run log. A validated census
+with no linked worktrees skips remote lookups because there are no candidate
+verdicts to prove. Prune plans reuse the initial remote refresh per repository;
+its network commands have a 45-second deadline and fail closed on timeout.
+Apply retains fresh remote rechecks before removal. Per-run database, open-file
+and symlink snapshots are removed on exit; plan tables and audit logs remain.
+
+These snapshots describe the plan's observation time. `--apply` clears snapshot
+inputs and retains the fresh per-candidate and post-archive removal proofs.
+A plan is not permission to remove a tree using stale observations.
 ### Nightly release pins and notifications
 
 The nightly wrapper also accepts the active `~/.golems/current` release under
