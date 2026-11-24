@@ -16,8 +16,11 @@ cells carry short categories; full probe details stay in the run log.
 
 Sibling admission requires a direct child listed by that main repository's Git
 worktree census and a matching Git common directory. Unregistered entries,
-clones and foreign-repository registrations are reported KEEP-out-of-scope;
-symlinked roots/entries are refused. The same ancestry, open-PR, T3 binding,
+clones and foreign-repository registrations are reported KEEP-out-of-scope
+in the owner queue (`latest.json`/`latest.md` on a full sweep, `last-run.*` on
+scoped runs), with owner repo, path, size when measurable, and reason. These
+sibling exclusions are reported immediately, without the stale-work age filter.
+Symlinked roots/entries are refused. The same ancestry, open-PR, T3 binding,
 index, idle, liveness, archive and removal-lock guards apply. `--path` supports
 these siblings but still refuses the main checkout and paths through symlinks.
 Sibling identity is rechecked after archival before `git worktree remove`.

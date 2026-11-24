@@ -120,8 +120,11 @@ def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
                                      size_bytes=None, reason=reason, detail=detail,
                                      birth_epoch=None, stage=stage)) + "\n")
         return
+    # Sibling exclusions may not be Git worktrees at all. Never infer their
+    # admin/owner from a containing repo, a foreign registration or a symlink.
+    sibling_exclusion = reason == "KEEP-out-of-scope"
     try:
-        admin = subprocess.check_output(["git", "-C", path, "rev-parse", "--absolute-git-dir"], text=True).strip()
+        admin = None if sibling_exclusion else subprocess.check_output(["git", "-C", path, "rev-parse", "--absolute-git-dir"], text=True).strip()
     except (OSError, subprocess.SubprocessError):
         if reason != "KEEP-undetermined":
             raise
@@ -133,11 +136,11 @@ def add_report(journal, repo, path, branch, reason, detail, stage="processing"):
         if value.returncode == 0 and value.stdout.strip().isdigit():
             birth = int(value.stdout.strip())
             break
-    if reason not in ("KEEP-undetermined", "KEEP-busy") and (not birth or time.time() - birth < 72 * 3600):
+    if reason not in ("KEEP-undetermined", "KEEP-busy", "KEEP-out-of-scope") and (not birth or time.time() - birth < 72 * 3600):
         return
     owner = repo
     try:
-        threads = t3_threads(path)
+        threads = [] if sibling_exclusion else t3_threads(path)
         owners = {t["owner"] or t["id"] for t in threads}
         if len(owners) == 1:
             owner = owners.pop()

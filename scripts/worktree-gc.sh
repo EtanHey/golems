@@ -57,7 +57,12 @@ emit_row() {
   printf '%s\n' "$row" >> "$LOG_FILE"
   printf '%s\n' "$row"
   case "$verdict" in
-    KEEP-dirty|KEEP-unmerged|KEEP-unpushed|KEEP-live|KEEP-detached|KEEP-reflog|KEEP-undetermined|KEEP-busy)
+    KEEP-dirty|KEEP-unmerged|KEEP-unpushed|KEEP-live|KEEP-detached|KEEP-reflog|KEEP-undetermined|KEEP-busy|KEEP-out-of-scope)
+      # Only sibling exclusions join the owner queue; unrelated namespaces stay
+      # outside this report. Filesystem discovery still cannot authorize removal.
+      if [[ "$verdict" == KEEP-out-of-scope ]]; then
+        [[ -n "${sibling_root:-}" && ( "$worktree_path" == "$sibling_root" || "$worktree_path" == "$sibling_root/"* ) ]] || return 0
+      fi
       local report_detail
       report_detail="$(python3 "$SCRIPT_DIR/lib/worktree-gc-state.py" add "$REPORT_JOURNAL" \
         "$repo_name" "$worktree_path" "$branch" "$verdict" "$reason" 2>&1)" ||

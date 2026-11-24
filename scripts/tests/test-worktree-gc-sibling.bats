@@ -149,3 +149,39 @@ GH
   [ -f "$root/group/nested/fixture.txt" ]
   [ -f "$outside-worktrees/lane/fixture.txt" ]
 }
+
+@test "sibling: fresh unregistered and foreign entries reach latest owner report" {
+  sibling_fixture
+  mkdir -p "$root/unregistered"
+  printf 'owner attention\n' > "$root/unregistered/notes.txt"
+  other="$(make_fixture_repo other)"
+  git -C "$other" worktree add -q --detach "$root/foreign" origin/main
+  git init -q "$root/clone"
+  run "$WORKTREE_GC"
+  [ "$status" -eq 0 ]
+  python3 - "$WORKTREE_GC_REPORT_DIR" "$root" <<'PYTEST'
+import json, pathlib, sys
+reports, root = map(pathlib.Path, sys.argv[1:])
+report = json.loads((reports / 'latest.json').read_text())
+rows = report['owners']['sibling']
+for name in ('unregistered', 'foreign', 'clone'):
+    row, = [row for row in rows if row['path'] == str(root / name)]
+    assert row['repo'] == 'sibling', row
+    assert row['reason'] == 'KEEP-out-of-scope', row
+    assert 'not a registered same-repo sibling worktree' in row['detail'], row
+    assert isinstance(row['size_bytes'], int) and row['size_bytes'] > 0, row
+    assert (root / name).is_dir()
+assert json.loads((reports / 'last-run.json').read_text()) == report
+assert 'unregistered' in (reports / 'latest.md').read_text()
+PYTEST
+  printf '#!/bin/sh\nexit 1\n' > "$TEST_ROOT/bin/du"
+  chmod +x "$TEST_ROOT/bin/du"
+  run "$WORKTREE_GC"
+  [ "$status" -eq 0 ]
+  python3 - "$WORKTREE_GC_REPORT_DIR/latest.json" "$root/unregistered" <<'PYTEST'
+import json, sys
+report = json.load(open(sys.argv[1]))
+row, = [row for row in report['owners']['sibling'] if row['path'] == sys.argv[2]]
+assert row['size_bytes'] is None and row['reason'] == 'KEEP-out-of-scope', row
+PYTEST
+}
