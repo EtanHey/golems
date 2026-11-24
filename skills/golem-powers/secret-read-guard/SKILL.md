@@ -55,8 +55,15 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
   code in any spelling (`-c`/`-e`, clustered `-Ic`/`-sc`, attached `-cCODE`,
   `--eval=CODE`, `-p`, `-r`, `deno eval`, `-`, a heredoc or here-string with
   no script file) is refused if it references `os.environ`, `environ`,
-  `getenv`, `process.env`, `ENV`, `%ENV`, `Deno.env` or `Bun.env`. No name
-  matching: aliases (`e=os.environ; print(e)`) leave nothing to match. It is
+  `getenv`, `process.env`, `ENV`, `%ENV`, `Deno.env`, `Bun.env`, AppleScript
+  `system attribute` / `do shell script`, or Tcl `$env(`, `env(`,
+  `array get env`, `parray env`. The same goes for awk-family `ENVIRON` and
+  jq/yq `env`, `$ENV`, `strenv` (a `.env` field is fine). Code piped on stdin
+  into any interpreter or shell (`echo 'puts $env(K)' | tclsh`,
+  `echo printenv | sh`, `cat <<EOF | node`) is inline code too; a variable in
+  it means the code only exists at run time, so it is refused. Output of
+  another command piped in (`cat tool.py | python3`) counts as a script file.
+  No name matching: aliases (`e=os.environ; print(e)`) leave nothing to match. It is
   also refused if it names a listed path, opens a listed name
   (`open('.env')`) or runs the helper. Code that needs a key belongs in a
   script file; `( set -a; . x.env; set +a; python3 tool.py )` keeps working.
@@ -105,7 +112,8 @@ Replaying distinct real Bash commands from local Claude transcripts (scratch
 HOME, no real file read): round 0, 369 of 25,702 refused (1.44%); round 1
 (stricter env, sed and inline-code rules), 379 of 24,904 (1.52%); round 2
 (final class rules: any env reference in inline code, no env-dump
-exceptions), 431 of 24,892 (1.73%). About 60% of refusals name a file only at
+exceptions), 431 of 24,892 (1.73%); round 3 (awk/jq/AppleScript/Tcl env
+reads, piped stdin code), 432 of 24,880 (1.74%). About 60% of refusals name a file only at
 run time; most of the rest touch a listed file or the environment. Hook median
 81 ms.
 

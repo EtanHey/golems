@@ -110,7 +110,7 @@ PRINTERS = {
 
 INTERPRETER_RE = re.compile(
     r"(python(\d+(\.\d+)?)?|pypy3?|node|nodejs|bun|deno|ruby|irb|perl|php|lua|luajit|osascript|"
-    r"Rscript|julia|swift|tclsh|pwsh|powershell|ts-node|tsx)$")
+    r"Rscript|julia|swift|tclsh|wish|expect|jimsh|pwsh|powershell|ts-node|tsx)$")
 SHELLS = frozenset("bash sh zsh dash ksh fish".split())
 
 # Wrappers whose next free word is the real command. Values: options that take a value.
@@ -136,7 +136,18 @@ JQ_KEY_ONLY = re.compile(
     r"^\s*(\.[A-Za-z0-9_\"\[\]\.]*\s*\|\s*)?"
     r"(keys|keys_unsorted|length|type|paths|\[paths\]|has\(\"[^\"]*\"\)|to_entries\s*\|\s*map\(\s*\.key\s*\))"
     r"(\s*\[\])?\s*$")
-ENV_ANY = re.compile(r"\b(os\.environ|environ|getenv|process\.env|ENV|Deno\.env|Bun\.env)\b|%ENV\b")
+# Any reference to the environment in inline code, across languages: Python,
+# Node/Deno/Bun, Ruby/Perl (ENV, %ENV), awk (ENVIRON), AppleScript (system
+# attribute, do shell script), Tcl ($env(K), env(K), array get env, parray env).
+ENV_ANY = re.compile(
+    r"\b(os\.environ|environ|getenv|process\.env|ENV|ENVIRON|Deno\.env|Bun\.env)\b|%ENV\b"
+    r"|\bsystem\s+attribute\b|\bdo\s+shell\s+script\b"
+    r"|\$env\(|\benv\(|\barray\s+(get|names)\s+env\b|\bparray\s+env\b")
+AWK_FAMILY = frozenset(("awk", "gawk", "nawk", "mawk"))
+JQ_FAMILY = frozenset(("jq", "gojq", "jaq", "yq"))
+# jq/yq environment access: the `env` builtin, $ENV, yq's env()/strenv().
+# `.env` (a field named env) is not a reference.
+JQ_ENV = re.compile(r"(^|[^A-Za-z0-9_$.])(env|strenv)\b|\$ENV\b")
 OPEN_CALL = re.compile(r"\b(open|read_text|read_bytes|readFileSync|readFile|fopen|file_get_contents|"
                        r"File\.read|IO\.read|Path|load|loads|slurp)\s*\(")
 EXEC_CALL = re.compile(r"\b(subprocess|check_output|Popen|os\.system|popen|execSync|execFileSync|spawnSync|"
@@ -650,12 +661,79 @@ def _judge_tokens(ctx, tokens, cwds, depth):
             codes.extend(inline)
         if reason:
             return reason, cwds
+        if index and pairs[index - 1][1] == "|":
+            reason = _judge_piped_code(ctx, pairs[index - 1][0], segment, cwds, depth)
+            if reason:
+                return reason, cwds
     for code in codes:
         # Inline code (-c, -e, heredoc and here-string bodies) is judged by what it names.
         found = code_mentions(ctx, code, cwds)
         if found:
             return REASON_CODE.format(lang="interpreter", what=found), cwds
     return None, cwds
+
+
+def _split_segment(ctx, segment):
+    """(cmd, args, redirects) of a segment's real command, or None."""
+    words, redirects, i = [], [], 0
+    while i < len(segment):
+        token = segment[i]
+        if isinstance(token, ctx.operator):
+            redirects.append((str(token), segment[i + 1] if i + 1 < len(segment) else ""))
+            i += 2
+            continue
+        words.append(token)
+        i += 1
+    if not words or not all(isinstance(w, str) for w in words):
+        return None
+    positions = ctx.parser._command_position_flags(words)
+    starts = [k for k, flag in enumerate(positions) if flag]
+    ci, _ = _unwrap(words, starts[0] if starts else 0)
+    if ci is None:
+        return None
+    return os.path.basename(words[ci]).lstrip("\\"), words[ci + 1:], redirects
+
+
+def _judge_piped_code(ctx, producer, consumer, cwds, depth):
+    """Code piped on stdin into an interpreter or shell is inline code.
+
+    `echo 'puts $env(K)' | tclsh`, `printf 'env' | sh`, `cat <<EOF ... EOF | node`.
+    Literal echo/printf/heredoc text is judged; a variable or substitution in
+    it means the code only exists at run time, so it is refused. Output of
+    another command (`cat tool.py | python3`) is treated like a script file.
+    """
+    split = _split_segment(ctx, consumer)
+    if split is None:
+        return None
+    cmd, args, _ = split
+    shell = cmd in SHELLS
+    if not (shell or INTERPRETER_RE.fullmatch(cmd)):
+        return None
+    if shell and any(a.startswith("-") and "c" in a[1:] and not a.startswith("--") for a in args):
+        return None  # sh -c CODE: the payload is judged as shell already; stdin is data
+    if not shell and _inline_mode(cmd, args):
+        return None  # -c/-e code is scanned already; stdin is data
+    positional = [a for a in args if not a.startswith("-")]
+    if positional and positional[0] != "-":
+        return None  # a script file reads stdin as data
+    made = _split_segment(ctx, producer)
+    if made is None:
+        return None
+    pcmd, pargs, predirects = made
+    if pcmd in ("echo", "printf", "print"):
+        words = [a for a in pargs if not (pcmd == "echo" and re.fullmatch(r"-[neE]+", a))]
+        if any(_expand_vars(ctx, w, cwds) is None or "`" in w for w in words):
+            return REASON_DYNAMIC.format(word="code piped into " + cmd)
+        text = " ".join(words)
+    elif pcmd == "cat" and not pargs and any(op.lstrip("0123456789") in HEREDOC_OPS for op, _ in predirects):
+        target = next(t for op, t in predirects if op.lstrip("0123456789") in HEREDOC_OPS)
+        text = _heredoc_body(getattr(ctx, "raw", "") or "", target, "cat")
+    else:
+        return None
+    if shell:
+        return judge(ctx, text, cwds, depth + 1)
+    found = code_mentions(ctx, text, cwds)
+    return REASON_CODE.format(lang=cmd, what=found) if found else None
 
 
 def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
@@ -750,6 +828,12 @@ def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
     if cmd == "git":
         return _judge_git(ctx, args, cwds), cwds, False
     spec = PRINTERS.get(cmd)
+    if cmd in AWK_FAMILY or cmd in JQ_FAMILY:
+        pattern = ENV_ANY if cmd in AWK_FAMILY else JQ_ENV
+        for word in args:
+            found = pattern.search(word) if isinstance(word, str) else None
+            if found:
+                return REASON_CODE.format(lang=cmd, what="an environment read (" + found.group(0).strip() + ")"), cwds, False
     if spec is not None:
         var = _protected_var_name(ctx, args)
         if var:

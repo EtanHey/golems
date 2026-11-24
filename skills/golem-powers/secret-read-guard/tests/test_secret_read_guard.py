@@ -267,6 +267,11 @@ ALLOW = [
     ("( set -a; . ~/.config/golems/openai-api.env; set +a; python3 consumer.py )", "repo"),
     ("( set -a; . ~/.config/golems/openai-api.env; set +a; /usr/bin/true )", "repo"),
     ("python3 consumer.py <<< 'data'", "repo"),
+    ("echo hi | python3 consumer.py", "repo"),
+    ("git log --oneline -3 | python3 -c \"import sys; print(len(sys.stdin.read()))\"", "repo"),
+    ("awk '{print $1}' README.md", "repo"),
+    ("jq '.env | keys' ~/.claude/settings.json", "repo"),
+    ("echo 'print(1 + 1)' | python3", "repo"),
     ("cat .claude/settings.json", "repo"),
     ("python3 - <<'EOF'\np='notes.py'; s=open(p).read().replace('.env', 'auth.json')\nEOF", "repo"),
     ("for f in README.md src/app.ts; do head -3 \"$f\"; done", "repo"),
@@ -319,6 +324,38 @@ SOL_R2 = [
 @pytest.mark.parametrize("codex", [False, True], ids=["claude", "codex"])
 @pytest.mark.parametrize("command", SOL_R2)
 def test_sol_round2_repros_are_refused(world, command, codex):
+    proc = run(bash(command, world["repo"]), codex=codex)
+    assert proc.returncode == (0 if codex else 2), (command, proc.stdout, proc.stderr)
+    assert decision(proc) == "deny", (command, proc.stdout)
+
+
+# Lead's verification of 50138a03: env-reading tools outside the interpreter list.
+LEAD_R3 = [
+    "awk 'BEGIN{print ENVIRON[\"OPENAI_API_KEY\"]}'",
+    "gawk 'BEGIN{for(k in ENVIRON)print k,ENVIRON[k]}'",
+    "mawk 'BEGIN{print ENVIRON[\"K\"]}'",
+    "nawk 'BEGIN{print ENVIRON[\"K\"]}'",
+    "jq -n env",
+    "jq -n '$ENV.OPENAI_API_KEY'",
+    "jq -n 'env.OPENAI_API_KEY'",
+    "yq -n 'strenv(OPENAI_API_KEY)'",
+    "osascript -e 'system attribute \"OPENAI_API_KEY\"'",
+    "osascript -e 'do shell script \"env\"'",
+    "echo 'puts $env(OPENAI_API_KEY)' | tclsh",
+    "echo 'puts [array get env]' | tclsh",
+    "printf 'parray env' | wish",
+    "echo 'puts $env(K)' | expect",
+    "tclsh <<< 'puts $env(K)'",
+    "echo printenv | sh",
+    "echo 'import os; print(os.environ)' | python3",
+    "echo \"$CODE\" | python3",
+    "cat <<'EOF' | node\nconsole.log(process.env)\nEOF",
+]
+
+
+@pytest.mark.parametrize("codex", [False, True], ids=["claude", "codex"])
+@pytest.mark.parametrize("command", LEAD_R3)
+def test_lead_round3_env_tools_are_refused(world, command, codex):
     proc = run(bash(command, world["repo"]), codex=codex)
     assert proc.returncode == (0 if codex else 2), (command, proc.stdout, proc.stderr)
     assert decision(proc) == "deny", (command, proc.stdout)
