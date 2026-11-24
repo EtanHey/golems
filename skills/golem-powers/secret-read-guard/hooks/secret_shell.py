@@ -110,7 +110,7 @@ PRINTERS = {
 
 INTERPRETER_RE = re.compile(
     r"(python(\d+(\.\d+)?)?|pypy3?|node|nodejs|bun|deno|ruby|irb|perl|php|lua|luajit|osascript|"
-    r"Rscript|julia|swift|tclsh|wish|expect|jimsh|pwsh|powershell|ts-node|tsx)$")
+    r"Rscript|R|julia|swift|kotlin|kotlinc|scala|tclsh|wish|expect|jimsh|pwsh|powershell|ts-node|tsx)$")
 SHELLS = frozenset("bash sh zsh dash ksh fish".split())
 
 # Wrappers whose next free word is the real command. Values: options that take a value.
@@ -120,6 +120,8 @@ WRAPPERS = {
     "nohup": (), "time": (), "nice": ("-n",), "command": (), "builtin": (), "exec": ("-a",),
     "stdbuf": ("-i", "-o", "-e"), "caffeinate": ("-t", "-w"), "chronic": (), "unbuffer": (),
     "timeout": ("-s", "-k", "--signal", "--kill-after"), "gtimeout": ("-s", "-k", "--signal", "--kill-after"),
+    # Multi-call binaries: `busybox env` runs the env applet.
+    "busybox": (), "toybox": (),
     "watch": ("-n", "-d", "--interval"), "arch": (), "ionice": ("-c", "-n"), "taskset": (),
     "xargs": ("-I", "-n", "-P", "-L", "-s", "-d", "-E", "-J", "-R", "-a", "--max-args",
               "--max-procs", "--delimiter", "--arg-file"),
@@ -138,9 +140,11 @@ JQ_KEY_ONLY = re.compile(
     r"(\s*\[\])?\s*$")
 # Any reference to the environment in inline code, across languages: Python,
 # Node/Deno/Bun, Ruby/Perl (ENV, %ENV), awk (ENVIRON), AppleScript (system
-# attribute, do shell script), Tcl ($env(K), env(K), array get env, parray env).
+# attribute, do shell script), Tcl ($env(K), env(K), array get env, parray env),
+# Swift (ProcessInfo...environment), Scala (sys.env), R/Kotlin (getenv), Julia (ENV).
 ENV_ANY = re.compile(
-    r"\b(os\.environ|environ|getenv|process\.env|ENV|ENVIRON|Deno\.env|Bun\.env)\b|%ENV\b"
+    r"\b(os\.environ|environ|getenv|process\.env|ENV|ENVIRON|Deno\.env|Bun\.env|ProcessInfo|sys\.env)\b"
+    r"|%ENV\b|\.environment\b"
     r"|\bsystem\s+attribute\b|\bdo\s+shell\s+script\b"
     r"|\$env\(|\benv\(|\barray\s+(get|names)\s+env\b|\bparray\s+env\b")
 AWK_FAMILY = frozenset(("awk", "gawk", "nawk", "mawk"))
@@ -673,6 +677,48 @@ def _judge_tokens(ctx, tokens, cwds, depth):
     return None, cwds
 
 
+def _judge_shell_code(ctx, cmd, args, redirects, cwds, depth):
+    """Shell text a shell, `eval` or `source` runs is judged as shell.
+
+    `bash <<'EOF' ... EOF`, `sh <<< printenv`, `eval printenv`, `zsh -c CODE`
+    behind a wrapper the shared parser doesn't know (`busybox sh -c`), and
+    `source /dev/stdin <<EOF`. `source <(...)`/`. <(...)` run a process
+    substitution's output, which only exists at run time: refused.
+    """
+    raw = getattr(ctx, "raw", "") or ""
+    if cmd == "eval":
+        text = " ".join(a for a in args if isinstance(a, str))
+        return judge(ctx, text, cwds, depth + 1) if text else None
+    if cmd not in SHELLS and cmd not in ("source", "."):
+        return None
+    if cmd in ("source", "."):
+        if any(isinstance(t, ctx.operator) or t == "" for op, t in redirects if op.lstrip("0123456789") == "<") or (
+                args and isinstance(args[0], str) and args[0].startswith("/dev/fd/")):
+            return REASON_DYNAMIC.format(word=cmd + " <(...)")
+    for k, word in enumerate(args):
+        if (cmd in SHELLS and isinstance(word, str) and re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", word)
+                and k + 1 < len(args) and isinstance(args[k + 1], str)):
+            reason = judge(ctx, args[k + 1], cwds, depth + 1)
+            if reason:
+                return reason
+    positional = [a for a in args if isinstance(a, str) and not a.startswith("-")]
+    reads_stdin = (cmd in SHELLS and not positional) or (
+        cmd in ("source", ".") and positional[:1] in (["/dev/stdin"], ["-"]))
+    if not reads_stdin:
+        return None
+    for op, target in redirects:
+        op = op.lstrip("0123456789")
+        if op in HEREDOC_OPS:
+            reason = judge(ctx, _heredoc_body(raw, target, cmd), cwds, depth + 1)
+        elif op == "<<<":
+            reason = judge(ctx, str(target), cwds, depth + 1)
+        else:
+            continue
+        if reason:
+            return reason
+    return None
+
+
 def _split_segment(ctx, segment):
     """(cmd, args, redirects) of a segment's real command, or None."""
     words, redirects, i = [], [], 0
@@ -794,6 +840,10 @@ def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
         return None, cwds, False
 
     reason = _refused_command_reason(ctx, cmd, raw, args, cwds, is_interp)
+    if reason:
+        return reason, cwds, interpreter
+
+    reason = _judge_shell_code(ctx, cmd, args, redirects, cwds, depth)
     if reason:
         return reason, cwds, interpreter
 

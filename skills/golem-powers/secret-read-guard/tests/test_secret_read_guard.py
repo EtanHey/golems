@@ -272,6 +272,12 @@ ALLOW = [
     ("awk '{print $1}' README.md", "repo"),
     ("jq '.env | keys' ~/.claude/settings.json", "repo"),
     ("echo 'print(1 + 1)' | python3", "repo"),
+    ("bash <<'EOF'\necho hi\nEOF", "repo"),
+    ("sh <<< 'ls -la'", "repo"),
+    ("eval echo hi", "repo"),
+    ("busybox ls", "repo"),
+    ("swift -e 'print(1)'", "repo"),
+    ("Rscript -e 'print(1)'", "repo"),
     ("cat .claude/settings.json", "repo"),
     ("python3 - <<'EOF'\np='notes.py'; s=open(p).read().replace('.env', 'auth.json')\nEOF", "repo"),
     ("for f in README.md src/app.ts; do head -3 \"$f\"; done", "repo"),
@@ -356,6 +362,39 @@ LEAD_R3 = [
 @pytest.mark.parametrize("codex", [False, True], ids=["claude", "codex"])
 @pytest.mark.parametrize("command", LEAD_R3)
 def test_lead_round3_env_tools_are_refused(world, command, codex):
+    proc = run(bash(command, world["repo"]), codex=codex)
+    assert proc.returncode == (0 if codex else 2), (command, proc.stdout, proc.stderr)
+    assert decision(proc) == "deny", (command, proc.stdout)
+
+
+# Lead's verification of c3234769: the last four shapes.
+LEAD_R4 = [
+    "bash <<'EOF'\nprintenv\nEOF",
+    "sh <<EOF\nenv\nEOF",
+    "zsh <<< 'printenv OPENAI_API_KEY'",
+    "dash <<< 'cat .env'",
+    "fish <<'EOF'\nenv\nEOF",
+    "eval printenv",
+    "eval 'cat .env'",
+    "source /dev/stdin <<'EOF'\nprintenv\nEOF",
+    "source <(echo printenv)",
+    ". <(echo env)",
+    "busybox env",
+    "toybox printenv",
+    "busybox cat .env",
+    "busybox sh -c 'printenv'",
+    "swift -e 'import Foundation; print(ProcessInfo.processInfo.environment)'",
+    "kotlinc -e 'println(System.getenv(\"K\"))'",
+    "scala -e 'println(sys.env)'",
+    "Rscript -e 'print(Sys.getenv(\"OPENAI_API_KEY\"))'",
+    "R -e 'Sys.getenv()'",
+    "julia -e 'println(ENV[\"OPENAI_API_KEY\"])'",
+]
+
+
+@pytest.mark.parametrize("codex", [False, True], ids=["claude", "codex"])
+@pytest.mark.parametrize("command", LEAD_R4)
+def test_lead_round4_shapes_are_refused(world, command, codex):
     proc = run(bash(command, world["repo"]), codex=codex)
     assert proc.returncode == (0 if codex else 2), (command, proc.stdout, proc.stderr)
     assert decision(proc) == "deny", (command, proc.stdout)

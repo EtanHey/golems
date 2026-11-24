@@ -56,13 +56,17 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
   `--eval=CODE`, `-p`, `-r`, `deno eval`, `-`, a heredoc or here-string with
   no script file) is refused if it references `os.environ`, `environ`,
   `getenv`, `process.env`, `ENV`, `%ENV`, `Deno.env`, `Bun.env`, AppleScript
-  `system attribute` / `do shell script`, or Tcl `$env(`, `env(`,
+  `system attribute` / `do shell script`, Swift `ProcessInfo`/`.environment`,
+  Scala `sys.env`, or Tcl `$env(`, `env(`,
   `array get env`, `parray env`. The same goes for awk-family `ENVIRON` and
   jq/yq `env`, `$ENV`, `strenv` (a `.env` field is fine). Code piped on stdin
   into any interpreter or shell (`echo 'puts $env(K)' | tclsh`,
   `echo printenv | sh`, `cat <<EOF | node`) is inline code too; a variable in
   it means the code only exists at run time, so it is refused. Output of
   another command piped in (`cat tool.py | python3`) counts as a script file.
+  A heredoc or here-string fed to any shell, `eval`'s arguments and
+  `source /dev/stdin <<EOF` are judged as shell text; `source <(...)` is
+  refused. `busybox`/`toybox <applet>` is judged as the applet.
   No name matching: aliases (`e=os.environ; print(e)`) leave nothing to match. It is
   also refused if it names a listed path, opens a listed name
   (`open('.env')`) or runs the helper. Code that needs a key belongs in a
@@ -91,10 +95,24 @@ to use a key), `env NAME=value cmd`,
 `cp x.env x.env.bak-<date>`, reading `.env.example`, and every command that
 names no listed file.
 
-## Limits (say so, don't assume)
+## Known limits
+
+**This guard is a speed bump plus an audit trail, not a sandbox.** It parses
+shell text and cannot enumerate every interpreter, applet, encoding or
+indirection an agent could use to read a file or the environment. The primary
+control is keeping secrets out of agent-readable files: the keyout lane's
+`apiKeyHelper` plus the macOS keychain. Treat a refusal as a nudge toward the
+masked reader or a script file, and a pass as "no known shape matched", never
+as proof that nothing leaked.
+
+Specific gaps known today:
 
 - Interpreter **scripts** (`python3 tool.py`) are not read; only their operands
-  and inline code are checked. Paths built at run time in code
+  and inline code are checked. Languages with only file runners (`go run`)
+  are the same.
+- Shell text is judged with bash meanings: fish's `set -x` / `set --show`
+  list exported variables there, but `set -x` is tracing in bash, so it is
+  not refused. Paths built at run time in code
   (`os.path.join(home, ".codex", "auth.json")`) are out of reach.
 - `source x.env && echo "$VAR"` is caught only when the variable name looks
   secret (`token`, `secret`, `password`, `api_key`, `credential`...).
