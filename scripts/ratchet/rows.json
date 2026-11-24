@@ -263,6 +263,17 @@
       "bug_fixture": "2f4a3f8e232ae908bc6a0516b102001b8d946e3c4c9726f3b07251ca027f7688",
       "fix_fixture": "5b01f0ceda336433b74a74283513a30913967fe2cf9a7f6d1ea124f3a4ef9cda",
       "command": "node scripts/ratchet/mac/ratchet-runs-size.mjs"
+    },
+    {
+      "id": "qa-video-symlink-plan",
+      "metric": "real plan CLI resolves model roles through installed skill and entrypoint symlinks in scratch HOME",
+      "kind": "real",
+      "runner": "ci",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "5fbe9299244e364eb5433dac2351c481113b40f0",
+      "fix_sha": "cc44c2d4",
+      "command": "uv run --offline --with pytest python -m pytest -q skills/golem-powers/qa-video/tests/test_symlink_plan.py --basetemp=docs.local/ratchet-qa-symlink"
     }
   ]
 }
