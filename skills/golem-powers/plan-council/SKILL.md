@@ -48,7 +48,9 @@ Load-bearing rules from those references, so a router that stops here still gets
   non-Claude scores (R2 and R4) for the merge rule. Never use background subagents.
 - R4 runs in an Antigravity thread with no guard hooks: its brief carries its own hard rules (read-only
   repo, the collab is its only write, no `rm -r`, no secrets, no push), per `/agent-routing` § Neon
-  judgment tier. A brief without them is not sent. If no Mac's antigravity instance can run a child,
+  judgment tier. A brief without them is not sent. They are instructions, not enforcement: the thread
+  can still call BrainLayer and run tools, so the convener audits R4's thread activity (memory calls,
+  writes, pushes) before counting its ballot. If no Mac's antigravity instance can run a child,
   the council runs with R1–R3 and the report says `R4: unavailable (<reason>)`.
 - Pin every seat explicitly and verify the effective model from the pane. The Fable seat uses raw
   `claude --dangerously-skip-permissions --model claude-fable-5` because the repoGolem launcher cannot express it.

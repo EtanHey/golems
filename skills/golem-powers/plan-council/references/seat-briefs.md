@@ -108,6 +108,8 @@ HARD RULES (this thread has no guard hooks, so they live here):
 - No rm -r, no deletes, no git push, commit, reset or checkout, no branch changes.
 - Never read or print secrets files or keys; never call op.
 - No live store, prod data, installs, launch agents or host changes.
+- No memory writes (brain_store or any other). If you read BrainLayer, list each query under your receipts.
+  Nothing here is enforced by a hook: the convener audits your thread's activity before counting your ballot.
 
 Artifact: [ABSOLUTE_PLAN_OR_SPEC_PATH]
 Exact head, if applicable: [FULL_SHA_OR_NOT_APPLICABLE]

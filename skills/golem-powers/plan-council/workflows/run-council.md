@@ -43,11 +43,12 @@ declared third-family contract, outside these role mappings.
 ## Harvest and gate
 
 1. Wait for all four distinct sentinels by marker count (three when R4 is recorded unavailable).
-2. Run `python3 <plan-council-skill-dir>/council_lint_cli.py <collab> --seat <R1|R2|R3|R4> --sentinel <seat-sentinel> --author-seat <author-voting-seat-or-nonseat-id>` for each seat, with every lane. If the author improperly took R2, pass `--author-seat R2`; when the author holds no seat, pass its non-seat ID. The CLI extracts a sentinel-delimited seat ballot from the shared collab before applying file-scoped rules.
-3. Run `python3 <plan-council-skill-dir>/council_bias.py` across the ballot directory. Reject any declared merge that differs from
+2. R4 only: read its child thread's activity first. A write outside the collab, a push, a memory write or an undeclared BrainLayer read voids the ballot; record why. Its hard rules are audited, not prevented (`/agent-routing` § Neon judgment tier).
+3. Run `python3 <plan-council-skill-dir>/council_lint_cli.py <collab> --seat <R1|R2|R3|R4> --sentinel <seat-sentinel> --author-seat <author-voting-seat-or-nonseat-id>` for each seat, with every lane. If the author improperly took R2, pass `--author-seat R2`; when the author holds no seat, pass its non-seat ID. The CLI extracts a sentinel-delimited seat ballot from the shared collab before applying file-scoped rules.
+4. Run `python3 <plan-council-skill-dir>/council_bias.py` across the ballot directory. Reject any declared merge that differs from
    `min(non-author-family)`.
-4. Publish a table of lane scores, conservative reads, numeric bias, verdicts, and top changes.
-5. Dispatch the lift round for every lane below 8.
+5. Publish a table of lane scores, conservative reads, numeric bias, verdicts, and top changes.
+6. Dispatch the lift round for every lane below 8.
 
 If a running contract changes, send the correction in-pane. Editing its brief after boot does not
 update the running judge.
