@@ -1,7 +1,7 @@
 import { isolatedBunTestEnv, assertNoBunInstallCache } from './fixtures/bun-test-env';
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, expect, test } from 'bun:test';
-import { cpSync, chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, lstatSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 const cli = join(import.meta.dir, '../repogolem/repogolem-config.ts');
@@ -257,7 +257,8 @@ function machineEditFixture() {
   const current = seat + 'machineRole: worker\n';
   const source = (text: string) => seat + 'machineSeatConfigs:\n  fixture-host: |\n' + text.trimEnd().split('\n').map(line => '    ' + line).join('\n') + '\n';
   writeFileSync(config, source(prior));
-  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  const installed = run(['--host', 'fixture-host']);
+  expect(installed.code).toBe(0);
   writeFileSync(config, source(current));
   const target = join(home, '.config/repogolem/machine-config.yaml');
   const journal = join(home, '.config/repogolem/install-state.json');
@@ -324,4 +325,172 @@ test('malformed machine edit refuses without YAML excerpts or values', () => {
   expect(result.text).toContain('values hidden');
   expect(result.text).not.toContain('NEVER_PRINT_THIS_VALUE');
   expect(readFileSync(journal, 'utf8')).toBe(before);
+});
+
+function regularSeatFixture() {
+  const fixture = machineEditFixture();
+  const seats = join(home, '.golems/config.yaml');
+  rmSync(seats);
+  const original = fixture.current + '# preserved comment\n';
+  writeFileSync(seats, original);
+  return { ...fixture, seats, original };
+}
+function treeSnapshot(path = home): unknown {
+  const stat = lstatSync(path);
+  if (stat.isSymbolicLink()) return { link: readlinkSync(path) };
+  if (stat.isDirectory()) return Object.fromEntries(readdirSync(path).sort().map(name => [name, treeSnapshot(join(path, name))]));
+  return { bytes: readFileSync(path).toString('base64'), mode: stat.mode };
+}
+for (const dry of [false, true]) test(`regular seat identical parsed content reconciles (${dry ? 'dry-run' : 'apply'})`, () => {
+  const { seats, target, journal, original } = regularSeatFixture();
+  const before = treeSnapshot();
+  const result = run(['--host', 'fixture-host', ...(dry ? ['--dry-run'] : [])]);
+  expect(result.code).toBe(0);
+  if (dry) { expect(treeSnapshot()).toEqual(before); return; }
+  expect(readlinkSync(seats)).toBe(target);
+  const [entry] = JSON.parse(readFileSync(journal, 'utf8')).seatReconciliations;
+  expect(entry.path).toBe(seats);
+  expect(entry.at).toMatch(/^\d{4}-/);
+  expect(entry.backup.startsWith(join(home, '.golems/config.yaml.backup-'))).toBe(true);
+  expect(readFileSync(entry.backup, 'utf8')).toBe(original);
+  expect(statSync(entry.backup).mode & 0o777).toBe(0o600);
+  expect(statSync(join(entry.backup, '..')).mode & 0o777).toBe(0o700);
+  const backup = treeSnapshot(entry.backup);
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  expect(treeSnapshot(entry.backup)).toEqual(backup);
+  // Replacing the link with another equal regular file creates a new backup.
+  rmSync(seats); writeFileSync(seats, original + '# second copy\n');
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  const entries = JSON.parse(readFileSync(journal, 'utf8')).seatReconciliations;
+  expect(entries).toHaveLength(2);
+  expect(entries[1].backup).not.toBe(entry.backup);
+  expect(treeSnapshot(entry.backup)).toEqual(backup);
+  expect(readFileSync(entries[1].backup, 'utf8')).toBe(original + '# second copy\n');
+});
+for (const edit of ['privateToken: NEVER_PRINT_THIS_VALUE\n', 'privateToken: [NEVER_PRINT_THIS_VALUE\n'])
+  test(`regular seat refuses ${edit.includes('[') ? 'malformed YAML' : 'changed key'} without writes`, () => {
+    const { seats, original } = regularSeatFixture();
+    writeFileSync(seats, original + edit);
+    const before = treeSnapshot();
+    const result = run(['--host', 'fixture-host']);
+    expect(result.code).toBe(2);
+    expect(result.text).toContain('installed seat link changed; reconciliation required');
+    expect(result.text).toContain(edit.includes('[') ? 'values hidden' : 'privateToken');
+    expect(result.text).not.toContain('NEVER_PRINT_THIS_VALUE');
+    expect(treeSnapshot()).toEqual(before);
+  });
+test('regular seat rollback and foreign symlink remain refused without writes', () => {
+  const { seats, original } = regularSeatFixture();
+  let before = treeSnapshot();
+  expect(run(['--rollback']).code).toBe(2);
+  expect(treeSnapshot()).toEqual(before);
+  const other = join(home, 'other-seat.yaml'); writeFileSync(other, original);
+  rmSync(seats); symlinkSync(other, seats);
+  before = treeSnapshot();
+  expect(run(['--host', 'fixture-host']).code).toBe(2);
+  expect(treeSnapshot()).toEqual(before);
+});
+
+test('regular seat exact bytes reconcile without changing the original rollback backup', () => {
+  const { seats, current, journal, seat } = regularSeatFixture();
+  writeFileSync(seats, current);
+  const backup = join(home, '.config/repogolem/seats.before');
+  const original = readFileSync(backup, 'utf8');
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  expect(readFileSync(backup, 'utf8')).toBe(original);
+  expect(JSON.parse(readFileSync(journal, 'utf8')).seatReconciliations).toHaveLength(1);
+  expect(run(['--rollback']).code).toBe(0);
+  expect(readFileSync(seats, 'utf8')).toBe(seat);
+});
+
+for (const dry of [false, true]) test(`redteam regular seat refuses target hand edit (${dry ? 'dry-run' : 'apply'})`, () => {
+  const { target, seats, current } = regularSeatFixture();
+  writeFileSync(seats, current);
+  writeFileSync(target, current + 'handKey: precious\n');
+  const before = treeSnapshot();
+  const result = run(['--host', 'fixture-host', ...(dry ? ['--dry-run'] : [])]);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('installed machine seat view changed; install refused');
+  expect(result.text).toContain('handKey');
+  expect(result.text).not.toContain('precious');
+  expect(readFileSync(target, 'utf8')).toContain('handKey: precious');
+  expect(treeSnapshot()).toEqual(before);
+});
+test('redteam rollback reports every retained reconciliation backup', () => {
+  const { seats, original, journal } = regularSeatFixture();
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  rmSync(seats); writeFileSync(seats, original + '# second reconciliation\n');
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  const entries = JSON.parse(readFileSync(journal, 'utf8')).seatReconciliations;
+  expect(entries).toHaveLength(2);
+  const backups = entries.map((entry: { backup: string }) => ({ path: entry.backup, bytes: readFileSync(entry.backup, 'utf8') }));
+  const result = run(['--rollback']);
+  expect(result.code).toBe(0);
+  expect(existsSync(journal)).toBe(false);
+  for (const backup of backups) {
+    expect(result.text).toContain(backup.path);
+    expect(readFileSync(backup.path, 'utf8')).toBe(backup.bytes);
+  }
+});
+
+function interruptedMachineFirstInstall() {
+  const seat = readFileSync(config, 'utf8');
+  writeFileSync(config, seat + 'machineSeatConfigs:\n  fixture-host: |\n' + seat.trimEnd().split('\n').map(line => '    ' + line).join('\n') + '\n');
+  const bin = join(home, 'first-build-fault'); mkdirSync(bin);
+  writeFileSync(join(bin, 'bun'), '#!/bin/sh\nexit 77\n', { mode: 0o700 });
+  const failed = run(['--host', 'fixture-host'], true, { PATH: bin + ':' + process.env.PATH });
+  expect(failed.code).toBe(2);
+  expect(failed.text).toContain('CLI bundle failed; retry install or rollback');
+  const target = join(home, '.config/repogolem/machine-config.yaml');
+  expect(existsSync(target)).toBe(false);
+  expect(lstatSync(join(home, '.golems/config.yaml')).isFile()).toBe(true);
+  return { seat, target };
+}
+test('round2 machine first install retries after a failed build with no target', () => {
+  const { seat, target } = interruptedMachineFirstInstall();
+  const result = run(['--host', 'fixture-host']);
+  expect(result.code).toBe(0);
+  expect(readlinkSync(join(home, '.golems/config.yaml'))).toBe(target);
+  expect(readFileSync(target, 'utf8')).toBe(seat);
+  expect(run(['--rollback']).code).toBe(0);
+  expect(readFileSync(join(home, '.golems/config.yaml'), 'utf8')).toBe(seat);
+});
+test('round2 interrupted first install still refuses a hand-edited existing target', () => {
+  const { seat, target } = interruptedMachineFirstInstall();
+  writeFileSync(target, seat + 'handKey: precious\n');
+  const before = treeSnapshot();
+  const result = run(['--host', 'fixture-host']);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('installed machine seat view changed; install refused');
+  expect(result.text).toContain('handKey');
+  expect(result.text).not.toContain('precious');
+  expect(treeSnapshot()).toEqual(before);
+});
+test('round2 dry rollback lists retained backups without writing', () => {
+  const { journal } = regularSeatFixture();
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  const entries = JSON.parse(readFileSync(journal, 'utf8')).seatReconciliations;
+  expect(entries).toHaveLength(1);
+  const before = treeSnapshot();
+  const result = run(['--rollback', '--dry-run']);
+  expect(result.code).toBe(0);
+  expect(result.text).toContain(entries[0].backup);
+  expect(treeSnapshot()).toEqual(before);
+});
+
+test('combined policy normalization refuses a raw old-render regular seat with denied MCPs', () => {
+  const seat = readFileSync(config, 'utf8');
+  const oldView = seat + 'contextProfiles:\n  fixture:\n    mcps:\n      allow:\n        - brainlayer\n        - cmuxlayer\n      block: []\n';
+  writeFileSync(config, seat + 'machineSeatConfigs:\n  fixture-host: |\n' + oldView.trimEnd().split('\n').map(line => '    ' + line).join('\n') + '\n');
+  expect(run(['--host', 'fixture-host']).code).toBe(0);
+  const seats = join(home, '.golems/config.yaml');
+  const normalized = readFileSync(seats, 'utf8');
+  expect(normalized).toContain('allow:\n        - brainlayer\n      block:\n        - cmuxlayer');
+  rmSync(seats); writeFileSync(seats, oldView);
+  const before = treeSnapshot();
+  const result = run(['--host', 'fixture-host']);
+  expect(result.code).toBe(2);
+  expect(result.text).toContain('installed seat link changed; reconciliation required');
+  expect(result.text).toContain('changed top-level keys: contextProfiles');
+  expect(treeSnapshot()).toEqual(before);
 });
