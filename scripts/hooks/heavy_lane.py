@@ -50,6 +50,9 @@ class LaneSlot:
 
     def log_event(self, event):
         line = f'{self.lane} {event} {time.strftime("%H:%M")} pid={os.getpid()} slot={self.path.name}'
+        self.log_message(line)
+
+    def log_message(self, line):
         line = line.replace('\n', '\\n').replace('\r', '\\r')
         try:
             with self.log.open('a') as stream: stream.write(line + '\n')
@@ -63,7 +66,7 @@ class LaneSlot:
         gate = Path.home()/'.local/bin/m4-heavy-gate'
         next_notice = 0
         if self.host != 'm4' or not gate.exists():
-            self.notice('pressure gate missing on this host; relying on lane slot alone')
+            self.log_message(f'{self.lane} pressure gate missing on this host; relying on lane slot alone {time.strftime("%H:%M")} pid={os.getpid()} host={self.host}')
         while True:
             go = True
             if self.host == 'm4' and gate.exists():

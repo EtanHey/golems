@@ -59,6 +59,16 @@ class LaneTests(unittest.TestCase):
         self.assertIn('gate missing',err)
         log=(self.home/'.m4-heavy.log').read_text()
         self.assertIn('fixture took ',log); self.assertIn('fixture released ',log)
+        self.assertIn('gate missing',log)
+
+    def test_missing_gate_log_failure_preserves_execution(self):
+        # A bad log path must leave the notice on stderr and still release our slot.
+        (self.home/'.m1-heavy.log').mkdir()
+        result,_,err=self.finish(self.launch())
+        self.assertEqual(result,0,err)
+        self.assertIn('gate missing',err)
+        self.assertIn('WARNING lane log unavailable',err)
+        self.assertFalse((self.home/'.m1-heavy.lock').exists())
 
     def test_gate_waits_and_retries(self):
         gate=self.home/'.local/bin/m4-heavy-gate'; gate.parent.mkdir(parents=True)
@@ -206,6 +216,7 @@ class LaneTests(unittest.TestCase):
         result,_,err=self.finish(self.launch(entry=True))
         self.assertEqual(result,0,err)
         self.assertIn('gate missing',err)
+        self.assertTrue(any('gate missing' in log.read_text() for log in self.home.glob('.*heavy.log')))
         self.assertFalse(list(self.home.glob('.*heavy*.lock')))
 
 if __name__=='__main__': unittest.main()

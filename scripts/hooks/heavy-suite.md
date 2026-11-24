@@ -166,10 +166,14 @@ in place of the heavy-suite flock slots. M1 uses `~/.m1-heavy.lock`; M4 tries
 `machdep.cpu.brand_string` (Apple M1 / Apple M4); unknown Macs refuse admission.
 Non-Darwin uses the conservative one-slot M1 layout in HOME.
 
+**Never run `heavy-run` while holding a lane mkdir lock yourself; `heavy-run` IS
+the lane lock now.** Wrapping it in your own lock takes both M4 slots or waits
+until `--max-wait` expires on M1 (1800 seconds by default).
+
 Before each acquisition sweep, M4 runs `~/.local/bin/m4-heavy-gate --quiet`
 when present. Nonzero results (including 1 WAIT and 2 unmeasurable), execution
 errors and gate timeout all wait/refuse; no lock is held during the gate.
-Missing gate is logged; admission then relies on the slot alone. Lane admission
+Missing gate is recorded in the heavy log and stderr; admission then relies on the slot alone. Lane admission
 uses neither the heavy-suite RAM floor nor its load gate. The 8 GiB runtime
 watchdog remains active. `--max-wait` (alias `--max-wait-seconds`, default 1800)
 bounds the whole admission, including the pressure gate; expiry returns 75 and
