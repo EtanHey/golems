@@ -3,7 +3,7 @@
 ## Inputs
 
 - One immutable plan/spec path and, when reviewing execution, its exact head SHA.
-- Declared author identity and family (the author identity holds no seat; its family should).
+- Declared author identity and family (the author identity holds no seat; its family should). A family is a model family as defined in [SKILL.md § 2 Merge](../SKILL.md#2-merge), never the vendor name `claude`.
 - Complete lane list, read-only repo path, collab path, and one sentinel per seat.
 
 ## Pre-flight

@@ -44,8 +44,8 @@ Load-bearing rules from those references, so a router that stops here still gets
 - Convene **4 voting seats**, each visible: R1 `claude.judgment`, R2 `codex.implement`, the
   separately declared R3 Fable 5 seat (cmux panes), and R4 Neon (`gemini.judgment`), a real third
   vendor, as a T3 `delegate_task` child on provider `antigravity` (2026-11-24, Etan, via orc: "neon is
-  respected just as much as opus"). Fable is an Anthropic model, so R4 gives a Claude-authored plan two
-  non-Claude scores (R2 and R4) for the merge rule. Never use background subagents.
+  respected just as much as opus"). R4 adds a fourth family to the merge: an Opus-authored plan's
+  merge is now `min(sol, fable, neon)`. Never use background subagents.
 - R4 runs in an Antigravity thread with no guard hooks: its brief carries its own hard rules (read-only
   repo, the collab is its only write, no `rm -r`, no secrets, no push), per `/agent-routing` § Neon
   judgment tier. A brief without them is not sent. They are instructions, not enforcement: the thread
@@ -68,6 +68,12 @@ Use [references/seat-briefs.md](references/seat-briefs.md) and
 - The plan author holds no seat and scores nothing.
 - Do not average disagreement away. For each disputed lane:
   `merged(lane) = min(non-author-family judge scores)`.
+- **A family is a model family, not a vendor:** `opus` (R1), `sol` (R2), `fable` (R3) and `neon` (R4).
+  Fable stays its own declared family although Anthropic makes it, as it always has here. Example,
+  one lane scored Opus 9, Sol 8, Fable 3, Neon 9: an Opus-authored plan merges at 3 (min of Sol, Fable,
+  Neon), and so does a Neon-authored one (min of Opus, Sol, Fable). Pass the author's model family to
+  `--author-family`. A vendor name that spans two families (`claude`) is refused, because guessing
+  would let the author's own family into the merge.
 - Report same-family bias per lane and the round mean. Flag a same-family judge at **≥ +2** above
   the conservative non-family read.
 
