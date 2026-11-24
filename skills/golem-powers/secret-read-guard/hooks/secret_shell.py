@@ -31,6 +31,8 @@ REASON_CODE = "inline {lang} code here names a secret file or variable ({what})"
 REASON_COPY = "it copies a secret file to a place the secret list does not cover ({path})"
 REASON_SEARCH = "it searches a folder that holds secret files and prints matching lines ({path})"
 REASON_SIZE = "the command is too large to check and names a secret location"
+REASON_LINK = "it links or moves a secret file, which would let a later read skip this check ({path})"
+REASON_ALIAS = "it reads {path}, which this same command links or copies from a file it can't vouch for"
 
 SAFE = frozenset("""
 ls gls eza exa lsd tree stat gstat file wc du test [ [[ realpath grealpath readlink greadlink
@@ -70,7 +72,8 @@ _RG = _spec(RG_VALUES, GREP_QUIET + ("--count-matches", "--files", "--type-list"
 _AG = _spec(("-A", "-B", "-C", "-G", "-m", "--depth", "--file-search-regex", "--ignore"),
             ("-c", "--count", "-l", "-L", "--files-with-matches", "--files-without-matches", "-g"), True,
             always_recursive=True)
-_SED = _spec(("-l",), ("-i", "--in-place"), True, ("-e", "--expression"), ("-f", "--file"))
+# No quiet form: `sed -i '' 'w /dev/stdout' f` prints from an in-place edit.
+_SED = _spec(("-l",), (), True, ("-e", "--expression"), ("-f", "--file"))
 _AWK = _spec(("-F", "-v", "--assign", "--field-separator"), (), True, (), ("-f", "--file"))
 _JQ = _spec(("--indent", "-L"), (), True, (), ("-f", "--from-file"),
             values2=("--arg", "--argjson"), files2=("--slurpfile", "--rawfile"))
@@ -157,6 +160,10 @@ class Context:
         # None when the value only exists at run time ($(...), read, $@).
         self.vars = {}
         self.env = dict(os.environ)
+        # Paths this command links or copies into place before a later read:
+        # exact aliases, and directories whose listed-name files are unvouched.
+        self.aliases = set()
+        self.alias_dirs = set()
 
 
 def _brace_expand(word, limit=64):
@@ -282,7 +289,7 @@ def _option_parse(spec, words):
                 quiet = True
             for j, char in enumerate(word[1:], 1):
                 flag = "-" + char
-                if flag in spec["quiet"]:
+                if flag in spec["quiet"] and "=" not in word:  # -color=never is no count flag
                     quiet = True
                 if flag in spec["recursive"]:
                     recursive = True
@@ -374,7 +381,7 @@ def _unwrap(words, start):
     return last, dynamic
 
 
-def _secret_var_words(ctx, words):
+def _protected_var_name(ctx, words):
     for word in words:
         if not isinstance(word, str):
             continue
@@ -384,25 +391,32 @@ def _secret_var_words(ctx, words):
     return None
 
 
-def _first_secret(ctx, paths):
+def _first_protected_path(ctx, paths, assume_exists=False):
+    """The first path that is a listed file (or an alias made earlier in this command)."""
     for path in paths:
-        if ctx.secrets.is_secret(path):
+        if ctx.secrets.is_secret(path, assume_exists):
+            return path
+        folded = os.path.normpath(path).casefold()
+        if folded in ctx.aliases:
+            return path
+        base = os.path.basename(path)
+        if any(folded.startswith(d + "/") for d in ctx.alias_dirs) and (
+                ctx.secrets.name_mentioned(base) or ctx.secrets.json_env_name(base)):
             return path
     return None
 
 
 def _covered(ctx, path):
     s = ctx.secrets
-    base = os.path.basename(path)
-    return (s.path_pattern_match(path) or s.name_mentioned(path)
-            or any(fnmatch.fnmatchcase(b, p) for b in s._variants(base) for p in s.json_env_names))
+    return s.path_pattern_match(path) or s.name_mentioned(path) or s.json_env_name(os.path.basename(path))
 
 
 def _search_hits_root(ctx, path):
     if not os.path.isdir(path):
         return False
-    path = os.path.normpath(path)
+    path = os.path.normpath(path).casefold()
     for root in ctx.secrets.roots():
+        root = root.casefold()
         if root == path or root.startswith(path.rstrip("/") + "/") or path.startswith(root + "/"):
             return True
     return False
@@ -411,24 +425,25 @@ def _search_hits_root(ctx, path):
 def code_mentions(ctx, text, cwds):
     """Secret names, helpers or env dumps inside inline interpreter code."""
     s = ctx.secrets
-    for line in re.split(r"[\n;]", text):
-        # Passing os.environ on (env={**os.environ}) is fine; printing it is not.
-        if WHOLE_ENV.search(line) and (PRINT_CALL.search(line) or "json.dump" in line or "stringify" in line):
-            return "the whole environment"
-        # Using a key from the environment is the sanctioned path; printing it is not.
-        if PRINT_CALL.search(line) and ENV_ACCESS.search(line):
-            for name in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", line):
-                if name.isupper() and s.secret_var_re.search(name):
-                    return name
+    # Whole program, never per line: `k=os.environ['KEY']; print(k)` splits the
+    # read from the print. Passing os.environ on (env={**os.environ}) stays fine.
+    if WHOLE_ENV.search(text) and (PRINT_CALL.search(text) or "json.dump" in text or "stringify" in text):
+        return "the whole environment"
+    if ENV_ACCESS.search(text):
+        quoted = re.findall(r"['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]", text)
+        upper = [n for n in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", text) if n.isupper()]
+        for name in quoted + upper:
+            if s.secret_var_re.search(name):
+                return name  # an inline read of a secret-named variable
     for token in PATHLIKE.findall(text):
         token = token.rstrip(".,")
         if not token:
             continue
-        if os.path.basename(token) in s.helpers and re.search(
+        if s.is_helper(token) and re.search(
                 EXEC_CALL.pattern + r".{0,160}" + re.escape(token), text):
             return os.path.basename(token)
         paths = resolve(ctx, token, cwds) if ("/" in token or token.startswith("~")) else None
-        if paths and _first_secret(ctx, paths):
+        if paths and _first_protected_path(ctx, paths):
             return token
         if token.startswith("~/") and s.path_pattern_match(ctx.home + token[1:]):
             return token
@@ -472,24 +487,36 @@ def _inline_code(ctx, args, redirects, cmd=""):
 
 
 def _names_only_filter(segment):
-    """`env | cut -d= -f1`, `| grep -c`, `| sed 's/=.*//'`: names or counts only."""
-    words = [w for w in segment if isinstance(w, str)]
-    if not words:
+    """Exactly `cut -d= -f1` (any spelling of those two options, nothing else)."""
+    if any(not isinstance(w, str) for w in segment):
         return False
-    cmd = os.path.basename(words[0])
-    rest = words[1:]
-    if cmd == "cut":
-        joined = " ".join(rest)
-        return bool(re.search(r"-d\s*'?=", joined) or "-d=" in rest) and bool(re.search(r"-f\s*1\b", joined))
-    if cmd in ("grep", "egrep", "rg"):
-        return any(re.fullmatch(r"-[A-Za-z]*[cqlL][A-Za-z]*|--count|--quiet|--files-with-matches", w) for w in rest)
-    if cmd in ("wc",):
-        return True
-    if cmd in ("sed", "gsed"):
-        return any(re.match(r"s([/|#]).?=\.\*\$?\1", w) for w in rest)
-    if cmd in ("awk", "gawk"):
-        return "-F=" in rest and any(re.fullmatch(r"\{\s*print \$1\s*\}", w) for w in rest)
-    return False
+    words = list(segment)
+    if not words or os.path.basename(words[0]) != "cut":
+        return False
+    delim = fields = None
+    i, rest = 0, words[1:]
+    while i < len(rest):
+        word = rest[i]
+        for short, long, slot in (("-d", "--delimiter", "d"), ("-f", "--fields", "f")):
+            if word in (short, long):
+                if i + 1 >= len(rest):
+                    return False
+                value, i = rest[i + 1], i + 1
+            elif word.startswith(long + "="):
+                value = word[len(long) + 1:]
+            elif word.startswith(short) and len(word) > 2:
+                value = word[2:]
+            else:
+                continue
+            if slot == "d":
+                delim = value
+            else:
+                fields = value
+            break
+        else:
+            return False  # any other option or operand
+        i += 1
+    return delim == "=" and fields == "1"
 
 
 _ASSIGN = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=(.*)", re.S)
@@ -548,6 +575,7 @@ def judge(ctx, command, cwds, depth=0):
         return REASON_DYNAMIC.format(word="nested shell")
     if depth == 0:
         ctx.vars = {}
+        ctx.aliases, ctx.alias_dirs = set(), set()
     outer_raw, ctx.raw = getattr(ctx, "raw", None), command
     try:
         return _judge_command(ctx, command, cwds, depth)
@@ -629,9 +657,9 @@ def _judge_tokens(ctx, tokens, cwds, depth):
         reason, cwds, inline = _judge_segment(ctx, segment, cwds, depth)
         if inline:
             codes.extend(inline)
-        if (reason and op == "|" and index + 1 < len(pairs) and reason.startswith(REASON_ENV.split("{")[0])
-                and _names_only_filter(pairs[index + 1][0])):
-            continue  # variable names, a count or a yes/no only
+        if (reason in (REASON_ENV.format(what="env"), REASON_ENV.format(what="printenv"))
+                and op == "|" and index + 1 < len(pairs) and _names_only_filter(pairs[index + 1][0])):
+            continue  # `env | cut -d= -f1`: variable names only
         if reason:
             return reason, cwds
     for code in codes:
@@ -684,21 +712,22 @@ def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
                 continue
             if paths is None:
                 return REASON_DYNAMIC.format(word="< " + target), cwds, interpreter
-            hit = _first_secret(ctx, paths)
+            hit = _first_protected_path(ctx, paths, assume_exists=True)
             if hit:
                 return REASON_FILE.format(path=hit), cwds, interpreter
         if op.lstrip("0123456789") == "<<<":
-            var = _secret_var_words(ctx, [target])
+            var = _protected_var_name(ctx, [target])
             if var:
                 return REASON_ENV.format(what=var), cwds, interpreter
 
-    # The sanctioned masked reader, run directly or through its interpreter.
-    if _is_masked_reader(ctx, raw, cwds) or (
-            is_interp and cmd.startswith("python") and _script_word(args) is not None
-            and _is_masked_reader(ctx, _script_word(args), cwds)):
+    # The sanctioned masked reader: exactly `python3 <its real path> <files>`.
+    # Any interpreter option (-X, -c, -m, -W, -I...) or other argv shape is not
+    # exempt: `python3 -X <reader> -c CODE` never runs the reader.
+    if (is_interp and cmd.startswith("python") and args and isinstance(args[0], str)
+            and not args[0].startswith("-") and _is_masked_reader(ctx, args[0], cwds)):
         return None, cwds, False
 
-    reason = _secret_command(ctx, cmd, raw, args, cwds, is_interp)
+    reason = _refused_command_reason(ctx, cmd, raw, args, cwds, is_interp)
     if reason:
         return reason, cwds, interpreter
 
@@ -710,7 +739,7 @@ def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
         return None, list(dict.fromkeys(cwds + added)), False
 
     if cmd in ("echo", "printf", "print"):
-        var = _secret_var_words(ctx, args)
+        var = _protected_var_name(ctx, args)
         if var:
             return REASON_ENV.format(what=var), cwds, False
         return None, cwds, False
@@ -724,7 +753,9 @@ def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
         source = next((a[3:] for a in args if isinstance(a, str) and a.startswith("if=")), None)
         dest = next((a[3:] for a in args if isinstance(a, str) and a.startswith("of=")), None)
         paths = resolve(ctx, source, cwds) if source else []
-        hit = _first_secret(ctx, paths or [])
+        if paths is None and (dest is None or STDOUT_TARGETS.match(dest)):
+            return REASON_DYNAMIC.format(word="if=" + source), cwds, False
+        hit = _first_protected_path(ctx, paths or [])
         if hit and (dest is None or STDOUT_TARGETS.match(dest) or not _covered(ctx, (resolve(ctx, dest, cwds) or [dest])[0])):
             return REASON_COPY.format(path=hit), cwds, False
         return None, cwds, False
@@ -732,7 +763,7 @@ def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
         return _judge_git(ctx, args, cwds), cwds, False
     spec = PRINTERS.get(cmd)
     if spec is not None:
-        var = _secret_var_words(ctx, args)
+        var = _protected_var_name(ctx, args)
         if var:
             return REASON_ENV.format(what=var), cwds, False
         files, quiet, recursive = _option_parse(spec, args)
@@ -748,7 +779,7 @@ def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
             paths = resolve(ctx, word, cwds)
             if paths is None:
                 return REASON_DYNAMIC.format(word="xargs/find input" if word is DYNAMIC else word), cwds, False
-            hit = _first_secret(ctx, paths)
+            hit = _first_protected_path(ctx, paths, assume_exists=True)
             if hit:
                 return REASON_FILE.format(path=hit), cwds, False
             if recursive:
@@ -770,7 +801,7 @@ def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
         if word.startswith("file://"):
             candidates.append(word[len("file://"):])
         for candidate in candidates:
-            hit = _first_secret(ctx, resolve(ctx, candidate, cwds) or [])
+            hit = _first_protected_path(ctx, resolve(ctx, candidate, cwds) or [])
             if hit:
                 return REASON_FILE.format(path=hit), cwds, interpreter
     return None, cwds, interpreter
@@ -800,14 +831,14 @@ def _is_masked_reader(ctx, word, cwds):
         return False
 
 
-def _secret_command(ctx, cmd, raw, args, cwds, interpreter):
+def _refused_command_reason(ctx, cmd, raw, args, cwds, interpreter):
     s = ctx.secrets
-    if cmd in s.helpers:
+    if s.is_helper(cmd):
         return REASON_HELPER.format(name=cmd)
-    if (interpreter or cmd in SHELLS or cmd in ("source", ".", "exec")) and args:
-        script = _script_word(args) if cmd not in ("source", ".") else args[0]
-        if isinstance(script, str) and os.path.basename(script) in s.helpers:
-            return REASON_HELPER.format(name=os.path.basename(script))
+    if interpreter or cmd in SHELLS or cmd in ("source", ".", "exec"):
+        for word in args:
+            if s.is_helper(word):
+                return REASON_HELPER.format(name=os.path.basename(word))
     if cmd == "security":
         free = _free_words(args, ())
         sub = free[0] if free else ""
@@ -905,6 +936,14 @@ def _find_cannot_reach_secrets(ctx, args, cwds):
 
 
 def _judge_copy(ctx, cmd, args, cwds):
+    """cp/mv/ln/install/rsync/ditto/scp: no secret leaves the list's protection.
+
+    Every check runs before any segment executes, so a link or copy made here
+    is invisible to a later read in the same command unless it is recorded:
+    links and moves of listed files are refused, every link destination is an
+    alias that later reads refuse, and allowed copies taint their destination.
+    """
+    name = cmd[1:] if cmd in ("gcp", "gmv", "gln", "ginstall") else cmd
     free = _free_words(args, COPIER_VALUES)
     target_dir = None
     for k, word in enumerate(args):
@@ -912,25 +951,47 @@ def _judge_copy(ctx, cmd, args, cwds):
             target_dir = args[k + 1]
         elif isinstance(word, str) and word.startswith("--target-directory="):
             target_dir = word.split("=", 1)[1]
-    if cmd in ("ln", "gln") and any(isinstance(a, str) and re.fullmatch(r"-[A-Za-z]*s[A-Za-z]*", a) for a in args):
-        return None  # a symlink resolves back to the listed file
     sources = free if target_dir is not None else free[:-1]
     dest = target_dir if target_dir is not None else (free[-1] if free else None)
-    if dest is None:
-        return None
+    links = name == "ln" or (name == "cp" and any(
+        isinstance(a, str) and (a in ("--link", "--symbolic-link")
+                                or re.fullmatch(r"-[A-Za-z]*[ls][A-Za-z]*", a)) for a in args))
+    dest_paths = resolve(ctx, dest, cwds) if dest is not None else []
+    finals = []
     for source in sources:
-        hit = _first_secret(ctx, resolve(ctx, source, cwds) or [])
-        if not hit:
-            continue
-        if isinstance(dest, str) and STDOUT_TARGETS.match(dest):
-            return REASON_FILE.format(path=hit)
-        dest_paths = resolve(ctx, dest, cwds)
-        if not dest_paths:
-            return REASON_COPY.format(path=dest)
-        for path in dest_paths:
-            final = os.path.join(path, os.path.basename(hit)) if os.path.isdir(path) else path
-            if not _covered(ctx, final):
-                return REASON_COPY.format(path=final)
+        src_paths = resolve(ctx, source, cwds)
+        base = os.path.basename(str(source).rstrip("/"))
+        for path in dest_paths or []:
+            finals.append(os.path.join(path, base) if (os.path.isdir(path) or target_dir is not None) else path)
+        hit = _first_protected_path(ctx, src_paths or [])
+        if hit and (links or name == "mv"):
+            return REASON_LINK.format(path=hit)
+        if hit:
+            if isinstance(dest, str) and STDOUT_TARGETS.match(dest):
+                return REASON_FILE.format(path=hit)
+            if not dest_paths:
+                return REASON_COPY.format(path=dest)
+            for final in finals[-len(dest_paths):]:
+                if not _covered(ctx, final):
+                    return REASON_COPY.format(path=final)
+                ctx.aliases.add(os.path.normpath(final).casefold())
+        for path in src_paths or []:
+            if os.path.isdir(path):
+                if _search_hits_root(ctx, path):
+                    return REASON_LINK.format(path=path) if (links or name == "mv") else REASON_COPY.format(path=path)
+                for final in finals[-len(dest_paths or []):] if dest_paths else []:
+                    ctx.alias_dirs.add(os.path.normpath(final).casefold())
+    if name == "mv":
+        for final in finals or dest_paths or []:
+            if _covered(ctx, final):
+                return REASON_LINK.format(path=final)  # onto a listed path
+    if links:
+        # Whatever the source, a read of the new name later in this command is
+        # unchecked: the link doesn't exist yet when the command is judged.
+        for final in finals or dest_paths or []:
+            ctx.aliases.add(os.path.normpath(final).casefold())
+        if dest_paths is None or (dest is not None and not dest_paths):
+            ctx.alias_dirs.add("")  # unknown link name: every listed basename is suspect
     return None
 
 
@@ -957,7 +1018,7 @@ def _judge_git(ctx, args, cwds):
         path = word.split(":", 1)[1] if ":" in word and not word.startswith("/") else word
         if not path:
             continue
-        hit = _first_secret(ctx, resolve(ctx, path, local) or [])
+        hit = _first_protected_path(ctx, resolve(ctx, path, local) or [])
         if hit:
             return REASON_FILE.format(path=hit)
     return None

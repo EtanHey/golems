@@ -15,14 +15,20 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
 
 - **A listed file.** The list is data: `secret-files.json` (paths, basenames,
   Claude settings whose `env` block holds a secret-named key, and every
-  `*.bak-*` copy). `cat`,
-  `head`/`tail`, `less`, `bat`, `sed`, `awk`, `grep` (not `-c`/`-l`/`-L`/`-q`),
+  `*.bak-*` copy), matched case-insensitively like APFS (`.ENV` is `.env`).
+  `cat`, `head`/`tail`, `less`, `bat`, any `sed` (in-place included: its
+  `w` command can print), `awk`, `grep` (not `-c`/`-l`/`-L`/`-q`),
   `jq` (except a key-only filter such as `keys`), `base64`, `xxd`, `strings`,
   `diff`, editors, `git show HEAD:<file>`, interpreters given the file,
   `curl -d @file`, `< file` into anything but a counter or hash, and a copy or
   move of the file to a path the list does not cover (`cp .env /dev/stdout`,
   `cp auth.json notes.txt`). Any command not known to be safe is refused when
   an operand resolves to a listed file.
+- **Links and moves.** `ln`, `ln -s`, `cp -l`/`-s` of a listed file, and `mv`
+  from or onto a listed path. The whole command is judged before any of it
+  runs, so a link made in it is invisible to a later read: every name this
+  command links (or copies a listed file to) is an alias, and reading it later
+  in the same command is refused.
 - **A file it can't name.** A printing command whose file is only known at
   run time (`f=$(grep -l ...); cat "$f"`, xargs input, `while read f`) is
   refused: fail-closed. The refusal says to run the lookup first and name the
@@ -38,15 +44,14 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
 - **Environments:** bare `env`, `printenv`, `export -p`, `declare -x`;
   `printenv`/`echo`/`printf`/`launchctl getenv` of a secret-named variable;
   `ps -E`, `ps e`, `ps eww`; `launchctl print|export|procinfo`;
-  `/proc/*/environ`. Piping any of these into a names/count/yes-no filter is
-  allowed: `env | cut -d= -f1`, `env | grep -c`, `env | sed 's/=.*//'`,
-  `launchctl print ... | grep -q running`.
+  `/proc/*/environ`, piped into anything. The one exception is the exact
+  names-only form `env | cut -d= -f1` (or `printenv | cut -d= -f1`).
 - **Inline interpreter code** (`python3 -c`, `node -e`, heredoc and
   here-string bodies) that names a listed path, opens a listed name
-  (`open('.env')`), prints a secret-named variable, prints the whole
-  environment, or runs the helper. Using a key from the environment without
-  printing it (`( set -a; . x.env; set +a; python3 ... os.environ['KEY'] )`)
-  is allowed.
+  (`open('.env')`), reads a secret-named variable at all (`os.environ`,
+  `process.env`, `ENV[`, `getenv`; judged on the whole program, so
+  `k=os.environ['KEY']; print(k)` is caught), prints the whole environment,
+  or runs the helper. Code that needs a key belongs in a script file.
 
 ## The masked reader
 
@@ -54,7 +59,9 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
 python3 ~/.claude/hooks/secret-read-guard/scripts/masked-read.py <file>
 ```
 
-It prints the file's structure with every value replaced by
+Exactly that argv: `python3 <reader> <files>`. Any interpreter option
+(`-I`, `-X`, `-c`, `-m`, `-W`...) or other shape, direct execution included,
+is not exempt. It prints the file's structure with every value replaced by
 `<redacted len=N sha=xxxxxxxx>` (JSON, YAML, env and TOML aware; unknown
 formats print key names only; comments are dropped). Equal values share a
 sha, so two files can be compared without showing either. The guard exempts
@@ -65,6 +72,7 @@ the reader's path.
 
 `ls`, `stat`, `test -f`, `wc -c`, `shasum`, `chmod`, `grep -c`, `jq 'keys'`,
 `. file.env` / `source` (loading keys into a command is the sanctioned use),
+`env | cut -d= -f1`,
 `cp x.env x.env.bak-<date>`, reading `.env.example`, and every command that
 names no listed file.
 
@@ -85,10 +93,11 @@ names no listed file.
 
 ## Measured
 
-Replaying 25,702 distinct real Bash commands from local Claude transcripts
-(2026-11-24, scratch HOME, no real file read): 369 refused (1.44%); 265 of
-those name a file only at run time, most of the rest really read a listed
-file or an environment. Hook median 81 ms.
+Replaying distinct real Bash commands from local Claude transcripts (scratch
+HOME, no real file read): round 0, 369 of 25,702 refused (1.44%); round 1
+(stricter env, sed and inline-code rules), 379 of 24,904 (1.52%) on the
+then-current window. About 70% of refusals name a file only at run time; most
+of the rest really read a listed file or an environment. Hook median 81 ms.
 
 ## Wiring
 

@@ -166,6 +166,29 @@ DENY = [
     ("python3 -c \"import os;print(os.environ)\"", "repo"),
     ("node -e \"console.log(process.env.ANTHROPIC_AUTH_TOKEN)\"", "repo"),
     ("cat <<< \"$ANTHROPIC_API_KEY\"", "repo"),
+    # Round-1 rulings (lead, 2026-11-24): stricter forms.
+    ("sed -i '' 's/a/b/' .env", "repo"),
+    ("env | grep -c '^GIT_'", "repo"),
+    ("env | sed 's/=.*//' | sort", "repo"),
+    ("launchctl print gui/501/x | grep -q running", "repo"),
+    ("( set -a; . ~/.config/golems/openai-api.env; set +a; python3 -c \"import os; k=os.environ['OPENAI_API_KEY']; print(len(k) > 0)\" )", "repo"),
+    ("dd if=$UNKNOWN", "repo"),
+    ("grep -color=never TOKEN .env", "repo"),
+    ("ln .env hard-alias", "repo"),
+    ("cp -l .env x.env", "repo"),
+    ("cp -s .env x.txt", "repo"),
+    ("mv .env elsewhere.txt", "repo"),
+    ("mv notes.txt .env", "repo"),
+    ("cp .env backup.env; cat backup.env", "repo"),
+    ("ln -s \"$SRC\" alias.txt; cat alias.txt", "repo"),
+    ("cp -R ~/.cli-proxy-api copy-dir", "repo"),
+    ("cat .Env.BAK-1", "repo"),
+    ("CLAUDE-PROXY-TOKEN", "repo"),
+    ("node -e \"const k=process.env['ANTHROPIC_AUTH_TOKEN']; console.log(k)\"", "repo"),
+    ("python3 - <<'EOF'\nimport os\nn='OPENAI_API_KEY'\nv=os.getenv(n)\nprint(v)\nEOF", "repo"),
+    ("ruby -e 'puts ENV[\"OPENAI_API_KEY\"]'", "repo"),
+    ("perl -e 'print $ENV{OPENAI_API_KEY}'", "repo"),
+    ("python3 -c \"import os\nfor k, v in os.environ.items():\n    print(k, v)\"", "repo"),
     ("env | grep -E '^ANTHROPIC'", "repo"),
     ("F=.env; cat \"$F\"", "repo"),
     ("for f in README.md .env; do cat \"$f\"; done", "repo"),
@@ -215,7 +238,6 @@ ALLOW = [
     ("find . -name '*.ts'", "repo"),
     ("rg -l FAKE ~/.cli-proxy-api", "repo"),
     ("cat ~/.local/bin/claude-proxy-token", "repo"),
-    ("sed -i '' 's/a/b/' .env", "repo"),
     ("export PATH=$PATH:/x", "repo"),
     ("curl -s https://example.invalid", "repo"),
     ("cat", "repo"),
@@ -223,9 +245,6 @@ ALLOW = [
     ("git log --oneline -3", "repo"),
     ("cat .claude/settings.json", "repo"),
     ("env | cut -d= -f1 | grep -i claude", "repo"),
-    ("env | grep -c '^GIT_'", "repo"),
-    ("env | sed 's/=.*//' | sort", "repo"),
-    ("( set -a; . ~/.config/golems/openai-api.env; set +a; python3 -c \"import os; k=os.environ['OPENAI_API_KEY']; print(len(k) > 0)\" )", "repo"),
     ("python3 - <<'EOF'\np='notes.py'; s=open(p).read().replace('.env', 'auth.json')\nEOF", "repo"),
     ("for f in README.md src/app.ts; do head -3 \"$f\"; done", "repo"),
     ("F=README.md; cat \"$F\"", "repo"),
@@ -236,6 +255,27 @@ ALLOW = [
 
 def _cwd(world, key):
     return world[key]
+
+
+# Sol's round-1 repros on #1364 (each printed FAKE-SYNTH-SOL-1364 at d57507fc).
+SOL_R1 = [
+    f"python3 -X {READER} -c \"print(open('.env').read())\"",
+    "cat .ENV",
+    "ln -s .env fresh-alias; cat fresh-alias",
+    "env | cut -d= -f1,2",
+    "env | cut -d= -f1-",
+    "printenv OPENAI_API_KEY | cut -d= -f1",
+    "sed -i '' 'w /dev/stdout' .env",
+    "python3 -c \"import os; k=os.environ['OPENAI_API_KEY']; print(k)\"",
+]
+
+
+@pytest.mark.parametrize("codex", [False, True], ids=["claude", "codex"])
+@pytest.mark.parametrize("command", SOL_R1)
+def test_sol_round1_repros_are_refused(world, command, codex):
+    proc = run(bash(command, world["repo"]), codex=codex)
+    assert proc.returncode == (0 if codex else 2), (command, proc.stdout, proc.stderr)
+    assert decision(proc) == "deny", (command, proc.stdout)
 
 
 @pytest.mark.parametrize("command,where", DENY)
@@ -255,10 +295,17 @@ def test_ordinary_work_is_allowed(world, command, where):
 
 
 def test_masked_reader_is_the_sanctioned_path(world):
-    for command in (f"python3 {READER} ~/.codex/auth.json", f"{READER} .env",
-                    f"python3 -I {READER} ~/.claude/settings.json"):
+    for command in (f"python3 {READER} ~/.codex/auth.json", f"python3 {READER} .env ~/.claude/settings.json",
+                    f"timeout 30 python3 {READER} .env"):
         proc = run(bash(command, world["repo"]))
         assert proc.returncode == 0 and json.loads(proc.stdout) == {}, (command, proc.stdout)
+
+
+@pytest.mark.parametrize("shape", ["{r} .env", "python3 -I {r} .env", "python3 -X {r} -c 'print(1)' .env",
+                                   "python3 -m {r} .env", "python3 -W ignore {r} .env", "bash {r} .env"])
+def test_only_the_exact_reader_argv_is_exempt(world, shape):
+    proc = run(bash(shape.format(r=READER), world["repo"]))
+    assert decision(proc) == "deny", (shape, proc.stdout)
 
 
 def test_a_lookalike_reader_is_not_exempt(world):
@@ -272,6 +319,7 @@ def test_a_lookalike_reader_is_not_exempt(world):
     ("~/.codex/auth.json", "deny"), (".env", "deny"), ("~/.claude/settings.json", "deny"),
     ("../Shared/t3-eval-homes/claude-eval/bin/settings.json", "deny"),
     ("auth.json.bak-2026-11-17", "deny"),
+    (".ENV", "deny"), ("AUTH.JSON.BAK-2026-11-17", "deny"), ("~/.CODEX/Auth.json", "deny"),
     ("README.md", "allow"), (".env.example", "allow"), ("settings.json", "allow"),
     ("~/.config/tokenlayer/usage.json", "allow"),
 ])
@@ -283,6 +331,7 @@ def test_read_tool(world, path, verdict):
 
 @pytest.mark.parametrize("tool_input,verdict", [
     ({"pattern": "KEY", "path": ".env", "output_mode": "content"}, "deny"),
+    ({"pattern": "TOKEN", "path": ".ENV", "output_mode": "content", "-A": 1}, "deny"),
     ({"pattern": "KEY", "glob": "*.env", "output_mode": "content"}, "deny"),
     ({"pattern": "env", "glob": "**/settings*.json", "output_mode": "content"}, "deny"),
     ({"pattern": "x", "path": "~/.cli-proxy-api", "output_mode": "content"}, "deny"),

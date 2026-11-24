@@ -25,7 +25,9 @@ class SecretList:
         self.names = list(data["names"])
         self.not_names = list(data.get("not_names", []))
         self.json_env_names = list(data.get("json_env_names", []))
-        self.backup_re = re.compile(data["backup_suffix_re"])
+        # APFS (the fleet's Macs) is case-insensitive: `.ENV` opens `.env`, so
+        # every comparison below is casefolded, like the filesystem.
+        self.backup_re = re.compile(data["backup_suffix_re"], re.I)
         self.helpers = list(data.get("helpers", []))
         self.secret_var_re = re.compile(data["secret_var_re"])
         for value in (self.names, self.not_names, self.json_env_names, self.helpers):
@@ -52,20 +54,31 @@ class SecretList:
         return out
 
     def _name_match(self, base: str) -> bool:
-        if any(fnmatch.fnmatchcase(base, p) for p in self.not_names):
+        base = base.casefold()
+        if any(fnmatch.fnmatchcase(base, p.casefold()) for p in self.not_names):
             return False
-        return any(fnmatch.fnmatchcase(base, p) for p in self.names)
+        return any(fnmatch.fnmatchcase(base, p.casefold()) for p in self.names)
+
+    def json_env_name(self, base: str) -> bool:
+        return any(fnmatch.fnmatchcase(v.casefold(), p.casefold())
+                   for v in self._variants(base) for p in self.json_env_names)
+
+    def is_helper(self, name: str) -> bool:
+        return isinstance(name, str) and os.path.basename(name).casefold() in {h.casefold() for h in self.helpers}
 
     def path_pattern_match(self, path: str) -> bool:
-        """String-only match against the absolute `paths` patterns."""
-        return any(fnmatch.fnmatchcase(v, p) for v in self._variants(path) for p in self.paths)
+        """String-only match against the absolute `paths` patterns, casefolded."""
+        return any(fnmatch.fnmatchcase(v.casefold(), p.casefold()) for v in self._variants(path) for p in self.paths)
 
     def name_mentioned(self, text: str) -> bool:
         """A bare listed name (auth.json, x.env) in code text; no file needed."""
         return any(self._name_match(os.path.basename(v)) for v in self._variants(text))
 
-    def is_secret(self, path: str) -> bool:
-        """Absolute path -> does reading it print a secret?"""
+    def is_secret(self, path: str, assume_exists: bool = False) -> bool:
+        """Absolute path -> does reading it print a secret?
+
+        `assume_exists` treats a listed basename as protected even when no file
+        is there yet (a printer's operand that this same command may create)."""
         candidates = [os.path.normpath(path)]
         try:
             real = os.path.realpath(path)
@@ -77,13 +90,14 @@ class SecretList:
             if self.path_pattern_match(candidate):
                 return True
         for candidate in candidates:
-            if not os.path.isfile(candidate):
+            exists = os.path.isfile(candidate)
+            if not exists and not assume_exists:
                 continue
             for variant in self._variants(candidate):
                 base = os.path.basename(variant)
                 if self._name_match(base):
                     return True
-                if (any(fnmatch.fnmatchcase(base, p) for p in self.json_env_names)
+                if (exists and self.json_env_name(base)
                         and _has_env_block(candidate, self.secret_var_re)):
                     return True
         return False
