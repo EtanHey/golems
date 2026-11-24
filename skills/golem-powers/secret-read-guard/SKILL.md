@@ -15,7 +15,9 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
 
 - **A listed file.** The list is data: `secret-files.json` (paths, basenames,
   Claude settings whose `env` block holds a secret-named key, and every
-  `*.bak-*` copy), matched case-insensitively like APFS (`.ENV` is `.env`).
+  `*.bak-*` copy), matched the way APFS names files: case-insensitive and
+  Unicode-normalization-insensitive (`.ENV` is `.env`; composed `é` is
+  `e` + U+0301).
   `cat`, `head`/`tail`, `less`, `bat`, any `sed` (in-place included: its
   `w` command can print), `awk`, `grep` (not `-c`/`-l`/`-L`/`-q`),
   `jq` (except a key-only filter such as `keys`), `base64`, `xxd`, `strings`,
@@ -41,17 +43,23 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
 - **A secret helper:** running `claude-proxy-token` (the `apiKeyHelper`).
 - **The keychain:** `security find-generic-password` / `find-internet-password`
   with `-w` or `-g`, and `security dump-keychain`.
-- **Environments:** bare `env`, `printenv`, `export -p`, `declare -x`;
-  `printenv`/`echo`/`printf`/`launchctl getenv` of a secret-named variable;
-  `ps -E`, `ps e`, `ps eww`; `launchctl print|export|procinfo`;
-  `/proc/*/environ`, piped into anything. The one exception is the exact
-  names-only form `env | cut -d= -f1` (or `printenv | cut -d= -f1`).
-- **Inline interpreter code** (`python3 -c`, `node -e`, heredoc and
-  here-string bodies) that names a listed path, opens a listed name
-  (`open('.env')`), reads a secret-named variable at all (`os.environ`,
-  `process.env`, `ENV[`, `getenv`; judged on the whole program, so
-  `k=os.environ['KEY']; print(k)` is caught), prints the whole environment,
-  or runs the helper. Code that needs a key belongs in a script file.
+- **Environment dumps, in any form or pipeline, no exceptions:** `env` with no
+  command (`env -0` too), `printenv` (any argument), `export` bare or `-p`,
+  bare `set`, `declare`/`typeset` bare or with `-p`/`-x`, `compgen -e`;
+  `echo`/`printf`/`launchctl getenv` of a secret-named variable; `ps -E`,
+  `ps e`, `ps eww`; `launchctl print|export|procinfo`; `/proc/*/environ`.
+  `env NAME=value cmd` (env as a wrapper) still runs. Variable names only?
+  Use a script file.
+- **Inline interpreter code that touches the environment at all.** For
+  python, node, ruby, perl, php, deno, bun, osascript and the rest: inline
+  code in any spelling (`-c`/`-e`, clustered `-Ic`/`-sc`, attached `-cCODE`,
+  `--eval=CODE`, `-p`, `-r`, `deno eval`, `-`, a heredoc or here-string with
+  no script file) is refused if it references `os.environ`, `environ`,
+  `getenv`, `process.env`, `ENV`, `%ENV`, `Deno.env` or `Bun.env`. No name
+  matching: aliases (`e=os.environ; print(e)`) leave nothing to match. It is
+  also refused if it names a listed path, opens a listed name
+  (`open('.env')`) or runs the helper. Code that needs a key belongs in a
+  script file; `( set -a; . x.env; set +a; python3 tool.py )` keeps working.
 
 ## The masked reader
 
@@ -71,8 +79,8 @@ the reader's path.
 ## Allowed
 
 `ls`, `stat`, `test -f`, `wc -c`, `shasum`, `chmod`, `grep -c`, `jq 'keys'`,
-`. file.env` / `source` (loading keys into a command is the sanctioned use),
-`env | cut -d= -f1`,
+`. file.env` / `source` with a script or binary after it (the sanctioned way
+to use a key), `env NAME=value cmd`,
 `cp x.env x.env.bak-<date>`, reading `.env.example`, and every command that
 names no listed file.
 
@@ -95,9 +103,11 @@ names no listed file.
 
 Replaying distinct real Bash commands from local Claude transcripts (scratch
 HOME, no real file read): round 0, 369 of 25,702 refused (1.44%); round 1
-(stricter env, sed and inline-code rules), 379 of 24,904 (1.52%) on the
-then-current window. About 70% of refusals name a file only at run time; most
-of the rest really read a listed file or an environment. Hook median 81 ms.
+(stricter env, sed and inline-code rules), 379 of 24,904 (1.52%); round 2
+(final class rules: any env reference in inline code, no env-dump
+exceptions), 431 of 24,892 (1.73%). About 60% of refusals name a file only at
+run time; most of the rest touch a listed file or the environment. Hook median
+81 ms.
 
 ## Wiring
 

@@ -19,6 +19,8 @@ import glob
 import os
 import re
 
+from secret_paths import canon as _canon
+
 DYNAMIC = object()  # an operand whose value only exists at run time
 
 REASON_FILE = "it would print a file that holds a secret ({path})"
@@ -27,7 +29,8 @@ REASON_DYNAMIC = ("it prints a file whose name is only known when it runs ({word
 REASON_HELPER = "it runs {name}, whose output is a live secret"
 REASON_KEYCHAIN = "it would print a keychain password (security {sub} {flag})"
 REASON_ENV = "it would print environment variables, which can hold secrets ({what})"
-REASON_CODE = "inline {lang} code here names a secret file or variable ({what})"
+REASON_CODE = ("inline {lang} code here touches the environment or names a secret file ({what}); "
+               "code that needs a key belongs in a script file")
 REASON_COPY = "it copies a secret file to a place the secret list does not cover ({path})"
 REASON_SEARCH = "it searches a folder that holds secret files and prints matching lines ({path})"
 REASON_SIZE = "the command is too large to check and names a secret location"
@@ -133,18 +136,11 @@ JQ_KEY_ONLY = re.compile(
     r"^\s*(\.[A-Za-z0-9_\"\[\]\.]*\s*\|\s*)?"
     r"(keys|keys_unsorted|length|type|paths|\[paths\]|has\(\"[^\"]*\"\)|to_entries\s*\|\s*map\(\s*\.key\s*\))"
     r"(\s*\[\])?\s*$")
-WHOLE_ENV = re.compile(
-    r"\b(print|pprint|pp|p|puts|console\.(log|error|info|dir)|json\.dumps?|JSON\.stringify|str|repr)\s*\(\s*"
-    r"(dict\(\s*|\{\s*\*\*\s*|\{\s*\.\.\.\s*)?(os\.environ|process\.env|ENV)\s*[\),}]"
-    r"|\b(os\.environ|process\.env)\.(items|values)\(\)|\bENV\.to_h\b|%ENV\b")
-ENV_ACCESS = re.compile(r"\b(os\.environ|process\.env|getenv|ENV|Deno\.env)\b|\$ENV\{")
-PRINT_CALL = re.compile(r"\b(print|console\.(log|error|info)|puts|say|printf|echo|pp|p|write|dump)\b")
+ENV_ANY = re.compile(r"\b(os\.environ|environ|getenv|process\.env|ENV|Deno\.env|Bun\.env)\b|%ENV\b")
 OPEN_CALL = re.compile(r"\b(open|read_text|read_bytes|readFileSync|readFile|fopen|file_get_contents|"
                        r"File\.read|IO\.read|Path|load|loads|slurp)\s*\(")
 EXEC_CALL = re.compile(r"\b(subprocess|check_output|Popen|os\.system|popen|execSync|execFileSync|spawnSync|"
                        r"spawn|exec|system|run)\b")
-CODE_OPTS = frozenset(("-c", "-e", "-E", "-p", "-r", "--eval", "--print", "--command", "--exec"))
-BARE_ENV = frozenset(("env", "printenv", "export -p", "declare -x", "declare -p", "typeset -x", "set"))
 PATHLIKE = re.compile(r"[^\s'\"`()<>;|&,=:{}\[\]]+")
 REDIRECT_RE = re.compile(r"^\d*(<<<|<<-|<<|<>|<&|<|>>|>&|>\||>|&>>|&>)$")
 HEREDOC_OPS = frozenset(("<<", "<<-"))
@@ -396,7 +392,7 @@ def _first_protected_path(ctx, paths, assume_exists=False):
     for path in paths:
         if ctx.secrets.is_secret(path, assume_exists):
             return path
-        folded = os.path.normpath(path).casefold()
+        folded = _canon(os.path.normpath(path))
         if folded in ctx.aliases:
             return path
         base = os.path.basename(path)
@@ -414,9 +410,9 @@ def _covered(ctx, path):
 def _search_hits_root(ctx, path):
     if not os.path.isdir(path):
         return False
-    path = os.path.normpath(path).casefold()
+    path = _canon(os.path.normpath(path))
     for root in ctx.secrets.roots():
-        root = root.casefold()
+        root = _canon(root)
         if root == path or root.startswith(path.rstrip("/") + "/") or path.startswith(root + "/"):
             return True
     return False
@@ -427,14 +423,12 @@ def code_mentions(ctx, text, cwds):
     s = ctx.secrets
     # Whole program, never per line: `k=os.environ['KEY']; print(k)` splits the
     # read from the print. Passing os.environ on (env={**os.environ}) stays fine.
-    if WHOLE_ENV.search(text) and (PRINT_CALL.search(text) or "json.dump" in text or "stringify" in text):
-        return "the whole environment"
-    if ENV_ACCESS.search(text):
-        quoted = re.findall(r"['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]", text)
-        upper = [n for n in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", text) if n.isupper()]
-        for name in quoted + upper:
-            if s.secret_var_re.search(name):
-                return name  # an inline read of a secret-named variable
+    found = ENV_ANY.search(text)
+    if found:
+        # Final rule (round 2): inline code may not touch the environment at
+        # all. Aliases (`e=os.environ; print(e)`) and names built at run time
+        # leave no name to match; a script file is the sanctioned place.
+        return "an environment read (" + found.group(0) + ")"
     for token in PATHLIKE.findall(text):
         token = token.rstrip(".,")
         if not token:
@@ -471,52 +465,49 @@ def _heredoc_body(raw, delimiter, cmd=""):
     return "\n".join(body)
 
 
-def _inline_code(ctx, args, redirects, cmd=""):
-    """Code an interpreter runs from argv, a heredoc or a here-string."""
+_CODE_LONG = frozenset(("--eval", "--print", "--command", "--exec", "--execute", "--expression"))
+
+
+def _inline_mode(cmd, args):
+    """Does argv carry inline code, in any spelling?
+
+    `-c CODE`, clustered `-Ic`/`-sc`, attached `-cCODE`/`-e'CODE'`, `--eval=CODE`,
+    perl `-ne`/`-E`, php `-r`, node `-p`, `-` (stdin), `deno eval`, `bun -e`.
+    Over-detecting only means the argv text is scanned too; it never allows more.
+    """
+    for word in args:
+        if not isinstance(word, str):
+            continue
+        if word == "-":
+            return True
+        if word.startswith("--"):
+            if word.split("=", 1)[0] in _CODE_LONG:
+                return True
+            continue
+        if re.match(r"-[A-Za-z]*[ceErp]", word):
+            return True
+    return cmd in ("deno", "bun") and "eval" in args
+
+
+def _inline_code(ctx, args, redirects, cmd="", cwds=()):
+    """Code an interpreter runs from argv, a heredoc or a here-string.
+
+    With inline mode on, the whole argv text is the code (attached and
+    clustered spellings need no exact parse). A heredoc or here-string is code
+    unless a positional argument names an existing script file.
+    """
     codes = []
-    for k, word in enumerate(args):
-        if word in CODE_OPTS and k + 1 < len(args) and isinstance(args[k + 1], str):
-            codes.append(args[k + 1])
+    if _inline_mode(cmd, args):
+        codes.append(" ".join(a for a in args if isinstance(a, str)))
+    positional = [a for a in args if isinstance(a, str) and not a.startswith("-")]
+    script = any(os.path.isfile(p) for word in positional[:1] for p in (resolve(ctx, word, list(cwds)) or []))
     for op, target in redirects:
         op = op.lstrip("0123456789")
-        if op in HEREDOC_OPS:
+        if op in HEREDOC_OPS and not script:
             codes.append(_heredoc_body(getattr(ctx, "raw", "") or "", target, cmd))
-        elif op == "<<<":
+        elif op == "<<<" and not script:
             codes.append(str(target))
     return [code for code in codes if code]
-
-
-def _names_only_filter(segment):
-    """Exactly `cut -d= -f1` (any spelling of those two options, nothing else)."""
-    if any(not isinstance(w, str) for w in segment):
-        return False
-    words = list(segment)
-    if not words or os.path.basename(words[0]) != "cut":
-        return False
-    delim = fields = None
-    i, rest = 0, words[1:]
-    while i < len(rest):
-        word = rest[i]
-        for short, long, slot in (("-d", "--delimiter", "d"), ("-f", "--fields", "f")):
-            if word in (short, long):
-                if i + 1 >= len(rest):
-                    return False
-                value, i = rest[i + 1], i + 1
-            elif word.startswith(long + "="):
-                value = word[len(long) + 1:]
-            elif word.startswith(short) and len(word) > 2:
-                value = word[2:]
-            else:
-                continue
-            if slot == "d":
-                delim = value
-            else:
-                fields = value
-            break
-        else:
-            return False  # any other option or operand
-        i += 1
-    return delim == "=" and fields == "1"
 
 
 _ASSIGN = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=(.*)", re.S)
@@ -657,9 +648,6 @@ def _judge_tokens(ctx, tokens, cwds, depth):
         reason, cwds, inline = _judge_segment(ctx, segment, cwds, depth)
         if inline:
             codes.extend(inline)
-        if (reason in (REASON_ENV.format(what="env"), REASON_ENV.format(what="printenv"))
-                and op == "|" and index + 1 < len(pairs) and _names_only_filter(pairs[index + 1][0])):
-            continue  # `env | cut -d= -f1`: variable names only
         if reason:
             return reason, cwds
     for code in codes:
@@ -703,7 +691,7 @@ def _judge_segment(ctx, segment, cwds, depth, runtime_operand=False):
     if dynamic:
         args = args + [DYNAMIC]
     is_interp = bool(INTERPRETER_RE.fullmatch(cmd))
-    interpreter = _inline_code(ctx, args, redirects, cmd) if is_interp else []
+    interpreter = _inline_code(ctx, args, redirects, cmd, cwds) if is_interp else []
 
     for op, target in redirects:
         if op.lstrip("0123456789") in ("<", "<>", "<&") and not target.lstrip("-").isdigit():
@@ -871,17 +859,19 @@ def _refused_command_reason(ctx, cmd, raw, args, cwds, interpreter):
         if not [w for w in _free_words(args, WRAPPERS["env"])
                 if not (isinstance(w, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", w))]:
             return REASON_ENV.format(what="env")
+    # Final rule (round 2): environment-dumping builtins in any form or pipeline.
+    letters = "".join(a[1:] for a in args if isinstance(a, str) and a.startswith("-") and not a.startswith("--"))
+    what = (cmd + " " + " ".join(map(str, args))).strip()
     if cmd == "printenv":
-        free = _free_words(args, ())
-        if not free:
-            return REASON_ENV.format(what="printenv")
-        for name in free:
-            if isinstance(name, str) and s.secret_var_re.search(name):
-                return REASON_ENV.format(what="printenv " + name)
-    if cmd in ("export", "declare", "typeset", "set"):
-        if not args or (cmd == "export" and args == ["-p"]) or (
-                cmd in ("declare", "typeset") and all(isinstance(a, str) and re.fullmatch(r"-[xpg]+", a) for a in args)):
-            return REASON_ENV.format(what=(cmd + " " + " ".join(map(str, args))).strip())
+        return REASON_ENV.format(what=what)
+    if cmd in ("declare", "typeset") and (not args or "p" in letters or "x" in letters):
+        return REASON_ENV.format(what=what)
+    if cmd == "export" and (not args or "p" in letters):
+        return REASON_ENV.format(what=what)
+    if cmd == "set" and not args:
+        return REASON_ENV.format(what=what)
+    if cmd == "compgen" and ("e" in letters or any(a == "export" for a in args)):
+        return REASON_ENV.format(what=what)
     return None
 
 
@@ -974,13 +964,13 @@ def _judge_copy(ctx, cmd, args, cwds):
             for final in finals[-len(dest_paths):]:
                 if not _covered(ctx, final):
                     return REASON_COPY.format(path=final)
-                ctx.aliases.add(os.path.normpath(final).casefold())
+                ctx.aliases.add(_canon(os.path.normpath(final)))
         for path in src_paths or []:
             if os.path.isdir(path):
                 if _search_hits_root(ctx, path):
                     return REASON_LINK.format(path=path) if (links or name == "mv") else REASON_COPY.format(path=path)
                 for final in finals[-len(dest_paths or []):] if dest_paths else []:
-                    ctx.alias_dirs.add(os.path.normpath(final).casefold())
+                    ctx.alias_dirs.add(_canon(os.path.normpath(final)))
     if name == "mv":
         for final in finals or dest_paths or []:
             if _covered(ctx, final):
@@ -989,7 +979,7 @@ def _judge_copy(ctx, cmd, args, cwds):
         # Whatever the source, a read of the new name later in this command is
         # unchecked: the link doesn't exist yet when the command is judged.
         for final in finals or dest_paths or []:
-            ctx.aliases.add(os.path.normpath(final).casefold())
+            ctx.aliases.add(_canon(os.path.normpath(final)))
         if dest_paths is None or (dest is not None and not dest_paths):
             ctx.alias_dirs.add("")  # unknown link name: every listed basename is suspect
     return None

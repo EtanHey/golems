@@ -10,12 +10,20 @@ import fnmatch
 import json
 import os
 import re
+import unicodedata
 from pathlib import Path
 
 SKILL_DIR = Path(os.path.realpath(__file__)).parents[1]
 LIST_PATH = SKILL_DIR / "secret-files.json"
 MASKED_READER = SKILL_DIR / "scripts" / "masked-read.py"
 _JSON_SNIFF_BYTES = 1024 * 1024
+
+
+def canon(text: str) -> str:
+    """The filesystem's idea of one name: APFS ignores case AND treats Unicode
+    composed and decomposed spellings (é vs e + U+0301) as the same file. NFD,
+    casefold, then NFC gives one key for all of them."""
+    return unicodedata.normalize("NFC", unicodedata.normalize("NFD", text).casefold())
 
 
 class SecretList:
@@ -25,8 +33,8 @@ class SecretList:
         self.names = list(data["names"])
         self.not_names = list(data.get("not_names", []))
         self.json_env_names = list(data.get("json_env_names", []))
-        # APFS (the fleet's Macs) is case-insensitive: `.ENV` opens `.env`, so
-        # every comparison below is casefolded, like the filesystem.
+        # APFS (the fleet's Macs) ignores case and Unicode normalization:
+        # `.ENV` opens `.env`, so every comparison below uses canon().
         self.backup_re = re.compile(data["backup_suffix_re"], re.I)
         self.helpers = list(data.get("helpers", []))
         self.secret_var_re = re.compile(data["secret_var_re"])
@@ -54,21 +62,21 @@ class SecretList:
         return out
 
     def _name_match(self, base: str) -> bool:
-        base = base.casefold()
-        if any(fnmatch.fnmatchcase(base, p.casefold()) for p in self.not_names):
+        base = canon(base)
+        if any(fnmatch.fnmatchcase(base, canon(p)) for p in self.not_names):
             return False
-        return any(fnmatch.fnmatchcase(base, p.casefold()) for p in self.names)
+        return any(fnmatch.fnmatchcase(base, canon(p)) for p in self.names)
 
     def json_env_name(self, base: str) -> bool:
-        return any(fnmatch.fnmatchcase(v.casefold(), p.casefold())
+        return any(fnmatch.fnmatchcase(canon(v), canon(p))
                    for v in self._variants(base) for p in self.json_env_names)
 
     def is_helper(self, name: str) -> bool:
-        return isinstance(name, str) and os.path.basename(name).casefold() in {h.casefold() for h in self.helpers}
+        return isinstance(name, str) and canon(os.path.basename(name)) in {canon(h) for h in self.helpers}
 
     def path_pattern_match(self, path: str) -> bool:
-        """String-only match against the absolute `paths` patterns, casefolded."""
-        return any(fnmatch.fnmatchcase(v.casefold(), p.casefold()) for v in self._variants(path) for p in self.paths)
+        """String-only match against the absolute `paths` patterns, on canonical keys."""
+        return any(fnmatch.fnmatchcase(canon(v), canon(p)) for v in self._variants(path) for p in self.paths)
 
     def name_mentioned(self, text: str) -> bool:
         """A bare listed name (auth.json, x.env) in code text; no file needed."""

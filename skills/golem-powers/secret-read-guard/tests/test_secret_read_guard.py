@@ -5,6 +5,7 @@ under docs.local; no real secret file is read, and the real helper never runs.
 Shell text is inert data: it reaches the hook as JSON on stdin.
 """
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -47,6 +48,7 @@ def world(monkeypatch):
             repo / "README.md": "hello\n",
             repo / "settings.json": '{"theme": "dark"}',
             repo / "src/app.ts": "export const x = 1\n",
+            repo / "consumer.py": "import os\nassert os.environ.get('OPENAI_API_KEY')\nprint('KEY_USED_OK')\n",
         }
         for path, text in files.items():
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -166,6 +168,26 @@ DENY = [
     ("python3 -c \"import os;print(os.environ)\"", "repo"),
     ("node -e \"console.log(process.env.ANTHROPIC_AUTH_TOKEN)\"", "repo"),
     ("cat <<< \"$ANTHROPIC_API_KEY\"", "repo"),
+    # Round-2 rulings (lead, final): whole classes, no exceptions.
+    ("printenv PATH", "repo"),
+    ("node -e \"console.log(process.env.HOME)\"", "repo"),
+    ("env | cut -d= -f1", "repo"),
+    ("printenv | cut -d= -f1", "repo"),
+    ("env -0", "repo"),
+    ("/usr/bin/env -0", "repo"),
+    ("declare -p", "repo"),
+    ("declare -xp", "repo"),
+    ("typeset -x", "repo"),
+    ("compgen -e", "repo"),
+    ("export -p | head", "repo"),
+    ("python3 -c \"import subprocess, os; subprocess.run(['true'], env={**os.environ})\"", "repo"),
+    ("python3 - <<'EOF'\nfrom os import environ\nprint(len(environ))\nEOF", "repo"),
+    ("deno eval \"console.log(Deno.env.toObject())\"", "repo"),
+    ("bun -e \"console.log(Bun.env)\"", "repo"),
+    ("perl -ne 'print $ENV{HOME}'", "repo"),
+    ("php -r 'echo getenv(\"HOME\");'", "repo"),
+    ("osascript -e 'system attribute \"HOME\"' -e 'ENV'", "repo"),
+    ("python3 -Wignore -c \"print(open('.env').read())\"", "repo"),
     # Round-1 rulings (lead, 2026-11-24): stricter forms.
     ("sed -i '' 's/a/b/' .env", "repo"),
     ("env | grep -c '^GIT_'", "repo"),
@@ -224,14 +246,12 @@ ALLOW = [
     ("cd src && cat app.ts", "repo"),
     ("echo ~/.codex/auth.json", "repo"),
     ("echo $HOME $PATH", "repo"),
-    ("printenv PATH", "repo"),
     ("env FOO=1 node -v", "repo"),
     ("ps aux", "repo"),
     ("ps -ef", "repo"),
     ("security find-generic-password -s golems.cliproxy.client-token", "repo"),
     ("launchctl list", "repo"),
     ("python3 -c \"print(1+1)\"", "repo"),
-    ("node -e \"console.log(process.env.HOME)\"", "repo"),
     ("git status --short", "repo"),
     ("git diff src/app.ts", "repo"),
     ("git check-ignore .env", "repo"),
@@ -243,8 +263,11 @@ ALLOW = [
     ("cat", "repo"),
     ("cat $HOME/../nothing-here.md", "repo"),
     ("git log --oneline -3", "repo"),
+    # The sanctioned key-loading pattern: a script file, not inline code.
+    ("( set -a; . ~/.config/golems/openai-api.env; set +a; python3 consumer.py )", "repo"),
+    ("( set -a; . ~/.config/golems/openai-api.env; set +a; /usr/bin/true )", "repo"),
+    ("python3 consumer.py <<< 'data'", "repo"),
     ("cat .claude/settings.json", "repo"),
-    ("env | cut -d= -f1 | grep -i claude", "repo"),
     ("python3 - <<'EOF'\np='notes.py'; s=open(p).read().replace('.env', 'auth.json')\nEOF", "repo"),
     ("for f in README.md src/app.ts; do head -3 \"$f\"; done", "repo"),
     ("F=README.md; cat \"$F\"", "repo"),
@@ -268,6 +291,55 @@ SOL_R1 = [
     "sed -i '' 'w /dev/stdout' .env",
     "python3 -c \"import os; k=os.environ['OPENAI_API_KEY']; print(k)\"",
 ]
+
+
+# Sol's round-2 repros on #1364 (each printed FAKE-SYNTH-SOL-R2 at b679d0e4), plus variants.
+SOL_R2 = [
+    "python3 -sc \"print(open('.env').read())\"",
+    "python3 -Bc \"import os; print(os.environ['OPENAI_API_KEY'])\"",
+    "python3 -c\"import os; print(os.environ['OPENAI_API_KEY'])\"",
+    "python3 -Ic \"import os; print(os.environ['OPENAI_API_KEY'])\"",
+    "node --eval=\"console.log(process.env.OPENAI_API_KEY)\"",
+    "node -p \"process.env.OPENAI_API_KEY\"",
+    "ruby -e'puts ENV[\"OPENAI_API_KEY\"]'",
+    "perl -E 'say $ENV{OPENAI_API_KEY}'",
+    "cp .env settings-caf\u00e9.json; cat SETTINGS-CAFE\u0301.JSON",
+    "cp .env settings-cafe\u0301.json; cat settings-caf\u00e9.json",
+    "env | cut -d= -f2 -f1",
+    "env | cut -d= -f1 -f2 -f1",
+    "declare -p OPENAI_API_KEY",
+    "typeset -p OPENAI_API_KEY",
+    "typeset -xp OPENAI_API_KEY",
+    "python3 -c \"import os; e=os.environ; print(e)\"",
+    "node -e \"const e=process.env; console.log(e)\"",
+    "python3 <<< \"import os; print(os.environ)\"",
+]
+
+
+@pytest.mark.parametrize("codex", [False, True], ids=["claude", "codex"])
+@pytest.mark.parametrize("command", SOL_R2)
+def test_sol_round2_repros_are_refused(world, command, codex):
+    proc = run(bash(command, world["repo"]), codex=codex)
+    assert proc.returncode == (0 if codex else 2), (command, proc.stdout, proc.stderr)
+    assert decision(proc) == "deny", (command, proc.stdout)
+
+
+@pytest.mark.parametrize("codex", [False, True], ids=["claude", "codex"])
+def test_unicode_home_alias_is_refused_on_every_surface(world, monkeypatch, codex):
+    import unicodedata
+    home = world["base"] / "h\u00f3m\u00e9"  # composed
+    target = home / ".t3/userdata/settings.json"
+    target.parent.mkdir(parents=True)
+    target.write_text('{"key": "FAKE-SYNTH-0010"}')
+    monkeypatch.setenv("HOME", str(home))
+    alternate = unicodedata.normalize("NFD", str(home)).upper() + "/.T3/USERDATA/SETTINGS.JSON"
+    proc = run(bash(f"cat '{alternate}'", world["repo"]), codex=codex)
+    assert decision(proc) == "deny", proc.stdout
+    if not codex:
+        for payload in ({"tool_name": "Read", "tool_input": {"file_path": alternate}},
+                        {"tool_name": "Grep", "tool_input": {"pattern": "key", "path": alternate, "output_mode": "content"}}):
+            proc = run({**payload, "cwd": str(world["repo"])})
+            assert decision(proc) == "deny", (payload["tool_name"], proc.stdout)
 
 
 @pytest.mark.parametrize("codex", [False, True], ids=["claude", "codex"])
@@ -392,3 +464,16 @@ def test_manifest_registers_the_guard_for_claude_and_codex():
         assert set(row["matcher"].split("|")) == {"Bash", "Monitor", "Read", "Grep"}
     for host, entries in manifest["codex_hosts"].items():
         assert [e["matcher"] for e in entries if e["gate"] == "secret-read-guard"] == ["^Bash$"], host
+
+
+@pytest.mark.parametrize("codex", [False, True], ids=["claude", "codex"])
+def test_sanctioned_key_loading_still_runs(world, codex):
+    """( set -a; . <env file>; set +a; <script> ): allowed, the script gets the key, nothing prints it."""
+    command = "( set -a; . ~/.config/golems/openai-api.env; set +a; python3 consumer.py )"
+    proc = run(bash(command, world["repo"]), codex=codex)
+    assert decision(proc) == "allow", proc.stdout
+    env = {k: v for k, v in os.environ.items() if k != "OPENAI_API_KEY"}
+    env["HOME"] = str(world["home"])
+    ran = subprocess.run(["bash", "-c", command], cwd=world["repo"], env=env, capture_output=True, text=True, timeout=30)
+    assert ran.returncode == 0 and ran.stdout.strip() == "KEY_USED_OK", (ran.stdout, ran.stderr)
+    assert "FAKE-SYNTH" not in ran.stdout + ran.stderr
