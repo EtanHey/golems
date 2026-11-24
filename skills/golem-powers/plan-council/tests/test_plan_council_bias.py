@@ -117,3 +117,33 @@ def test_ambiguous_claude_author_family_fails_closed(tmp_path):
     result = _cli(_four_seat(tmp_path, merged=3), "claude")
     assert result.returncode == 2
     assert "opus" in result.stdout and "fable" in result.stdout
+
+
+# AIDEV-NOTE: only Neon holds R4 (Sol r2 on #1359). The bare alias `gemini` (the prescribed R4 signature) or a
+# name containing the word `neon` counts as the neon family; every other Gemini model has no council family.
+_REJECTED_GEMINI = ["gemini-flash", "gemini-4-argon", "gemini-4-hydrogen", "gemini-pro", "gemini-4", "gemini 3.1 pro", "gemini-4-carbon"]
+_ACCEPTED_NEON = ["gemini", "neon", "gemini-4-neon", "gemini-pro-orchestrator-neon", "Gemini 4 Neon (High)"]
+
+
+def _with_r4_family(tmp_path, family):
+    directory = tmp_path / family.replace(" ", "_").replace("(", "").replace(")", "")
+    directory.mkdir()
+    _four_seat(directory, merged=3)
+    (directory / "r4.md").write_text(
+        f"| Lane | Score | Merged |\n|---|---:|---:|\n| W3 preconditions | 9 | 3 |\n\n— R4 · {family} · Antigravity\n")
+    return directory
+
+
+def test_older_gemini_models_cannot_sign_the_neon_seat(tmp_path):
+    for family in _REJECTED_GEMINI:
+        result = _cli(_with_r4_family(tmp_path, family), "opus")
+        assert result.returncode == 2, (family, result.stdout)
+        assert "no recognized model family" in result.stdout, (family, result.stdout)
+
+
+def test_neon_names_and_the_bare_gemini_alias_count_as_the_neon_family(tmp_path):
+    for family in _ACCEPTED_NEON:
+        directory = _with_r4_family(tmp_path, family)
+        result = _cli(directory, "opus")
+        assert result.returncode == 0, (family, result.stdout + result.stderr)
+        assert bias.analyze_directory(directory, author_family="opus")["lanes"][0]["scores"]["neon"] == 9.0, family

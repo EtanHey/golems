@@ -69,6 +69,8 @@ Use [references/seat-briefs.md](references/seat-briefs.md) and
 - Do not average disagreement away. For each disputed lane:
   `merged(lane) = min(non-author-family judge scores)`.
 - **A family is a model family, not a vendor:** `opus` (R1), `sol` (R2), `fable` (R3) and `neon` (R4).
+  R4 signs as the bare alias `gemini` or a Neon model name; any other Gemini model gets no family and
+  the calculator exits 2.
   Fable stays its own declared family although Anthropic makes it, as it always has here. Example,
   one lane scored Opus 9, Sol 8, Fable 3, Neon 9: an Opus-authored plan merges at 3 (min of Sol, Fable,
   Neon), and so does a Neon-authored one (min of Opus, Sol, Fable). Pass the author's model family to

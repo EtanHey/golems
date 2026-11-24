@@ -33,7 +33,10 @@ def _family(value: str) -> str | None:
         return "sol"
     if "opus" in lowered:
         return "opus"
-    if "gemini" in lowered or re.search(r"\bneon\b", lowered):
+    # Only Neon holds R4: the bare alias `gemini` as a whole signature field (the prescribed
+    # `— R4 · gemini · Antigravity`) or a name with the word `neon`. Flash, Argon, Hydrogen, Pro,
+    # Carbon, `gemini-4` and any unnamed future Gemini get no family (exit 2 in the CLI).
+    if re.search(r"\bneon\b", lowered) or "gemini" in (field.strip() for field in lowered.split("·")):
         return "neon"
     return None
 
