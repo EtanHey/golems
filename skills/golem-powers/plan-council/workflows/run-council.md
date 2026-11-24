@@ -8,10 +8,10 @@
 
 ## Pre-flight
 
-1. Write the three briefs from [../references/seat-briefs.md](../references/seat-briefs.md), replacing
+1. Write the four briefs from [../references/seat-briefs.md](../references/seat-briefs.md), replacing
    every bracketed placeholder. Do not supply a common rubric.
-2. Create 3 visible cmux panes. Use repo launchers for the judgment and implement roles; use the separate raw Fable command.
-3. Verify each pane within 30 seconds with cmux `read_screen`. Confirm its effective model, brief,
+2. Create 3 visible cmux panes for R1–R3. Use repo launchers for the judgment and implement roles; use the separate raw Fable command. Dispatch R4 as a T3 `delegate_task` on `antigravity` (launch contract below).
+3. Verify each pane within 30 seconds with cmux `read_screen` (R4: read its child thread). Confirm its effective model, brief,
    repo, and read-only constraint. A missing/mismatched seat is not a council; relaunch it.
 4. Start marker-count monitoring against the append-only collab. Use one supervised monitor per live
    lane; do not use bare `tail -f`. Record the monitor identity and stop it when the lane closes.
@@ -33,6 +33,7 @@ Codex uses a concrete phase effort with `-E`; Claude `default` omits its effort 
 | R1 | `claude.judgment` | `<repo>Claude -s "${claude_flags[@]}" "Read and follow <R1-brief-path>"`; verify bare model pin against the resolved judgment model. |
 | R2 | `codex.implement` | `<repo>Codex -s -m "$(node scripts/model-roles.mjs codex.implement --field model)" -E "$phase_effort" "Read and follow <R2-brief-path>"`; verify model and phase effort. |
 | R3 | Fable 5 | `claude --dangerously-skip-permissions --model claude-fable-5 "Read and follow <R3-brief-path>"`. |
+| R4 | `gemini.judgment` (Neon) | Call `orchestrator_capabilities` on each Mac; on one whose `antigravity` instance can run a child, `delegate_task` with `target: {providerInstanceId: "antigravity", model: <first id in the role's t3_delegate.models that catalog offers>, options: {<that catalog's thinking option>: "high"}}`, `runtimeMode: "full-access"` (the ballot is a collab write) and prompt `Read and follow <R4-brief-path>`. Verify the child's model. |
 
 Resolve R1 with `node scripts/model-roles.mjs claude.judgment --field model` from the golems
 checkout. Choose effort per `/large-plan` phase with a why and pass explicitly at dispatch.
@@ -41,8 +42,8 @@ declared third-family contract, outside these role mappings.
 
 ## Harvest and gate
 
-1. Wait for all three distinct sentinels by marker count.
-2. Run `python3 <plan-council-skill-dir>/council_lint_cli.py <collab> --seat <R1|R2|R3> --sentinel <seat-sentinel> --author-seat <author-voting-seat-or-nonseat-id>` for each seat, with every lane. If the author improperly took R2, pass `--author-seat R2`; when the author holds no seat, pass its non-seat ID. The CLI extracts a sentinel-delimited seat ballot from the shared collab before applying file-scoped rules.
+1. Wait for all four distinct sentinels by marker count (three when R4 is recorded unavailable).
+2. Run `python3 <plan-council-skill-dir>/council_lint_cli.py <collab> --seat <R1|R2|R3|R4> --sentinel <seat-sentinel> --author-seat <author-voting-seat-or-nonseat-id>` for each seat, with every lane. If the author improperly took R2, pass `--author-seat R2`; when the author holds no seat, pass its non-seat ID. The CLI extracts a sentinel-delimited seat ballot from the shared collab before applying file-scoped rules.
 3. Run `python3 <plan-council-skill-dir>/council_bias.py` across the ballot directory. Reject any declared merge that differs from
    `min(non-author-family)`.
 4. Publish a table of lane scores, conservative reads, numeric bias, verdicts, and top changes.

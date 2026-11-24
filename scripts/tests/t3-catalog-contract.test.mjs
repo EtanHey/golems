@@ -40,6 +40,22 @@ test('every gather role resolves an Antigravity model on every Mac, with no hard
   }
 });
 
+// AIDEV-NOTE: Neon judgment tier (Etan 2026-11-24, via orc). Same catalog rules as the gather roles, plus the
+// hard-rules pointer: an Antigravity thread runs without guard hooks, so the check must send briefs to them.
+test('the Neon judgment role resolves on every Mac, reads its option name from the catalog and names the hard rules', () => {
+  const role = roles['gemini.judgment'];
+  assert.ok(role, 'gemini.judgment role');
+  const t3 = role.t3_delegate;
+  assert.equal(t3?.provider, 'antigravity');
+  assert.equal(t3.thinking, 'high');
+  assert.ok(t3.models.every(id => /neon/.test(id)), 'only Neon models sit in the judgment role');
+  assert.match(t3.check, /orchestrator_capabilities/);
+  assert.match(t3.check, /hard rules/);
+  for (const id of t3.models) assert.ok(macs.some(([, mac]) => Object.hasOwn(mac.antigravity, id)), `${id} is in no Mac's catalog`);
+  for (const [mac, catalog] of macs) assert.ok(t3.models.some(id => Object.hasOwn(catalog.antigravity, id)), `no Neon model on ${mac}`);
+  for (const key of Object.keys(t3.options ?? {})) assert.ok(!optionNames.has(key), `hard-codes catalog option ${key}`);
+});
+
 function assertClaudeOptions(where, model, options) {
   for (const [mac, catalog] of claudeCatalogs) {
     const offered = catalog[model];

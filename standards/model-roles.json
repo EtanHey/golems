@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-11-19",
+  "updated": "2026-11-24",
   "swap_rule": "A model change = bench it with the skill-creator harness, then edit ONE line here. No skill/agent file names a role-owned model directly (drift lint).",
   "roles": {
     "claude.judgment": {
@@ -84,6 +84,22 @@
         ],
         "thinking": "high",
         "check": "Call orchestrator_capabilities first on the Mac you dispatch to. Use the first model in this list that Mac's antigravity catalog offers, at high thinking, under the option name that catalog gives (thinking_level or thought_level; never hard-code one). gemini-4-hydrogen is not benchmarked: treat its output as a pointer to verify. Never Argon for easy reads."
+      }
+    },
+    "gemini.judgment": {
+      "model": "Gemini 4 Neon (High)",
+      "launcher_tier": "neon-high",
+      "use_for": "judgment tier beside claude.judgment, third vendor (Etan 2026-11-24, via orc): other-vendor review of Claude or Codex builds, holistic builds, the /plan-council R4 seat, a lead seat once its lead file carries the hard rules; deletion/test-edit decisions only as /agent-routing decision rule 2 allows",
+      "evidence": "ruling-based (Etan 2026-11-24, via orc); Neon-vs-Opus deletion-hazard and seeded-defect bench by skill-creator, 2026-11-24",
+      "never_for": "reviewing a Neon build, UX/UI taste review (the design skills are Claude-only), any brief without its hard rules (an Antigravity thread has no guard hooks)",
+      "t3_delegate": {
+        "provider": "antigravity",
+        "models": [
+          "gemini-4-neon",
+          "gemini-pro-orchestrator-neon"
+        ],
+        "thinking": "high",
+        "check": "Call orchestrator_capabilities first on the Mac you dispatch to, and confirm the antigravity instance can run a child (2026-11-24: the M1 instance was disabled, Antigravity 1.4.5 too old; the M4 offered both models). Use the first model in this list that Mac's catalog offers, at high thinking, under the option name that catalog gives (thought_level on the M4 and thinking_level on the M1 on 2026-11-24; never hard-code one). Every brief carries the hard rules from /agent-routing § Neon judgment tier."
       }
     },
     "claude.research.verifier": {

@@ -11,7 +11,7 @@ conservative non-author-family score govern disputed lanes.
 
 ## Scope
 
-The council runs 3 visible seats from 3 model families, self-invented rubrics, live-repo read-only validation, measured same-family bias, a lift round, and exact-head review loops.
+The council runs 4 visible voting seats (Claude, Codex, Fable, Neon), self-invented rubrics, live-repo read-only validation, measured same-family bias, a lift round, and exact-head review loops.
 
 ## Output contract
 
@@ -41,8 +41,15 @@ Load-bearing rules from those references, so a router that stops here still gets
 
 ### 1. Seats
 
-- Convene **3 voting seats from 3 model families** in visible cmux panes: R1 `claude.judgment`, R2
-  `codex.implement`, and the separately declared R3 Fable 5 seat. Never use background subagents.
+- Convene **4 voting seats**, each visible: R1 `claude.judgment`, R2 `codex.implement`, the
+  separately declared R3 Fable 5 seat (cmux panes), and R4 Neon (`gemini.judgment`), a real third
+  vendor, as a T3 `delegate_task` child on provider `antigravity` (2026-11-24, Etan, via orc: "neon is
+  respected just as much as opus"). Fable is an Anthropic model, so R4 gives a Claude-authored plan two
+  non-Claude scores (R2 and R4) for the merge rule. Never use background subagents.
+- R4 runs in an Antigravity thread with no guard hooks: its brief carries its own hard rules (read-only
+  repo, the collab is its only write, no `rm -r`, no secrets, no push), per `/agent-routing` § Neon
+  judgment tier. A brief without them is not sent. If no Mac's antigravity instance can run a child,
+  the council runs with R1–R3 and the report says `R4: unavailable (<reason>)`.
 - Pin every seat explicitly and verify the effective model from the pane. The Fable seat uses raw
   `claude --dangerously-skip-permissions --model claude-fable-5` because the repoGolem launcher cannot express it.
 - Supply no shared rubric. Each judge invents named dimensions and weights totaling 100.
