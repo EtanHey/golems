@@ -347,6 +347,12 @@ archive_and_remove() {
     t3_pr_guard "$worktree_path" "$branch_display" || return 0
     t3_guard "$worktree_path" "$branch_display" || return 0
   fi
+  # Revalidate sibling identity after archival and the last owner-state awaits.
+  if [[ -n "$sibling_root" && "$worktree_path" == "$sibling_root/"* ]] &&
+      ! sibling_path_safe "$worktree_path"; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 KEEP-out-of-scope "sibling identity changed before removal"
+    return 0
+  fi
   # A durable intent must succeed before the destructive call (nightly crash evidence).
   emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" "REMOVING" "$archive_detail"
   # Never --force: git itself refuses a tree that became unclean meanwhile.
@@ -372,6 +378,38 @@ has_hidden_index_flags() {
   return 1
 }
 
+# The sibling namespace is admitted only for the matching main under HOME/Gits.
+# Census membership is necessary; filesystem discovery below can only emit KEEP.
+sibling_path_safe() {
+  local path="$1" top common expected
+  [[ -n "$sibling_root" && "$path" == "$sibling_root/"?* ]] || return 1
+  [[ "${path#"$sibling_root/"}" != */* ]] || return 1
+  [[ ! -L "$sibling_root" && ! -L "$path" && -d "$path" ]] || return 1
+  [[ "$(cd "$path" && pwd -P)" == "$path" ]] || return 1
+  top="$(git -C "$path" rev-parse --show-toplevel)" || return 1
+  [[ "$top" == "$path" ]] || return 1
+  common="$(git -C "$path" rev-parse --git-common-dir)" || return 1
+  [[ "$common" == /* ]] || common="$path/$common"
+  expected="$(git -C "$repo_root" rev-parse --absolute-git-dir)" || return 1
+  [[ "$(canonical_path "$common")" == "$expected" ]] || return 1
+  line_in "$path" "$(git -C "$repo_root" worktree list --porcelain | sed -n 's/^worktree //p')"
+}
+
+report_sibling_exclusions() {
+  local entry
+  [[ -n "$sibling_root" && -z "$only_worktree" ]] || return 0
+  if [[ -L "$sibling_root" ]]; then
+    emit_row "$repo_name" "$sibling_root" - not-checked not-checked KEEP-out-of-scope "symlinked sibling root refused"
+    return 0
+  fi
+  [[ -d "$sibling_root" ]] || return 0
+  for entry in "$sibling_root/"* "$sibling_root/".[!.]* "$sibling_root/"..?*; do
+    [[ -e "$entry" || -L "$entry" ]] || continue
+    line_in "$entry" "$census_paths" && continue
+    emit_row "$repo_name" "$entry" - not-checked not-checked KEEP-out-of-scope "not a registered same-repo sibling worktree (symlinks refused)"
+  done
+}
+
 process_worktree_block() {
   local worktree_path="$block_worktree"
   local branch_ref="$block_branch"
@@ -388,6 +426,14 @@ process_worktree_block() {
 
   [[ -n "$worktree_path" ]] || return 0
 
+  # Refuse aliases before canonicalization can hide a sibling symlink.
+  if [[ -n "$sibling_root" && "$worktree_path" == "$sibling_root/"* ]] &&
+      ! sibling_path_safe "$worktree_path"; then
+    [[ -z "$only_worktree" || "$worktree_path" == "$only_worktree" ]] || return 0
+    only_seen=1
+    emit_row "$repo_name" "$worktree_path" "${branch_ref#refs/heads/}" not-checked not-checked KEEP-out-of-scope "sibling identity unproven or symlink path refused"
+    return 0
+  fi
   canonical_worktree="$(canonical_path "$worktree_path")"
   if [[ "$canonical_worktree" == "$main_root" || "$canonical_worktree" == "$repo_root" ]]; then
     return 0
@@ -439,9 +485,10 @@ process_worktree_block() {
   fi
 
   local scope_name="${canonical_worktree#"$main_root/.worktrees/"}"
-  if [[ "$is_t3" -eq 0 && ( "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ) ]]; then
+  if [[ "$is_t3" -eq 0 && ( "$canonical_worktree" != "$main_root/.worktrees/"?* || "$scope_name" == */* ) ]] &&
+      ! sibling_path_safe "$worktree_path"; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "not-checked" \
-      "not-checked" "KEEP-out-of-scope" "not under $main_root/.worktrees/"
+      "not-checked" "KEEP-out-of-scope" "not under a managed .worktrees or same-repo sibling root"
     return 0
   fi
   check_owner_guards "$worktree_path" "$branch_display" || return 0
@@ -680,6 +727,11 @@ process_repo() {
   [[ "$main_root" == "$repo_root" ]] || { echo "Main census root mismatch" >&2; return 2; }
   repo_name="$(basename "$repo_root")"
   census_paths="$(sed -n 's/^worktree //p' <<< "$census")"
+  sibling_root=""
+  if [[ "$repo_root" == "$(canonical_path "$HOME")/Gits/$repo_name" ]]; then
+    sibling_root="$repo_root-worktrees"
+  fi
+  report_sibling_exclusions
   # No candidate means no plan verdict needs a remote proof.
   if [[ "$prune_plan" -eq 1 && "$census_paths" == "$main_root" ]]; then
     return 0

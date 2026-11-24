@@ -41,6 +41,7 @@
     "test-worktree-gc-redteam.bats",
     "test-worktree-gc-report.bats",
     "test-worktree-gc-t3-settled.bats",
+    "test-worktree-gc-sibling.bats",
     "test-worktree-gc-wiring.bats",
     "test-worktree-gc.bats"
   ],
