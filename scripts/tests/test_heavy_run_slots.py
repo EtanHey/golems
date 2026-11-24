@@ -1,6 +1,5 @@
 """Lane interoperability, using live commands and synthetic HOME only."""
 import fcntl
-import json
 import os
 from pathlib import Path
 import signal
@@ -39,6 +38,7 @@ class LaneTests(unittest.TestCase):
     def test_foreign_slot_never_removed(self):
         slot = self.home/'.m1-heavy.lock'; slot.mkdir()
         (slot/'foreign').write_text('untouched')
+        (slot/'owner.json').write_text('legacy record is not owner')
         result, _, err = self.finish(self.launch('raise SystemExit(99)'))
         self.assertEqual(result,75,err)
         self.assertIn('WAIT',err)
@@ -50,9 +50,9 @@ class LaneTests(unittest.TestCase):
         legacy.parent.mkdir(parents=True)
         with legacy.open('a+') as stream:
             fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            result, out, err = self.finish(self.launch('from pathlib import Path; import json; '
-                'p=Path.home(); r=json.loads((p/".m4-heavy-2.lock/owner.json").read_text()); '
-                'assert r["lane"]=="fixture" and r["pid"]>0 and r["command"] and r["started"]; '
+            result, out, err = self.finish(self.launch('from pathlib import Path; from datetime import datetime; '
+                'p=Path.home(); lines=(p/".m4-heavy-2.lock/owner").read_text().splitlines(); r=dict(line.split("=",1) for line in lines); '
+                'assert list(r)==["lane","worker","start","pid","token","cmd"] and len(lines)==6; assert r["lane"]=="fixture" and int(r["pid"])>0 and r["worker"] and r["cmd"]; assert datetime.fromisoformat(r["start"]).utcoffset().total_seconds()==0; '
                 'assert not list((p/".local/state/golems").glob("*.slot*.lock")); print("owned")',host='m4'))
         self.assertEqual(result,0,err); self.assertIn('owned',out)
         self.assertTrue(primary.is_dir()); self.assertFalse((self.home/'.m4-heavy-2.lock').exists())
@@ -122,13 +122,20 @@ class LaneTests(unittest.TestCase):
         from unittest.mock import patch
         sys.path.insert(0,str(HOOKS))
         import heavy_lane
-        for change in ('token','directory','extra-file'):
+        for change in ('token','pid','missing-owner','owner-inode','directory','extra-file'):
             with patch.dict(os.environ,{'HOME':str(self.home)}), patch.object(heavy_lane.watchdog,'lane_host',return_value='m1'):
                 slot=heavy_lane.LaneSlot('fixture',['test'],lambda _:None)
                 slot.acquire(.01,time.monotonic()+1)
                 path=slot.path
-                if change=='token':
-                    (path/'owner.json').write_text('{}')
+                if change in ('token','pid'):
+                    owner=path/'owner'
+                    record=owner.read_text().splitlines()
+                    owner.write_text('\n'.join(f'{change}=foreign' if line.startswith(change+'=') else line for line in record)+'\n')
+                elif change=='missing-owner': (path/'owner').unlink()
+                elif change=='owner-inode':
+                    replacement=path/'replacement'
+                    replacement.write_text((path/'owner').read_text())
+                    replacement.replace(path/'owner')
                 elif change=='directory':
                     path.rename(self.home/'original')
                     path.mkdir()
@@ -136,17 +143,17 @@ class LaneTests(unittest.TestCase):
                 slot.release()
                 self.assertTrue(path.is_dir())
                 # Delete only explicitly created fixture entries.
-                for name in ('owner.json','foreign'):
+                for name in ('owner','foreign'):
                     (path/name).unlink(missing_ok=True)
                 path.rmdir()
         original=self.home/'original'
-        (original/'owner.json').unlink(); original.rmdir()
+        (original/'owner').unlink(); original.rmdir()
 
     def test_owner_write_failure_cleans_created_directory(self):
         from unittest.mock import patch
         sys.path.insert(0,str(HOOKS))
         import heavy_lane
-        with patch.dict(os.environ,{'HOME':str(self.home)}), patch.object(heavy_lane.watchdog,'lane_host',return_value='m1'), patch.object(heavy_lane.json,'dump',side_effect=OSError('injected')):
+        with patch.dict(os.environ,{'HOME':str(self.home)}), patch.object(heavy_lane.watchdog,'lane_host',return_value='m1'), patch.object(heavy_lane,'write_owner',side_effect=OSError('injected')):
             result=heavy_lane.run('fixture',['test'],.01,time.monotonic()+1,lambda _:99,lambda _:None)
         self.assertEqual(result,75)
         self.assertFalse((self.home/'.m1-heavy.lock').exists())
@@ -170,6 +177,22 @@ class LaneTests(unittest.TestCase):
             'assert r.returncode==0; assert not list((Path.home()/".local/state/golems").glob("*lock"))')
         result,_,err=self.finish(self.launch(source))
         self.assertEqual(result,0,err)
+
+    def test_owner_values_stay_on_single_lines(self):
+        from unittest.mock import patch
+        sys.path.insert(0,str(HOOKS))
+        import heavy_lane
+        with patch.dict(os.environ,{'HOME':str(self.home),'GOLEMS_HEAVY_WORKER':'worker=one\ninjected=value'}), patch.object(heavy_lane.watchdog,'lane_host',return_value='m4'):
+            slot=heavy_lane.LaneSlot('lane\r\ntwo',['printf','a=b\nc'],lambda _:None)
+            try:
+                slot.acquire(.01,time.monotonic()+1)
+                with (slot.path/'owner').open() as stream: record=heavy_lane.read_owner(stream)
+                self.assertEqual(list(record),['lane','worker','start','pid','token','cmd'])
+                self.assertEqual(record['worker'],'worker=one\\ninjected=value')
+                self.assertNotIn('\n',record['cmd'])
+                self.assertNotIn('\r',record['lane'])
+            finally: slot.release()
+            self.assertFalse((self.home/'.m4-heavy.lock').exists())
 
     def test_host_detection(self):
         from unittest.mock import patch

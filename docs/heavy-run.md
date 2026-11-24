@@ -15,7 +15,10 @@ terminates only its new session's original process group on limit. Observed
 escapees count toward the limit but are never signaled: they produce an
 `ALARM unkillable escapee` log and exit 126. Group memory limits exit 125.
 Unobserved escapees can evade measurement. RSS fallback may undercount compressed/swapped memory.
-The wrapper never reclaims a foreign or ownerless slot. Its own slot is released
+Each acquired slot immediately receives `owner` with `lane`, `worker`, ISO UTC
+`start`, `pid`, `token` and `cmd` as separate `key=value` lines.
+Set `GOLEMS_HEAVY_WORKER` for a named worker (default `heavy-run:<pid>`).
+The wrapper never reclaims a foreign slot or one missing `owner`. Its own slot is released
 after command exit or catchable signal cleanup; wrapper SIGKILL leaves a stale
 mkdir slot requiring operator inspection. It never also takes a heavy-suite flock.
 

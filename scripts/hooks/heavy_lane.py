@@ -1,8 +1,9 @@
 """Interoperate with lane mkdir slots. Never reclaim a foreign directory."""
-import json
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 import signal
+import shlex
 import subprocess
 import time
 import uuid
@@ -19,6 +20,23 @@ class Cancelled(Exception):
 
 def interrupted(signum, frame):
     raise Cancelled(signum)
+
+
+def write_owner(stream, record):
+    for key, value in record.items():
+        # Keep attribution one field per line even for multiline command arguments.
+        value = str(value).replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
+        stream.write(f'{key}={value}\n')
+
+
+def read_owner(stream):
+    record = {}
+    for line in stream:
+        key, separator, value = line.rstrip('\n').partition('=')
+        if not separator or key in record:
+            raise ValueError('malformed lane owner')
+        record[key] = value
+    return record
 
 
 class LaneSlot:
@@ -67,11 +85,12 @@ class LaneSlot:
                         self.fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
                         stat = os.fstat(self.fd)
                         self.identity = (stat.st_dev, stat.st_ino)
-                        record = dict(pid=os.getpid(), lane=self.lane, started=time.time(), command=self.command, token=self.token)
-                        fd = os.open('owner.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=self.fd)
+                        record = dict(lane=self.lane, worker=os.environ.get("GOLEMS_HEAVY_WORKER") or f"heavy-run:{os.getpid()}",
+                            start=datetime.now(timezone.utc).isoformat(), pid=os.getpid(), token=self.token, cmd=shlex.join(self.command))
+                        fd = os.open('owner', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=self.fd)
                         stat = os.fstat(fd)
                         self.owner_identity = (stat.st_dev, stat.st_ino)
-                        with os.fdopen(fd, 'w') as stream: json.dump(record, stream)
+                        with os.fdopen(fd, 'w') as stream: write_owner(stream, record)
                         self.record_written = True
                         self.log_event('took')
                         return path.name
@@ -92,15 +111,15 @@ class LaneSlot:
             if (stat.st_dev, stat.st_ino) != self.identity:
                 self.notice('WARNING lane directory replaced; refusing release'); return
             if self.owner_identity is not None:
-                fd = os.open('owner.json', os.O_RDONLY | os.O_NOFOLLOW, dir_fd=self.fd)
+                fd = os.open('owner', os.O_RDONLY | os.O_NOFOLLOW, dir_fd=self.fd)
                 with os.fdopen(fd) as stream:
                     stat = os.fstat(stream.fileno())
                     if (stat.st_dev, stat.st_ino) != self.owner_identity:
                         self.notice('WARNING lane owner replaced; refusing release'); return
-                    record = json.load(stream) if self.record_written else None
-                if self.record_written and (not isinstance(record, dict) or record.get('token') != self.token or record.get('pid') != os.getpid()):
+                    record = read_owner(stream) if self.record_written else None
+                if self.record_written and (not isinstance(record, dict) or record.get('token') != self.token or record.get('pid') != str(os.getpid())):
                     self.notice('WARNING foreign lane owner; refusing release'); return
-                os.unlink('owner.json', dir_fd=self.fd)
+                os.unlink('owner', dir_fd=self.fd)
             self.path.rmdir()  # Never recursive: unknown files keep the directory in place.
             self.log_event('released')
         except (OSError, ValueError) as error:

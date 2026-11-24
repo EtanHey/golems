@@ -175,8 +175,12 @@ watchdog remains active. `--max-wait` (alias `--max-wait-seconds`, default 1800)
 bounds the whole admission, including the pressure gate; expiry returns 75 and
 never starts unqueued. WAIT notices repeat every 30 seconds.
 
-Each acquired directory contains a private `owner.json` with PID, lane, start
-time, command and a unique ownership token. Took/released entries append to
+Immediately after mkdir, each acquired directory receives a private file named
+exactly `owner`. It has six `key=value` lines: `lane=`, `worker=`, `start=`
+(ISO 8601 UTC), `pid=`, `token=`, and `cmd=` (shell-quoted command).
+`GOLEMS_HEAVY_WORKER` supplies the worker identity, defaulting to `heavy-run:<pid>`.
+Backslashes and CR/LF inside values are escaped, keeping one field per line.
+A directory without `owner` stays foreign; no timestamp or PID permits reclaim. Took/released entries append to
 `~/.m1-heavy.log` or `~/.m4-heavy.log` in the existing `<lane> took HH:MM` /
 `<lane> released HH:MM` format. Release requires the original directory inode,
 owner-file inode, PID and token, and uses nonrecursive rmdir. Foreign, ownerless,
