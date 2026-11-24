@@ -273,7 +273,7 @@
       "ceiling": true,
       "bug_sha": "5fbe9299244e364eb5433dac2351c481113b40f0",
       "fix_sha": "cc44c2d4",
-      "command": "uv run --offline --with pytest python -m pytest -q skills/golem-powers/qa-video/tests/test_symlink_plan.py --basetemp=docs.local/ratchet-qa-symlink"
+      "command": "python3 -m pytest -q skills/golem-powers/qa-video/tests/test_symlink_plan.py"
     }
   ]
 }
