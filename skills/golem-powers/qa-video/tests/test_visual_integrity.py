@@ -29,7 +29,7 @@ def test_bounds(finding, state, bad):
 ])
 def test_paths_counts_and_prose_are_not_bad_citations(finding):
     item = batch.validate(dict(ok=True, sheet='/evidence with spaces/frames/interval-001.jpg',
-                               finding=finding), 20)
+                               finding='tile 0: visible; ' + finding), 20)
     assert item['state'] == 'READ', item
 
 

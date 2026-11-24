@@ -161,7 +161,7 @@ def validate(item, tile_count):
         return dict(item, state='FAILED', ok=False, cause=item['fatal'], offending_indexes=[])
     try:
         return validate_citations(item, tile_count)
-    except (ValueError, TypeError, KeyError, OverflowError) as error:
+    except (ValueError, TypeError, KeyError, OverflowError, OSError) as error:
         return failed(item.get('sheet', ''), 'malformed output: ' + str(error))
 
 
@@ -189,6 +189,31 @@ def validate_citations(item, tile_count):
                      lambda m: ' ' if re.search(r'[a-zA-Z_]', m[0]) else m[0], finding)
     finding = re.sub(r'\b[\w.-]+\.(?:jpe?g|png|gif|webp|bmp|heic|avif|tiff?)\b',
                      ' ', finding, flags=re.I)
+    # Tn denotes seconds: resolve it to an actual decoded frame, never assume
+    # seconds equal tile indexes. Missing metadata fails closed for this format.
+    times = {}
+    ledger = Path(sheet).parent / 'frames.tsv' if sheet else None
+    if re.search(r'(?<![\w])T-?\d', finding) and ledger and ledger.is_file():
+        import csv
+        with ledger.open() as stream:
+            for row in csv.DictReader(stream, delimiter='\t'):
+                if row.get('sheet_file') == Path(sheet).name:
+                    pts = float(row['pts_s'])
+                    if math.isfinite(pts) and pts >= 0:
+                        times[pts] = int(row['tile'])
+
+    def timestamp(match):
+        nonlocal malformed
+        seconds = float(match[1])
+        matches = [tile for pts, tile in times.items() if abs(pts - seconds) <= .001]
+        if seconds < 0 or not matches:
+            malformed = True
+            return ' '
+        return 'tile ' + str(matches[0])
+
+    finding = re.sub(r'\b(?:tiles?|frames?)\s+(?=T-?\d|\[-?\d+\])', '', finding, flags=re.I)
+    finding = re.sub(r'(?<![\w])T(-?\d+(?:\.\d+)?)', timestamp, finding)
+    finding = re.sub(r'\[(-?\d+)\]', r'tile \1', finding)
     for citation in label.finditer(finding):
         prefix = finding[:citation.start()]
         if re.search(r'\b(?:\d+(?:st|nd|rd|th)|first|last|next|previous|second|third|fourth|'
@@ -258,11 +283,13 @@ def validate_citations(item, tile_count):
                 if end - start < 1000:
                     bad.update(range(start, end + 1))
     conflict = reader_conflict(item['finding'].removeprefix(sheet + ':'))
-    invalid = bool(offending_intervals or malformed or conflict)
+    missing = not intervals and item['ok']
+    invalid = bool(offending_intervals or malformed or conflict or missing)
     state = 'INVALID' if invalid else ('READ' if item['ok'] else 'FAILED')
     cause = ('unparseable tile/frame citation' if malformed else
              'out-of-bounds tiles: ' + str(offending_intervals) if offending_intervals else
-             'conflicting read' if conflict else item.get('cause', ''))
+             'conflicting read' if conflict else
+             'no frame citation' if missing else item.get('cause', ''))
     return dict(item, state=state, ok=state == 'READ', offending_indexes=sorted(bad),
                 offending_intervals=offending_intervals, cause=cause)
 

@@ -38,7 +38,7 @@ def cli(tmp_path, finding):
     ('tiles 18-25: visible', list(range(20, 26))),
     ('tiles 18–25: visible', list(range(20, 26))),
     ('tiles 18 to 25: visible', list(range(20, 26))),
-    ('tile twenty-five: visible', []), ('tiles [25]: visible', []),
+    ('tile twenty-five: visible', []), ('tiles [25]: visible', [25]),
     ('tiles twenty-five: visible', []), ('tile 2five: visible', []),
     ('tile: 25 visible', []), ('tiles 1/25: visible', []),
 ])

@@ -17,7 +17,7 @@ SPEC.loader.exec_module(batch)
     'frame: x=1, y=2',
 ])
 def test_crop_bounds_are_not_frame_indexes(text):
-    assert batch.validate(dict(ok=True, finding=text), 1)['state'] == 'READ'
+    assert batch.validate(dict(ok=True, finding='tile 0: visible; ' + text), 1)['state'] == 'READ'
 
 
 @pytest.mark.parametrize('text', [

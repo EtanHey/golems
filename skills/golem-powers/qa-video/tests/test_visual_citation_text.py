@@ -25,7 +25,7 @@ def test_quoted_screen_text_is_not_a_citation(opening, closing, text):
     'tiles 0-2, 4, and 6: visible; frame 23: visible.',
 ])
 def test_prose_and_documented_citations_stay_read(finding):
-    assert batch.validate(dict(ok=True, finding=finding), 24)['state'] == 'READ'
+    assert batch.validate(dict(ok=True, finding='tile 0: visible; ' + finding), 24)['state'] == 'READ'
 
 
 @pytest.mark.parametrize('finding', [

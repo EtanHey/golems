@@ -44,7 +44,7 @@ if image.stem == '0' and (image.parent / 'quota').exists():
     sys.exit(2)
 with (image.parent / 'starts').open('a') as f: f.write('end ' + str(time.monotonic()) + '\\n')
 print('Coverage: 1/1; complete; 0 image findings omitted by output cap.')
-print(str(image) + ': synthetic finding' + ('; color NOT DETERMINED' if (image.parent / 'unknown').exists() else ''))
+print(str(image) + ': tile 0: synthetic finding' + ('; color NOT DETERMINED' if (image.parent / 'unknown').exists() else ''))
 ''')
     images = [tmp_path / f'{i}.png' for i in range(8)]
     for image in images:
@@ -188,13 +188,14 @@ def test_eta_matches_throughput_and_can_rise(tmp_path, monkeypatch, slowdown):
             samples.append(json.loads(text))
 
     def read(helper, question, timeout, sheet, model, work):
-        return {'sheet': sheet, 'finding': 'fixture', 'fatal': '', 'ok': True}
+        return {'sheet': sheet, 'finding': 'tile 0: fixture', 'fatal': '', 'ok': True}
 
     # Replace only this imported driver's clock, not the shared time module.
     monkeypatch.setattr(batch, 'time', SimpleNamespace(monotonic=lambda: elapsed))
     monkeypatch.setattr(batch, 'wait', complete_wave)
     monkeypatch.setattr(batch, 'atomic', record_progress)
     monkeypatch.setattr(batch, 'read_sheet', read)
+    monkeypatch.setattr(batch, 'tile_counts', lambda index, sheets: dict.fromkeys(sheets, 1))
     args = Namespace(workdir=tmp_path, budget_seconds=10, concurrency=3,
                      timeout=90, helper=SKILL / 'scripts/visual-gather.py',
                      question='facts', model='fixture-model')
@@ -300,8 +301,9 @@ def test_cached_model_avoids_concurrent_setup(setup, monkeypatch):
     monkeypatch.setattr(batch.visual, 'resolve_model', lambda **kwargs: lookups.append(1) or ('tier', 'fixture-model'))
     def read(helper, question, timeout, sheet, model, work):
         models.append(model)
-        return {'sheet': sheet, 'finding': 'fixture', 'fatal': '', 'ok': True}
+        return {'sheet': sheet, 'finding': 'tile 0: fixture', 'fatal': '', 'ok': True}
     monkeypatch.setattr(batch, 'read_sheet', read)
+    monkeypatch.setattr(batch, 'tile_counts', lambda index, sheets: dict.fromkeys(sheets, 1))
     args = Namespace(workdir=work, budget_seconds=10, concurrency=3, timeout=90,
                      helper=SKILL/'scripts/visual-gather.py', question='facts')
     monkeypatch.chdir(work)
