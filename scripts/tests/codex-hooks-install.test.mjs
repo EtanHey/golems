@@ -38,10 +38,12 @@ for (const host of Object.keys(realManifest.codex_hosts)) {
       "human-confirm": "golems human-confirm: Etan approves actions that can't be undone",
       "heredoc-guard": "golems heredoc-guard: stops hidden commands in here-documents",
       "m1-window-gate": "golems m1-window-gate: waits while the M1 is installing",
+      "secret-read-guard": "golems secret-read-guard: stops commands that would print a secret",
     };
     expect(groups.map(g => g.hooks[0].statusMessage)).toEqual(realManifest.codex_hosts[host].map(e => names[e.gate]));
     expect(groups.map(g => g.matcher)).toEqual(realManifest.codex_hosts[host].map(e => e.matcher));
     expect(gatesIn(plan)).toContain("heredoc-guard");
+    expect(gatesIn(plan)).toContain("secret-read-guard");
     expect(readFileSync(path.join(f.codexHome, "config.toml"))).toEqual(config);
     expect(readdirSync(f.codexHome)).toEqual(["config.toml"]);
   });
@@ -65,7 +67,7 @@ function releaseCheckFixture() {
   return { f, options };
 }
 
-test("release self-check exercises allow and deny for all four gates on both harnesses", () => {
+test("release self-check exercises allow and deny for all five gates on both harnesses", () => {
   const { options } = releaseCheckFixture();
   const logs = [];
   const log = console.log;
@@ -73,7 +75,7 @@ test("release self-check exercises allow and deny for all four gates on both har
     console.log = value => logs.push(value);
     checkReleaseHooks(options);
   } finally { console.log = log; }
-  expect(logs).toEqual(["public hook self-tests: PASS (16 specimens)"]);
+  expect(logs).toEqual(["public hook self-tests: PASS (20 specimens)"]);
 });
 
 test("release self-check refuses a missing heredoc registration", () => {
