@@ -24,7 +24,7 @@
     "category": "compliance",
     "kind": "semantic",
     "evidence": "quote",
-    "weight": 50,
+    "weight": 33,
     "claim": "Every answer in the admission-key JSON is the COMPLETE text of one table cell, one whole list line, or the whole value after a 'label:' in a list line of the named file, copied exactly (markdown bold and backticks may be dropped); no answer is a truncated part of a longer cell or line, such as a bare number when the cell also carries a parenthetical or trailing qualifier (for example \"985.926 s\" where the cell says \"985.926 s (+85.926 s over deadline)\", or \"$0.10/sheet\" taken from inside a longer list line)."
    },
    {
@@ -32,8 +32,16 @@
     "category": "compliance",
     "kind": "semantic",
     "evidence": "quote",
-    "weight": 50,
+    "weight": 33,
     "claim": "The researcher-facing admission-check instruction explicitly tells the researcher to put in the answer cell the exact text from the file, copying only the answer, without adding notes, units, qualifiers or other text that is not part of it."
+   },
+   {
+    "id": "A3-no-qualifier-in-answer",
+    "category": "compliance",
+    "kind": "semantic",
+    "evidence": "quote",
+    "weight": 34,
+    "claim": "No answer in the admission-key JSON contains a parenthetical, note or qualifier beside the core answer (for example \"0.412 s (warm cache, 3 runs)\" or \"240 chars (split at the last comma before it)\" fail); each answer is a bare value or phrase that a researcher told to copy only the answer would reproduce character for character."
    }
   ],
   "control": [

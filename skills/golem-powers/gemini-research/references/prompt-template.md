@@ -79,9 +79,11 @@ Author-only preparation: --emit removes this entire section from the researcher
 prompt. Send only the emitted text to Gemini or NotebookLM; retain this record.
 Copy each exact first heading/line and answer from the real source into this
 private JSON key (one row per admission question). Each answer is a complete,
-self-contained table cell, line, or whole value after a `label:` in its file, stored
-exactly (bold and backticks dropped); never part of a longer cell. If the natural answer sits inside a longer
-cell, choose another question whose answer is the whole cell. Never include the key in
+self-contained table cell, line (list or heading marker dropped), or whole value after
+a `label:` in its file, stored exactly (bold and backticks dropped); never part of a
+longer cell. The whole cell must be nothing but the answer: if it also carries a
+parenthetical, note or qualifier, or the natural answer sits inside a longer cell,
+choose another question. Never include the key in
 researcher text. If an answer occurs elsewhere in the emitted text, choose another question.
 ```admission-key
 [
