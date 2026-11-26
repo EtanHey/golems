@@ -242,23 +242,21 @@ The local corpus is the source to push. Drive retains the provenance mirror, so 
 ## CURATED GROUNDING FOLDER — one per research
 
 Prepare a bounded Drive folder `R{NN}-grounding/` holding only the curated documents the research needs, with a manifest (what and why, sha256, `manifest_sha256`); contract in `/drive-filing` § Research grounding folder contract. Agents prepare ONE folder holding exactly the curated grounding files with unique
-names. The preparation receipt and hand-off name that folder, its manifest and
-the exact files to attach; the owner attaches them when he starts the run with
-Drive source off. The folder is a provenance record,
+names; the owner attaches them when he starts the run with Drive source off.
+The folder is a provenance record,
 not a Deep Research access route. Its connected Drive workspace offers title SEARCH
 only, with no folder listing or opening Docs by link; native Google Docs do not
 fix this. If Drive is explicitly used, every title must be unique across the whole
 Drive with no look-alikes or duplicates, and the prompt names each exact title.
-Expect search to miss documents. Before the real run, run one cheap Deep Research
-probe asking only for each named document's first line, compare all lines against
-the author key, and block on any missing or mismatched line. Probe both source
-routes; keep the real admission table and private key unchanged. Admission stop, plan sentence and provenance fields: `/gemini-research` § Curated grounding set. After harvest, archive or consolidate the folder per the contract; the harvest record carries model, settings, prompt hash and manifest hash.
+Expect search to miss documents. The hand-off itself (attach order, the probe for each
+file's first line checked against the author key, GO and recovery) is `/gemini-research`'s owner
+hand-off block (attach route, the default) or its Drive-route block; do not restate it here. Admission stop, plan sentence and provenance fields: `/gemini-research` § Curated grounding set. After harvest, archive or consolidate the folder per the contract; the harvest record carries model, settings, prompt hash and manifest hash.
 
 ## GEMINI RESEARCH PROMPT PREFLIGHT — BLOCKING
 
 Prepare the next prompt with [/gemini-research's template](../gemini-research/references/prompt-template.md) and its structural pre-fire gate.
 
-Before emitting any Gemini research prompt, require exactly one `# Grounding` block. That block must name each file supplied with the run (default: owner attaches the prepared set when starting the run, Drive source off), or each exact unique title for the optional probed Drive route, or carry the exact line `None — web-only research`. Agents prepare one folder with exactly the curated files and unique names; the hand-off names that folder and its files to attach; researcher text must not ask Etan to collect them.
+Before emitting any Gemini research prompt, require exactly one `# Grounding` block. That block must name each file supplied with the run (default: owner attaches the prepared set when starting the run, Drive source off), or each exact unique title for the optional probed Drive route, or carry the exact line `None — web-only research`. Agents prepare one folder with exactly the curated files and unique names; the hand-off is `/gemini-research`'s owner hand-off block; researcher text must not ask Etan to collect them. For the attach route, emit with `prompt-preflight.mjs --emit --attached <prepared folder>`, which fails unless the folder holds exactly the files the `# Grounding` block names.
 
 Run the executable gate against the prompt file. It checks the block structure and invokes the legacy shared no-attach gate for file-collection instructions. It does not verify attachment delivery, title uniqueness or the probe receipt:
 
