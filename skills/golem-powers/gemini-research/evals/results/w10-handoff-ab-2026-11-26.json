@@ -38,12 +38,12 @@
    {
     "id": "P1-voicelayer-wakeword",
     "category": "positive",
-    "prompt": "Prepare the Deep Research hand-off for Etan for VoiceLayer R03 (wake-word latency options) from this preparation receipt.\n\nPreparation receipt (from the /research-lifecycle sub-agent, lifecycle gate 7/7 PASS):\n- Prepared folder: ~/Gits/voicelayer/docs.local/research/R03-grounding/\n- Files to attach (4, unique names): R03-01-voicelayer-verified-findings-and-struck-claims.md, R03-02-voicelayer-current-wakeword-pipeline.md, R03-03-voicelayer-latency-measurements-2026-11.md, R03-04-voicelayer-owner-asks.md\n- Manifest sha256: 4be1c0ffee\n\nThe author record is ~/Gits/voicelayer/docs.local/research/R03-prompt.md (private admission-key filled for all 4 files). preflight --emit PASS; the researcher text is ~/Gits/voicelayer/docs.local/research/R03-research.md. Both bias checks are done. You are the author seat voicelayer-lead.\n\nWrite the exact hand-off message Etan will follow to fire this run. Do not run any tools; just write the message."
+    "prompt": "Prepare the Deep Research hand-off for Etan for VoiceLayer R03 (wake-word latency options) from this preparation receipt.\n\nPreparation receipt (from the /research-lifecycle sub-agent, lifecycle gate 7/7 PASS):\n- Prepared folder: <voicelayer repo>/docs.local/research/R03-grounding/\n- Files to attach (4, unique names): R03-01-voicelayer-verified-findings-and-struck-claims.md, R03-02-voicelayer-current-wakeword-pipeline.md, R03-03-voicelayer-latency-measurements-2026-11.md, R03-04-voicelayer-owner-asks.md\n- Manifest sha256: 4be1c0ffee\n\nThe author record is <voicelayer repo>/docs.local/research/R03-prompt.md (private admission-key filled for all 4 files). preflight --emit PASS; the researcher text is <voicelayer repo>/docs.local/research/R03-research.md. Both bias checks are done. You are the author seat voicelayer-lead.\n\nWrite the exact hand-off message Etan will follow to fire this run. Do not run any tools; just write the message."
    },
    {
     "id": "P2-brainlayer-embedder",
     "category": "positive",
-    "prompt": "Prepare the Deep Research hand-off for Etan for BrainLayer R07 (which local embedding model to adopt) from this preparation receipt.\n\nPreparation receipt (lifecycle receipt PASS):\n- Prepared folder: ~/Gits/brainlayer/docs.local/research/R07-grounding/\n- Files to attach (3): R07-01-brainlayer-verified-findings.md, R07-02-brainlayer-embedder-bench-2026-11.md, R07-03-brainlayer-search-architecture.md\n\nAuthor record: ~/Gits/brainlayer/docs.local/research/R07-prompt.md (admission-key complete). Emitted researcher prompt: ~/Gits/brainlayer/docs.local/research/R07-research.md (preflight --emit PASS, bias checks recorded). You are the author seat bl-lead.\n\nWrite the exact hand-off message Etan will follow to fire this run. Do not run any tools; just write the message."
+    "prompt": "Prepare the Deep Research hand-off for Etan for BrainLayer R07 (which local embedding model to adopt) from this preparation receipt.\n\nPreparation receipt (lifecycle receipt PASS):\n- Prepared folder: <brainlayer repo>/docs.local/research/R07-grounding/\n- Files to attach (3): R07-01-brainlayer-verified-findings.md, R07-02-brainlayer-embedder-bench-2026-11.md, R07-03-brainlayer-search-architecture.md\n\nAuthor record: <brainlayer repo>/docs.local/research/R07-prompt.md (admission-key complete). Emitted researcher prompt: <brainlayer repo>/docs.local/research/R07-research.md (preflight --emit PASS, bias checks recorded). You are the author seat bl-lead.\n\nWrite the exact hand-off message Etan will follow to fire this run. Do not run any tools; just write the message."
    },
    {
     "id": "P3-drive-route-titles",
@@ -53,7 +53,7 @@
    {
     "id": "C1-web-only-tts",
     "category": "control",
-    "prompt": "Etan says this question needs no project state: compare open-source text-to-speech models with good Hebrew support (quality, license, speed on Apple Silicon). The web-only researcher prompt is already written and emitted at ~/Gits/voicelayer/docs.local/research/R04-research.md, with its Grounding block set to `None \u2014 web-only research` and the reason line; preflight --emit PASS, bias checks recorded. You are the author seat voicelayer-lead.\n\nWrite the exact hand-off message Etan will follow to fire this run in Gemini Deep Research. Do not run any tools; just write the message."
+    "prompt": "Etan says this question needs no project state: compare open-source text-to-speech models with good Hebrew support (quality, license, speed on Apple Silicon). The web-only researcher prompt is already written and emitted at <voicelayer repo>/docs.local/research/R04-research.md, with its Grounding block set to `None \u2014 web-only research` and the reason line; preflight --emit PASS, bias checks recorded. You are the author seat voicelayer-lead.\n\nWrite the exact hand-off message Etan will follow to fire this run in Gemini Deep Research. Do not run any tools; just write the message."
    }
   ],
   "assertions": {
@@ -646,6 +646,6 @@
   "total": 2.9423
  },
  "iteration1": "P1 r1 against the first draft: GREEN 2/3 (A3 failed: NO-GO line deferred to 'recovery steps the author sends'); block changed to carry recovery inline, then all reps re-recorded.",
- "note": "Case prompts used absolute home paths at record time; shown here as ~/ for publication.",
+ "note": "Case prompts used absolute home paths at record time; shown here as <repo> placeholders for publication.",
  "history": "Initial run (branch sha 9bb7741e): positives RED 3/18 GREEN 18/18, control 3/3 both. Review r1 fixes changed the attach block's last recovery line and added a Drive-route block, so every case was re-recorded against branch sha 95d4a5be with a new Drive case P3; this record holds that re-run."
 }
