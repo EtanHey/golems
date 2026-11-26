@@ -58,8 +58,10 @@ Preparation is the agent's job; do not emit a prompt that asks Etan to collect f
 
 ## Owner hand-off block — emit it, filled in, in this order
 
-Every project-grounded hand-off IS this block. Etan fires every step (fire = Etan);
+This block is the default hand-off for every project-grounded run (attach route); the
+optional Drive route uses its own block below. Etan fires every step (fire = Etan);
 you write the probe text and you judge GO. Fill every `<...>`; keep the order and wording.
+You may put the researcher text inline in the hand-off instead of a path; Deep Research cannot open a local path.
 
 ```text
 Prepared folder: <absolute folder path>
@@ -69,7 +71,7 @@ Files to attach (<N>): <exact file name 1>, <exact file name 2>, ...
 3. Paste this probe and send it:
    <probe text, below>
 4. Send the probe's answer back to <author seat>. Paste nothing else in this chat yet.
-5. Only after <author seat> replies GO: paste <path to R{NN}-research.md> in the SAME chat.
+5. Only after <author seat> replies GO: open <path to R{NN}-research.md>, copy its full text, and paste that text (not the path) in the SAME chat.
 6. Send Gemini's generated plan back to <author seat> for START / EDIT. Do not click Start Research yourself.
 If <author seat> replies NO-GO, or a later read-check row says a file is not readable:
 - Do not paste the prompt (if it was already pasted, that run's answer is discarded).
@@ -125,7 +127,7 @@ Drive titles (<N>, each unique across the whole Drive): "<exact title 1>", "<exa
    - "<exact title 1>"
    - "<exact title 2>"
 3. Send the probe's answer back to <author seat>. Paste nothing else in this chat yet.
-4. Only after <author seat> replies GO: paste <path to R{NN}-research.md> in the SAME chat.
+4. Only after <author seat> replies GO: open <path to R{NN}-research.md>, copy its full text, and paste that text (not the path) in the SAME chat.
 5. Send Gemini's generated plan back to <author seat> for START / EDIT. Do not click Start Research yourself.
 If <author seat> replies NO-GO: do not paste the prompt. <author seat> either fixes the titles and sends a
 new Drive hand-off, or switches to the attach route and sends the owner hand-off block above.
