@@ -18,11 +18,13 @@ read the same Docs by folder, title and link; that does not establish Deep Resea
 access. Three subsequent runs used attached files with Drive off and passed the
 author-held answer key (PR 1267).
 
-Measured 2026-11-26, qa-video R01: the hand-off named 5 `.md` files to attach with
-Drive off but carried no probe. Gemini's first answer was the admission table with
-all 5 files `readable: no` plus MISSING FILES. Etan re-attached the same 5 files in
-the same chat (they showed as TXT chips) with "now?", and Gemini then produced its
-plan. Whether the files were attached to the first message is unknown. Harvest
+Measured 2026-11-26, qa-video R01: the hand-off carried no probe and named 5 `.md`
+files, but the prepared files had already been renamed to `.txt` at 06:00 IST (same
+sha256 as the manifest's `.md` hashes), before Etan fired the run at about 06:53.
+With those `.txt` files attached and Drive off, Gemini's first answer was still the
+admission table with all 5 `readable: no` ("not supplied in execution context") plus
+MISSING FILES. Re-attaching the same 5 files in the same chat with "now?" produced
+the plan. File type was not the fix; a second attach in the same chat was. Harvest
 check: pending. The owner hand-off block below exists because of this run.
 
 ## Grounding prep — your FIRST action, before any search or draft
@@ -70,9 +72,10 @@ Files to attach (<N>): <exact file name 1>, <exact file name 2>, ...
 5. Only after <author seat> replies GO: paste <path to R{NN}-research.md> in the SAME chat.
 6. Send Gemini's generated plan back to <author seat> for START / EDIT. Do not click Start Research yourself.
 If <author seat> replies NO-GO, or a later read-check row says a file is not readable:
-- Do not paste the prompt in that chat (if it was pasted, that run is discarded).
-- Open a NEW chat, Drive OFF, attach the same files first, wait for every chip, and send the probe again.
-- If they fail again, <author seat> sends a NEW hand-off block (.txt files, new prompt path); follow that one.
+- Do not paste the prompt (if it was already pasted, that run's answer is discarded).
+- First, in the SAME chat: attach the same files again, wait for every chip, and send the probe again.
+- Still NO-GO: open a NEW chat, Drive OFF, attach the files first, wait for every chip, and send the probe again.
+- Still NO-GO: <author seat> sends a NEW hand-off block (untested fallback: other file type); follow that one.
 ```
 
 Probe text (one per hand-off, naming every file; never put the key's lines in it):
@@ -93,10 +96,12 @@ probe receipt, outside the researcher prompt. The probe does not replace the rea
 run's admission table or the harvest check.
 
 **Recovery (probe or admission row not readable):**
-1. Do not paste the researcher prompt in that chat; if it was already pasted, discard that run unread.
-2. Send a fresh hand-off block: a NEW chat, the same files attached first, the probe again. Never retry inside the failed chat.
-3. If the `.md` files fail again, YOU (the author) re-prepare; the owner never renames anything. Replace each `.md` in the prepared folder with a `.txt` copy of the same content and unique stem (`R01-01-<name>.md` → `R01-01-<name>.txt`). Then update every exact name to the `.txt` name: the `# Grounding` list and admission-question table, the private `admission-key` `document` fields, and the manifest. Re-run `prompt-preflight.mjs --emit --attached <prepared folder>` (it fails until folder, grounding and key name the same files), and send a new hand-off block with the `.txt` names, the new probe and the new prompt path.
-4. A run whose files became readable only after a re-attach (same chat or new) counts only if its admission table later passes `--harvest-check` against the private key. Otherwise it is a fabricated read: discard it.
+Order follows the R01 evidence: a second attach in the same chat is what worked; file type did not.
+1. Do not paste the researcher prompt; if it was already pasted, discard that run's answer unread.
+2. Re-attach the same files in the SAME chat, wait for every chip, and send the probe again.
+3. Still NO-GO: a NEW chat, Drive off, the same files attached first, the probe again.
+4. Still NO-GO, **untested fallback** (R01 failed its first attach with `.txt` too, so this is not known to help): switch the file type. YOU (the author) re-prepare; the owner never renames anything. Replace each file in the prepared folder with a copy of the same content and unique stem in the other type (for example `R01-01-<name>.md` → `R01-01-<name>.txt`). Then update every exact name to the new name: the `# Grounding` list and admission-question table, the private `admission-key` `document` fields, and the manifest. Re-run `prompt-preflight.mjs --emit --attached <prepared folder>` (it fails until folder, grounding and key name the same files), and send a new hand-off block with the new names, the new probe and the new prompt path.
+5. A run whose files became readable only after a re-attach (same chat or new) counts only if its admission table later passes `--harvest-check` against the private key. Otherwise it is a fabricated read: discard it.
 
 **Web-only research has no files:** its hand-off has no attach, probe or GO steps. Open a new
 Deep Research chat, paste the emitted prompt, and send the plan back for START / EDIT.
