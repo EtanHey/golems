@@ -10,7 +10,7 @@ const ruleset = ({ bypass = [], strict = true, checks = ['Loop-record', 'ratchet
 const admin = [{ actor_id: 5, actor_type: 'RepositoryRole', bypass_mode: 'always' }];
 
 test('tight ruleset passes', () => {
-  expect(checkRuleset(ruleset())).toEqual({ ok: true, problems: [] });
+  expect(checkRuleset(ruleset())).toEqual({ ok: true, problems: [], notes: [] });
 });
 
 test('the pre-change ruleset (admin bypass, non-strict) fails on both holes', () => {
@@ -26,6 +26,14 @@ test('a hidden bypass_actors field is unproven, never empty', () => {
   const result = checkRuleset(hidden);
   expect(result.ok).toBe(false);
   expect(result.problems[0]).toContain('cannot see bypass_actors');
+  // --visible (CI row, GITHUB_TOKEN): passes on what it can see and says the bypass check was not made.
+  const visible = checkRuleset(hidden, { visibleOnly: true });
+  expect(visible.ok).toBe(true);
+  expect(visible.notes[0]).toContain('NOT checked here');
+  // --visible still checks bypass_actors when the token can see it, and still fails a non-strict ruleset.
+  expect(checkRuleset(ruleset({ bypass: admin }), { visibleOnly: true }).ok).toBe(false);
+  const { bypass_actors: _, ...hiddenLoose } = ruleset({ strict: false });
+  expect(checkRuleset(hiddenLoose, { visibleOnly: true }).problems).toContain('strict_required_status_checks_policy is not true');
 });
 
 test('missing strict, missing ratchet check, disabled enforcement and junk all fail', () => {
