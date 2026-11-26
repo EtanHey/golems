@@ -21,7 +21,7 @@
    "effort_effective": "medium",
    "model_observation_source": "API response metadata (modelUsage key per leg)",
    "effort_observation_source": "NOT DETERMINED",
-   "skill_sha256": "9bb7741ed1f7ab840b4ab09b31524398775173bbd2e36e94b95a7b5961380515"
+   "skill_sha256": "95d4a5bec90da420c0157ff16ec759354c07c0f9d04343c9a6f2c9f125280eb5"
   },
   {
    "agent_or_arm": "judge",
@@ -44,6 +44,11 @@
     "id": "P2-brainlayer-embedder",
     "category": "positive",
     "prompt": "Prepare the Deep Research hand-off for Etan for BrainLayer R07 (which local embedding model to adopt) from this preparation receipt.\n\nPreparation receipt (lifecycle receipt PASS):\n- Prepared folder: ~/Gits/brainlayer/docs.local/research/R07-grounding/\n- Files to attach (3): R07-01-brainlayer-verified-findings.md, R07-02-brainlayer-embedder-bench-2026-11.md, R07-03-brainlayer-search-architecture.md\n\nAuthor record: ~/Gits/brainlayer/docs.local/research/R07-prompt.md (admission-key complete). Emitted researcher prompt: ~/Gits/brainlayer/docs.local/research/R07-research.md (preflight --emit PASS, bias checks recorded). You are the author seat bl-lead.\n\nWrite the exact hand-off message Etan will follow to fire this run. Do not run any tools; just write the message."
+   },
+   {
+    "id": "P3-drive-route-titles",
+    "category": "drive",
+    "prompt": "Prepare the Deep Research hand-off for Etan for Coach R05 (sleep tracker comparison). Etan explicitly chose the optional Drive route for this one: no attachments. The grounding documents are native Google Docs, each verified unique across the whole Drive by exact title: \"R05-01 Coach verified findings and struck claims\", \"R05-02 Coach current sleep data summary\". Author record: <private repo>/docs.local/research/R05-prompt.md (admission-key complete). Emitted researcher prompt: <private repo>/docs.local/research/R05-research.md (preflight --emit PASS, bias checks recorded). You are the author seat coach-lead.\n\nWrite the exact hand-off message Etan will follow to fire this run. Do not run any tools; just write the message."
    },
    {
     "id": "C1-web-only-tts",
@@ -87,14 +92,42 @@
      "weight": 100,
      "claim": "The hand-off tells Etan to paste the web-only researcher prompt into Gemini Deep Research and return the generated plan for a START/EDIT decision, and it contains no step asking him to attach files, wait for file chips, or send a first-line probe."
     }
+   ],
+   "drive": [
+    {
+     "id": "D1-drive-on-no-attach",
+     "category": "compliance",
+     "kind": "semantic",
+     "evidence": "quote",
+     "weight": 34,
+     "claim": "The hand-off tells Etan to turn the Drive source ON (or keep it on) and to attach no files."
+    },
+    {
+     "id": "D2-title-probe",
+     "category": "compliance",
+     "kind": "semantic",
+     "evidence": "quote",
+     "weight": 33,
+     "claim": "The hand-off gives Etan a ready-to-paste probe, to send before the researcher prompt, that asks Gemini to find each document by its exact title (naming both titles) and return only its exact first line."
+    },
+    {
+     "id": "D3-drive-recovery",
+     "category": "compliance",
+     "kind": "semantic",
+     "evidence": "quote",
+     "weight": 33,
+     "claim": "The hand-off says that if the probe fails, the researcher prompt is not pasted, and the author either fixes the titles or switches to attached files and sends a new hand-off."
+    }
    ]
   }
  },
  "summary": {
-  "P1-voicelayer-wakeword | RED(master)": "2/9",
+  "P1-voicelayer-wakeword | RED(master)": "1/9",
   "P1-voicelayer-wakeword | GREEN(branch)": "9/9",
   "P2-brainlayer-embedder | RED(master)": "1/9",
   "P2-brainlayer-embedder | GREEN(branch)": "9/9",
+  "P3-drive-route-titles | RED(master)": "5/9",
+  "P3-drive-route-titles | GREEN(branch)": "9/9",
   "C1-web-only-tts | RED(master)": "3/3",
   "C1-web-only-tts | GREEN(branch)": "3/3"
  },
@@ -111,6 +144,12 @@
   "P2-brainlayer-embedder | GREEN(branch) | 2": true,
   "P2-brainlayer-embedder | RED(master) | 3": false,
   "P2-brainlayer-embedder | GREEN(branch) | 3": true,
+  "P3-drive-route-titles | RED(master) | 1": false,
+  "P3-drive-route-titles | GREEN(branch) | 1": true,
+  "P3-drive-route-titles | RED(master) | 2": false,
+  "P3-drive-route-titles | GREEN(branch) | 2": true,
+  "P3-drive-route-titles | RED(master) | 3": false,
+  "P3-drive-route-titles | GREEN(branch) | 3": true,
   "C1-web-only-tts | RED(master) | 1": true,
   "C1-web-only-tts | GREEN(branch) | 1": true,
   "C1-web-only-tts | RED(master) | 2": true,
@@ -180,7 +219,7 @@
    "rep": 2,
    "arm": "RED(master)",
    "assertion": "A2-attach-first-order",
-   "pass": true,
+   "pass": false,
    "models": "claude-sonnet-5-5"
   },
   {
@@ -404,6 +443,150 @@
    "rep": 3,
    "arm": "GREEN(branch)",
    "assertion": "A3-recovery-rule",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 1,
+   "arm": "RED(master)",
+   "assertion": "D1-drive-on-no-attach",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 1,
+   "arm": "RED(master)",
+   "assertion": "D2-title-probe",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 1,
+   "arm": "RED(master)",
+   "assertion": "D3-drive-recovery",
+   "pass": false,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 1,
+   "arm": "GREEN(branch)",
+   "assertion": "D1-drive-on-no-attach",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 1,
+   "arm": "GREEN(branch)",
+   "assertion": "D2-title-probe",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 1,
+   "arm": "GREEN(branch)",
+   "assertion": "D3-drive-recovery",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 2,
+   "arm": "RED(master)",
+   "assertion": "D1-drive-on-no-attach",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 2,
+   "arm": "RED(master)",
+   "assertion": "D2-title-probe",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 2,
+   "arm": "RED(master)",
+   "assertion": "D3-drive-recovery",
+   "pass": false,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 2,
+   "arm": "GREEN(branch)",
+   "assertion": "D1-drive-on-no-attach",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 2,
+   "arm": "GREEN(branch)",
+   "assertion": "D2-title-probe",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 2,
+   "arm": "GREEN(branch)",
+   "assertion": "D3-drive-recovery",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 3,
+   "arm": "RED(master)",
+   "assertion": "D1-drive-on-no-attach",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 3,
+   "arm": "RED(master)",
+   "assertion": "D2-title-probe",
+   "pass": false,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 3,
+   "arm": "RED(master)",
+   "assertion": "D3-drive-recovery",
+   "pass": false,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 3,
+   "arm": "GREEN(branch)",
+   "assertion": "D1-drive-on-no-attach",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 3,
+   "arm": "GREEN(branch)",
+   "assertion": "D2-title-probe",
+   "pass": true,
+   "models": "claude-sonnet-5-5"
+  },
+  {
+   "case": "P3-drive-route-titles",
+   "rep": 3,
+   "arm": "GREEN(branch)",
+   "assertion": "D3-drive-recovery",
    "pass": true,
    "models": "claude-sonnet-5-5"
   },
@@ -457,10 +640,12 @@
   }
  ],
  "usd_list": {
-  "final_run": 1.1058,
+  "round1_fix_run": 1.6531,
+  "initial_run": 1.1058,
   "iteration1_smoke": 0.1834,
-  "total": 1.2892
+  "total": 2.9423
  },
  "iteration1": "P1 r1 against the first draft: GREEN 2/3 (A3 failed: NO-GO line deferred to 'recovery steps the author sends'); block changed to carry recovery inline, then all reps re-recorded.",
- "note": "Case prompts used absolute home paths at record time; shown here as ~/ for publication."
+ "note": "Case prompts used absolute home paths at record time; shown here as ~/ for publication.",
+ "history": "Initial run (branch sha 9bb7741e): positives RED 3/18 GREEN 18/18, control 3/3 both. Review r1 fixes changed the attach block's last recovery line and added a Drive-route block, so every case was re-recorded against branch sha 95d4a5be with a new Drive case P3; this record holds that re-run."
 }

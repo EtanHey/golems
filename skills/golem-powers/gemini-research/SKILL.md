@@ -72,7 +72,7 @@ Files to attach (<N>): <exact file name 1>, <exact file name 2>, ...
 If <author seat> replies NO-GO, or a later read-check row says a file is not readable:
 - Do not paste the prompt in that chat (if it was pasted, that run is discarded).
 - Open a NEW chat, Drive OFF, attach the same files first, wait for every chip, and send the probe again.
-- If they fail again, <author seat> sends .txt copies of the same files; repeat with those.
+- If they fail again, <author seat> sends a NEW hand-off block (.txt files, new prompt path); follow that one.
 ```
 
 Probe text (one per hand-off, naming every file; never put the key's lines in it):
@@ -95,7 +95,7 @@ run's admission table or the harvest check.
 **Recovery (probe or admission row not readable):**
 1. Do not paste the researcher prompt in that chat; if it was already pasted, discard that run unread.
 2. Send a fresh hand-off block: a NEW chat, the same files attached first, the probe again. Never retry inside the failed chat.
-3. If the `.md` files fail again, copy each to `.txt` in the same prepared folder with the same unique stem (`R01-01-<name>.md` → `R01-01-<name>.txt`), name the `.txt` files in the next hand-off block, and re-probe in a new chat.
+3. If the `.md` files fail again, YOU (the author) re-prepare; the owner never renames anything. Replace each `.md` in the prepared folder with a `.txt` copy of the same content and unique stem (`R01-01-<name>.md` → `R01-01-<name>.txt`). Then update every exact name to the `.txt` name: the `# Grounding` list and admission-question table, the private `admission-key` `document` fields, and the manifest. Re-run `prompt-preflight.mjs --emit --attached <prepared folder>` (it fails until folder, grounding and key name the same files), and send a new hand-off block with the `.txt` names, the new probe and the new prompt path.
 4. A run whose files became readable only after a re-attach (same chat or new) counts only if its admission table later passes `--harvest-check` against the private key. Otherwise it is a fabricated read: discard it.
 
 **Web-only research has no files:** its hand-off has no attach, probe or GO steps. Open a new
@@ -108,10 +108,27 @@ whole Drive, with no duplicate or look-alike titles. Name each document by its
 exact title in the prompt, never by folder or link. Expect title search to miss
 documents; a connected source and an author-side Drive read prove no researcher access.
 
-The Drive route uses the same hand-off block and first-line probe, naming exact
-titles instead of attached files (skip step 2) and checked against the author key.
-Any missing or mismatched line blocks the real run: switch to supplied files or
-correct the titles and repeat the probe; never fire the real prompt on an unverified set.
+The Drive route has its own short hand-off; nothing is attached:
+
+```text
+Drive titles (<N>, each unique across the whole Drive): "<exact title 1>", "<exact title 2>", ...
+1. Open a NEW Gemini Deep Research chat. Turn the Drive source ON. Attach nothing.
+2. Paste this probe and send it:
+   Before anything else: search Drive for each exact title below and reply only with a table
+   `title | first line`, copying the document's exact first line character for character.
+   If you cannot find or open a document, write NOT FOUND in its row. Do not research, summarise or plan.
+   - "<exact title 1>"
+   - "<exact title 2>"
+3. Send the probe's answer back to <author seat>. Paste nothing else in this chat yet.
+4. Only after <author seat> replies GO: paste <path to R{NN}-research.md> in the SAME chat.
+5. Send Gemini's generated plan back to <author seat> for START / EDIT. Do not click Start Research yourself.
+If <author seat> replies NO-GO: do not paste the prompt. <author seat> either fixes the titles and sends a
+new Drive hand-off, or switches to the attach route and sends the owner hand-off block above.
+```
+
+GO uses the same rule against the author key. On NO-GO, YOU fix duplicate or look-alike
+titles, or switch to the attach route (re-emit with the attach-route grounding and
+`--attached`); never fire the real prompt on an unverified set.
 
 ## Curated grounding set, admission stop, provenance
 
@@ -136,8 +153,13 @@ Keep the curated provenance set in `Brain Drive/03_RESEARCH/Active/<project>/R{N
 Before emitting or firing, validate the author record and produce the researcher text. Exit nonzero means rewrite and rerun; a pass proves sections contain the required instruction terms and review records, not that their claims are true. Free-text sections need a phrase, not a single token:
 
 ```bash
-node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --emit /path/to/R{NN}-prompt.md > /path/to/R{NN}-research.md
+node skills/golem-powers/gemini-research/scripts/prompt-preflight.mjs --emit --attached /path/to/R{NN}-grounding /path/to/R{NN}-prompt.md > /path/to/R{NN}-research.md
 ```
+
+`--attached <prepared folder>` (attach route) also fails unless the folder's files
+(hidden files and `00-GROUNDING-MANIFEST.md` excluded) are exactly the documents the
+`# Grounding` list names, so a renamed file can't leave the prompt or key naming the old one.
+Omit it only for the Drive or web-only route.
 
 Keep the author record locally. Paste/send only the emitted `-research.md` text
 to Gemini Deep Research; it excludes the entire

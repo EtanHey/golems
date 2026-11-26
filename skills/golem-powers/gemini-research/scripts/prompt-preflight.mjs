@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, realpathSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { evaluateGeminiPreflight } from '../../research-lifecycle/scripts/lifecycle-gate.mjs';
 
@@ -151,6 +151,17 @@ export function evaluatePrompt(text) {
   return { gate: 'research-prompt', pass: failures.length === 0, failures };
 }
 
+// Attach route: the prepared folder holds exactly the documents the Grounding list names
+// (hidden files and the manifest excluded), so a renamed copy cannot leave the prompt or key stale.
+export function evaluateAttached(text, files) {
+  const { sections } = parsePrompt(text);
+  const grounding = (sections.get('Grounding')?.[0] || []).join('\n');
+  const named = [...grounding.matchAll(/^- "([^"\n]+)"$/gm)].map(match => match[1]).sort();
+  const present = files.filter(f => !f.startsWith('.') && f !== '00-GROUNDING-MANIFEST.md').sort();
+  return JSON.stringify(named) === JSON.stringify(present) ? []
+    : [`ATTACHED_SET: folder files ${JSON.stringify(present)} must equal the Grounding names ${JSON.stringify(named)}; rename in grounding, key and manifest, then re-emit`];
+}
+
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const args = process.argv.slice(2);
@@ -162,9 +173,19 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     }
     const emit = args[0] === '--emit';
     if (emit) args.shift();
-    if (args.length !== 1) throw new Error('usage: prompt-preflight.mjs [--emit] <prompt.md | ->');
+    let attached;
+    if (args[0] === '--attached') {
+      if (!args[1]) throw new Error('--attached requires <prepared folder>');
+      attached = readdirSync(args[1], { withFileTypes: true }).filter(e => e.isFile()).map(e => e.name);
+      args.splice(0, 2);
+    }
+    if (args.length !== 1) throw new Error('usage: prompt-preflight.mjs [--emit] [--attached <folder>] <prompt.md | ->');
     const text = readFileSync(args[0] === '-' ? 0 : args[0], 'utf8');
     const result = evaluatePrompt(text);
+    if (attached) {
+      result.failures.push(...evaluateAttached(text, attached));
+      result.pass = result.failures.length === 0;
+    }
     if (emit && result.pass) process.stdout.write(researcherPrompt(text));
     else (emit ? console.error : console.log)(JSON.stringify(result, null, 2));
     process.exitCode = result.pass ? 0 : 1;
