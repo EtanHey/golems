@@ -18,6 +18,13 @@ read the same Docs by folder, title and link; that does not establish Deep Resea
 access. Three subsequent runs used attached files with Drive off and passed the
 author-held answer key (PR 1267).
 
+Measured 2026-11-26, qa-video R01: the hand-off named 5 `.md` files to attach with
+Drive off but carried no probe. Gemini's first answer was the admission table with
+all 5 files `readable: no` plus MISSING FILES. Etan re-attached the same 5 files in
+the same chat (they showed as TXT chips) with "now?", and Gemini then produced its
+plan. Whether the files were attached to the first message is unknown. Harvest
+check: pending. The owner hand-off block below exists because of this run.
+
 ## Grounding prep — your FIRST action, before any search or draft
 
 Done condition: no research prompt leaves this skill until ONE of these is true:
@@ -39,15 +46,60 @@ Done condition: no research prompt leaves this skill until ONE of these is true:
    step 1, write the exact web-only line and separate reason,
    and go straight to the emit gate below. The grounding and START/EDIT gates
    still apply.
-3. Project-grounded: name the prepared folder and files to attach in the hand-off;
-   the owner attaches them when he starts the run with Drive source off.
+3. Project-grounded: emit the owner hand-off block below, filled in; the owner
+   attaches the files when he starts the run with Drive source off.
    Draft the prompt from the receipt's exact file names. While
    preparation runs or is blocked, tell Etan the prompt follows the receipt; never
    emit it before.
 
-Include one line in the hand-off: "Prepared folder: <folder>; files to attach: <exact file names>;
-attach this prepared set when starting the run, with Drive source off." Preparation is the agent's job; do not emit a prompt that
-asks Etan to collect files.
+Preparation is the agent's job; do not emit a prompt that asks Etan to collect files.
+
+## Owner hand-off block — emit it, filled in, in this order
+
+Every project-grounded hand-off IS this block. Etan fires every step (fire = Etan);
+you write the probe text and you judge GO. Fill every `<...>`; keep the order and wording.
+
+```text
+Prepared folder: <absolute folder path>
+Files to attach (<N>): <exact file name 1>, <exact file name 2>, ...
+1. Open a NEW Gemini Deep Research chat. Turn the Drive source OFF.
+2. Attach the <N> files above FIRST. Wait until all <N> file chips show. Type nothing yet.
+3. Paste this probe and send it:
+   <probe text, below>
+4. Send the probe's answer back to <author seat>. Paste nothing else in this chat yet.
+5. Only after <author seat> replies GO: paste <path to R{NN}-research.md> in the SAME chat.
+6. Send Gemini's generated plan back to <author seat> for START / EDIT. Do not click Start Research yourself.
+If <author seat> replies NO-GO, or a later read-check row says a file is not readable:
+- Do not paste the prompt in that chat (if it was pasted, that run is discarded).
+- Open a NEW chat, Drive OFF, attach the same files first, wait for every chip, and send the probe again.
+- If they fail again, <author seat> sends .txt copies of the same files; repeat with those.
+```
+
+Probe text (one per hand-off, naming every file; never put the key's lines in it):
+
+```text
+Before anything else: for each attached file below, reply only with a table
+`file | first line`, copying the file's exact first line character for character.
+If you cannot open a file, write UNREADABLE in its row. Do not research, summarise or plan.
+- <exact file name 1>
+- <exact file name 2>
+```
+
+**GO rule:** compare each returned first line with that file's `first_line` in the
+private `admission-key` (exact string, outer whitespace trimmed). GO only when every
+named file has exactly one row and every line matches. Any UNREADABLE, missing,
+extra or mismatched row is NO-GO. Keep the probe answer and your comparison as the
+probe receipt, outside the researcher prompt. The probe does not replace the real
+run's admission table or the harvest check.
+
+**Recovery (probe or admission row not readable):**
+1. Do not paste the researcher prompt in that chat; if it was already pasted, discard that run unread.
+2. Send a fresh hand-off block: a NEW chat, the same files attached first, the probe again. Never retry inside the failed chat.
+3. If the `.md` files fail again, copy each to `.txt` in the same prepared folder with the same unique stem (`R01-01-<name>.md` → `R01-01-<name>.txt`), name the `.txt` files in the next hand-off block, and re-probe in a new chat.
+4. A run whose files became readable only after a re-attach (same chat or new) counts only if its admission table later passes `--harvest-check` against the private key. Otherwise it is a fabricated read: discard it.
+
+**Web-only research has no files:** its hand-off has no attach, probe or GO steps. Open a new
+Deep Research chat, paste the emitted prompt, and send the plan back for START / EDIT.
 
 ### Optional Drive route — exact titles and a probe first
 
@@ -56,13 +108,10 @@ whole Drive, with no duplicate or look-alike titles. Name each document by its
 exact title in the prompt, never by folder or link. Expect title search to miss
 documents; a connected source and an author-side Drive read prove no researcher access.
 
-Before the real run (for either source route), run one cheap Deep Research probe
-that asks only for each named document's first line. Compare every returned line
-against the author key, retaining the probe and comparison receipt outside the
-researcher prompt. Any missing or mismatched line blocks the real run. For Drive,
-switch to supplied files or correct the titles and repeat the probe; never fire
-the real prompt on an unverified set. The probe does not replace the real run's
-admission table or author-held answer key.
+The Drive route uses the same hand-off block and first-line probe, naming exact
+titles instead of attached files (skip step 2) and checked against the author key.
+Any missing or mismatched line blocks the real run: switch to supplied files or
+correct the titles and repeat the probe; never fire the real prompt on an unverified set.
 
 ## Curated grounding set, admission stop, provenance
 
@@ -106,7 +155,7 @@ were supplied, the probe passed, or the researcher read them: retain those recei
 and apply the admission harvest gate below.
 
 **Interaction steps:**
-1. Paste prompt → get research plan
+1. Etan runs the owner hand-off block (new chat, attach first, probe, GO), then pastes the prompt → research plan
 2. **Return the generated plan to the prompt author** for an explicit
    `START` / `EDIT` verdict before firing the research. Do not click Start
    Research on your own plan interpretation.
