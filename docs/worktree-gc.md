@@ -12,8 +12,19 @@ even when archived. Malformed non-string/invalid path rows are skipped with a
 reason in the run log so they cannot disable other bindings. State-probe reason
 cells carry short categories; full probe details stay in the run log.
 
+Every mode (`--dry-run`, `--prune-plan`, `--apply`, T3) makes the same freshness
+decision, so a report never says REMOVE for a tree apply would keep. A tree is
+KEEP-active while its newest of creation (the admin dir's `commondir`, written
+once by `git worktree add`) or HEAD/index/COMMIT_EDITMSG/`logs/HEAD` activity is
+inside `--idle-hours` (default 6). A tree created under 1 hour ago is KEEP-active
+even with `--idle-hours 0`, with or without `--path`: a worker's minutes-old,
+commit-less lane looks exactly like a clean merged tree, and nothing in Git can
+tell them apart. Unreadable times are KEEP-undetermined. Apply re-checks
+freshness after archiving, just before removal. To retire your own lane inside
+its first hour, use `git worktree remove` (never `--force`).
+
 `--dry-run` reports merge eligibility. `--prune-plan` also checks the nightly
-idle/live/nested-repository guards and emits REMOVE without archiving or deleting.
+live/nested-repository guards and emits REMOVE without archiving or deleting.
 A REMOVE plan still requires successful archive verification before deletion.
 
 T3 removal additionally requires a bound settled thread (archival alone is insufficient)
@@ -99,7 +110,7 @@ scans run without the heavy-suite lock. Each apply archive/removal takes
 `~/.local/state/golems/heavy-suite.lock` (`GOLEMS_HEAVY_LOCK`) exclusively and
 nonblocking, retaining exclusion from suite slots without blocking their queue
 for a whole sweep. A held suite lock produces a durable `KEEP-busy` row, even
-for a young worktree, and leaves its archive/removal for the next run. Failure to
+under `--idle-hours 0`, and leaves its archive/removal for the next run. Failure to
 open/acquire the lock keeps the candidate undetermined. Only the removal parent
 holds the descriptor; archive/git children cannot retain it. Dry runs and prune
 plans never acquire it. The original whole-sweep exclusion (ccb66f4d) avoided
