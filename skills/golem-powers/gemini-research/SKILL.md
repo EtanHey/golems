@@ -27,6 +27,14 @@ MISSING FILES. Re-attaching the same 5 files in the same chat with "now?" produc
 the plan. File type was not the fix; a second attach in the same chat was. Harvest
 check: pending. The owner hand-off block below exists because of this run.
 
+Measured 2026-11-26, qa-video R01 harvest: `--harvest-check` FAILED on format, not
+reading. All 5 first lines matched, but 3 answers were the key value plus text sitting
+verbatim beside it in the grounding cell (key `985.926 s`, cell and answer
+`985.926 s (+85.926 s over deadline)`). orc overrode admission for this run (format, not
+fabrication; evidence: skill-creator `docs.local/plan/2026-11-25-api-key-evals/R01-harvest/BLOCKED.md`).
+Fix: whole-cell key answers, a copy-only-the-answer instruction, and the
+`ADMISSION_KEY_PART` emit check below; the harvest checker was not loosened.
+
 ## Grounding prep — your FIRST action, before any search or draft
 
 Done condition: no research prompt leaves this skill until ONE of these is true:
@@ -141,7 +149,7 @@ titles, or switch to the attach route (re-emit with the attach-route grounding a
 
 - **Curated, bounded set:** agents prepare ONE folder holding exactly the curated grounding files with unique names, name that folder and the files to attach in the hand-off, and keep a provenance copy. The owner attaches the prepared set when starting the run with Drive source off (`/drive-filing` § Research grounding folder contract). The folder organizes the record; it is not a Deep Research access route. The prompt names the exact files and says to use ONLY them.
 - **Admission table with a HARD STOP:** before firing, the prompt's `# Grounding` block carries a read-check table, one row per grounding file, with `readable: yes/no`. Project-grounded runs only; web-only research keeps its own `None — web-only research` block and has no table. Any row that is not an affirmative verified read (no, blank, missing, empty, truncated, unreadable) stops the run: output only the table and a `MISSING FILES` list. The template holds the wording.
-- **Author-held answer key:** keep exact source answers and real first headings/lines in the author record's `admission-key` JSON inside `# Pre-fire checks`, never the emitted researcher text. Cover every named document and admission question. Emit refuses missing keys or verbatim answer leaks. `readable: yes` alone proves nothing: on 2026-11-13 NarrationLayer R02 with six attached grounding files invented all six answers (1.05 vs 1.5; 0.179 vs 0.484); the private key caught them. Earlier Drive-grounded runs stopped honestly with `readable: no` rows.
+- **Author-held answer key:** keep exact source answers and real first headings/lines in the author record's `admission-key` JSON inside `# Pre-fire checks`, never the emitted researcher text. Cover every named document and admission question. Each answer is a complete, self-contained table cell, line, or whole value after a `label:` in its file, stored exactly as that whole text (bold and backticks dropped), never part of a longer cell: the researcher prompt says to copy only the answer, so pick a question whose answer IS a whole cell, with no qualifier beside it in that cell. Emit refuses missing keys or verbatim answer leaks; `--emit --attached` also refuses (`ADMISSION_KEY_PART`) an answer that is not a whole cell or line of its file. `--harvest-check` stays exact. `readable: yes` alone proves nothing: on 2026-11-13 NarrationLayer R02 with six attached grounding files invented all six answers (1.05 vs 1.5; 0.179 vs 0.484); the private key caught them. Earlier Drive-grounded runs stopped honestly with `readable: no` rows.
 - **Keep the stop in the plan:** when Gemini's generated plan drops the stop, return it for EDIT and paste this sentence: `If any read-check row is not an affirmative verified read (readable: no, blank, missing, empty, truncated or unreadable), output only the read-check table and a MISSING FILES list, and stop.`
 - **Provenance:** the harvest record names the model, the settings (Drive on/off, Search on/off, mode), the prompt sha256, the grounding `manifest_sha256` and the folder's link, so the run's identity survives later consolidation. Write `unknown` only for a field you could not read.
 

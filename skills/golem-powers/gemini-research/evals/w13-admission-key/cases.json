@@ -1,0 +1,50 @@
+{
+ "skill": "gemini-research",
+ "cases": [
+  {
+   "id": "P1-qa-video-cells",
+   "category": "positive",
+   "prompt": "You are the author seat for qa-video R02 (Gemini Deep Research, attach route). Write the admission questions and key for these two grounding files, one question per file.\n\nFile R02-01-qa-video-real-run-costs.md:\n```\n# R02-01: Real /qa-video Run Costs and Durations\n\n| cell | frames | coordinator | wall time | recall |\n| --- | --- | --- | --- | --- |\n| `B-T2-clip01` | 14 distinct | Flash 3.8 med | 985.926 s (+85.926 s over deadline) | 2/3 identity |\n| `B-T2-clip02` | 11 distinct | Flash 3.8 med | 731.402 s (within deadline) | 3/3 identity |\n```\n\nFile R02-02-qa-video-pipeline-spec.md:\n```\n# R02-02: Current /qa-video Pipeline (One-Page Spec)\n\n1. extract frames at 1 fps\n2. reader-policy.py admits the whole-run cost BEFORE any reader dispatch (default planning allowance $0.10/sheet incl. 1 retry; hard STOP above ~$5)\n3. readers return JSON per sheet\n```\n\nWrite, for the author record: (1) the admission-questions table rows (document | question), (2) the private admission-key JSON (document, question, answer, first_line), and (3) the exact admission-check instruction text that goes in the researcher-facing # Grounding block. Do not run any tools; just write them."
+  },
+  {
+   "id": "P2-tts-bench-cells",
+   "category": "positive",
+   "prompt": "You are the author seat for VoiceLayer R04 (Gemini Deep Research, attach route). Write the admission questions and key for these two grounding files, one question per file.\n\nFile R04-01-voicelayer-tts-latency-bench.md:\n```\n# R04-01: VoiceLayer TTS First-Audio Latency Bench (2026-11)\n\n| engine | host | first audio p50 | first audio p95 |\n| --- | --- | --- | --- |\n| Kokoro 1.2 | M1 Max | **0.412 s (warm cache, 3 runs)** | 0.655 s (warm cache) |\n| Piper 2.0 | M1 Max | 0.288 s (warm cache, 3 runs) | 0.517 s (cold start incl.) |\n```\n\nFile R04-02-voicelayer-current-config.md:\n```\n# R04-02: VoiceLayer Current Speech Config\n\n- default engine: Kokoro 1.2 (fallback Piper when the daemon is down)\n- sentence chunk limit: 240 chars (split at the last comma before it)\n- volume: 0.8\n```\n\nWrite, for the author record: (1) the admission-questions table rows (document | question), (2) the private admission-key JSON (document, question, answer, first_line), and (3) the exact admission-check instruction text that goes in the researcher-facing # Grounding block. Do not run any tools; just write them."
+  },
+  {
+   "id": "C1-clean-cells",
+   "category": "control",
+   "prompt": "You are the author seat for BrainLayer R08 (Gemini Deep Research, attach route). Write the admission questions and key for these two grounding files, one question per file.\n\nFile R08-01-brainlayer-embedder-bench.md:\n```\n# R08-01: BrainLayer Embedder Bench\n\n| model | dims | recall@10 | p50 query ms |\n| --- | --- | --- | --- |\n| bge-m3 | 1024 | 0.871 | 41 |\n| nomic-embed-v2 | 768 | 0.834 | 23 |\n```\n\nFile R08-02-brainlayer-index-facts.md:\n```\n# R08-02: BrainLayer Index Facts\n\n| fact | value |\n| --- | --- |\n| chunk count | 412,907 |\n| index engine | SQLite FTS5 + sqlite-vec |\n```\n\nWrite, for the author record: (1) the admission-questions table rows (document | question), (2) the private admission-key JSON (document, question, answer, first_line), and (3) the exact admission-check instruction text that goes in the researcher-facing # Grounding block. Do not run any tools; just write them."
+  }
+ ],
+ "assertions": {
+  "positive": [
+   {
+    "id": "A1-whole-cell-answers",
+    "category": "compliance",
+    "kind": "semantic",
+    "evidence": "quote",
+    "weight": 50,
+    "claim": "Every answer in the admission-key JSON is the COMPLETE text of one table cell, one whole list line, or the whole value after a 'label:' in a list line of the named file, copied exactly (markdown bold and backticks may be dropped); no answer is a truncated part of a longer cell or line, such as a bare number when the cell also carries a parenthetical or trailing qualifier (for example \"985.926 s\" where the cell says \"985.926 s (+85.926 s over deadline)\", or \"$0.10/sheet\" taken from inside a longer list line)."
+   },
+   {
+    "id": "A2-copy-only-instruction",
+    "category": "compliance",
+    "kind": "semantic",
+    "evidence": "quote",
+    "weight": 50,
+    "claim": "The researcher-facing admission-check instruction explicitly tells the researcher to put in the answer cell the exact text from the file, copying only the answer, without adding notes, units, qualifiers or other text that is not part of it."
+   }
+  ],
+  "control": [
+   {
+    "id": "C1-key-matches-files",
+    "category": "compliance",
+    "kind": "semantic",
+    "evidence": "quote",
+    "weight": 100,
+    "claim": "The admission-key JSON has one row per file with an answer that appears exactly in that file and a first_line equal to the file's exact first line, and the key is presented as author-only (not part of the researcher-facing text)."
+   }
+  ]
+ }
+}
