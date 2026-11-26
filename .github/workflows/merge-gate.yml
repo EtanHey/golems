@@ -1,0 +1,32 @@
+name: merge gate
+
+# Master's merge gate (docs/architecture/merge-gate.md): ruleset 23948189 keeps no bypass actors and strict checks.
+# Probe: can the workflow GITHUB_TOKEN see bypass_actors at all? GitHub hides it from callers who cannot edit rulesets.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ruleset-tight:
+    name: Ruleset stays tight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+      - name: What the token sees
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/EtanHey/golems/rulesets/23948189 --jq '{keys: keys, bypass_actors, current_user_can_bypass, strict: (.rules[] | select(.type=="required_status_checks") | .parameters.strict_required_status_checks_policy)}' || true
+      - name: Check the ruleset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/ruleset-tight.mjs
