@@ -7,6 +7,10 @@
 - cmux running with available surfaces
 - Target skill's `evals/evals.json` exists with eval cases
 - `source ~/.claude/skills/cmux-agents/scripts/agent-functions.sh` loaded
+- Auth: every eval and judge call bills an API key through the skill-creator cell, never the
+  machine login ([SKILL.md § Eval Auth](../SKILL.md#eval-auth--api-keys-never-a-login)). A visible
+  pane (Steps 3–4) runs on the login, so it is a login run: record why in the result as
+  `oauth_reason`, or run that arm headless in the cell instead.
 
 ## Workflow
 
