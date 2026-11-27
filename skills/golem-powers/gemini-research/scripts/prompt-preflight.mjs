@@ -160,16 +160,23 @@ export function evaluatePrompt(text) {
 // exact --harvest-check. This guards authoring only; --harvest-check stays exact.
 export function wholeUnits(content) {
   const visible = value => value.replace(/\*\*|__|`/g, '').trim();
+  const pipe = /(?<!\\)\|/;
+  // GFM rows: split on unescaped pipes; outer pipes are optional; `\|` is a literal pipe in a cell.
+  const cells = line => line.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '').split(pipe).map(c => c.replace(/\\\|/g, '|'));
+  const isDelimiter = line => pipe.test(line) && cells(line).every(c => /^\s*:?-+:?\s*$/.test(c));
+  const lines = content.split(/\r?\n/);
   const units = new Set();
-  for (const raw of content.split(/\r?\n/)) {
+  let table = false;
+  for (const [i, raw] of lines.entries()) {
     const line = raw.trim();
+    table = pipe.test(line) && (table || isDelimiter(line) || isDelimiter(lines[i + 1] || ''));
     if (!line) continue;
     units.add(visible(line));
     const item = line.replace(/^(?:#{1,6}|[-*+]|\d+[.)])\s+/, '');
     units.add(visible(item));
     const labelled = item.match(/^[^:|]{1,60}:\s+(.+)$/);
     if (labelled) units.add(visible(labelled[1]));
-    if (line.startsWith('|')) for (const cell of line.split('|').slice(1, -1)) units.add(visible(cell));
+    if (table) for (const cell of cells(line)) units.add(visible(cell));
   }
   units.delete('');
   return units;

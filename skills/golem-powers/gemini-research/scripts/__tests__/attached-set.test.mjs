@@ -87,3 +87,15 @@ test('whole value after a label passes; part of that value fails', () => {
   assert.equal(emit(md, md, { body: config, answer: () => '0.8' }).status, 0);
   assert.match(emit(md, md, { body: config, answer: () => 'Kokoro 1.2' }).stderr, /ADMISSION_KEY_PART/);
 });
+
+// golems #1370 review r1 B1: escaped pipes are literal; the closing (and opening) pipe is optional.
+test('escaped \\| stays inside its cell: a suffix of that cell FAILS, the whole cell PASSES', () => {
+  const esc = () => '| metric | value |\n| --- | --- |\n| latency | 985.926 s \\| extra |\n';
+  assert.match(emit(md, md, { body: esc, answer: () => 'extra' }).stderr, /ADMISSION_KEY_PART/);
+  assert.equal(emit(md, md, { body: esc, answer: () => '985.926 s | extra' }).status, 0);
+});
+
+test('whole final cell of a row without outer pipes PASSES', () => {
+  assert.equal(emit(md, md, { body: () => '| metric | value |\n| --- | --- |\n| latency | 985.926 s\n', answer: () => '985.926 s' }).status, 0);
+  assert.equal(emit(md, md, { body: () => 'metric | value\n--- | ---\nlatency | 985.926 s\n', answer: () => '985.926 s' }).status, 0);
+});
