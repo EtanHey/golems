@@ -628,7 +628,7 @@ load lib/worktree-gc-fixtures
 
 # --- R1 (#703 review: H1, H2, M1, M2, M3, L1, L2; brainlayer 23:28 open-PR rule) ---
 
-@test "H1: a registered worktree outside <repo>/.worktrees is out of scope in both modes" {
+@test "H1: a registered worktree outside managed .worktrees and same-repo sibling roots stays out of scope" {
   repo="$(make_fixture_repo scope-repo)"
   outside="$TEST_ROOT/runtime-checkout"
   git -C "$repo" worktree add -q --detach "$outside" origin/main

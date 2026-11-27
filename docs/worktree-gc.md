@@ -1,7 +1,9 @@
 # Worktree cleanup safety
 
 `worktree-gc.sh --apply` removes only clean, merged, idle, unused one-level
-`<main>/.worktrees/<name>` worktrees and proven-finished trees under
+`<main>/.worktrees/<name>` worktrees, same-repository registered
+`~/Gits/<repo>-worktrees/<name>` worktrees (when the main is `~/Gits/<repo>`),
+and proven-finished trees under
 `~/.t3/worktrees` (including registered nested descendants). Open PR branches, live process/cmux cwd,
 locked trees, hooks-live, nested Git repositories and reflog-only commits are kept.
 `--repo` must name a Git toplevel; `--path` selects one registered linked tree.
@@ -22,6 +24,19 @@ commit-less lane looks exactly like a clean merged tree, and nothing in Git can
 tell them apart. Unreadable times are KEEP-undetermined. Apply re-checks
 freshness after archiving, just before removal. To retire your own lane inside
 its first hour, use `git worktree remove` (never `--force`).
+
+Sibling admission requires a direct child listed by that main repository's Git
+worktree census and a matching Git common directory. Unregistered entries,
+clones and foreign-repository registrations are reported KEEP-out-of-scope
+in the owner queue (`latest.json`/`latest.md` on a full sweep, `last-run.*` on
+scoped runs), with owner repo, path, size when measurable, and reason. These
+sibling exclusions are reported immediately, without the stale-work age filter.
+Symlinked roots/entries are refused. The same ancestry, open-PR, T3 binding,
+index, idle, liveness, archive and removal-lock guards apply. `--path` supports
+these siblings but still refuses the main checkout and paths through symlinks.
+Sibling identity is rechecked after archival before `git worktree remove`.
+The default sweep remains a dry run; only `--apply` removes trees. Nightly
+wrapper admission and scheduling are unchanged.
 
 `--dry-run` reports merge eligibility. `--prune-plan` also checks the nightly
 live/nested-repository guards and emits REMOVE without archiving or deleting.
@@ -146,7 +161,7 @@ rendered as `@GOLEMS_ROOT@/docs.local/worktree-gc-launchd.log`; they do not upda
 Verification can still race a concurrent `install-hooks --update`; the installer
 does not take the nightly lock.
 
-Tests build repositories outside any Git tree and guard every GC invocation against
+Tests build independent repositories (optionally under worktree-local docs.local) and guard every GC invocation against
 leaving the fixture root. Never probe `--apply` on a real repository. Installation
 and launchd loading belong to the lead after review and merge.
 
