@@ -218,20 +218,51 @@ check_owner_guards() {
   fi
 }
 
-# Prints the newest of the admin dir's HEAD/index/COMMIT_EDITMSG mtimes.
-last_activity_epoch() {
+# Prints "<created> <newest>": the admin dir's commondir mtime (written once by
+# `git worktree add`) and the newest of it and HEAD/index/COMMIT_EDITMSG/logs/HEAD.
+worktree_times() {
   local worktree_path="$1"
-  local admin newest=0 mtime f
+  local admin created newest mtime f
 
   admin="$(git -C "$worktree_path" rev-parse --absolute-git-dir)" || return 1
+  created="$(portable_stat mtime "$admin/commondir")" || return 1
   mtime="$(portable_stat mtime "$admin/HEAD")" || return 1
   newest="$mtime"
-  for f in index COMMIT_EDITMSG; do
+  (( created > newest )) && newest="$created"
+  for f in index COMMIT_EDITMSG logs/HEAD; do
     [[ -e "$admin/$f" ]] || continue
     mtime="$(portable_stat mtime "$admin/$f")" || return 1
     (( mtime > newest )) && newest="$mtime"
   done
-  printf '%s\n' "$newest"
+  printf '%s %s\n' "$created" "$newest"
+}
+
+# AIDEV-NOTE: the ONE freshness decision for every mode (dry run, prune plan,
+# apply, T3). Dry run once skipped it and reported REMOVE for a worktree a
+# worker had created minutes earlier (golemsgreen-w3, 2026-11-26). The creation
+# floor is not waivable: --idle-hours 0 still keeps a tree created under
+# FRESH_FLOOR_SECONDS ago, with or without --path. Returns 1 after emitting a
+# KEEP row; returns 0 when the tree is old and idle enough to judge further.
+check_fresh() {
+  local worktree_path="$1" branch_display="$2" times created newest now
+
+  if ! times="$(worktree_times "$worktree_path")"; then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 \
+      KEEP-undetermined "cannot read worktree creation or activity times"
+    return 1
+  fi
+  read -r created newest <<< "$times"
+  now="$(date +%s)"
+  if (( now - newest < idle_seconds )); then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 \
+      KEEP-active "created or HEAD/index/commit activity within ${idle_hours}h"
+    return 1
+  fi
+  if (( now - created < FRESH_FLOOR_SECONDS )); then
+    emit_row "$repo_name" "$worktree_path" "$branch_display" 0 0 \
+      KEEP-active "created under $((FRESH_FLOOR_SECONDS / 60))m ago; --idle-hours cannot waive this floor"
+    return 1
+  fi
 }
 
 archive_ignored() {
@@ -248,23 +279,7 @@ apply_removal() {
   local worktree_path="$1"
   local branch_display="$2"
   local head_sha
-  local last
-  local now
-  local removed_detail
 
-  if (( idle_seconds > 0 )); then
-    if ! last="$(last_activity_epoch "$worktree_path")"; then
-      emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
-        "KEEP-undetermined" "cannot read worktree activity times"
-      return 0
-    fi
-    now="$(date +%s)"
-    if (( now - last < idle_seconds )); then
-      emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
-        "KEEP-active" "HEAD/index/commit activity within ${idle_hours}h"
-      return 0
-    fi
-  fi
   if ! refresh_live_cwds; then
     emit_row "$repo_name" "$worktree_path" "$branch_display" "0" "0" \
       "KEEP-undetermined" "$live_reason"
@@ -348,6 +363,7 @@ archive_and_remove() {
     return 0
   fi
   check_owner_guards "$worktree_path" "$branch_display" || return 0
+  check_fresh "$worktree_path" "$branch_display" || return 0
   if [[ "$is_t3" -eq 1 ]]; then
     t3_pr_guard "$worktree_path" "$branch_display" || return 0
     t3_guard "$worktree_path" "$branch_display" || return 0
@@ -703,6 +719,7 @@ process_worktree_block() {
     return 0
   fi
 
+  check_fresh "$worktree_path" "$branch_display" || return 0
   if [[ "$apply" -eq 1 || "$prune_plan" -eq 1 || "$is_t3" -eq 1 ]]; then
     apply_removal "$worktree_path" "$branch_display"
     return 0
@@ -850,6 +867,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # shellcheck source=lib/portable-stat.sh
 source "$SCRIPT_DIR/lib/portable-stat.sh"
 idle_seconds=$((idle_hours * 3600))
+FRESH_FLOOR_SECONDS=3600
 LOG_DIR="${WORKTREE_GC_LOG_DIR:-$SCRIPT_DIR/../docs.local}"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/worktree-gc-$(date '+%Y%m%d-%H%M%S')-$$.log"
