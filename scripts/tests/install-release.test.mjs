@@ -316,6 +316,70 @@ test('second install is a no-op, including through the installed update wrapper'
   const update = spawnSync(join(dir, '.golems/bin/golems-cli'), ['update', '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], { env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8' });
   ok(update); expect(update.stdout).toContain('already current');
 });
+test('already-current release reconciles sync links without replacing checkout links or metadata', () => {
+  const dir = home(); ok(install(dir));
+  const prefix = join(dir, '.golems'), metadata = readFileSync(join(prefix, 'release.json'));
+  // Use a real Codex root to exercise its per-entry reconciliation too.
+  rmSync(join(dir, '.codex/skills'));
+  mkdirSync(join(dir, '.codex/skills'));
+  const sync = join(prefix, 'skills/golem-powers');
+  for (const client of ['.claude', '.agents', '.codex']) {
+    const skills = join(dir, client, 'skills');
+    if (existsSync(join(skills, 'pr-loop'))) rmSync(join(skills, 'pr-loop'));
+    symlinkSync(join(sync, 'pr-loop'), join(skills, 'pr-loop'));
+    if (existsSync(join(skills, 'coach'))) rmSync(join(skills, 'coach'));
+    symlinkSync(join(dir, 'Gits/golems/skills/golem-powers/coach'), join(skills, 'coach'));
+  }
+  for (const client of ['.claude', '.agents']) symlinkSync(join(sync, 'retired'), join(dir, client, 'skills/retired'));
+  symlinkSync(join(dir, '.agents/skills/retired'), join(dir, '.codex/skills/retired'));
+  // An existing receipt must not cause an already-current run to require Node or reinstall hooks.
+  mkdirSync(join(dir, '.claude/hooks')); writeFileSync(join(dir, '.claude/hooks/golems-hooks-release.json'), '{}');
+  const bin = join(dir, 'no-download-or-extract'); mkdirSync(bin);
+  for (const name of readdirSync(minimal).filter(name => !['curl', 'tar'].includes(name))) symlinkSync(join(minimal, name), join(bin, name));
+  for (const name of ['curl', 'tar']) { writeFileSync(join(bin, name), '#!/bin/sh\nexit 98\n'); chmodSync(join(bin, name), 0o755); }
+  const result = spawnSync('/bin/sh', [installer, '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], {
+    env: { ...process.env, HOME: dir, PATH: bin }, encoding: 'utf8',
+  });
+  ok(result); expect(result.stdout).toContain('already current');
+  const pinned = spawnSync('/bin/sh', [installer, '--channel', `v${release.version}`], {
+    env: { ...process.env, HOME: dir, PATH: bin }, encoding: 'utf8',
+  });
+  ok(pinned); expect(pinned.stdout).toContain('already current');
+  for (const client of ['.claude', '.agents', '.codex']) {
+    expect(readlinkSync(join(dir, client, 'skills/pr-loop'))).toBe(client === '.codex'
+      ? join(dir, '.agents/skills/pr-loop') : join(prefix, 'current/skills/golem-powers/pr-loop'));
+    expect(readlinkSync(join(dir, client, 'skills/coach'))).toBe(join(dir, 'Gits/golems/skills/golem-powers/coach'));
+    expect(readdirSync(join(dir, client, 'skills'))).not.toContain('retired');
+  }
+  expect(readFileSync(join(prefix, 'release.json'))).toEqual(metadata);
+  // Checkout migration also stays link-only when the release is already current.
+  ok(install(dir, ['--replace-checkout-links']));
+  expect(readlinkSync(join(dir, '.claude/skills/coach'))).toBe(join(prefix, 'current/skills/golem-powers/coach'));
+  expect(readFileSync(join(prefix, 'release.json'))).toEqual(metadata);
+});
+test('upgrade uses new payload link rules instead of the running installer rules', () => {
+  const dir = home(), legacy = join(dir, 'legacy-install.sh');
+  const original = readFileSync(installer, 'utf8');
+  const adoption = '\"$prefix/skills/golem-powers/\"*) adopted_sync=true ;;';
+  // The launching generation has the handoff protocol but predates sync adoption.
+  const legacyRules = original.replace(adoption, '');
+  expect(legacyRules).not.toBe(original);
+  writeFileSync(legacy, legacyRules);
+  const sourceInstaller = join(source, 'scripts/release/install.sh');
+  const old = upgrade(() => writeFileSync(sourceInstaller, legacyRules));
+  const run = payload => spawnSync('/bin/sh', [legacy, '--from-file', payload.tarball, '--sums', join(dirname(payload.tarball), 'SHA256SUMS')], {
+    env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8',
+  });
+  try {
+    ok(run(old));
+    const link = join(dir, '.claude/skills/pr-loop'); rmSync(link);
+    symlinkSync(join(dir, '.golems/skills/golem-powers/pr-loop'), link);
+    const next = upgrade(() => writeFileSync(sourceInstaller, original));
+    ok(run(next));
+    expect(readlinkSync(join(dir, '.golems/current'))).toBe(`releases/${next.version}`);
+    expect(readlinkSync(link)).toBe(join(dir, '.golems/current/skills/golem-powers/pr-loop'));
+  } finally { writeFileSync(sourceInstaller, original); git('add', '.'); git('commit', '--allow-empty', '-m', 'restore fixture installer'); }
+});
 test('prune replay recovers an actual unlink interrupted before history replacement', () => {
   const dir = home(), prefix = join(dir, '.golems'), bin = join(dir, 'bin');
   const old = ['aaaaaaa', 'bbbbbbb', 'ccccccc', 'ddddddd'].map(sha => `2026.01.01-${sha}`);

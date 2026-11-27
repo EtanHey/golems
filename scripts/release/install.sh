@@ -65,7 +65,7 @@ json_fields() {
   awk -v catalog="${3-false}" '
   function bad() { exit 1 }
   function ws() { while (pos <= size && ch[pos] ~ /[ \t\r\n]/) pos++ }
-  function selected(p) { return catalog=="true" || p ~ /^(version|commit|source|private_gate|files\.[0-9]+\.(path|sha256|mode)|([0-9]+\.)?(tag_name|draft|prerelease|created_at))$/ }
+  function selected(p) { return catalog=="true" || p ~ /^(version|commit|tarball_sha256|manifest_sha256|source|private_gate|files\.[0-9]+\.(path|sha256|mode)|([0-9]+\.)?(tag_name|draft|prerelease|created_at))$/ }
   function str(capture, out,c,e,h,i) {
     if (ch[pos++] != "\"") bad()
     while (pos <= size) {
@@ -136,8 +136,25 @@ download() {
     esac
   done
 }
+# Reconcile a verified installed generation without fetching or unpacking it again.
+reuse_current=false
+use_current() {
+  printf '%s\n' "$1" | awk '!/^([0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+)$/ || length!=18 {exit 1}' || return 0
+  [ "$(readlink "$prefix/current" 2>/dev/null || :)" = "releases/$1" ] || return 0
+  [ -f "$prefix/release.json" ] || return 0
+  json_fields "$prefix/release.json" "$work/installed.tsv"
+  [ "$(awk -F '\t' '$1=="version" {print $2}' "$work/installed.tsv")" = "$1" ] || return 0
+  installed_tarball_sha=$(awk -F '\t' '$1=="tarball_sha256" {print $2}' "$work/installed.tsv")
+  installed_manifest_sha=$(awk -F '\t' '$1=="manifest_sha256" {print $2}' "$work/installed.tsv")
+  printf '%s\n%s\n' "$installed_tarball_sha" "$installed_manifest_sha" | awk 'length!=64 || /[^0-9a-f]/ {exit 1}' || return 0
+  [ -d "$prefix/releases/$1" ] && [ ! -L "$prefix/releases/$1" ] || fail 'existing release is not a directory'
+  cp "$prefix/releases/$1/MANIFEST.json" "$work/MANIFEST.json"
+  [ "$(hash "$work/MANIFEST.json")" = "$installed_manifest_sha" ] || fail 'existing release manifest mismatch'
+  reuse_current=true
+}
 if [ -n "$from" ]; then
   filename=$(basename "$from"); cp "$from" "$work/$filename"; cp "$sums" "$work/SHA256SUMS"
+  case "$filename" in golems-*.tar.gz) offline_version=${filename#golems-}; use_current "${offline_version%.tar.gz}" ;; esac
 else
   api=https://api.github.com/repos/EtanHey/golems/releases
   tag=$channel
@@ -159,19 +176,31 @@ else
     [ -n "$tag" ] || fail 'no published nightly release found'
   fi
   printf '%s\n' "$tag" | awk '!/^v[0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+$/ {exit 1}' || fail 'unsupported release tag'
-  download "$api/tags/$tag" "$work/release.json"
-  json_fields "$work/release.json" "$work/api.tsv"
-  [ "$(awk -F '\t' '$1=="draft" {print $2}' "$work/api.tsv")" = false ] || fail 'release is a draft'
-  [ "$(awk -F '\t' '$1=="tag_name" {print $2}' "$work/api.tsv")" = "$tag" ] || fail 'release tag mismatch'
+  use_current "${tag#v}"
   filename=golems-${tag#v}.tar.gz
-  url=https://github.com/EtanHey/golems/releases/download/$tag
-  download "$url/$filename" "$work/$filename"
-  download "$url/SHA256SUMS" "$work/SHA256SUMS"
-  download "$url/MANIFEST.json" "$work/MANIFEST.json"
+  if [ "$reuse_current" = true ]; then
+    printf '%s  %s\n%s  MANIFEST.json\n' "$installed_tarball_sha" "$filename" "$installed_manifest_sha" > "$work/SHA256SUMS"
+  else
+    download "$api/tags/$tag" "$work/release.json"
+    json_fields "$work/release.json" "$work/api.tsv"
+    [ "$(awk -F '\t' '$1=="draft" {print $2}' "$work/api.tsv")" = false ] || fail 'release is a draft'
+    [ "$(awk -F '\t' '$1=="tag_name" {print $2}' "$work/api.tsv")" = "$tag" ] || fail 'release tag mismatch'
+    filename=golems-${tag#v}.tar.gz
+    url=https://github.com/EtanHey/golems/releases/download/$tag
+    download "$url/$filename" "$work/$filename"
+    download "$url/SHA256SUMS" "$work/SHA256SUMS"
+    download "$url/MANIFEST.json" "$work/MANIFEST.json"
+  fi
 fi
 printf '%s\n' "$filename" | awk '!/^golems-[0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+\.tar\.gz$/ {exit 1}' || fail 'unsupported tarball filename'
-check_sum "$work/$filename" "$filename"
-tarball_sha256=$(hash "$work/$filename")
+if [ -n "$from" ] || [ "$reuse_current" = false ]; then
+  check_sum "$work/$filename" "$filename"
+  tarball_sha256=$(hash "$work/$filename")
+  [ "$reuse_current" = false ] || [ "$tarball_sha256" = "$installed_tarball_sha" ] || fail 'checksum mismatch: existing release tarball'
+else
+  tarball_sha256=$installed_tarball_sha
+fi
+if [ "$reuse_current" = false ]; then
 # Reject traversal, duplicate files, links and special entries before extraction.
 tar -tzf "$work/$filename" > "$work/members"
 awk '{sub(/^\.\//,""); if($0=="" || $0 ~ /[^A-Za-z0-9_.\/+@-]/ || $0 ~ /^\// || $0 ~ /(^|\/)\.\.?($|\/)/ || ($0 !~ /\/$/ && seen[$0]++)) exit 1}' "$work/members" || fail 'unsafe archive path'
@@ -179,6 +208,7 @@ awk '{sub(/^\.\//,""); if($0 !~ /\/$/) print}' "$work/members" | sort > "$work/a
 tar -tvzf "$work/$filename" > "$work/types"
 awk 'substr($0,1,1)!="-" && substr($0,1,1)!="d" {exit 1}' "$work/types" || fail 'unsafe archive entry type'
 if [ -n "$from" ]; then tar -xOzf "$work/$filename" MANIFEST.json > "$work/MANIFEST.json"; fi
+fi
 check_sum "$work/MANIFEST.json" MANIFEST.json
 manifest_sha256=$(hash "$work/MANIFEST.json")
 json_fields "$work/MANIFEST.json" "$work/manifest.tsv"
@@ -189,18 +219,23 @@ commit=$(awk -F '\t' '$1=="commit" {print $2}' "$work/manifest.tsv")
 case "$commit" in *[!0-9a-f]*) fail 'invalid commit' ;; esac
 awk -F '\t' '$1 ~ /^files\./ {split($1,k,"."); a[k[2],k[3]]=$2; ids[k[2]]=1} END {for(i in ids) {p=a[i,"path"]; h=a[i,"sha256"]; m=a[i,"mode"]; if(p=="" || p ~ /[^A-Za-z0-9_.\/+@-]/ || p ~ /^\// || p ~ /(^|\/)\.\.?($|\/)/ || p=="MANIFEST.json" || seen[p]++ || length(h)!=64 || h ~ /[^0-9a-f]/ || (m!="0644" && m!="0755")) exit 1; print p "\t" h "\t" m; n++} if(!n) exit 1}' "$work/manifest.tsv" > "$work/files" || fail 'invalid manifest file entries'
 { printf 'MANIFEST.json\n'; cut -f1 "$work/files"; } | sort > "$work/manifest-files"
-cmp -s "$work/archive-files" "$work/manifest-files" || fail 'archive files do not match manifest'
-mkdir "$work/payload"
-tar -xzf "$work/$filename" -C "$work/payload"
-cmp -s "$work/MANIFEST.json" "$work/payload/MANIFEST.json" || fail 'archive manifest mismatch'
+[ "$reuse_current" = true ] || cmp -s "$work/archive-files" "$work/manifest-files" || fail 'archive files do not match manifest'
+if [ "$reuse_current" = true ]; then
+  payload=$prefix/releases/$version
+else
+  payload=$work/payload
+  mkdir "$payload"
+  tar -xzf "$work/$filename" -C "$payload"
+  cmp -s "$work/MANIFEST.json" "$payload/MANIFEST.json" || fail 'archive manifest mismatch'
+fi
 verify_files() {
   [ -z "$(find "$1" -type l -print)" ] || fail 'release contains a symlink'
   awk -F '\t' '{print $2 "  " $1}' "$work/files" > "$work/file-sums"
   (cd "$1" && shasum -a 256 -c "$work/file-sums" > "$work/verify.log" 2>&1) || fail 'file checksum mismatch (release payload)'
 }
-verify_files "$work/payload"
+verify_files "$payload"
 # Validate the entire catalog before activation, hooks or client writes.
-json_fields "$work/payload/skills/catalog.json" "$work/catalog.tsv" true
+json_fields "$payload/skills/catalog.json" "$work/catalog.tsv" true
 awk -F '\t' '
   $1=="" {if($2!="object") exit 1; next}
   $1=="schema" {if($2!="1" || $3!="scalar") exit 1; schema++; next}
@@ -214,7 +249,7 @@ awk -F '\t' '
   END {if(schema!=1 || !counts["claude"] || !counts["agents"]) exit 1}
 ' "$work/catalog.tsv" > "$work/catalog" || fail 'invalid skill catalog'
 while IFS="$(printf '\t')" read -r client name; do
-  [ -f "$work/payload/skills/golem-powers/$name/SKILL.md" ] || fail "skill catalog entry has no SKILL.md: $name"
+  [ -f "$payload/skills/golem-powers/$name/SKILL.md" ] || fail "skill catalog entry has no SKILL.md: $name"
 done < "$work/catalog"
 # GNU -T and BSD -h both replace the symlink itself, including directory targets.
 atomic_move() { mv -fT "$1" "$2" 2> "$work/mv-error" || mv -fh "$1" "$2"; }
@@ -243,7 +278,7 @@ replay_prune() {
   atomic_move "$work/release-history" "$prefix/release-history"
   rm "$prefix/release-prune-plan"
 }
-# Recovery is independent of activation; the ordinary already-current check stays unchanged.
+# Recovery is independent of activation and runs on already-current retries too.
 replay_prune
 destination=$prefix/releases/$version
 if [ -e "$destination" ] || [ -L "$destination" ]; then
@@ -259,11 +294,10 @@ else
 fi
 already=false
 [ "$(readlink "$prefix/current" 2>/dev/null || :)" != "releases/$version" ] || already=true
-if [ "$already" = true ] && [ "$replace" = false ]; then printf 'golems %s already current\ncommit: %s\ntarball sha256: %s\n' "$version" "$commit" "$tarball_sha256"; exit 0; fi
 # Client hooks stay pinned to verified releases. Fail before other host writes
 # if a client receipt cannot be interpreted or its runtime is unavailable.
 hook_source='' hook_receipt=$HOME/.claude/hooks/golems-hooks-release.json
-if [ -e "$hook_receipt" ] || [ -L "$hook_receipt" ]; then
+if [ "$already" = false ] && { [ -e "$hook_receipt" ] || [ -L "$hook_receipt" ]; }; then
   [ ! -L "$HOME/.claude/hooks" ] && [ ! -L "$hook_receipt" ] && [ -f "$hook_receipt" ] || fail 'client hook receipt must be a regular file in a regular hooks directory'
   json_fields "$hook_receipt" "$work/hooks.tsv"
   [ "$(awk -F '\t' '$1=="private_gate" {print $2}' "$work/hooks.tsv")" = 'skipped (client host)' ] || fail 'invalid client hook receipt'
@@ -285,6 +319,67 @@ if [ -e "$hook_receipt" ] || [ -L "$hook_receipt" ]; then
   fi
   hooks_pending=false
 fi
+if [ "$already" = false ] && [ -z "$hook_source" ]; then
+  printf '{"version":"%s","commit":"%s","channel":"%s","installed_at":"%s","tarball_sha256":"%s","manifest_sha256":"%s"}\n' "$version" "$commit" "$channel" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tarball_sha256" "$manifest_sha256" > "$work/release.json"
+  ln -s "releases/$version" "$work/current"
+  atomic_move "$work/current" "$prefix/current"
+  atomic_move "$work/release.json" "$prefix/release.json"
+fi
+# Run the verified candidate's rules, including on an already-current retry.
+# Older payloads predate this phase protocol; preserve downgrade compatibility.
+if awk '/^# GOLEMS_LINK_PHASE_PROTOCOL=1$/ {found=1} END {exit !found}' "$destination/scripts/release/install.sh"; then
+  GOLEMS_INSTALL_PHASE=reconcile-skills sh "$destination/scripts/release/install.sh" "$prefix" "$work" "$replace"
+else
+  reconcile_skills
+fi
+if [ "$already" = true ] && [ "$replace" = false ]; then
+  printf 'golems %s already current\ncommit: %s\ntarball sha256: %s\n' "$version" "$commit" "$tarball_sha256"
+  exit 0
+fi
+for cli in pr-watch golems-cli; do
+  [ ! -e "$prefix/bin/$cli" ] || [ -f "$prefix/bin/$cli" ] || fail "invalid CLI path: $cli"
+  cat > "$work/$cli" <<'WRAPPER'
+#!/bin/sh
+set -eu
+prefix=$(CDPATH='' cd -P "$(dirname "$0")/.." && pwd)
+case "$(basename "$0")" in
+  pr-watch) exec "$prefix/current/scripts/pr-watch" "$@" ;;
+  golems-cli)
+    if [ "${1-}" = update ]; then shift; exec sh "$prefix/current/scripts/release/install.sh" --prefix "$prefix" "$@"; fi
+    exec bun "$prefix/current/packages/golem-skills/src/index.ts" "$@" ;;
+esac
+WRAPPER
+  chmod 755 "$work/$cli"; atomic_move "$work/$cli" "$prefix/bin/$cli"
+done
+if [ "$already" = false ]; then
+  { printf '%s\n' "$version"; [ ! -f "$prefix/release-history" ] || cat "$prefix/release-history"; } | awk '!seen[$0]++' > "$work/history"
+  : > "$work/release-prune-plan"
+  retained=0
+  while IFS= read -r old; do
+    printf '%s\n' "$old" | awk 'length($0)!=18 || !/^[0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+$/ {exit 1}' || fail 'invalid release history'
+    retained=$((retained + 1))
+    if [ "$preserve_releases" = true ] || [ "$retained" -le 3 ] || [ "$prefix/releases/$old" = "$hook_source" ]; then
+      printf 'keep\t%s\n' "$old" >> "$work/release-prune-plan"
+    else
+      printf 'prune\t%s\n' "$old" >> "$work/release-prune-plan"
+    fi
+  done < "$work/history"
+  atomic_move "$work/release-prune-plan" "$prefix/release-prune-plan"
+  replay_prune
+fi
+# shellcheck disable=SC2016 # The PATH hint intentionally prints a literal $PATH.
+case :${PATH-}: in *:"$prefix/bin":*) ;; *) printf 'Add to PATH: export PATH="%s/bin:$PATH"\n' "$prefix" ;; esac
+printf 'golems %s installed (%s)\ncommit: %s\ntarball sha256: %s\n' "$version" "$channel" "$commit" "$tarball_sha256"
+receipt_writer=$prefix/current/scripts/skills-sync-receipt.mjs
+if command -v node >/dev/null 2>&1 && [ -f "$receipt_writer" ]; then
+  if ! node "$receipt_writer" emit release-channel auto "$prefix/current" "$prefix"; then
+    printf '%s\n' 'SKILLS-SYNC RECEIPT FAILED (install succeeded)' >&2
+  fi
+else
+  printf '%s\n' 'skills-sync receipt: unavailable (node or writer missing)'
+fi
+}
+reconcile_skills() {
 link_skill() {
   link=$1 target=$2 adopted_sync=false
   if [ -L "$link" ]; then
@@ -377,53 +472,14 @@ elif [ -d "$HOME/.codex/skills" ] && [ ! -L "$HOME/.codex/skills" ]; then
     link_skill "$HOME/.codex/skills/$name" "$HOME/.agents/skills/$name" true
   done < "$work/client-catalog"
 elif [ "$(readlink "$HOME/.codex/skills" 2>/dev/null || :)" != "$HOME/.agents/skills" ]; then printf 'Keeping existing Codex skills path %s\n' "$HOME/.codex/skills"; fi
-for cli in pr-watch golems-cli; do
-  [ ! -e "$prefix/bin/$cli" ] || [ -f "$prefix/bin/$cli" ] || fail "invalid CLI path: $cli"
-  cat > "$work/$cli" <<'WRAPPER'
-#!/bin/sh
-set -eu
-prefix=$(CDPATH='' cd -P "$(dirname "$0")/.." && pwd)
-case "$(basename "$0")" in
-  pr-watch) exec "$prefix/current/scripts/pr-watch" "$@" ;;
-  golems-cli)
-    if [ "${1-}" = update ]; then shift; exec sh "$prefix/current/scripts/release/install.sh" --prefix "$prefix" "$@"; fi
-    exec bun "$prefix/current/packages/golem-skills/src/index.ts" "$@" ;;
-esac
-WRAPPER
-  chmod 755 "$work/$cli"; atomic_move "$work/$cli" "$prefix/bin/$cli"
-done
-if [ "$already" = false ]; then
-  if [ -z "$hook_source" ]; then
-    printf '{"version":"%s","commit":"%s","channel":"%s","installed_at":"%s","tarball_sha256":"%s","manifest_sha256":"%s"}\n' "$version" "$commit" "$channel" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tarball_sha256" "$manifest_sha256" > "$work/release.json"
-    ln -s "releases/$version" "$work/current"
-    atomic_move "$work/current" "$prefix/current"
-    atomic_move "$work/release.json" "$prefix/release.json"
-  fi
-  { printf '%s\n' "$version"; [ ! -f "$prefix/release-history" ] || cat "$prefix/release-history"; } | awk '!seen[$0]++' > "$work/history"
-  : > "$work/release-prune-plan"
-  retained=0
-  while IFS= read -r old; do
-    printf '%s\n' "$old" | awk 'length($0)!=18 || !/^[0-9][0-9][0-9][0-9]\.[0-9][0-9]\.[0-9][0-9]-[0-9a-f]+$/ {exit 1}' || fail 'invalid release history'
-    retained=$((retained + 1))
-    if [ "$preserve_releases" = true ] || [ "$retained" -le 3 ] || [ "$prefix/releases/$old" = "$hook_source" ]; then
-      printf 'keep\t%s\n' "$old" >> "$work/release-prune-plan"
-    else
-      printf 'prune\t%s\n' "$old" >> "$work/release-prune-plan"
-    fi
-  done < "$work/history"
-  atomic_move "$work/release-prune-plan" "$prefix/release-prune-plan"
-  replay_prune
-fi
-# shellcheck disable=SC2016 # The PATH hint intentionally prints a literal $PATH.
-case :${PATH-}: in *:"$prefix/bin":*) ;; *) printf 'Add to PATH: export PATH="%s/bin:$PATH"\n' "$prefix" ;; esac
-printf 'golems %s installed (%s)\ncommit: %s\ntarball sha256: %s\n' "$version" "$channel" "$commit" "$tarball_sha256"
-receipt_writer=$prefix/current/scripts/skills-sync-receipt.mjs
-if command -v node >/dev/null 2>&1 && [ -f "$receipt_writer" ]; then
-  if ! node "$receipt_writer" emit release-channel auto "$prefix/current" "$prefix"; then
-    printf '%s\n' 'SKILLS-SYNC RECEIPT FAILED (install succeeded)' >&2
-  fi
-else
-  printf '%s\n' 'skills-sync receipt: unavailable (node or writer missing)'
-fi
 }
-main "$@"
+# GOLEMS_LINK_PHASE_PROTOCOL=1
+# Internal phase: the parent holds the lock and has verified payload and catalog.
+if [ "${GOLEMS_INSTALL_PHASE-}" = reconcile-skills ]; then
+  set -eu
+  prefix=$1 work=$2 replace=$3
+  atomic_move() { mv -fT "$1" "$2" 2> "$work/mv-error" || mv -fh "$1" "$2"; }
+  reconcile_skills
+else
+  main "$@"
+fi
