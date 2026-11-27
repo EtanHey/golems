@@ -55,6 +55,8 @@ def cli(script, work, finding, tile_count=20):
 
 
 T_COMPAT_CASES = [
+    ('original-unit-T1', 'T1: panel open.', 2),
+    ('original-unit-T2', 'T2: panel open.', 2),
     ('original-7', 'T0: panel open. T1: panel open. T2-T19: same layout.', 20),
     ('original-8', 'tile 0 and T3: panel open.', 20),
     ('original-9', 'tile 4: the T3 Code sidebar is open.', 20),
