@@ -1,0 +1,22 @@
+{
+  "specimen": "14-t3-lead-delegate",
+  "expect": "PASS",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "synthetic-session",
+    "transcript_path": "",
+    "cwd": "@APEX_ROOT@",
+    "tool_name": "mcp__t3-code__delegate_task",
+    "tool_input": {
+      "target": {
+        "providerInstanceId": "claudeAgent",
+        "model": "claude-fable-5-2"
+      },
+      "task": "Owner-requested advisor"
+    }
+  },
+  "context": {
+    "threadId": "thread:lead:fixture"
+  },
+  "action_contains": "delegate_task"
+}

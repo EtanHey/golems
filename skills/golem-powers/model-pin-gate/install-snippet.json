@@ -1,7 +1,7 @@
 {
-  "target": "hooks.PreToolUse[matcher=Task|Agent|Workflow|mcp__cmux(layer)?__(spawn_agent|dispatch_to_agent|new_split)]",
+  "target": "hooks.PreToolUse[matcher=Task|Agent|Workflow|mcp__t3[-_]code__delegate_task|mcp__cmux(layer)?__(spawn_agent|dispatch_to_agent|new_split)]",
   "entry": {
-    "matcher": "Task|Agent|Workflow|mcp__cmux(layer)?__(spawn_agent|dispatch_to_agent|new_split)",
+    "matcher": "Task|Agent|Workflow|mcp__t3[-_]code__delegate_task|mcp__cmux(layer)?__(spawn_agent|dispatch_to_agent|new_split)",
     "hooks": [
       {
         "type": "command",

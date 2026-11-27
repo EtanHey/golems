@@ -1,0 +1,23 @@
+{
+  "specimen": "15-t3-worker-delegate",
+  "expect": "FLAG",
+  "payload": {
+    "hook_event_name": "PreToolUse",
+    "session_id": "synthetic-session",
+    "transcript_path": "",
+    "cwd": "@WORKTREE_ROOT@",
+    "tool_name": "mcp__t3_code__delegate_task",
+    "tool_input": {
+      "target": {
+        "providerInstanceId": "claudeAgent",
+        "model": "claude-fable-5-2"
+      },
+      "task": "Owner-requested advisor"
+    }
+  },
+  "context": {
+    "threadId": "thread:delegated-task:fixture"
+  },
+  "action_contains": "delegate_task",
+  "violation": "MODELPIN_FABLE_BELOW_APEX"
+}
