@@ -6,7 +6,6 @@ import os
 import re
 import subprocess
 import time
-from .fresh_temp import FreshTemp, fresh_operand, is_temp_root
 
 _SHELL_VAR_RE = re.compile(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))")
 _REGENERABLE_BUILD_DIRS = frozenset({
@@ -17,9 +16,6 @@ _REGENERABLE_BUILD_DIRS = frozenset({
 
 def _expand_known_vars(value: str, variables: dict[str, str], shell_var_re) -> tuple[str, bool]:
     """Expand known simple variables; return (literal prefix, fully resolved)."""
-    if fresh_operand(value, variables):
-        match = shell_var_re.fullmatch(value)
-        return variables[match.group(1) or match.group(2)], True
     out = []
     cursor = 0
     while cursor < len(value):
@@ -36,8 +32,6 @@ def _expand_known_vars(value: str, variables: dict[str, str], shell_var_re) -> t
         replacement = variables.get(name)
         if replacement is None:
             return "".join(out), False
-        if isinstance(replacement, FreshTemp) and not fresh_operand(value, variables):
-            return "", False  # no suffix/glob/parent proof for an unknown leaf
         out.append(replacement)
         cursor = match.end()
     return "".join(out), True
@@ -336,8 +330,6 @@ def _rm_target_reason(
     assume_directory: bool = False,
     allow_ignored_directory: bool = False,
 ) -> str | None:
-    if fresh_operand(target, variables):
-        return None
     literal_parts = [part for part in target.split(os.sep) if part]
     if ".." in literal_parts and not protected_only:
         return f"rm relative parent target too broad: {target}"
@@ -367,7 +359,7 @@ def _rm_target_reason(
     # initial/current checkout. Resolve aliases for identity and bound descendant
     # probing to the container; keep the nested-fixture breadth boundary.
     physical = os.path.realpath(resolved)
-    if is_temp_root(physical, variables):
+    if _is_temp_root(physical, variables):
         return "rm targeting temp root; name a child path instead"
     # rm/default find unlink the link itself; directory-traversing tools must
     # evaluate its physical target even without a trailing slash.
@@ -476,3 +468,26 @@ def _rm_allows_ignored_directory(segments):
     return not any(
         word in {'for', 'while', 'until', 'select', 'repeat'}
         for words, _before, _after in segments for word in words)
+
+
+def _is_temp_root(path, variables):
+    """Root identity, including APFS case aliases and macOS temp firmlinks."""
+    roots = ('/tmp', '/private/tmp', '/var/tmp', '/private/var/tmp',
+             os.environ.get('TMPDIR'), variables.get('TMPDIR'))
+    if any(root and os.path.isabs(root) and _same_path(path, root) for root in roots):
+        return True
+    return bool(re.fullmatch(r'/(?:private/)?var/folders/[^/]+/[^/]+/t',
+                             os.path.realpath(path).casefold()))
+
+
+def _rmdir_temp_root_reason(words, position, cwd, variables):
+    """Keep rmdir's existing child policy; add only the temp-root refusal."""
+    if os.path.basename(words[position]) != 'rmdir':
+        return None
+    for target in words[position + 1:]:
+        expanded, complete = _expand_known_vars(target, variables, _SHELL_VAR_RE)
+        if complete and expanded and not expanded.startswith('-'):
+            path = os.path.realpath(os.path.join(cwd, expanded))
+            if _is_temp_root(path, variables):
+                return 'rmdir targeting temp root; name a child path instead'
+    return None

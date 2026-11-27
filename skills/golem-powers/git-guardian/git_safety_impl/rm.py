@@ -11,11 +11,10 @@ import time
 from functools import lru_cache
 
 from . import shell_parse, branch_move, move_history
-from .fresh_temp import FreshTemp, fresh_value, fresh_operand, collapse_assignments, has_literal_substitution
 from .trash import trash_move, literal_trash_syntax
 from .move_glob import move_sources_reason
 from .paths import (
-    _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason,
+    _expand_tilde, _is_bare_repo, _bare_repo_ancestor, _created_target_reason, _rmdir_temp_root_reason,
     _rm_exact_target_reason, _rm_allows_ignored_directory,
 )
 
@@ -623,17 +622,11 @@ def _rm_reason_in_words(
             if assignment is None:
                 break
             expanded, complete = api["_expand_known_vars"](assignment.group(2), local_variables)
-            name = assignment.group(1)
-            fresh = None  # wrapper-local substitutions retain the existing verdict
-            if isinstance(local_variables.get(name), FreshTemp):
-                local_variables[name] = None  # reassignment revokes freshness
-            elif fresh is not None:
-                local_variables[name] = fresh
-            elif complete:
+            if complete:
                 value, complete = _expand_tilde(expanded, local_variables)
-                local_variables[name] = value if complete else None
+                local_variables[assignment.group(1)] = value if complete else None
             else:
-                local_variables[name] = None
+                local_variables[assignment.group(1)] = None
             nested += 1
         return _rm_reason_in_words(
             api,
@@ -896,21 +889,8 @@ def _rm_reason_in_words(
             return reason
         return api["_rm_target_reason"](destination, cwd, argument_variables, protected_cwd, follow_symlinks=True)
 
-    if command_name == "rmdir":
-        if (any(fresh_operand(arg, argument_variables) for arg in words[position + 1:])
-                and any(arg == '--parents' or (arg.startswith('-') and not arg.startswith('--') and 'p' in arg[1:])
-                        for arg in words[position + 1:])):
-            return "rmdir parent traversal cannot be evaluated safely"
-        for target in words[position + 1:]:
-            if not target.startswith('-'):
-                reason = _created_target_reason(api, target, cwd, argument_variables, _created_paths)
-                reason = reason or api["_rm_target_reason"](target, cwd, argument_variables, protected_cwd)
-                if reason:
-                    return reason
-        return None
-
     if command_name != "rm":
-        return branch_move.checked_out_branch_move_reason(api, words, position, cwd, argument_variables, depth=_depth, git_environment=variables)
+        return _rmdir_temp_root_reason(words, position, cwd, argument_variables) or branch_move.checked_out_branch_move_reason(api, words, position, cwd, argument_variables, depth=_depth, git_environment=variables)
 
     arguments = words[position + 1:]
     flags = [word for word in arguments if word.startswith("-") and word != "-"]
@@ -923,9 +903,6 @@ def _rm_reason_in_words(
     if dynamic_input:
         return "rm target supplied dynamically by xargs"
     for target in targets:
-        if fresh_operand(target, argument_variables) and any(
-                flag == '--force' or (not flag.startswith('--') and 'f' in flag[1:]) for flag in flags):
-            return "rm forced recursive cleanup of symbolic mktemp target is not allowed"
         reason = _created_target_reason(api, target, cwd, argument_variables, _created_paths)
         if reason:
             return reason
@@ -963,8 +940,6 @@ def is_dangerous_rm(
         )
         return (True, "rm command cannot be parsed safely") if direct_rm else (False, None)
 
-    fresh_enabled = not has_literal_substitution(active)
-    tokens = collapse_assignments(tokens)
     segments = []
     segment = []
     preceding_operator = None
@@ -1010,25 +985,18 @@ def is_dangerous_rm(
             expanded, complete = api["_expand_known_vars"](
                 assignment.group(2), local_variables
             )
-            name = assignment.group(1)
-            fresh = (fresh_value(assignment.group(2), local_variables, api["_expand_known_vars"]) if fresh_enabled else None)
-            if isinstance(local_variables.get(name), FreshTemp):
-                local_variables[name] = None  # reassignment revokes freshness
-            elif fresh is not None:
-                local_variables[name] = fresh
-            elif complete:
+            if complete:
                 value, complete = _expand_tilde(expanded, local_variables)
-                local_variables[name] = value if complete else None
+                local_variables[assignment.group(1)] = value if complete else None
             else:
-                local_variables[name] = None
+                local_variables[assignment.group(1)] = None
             assignments.append((assignment.group(1), local_variables[assignment.group(1)]))
             position += 1
         move_history.note_segment(words, position, current, local_variables, operator_before, operator_after)
         if position == len(words):
             if (
                 control_prefix_seen
-                or operator_before in {"||", "|", "|&", "&"}
-                or operator_after in {"|", "|&", "&"}
+                or operator_before == "||"
                 or (operator_before == "&&" and operator_after != "&&")
             ):
                 # A condition may execute the assignment; retain its unknown
@@ -1041,11 +1009,6 @@ def is_dangerous_rm(
             continue
 
         command_name = os.path.basename(words[position])
-        if command_name in {"unset", "read"}:
-            for name in words[position + 1:]:
-                if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name):
-                    variables[name] = None
-            continue
         if command_name in {"export", "readonly", "declare", "typeset"}:
             for word in words[position + 1:]:
                 assignment = assignment_re.match(word)
@@ -1058,10 +1021,8 @@ def is_dangerous_rm(
                     value, complete = _expand_tilde(expanded, argument_variables)
                 else:
                     value = None
-                name = assignment.group(1)
-                value = None if isinstance(variables.get(name), FreshTemp) else value
-                variables[name] = value if complete else None
-                local_variables[name] = value if complete else None
+                variables[assignment.group(1)] = value if complete else None
+                local_variables[assignment.group(1)] = value if complete else None
             continue
         if command_name == "popd":
             current = ""
@@ -1113,8 +1074,4 @@ def is_dangerous_rm(
         )
         if reason:
             return True, reason
-        if '$' in command_name or '`' in command_name:
-            for name, value in variables.items():
-                if isinstance(value, FreshTemp):
-                    variables[name] = None
     return False, None
