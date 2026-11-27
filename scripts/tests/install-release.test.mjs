@@ -35,6 +35,39 @@ function install(dir, extra = [], tarball = release.tarball, sums = join(root, '
 }
 const ok = result => { expect(result.stderr).toBe(''); expect(result.status).toBe(0); };
 const catalog = () => JSON.parse(readFileSync(join(repo, 'skills/catalog.json'))).roots;
+for (const previous of [false, true]) test(`link failure retains activation until a writable retry completes (previous release: ${previous})`, () => {
+  const dir = home(), prefix = join(dir, '.golems');
+  if (previous) ok(install(dir));
+  const current = join(prefix, 'current'), receipt = join(prefix, 'release.json'), history = join(prefix, 'release-history');
+  const before = previous ? [readlinkSync(current), readFileSync(receipt, 'utf8'), readFileSync(history, 'utf8')] : null;
+  const next = previous ? upgrade() : release;
+  const sync = join(prefix, 'skills/golem-powers/pr-loop'), skills = join(dir, '.claude/skills');
+  mkdirSync(sync, { recursive: true }); writeFileSync(join(sync, 'SKILL.md'), 'sync skill');
+  mkdirSync(skills, { recursive: true });
+  if (previous) rmSync(join(skills, 'pr-loop'));
+  symlinkSync(sync, join(skills, 'pr-loop'));
+  chmodSync(skills, 0o555);
+  let failed;
+  try { failed = install(dir, [], next.tarball, join(dirname(next.tarball), 'SHA256SUMS')); }
+  finally { chmodSync(skills, 0o755); }
+  expect(failed.status).not.toBe(0);
+  expect(failed.stderr).toContain('Permission denied');
+  if (previous) {
+    expect([readlinkSync(current), readFileSync(receipt, 'utf8'), readFileSync(history, 'utf8')]).toEqual(before);
+  } else {
+    expect(existsSync(current)).toBe(false);
+    expect(existsSync(receipt)).toBe(false);
+    expect(existsSync(history)).toBe(false);
+    expect(existsSync(join(prefix, 'bin/golems-cli'))).toBe(false);
+  }
+  ok(install(dir, [], next.tarball, join(dirname(next.tarball), 'SHA256SUMS')));
+  expect(readlinkSync(current)).toBe(`releases/${next.version}`);
+  expect(readlinkSync(join(skills, 'pr-loop'))).toBe(join(prefix, 'current/skills/golem-powers/pr-loop'));
+  expect(existsSync(join(skills, 'pr-loop/SKILL.md'))).toBe(true);
+  expect(lstatSync(join(prefix, 'bin/golems-cli')).mode & 0o777).toBe(0o755);
+  expect(readFileSync(history, 'utf8').split('\n')[0]).toBe(next.version);
+  expect(JSON.parse(readFileSync(receipt)).version).toBe(next.version);
+});
 test('fresh install links exactly the per-client catalog, never support directories', () => {
   const dir = home(); ok(install(dir));
   for (const [client, names] of Object.entries(catalog())) {

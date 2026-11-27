@@ -125,7 +125,8 @@ not release signatures. Payload paths use P1's ASCII path layout.
 `releases/<version>/`; `current` is replaced atomically using GNU mv -T or BSD
 mv -h. An install lock refuses overlapping runs. Same-version runs verify the
 installed manifest and payload hashes, reconcile skill links, print "already current", and leave metadata untouched. They skip
-asset downloads, extraction and hook reinstallation; nightly still resolves the
+asset downloads, extraction and hook reinstallation; expected hashes come from
+the local `release.json`, not downloaded checksums. Nightly still resolves the
 current tag through the API. Offline retries also verify the supplied tarball
 and checksums. The current release and
 two previous installed versions are retained; pruning follows the install history,
@@ -161,10 +162,11 @@ Existing files/directories and foreign links are reported and kept. Links that
 resolve into a golems checkout's `skills/` (including relative and worktree links)
 are replaced only with `--replace-checkout-links`; links resolving into another
 repo stay untouched even when reached through a golems symlink. The flag also
-works on a same-version run. After activation, installers with link-phase
+works on a same-version run. Installers with link-phase
 protocol 1 run the verified new payload's reconciliation rules under the existing
-install lock, without a second install or download. Older payloads use the
-launching installer's rules. Installers released before this protocol need one
+install lock, without a second install or download. Without a client hook receipt,
+activation and release metadata follow successful reconciliation and CLI wrapper
+creation. Older payloads use the launching installer's rules. Installers released before this protocol need one
 run of the new installer to gain the handoff behaviour. Updates refresh
 release-owned links and remove
 retired entries from the Claude and agents roots only when they resolve into

@@ -292,6 +292,7 @@ else
   done
   mv "$work/payload" "$destination"
 fi
+[ -f "$destination/scripts/release/install.sh" ] || fail 'release payload is missing scripts/release/install.sh'
 already=false
 [ "$(readlink "$prefix/current" 2>/dev/null || :)" != "releases/$version" ] || already=true
 # Client hooks stay pinned to verified releases. Fail before other host writes
@@ -319,12 +320,6 @@ if [ "$already" = false ] && { [ -e "$hook_receipt" ] || [ -L "$hook_receipt" ];
   fi
   hooks_pending=false
 fi
-if [ "$already" = false ] && [ -z "$hook_source" ]; then
-  printf '{"version":"%s","commit":"%s","channel":"%s","installed_at":"%s","tarball_sha256":"%s","manifest_sha256":"%s"}\n' "$version" "$commit" "$channel" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tarball_sha256" "$manifest_sha256" > "$work/release.json"
-  ln -s "releases/$version" "$work/current"
-  atomic_move "$work/current" "$prefix/current"
-  atomic_move "$work/release.json" "$prefix/release.json"
-fi
 # Run the verified candidate's rules, including on an already-current retry.
 # Older payloads predate this phase protocol; preserve downgrade compatibility.
 if awk '/^# GOLEMS_LINK_PHASE_PROTOCOL=1$/ {found=1} END {exit !found}' "$destination/scripts/release/install.sh"; then
@@ -351,6 +346,12 @@ esac
 WRAPPER
   chmod 755 "$work/$cli"; atomic_move "$work/$cli" "$prefix/bin/$cli"
 done
+if [ "$already" = false ] && [ -z "$hook_source" ]; then
+  printf '{"version":"%s","commit":"%s","channel":"%s","installed_at":"%s","tarball_sha256":"%s","manifest_sha256":"%s"}\n' "$version" "$commit" "$channel" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tarball_sha256" "$manifest_sha256" > "$work/release.json"
+  ln -s "releases/$version" "$work/current"
+  atomic_move "$work/current" "$prefix/current"
+  atomic_move "$work/release.json" "$prefix/release.json"
+fi
 if [ "$already" = false ]; then
   { printf '%s\n' "$version"; [ ! -f "$prefix/release-history" ] || cat "$prefix/release-history"; } | awk '!seen[$0]++' > "$work/history"
   : > "$work/release-prune-plan"
