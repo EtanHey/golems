@@ -8,9 +8,10 @@
 - Target skill's `evals/evals.json` exists with eval cases
 - `source ~/.claude/skills/cmux-agents/scripts/agent-functions.sh` loaded
 - Auth: every eval and judge call bills an API key through the skill-creator cell, never the
-  machine login ([SKILL.md § Eval Auth](../SKILL.md#eval-auth--api-keys-never-a-login)). A visible
-  pane (Steps 3–4) runs on the login, so it is a login run: record why in the result as
-  `oauth_reason`, or run that arm headless in the cell instead.
+  machine login ([SKILL.md § Eval Auth](../SKILL.md#eval-auth--api-keys-never-a-login)). Default:
+  run both arms headless in the cell (`--auth api-key`). A visible pane (Steps 3–4) runs on the
+  login, so it is allowed only as an exception: when the key path cannot do the job, say why
+  before launching and record it in the result (`"auth": "oauth"` plus `"oauth_reason"`, Step 8).
 
 ## Workflow
 
@@ -34,7 +35,8 @@ git worktree add -b "${SANDBOX}" "../${SANDBOX}" HEAD
 
 ### Step 3: Run WITHOUT Skill (Baseline)
 
-For visible Claude eval lanes, use `claude.judgment` through the managed bare launcher.
+Default: run this arm headless in the cell (see the bounded headless tests under Step 4).
+Only for a recorded login exception (Prerequisites), a visible lane: use `claude.judgment` through the managed bare launcher.
 Resolve its target from the golems checkout with
 `node scripts/model-roles.mjs claude.judgment --field model`; verify the actual pane model.
 Use `/cmux-agents` to launch a worker in the prepared sandbox with a file-backed brief:
@@ -129,6 +131,7 @@ cat > "$RESULT_PATH" << 'EOF'
   "date": "YYYY-MM-DD",
   "eval_id": N,
   "skill": "<name>",
+  "auth": "api-key",
   "provenance": [
     {
       "agent_or_arm": "baseline",
@@ -157,6 +160,9 @@ EOF
 node skills/golem-powers/skill-creator/evals/eval-provenance-check.mjs \
   --require-comparable "$RESULT_PATH"
 ```
+
+`auth` is `"api-key"` for cell runs. A login exception sets `"auth": "oauth"` and adds
+`"oauth_reason": "<why the key path could not be used>"`; a result without it is not a valid login run.
 
 Also `brain_store` the results for cross-session tracking.
 

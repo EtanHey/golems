@@ -154,7 +154,8 @@ Carry this one-line instruction in the body:
   record carries `auth: "api-key"` and the list-price `usd`.
 
 A bare `claude -p` or `codex exec` on the machine login bills the subscription the fleet runs on.
-A login run needs a stated reason, which the record carries: Claude `--auth oauth --oauth-reason <why>`
+A login run is an exception, only when the key path cannot do the job, and it needs that reason stated
+up front and carried in the record: Claude `--auth oauth --oauth-reason <why>`
 (`oauth_reason`), Codex subscription mode with `--subscription-reason <why>` (`subscription_reason`).
 The other way round holds too: no seat, worker or reviewer runs on a key; fleet work stays on the
 login (Etan's ruling, 2026-11-25: the API keys are paid credits, not for fleet work).
