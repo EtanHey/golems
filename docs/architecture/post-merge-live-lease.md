@@ -24,6 +24,11 @@ PR whose worktree matched when `--lease-pr` was missing; it now refuses to run w
 - The lease PR can't be the PR you just merged; it has to still be open. If you have none, open a small draft PR for real
   follow-up work and use that.
 - The row only checks a force-push command against the hook. It never runs the push, so the lease PR is not modified.
+- Order (2026-11-26): arguments, then the lease lookup and validation (read-only `gh`/`git`), then the hook install and
+  trust check, then the live rows. Without a valid lease nothing on the machine changes.
+- A failed live-rows run still prints the receipt URL (or says no receipt was posted by this run), runs freshness and
+  retention, then exits 1 with `live rows FAILED (exit N); <receipt>; freshness: <line>`. Before this, the script stopped
+  at `bash failed: null` and printed nothing (#1366's receipt, 2026-11-26).
 
 ## Options considered
 1. **Keep the auto-pick, document pinning** (this note): zero code risk tonight, but relies on leads reading it.
@@ -36,5 +41,6 @@ GitHub author), and an explicit flag is the cheapest way to make the receipt det
 
 ## Verification
 - `scripts/tests/ratchet-post-merge.test.mjs`: no `--lease-pr` fails closed with no tool call; only the named PR's clean
-  exact-head worktree is accepted; dirty or mismatched worktrees are refused.
+  exact-head worktree is accepted; dirty or mismatched worktrees are refused; an invalid lease never reaches the hook
+  install; a failed live-rows run still reports its receipt, freshness and retention and exits non-zero.
 - skill-creator's `.claude/skills/verify-merge-receipts/` (TLA+ `LiveReceiptIsolated`).
