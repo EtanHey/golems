@@ -189,6 +189,14 @@ def validate_citations(item, tile_count):
                      lambda m: ' ' if re.search(r'[a-zA-Z_]', m[0]) else m[0], finding)
     finding = re.sub(r'\b[\w.-]+\.(?:jpe?g|png|gif|webp|bmp|heic|avif|tiff?)\b',
                      ' ', finding, flags=re.I)
+    # Readers abbreviate tile indexes as T0 / T2-T19. Only citation-shaped
+    # tokens qualify; an application name such as "T3 Code" remains prose.
+    # These are indexes, never seconds, so no decoded-PTS lookup is involved.
+    finding = re.sub(
+        r'(?<![\w])T(-?\d+(?:\.\d+)?)(?:\s*(?:-|–|\.\.|to)\s*T?(-?\d+))?'
+        r'(?=\s*(?:[:;,)./–-]|and\b|to\b|$))',
+        lambda m: 'tile ' + m[1] + ('-' + m[2] if m[2] is not None else ''), finding)
+    finding = re.sub(r'\b(tiles?|frames?)\s+(?=tile\s+-?\d)', '', finding, flags=re.I)
     for citation in label.finditer(finding):
         prefix = finding[:citation.start()]
         if re.search(r'\b(?:\d+(?:st|nd|rd|th)|first|last|next|previous|second|third|fourth|'
@@ -220,8 +228,13 @@ def validate_citations(item, tile_count):
         match = span.match(tail)
         if not match:
             # Ordinary nouns (frame rate, frames per second, tile layout) are
-            # not citations. Number words and punctuated indexes remain invalid.
-            if re.match(r'[-#\d\[(:]|' + word_number, tail, re.I):
+            # not citations. Punctuation after a bare tile noun is prose unless
+            # it introduces an index. Still scan nested labels independently.
+            attempt = r'[-#\d\[(:]|' + word_number
+            if citation[0].lower().startswith('tile'):
+                attempt = (r'[#\d\[]|' + word_number +
+                           r'|[-(:]\s*(?:[-#\d\[]|x\s*=|' + word_number + r')')
+            if re.match(attempt, tail, re.I):
                 malformed = True
             continue
         while match:
