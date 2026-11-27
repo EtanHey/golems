@@ -263,6 +263,18 @@
       "bug_fixture": "2f4a3f8e232ae908bc6a0516b102001b8d946e3c4c9726f3b07251ca027f7688",
       "fix_fixture": "5b01f0ceda336433b74a74283513a30913967fe2cf9a7f6d1ea124f3a4ef9cda",
       "command": "node scripts/ratchet/mac/ratchet-runs-size.mjs"
+    },
+    {
+      "id": "same-command-mktemp-cleanup",
+      "metric": "real source hook: same-command mktemp cleanup, temp-root refusal, escape and durable-write controls (not installed proof)",
+      "kind": "real",
+      "runner": "mac",
+      "direction": "pass",
+      "ceiling": true,
+      "bug_sha": "f25ed72f9a504e30f275607d64b65c6807fd5468",
+      "fix_sha": "004950f3a6256d1aa65da6db2facfda8f86f1339",
+      "command": "\"${PYTHON_BIN:-python3}\" -m pytest -q -p no:cacheprovider skills/golem-powers/git-guardian/hooks/tests/test_fresh_temp.py --basetemp=docs.local/ratchet-same-command-mktemp",
+      "timeout_s": 60
     }
   ]
 }
