@@ -123,8 +123,12 @@ not release signatures. Payload paths use P1's ASCII path layout.
 
 `--prefix PATH` defaults to `~/.golems`. Releases are stored under
 `releases/<version>/`; `current` is replaced atomically using GNU mv -T or BSD
-mv -h. An install lock refuses overlapping runs. Same-version runs recheck hashes,
-print "already current", and leave metadata untouched. The current release and
+mv -h. An install lock refuses overlapping runs. Same-version runs verify the
+installed manifest and payload hashes, reconcile skill links, print "already current", and leave metadata untouched. They skip
+asset downloads, extraction and hook reinstallation; expected hashes come from
+the local `release.json`, not downloaded checksums. Nightly still resolves the
+current tag through the API. Offline retries also verify the supplied tarball
+and checksums. The current release and
 two previous installed versions are retained; pruning follows the install history,
 not lexical SHA order. A release referenced by the client hook receipt is also
 retained in the history until a later update no longer needs it. Untracked
@@ -158,7 +162,13 @@ Existing files/directories and foreign links are reported and kept. Links that
 resolve into a golems checkout's `skills/` (including relative and worktree links)
 are replaced only with `--replace-checkout-links`; links resolving into another
 repo stay untouched even when reached through a golems symlink. The flag also
-works on a same-version run. Updates refresh release-owned links and remove
+works on a same-version run. Installers with link-phase
+protocol 1 run the verified new payload's reconciliation rules under the existing
+install lock, without a second install or download. Without a client hook receipt,
+activation and release metadata follow successful reconciliation and CLI wrapper
+creation. Older payloads use the launching installer's rules. Installers released before this protocol need one
+run of the new installer to gain the handoff behaviour. Updates refresh
+release-owned links and remove
 retired entries from the Claude and agents roots only when they resolve into
 this prefix's `releases/` directory.
 Links resolving under this prefix's `skills/golem-powers/` sync tree are adopted for catalog names.
@@ -218,5 +228,5 @@ Claude/Agents/Codex skills roots, optional Gemini root, and `<prefix>/bin` CLI
 wrappers. LIVE additionally requires clean client hook status and live parity.
 Missing node/writer or receipt failure is reported and preserves the successful
 install. The validator ships without requiring node_modules. An already-current
-no-op creates no install event; W10 retries its receipt separately after verified
-sync. W10 remains default-off behind `--sync-m1` and Etan's #32 authorization.
+reconciliation creates no install event; W10 retries its receipt separately after
+verified sync. W10 remains default-off behind `--sync-m1` and Etan's #32 authorization.

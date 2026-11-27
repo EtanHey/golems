@@ -35,6 +35,60 @@ function install(dir, extra = [], tarball = release.tarball, sums = join(root, '
 }
 const ok = result => { expect(result.stderr).toBe(''); expect(result.status).toBe(0); };
 const catalog = () => JSON.parse(readFileSync(join(repo, 'skills/catalog.json'))).roots;
+for (const previous of [false, true]) test(`link failure retains activation until a writable retry completes (previous release: ${previous})`, () => {
+  const dir = home(), prefix = join(dir, '.golems');
+  if (previous) ok(install(dir));
+  const current = join(prefix, 'current'), receipt = join(prefix, 'release.json'), history = join(prefix, 'release-history');
+  const before = previous ? [readlinkSync(current), readFileSync(receipt, 'utf8'), readFileSync(history, 'utf8')] : null;
+  const next = previous ? upgrade() : release;
+  const sync = join(prefix, 'skills/golem-powers/pr-loop'), skills = join(dir, '.claude/skills');
+  mkdirSync(sync, { recursive: true }); writeFileSync(join(sync, 'SKILL.md'), 'sync skill');
+  mkdirSync(skills, { recursive: true });
+  if (previous) rmSync(join(skills, 'pr-loop'));
+  symlinkSync(sync, join(skills, 'pr-loop'));
+  chmodSync(skills, 0o555);
+  let failed;
+  try { failed = install(dir, [], next.tarball, join(dirname(next.tarball), 'SHA256SUMS')); }
+  finally { chmodSync(skills, 0o755); }
+  expect(failed.status).not.toBe(0);
+  expect(failed.stderr).toContain('Permission denied');
+  if (previous) {
+    expect([readlinkSync(current), readFileSync(receipt, 'utf8'), readFileSync(history, 'utf8')]).toEqual(before);
+  } else {
+    expect(existsSync(current)).toBe(false);
+    expect(existsSync(receipt)).toBe(false);
+    expect(existsSync(history)).toBe(false);
+    expect(existsSync(join(prefix, 'bin/golems-cli'))).toBe(false);
+  }
+  ok(install(dir, [], next.tarball, join(dirname(next.tarball), 'SHA256SUMS')));
+  expect(readlinkSync(current)).toBe(`releases/${next.version}`);
+  expect(readlinkSync(join(skills, 'pr-loop'))).toBe(join(prefix, 'current/skills/golem-powers/pr-loop'));
+  expect(existsSync(join(skills, 'pr-loop/SKILL.md'))).toBe(true);
+  expect(lstatSync(join(prefix, 'bin/golems-cli')).mode & 0o777).toBe(0o755);
+  expect(readFileSync(history, 'utf8').split('\n')[0]).toBe(next.version);
+  expect(JSON.parse(readFileSync(receipt)).version).toBe(next.version);
+});
+for (const target of ['.claude/skills/pr-loop', '.golems/current']) test(`GNU mv failure preserves its diagnostic (${target})`, () => {
+  const dir = home(), bin = join(dir, 'gnu-bin'); mkdirSync(bin);
+  for (const name of readdirSync(minimal).filter(name => name !== 'mv')) symlinkSync(join(minimal, name), join(bin, name));
+  writeFileSync(join(bin, 'mv'), `#!/bin/sh
+case "$1" in
+  --version) printf 'mv (GNU coreutils) fixture\\n'; exit 0 ;;
+  -fT)
+    if [ "$3" = "$HOME/${target}" ]; then printf 'mv: fixture Permission denied\\n' >&2; exit 1; fi
+    exec '${join(minimal, 'mv')}' '${process.platform === 'darwin' ? '-fh' : '-fT'}' "$2" "$3" ;;
+  -fh) printf "mv: invalid option -- 'h'\\n" >&2; exit 1 ;;
+  *) exec '${join(minimal, 'mv')}' "$@" ;;
+esac
+`, { mode: 0o755 });
+  const result = spawnSync('/bin/sh', [installer, '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], {
+    env: { ...process.env, HOME: dir, PATH: bin }, encoding: 'utf8',
+  });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain('fixture Permission denied');
+  expect(result.stderr).not.toContain('invalid option');
+  expect(existsSync(join(dir, '.golems/current'))).toBe(false);
+});
 test('fresh install links exactly the per-client catalog, never support directories', () => {
   const dir = home(); ok(install(dir));
   for (const [client, names] of Object.entries(catalog())) {
@@ -315,6 +369,70 @@ test('second install is a no-op, including through the installed update wrapper'
   expect(readFileSync(join(dir, '.golems/release.json'))).toEqual(metadata);
   const update = spawnSync(join(dir, '.golems/bin/golems-cli'), ['update', '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], { env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8' });
   ok(update); expect(update.stdout).toContain('already current');
+});
+test('already-current release reconciles sync links without replacing checkout links or metadata', () => {
+  const dir = home(); ok(install(dir));
+  const prefix = join(dir, '.golems'), metadata = readFileSync(join(prefix, 'release.json'));
+  // Use a real Codex root to exercise its per-entry reconciliation too.
+  rmSync(join(dir, '.codex/skills'));
+  mkdirSync(join(dir, '.codex/skills'));
+  const sync = join(prefix, 'skills/golem-powers');
+  for (const client of ['.claude', '.agents', '.codex']) {
+    const skills = join(dir, client, 'skills');
+    if (existsSync(join(skills, 'pr-loop'))) rmSync(join(skills, 'pr-loop'));
+    symlinkSync(join(sync, 'pr-loop'), join(skills, 'pr-loop'));
+    if (existsSync(join(skills, 'coach'))) rmSync(join(skills, 'coach'));
+    symlinkSync(join(dir, 'Gits/golems/skills/golem-powers/coach'), join(skills, 'coach'));
+  }
+  for (const client of ['.claude', '.agents']) symlinkSync(join(sync, 'retired'), join(dir, client, 'skills/retired'));
+  symlinkSync(join(dir, '.agents/skills/retired'), join(dir, '.codex/skills/retired'));
+  // An existing receipt must not cause an already-current run to require Node or reinstall hooks.
+  mkdirSync(join(dir, '.claude/hooks')); writeFileSync(join(dir, '.claude/hooks/golems-hooks-release.json'), '{}');
+  const bin = join(dir, 'no-download-or-extract'); mkdirSync(bin);
+  for (const name of readdirSync(minimal).filter(name => !['curl', 'tar'].includes(name))) symlinkSync(join(minimal, name), join(bin, name));
+  for (const name of ['curl', 'tar']) { writeFileSync(join(bin, name), '#!/bin/sh\nexit 98\n'); chmodSync(join(bin, name), 0o755); }
+  const result = spawnSync('/bin/sh', [installer, '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], {
+    env: { ...process.env, HOME: dir, PATH: bin }, encoding: 'utf8',
+  });
+  ok(result); expect(result.stdout).toContain('already current');
+  const pinned = spawnSync('/bin/sh', [installer, '--channel', `v${release.version}`], {
+    env: { ...process.env, HOME: dir, PATH: bin }, encoding: 'utf8',
+  });
+  ok(pinned); expect(pinned.stdout).toContain('already current');
+  for (const client of ['.claude', '.agents', '.codex']) {
+    expect(readlinkSync(join(dir, client, 'skills/pr-loop'))).toBe(client === '.codex'
+      ? join(dir, '.agents/skills/pr-loop') : join(prefix, 'current/skills/golem-powers/pr-loop'));
+    expect(readlinkSync(join(dir, client, 'skills/coach'))).toBe(join(dir, 'Gits/golems/skills/golem-powers/coach'));
+    expect(readdirSync(join(dir, client, 'skills'))).not.toContain('retired');
+  }
+  expect(readFileSync(join(prefix, 'release.json'))).toEqual(metadata);
+  // Checkout migration also stays link-only when the release is already current.
+  ok(install(dir, ['--replace-checkout-links']));
+  expect(readlinkSync(join(dir, '.claude/skills/coach'))).toBe(join(prefix, 'current/skills/golem-powers/coach'));
+  expect(readFileSync(join(prefix, 'release.json'))).toEqual(metadata);
+});
+test('upgrade uses new payload link rules instead of the running installer rules', () => {
+  const dir = home(), legacy = join(dir, 'legacy-install.sh');
+  const original = readFileSync(installer, 'utf8');
+  const adoption = '\"$prefix/skills/golem-powers/\"*) adopted_sync=true ;;';
+  // The launching generation has the handoff protocol but predates sync adoption.
+  const legacyRules = original.replace(adoption, '');
+  expect(legacyRules).not.toBe(original);
+  writeFileSync(legacy, legacyRules);
+  const sourceInstaller = join(source, 'scripts/release/install.sh');
+  const old = upgrade(() => writeFileSync(sourceInstaller, legacyRules));
+  const run = payload => spawnSync('/bin/sh', [legacy, '--from-file', payload.tarball, '--sums', join(dirname(payload.tarball), 'SHA256SUMS')], {
+    env: { ...process.env, HOME: dir, PATH: minimal }, encoding: 'utf8',
+  });
+  try {
+    ok(run(old));
+    const link = join(dir, '.claude/skills/pr-loop'); rmSync(link);
+    symlinkSync(join(dir, '.golems/skills/golem-powers/pr-loop'), link);
+    const next = upgrade(() => writeFileSync(sourceInstaller, original));
+    ok(run(next));
+    expect(readlinkSync(join(dir, '.golems/current'))).toBe(`releases/${next.version}`);
+    expect(readlinkSync(link)).toBe(join(dir, '.golems/current/skills/golem-powers/pr-loop'));
+  } finally { writeFileSync(sourceInstaller, original); git('add', '.'); git('commit', '--allow-empty', '-m', 'restore fixture installer'); }
 });
 test('prune replay recovers an actual unlink interrupted before history replacement', () => {
   const dir = home(), prefix = join(dir, '.golems'), bin = join(dir, 'bin');
