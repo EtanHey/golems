@@ -45,6 +45,44 @@ test('fresh install links exactly the per-client catalog, never support director
   expect(manifest.files.some(file => file.path === 'skills/catalog.json')).toBe(true);
   expect(manifest.files.some(file => file.path === 'launchd/named-program.mjs')).toBe(true);
 });
+for (const customPrefix of [false, true]) test(`adopts golems-sync links and retires only owned links (custom prefix: ${customPrefix})`, () => {
+  const dir = home(), prefix = join(dir, customPrefix ? 'custom-prefix' : '.golems');
+  const sync = join(prefix, 'skills/golem-powers'), foreign = join(dir, 'foreign');
+  mkdirSync(foreign); writeFileSync(join(foreign, 'sentinel'), 'foreign content');
+  for (const name of ['pr-loop', 'retired']) {
+    mkdirSync(join(sync, name), { recursive: true });
+    writeFileSync(join(sync, name, 'SKILL.md'), 'sync content');
+  }
+  // A similar prefix and a sync-tree alias to foreign content are not owned.
+  const other = `${sync}-other/retired`; mkdirSync(other, { recursive: true });
+  symlinkSync(foreign, join(sync, 'foreign-alias'));
+  for (const client of ['.claude', '.agents']) {
+    const skills = join(dir, client, 'skills'); mkdirSync(skills, { recursive: true });
+    symlinkSync(join(sync, 'pr-loop'), join(skills, 'pr-loop'));
+    symlinkSync(join(sync, 'retired'), join(skills, 'retired'));
+    symlinkSync(foreign, join(skills, 'coach'));
+    symlinkSync(join(sync, 'foreign-alias'), join(skills, 'foreign'));
+    symlinkSync(other, join(skills, 'other-prefix'));
+    symlinkSync('cycle', join(skills, 'cycle'));
+    mkdirSync(join(skills, 'orc')); writeFileSync(join(skills, 'orc/SKILL.md'), 'custom content');
+  }
+  const result = install(dir, ['--prefix', prefix]); ok(result);
+  for (const client of ['.claude', '.agents']) {
+    const skills = join(dir, client, 'skills');
+    expect(readlinkSync(join(skills, 'pr-loop'))).toBe(join(prefix, 'current/skills/golem-powers/pr-loop'));
+    expect(readdirSync(skills)).not.toContain('retired');
+    expect(result.stdout).toContain(`Adopted golems-sync link ${join(skills, 'pr-loop')}`);
+    expect(result.stdout).toContain(`Removed retired golems-sync link ${join(skills, 'retired')}`);
+    expect(readlinkSync(join(skills, 'coach'))).toBe(foreign);
+    expect(readlinkSync(join(skills, 'foreign'))).toBe(join(sync, 'foreign-alias'));
+    expect(readlinkSync(join(skills, 'other-prefix'))).toBe(other);
+    expect(readlinkSync(join(skills, 'cycle'))).toBe('cycle');
+    expect(readFileSync(join(skills, 'orc/SKILL.md'), 'utf8')).toBe('custom content');
+  }
+  expect(readFileSync(join(sync, 'retired/SKILL.md'), 'utf8')).toBe('sync content');
+  expect(readFileSync(join(sync, 'pr-loop/SKILL.md'), 'utf8')).toBe('sync content');
+  expect(readFileSync(join(foreign, 'sentinel'), 'utf8')).toBe('foreign content');
+});
 test('mixed links preserve other repos, redirects and real directories with replacement enabled', () => {
   const dir = home(), checkout = join(dir, 'Gits/golems/skills/golem-powers');
   mkdirSync(join(checkout, 'pr-loop'), { recursive: true });

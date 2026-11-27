@@ -286,11 +286,12 @@ if [ -e "$hook_receipt" ] || [ -L "$hook_receipt" ]; then
   hooks_pending=false
 fi
 link_skill() {
-  link=$1 target=$2
+  link=$1 target=$2 adopted_sync=false
   if [ -L "$link" ]; then
     old=$(readlink "$link"); [ "$old" != "$target" ] || return 0
     resolved=$(resolve_skill_link "$link") || { printf 'Keeping unresolved link %s -> %s\n' "$link" "$old"; return 0; }
     case "$resolved" in "$prefix/releases/"*) ;;
+      "$prefix/skills/golem-powers/"*) adopted_sync=true ;;
       *) if is_golems_checkout_skill "$resolved"; then
         if [ "$replace" = false ]; then printf 'Keeping checkout link %s; use --replace-checkout-links\n' "$link"; return 0; fi
       else printf 'Keeping existing link %s -> %s\n' "$link" "$old"; return 0; fi ;;
@@ -298,6 +299,7 @@ link_skill() {
   elif [ -e "$link" ]; then printf 'Keeping existing path %s\n' "$link"; return 0; fi
   ln -s "$target" "$work/skill-link"
   atomic_move "$work/skill-link" "$link"
+  if [ "$adopted_sync" = true ]; then printf 'Adopted golems-sync link %s -> %s\n' "$link" "$target"; fi
   if [ "${3-false}" = true ]; then printf 'Linked %s -> %s\n' "$link" "$target"; fi
 }
 is_golems_checkout_skill() (
@@ -339,7 +341,10 @@ for client in .claude .agents; do
     name=$(basename "$link")
     awk -v name="$name" '$0==name {found=1} END {exit !found}' "$work/client-catalog" && continue
     resolved=$(resolve_skill_link "$link") || continue
-    case "$resolved" in "$prefix/releases/"*) rm "$link"; printf 'Removed retired release link %s\n' "$link" ;; esac
+    case "$resolved" in
+      "$prefix/releases/"*) rm "$link"; printf 'Removed retired release link %s\n' "$link" ;;
+      "$prefix/skills/golem-powers/"*) rm "$link"; printf 'Removed retired golems-sync link %s\n' "$link" ;;
+    esac
   done
   while IFS= read -r name; do
     link_skill "$HOME/$client/skills/$name" "$prefix/current/skills/golem-powers/$name"
