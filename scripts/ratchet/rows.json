@@ -272,7 +272,7 @@
       "direction": "pass",
       "ceiling": true,
       "bug_sha": "016d044a199a67df2a1e424140b3ae554f712a13",
-      "fix_sha": "0dda3e01db575477cd935ea3293d5ee11b8ff7eb",
+      "fix_sha": "edb1759e554da55785e0fc900bd58dfed2a7144d",
       "command": "python3 -m pytest -q skills/golem-powers/qa-video/tests/test_tile_noun.py"
     }
   ]
