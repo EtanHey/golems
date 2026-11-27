@@ -185,17 +185,40 @@ def validate_citations(item, tile_count):
     if sheet:
         finding = '\n'.join(line.removeprefix(sheet + ':') for line in finding.splitlines())
     finding = unquoted_screen_text(finding)
+    # Slash-joined T indexes are citations, not paths. Retain only that exact
+    # token shape here; ordinary paths still cannot introduce bogus citations.
     finding = re.sub(r'''[^\s<>"'`]*[/\\][^\s<>"'`]*''',
-                     lambda m: ' ' if re.search(r'[a-zA-Z_]', m[0]) else m[0], finding)
+                     lambda m: m[0] if re.fullmatch(r'T-?\d+(?:/T-?\d+)+:?', m[0])
+                     else ' ' if re.search(r'[a-zA-Z_]', m[0]) else m[0], finding)
     finding = re.sub(r'\b[\w.-]+\.(?:jpe?g|png|gif|webp|bmp|heic|avif|tiff?)\b',
                      ' ', finding, flags=re.I)
-    # Readers abbreviate tile indexes as T0 / T2-T19. Only citation-shaped
-    # tokens qualify; an application name such as "T3 Code" remains prose.
-    # These are indexes, never seconds, so no decoded-PTS lookup is involved.
+    # A slash between two T indexes lists separate tiles. Do this before
+    # normalizing either token so it cannot become an invalid numeric fraction.
+    finding = re.sub(r'(T-?\d+(?:\.\d+)?)[ \t]*/[ \t]*(?=T-?\d+)', r'\1; ', finding)
+
+    def abbreviated(match):
+        before, after = finding[:match.start()], finding[match.end():]
+        lo, hi = match[1], match[2]
+        explicit = bool(re.search(r'\b(?:tiles?|frames?)\s*[-(:]*\s*$', before, re.I))
+        listed = bool(re.search(r'T-?\d+(?:\.\d+)?[ \t]*(?:and|[,;/])[ \t]*$', before))
+        marked = after.startswith(':')
+        # T3 is also the application name. Without an explicit tile label,
+        # colon, or numeric range/list, prefer that reading. Other labels in
+        # this line are still independently validated below.
+        if lo == '3' and hi is None and not (explicit or listed or marked):
+            return match[0]
+        position = (hi is not None or explicit or listed or marked
+                    or not before.rsplit('\n', 1)[-1].strip()
+                    or re.search(r'\bIn\s*$', before))
+        if not position:
+            return match[0]
+        return 'tile ' + lo + ('-' + hi if hi is not None else '')
+
+    # Match the whole range without a prose-dependent lookahead: a verb or
+    # parenthesis after T0-T19 must never backtrack to a lone T0 match.
     finding = re.sub(
-        r'(?<![\w])T(-?\d+(?:\.\d+)?)(?:\s*(?:-|–|\.\.|to)\s*T?(-?\d+))?'
-        r'(?=\s*(?:[:;,)./–-]|and\b|to\b|$))',
-        lambda m: 'tile ' + m[1] + ('-' + m[2] if m[2] is not None else ''), finding)
+        r'(?<![\w])T(-?\d+(?:\.\d+)?)(?:[ \t]*(?:-|–|\.\.|to)[ \t]*T?(-?\d+(?:\.\d+)?))?(?!\w)',
+        abbreviated, finding)
     finding = re.sub(r'\b(tiles?|frames?)\s+(?=tile\s+-?\d)', '', finding, flags=re.I)
     for citation in label.finditer(finding):
         prefix = finding[:citation.start()]
@@ -233,7 +256,8 @@ def validate_citations(item, tile_count):
             attempt = r'[-#\d\[(:]|' + word_number
             if citation[0].lower().startswith('tile'):
                 attempt = (r'[#\d\[]|' + word_number +
-                           r'|[-(:]\s*(?:[-#\d\[]|x\s*=|' + word_number + r')')
+                           r'|[-(:](?:\s*[-(:])*\s*(?:[-#\d\[]|x\s*=|'
+                           r'(?:index\s+|e\.g\.\s*|t)\d|eleventh\b|$|' + word_number + r')')
             if re.match(attempt, tail, re.I):
                 malformed = True
             continue
