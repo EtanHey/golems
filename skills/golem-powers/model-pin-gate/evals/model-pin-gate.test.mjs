@@ -410,3 +410,25 @@ test("T3 delegate matcher and nested pin are enforced for both MCP spellings", (
     expect(detectModelPin({ tool_name: name, tool_input: { target: { model: "claude-opus-5-5" } } }).verdict).toBe("PASS");
   }
 });
+
+
+test("delegate pin controls preserve explicit models and other providers", () => {
+  const base = { tool_name: "mcp__t3-code__delegate_task", transcript: [{ type: "assistant", message: { model: "claude-fable-5-2" } }] };
+  for (const providerInstanceId of ["codex", "codex-worker", "cursor", "antigravity"]) {
+    expect(detectModelPin({ ...base, tool_input: { target: { providerInstanceId } } }).verdict).toBe("PASS");
+  }
+  for (const providerInstanceId of ["claudeAgent", "claude-eval", "custom-claude"]) {
+    expect(detectModelPin({ ...base, tool_input: { target: { providerInstanceId, model: "claude-opus-5-5" } } }).verdict).toBe("PASS");
+  }
+  const fx = structuredClone(greens.find(fx => fx.specimen === "14-t3-lead-delegate"));
+  fx.payload.transcript = base.transcript;
+  delete fx.payload.tool_input.target;
+  expect(replay(fx).violations[0].code).toBe("MODELPIN_DELEGATE_UNPINNED");
+  expect(detectModelPin({ ...base, tool_input: {} }).violations[0].code).toBe("MODELPIN_DELEGATE_UNPINNED");
+});
+
+test("all unpinned Agent refusals name the separate T3 route", () => {
+  const result = detectModelPin({ tool_name: "Agent", transcript: [{ type: "assistant", message: { model: "claude-fable-5-2" } }], tool_input: {} });
+  expect(result.violations[0].action).toContain("delegate_task");
+  expect(result.violations[0].action).not.toContain("explicit Fable pin only");
+});

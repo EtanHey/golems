@@ -12,7 +12,7 @@ disable-model-invocation: true
 
 `model-pin-gate` is a Claude Code **PreToolUse** hook for `Task|Agent|Workflow`
 and, with the prepared settings matcher, cmux `spawn_agent`, `dispatch_to_agent`,
-repoGolem-style `new_split` launches, and T3 `delegate_task` (both `t3-code` and `t3_code` MCP names).
+legacy repoGolem pane launches, and T3 `delegate_task` (both `t3-code` and `t3_code` MCP names).
 It reads the current session's recent assistant model from `transcript_path` with
 a bounded tail read. It also honors explicit apex-seat identifiers
 (`orchestrator`, `orc`, `skillcreatorLead`) when a caller deliberately targets
@@ -107,6 +107,22 @@ Programmatic: `import { detectModelPin } from "./src/model-pin-gate.mjs"` →
   the transcript. If the model is absent or unreadable and no explicit Fable
   target is present, the gate allows the call.
 - Separate-seat Fable targets require an apex identifier outside T3, or the T3
-  identity checks above. Unknown seats remain non-apex for explicit targets.
+  identity checks above. T3 delegates always require T3 identity; legacy seat
+  claims and transcript inference cannot authorize an explicit delegate target.
 - Workflow checks are advisory-only by design. They are a cheap reminder to pin
   each `agent()` call and avoid brittle parsing in a hot hook path.
+
+For Fable-seat delegates, only `target.model` counts as an explicit pin. Missing
+provider, claudeAgent, claude-eval, and unknown instance aliases require it: the
+hook has no dynamic provider catalog and treats unknown aliases as potentially
+Claude-backed. Known Codex, Cursor and Antigravity instance names keep their
+other-provider behavior. A missing transcript model still limits inheritance
+detection as described above.
+
+A nested `claude -p` inherits T3CODE_THREAD_ID and cwd from a T3 lead, so those
+signals alone cannot distinguish it from that lead at an apex root. A real
+nested CLI started with entrypoint `t3-code` retained that value in its
+SessionStart hook. CLAUDE_CODE_ENTRYPOINT therefore does not distinguish that
+nested CLI from the parent, and is not used as an authority check. A nested CLI
+at an apex root may still gain the parent's cmux seat privilege; the same-user
+policy limitation remains.

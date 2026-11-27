@@ -467,17 +467,33 @@ export function detectModelPin(payload, context = {}) {
   if (!isObject(input)) return result;
 
   const seatModel = recentAssistantModel(payload.transcript);
-  const seatId = context.threadId ? t3LeadSeat(payload, context) : payloadSeatId(payload, input);
+  const seatId = t3Delegate || context.threadId ? t3LeadSeat(payload, context) : payloadSeatId(payload, input);
   // AIDEV-NOTE: Etan order 2026-07-16 ("break through that model pin gate") + recovered voice transcript
   // ("I'm totally fine with using Fable for this... if you need, just open a[ gate exception]"):
   // sessions don't always carry seat_id; by fleet economics ONLY apex seats (orc, skillcreatorLead)
   // run Fable at all, so a seat ALREADY RUNNING Fable with no seat_id is apex by inference.
   // Non-Fable unknown seats remain blocked from pinning Fable (the original protection).
-  const apexSeat = isApexSeatId(seatId) || (!context.threadId && !seatId && isFableModel(recentAssistantModel(payload.transcript)));
+  const apexSeat = isApexSeatId(seatId) || (!t3Delegate && !context.threadId && !seatId && isFableModel(seatModel));
   result.seatModel = seatModel;
   result.seatId = seatId;
 
-  const pinnedModel = t3Delegate ? modelText(input.target) : modelText(input);
+  // Only target.model is a pin on the T3 wire; alias fields are ignored by T3.
+  const pinnedModel = t3Delegate ? stringValue(input.target?.model) : modelText(input);
+  const provider = stringValue(input.target?.providerInstanceId);
+  // No dynamic provider catalog is available to this offline hook. Unknown
+  // instance aliases might use claudeAgent too, so require a pin for those.
+  const knownOtherDriver = new Set(["codex", "codex-worker", "cursor", "antigravity"]).has(provider);
+  if (t3Delegate && isFableModel(seatModel) && !pinnedModel && !knownOtherDriver) {
+    return {
+      ...result,
+      verdict: "FLAG",
+      violations: [{
+        code: "MODELPIN_DELEGATE_UNPINNED",
+        evidence: "Fable-seat delegate_task has no explicit target.model and may inherit Fable",
+        action: `pin target.model to the intended worker model; ${FABLE_ROUTE}`,
+      }],
+    };
+  }
   const cmuxTarget = cmuxFableTarget(tool, input);
   const workflowTarget = tool === "Workflow" ? workflowFablePin(input) : "";
   const fableTarget = cmuxTarget || workflowTarget || (isFableModel(pinnedModel) ? pinnedModel : "");
@@ -554,7 +570,7 @@ export function detectModelPin(payload, context = {}) {
         {
           code: "MODELPIN_AGENT_UNPINNED",
           evidence: `${tool} call from Fable seat ${seatModel} has no tool_input.model`,
-          action: "pin this spawn to model:'sonnet' for bulk work, model:'opus' for reasoning/review, or use an explicit Fable pin only from orchestrator/skillcreatorLead",
+          action: `pin this spawn to model:'sonnet' for bulk work or model:'opus' for reasoning/review; ${FABLE_ROUTE}`,
         },
       ],
     };

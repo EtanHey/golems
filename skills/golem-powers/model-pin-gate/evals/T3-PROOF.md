@@ -40,3 +40,33 @@ thread. A same-user shell worker can change cwd/environment, and an unprefixed
 child launched directly at an apex root cannot be distinguished. Owner intent
 is a routing contract, not a parsed task-text permission. Non-T3 legacy apex
 claims retain their previous trust model. No live installation was performed.
+
+## Fix round 1
+
+Eight new negative fixtures were allowed by base f25ed72f and rejected after
+this round: missing target, empty target, Claude instance without a model,
+eval instance without a model, unknown instance without a model, alias model
+field, missing T3 identity with a seat claim, and missing identity with a
+Fable transcript. The prior PR head also failed all eight new assertions.
+Only the wire's target.model is accepted as a delegate pin. Unknown instance
+aliases require a model because this offline hook has no provider catalog.
+Explicit other-provider and cheaper-model controls remain allowed.
+
+Current deterministic result: 72/72, 287 assertions. Node hook replay: 40/41;
+the unchanged 50 ms case took 76.99 ms. Earlier adverse receipts above remain.
+The old unpinned-Agent action now names the separate-thread route. Cut-tool
+reference check passes after removing the retired tool name from the overview.
+
+Real nested CLI probe: parent entrypoint was explicitly set to t3-code to
+reproduce the inherited lead environment. The first Bash-tool probe was denied
+by the unattended-worker permission hook, so it yielded no variable value.
+A per-invocation scratch SessionStart hook on a real nested claude -p process
+then read only CLAUDE_CODE_ENTRYPOINT and returned t3-code. The value survives
+nesting; it cannot distinguish that child from the T3 parent. No live settings
+were edited. An inherited lead id/cwd can still grant that nested process
+cmux seat privilege; this same-user policy limitation is explicit in SKILL.md.
+
+Managed diff scan attempted once with targetPath set to this PR worktree,
+scope '.', and base f25ed72f. Refusal (no scanId):
+"Review changes requires a non-bare Git worktree with a resolvable HEAD."
+No replacement scan or wider target was attempted; no new managed CLEAN claim.
