@@ -265,15 +265,15 @@
       "command": "node scripts/ratchet/mac/ratchet-runs-size.mjs"
     },
     {
-      "id": "same-command-mktemp-cleanup",
-      "metric": "real source hook: same-command mktemp cleanup, temp-root refusal, escape and durable-write controls (not installed proof)",
+      "id": "temp-root-refusal",
+      "metric": "real source hook: temp-root identity and case/alias refusal, literal-child controls (not installed proof)",
       "kind": "real",
       "runner": "mac",
       "direction": "pass",
       "ceiling": true,
       "bug_sha": "f25ed72f9a504e30f275607d64b65c6807fd5468",
-      "fix_sha": "004950f3a6256d1aa65da6db2facfda8f86f1339",
-      "command": "\"${PYTHON_BIN:-python3}\" -m pytest -q -p no:cacheprovider skills/golem-powers/git-guardian/hooks/tests/test_fresh_temp.py --basetemp=docs.local/ratchet-same-command-mktemp",
+      "fix_sha": "05a9dd6d841c5b56dad371eaa6a8eeba9294774f",
+      "command": "\"${PYTHON_BIN:-python3}\" -m pytest -q -p no:cacheprovider skills/golem-powers/git-guardian/hooks/tests/test_temp_roots.py -k \"temp_root_refused or physical_case_and_symlink_alias or literal_child_unchanged\" --basetemp=docs.local/ratchet-temp-root-refusal",
       "timeout_s": 60
     }
   ]
