@@ -64,7 +64,7 @@ try {
   try {
     const sticky = findSticky();
     if (!rowsFailed && !sticky?.html_url) throw new Error('posted live comment URL missing');
-    const changed = sticky?.html_url && (before === null || sticky.id !== before.id || sticky.updated_at !== before.updated_at);
+    const changed = sticky?.html_url && (before === null || sticky.id !== before?.id || sticky.updated_at !== before?.updated_at);
     if (!rowsFailed || (changed && before !== undefined)) receipt = `receipt posted: ${sticky.html_url}`;
     else if (changed) receipt = `receipt ${sticky.html_url} (cannot tell if this run posted it: pre-run lookup failed)`;
     else receipt = sticky?.html_url ? `no receipt posted by this run (last receipt ${sticky.html_url}, updated ${sticky.updated_at ?? 'unknown'})` : 'no receipt posted';

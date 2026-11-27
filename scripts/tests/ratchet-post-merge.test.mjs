@@ -89,11 +89,11 @@ if (name === 'bash') {
     process.exit(1);
   }
   if (a[0].endsWith('install-hooks.sh')) process.exit(0);
-  if (a[0].endsWith('live-rows.sh')) { if (e.STICKY_AFTER) require('fs').writeFileSync(e.HOME + '/posted', ''); process.exit(Number(e.LIVE_ROWS_EXIT || 0)); }
+  if (a[0].endsWith('live-rows.sh')) { if (e.STICKY_AFTER) require('fs').writeFileSync(e.CALL_LOG + '.posted', ''); process.exit(Number(e.LIVE_ROWS_EXIT || 0)); }
   process.exit(8);
 }
 if (name === 'gh' && a[0] === 'pr') console.log(JSON.stringify([{number:7,headRefName:'lease',headRefOid:'abc'}]));
-else if (name === 'gh' && a[0] === 'api') { const s = e.STICKY_AFTER && require('fs').existsSync(e.HOME + '/posted') ? e.STICKY_AFTER : e.STICKY; console.log(JSON.stringify([s ? [JSON.parse(s)] : []])); }
+else if (name === 'gh' && a[0] === 'api') { const fs = require('fs'); if (e.GH_FAIL_FIRST && !fs.existsSync(e.CALL_LOG + '.looked')) { fs.writeFileSync(e.CALL_LOG + '.looked', ''); process.exit(1); } const s = e.STICKY_AFTER && require('fs').existsSync(e.CALL_LOG + '.posted') ? e.STICKY_AFTER : e.STICKY; console.log(JSON.stringify([s ? [JSON.parse(s)] : []])); }
 else if (a[0] === 'worktree') process.stdout.write('worktree /lease\\0HEAD abc\\0branch refs/heads/lease\\0\\0');
 else if (a[2] === 'rev-parse') console.log('abc');
 else if (a[2] === 'status') { if (e.NO_LEASE) console.log(' M dirty'); }
@@ -106,7 +106,7 @@ else process.exit(9);
     `import { appendFileSync } from 'node:fs'; appendFileSync(process.env.CALL_LOG, 'prune ' + process.argv.slice(2).join(' ') + '\\n'); console.log('Apply: 0/0 entries');`);
   const log = join(dir, 'calls');
   const run = (env = {}, args = ['--lease-pr', '7']) => {
-    writeFileSync(log, '');
+    writeFileSync(log, ''); rmSync(log + '.posted', { force: true }); rmSync(log + '.looked', { force: true });
     const r = spawnSync('node', [join(dir, 'scripts/ratchet/post-merge-live.mjs'), '--merged-pr', '42', ...args],
       { encoding: 'utf8', env: { ...process.env, PATH: join(dir, 'bin') + ':' + process.env.PATH, CALL_LOG: log, ...env } });
     return { ...r, calls: readFileSync(log, 'utf8') };
@@ -147,6 +147,11 @@ test('post-merge wrapper reports a failed live-rows run: receipt URL, freshness,
     expect(stale.status).toBe(1);
     expect(stale.stderr).toContain('live rows FAILED (exit 2); no receipt posted by this run (last receipt ' + url);
     expect(stale.calls).toContain('prune --apply');
+    // Codex r2: a failed pre-run lookup must not crash; it says it cannot tell and still shows the URL.
+    const unknown = run({ LIVE_ROWS_EXIT: '1', GH_FAIL_FIRST: '1', STICKY: sticky('2026-11-26T08:53:54Z') });
+    expect(unknown.status).toBe(1);
+    expect(unknown.stderr).toContain('live rows FAILED (exit 1); receipt ' + url + ' (cannot tell if this run posted it: pre-run lookup failed)');
+    expect(unknown.stderr).not.toContain('TypeError');
     const none = run({ LIVE_ROWS_EXIT: '2' });
     expect(none.status).toBe(1);
     expect(none.stderr).toContain('live rows FAILED (exit 2); no receipt posted; freshness:');
