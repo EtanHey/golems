@@ -68,6 +68,27 @@ for (const previous of [false, true]) test(`link failure retains activation unti
   expect(readFileSync(history, 'utf8').split('\n')[0]).toBe(next.version);
   expect(JSON.parse(readFileSync(receipt)).version).toBe(next.version);
 });
+for (const target of ['.claude/skills/pr-loop', '.golems/current']) test(`GNU mv failure preserves its diagnostic (${target})`, () => {
+  const dir = home(), bin = join(dir, 'gnu-bin'); mkdirSync(bin);
+  for (const name of readdirSync(minimal).filter(name => name !== 'mv')) symlinkSync(join(minimal, name), join(bin, name));
+  writeFileSync(join(bin, 'mv'), `#!/bin/sh
+case "$1" in
+  --version) printf 'mv (GNU coreutils) fixture\\n'; exit 0 ;;
+  -fT)
+    if [ "$3" = "$HOME/${target}" ]; then printf 'mv: fixture Permission denied\\n' >&2; exit 1; fi
+    exec '${join(minimal, 'mv')}' '${process.platform === 'darwin' ? '-fh' : '-fT'}' "$2" "$3" ;;
+  -fh) printf "mv: invalid option -- 'h'\\n" >&2; exit 1 ;;
+  *) exec '${join(minimal, 'mv')}' "$@" ;;
+esac
+`, { mode: 0o755 });
+  const result = spawnSync('/bin/sh', [installer, '--from-file', release.tarball, '--sums', join(root, 'assets/SHA256SUMS')], {
+    env: { ...process.env, HOME: dir, PATH: bin }, encoding: 'utf8',
+  });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain('fixture Permission denied');
+  expect(result.stderr).not.toContain('invalid option');
+  expect(existsSync(join(dir, '.golems/current'))).toBe(false);
+});
 test('fresh install links exactly the per-client catalog, never support directories', () => {
   const dir = home(); ok(install(dir));
   for (const [client, names] of Object.entries(catalog())) {

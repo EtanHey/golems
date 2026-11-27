@@ -1,8 +1,14 @@
 #!/bin/sh
 # Bootstrap needs only standard macOS/Linux utilities, curl, tar and shasum.
+# GNU -T and BSD -h both replace the symlink itself, including directory targets.
+select_atomic_move() {
+  if mv --version >/dev/null 2>&1; then mv_noderef=-fT; else mv_noderef=-fh; fi
+}
+atomic_move() { mv "$mv_noderef" "$1" "$2"; }
 main() {
 set -eu
 umask 077
+select_atomic_move
 fail() { printf 'golems install: %s\n' "$*" >&2; exit 1; }
 channel=nightly prefix=${HOME:?HOME is required}/.golems from='' sums='' replace=false preserve_releases=false
 while [ "$#" -gt 0 ]; do
@@ -251,8 +257,6 @@ awk -F '\t' '
 while IFS="$(printf '\t')" read -r client name; do
   [ -f "$payload/skills/golem-powers/$name/SKILL.md" ] || fail "skill catalog entry has no SKILL.md: $name"
 done < "$work/catalog"
-# GNU -T and BSD -h both replace the symlink itself, including directory targets.
-atomic_move() { mv -fT "$1" "$2" 2> "$work/mv-error" || mv -fh "$1" "$2"; }
 replay_prune() {
   [ -f "$prefix/release-prune-plan" ] || return 0
   # Validate the whole journal before any deletion, including on a retry.
@@ -479,7 +483,7 @@ elif [ "$(readlink "$HOME/.codex/skills" 2>/dev/null || :)" != "$HOME/.agents/sk
 if [ "${GOLEMS_INSTALL_PHASE-}" = reconcile-skills ]; then
   set -eu
   prefix=$1 work=$2 replace=$3
-  atomic_move() { mv -fT "$1" "$2" 2> "$work/mv-error" || mv -fh "$1" "$2"; }
+  select_atomic_move
   reconcile_skills
 else
   main "$@"
