@@ -92,7 +92,7 @@ jobs:
       - run: python -m pip install pytest pyflakes==4.0.0 PyYAML
 
       - name: Regression gate contracts
-        run: python -m pytest scripts/tests/test_private_regression_gate.py -q
+        run: python -m pytest scripts/tests/test_private_regression_gate.py scripts/tests/test_release_hook_bytecode.py -q
 
       - name: Workspace lifecycle guards and lane helper
         run: >-
