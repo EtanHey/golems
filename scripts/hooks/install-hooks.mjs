@@ -585,7 +585,7 @@ async function install(o) {
   }
   // Gate every selected source; missing guards and git errors cannot skip it.
   const gate = path.join(here, "private-regression-gate.py");
-  const gateArgs = ["-I", gate, o.repo, sha, ...(machine === "mbp" ? ["--require-private"] : [])];
+  const gateArgs = ["-I", "-B", gate, o.repo, sha, ...(machine === "mbp" ? ["--require-private"] : [])];
   console.log(`private regression gate: python3 ${gateArgs.join(" ")}; suites=${o.repo}/docs.local/private-guard-suites`);
   // --restore-live resets only to the RECORDED pin: a HEAD moved away from it
   // (possible tampering) is never adopted or blessed (#656 R1 F1; plain

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 """Fail-closed, private source regression gate before a hooks-live install."""
+import sys
+
+# Bare callers must also preserve the immutable release payload.
+sys.dont_write_bytecode = True
+
 import argparse
 from contextlib import contextmanager, ExitStack
 import importlib.util
@@ -13,7 +18,6 @@ import signal
 import shutil
 import stat
 import subprocess
-import sys
 import time
 import uuid
 import xml.etree.ElementTree as ET
