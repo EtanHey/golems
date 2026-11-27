@@ -99,7 +99,7 @@
           "gemini-pro-orchestrator-neon"
         ],
         "thinking": "high",
-        "check": "Call orchestrator_capabilities first on the Mac you dispatch to, and confirm the antigravity instance can run a child (2026-11-24: the M1 instance was disabled, Antigravity 1.4.5 too old; the M4 offered both models). Use the first model in this list that Mac's catalog offers, at high thinking, under the option name that catalog gives (thought_level on the M4 and thinking_level on the M1 on 2026-11-24; never hard-code one). Every brief carries the hard rules from /agent-routing § Neon judgment tier; they are audited from the thread's activity (BrainLayer calls included), not prevented."
+        "check": "Call orchestrator_capabilities first on the Mac you dispatch to, and confirm the antigravity instance can run a child (2026-11-24: the M1 instance was disabled, Antigravity 1.4.5 too old; the M4 offered both models). Use the first model in this list that Mac's catalog offers, at high thinking, under the option name that catalog gives (thought_level on the M4 and thinking_level on the M1 on 2026-11-24; never hard-code one). Follow the owner ruling 2026-11-24 on sub-agents and excluded models in /agent-routing § Neon judgment tier. Every brief carries the hard rules from /agent-routing § Neon judgment tier; they are audited from the thread's activity (BrainLayer calls included), not prevented."
       }
     },
     "claude.research.verifier": {
