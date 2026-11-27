@@ -42,8 +42,10 @@ one retry**, not a provider tariff or guaranteed bill. Supply `--price-per-sheet
 visual-batch.py or direct helper calls when a different allowance is justified. CLI session usage
 may consume subscription limits or incur billing; do not call it free. **Above about $5, STOP and
 state the cost before reading**; obtain explicit spend authorization or reduce scope. Never split
-batches or lower the allowance to evade admission. The scripted route holds above $5; an
-explicitly authorized larger run must be planned by the orchestrating agent before dispatch.
+batches or lower the allowance to evade admission. The scripted route defaults to a $5 ceiling. A larger run requires a lead's explicit
+authorization, recorded with `reader-policy.py admit <workdir> --authorized-usd 7
+--authorized-by <lead>` (also accepted by `plan`). Agents never self-authorize. The recorded
+ceiling applies to every read and survives re-admission; changing it requires both flags again.
 
 **Zero valid visual reads means STOP: "no frames were read" (no frames read). No QA verdict,
 PASS, INCONCLUSIVE or completed audit is permitted.** Return TOOLING FAILURE / NEEDS_READERS
