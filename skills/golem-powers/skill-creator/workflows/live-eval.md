@@ -54,7 +54,8 @@ the bare launcher pin must match the resolved judgment target. Wait for DONE_EVA
 
 ### Step 4: Run WITH Skill
 
-Launch the paired visible judgment lane with the same model target, phase effort, sandbox
+Default: run this arm headless in the cell too, matching Step 3. Only for a recorded login exception
+(Prerequisites), launch the paired visible judgment lane with the same model target, phase effort, sandbox
 boundary and output markers. Its brief adds the full target skill before the identical TASK.
 Record requested and effective values for both arms independently; a resolver target does
 not prove the effective runtime.
@@ -195,7 +196,7 @@ Name and escalate kept paths to the lead; never discard local eval work as clean
 | Skill type | Agent | Model |
 |------------|-------|-------|
 | Bounded in-process/headless Claude behavior | Claude Code | Resolved `claude.subagent.cheap` alias |
-| Visible or decision-grade Claude behavior | Claude Code | `claude.judgment`, verify bare launcher pin |
+| Decision-grade Claude behavior (headless in the cell; visible only as a recorded login exception) | Claude Code | `claude.judgment`, verify bare launcher pin |
 | Code implementation | See `/agent-routing` § Routing rules (SSOT) | Resolve the selected role via `scripts/model-roles.mjs` |
 | Audit/review | See routing pointer above | Resolve the selected role via `scripts/model-roles.mjs` |
 
