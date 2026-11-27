@@ -53,17 +53,20 @@ try {
   }
   // AIDEV-NOTE: a failing live row still posts its receipt (verdict ok:false) before live-rows.sh exits non-zero, and it can
   // also die before posting (exit 2). Either way the receipt URL, freshness and retention still run, then we exit non-zero.
-  const rowsStarted = Date.now();
+  const findSticky = () => JSON.parse(run('gh', ['api', '--paginate', '--slurp', `repos/EtanHey/golems/issues/${options['--merged-pr']}/comments`])).flat()
+    .find(c => c.user?.login === 'EtanHey' && c.body?.split('\n')[0] === '<!-- ratchet-table: golems-ratchet-live -->');
+  // Attribution by the sticky's own identity, never by clock (Codex r1 #1368): a retry that dies before posting must not claim it.
+  let before; try { before = findSticky() ?? null; } catch { before = undefined; }
   const rows = spawnSync('bash', [root + 'scripts/ratchet/live-rows.sh', '--merged-pr', options['--merged-pr'], '--lease-pr', String(lease.pr.number), '--lease-repo', lease.tree.worktree],
     { cwd: root, stdio: 'inherit', env: { ...process.env, RATCHET_SKILL_CONFIG: process.env.HOME + '/.golems/ratchet/installed-skills.json' } });
   const rowsFailed = rows.status !== 0;
   let receipt;
   try {
-    const comments = JSON.parse(run('gh', ['api', '--paginate', '--slurp', `repos/EtanHey/golems/issues/${options['--merged-pr']}/comments`])).flat();
-    const sticky = comments.find(c => c.user?.login === 'EtanHey' && c.body?.split('\n')[0] === '<!-- ratchet-table: golems-ratchet-live -->');
+    const sticky = findSticky();
     if (!rowsFailed && !sticky?.html_url) throw new Error('posted live comment URL missing');
-    // A failed run may have died before posting; an older sticky is then not this run's receipt (60 s clock-skew allowance).
-    if (!rowsFailed || (sticky?.html_url && Date.parse(sticky.updated_at ?? '') >= rowsStarted - 60000)) receipt = `receipt posted: ${sticky.html_url}`;
+    const changed = sticky?.html_url && (before === null || sticky.id !== before.id || sticky.updated_at !== before.updated_at);
+    if (!rowsFailed || (changed && before !== undefined)) receipt = `receipt posted: ${sticky.html_url}`;
+    else if (changed) receipt = `receipt ${sticky.html_url} (cannot tell if this run posted it: pre-run lookup failed)`;
     else receipt = sticky?.html_url ? `no receipt posted by this run (last receipt ${sticky.html_url}, updated ${sticky.updated_at ?? 'unknown'})` : 'no receipt posted';
   } catch (error) {
     if (!rowsFailed) throw error;

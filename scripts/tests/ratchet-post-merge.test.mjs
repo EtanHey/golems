@@ -89,11 +89,11 @@ if (name === 'bash') {
     process.exit(1);
   }
   if (a[0].endsWith('install-hooks.sh')) process.exit(0);
-  if (a[0].endsWith('live-rows.sh')) process.exit(Number(e.LIVE_ROWS_EXIT || 0));
+  if (a[0].endsWith('live-rows.sh')) { if (e.STICKY_AFTER) require('fs').writeFileSync(e.HOME + '/posted', ''); process.exit(Number(e.LIVE_ROWS_EXIT || 0)); }
   process.exit(8);
 }
 if (name === 'gh' && a[0] === 'pr') console.log(JSON.stringify([{number:7,headRefName:'lease',headRefOid:'abc'}]));
-else if (name === 'gh' && a[0] === 'api') console.log(JSON.stringify([e.STICKY ? [JSON.parse(e.STICKY)] : []]));
+else if (name === 'gh' && a[0] === 'api') { const s = e.STICKY_AFTER && require('fs').existsSync(e.HOME + '/posted') ? e.STICKY_AFTER : e.STICKY; console.log(JSON.stringify([s ? [JSON.parse(s)] : []])); }
 else if (a[0] === 'worktree') process.stdout.write('worktree /lease\\0HEAD abc\\0branch refs/heads/lease\\0\\0');
 else if (a[2] === 'rev-parse') console.log('abc');
 else if (a[2] === 'status') { if (e.NO_LEASE) console.log(' M dirty'); }
@@ -134,7 +134,7 @@ test('post-merge wrapper reports a failed live-rows run: receipt URL, freshness,
     const url = 'https://example.invalid/receipt';
     const sticky = updated => JSON.stringify({ user: { login: 'EtanHey' }, body: '<!-- ratchet-table: golems-ratchet-live -->', html_url: url, updated_at: updated });
     // Rows failed after posting (#1366, 2026-11-26): the URL is printed, freshness and prune still run.
-    const posted = run({ LIVE_ROWS_EXIT: '1', STICKY: sticky(new Date().toISOString()) });
+    const posted = run({ LIVE_ROWS_EXIT: '1', STICKY: sticky('2026-11-26T08:42:00Z'), STICKY_AFTER: sticky('2026-11-26T08:53:54Z') });
     expect(posted.status).toBe(1);
     expect(posted.stdout).toContain('receipt posted: ' + url + '\nlive-tier freshness abc12345: FAIL');
     expect(posted.calls).toContain('freshness\nprune --apply\n');
@@ -142,7 +142,8 @@ test('post-merge wrapper reports a failed live-rows run: receipt URL, freshness,
       + '; freshness: live-tier freshness abc12345: FAIL: receipt ok:false');
     expect(posted.stderr).not.toContain('null');
     // Rows died before posting: an older sticky is not this run's receipt, and none at all says so.
-    const stale = run({ LIVE_ROWS_EXIT: '2', STICKY: sticky('2020-01-01T00:00:00Z') });
+    // Codex r1: an unchanged sticky updated seconds ago (a prior run's, or clock skew) is still not this run's receipt.
+    const stale = run({ LIVE_ROWS_EXIT: '2', STICKY: sticky(new Date().toISOString()) });
     expect(stale.status).toBe(1);
     expect(stale.stderr).toContain('live rows FAILED (exit 2); no receipt posted by this run (last receipt ' + url);
     expect(stale.calls).toContain('prune --apply');
