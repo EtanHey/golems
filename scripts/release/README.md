@@ -161,6 +161,8 @@ repo stay untouched even when reached through a golems symlink. The flag also
 works on a same-version run. Updates refresh release-owned links and remove
 retired entries from the Claude and agents roots only when they resolve into
 this prefix's `releases/` directory.
+Links resolving under this prefix's `skills/golem-powers/` sync tree are adopted for catalog names.
+Retired sync links in the Claude and agents roots are removed; their targets are kept.
 The installer writes `release.json` with version,
 commit, channel, installation time, tarball SHA256 and `manifest_sha256`
 (the standalone manifest hash verified against SHA256SUMS). A successful install
