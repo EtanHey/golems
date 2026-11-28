@@ -259,7 +259,7 @@ PY
 
 @test "nightly R1: production safety floor is the full ratified commit" {
   run sed -n '/^GC_MIN_SAFE_SHA=/p' "$REPO_ROOT/scripts/worktree-gc-nightly.sh"
-  [ "$output" = 'GC_MIN_SAFE_SHA=c2fb389974ebc18df088a28e08f011220edd2b8f' ]
+  [ "$output" = 'GC_MIN_SAFE_SHA=e0ea3fd5a5cafb51fd70e5ccf23a296c80c60149' ]
 }
 
 @test "nightly N1: logs zero lag and arbitrarily old safe pins without a freshness limit" {

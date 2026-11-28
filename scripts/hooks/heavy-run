@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""Run a command through the installed heavy-suite admission and memory watchdog."""
+import os
+from pathlib import Path
+import sys
+helper = Path(__file__).resolve().with_name('heavy-suite.py')
+os.execv(sys.executable, [sys.executable, '-B', str(helper), '--limit-gb', '8', '--kill-grace-seconds', '5', *sys.argv[1:]])

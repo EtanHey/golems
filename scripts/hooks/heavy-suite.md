@@ -154,3 +154,52 @@ size. Collections longer than 200 keep the first 100 and last 100 entries
 Identity-reason lists per retained PID are also capped at 200, with counts
 in `identity_unavailable_reasons_totals`. Caps affect stored diagnostics only,
 never cleanup decisions. The existing inner `members_seen_count` remains available.
+
+## Memory watchdog (`heavy-run`)
+
+After updating the pinned hooks-live tree, run
+`python3 scripts/hooks/install-heavy-run.py` to install `~/.local/bin/heavy-run`.
+Use `heavy-run [--limit-gb 8] [--lane NAME] -- bun test` (or `bun run check`,
+or a proof command). It uses the existing heavy-suite slot admission exactly
+once. Watchdog slot timeout, lock errors and FORCE bypass fail closed. This
+slot namespace is distinct from the historical `.m1-heavy.lock` / `.m4-heavy.lock`
+mkdir convention; callers using that historical convention must migrate together.
+Until lanes migrate, heavy-run does NOT serialize against lanes using the
+`~/.m4-heavy.lock` or `~/.m1-heavy.lock` mkdir gate. Those lanes are not protected
+from each other. No second mkdir lock is acquired. Existing heavy-suite callers opt in with
+`--limit-gb 8`; legacy callers without that option retain their behavior.
+
+The trampoline starts a new session. It handles TERM/INT/HUP until the wrapper
+finishes TERM, up to a five-second grace (ending early when only the leader
+remains), and KILL to its process group, then reaps it.
+The unreaped direct child reserves its PID/group ID; processes outside its
+session cannot join. Watchdog cleanup never signals individual PIDs or other
+groups. An already-reaped leader is refused. Catchable wrapper signals use the
+same cleanup; SIGKILL of the wrapper cannot run cleanup (kernel releases its
+slot descriptors). Slot owner metadata remains in the persistent lock file;
+never delete those files.
+
+Memory is summed about every two seconds from observed descendants, retaining
+birth identities across reparenting. Darwin uses `proc_pid_rusage` with
+`RUSAGE_INFO_V2.ri_phys_footprint` through ctypes; same-uid observation needs no
+task-port entitlement. This counts physical footprint including compressed and
+swapped accounting. If a per-PID call fails, that PID falls back to RSS from
+`ps`; Linux uses RSS throughout. Alarm lines list the metrics actually used
+(`phys_footprint`, `rss_fallback`, `rss`). Fallback RSS can undercount under
+memory pressure and can double count shared pages.
+
+At threshold, one line goes to the Mac's heavy log (Linux: `~/.heavy-run.log`)
+with lane, metric, total GiB, and the top process executable name. If log writing
+fails, the alarm is printed to stderr and the threshold exit code is retained.
+Exit 125 denotes a memory limit; 126 denotes `ALARM unkillable escapee` when any
+measured member is outside the owned group. Both kill only the owned group.
+Escapees are NEVER signaled.
+A tracked escapee may exit before cleanup; its alarm still stands. Normal command
+exit codes pass through (so a command may itself return 125/126; use the log to
+disambiguate). Cleanup uncertainty changes successful exit to 70.
+
+Tracking is best effort: an escapee that detaches and reparents between scans
+before ever being observed may escape measurement. Processes in the session can
+create other groups; their memory counts when observed, but only the original
+group is signaled. Alarm handling requires an operator; this is not a sandbox.
+Logging includes commands, so avoid secrets in command arguments.

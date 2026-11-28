@@ -1,7 +1,9 @@
 # Worktree cleanup safety
 
 `worktree-gc.sh --apply` removes only clean, merged, idle, unused one-level
-`<main>/.worktrees/<name>` worktrees and proven-finished trees under
+`<main>/.worktrees/<name>` worktrees, same-repository registered
+`~/Gits/<repo>-worktrees/<name>` worktrees (when the main is `~/Gits/<repo>`),
+and proven-finished trees under
 `~/.t3/worktrees` (including registered nested descendants). Open PR branches, live process/cmux cwd,
 locked trees, hooks-live, nested Git repositories and reflog-only commits are kept.
 `--repo` must name a Git toplevel; `--path` selects one registered linked tree.
@@ -12,8 +14,32 @@ even when archived. Malformed non-string/invalid path rows are skipped with a
 reason in the run log so they cannot disable other bindings. State-probe reason
 cells carry short categories; full probe details stay in the run log.
 
+Every mode (`--dry-run`, `--prune-plan`, `--apply`, T3) makes the same freshness
+decision, so a report never says REMOVE for a tree apply would keep. A tree is
+KEEP-active while its newest of creation (the admin dir's `commondir`, written
+once by `git worktree add`) or HEAD/index/COMMIT_EDITMSG/`logs/HEAD` activity is
+inside `--idle-hours` (default 6). A tree created under 1 hour ago is KEEP-active
+even with `--idle-hours 0`, with or without `--path`: a worker's minutes-old,
+commit-less lane looks exactly like a clean merged tree, and nothing in Git can
+tell them apart. Unreadable times are KEEP-undetermined. Apply re-checks
+freshness after archiving, just before removal. To retire your own lane inside
+its first hour, use `git worktree remove` (never `--force`).
+
+Sibling admission requires a direct child listed by that main repository's Git
+worktree census and a matching Git common directory. Unregistered entries,
+clones and foreign-repository registrations are reported KEEP-out-of-scope
+in the owner queue (`latest.json`/`latest.md` on a full sweep, `last-run.*` on
+scoped runs), with owner repo, path, size when measurable, and reason. These
+sibling exclusions are reported immediately, without the stale-work age filter.
+Symlinked roots/entries are refused. The same ancestry, open-PR, T3 binding,
+index, idle, liveness, archive and removal-lock guards apply. `--path` supports
+these siblings but still refuses the main checkout and paths through symlinks.
+Sibling identity is rechecked after archival before `git worktree remove`.
+The default sweep remains a dry run; only `--apply` removes trees. Nightly
+wrapper admission and scheduling are unchanged.
+
 `--dry-run` reports merge eligibility. `--prune-plan` also checks the nightly
-idle/live/nested-repository guards and emits REMOVE without archiving or deleting.
+live/nested-repository guards and emits REMOVE without archiving or deleting.
 A REMOVE plan still requires successful archive verification before deletion.
 
 T3 removal additionally requires a bound settled thread (archival alone is insufficient)
@@ -99,7 +125,7 @@ scans run without the heavy-suite lock. Each apply archive/removal takes
 `~/.local/state/golems/heavy-suite.lock` (`GOLEMS_HEAVY_LOCK`) exclusively and
 nonblocking, retaining exclusion from suite slots without blocking their queue
 for a whole sweep. A held suite lock produces a durable `KEEP-busy` row, even
-for a young worktree, and leaves its archive/removal for the next run. Failure to
+under `--idle-hours 0`, and leaves its archive/removal for the next run. Failure to
 open/acquire the lock keeps the candidate undetermined. Only the removal parent
 holds the descriptor; archive/git children cannot retain it. Dry runs and prune
 plans never acquire it. The original whole-sweep exclusion (ccb66f4d) avoided
@@ -135,7 +161,7 @@ rendered as `@GOLEMS_ROOT@/docs.local/worktree-gc-launchd.log`; they do not upda
 Verification can still race a concurrent `install-hooks --update`; the installer
 does not take the nightly lock.
 
-Tests build repositories outside any Git tree and guard every GC invocation against
+Tests build independent repositories (optionally under worktree-local docs.local) and guard every GC invocation against
 leaving the fixture root. Never probe `--apply` on a real repository. Installation
 and launchd loading belong to the lead after review and merge.
 
