@@ -41,11 +41,17 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
   that can't match a listed file, outside secret folders) are resolved.
 - **A recursive search into a secret folder** (`grep -r`, `rg`, content-mode
   Grep) that prints lines, including a symlink into that folder. Content-mode
-  Grep over a directory enumerates candidates with `rg --files`, with the same
-  path, glob and type; any listed file refuses the search regardless of pattern.
-  Enumeration fails closed after 2 seconds, 10,000 files or 2 MiB of names,
-  or on a tool error. Grep globs containing `{` or `[` are refused; other
-  globs are checked against representative listed names before enumeration.
+  Grep over a directory enumerates with `rg --files --hidden --no-follow`,
+  excludes `.git`, `.svn`, `.hg`, `.bzr`, `.jj` and `.sl`, and uses Claude's
+  whitespace/comma glob splitting (brace alternations stay together) and type.
+  Any listed candidate refuses the search regardless of the content pattern.
+  Resolution tries PATH, Claude's embedded rg (`CLAUDE_CODE_EXECPATH` with
+  argv0 `rg`), Homebrew locations, then vendored rg under Claude's install.
+  Without rg, a bounded Python superset walk includes hidden and gitignored
+  files, ignores glob/type filters, prunes those six VCS dirs and skips links.
+  Clean trees allow on either path. Enumeration fails closed after 2 seconds,
+  40,000 entries or 2 MiB of names, or on a tool error. Brace/class and
+  specimen pre-checks apply only when the path is not a directory.
 - **A secret helper:** running `claude-proxy-token` (the `apiKeyHelper`).
 - **The keychain:** `security find-generic-password` / `find-internet-password`
   with `-w` or `-g`, and `security dump-keychain`.
@@ -124,8 +130,11 @@ Specific gaps known today:
   secret (`token`, `secret`, `password`, `api_key`, `credential`...).
 - Bash recursive searches inside ordinary repos are not walked; `rg` skips
   hidden files by default, `grep -r` does not. Directory content-Grep now
-  checks rg's candidate files, but shares rg's default ignore/hidden rules.
-  Filesystem changes between the check and the actual search remain a race.
+  checks hidden candidates with Claude's rg flags and retains rg's ignore
+  rules. Without rg the superset walk may deny a glob/type-filtered search
+  because it also checks ignored or excluded files. Repos over the enumeration
+  cap refuse content Grep; use a narrower path. Filesystem changes between
+  the check and the actual search remain a TOCTOU race.
 - Editing a listed file needs a path that never prints it: Claude's Edit tool
   needs a Read first (refused), and inline code that opens the file is
   refused. Use a script file or the tool that owns the file.

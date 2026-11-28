@@ -5,6 +5,8 @@ under docs.local; no real secret file is read, and the real helper never runs.
 Shell text is inert data: it reaches the hook as JSON on stdin.
 """
 import json
+import importlib.util
+import shutil
 import os
 from pathlib import Path
 import subprocess
@@ -482,7 +484,7 @@ def test_read_tool(world, path, verdict):
     ({"pattern": "TOKEN", "path": ".ENV", "output_mode": "content", "-A": 1}, "deny"),
     ({"pattern": "KEY", "path": "not-created/.ENV", "output_mode": "content"}, "deny"),
     ({"pattern": "KEY", "glob": "*.env", "output_mode": "content"}, "deny"),
-    ({"pattern": "env", "glob": "**/settings*.json", "output_mode": "content"}, "deny"),
+    ({"pattern": "env", "glob": "**/settings*.json", "output_mode": "content"}, "allow"),
     ({"pattern": "x", "path": "~/.cli-proxy-api", "output_mode": "content"}, "deny"),
     ({"pattern": "KEY", "path": ".env"}, "allow"),
     ({"pattern": "KEY", "path": ".env", "output_mode": "count"}, "allow"),
@@ -491,6 +493,9 @@ def test_read_tool(world, path, verdict):
 ])
 def test_grep_tool(world, tool_input, verdict):
     tool_input = dict(tool_input)
+    if tool_input.get("glob") == "**/settings*.json":
+        (world["repo"] / ".claude/settings.json").write_text('{"env":{"API_KEY":"FAKE-SYNTH-SETTINGS"}}')
+        verdict = "deny"
     if "path" in tool_input:
         p = tool_input["path"]
         tool_input["path"] = p.replace("~", str(world["home"]), 1) if p.startswith("~") else str(world["repo"] / p)
@@ -580,11 +585,13 @@ def test_directory_content_search_is_refused(world, filename, filter):
     repo.mkdir()
     (repo / filename).write_text('{"k":"FAKE-SYNTH-DIR"}')
     # Establish that real rg would search this file; never print its contents.
-    argv = ["rg", "--no-config", "--files"]
-    if filter:
-        argv += ["--type", filter["type"]]
-    listed = subprocess.run(argv + [str(repo)], capture_output=True, text=True, check=True)
-    assert str(repo / filename) in listed.stdout.splitlines()
+    rg = shutil.which("rg")
+    if rg:
+        argv = [rg, "--no-config", "--files"]
+        if filter:
+            argv += ["--type", filter["type"]]
+        listed = subprocess.run(argv + [str(repo)], capture_output=True, text=True, check=True)
+        assert str(repo / filename) in listed.stdout.splitlines()
     proc = run({"tool_name": "Grep", "tool_input": {"pattern": "FAKE", "path": str(repo),
                "output_mode": "content", **filter}, "cwd": str(world["repo"])})
     assert decision(proc) == "deny"
@@ -617,18 +624,22 @@ def test_clean_directory_content_search_allows(world, filter):
 def test_grep_enumeration_honors_filters(world, filter):
     proc = run({"tool_name": "Grep", "tool_input": {"pattern": "FAKE", "output_mode": "content",
                **filter}, "cwd": str(world["repo"])})
-    assert decision(proc) == "allow", proc.stdout
+    if "fallback would search a listed secret file" in reason(proc):
+        # Without rg, the authorized walk ignores filters and is a superset.
+        assert decision(proc) == "deny"
+    else:
+        assert decision(proc) == "allow", proc.stdout
 
 
 @pytest.mark.parametrize("mode,expected", [("error", "failed"), ("timeout", "timed out"),
                   ("count", "file limit"), ("bytes", "byte limit"), ("partial", "incomplete")])
-def test_grep_enumeration_fails_closed(world, monkeypatch, mode, expected):
+def test_grep_enumeration_fails_closed(world, monkeypatch, grep_policy, mode, expected):
     bindir = world["base"] / "bin"
     bindir.mkdir()
     fake = bindir / "rg"
     # Synthetic executable controls only the enumerator, never reads any file.
     actions = {"error": "raise SystemExit(2)", "timeout": "import time; time.sleep(3)",
-               "count": "import sys; sys.stdout.buffer.write(b'code.ts\\0' * 10001)",
+               "count": "import sys; sys.stdout.buffer.write(b'code.ts\\0' * 11)",
                "bytes": "import sys; sys.stdout.buffer.write(b'x' * (2 * 1024 * 1024 + 1))",
                "partial": "print('code.ts', end='')"}
     fake.write_text(f"#!{sys.executable}\n" + actions[mode] + "\n")
@@ -636,7 +647,139 @@ def test_grep_enumeration_fails_closed(world, monkeypatch, mode, expected):
     monkeypatch.setenv("PATH", str(bindir) + os.pathsep + os.environ["PATH"])
     repo = world["repo"] / "empty"
     repo.mkdir()
-    proc = run({"tool_name": "Grep", "tool_input": {"pattern": "x", "path": str(repo),
-               "output_mode": "content"}, "cwd": str(world["repo"])})
-    assert decision(proc) == "deny", proc.stdout
-    assert expected in reason(proc), proc.stdout
+    module, _ = grep_policy
+    monkeypatch.setattr(module, "_GREP_FILES", 10)
+    result = grep_judge(grep_policy, world, repo)
+    assert result and expected in result
+
+
+# r3 regressions exercise the decision functions with a synthetic HOME. Resolver
+# dependencies are patched directly so host Homebrew/Claude installs cannot mask
+# the last-resort walk, and subprocess tests still cover the normal hook path.
+@pytest.fixture
+def grep_policy(world, monkeypatch):
+    spec = importlib.util.spec_from_file_location("grep_policy", HOOK)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.syspath_prepend(str(SKILL / "hooks"))
+    import secret_paths
+    return module, secret_paths.load(str(world["home"]))
+
+
+def grep_judge(policy, world, path, **filters):
+    module, secrets = policy
+    return module.judge_grep({"pattern": "FAKE", "path": str(path), "output_mode": "content", **filters},
+                             str(world["repo"]), secrets, str(world["home"]))
+
+
+@pytest.mark.parametrize("glob", ["*.{ts,tsx}", "**/*.{js,jsx,ts,tsx}", "*.json", "*", "src/*"])
+def test_r3_clean_directory_globs(world, grep_policy, glob):
+    clean = world["repo"] / "clean"
+    (clean / "src").mkdir(parents=True)
+    (clean / "src/app.tsx").write_text("hello")
+    (clean / "package.json").write_text('{"name":"test"}')
+    assert grep_judge(grep_policy, world, clean, glob=glob) is None
+
+
+@pytest.mark.parametrize("filename,glob", [(".env", None), (".creds/auth.json", None),
+               (".claude/settings.local.json", None), ("auth.json", "*.md *.json"),
+               ("auth.json", "*.md,auth*")])
+def test_r3_hidden_and_split_globs(world, grep_policy, filename, glob):
+    clean = world["repo"] / "search"
+    target = clean / filename
+    target.parent.mkdir(parents=True)
+    target.write_text('{"env":{"API_KEY":"FAKE-SYNTH-R3"}}')
+    (clean / ".git").mkdir()  # isolate parent ignores; do not unignore hidden files
+    result = grep_judge(grep_policy, world, clean, **({"glob": glob} if glob else {}))
+    assert result and "listed secret file" in result
+
+
+def test_r3_no_binary_clean_directory(world, grep_policy, monkeypatch):
+    module, _ = grep_policy
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.delenv("CLAUDE_CODE_EXECPATH", raising=False)
+    # No known executable, even on a host with Homebrew installed.
+    monkeypatch.setattr(module.os, "access", lambda *a: False)
+    clean = world["repo"] / "clean"
+    clean.mkdir()
+    (clean / "app.ts").write_text("hello")
+    assert grep_judge(grep_policy, world, clean) is None
+
+
+def test_r3_larger_file_cap(world, grep_policy, monkeypatch):
+    module, _ = grep_policy
+    # A real synthetic rg process emits names; no disk-sized fixture required.
+    bindir = world["base"] / "bin"
+    bindir.mkdir()
+    fake = bindir / "rg"
+    fake.write_text(f"#!{sys.executable}\nimport sys\nsys.stdout.buffer.write(b'app.ts\\0' * 10001)\n")
+    fake.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bindir))
+    clean = world["repo"] / "empty"
+    clean.mkdir()
+    assert grep_judge(grep_policy, world, clean) is None
+
+
+@pytest.mark.parametrize("filename", [".env", ".creds/auth.json", "ignored/auth.json"])
+def test_r3_fallback_protects_superset(world, grep_policy, monkeypatch, filename):
+    module, _ = grep_policy
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.delenv("CLAUDE_CODE_EXECPATH", raising=False)
+    monkeypatch.setattr(module.os, "access", lambda *a: False)
+    target = world["repo"] / "fallback" / filename
+    target.parent.mkdir(parents=True)
+    target.write_text('{"k":"FAKE-SYNTH-WALK"}')
+    (world["repo"] / "fallback/.gitignore").write_text("ignored/\n")
+    result = grep_judge(grep_policy, world, world["repo"] / "fallback", glob="*.md", type="ts")
+    assert result and "fallback would search a listed secret file" in result
+
+
+def test_r3_fallback_prunes_vcs_and_links(world, grep_policy, monkeypatch):
+    module, _ = grep_policy
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.delenv("CLAUDE_CODE_EXECPATH", raising=False)
+    monkeypatch.setattr(module.os, "access", lambda *a: False)
+    clean = world["repo"] / "fallback"
+    clean.mkdir()
+    for vcs in (".git", ".svn", ".hg", ".bzr", ".jj", ".sl"):
+        (clean / vcs).mkdir()
+        (clean / vcs / "auth.json").write_text('{"k":"FAKE-SYNTH-VCS"}')
+    (clean / "link").symlink_to(world["home"] / ".codex", target_is_directory=True)
+    assert grep_judge(grep_policy, world, clean) is None
+
+
+@pytest.mark.parametrize("limit,expected", [("_GREP_FILES", "file limit"),
+                            ("_GREP_BYTES", "byte limit"), ("_GREP_SECONDS", "timed out")])
+def test_r3_fallback_bounds(world, grep_policy, monkeypatch, limit, expected):
+    module, _ = grep_policy
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.delenv("CLAUDE_CODE_EXECPATH", raising=False)
+    monkeypatch.setattr(module.os, "access", lambda *a: False)
+    monkeypatch.setattr(module, limit, 0)
+    clean = world["repo"] / "fallback"
+    clean.mkdir()
+    (clean / "code.ts").write_text("hello")
+    result = grep_judge(grep_policy, world, clean)
+    assert result and expected in result
+
+
+def test_r3_embedded_claude_rg(world, grep_policy, monkeypatch):
+    module, _ = grep_policy
+    monkeypatch.setenv("PATH", "")
+    binary = world["base"] / "claude"
+    # Executable entrypoint proves embedded dispatch uses argv0=rg.
+    binary.write_text(f"#!{sys.executable}\nimport sys\nprint('')\n")
+    binary.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_CODE_EXECPATH", str(binary))
+    observed = []
+    original = module.subprocess.Popen
+    def record(argv, **kwargs):
+        observed.append((argv, kwargs.get("executable")))
+        return original(argv, **kwargs)
+    monkeypatch.setattr(module.subprocess, "Popen", record)
+    # Empty output, rather than a newline, is a valid rg empty listing.
+    binary.write_text(f"#!{sys.executable}\n")
+    clean = world["repo"] / "empty"
+    clean.mkdir()
+    assert grep_judge(grep_policy, world, clean) is None
+    assert observed[0][0][0] == "rg" and observed[0][1] == str(binary)

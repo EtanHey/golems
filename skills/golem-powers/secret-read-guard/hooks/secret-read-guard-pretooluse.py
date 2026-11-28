@@ -16,6 +16,7 @@ import fnmatch
 import json
 import stat
 import selectors
+import shutil
 import subprocess
 import time
 from datetime import datetime
@@ -98,6 +99,8 @@ def judge_grep(tool_input, cwd, secrets, home):
     pattern = tool_input.get("glob")
     if pattern is not None and not isinstance(pattern, str):
         raise ValueError("Grep glob must be a string")
+    if os.path.isdir(absolute):
+        return directory_grep_reason(tool_input, absolute, cwd, secrets)
     if pattern:
         if "{" in pattern or "[" in pattern:
             return "Grep glob uses braces or character classes that cannot be checked safely"
@@ -108,29 +111,85 @@ def judge_grep(tool_input, cwd, secrets, home):
         if (secrets.name_mentioned(base)
                 or any(fnmatch.fnmatchcase(canon(name), base) for name in names)):
             return f"it would print lines of files matching {pattern}, which hold secrets"
-    if os.path.isdir(absolute):
-        return directory_grep_reason(tool_input, absolute, cwd, secrets)
     return None
 
 
 # Bound both time and output, rather than buffering an unbounded `rg --files`.
 _GREP_SECONDS = 2.0
-_GREP_FILES = 10000
+_GREP_FILES = 40000
 _GREP_BYTES = 2 * 1024 * 1024
 
 
 def directory_grep_reason(tool_input, absolute, cwd, secrets):
-    argv = ["rg", "--no-config", "--files", "--null"]
-    for field, flag in (("glob", "--glob"), ("type", "--type")):
+    vcs = (".git", ".svn", ".hg", ".bzr", ".jj", ".sl")
+    argv = ["rg", "--no-config", "--files", "--null", "--hidden", "--no-follow"]
+    for name in vcs:
+        argv += ["--glob", "!" + name]
+    for field in ("glob", "type"):
         value = tool_input.get(field)
-        if value is not None:
-            if not isinstance(value, str):
-                raise ValueError(f"Grep {field} must be a string")
-            if value:
-                argv += [flag, value]
+        if value is not None and not isinstance(value, str):
+            raise ValueError(f"Grep {field} must be a string")
+        if not value:
+            continue
+        if field == "type":
+            argv += ["--type", value]
+        else:
+            # Claude Grep preserves brace alternations, but splits other
+            # whitespace/comma-separated patterns into distinct rg arguments.
+            for token in value.split():
+                pieces = [token] if "{" in token and "}" in token else token.split(",")
+                for piece in pieces:
+                    argv += ["--glob", piece]
+
+    def executable(path):
+        return bool(path and os.path.isfile(path) and os.access(path, os.X_OK))
+
+    binary = shutil.which("rg")
+    claude = os.environ.get("CLAUDE_CODE_EXECPATH")
+    if not binary and executable(claude):
+        # Claude's native binary selects embedded ripgrep through argv[0].
+        binary = claude
+    if not binary:
+        candidates = ["/opt/homebrew/bin/rg", "/usr/local/bin/rg"]
+        installed_claude = claude or shutil.which("claude")
+        install = os.path.dirname(os.path.realpath(installed_claude)) if installed_claude else None
+        if install:
+            for platform in ("arm64-darwin", "x64-darwin", "arm64-linux", "x64-linux"):
+                candidates.append(os.path.join(install, "vendor", "ripgrep", platform, "rg"))
+            candidates.append(os.path.join(install, "vendor", "ripgrep", "rg"))
+        binary = next((candidate for candidate in candidates if executable(candidate)), None)
+    if not binary:
+        # Deliberately broader than rg: hidden and gitignored files count,
+        # filters are ignored, VCS directories are pruned, links never followed.
+        deadline = time.monotonic() + _GREP_SECONDS
+        count, size, directories = 0, 0, [absolute]
+        try:
+            while directories:
+                with os.scandir(directories.pop()) as entries:
+                    for entry in entries:
+                        if time.monotonic() >= deadline:
+                            return "Grep fallback enumeration timed out, so it fails closed"
+                        count += 1
+                        size += len(os.fsencode(entry.path)) + 1
+                        if count > _GREP_FILES:
+                            return "Grep fallback enumeration exceeded its file limit, so it fails closed"
+                        if size > _GREP_BYTES:
+                            return "Grep fallback enumeration exceeded its byte limit, so it fails closed"
+                        if entry.is_symlink():
+                            continue
+                        if entry.is_dir(follow_symlinks=False):
+                            if entry.name not in vcs:
+                                directories.append(entry.path)
+                        elif entry.is_file(follow_symlinks=False) and secrets.is_secret(entry.path, assume_exists=True):
+                            return f"Grep fallback would search a listed secret file ({entry.path})"
+            if time.monotonic() >= deadline:
+                return "Grep fallback enumeration timed out, so it fails closed"
+            return None
+        except OSError:
+            return "Grep fallback enumeration failed, so it fails closed"
     argv += ["--", absolute]
     try:
-        proc = subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        proc = subprocess.Popen(argv, executable=binary, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     except OSError:
         return "Grep file enumeration could not start, so it fails closed"
     deadline = time.monotonic() + _GREP_SECONDS
