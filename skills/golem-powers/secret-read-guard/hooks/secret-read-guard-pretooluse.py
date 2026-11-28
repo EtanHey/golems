@@ -15,6 +15,9 @@ sys.path[:] = [p for p in sys.path if p and os.path.realpath(p) != _HERE] + [_HE
 import fnmatch
 import json
 import stat
+import selectors
+import subprocess
+import time
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
@@ -93,12 +96,86 @@ def judge_grep(tool_input, cwd, secrets, home):
     if secret_shell._search_hits_root(ctx, absolute):
         return secret_shell.REASON_SEARCH.format(path=absolute)
     pattern = tool_input.get("glob")
-    if isinstance(pattern, str) and pattern:
-        base = os.path.basename(pattern)
-        if secrets.name_mentioned(base) or any(fnmatch.fnmatchcase(base, p) or fnmatch.fnmatchcase(p, base)
-                                               for p in secrets.json_env_names):
+    if pattern is not None and not isinstance(pattern, str):
+        raise ValueError("Grep glob must be a string")
+    if pattern:
+        if "{" in pattern or "[" in pattern:
+            return "Grep glob uses braces or character classes that cannot be checked safely"
+        from secret_paths import canon
+        base = canon(os.path.basename(pattern))
+        names = [".env", "x.env", ".env.local", "auth.json", "auth.json.bak-1",
+                 "settings.json", "settings.local.json", *secrets.names, *secrets.json_env_names]
+        if (secrets.name_mentioned(base)
+                or any(fnmatch.fnmatchcase(canon(name), base) for name in names)):
             return f"it would print lines of files matching {pattern}, which hold secrets"
+    if os.path.isdir(absolute):
+        return directory_grep_reason(tool_input, absolute, cwd, secrets)
     return None
+
+
+# Bound both time and output, rather than buffering an unbounded `rg --files`.
+_GREP_SECONDS = 2.0
+_GREP_FILES = 10000
+_GREP_BYTES = 2 * 1024 * 1024
+
+
+def directory_grep_reason(tool_input, absolute, cwd, secrets):
+    argv = ["rg", "--no-config", "--files", "--null"]
+    for field, flag in (("glob", "--glob"), ("type", "--type")):
+        value = tool_input.get(field)
+        if value is not None:
+            if not isinstance(value, str):
+                raise ValueError(f"Grep {field} must be a string")
+            if value:
+                argv += [flag, value]
+    argv += ["--", absolute]
+    try:
+        proc = subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except OSError:
+        return "Grep file enumeration could not start, so it fails closed"
+    deadline = time.monotonic() + _GREP_SECONDS
+    count, size, pending = 0, 0, b""
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(proc.stdout, selectors.EVENT_READ)
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0 or not selector.select(remaining):
+                    return "Grep file enumeration timed out, so it fails closed"
+                chunk = os.read(proc.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > _GREP_BYTES:
+                    return "Grep file enumeration exceeded its byte limit, so it fails closed"
+                entries = (pending + chunk).split(b"\0")
+                pending = entries.pop()
+                for entry in entries:
+                    if time.monotonic() >= deadline:
+                        return "Grep file enumeration timed out, so it fails closed"
+                    count += 1
+                    if count > _GREP_FILES:
+                        return "Grep file enumeration exceeded its file limit, so it fails closed"
+                    path = os.path.join(cwd, os.fsdecode(entry))
+                    if secrets.is_secret(path, assume_exists=True):
+                        return f"Grep would search a listed secret file ({path})"
+        if pending:
+            return "Grep file enumeration returned incomplete output, so it fails closed"
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return "Grep file enumeration timed out, so it fails closed"
+        try:
+            status = proc.wait(timeout=remaining)
+        except subprocess.TimeoutExpired:
+            return "Grep file enumeration timed out, so it fails closed"
+        if status not in (0, 1):  # rg uses 1 for no files matched
+            return "Grep file enumeration failed, so it fails closed"
+        return None
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+        proc.wait()
+        proc.stdout.close()
 
 
 def main():

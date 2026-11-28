@@ -487,7 +487,7 @@ def test_read_tool(world, path, verdict):
     ({"pattern": "KEY", "path": ".env"}, "allow"),
     ({"pattern": "KEY", "path": ".env", "output_mode": "count"}, "allow"),
     ({"pattern": "hello", "path": "README.md", "output_mode": "content"}, "allow"),
-    ({"pattern": "hello", "output_mode": "content"}, "allow"),
+    ({"pattern": "k", "output_mode": "content"}, "deny"),
 ])
 def test_grep_tool(world, tool_input, verdict):
     tool_input = dict(tool_input)
@@ -554,3 +554,89 @@ def test_sanctioned_key_loading_still_runs(world, codex):
     ran = subprocess.run(["bash", "-c", command], cwd=world["repo"], env=env, capture_output=True, text=True, timeout=30)
     assert ran.returncode == 0 and ran.stdout.strip() == "KEY_USED_OK", (ran.stdout, ran.stderr)
     assert "FAKE-SYNTH" not in ran.stdout + ran.stderr
+
+
+@pytest.mark.parametrize("surface", ["Grep", "rg", "grep"])
+def test_directory_symlink_search_is_refused(world, surface):
+    link = world["repo"] / "cx"
+    link.symlink_to(world["home"] / ".codex", target_is_directory=True)
+    payload = ({"tool_name": "Grep", "tool_input": {"pattern": "FAKE", "path": str(link),
+               "output_mode": "content"}, "cwd": str(world["repo"])} if surface == "Grep" else
+               bash(f"{surface} {'-r' if surface == 'grep' else ''} FAKE {link}", world["repo"]))
+    assert decision(run(payload)) == "deny"
+
+
+@pytest.mark.parametrize("glob", ["*.{env,md}", "*.[e]nv", "auth*"])
+def test_grep_glob_bypasses_are_refused(world, glob):
+    proc = run({"tool_name": "Grep", "tool_input": {"pattern": "FAKE", "glob": glob,
+               "output_mode": "content"}, "cwd": str(world["repo"])})
+    assert decision(proc) == "deny"
+
+
+@pytest.mark.parametrize("filename,filter", [("auth.json", {"type": "json"}),
+                            ("prod.env", {}), ("auth.json", {})])
+def test_directory_content_search_is_refused(world, filename, filter):
+    repo = world["repo"] / "search"
+    repo.mkdir()
+    (repo / filename).write_text('{"k":"FAKE-SYNTH-DIR"}')
+    # Establish that real rg would search this file; never print its contents.
+    argv = ["rg", "--no-config", "--files"]
+    if filter:
+        argv += ["--type", filter["type"]]
+    listed = subprocess.run(argv + [str(repo)], capture_output=True, text=True, check=True)
+    assert str(repo / filename) in listed.stdout.splitlines()
+    proc = run({"tool_name": "Grep", "tool_input": {"pattern": "FAKE", "path": str(repo),
+               "output_mode": "content", **filter}, "cwd": str(world["repo"])})
+    assert decision(proc) == "deny"
+
+
+@pytest.mark.parametrize("suffix", ["~", ".orig", ".old", ".swp"])
+@pytest.mark.parametrize("surface", ["Read", "Bash", "Codex"])
+def test_editor_backups_are_refused(world, suffix, surface):
+    target = world["repo"] / ("auth.json" + suffix)
+    if surface != "Read":
+        target.write_text('{"k":"FAKE-SYNTH-BACKUP"}')
+    payload = ({"tool_name": "Read", "tool_input": {"file_path": str(target)},
+                "cwd": str(world["repo"])} if surface == "Read" else bash(f"cat {target}", world["repo"]))
+    assert decision(run(payload, codex=surface == "Codex")) == "deny"
+
+
+@pytest.mark.parametrize("filter", [{}, {"glob": "*.md"}, {"type": "ts"}])
+def test_clean_directory_content_search_allows(world, filter):
+    repo = world["repo"] / "clean"
+    repo.mkdir()
+    (repo / ".env.example").write_text("KEY=\n")
+    (repo / "app.ts").write_text("export const x = 1\n")
+    (repo / "README.md").write_text("hello\n")
+    proc = run({"tool_name": "Grep", "tool_input": {"pattern": "hello", "path": str(repo),
+               "output_mode": "content", **filter}, "cwd": str(world["repo"])})
+    assert decision(proc) == "allow", proc.stdout
+
+
+@pytest.mark.parametrize("filter", [{"glob": "*.md"}, {"type": "ts"}])
+def test_grep_enumeration_honors_filters(world, filter):
+    proc = run({"tool_name": "Grep", "tool_input": {"pattern": "FAKE", "output_mode": "content",
+               **filter}, "cwd": str(world["repo"])})
+    assert decision(proc) == "allow", proc.stdout
+
+
+@pytest.mark.parametrize("mode,expected", [("error", "failed"), ("timeout", "timed out"),
+                  ("count", "file limit"), ("bytes", "byte limit"), ("partial", "incomplete")])
+def test_grep_enumeration_fails_closed(world, monkeypatch, mode, expected):
+    bindir = world["base"] / "bin"
+    bindir.mkdir()
+    fake = bindir / "rg"
+    # Synthetic executable controls only the enumerator, never reads any file.
+    actions = {"error": "raise SystemExit(2)", "timeout": "import time; time.sleep(3)",
+               "count": "import sys; sys.stdout.buffer.write(b'code.ts\\0' * 10001)",
+               "bytes": "import sys; sys.stdout.buffer.write(b'x' * (2 * 1024 * 1024 + 1))",
+               "partial": "print('code.ts', end='')"}
+    fake.write_text(f"#!{sys.executable}\n" + actions[mode] + "\n")
+    fake.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bindir) + os.pathsep + os.environ["PATH"])
+    repo = world["repo"] / "empty"
+    repo.mkdir()
+    proc = run({"tool_name": "Grep", "tool_input": {"pattern": "x", "path": str(repo),
+               "output_mode": "content"}, "cwd": str(world["repo"])})
+    assert decision(proc) == "deny", proc.stdout
+    assert expected in reason(proc), proc.stdout

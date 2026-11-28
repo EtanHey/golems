@@ -15,7 +15,8 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
 
 - **A listed file.** The list is data: `secret-files.json` (paths, basenames,
   Claude settings whose `env` block holds a secret-named key, and every
-  `*.bak-*` copy), matched the way APFS names files: case-insensitive and
+  `*.bak-*`, `~`, `.orig`, `.old` and `.swp` backup), matched the way APFS
+  names files: case-insensitive and
   Unicode-normalization-insensitive (`.ENV` is `.env`; composed `é` is
   `e` + U+0301).
   `cat`, `head`/`tail`, `less`, `bat`, any `sed` (in-place included: its
@@ -39,7 +40,12 @@ A Bash, Monitor, Read or Grep call that would put a secret on screen:
   lists, `cd` targets, and `find -name '*.ts' -exec head {} +` (a name pattern
   that can't match a listed file, outside secret folders) are resolved.
 - **A recursive search into a secret folder** (`grep -r`, `rg`, content-mode
-  Grep) that prints lines.
+  Grep) that prints lines, including a symlink into that folder. Content-mode
+  Grep over a directory enumerates candidates with `rg --files`, with the same
+  path, glob and type; any listed file refuses the search regardless of pattern.
+  Enumeration fails closed after 2 seconds, 10,000 files or 2 MiB of names,
+  or on a tool error. Grep globs containing `{` or `[` are refused; other
+  globs are checked against representative listed names before enumeration.
 - **A secret helper:** running `claude-proxy-token` (the `apiKeyHelper`).
 - **The keychain:** `security find-generic-password` / `find-internet-password`
   with `-w` or `-g`, and `security dump-keychain`.
@@ -116,8 +122,10 @@ Specific gaps known today:
   (`os.path.join(home, ".codex", "auth.json")`) are out of reach.
 - `source x.env && echo "$VAR"` is caught only when the variable name looks
   secret (`token`, `secret`, `password`, `api_key`, `credential`...).
-- A recursive search inside a repo that holds a `.env` is not walked; `rg`
-  skips hidden files by default, `grep -r` does not.
+- Bash recursive searches inside ordinary repos are not walked; `rg` skips
+  hidden files by default, `grep -r` does not. Directory content-Grep now
+  checks rg's candidate files, but shares rg's default ignore/hidden rules.
+  Filesystem changes between the check and the actual search remain a race.
 - Editing a listed file needs a path that never prints it: Claude's Edit tool
   needs a Read first (refused), and inline code that opens the file is
   refused. Use a script file or the tool that owns the file.

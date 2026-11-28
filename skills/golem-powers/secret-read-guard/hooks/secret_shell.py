@@ -425,11 +425,13 @@ def _covered(ctx, path):
 def _search_hits_root(ctx, path):
     if not os.path.isdir(path):
         return False
-    path = _canon(os.path.normpath(path))
-    for root in ctx.secrets.roots():
-        root = _canon(root)
-        if root == path or root.startswith(path.rstrip("/") + "/") or path.startswith(root + "/"):
-            return True
+    for candidate in (os.path.normpath(path), os.path.realpath(path)):
+        candidate = _canon(candidate)
+        for root in ctx.secrets.roots():
+            root = _canon(root)
+            if (root == candidate or root.startswith(candidate.rstrip("/") + "/")
+                    or candidate.startswith(root + "/")):
+                return True
     return False
 
 
